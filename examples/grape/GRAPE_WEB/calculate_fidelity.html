@@ -1,0 +1,54 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Filename : calculate_fidelity</title>
+    <meta name="generator" content="MATLAB 7.14">
+    <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
+    <meta name="DC.date" content="2014-03-05">
+    <meta name="DC.source" content="calculate_fidelity.m">
+    <link rel="stylesheet" type="text/css" href="css/screen.css" media="screen" />
+  </head>
+           
+  <body>
+    <ul id=menu>
+      <li><a href="flowchart.html">Flow Chart</a>
+      <li><a href="tools/tools.html">Tools</a>
+      <li><a href="faq/faq.html">F. A. Q.</a>
+      <li><a href="../index.html">NMR-QIP Page</a>
+    </ul>
+  <div class="content"><h1>Filename : calculate_fidelity</h1>
+    <p>In the following loop,</p>
+  <div>
+  <ul>
+    <li><img src="Images\calculate_fidelity_eq08858.png" alt="$su_j=\sum u_{jk} H_k$">, where <img src="Images\calculate_fidelity_eq86607.png" alt="$k$"> runs over the channels,</li>
+    <li><img src="Images\calculate_fidelity_eq37231.png" alt="$U(:,:,j)=\exp (-i \Delta t (H_{int} + su_j))$">, where <img src="Images\calculate_fidelity_eq31413.png" alt="$j$"> is the divison number.
+    </li>
+    <li><img src="Images\calculate_fidelity_eq85351.png" alt="$X(:,:,j+1) = U_j U_{j-1} \cdot U_2 U_1$">, where <img src="Images\calculate_fidelity_eq37291.png" alt="$j \in \{1,N\}$">.</li>
+  <li><img src="Images\calculate_fidelity_eq42789.png" alt="$$ fidelity = | \frac{U_t^{\dagger}U_s}{2^{nspins}} | ^2 $$">, with <img src="Images\calculate_fidelity_eq57002.png" alt="$U_t$"> as the target operator, <img src="Images\calculate_fidelity_eq47179.png" alt="$U_s$"> as the simulated operator, and nspins is equal to number of spins in the system.</li>
+  </ul>
+  </div>
+  <pre class="codeinput">
+  <span class="keyword">function</span> [fidelity X] = calculate_fidelity(u)
+  <span class="keyword">global</span> gra
+
+
+  X(:,:,1)=eye(2^gra.nspins);
+  U=zeros(2^gra.nspins,2^gra.nspins,gra.N);
+  <span class="keyword">for</span> j=1:gra.N
+      su=zeros(2^gra.nspins);
+      <span class="keyword">for</span> k=1:gra.m
+	  su=su + u(j,k)*gra.Hrf{1,k};
+      <span class="keyword">end</span>
+      U(:,:,j) = expm(-1i*(gra.T/gra.N)*(gra.Hint + su));
+      X(:,:,j+1)=U(:,:,j)*X(:,:,j);
+  <span class="keyword">end</span>
+
+
+  fidelity = (abs(trace(gra.U_target'*X(:,:,gra.N+1)))/2^(gra.nspins))^2;
+  </pre>
+  <p class="footer"><br>Published with MATLAB&reg; 7.14<br></p></div>
+  </body>
+</html>

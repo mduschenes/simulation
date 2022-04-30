@@ -1,0 +1,95 @@
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+      <title>Filename : flowchart</title>
+      <meta name="generator" content="MATLAB 7.14">
+      <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
+      <meta name="DC.date" content="2014-03-05">
+      <meta name="DC.source" content="flowchart.m">
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <link rel="stylesheet" type="text/css" href="css/screen.css" media="screen" />
+  </head>
+
+  <body>
+    <ul id=menu>
+      <li><a href="tools/tools.html">Tools</a>
+      <li><a href="faq/faq.html">F. A. Q.</a>
+      <li><a href="../index.html">NMR-QIP Page</a>
+    </ul>
+    <div class="content" style="width:60%;font-family:verdana,arial,helvetica,sans-serif; font-size:11px; text-align:center;">
+	
+	<h1>Flowchart Explaining How The GRAPE works</h1>
+	
+	<div id="no1"><div id="step_name">1</div><a href="rungrape.html">Start Rungrape</a></div>
+	<div id="line1"></div><div class="arrow down"></div>
+	<div id="no1"><div id="step_name">2</div><a href="freezing_fff1.html">Read the Input File</a></div>
+	<div id="line1"></div><div class="arrow down"></div>
+	<div id="no1"><div id="step_name">3</div><a href="initial_u.html">Create Random Guess</a></div>
+	<div id="line1"></div><div class="arrow down"></div>
+	<div id="no1"><div id="step_name">4</div><a href="generate_free_evolH.html">Generates Internal Hamiltonian</a></div>
+	<div id="line1"></div><div class="arrow down"></div>
+	<div id="no1"><div id="step_name">5</div><a href="generate_rfH.html">Generates RF Hamiltonian</a></div>
+	<div id="line1"></div><div class="arrow down"></div>
+	<div id="no1"><div id="step_name">6</div><a href="rungrape.html#6">Check if the output file name already exist to prevent overwriting. </a></div>
+	<div id="line1"></div><div class="arrow down"></div>
+	<div id="no1"><div id="step_name">7</div><a href="penalty.html">Generates Penalty Function.</a></div>
+	<div id="line1"></div><div class="arrow down"></div>
+	<div id="no1"><div id="step_name">8</div><a href="penalizecontrols.html">Apply the Penalty to controls.</a></div>
+	<div id="line1"></div><div class="arrow down"></div>
+	<div id="no1"><div id="step_name">9</div><a href="calculate_robustfidelity.html">Calculate Robust fidelity</a> , is it more than target fidelity? </div>
+	
+	<div id="line1" style="margin-left:37%; float:left;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div id="line1" style="margin-left:37%; float:left;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div>
+	<div id="no3">YES<br>STOP and output results</div>
+	<div id="no3" style="margin-left:20%; background:white;">NO<br/>Continue</div>
+	</div>
+	<div id="line1" style="margin-right:30%;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div id="line1" style="margin-right:30%;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div class="arrow down" style="margin-right:29.5%;"></div>
+	
+	<div id="no1" style="margin:auto;"><div id="step_name">10</div><a href="rungrape.html#8">Process of calculating new controls</a><br/>
+	  <div id="line1"></div><div class="arrow down"></div>
+	  <div id="no2"><div id="step_name">10a</div><a href="maximise_robustfidelity.html#7">calculate gradients</a><div></div></div>
+	  <div id="line1"></div><div class="arrow down"></div>
+	  <div id="no2"><div id="step_name">10b</div><a href="find_lambda_bconst.html">calculate conjugate gradients</a><div></div></div>
+	  <div id="line1"></div><div class="arrow down"></div>
+	  <div id="no2"><div id="step_name">10c</div>Use the conjugate gradients to obtain new controls and calculate fidelity for 3 value of time steps, i.e. if e is the time step calculate fidelity for 0, e, and 2e.<div></div></div>
+	  <div id="line1"></div><div class="arrow down"></div>
+	  <div id="no2"><div id="step_name">10d</div><a href="quadratic_fit.html">Do a quadratic fit of these 3 fidelity values and obtain step size for which fide is maximum.</a><div></div></div>
+	  <div id="line1"></div><div class="arrow down"></div>
+	  <div id="no2"><div id="step_name">10e</div><a href="maximise_robustfidelity.html#8">Create new set of controls using the step size and conjugate gradient and penalize them.</a><div></div></div>
+	  <div id="line1"></div><div class="arrow down"></div>
+	  <div id="no2"><div id="step_name">10f</div><a href="maximise_robustfidelity.html#9">Check if new step size is e or 2e to stop from calculating the matrix exponentiation again.</a>l<div></div></div>
+	  
+	 <div id="line1" style="margin-left:20%; float:left;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div id="line1" style="margin-left:20%; float:left;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div>
+	<div id="no3"  style="margin-left:6%; background:white;">NO<br/>Goto Step 9</div>
+	<div id="no3" style="margin-left:12%; background:white; width:230px;">YES<br>use program named calculate_robustfidelity_ exp_not_needed</div>
+	</div>
+	<div id="line1" style="margin-right:30%;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div id="line1" style="margin-right:30%;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div id="line1" style="margin-right:30%;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div class="arrow down" style="margin-right:29%;"></div>
+	
+	 <div id="no2">Is the fidelity more than target?<div></div></div>
+	 
+	 
+	<div id="line1" style="margin-left:20%; float:left;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div id="line1" style="margin-left:20%; float:left;"></div><div id="line1" style="margin-right:30%;"></div>
+	<div>
+	<div id="no3"  style="margin-left:6%; background:white;">Yes<br/>STOP and output results</div>
+	<div id="no3" style="margin-left:12%; background:white; width:230px;">NO<br>GoTo step 10</div>
+	<div style="height:150px"></div>
+	</div>
+
+	
+	
+	</div>
+	
+	
+    </div>
+  </body>
+ </html>

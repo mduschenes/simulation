@@ -1,0 +1,195 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+ <title>Filename : prodop</title>
+      <meta name="generator" content="MATLAB 7.14">
+      <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
+      <meta name="DC.date" content="2014-03-05">
+      <meta name="DC.source" content="prodop.m">
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <link rel="stylesheet" type="text/css" href="../css/screen.css" media="screen" />
+  </head>
+  
+<body>
+    <ul id=menu>
+      <li><a href="../flowchart.html">Flow Chart</a>
+      <li><a href="../tools/tools.html">Tools</a>
+      <li><a href="../faq/faq.html">F. A. Q.</a>
+      <li><a href="../../index.html">NMR-QIP Page</a>
+    </ul>
+    
+    <div class="content"><h1>FileName : prodop</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Description</a></li><li><a href="#2">Command</a></li></ul></div><h2>Description<a name="1"></a></h2><p>Generates 3-dimensional arrays of x, y and z product operators for the spin system described by spinNumbers and spinList.</p><h2>Command<a name="2"></a></h2><p><b>[Ix,Iy,Iz,IHx,IHy,IHz,sIHz] = prodop(spinNumbers,spinList)</b></p><p><b>Example :</b> for a system of two spins 1/2 of different species spinNumbers = [1/2 1/2] and spinList = [1 1].  For a system of two spins 1/2 of same species, spinNumbers = [1/2] and spinList = [2]. IHq(:,:,n) have sums of Iq for each nuclear species n.  sIHz is the sum of z-operators of all the spins.</p><p>Defaults: If spinList is not given, a single spin for each entry in the spinNumbers is assumed.</p><pre class="codeinput"><span class="keyword">function</span> [Ix,Iy,Iz,IHx,IHy,IHz,sIHz] = prodop(spinNumbers,spinList)
+<span class="keyword">if</span> nargin &lt; 2; spinList = ones(length(spinNumbers),1); <span class="keyword">end</span>;
+
+M = length(spinList);
+N = sum(spinList);
+
+spins = [];
+<span class="keyword">for</span> k = 1:M
+  spins = [spins spinNumbers(k)*ones(1,spinList(k))];
+<span class="keyword">end</span>
+
+D = prod(2*spins+1);
+Ix = zeros(D,D,N); Iy = Ix; Iz = Ix;
+
+id = eye(N,N);
+<span class="keyword">for</span> k=1:N
+  Px=1; Py=1; Pz=1;
+  <span class="keyword">for</span> j=1:N
+    [pe,px,py,pz] = genBasicOp(spins(j));
+    Px = kron(Px,(id(k,j)*px + (1-id(k,j))*pe));
+    Py = kron(Py,(id(k,j)*py + (1-id(k,j))*pe));
+    Pz = kron(Pz,(id(k,j)*pz + (1-id(k,j))*pe));
+  <span class="keyword">end</span>
+  Ix(:,:,k) = Px;
+  Iy(:,:,k) = Py;
+  Iz(:,:,k) = Pz;
+<span class="keyword">end</span>
+
+<span class="comment">% Heteronuclear sums</span>
+firstsp = 1;
+<span class="keyword">for</span> k = 1:M
+  lastsp = firstsp + spinList(k) - 1;
+  IHx(:,:,k) = sum(Ix(:,:,firstsp:lastsp),3);
+  IHy(:,:,k) = sum(Iy(:,:,firstsp:lastsp),3);
+  IHz(:,:,k) = sum(Iz(:,:,firstsp:lastsp),3);
+  firstsp = lastsp + 1;
+<span class="keyword">end</span>
+
+sIHz = sum(IHz,3);
+
+<span class="comment">%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%</span>
+
+<span class="keyword">function</span> [Pe,Px,Py,Pz] = genBasicOp(j)
+
+<span class="comment">% function [Pe,Px,Py,Pz] = genBasicOp(spinNumber)</span>
+<span class="comment">% Generates e (identity), x, y, z rotation operators of spin-j</span>
+
+Px = 0; Py = 0; Pz = 0;
+
+<span class="keyword">if</span> j &lt; 0.5
+  disp(<span class="string">'spinNumber should be a positive integer or a positive half-integer'</span>)
+  <span class="keyword">return</span>
+<span class="keyword">end</span>
+
+m = j:-1:-j;   <span class="comment">% spin angular momentum eigenvalues</span>
+Pz = diag(m);  Pe = eye(size(Pz));
+Pp = zeros(size(Pz));  Pm = Pp;  <span class="comment">% Raising and Lowering ops.</span>
+
+<span class="comment">% We have Pp|j,m&gt; = Sqrt((j-m)(j+m+1)) |j,m+1&gt;  and</span>
+<span class="comment">%         Pm|j,m&gt; = Sqrt((j+m)(j-m+1)) |j,m-1&gt;</span>
+<span class="keyword">for</span> k = 2:length(m); Pp(k-1,k) = sqrt((j-m(k))*(j+m(k)+1)); <span class="keyword">end</span>;
+<span class="keyword">for</span> k = 1:length(m)-1; Pm(k+1,k) = sqrt((j+m(k))*(j-m(k)+1)); <span class="keyword">end</span>;
+Px = (Pp + Pm)/2;  Py = (Pp - Pm)/2i;
+</pre><p class="footer"><br>
+      Published with MATLAB&reg; 7.14<br></p></div><!--
+##### SOURCE BEGIN #####
+%% FileName : prodop
+
+%% Description
+% Generates 3-dimensional arrays of x, y and z product operators for 
+% the spin system described by spinNumbers and spinList.
+
+%% Command
+% *[Ix,Iy,Iz,IHx,IHy,IHz,sIHz] = prodop(spinNumbers,spinList)*
+%
+% *Example :* for a system of two spins 1/2 of different species
+% spinNumbers = [1/2 1/2] and spinList = [1 1].  For a system of
+% two spins 1/2 of same species, spinNumbers = [1/2] and spinList = [2].
+% IHq(:,:,n) have sums of Iq for each nuclear species n.  sIHz 
+% is the sum of z-operators of all the spins.
+% 
+% Defaults: If spinList is not given, a single spin for each entry in
+% the spinNumbers is assumed.
+
+
+function [Ix,Iy,Iz,IHx,IHy,IHz,sIHz] = prodop(spinNumbers,spinList)
+
+if nargin < 1;
+disp(['  '])
+disp(['   function [Ix,Iy,Iz,IHx,IHy,IHz,sIHz] = prodop(spinNumbers,spinList)'])
+disp(['  '])
+disp(['   Generates 3-dimensional arrays of x, y and z product operators '])
+disp(['   for the spin system described by spinNumbers and spinList.'])
+disp(['  '])
+disp(['   For example, for a system of two spins 1/2 of different species '])
+disp(['   spinNumbers = [1/2 1/2] and spinList = [1 1].  For a system of'])
+disp(['   two spins 1/2 of same species, spinNumbers = [1/2] and spinList = [2].'])
+disp(['   IHq(:,:,n) have sums of Iq for each nuclear species n.  sIHz '])
+disp(['   is the sum of z-operators of all the spins.'])
+disp(['  '])
+disp(['   Defaults: If spinList is not given, a single spin for each entry in'])
+disp(['   the spinNumbers is assumed.'])
+disp(['  '])
+disp(['   (T. S. Mahesh, 2006)'])
+disp(['  '])
+return
+end
+
+if nargin < 2; spinList = ones(length(spinNumbers),1); end;
+
+M = length(spinList);
+N = sum(spinList);
+
+spins = [];
+for k = 1:M
+  spins = [spins spinNumbers(k)*ones(1,spinList(k))];
+end
+
+D = prod(2*spins+1);
+Ix = zeros(D,D,N); Iy = Ix; Iz = Ix; 
+
+id = eye(N,N);
+for k=1:N
+  Px=1; Py=1; Pz=1;
+  for j=1:N
+    [pe,px,py,pz] = genBasicOp(spins(j));
+    Px = kron(Px,(id(k,j)*px + (1-id(k,j))*pe));
+    Py = kron(Py,(id(k,j)*py + (1-id(k,j))*pe));
+    Pz = kron(Pz,(id(k,j)*pz + (1-id(k,j))*pe));
+  end
+  Ix(:,:,k) = Px;
+  Iy(:,:,k) = Py;
+  Iz(:,:,k) = Pz;
+end
+
+% Heteronuclear sums
+firstsp = 1;
+for k = 1:M
+  lastsp = firstsp + spinList(k) - 1;
+  IHx(:,:,k) = sum(Ix(:,:,firstsp:lastsp),3);
+  IHy(:,:,k) = sum(Iy(:,:,firstsp:lastsp),3);
+  IHz(:,:,k) = sum(Iz(:,:,firstsp:lastsp),3);
+  firstsp = lastsp + 1;
+end
+
+sIHz = sum(IHz,3);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function [Pe,Px,Py,Pz] = genBasicOp(j)
+
+% function [Pe,Px,Py,Pz] = genBasicOp(spinNumber)
+% Generates e (identity), x, y, z rotation operators of spin-j
+
+Px = 0; Py = 0; Pz = 0;
+
+if j < 0.5
+  disp('spinNumber should be a positive integer or a positive half-integer')
+  return
+end
+
+m = j:-1:-j;   % spin angular momentum eigenvalues
+Pz = diag(m);  Pe = eye(size(Pz));
+Pp = zeros(size(Pz));  Pm = Pp;  % Raising and Lowering ops.
+
+% We have Pp|j,m> = Sqrt((j-m)(j+m+1)) |j,m+1>  and
+%         Pm|j,m> = Sqrt((j+m)(j-m+1)) |j,m-1>
+for k = 2:length(m); Pp(k-1,k) = sqrt((j-m(k))*(j+m(k)+1)); end;
+for k = 1:length(m)-1; Pm(k+1,k) = sqrt((j+m(k))*(j-m(k)+1)); end;
+Px = (Pp + Pm)/2;  Py = (Pp - Pm)/2i;
+
+
+##### SOURCE END #####
+--></body></html>

@@ -1,0 +1,72 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+      <title>Filename : penalty</title>
+      <meta name="generator" content="MATLAB 7.14">
+      <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
+      <meta name="DC.date" content="2014-03-05">
+      <meta name="DC.source" content="penalty.m">
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <link rel="stylesheet" type="text/css" href="css/screen.css" media="screen" />
+  </head>
+
+<body>
+    <ul id=menu>
+      <li><a href="flowchart.html">Flow Chart</a>
+      <li><a href="tools/tools.html">Tools</a>
+      <li><a href="faq/faq.html">F. A. Q.</a>
+      <li><a href="../index.html">NMR-QIP Page</a>
+    </ul>
+    <div class="content"><h1>FileName : penalty</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Description</a></li></ul></div><h2>Description<a name="1"></a></h2><p>This program calculates a penalty function profile, like the one shown below</p><p><img vspace="5" hspace="5" src="Images/penalty_example.jpg" alt=""> </p><p>If the power goes above the red line during the simulation of a GRAPE pulse the power is reset to the point on the redline just below it.</p><p><b>Value of div controls the shape of the penalty</b> plot shown above, for example</p><p><b>Lower Value of div</b></p><p><img vspace="5" hspace="5" src="Images/penalty_example_low.jpg" alt=""> </p><p><b>Higher Value of div</b></p><p><img vspace="5" hspace="5" src="Images/penalty_example_high.jpg" alt=""> </p><p>Higher value makes the penalty plot more triangular, whereas lower values take the plot towards rectangular shape.</p><pre class="codeinput"><span class="keyword">function</span> [uprange,exitflag] = penalty(div,plength,askplot)
+
+<span class="keyword">global</span> gra
+</pre>
+<p>Making div same for all the channels</p>
+<pre class="codeinput">
+<span class="keyword">if</span> length(div)==1
+    <span class="keyword">for</span> j=2:gra.m/2
+        div(j)=div(1);
+    <span class="keyword">end</span>
+<span class="keyword">end</span>
+</pre>
+<p>Mathematical expression of penalty function makes uses of cosh function, which generates inverse umbrella shape. These values are multiplied by minus of max. amplitude to make it positive.</p>
+<pre class="codeinput">
+uprange=zeros(gra.N,1,gra.m/2);
+<span class="keyword">for</span> j=1:gra.m/2
+    per_div(j)=(div(j)*gra.N)/100;
+    x=linspace(1,gra.N/per_div(j),gra.N); x=x-mean(x);
+    penal=cosh(x')-1; penal=penal/max(penal);
+    Amax=(1/4/plength(j))*2*pi*99/100;
+    uprange(:,:,j) = -Amax*(penal);
+    uprange(:,:,j) = uprange(:,:,j)-min(uprange(:,:,j));
+<span class="keyword">end</span>
+</pre>
+
+
+<p>Plotting the Penalty profile only if aksplot='y'</p>
+<pre class="codeinput">
+exitflag=0;
+<span class="keyword">if</span> askplot==<span class="string">'y'</span>
+    <span class="keyword">for</span> j=1:gra.m/2
+        figure
+        plot(uprange(:,:,j)/1000,<span class="string">'r'</span>,<span class="string">'LineWidth'</span>,2)
+        x1=xlabel(<span class="string">'N'</span>);
+        y1=ylabel(<span class="string">'Percentage Power'</span>);
+        t1=title([<span class="string">'Max Power : '</span> num2str(1/4/plength(j)/1000) <span class="string">'KHz'</span>]);
+        axis <span class="string">tight</span>;
+        axis([1 gra.N 0 100])
+        set(gca,<span class="string">'FontSize'</span>,10)
+        set([x1 y1 t1],<span class="string">'FontSize'</span>,12,<span class="string">'FontWeight'</span>,<span class="string">'Bold'</span>)
+    <span class="keyword">end</span>
+    reply = input(<span class="string">'Do you want to continue? Y/N: '</span>, <span class="string">'s'</span>);
+    <span class="keyword">if</span> (reply==<span class="string">'n'</span> || isempty(reply))
+       exitflag=1;
+    <span class="keyword">end</span>
+  <span class="keyword">end</span>
+  </pre>
+  <p class="footer"><br>Published with MATLAB&reg; 7.14<br></p></div>
+      
+  </body>
+</html>

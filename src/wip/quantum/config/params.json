@@ -1,0 +1,61 @@
+{
+	"io":{
+		"verbose":"Info",
+		"path":""
+	},
+	"logging":{
+		"version": 1,
+		"disable_existing_loggers":false,
+		"formatters": {"file": {"format": "%(asctime)s :: %(message)s","datefmt":"%Y-%m-%d %H:%M:%S"},
+					   "stdout": {"format": "%(message)s","datefmt":"%Y-%m-%d %H:%M:%S"}},
+		"handlers": {"file": {"class": "logging.FileHandler",
+								 "filename": "data/log.log",
+								 "formatter": "file",
+								 "level": "INFO",
+								 "mode": "w"},
+					"stdout": {"class": "logging.StreamHandler",
+								  "formatter": "stdout",
+								  "level": "INFO",
+								  "stream": "ext://sys.stdout"}},
+		"root": {"handlers": ["stdout", "file"], "level": "DEBUG"}
+	},
+	"plotting":{
+		"names":["energy","order"],
+		"path":"figures",
+		"verbose":"info"
+	},
+	"model":{
+		"N":2,
+		"D":2,
+		"d":1,
+		"T":1.0,
+		"M":100,
+		"lattice":"square",
+		"bonds":"nearest",
+		"operators": [
+			{"string":"J","interaction":"i<j","site":["i","j"],"operator":["Z","Z"],"coefficient":null,"data":null},
+			{"string":"h","interaction":"i","site":["i"],"operator":["X"],"coefficient":null,"data":null},
+			{"string":"g","interaction":"i","site":["i"],"operator":["Y"],"coefficient":null,"data":null}
+		],
+		"trotter":"square",
+		"gradient":"manual",
+		"coefficient":"linear",
+		"linkdims":10,
+		"nsweeps":5,
+		"tol":1e-10,
+		"keep":null,
+		"discard":["psi"],
+		"dtype":"complex",
+		"format":"array",
+		"device":"cpu",
+		"verbose":"info"		
+	},
+	"results":{
+		"Sz_mean":[],
+		"energy": []
+	},
+	"parameters":{
+		"J": {"start":-2.0,"stop":2.0,"length":5,"type":"range"},
+		"g": [1]
+	}
+}

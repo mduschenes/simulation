@@ -1,0 +1,75 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+      <title>Filename : calculate_robustfidelity</title>
+      <meta name="generator" content="MATLAB 7.14">
+      <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
+      <meta name="DC.date" content="2014-03-05">
+      <meta name="DC.source" content="calculate_robustfidelity.m">
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <link rel="stylesheet" type="text/css" href="css/screen.css" media="screen" />
+  </head>
+  
+  
+  
+  <body>
+    <ul id=menu>
+      <li><a href="flowchart.html">Flow Chart</a>
+      <li><a href="tools/tools.html">Tools</a>
+      <li><a href="faq/faq.html">F. A. Q.</a>
+      <li><a href="../index.html">NMR-QIP Page</a>
+    </ul>
+  <div class="content">
+  <h1>Filename : calculate_robustfidelity</h1>
+    <p>In order to calculate the robust fidelity the fidelity as mentioned in <a href="calculate_fidelity.html">calculate_fidelity</a> is calculated for different values of percentage of amplitude. These values for percentage of amplitude is stored in the rfi files loaded in the input file. The variable <img src="Images\calculate_robustfidelity_eq86607.png" alt="$k$"> runs over the total number of these values.</p>
+    <p>In the following loop,</p>
+    
+    <div>
+    <ul><li><img src="Images\calculate_robustfidelity_eq08858.png" alt="$su_j=\sum u_{jk} H_k$">, where <img src="Images\calculate_robustfidelity_eq86607.png" alt="$k$"> runs over the channels,</li>
+    <li><img src="Images\calculate_robustfidelity_eq37231.png" alt="$U(:,:,j)=\exp (-i \Delta t (H_{int} + su_j))$">, where <img src="Images\calculate_robustfidelity_eq28128.png" alt="$i$"> is the divison number.</li>
+    <li><img src="Images\calculate_robustfidelity_eq85351.png" alt="$X(:,:,j+1) = U_j U_{j-1} \cdot U_2 U_1$">, where <img src="Images\calculate_robustfidelity_eq37291.png" alt="$j \in \{1,N\}$">.</li>
+    <li><img src="Images\calculate_robustfidelity_eq78878.png" alt="$P(:,:,j-1) = U_N U_{N-1} \cdot U_{j+1} U_j$">, where <img src="Images\calculate_robustfidelity_eq51737.png" alt="$j \in \{2,N\}$">.</li>
+    <li><img src="Images\calculate_robustfidelity_eq02801.png" alt="$$ fid = | \frac{U_t^{\dagger}U_s}{2^{nspins}} | ^2 $$">, with <img src="Images\calculate_robustfidelity_eq57002.png" alt="$U_t$"> as the target operator, <img src="Images\calculate_robustfidelity_eq47179.png" alt="$U_s$"> as the simulated operator, and nspins is equal to number of spins in the system.</li>
+    <li><img src="Images\calculate_robustfidelity_eq39604.png" alt="$fidelity = \sum_k (rfINHiwt)_k (fid)_k$"></li>
+    </ul>
+    </div>
+    
+    <pre class="codeinput">
+    <span class="keyword">function</span> [fidelity P X] = calculate_robustfidelity(u)
+    <span class="keyword">global</span> gra
+
+    clear <span class="string">P</span> <span class="string">X</span> <span class="string">U</span> <span class="string">fidelity</span>
+
+    spinlist = gra.spinlist;
+    U=zeros(2^gra.nspins,2^gra.nspins,gra.N,length(gra.rfINHrange));
+    A=zeros(gra.N,length(spinlist));
+    phi=zeros(gra.N,length(spinlist));
+
+    <span class="keyword">for</span> k=1:length(gra.rfINHrange)
+	X(:,:,1,k)=eye(2^gra.nspins);
+	<span class="keyword">for</span> j=1:gra.N
+	    sum_hamil=zeros(2^gra.nspins);
+	    <span class="keyword">for</span> n=1:length(spinlist)
+		A=gra.rfINHrange(k)*sqrt(u(j,n)^2+u(j,n+length(spinlist))^2);
+		phi=atan2(u(j,n+length(spinlist)),u(j,n));
+		sum_hamil = sum_hamil+A*cos(phi)*(gra.Hrf{1,n}) + A*sin(phi)*(gra.Hrf{1,n+length(spinlist)});
+	    <span class="keyword">end</span>
+	    U(:,:,j,k) = expm(-1i*(gra.del_t)*(gra.Hint + sum_hamil));
+	    X(:,:,j+1,k)=U(:,:,j,k)*X(:,:,j,k);
+	<span class="keyword">end</span>
+
+	P(:,:,gra.N,k)=eye(2^gra.nspins);
+	<span class="keyword">for</span> j=fliplr(2:gra.N)
+	    P(:,:,j-1,k)=P(:,:,j,k)*U(:,:,j,k);
+	<span class="keyword">end</span>
+	fid(k)= (abs(trace(gra.U_target'*X(:,:,gra.N+1,k)))/2^(gra.nspins))^2;
+    <span class="keyword">end</span>
+    fidelity = fid*gra.rfINHiwt;
+    </pre>
+    <p class="footer"><br>Published with MATLAB&reg; 7.14<br></p>
+ </div>
+	
+  </body>
+</html>

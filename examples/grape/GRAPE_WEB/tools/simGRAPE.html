@@ -1,0 +1,192 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+<title>Filename : simGRAPE</title>
+      <meta name="generator" content="MATLAB 7.14">
+      <link rel="schema.DC" href="http://purl.org/dc/elements/1.1/">
+      <meta name="DC.date" content="2014-03-05">
+      <meta name="DC.source" content="simGRAPE.m">
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+      <link rel="stylesheet" type="text/css" href="../css/screen.css" media="screen" />
+  </head>
+  
+<body>
+    <ul id=menu>
+      <li><a href="../flowchart.html">Flow Chart</a>
+      <li><a href="../tools/tools.html">Tools</a>
+      <li><a href="../faq/faq.html">F. A. Q.</a>
+      <li><a href="../../index.html">NMR-QIP Page</a>
+    </ul>
+    
+    <div class="content"><h1>FileName : simGRAPE</h1><!--introduction--><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#1">Description</a></li><li><a href="#2">Command</a></li><li><a href="#3">Example Output</a></li></ul></div><h2>Description<a name="1"></a></h2><p>Simulates the NMR spectra after the application of theoretical operator and simulated GRAPE operator.</p><h2>Command<a name="2"></a></h2><p><b>simGRAPE(GRinfo,indm,swh,T2)</b></p><p><b>GRinfo</b> : Variable in which all the information of grape pulse is stored.</p><p><b>indm</b> : Initial density matrix on which the pulse will be applied, by default it is the thermal equilibrium density matrix of NMR system.</p><p><b>swh</b> : Spectral width of the NMR spectra. The default is 40,000.</p><p><b>T2</b> : The NMR T2 decay rate, deafault is set to 0.2</p><h2>Example Output<a name="3"></a></h2><p>Shown below is an example plot. THe pulse is a 90x on all the spins acted upon the thermal equilibrium state.</p><p><img vspace="5" hspace="5" src="../tools/img/sample_simGRAPE.jpg" alt=""> </p><pre class="codeinput"><span class="keyword">function</span> simGRAPE(GRinfo,indm,swh,T2)
+<span class="keyword">global</span> gra
+ gra=GRinfo;
+ [Ix,Iy,Iz,~,~,~,sIHz] = prodop(gra.spinNumbers,gra.spinlist);
+
+
+<span class="comment">%-------Declaring Default Inputs--------------------</span>
+<span class="keyword">if</span> (nargin &lt; 2 || isempty(indm)); indm=sum(Iz,3);
+<span class="keyword">end</span>;
+<span class="keyword">if</span> (nargin &lt; 3 || isempty(swh));  swh=40000; <span class="keyword">end</span>;
+<span class="keyword">if</span> (nargin &lt; 4 || isempty(T2));   T2=0.2; <span class="keyword">end</span>;
+
+<span class="comment">% CALCULATING TIME AND FREQUENCY AXIS</span>
+
+td = round(swh);
+dw = 1/swh;
+t  = 0:dw:(td-1)*dw;
+k  = -td/2:(td-1)/2;
+f  = k/(td*dw);
+
+
+eham  = gra.Hint;
+detop = sum(Ix,3)+1i*sum(Iy,3);
+
+
+outdm_sim = gra.Usim*indm*(gra.Usim)';
+outdm_th  = gra.Utarg*indm*(gra.Utarg)';
+
+s_sim=zeros(1,td); s_th=zeros(1,td);
+<span class="keyword">for</span> m=1:td
+ outdm1_sim=expm(-1i*eham*t(m))*outdm_sim*expm(1i*eham*t(m));
+ outdm1_th=expm(-1i*eham*t(m))*outdm_th*expm(1i*eham*t(m));
+ s_sim(m)=trace(detop*outdm1_sim);
+ s_th(m)=trace(detop*outdm1_th);
+<span class="keyword">end</span>
+
+s_sim=s_sim.*exp(-t/T2);
+s_th=s_th.*exp(-t/T2);
+
+<span class="comment">%------------------Fourier Transform------------------------</span>
+S_sim=fftshift(fft(s_sim));
+S_th=fftshift(fft(s_th));
+
+figure
+subplot(2,2,1),plot(f,real(S_th));
+xlabel(<span class="string">'Frequency in Hz'</span>); ylabel(<span class="string">'Intensity (S)'</span>);
+title(<span class="string">'Ideal (Real)'</span>);
+subplot(2,2,2),plot(f,imag(S_th));
+xlabel(<span class="string">'Frequency in Hz'</span>); ylabel(<span class="string">'Intensity (S)'</span>);
+title(<span class="string">'Ideal (Imag)'</span>);
+
+subplot(2,2,3),plot(f,real(S_sim));
+xlabel(<span class="string">'Frequency in Hz'</span>); ylabel(<span class="string">'Intensity (s)'</span>);
+title([<span class="string">'Simulated (Real); Fidelity:'</span>,num2str(gra.IDEALfidelity)]);
+subplot(2,2,4),plot(f,imag(S_sim));
+xlabel(<span class="string">'Frequency in Hz'</span>); ylabel(<span class="string">'Intensity (s)'</span>);
+title([<span class="string">'Simulated (Imag): Fidelity:'</span>,num2str(gra.IDEALfidelity)]);
+</pre><p class="footer"><br>
+      Published with MATLAB&reg; 7.14<br></p></div><!--
+##### SOURCE BEGIN #####
+%% FileName : simGRAPE
+
+%% Description
+% Simulates the NMR spectra after the application of theoretical operator
+% and simulated GRAPE operator.
+
+%% Command
+% *simGRAPE(GRinfo,indm,swh,T2)*
+%
+% *GRinfo* : Variable in which all the information of grape pulse is stored.
+%
+% *indm* : Initial density matrix on which the pulse will be applied, by
+% default it is the thermal equilibrium density matrix of NMR system.
+%
+% *swh* : Spectral width of the NMR spectra. The default is 40,000.
+%
+% *T2* : The NMR T2 decay rate, deafault is set to 0.2 
+%
+
+
+%% Example Output
+% Shown below is an example plot. THe pulse is a 90x on all the spins acted
+% upon the thermal equilibrium state.
+%
+% <<sample_simGRAPE.jpg>>
+
+
+function simGRAPE(GRinfo,indm,swh,T2)
+
+if nargin<1
+    disp('  ')
+    disp('  ')
+    disp('      simGRAPE(GRinfo,initialdm,swh,T2)')
+    disp('      Simlulates the NMR spectra for the simulated gate')
+    disp('      applied on some density matrix given by initialdm')
+    disp('  ')
+    disp('          initialdm - Initial Density Matrix')
+    disp('                      {default: Equilibrium Density matrix taken}')
+    disp('                swh - Spectral Width {default : 40000}')
+    disp('                 T2 - T2 decay rate {default : 0.2}           ')
+    disp('  ')
+    disp('      SIMPLEST INPUT : simGRAPE(GRinfo)')
+    disp('  ')
+    disp('   It is unnecessary to provide all the inputs.  Empty inputs indicate')
+    disp('   indicate default selections.')
+    disp('  ')
+    disp('   (Hemant Katiyar, 2012)')
+    return
+end
+ 
+ 
+ global gra
+ gra=GRinfo;
+ [Ix,Iy,Iz,~,~,~,sIHz] = prodop(gra.spinNumbers,gra.spinlist);
+
+
+%REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH-Declaring Default InputsREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH
+if (nargin < 2 || isempty(indm)); indm=sum(Iz,3); 
+end;
+if (nargin < 3 || isempty(swh));  swh=40000; end;
+if (nargin < 4 || isempty(T2));   T2=0.2; end;
+ 
+% CALCULATING TIME AND FREQUENCY AXIS
+  
+td = round(swh);
+dw = 1/swh;
+t  = 0:dw:(td-1)*dw;
+k  = -td/2:(td-1)/2;
+f  = k/(td*dw);
+
+
+eham  = gra.Hint;
+detop = sum(Ix,3)+1i*sum(Iy,3);
+
+
+outdm_sim = gra.Usim*indm*(gra.Usim)';
+outdm_th  = gra.Utarg*indm*(gra.Utarg)';
+
+s_sim=zeros(1,td); s_th=zeros(1,td);
+for m=1:td
+ outdm1_sim=expm(-1i*eham*t(m))*outdm_sim*expm(1i*eham*t(m));
+ outdm1_th=expm(-1i*eham*t(m))*outdm_th*expm(1i*eham*t(m));
+ s_sim(m)=trace(detop*outdm1_sim);
+ s_th(m)=trace(detop*outdm1_th);
+end
+
+s_sim=s_sim.*exp(-t/T2);
+s_th=s_th.*exp(-t/T2);
+
+%REPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHFourier TransformREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASHREPLACE_WITH_DASH_DASH
+S_sim=fftshift(fft(s_sim)); 
+S_th=fftshift(fft(s_th));
+
+figure
+subplot(2,2,1),plot(f,real(S_th));
+xlabel('Frequency in Hz'); ylabel('Intensity (S)');
+title('Ideal (Real)');
+subplot(2,2,2),plot(f,imag(S_th));
+xlabel('Frequency in Hz'); ylabel('Intensity (S)');
+title('Ideal (Imag)');
+
+subplot(2,2,3),plot(f,real(S_sim));
+xlabel('Frequency in Hz'); ylabel('Intensity (s)');
+title(['Simulated (Real); Fidelity:',num2str(gra.IDEALfidelity)]);
+subplot(2,2,4),plot(f,imag(S_sim));
+xlabel('Frequency in Hz'); ylabel('Intensity (s)');
+title(['Simulated (Imag): Fidelity:',num2str(gra.IDEALfidelity)]);
+
+
+##### SOURCE END #####
+--></body></html>
