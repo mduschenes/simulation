@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import user modules
-from .utils import returnargs
+from src.utils import returnargs
 
 
 # Split path into directory,file,ext
@@ -80,11 +80,9 @@ def deserialize_json(obj,key='py/object'):
 
 # Load data - General file import
 def load(path,wr='r',default=None,verbose=False,**kwargs):
-	loaders = {**{ext: (lambda obj,ext=ext,**kwargs:getattr(pd,'read_%s'%ext)(obj,**kwargs)) for ext in ['csv']},
-			   **{ext: (lambda obj,ext=ext,**kwargs:np.loadtxt(obj,**{'delimiter':',',**kwargs})) for ext in ['txt']},
-			   **{ext: (lambda obj,ext=ext,**kwargs:getattr(pd,'read_%s'%ext)(obj,**kwargs) if wr=='r' else (pickle.load(obj,**kwargs))) for ext in ['pickle']},
-			   **{ext: (lambda obj,ext=ext,**kwargs: json.load(obj,**{'object_hook':deserialize_json,**kwargs})) for ext in ['json']},
-			  }
+	loaders = {ext: lambda obj,wr,ext=ext,**kwargs: _load(obj,wr,ext,**kwargs)
+				for ext in ['npy','csv','txt','pickle','json','hdf5']}
+
 	if not isinstance(path,str):
 		return default
 	
@@ -99,51 +97,98 @@ def load(path,wr='r',default=None,verbose=False,**kwargs):
 	loaders = {paths[e]: loaders[e] for e in paths}
 	for path in loaders:
 		loader = loaders[path]
-		for wr in [wr,'r','rb']:
+		for _wr in [wr,'r','rb']:
 			try:
-				data = loader(path,**kwargs)
+				data = loader(path,_wr,**kwargs)
 				logger.log(verbose,'Loading path %s'%(path))
 				return data
 			except Exception as e:
-				print(e)
 				try:
-					with open(path,wr) as obj:
-						data = loader(obj,**kwargs)
+					with open(path,_wr) as obj:
+						data = loader(obj,_wr,**kwargs)
 						logger.log(verbose,'Loading obj %s'%(path))
 						return data
 				except Exception as e:
-					print(e)
 					pass
 
 	return default			
-		
+
+
+
+# Load data - General file import
+def _load(obj,wr,ext,**kwargs):
+	
+	if ext in ['npy']:
+		data = getattr(np,'load')(obj,{**kwargs})
+	elif ext in ['csv']:
+		data = getattr(pd,'read_%s'%ext)(obj,{**kwargs})
+	elif ext in ['txt']:
+		data = np.loadtxt(obj,**{'delimiter':',',**kwargs})
+	elif ext in ['pickle']:
+		data = getattr(pd,'read_%s'%ext)(obj,**kwargs) if wr=='r' else (pickle.load(obj,**kwargs))
+	elif ext in ['json']:
+		data = json.load(obj,**{'object_hook':deserialize_json,**kwargs})
+	elif ext in ['hdf5']:
+
+		file = h5py.File(obj,wr)
+
+		data = {}
+
+		for group in natsorted(file):
+			data[group] = {}
+
+			names = list(set((name.replace('.real','').replace('.imag','') for name in file[group])))
+			for name in names:
+
+				try:
+					name_real = "%s.%s"%(name,'real')
+					data_real = file[group][name_real][...]
+
+					name_imag = "%s.%s"%(name,'imag')
+					data_imag = file[group][name_imag][...]
+
+					data[group][name] = data_real + 1j*data_imag
+				except:
+					data[group][name] = file[group][name][...]
+
+			names = list(set((name for name in file[group].attrs)))
+			for name in names:
+				data[group][name] = file[group].attrs[name]
+
+		file.close()
+
+	return data
+
+
+
 # Dump data - General file save/export
 def dump(data,path,wr='w',verbose=False,**kwargs):
 
-	dumpers = {**{ext: (lambda data,obj,ext=ext,**kwargs:getattr(data,'to_%s'%ext)(obj,**{'index':False,**kwargs})) for ext in ['csv']},
-			   **{ext: (lambda data,obj,ext=ext,**kwargs:np.savetxt(obj,data,**{'delimiter':',','fmt':'%.20f',**kwargs})) for ext in ['txt']},
-			   **{ext: (lambda data,obj,ext=ext,**kwargs:getattr(data,'to_%s'%ext)(obj,**kwargs) if isinstance(data,pd.DataFrame) else pickle.dump(data,obj,protocol=pickle.HIGHEST_PROTOCOL,**kwargs)) for ext in ['pickle']},
-			   **{ext: (lambda data,obj,ext=ext,**kwargs: json.dump(data,obj,**{'default':serialize_json,'ensure_ascii':False,'indent':4,**kwargs})) for ext in ['json']},
-			   **{ext: (lambda data,obj,ext=ext,**kwargs: obj.write(data,**kwargs)) for ext in ['tex']},
-			  }
+	dumpers = {ext: lambda data,obj,wr,ext=ext,**kwargs: _dump(data,obj,wr,ext,**kwargs)
+				for ext in ['npy','csv','txt','pickle','json','tex','hdf5']}
 
+	if not isinstance(path,str):
+		return
+	
 	if path is None:
 		return
+
 	ext = path.split('.')[-1]
 	if ('.' in path) and (ext in dumpers):
 		paths = {ext: path}
 	else:
 		paths = {e: '%s.%s'%(path,e) for e in dumpers}
-		return
 	dumpers = {paths[e]: dumpers[e] for e in paths}
+
 
 	for path in dumpers:
 		dirname = os.path.abspath(os.path.dirname(path))
 		if not os.path.exists(dirname):
 			os.makedirs(dirname)
 
-	for path in dumpers:
-		dumper = dumpers[path]
+	for path in dumper:
+		dumper = dumper[path]
+
 		for _wr in [wr,'w','wb']:		
 			with open(path,_wr) as obj:
 				try:
@@ -163,8 +208,31 @@ def dump(data,path,wr='w',verbose=False,**kwargs):
 								dumper(data,obj,**kwargs)
 							except:
 								pass
+	return
 
-	return			
+
+
+
+# Dump data - General file export
+def _dump(data,obj,wr,ext,**kwargs):
+	
+	if ext in ['npy']:
+		data = getattr(np,'load')(obj,{**kwargs})
+	elif ext in ['csv']:
+		getattr(data,'to_%s'%ext)(obj,**{'index':False,**kwargs})
+	elif ext in ['txt']:
+		np.savetxt(obj,data,**{'delimiter':',','fmt':'%.20f',**kwargs})
+	elif ext in ['pickle']:
+		getattr(data,'to_%s'%ext)(obj,**kwargs) if isinstance(data,pd.DataFrame) else pickle.dump(data,obj,protocol=pickle.HIGHEST_PROTOCOL,**kwargs)
+	elif ext in ['json']:
+		json.dump(data,obj,**{'default':serialize_json,'ensure_ascii':False,'indent':4,**kwargs})
+	elif ext in ['tex']:
+		obj.write(data,**kwargs)
+	elif ext in ['hdf5']:
+		pass
+
+	return
+
 
 
 

@@ -32,9 +32,6 @@ logger = logging.getLogger(__name__)
 
 # Import user modules
 from utils import jit,gradient
-from utils import array,ones,zeros,arange,rand
-from utils import matmul,matmul_diagonal,tensordot,tensorprod,multi_tensorprod,trace,multi_expm
-from utils import maximum,minimum,abs,cos,sin,heaviside,sigmoid,inner,norm,interpolate
 
 
 def value_and_grad(func,grad=None):

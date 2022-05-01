@@ -22,12 +22,13 @@ jax.config.update('jax_enable_x64', True)
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['',".."]
+PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.quantum import main
-from src.utils import array,multi_tensorprod
+from src.utils import array,tensorprod
+from src.io import load,dump
 
 # Logging
 import logging,logging.config
@@ -46,17 +47,12 @@ if __name__ == '__main__':
 	# method = 'random'
 	local = 'local'
 	# local = 'global'
+
 	n = 1
 	m = 0
 	N = 4
 	M = 16
 	iterations = 20
-
-	# n = 3
-	# m = 0
-	# N = 4
-	# M = 100
-	# iterations = 100
 
 	scale = 1#100*1e-6
 	if train:
@@ -64,13 +60,14 @@ if __name__ == '__main__':
 			objective = []
 			iteration = []
 		elif train == -1:
-			iteration = onp.load('output/iteration_%s_%s_%d.npy'%(method,local,m)).tolist()
-			objective = onp.load('output/objective_%s_%s_%d.npy'%(method,local,m)).tolist()
+			iteration = load('output/iteration_%s_%s_%d.npy'%(method,local,m)).tolist()
+			objective = load('output/objective_%s_%s_%d.npy'%(method,local,m)).tolist()
 		for i in range(n):
 			print(i)
 			N = N
 			D = 2
 			d = 1
+			L = 1
 			M = M
 			# T = M*(4e-6)
 			T = M	
@@ -108,13 +105,13 @@ if __name__ == '__main__':
 					# 		   [0,1,0,0],
 					# 		   [0,0,1,0],
 					# 		   [0,0,0,1]]),					   		
-					# 2: multi_tensorprod(((1/np.sqrt(2)))*array(
+					# 2: tensorprod(((1/np.sqrt(2)))*array(
 					# 		[[[1,1],
 					# 		  [1,-1]],
 					# 		 [[1,1],
 					# 		  [1,-1]],
 					# 		  ])),
-					3: multi_tensorprod(((1/np.sqrt(2)))*array(
+					3: tensorprod(((1/np.sqrt(2)))*array(
 							[[[1,1],
 							  [1,-1]],
 							 [[1,1],
@@ -130,7 +127,7 @@ if __name__ == '__main__':
 					# 		   [0,0,0,0,0,1,0,0],
 					# 		   [0,0,0,0,0,0,0,1],
 					# 		   [0,0,0,0,0,0,1,0]]),
-					# 4: multi_tensorprod(((1/np.sqrt(2)))*array(
+					# 4: tensorprod(((1/np.sqrt(2)))*array(
 					# 		[[[1,1],
 					# 		  [1,-1]],
 					# 		 [[1,1],
@@ -140,11 +137,11 @@ if __name__ == '__main__':
 					# 		 [[1,1],
 					# 		  [1,-1]],							  
 					# 		 ])),	
-					4: multi_tensorprod(array([[[1,0,0,0],
+					4: tensorprod(array([[[1,0,0,0],
 							   [0,1,0,0],
 							   [0,0,0,1],
 							   [0,0,1,0]]]*2)),	
-					# 4: multi_tensorprod(array([[[1,0,0,0],
+					# 4: tensorprod(array([[[1,0,0,0],
 					# 		   [0,1,0,0],
 					# 		   [0,0,1,0],
 					# 		   [0,0,0,1]]]*2)),						   		 
@@ -163,10 +160,32 @@ if __name__ == '__main__':
 			fig.tight_layout()
 			fig.savefig('output/V_%s_%s_%d.pdf'%(method,local,i))
 
-			operator = [['X'],['Y'],['Z'],['Z','Z']]
-			site = ['i','i','i','i<j']
-			string = ['h','g','k','J']
 			hyperparameters = {
+				'model':{
+					'N':N,
+					'D':D,
+					'd':d,
+					'L':L,
+					'M':M,
+					'T':T,
+					'p':p,
+					'space':'spin',		
+					'time':'linear',		
+					'lattice':'square',
+					'system':{
+						'dtype':'complex',
+						'format':'array',
+						'device':'cpu',
+						'verbose':'info'		
+					},
+				},			
+				'object':{
+					'operator': [['X'],['Y'],['Z'],['Z','Z']],
+					'site': [['i'],['i'],['i'],['i','j']],
+					'string': ['h','g','k','J'],
+					'interaction': ['i','i','i','i<j'],
+				},		
+				'label': V,																
 				'optimizer':'cg',
 				'hyperparameters':{
 					'iterations':iterations,
@@ -255,25 +274,24 @@ if __name__ == '__main__':
 
 					},
 				},
-				'label': V
 				}
 			
 
-			main(i,N,D,d,M,T,p,operator,site,string,hyperparameters)
+			main(i,hyperparameters)
 
 			iteration.append(hyperparameters['track']['iteration'][:])
 			objective.append(hyperparameters['track']['objective'][:])
 
-			onp.save('output/iteration_%s_%s_%d.npy'%(method,local,m+1+i),onp.array(iteration))
-			onp.save('output/objective_%s_%s_%d.npy'%(method,local,m+1+i),onp.array(objective))
+			dump(onp.array(iteration),'output/iteration_%s_%s_%d.npy'%(method,local,m+1+i))
+			dump(onp.array(objective),'output/objective_%s_%s_%d.npy'%(method,local,m+1+i))
 
 		iteration = onp.array(iteration)
 		objective = onp.array(objective)
 
 	else:
 
-		iteration = onp.load('output/iteration_%s_%s_%d.npy'%(method,local,m+n))
-		objective = onp.load('output/objective_%s_%s_%d.npy'%(method,local,m+n))
+		iteration = load('output/iteration_%s_%s_%d.npy'%(method,local,m+n))
+		objective = load('output/objective_%s_%s_%d.npy'%(method,local,m+n))
 
 	n = min(len(iteration),len(objective))	
 	slices = slice(1,None)

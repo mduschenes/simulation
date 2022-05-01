@@ -1089,9 +1089,9 @@ class Operator(Object):
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)
 	'''
 
-	def __init__(self,circuit,site=None,string=None,coefficient=None,interaction=None,N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
+	def __init__(self,operator,site=None,string=None,coefficient=None,interaction=None,N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
 		self.delimiter = ' + '
-		super().__init__(circuit,site=site,string=string,coefficient=coefficient,interaction=interaction,
+		super().__init__(operator,site=site,string=string,coefficient=coefficient,interaction=interaction,
 						 N=N,D=D,d=d,L=L,M=M,T=T,p=p,space=space,time=time,lattice=lattice,system=system)
 		return	
 
