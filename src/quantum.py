@@ -548,12 +548,11 @@ class Object(object):
 		return	
 
 
-	def __parameters__(self,parameters,hyperparameters):
+	def __parameters__(self,parameters):
 		''' 
 		Setup parameters
 		Args:
 			parameters (array): parameters
-			hyperparameters (dict): hyperparameters 			
 		Returns:
 			parameters (array): parameters		
 		'''
@@ -713,7 +712,7 @@ def trotter(a,p):
 	a = broadcast_to([v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u],(p*a.shape[0],*a.shape[1:]))
 	return a
 
-# @jit
+@partial(jit,static_argnums=(1,))
 def bound(a,hyperparameters):
 	# return 1/(1+np.exp(-eps*a))
 	return sigmoid(a,hyperparameters['hyperparameters']['bound'])
@@ -786,17 +785,16 @@ class Hamiltonian(Object):
 		return
 
 
-	#@partial(jit,static_argnums=(0,))
-	def __call__(self,parameters,hyperparameters):
+	@partial(jit,static_argnums=(0,))
+	def __call__(self,parameters):
 		'''
 		Return parameterized operator sum(parameters*operator)
 		Args:
 			parameters (array): Parameters to parameterize operator			
-			hyperparameters (dict): Hyperparameters to parameterize operator			
 		Returns
 			operator (array): Parameterized operator
 		'''		
-		parameters = self.__parameters__(parameters,hyperparameters)
+		parameters = self.__parameters__(parameters)
 
 		return (parameters*self.data).sum(0)
 
@@ -957,20 +955,23 @@ class Hamiltonian(Object):
 
 
 		# Initialize parameters
-		self.__init__parameters__(parameters,hyperparameters)
+		self.__init__parameters__(parameters)
 
 		return
 
 
-	def __parameters__(self,parameters,hyperparameters):
+	def __parameters__(self,parameters):
 		''' 
 		Setup parameters
 		Args:
 			parameters (array): parameters
-			hyperparameters (dict): hyperparameters 			
 		Returns:
 			parameters (array): parameters		
 		'''		
+
+		# Get class attributes
+		self.parameters = parameters
+		hyperparameters = self.hyperparameters
 
 		# Set all parameters
 		
@@ -1001,12 +1002,13 @@ class Hamiltonian(Object):
 		# Get reshaped parameters
 		parameters = parameters.ravel()
 
-		print(parameters.size)
+		# Update class attributes
+		self.hyperparameters = hyperparameters
 
 		return parameters
 
 
-	def __init__parameters__(self,parameters,hyperparameters):
+	def __init__parameters__(self,parameters):
 		''' 
 		Setup initial parameters
 		Args:
@@ -1014,6 +1016,10 @@ class Hamiltonian(Object):
 		Returns:
 			parameters (array): parameters
 		'''
+
+		# Get class attributes
+		self.parameters = parameters
+		hyperparameters = self.hyperparameters
 
 		# labels are hermitian conjugate of target matrix
 		hyperparameters['value'] = zeros(hyperparameters['shape'])
@@ -1117,8 +1123,8 @@ class Unitary(Hamiltonian):
 				 N=N,D=D,d=d,L=L,M=M,T=T,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
-	#@partial(jit,static_argnums=(0,))
-	def __call__(self,parameters,hyperparameters):
+	@partial(jit,static_argnums=(0,))
+	def __call__(self,parameters):
 		'''
 		Return parameterized operator sum(parameters*operator)
 		Args:
@@ -1127,10 +1133,10 @@ class Unitary(Hamiltonian):
 		Returns
 			operator (array): Parameterized operator
 		'''		
-		parameters = self.__parameters__(parameters,hyperparameters)
+		parameters = self.__parameters__(parameters)
 
-		return expm(parameters,hyperparameters['data'],hyperparameters['identity'])
-		# return expm(parameters,self.data,self.identity)
+		# return expm(parameters,hyperparameters['data'],hyperparameters['identity'])
+		return expm(parameters,self.data,self.identity)
 
 def plot_parameters(parameters,hyperparameters,**kwargs):
 	'''
@@ -1274,24 +1280,8 @@ def main(index,hyperparameters={}):
 	parameters = unitary.parameters
 	hyperparameters = unitary.hyperparameters
 
-	print('compiling')
-	print(expm(parameters,hyperparameters['data'],hyperparameters['identity']))
-	print(expm(parameters,hyperparameters['data'],hyperparameters['identity']))
-	print(expm(parameters,hyperparameters['data'],hyperparameters['identity']))
-	print(expm(parameters,hyperparameters['data'],hyperparameters['identity']))
-
-	print('compiling')
-	print(unitary(parameters,hyperparameters))
-	print(unitary(parameters,hyperparameters))
-	print(unitary(parameters,hyperparameters))
-	print(unitary(parameters,hyperparameters))
-	# print(unitary(parameters,hyperparameters))
-
-	exit()
-
 	func = jit(partial(func,hyperparameters=hyperparameters))
 	loss = jit(partial(loss,hyperparameters=hyperparameters))
-	params = jit(partial(params,hyperparameters=hyperparameters))
 	constraints = jit(partial(constraints,hyperparameters=hyperparameters))
 	loss_constraints = jit(partial(loss_constraints,hyperparameters=hyperparameters))
 
@@ -1300,6 +1290,21 @@ def main(index,hyperparameters={}):
 			hyperparameters['track']['objective'].append(objective(parameters,hyperparameters))),
 		'log': (lambda parameters,hyperparameters: log(parameters,hyperparameters)),
 	}
+
+
+	print('compiling')
+	print(func(parameters))
+	print(func(parameters))
+	print(func(parameters))
+	print(func(parameters))
+	print('compiling')	
+	grad = gradient(loss)
+	print(grad(parameters))
+	print(grad(parameters))
+	print(grad(parameters))
+	print(grad(parameters))
+
+	exit()
 
 	optimizer = Optimizer(func=loss_constraints,hyperparameters=hyperparameters)
 

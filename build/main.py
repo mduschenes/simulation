@@ -50,8 +50,8 @@ if __name__ == '__main__':
 
 	n = 1
 	m = 0
-	N = 2
-	M = 100
+	N = 4
+	M = 1000
 	iterations = 20
 
 	scale = 1#100*1e-6
@@ -189,7 +189,7 @@ if __name__ == '__main__':
 				'optimizer':'cg',
 				'hyperparameters':{
 					'iterations':iterations,
-					'seed':onp.random.randint(10000),		
+					'seed':0,#onp.random.randint(10000),		
 					'interpolation':3,'smoothness':3,'init':[0,1],'random':'uniform',
 					'c1':0.0001,'c2':0.9,'maxiter':50,'restart':iterations//4,'tol':1e-14,
 					'bound':1e6,'alpha':5e-1,'beta':1e-1,'lambda':1*np.array([1e-6,1e-6,1e-2]),'eps':980e-3,

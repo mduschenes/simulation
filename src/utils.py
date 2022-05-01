@@ -41,7 +41,7 @@ def jit(func,*,static_argnums=None):
 	Returns:
 		func (callable): Compiled function
 	'''
-	return func
+	# return func
 	return jax.jit(func,static_argnums=static_argnums)
 
 def gradient(func):
@@ -893,7 +893,7 @@ def exponentiate(array,p,site,diagonal,size,N,D):
 
 
 
-# @jit
+@jit
 def _matmul(a,b):
 	'''
 	Calculate matrix product arrays a and b
@@ -957,7 +957,7 @@ def commutator(a,b):
 	return tensordot(a,b,1) - tensordot(b,a,1)
 
 
-# @jit
+@jit
 def commutes(a,b):
 	'''
 	Calculate whether a and b commutate
@@ -1110,12 +1110,12 @@ def exp(a):
 	'''
 	return np.exp(a)
 
-# @jit
+@jit
 def _expm(x,A,I):
 	return cos(x)*I -1j*sin(x)*A
 
 
-# @jit
+@jit
 def expm(x,A,I):
 	m = x.shape[0]
 	n = A.shape[0]
@@ -1125,10 +1125,7 @@ def expm(x,A,I):
 	i = 0
 	out = _func(i)
 
-	for i in range(i+1,m):
-		out = func(i,out)
-	return out
-	# return jax.lax.fori_loop(i+1,m,func,out)
+	return jax.lax.fori_loop(i+1,m,func,out)
 	# return jsp.linalg.expm(a)
 
 
@@ -1896,7 +1893,7 @@ def interpolate(x,y,x_new,kind):
 
 
 
-# @jit
+@jit
 def heaviside(a):
 	'''
 	Calculate heaviside function
@@ -1908,7 +1905,7 @@ def heaviside(a):
 	return np.heaviside(a,0)
 
 
-# @jit
+@jit
 def sigmoid(a,scale=1e6):
 	'''
 	Calculate sigmoid function with scale
