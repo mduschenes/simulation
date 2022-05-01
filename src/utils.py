@@ -42,7 +42,7 @@ def jit(func,*,static_argnums=None):
 		func (callable): Compiled function
 	'''
 	return func
-	# return jax.jit(func,static_argnums=static_argnums)
+	return jax.jit(func,static_argnums=static_argnums)
 
 def gradient(func):
 	'''
@@ -709,6 +709,19 @@ def tensordot(a,b,axes=0):
 
 
 @jit
+def _tensorprod(a,b):
+	'''
+	Tensor (kronecker) product of arrays a and b	
+	Args:
+		a (array): Array to tensorproduct
+		b (array): Array to tensorproduct
+	Returns:
+		out (array): Tensorproduct product of arrays
+	'''
+	return np.kron(a,b)
+
+
+@jit
 def tensorprod(a):
 	'''
 	Tensor (kronecker) product of arrays a
@@ -719,9 +732,9 @@ def tensorprod(a):
 	'''
 	out = a[0]
 	for i in range(1,len(a)):
-		out = np.kron(out,a[i])
+		out = _tensorprod(out,a[i])
 	return out
-	# return jax.lax.fori_loop(1,len(a),lambda i,out: np.kron(out,a[i]),a[0])	
+	# return jax.lax.fori_loop(1,len(a),lambda i,out: _tensorprod(out,a[i]),a[0])	
 
 @jit
 def vtensorprod(a):
@@ -748,9 +761,9 @@ def ntensorprod(a,n):
 	'''
 	out = a
 	for i in range(1,n):
-		out = np.kron(out,a)
+		out = _tensorpod(out,a)
 	return out
-	# return jax.lax.fori_loop(1,n,lambda i,out: np.kron(out,a),a)	
+	# return jax.lax.fori_loop(1,n,lambda i,out: _tensorprod(out,a),a)	
 
 @jit
 def vntensorprod(a,n):
@@ -880,7 +893,7 @@ def exponentiate(array,p,site,diagonal,size,N,D):
 
 
 
-@jit
+# @jit
 def _matmul(a,b):
 	'''
 	Calculate matrix product arrays a and b
@@ -1097,12 +1110,12 @@ def exp(a):
 	'''
 	return np.exp(a)
 
-@jit
+# @jit
 def _expm(x,A,I):
 	return cos(x)*I -1j*sin(x)*A
 
 
-@jit
+# @jit
 def expm(x,A,I):
 	m = x.shape[0]
 	n = A.shape[0]

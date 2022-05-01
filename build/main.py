@@ -27,7 +27,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.quantum import main
-from src.utils import array,tensorprod
+from src.utils import array,tensorprod,sin,cos
 from src.io import load,dump
 
 # Logging
@@ -50,8 +50,8 @@ if __name__ == '__main__':
 
 	n = 1
 	m = 0
-	N = 4
-	M = 16
+	N = 2
+	M = 100
 	iterations = 20
 
 	scale = 1#100*1e-6
@@ -179,7 +179,7 @@ if __name__ == '__main__':
 						'verbose':'info'		
 					},
 				},			
-				'object':{
+				'data':{
 					'operator': [['X'],['Y'],['Z'],['Z','Z']],
 					'site': [['i'],['i'],['i'],['i','j']],
 					'string': ['h','g','k','J'],

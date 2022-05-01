@@ -520,7 +520,7 @@ class Object(object):
 
 		self.data = []
 		self.size = getattr(self,'size',0)
-		self.shape = (self.size,)
+		self.shape = (self.M,self.size,)
 		self.locality = getattr(self,'locality',0)
 		self.site = []
 		self.string = []
@@ -548,11 +548,14 @@ class Object(object):
 		return	
 
 
-	def __parameters__(self,parameters=None):
+	def __parameters__(self,parameters,hyperparameters):
 		''' 
 		Setup parameters
 		Args:
 			parameters (array): parameters
+			hyperparameters (dict): hyperparameters 			
+		Returns:
+			parameters (array): parameters		
 		'''
 		self.parameters = parameters
 		return parameters
@@ -678,18 +681,16 @@ class Object(object):
 		logger.log(self.verbose,msg)
 		return	
 
-	def dump(self,path=None,parameters=None,ext='txt'):
+	def dump(self,path,parameters,ext='txt'):
 		'''
 		Save class data		
 		'''
-		if path is None:
-			path = '%s.%s'%(self,ext)
 		data = self(parameters)
 		dump(data,path)
 		return
 
 
-	def load(self,path=None,parameters=None,ext='txt'):
+	def load(self,path,ext='txt'):
 		'''
 		Load class data		
 		'''
@@ -786,15 +787,16 @@ class Hamiltonian(Object):
 
 
 	#@partial(jit,static_argnums=(0,))
-	def __call__(self,parameters=None):
+	def __call__(self,parameters,hyperparameters):
 		'''
 		Return parameterized operator sum(parameters*operator)
 		Args:
-			parameters (array): Parameters to parameterize operator
+			parameters (array): Parameters to parameterize operator			
+			hyperparameters (dict): Hyperparameters to parameterize operator			
 		Returns
 			operator (array): Parameterized operator
 		'''		
-		parameters = self.__parameters__(parameters)
+		parameters = self.__parameters__(parameters,hyperparameters)
 
 		return (parameters*self.data).sum(0)
 
@@ -809,6 +811,9 @@ class Hamiltonian(Object):
 			hyperparameters (dict) : class hyperparameters
 		'''
 
+		# Get parameters
+		parameters = None		
+
 		# Get hyperparameters
 		hyperparameters.update(self.hyperparameters)
 
@@ -821,42 +826,53 @@ class Hamiltonian(Object):
 		sites = ['i','j'] # allowed symbolic sites
 
 
-		# Get all sites from symbolic sites
-		for i in range(size):
-			_operator = operator.pop(0);
-			_site = site.pop(0);
-			_string = string.pop(0);
-			_interaction = interaction.pop(0);
-			if any(j in sites for j in site[i]):
-				for s in interactions[interaction[i]]:
-					_site = [dict(zip(sites,s if not isinstance(s,int) else [s])).get(j,parse(j,int)) for j in site[i]]
+		# Basis single-site operators
+		basis = {
+			'I': array([[1,0],[0,1]]),
+			'X': array([[0,1],[1,0]]),
+			'Y': array([[0,-1j],[1j,0]]),
+			'Z': array([[1,0],[0,-1]]),
+		}
 
-					operator.append(copy.deepcopy(_operator))
-					site.append(copy.deepcopy(_site))
-					string.append(copy.deepcopy(_string))
-					interaction.append(copy.deepcopy(_interaction))
-			else:
-				operator.append(copy.deepcopy(_operator))
-				site.append(copy.deepcopy(_site))
-				string.append(copy.deepcopy(_string))
-				interaction.append(copy.deepcopy(_interaction))
-
-
-		print(operator)
-		print(site)
-		print(string)
-		print(interaction)
-		exit()
 
 		# Get identity operator I, to be maintained with same shape of data for Euler identities
 		# with minimal redundant copying of data
 		I = 'I'
 		identity = [I]*self.N
 
+		# Get all sites from symbolic sites
+		for i in range(size):
+			_operator = operator.pop(0);
+			_site = site.pop(0);
+			_string = string.pop(0);
+			_interaction = interaction.pop(0);
+			if any(j in sites for j in _site):
+				for s in interactions[_interaction]:
+					_site_ = copy.deepcopy([dict(zip(sites,s if not isinstance(s,int) else [s])).get(j,parse(j,int)) for j in _site])
+					_operator_ = copy.deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
+					_string_ = copy.deepcopy(_string)
+					_interaction_ = copy.deepcopy(_interaction)
+					
+					operator.append(_operator_)
+					site.append(_site_)
+					string.append(_string_)
+					interaction.append(_interaction_)
+			else:
+				_site_ = copy.deepcopy(_site)
+				_operator_ = copy.deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
+				_string_ = copy.deepcopy(_string)
+				_interaction_ = copy.deepcopy(_interaction)
+
+				operator.append(_operator_)
+				site.append(_site_)
+				string.append(_string_)
+				interaction.append(_interaction_)
+
+
 
 		# Form (size,n,n) shape operator from local strings for each data term
-		data = array([multi_tensorprod([basis[j] for j in i]) for i in operator])
-		identity = multi_tensorprod([basis[i] for i in identity])
+		data = array([tensorprod([basis[j] for j in i]) for i in operator])
+		identity = tensorprod([basis[i] for i in identity])
 
 		# Get size of data
 		size = len(data)
@@ -884,7 +900,7 @@ class Hamiltonian(Object):
 			n = max([-1,*[slices[category][group][-1] for group in slices[category]]])+1
 			for group in hyperparameters['parameters'][parameter]['group']:
 				indices[category][group] = [i for i,s in enumerate(string) 
-					if any(g in group for g in [s,'_'.join([s,''.join(['%d'%j for j in sites[i]])])])] 
+					if any(g in group for g in [s,'_'.join([s,''.join(['%d'%j for j in site[i]])])])] 
 			
 				m = len(indices[category][group]) if hyperparameters['parameters'][parameter]['locality'] in ['local'] else 1
 				s = hyperparameters['parameters'][parameter]['size'] if hyperparameters['parameters'][parameter].get('size') is not None else 1
@@ -892,8 +908,8 @@ class Hamiltonian(Object):
 
 			hyperparameters['parameters'][parameter]['index'] = {group: [j for j in indices[category][group]] for group in indices[category] if group in hyperparameters['parameters'][parameter]['group']}
 			hyperparameters['parameters'][parameter]['slice'] = {group: [j for j in slices[category][group]] for group in slices[category]  if group in hyperparameters['parameters'][parameter]['group']}
-			hyperparameters['parameters'][parameter]['site'] =  {group: [sites[j] for j in indices[category][group]] for group in indices[category]  if group in hyperparameters['parameters'][parameter]['group']}
-			hyperparameters['parameters'][parameter]['string'] = {group: ['_'.join([string[j],''.join(['%d'%(k) for k in sites[j]]),''.join(operator[j])]) for j in indices[category][group]] for group in indices[category]  if group in hyperparameters['parameters'][parameter]['group']}
+			hyperparameters['parameters'][parameter]['site'] =  {group: [site[j] for j in indices[category][group]] for group in indices[category]  if group in hyperparameters['parameters'][parameter]['group']}
+			hyperparameters['parameters'][parameter]['string'] = {group: ['_'.join([string[j],''.join(['%d'%(k) for k in site[j]]),''.join(operator[j])]) for j in indices[category][group]] for group in indices[category]  if group in hyperparameters['parameters'][parameter]['group']}
 
 		# Update shape of categories
 		shapes = {
@@ -910,19 +926,16 @@ class Hamiltonian(Object):
 		}
 
 
-		# Initialize parameters
-		self.__init__parameters__()
-
-
 		# Update hyperparameters
 		hyperparameters['data'] = data
 		hyperparameters['identity'] = identity
 		hyperparameters['size'] = size
 		hyperparameters['shape'] = shape
 		hyperparameters['shapes'] = shapes
-		hyperparameters['string'] = string
-		hyperparameters['site'] = site
 		hyperparameters['operator'] = operator
+		hyperparameters['site'] = site
+		hyperparameters['string'] = string
+		hyperparameters['interaction'] = interaction
 		hyperparameters['N'] = self.N
 		hyperparameters['M'] = self.M
 		hyperparameters['D'] = self.D
@@ -934,27 +947,30 @@ class Hamiltonian(Object):
 		# Update class attributes
 		self.data = data
 		self.size = size
-		self.string = string
+		self.shape = shape
 		self.site = site
+		self.string = string
 		self.operator = operator
+		self.interaction = interaction
 		self.identity = identity
 		self.hyperparameters = hyperparameters
+
+
+		# Initialize parameters
+		self.__init__parameters__(parameters,hyperparameters)
 
 		return
 
 
-	def __parameters__(self,parameters):
+	def __parameters__(self,parameters,hyperparameters):
 		''' 
 		Setup parameters
 		Args:
 			parameters (array): parameters
+			hyperparameters (dict): hyperparameters 			
+		Returns:
+			parameters (array): parameters		
 		'''		
-
-		# Get parameters
-		self.parameters = parameters
-
-		# Get hyperparameters
-		hyperparameters = self.hyperparameters
 
 		# Set all parameters
 		
@@ -985,18 +1001,19 @@ class Hamiltonian(Object):
 		# Get reshaped parameters
 		parameters = parameters.ravel()
 
+		print(parameters.size)
+
 		return parameters
 
 
-	def __init__parameters__(self,parameters=None):
+	def __init__parameters__(self,parameters,hyperparameters):
 		''' 
 		Setup initial parameters
 		Args:
 			parameters (array): parameters
+		Returns:
+			parameters (array): parameters
 		'''
-
-		# Update hyperparameters
-		hyperparameters = self.hyperparameters
 
 		# labels are hermitian conjugate of target matrix
 		hyperparameters['value'] = zeros(hyperparameters['shape'])
@@ -1065,8 +1082,9 @@ class Hamiltonian(Object):
 
 		parameters = parameters.ravel()
 
-		# Update parameters
+		# Update class attributes
 		self.parameters = parameters
+		self.hyperparameters = hyperparameters
 
 		return parameters
 
@@ -1100,17 +1118,19 @@ class Unitary(Hamiltonian):
 		return
 
 	#@partial(jit,static_argnums=(0,))
-	def __call__(self,parameters=None):
+	def __call__(self,parameters,hyperparameters):
 		'''
 		Return parameterized operator sum(parameters*operator)
 		Args:
 			parameters (array): Parameters to parameterize operator
+			hyperparameters (dict): Hyperparameters to parameterize operator
 		Returns
 			operator (array): Parameterized operator
 		'''		
-		parameters = self.__parameters__(parameters)
+		parameters = self.__parameters__(parameters,hyperparameters)
 
-		return expm(parameters,self.data,self.identity)
+		return expm(parameters,hyperparameters['data'],hyperparameters['identity'])
+		# return expm(parameters,self.data,self.identity)
 
 def plot_parameters(parameters,hyperparameters,**kwargs):
 	'''
@@ -1193,9 +1213,6 @@ def main(index,hyperparameters={}):
 
 
 
-
-
-
 	def constraints(parameters,hyperparameters):
 		'''
 		Set constraints
@@ -1253,9 +1270,24 @@ def main(index,hyperparameters={}):
 		# )
 
 		return
-	unitary = Unitary(**hyperparameters['object'],**hyperparameters['model'],hyperparameters=hyperparameters)
-	parameters = unitary.__parameters__()
+	unitary = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	parameters = unitary.parameters
+	hyperparameters = unitary.hyperparameters
 
+	print('compiling')
+	print(expm(parameters,hyperparameters['data'],hyperparameters['identity']))
+	print(expm(parameters,hyperparameters['data'],hyperparameters['identity']))
+	print(expm(parameters,hyperparameters['data'],hyperparameters['identity']))
+	print(expm(parameters,hyperparameters['data'],hyperparameters['identity']))
+
+	print('compiling')
+	print(unitary(parameters,hyperparameters))
+	print(unitary(parameters,hyperparameters))
+	print(unitary(parameters,hyperparameters))
+	print(unitary(parameters,hyperparameters))
+	# print(unitary(parameters,hyperparameters))
+
+	exit()
 
 	func = jit(partial(func,hyperparameters=hyperparameters))
 	loss = jit(partial(loss,hyperparameters=hyperparameters))
