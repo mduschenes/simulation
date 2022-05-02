@@ -669,8 +669,8 @@ class Object(object):
 
 		category = 'variable'
 		shape = self.hyperparameters['shapes'][category]
-
 		parameters = parameters.reshape(shape)
+
 
 		for parameter in self.hyperparameters['parameters']:
 			for group in self.hyperparameters['parameters'][parameter]['group']:
@@ -709,7 +709,7 @@ class Object(object):
 		Returns:
 			loss + constraints (array): loss + constraints
 		'''	
-		return self.__loss__(parameters)# + self.__constraints__(parameters)
+		return self.__loss__(parameters) + self.__constraints__(parameters)
 
 
 	# @partial(jit,static_argnums=(0,))
@@ -744,11 +744,7 @@ class Object(object):
 			)
 
 
-
-
-
 		return
-
 
 
 
@@ -1409,10 +1405,10 @@ def main(index,hyperparameters={}):
 
 	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters['hyperparameters'])
 
-	obj.__plot__(parameters)
+	# obj.__plot__(parameters)
 
 	parameters = optimizer(parameters)
 
-	obj.__plot__(parameters)
+	# obj.__plot__(parameters)
 
 	return

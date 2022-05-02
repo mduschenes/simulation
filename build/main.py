@@ -41,7 +41,6 @@ except:
 logger = logging.getLogger(__name__)
 
 
-@partial(jit,static_argnums=(1,))
 def bound(a,hyperparameters):
 	# return 1/(1+np.exp(-eps*a))
 	return sigmoid(a,hyperparameters['hyperparameters']['bound'])
