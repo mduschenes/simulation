@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 # Import user modules
 from src.utils import returnargs
 
-
 # Split path into directory,file,ext
 def path_split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,ext_delimeter='.'):
 	if not (directory or file or ext):
@@ -94,7 +93,9 @@ def load(path,wr='r',default=None,verbose=False,**kwargs):
 		paths = {ext: path}
 	else:
 		paths = {e: '%s.%s'%(path,e) for e in loaders}
+
 	loaders = {paths[e]: loaders[e] for e in paths}
+
 	for path in loaders:
 		loader = loaders[path]
 		for _wr in [wr,'r','rb']:
@@ -119,9 +120,9 @@ def load(path,wr='r',default=None,verbose=False,**kwargs):
 def _load(obj,wr,ext,**kwargs):
 	
 	if ext in ['npy']:
-		data = getattr(np,'load')(obj,{**kwargs})
+		data = np.load(obj,**{**kwargs})
 	elif ext in ['csv']:
-		data = getattr(pd,'read_%s'%ext)(obj,{**kwargs})
+		data = getattr(pd,'read_%s'%ext)(obj,**{**kwargs})
 	elif ext in ['txt']:
 		data = np.loadtxt(obj,**{'delimiter':',',**kwargs})
 	elif ext in ['pickle']:
@@ -178,26 +179,26 @@ def dump(data,path,wr='w',verbose=False,**kwargs):
 		paths = {ext: path}
 	else:
 		paths = {e: '%s.%s'%(path,e) for e in dumpers}
-	dumpers = {paths[e]: dumpers[e] for e in paths}
 
+	dumpers = {paths[e]: dumpers[e] for e in paths}
 
 	for path in dumpers:
 		dirname = os.path.abspath(os.path.dirname(path))
 		if not os.path.exists(dirname):
 			os.makedirs(dirname)
 
-	for path in dumper:
-		dumper = dumper[path]
+	for path in dumpers:
+		dumper = dumpers[path]
 
 		for _wr in [wr,'w','wb']:		
 			with open(path,_wr) as obj:
 				try:
-					dumper(data,path,**kwargs)
+					dumper(data,path,_wr,**kwargs)
 					logger.log(verbose,'Dumping path %s'%(path))
 					return
 				except Exception as e:
 					try:
-						dumper(data,obj,**kwargs)
+						dumper(data,obj,_wr,**kwargs)
 						logger.log(verbose,'Dumping obj %s'%(path))
 						return
 					except Exception as e:
@@ -217,7 +218,7 @@ def dump(data,path,wr='w',verbose=False,**kwargs):
 def _dump(data,obj,wr,ext,**kwargs):
 	
 	if ext in ['npy']:
-		data = getattr(np,'load')(obj,{**kwargs})
+		np.save(obj,data,**{**kwargs})
 	elif ext in ['csv']:
 		getattr(data,'to_%s'%ext)(obj,**{'index':False,**kwargs})
 	elif ext in ['txt']:

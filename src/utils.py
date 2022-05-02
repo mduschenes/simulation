@@ -44,6 +44,44 @@ def jit(func,*,static_argnums=None):
 	# return func
 	return jax.jit(func,static_argnums=static_argnums)
 
+
+
+
+# @partial(jit,static_argnums=(2,))	
+def vmap(func,in_axes=0,out_axes=0,axes_name=None):	
+	'''
+	Vectorize function over input axes of iterables
+	Args:
+		func (callable): Function that acts on single elements of iterables
+		in_axes (int,iterable): Input axes of iterables
+		out_axes (int,interable): Output axes of func return
+		axes_names (object): hashable Python object used to identify the mapped
+			axis so that parallel collectives can be applied.
+	Returns:
+		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+	'''
+	return jax.vmap(func,in_axes,out_axes,axes_name)
+
+
+
+# @partial(jit,static_argnums=(2,))
+def vfunc(funcs,index):	
+	'''
+	Vectorize indexed functions over operands
+	Args:
+		funcs (iterable[callable]): Functions that act on  that acts on single elements of iterables
+		index (iterable[int]): Iterable of indices of functions to call
+	Returns:
+		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+	'''
+	# def vfunc(*iterables):
+	# 	return array(list(map(lambda i,*x:funcs[i](*x),*[index,*iterables])))
+	# return vfunc
+	# func = jit(vmap(lambda i,x,funcs=funcs: jax.lax.switch(i,funcs,x)))
+	func = lambda index,x: array([funcs[i](x[i]) for i in index])
+	return lambda x,func=func,index=index: func(index,x)
+
+
 def gradient(func):
 	'''
 	Compute gradient of function
@@ -53,6 +91,45 @@ def gradient(func):
 		grad (callable): Gradient of function
 	'''
 	return jit(jax.grad(func))
+
+
+@partial(jit,static_argnums=(0,1))
+def finitegradient(func,eps=1e-5):
+	'''
+	Calculate finite difference second order derivative of function
+	Args:
+		func (callable): Function to derive, with signature func(x) and output shape
+	Returns:
+		out (array): Array of gradient
+	'''
+	return lambda x: vmap(lambda v: (func(x+eps*v)-func(x-eps*v))/(2*eps))(eye(x.size))
+
+
+@partial(jit,static_argnums=(0,1))
+def value_and_finitegradient(func,eps=1e-5):
+	'''
+	Calculate finite difference second order derivative of function
+	Args:
+		func (callable): Function to derive, with signature func(x) and output shape
+	Returns:
+		out (array): Array of gradient
+	'''
+	return lambda x: (func(x),vmap(lambda v: (func(x+eps*v)-func(x-eps*v))/(2*eps))(eye(x.size)))
+
+
+
+# @partial(jit,static_argnums=(0,))
+def value_and_grad(func):
+	'''
+	Calculate auto-differentiation derivative of function
+	Args:
+		func (callable): Function to derive, with signature func(x) and output shape
+	Returns:
+		out (array): Array of shape (n,*shape)
+	'''
+	return jax.value_and_grad(func)
+
+
 
 class dictionary(dict):
 	'''
@@ -261,6 +338,20 @@ class System(dictionary):
 
 		return
 
+
+
+def decorator(*args,**kwargs):
+	'''
+	Wrap function with args and kwargs
+	'''
+	def wrapper(func):
+		@functools.wraps
+		def wrapped(*_args,**_kwargs):
+			arg = (*_args,*args)
+			kwarg = {**kwargs,**_kwargs}
+			return func(*arg,**kwarg)
+		return wrapped
+	return wrapper
 
 class objs(onp.ndarray):
 	'''
@@ -540,32 +631,39 @@ def norm(arr,axis=None,ord=2):
 	return out
 
 
-
-def powerset(iterable,probability=1):
+@jit
+def inner(a,b):
 	'''
-	Get power set of iterable
+	Calculate inner product of arrays a and b
 	Args:
-		iterable (iterable): iterable to get powerset of
-		probability (float): probability of returning element from power set
-	Yields:
-		iteration (iterable): iteration of powerset of iterable
-	'''
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+	Returns:
+		out (array): Inner product
+	'''	
+	return trace(tensordot(a,b,1))
 
-	for number,iteration in enumerate(itertools.product(*[[[], [i]] for i in iterable])):
-		iteration = (j for i in iteration for j in i)
-		if (probability==1) or (onp.random.rand() >= probability):
-			yield iteration
-		else:
-			continue
+
+
+def _multiply(a,b):
+	'''
+	Multiply arrays elementwise
+	Args:
+		a (array): Array to multiply
+		b (array): Array to multiply
+	Returns:
+		out (array): Elementwise multiplication of arrays
+	'''
+	return np.multiply(a,b)
 
 
 def multiply(a):
 	'''
 	Multiply list of arrays elementwise
 	Args:
-		a: Arrays to multiply
+		a(array): Arrays to multiply
 	Returns:
-		out (ndarray) if out argument
+		out (array): Elementwise multiplication of arrays
 	'''
 	out = a[0]
 
@@ -580,20 +678,16 @@ def multiply(a):
 	return out
 
 
-def _add(a):
+def _add(a,b):
 	'''
-	Add list of arrays elementwise
+	Add arrays elementwise
 	Args:
-		a (iterable): Arrays to add
+		a (array): Array to add
+		b (array): Array to add
 	Returns:
-		out (ndarray) if out argument
+		out (ndarray): Elementwise addition of arrays
 	'''
-	out = arrs[0]
-
-	for arr in arrs[1:]:
-		out = out + arr
-
-	return out
+	return np.add(a,b)
 
 @jit
 def add(a):
@@ -604,82 +698,53 @@ def add(a):
 	Returns:
 		out (ndarray) if out argument is not None
 	'''
-	return a.sum(0)
-	# return jax.lax.fori_loop(1,len(a),lambda i,out: out+a[i],a[0])
-
+	return jax.lax.fori_loop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
 
 @jit
-def swap(i,j,N,D):
+def _matmul(a,b):
 	'''
-	Swap array elements acting on partition i <-> j on N partition array, each of D dimensions
+	Calculate matrix product arrays a and b
 	Args:
-		i (int): partition to swap
-		j (int): partition to swap
-		N (int): Number of partitions
-		D (int): Dimension of each partition
+		a (array): Array to calculate matrix product
+		b (array): Array to calculate matrix product
 	Returns:
-		S (array): Swap array
+		out (array): Matrix product
+	'''	
+	return np.matmul(a,b)
+
+@jit
+def matmul(a):
 	'''
-	s = eye(D,dtype=int)
-	I = [s.copy() for n in range(N)]
-	S = 0
-	# jax.lax.
-	for a in range(D):
-		for b in range(D):
-			I[i][:],I[j][:] = 0,0
-			I[i][a][b],I[j][b][a] = 1,1
-			S += tensorprod(I)
-			I[i][:],I[j][:] = s,s
-	return S
-
-
-
-@partial(jit,static_argnums=(1,2,))	
-def slices(a,start,size):
-	'''
-	Get slice of array
+	Get matrix product of iterable of arrays [a_i], where a_{i}.shape[-1] == a_{i+1}.shape[0]
 	Args:
-		a (array): Array to be sliced along first dimension
-		start (int): Start index to slice
-		size (int): Length of slice
+		a (iterable): Arrays to compute product of arrays
 	Returns:
-		a (array): Sliced array
+		out (array): Reduced array of matrix product of arrays
 	'''
-	return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
+	return jax.lax.fori_loop(1,len(a),lambda i,out: _matmul(out,a[i]),a[0])
 
-# @partial(jit,static_argnums=(2,))	
-def vmap(func,in_axes=0,out_axes=0,axes_name=None):	
+@jit
+def multi_dot(a):
 	'''
-	Vectorize function over input axes of iterables
+	Get matrix product of iterable of arrays [a_i], where a_{i}.shape[-1] == a_{i+1}.shape[0] with optimized ordering of products
 	Args:
-		func (callable): Function that acts on single elements of iterables
-		in_axes (int,iterable): Input axes of iterables
-		out_axes (int,interable): Output axes of func return
-		axes_names (object): hashable Python object used to identify the mapped
-			axis so that parallel collectives can be applied.
+		a (iterable): Arrays to compute product of arrays
 	Returns:
-		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+		out (array): Reduced array of matrix product of arrays
 	'''
-	return jax.vmap(func,in_axes,out_axes,axes_name)
+	return np.linalg.multi_dot(a)
 
-
-
-# @partial(jit,static_argnums=(2,))
-def vfunc(funcs,index):	
+@partial(jit,static_argnums=(1,))
+def prod(a,axes=0):
 	'''
-	Vectorize indexed functions over operands
+	Get product of elements in array along axes
 	Args:
-		funcs (iterable[callable]): Functions that act on  that acts on single elements of iterables
-		index (iterable[int]): Iterable of indices of functions to call
+		a (array): Array to compute product of elements
+		axes (int): axes to perform product
 	Returns:
-		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+		out (array): Reduced array of product of elements along axes
 	'''
-	# def vfunc(*iterables):
-	# 	return array(list(map(lambda i,*x:funcs[i](*x),*[index,*iterables])))
-	# return vfunc
-	# func = jit(vmap(lambda i,x,funcs=funcs: jax.lax.switch(i,funcs,x)))
-	func = lambda index,x: array([funcs[i](x[i]) for i in index])
-	return lambda x,func=func,index=index: func(index,x)
+	return np.prod(a,axes)
 
 @partial(jit,static_argnums=(2,))
 def vtensordot(a,b,axes=0):
@@ -792,156 +857,124 @@ def einsum(a,subscripts):
 	return np.einsum(*a,optimize=optimize)
 
 
-@jit
-def contract(array,site,diagonal,size,N,D):
-	'''
-	Contract product of tensors
-	Args:
-		array (iterable): Arrays to compute product of arrays
-		site (iterable): Subspaces where arrays act
-		diagonal (iterable): Tensors which are diagonal		
-		size (int): Number of tensors
-		N (int): Number of subspaces
-		D (int): Dimension of subspaces
-	Returns:
-		out (array): Reduced array of matrix product of arrays
-	'''
-	# D = 
-	# K = array.size
-	# I = eye(self.D**(self.N-K),dtype=int)
-	# operator = tensorprod([I,operator])
-	# S = contract([swap(i,j,N,D) for i,j in enumerate(sorted(site))],self.site)
-	return matmul(array)
 
 
 @jit
-def summation(array,site,diagonal,size,N,D):
+def contraction(parameters,data,identity):
 	'''
-	Add sum of tensors
+	Calculate matrix product of parameters times data
 	Args:
-		array (iterable): Arrays to compute sum of arrays
-		site (iterable): Subspaces where arrays act
-		diagonal (iterable): Tensors which are diagonal		
-		size (int): Number of tensors
-		N (int): Number of subspaces
-		D (int): Dimension of subspaces
+		parameters (array): parameters of shape (k,) or (k,n,) or (k,n,n)		
+		data (array): Array of data to matrix product of shape (l,n,n)
+		identity (array): Array of data identity
 	Returns:
-		out (array): Reduced array of matrix sum of arrays
-	'''
-	# D = 
-	# K = array.size
-	# I = eye(self.D**(self.N-K),dtype=int)
-	# operator = tensorprod([I,operator])
-	# S = contract([swap(i,j,N,D) for i,j in enumerate(sorted(site))],self.site)
-	return add(array)
-
-
-@jit
-def product(array,site,diagonal,size,N,D):
-	'''
-	Tensor product of tensors
-	Args:
-		array (iterable): Arrays to tensor product of arrays
-		site (iterable): Subspaces where arrays act
-		diagonal (iterable): Tensors which are diagonal		
-		size (int): Number of tensors
-		N (int): Number of subspaces
-		D (int): Dimension of subspaces
-	Returns:
-		out (array): Reduced array of matrix tensor product of arrays
-	'''
-	# D = 
-	# K = array.size
-	# I = eye(self.D**(self.N-K),dtype=int)
-	# operator = tensorprod([I,operator])
-	# S = contract([swap(i,j,N,D) for i,j in enumerate(sorted(site))],self.site)
-	return tensorprod(array)
-
-
-@partial(jit,static_argnums=(1,))
-def exponentiate(array,p,site,diagonal,size,N,D):
-	r'''
-	Perform p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
-	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
-	k internally commuting components {A_i}  of the matrix A = \sum_i A_i .
-	For example, for {U_i = e^{A_i}} :
-		f_0 = e^{\sum_i A_i}
-		f_1 = \prod_i U_i
-		f_2 = \prod_i U_i^{1/2} \prod^i U_i^{1/2}
-	For p>0, it will be checked if A_i objects have a matrix exponential module for efficient exponentials,
-	otherwise the standard expm function will be used.
-
-	Args:
-		array (iterable): Matrix exponential of Tensors
-		p (int): Order of trotterization p>0
-		site (iterable): Subspaces where arrays act
-		diagonal (iterable): Tensors which are diagonal
-		size (int): Number of tensors
-		N (int): Number of subspaces
-		D (int): Dimension of subspaces
-	Returns:
-		out (array): Trotterized matrix exponential
-	'''
-
-	if p == 1:
-		array = contract(array,site,diagonal,size,N,D)
-	elif p == 2:
-		array = contract(asarray([*array[::1],*array[::-1]]),site,diagonal,size,N,D)
-	else:
-		array = contract(array,site,diagonal,size,N,D)
-	return array
-
-
-
-@jit
-def _matmul(a,b):
-	'''
-	Calculate matrix product arrays a and b
-	Args:
-		a (array): Array to calculate matrix product
-		b (array): Array to calculate matrix product
-	Returns:
-		out (array): Matrix product
+		out (array): Matrix product of data of shape (n,n)
 	'''	
-	return np.matmul(a,b)
+	return matmul(parameters*data)
+
 
 @jit
-def matmul(a):
+def summation(parameters,data,identity):
 	'''
-	Get matrix product of iterable of arrays [a_i], where a_{i}.shape[-1] == a_{i+1}.shape[0]
+	Calculate matrix sum of parameters times data
 	Args:
-		a (iterable): Arrays to compute product of arrays
+		parameters (array): parameters of shape (k,) or (k,n,) or (k,n,n)		
+		data (array): Array of data to matrix sum of shape (l,n,n)
+		identity (array): Array of data identity
 	Returns:
-		out (array): Reduced array of matrix product of arrays
-	'''
-	# while len(a) > 1:
-	# 	a = _matmul(a[::2,...], a[1::2,...])
-	# return a
-	return jax.lax.fori_loop(1,len(a),lambda i,out: _matmul(out,a[i]),a[0])
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return add(parameters*data)
+
 
 @jit
-def multi_dot(a):
+def multiplication(parameters,data,identity):
 	'''
-	Get matrix product of iterable of arrays [a_i], where a_{i}.shape[-1] == a_{i+1}.shape[0] with optimized ordering of products
+	Calculate tensor product of parameters times data
 	Args:
-		a (iterable): Arrays to compute product of arrays
+		parameters (array): parameters of shape (k,) or (k,n,) or (k,n,n)		
+		data (array): Array of data to tensor multiply of shape (l,n,n)
+		identity (array): Array of data identity
 	Returns:
-		out (array): Reduced array of matrix product of arrays
-	'''
-	return np.linalg.multi_dot(a)
+		out (array): Tensor product of data of shape (n,n)
+	'''		
+	return tensorprod(data)
 
-@partial(jit,static_argnums=(1,))
-def prod(a,axes=0):
+
+@jit
+def exponentiation(parameters,data,identity):
 	'''
-	Get product of elements in array along axes
+	Calculate matrix exponential of parameters times data
 	Args:
-		a (array): Array to compute product of elements
-		axes (int): axes to perform product
+		parameters (array): parameters of shape (k,) or (k,n,) or (k,n,n)		
+		data (array): Array of data to matrix exponentiate of shape (l,n,n)
+		identity (array): Array of data identity
 	Returns:
-		out (array): Reduced array of product of elements along axes
-	'''
-	return np.prod(a,axes)
+		out (array): Matrix exponential of data of shape (n,n)
+	'''		
+	return expm(parameters,data,identity)
 
+
+
+
+
+
+@jit
+def swap(i,j,N,D):
+	'''
+	Swap array elements acting on partition i <-> j on N partition array, each of D dimensions
+	Args:
+		i (int): partition to swap
+		j (int): partition to swap
+		N (int): Number of partitions
+		D (int): Dimension of each partition
+	Returns:
+		S (array): Swap array
+	'''
+	s = eye(D,dtype=int)
+	I = [s.copy() for n in range(N)]
+	S = 0
+	# jax.lax.
+	for a in range(D):
+		for b in range(D):
+			I[i][:],I[j][:] = 0,0
+			I[i][a][b],I[j][b][a] = 1,1
+			S += tensorprod(I)
+			I[i][:],I[j][:] = s,s
+	return S
+
+
+
+@partial(jit,static_argnums=(1,2,))	
+def slices(a,start,size):
+	'''
+	Get slice of array
+	Args:
+		a (array): Array to be sliced along first dimension
+		start (int): Start index to slice
+		size (int): Length of slice
+	Returns:
+		a (array): Sliced array
+	'''
+	return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
+
+
+def powerset(iterable,probability=1):
+	'''
+	Get power set of iterable
+	Args:
+		iterable (iterable): iterable to get powerset of
+		probability (float): probability of returning element from power set
+	Yields:
+		iteration (iterable): iteration of powerset of iterable
+	'''
+
+	for number,iteration in enumerate(itertools.product(*[[[], [i]] for i in iterable])):
+		iteration = (j for i in iteration for j in i)
+		if (probability==1) or (onp.random.rand() >= probability):
+			yield iteration
+		else:
+			continue
 
 
 @jit
@@ -995,35 +1028,6 @@ def anticommutes(a,b):
 	return bool(~(anticommutator(a,b).any()))
 
 
-@jit
-def inner(a,b):
-	'''
-	Calculate inner product of arrays a and b
-	Args:
-		a (array): Array to calculate inner product
-		b (array): Array to calculate inner product
-	Returns:
-		out (array): Inner product
-	'''	
-	return trace(tensordot(a,b,1))
-
-
-@jit
-def gradinner(a,b,c,d,x,y):
-	'''
-	Calculate gradient inner product of arrays a and b with respect to a = e^(c(x)), b = e^(d(y))
-	Args:
-		a (array): Array to calculate inner product
-		b (array): Array to calculate inner product
-		c (array): Array to calculate inner product
-		d (array): Array to calculate inner product
-		x (array): Array to calculate inner product
-		y (array): Array to calculate inner product
-	Returns:
-		out (array): Inner product gradient
-	'''	
-	return (1/2)*(1/inner(a,b))*(trace(tensordot(a.conj().T,b@d/y,1))*trace(tensordot(a.T,b.conj(),1)) + 
-								  trace(tensordot(a.conj().T,b,1))*trace(tensordot(a.T,(b@d/y).conj().T,1)))
 
 @jit
 def trace(a):
@@ -1046,7 +1050,6 @@ def abs(a):
 		out (array): Absolute value of array
 	'''	
 	return np.abs(a)
-
 
 
 @jit
@@ -1112,74 +1115,41 @@ def exp(a):
 
 @jit
 def _expm(x,A,I):
-	return cos(x)*I -1j*sin(x)*A
+	'''
+	Calculate matrix exponential of parameters times data
+	Args:
+		x (array): parameters of shape (1,) or (n,) or (n,n)
+		A (array): Array of data to matrix exponentiate of shape (n,n)
+		I (array): Array of data identity
+	Returns:
+		out (array): Matrix exponential of A of shape (n,n)
+	'''	
+	return cosh(x)*I + sinh(x)*A
 
 
 @jit
 def expm(x,A,I):
-	m = x.shape[0]
-	n = A.shape[0]
-	_func = lambda i: _expm(x[i],A[i%n],I)
+	'''
+	Calculate matrix exponential of parameters times data
+	Args:
+		x (array): parameters of shape (k,) or (k,n,) or (k,n,n)		
+		A (array): Array of data to matrix exponentiate of shape (l,n,n)
+		I (array): Array of data identity
+	Returns:
+		out (array): Matrix exponential of A of shape (n,n)
+	'''		
+	k = x.shape[0]
+	l = A.shape[0]
+	_func = lambda i: _expm(x[i],A[i%l],I)
 	func = lambda i,out: _matmul(out,_func(i))
 	
 	i = 0
 	out = _func(i)
 
-	return jax.lax.fori_loop(i+1,m,func,out)
+	return jax.lax.fori_loop(i+1,k,func,out)
 	# return jsp.linalg.expm(a)
 
 
-@jit
-def vexpm(a):
-	'''
-	Calculate matrix exponential of array a
-	Args:
-		a (array): Array to compute matrix exponential
-	Returns:
-		out (array): Matrix exponential of array
-	'''
-	return vmap(expm)(a)
-
-
-@jit
-def expeuler(a,x,I):
-	'''
-	Calculate element-wise exponential of array x*a using euler identity (assuming a^2 = I)
-	Args:
-		a (array): Array to compute element-wise exponential
-		x (array): Coefficients for exponential
-		I (array): Array of identity of shape of a
-	Returns:
-		out (array): Element-wise exponential of array
-	'''
-	return cosh(x)*I + sinh(x)*a
-
-@jit
-def expmeuler(a,x,I):
-	'''
-	Calculate matrix exponential of array a using euler identity (assuming a^2 = I)
-	Args:
-		a (array): Array to compute matrix exponential
-		x (array): Coefficients for exponential
-		I (array): Array of identity of shape of a		
-	Returns:
-		out (array): Matrix exponential of array
-	'''
-	return cosh(x)*I + sinh(x)*a
-
-
-@jit
-def vexpmeuler(a,x,I):
-	'''
-	Calculate matrix exponential of array {a_i} using euler identity (assuming a_i^2 = I)
-	Args:
-		a (array): Array to compute matrix exponential
-		x (array): Coefficients for exponential
-		I (array): Array of identity of shape of a elements	a_i	
-	Returns:
-		out (array): Matrix exponential of array
-	'''
-	return vmap(expmeuler,(0,0,None))(a,x,I)
 
 @jit
 def sin(a):
@@ -1490,55 +1460,6 @@ def PRNG(seed,split=False):
 	else:
 		return key
 
-
-
-@partial(jit,static_argnums=(0,1))
-def finitegrad(func,eps=1e-5):
-	'''
-	Calculate finite difference second order derivative of function
-	Args:
-		func (callable): Function to derive, with signature func(x) and output shape
-	Returns:
-		out (array): Array of gradient
-	'''
-	return lambda x: vmap(lambda v: (func(x+eps*v)-func(x-eps*v))/(2*eps))(eye(x.size))
-
-
-@partial(jit,static_argnums=(0,1))
-def value_and_finitegrad(func,eps=1e-5):
-	'''
-	Calculate finite difference second order derivative of function
-	Args:
-		func (callable): Function to derive, with signature func(x) and output shape
-	Returns:
-		out (array): Array of gradient
-	'''
-	return lambda x: (func(x),vmap(lambda v: (func(x+eps*v)-func(x-eps*v))/(2*eps))(eye(x.size)))
-
-
-
-# @partial(jit,static_argnums=(0,))
-def grad(func):
-	'''
-	Calculate auto-differentiation derivative of function
-	Args:
-		func (callable): Function to derive, with signature func(x) and output shape
-	Returns:
-		out (array): Array of shape (n,*shape)
-	'''
-	return jax.grad(func)
-
-
-# @partial(jit,static_argnums=(0,))
-def value_and_grad(func):
-	'''
-	Calculate auto-differentiation derivative of function
-	Args:
-		func (callable): Function to derive, with signature func(x) and output shape
-	Returns:
-		out (array): Array of shape (n,*shape)
-	'''
-	return jax.value_and_grad(func)
 
 
 # Get if array is sparse

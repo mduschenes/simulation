@@ -27,7 +27,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.quantum import main
-from src.utils import array,tensorprod,sin,cos
+from src.utils import jit,array,tensorprod,sin,cos,sigmoid
 from src.io import load,dump
 
 # Logging
@@ -41,6 +41,11 @@ except:
 logger = logging.getLogger(__name__)
 
 
+@partial(jit,static_argnums=(1,))
+def bound(a,hyperparameters):
+	# return 1/(1+np.exp(-eps*a))
+	return sigmoid(a,hyperparameters['hyperparameters']['bound'])
+
 if __name__ == '__main__':
 	train = 1
 	method = 'user'
@@ -50,9 +55,10 @@ if __name__ == '__main__':
 
 	n = 1
 	m = 0
-	N = 4
-	M = 1000
-	iterations = 20
+	N = 2
+	M = 200
+	p = 2
+	iterations = 100
 
 	scale = 1#100*1e-6
 	if train:
@@ -60,8 +66,8 @@ if __name__ == '__main__':
 			objective = []
 			iteration = []
 		elif train == -1:
-			iteration = load('output/iteration_%s_%s_%d.npy'%(method,local,m)).tolist()
-			objective = load('output/objective_%s_%s_%d.npy'%(method,local,m)).tolist()
+			iteration = load('output/iteration_%s_%s_%d.npy'%(method,local,m+1)).tolist()
+			objective = load('output/objective_%s_%s_%d.npy'%(method,local,m+1)).tolist()
 		for i in range(n):
 			print(i)
 			N = N
@@ -71,7 +77,7 @@ if __name__ == '__main__':
 			M = M
 			# T = M*(4e-6)
 			T = M	
-			p = 1
+			p = p
 			local = local
 			if method == 'random':
 				V = array(onp.random.rand(D**N,D**N)) + 1j*array(onp.random.rand(D**N,D**N))
@@ -150,15 +156,15 @@ if __name__ == '__main__':
 				assert np.allclose(np.eye(D**N),V.conj().T.dot(V))
 				assert np.allclose(np.eye(D**N),V.dot(V.conj().T))
 
-			fig,ax = plt.subplots(2)
-			plot0 = ax[0].imshow(V.real)
-			plot1 = ax[1].imshow(V.imag)
-			ax[0].set_title('Real')
-			ax[1].set_title('Imag')
-			plt.colorbar(plot0,ax=ax[0])
-			plt.colorbar(plot1,ax=ax[1])
-			fig.tight_layout()
-			fig.savefig('output/V_%s_%s_%d.pdf'%(method,local,i))
+			# fig,ax = plt.subplots(2)
+			# plot0 = ax[0].imshow(V.real)
+			# plot1 = ax[1].imshow(V.imag)
+			# ax[0].set_title('Real')
+			# ax[1].set_title('Imag')
+			# plt.colorbar(plot0,ax=ax[0])
+			# plt.colorbar(plot1,ax=ax[1])
+			# fig.tight_layout()
+			# fig.savefig('output/V_%s_%s_%d.pdf'%(method,local,i))
 
 			hyperparameters = {
 				'model':{
@@ -186,25 +192,22 @@ if __name__ == '__main__':
 					'interaction': ['i','i','i','i<j'],
 				},		
 				'label': V,																
-				'optimizer':'cg',
 				'hyperparameters':{
 					'iterations':iterations,
-					'seed':0,#onp.random.randint(10000),		
-					'interpolation':3,'smoothness':3,'init':[0,1],'random':'uniform',
+					'optimizer':'cg',
+					'seed':111,#onp.random.randint(10000),		
+					'interpolation':3,'smoothness':2,'init':[0,1],'random':'uniform',
 					'c1':0.0001,'c2':0.9,'maxiter':50,'restart':iterations//4,'tol':1e-14,
 					'bound':1e6,'alpha':5e-1,'beta':1e-1,'lambda':1*np.array([1e-6,1e-6,1e-2]),'eps':980e-3,
-					},
-				'track':{'log':1,'track':10,'size':0,
+					'track':{'log':1,'track':10,'size':0,
 						 'iteration':[],'objective':[],
 						 'value':[],'grad':[],'search':[],
 						 'alpha':[],'beta':[],'lambda':[]
 					},
+					},
 				'value':None,
-				'callback':{'objective': lambda parameters,hyperparameters: 
-					hyperparameters['track']['objective'].append(-hyperparameters['track']['value'][-1] + constraints(parameters))
-					},		
 				'parameters':{
-					'xy':{
+					**{parameter:{
 						'name':'xy',
 						'category':'variable',
 						'locality':local,
@@ -214,25 +217,25 @@ if __name__ == '__main__':
 						'bounds':[0,1],
 						'boundaries':{0:0,-1:0},
 						'func': {
-							**{group:(lambda parameters,parameter,hyperparameters: (	
+							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (	
 								# 2*np.pi/4/(20e-6)*scale*
 								1*(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-								cos(2*np.pi*parameters[:,hyperparameters['parameters']['xy']['slice'][group][1::2]])*parameters[:,hyperparameters['parameters']['xy']['slice'][group][0::2]])))
+								cos(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
 							for group in [('h',)]},
-							**{group:(lambda parameters,parameter,hyperparameters: (
+							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
 								# 2*np.pi/4/(20e-6)*scale*
 								1*(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-								sin(2*np.pi*parameters[:,hyperparameters['parameters']['xy']['slice'][group][1::2]])*parameters[:,hyperparameters['parameters']['xy']['slice'][group][0::2]])))
+								sin(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
 							for group in [('g',)]},
 						},
-						'constraints': (lambda parameters,parameter,hyperparameters: (
-							sum(hyperparameters['hyperparameters']['lambda'][0]*bound(hyperparameters['parameters'][parameter]['bounds'][0] - parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
+						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (
+							hyperparameters['hyperparameters']['lambda'][0]*bound(hyperparameters['parameters'][parameter]['bounds'][0] - parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
 							+hyperparameters['hyperparameters']['lambda'][1]*bound(-hyperparameters['parameters'][parameter]['bounds'][1] + parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
 							+hyperparameters['hyperparameters']['lambda'][2]*sum(np.abs(parameters[i,hyperparameters['parameters'][parameter]['slice'][group]]-hyperparameters['parameters'][parameter]['boundaries'][i]).sum()
-								for i in hyperparameters['parameters'][parameter]['boundaries']) for group in [('h',),('g',)])
-							)),
-					},
-					'z':{
+								for i in hyperparameters['parameters'][parameter]['boundaries']))) for group in [('h',),('g',)]},
+					} 
+					for parameter in ['xy']},
+					**{parameter:{
 						'name':'z',						
 						'category':'constant',
 						'locality':'local',
@@ -248,10 +251,11 @@ if __name__ == '__main__':
 						'group':[('k',)],
 						'bounds':[-1,1],
 						'boundaries':{0:None,-1:None},				
-						'func': {('k',):(lambda parameters,parameter,hyperparameters: (hyperparameters['parameters'][parameter]['parameters'])),},
-						'constraints': (lambda parameters,parameter,hyperparameters: (0)),	
-					},
-					'zz':{
+						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (hyperparameters['parameters'][parameter]['parameters'])) for group in [('k',)]},
+						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (0)) for group in [('k',)]},	
+					}
+					for parameter in ['z']},
+					**{parameter:{
 						'name':'zz',						
 						'category':'constant',
 						'locality':'local',
@@ -263,24 +267,24 @@ if __name__ == '__main__':
 							# 2*np.pi/4*20.0*scale,
 							# 2*np.pi/4*200.0*scale,
 							# *(2*np.pi/4*(2*onp.random.randint(2)-1)*200*onp.random.rand(max(1,N**2))*scale)
-							*(0.1*onp.arange(1,(N*(N-1))//2+1))							
+							*(-0.1*onp.arange(1,(N*(N-1))//2+1))							
 							][:(N*(N-1))//2]),
 						'size':1,
 						'group':[('J',)],									
 						'bounds':[-1,1],
 						'boundaries':{0:None,-1:None},				
-						'func': {('J',):(lambda parameters,parameter,hyperparameters: (hyperparameters['parameters'][parameter]['parameters'])),},						
-						'constraints': (lambda parameters,parameter,hyperparameters: (0)),	
-
-					},
+						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (hyperparameters['parameters'][parameter]['parameters'])) for group in [('J',)]},						
+						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (0)) for group in [('J',)]},	
+					}
+					for parameter in ['zz']},					
 				},
 				}
 			
 
 			main(i,hyperparameters)
 
-			iteration.append(hyperparameters['track']['iteration'][:])
-			objective.append(hyperparameters['track']['objective'][:])
+			iteration.append(hyperparameters['hyperparameters']['track']['iteration'][:])
+			objective.append(hyperparameters['hyperparameters']['track']['objective'][:])
 
 			dump(onp.array(iteration),'output/iteration_%s_%s_%d.npy'%(method,local,m+1+i))
 			dump(onp.array(objective),'output/objective_%s_%s_%d.npy'%(method,local,m+1+i))
