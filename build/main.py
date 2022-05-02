@@ -50,14 +50,14 @@ if __name__ == '__main__':
 	method = 'user'
 	# method = 'random'
 	local = 'local'
-	# local = 'global'
+	local = 'global'
 
 	n = 1
 	m = 0
 	N = 2
-	M = 200
-	p = 2
-	iterations = 100
+	M = 10
+	p = 1
+	iterations = 3
 
 	scale = 1#100*1e-6
 	if train:
@@ -185,10 +185,12 @@ if __name__ == '__main__':
 					},
 				},			
 				'data':{
-					'operator': [['X'],['Y'],['Z'],['Z','Z']],
-					'site': [['i'],['i'],['i'],['i','j']],
-					'string': ['h','g','k','J'],
-					'interaction': ['i','i','i','i<j'],
+					'data':{
+						'x':{'operator':['X'],'site':['i'],'string':'x','interaction':'i'},
+						'y':{'operator':['Y'],'site':['i'],'string':'y','interaction':'i'},
+						# 'z':{'operator':['Z'],'site':['i'],'string':'z','interaction':'i'},
+						# 'zz':{'operator':['Z','Z'],'site':['i','j'],'string':'zz','interaction':'i<j'},
+					}
 				},		
 				'label': V,																
 				'hyperparameters':{
@@ -197,7 +199,7 @@ if __name__ == '__main__':
 					'seed':111,#onp.random.randint(10000),		
 					'interpolation':3,'smoothness':2,'init':[0,1],'random':'uniform',
 					'c1':0.0001,'c2':0.9,'maxiter':50,'restart':iterations//4,'tol':1e-14,
-					'bound':1e6,'alpha':5e-1,'beta':1e-1,'lambda':1*np.array([1e-6,1e-6,1e-2]),'eps':980e-3,
+					'bound':1e6,'alpha':1,'beta':1e-1,'lambda':0*np.array([1e-6,1e-6,1e-2]),'eps':980e-3,
 					'track':{'log':1,'track':10,'size':0,
 						 'iteration':[],'objective':[],
 						 'value':[],'grad':[],'search':[],
@@ -212,7 +214,7 @@ if __name__ == '__main__':
 						'locality':local,
 						'parameters':None,
 						'size':2,
-						'group':[('h',),('g',)],
+						'group':[('x',),('y',)],
 						'bounds':[0,1],
 						'boundaries':{0:0,-1:0},
 						'func': {
@@ -220,18 +222,18 @@ if __name__ == '__main__':
 								# 2*np.pi/4/(20e-6)*scale*
 								1*(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
 								cos(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
-							for group in [('h',)]},
+							for group in [('x',)]},
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
 								# 2*np.pi/4/(20e-6)*scale*
 								1*(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
 								sin(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
-							for group in [('g',)]},
+							for group in [('y',)]},
 						},
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (
 							hyperparameters['hyperparameters']['lambda'][0]*bound(hyperparameters['parameters'][parameter]['bounds'][0] - parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
 							+hyperparameters['hyperparameters']['lambda'][1]*bound(-hyperparameters['parameters'][parameter]['bounds'][1] + parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
 							+hyperparameters['hyperparameters']['lambda'][2]*sum(np.abs(parameters[i,hyperparameters['parameters'][parameter]['slice'][group]]-hyperparameters['parameters'][parameter]['boundaries'][i]).sum()
-								for i in hyperparameters['parameters'][parameter]['boundaries']))) for group in [('h',),('g',)]},
+								for i in hyperparameters['parameters'][parameter]['boundaries']))) for group in [('x',),('y',)]},
 					} 
 					for parameter in ['xy']},
 					**{parameter:{
@@ -247,11 +249,11 @@ if __name__ == '__main__':
 							*(0.5*onp.arange(1,N+1))
 							][:N]),
 						'size':1,
-						'group':[('k',)],
+						'group':[('z',)],
 						'bounds':[-1,1],
 						'boundaries':{0:None,-1:None},				
-						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (hyperparameters['parameters'][parameter]['parameters'])) for group in [('k',)]},
-						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (0)) for group in [('k',)]},	
+						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (hyperparameters['parameters'][parameter]['parameters'])) for group in [('z',)]},
+						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (0)) for group in [('z',)]},	
 					}
 					for parameter in ['z']},
 					**{parameter:{
@@ -269,11 +271,11 @@ if __name__ == '__main__':
 							*(-0.1*onp.arange(1,(N*(N-1))//2+1))							
 							][:(N*(N-1))//2]),
 						'size':1,
-						'group':[('J',)],									
+						'group':[('zz',)],									
 						'bounds':[-1,1],
 						'boundaries':{0:None,-1:None},				
-						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (hyperparameters['parameters'][parameter]['parameters'])) for group in [('J',)]},						
-						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (0)) for group in [('J',)]},	
+						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (hyperparameters['parameters'][parameter]['parameters'])) for group in [('zz',)]},						
+						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (0)) for group in [('zz',)]},	
 					}
 					for parameter in ['zz']},					
 				},

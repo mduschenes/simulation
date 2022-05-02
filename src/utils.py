@@ -41,8 +41,10 @@ def jit(func,*,static_argnums=None):
 	Returns:
 		func (callable): Compiled function
 	'''
-	# return func
+	return func
 	return jax.jit(func,static_argnums=static_argnums)
+
+
 
 
 
@@ -81,6 +83,17 @@ def vfunc(funcs,index):
 	func = lambda index,x: array([funcs[i](x[i]) for i in index])
 	return lambda x,func=func,index=index: func(index,x)
 
+
+
+def value_and_gradient(func):
+	'''
+	Compute value and gradient of function
+	Args:
+		func (callable): Function to compile
+	Returns:
+		value_and_grad (callable): Value and Gradient of function
+	'''
+	return jit(jax.value_and_grad(func))
 
 def gradient(func):
 	'''
@@ -644,7 +657,7 @@ def inner(a,b):
 	return trace(tensordot(a,b,1))
 
 
-
+@jit
 def _multiply(a,b):
 	'''
 	Multiply arrays elementwise
@@ -657,6 +670,7 @@ def _multiply(a,b):
 	return np.multiply(a,b)
 
 
+@jit
 def multiply(a):
 	'''
 	Multiply list of arrays elementwise
@@ -678,6 +692,7 @@ def multiply(a):
 	return out
 
 
+@jit
 def _add(a,b):
 	'''
 	Add arrays elementwise
@@ -913,9 +928,6 @@ def exponentiation(parameters,data,identity):
 		out (array): Matrix exponential of data of shape (n,n)
 	'''		
 	return expm(parameters,data,identity)
-
-
-
 
 
 

@@ -485,7 +485,12 @@ class Object(object):
 	'''
 	Class for object
 	Args:
-		operator (iterable[str]): string names of operators
+		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+			operator (iterable[str]): string names of operators
+			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+			string (iterable[str]): string labels of operators
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			operator (iterable[str]): string names of operators
 		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
@@ -503,7 +508,7 @@ class Object(object):
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)
 	'''
 
-	def __init__(self,operator,site,string,interaction,hyperparameters,N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
 
 		self.N = N
 		self.D = D
@@ -544,20 +549,40 @@ class Object(object):
 		self.__space__()
 		self.__time__()
 		self.__lattice__()
-		self.__setup__(operator,site,string,interaction,hyperparameters)
+		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 	
 		return	
 
-	def __setup__(self,operator,site,string,interaction,hyperparameters={}):
+	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={}):
 		'''
 		Setup class
 		Args:
+			data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+				operator (iterable[str]): string names of operators
+				site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+				string (iterable[str]): string labels of operators
+				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+				operator (iterable[str]): string names of operators		
 			operator (iterable[str]): string names of operators
 			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
 			hyperparameters (dict) : class hyperparameters
 		'''
+
+		if operator is None:
+			operator = []
+		if site is None:
+			site = []
+		if string is None:
+			string = []
+		if interaction is None:
+			interaction = []									
+
+		operator.extend([data[name]['operator'] for name in data])
+		site.extend([data[name]['site'] for name in data])
+		string.extend([data[name]['string'] for name in data])
+		interaction.extend([data[name]['interaction'] for name in data])
 
 		size = min([len(i) for i in [operator,site,string,interaction]])
 
@@ -720,7 +745,16 @@ class Object(object):
 			parameters (array): parameters
 		'''	
 
-		self.hyperparameters['hyperparameters']['track']['objective'].append(self.__objective__(parameters))
+		# self.hyperparameters['hyperparameters']['track']['objective'].append(self.__objective__(parameters))
+		self.hyperparameters['hyperparameters']['track']['objective'].append(1-self.hyperparameters['hyperparameters']['track']['value'][-1])
+
+		if self.hyperparameters['hyperparameters']['track']['iteration'][-1]%self.hyperparameters['hyperparameters']['track']['log'] == 0:			
+			# print(self.hyperparameters['label'])
+			# print(state)
+			logger.log(50,'%d f(x) = %0.4f'%(self.hyperparameters['hyperparameters']['track']['iteration'][-1],self.hyperparameters['hyperparameters']['track']['objective'][-1]))
+			print('alpha = ',self.hyperparameters['hyperparameters']['track']['alpha'][-1])
+			print('beta = ',self.hyperparameters['hyperparameters']['track']['beta'][-1])			
+			print()
 
 		return 
 		i = self.hyperparameters['hyperparameters']['track']['iteration'][-1]
@@ -895,6 +929,12 @@ class Hamiltonian(Object):
 	'''
 	Hamiltonian class of Operators
 	Args:
+		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+			operator (iterable[str]): string names of operators
+			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+			string (iterable[str]): string labels of operators
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			operator (iterable[str]): string names of operators
 		operator (iterable[str]): string names of operators
 		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
 		string (iterable[str]): string labels of operators
@@ -913,8 +953,8 @@ class Hamiltonian(Object):
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)
 	'''
 
-	def __init__(self,operator,site,string,interaction,hyperparameters={},N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
-		super().__init__(operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
 				 N=N,D=D,d=d,L=L,M=M,T=T,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
@@ -932,10 +972,16 @@ class Hamiltonian(Object):
 
 		return summation(parameters,self.data,self.identity)
 
-	def __setup__(self,operator,site,string,interaction,hyperparameters={}):
+	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={}):
 		'''
 		Setup class
 		Args:
+			data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+				operator (iterable[str]): string names of operators
+				site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+				string (iterable[str]): string labels of operators
+				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+				operator (iterable[str]): string names of operators		
 			operator (iterable[str]): string names of operators
 			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
 			string (iterable[str]): string labels of operators
@@ -948,6 +994,23 @@ class Hamiltonian(Object):
 
 		# Get hyperparameters
 		hyperparameters.update(self.hyperparameters)
+
+
+		# Get operator,site,string,interaction from data
+		if operator is None:
+			operator = []
+		if site is None:
+			site = []
+		if string is None:
+			string = []
+		if interaction is None:
+			interaction = []									
+
+		operator.extend([data[name]['operator'] for name in data])
+		site.extend([data[name]['site'] for name in data])
+		string.extend([data[name]['string'] for name in data])
+		interaction.extend([data[name]['interaction'] for name in data])
+
 
 		# Get number of operators
 		size = min([len(i) for i in [operator,site,string,interaction]])
@@ -1011,6 +1074,16 @@ class Hamiltonian(Object):
 		# Get shape of parameters
 		shape = (self.M,size)
 
+		# Get parameters and groups based on operator strings
+		for parameter in list(hyperparameters['parameters']):
+			for group in list(hyperparameters['parameters'][parameter]['group']):
+				if not any(g in [s,'_'.join([s,''.join(['%d'%j for j in i])])] 
+						for g in group
+						for i,s in zip(site,string)):
+					hyperparameters['parameters'][parameter]['group'].remove(group);
+			if hyperparameters['parameters'][parameter]['group'] == []:
+				hyperparameters['parameters'].pop(parameter);
+
 		# Update indices of parameters within data and slices of parameters within parameters
 		categories = list(set([hyperparameters['parameters'][parameter]['category'] for parameter in hyperparameters['parameters']]))
 		indices = {category:{} for category in categories}
@@ -1030,10 +1103,10 @@ class Hamiltonian(Object):
 				s = hyperparameters['parameters'][parameter]['size'] if hyperparameters['parameters'][parameter].get('size') is not None else 1
 				slices[category][group] = [n+i*s+j for i in range(m) for j in range(s)]
 
-			hyperparameters['parameters'][parameter]['index'] = {group: [j for j in indices[category][group]] for group in indices[category] if group in hyperparameters['parameters'][parameter]['group']}
-			hyperparameters['parameters'][parameter]['slice'] = {group: [j for j in slices[category][group]] for group in slices[category]  if group in hyperparameters['parameters'][parameter]['group']}
-			hyperparameters['parameters'][parameter]['site'] =  {group: [site[j] for j in indices[category][group]] for group in indices[category]  if group in hyperparameters['parameters'][parameter]['group']}
-			hyperparameters['parameters'][parameter]['string'] = {group: ['_'.join([string[j],''.join(['%d'%(k) for k in site[j]]),''.join(operator[j])]) for j in indices[category][group]] for group in indices[category]  if group in hyperparameters['parameters'][parameter]['group']}
+			hyperparameters['parameters'][parameter]['index'] = {group: [j for j in indices[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
+			hyperparameters['parameters'][parameter]['slice'] = {group: [j for j in slices[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
+			hyperparameters['parameters'][parameter]['site'] =  {group: [site[j] for j in indices[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
+			hyperparameters['parameters'][parameter]['string'] = {group: ['_'.join([string[j],''.join(['%d'%(k) for k in site[j]]),''.join(operator[j])]) for j in indices[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
 
 		# Update shape of categories
 		shapes = {
@@ -1041,7 +1114,7 @@ class Hamiltonian(Object):
 						sum([
 							len(							
 							set([i 
-							for group in hyperparameters['parameters'][parameter]['slice']
+							for group in hyperparameters['parameters'][parameter]['group']
 							for i in hyperparameters['parameters'][parameter]['slice'][group]])) 
 							for parameter in hyperparameters['parameters'] 
 					   	   if hyperparameters['parameters'][parameter]['category'] == category]),
@@ -1102,13 +1175,20 @@ class Hamiltonian(Object):
 
 			if hyperparameters['parameters'][parameter]['category'] is category:
 				for group in hyperparameters['parameters'][parameter]['group']:
+					# print(parameter,group,hyperparameters['parameters'][parameter]['index'][group],hyperparameters['parameters'][parameter]['slice'][group])
+					# if 'x' in group:
+					# 	print(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*np.cos(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]]))
+					# elif 'y' in group:
+					# 	print(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*np.sin(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]]))
 					value = value.at[:,hyperparameters['parameters'][parameter]['index'][group]].set(
 							hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
 
-
+		# print(value)
 		# Get Trotterized order of copies of parameters
 		p = hyperparameters['p']
 		parameters = trotter(value.T,p).T/p
+
+		# print(parameters)
 
 		# Get coefficients (time step delta)
 		coefficients = hyperparameters['coefficients']		
@@ -1119,6 +1199,8 @@ class Hamiltonian(Object):
 
 		# Update class attributes
 		self.hyperparameters = hyperparameters
+
+		# exit()
 
 		return parameters
 
@@ -1159,7 +1241,7 @@ class Hamiltonian(Object):
 			if hyperparameters['parameters'][parameter]['category'] == category:
 				key,subkey = jax.random.split(key)
 				bounds = hyperparameters['parameters'][parameter]['bounds']
-				for group in hyperparameters['parameters'][parameter]['slice']:
+				for group in hyperparameters['parameters'][parameter]['group']:
 					parameters_interp = parameters_interp.at[:,hyperparameters['parameters'][parameter]['slice'][group]].set(rand(
 						key,(shape_interp[0],len(hyperparameters['parameters'][parameter]['slice'][group]),*shape_interp[2:]),
 						bounds=[bounds[0] + (bounds[1]-bounds[0])*hyperparameters['hyperparameters']['init'][0],bounds[1]**hyperparameters['hyperparameters']['init'][1]],
@@ -1174,7 +1256,7 @@ class Hamiltonian(Object):
 		for parameter in hyperparameters['parameters']:
 			if hyperparameters['parameters'][parameter]['category'] == category:
 
-				for group in hyperparameters['parameters'][parameter]['slice']:
+				for group in hyperparameters['parameters'][parameter]['group']:
 					hyperparameters['parameters'][parameter]['parameters'] = minimum(
 						hyperparameters['parameters'][parameter]['bounds'][1], 
 						maximum(
@@ -1190,7 +1272,7 @@ class Hamiltonian(Object):
 					hyperparameters['parameters'][parameter]['parameters'] = hyperparameters['parameters'][parameter]['parameters'].at[i,:].set(hyperparameters['parameters'][parameter]['boundaries'][i])
 
 			if hyperparameters['parameters'][parameter]['category'] == category:
-				for group in hyperparameters['parameters'][parameter]['slice']:
+				for group in hyperparameters['parameters'][parameter]['group']:
 					parameters = parameters.at[:,hyperparameters['parameters'][parameter]['slice'][group]].set(hyperparameters['parameters'][parameter]['parameters'])
 
 
@@ -1222,6 +1304,12 @@ class Unitary(Hamiltonian):
 	'''
 	Unitary class of Operators
 	Args:
+		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+			operator (iterable[str]): string names of operators
+			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+			string (iterable[str]): string labels of operators
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			operator (iterable[str]): string names of operators
 		operator (iterable[str]): string names of operators
 		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
 		string (iterable[str]): string labels of operators
@@ -1240,8 +1328,8 @@ class Unitary(Hamiltonian):
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)
 	'''
 
-	def __init__(self,operator,site,string,interaction,hyperparameters={},N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
-		super().__init__(operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
 				 N=N,D=D,d=d,L=L,M=M,T=T,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
@@ -1255,7 +1343,7 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
-
+		print('calling')
 		return exponentiation(-1j*parameters,self.data,self.identity)
 
 
@@ -1399,9 +1487,6 @@ def main(index,hyperparameters={}):
 	
 	func = obj.__func__
 	callback = obj.__callback__
-
-	func = Objective(func,hyperparameters)
-
 
 	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters['hyperparameters'])
 

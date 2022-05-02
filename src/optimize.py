@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 # Import user modules
-from utils import jit,gradient
+from utils import jit,value_and_gradient,gradient
 
 
 def value_and_grad(func,grad=None):
@@ -42,7 +42,7 @@ def value_and_grad(func,grad=None):
 
 	if grad is None:
 		grad = gradient(func)
-		func_and_grad = jit(jax.value_and_grad(func))
+		func_and_grad = value_and_gradient(func)
 	else:
 		func_and_grad = _value_and_grad(func,grad)
 
@@ -52,6 +52,8 @@ def value_and_grad(func,grad=None):
 def line_search(func,grad,parameters,alpha,value,gradient,search,hyperparameters):
 	attrs = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':value[-2] if len(value)>1 else None}
 	attrs.update({attr: hyperparameters.get(attr,attrs[attr]) for attr in attrs})
+	# returns = {'alpha':hyperparameters['alpha']}
+	# return returns
 	returns = osp.optimize.line_search(func,grad,parameters,search[-1],gradient[-1],value[-1],**attrs)
 	returns = dict(zip(['alpha','func','grad','value','_value','slope'],returns))
 	if returns['alpha'] is None:
@@ -91,30 +93,34 @@ class Objective(object):
 		'''
 		return self.func(parameters)
 
-class OptimizerBase(object):
+
+class Base(object):
 	'''
 	Base Optimizer class, with numpy optimizer API
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters)		
+		callback (callable): callback function with signature callback(parameters)				
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
 		defaults = {
 			'optimizer':None,
-			'alpha':None,
+			'alpha':0,
+			'search':0,
 			'iterations':0,
-			'track':{'log':1,'track':10,'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[],'beta':[],'lambda':[]},			
+			'track':{'log':1,'track':10,'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
 
-		self.optimizer = hyperparameters['optimizer']
-		self.alpha = hyperparameters['alpha']
+		self.optimizer = hyperparameters['optimizer']		
 		self.iterations = hyperparameters['iterations']
 		self.track = hyperparameters['track']
 		self.hyperparameters = hyperparameters
+
+		self.alpha = hyperparameters['alpha']
+		self.search = hyperparameters['search'] 
 
 		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
 
@@ -142,7 +148,6 @@ class OptimizerBase(object):
 
 		return parameters
 
-
 	def opt_init(self,parameters):
 		'''
 		Initialize optimizer state with parameters
@@ -164,15 +169,22 @@ class OptimizerBase(object):
 			state (object): optimizer state
 		'''
 
-		value,grad = self.opt_step(iteration,state)
+		value,grad,parameters = self.opt_step(iteration,state)
 
-		search = -grad
 		alpha = self.alpha
+		search = -grad
 
 		state += alpha*search
 
-		self.track['search'].append(search)
-		self.track['alpha'].append(alpha)
+		self.alpha = alpha
+		self.search = search
+
+		self.track['alpha'].append(self.alpha)
+		self.track['search'].append(self.search)
+
+		parameters = self.get_params(state)
+		
+		self.callback(parameters)
 
 		return state
 
@@ -186,7 +198,6 @@ class OptimizerBase(object):
 		'''
 		parameters = state
 		return parameters
-
 
 	def opt_step(self,iteration,state):
 		'''
@@ -206,21 +217,16 @@ class OptimizerBase(object):
 			self.track['grad'].pop(0)
 			self.track['search'].pop(0)
 
-		if self.track['size'] == 0:
-			self.track['iteration'].append(iteration)
-			self.track['value'].append(value)
-			self.track['grad'].append(grad)			
-
-		self.track['iteration'].append(iteration+1)
+		self.track['iteration'].append(iteration)
 		self.track['value'].append(value)
 		self.track['grad'].append(grad)			
 
 		self.track['size'] += 1
 
-		return value,grad
+		return value,grad,parameters
 
 
-class Optimizer(OptimizerBase):
+class Optimizer(Base):
 	'''
 	Optimizer class, with numpy optimizer API
 	Args:
@@ -231,13 +237,51 @@ class Optimizer(OptimizerBase):
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
-		super().__init__(func,grad,callback,hyperparameters)
+		defaults = {
+			'optimizer':None,
+			'alpha':0,
+			'search':0,
+			'iterations':0,
+			'track':{'log':1,'track':10,'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
+		}
+		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
 
 		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,None:GradientDescent}
 
-		self.Optimizer = optimizers.get(self.optimizer,optimizers[None])(self.func,self.grad,self.callback,self.hyperparameters)
+		self.optimizer = hyperparameters['optimizer']		
+		self.iterations = hyperparameters['iterations']
+		self.track = hyperparameters['track']
+		self.hyperparameters = hyperparameters
+
+		self.alpha = hyperparameters['alpha']
+		self.search = hyperparameters['search'] 
+
+		self.callback = callback if callback is not None else (lambda parameters: None)
+
+		self.Optimizer = optimizers.get(self.optimizer,optimizers[None])(func,grad,callback,hyperparameters)
+		
+		self.value_and_grad,self.func,self.grad = self.Optimizer.value_and_grad,self.Optimizer.func,self.Optimizer.grad
+
 
 		return
+
+	def __call__(self,parameters):
+		'''
+		Iterate optimizer state with parameters
+		Args:
+			parameters (object): optimizer parameters
+		Returns:
+			parameters (object): optimizer parameters
+		'''
+
+		state = self.opt_init(parameters)
+
+		for iteration in range(self.iterations):
+			state = self.opt_update(iteration,state)
+
+		parameters = self.get_params(state)
+
+		return parameters
 
 	def opt_init(self,parameters):
 		'''
@@ -247,7 +291,10 @@ class Optimizer(OptimizerBase):
 		Returns:
 			state (object): optimizer state
 		'''
-		return self.Optimizer.opt_init(parameters)
+		
+		state = self.Optimizer.opt_init(parameters)
+		
+		return state
 
 	def opt_update(self,iteration,state):
 		'''
@@ -258,7 +305,9 @@ class Optimizer(OptimizerBase):
 		Returns:
 			state (object): optimizer state
 		'''
-		return self.Optimizer.opt_update(iteration,state)
+		state =  self.Optimizer.opt_update(iteration,state)
+		
+		return state
 
 	def get_params(self,state):
 		'''
@@ -268,11 +317,13 @@ class Optimizer(OptimizerBase):
 		Returns:
 			parameters (object): optimizer parameters
 		'''
-		return self.Optimizer.get_params(state)						
+		
+		parameters = self.Optimizer.get_params(state)
+		
+		return parameters
+	
 
-
-
-class GradientDescent(OptimizerBase):
+class GradientDescent(Base):
 	'''
 	Gradient Descent Optimizer class, with numpy optimizer API
 	Args:
@@ -297,21 +348,27 @@ class GradientDescent(OptimizerBase):
 			state (object): optimizer state
 		'''
 
-		value,grad = self.opt_step(iteration,state)
+		value,grad,parameters = self.opt_step(iteration,state)
 
-		search = -grad
 		alpha = self.alpha
+		search = -grad
 
 		state += alpha*search
 
-		self.track['search'].append(_search)		
-		self.track['alpha'].append(alpha)
+		self.alpha = alpha
+		self.search = search
+
+		self.track['alpha'].append(self.alpha)
+		self.track['search'].append(self.search)
+
+		parameters = self.get_params(state)
+		
+		self.callback(parameters)
 
 		return state
 
 
-
-class ConjugateGradient(OptimizerBase):
+class ConjugateGradient(Base):
 	'''
 	Conjugate Gradient Optimizer class, with numpy optimizer API
 	Args:
@@ -323,6 +380,9 @@ class ConjugateGradient(OptimizerBase):
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
 		super().__init__(func,grad,callback,hyperparameters)
+
+		self.beta = 0
+		self.track.update(**{attr: [] for attr in ['beta'] if attr not in self.track})
 
 		return
 
@@ -336,83 +396,72 @@ class ConjugateGradient(OptimizerBase):
 			state (object): optimizer state
 		'''
 
-
-		# value,grad = self.opt_step(iteration,state,hyperparameters)
 		if self.track['size'] == 0:
-			self.track['iteration'].append(iteration)
-			self.hyperparameters['lambda'] = self.hyperparameters['lambda']
-			value,grad = self.value_and_grad(state)
-			self.track['value'].append(value)
-			self.track['grad'].append(grad)			
-			self.track['search'].append(-grad)			
-			self.track['alpha'].append(self.hyperparameters['alpha'])			
-			self.track['beta'].append(self.hyperparameters['beta'])			
-			self.track['lambda'].append(self.hyperparameters['lambda'])			
-			self.track['size'] += 1
+			value,grad,parameters = self.opt_step(iteration,state)
 
-			self.callback(self.get_params(state))
+			self.alpha = self.alpha
+			self.beta = self.beta
+			self.search = -grad
+			self.track['alpha'].append(self.alpha)			
+			self.track['beta'].append(self.beta)			
+			self.track['search'].append(self.search)			
 
-		returns = line_search(self.func,self.grad,state,
+			state = self.opt_init(parameters)
+			parameters = self.get_params(state)
+			self.callback(parameters)
+
+
+		parameters = self.get_params(state)
+
+		returns = line_search(self.func,self.grad,parameters,
 			self.track['alpha'],
 			self.track['value'],
 			self.track['grad'],
 			self.track['search'],
 			self.hyperparameters)
-		# returns = {'alpha':self.hyperparameters['alpha']}
-
-
 
 		alpha = returns['alpha']
-		grad = self.track['grad'][-1]
 		search = self.track['search'][-1]
-		self.hyperparameters['lambda'] = self.hyperparameters['lambda']
+		grad = self.track['grad'][-1]
 
-		state += alpha*search
+		self.alpha = alpha
+		self.search = search
 
-		_value,_grad = self.value_and_grad(state)
+		parameters += alpha*search
 
-		grads = grad.dot(grad)
+		_value,_grad,parameters = self.opt_step(iteration,state)
 
-		# beta = (_grad.dot(_grad))/(grads) # Fletcher-Reeves
-		# beta = max(0,(_grad.dot(_grad-grad))/grads) # Polak-Ribiere
-		# beta = [(_grad.dot(_grad))/(grads),max(0,(_grad.dot(_grad-grad))/grads)]
+		# beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
+		# beta = max(0,(_grad.dot(_grad-grad))/grad.dot(grad)) # Polak-Ribiere
+		# beta = [(_grad.dot(_grad))/(grad.dot(grad)),max(0,(_grad.dot(_grad-grad))/grad.dot(grad))]
 		# beta = -beta[0] if beta[1] < -beta[0] else beta[1] if abs(beta[1]) <= beta[0] else beta[0] # Polak-Ribiere-Fletcher-Reeves
 		beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
 		# restart = (iteration%self.hyperparameters['restart']) == 0
-		# beta = 0 if (restart or grads < self.hyperparameters['tol']) else beta
+		# beta = 0 if (restart or grad.dot(grad) < self.hyperparameters['tol']) else beta
 		_search = -_grad + beta*search
+
+
+		self.alpha = alpha
+		self.beta = beta
+		self.search = _search
 		
+		self.track['alpha'].append(self.alpha)
+		self.track['beta'].append(self.beta)
+		self.track['search'].append(self.search)
+
+		state = self.opt_init(parameters)
+
+		parameters = self.get_params(state)
 		
-		if self.track['size'] == self.track['track']:
-			self.track['grad'].pop(0)
-			self.track['search'].pop(0)
-
-		self.track['iteration'].append(iteration+1)
-		self.track['value'].append(_value)		
-		self.track['grad'].append(_grad)
-		self.track['search'].append(_search)
-		self.track['alpha'].append(alpha)
-		self.track['beta'].append(beta)
-		self.track['lambda'].append(self.hyperparameters['lambda'])			
-		self.track['size'] += 1
-
-		self.callback(self.get_params(state))
+		self.callback(parameters)
 
 
-		if iteration%self.track['log'] == 0:			
-			# print(self.hyperparameters['label'])
-			# print(state)
-			logger.log(50,'%d f(x) = %0.4f'%(iteration,self.track['objective'][-1]))
-			print('alpha = ',alpha)
-			print('beta = ',beta)			
-			print()
 		return state
 
 
-
-class Adam(OptimizerBase):
+class Adam(Base):
 	'''
 	Adam Optimizer class, with numpy optimizer API
 	Args:
@@ -439,7 +488,10 @@ class Adam(OptimizerBase):
 		Returns:
 			state (object): optimizer state
 		'''
-		return self._opt_init(parameters)
+
+		state = self._opt_init(parameters)
+
+		return state
 
 	def opt_update(self,iteration,state):
 		'''
@@ -451,9 +503,14 @@ class Adam(OptimizerBase):
 			state (object): optimizer state
 		'''
 
-		value,grad = self.opt_step(iteration,state)
+		value,grad,parameters = self.opt_step(iteration,state)
 
-		return self._opt_update(iteration,grad,state)
+		state = self._opt_update(iteration,grad,state)
+
+		parameters = self.get_params(state)
+		self.callback(parameters)
+
+		return state
 
 	def get_params(self,state):
 		'''
@@ -463,4 +520,7 @@ class Adam(OptimizerBase):
 		Returns:
 			parameters (object): optimizer parameters
 		'''
-		return self._get_params(state)
+
+		parameters = self._get_params(state)
+
+		return parameters
