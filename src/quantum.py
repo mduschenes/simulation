@@ -97,16 +97,18 @@ class Space(object):
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
 		L (int,float): Scale in system
+		delta (float): Length scale in system		
 		space (str,Space): Type of Hilbert space
 		system (dict,System): System attributes
 	'''
-	def __init__(self,N,D,d,L,space,system):
+	def __init__(self,N,D,d,L,delta,space,system):
 
 		self.system = System(system)
 		self.N = N if N is not None else 1
 		self.D = D if D is not None else 2
 		self.d = d if d is not None else 1
-		self.L = L if L is not None else 1
+		self.L = L if L is not None else None
+		self.delta = delta if delta is not None else None
 		self.space = space		
 		self.default = 'spin'
 
@@ -131,6 +133,9 @@ class Space(object):
 		return
 
 	def __size__(self):
+		assert self.L is not None or self.delta is not None, "Either L or delta must not be None"		
+		self.delta = self.get_delta()
+		self.L = self.get_L(self.delta)
 		self.n = self.get_n()
 		return 
 
@@ -140,22 +145,32 @@ class Space(object):
 	def __repr__(self):
 		return str(self.string)
 
-	def get_N(self,n):
+	def get_L(self,delta):
+		if self.L is None:
+			if self.space in ['spin']:
+				return delta*self.N
+			else:
+				return delta*self.N
+		else:
+			return self.L
+		return
+
+	def get_N(self):
 		if self.space in ['spin']:
 			try:
-				return int(log(n)/log(self.D))
+				return int(log(self.n)/log(self.D))
 			except:
 				return 1
 		else:
 			try:
-				return int(log(n)/log(self.D))
+				return int(log(self.n)/log(self.D))
 			except:
 				return 1			
 		return 		
 
-	def get_D(self,n):
+	def get_D(self):
 		if self.space in ['spin']:
-			return int(n**(1/self.N))
+			return int(self.n**(1/self.N))
 		else:
 			return int(n**(1/self.N))
 		return
@@ -165,7 +180,17 @@ class Space(object):
 			return self.D**self.N
 		else:
 			return self.D**self.N
-		return		
+		return	
+
+	def get_delta(self):
+		if self.delta is None:
+			if self.space in ['spin']:
+				return self.L/self.N
+			else:
+				return self.L/self.N
+		else:
+			return self.delta
+		return				
 
 
 class Time(object):
@@ -173,16 +198,18 @@ class Time(object):
 	Time evolution class for Operators with size n
 	Args:
 		M (int): Number of time steps
-		T (int): Simulation Time
-		p (int): Trotter order		
+		T (int): Simulation time
+		tau (float): Simulation time scale
+		p (int): Trotter order
 		time (str,Time): Type of Time evolution space
 		system (dict,System): System attributes
 	'''
-	def __init__(self,M,T,p,time,system):
+	def __init__(self,M,T,tau,p,time,system):
 
 		self.system = System(system)
 		self.M = M if M is not None else 1
-		self.T = T if T is not None else 1
+		self.T = T if T is not None else None
+		self.tau = tau if tau is not None else None
 		self.p = p if p is not None else 1
 		self.time = time
 		self.default = 'linear'
@@ -207,7 +234,9 @@ class Time(object):
 		self.string = self.time
 		return
 	def __size__(self):
+		assert self.T is not None or self.tau is not None, "Either T or tau must not be None"
 		self.tau = self.get_tau()
+		self.T = self.get_T(self.tau)
 		return 
 
 	def __str__(self):
@@ -217,24 +246,30 @@ class Time(object):
 		return str(self.string)
 
 	def get_T(self,tau):
-		if self.time in ['linear']:
-			return tau*self.M
+		if self.T is None:
+			if self.time in ['linear']:
+				return tau*self.M
+			else:
+				return tau*self.M
 		else:
-			return tau*self.M
+			return self.T
 		return 		
 
-	def get_M(self,tau):
+	def get_M(self):
 		if self.time in ['linear']:
-			return self.T/tau
+			return self.T/self.tau
 		else:
-			return self.T/tau
+			return self.T/self.tau
 		return
 
 	def get_tau(self):
-		if self.time in ['linear']:
-			return self.T/self.M
+		if self.tau is None:
+			if self.time in ['linear']:
+				return self.T/self.M
+			else:
+				return self.T/self.M
 		else:
-			return self.T/self.M
+			return self.tau
 		return	
 
 class Lattice(object):
@@ -243,10 +278,12 @@ class Lattice(object):
 	Args:
 		N (int): Lattice length along axis
 		d (int): Dimension of lattice
+		L (int,float): Scale in system
+		delta (float): Length scale in system	
 		lattice (str,Lattice): Type of lattice, allowed strings in ['square','square-nearest']
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)		
 	'''	
-	def __init__(self,N=4,d=2,lattice='square',system=None):
+	def __init__(self,N,d,L=1,delta=1,lattice='square',system=None):
 		
 
 		# Define lattice
@@ -259,6 +296,8 @@ class Lattice(object):
 		self.lattice = lattice
 		self.N = N
 		self.d = d
+		self.L = L
+		self.delta = delta
 
 		# Define system
 		self.system = System(system)
@@ -499,8 +538,10 @@ class Object(object):
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
 		L (int,float): Scale in system
+		delta (float): Simulation length scale		
 		M (int): Number of time steps
 		T (int): Simulation Time
+		tau (float): Simulation time scale		
 		p (int): Trotter order		
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
@@ -508,14 +549,17 @@ class Object(object):
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
+		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 
 		self.N = N
 		self.D = D
 		self.d = d
 		self.L = L
+		self.delta = delta
 		self.M = M
 		self.T = T
+		self.tau = tau
 		self.p = p
 		self.space = space
 		self.time = time
@@ -749,8 +793,6 @@ class Object(object):
 		self.hyperparameters['hyperparameters']['track']['objective'].append(1-self.hyperparameters['hyperparameters']['track']['value'][-1])
 
 		if self.hyperparameters['hyperparameters']['track']['iteration'][-1]%self.hyperparameters['hyperparameters']['track']['log'] == 0:			
-			# print(self.hyperparameters['label'])
-			# print(state)
 			logger.log(50,'%d f(x) = %0.4f'%(self.hyperparameters['hyperparameters']['track']['iteration'][-1],self.hyperparameters['hyperparameters']['track']['objective'][-1]))
 			print('alpha = ',self.hyperparameters['hyperparameters']['track']['alpha'][-1])
 			print('beta = ',self.hyperparameters['hyperparameters']['track']['beta'][-1])			
@@ -797,7 +839,7 @@ class Object(object):
 		return
 
 
-	def __space__(self,N=None,D=None,d=None,L=None,space=None,system=None):
+	def __space__(self,N=None,D=None,d=None,L=None,delta=None,space=None,system=None):
 		'''
 		Set space attributes
 		Args:
@@ -805,6 +847,7 @@ class Object(object):
 			D (int): Dimension of qudits
 			d (int): Spatial dimension
 			L (int,float): Scale in system
+			delta (float): Length scale in system
 			space (str,Space): Type of Hilbert space
 			system (dict,System): System attributes (dtype,format,device,seed,verbose)		
 		'''
@@ -812,37 +855,41 @@ class Object(object):
 		D = self.D if D is None else D
 		d = self.d if d is None else d
 		L = self.L if L is None else L
+		delta = self.delta if delta is None else delta
 		space = self.space if space is None else space
 		system = self.system if system is None else system
 
-		self.space = Space(N,D,d,L,space,system)
+		self.space = Space(N,D,d,L,delta,space,system)
 		self.N = self.space.N
 		self.D = self.space.D
 		self.d = self.space.d
 		self.L = self.space.L
+		self.delta = self.space.delta
 		self.n = self.space.n
 		self.identity = identity(self.n)
 
 		return
 
 
-	def __time__(self,M=None,T=None,p=None,time=None,system=None):
+	def __time__(self,M=None,T=None,tau=None,p=None,time=None,system=None):
 		'''
 		Set time attributes
 		Args:
 			M (int): Number of time steps
 			T (int): Simulation Time
+			tau (float): Simulation time scale
 			p (int): Trotter order		
 			time (str,Time): Type of Time evolution space						
 			system (dict,System): System attributes (dtype,format,device,seed,verbose)		
 		'''
 		M = self.M if M is None else M
 		T = self.T if T is None else T
+		tau = self.tau if tau is None else tau
 		p = self.p if p is None else p
 		time = self.time if time is None else time
 		system = self.system if system is None else system
 
-		self.time = Time(M,T,p,time,system)		
+		self.time = Time(M,T,tau,p,time,system)		
 		self.M = self.time.M
 		self.T = self.time.T
 		self.p = self.time.p
@@ -851,7 +898,7 @@ class Object(object):
 		return
 
 
-	def __lattice__(self,N=None,D=None,d=None,L=None,lattice=None,system=None):
+	def __lattice__(self,N=None,D=None,d=None,L=None,delta=None,lattice=None,system=None):
 		'''
 		Set space attributes
 		Args:
@@ -859,6 +906,7 @@ class Object(object):
 			D (int): Dimension of qudits
 			d (int): Spatial dimension
 			L (int,float): Scale in system
+			delta (float): Length scale in system			
 			lattice (str,Lattice): Type of lattice		
 			system (dict,System): System attributes (dtype,format,device,seed,verbose)		
 		'''		
@@ -866,10 +914,11 @@ class Object(object):
 		D = self.D if D is None else D
 		d = self.d if d is None else d
 		L = self.L if L is None else L
+		delta = self.delta if delta is None else delta
 		lattice = self.lattice if lattice is None else lattice
 		system = self.system if system is None else system
 
-		self.lattice = Lattice(N,d,lattice,system)	
+		self.lattice = Lattice(N,d,L,delta,lattice,system)	
 
 		return
 
@@ -944,8 +993,10 @@ class Hamiltonian(Object):
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
 		L (int,float): Scale in system
+		delta (float): Simulation length scale		
 		M (int): Number of time steps
-		T (int): Simulation Time
+		T (int): Simulation time
+		tau (float): Simulation time scale
 		p (int): Trotter order		
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
@@ -953,9 +1004,10 @@ class Hamiltonian(Object):
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				 N=N,D=D,d=d,L=L,M=M,T=T,p=p,space=space,time=time,lattice=lattice,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
 
@@ -1190,7 +1242,7 @@ class Hamiltonian(Object):
 
 		# print(parameters)
 
-		# Get coefficients (time step delta)
+		# Get coefficients (time step tau)
 		coefficients = hyperparameters['coefficients']		
 		parameters *= coefficients
 
@@ -1319,8 +1371,10 @@ class Unitary(Hamiltonian):
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
 		L (int,float): Scale in system
+		delta (float): Simulation length scale				
 		M (int): Number of time steps
 		T (int): Simulation Time
+		tau (float): Simulation time scale		
 		p (int): Trotter order		
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
@@ -1328,9 +1382,10 @@ class Unitary(Hamiltonian):
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},N=None,D=None,d=None,L=None,M=None,T=None,p=None,space=None,time=None,lattice=None,system=None):
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				 N=N,D=D,d=d,L=L,M=M,T=T,p=p,space=space,time=time,lattice=lattice,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
 	@partial(jit,static_argnums=(0,))
@@ -1343,7 +1398,6 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
-		print('calling')
 		return exponentiation(-1j*parameters,self.data,self.identity)
 
 
@@ -1478,7 +1532,7 @@ def plot_parameters(parameters,hyperparameters,**kwargs):
 	return fig,ax
 
 
-def main(index,hyperparameters={}):
+def run(index,hyperparameters={}):
 
 	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 

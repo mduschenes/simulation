@@ -26,7 +26,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.quantum import main
+from src.quantum import run
 from src.utils import jit,array,tensorprod,sin,cos,sigmoid
 from src.io import load,dump
 
@@ -45,19 +45,36 @@ def bound(a,hyperparameters):
 	# return 1/(1+np.exp(-eps*a))
 	return sigmoid(a,hyperparameters['hyperparameters']['bound'])
 
-if __name__ == '__main__':
-	train = 1
-	method = 'user'
-	# method = 'random'
-	local = 'local'
-	local = 'global'
+def main(args):
+	nargs = len(args)
+	print(args)
+	path = args[0] if nargs>0 else None
 
-	n = 1
-	m = 0
-	N = 2
-	M = 10
-	p = 1
-	iterations = 3
+	settings = load(path)
+
+	train = settings['sys']['train']
+	# method = 'user'
+	method = 'random'
+	locality = 'locality'
+	# locality = 'global'
+
+	method = settings['hyperparameters']['method']
+	locality = settings['hyperparameters']['locality']
+
+	realizations = settings['hyperparameters']['realizations']
+	prev_realizations = 0 #settings['hyperparameters']['prev_realizations']
+	
+	N = settings['model']['N']
+	D = settings['model']['D']
+	d = settings['model']['d']
+	L = settings['model']['L']	
+	M = settings['model']['M']
+	p = settings['model']['p']
+	T = settings['model']['T']
+	tau = settings['model']['tau']
+	delta = settings['model']['delta']
+	
+	iterations = settings['hyperparameters']['iterations']
 
 	scale = 1#100*1e-6
 	if train:
@@ -65,19 +82,20 @@ if __name__ == '__main__':
 			objective = []
 			iteration = []
 		elif train == -1:
-			iteration = load('output/iteration_%s_%s_%d.npy'%(method,local,m+1)).tolist()
-			objective = load('output/objective_%s_%s_%d.npy'%(method,local,m+1)).tolist()
-		for i in range(n):
+			iteration = load('output/iteration_%s_%s_%d.npy'%(method,locality,prev_realizations+1)).tolist()
+			objective = load('output/objective_%s_%s_%d.npy'%(method,locality,prev_realizations+1)).tolist()
+		for i in range(realizations):
 			print(i)
 			N = N
-			D = 2
-			d = 1
-			L = 1
+			D = D
+			d = d
+			L = L
 			M = M
-			# T = M*(4e-6)
-			T = M	
+			T = T
+			tau = tau
+			delta = delta
 			p = p
-			local = local
+			locality = locality
 			if method == 'random':
 				V = array(onp.random.rand(D**N,D**N)) + 1j*array(onp.random.rand(D**N,D**N))
 				V = sp.linalg.expm(-1j*(V + V.conj().T)/2.0/D**N)
@@ -163,16 +181,24 @@ if __name__ == '__main__':
 			# plt.colorbar(plot0,ax=ax[0])
 			# plt.colorbar(plot1,ax=ax[1])
 			# fig.tight_layout()
-			# fig.savefig('output/V_%s_%s_%d.pdf'%(method,local,i))
+			# fig.savefig('output/V_%s_%s_%d.pdf'%(method,locality,i))
 
 			hyperparameters = {
+				'sys':{
+					'load':'input',
+					'dump':'output',
+					'train':1,
+					'plot':1,
+				},
 				'model':{
 					'N':N,
 					'D':D,
 					'd':d,
 					'L':L,
+					'delta':delta,
 					'M':M,
 					'T':T,
+					'tau':tau,
 					'p':p,
 					'space':'spin',		
 					'time':'linear',		
@@ -188,13 +214,16 @@ if __name__ == '__main__':
 					'data':{
 						'x':{'operator':['X'],'site':['i'],'string':'x','interaction':'i'},
 						'y':{'operator':['Y'],'site':['i'],'string':'y','interaction':'i'},
-						# 'z':{'operator':['Z'],'site':['i'],'string':'z','interaction':'i'},
-						# 'zz':{'operator':['Z','Z'],'site':['i','j'],'string':'zz','interaction':'i<j'},
+						'z':{'operator':['Z'],'site':['i'],'string':'z','interaction':'i'},
+						'zz':{'operator':['Z','Z'],'site':['i','j'],'string':'zz','interaction':'i<j'},
 					}
 				},		
 				'label': V,																
 				'hyperparameters':{
 					'iterations':iterations,
+					'realizations':realizations,
+					'locality':locality,
+					'class':'random',
 					'optimizer':'cg',
 					'seed':111,#onp.random.randint(10000),		
 					'interpolation':3,'smoothness':2,'init':[0,1],'random':'uniform',
@@ -205,13 +234,13 @@ if __name__ == '__main__':
 						 'value':[],'grad':[],'search':[],
 						 'alpha':[],'beta':[],'lambda':[]
 					},
-					},
+				},
 				'value':None,
 				'parameters':{
 					**{parameter:{
 						'name':'xy',
 						'category':'variable',
-						'locality':local,
+						'locality':locality,
 						'parameters':None,
 						'size':2,
 						'group':[('x',),('y',)],
@@ -219,12 +248,12 @@ if __name__ == '__main__':
 						'boundaries':{0:0,-1:0},
 						'func': {
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (	
-								# 2*np.pi/4/(20e-6)*scale*
+								2*np.pi/4/(20e-6)*scale*
 								1*(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
 								cos(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
 							for group in [('x',)]},
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
-								# 2*np.pi/4/(20e-6)*scale*
+								2*np.pi/4/(20e-6)*scale*
 								1*(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
 								sin(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
 							for group in [('y',)]},
@@ -239,14 +268,14 @@ if __name__ == '__main__':
 					**{parameter:{
 						'name':'z',						
 						'category':'constant',
-						'locality':'local',
+						'locality':'locality',
 						'parameters':array([
-							# -2*np.pi/2*1000*scale,
-							# 0*scale,
-							# 2*np.pi/2*1000*scale,
-							# 2*np.pi/2*500*scale,
-							# *(2*np.pi/2*(2*onp.random.randint(2)-1)*1000*onp.random.rand(max(1,N-4))*scale)
-							*(0.5*onp.arange(1,N+1))
+							-2*np.pi/2*1000*scale,
+							0*scale,
+							2*np.pi/2*1000*scale,
+							2*np.pi/2*500*scale,
+							*(2*np.pi/2*(2*onp.random.randint(2)-1)*1000*onp.random.rand(max(1,N-4))*scale)
+							# *(0.5*onp.arange(1,N+1))
 							][:N]),
 						'size':1,
 						'group':[('z',)],
@@ -259,16 +288,16 @@ if __name__ == '__main__':
 					**{parameter:{
 						'name':'zz',						
 						'category':'constant',
-						'locality':'local',
+						'locality':'locality',
 						'parameters':array([
-							# 2*np.pi/4*72.4*scale,
-							# -2*np.pi/4*130*scale,
-							# 2*np.pi/4*50.0*scale,
-							# 2*np.pi/4*80.0*scale,
-							# 2*np.pi/4*20.0*scale,
-							# 2*np.pi/4*200.0*scale,
-							# *(2*np.pi/4*(2*onp.random.randint(2)-1)*200*onp.random.rand(max(1,N**2))*scale)
-							*(-0.1*onp.arange(1,(N*(N-1))//2+1))							
+							2*np.pi/4*72.4*scale,
+							-2*np.pi/4*130*scale,
+							2*np.pi/4*50.0*scale,
+							2*np.pi/4*80.0*scale,
+							2*np.pi/4*20.0*scale,
+							2*np.pi/4*200.0*scale,
+							*(2*np.pi/4*(2*onp.random.randint(2)-1)*200*onp.random.rand(max(1,N**2))*scale)
+							# *(-0.1*onp.arange(1,(N*(N-1))//2+1))							
 							][:(N*(N-1))//2]),
 						'size':1,
 						'group':[('zz',)],									
@@ -282,23 +311,23 @@ if __name__ == '__main__':
 				}
 			
 
-			main(i,hyperparameters)
+			run(i,hyperparameters)
 
 			iteration.append(hyperparameters['hyperparameters']['track']['iteration'][:])
 			objective.append(hyperparameters['hyperparameters']['track']['objective'][:])
 
-			dump(onp.array(iteration),'output/iteration_%s_%s_%d.npy'%(method,local,m+1+i))
-			dump(onp.array(objective),'output/objective_%s_%s_%d.npy'%(method,local,m+1+i))
+			dump(onp.array(iteration),'output/iteration_%s_%s_%d.npy'%(method,locality,prev_realizations+1+i))
+			dump(onp.array(objective),'output/objective_%s_%s_%d.npy'%(method,locality,prev_realizations+1+i))
 
 		iteration = onp.array(iteration)
 		objective = onp.array(objective)
 
 	else:
 
-		iteration = load('output/iteration_%s_%s_%d.npy'%(method,local,m+n))
-		objective = load('output/objective_%s_%s_%d.npy'%(method,local,m+n))
+		iteration = load('output/iteration_%s_%s_%d.npy'%(method,locality,prev_realizations+realizations))
+		objective = load('output/objective_%s_%s_%d.npy'%(method,locality,prev_realizations+realizations))
 
-	n = min(len(iteration),len(objective))	
+	realizations = min(len(iteration),len(objective))	
 	slices = slice(1,None)
 	iteration = iteration.mean(0)
 	objective,error = objective.mean(0),objective.std(0)
@@ -334,4 +363,9 @@ if __name__ == '__main__':
 		fig.set_size_inches(6,6)
 		fig.subplots_adjust()
 		fig.tight_layout()
-		fig.savefig('output/fidelity_%s_%s_%d_%d_%d.pdf'%(method,local,n,N,M))
+		fig.savefig('output/fidelity_method%s_local%s_repeats%d__iterations%d_N%d_M%d.pdf'%(method,locality,realizations,iterations,N,M))
+
+
+
+if __name__ == '__main__':
+	main(sys.argv[1:])

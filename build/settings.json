@@ -1,0 +1,54 @@
+{
+"sys":{
+	"load":"input",
+	"dump":"output",
+	"train":1,
+	"plot":1
+},
+"model":{
+	"N":2,
+	"D":2,
+	"d":1,
+	"L":1,
+	"delta":null,
+	"M":800,
+	"T":null,
+	"tau":4e-6,
+	"p":2,
+	"space":"spin",		
+	"time":"linear",		
+	"lattice":"square",
+	"system":{
+		"dtype":"complex",
+		"format":"array",
+		"device":"cpu",
+		"verbose":"info"		
+	}
+},			
+"data":{
+	"data":{
+		"x":{"operator":["X"],"site":["i"],"string":"x","interaction":"i"},
+		"y":{"operator":["Y"],"site":["i"],"string":"y","interaction":"i"},
+		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
+		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
+	}
+},		
+"label": "input/V.txt",																
+"value":null,
+"hyperparameters":{
+	"iterations":100,
+	"realizations":1,
+	"locality":"local",
+	"method":"random",
+	"optimizer":"cg",
+	"seed":111,
+	"interpolation":3,"smoothness":2,"init":[0,1],"random":"uniform",
+	"c1":0.0001,"c2":0.9,"maxiter":50,"restart":25,"tol":1e-14,
+	"bound":1e6,"alpha":1,"beta":1e-1,"lambda":[1e-6,1e-6,1e-2],"eps":980e-3,
+	"track":{"log":1,"track":10,"size":0,
+		 "iteration":[],"objective":[],
+		 "value":[],"grad":[],"search":[],
+		 "alpha":[],"beta":[],"lambda":[]
+	}
+}
+}

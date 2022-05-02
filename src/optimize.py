@@ -410,7 +410,6 @@ class ConjugateGradient(Base):
 			parameters = self.get_params(state)
 			self.callback(parameters)
 
-
 		parameters = self.get_params(state)
 
 		returns = line_search(self.func,self.grad,parameters,
@@ -424,10 +423,10 @@ class ConjugateGradient(Base):
 		search = self.track['search'][-1]
 		grad = self.track['grad'][-1]
 
-		self.alpha = alpha
-		self.search = search
-
 		parameters += alpha*search
+
+		state = self.opt_init(parameters)
+
 
 		_value,_grad,parameters = self.opt_step(iteration,state)
 
@@ -438,8 +437,8 @@ class ConjugateGradient(Base):
 		beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
-		# restart = (iteration%self.hyperparameters['restart']) == 0
-		# beta = 0 if (restart or grad.dot(grad) < self.hyperparameters['tol']) else beta
+		restart = (iteration%self.hyperparameters['restart']) == 0
+		beta = 0 if (restart or np.isnan(beta) or np.isinf(beta)) else beta
 		_search = -_grad + beta*search
 
 
