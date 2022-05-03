@@ -1,7 +1,15 @@
 {
 "sys":{
-	"load":"input",
-	"dump":"output",
+	"directories":{
+		"load":"input",
+		"dump":"output",
+		"config":"config"
+	},
+	"files":{
+		"data":"data.csv",	
+		"plot":{"parameters":"parameters.pdf","objective":"objective.pdf"},
+		"mplstyle":"plot.mplstyle"
+	},
 	"train":1,
 	"plot":1
 },
@@ -11,7 +19,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":800,
+	"M":500,
 	"T":null,
 	"tau":4e-6,
 	"p":2,
@@ -36,19 +44,21 @@
 "label": "input/V.txt",																
 "value":null,
 "hyperparameters":{
-	"iterations":100,
+	"iterations":10,
 	"realizations":1,
 	"locality":"local",
-	"method":"random",
+	"method":"user",
 	"optimizer":"cg",
-	"seed":111,
-	"interpolation":3,"smoothness":2,"init":[0,1],"random":"uniform",
+	"seed":1111,
+	"interpolation":3,"smoothness":10,"init":[0.1,0.7],"random":"uniform",
 	"c1":0.0001,"c2":0.9,"maxiter":50,"restart":25,"tol":1e-14,
-	"bound":1e6,"alpha":1,"beta":1e-1,"lambda":[1e-6,1e-6,1e-2],"eps":980e-3,
+	"bound":1e6,"alpha":1e-4,"beta":1e-1,"lambda":[1e-5,1e-5,1e-2],"eps":980e-3,
+	"linesearch":1,
 	"track":{"log":1,"track":10,"size":0,
 		 "iteration":[],"objective":[],
 		 "value":[],"grad":[],"search":[],
-		 "alpha":[],"beta":[],"lambda":[]
+		 "alpha":[],"beta":[],"lambda":[],
+		 "parameters":[]
 	}
 }
 }

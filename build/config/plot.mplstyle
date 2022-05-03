@@ -641,7 +641,7 @@ text.latex.preamble : \usepackage{graphicx}\usepackage{relsize}\usepackage{amsma
 
 #mathtext.fallback_to_cm : True
 
-font.size : 20
+font.size : 30
 #font.weight : bold
 #axes.labelweight : bold
 axes.linewidth : 2  

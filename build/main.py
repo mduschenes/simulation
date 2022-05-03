@@ -47,17 +47,17 @@ def bound(a,hyperparameters):
 
 def main(args):
 	nargs = len(args)
-	print(args)
+
 	path = args[0] if nargs>0 else None
 
 	settings = load(path)
 
-	train = settings['sys']['train']
 	# method = 'user'
-	method = 'random'
-	locality = 'locality'
+	# method = 'random'
+	# locality = 'locality'
 	# locality = 'global'
 
+	train = settings['sys']['train']
 	method = settings['hyperparameters']['method']
 	locality = settings['hyperparameters']['locality']
 
@@ -75,6 +75,9 @@ def main(args):
 	delta = settings['model']['delta']
 	
 	iterations = settings['hyperparameters']['iterations']
+	seed = settings['hyperparameters']['seed']
+
+	onp.random.seed(seed)
 
 	scale = 1#100*1e-6
 	if train:
@@ -142,14 +145,14 @@ def main(args):
 							  [[1,1],
 							  [1,-1]],
 							  ])),
-					# 3: array([[1,0,0,0,0,0,0,0],
-					# 		   [0,1,0,0,0,0,0,0],
-					# 		   [0,0,1,0,0,0,0,0],
-					# 		   [0,0,0,1,0,0,0,0],
-					# 		   [0,0,0,0,1,0,0,0],
-					# 		   [0,0,0,0,0,1,0,0],
-					# 		   [0,0,0,0,0,0,0,1],
-					# 		   [0,0,0,0,0,0,1,0]]),
+					3: array([[1,0,0,0,0,0,0,0],
+							   [0,1,0,0,0,0,0,0],
+							   [0,0,1,0,0,0,0,0],
+							   [0,0,0,1,0,0,0,0],
+							   [0,0,0,0,1,0,0,0],
+							   [0,0,0,0,0,1,0,0],
+							   [0,0,0,0,0,0,0,1],
+							   [0,0,0,0,0,0,1,0]]),
 					# 4: tensorprod(((1/np.sqrt(2)))*array(
 					# 		[[[1,1],
 					# 		  [1,-1]],
@@ -184,11 +187,9 @@ def main(args):
 			# fig.savefig('output/V_%s_%s_%d.pdf'%(method,locality,i))
 
 			hyperparameters = {
+			**{
 				'sys':{
-					'load':'input',
-					'dump':'output',
-					'train':1,
-					'plot':1,
+					**settings['sys'],
 				},
 				'model':{
 					'N':N,
@@ -209,6 +210,7 @@ def main(args):
 						'device':'cpu',
 						'verbose':'info'		
 					},
+					**settings['model']
 				},			
 				'data':{
 					'data':{
@@ -216,7 +218,8 @@ def main(args):
 						'y':{'operator':['Y'],'site':['i'],'string':'y','interaction':'i'},
 						'z':{'operator':['Z'],'site':['i'],'string':'z','interaction':'i'},
 						'zz':{'operator':['Z','Z'],'site':['i','j'],'string':'zz','interaction':'i<j'},
-					}
+					},
+					**settings['data']
 				},		
 				'label': V,																
 				'hyperparameters':{
@@ -228,12 +231,15 @@ def main(args):
 					'seed':111,#onp.random.randint(10000),		
 					'interpolation':3,'smoothness':2,'init':[0,1],'random':'uniform',
 					'c1':0.0001,'c2':0.9,'maxiter':50,'restart':iterations//4,'tol':1e-14,
-					'bound':1e6,'alpha':1,'beta':1e-1,'lambda':0*np.array([1e-6,1e-6,1e-2]),'eps':980e-3,
+					'bound':1e6,'alpha':1,'beta':1e-1,'lambda':1*np.array([1e-6,1e-6,1e-2]),'eps':980e-3,
+					'linesearch':1,
 					'track':{'log':1,'track':10,'size':0,
 						 'iteration':[],'objective':[],
 						 'value':[],'grad':[],'search':[],
-						 'alpha':[],'beta':[],'lambda':[]
+						 'alpha':[],'beta':[],'lambda':[],
+						 'parameters':[],
 					},
+					**settings['hyperparameters']
 				},
 				'value':None,
 				'parameters':{
@@ -308,7 +314,9 @@ def main(args):
 					}
 					for parameter in ['zz']},					
 				},
-				}
+				},
+			}
+
 			
 
 			run(i,hyperparameters)

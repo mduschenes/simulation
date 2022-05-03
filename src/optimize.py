@@ -52,8 +52,9 @@ def value_and_grad(func,grad=None):
 def line_search(func,grad,parameters,alpha,value,gradient,search,hyperparameters):
 	attrs = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':value[-2] if len(value)>1 else None}
 	attrs.update({attr: hyperparameters.get(attr,attrs[attr]) for attr in attrs})
-	# returns = {'alpha':hyperparameters['alpha']}
-	# return returns
+	if not hyperparameters.get('linesearch'):
+		returns = {'alpha':hyperparameters['alpha']}
+		return returns
 	returns = osp.optimize.line_search(func,grad,parameters,search[-1],gradient[-1],value[-1],**attrs)
 	returns = dict(zip(['alpha','func','grad','value','_value','slope'],returns))
 	if returns['alpha'] is None:
@@ -428,7 +429,7 @@ class ConjugateGradient(Base):
 		state = self.opt_init(parameters)
 
 
-		_value,_grad,parameters = self.opt_step(iteration,state)
+		_value,_grad,parameters = self.opt_step(iteration+1,state)
 
 		# beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
 		# beta = max(0,(_grad.dot(_grad-grad))/grad.dot(grad)) # Polak-Ribiere

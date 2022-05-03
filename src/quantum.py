@@ -589,6 +589,9 @@ class Object(object):
 		self.parameters = getattr(self,'parameters',None)
 		self.dim = getattr(self,'dim',0)
 
+		self.fig = {}
+		self.ax = {}
+
 		self.__system__()
 		self.__space__()
 		self.__time__()
@@ -793,34 +796,38 @@ class Object(object):
 		self.hyperparameters['hyperparameters']['track']['objective'].append(1-self.hyperparameters['hyperparameters']['track']['value'][-1])
 
 		if self.hyperparameters['hyperparameters']['track']['iteration'][-1]%self.hyperparameters['hyperparameters']['track']['log'] == 0:			
-			logger.log(50,'%d f(x) = %0.4f'%(self.hyperparameters['hyperparameters']['track']['iteration'][-1],self.hyperparameters['hyperparameters']['track']['objective'][-1]))
-			print('alpha = ',self.hyperparameters['hyperparameters']['track']['alpha'][-1])
-			print('beta = ',self.hyperparameters['hyperparameters']['track']['beta'][-1])			
-			print()
-
-		return 
-		i = self.hyperparameters['hyperparameters']['track']['iteration'][-1]
-		U = self(parameters)
-		V = self.hyperparameters['label']
-		UH = U.conj().T
-		VH = V.conj().T
-
-		print(
-			'func',i,'\n',
-			'U-V',U-V,'\n',
-			'UV',U.dot(VH),'\n',
-			'UU',U.dot(UH),'\n',
-			'VV',V.dot(VH),'\n',
-		)
-		print(
-			np.linalg.norm(parameters)/parameters.size,
-			parameters.max(),parameters.min(),
-			parameters.reshape(self.hyperparameters['shapes']['variable'])[0],
-			parameters.reshape(self.hyperparameters['shapes']['variable'])[-1],
+			logger.log(self.verbose,'%d f(x) = %0.4f \nalpha = %0.3e \nbeta = %0.3e \n'%(
+				self.hyperparameters['hyperparameters']['track']['iteration'][-1],
+				self.hyperparameters['hyperparameters']['track']['objective'][-1],
+				self.hyperparameters['hyperparameters']['track']['alpha'][-1],
+				self.hyperparameters['hyperparameters']['track']['beta'][-1],
+				)
 			)
 
+			i = self.hyperparameters['hyperparameters']['track']['iteration'][-1]
+			U = self(parameters)
+			V = self.hyperparameters['label']
+			UH = U.conj().T
+			VH = V.conj().T
 
-		return
+			print(
+				'func',i,'\n',
+				'U-V',U-V,'\n',
+				'UV',U.dot(VH),'\n',
+				'UU',U.dot(UH),'\n',
+				'VV',V.dot(VH),'\n',
+			)
+			print(
+				np.linalg.norm(parameters)/parameters.size,
+				parameters.max(),parameters.min(),
+				parameters.reshape(self.hyperparameters['shapes']['variable'])[0],
+				parameters.reshape(self.hyperparameters['shapes']['variable'])[-1],
+				)
+
+		if self.hyperparameters['hyperparameters']['track']['iteration'][-1] in [0,self.hyperparameters['hyperparameters']['iterations']-1]:			
+			self.hyperparameters['hyperparameters']['track']['parameters'].append(parameters.copy())
+
+		return 
 
 
 
@@ -972,6 +979,126 @@ class Object(object):
 		self.append(data,string=string)
 		return
 
+
+	def __plot__(self,parameters,**kwargs):
+		'''
+		Plot Parameters
+		Args:
+			parameters (array): Parameters
+			kwargs (dict): Plot settings
+		'''
+
+
+		# Get hyperparameters
+		hyperparameters = self.hyperparameters
+		category = 'variable'
+
+
+		shape = hyperparameters['shapes'][category]
+
+		parameters = parameters.reshape(shape)
+
+
+		# Plot attributes
+
+		attr = 'parameters'
+		fig,ax = self.fig.get(attr),self.ax.get(attr)
+
+		path = os.path.join(hyperparameters['sys']['directories']['dump'],hyperparameters['sys']['files']['plot'][attr])
+		mplstyle = os.path.join(hyperparameters['sys']['directories']['config'],hyperparameters['sys']['files']['mplstyle'])
+		size = (20,20)
+
+		with matplotlib.style.context(mplstyle):
+		
+			if fig is None:
+				fig,ax = plt.subplots(shape[1],1)
+
+			for i in range(shape[1]):
+				x = np.arange(shape[0])
+				y = parameters[:,i]
+
+				label = [r'\alpha',r'\phi'][i%2]
+
+				ax[i].plot(x,y,linewidth=3,label=r'${%s}^{(%s)}_{%s}$'%(label,str(kwargs.get('iteration','')),str(i//2) if shape[1]>2 else ''))#str(['x','y'][i>=(shape[1]//2)])))
+
+				label = [r'\alpha',r'\phi'][i%2]
+
+				ax[i].set_xlim(xmin=0,xmax=shape[0])
+				ax[i].set_ylim(ymin=-0.25,ymax=1.25)
+				ax[i].set_ylabel(ylabel=r'$%s$'%(label))
+				ax[i].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
+				ax[i].set_yscale(value='linear')
+
+				ax[i].legend(loc=(0.78,0.1))
+				ax[i].grid(True)	
+
+			fig.set_size_inches(*size)
+			fig.subplots_adjust()
+			fig.tight_layout()
+			fig.savefig(path)
+
+		self.fig[attr] = fig
+		self.ax[attr] = ax
+
+
+
+
+		attr = 'objective'
+		fig,ax = self.fig.get(attr),self.ax.get(attr)
+
+		path = os.path.join(hyperparameters['sys']['directories']['dump'],hyperparameters['sys']['files']['plot'][attr])
+		mplstyle = os.path.join(hyperparameters['sys']['directories']['config'],hyperparameters['sys']['files']['mplstyle'])
+		size = (8,8)
+
+		with matplotlib.style.context(mplstyle):
+		
+			fig,ax = plt.subplots()
+
+			x = hyperparameters['hyperparameters']['track']['iteration']
+			y = hyperparameters['hyperparameters']['track']['objective']
+
+			ax.plot(x,y,linewidth=4,marker='o',markersize=10)
+
+
+			ax.set_ylabel(ylabel=r'$\textrm{%s}$'%('Objective'))
+			ax.set_xlabel(xlabel=r'$\textrm{%s}$'%('Iteration'))
+
+			# ax.set_ylim(ymin=0,ymax=1)
+			# ax.set_yscale(value='linear')
+
+			ax.set_ylim(ymin=5e-1,ymax=1e0)
+			ax.set_yscale(value='log',base=10)
+
+			ax.yaxis.offsetText.set_fontsize(fontsize=20)
+
+			# ax.set_yticks(ticks=[1e-1,2e-1,4e-1,6e-1,8e-1,1e0])
+			ax.set_yticks(ticks=[5e-1,6e-1,8e-1,1e0])
+			ax.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
+			# ax.yaxis.set_major_locator(matplotlib.ticker.LogLocator(base=10.0,subs=(1.0,),numticks=100))
+			ax.ticklabel_format(axis='y',style='sci',scilimits=[-1,2])	
+
+			ax.yaxis.set_minor_locator(matplotlib.ticker.LogLocator(base=10.0,subs=np.arange(2,10)*.1,numticks=100))
+			ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+
+
+			ax.tick_params(axis='y',which='major',length=8,width=1)
+			ax.tick_params(axis='y',which='minor',length=4,width=0.5)
+			ax.tick_params(axis='x',which='major',length=8,width=1)
+			ax.tick_params(axis='x',which='minor',length=4,width=0.5)
+
+			ax.set_aspect(aspect='auto')
+			ax.grid(visible=True,which='both',axis='both')	
+
+			fig.set_size_inches(*size)
+			fig.subplots_adjust()
+			fig.tight_layout()
+			fig.savefig(path)
+
+
+		self.fig[attr] = fig
+		self.ax[attr] = ax
+
+		return
 
 
 class Hamiltonian(Object):
@@ -1404,7 +1531,8 @@ class Unitary(Hamiltonian):
 
 
 def distance(a,b):
-	return norm(a-b,axis=None,ord=2)/a.shape[0]
+	# return norm(a-b,axis=None,ord=2)/a.shape[0]
+	return 1-abs(inner(a,b.conj().T))/a.shape[0]
 	# return 1-(np.real(trace((a-b).conj().T.dot(a-b))/a.size)/2 - np.imag(trace((a-b).conj().T.dot(a-b))/a.size)/2)/2
 	# return 2*np.sqrt(1-np.abs(np.linalg.eigvals(a.dot(b))[0])**2)
 
@@ -1414,122 +1542,6 @@ def trotter(a,p):
 	return a
 
 
-def plot(x,y,**kwargs):
-	if not all(isinstance(u,(tuple)) for u in [x,y]):
-		x,y = [[x],],[[y],]
-	k,n = len(x),min(len(u) for u in x)
-	config = kwargs.get('config','config/plot.mplstyle')
-	path = kwargs.get('path','output/plot.pdf')
-	size = kwargs.get('size',(12,12))
-	label = kwargs.get('label',[[None]*n]*k)
-	legend = kwargs.get('legend',{'loc':(1.1,0.5)})
-	xlabel = kwargs.get('xlabel',[[r'$\textrm{Time}$']*n]*k)
-	ylabel = kwargs.get('ylabel',[[r'$\textrm{Amplitude}$']*n]*k)
-	xscale = kwargs.get('xscale','linear')
-	yscale = kwargs.get('yscale','linear')
-	xlim = kwargs.get('xlim',[[None,None]]*n)
-	ylim = kwargs.get('ylim',[[None,None]]*n)
-	fig,ax = kwargs.get('fig',None),kwargs.get('ax',None)
-	with matplotlib.style.context(config):
-		if fig is None or ax is None:
-			fig,ax = plt.subplots(n)
-			ax = [ax] if n==1 else ax
-		for i in range(n):
-			for j in range(k):
-				ax[i].plot(x[j][i],y[j][i],label=label[j][i])
-			ax[i].set_xlabel(xlabel=xlabel[j][i])
-			ax[i].set_ylabel(ylabel=ylabel[j][i])
-			ax[i].set_xscale(value=xscale)
-			ax[i].set_yscale(value=yscale)
-			ax[i].set_xlim(xmin=xlim[i][0],xmax=xlim[i][1])
-			ax[i].set_ylim(ymin=ylim[i][0],ymax=ylim[i][1])
-			ax[i].grid(True)
-			if label[j][i] is not None:
-				ax[i].legend(**legend)
-		fig.set_size_inches(*size)
-		fig.subplots_adjust()
-		fig.tight_layout()
-		fig.savefig(path)
-
-	return fig,ax
-
-
-
-def plot_parameters(parameters,hyperparameters,**kwargs):
-	'''
-	Plot Parameters
-	Args:
-		parameters (array): Parameters
-		hyperparameters (dict): Hyperparameters
-	Returns:
-		fig (object): Matplotlib figure object
-		ax (object): Matplotlib axes object
-	'''
-	category = 'variable'
-
-	localities = [hyperparameters['parameters'][parameter]['locality']
-		for parameter in hyperparameters['parameters']
-		if hyperparameters['parameters'][parameter]['category'] == category
-		]
-	localities = list(sorted(list(set(localities)),key = lambda i: localities.index(i)))
-
-	# slices = [i
-	# 	for parameter in hyperparameters['parameters']
-	# 	for group in hyperparameters['parameters'][parameter]['group']
-	# 	for i in hyperparameters['parameters'][parameter]['slice'][group]
-	# 	if hyperparameters['parameters'][parameter]['category'] == category
-	# 	]
-	# slices = list(sorted(list(set(slices)),key = lambda i: slices.index(i)))
-
-	groups = [group 
-		for parameter in hyperparameters['parameters']
-		for i,group in enumerate(hyperparameters['parameters'][parameter]['group'])
-		if ((hyperparameters['parameters'][parameter]['category'] == category)
-		and (hyperparameters['parameters'][parameter]['slice'][group] not in 
-			[hyperparameters['parameters'][parameter]['slice'][g] 
-			for g in hyperparameters['parameters'][parameter]['group'][:i]]))
-		]
-	groups = list(sorted(list(set(groups)),key = lambda i: groups.index(i)))
-
-
-	print(groups)
-
-	print([hyperparameters['parameters'][parameter]['site'][group] 
-	for group in groups
-	for parameter in hyperparameters['parameters'] 
-	if ((hyperparameters['parameters'][parameter]['category'] == category) 
-	and (i in hyperparameters['parameters'][parameter]['slice'][group]))])
-
-
-	_kwargs = {
-		'string': '%s'%(hyperparameters['hyperparameters']['track']['iteration'][-1]),
-		'fig':None,
-		'ax':None,
-		'path':'output/parameters.pdf',
-	} 
-	kwargs.upate({attr: _kwargs[attr] for attr in _kwargs if attr not in kwargs})
-
-	exit()
-
-	shape = hyperparameters['shapes'][category]
-
-	parameters = parameters.reshape(shape)
-
-	fig,ax = plot(x=([arange(shape[0]) for i in range(shape[1])],),y=([u for u in parameters.T],),		
-		label=[[r'${%s}_{%s}^{\textrm{%s}}$'%(
-				[r'\alpha',r'\phi'][i%2],'',kwargs.get('string',''))
-				for i in range(shape[1])]],
-		xlabel=[[r'$\textrm{Time}$' for i in range(shape[1])]],
-		ylabel=[[[r'$\textrm{Amplitude}$',r'$\textrm{Phase}$'][i%2] for i in range(shape[1])]],
-		# ylim=[[hyperparameters['trainable'][category]['bounds'],
-		yscale='linear',
-		legend = {'loc':kwargs.get('loc',(0.78,0.1))},
-		size= kwargs.get('size',(20,20)),
-		fig=kwargs.get('fig'),ax=kwargs.get('ax'),
-		path=kwargs.get('path','output/parameters.pdf')
-		)
-
-	return fig,ax
 
 
 def run(index,hyperparameters={}):
@@ -1544,10 +1556,10 @@ def run(index,hyperparameters={}):
 
 	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters['hyperparameters'])
 
-	# obj.__plot__(parameters)
-
 	parameters = optimizer(parameters)
 
-	# obj.__plot__(parameters)
+	for i,parameters in enumerate(hyperparameters['hyperparameters']['track']['parameters']):
+		iteration = {0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[i]
+		obj.__plot__(parameters,iteration=iteration)
 
 	return
