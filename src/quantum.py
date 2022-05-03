@@ -27,11 +27,11 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.optimize import Optimizer,Objective
-from src.utils import jit,gradient
+from src.utils import jit,gradient,finitegradient
 from src.utils import array,dictionary,ones,zeros,arange,rand,identity
 from src.utils import tensorprod,trace,broadcast_to
 from src.utils import summation,exponentiation
-from src.utils import maximum,minimum,abs,cos,sin,heaviside,sigmoid,inner,norm,interpolate,unique
+from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner,norm,interpolate,unique
 from src.utils import parse
 
 # Logging
@@ -1405,7 +1405,7 @@ class Hamiltonian(Object):
 
 		# parameters are initialized as interpolated random values between bounds
 		factor = min(shape[0],hyperparameters['hyperparameters']['smoothness'])
-		shape_interp = (shape[0]//factor + 1,*shape[1:])
+		shape_interp = (shape[0]//factor + 1 - (factor==1),*shape[1:])
 		
 		pts_interp = factor*arange(shape_interp[0])
 		pts = arange(shape[0])
@@ -1421,7 +1421,8 @@ class Hamiltonian(Object):
 				key,subkey = jax.random.split(key)
 				bounds = hyperparameters['parameters'][parameter]['bounds']
 				for group in hyperparameters['parameters'][parameter]['group']:
-					parameters_interp = parameters_interp.at[:,hyperparameters['parameters'][parameter]['slice'][group]].set(rand(
+					parameters_interp = parameters_interp.at[:,hyperparameters['parameters'][parameter]['slice'][group]].set(
+						rand(
 						key,(shape_interp[0],len(hyperparameters['parameters'][parameter]['slice'][group]),*shape_interp[2:]),
 						bounds=[bounds[0] + (bounds[1]-bounds[0])*hyperparameters['hyperparameters']['init'][0],bounds[1]**hyperparameters['hyperparameters']['init'][1]],
 						random=hyperparameters['hyperparameters']['random']
@@ -1440,6 +1441,12 @@ class Hamiltonian(Object):
 						hyperparameters['parameters'][parameter]['bounds'][1], 
 						maximum(
 						hyperparameters['parameters'][parameter]['bounds'][0],
+						# rand(
+						# key,(shape[0],len(hyperparameters['parameters'][parameter]['slice'][group]),*shape[2:]),
+						# bounds=[bounds[0] + (bounds[1]-bounds[0])*hyperparameters['hyperparameters']['init'][0],bounds[1]**hyperparameters['hyperparameters']['init'][1]],
+						# random=hyperparameters['hyperparameters']['random'])
+						# )
+						# )
 						interpolate(
 						pts_interp,parameters_interp[:,hyperparameters['parameters'][parameter]['slice'][group]],
 						pts,hyperparameters['hyperparameters']['interpolation'])
@@ -1448,11 +1455,13 @@ class Hamiltonian(Object):
 
 			for i in hyperparameters['parameters'][parameter]['boundaries']:
 				if hyperparameters['parameters'][parameter]['boundaries'][i] is not None and i < shape[0]:
-					hyperparameters['parameters'][parameter]['parameters'] = hyperparameters['parameters'][parameter]['parameters'].at[i,:].set(hyperparameters['parameters'][parameter]['boundaries'][i])
+					hyperparameters['parameters'][parameter]['parameters'] = hyperparameters['parameters'][parameter]['parameters'].at[i,:].set(
+						hyperparameters['parameters'][parameter]['boundaries'][i])
 
 			if hyperparameters['parameters'][parameter]['category'] == category:
 				for group in hyperparameters['parameters'][parameter]['group']:
-					parameters = parameters.at[:,hyperparameters['parameters'][parameter]['slice'][group]].set(hyperparameters['parameters'][parameter]['parameters'])
+					parameters = parameters.at[:,hyperparameters['parameters'][parameter]['slice'][group]].set(
+						hyperparameters['parameters'][parameter]['parameters'])
 
 
 
@@ -1532,7 +1541,7 @@ class Unitary(Hamiltonian):
 
 def distance(a,b):
 	# return norm(a-b,axis=None,ord=2)/a.shape[0]
-	return 1-abs(inner(a,b.conj().T))/a.shape[0]
+	return 1-real(inner(a,b.conj().T))/a.shape[0]
 	# return 1-(np.real(trace((a-b).conj().T.dot(a-b))/a.size)/2 - np.imag(trace((a-b).conj().T.dot(a-b))/a.size)/2)/2
 	# return 2*np.sqrt(1-np.abs(np.linalg.eigvals(a.dot(b))[0])**2)
 
@@ -1553,6 +1562,19 @@ def run(index,hyperparameters={}):
 	
 	func = obj.__func__
 	callback = obj.__callback__
+
+	# func = lambda x: (cos(x)-sin(x)).sum()
+
+	# grad = gradient(func)
+	# finitegrad = finitegradient(func,eps=1e-7)
+	# analgrad = lambda x: func(x)+(-2*cos(x)-1)
+
+	# onp.random.seed(23233)
+
+	# parameters = onp.random.rand(*parameters.shape)
+	# print(abs(grad(parameters)-finitegrad(parameters))/abs(grad(parameters)))
+	# print(abs(grad(parameters)-analgrad(parameters))/abs(grad(parameters)))
+	# return
 
 	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters['hyperparameters'])
 

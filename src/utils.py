@@ -106,8 +106,7 @@ def gradient(func):
 	return jit(jax.grad(func))
 
 
-@partial(jit,static_argnums=(0,1))
-def finitegradient(func,eps=1e-5):
+def finitegradient(func,eps=1e-6):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
@@ -115,11 +114,14 @@ def finitegradient(func,eps=1e-5):
 	Returns:
 		out (array): Array of gradient
 	'''
-	return lambda x: vmap(lambda v: (func(x+eps*v)-func(x-eps*v))/(2*eps))(eye(x.size))
+
+	def _gradient(x):
+		return vmap(lambda v,x=x,eps=eps: (func(x+eps*v)-func(x-eps*v))/(2*eps))(eye(x.size))
+
+	return _gradient
 
 
-@partial(jit,static_argnums=(0,1))
-def value_and_finitegradient(func,eps=1e-5):
+def value_and_finitegradient(func,eps=1e-6):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
@@ -127,7 +129,10 @@ def value_and_finitegradient(func,eps=1e-5):
 	Returns:
 		out (array): Array of gradient
 	'''
-	return lambda x: (func(x),vmap(lambda v: (func(x+eps*v)-func(x-eps*v))/(2*eps))(eye(x.size)))
+
+	def _value_and_gradient(x):
+		return (func(x),vmap(lambda v,x=x,eps=eps: (func(x+eps*v)-func(x-eps*v))/(2*eps))(eye(x.size)))
+	return _value_and_gradient
 
 
 
@@ -1062,6 +1067,30 @@ def abs(a):
 		out (array): Absolute value of array
 	'''	
 	return np.abs(a)
+
+
+@jit
+def real(a):
+	'''
+	Calculate real value of array
+	Args:
+		a (array): Array to calculate real value
+	Returns:
+		out (array): Real value of array
+	'''	
+	return a.real
+
+
+@jit
+def imag(a):
+	'''
+	Calculate imaginary value of array
+	Args:
+		a (array): Array to calculate imaginary value
+	Returns:
+		out (array): Imaginary value of array
+	'''	
+	return a.imag
 
 
 @jit

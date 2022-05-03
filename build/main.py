@@ -335,43 +335,43 @@ def main(args):
 		iteration = load('output/iteration_%s_%s_%d.npy'%(method,locality,prev_realizations+realizations))
 		objective = load('output/objective_%s_%s_%d.npy'%(method,locality,prev_realizations+realizations))
 
-	realizations = min(len(iteration),len(objective))	
-	slices = slice(1,None)
-	iteration = iteration.mean(0)
-	objective,error = objective.mean(0),objective.std(0)
+	# realizations = min(len(iteration),len(objective))	
+	# slices = slice(1,None)
+	# iteration = iteration.mean(0)
+	# objective,error = objective.mean(0),objective.std(0)
 
 
 
-	x,y,yerr = iteration[slices],objective[slices],error[slices]
-	config = 'config/plot.mplstyle'
+	# x,y,yerr = iteration[slices],objective[slices],error[slices]
+	# config = 'config/plot.mplstyle'
 
-	with matplotlib.style.context(config):
+	# with matplotlib.style.context(config):
 
-		fig,ax = plt.subplots()
-
-
-		ax.set_yscale(value='log',base=10)
-
-		ax.set_xlabel(r'$\textrm{Iteration}$')
-		ax.set_ylabel(r'$\textrm{Fidelity}$')
-		# ax.set_ylim(6e-1,1.2e0)
-		ax.set_ylim(1e-1,1e0)
-		# ax.set_yticks([80e-2,85e-2,90e-2,95e-2,100e-2])
-		# ax.set_yticks([10e-2,20e-2,30e-2,40e-2,50e-2])
-		ax.tick_params(axis='y',which='major')
-		ax.tick_params(axis='y',which='minor')
-		ax.tick_params(axis='x',which='major')
-		ax.tick_params(axis='x',which='minor')
-		ax.grid(True)
-
-		# ax.plot(x,y,'--o')
-		ax.errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=1,capsize=1)
+	# 	fig,ax = plt.subplots()
 
 
-		fig.set_size_inches(6,6)
-		fig.subplots_adjust()
-		fig.tight_layout()
-		fig.savefig('output/fidelity_method%s_local%s_repeats%d__iterations%d_N%d_M%d.pdf'%(method,locality,realizations,iterations,N,M))
+	# 	ax.set_yscale(value='log',base=10)
+
+	# 	ax.set_xlabel(r'$\textrm{Iteration}$')
+	# 	ax.set_ylabel(r'$\textrm{Fidelity}$')
+	# 	# ax.set_ylim(6e-1,1.2e0)
+	# 	ax.set_ylim(1e-1,1e0)
+	# 	# ax.set_yticks([80e-2,85e-2,90e-2,95e-2,100e-2])
+	# 	# ax.set_yticks([10e-2,20e-2,30e-2,40e-2,50e-2])
+	# 	ax.tick_params(axis='y',which='major')
+	# 	ax.tick_params(axis='y',which='minor')
+	# 	ax.tick_params(axis='x',which='major')
+	# 	ax.tick_params(axis='x',which='minor')
+	# 	ax.grid(True)
+
+	# 	# ax.plot(x,y,'--o')
+	# 	ax.errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=1,capsize=1)
+
+
+	# 	fig.set_size_inches(6,6)
+	# 	fig.subplots_adjust()
+	# 	fig.tight_layout()
+	# 	fig.savefig('output/fidelity_method%s_local%s_repeats%d__iterations%d_N%d_M%d.pdf'%(method,locality,realizations,iterations,N,M))
 
 
 
