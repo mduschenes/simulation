@@ -32,6 +32,12 @@ except:
 logger = logging.getLogger(__name__)
 
 
+
+# Constants
+pi = np.pi
+e = np.exp(1)
+
+
 def jit(func,*,static_argnums=None):
 	'''
 	Just-in-time compile function
@@ -1184,10 +1190,8 @@ def expm(x,A,I):
 	_func = lambda i: _expm(x[i],A[i%l],I)
 	func = lambda i,out: _matmul(out,_func(i))
 	
-	i = 0
-	out = _func(i)
-
-	return jax.lax.fori_loop(i+1,k,func,out)
+	out = I
+	return jax.lax.fori_loop(0,k,func,out)
 	# return jsp.linalg.expm(a)
 
 

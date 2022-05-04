@@ -141,7 +141,6 @@ class Base(object):
 		'''
 
 		state = self.opt_init(parameters)
-
 		for iteration in range(self.iterations):
 			state = self.opt_update(iteration,state)
 
@@ -175,7 +174,7 @@ class Base(object):
 		alpha = self.alpha
 		search = -grad
 
-		state += alpha*search
+		parameters = parameters + alpha*search
 
 		self.alpha = alpha
 		self.search = search
@@ -183,6 +182,7 @@ class Base(object):
 		self.track['alpha'].append(self.alpha)
 		self.track['search'].append(self.search)
 
+		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
 		
 		self.callback(parameters)
@@ -354,7 +354,7 @@ class GradientDescent(Base):
 		alpha = self.alpha
 		search = -grad
 
-		state += alpha*search
+		parameters = parameters + alpha*search
 
 		self.alpha = alpha
 		self.search = search
@@ -362,6 +362,7 @@ class GradientDescent(Base):
 		self.track['alpha'].append(self.alpha)
 		self.track['search'].append(self.search)
 
+		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
 		
 		self.callback(parameters)
@@ -424,18 +425,17 @@ class ConjugateGradient(Base):
 		search = self.track['search'][-1]
 		grad = self.track['grad'][-1]
 
-		parameters += alpha*search
+		parameters = parameters + alpha*search
 
 		state = self.opt_init(parameters)
 
-
 		_value,_grad,parameters = self.opt_step(iteration+1,state)
 
-		# beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
+		beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
 		# beta = max(0,(_grad.dot(_grad-grad))/grad.dot(grad)) # Polak-Ribiere
 		# beta = [(_grad.dot(_grad))/(grad.dot(grad)),max(0,(_grad.dot(_grad-grad))/grad.dot(grad))]
 		# beta = -beta[0] if beta[1] < -beta[0] else beta[1] if abs(beta[1]) <= beta[0] else beta[0] # Polak-Ribiere-Fletcher-Reeves
-		beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
+		# beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
 		restart = (iteration%self.hyperparameters['restart']) == 0

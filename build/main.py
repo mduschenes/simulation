@@ -28,6 +28,7 @@ for PATH in PATHS:
 
 from src.quantum import run
 from src.utils import jit,array,tensorprod,sin,cos,sigmoid
+from src.utils import pi,e
 from src.io import load,dump
 
 # Logging
@@ -85,8 +86,9 @@ def main(args):
 			objective = []
 			iteration = []
 		elif train == -1:
-			iteration = load('output/iteration_%s_%s_%d.npy'%(method,locality,prev_realizations+1)).tolist()
-			objective = load('output/objective_%s_%s_%d.npy'%(method,locality,prev_realizations+1)).tolist()
+			pass
+			# iteration = load('output/iteration_%s_%s_%d.npy'%(method,locality,prev_realizations+1)).tolist()
+			# objective = load('output/objective_%s_%s_%d.npy'%(method,locality,prev_realizations+1)).tolist()
 		for i in range(realizations):
 			print(i)
 			N = N
@@ -95,7 +97,7 @@ def main(args):
 			L = L
 			M = M
 			T = T
-			tau = tau
+			tau = tau/scale
 			delta = delta
 			p = p
 			locality = locality
@@ -254,14 +256,14 @@ def main(args):
 						'boundaries':{0:0,-1:0},
 						'func': {
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (	
-								2*np.pi/4/(20e-6)*scale*
+								2*pi/4/(20e-6)*scale*
 								1*(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-								cos(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
+								cos(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
 							for group in [('x',)]},
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
-								2*np.pi/4/(20e-6)*scale*
+								2*pi/4/(20e-6)*scale*
 								1*(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-								sin(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
+								sin(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
 							for group in [('y',)]},
 						},
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (
@@ -276,11 +278,11 @@ def main(args):
 						'category':'constant',
 						'locality':'locality',
 						'parameters':array([
-							-2*np.pi/2*1000*scale,
+							-2*pi/2*1000*scale,
 							0*scale,
-							2*np.pi/2*1000*scale,
-							2*np.pi/2*500*scale,
-							*(2*np.pi/2*(2*onp.random.randint(2)-1)*1000*onp.random.rand(max(1,N-4))*scale)
+							2*pi/2*1000*scale,
+							2*pi/2*500*scale,
+							*(2*pi/2*(2*onp.random.randint(2)-1)*1000*onp.random.rand(max(1,N-4))*scale)
 							# *(0.5*onp.arange(1,N+1))
 							][:N]),
 						'size':1,
@@ -296,13 +298,13 @@ def main(args):
 						'category':'constant',
 						'locality':'locality',
 						'parameters':array([
-							2*np.pi/4*72.4*scale,
-							-2*np.pi/4*130*scale,
-							2*np.pi/4*50.0*scale,
-							2*np.pi/4*80.0*scale,
-							2*np.pi/4*20.0*scale,
-							2*np.pi/4*200.0*scale,
-							*(2*np.pi/4*(2*onp.random.randint(2)-1)*200*onp.random.rand(max(1,N**2))*scale)
+							2*pi/4*72.4*scale,
+							-2*pi/4*130*scale,
+							2*pi/4*50.0*scale,
+							2*pi/4*80.0*scale,
+							2*pi/4*20.0*scale,
+							2*pi/4*200.0*scale,
+							*(2*pi/4*(2*onp.random.randint(2)-1)*200*onp.random.rand(max(1,N**2))*scale)
 							# *(-0.1*onp.arange(1,(N*(N-1))//2+1))							
 							][:(N*(N-1))//2]),
 						'size':1,
@@ -324,16 +326,16 @@ def main(args):
 			iteration.append(hyperparameters['hyperparameters']['track']['iteration'][:])
 			objective.append(hyperparameters['hyperparameters']['track']['objective'][:])
 
-			dump(onp.array(iteration),'output/iteration_%s_%s_%d.npy'%(method,locality,prev_realizations+1+i))
-			dump(onp.array(objective),'output/objective_%s_%s_%d.npy'%(method,locality,prev_realizations+1+i))
+			# dump(onp.array(iteration),'output/iteration_%s_%s_%d.npy'%(method,locality,prev_realizations+1+i))
+			# dump(onp.array(objective),'output/objective_%s_%s_%d.npy'%(method,locality,prev_realizations+1+i))
 
 		iteration = onp.array(iteration)
 		objective = onp.array(objective)
 
 	else:
-
-		iteration = load('output/iteration_%s_%s_%d.npy'%(method,locality,prev_realizations+realizations))
-		objective = load('output/objective_%s_%s_%d.npy'%(method,locality,prev_realizations+realizations))
+		pass
+		# iteration = load('output/iteration_%s_%s_%d.npy'%(method,locality,prev_realizations+realizations))
+		# objective = load('output/objective_%s_%s_%d.npy'%(method,locality,prev_realizations+realizations))
 
 	# realizations = min(len(iteration),len(objective))	
 	# slices = slice(1,None)

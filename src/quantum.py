@@ -31,7 +31,8 @@ from src.utils import jit,gradient,finitegradient
 from src.utils import array,dictionary,ones,zeros,arange,rand,identity
 from src.utils import tensorprod,trace,broadcast_to
 from src.utils import summation,exponentiation
-from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner,norm,interpolate,unique
+from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner,norm,interpolate,unique,allclose
+from src.utils import pi,e
 from src.utils import parse
 
 # Logging
@@ -725,7 +726,7 @@ class Object(object):
 		Returns:
 			parameters (array): parameters		
 		'''
-		self.parameters = parameters
+		# self.parameters = parameters
 		return parameters
 
 	@partial(jit,static_argnums=(0,))
@@ -782,7 +783,7 @@ class Object(object):
 			loss + constraints (array): loss + constraints
 		'''	
 		return self.__loss__(parameters) + self.__constraints__(parameters)
-
+		# return self.__loss__(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def __callback__(self,parameters):
@@ -792,8 +793,10 @@ class Object(object):
 			parameters (array): parameters
 		'''	
 
-		# self.hyperparameters['hyperparameters']['track']['objective'].append(self.__objective__(parameters))
-		self.hyperparameters['hyperparameters']['track']['objective'].append(1-self.hyperparameters['hyperparameters']['track']['value'][-1])
+		self.hyperparameters['hyperparameters']['track']['objective'].append(
+			# 1-self.hyperparameters['hyperparameters']['track']['value'][-1] + self.__constraints__(parameters)
+			self.__objective__(parameters)
+			)
 
 		if self.hyperparameters['hyperparameters']['track']['iteration'][-1]%self.hyperparameters['hyperparameters']['track']['log'] == 0:			
 			logger.log(self.verbose,'%d f(x) = %0.4f \nalpha = %0.3e \nbeta = %0.3e \n'%(
@@ -811,11 +814,12 @@ class Object(object):
 			VH = V.conj().T
 
 			print(
-				'func',i,'\n',
-				'U-V',U-V,'\n',
-				'UV',U.dot(VH),'\n',
-				'UU',U.dot(UH),'\n',
-				'VV',V.dot(VH),'\n',
+				'func \n',i,'\n',
+				'U \n',U,'\n',
+				# 'U-V \n',U-V,'\n',
+				# 'UV \n',U.dot(VH),'\n',
+				# 'UU \n',U.dot(UH),'\n',
+				# 'VV \n',V.dot(VH),'\n',
 			)
 			print(
 				np.linalg.norm(parameters)/parameters.size,
@@ -824,8 +828,10 @@ class Object(object):
 				parameters.reshape(self.hyperparameters['shapes']['variable'])[-1],
 				)
 
-		if self.hyperparameters['hyperparameters']['track']['iteration'][-1] in [0,self.hyperparameters['hyperparameters']['iterations']-1]:			
-			self.hyperparameters['hyperparameters']['track']['parameters'].append(parameters.copy())
+		self.hyperparameters['hyperparameters']['track']['parameters'].append(copy.deepcopy(parameters))
+
+		# if self.hyperparameters['hyperparameters']['track']['iteration'][-1] in [0,self.hyperparameters['hyperparameters']['iterations']-1]:			
+		# 	self.hyperparameters['hyperparameters']['track']['parameters'].append(copy.deepcopy(parameters))
 
 		return 
 
@@ -991,11 +997,11 @@ class Object(object):
 
 		# Get hyperparameters
 		hyperparameters = self.hyperparameters
+		
+
+		# Get parameters
 		category = 'variable'
-
-
 		shape = hyperparameters['shapes'][category]
-
 		parameters = parameters.reshape(shape)
 
 
@@ -1013,24 +1019,46 @@ class Object(object):
 			if fig is None:
 				fig,ax = plt.subplots(shape[1],1)
 
-			for i in range(shape[1]):
-				x = np.arange(shape[0])
-				y = parameters[:,i]
+			for j,parameters in enumerate(hyperparameters['hyperparameters']['track']['parameters']):
 
-				label = [r'\alpha',r'\phi'][i%2]
+				if j%10 != 0:
+					continue
+				parameters = parameters.reshape(shape)
 
-				ax[i].plot(x,y,linewidth=3,label=r'${%s}^{(%s)}_{%s}$'%(label,str(kwargs.get('iteration','')),str(i//2) if shape[1]>2 else ''))#str(['x','y'][i>=(shape[1]//2)])))
+				# iteration = {0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[j]
+				iteration = j#{0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[j]
+				iteration = {0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[j]
 
-				label = [r'\alpha',r'\phi'][i%2]
+				for i in range(shape[1]):
+					x = np.arange(shape[0])
+					y = parameters[:,i]
 
-				ax[i].set_xlim(xmin=0,xmax=shape[0])
-				ax[i].set_ylim(ymin=-0.25,ymax=1.25)
-				ax[i].set_ylabel(ylabel=r'$%s$'%(label))
-				ax[i].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
-				ax[i].set_yscale(value='linear')
+					# y = y - hyperparameters['hyperparameters']['track']['parameters'][0].reshape(shape)[:,i]
 
-				ax[i].legend(loc=(0.78,0.1))
-				ax[i].grid(True)	
+					# if i == 0:
+					# 	scale = (1)*(2*pi/4/(20e-6))
+					# 	y = scale*y
+					# elif i == 1:
+					# 	y = 2*pi*y
+
+					# x = x[1:-1]
+					# y = y[1:-1]
+
+					label = [r'\alpha',r'\phi'][i%2]
+
+					ax[i].plot(x,y,marker='',alpha=0.8,linewidth=3,label=r'${%s}^{(%s)}_{%s}$'%(label,str(iteration),str(i//2) if shape[1]>2 else ''))#str(['x','y'][i>=(shape[1]//2)])))
+
+					label = [r'\alpha',r'\phi'][i%2]
+
+					ax[i].set_xlim(xmin=0,xmax=shape[0])
+					# ax[i].set_ylim(ymin=-0.25,ymax=1.25)
+					ax[i].set_ylabel(ylabel=r'$%s$'%(label))
+					ax[i].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
+					ax[i].set_yscale(value='linear')
+					# ax[i].set_yscale(value='log')
+
+					ax[i].legend(loc=(0.78,0.1))
+					ax[i].grid(True)	
 
 			fig.set_size_inches(*size)
 			fig.subplots_adjust()
@@ -1202,10 +1230,10 @@ class Hamiltonian(Object):
 
 		# Basis single-site operators
 		basis = {
-			'I': array([[1,0],[0,1]]),
-			'X': array([[0,1],[1,0]]),
-			'Y': array([[0,-1j],[1j,0]]),
-			'Z': array([[1,0],[0,-1]]),
+			'I': array([[1,0],[0,1]],dtype=self.dtype),
+			'X': array([[0,1],[1,0]],dtype=self.dtype),
+			'Y': array([[0,-1j],[1j,0]],dtype=self.dtype),
+			'Z': array([[1,0],[0,-1]],dtype=self.dtype),
 		}
 
 
@@ -1339,33 +1367,46 @@ class Hamiltonian(Object):
 		'''		
 
 		# Get class attributes
-		self.parameters = parameters
+		# self.parameters = parameters
 		hyperparameters = self.hyperparameters
 
 		# Set all parameters
 		
 		category = 'variable'
-		value = hyperparameters['value']
 		shape = hyperparameters['shapes'][category]
-
 		parameters = parameters.reshape(shape)
 
-		for parameter in hyperparameters['parameters']:
+		# value = hyperparameters['value']
+		# for parameter in hyperparameters['parameters']:
 
-			if hyperparameters['parameters'][parameter]['category'] is category:
-				for group in hyperparameters['parameters'][parameter]['group']:
-					# print(parameter,group,hyperparameters['parameters'][parameter]['index'][group],hyperparameters['parameters'][parameter]['slice'][group])
-					# if 'x' in group:
-					# 	print(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*np.cos(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]]))
-					# elif 'y' in group:
-					# 	print(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*np.sin(2*np.pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]]))
-					value = value.at[:,hyperparameters['parameters'][parameter]['index'][group]].set(
-							hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
+		# 	if hyperparameters['parameters'][parameter]['category'] is category:
+		# 		for group in hyperparameters['parameters'][parameter]['group']:
+		# 			# print(parameter,group,hyperparameters['parameters'][parameter]['index'][group],hyperparameters['parameters'][parameter]['slice'][group])
+		# 			# if 'x' in group:
+		# 			# 	print(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*np.cos(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]]))
+		# 			# elif 'y' in group:
+		# 			# 	print(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*np.sin(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]]))
+		# 			value = value.at[:,hyperparameters['parameters'][parameter]['index'][group]].set(
+		# 					hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
+
+		value = zeros(self.shape)
+								
+		scale = 1
+		value = value.at[:,0*self.N:1*self.N].set((2*pi/4/(20e-6)*scale)*parameters[:,0::2]*cos(2*pi*parameters[:,1::2]))
+		value = value.at[:,1*self.N:2*self.N].set((2*pi/4/(20e-6)*scale)*parameters[:,0::2]*sin(2*pi*parameters[:,1::2]))
+		value = value.at[:,2*self.N:3*self.N].set(hyperparameters['parameters']['z']['parameters'])
+		value = value.at[:,3*self.N:3*self.N + (self.N*(self.N-1))//2].set(hyperparameters['parameters']['zz']['parameters'])
 
 		# print(value)
+		# print(values)
+		# print(np.allclose(value,values))
+		# print(value.shape,self.shape,parameters.shape)
+		# exit()
+		
 		# Get Trotterized order of copies of parameters
 		p = hyperparameters['p']
 		parameters = trotter(value.T,p).T/p
+		# print(parameters)
 
 		# print(parameters)
 
@@ -1375,11 +1416,6 @@ class Hamiltonian(Object):
 
 		# Get reshaped parameters
 		parameters = parameters.ravel()
-
-		# Update class attributes
-		self.hyperparameters = hyperparameters
-
-		# exit()
 
 		return parameters
 
@@ -1394,7 +1430,6 @@ class Hamiltonian(Object):
 		'''
 
 		# Get class attributes
-		self.parameters = parameters
 		hyperparameters = self.hyperparameters
 
 		# Initialize parameters
@@ -1540,14 +1575,15 @@ class Unitary(Hamiltonian):
 
 
 def distance(a,b):
-	# return norm(a-b,axis=None,ord=2)/a.shape[0]
-	return 1-real(inner(a,b.conj().T))/a.shape[0]
+	return norm(a-b,axis=None,ord=2)/a.shape[0]
+	# return 1-abs(inner(a,b.conj().T))/a.shape[0]
 	# return 1-(np.real(trace((a-b).conj().T.dot(a-b))/a.size)/2 - np.imag(trace((a-b).conj().T.dot(a-b))/a.size)/2)/2
 	# return 2*np.sqrt(1-np.abs(np.linalg.eigvals(a.dot(b))[0])**2)
 
 
 def trotter(a,p):
-	a = broadcast_to([v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u],(p*a.shape[0],*a.shape[1:]))
+	# a = broadcast_to([v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u],(p*a.shape[0],*a.shape[1:]))
+	a = array([v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u])#,(p*a.shape[0],*a.shape[1:]))
 	return a
 
 
@@ -1563,25 +1599,36 @@ def run(index,hyperparameters={}):
 	func = obj.__func__
 	callback = obj.__callback__
 
-	# func = lambda x: (cos(x)-sin(x)).sum()
-
-	# grad = gradient(func)
-	# finitegrad = finitegradient(func,eps=1e-7)
-	# analgrad = lambda x: func(x)+(-2*cos(x)-1)
-
-	# onp.random.seed(23233)
-
-	# parameters = onp.random.rand(*parameters.shape)
-	# print(abs(grad(parameters)-finitegrad(parameters))/abs(grad(parameters)))
-	# print(abs(grad(parameters)-analgrad(parameters))/abs(grad(parameters)))
-	# return
-
 	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters['hyperparameters'])
 
 	parameters = optimizer(parameters)
 
-	for i,parameters in enumerate(hyperparameters['hyperparameters']['track']['parameters']):
-		iteration = {0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[i]
-		obj.__plot__(parameters,iteration=iteration)
+	obj.__plot__(parameters)
+
+	# func(parameters)
+	# exit()
+
+	# func = lambda x: (cos(x)-sin(x)).sum()
+	# grad = gradient(func)
+	# finitegrad = finitegradient(func,eps=1e-7)
+	# analgrad = lambda x: func(x)+(-2*cos(x)-1)
+
+	# print(abs(grad(parameters)-finitegrad(parameters))/abs(grad(parameters)))
+	# print(abs(grad(parameters)-analgrad(parameters))/abs(grad(parameters)))
+
+
+	# grad = gradient(func)
+	# finitegrad = finitegradient(func,eps=1e0)
+
+	# onp.random.seed(23233)
+
+	# for i in range(10):
+	# 	parameters = onp.random.rand(*parameters.shape)
+	# 	# print(abs(grad(parameters)-finitegrad(parameters))/abs(grad(parameters)))
+	# 	print(abs(grad(parameters)-finitegrad(parameters)))
+
+	# return
+
+
 
 	return
