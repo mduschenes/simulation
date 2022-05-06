@@ -1276,7 +1276,7 @@ class Hamiltonian(Object):
 		size = len(data)
 
 		# Get Trotterized order of p copies of data for products of data
-		data = trotter(data,self.p)
+		data = trotter(data,self.p)/p
 
 		# Get shape of parameters
 		shape = (self.M,size)
@@ -1405,7 +1405,7 @@ class Hamiltonian(Object):
 		
 		# Get Trotterized order of copies of parameters
 		p = hyperparameters['p']
-		parameters = trotter(value.T,p).T/p
+		parameters = trotter(value.T,p).T
 		# print(parameters)
 
 		# print(parameters)
