@@ -798,7 +798,10 @@ class Object(object):
 			self.__objective__(parameters)
 			)
 
-		if self.hyperparameters['hyperparameters']['track']['iteration'][-1]%self.hyperparameters['hyperparameters']['track']['log'] == 0:			
+		if self.hyperparameters['hyperparameters']['track']['iteration'][-1]%self.hyperparameters['hyperparameters']['track']['track']['log'] == 0:			
+
+			self.hyperparameters['hyperparameters']['track']['parameters'].append(copy.deepcopy(parameters))		
+
 			logger.log(self.verbose,'%d f(x) = %0.4f \nalpha = %0.3e \nbeta = %0.3e \n'%(
 				self.hyperparameters['hyperparameters']['track']['iteration'][-1],
 				self.hyperparameters['hyperparameters']['track']['objective'][-1],
@@ -807,31 +810,18 @@ class Object(object):
 				)
 			)
 
-			i = self.hyperparameters['hyperparameters']['track']['iteration'][-1]
-			U = self(parameters)
-			V = self.hyperparameters['label']
-			UH = U.conj().T
-			VH = V.conj().T
-
-			print(
-				'func \n',i,'\n',
-				'U \n',U,'\n',
-				# 'U-V \n',U-V,'\n',
-				# 'UV \n',U.dot(VH),'\n',
-				# 'UU \n',U.dot(UH),'\n',
-				# 'VV \n',V.dot(VH),'\n',
+			logger.log(self.verbose,'func %d \nU\n%r'%(
+				self.hyperparameters['hyperparameters']['track']['iteration'][-1],
+				self(parameters)
+				)
 			)
-			print(
+			logger.log(self.verbose,'norm: %0.4e\nmax: %0.4e\nmin: %0.4e\nbcs:\n%r\n%r'%(
 				np.linalg.norm(parameters)/parameters.size,
 				parameters.max(),parameters.min(),
 				parameters.reshape(self.hyperparameters['shapes']['variable'])[0],
 				parameters.reshape(self.hyperparameters['shapes']['variable'])[-1],
 				)
-
-		self.hyperparameters['hyperparameters']['track']['parameters'].append(copy.deepcopy(parameters))
-
-		# if self.hyperparameters['hyperparameters']['track']['iteration'][-1] in [0,self.hyperparameters['hyperparameters']['iterations']-1]:			
-		# 	self.hyperparameters['hyperparameters']['track']['parameters'].append(copy.deepcopy(parameters))
+			)
 
 		return 
 
@@ -1492,7 +1482,6 @@ class Hamiltonian(Object):
 
 
 		# Get reshaped parameters
-
 		parameters = parameters.ravel()
 
 		# Update class attributes

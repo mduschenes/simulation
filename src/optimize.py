@@ -111,7 +111,7 @@ class Base(object):
 			'alpha':0,
 			'search':0,
 			'iterations':0,
-			'track':{'log':1,'track':10,'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
+			'track':{'track':{'log':1,'track':10,'callback':1},'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
 
@@ -214,7 +214,7 @@ class Base(object):
 		parameters = self.get_params(state)
 		value,grad = self.value_and_grad(parameters)
 
-		if self.track['size'] > self.track['track']:
+		if self.track['size'] > self.track['track']['track']:
 			self.track['grad'].pop(0)
 			self.track['search'].pop(0)
 
@@ -243,7 +243,7 @@ class Optimizer(Base):
 			'alpha':0,
 			'search':0,
 			'iterations':0,
-			'track':{'log':1,'track':10,'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
+			'track':{'track':{'log':1,'track':10,'callback':1},'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
 

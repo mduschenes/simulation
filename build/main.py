@@ -80,7 +80,8 @@ def main(args):
 
 	onp.random.seed(seed)
 
-	scale = 100*1e-6
+	# scale = 100*1e-6
+	scale = 1/(2*pi/4/(20e-6))
 	if train:
 		if train == 1:
 			objective = []
@@ -235,11 +236,12 @@ def main(args):
 					'c1':0.0001,'c2':0.9,'maxiter':50,'restart':iterations//4,'tol':1e-14,
 					'bound':1e4,'alpha':1,'beta':1e-1,'lambda':1*np.array([1e-6,1e-6,1e-2]),'eps':980e-3,
 					'linesearch':1,
-					'track':{'log':1,'track':10,'size':0,
-						 'iteration':[],'objective':[],
-						 'value':[],'grad':[],'search':[],
-						 'alpha':[],'beta':[],'lambda':[],
-						 'parameters':[],
+					'track':{
+						'track':{'log':1,'track':10,'callback':1},
+						'iteration':[],'objective':[],
+						'value':[],'grad':[],'search':[],
+						'alpha':[],'beta':[],'lambda':[],
+						'parameters':[],
 					},
 					**settings['hyperparameters']
 				},
@@ -252,18 +254,23 @@ def main(args):
 						'parameters':None,
 						'size':2,
 						'group':[('x',),('y',)],
+						'scale':2*pi/4/(20e-6)*scale,
 						'bounds':[0,1],
 						'boundaries':{0:0,-1:0},
 						'func': {
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (	
-								2*pi/4/(20e-6)*scale*
-								1*(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-								cos(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
+								hyperparameters['parameters'][parameter]['scale']*
+								(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
+								cos(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]) + (
+								hyperparameters['parameters'][parameter]['bounds'][0])								
+								))
 							for group in [('x',)]},
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
-								2*pi/4/(20e-6)*scale*
-								1*(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-								sin(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]])))
+								hyperparameters['parameters'][parameter]['scale']*
+								(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
+								sin(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]) + (
+								hyperparameters['parameters'][parameter]['bounds'][0])								
+								))
 							for group in [('y',)]},
 						},
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (
@@ -278,18 +285,20 @@ def main(args):
 						'category':'constant',
 						'locality':'locality',
 						'parameters':array([
-							-2*pi/2*1000*scale,
-							0*scale,
-							2*pi/2*1000*scale,
-							2*pi/2*500*scale,
-							*(2*pi/2*(2*onp.random.randint(2)-1)*1000*onp.random.rand(max(1,N-4))*scale)
-							# *(0.5*onp.arange(1,N+1))
+							-1, 
+							0,
+							1,
+							1/2,
+							*(2*onp.random.rand(N)-1)
 							][:N]),
 						'size':1,
 						'group':[('z',)],
 						'bounds':[-1,1],
 						'boundaries':{0:None,-1:None},				
-						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (hyperparameters['parameters'][parameter]['parameters'])) for group in [('z',)]},
+						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
+							2*pi/2*1000*scale*hyperparameters['parameters'][parameter]['parameters']
+							)) 
+							for group in [('z',)]},
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (0)) for group in [('z',)]},	
 					}
 					for parameter in ['z']},
@@ -298,20 +307,24 @@ def main(args):
 						'category':'constant',
 						'locality':'locality',
 						'parameters':array([
-							2*pi/4*72.4*scale,
-							-2*pi/4*130*scale,
-							2*pi/4*50.0*scale,
-							2*pi/4*80.0*scale,
-							2*pi/4*20.0*scale,
-							2*pi/4*200.0*scale,
-							*(2*pi/4*(2*onp.random.randint(2)-1)*200*onp.random.rand(max(1,N**2))*scale)
-							# *(-0.1*onp.arange(1,(N*(N-1))//2+1))							
+							0.0724,
+							-0.130,
+							0.05,
+							0.08,
+							0.02,
+							0.2,
+							*(2*onp.random.rand(N**2)-1)							
 							][:(N*(N-1))//2]),
 						'size':1,
-						'group':[('zz',)],									
+						'group':[('zz',)],				
+						'scale':2*pi/4*1000*scale,
 						'bounds':[-1,1],
 						'boundaries':{0:None,-1:None},				
-						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (hyperparameters['parameters'][parameter]['parameters'])) for group in [('zz',)]},						
+						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
+							hyperparameters['parameters'][parameter]['scale']*
+							hyperparameters['parameters'][parameter]['parameters']
+							)) 
+							for group in [('zz',)]},						
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (0)) for group in [('zz',)]},	
 					}
 					for parameter in ['zz']},					
