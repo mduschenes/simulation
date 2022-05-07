@@ -641,16 +641,16 @@ def svd(A,k=None):
 
 
 @partial(jit,static_argnums=(1,2,))
-def norm(arr,axis=None,ord=2):
+def norm(a,axis=None,ord=2):
 	'''
 	Norm of array
 	Args:
-		arr (array): array to be normalized
+		a (array): array to be normalized
 		axis (int): axis to normalize over. Flattens array if None.
 		ord (int,str): order of normalization
 	'''
 
-	out = np.linalg.norm(arr,axis=axis,ord=ord)
+	out = np.linalg.norm(a,axis=axis,ord=ord)
 
 	return out
 
@@ -1507,49 +1507,137 @@ def PRNG(seed,split=False):
 
 
 
-# Get if array is sparse
-def issparse(arr,*args,**kwargs):
-	return issparsematrix(arr) or issparsearray(arr)
+def issparse(a,*args,**kwargs):
+	'''
+	Check if array is sparse
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is sparse
+	'''
+	return issparsematrix(a) or issparsearray(a)
 
-# Get if array is sparse matrix
-def issparsematrix(arr,*args,**kwargs):
-	return sp.sparse.issparse(arr)
+def issparsematrix(a,*args,**kwargs):
+	'''
+	Check if array is sparse matrix
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is sparse matrix
+	'''
+	return sp.sparse.issparse(a)
 
-# Get if array is sparse array
-def issparsearray(arr,*args,**kwargs):
-	return isinstance(arr,sparray.SparseArray)
+def issparsearray(a,*args,**kwargs):
+	'''
+	Check if array is sparse array
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is sparse array
+	'''
+	return isinstance(a,sparray.SparseArray)
 
-# Get if array is numpy array
-def isndarray(arr,*args,**kwargs):
-	return isinstance(arr,(onp.ndarray))
+def isndarray(a,*args,**kwargs):
+	'''
+	Check if array is numpy array
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is numpy array
+	'''
+	return isinstance(a,(onp.ndarray))
 
-# Get if array is pandas dataframe
-def isdataframe(arr,*args,**kwargs):
-	return isinstance(arr,(pd.DataFrame))
+def isdataframe(a,*args,**kwargs):
+	'''
+	Check if array is pandas dataframe
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is pandas dataframe
+	'''
+	return isinstance(a,(pd.DataFrame))
 
-# Get if array is array
-def isarray(arr,*args,**kwargs):
-	return isndarray(arr) or issparse(arr)
+def isarray(a,*args,**kwargs):
+	'''
+	Check if array is array
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is array
+	'''
+	return isndarray(a) or issparse(a)
 
-# Get if array is scalar
-def isscalar(arr,*args,**kwargs):
-	return (not isarray(arr) and not islisttuple(arr)) or (isarray(arr) and (arr.ndim<1) and (arr.size<2))
+def isscalar(a,*args,**kwargs):
+	'''
+	Check if array is scalar
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is scalar
+	'''
+	return (not isarray(a) and not islisttuple(a)) or (isarray(a) and (a.ndim<1) and (a.size<2))
 
-# Get if array is None
-def isnone(arr,*args,**kwargs):
-	return arr is None
+def isnone(a,*args,**kwargs):
+	'''
+	Check if array is None
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is None
+	'''
+	return a is None
 
-# Get if array is python list
-def islist(arr,*args,**kwargs):
-	return isinstance(arr,(list))
+def islist(a,*args,**kwargs):
+	'''
+	Check if array is list
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is list
+	'''
+	return isinstance(a,(list))
 
-# Get if array is python tuple
-def istuple(arr,*args,**kwargs):
-	return isinstance(arr,(tuple))
+def istuple(a,*args,**kwargs):
+	'''
+	Check if array is tuple
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is tuple
+	'''
+	return isinstance(a,(tuple))
 
-# Get if array is python list,tuple
-def islisttuple(arr,*args,**kwargs):
-	return islist(arr) or istuple(arr)
+def islisttuple(a,*args,**kwargs):
+	'''
+	Check if array is list or tuple
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is list or tuple
+	'''
+	return islist(a) or istuple(a)
 
 
 def flattener(iterable,notiterable=(str,)):
@@ -1808,7 +1896,6 @@ def trotter(A,U,p):
 	return U
 
 
-# @partial(jit,static_argnums=(1,2,3,))
 @partial(jit,static_argnums=(2,))
 def trottergrad(A,U,p):
 	r'''
@@ -1881,6 +1968,7 @@ def sigmoid(a,scale=1e6):
 	Returns:
 		out (array): Sigmoid
 	'''		
-	return np.exp(-np.logaddexp(0, -scale*a))
+    return (np.tanh(a*scale/2)+1)/2
+	# return sp.special.expit(scale*a)
 
 

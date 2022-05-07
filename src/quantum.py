@@ -1276,7 +1276,7 @@ class Hamiltonian(Object):
 		size = len(data)
 
 		# Get Trotterized order of p copies of data for products of data
-		data = trotter(data,self.p)/p
+		data = trotter(data,self.p)
 
 		# Get shape of parameters
 		shape = (self.M,size)
@@ -1346,7 +1346,7 @@ class Hamiltonian(Object):
 		hyperparameters['d'] = self.d
 		hyperparameters['n'] = self.n
 		hyperparameters['p'] = self.p
-		hyperparameters['coefficients'] = self.T/self.M
+		hyperparameters['coefficients'] = self.tau/p
 
 		# Update class attributes
 		self.__extend__(data,operator,site,string,interaction,hyperparameters)
@@ -1410,8 +1410,8 @@ class Hamiltonian(Object):
 
 		# print(parameters)
 
-		# Get coefficients (time step tau)
-		coefficients = hyperparameters['coefficients']		
+		# Get coefficients (time step tau and trotter constants)
+		coefficients = hyperparameters['coefficients']
 		parameters *= coefficients
 
 		# Get reshaped parameters
