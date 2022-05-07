@@ -879,7 +879,7 @@ class Object(object):
 		self.L = self.space.L
 		self.delta = self.space.delta
 		self.n = self.space.n
-		self.identity = identity(self.n)
+		self.identity = identity(self.n,dtype=self.dtype)
 
 		return
 
@@ -1346,7 +1346,7 @@ class Hamiltonian(Object):
 		hyperparameters['d'] = self.d
 		hyperparameters['n'] = self.n
 		hyperparameters['p'] = self.p
-		hyperparameters['coefficients'] = self.tau/p
+		hyperparameters['coefficients'] = self.tau/self.p
 
 		# Update class attributes
 		self.__extend__(data,operator,site,string,interaction,hyperparameters)
@@ -1376,39 +1376,19 @@ class Hamiltonian(Object):
 		shape = hyperparameters['shapes'][category]
 		parameters = parameters.reshape(shape)
 
-		# value = hyperparameters['value']
-		# for parameter in hyperparameters['parameters']:
+		value = hyperparameters['value']
+		for parameter in hyperparameters['parameters']:
 
-		# 	if hyperparameters['parameters'][parameter]['category'] is category:
-		# 		for group in hyperparameters['parameters'][parameter]['group']:
-		# 			# print(parameter,group,hyperparameters['parameters'][parameter]['index'][group],hyperparameters['parameters'][parameter]['slice'][group])
-		# 			# if 'x' in group:
-		# 			# 	print(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*np.cos(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]]))
-		# 			# elif 'y' in group:
-		# 			# 	print(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*np.sin(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]]))
-		# 			value = value.at[:,hyperparameters['parameters'][parameter]['index'][group]].set(
-		# 					hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
+			if hyperparameters['parameters'][parameter]['category'] is category:
+				for group in hyperparameters['parameters'][parameter]['group']:
+					value = value.at[:,hyperparameters['parameters'][parameter]['index'][group]].set(
+							hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
 
-		value = zeros(self.shape)
-								
-		scale = 1
-		value = value.at[:,0*self.N:1*self.N].set((2*pi/4/(20e-6)*scale)*parameters[:,0::2]*cos(2*pi*parameters[:,1::2]))
-		value = value.at[:,1*self.N:2*self.N].set((2*pi/4/(20e-6)*scale)*parameters[:,0::2]*sin(2*pi*parameters[:,1::2]))
-		value = value.at[:,2*self.N:3*self.N].set(hyperparameters['parameters']['z']['parameters'])
-		value = value.at[:,3*self.N:3*self.N + (self.N*(self.N-1))//2].set(hyperparameters['parameters']['zz']['parameters'])
 
-		# print(value)
-		# print(values)
-		# print(np.allclose(value,values))
-		# print(value.shape,self.shape,parameters.shape)
-		# exit()
 		
 		# Get Trotterized order of copies of parameters
 		p = hyperparameters['p']
 		parameters = trotter(value.T,p).T
-		# print(parameters)
-
-		# print(parameters)
 
 		# Get coefficients (time step tau and trotter constants)
 		coefficients = hyperparameters['coefficients']
@@ -1599,36 +1579,16 @@ def run(index,hyperparameters={}):
 	func = obj.__func__
 	callback = obj.__callback__
 
-	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters['hyperparameters'])
+	# optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters['hyperparameters'])
 
-	parameters = optimizer(parameters)
+	# parameters = optimizer(parameters)
 
-	obj.__plot__(parameters)
-
-	# func(parameters)
-	# exit()
-
-	# func = lambda x: (cos(x)-sin(x)).sum()
-	# grad = gradient(func)
-	# finitegrad = finitegradient(func,eps=1e-7)
-	# analgrad = lambda x: func(x)+(-2*cos(x)-1)
-
-	# print(abs(grad(parameters)-finitegrad(parameters))/abs(grad(parameters)))
-	# print(abs(grad(parameters)-analgrad(parameters))/abs(grad(parameters)))
+	# obj.__plot__(parameters)
 
 
-	# grad = gradient(func)
-	# finitegrad = finitegradient(func,eps=1e0)
+	grad = gradient(func)
+	finitegrad = finitegradient(func,eps=5e-8)
 
-	# onp.random.seed(23233)
-
-	# for i in range(10):
-	# 	parameters = onp.random.rand(*parameters.shape)
-	# 	# print(abs(grad(parameters)-finitegrad(parameters))/abs(grad(parameters)))
-	# 	print(abs(grad(parameters)-finitegrad(parameters)))
-
-	# return
-
-
+	print(allclose(grad(parameters),finitegrad(parameters)))
 
 	return

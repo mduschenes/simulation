@@ -80,7 +80,7 @@ def main(args):
 
 	onp.random.seed(seed)
 
-	scale = 1#100*1e-6
+	scale = 100*1e-6
 	if train:
 		if train == 1:
 			objective = []
@@ -233,7 +233,7 @@ def main(args):
 					'seed':111,#onp.random.randint(10000),		
 					'interpolation':3,'smoothness':2,'init':[0,1],'random':'uniform',
 					'c1':0.0001,'c2':0.9,'maxiter':50,'restart':iterations//4,'tol':1e-14,
-					'bound':1e6,'alpha':1,'beta':1e-1,'lambda':1*np.array([1e-6,1e-6,1e-2]),'eps':980e-3,
+					'bound':1e4,'alpha':1,'beta':1e-1,'lambda':1*np.array([1e-6,1e-6,1e-2]),'eps':980e-3,
 					'linesearch':1,
 					'track':{'log':1,'track':10,'size':0,
 						 'iteration':[],'objective':[],
@@ -269,7 +269,7 @@ def main(args):
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (
 							hyperparameters['hyperparameters']['lambda'][0]*bound(hyperparameters['parameters'][parameter]['bounds'][0] - parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
 							+hyperparameters['hyperparameters']['lambda'][1]*bound(-hyperparameters['parameters'][parameter]['bounds'][1] + parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
-							+hyperparameters['hyperparameters']['lambda'][2]*sum(np.abs(parameters[i,hyperparameters['parameters'][parameter]['slice'][group]]-hyperparameters['parameters'][parameter]['boundaries'][i]).sum()
+							+hyperparameters['hyperparameters']['lambda'][2]*sum((np.abs(parameters[i,hyperparameters['parameters'][parameter]['slice'][group]]-hyperparameters['parameters'][parameter]['boundaries'][i])**2).sum()
 								for i in hyperparameters['parameters'][parameter]['boundaries']))) for group in [('x',),('y',)]},
 					} 
 					for parameter in ['xy']},

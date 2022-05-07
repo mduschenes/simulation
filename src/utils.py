@@ -1968,7 +1968,7 @@ def sigmoid(a,scale=1e6):
 	Returns:
 		out (array): Sigmoid
 	'''		
-    return (np.tanh(a*scale/2)+1)/2
+	return (np.tanh(a*scale/2)+1)/2
 	# return sp.special.expit(scale*a)
 
 
