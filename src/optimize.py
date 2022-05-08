@@ -13,11 +13,11 @@ import jax
 import jax.numpy as np
 import jax.scipy as sp
 import jax.example_libraries.optimizers as optimizers
-np.set_printoptions(linewidth=500)
 jax.config.update('jax_platform_name','cpu')
 jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
 # os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
+# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 # Logging
 import logging,logging.config
@@ -52,7 +52,7 @@ def value_and_grad(func,grad=None):
 def line_search(func,grad,parameters,alpha,value,gradient,search,hyperparameters):
 	attrs = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':value[-2] if len(value)>1 else None}
 	attrs.update({attr: hyperparameters.get(attr,attrs[attr]) for attr in attrs})
-	if not hyperparameters.get('linesearch'):
+	if not hyperparameters.get('line_search'):
 		returns = {'alpha':hyperparameters['alpha']}
 		return returns
 	returns = osp.optimize.line_search(func,grad,parameters,search[-1],gradient[-1],value[-1],**attrs)
@@ -61,8 +61,8 @@ def line_search(func,grad,parameters,alpha,value,gradient,search,hyperparameters
 		if len(alpha) > 1:
 			returns['alpha'] = alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2])
 		else:
-			returns['alpha'] = 1e-4
-	returns['alpha'] = min(1,returns['alpha'])
+			returns['alpha'] = alpha[-1]
+	# returns['alpha'] = min(1,returns['alpha'])
 	# elif returns['value'] > value[-1]:
 	# 	returns['alpha'] = (alpha[-1] if len(alpha)>0 else 1e-1)*gradient[-1].dot(search[-1])/gradient[-min(2,len(gradient))].dot(search[-min(2,len(search))])
 	return returns
@@ -414,7 +414,8 @@ class ConjugateGradient(Base):
 
 		parameters = self.get_params(state)
 
-		returns = line_search(self.func,self.grad,parameters,
+		returns = line_search(
+			self.func,self.grad,parameters,
 			self.track['alpha'],
 			self.track['value'],
 			self.track['grad'],
@@ -439,7 +440,7 @@ class ConjugateGradient(Base):
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
 		restart = (iteration%self.hyperparameters['restart']) == 0
-		beta = 0 if (restart or np.isnan(beta) or np.isinf(beta)) else beta
+		beta = 0 if (restart or np.isnan(beta) or np.isinf(beta) or beta>1e3) else beta
 		_search = -_grad + beta*search
 
 
@@ -456,7 +457,6 @@ class ConjugateGradient(Base):
 		parameters = self.get_params(state)
 		
 		self.callback(parameters)
-
 
 		return state
 

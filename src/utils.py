@@ -13,12 +13,11 @@ import jax
 import jax.numpy as np
 import jax.scipy as sp
 import jax.example_libraries.optimizers
-np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 jax.config.update('jax_platform_name','cpu')
 jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
 # os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
-
+# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 
 # Logging
@@ -112,32 +111,34 @@ def gradient(func):
 	return jit(jax.grad(func))
 
 
-def finitegradient(func,eps=1e-6):
+def finitegradient(func,tol=1e-6):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
 		func (callable): Function to derive, with signature func(x) and output shape
+		tol (float): Finite difference tolerance
 	Returns:
 		out (array): Array of gradient
 	'''
 
 	def _gradient(x):
-		return vmap(lambda v,x=x,eps=eps: (func(x+eps*v)-func(x-eps*v))/(2*eps))(eye(x.size))
+		return vmap(lambda v,x=x,tol=tol: (func(x+tol*v)-func(x-tol*v))/(2*tol))(eye(x.size))
 
 	return _gradient
 
 
-def value_and_finitegradient(func,eps=1e-6):
+def value_and_finitegradient(func,tol=1e-6):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
 		func (callable): Function to derive, with signature func(x) and output shape
+		tol (float): Finite difference tolerance		
 	Returns:
 		out (array): Array of gradient
 	'''
 
 	def _value_and_gradient(x):
-		return (func(x),vmap(lambda v,x=x,eps=eps: (func(x+eps*v)-func(x-eps*v))/(2*eps))(eye(x.size)))
+		return (func(x),vmap(lambda v,x=x,tol=tol: (func(x+tol*v)-func(x-tol*v))/(2*tol))(eye(x.size)))
 	return _value_and_gradient
 
 
@@ -586,17 +587,27 @@ class toffoli(array):
 			return array([[out,out],[out,-out]],*args,**kwargs)
 
 
-def rand(key,shape,bounds,random='uniform'):
+def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 	'''
 	Get random array
 	Args:
-		key (jax.key): PRNG key
-		shape (iterable): Shape of random array
+		shape (int,iterable): Size or Shape of random array
+		key (jax.key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
 	Returns:
 		out (array): Random array
 	'''	
+	if shape is None:
+		shape = 1
+	elif isinstance(shape,int):
+		shape = shape
+
+	if key is None:
+		key = PRNGKey(key)
+	elif isinstance(key,int):
+		key = PRNGKey(key)
+
 	if random in ['uniform','rand']:
 		return jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
 	else:
@@ -1484,7 +1495,7 @@ def isdiag(a):
 	return ~a.ravel()[:-1].reshape(n-1,m+1)[:,1:].any()
 
 
-def PRNG(seed,split=False):
+def PRNGKey(seed=None,split=False):
 	'''
 	Generate PRNG key
 	Args:
@@ -1494,7 +1505,7 @@ def PRNG(seed,split=False):
 		subkey (array): Random array (if split is True)
 	'''	
 	if seed is None:
-		seed = 0
+		seed = onp.random.randint(1e12)
 	if isinstance(seed,(int)):
 		key = jax.random.PRNGKey(seed)
 	else:

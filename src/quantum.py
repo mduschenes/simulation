@@ -13,11 +13,11 @@ import jax
 import jax.numpy as np
 import jax.scipy as sp
 import jax.example_libraries.optimizers
-np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 jax.config.update('jax_platform_name','cpu')
 jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
 # os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
+# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 
 # Import User modules
@@ -208,7 +208,7 @@ class Time(object):
 	def __init__(self,M,T,tau,p,time,system):
 
 		self.system = System(system)
-		self.M = M if M is not None else 1
+		self.M = M if M is not None else None
 		self.T = T if T is not None else None
 		self.tau = tau if tau is not None else None
 		self.p = p if p is not None else 1
@@ -237,7 +237,8 @@ class Time(object):
 	def __size__(self):
 		assert self.T is not None or self.tau is not None, "Either T or tau must not be None"
 		self.tau = self.get_tau()
-		self.T = self.get_T(self.tau)
+		self.M = self.get_M(self.tau)
+		self.T = self.get_T()
 		return 
 
 	def __str__(self):
@@ -246,21 +247,21 @@ class Time(object):
 	def __repr__(self):
 		return str(self.string)
 
-	def get_T(self,tau):
+	def get_T(self):
 		if self.T is None:
 			if self.time in ['linear']:
-				return tau*self.M
+				return self.tau*self.M
 			else:
-				return tau*self.M
+				return self.tau*self.M
 		else:
 			return self.T
 		return 		
 
-	def get_M(self):
+	def get_M(self,tau):
 		if self.time in ['linear']:
-			return self.T/self.tau
+			return int(self.T/tau)
 		else:
-			return self.T/self.tau
+			return int(self.T/tau)
 		return
 
 	def get_tau(self):
@@ -726,7 +727,7 @@ class Object(object):
 		Returns:
 			parameters (array): parameters		
 		'''
-		# self.parameters = parameters
+		self.parameters = parameters
 		return parameters
 
 	@partial(jit,static_argnums=(0,))
@@ -776,14 +777,25 @@ class Object(object):
 	@partial(jit,static_argnums=(0,))
 	def __func__(self,parameters):
 		''' 
-		Setup loss + constraints
+		Setup objective
 		Args:
 			parameters (array): parameters
 		Returns:
-			loss + constraints (array): loss + constraints
+			objective (array): objective
 		'''	
 		return self.__loss__(parameters) + self.__constraints__(parameters)
 		# return self.__loss__(parameters)
+
+	@partial(jit,static_argnums=(0,))
+	def __grad__(self,parameters):
+		''' 
+		Setup gradient of objective
+		Args:
+			parameters (array): parameters
+		Returns:
+			gradient (array): gradient of objective
+		'''	
+		return gradient(self.__func__)(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def __callback__(self,parameters):
@@ -802,26 +814,46 @@ class Object(object):
 
 			self.hyperparameters['hyperparameters']['track']['parameters'].append(copy.deepcopy(parameters))		
 
-			logger.log(self.verbose,'%d f(x) = %0.4f \nalpha = %0.3e \nbeta = %0.3e \n'%(
+			self.log('%d f(x) = %0.4f'%(
 				self.hyperparameters['hyperparameters']['track']['iteration'][-1],
 				self.hyperparameters['hyperparameters']['track']['objective'][-1],
-				self.hyperparameters['hyperparameters']['track']['alpha'][-1],
-				self.hyperparameters['hyperparameters']['track']['beta'][-1],
 				)
+			)
+			# isclose = allclose(self.hyperparameters['hyperparameters']['track']['grad'][-1],finitegradient(self.__func__)(parameters))
+			# if not isclose:
+			# 	print('**************** ERROR GRAD ****************************')
+			# 	print(parameters)
+			# 	print(self.hyperparameters['hyperparameters']['track']['grad'][-1])
+			# 	print(self.__grad__(parameters))
+			# 	isclose = allclose(self.hyperparameters['hyperparameters']['track']['grad'][-1],self.__grad__(parameters))
+			# 	print(allclose(self.hyperparameters['hyperparameters']['track']['value'][-1],self.__func__(parameters)))
+			# 	if not isclose:
+			# 		print('ERROR with index',self.hyperparameters['hyperparameters']['track']['objective'])
+
+			# print()
+			self.log('\n'.join([
+				'%s = %0.3e'%(attr,self.hyperparameters['hyperparameters']['track'][attr][-1])
+				for attr in ['alpha','beta']])
 			)
 
-			logger.log(self.verbose,'func %d \nU\n%r'%(
-				self.hyperparameters['hyperparameters']['track']['iteration'][-1],
-				self(parameters)
-				)
-			)
-			logger.log(self.verbose,'norm: %0.4e\nmax: %0.4e\nmin: %0.4e\nbcs:\n%r\n%r'%(
-				np.linalg.norm(parameters)/parameters.size,
-				parameters.max(),parameters.min(),
-				parameters.reshape(self.hyperparameters['shapes']['variable'])[0],
-				parameters.reshape(self.hyperparameters['shapes']['variable'])[-1],
-				)
-			)
+			# self.log('x = \n%r \ngrad(x) = \n%r'%(
+			# 	self.hyperparameters['hyperparameters']['track']['parameters'][-1],
+			# 	self.hyperparameters['hyperparameters']['track']['search'][-1],
+			# 	)
+			# )
+
+			# self.log('U\n%r\nV\n%r'%(
+			# 	self(parameters),
+			# 	self.hyperparameters['label']
+			# 	)
+			# )
+			# self.log('norm: %0.4e\nmax: %0.4e\nmin: %0.4e\nbcs:\n%r\n%r\n\n'%(
+			# 	np.linalg.norm(parameters)/parameters.size,
+			# 	parameters.max(),parameters.min(),
+			# 	parameters.reshape(self.hyperparameters['shapes']['variable'])[0],
+			# 	parameters.reshape(self.hyperparameters['shapes']['variable'])[-1],
+			# 	)
+			# )
 
 		return 
 
@@ -897,6 +929,7 @@ class Object(object):
 		self.T = self.time.T
 		self.p = self.time.p
 		self.tau = self.time.tau
+		self.shape = (self.M,self.size)
 
 		return
 
@@ -1003,6 +1036,7 @@ class Object(object):
 		path = os.path.join(hyperparameters['sys']['directories']['dump'],hyperparameters['sys']['files']['plot'][attr])
 		mplstyle = os.path.join(hyperparameters['sys']['directories']['config'],hyperparameters['sys']['files']['mplstyle'])
 		size = (20,20)
+		iterations = [0,*[5,10,15,20],*[i*(hyperparameters['hyperparameters']['track']['size']-1)//n for n in [4] for i in range(1,n+1)]]
 
 		with matplotlib.style.context(mplstyle):
 		
@@ -1011,19 +1045,22 @@ class Object(object):
 
 			for j,parameters in enumerate(hyperparameters['hyperparameters']['track']['parameters']):
 
-				if j%10 != 0:
+				if j not in iterations:
 					continue
+
 				parameters = parameters.reshape(shape)
 
 				# iteration = {0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[j]
 				iteration = j#{0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[j]
-				iteration = {0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[j]
+				# iteration = {0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[j]
 
 				for i in range(shape[1]):
 					x = np.arange(shape[0])
 					y = parameters[:,i]
 
-					# y = y - hyperparameters['hyperparameters']['track']['parameters'][0].reshape(shape)[:,i]
+
+					# y = abs((y - hyperparameters['hyperparameters']['track']['parameters'][0].reshape(shape)[:,i])/
+					# 	maximum(1,abs(hyperparameters['hyperparameters']['track']['parameters'][0].reshape(shape)[:,i])))
 
 					# if i == 0:
 					# 	scale = (1)*(2*pi/4/(20e-6))
@@ -1036,19 +1073,24 @@ class Object(object):
 
 					label = [r'\alpha',r'\phi'][i%2]
 
-					ax[i].plot(x,y,marker='',alpha=0.8,linewidth=3,label=r'${%s}^{(%s)}_{%s}$'%(label,str(iteration),str(i//2) if shape[1]>2 else ''))#str(['x','y'][i>=(shape[1]//2)])))
-
-					label = [r'\alpha',r'\phi'][i%2]
+					ax[i].plot(x,y,
+						color=getattr(plt.cm,'winter')((iterations.index(j)+1)/len(iterations)),
+						marker='',alpha=0.8,linewidth=3,
+						# label=r'${%s}^{(%s)}_{%s}$'%(label,str(iteration),str(i//2) if shape[1]>2 else '')
+						label=r'${%s}^{(%s)}_{%s}$'%(r'\theta',str(iteration),'')
+					)
 
 					ax[i].set_xlim(xmin=0,xmax=shape[0])
 					# ax[i].set_ylim(ymin=-0.25,ymax=1.25)
-					ax[i].set_ylabel(ylabel=r'$%s$'%(label))
+					ax[i].set_ylabel(ylabel=r'${%s}_{%s}$'%(label,str(i//2) if shape[1]>2 else ''))
 					ax[i].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
 					ax[i].set_yscale(value='linear')
 					# ax[i].set_yscale(value='log')
-
-					ax[i].legend(loc=(0.78,0.1))
 					ax[i].grid(True)	
+
+					if i == 0:
+						ax[i].legend(loc=(0.15,1.1),ncol=min(4,len(ax[i].get_legend_handles_labels()[0])))
+
 
 			fig.set_size_inches(*size)
 			fig.subplots_adjust()
@@ -1089,6 +1131,7 @@ class Object(object):
 
 			ax.yaxis.offsetText.set_fontsize(fontsize=20)
 
+			ax.set_xticks(ticks=range(int(1*min(x)),int(1.1*max(x)),int(max(x)-min(x))//8))
 			# ax.set_yticks(ticks=[1e-1,2e-1,4e-1,6e-1,8e-1,1e0])
 			ax.set_yticks(ticks=[5e-1,6e-1,8e-1,1e0])
 			ax.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
@@ -1212,11 +1255,9 @@ class Hamiltonian(Object):
 		# Get number of operators
 		size = min([len(i) for i in [operator,site,string,interaction]])
 
-		# Lattice interactions
-		interactions = {site: self.lattice(site) for site in ['i','i<j','<ij>','i...j']}	# interactions types on lattice
-		locality = 2 # maximum number of body interactions
-		sites = ['i','j'] # allowed symbolic sites
-
+		# Lattice sites
+		sites = {site: self.lattice(site) for site in ['i','i<j','<ij>','i...j']}	# sites types on lattice
+		indices = ['i','j'] # allowed symbolic indices and maximum number of body site interactions
 
 		# Basis single-site operators
 		basis = {
@@ -1226,20 +1267,19 @@ class Hamiltonian(Object):
 			'Z': array([[1,0],[0,-1]],dtype=self.dtype),
 		}
 
-
 		# Get identity operator I, to be maintained with same shape of data for Euler identities
 		# with minimal redundant copying of data
 		I = 'I'
 
-		# Get all sites from symbolic sites
+		# Get all indices from symbolic indices
 		for i in range(size):
 			_operator = operator.pop(0);
 			_site = site.pop(0);
 			_string = string.pop(0);
 			_interaction = interaction.pop(0);
-			if any(j in sites for j in _site):
-				for s in interactions[_interaction]:
-					_site_ = copy.deepcopy([dict(zip(sites,s if not isinstance(s,int) else [s])).get(j,parse(j,int)) for j in _site])
+			if any(j in indices for j in _site):
+				for s in sites[_interaction]:
+					_site_ = copy.deepcopy([dict(zip(indices,s if not isinstance(s,int) else [s])).get(j,parse(j,int)) for j in _site])
 					_operator_ = copy.deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
 					_string_ = copy.deepcopy(_string)
 					_interaction_ = copy.deepcopy(_interaction)
@@ -1281,27 +1321,38 @@ class Hamiltonian(Object):
 			if hyperparameters['parameters'][parameter]['group'] == []:
 				hyperparameters['parameters'].pop(parameter);
 
-		# Update indices of parameters within data and slices of parameters within parameters
+		# Update 
+		# indices of parameters within all parameters 
+		# slices of parameters within parameters of category
+		# included of parameters within group of parameters of category
+		# length of parameters within group of parameters of category
 		categories = list(set([hyperparameters['parameters'][parameter]['category'] for parameter in hyperparameters['parameters']]))
 		indices = {category:{} for category in categories}
 		slices = {category:{} for category in categories}
+		included = {category:{} for category in categories}
+
 		for parameter in hyperparameters['parameters']:
 
 			category = hyperparameters['parameters'][parameter]['category']
 			locality = hyperparameters['parameters'][parameter]['locality']
 
 
-			n = max([-1,*[slices[category][group][-1] for group in slices[category]]])+1
+			length_index = max([-1,*[slices[category][group][-1] for group in slices[category]]])+1
 			for group in hyperparameters['parameters'][parameter]['group']:
 				indices[category][group] = [i for i,s in enumerate(string) 
 					if any(g in group for g in [s,'_'.join([s,''.join(['%d'%j for j in site[i]])])])] 
 			
-				m = len(indices[category][group]) if hyperparameters['parameters'][parameter]['locality'] in ['local'] else 1
-				s = hyperparameters['parameters'][parameter]['size'] if hyperparameters['parameters'][parameter].get('size') is not None else 1
-				slices[category][group] = [n+i*s+j for i in range(m) for j in range(s)]
+				length_local = len(indices[category][group]) if hyperparameters['parameters'][parameter]['locality'] in ['local'] else 1
+				length_parameter = hyperparameters['parameters'][parameter]['size'] if hyperparameters['parameters'][parameter].get('size') is not None else 1
+				length = length_local*length_parameter
+				slices[category][group] = [length_index + i*length_parameter + j for i in range(length_local) for j in range(length_parameter)]
+				included[category][group] = [length_index + i*length_parameter + j for i in range(length_local) for j in range(length_parameter)]
+
 
 			hyperparameters['parameters'][parameter]['index'] = {group: [j for j in indices[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
 			hyperparameters['parameters'][parameter]['slice'] = {group: [j for j in slices[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
+			hyperparameters['parameters'][parameter]['include'] = {group: [j for j in included[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
+			hyperparameters['parameters'][parameter]['length'] =  {group: length for group in hyperparameters['parameters'][parameter]['group']}
 			hyperparameters['parameters'][parameter]['site'] =  {group: [site[j] for j in indices[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
 			hyperparameters['parameters'][parameter]['string'] = {group: ['_'.join([string[j],''.join(['%d'%(k) for k in site[j]]),''.join(operator[j])]) for j in indices[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
 
@@ -1319,6 +1370,11 @@ class Hamiltonian(Object):
 			for category in categories
 		}
 
+		print('slice, index, include, length')
+		for parameter in hyperparameters['parameters']:
+			for group in hyperparameters['parameters'][parameter]['group']:
+				print(parameter,group,hyperparameters['parameters'][parameter]['slice'][group],hyperparameters['parameters'][parameter]['index'][group],hyperparameters['parameters'][parameter]['include'][group],hyperparameters['parameters'][parameter]['length'][group])
+		print()
 
 		# Update hyperparameters
 		hyperparameters['data'] = data
@@ -1357,7 +1413,7 @@ class Hamiltonian(Object):
 		'''		
 
 		# Get class attributes
-		# self.parameters = parameters
+		self.parameters = parameters
 		hyperparameters = self.hyperparameters
 
 		# Set all parameters
@@ -1387,6 +1443,7 @@ class Hamiltonian(Object):
 		# Get reshaped parameters
 		parameters = parameters.ravel()
 
+		
 		return parameters
 
 
@@ -1407,68 +1464,59 @@ class Hamiltonian(Object):
 		# Get shape of parameters of different category
 		category = 'variable'
 		shape = hyperparameters['shapes'][category]
-
-		# parameters are initialized as interpolated random values between bounds
-		factor = min(shape[0],hyperparameters['hyperparameters']['smoothness'])
-		shape_interp = (shape[0]//factor + 1 - (factor==1),*shape[1:])
-		
-		pts_interp = factor*arange(shape_interp[0])
-		pts = arange(shape[0])
-		
-		key = jax.random.PRNGKey(hyperparameters['hyperparameters']['seed'])
-
-		parameters_interp = zeros(shape_interp)
+		ndim = len(shape)
 
 		parameters = zeros(shape)
 
+		# Initialize parameters, and reshape, bound, impose boundary conditions accordingly, and assign category variables to parameters
 		for parameter in hyperparameters['parameters']:
-			if hyperparameters['parameters'][parameter]['category'] == category:
-				key,subkey = jax.random.split(key)
-				bounds = hyperparameters['parameters'][parameter]['bounds']
+			
+			length = max(hyperparameters['parameters'][parameter]['length'][group] for group in hyperparameters['parameters'][parameter]['group'])
+			shape = (*shape[0:1],length,*shape[2:])
+			ndim = len(shape)		
+			bounds = hyperparameters['parameters'][parameter]['bounds']
+
+			if hyperparameters['parameters'][parameter]['category'] == category and hyperparameters['parameters'][parameter].get('parameters') is None:
+
+				hyperparameters['parameters'][parameter]['parameters'] = zeros(shape)
+				
 				for group in hyperparameters['parameters'][parameter]['group']:
-					parameters_interp = parameters_interp.at[:,hyperparameters['parameters'][parameter]['slice'][group]].set(
-						rand(
-						key,(shape_interp[0],len(hyperparameters['parameters'][parameter]['slice'][group]),*shape_interp[2:]),
-						bounds=[bounds[0] + (bounds[1]-bounds[0])*hyperparameters['hyperparameters']['init'][0],bounds[1]**hyperparameters['hyperparameters']['init'][1]],
-						random=hyperparameters['hyperparameters']['random']
-						)
-					)
+					params = parameters[:,hyperparameters['parameters'][parameter]['slice'][group]]
+					hyperparameters['parameters'][parameter]['parameters'] = hyperparameters['parameters'][parameter]['parameters'].at[:,
+						hyperparameters['parameters'][parameter]['include'][group]].set(
+						initialize(params,bounds,hyperparameters))
+
+			if hyperparameters['parameters'][parameter]['parameters'].ndim < ndim:
+				hyperparameters['parameters'][parameter]['parameters'] = broadcast_to(hyperparameters['parameters'][parameter]['parameters'],shape)
+
+			for group in hyperparameters['parameters'][parameter]['group']:
+				hyperparameters['parameters'][parameter]['parameters'] = hyperparameters['parameters'][parameter]['parameters'].at[:,
+						hyperparameters['parameters'][parameter]['include'][group]].set(
+						minimum(bounds[1],maximum(bounds[0],hyperparameters['parameters'][parameter]['parameters'][:,
+						hyperparameters['parameters'][parameter]['include'][group]]))) 
+
+
+
 
 			for i in hyperparameters['parameters'][parameter]['boundaries']:
-				if hyperparameters['parameters'][parameter]['boundaries'][i] is not None and i < shape_interp[0]:
-					parameters_interp = parameters_interp.at[i,:].set(hyperparameters['parameters'][parameter]['boundaries'][i])
 
-		for parameter in hyperparameters['parameters']:
-			if hyperparameters['parameters'][parameter]['category'] == category:
-
-				for group in hyperparameters['parameters'][parameter]['group']:
-					hyperparameters['parameters'][parameter]['parameters'] = minimum(
-						hyperparameters['parameters'][parameter]['bounds'][1], 
-						maximum(
-						hyperparameters['parameters'][parameter]['bounds'][0],
-						# rand(
-						# key,(shape[0],len(hyperparameters['parameters'][parameter]['slice'][group]),*shape[2:]),
-						# bounds=[bounds[0] + (bounds[1]-bounds[0])*hyperparameters['hyperparameters']['init'][0],bounds[1]**hyperparameters['hyperparameters']['init'][1]],
-						# random=hyperparameters['hyperparameters']['random'])
-						# )
-						# )
-						interpolate(
-						pts_interp,parameters_interp[:,hyperparameters['parameters'][parameter]['slice'][group]],
-						pts,hyperparameters['hyperparameters']['interpolation'])
-						)
-						)
-
-			for i in hyperparameters['parameters'][parameter]['boundaries']:
 				if hyperparameters['parameters'][parameter]['boundaries'][i] is not None and i < shape[0]:
 					hyperparameters['parameters'][parameter]['parameters'] = hyperparameters['parameters'][parameter]['parameters'].at[i,:].set(
 						hyperparameters['parameters'][parameter]['boundaries'][i])
 
+
 			if hyperparameters['parameters'][parameter]['category'] == category:
 				for group in hyperparameters['parameters'][parameter]['group']:
 					parameters = parameters.at[:,hyperparameters['parameters'][parameter]['slice'][group]].set(
-						hyperparameters['parameters'][parameter]['parameters'])
+						hyperparameters['parameters'][parameter]['parameters'][:,hyperparameters['parameters'][parameter]['include'][group]])
 
-
+		print()
+		print('parameters')
+		print(parameters)
+		print()
+		for parameter in hyperparameters['parameters']:
+			print(parameter)
+			print(hyperparameters['parameters'][parameter]['parameters'])
 
 
 		# Get value and label
@@ -1480,6 +1528,9 @@ class Hamiltonian(Object):
 				hyperparameters['value'] = hyperparameters['value'].at[:,hyperparameters['parameters'][parameter]['index'][group]].set(
 						hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
 
+		print()
+		print('value')
+		print(hyperparameters['value'])
 
 		# Get reshaped parameters
 		parameters = parameters.ravel()
@@ -1544,6 +1595,14 @@ class Unitary(Hamiltonian):
 
 
 def distance(a,b):
+	'''
+	Calculate distance between arrays
+	Args:
+		a (array): Array to calculate distance
+		b (array): Array to calculate distance
+	Returns:
+		out (array): Distance between arrays
+	'''
 	return norm(a-b,axis=None,ord=2)/a.shape[0]
 	# return 1-abs(inner(a,b.conj().T))/a.shape[0]
 	# return 1-(np.real(trace((a-b).conj().T.dot(a-b))/a.size)/2 - np.imag(trace((a-b).conj().T.dot(a-b))/a.size)/2)/2
@@ -1551,9 +1610,61 @@ def distance(a,b):
 
 
 def trotter(a,p):
-	# a = broadcast_to([v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u],(p*a.shape[0],*a.shape[1:]))
-	a = array([v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u])#,(p*a.shape[0],*a.shape[1:]))
+	'''
+	Calculate p-order trotter series of array
+	Args:
+		a (array): Array to compute trotter series
+		p (int): Order of trotter series
+	Returns:
+		out (array): Trotter series of array
+	'''	
+	a = array([v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u])
 	return a
+
+
+
+
+def initialize(parameters,bounds,hyperparameters):
+	'''
+	Initialize parameters
+	Args:
+		parameters (array): parameters array
+		bounds (iterable): bounds on parameters
+		hyperparameters (dict): hyperparameters for initialization
+	Returns:
+		out (array): initialized slice of parameters
+	'''	
+
+	# Random seed
+	random = hyperparameters['hyperparameters']['random']
+	seed = hyperparameters['hyperparameters']['seed']
+	key = jax.random.PRNGKey(seed)
+	key,subkey = jax.random.split(key)
+	
+	# Parameters shape and bounds
+	shape = parameters.shape
+	bounds = [
+		bounds[0] + (bounds[1]-bounds[0])*hyperparameters['hyperparameters']['init'][0],
+		bounds[1]*hyperparameters['hyperparameters']['init'][1],
+	]
+
+
+	# Parameters are initialized as interpolated random values between bounds
+	interpolation = hyperparameters['hyperparameters']['interpolation']
+	smoothness = min(shape[0],hyperparameters['hyperparameters']['smoothness'])
+	shape_interp = (shape[0]//smoothness + 1 - (smoothness==1),*shape[1:])
+
+	pts_interp = smoothness*arange(shape_interp[0])
+	pts = arange(shape[0])
+
+	parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
+	
+	parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
+	
+	# parameters = 0.5*ones(shape)
+	# parameters = rand(shape,key=key,bounds=bounds,random=random)
+
+	return parameters
 
 
 
@@ -1563,21 +1674,21 @@ def run(index,hyperparameters={}):
 	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	parameters = obj.parameters
-	hyperparameters = obj.hyperparameters
+	hyperparameters = hyperparameters['hyperparameters']
 	
 	func = obj.__func__
 	callback = obj.__callback__
 
-	# optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters['hyperparameters'])
+	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
 
-	# parameters = optimizer(parameters)
+	parameters = optimizer(parameters)
 
-	# obj.__plot__(parameters)
+	obj.__plot__(parameters)
 
 
-	grad = gradient(func)
-	finitegrad = finitegradient(func,eps=5e-8)
+	# grad = gradient(func)
+	# finitegrad = finitegradient(func,tol=5e-8)
 
-	print(allclose(grad(parameters),finitegrad(parameters)))
+	# print(allclose(grad(parameters),finitegrad(parameters)))
 
 	return

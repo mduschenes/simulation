@@ -13,7 +13,7 @@ import jax
 import jax.numpy as np
 import jax.scipy as sp
 import jax.example_libraries.optimizers
-np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
+np.set_printoptions(linewidth=1000)#,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 jax.config.update('jax_platform_name','cpu')
 jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
@@ -235,7 +235,7 @@ def main(args):
 					'interpolation':3,'smoothness':2,'init':[0,1],'random':'uniform',
 					'c1':0.0001,'c2':0.9,'maxiter':50,'restart':iterations//4,'tol':1e-14,
 					'bound':1e4,'alpha':1,'beta':1e-1,'lambda':1*np.array([1e-6,1e-6,1e-2]),'eps':980e-3,
-					'linesearch':1,
+					'line_search':1,
 					'track':{
 						'track':{'log':1,'track':10,'callback':1},
 						'iteration':[],'objective':[],
@@ -276,14 +276,14 @@ def main(args):
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (
 							hyperparameters['hyperparameters']['lambda'][0]*bound(hyperparameters['parameters'][parameter]['bounds'][0] - parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
 							+hyperparameters['hyperparameters']['lambda'][1]*bound(-hyperparameters['parameters'][parameter]['bounds'][1] + parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
-							+hyperparameters['hyperparameters']['lambda'][2]*sum((np.abs(parameters[i,hyperparameters['parameters'][parameter]['slice'][group]]-hyperparameters['parameters'][parameter]['boundaries'][i])**2).sum()
+							+hyperparameters['hyperparameters']['lambda'][2]*sum(((parameters[i,hyperparameters['parameters'][parameter]['slice'][group][0::2]]-hyperparameters['parameters'][parameter]['boundaries'][i])**2).sum()
 								for i in hyperparameters['parameters'][parameter]['boundaries']))) for group in [('x',),('y',)]},
 					} 
 					for parameter in ['xy']},
 					**{parameter:{
 						'name':'z',						
 						'category':'constant',
-						'locality':'locality',
+						'locality':'local',
 						'parameters':array([
 							-1, 
 							0,
@@ -305,7 +305,7 @@ def main(args):
 					**{parameter:{
 						'name':'zz',						
 						'category':'constant',
-						'locality':'locality',
+						'locality':'local',
 						'parameters':array([
 							0.0724,
 							-0.130,
