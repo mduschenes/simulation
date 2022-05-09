@@ -31,8 +31,8 @@ from src.utils import jit,gradient,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,rand,identity
 from src.utils import tensorprod,trace,broadcast_to
 from src.utils import summation,exponentiation
-from src.utils import gradient_expm,gradient_sigmoid,gradient_inner
-from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner,norm,interpolate,unique,allclose,parse
+from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2
+from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner_abs2,norm,interpolate,unique,allclose,isclose,parse
 from src.utils import pi,e
 
 # Logging
@@ -1302,6 +1302,9 @@ class Hamiltonian(Object):
 		# Form (size,n,n) shape operator from local strings for each data term
 		data = array([tensorprod([basis[j] for j in i]) for i in operator])
 
+		# Assert all data satisfies data**2 = identity for matrix exponentials
+		assert all(allclose(d.dot(d),self.identity) for d in data), "data is not involutory and data**2 != identity"
+
 		# Get size of data
 		size = len(data)
 
@@ -1311,15 +1314,19 @@ class Hamiltonian(Object):
 		# Get shape of parameters
 		shape = (self.M,size)
 
-		# Get parameters and groups based on operator strings
+		# Get parameters and groups based on operator strings, and ensure groups are hashable
 		for parameter in list(hyperparameters['parameters']):
-			for group in list(hyperparameters['parameters'][parameter]['group']):
+			for i,group in enumerate(list(hyperparameters['parameters'][parameter]['group'])):
 				if not any(g in [s,'_'.join([s,''.join(['%d'%j for j in i])])] 
 						for g in group
 						for i,s in zip(site,string)):
 					hyperparameters['parameters'][parameter]['group'].remove(group);
+				else:
+					hyperparameters['parameters'][parameter]['group'][i] = tuple([g for g in group])
+
 			if hyperparameters['parameters'][parameter]['group'] == []:
 				hyperparameters['parameters'].pop(parameter);
+
 
 		# Update 
 		# indices of parameters within all parameters 
@@ -1365,7 +1372,7 @@ class Hamiltonian(Object):
 							for group in hyperparameters['parameters'][parameter]['group']
 							for i in hyperparameters['parameters'][parameter]['slice'][group]])) 
 							for parameter in hyperparameters['parameters'] 
-					   	   if hyperparameters['parameters'][parameter]['category'] == category]),
+						   if hyperparameters['parameters'][parameter]['category'] == category]),
 					   *shape[2:])
 			for category in categories
 		}
@@ -1434,7 +1441,9 @@ class Hamiltonian(Object):
 		
 		# Get Trotterized order of copies of parameters
 		p = hyperparameters['p']
-		parameters = trotter(value.T,p).T
+		value = value.T
+		parameters = trotter(value,p)
+		parameters = parameters.T
 
 		# Get coefficients (time step tau and trotter constants)
 		coefficients = hyperparameters['coefficients']
@@ -1592,7 +1601,7 @@ class Unitary(Hamiltonian):
 		return exponentiation(-1j*parameters,self.data,self.identity)
 
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __derivative__(self,parameters):
 		'''
 		Return gradient of parameterized operator expm(parameters*data)
@@ -1606,21 +1615,24 @@ class Unitary(Hamiltonian):
 		shape = self.hyperparameters['shapes'][category]
 
 		parameters = self.__parameters__(parameters)
+
 		coefficients = self.hyperparameters['coefficients']
-		p = self.p
 
 		grad = gradient_expm(-1j*parameters,self.data,self.identity)
 		grad *= -1j*coefficients
 		grad = grad.reshape(shape[0],-1,*grad.shape[1:])
 
-		if p == 1:
-			grad = grad[:,:shape[1]]
-		elif p == 2:
-			grad = grad[:,:shape[1]][:,::1] + grad[:,-shape[1]:][:,::-1]
+		grad = grad.transpose(1,0,*range(2,grad.ndim))
+		grad = gradient_trotter(grad,self.p)
+		grad = grad[:shape[1]]
+		grad = grad.transpose(1,0,*range(2,grad.ndim))
+		
 
 		grad = grad.reshape(-1,*grad.shape[2:])
 
 		return grad
+
+
 
 def distance(a,b):
 	'''
@@ -1632,7 +1644,23 @@ def distance(a,b):
 		out (array): Distance between arrays
 	'''
 	# return norm(a-b,axis=None,ord=2)/a.shape[0]
-	return 1-abs(inner(a,b))/a.shape[0]
+	return 1-inner_abs2(a,b)
+	# return 1-(np.real(trace((a-b).conj().T.dot(a-b))/a.size)/2 - np.imag(trace((a-b).conj().T.dot(a-b))/a.size)/2)/2
+	# return 2*np.sqrt(1-np.abs(np.linalg.eigvals(a.dot(b))[0])**2)
+
+
+def gradient_distance(a,b,da):
+	'''
+	Calculate distance between arrays
+	Args:
+		a (array): Array to calculate distance
+		b (array): Array to calculate distance
+		da (array): Gradient of array to calculate distance		
+	Returns:
+		out (array): Distance between arrays
+	'''
+	# return norm(a-b,axis=None,ord=2)/a.shape[0]
+	return -gradient_inner_abs2(a,b,da)
 	# return 1-(np.real(trace((a-b).conj().T.dot(a-b))/a.size)/2 - np.imag(trace((a-b).conj().T.dot(a-b))/a.size)/2)/2
 	# return 2*np.sqrt(1-np.abs(np.linalg.eigvals(a.dot(b))[0])**2)
 
@@ -1641,13 +1669,24 @@ def trotter(a,p):
 	'''
 	Calculate p-order trotter series of array
 	Args:
-		a (array): Array to compute trotter series
+		a (array): Array to calculate trotter series
 		p (int): Order of trotter series
 	Returns:
 		out (array): Trotter series of array
 	'''	
-	a = array([v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u])
-	return a
+	return array([v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u])
+
+def gradient_trotter(da,p):
+	'''
+	Calculate gradient of p-order trotter series of array
+	Args:
+		da (array): Gradient of array to calculate trotter series		
+		p (int): Order of trotter series
+	Returns:
+		out (array): Gradient of trotter series of array
+	'''	
+	n = da.shape[0]//p
+	return sum([da[:n][::i] if i>0 else da[-n:][::i] for i in [1,-1,1,-1][:p]])
 
 
 
@@ -1687,10 +1726,10 @@ def initialize(parameters,bounds,hyperparameters):
 
 	parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
 	
-	parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
+	# parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
 	
 	# parameters = 0.5*ones(shape)
-	# parameters = rand(shape,key=key,bounds=bounds,random=random)
+	parameters = rand(shape,key=key,bounds=bounds,random=random)
 
 	return parameters
 
@@ -1707,19 +1746,21 @@ def run(index,hyperparameters={}):
 	func = obj.__func__
 	callback = obj.__callback__
 
-	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
+	# optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
 
-	parameters = optimizer(parameters)
+	# parameters = optimizer(parameters)
 
-	obj.__plot__(parameters)
+	# obj.__plot__(parameters)
 
-	# g = gradient_fwd(obj)
-	# f = gradient_finite(obj,tol=1e-7)
-	# h = obj.__derivative__
+	g = gradient_fwd(obj)
+	f = gradient_finite(obj,tol=5e-8)
+	h = obj.__derivative__
 
 	# print(allclose(g(parameters),f(parameters)))
-	# print(allclose(g(parameters),h(parameters)))
+	print(allclose(g(parameters),h(parameters)))
 	# print(allclose(f(parameters),h(parameters)))
+
+	# print(g(parameters)-h(parameters))
 
 	# grad = gradient(func)
 	# finitegrad = gradient_finite(func,tol=5e-8)

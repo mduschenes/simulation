@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 # Import user modules
 from utils import jit,value_and_gradient,gradient
+from utils import isnaninf
 
 
 def value_and_grad(func,grad=None):
@@ -440,7 +441,7 @@ class ConjugateGradient(Base):
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
 		restart = (iteration%self.hyperparameters['restart']) == 0
-		beta = 0 if (restart or np.isnan(beta) or np.isinf(beta) or beta>1e3) else beta
+		beta = 0 if (restart or isnaninf(beta) or beta>1e3) else beta
 		_search = -_grad + beta*search
 
 

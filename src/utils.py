@@ -70,13 +70,27 @@ def vmap(func,in_axes=0,out_axes=0,axes_name=None):
 	return jax.vmap(func,in_axes,out_axes,axes_name)
 
 
+# @partial(jit,static_argnums=(2,))	
+def forloop(start,end,func,out):	
+	'''
+	Perform loop of func from start to end indices
+	Args:
+		start (int): Start index of loop
+		end (int): End index of loop
+		func (callable): Function that acts on iterables with signature func(i,out)
+		out (array): Initial value of loop
+	Returns:
+		out (array): Return of loop
+	'''
+	return jax.lax.fori_loop(start,end,func,out)
+
 
 # @partial(jit,static_argnums=(2,))
 def vfunc(funcs,index):	
 	'''
 	Vectorize indexed functions over operands
 	Args:
-		funcs (iterable[callable]): Functions that act on  that acts on single elements of iterables
+		funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
 		index (iterable[int]): Iterable of indices of functions to call
 	Returns:
 		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
@@ -101,7 +115,7 @@ def value_and_gradient(func):
 	@jit
 	def _value_and_gradient(x):
 		return jax.value_and_grad(func)(x)
-		
+
 	return _value_and_gradient
 
 def gradient(func):
@@ -239,7 +253,7 @@ class Array(onp.ndarray):
 	Args:
 		data (array,list,tuple): array data if array or list, array shape if tuple
 		args (iterable): class attributes
-		kwargs (dict): class keyword attributes    
+		kwargs (dict): class keyword attributes
 	'''
 	def __new__(cls,*args,**kwargs):
 		attrs = {}
@@ -697,10 +711,9 @@ def inner(a,b):
 	Returns:
 		out (array): Inner product
 	'''	
-	return trace(tensordot(a,b.conj().T,1))
+	return trace(tensordot(a,b.conj().T,1))/sqrt(a.shape[0]*b.shape[0])
 
 
-# Gradient of Fidelity distance measure between [0,1] (to be minimized)
 @jit
 def gradient_inner(a,b,da):
 	'''
@@ -713,10 +726,40 @@ def gradient_inner(a,b,da):
 		out (array): Gradient of inner product
 	'''
 	def func(i):
-		return (-2/a.shape[0]**2)*(
+		return trace(tensordot(da[i],b.conj().T,1))/sqrt(a.shape[0]*b.shape[0])
+	return vmap(func)(arange(da.shape[0]))
+
+
+@jit
+def inner_abs2(a,b):
+	'''
+	Calculate absolute square of inner product of arrays a and b
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+	Returns:
+		out (array): Absolute square of inner product
+	'''	
+	return abs2(trace(tensordot(a,b.conj().T,1)))/(a.shape[0]*b.shape[0])
+
+
+@jit
+def gradient_inner_abs2(a,b,da):
+	'''
+	Calculate gradient of inner product of arrays a and b with respect to a
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+		da (array): Gradient of array to calculate inner product
+	Returns:
+		out (array): Gradient of inner product
+	'''
+	def func(i):
+		return 2*(
 			trace(tensordot(da[i],b.conj().T,1))*
-			trace(tensordot(a.conj(),b.T,1))).real
-	return vmap(func)(np.arange(da.shape[0]))
+			trace(tensordot(a.conj(),b.T,1))).real/(a.shape[0]*b.shape[0])
+	return vmap(func)(arange(da.shape[0]))
+
 
 @jit
 def _multiply(a,b):
@@ -774,7 +817,7 @@ def add(a):
 	Returns:
 		out (ndarray) if out argument is not None
 	'''
-	return jax.lax.fori_loop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
+	return forloop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
 
 @jit
 def _matmul(a,b):
@@ -797,7 +840,7 @@ def matmul(a):
 	Returns:
 		out (array): Reduced array of matrix product of arrays
 	'''
-	return jax.lax.fori_loop(1,len(a),lambda i,out: _matmul(out,a[i]),a[0])
+	return forloop(1,len(a),lambda i,out: _matmul(out,a[i]),a[0])
 
 @jit
 def multi_dot(a):
@@ -875,7 +918,7 @@ def tensorprod(a):
 	for i in range(1,len(a)):
 		out = _tensorprod(out,a[i])
 	return out
-	# return jax.lax.fori_loop(1,len(a),lambda i,out: _tensorprod(out,a[i]),a[0])	
+	# return forloop(1,len(a),lambda i,out: _tensorprod(out,a[i]),a[0])	
 
 @jit
 def vtensorprod(a):
@@ -904,7 +947,7 @@ def ntensorprod(a,n):
 	for i in range(1,n):
 		out = _tensorpod(out,a)
 	return out
-	# return jax.lax.fori_loop(1,n,lambda i,out: _tensorprod(out,a),a)	
+	# return forloop(1,n,lambda i,out: _tensorprod(out,a),a)	
 
 @jit
 def vntensorprod(a,n):
@@ -1007,7 +1050,6 @@ def swap(i,j,N,D):
 	s = eye(D,dtype=int)
 	I = [s.copy() for n in range(N)]
 	S = 0
-	# jax.lax.
 	for a in range(D):
 		for b in range(D):
 			I[i][:],I[j][:] = 0,0
@@ -1124,6 +1166,16 @@ def abs(a):
 	'''	
 	return np.abs(a)
 
+@jit
+def abs2(a):
+	'''
+	Calculate absolute value squared of array
+	Args:
+		a (array): Array to calculate absolute value
+	Returns:
+		out (array): Absolute value squared of array
+	'''	
+	return np.abs(a)**2
 
 @jit
 def real(a):
@@ -1241,7 +1293,7 @@ def expm(x,A,I):
 	def func(i,out):
 		return out.dot(_expm(x[i],A[i%l],I))
 
-	return jax.lax.fori_loop(0,k,func,I)
+	return forloop(0,k,func,I)
 
 @jit
 def gradient_expm(x,A,I):
@@ -1260,12 +1312,10 @@ def gradient_expm(x,A,I):
 	def func(i,out):
 		return out.dot(_expm(x[i],A[i%l],I))
 
-	def grad(j):
-	  return jax.lax.fori_loop(0,j,func,I).dot(
-		  func(j,I).dot(A[j%l]).dot(
-		  jax.lax.fori_loop(j+1,k,func,I)))
+	def grad(i):
+		return forloop(i+1,k,func,forloop(0,i+1,func,I).dot(A[i%l]))
 
-	return jax.vmap(grad)(np.arange(k))
+	return jax.vmap(grad)(arange(k))
 
 
 @jit
@@ -1286,7 +1336,7 @@ def expspm(x,A,I):
 		return out + x[i]*A[i%l]
 
 	out = zeros(I.shape,dtype=I.dtype)
-	return sp.linalg.expm(jax.lax.fori_loop(0,k,func,out))
+	return sp.linalg.expm(forloop(0,k,func,out))
 
 
 @jit
@@ -1696,6 +1746,43 @@ def isnone(a,*args,**kwargs):
 	'''
 	return a is None
 
+
+def isnaninf(a,*args,**kwargs):
+	'''
+	Check if array is nan or inf
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is nan or inf
+	'''
+	return isnan(a,*args,**kwargs) or isinf(a,*args,**kwargs)
+
+def isinf(a,*args,**kwargs):
+	'''
+	Check if array is inf
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is inf
+	'''
+	return np.isinf(a)
+
+def isnan(a,*args,**kwargs):
+	'''
+	Check if array is nan
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is nan
+	'''
+	return np.isnan(a)
+
 def islist(a,*args,**kwargs):
 	'''
 	Check if array is list
@@ -1897,7 +1984,7 @@ def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 					_group = _groups.get(key,_group)
 				else:
 					_group = _groups
-				values[i] = permute(value,_copy=_copy,_groups=_group)    
+				values[i] = permute(value,_copy=_copy,_groups=_group)
 		return keys,values
 
 
@@ -1928,7 +2015,7 @@ def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 	# Retain original ordering of keys if _ordered is True
 	if _ordered:
 		for i,d in enumerate(dictionaries):
-			dictionaries[i] = {k: dictionaries[i][k] for k in keys_ordered}    
+			dictionaries[i] = {k: dictionaries[i][k] for k in keys_ordered}
 	return dictionaries
 
 
@@ -1947,16 +2034,16 @@ def binary(a,n,function):
 		return a[0]
 	elif n == 2:
 		return function(a[0],a[1])
-	else:        
+	else:
 		m = n%2
 		n = n//2
 		if m:
 			return function(a[0],
-				   function(binary(a[m:n+m],n,function),
-							binary(a[n+m:],n,function)))
+				function(binary(a[m:n+m],n,function),
+				binary(a[n+m:],n,function)))
 		else:
 			return function(binary(a[m:n+m],n,function),
-							binary(a[n+m:],n,function))   
+				binary(a[n+m:],n,function))
 
 
 
@@ -1965,7 +2052,7 @@ def trotter(A,U,p):
 	r'''
 	Perform p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
 	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
-	k internally commuting components {A_i}  of the matrix A = \sum_i^k A_i .
+	k internally commuting components {A_i} of the matrix A = \sum_i^k A_i .
 	For example, for {U_i = e^{A_i}} :
 		f_0 = e^{\sum_i A_i}
 		f_1 = \prod_i^k U_i
@@ -1994,7 +2081,7 @@ def trottergrad(A,U,p):
 	r'''
 	Perform gradient of p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
 	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
-	k internally commuting components {A_i}  of the matrix A = \sum_i^k A_i .
+	k internally commuting components {A_i} of the matrix A = \sum_i^k A_i .
 	For example, for {U_i = e^{A_i}} :
 		f_0 = e^{\sum_i A_i}
 		f_1 = \prod_i^k U_i
@@ -2014,8 +2101,8 @@ def trottergrad(A,U,p):
 		U = array([matmul(asarray([*U[:i],A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
 	elif p == 2:
 		U = array([matmul(asarray([*slices(U,0,i)[::1],A[i]/p,*slices(U,i,k-i)[::1],*U[::-1]])) + 
-				   matmul(asarray([*U[::1],*slices(U,i,k-i)[::-1],A[i]/p,*slices(U,0,i)[::-1]]))
-				   for i in range(k)])
+				matmul(asarray([*U[::1],*slices(U,i,k-i)[::-1],A[i]/p,*slices(U,0,i)[::-1]]))
+				for i in range(k)])
 	else:
 		U = array([matmul(asarray([*slices(U,0,i),A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
 	return U

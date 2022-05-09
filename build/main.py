@@ -253,36 +253,32 @@ def main(args):
 						'locality':locality,
 						'parameters':None,
 						'size':2,
-						'group':[('x',),('y',)],
+						'group':[['x',],['y',]],
 						'scale':1,
 						# 'scale':2*pi/4/(20e-6)*scale,
 						'bounds':[-1,1],
-						'boundaries':{0:0,-1:0},
+						'boundaries':{0:3.4,-1:-0.25},
 						'func': {
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (	
-								hyperparameters['parameters'][parameter]['scale']*
-								(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-								parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]) + (
-								0*hyperparameters['parameters'][parameter]['bounds'][0])								
+								hyperparameters['parameters'][parameter]['scale']*(
+								parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]])								
 								))
 							for group in [('x',)]},
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
-								hyperparameters['parameters'][parameter]['scale']*
-								(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-								parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]) + (
-								0*hyperparameters['parameters'][parameter]['bounds'][0])								
+								hyperparameters['parameters'][parameter]['scale']*(
+								parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]])
 								))
 							for group in [('y',)]},
 						},
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (
 							hyperparameters['hyperparameters']['lambda'][0]*bound(
-								((hyperparameters['parameters'][parameter]['bounds'][1]+hyperparameters['parameters'][parameter]['bounds'][0])/2 - 
+								(hyperparameters['parameters'][parameter]['bounds'][0] - 
 								(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]**2+
 								 parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]**2)**(1/2)),
 								hyperparameters
 								).sum()
 							+hyperparameters['hyperparameters']['lambda'][1]*bound(
-								(-(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])/2 + 
+								(-hyperparameters['parameters'][parameter]['bounds'][1] + 
 								(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]**2+
 								 parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]**2)**(1/2)),
 								hyperparameters
@@ -353,10 +349,13 @@ def main(args):
 							][:N]),
 						'size':1,
 						'group':[('z',)],
+						'scale':1,
+						# 'scale':2*pi/2*1000*scale,						
 						'bounds':[-1,1],
 						'boundaries':{0:None,-1:None},				
 						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
-							2*pi/2*1000*scale*hyperparameters['parameters'][parameter]['parameters']
+							hyperparameters['parameters'][parameter]['scale']*							
+							hyperparameters['parameters'][parameter]['parameters']
 							)) 
 							for group in [('z',)]},
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (0)) for group in [('z',)]},	
