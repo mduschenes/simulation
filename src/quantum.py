@@ -27,13 +27,13 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.optimize import Optimizer,Objective
-from src.utils import jit,gradient,finitegradient
+from src.utils import jit,gradient,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,rand,identity
 from src.utils import tensorprod,trace,broadcast_to
 from src.utils import summation,exponentiation
-from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner,norm,interpolate,unique,allclose
+from src.utils import gradient_expm,gradient_sigmoid,gradient_inner
+from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner,norm,interpolate,unique,allclose,parse
 from src.utils import pi,e
-from src.utils import parse
 
 # Logging
 import logging,logging.config
@@ -819,7 +819,7 @@ class Object(object):
 				self.hyperparameters['hyperparameters']['track']['objective'][-1],
 				)
 			)
-			# isclose = allclose(self.hyperparameters['hyperparameters']['track']['grad'][-1],finitegradient(self.__func__)(parameters))
+			# isclose = allclose(self.hyperparameters['hyperparameters']['track']['grad'][-1],gradient_finite(self.__func__)(parameters))
 			# if not isclose:
 			# 	print('**************** ERROR GRAD ****************************')
 			# 	print(parameters)
@@ -1592,7 +1592,35 @@ class Unitary(Hamiltonian):
 		return exponentiation(-1j*parameters,self.data,self.identity)
 
 
+	@partial(jit,static_argnums=(0,))
+	def __derivative__(self,parameters):
+		'''
+		Return gradient of parameterized operator expm(parameters*data)
+		Args:
+			parameters (array): Parameters to parameterize operator
+		Returns
+			grad (array): Gradient of parameterized operator
+		'''		
+		
+		category = 'variable'
+		shape = self.hyperparameters['shapes'][category]
 
+		parameters = self.__parameters__(parameters)
+		coefficients = self.hyperparameters['coefficients']
+		p = self.p
+
+		grad = gradient_expm(-1j*parameters,self.data,self.identity)
+		grad *= -1j*coefficients
+		grad = grad.reshape(shape[0],-1,*grad.shape[1:])
+
+		if p == 1:
+			grad = grad[:,:shape[1]]
+		elif p == 2:
+			grad = grad[:,:shape[1]][:,::1] + grad[:,-shape[1]:][:,::-1]
+
+		grad = grad.reshape(-1,*grad.shape[2:])
+
+		return grad
 
 def distance(a,b):
 	'''
@@ -1603,8 +1631,8 @@ def distance(a,b):
 	Returns:
 		out (array): Distance between arrays
 	'''
-	return norm(a-b,axis=None,ord=2)/a.shape[0]
-	# return 1-abs(inner(a,b.conj().T))/a.shape[0]
+	# return norm(a-b,axis=None,ord=2)/a.shape[0]
+	return 1-abs(inner(a,b))/a.shape[0]
 	# return 1-(np.real(trace((a-b).conj().T.dot(a-b))/a.size)/2 - np.imag(trace((a-b).conj().T.dot(a-b))/a.size)/2)/2
 	# return 2*np.sqrt(1-np.abs(np.linalg.eigvals(a.dot(b))[0])**2)
 
@@ -1685,9 +1713,16 @@ def run(index,hyperparameters={}):
 
 	obj.__plot__(parameters)
 
+	# g = gradient_fwd(obj)
+	# f = gradient_finite(obj,tol=1e-7)
+	# h = obj.__derivative__
+
+	# print(allclose(g(parameters),f(parameters)))
+	# print(allclose(g(parameters),h(parameters)))
+	# print(allclose(f(parameters),h(parameters)))
 
 	# grad = gradient(func)
-	# finitegrad = finitegradient(func,tol=5e-8)
+	# finitegrad = gradient_finite(func,tol=5e-8)
 
 	# print(allclose(grad(parameters),finitegrad(parameters)))
 

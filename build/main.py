@@ -254,30 +254,90 @@ def main(args):
 						'parameters':None,
 						'size':2,
 						'group':[('x',),('y',)],
-						'scale':2*pi/4/(20e-6)*scale,
-						'bounds':[0,1],
+						'scale':1,
+						# 'scale':2*pi/4/(20e-6)*scale,
+						'bounds':[-1,1],
 						'boundaries':{0:0,-1:0},
 						'func': {
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (	
 								hyperparameters['parameters'][parameter]['scale']*
 								(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-								cos(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]) + (
-								hyperparameters['parameters'][parameter]['bounds'][0])								
+								parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]) + (
+								0*hyperparameters['parameters'][parameter]['bounds'][0])								
 								))
 							for group in [('x',)]},
 							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
 								hyperparameters['parameters'][parameter]['scale']*
 								(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-								sin(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]) + (
-								hyperparameters['parameters'][parameter]['bounds'][0])								
+								parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]) + (
+								0*hyperparameters['parameters'][parameter]['bounds'][0])								
 								))
 							for group in [('y',)]},
 						},
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (
-							hyperparameters['hyperparameters']['lambda'][0]*bound(hyperparameters['parameters'][parameter]['bounds'][0] - parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
-							+hyperparameters['hyperparameters']['lambda'][1]*bound(-hyperparameters['parameters'][parameter]['bounds'][1] + parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
-							+hyperparameters['hyperparameters']['lambda'][2]*sum(((parameters[i,hyperparameters['parameters'][parameter]['slice'][group][0::2]]-hyperparameters['parameters'][parameter]['boundaries'][i])**2).sum()
-								for i in hyperparameters['parameters'][parameter]['boundaries']))) for group in [('x',),('y',)]},
+							hyperparameters['hyperparameters']['lambda'][0]*bound(
+								((hyperparameters['parameters'][parameter]['bounds'][1]+hyperparameters['parameters'][parameter]['bounds'][0])/2 - 
+								(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]**2+
+								 parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]**2)**(1/2)),
+								hyperparameters
+								).sum()
+							+hyperparameters['hyperparameters']['lambda'][1]*bound(
+								(-(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])/2 + 
+								(parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]**2+
+								 parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]**2)**(1/2)),
+								hyperparameters
+								).sum()
+							+hyperparameters['hyperparameters']['lambda'][2]*sum(((
+								parameters[i,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]-
+								hyperparameters['parameters'][parameter]['boundaries'][i]
+								)**2).sum()
+								for i in hyperparameters['parameters'][parameter]['boundaries']) 							
+							+hyperparameters['hyperparameters']['lambda'][2]*sum(((
+								parameters[i,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]-
+								hyperparameters['parameters'][parameter]['boundaries'][i]
+								)**2).sum()							
+								for i in hyperparameters['parameters'][parameter]['boundaries'])
+							)) 
+							for group in [('x',),('y',)]
+						},
+						# 'func': {
+						# 	**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (	
+						# 		hyperparameters['parameters'][parameter]['scale']*
+						# 		(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
+						# 		cos(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]) + (
+						# 		hyperparameters['parameters'][parameter]['bounds'][0])								
+						# 		))
+						# 	for group in [('x',)]},
+						# 	**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
+						# 		hyperparameters['parameters'][parameter]['scale']*
+						# 		(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
+						# 		sin(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]) + (
+						# 		hyperparameters['parameters'][parameter]['bounds'][0])								
+						# 		))
+						# 	for group in [('y',)]},
+						# },
+						# 'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (
+						# 	hyperparameters['hyperparameters']['lambda'][0]*bound(hyperparameters['parameters'][parameter]['bounds'][0] - parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
+						# 	+hyperparameters['hyperparameters']['lambda'][1]*bound(-hyperparameters['parameters'][parameter]['bounds'][1] + parameters[:,hyperparameters['parameters'][parameter]['slice'][group]],hyperparameters).sum()
+						# 	+hyperparameters['hyperparameters']['lambda'][2]*sum(((parameters[i,hyperparameters['parameters'][parameter]['slice'][group][0::2]]-hyperparameters['parameters'][parameter]['boundaries'][i])**2).sum()
+						# 		for i in hyperparameters['parameters'][parameter]['boundaries']))) for group in [('x',),('y',)]
+						# },
+						# 'grad': {
+						# 	**{group:(lambda parameters,derivative,hyperparameters,parameter=parameter,group=group: (	
+						# 		hyperparameters['parameters'][parameter]['scale']*
+						# 		(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
+						# 		parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]) + (
+						# 		0*hyperparameters['parameters'][parameter]['bounds'][0])								
+						# 		))
+						# 	for group in [('x',)]},
+						# 	**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
+						# 		hyperparameters['parameters'][parameter]['scale']*
+						# 		(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
+						# 		parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]) + (
+						# 		0*hyperparameters['parameters'][parameter]['bounds'][0])								
+						# 		))
+						# 	for group in [('y',)]},
+						# },						
 					} 
 					for parameter in ['xy']},
 					**{parameter:{
@@ -317,7 +377,8 @@ def main(args):
 							][:(N*(N-1))//2]),
 						'size':1,
 						'group':[('zz',)],				
-						'scale':2*pi/4*1000*scale,
+						'scale':1,
+						# 'scale':2*pi/4*1000*scale,
 						'bounds':[-1,1],
 						'boundaries':{0:None,-1:None},				
 						'func': {group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (

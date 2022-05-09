@@ -98,7 +98,11 @@ def value_and_gradient(func):
 	Returns:
 		value_and_grad (callable): Value and Gradient of function
 	'''
-	return jit(jax.value_and_grad(func))
+	@jit
+	def _value_and_gradient(x):
+		return jax.value_and_grad(func)(x)
+		
+	return _value_and_gradient
 
 def gradient(func):
 	'''
@@ -108,10 +112,14 @@ def gradient(func):
 	Returns:
 		grad (callable): Gradient of function
 	'''
-	return jit(jax.grad(func))
+	@jit
+	def _gradient(x):
+		return jax.grad(func)(x)
+
+	return _gradient	
 
 
-def finitegradient(func,tol=1e-6):
+def gradient_finite(func,tol=1e-6):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
@@ -120,14 +128,14 @@ def finitegradient(func,tol=1e-6):
 	Returns:
 		out (array): Array of gradient
 	'''
-
+	@jit
 	def _gradient(x):
 		return vmap(lambda v,x=x,tol=tol: (func(x+tol*v)-func(x-tol*v))/(2*tol))(eye(x.size))
 
 	return _gradient
 
 
-def value_and_finitegradient(func,tol=1e-6):
+def value_and_gradient_finite(func,tol=1e-6):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
@@ -136,25 +144,40 @@ def value_and_finitegradient(func,tol=1e-6):
 	Returns:
 		out (array): Array of gradient
 	'''
-
+	@jit
 	def _value_and_gradient(x):
 		return (func(x),vmap(lambda v,x=x,tol=tol: (func(x+tol*v)-func(x-tol*v))/(2*tol))(eye(x.size)))
+	
 	return _value_and_gradient
 
 
-
-# @partial(jit,static_argnums=(0,))
-def value_and_grad(func):
+def gradient_fwd(func):
 	'''
-	Calculate auto-differentiation derivative of function
+	Compute forward gradient of function
 	Args:
-		func (callable): Function to derive, with signature func(x) and output shape
+		func (callable): Function to compile
 	Returns:
-		out (array): Array of shape (n,*shape)
+		grad (callable): Gradient of function
 	'''
-	return jax.value_and_grad(func)
+	@jit
+	def _gradient(x):
+		return np.moveaxis(jax.jacfwd(func)(x),-1,0)
 
+	return _gradient
 
+def gradient_rev(func):
+	'''
+	Compute reverse gradient of function
+	Args:
+		func (callable): Function to compile
+	Returns:
+		grad (callable): Gradient of function
+	'''
+	@jit
+	def _gradient(x):
+		return np.moveaxis(jax.jacrev(func)(x),-1,0)
+
+	return _gradient
 
 class dictionary(dict):
 	'''
@@ -547,7 +570,6 @@ class cnot(array):
 			out = array(1,*args,**kwargs)
 			return out
 		elif n == 4:
-			out = array([])
 			out = array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],*args,**kwargs)
 			return out
 		else:
@@ -570,7 +592,6 @@ class toffoli(array):
 			out = array(1,*args,**kwargs)
 			return out
 		elif n == 8:
-			out = array([])
 			out = array([
 				[1,0,0,0,0,0,0,0],
 				[0,1,0,0,0,0,0,0],
@@ -676,8 +697,26 @@ def inner(a,b):
 	Returns:
 		out (array): Inner product
 	'''	
-	return trace(tensordot(a,b,1))
+	return trace(tensordot(a,b.conj().T,1))
 
+
+# Gradient of Fidelity distance measure between [0,1] (to be minimized)
+@jit
+def gradient_inner(a,b,da):
+	'''
+	Calculate gradient of inner product of arrays a and b with respect to a
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+		da (array): Gradient of array to calculate inner product
+	Returns:
+		out (array): Gradient of inner product
+	'''
+	def func(i):
+		return (-2/a.shape[0]**2)*(
+			trace(tensordot(da[i],b.conj().T,1))*
+			trace(tensordot(a.conj(),b.T,1))).real
+	return vmap(func)(np.arange(da.shape[0]))
 
 @jit
 def _multiply(a,b):
@@ -1198,13 +1237,56 @@ def expm(x,A,I):
 	'''		
 	k = x.shape[0]
 	l = A.shape[0]
-	_func = lambda i: _expm(x[i],A[i%l],I)
-	func = lambda i,out: _matmul(out,_func(i))
-	
-	out = I
-	return jax.lax.fori_loop(0,k,func,out)
-	# return jsp.linalg.expm(a)
 
+	def func(i,out):
+		return out.dot(_expm(x[i],A[i%l],I))
+
+	return jax.lax.fori_loop(0,k,func,I)
+
+@jit
+def gradient_expm(x,A,I):
+	'''
+	Calculate gradient of matrix exponential of parameters times data
+	Args:
+		x (array): parameters of shape (k,) or (k,n,) or (k,n,n)		
+		A (array): Array of data to matrix exponentiate of shape (l,n,n)
+		I (array): Array of data identity
+	Returns:
+		out (array): Gradient of matrix exponential of A of shape (k,n,n)
+	'''			
+	k = x.shape[0]
+	l = A.shape[0]
+
+	def func(i,out):
+		return out.dot(_expm(x[i],A[i%l],I))
+
+	def grad(j):
+	  return jax.lax.fori_loop(0,j,func,I).dot(
+		  func(j,I).dot(A[j%l]).dot(
+		  jax.lax.fori_loop(j+1,k,func,I)))
+
+	return jax.vmap(grad)(np.arange(k))
+
+
+@jit
+def expspm(x,A,I):
+	'''
+	Calculate matrix exponential of parameters times data
+	Args:
+		x (array): parameters of shape (k,) or (k,n,) or (k,n,n)		
+		A (array): Array of data to matrix exponentiate of shape (l,n,n)
+		I (array): Array of data identity
+	Returns:
+		out (array): Matrix exponential of A of shape (n,n)
+	'''		
+	k = x.shape[0]
+	l = A.shape[0]
+
+	def func(i,out):
+		return out + x[i]*A[i%l]
+
+	out = zeros(I.shape,dtype=I.dtype)
+	return sp.linalg.expm(jax.lax.fori_loop(0,k,func,out))
 
 
 @jit
@@ -1970,7 +2052,7 @@ def heaviside(a):
 
 
 @jit
-def sigmoid(a,scale=1e6):
+def sigmoid(a,scale=1e4):
 	'''
 	Calculate sigmoid function with scale
 	Args:
@@ -1982,4 +2064,13 @@ def sigmoid(a,scale=1e6):
 	return (np.tanh(a*scale/2)+1)/2
 	# return sp.special.expit(scale*a)
 
-
+def gradient_sigmoid(a,scale=1e4):
+	'''
+	Calculate gradient of sigmoid function with scale
+	Args:
+		a (array): Array to calculate sigmoid
+		scale (float): scale of sigmoid
+	Returns:
+		out (array): Gradient of sigmoid
+	'''
+	return scale*sigmoid(a,scale)*sigmoid(-a,scale)
