@@ -783,8 +783,8 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		return self.__loss__(parameters) + self.__constraints__(parameters)
-		# return self.__loss__(parameters)
+		# return self.__loss__(parameters) + self.__constraints__(parameters)
+		return self.__loss__(parameters)
 
 	@partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
@@ -1431,11 +1431,10 @@ class Hamiltonian(Object):
 
 		value = hyperparameters['value']
 		for parameter in hyperparameters['parameters']:
-
 			if hyperparameters['parameters'][parameter]['category'] is category:
 				for group in hyperparameters['parameters'][parameter]['group']:
 					value = value.at[:,hyperparameters['parameters'][parameter]['index'][group]].set(
-							hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
+						hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
 
 
 		
@@ -1535,7 +1534,7 @@ class Hamiltonian(Object):
 		for parameter in hyperparameters['parameters']:
 			for group in hyperparameters['parameters'][parameter]['group']:
 				hyperparameters['value'] = hyperparameters['value'].at[:,hyperparameters['parameters'][parameter]['index'][group]].set(
-						hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
+					hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
 
 		print()
 		print('value')
@@ -1608,14 +1607,17 @@ class Unitary(Hamiltonian):
 		Args:
 			parameters (array): Parameters to parameterize operator
 		Returns
-			grad (array): Gradient of parameterized operator
+			derivative (array): Gradient of parameterized operator
 		'''		
 		
 		category = 'variable'
 		shape = self.hyperparameters['shapes'][category]
-
+		index = array(list(set([
+			i for parameter in self.hyperparameters['parameters'] 
+			for group in self.hyperparameters['parameters'][parameter]['group'] 
+			for i in self.hyperparameters['parameters'][parameter]['index'][group]
+			if self.hyperparameters['parameters'][parameter]['category'] == category])))
 		parameters = self.__parameters__(parameters)
-
 		coefficients = self.hyperparameters['coefficients']
 
 		grad = gradient_expm(-1j*parameters,self.data,self.identity)
@@ -1624,13 +1626,25 @@ class Unitary(Hamiltonian):
 
 		grad = grad.transpose(1,0,*range(2,grad.ndim))
 		grad = gradient_trotter(grad,self.p)
-		grad = grad[:shape[1]]
+		grad = grad[index]
 		grad = grad.transpose(1,0,*range(2,grad.ndim))
 		
-
 		grad = grad.reshape(-1,*grad.shape[2:])
 
-		return grad
+		derivative = grad
+		
+		# derivative = zeros(shape)
+
+		# for parameter in self.hyperparameters['parameters']:
+		# 	if self.hyperparameters['parameters'][parameter]['category'] is category:
+		# 		for group in self.hyperparameters['parameters'][parameter]['group']:
+		# 			derivative = derivative.at[self.hyperparameters['parameters'][parameter]['slice'][group]].set(
+		# 				derivative.at[self.hyperparameters['parameters'][parameter]['slice'][group]] + 
+		# 				self.hyperparameters['parameters'][parameter]['grad'][group](parameters,self.hyperparameters).dot(
+		# 				grad[self.hyperparameters['parameters'][parameter]['index'][group]])
+		# 				)
+
+		return derivative
 
 
 
@@ -1746,18 +1760,18 @@ def run(index,hyperparameters={}):
 	func = obj.__func__
 	callback = obj.__callback__
 
-	# optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
+	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
 
-	# parameters = optimizer(parameters)
+	parameters = optimizer(parameters)
 
-	# obj.__plot__(parameters)
+	obj.__plot__(parameters)
 
-	g = gradient_fwd(obj)
-	f = gradient_finite(obj,tol=5e-8)
-	h = obj.__derivative__
+	# g = gradient_fwd(obj)
+	# f = gradient_finite(obj,tol=5e-8)
+	# h = obj.__derivative__
 
 	# print(allclose(g(parameters),f(parameters)))
-	print(allclose(g(parameters),h(parameters)))
+	# print(allclose(g(parameters),h(parameters)))
 	# print(allclose(f(parameters),h(parameters)))
 
 	# print(g(parameters)-h(parameters))

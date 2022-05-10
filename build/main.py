@@ -46,6 +46,33 @@ def bound(a,hyperparameters):
 	# return 1/(1+np.exp(-eps*a))
 	return sigmoid(a,hyperparameters['hyperparameters']['bound'])
 
+def params(parameters,hyperparameters,parameter,group):
+
+	if group in [('x',)]:
+		param = hyperparameters['parameters'][parameter]['scale']*(
+			parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]])
+
+	elif group in [('y',)]:
+		param = hyperparameters['parameters'][parameter]['scale']*(
+			parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]])		
+	
+
+	return param
+
+def grads(parameters,hyperparameters,parameter,group):
+
+	if group in [('x',)]:
+		param = hyperparameters['parameters'][parameter]['scale']*(
+			parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]])
+
+	elif group in [('y',)]:
+		param = hyperparameters['parameters'][parameter]['scale']*(
+			parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]])		
+	
+
+	return param	
+
+
 def main(args):
 	nargs = len(args)
 
@@ -257,18 +284,10 @@ def main(args):
 						'scale':1,
 						# 'scale':2*pi/4/(20e-6)*scale,
 						'bounds':[-1,1],
-						'boundaries':{0:3.4,-1:-0.25},
+						'boundaries':{0:0,-1:0},
 						'func': {
-							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (	
-								hyperparameters['parameters'][parameter]['scale']*(
-								parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]])								
-								))
-							for group in [('x',)]},
-							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
-								hyperparameters['parameters'][parameter]['scale']*(
-								parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]])
-								))
-							for group in [('y',)]},
+							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group,params=params: params(parameters,hyperparameters,parameter=parameter,group=group))
+								for group in [('x',),('y',)]},
 						},
 						'constraints': {group: (lambda parameters,hyperparameters,parameter=parameter,group=group: (
 							hyperparameters['hyperparameters']['lambda'][0]*bound(
@@ -318,22 +337,22 @@ def main(args):
 						# 	+hyperparameters['hyperparameters']['lambda'][2]*sum(((parameters[i,hyperparameters['parameters'][parameter]['slice'][group][0::2]]-hyperparameters['parameters'][parameter]['boundaries'][i])**2).sum()
 						# 		for i in hyperparameters['parameters'][parameter]['boundaries']))) for group in [('x',),('y',)]
 						# },
-						# 'grad': {
-						# 	**{group:(lambda parameters,derivative,hyperparameters,parameter=parameter,group=group: (	
-						# 		hyperparameters['parameters'][parameter]['scale']*
-						# 		(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-						# 		parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]) + (
-						# 		0*hyperparameters['parameters'][parameter]['bounds'][0])								
-						# 		))
-						# 	for group in [('x',)]},
-						# 	**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
-						# 		hyperparameters['parameters'][parameter]['scale']*
-						# 		(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
-						# 		parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]) + (
-						# 		0*hyperparameters['parameters'][parameter]['bounds'][0])								
-						# 		))
-						# 	for group in [('y',)]},
-						# },						
+						'grad': {
+							**{group:(lambda parameters,derivative,hyperparameters,parameter=parameter,group=group: (	
+								hyperparameters['parameters'][parameter]['scale']*
+								(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
+								parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]) + (
+								0*hyperparameters['parameters'][parameter]['bounds'][0])								
+								))
+							for group in [('x',)]},
+							**{group:(lambda parameters,hyperparameters,parameter=parameter,group=group: (
+								hyperparameters['parameters'][parameter]['scale']*
+								(hyperparameters['parameters'][parameter]['bounds'][1]-hyperparameters['parameters'][parameter]['bounds'][0])*(
+								parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]) + (
+								0*hyperparameters['parameters'][parameter]['bounds'][0])								
+								))
+							for group in [('y',)]},
+						},						
 					} 
 					for parameter in ['xy']},
 					**{parameter:{
