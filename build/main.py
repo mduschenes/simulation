@@ -51,31 +51,30 @@ def bound(a,hyperparameters):
 def params(parameters,hyperparameters,parameter,group):
 
 	if parameter in ['xy'] and group in [('x',)]:
-		param = (
-			hyperparameters['parameters'][parameter]['scale']*
-			parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*
-			cos(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])
-		)
 		# param = (
 		# 	hyperparameters['parameters'][parameter]['scale']*
-		# 	parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]
+		# 	parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*
+		# 	cos(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])
 		# )
+		param = (
+			hyperparameters['parameters'][parameter]['scale']*
+			parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:len(hyperparameters['parameters'][parameter]['slice'][group])//2]]
+		)
 
 	elif parameter in ['xy'] and group in [('y',)]:
-		param = (
-			hyperparameters['parameters'][parameter]['scale']*
-			parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*
-			sin(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])
-		)		
 		# param = (
 		# 	hyperparameters['parameters'][parameter]['scale']*
-		# 	parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]
+		# 	parameters[:,hyperparameters['parameters'][parameter]['slice'][group][0::2]]*
+		# 	sin(2*pi*parameters[:,hyperparameters['parameters'][parameter]['slice'][group][1::2]])
 		# )		
+		param = (
+			hyperparameters['parameters'][parameter]['scale']*
+			parameters[:,hyperparameters['parameters'][parameter]['slice'][group][len(hyperparameters['parameters'][parameter]['slice'][group])//2:]]
+		)		
 	# elif parameter in ['z'] and group in [('z',)]:
 	# 	param =
 	# elif parameter in ['zz'] and group in [('zz',)]:
 
-	
 	return param
 
 # @partial(jit,static_argnums=(1,2,3,))

@@ -791,7 +791,7 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		# return self.__loss__(parameters) + self.__constraints__(parameters)
+		return self.__loss__(parameters) + self.__constraints__(parameters)
 		return self.__loss__(parameters)
 
 	@partial(jit,static_argnums=(0,))
@@ -1079,7 +1079,8 @@ class Object(object):
 					# x = x[1:-1]
 					# y = y[1:-1]
 
-					label = [r'\alpha',r'\phi'][i%2]
+					# label = [r'\alpha',r'\phi'][i%2]
+					label = [r'\alpha',r'\beta'][i%2]
 
 					ax[i].plot(x,y,
 						color=getattr(plt.cm,'winter')((iterations.index(j)+1)/len(iterations)),
@@ -1446,7 +1447,7 @@ class Hamiltonian(Object):
 		value = hyperparameters['value']
 
 		for parameter in hyperparameters['parameters']:
-			if hyperparameters['parameters'][parameter]['category'] is category:
+			if hyperparameters['parameters'][parameter]['category'] == category:
 				for group in hyperparameters['parameters'][parameter]['group']:
 					value = value.at[:,hyperparameters['parameters'][parameter]['index'][group]].set(
 						hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
@@ -1465,7 +1466,6 @@ class Hamiltonian(Object):
 
 		# Get reshaped parameters
 		parameters = parameters.ravel()
-
 		
 		return parameters
 
@@ -1563,6 +1563,8 @@ class Hamiltonian(Object):
 		hyperparameters['value'] = zeros(hyperparameters['shape'])
 		hyperparameters['label'] = hyperparameters['label'] #.conj().T
 
+
+
 		for parameter in hyperparameters['parameters']:
 			for group in hyperparameters['parameters'][parameter]['group']:
 				hyperparameters['value'] = hyperparameters['value'].at[:,hyperparameters['parameters'][parameter]['index'][group]].set(
@@ -1623,7 +1625,7 @@ class Unitary(Hamiltonian):
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __call__(self,parameters):
 		'''
 		Return parameterized operator expm(parameters*data)
@@ -1672,7 +1674,7 @@ class Unitary(Hamiltonian):
 		# derivative = zeros(shape)
 
 		# for parameter in self.hyperparameters['parameters']:
-		# 	if self.hyperparameters['parameters'][parameter]['category'] is category:
+		# 	if self.hyperparameters['parameters'][parameter]['category'] == category:
 		# 		for group in self.hyperparameters['parameters'][parameter]['group']:
 		# 			derivative = derivative.at[self.hyperparameters['parameters'][parameter]['slice'][group]].set(
 		# 				derivative.at[self.hyperparameters['parameters'][parameter]['slice'][group]] + 
@@ -1849,8 +1851,13 @@ def run(index,hyperparameters={}):
 	obj.__plot__(parameters)
 
 	# g = gradient_fwd(obj)
-	# f = gradient_finite(obj,tol=5e-8)
+	# f = gradient_finite(obj,tol=6e-8)
 	# h = obj.__derivative__
+
+	# print(parameters)
+	# print(g(parameters))
+	# print()
+	# print(h(parameters))
 
 	# print(allclose(g(parameters),f(parameters)))
 	# print(allclose(g(parameters),h(parameters)))

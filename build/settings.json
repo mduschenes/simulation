@@ -14,12 +14,12 @@
 	"plot":1
 },
 "model":{
-	"N":2,
+	"N":4,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":200,
+	"M":300,
 	"T":null,
 	"tau":1e-2,
 	"p":2,
@@ -43,7 +43,7 @@
 	"interpolation":1,"smoothness":2,"init":[0,1],
 	"initialization":"interpolation","random":"uniform","pad":"random",
 	"c1":0.0001,"c2":0.9,"maxiter":50,"restart":25,"tol":1e-14,
-	"bound":1e4,"alpha":1e-4,"beta":1e-1,"lambda":[1e-4,1e-4,1e-4],"eps":980e-3,
+	"bound":1e4,"alpha":1e-4,"beta":1e-1,"lambda":[1e-4,1e-4,1e-2],"eps":980e-3,
 	"line_search":1,
 	"track":{
 		"track":{"log":1,"track":10,"callback":1},
@@ -63,7 +63,7 @@
 		"size":2,
 		"group":[["x"],["y"]],
 		"scale":1,
-		"bounds":[0,1],
+		"bounds":[-1,1],
 		"boundaries":{"0":0,"-1":0}
 	},
 	"z": {
