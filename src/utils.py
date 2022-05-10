@@ -175,7 +175,7 @@ def gradient_fwd(func):
 	'''
 	@jit
 	def _gradient(x):
-		return np.moveaxis(jax.jacfwd(func)(x),-1,0)
+		return moveaxis(jax.jacfwd(func)(x),-1,0)
 
 	return _gradient
 
@@ -189,7 +189,7 @@ def gradient_rev(func):
 	'''
 	@jit
 	def _gradient(x):
-		return np.moveaxis(jax.jacrev(func)(x),-1,0)
+		return moveaxis(jax.jacrev(func)(x),-1,0)
 
 	return _gradient
 
@@ -645,6 +645,10 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 
 	if random in ['uniform','rand']:
 		return jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
+	elif random in ['zeros']:
+		return zeros(shape)
+	elif random in ['ones']:
+		return ones(shape)		
 	else:
 		return jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
 
@@ -1143,7 +1147,6 @@ def anticommutes(a,b):
 	return bool(~(anticommutator(a,b).any()))
 
 
-
 @jit
 def trace(a):
 	'''
@@ -1500,6 +1503,33 @@ def broadcast_to(a,shape):
 		out (array): Broadcasted array
 	'''
 	return np.broadcast_to(a,shape)
+
+
+def moveaxis(a,source,destination):
+	'''
+	Move axes of array
+	Args:
+		a (array): Array to be moved
+		source (int,iterable[int]): Initial axes
+		destination (int,interable[int]): Final axes
+	Returns:
+		out (array): Array with moved axes
+	'''
+
+	return np.moveaxis(a,source,destination)
+
+
+def expand_dims(a,axis):
+	'''
+	Expand axes of array
+	Args:
+		a (array): Array to be expanded
+		axis (int,iterable[int]): Axes to expand to
+	Returns:
+		out (array): Array with expanded axes
+	'''
+
+	return np.expand_dims(a,axis)
 
 
 @partial(jit,static_argnums=(0,1,2,))
