@@ -31,8 +31,8 @@ from src.utils import jit,gradient,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,rand,identity
 from src.utils import tensorprod,trace,broadcast_to,expand_dims,moveaxis
 from src.utils import summation,exponentiation
-from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2
-from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner_abs2,norm,interpolate,unique,allclose,isclose,parse
+from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
+from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner_abs2,inner_real2,inner_imag2,norm,interpolate,unique,allclose,isclose,parse
 from src.utils import pi,e
 
 # Logging
@@ -791,27 +791,48 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
+		# return self.__loss__(parameters)
 		return self.__loss__(parameters) + self.__constraints__(parameters)
-		return self.__loss__(parameters)
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
 		''' 
 		Setup gradient of objective
 		Args:
 			parameters (array): parameters
 		Returns:
-			gradient (array): gradient of objective
+			grad (array): gradient of objective
 		'''	
-		return gradient(self.__func__)(parameters)
+
+		shape = parameters.shape
+		grad = zeros(shape)
+
+		grad = grad + gradient_distance(self(parameters),self.hyperparameters['label'],self.__derivative__(parameters))
+
+
+		# category = 'variable'
+		# shape = self.hyperparameters['shapes'][category]
+		# parameters = parameters.reshape(shape)
+
+		# for parameter in self.hyperparameters['parameters']:
+		# 	for group in self.hyperparameters['parameters'][parameter]['group']:
+		# 		grad = grad + self.hyperparameters['parameters'][parameter]['gradient_constraints'][group](parameters,self.hyperparameters)
+
+		# grad = grad.ravel()
+
+		return grad
+		# return gradient(self.__func__)(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def __callback__(self,parameters):
 		''' 
-		Setup log
+		Setup callback and logging
 		Args:
 			parameters (array): parameters
+		Returns:
+			status (int): status of class
 		'''	
+
 
 		self.hyperparameters['hyperparameters']['track']['objective'].append(
 			# 1-self.hyperparameters['hyperparameters']['track']['value'][-1] + self.__constraints__(parameters)
@@ -827,21 +848,16 @@ class Object(object):
 				self.hyperparameters['hyperparameters']['track']['objective'][-1],
 				)
 			)
-			# isclose = allclose(self.hyperparameters['hyperparameters']['track']['grad'][-1],gradient_finite(self.__func__)(parameters))
-			# if not isclose:
-			# 	print('**************** ERROR GRAD ****************************')
-			# 	print(parameters)
-			# 	print(self.hyperparameters['hyperparameters']['track']['grad'][-1])
-			# 	print(self.__grad__(parameters))
-			# 	isclose = allclose(self.hyperparameters['hyperparameters']['track']['grad'][-1],self.__grad__(parameters))
-			# 	print(allclose(self.hyperparameters['hyperparameters']['track']['value'][-1],self.__func__(parameters)))
-			# 	if not isclose:
-			# 		print('ERROR with index',self.hyperparameters['hyperparameters']['track']['objective'])
 
-			# print()
-			self.log('\n'.join([
-				'%s = %0.3e'%(attr,self.hyperparameters['hyperparameters']['track'][attr][-1])
+			self.log('\t\t'.join([
+				'%s = %0.4e'%(attr,self.hyperparameters['hyperparameters']['track'][attr][-1])
 				for attr in ['alpha','beta']])
+			)
+
+			self.log('x = %0.4e\t\tgrad(x) = %0.4e'%(
+				norm(self.hyperparameters['hyperparameters']['track']['parameters'][-1])/self.hyperparameters['hyperparameters']['track']['parameters'][-1].size,
+				norm(self.hyperparameters['hyperparameters']['track']['grad'][-1])/self.hyperparameters['hyperparameters']['track']['grad'][-1].size,
+				)
 			)
 
 			# self.log('x = \n%r \ngrad(x) = \n%r'%(
@@ -850,11 +866,11 @@ class Object(object):
 			# 	)
 			# )
 
-			# self.log('U\n%r\nV\n%r'%(
-			# 	self(parameters),
-			# 	self.hyperparameters['label']
-			# 	)
-			# )
+			self.log('U\n%r\nV\n%r'%(
+				abs(self(parameters)).round(4),
+				abs(self.hyperparameters['label']).round(4)
+				)
+			)
 			# self.log('norm: %0.4e\nmax: %0.4e\nmin: %0.4e\nbcs:\n%r\n%r\n\n'%(
 			# 	np.linalg.norm(parameters)/parameters.size,
 			# 	parameters.max(),parameters.min(),
@@ -863,7 +879,13 @@ class Object(object):
 			# 	)
 			# )
 
-		return 
+
+		status = (abs(self.hyperparameters['hyperparameters']['track']['objective'][-1] - self.hyperparameters['hyperparameters']['value']) > 
+				      self.hyperparameters['hyperparameters']['eps']*self.hyperparameters['hyperparameters']['value'])
+
+		self.log('status = %d\n'%(status))
+
+		return status
 
 
 
@@ -1127,7 +1149,6 @@ class Object(object):
 			y = hyperparameters['hyperparameters']['track']['objective']
 
 			ax.plot(x,y,linewidth=4,marker='o',markersize=10)
-
 
 			ax.set_ylabel(ylabel=r'$\textrm{%s}$'%('Objective'))
 			ax.set_xlabel(xlabel=r'$\textrm{%s}$'%('Iteration'))
@@ -1696,6 +1717,7 @@ def distance(a,b):
 		out (array): Distance between arrays
 	'''
 	# return norm(a-b,axis=None,ord=2)/a.shape[0]
+	# return 1-inner_real2(a,b)+inner_imag2(a,b)
 	return 1-inner_abs2(a,b)
 	# return 1-(np.real(trace((a-b).conj().T.dot(a-b))/a.size)/2 - np.imag(trace((a-b).conj().T.dot(a-b))/a.size)/2)/2
 	# return 2*np.sqrt(1-np.abs(np.linalg.eigvals(a.dot(b))[0])**2)
@@ -1713,6 +1735,7 @@ def gradient_distance(a,b,da):
 	'''
 	# return norm(a-b,axis=None,ord=2)/a.shape[0]
 	return -gradient_inner_abs2(a,b,da)
+	# return -gradient_inner_real2(a,b,da)+gradient_inner_imag2(a,b,da)
 	# return 1-(np.real(trace((a-b).conj().T.dot(a-b))/a.size)/2 - np.imag(trace((a-b).conj().T.dot(a-b))/a.size)/2)/2
 	# return 2*np.sqrt(1-np.abs(np.linalg.eigvals(a.dot(b))[0])**2)
 
@@ -1811,6 +1834,7 @@ def initialize(parameters,shape,bounds,reset,hyperparameters):
 		pts = arange(shape[0])
 
 		parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
+		parameters_interp = parameters_interp/((((parameters_interp**2).sum(1))**(1/2))[:,None])
 	
 		parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
 
@@ -1854,20 +1878,32 @@ def run(index,hyperparameters={}):
 	# f = gradient_finite(obj,tol=6e-8)
 	# h = obj.__derivative__
 
-	# print(parameters)
-	# print(g(parameters))
-	# print()
-	# print(h(parameters))
+	# # print(parameters)
+	# # print(g(parameters))
+	# # print()
+	# # print(h(parameters))
 
 	# print(allclose(g(parameters),f(parameters)))
 	# print(allclose(g(parameters),h(parameters)))
 	# print(allclose(f(parameters),h(parameters)))
 
-	# print(g(parameters)-h(parameters))
+	# # print(g(parameters)-h(parameters))
 
 	# grad = gradient(func)
-	# finitegrad = gradient_finite(func,tol=5e-8)
+	# fgrad = gradient_finite(func,tol=5e-8)
+	# agrad = obj.__grad__
 
-	# print(allclose(grad(parameters),finitegrad(parameters)))
+	# print(allclose(grad(parameters),fgrad(parameters)))
+	# print(allclose(grad(parameters),agrad(parameters)))
 
+
+	# print()
+	# print(parameters)
+	# print(obj.__constraints__(parameters))
+	# print(sigmoid(parameters[:4]))
+	# print(gradient(lambda x: sigmoid(x,scale=1e4).sum())(parameters[:4]))
+	# print(grad(parameters))
+	# print(agrad(parameters))
+
+	# print(gradient(obj.__constraints__)(parameters))
 	return

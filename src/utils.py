@@ -750,7 +750,7 @@ def inner_abs2(a,b):
 @jit
 def gradient_inner_abs2(a,b,da):
 	'''
-	Calculate gradient of inner product of arrays a and b with respect to a
+	Calculate gradient of absolute square inner product of arrays a and b with respect to a
 	Args:
 		a (array): Array to calculate inner product
 		b (array): Array to calculate inner product
@@ -763,6 +763,65 @@ def gradient_inner_abs2(a,b,da):
 			trace(tensordot(da[i],b.conj().T,1))*
 			trace(tensordot(a.conj(),b.T,1))).real/(a.shape[0]*b.shape[0])
 	return vmap(func)(arange(da.shape[0]))
+
+
+@jit
+def inner_real2(a,b):
+	'''
+	Calculate real square of inner product of arrays a and b
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+	Returns:
+		out (array): Real square of inner product
+	'''	
+	return (abs2((trace(tensordot(a,b.conj().T,1))).real))/(a.shape[0]*b.shape[0])
+
+
+@jit
+def gradient_inner_real2(a,b,da):
+	'''
+	Calculate gradient of real square inner product of arrays a and b with respect to a
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+		da (array): Gradient of array to calculate inner product
+	Returns:
+		out (array): Gradient of inner product
+	'''
+	def func(i):
+		return 2*(trace(tensordot(da[i],b.conj().T,1)).real)*(trace(tensordot(a,b.conj().T,1))).real/(a.shape[0]*b.shape[0])
+	return vmap(func)(arange(da.shape[0]))
+
+
+@jit
+def inner_imag2(a,b):
+	'''
+	Calculate imaginary square of inner product of arrays a and b
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+	Returns:
+		out (array): Imaginary square of inner product
+	'''	
+	return (abs2((trace(tensordot(a,b.conj().T,1))).imag))/(a.shape[0]*b.shape[0])
+
+
+@jit
+def gradient_inner_imag2(a,b,da):
+	'''
+	Calculate gradient of imaginary square inner product of arrays a and b with respect to a
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+		da (array): Gradient of array to calculate inner product
+	Returns:
+		out (array): Gradient of inner product
+	'''
+	def func(i):
+		return 2*(trace(tensordot(da[i],b.conj().T,1)).imag)*(trace(tensordot(a,b.conj().T,1))).imag/(a.shape[0]*b.shape[0])
+	return vmap(func)(arange(da.shape[0]))
+
 
 
 @jit
@@ -1365,6 +1424,16 @@ def cos(a):
 	'''
 	return np.cos(a)
 
+@jit
+def tan(a):
+	'''
+	Calculate tan of array a
+	Args:
+		a (array): Array to compute sine
+	Returns:
+		out (array): Tan of array
+	'''
+	return np.tan(a)
 
 @jit
 def sinh(a):
@@ -1388,6 +1457,18 @@ def cosh(a):
 		out (array): Cosinh of array
 	'''
 	return np.cosh(a)
+
+@jit
+def tanh(a):
+	'''
+	Calculate tanh of array a
+	Args:
+		a (array): Array to compute sine
+	Returns:
+		out (array): Tanh of array
+	'''
+	return np.tanh(a)
+
 
 
 
@@ -2178,9 +2259,10 @@ def sigmoid(a,scale=1e4):
 	Returns:
 		out (array): Sigmoid
 	'''		
-	return (np.tanh(a*scale/2)+1)/2
+	return (tanh(a*scale/2)+1)/2
 	# return sp.special.expit(scale*a)
 
+@jit
 def gradient_sigmoid(a,scale=1e4):
 	'''
 	Calculate gradient of sigmoid function with scale

@@ -102,7 +102,7 @@ class Base(object):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters)				
+		callback (callable): callback function with signature callback(parameters) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
@@ -112,6 +112,7 @@ class Base(object):
 			'alpha':0,
 			'search':0,
 			'iterations':0,
+			'status':1,
 			'track':{'track':{'log':1,'track':10,'callback':1},'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
@@ -123,6 +124,7 @@ class Base(object):
 
 		self.alpha = hyperparameters['alpha']
 		self.search = hyperparameters['search'] 
+		self.status = hyperparameters['status']
 
 		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
 
@@ -144,6 +146,9 @@ class Base(object):
 		state = self.opt_init(parameters)
 		for iteration in range(self.iterations):
 			state = self.opt_update(iteration,state)
+
+			if not self.status:
+				break
 
 		parameters = self.get_params(state)
 
@@ -186,7 +191,7 @@ class Base(object):
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
 		
-		self.callback(parameters)
+		self.status = self.callback(parameters)
 
 		return state
 
@@ -234,95 +239,21 @@ class Optimizer(Base):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters)				
+		callback (callable): callback function with signature callback(parameters) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 	'''
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
-
-		defaults = {
-			'optimizer':None,
-			'alpha':0,
-			'search':0,
-			'iterations':0,
-			'track':{'track':{'log':1,'track':10,'callback':1},'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
-		}
+	def __new__(cls,func,grad=None,callback=None,hyperparameters={}):
+	
+		defaults = {'optimizer':None}
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
 
 		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,None:GradientDescent}
 
-		self.optimizer = hyperparameters['optimizer']		
-		self.iterations = hyperparameters['iterations']
-		self.track = hyperparameters['track']
-		self.hyperparameters = hyperparameters
-
-		self.alpha = hyperparameters['alpha']
-		self.search = hyperparameters['search'] 
-
-		self.callback = callback if callback is not None else (lambda parameters: None)
-
-		self.Optimizer = optimizers.get(self.optimizer,optimizers[None])(func,grad,callback,hyperparameters)
+		optimizer = hyperparameters['optimizer']		
 		
-		self.value_and_grad,self.func,self.grad = self.Optimizer.value_and_grad,self.Optimizer.func,self.Optimizer.grad
+		self = optimizers.get(optimizer,optimizers[None])(func,grad,callback,hyperparameters)
 
-
-		return
-
-	def __call__(self,parameters):
-		'''
-		Iterate optimizer state with parameters
-		Args:
-			parameters (object): optimizer parameters
-		Returns:
-			parameters (object): optimizer parameters
-		'''
-
-		state = self.opt_init(parameters)
-
-		for iteration in range(self.iterations):
-			state = self.opt_update(iteration,state)
-
-		parameters = self.get_params(state)
-
-		return parameters
-
-	def opt_init(self,parameters):
-		'''
-		Initialize optimizer state with parameters
-		Args:
-			parameters (object): optimizer parameters
-		Returns:
-			state (object): optimizer state
-		'''
-		
-		state = self.Optimizer.opt_init(parameters)
-		
-		return state
-
-	def opt_update(self,iteration,state):
-		'''
-		Update optimizer state with parameters
-		Args:
-			iteration (int): optimizer iteration
-			state (object): optimizer state
-		Returns:
-			state (object): optimizer state
-		'''
-		state =  self.Optimizer.opt_update(iteration,state)
-		
-		return state
-
-	def get_params(self,state):
-		'''
-		Get optimizer parameters with optimizer state
-		Args:
-			state (object): optimizer state
-		Returns:
-			parameters (object): optimizer parameters
-		'''
-		
-		parameters = self.Optimizer.get_params(state)
-		
-		return parameters
+		return self
 	
 
 class GradientDescent(Base):
@@ -331,7 +262,7 @@ class GradientDescent(Base):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters)				
+		callback (callable): callback function with signature callback(parameters) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
@@ -366,7 +297,7 @@ class GradientDescent(Base):
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
 		
-		self.callback(parameters)
+		self.status = self.callback(parameters)
 
 		return state
 
@@ -377,7 +308,7 @@ class ConjugateGradient(Base):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters)				
+		callback (callable): callback function with signature callback(parameters) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
@@ -411,7 +342,7 @@ class ConjugateGradient(Base):
 
 			state = self.opt_init(parameters)
 			parameters = self.get_params(state)
-			self.callback(parameters)
+			self.status = self.callback(parameters)
 
 		parameters = self.get_params(state)
 
@@ -433,15 +364,15 @@ class ConjugateGradient(Base):
 
 		_value,_grad,parameters = self.opt_step(iteration+1,state)
 
-		beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
+		# beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
 		# beta = max(0,(_grad.dot(_grad-grad))/grad.dot(grad)) # Polak-Ribiere
 		# beta = [(_grad.dot(_grad))/(grad.dot(grad)),max(0,(_grad.dot(_grad-grad))/grad.dot(grad))]
 		# beta = -beta[0] if beta[1] < -beta[0] else beta[1] if abs(beta[1]) <= beta[0] else beta[0] # Polak-Ribiere-Fletcher-Reeves
-		# beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
+		beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
 		restart = (iteration%self.hyperparameters['restart']) == 0
-		# beta = 0 if (restart or isnaninf(beta) or beta>1e3) else beta
+		beta = 0 if (restart or isnaninf(beta) or beta>1e3) else beta
 		_search = -_grad + beta*search
 
 
@@ -457,7 +388,7 @@ class ConjugateGradient(Base):
 
 		parameters = self.get_params(state)
 		
-		self.callback(parameters)
+		self.status = self.callback(parameters)
 
 		return state
 
@@ -468,7 +399,7 @@ class Adam(Base):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters)				
+		callback (callable): callback function with signature callback(parameters) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
@@ -509,7 +440,8 @@ class Adam(Base):
 		state = self._opt_update(iteration,grad,state)
 
 		parameters = self.get_params(state)
-		self.callback(parameters)
+		
+		self.status = self.callback(parameters)
 
 		return state
 
