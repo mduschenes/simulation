@@ -234,43 +234,47 @@ def grads(parameters,hyperparameters,parameter,group):
 
 
 
-
-def main(args):
-
-	nargs = len(args)
-
-	path = args[0] if nargs>0 else None
-
-	settings = load(path)
-
-	hyperparameters = {}
-
-	hyperparameters.update(settings)
+def setup(hyperparameters):
 
 	updates = {
 		'label': {
 			'value': (lambda hyperparameters: hyperparameters['hyperparameters']['label']),
-			'default': None,
+			'default': (lambda hyperparameters: None),
 			'conditions': (lambda hyperparameters: not hyperparameters.get('label'))				
 		},
 	}			
 	for attr in updates:						
-		hyperparameters[attr] = hyperparameters.get(attr,updates[attr]['default'])
+		hyperparameters[attr] = hyperparameters.get(attr,updates[attr]['default'](hyperparameters))
 
 	if updates[attr]['conditions'](hyperparameters):
 		for attr in updates:
 			hyperparameters[attr] = updates[attr]['value'](hyperparameters)
 
+	updates = {
+		'tau': {
+			'value': (lambda hyperparameters: hyperparameters['model']['tau']/hyperparameters['hyperparameters']['scale']),
+			'default': (lambda hyperparameters: 1),
+			'conditions': (lambda hyperparameters: True)
+		},		
+	}			
+	for attr in updates:						
+		hyperparameters['model'][attr] = hyperparameters['model'].get(attr,updates[attr]['default'](hyperparameters))
+
+	if updates[attr]['conditions'](hyperparameters):
+		for attr in updates:
+			hyperparameters['model'][attr] = updates[attr]['value'](hyperparameters)
+
+
 
 	updates = {
 		'runs': {
 			'value': (lambda hyperparameters: list(range(hyperparameters['hyperparameters']['runs']))),
-			'default': 1,
+			'default': (lambda hyperparameters: 1),
 			'conditions': (lambda hyperparameters: not isinstance(hyperparameters['hyperparameters']['runs'],(list,tuple,array)))
 		},
 	}			
 	for attr in updates:						
-		hyperparameters['hyperparameters'][attr] = hyperparameters['hyperparameters'].get(attr,updates[attr]['default'])
+		hyperparameters['hyperparameters'][attr] = hyperparameters['hyperparameters'].get(attr,updates[attr]['default'](hyperparameters))
 
 	if updates[attr]['conditions'](hyperparameters):
 		for attr in updates:
@@ -280,13 +284,18 @@ def main(args):
 	updates = {
 		'group': {
 			'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters['parameters'][parameter]['group']]),
-			'default': [],
+			'default': (lambda parameter,hyperparameters: []),
 			'conditions': (lambda parameter,hyperparameters: True)				
 		},
+		'scale': {
+			'value': (lambda parameter,hyperparameters: hyperparameters['hyperparameters']['scale']*hyperparameters['parameters'][parameter]['scale']),
+			'default': (lambda parameter,hyperparameters: 1),
+			'conditions': (lambda parameter,hyperparameters: True)						
+		}
 	}			
 	for parameter in hyperparameters['parameters']:
 		for attr in updates:						
-			hyperparameters['parameters'][parameter][attr] = hyperparameters['parameters'][parameter].get(attr,updates[attr]['default'])
+			hyperparameters['parameters'][parameter][attr] = hyperparameters['parameters'][parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
 
 		if updates[attr]['conditions'](parameter,hyperparameters):
 			for attr in updates:
@@ -294,44 +303,56 @@ def main(args):
 
 	updates = {
 		'func':{
-			'func':params,
-			'default':{},
+			'value':(lambda parameter,hyperparameters: params),
+			'default':(lambda parameter,hyperparameters: {}),
 			'conditions': (lambda parameter,hyperparameters: True)
 		},
 		'constraints':{
-			'func':constraints,
-			'default':{},
+			'value':(lambda parameter,hyperparameters: constraints),
+			'default': (lambda parameter,hyperparameters: {}),
 			'conditions': (lambda parameter,hyperparameters: True)
 		},
 		'gradient_constraints':{
-			'func':gradient_constraints,
-			'default':{},
+			'value':(lambda parameter,hyperparameters: gradient_constraints),
+			'default': (lambda parameter,hyperparameters: {}),
 			'conditions': (lambda parameter,hyperparameters: True)
 		},
 	}
 	for parameter in hyperparameters['parameters']:
 		for attr in updates:
-			hyperparameters['parameters'][parameter][attr] = hyperparameters['parameters'][parameter].get(attr,updates[attr]['default'])
+			hyperparameters['parameters'][parameter][attr] = hyperparameters['parameters'][parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
 		if updates[attr]['conditions'](parameter,hyperparameters):
 			for attr in updates:
 				for group in hyperparameters['parameters'][parameter]['group']:
-					# hyperparameters['parameters'][parameter][attr][group] = (lambda parameters,hyperparameters,parameter=parameter,group=group,func=updates[attr]['func']: func(parameters,hyperparameters,parameter=parameter,group=group))
-					hyperparameters['parameters'][parameter][attr][group] = partial(updates[attr]['func'],parameter=parameter,group=group)
+					hyperparameters['parameters'][parameter][attr][group] = partial(updates[attr]['value'](parameter,hyperparameters),parameter=parameter,group=group)
 
 	updates = {
 		'locality': {
 			'value':hyperparameters['hyperparameters']['locality'],
-			'default':None,
+			'default':(lambda hyperparameters: None),
 			'conditions': (lambda parameter,hyperparameters: hyperparameters['parameters'][parameter]['category'] in ['variable'])
 		},
 	}
 	for parameter in hyperparameters['parameters']:
 		for attr in updates:
-			hyperparameters['parameters'][parameter][attr] = hyperparameters['parameters'][parameter].get(attr,updates[attr]['default'])
+			hyperparameters['parameters'][parameter][attr] = hyperparameters['parameters'][parameter].get(attr,updates[attr]['default'](hyperparameters))
 		if updates[attr]['conditions'](parameter,hyperparameters):
 			for attr in updates:				
 				hyperparameters['parameters'][parameter][attr] = updates[attr]['value']
 
+	return
+
+def main(args):
+
+	nargs = len(args)
+
+	path = args[0] if nargs>0 else None
+
+	hyperparameters = load(path)
+
+	setup(hyperparameters)
+
+	print(hyperparameters['model'])
 	run(hyperparameters)
 
 
