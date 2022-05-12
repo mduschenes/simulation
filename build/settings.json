@@ -1,22 +1,26 @@
 {
 "sys":{
-	"directories":{
-		"load":"input",
-		"dump":"output",
-		"config":"config"
+	"directory":{
+		"data":"output",	
+		"plot":{"parameters":"output","objective":"output","label":"output"},
+		"mplstyle":"config"
 	},
-	"files":{
+	"file":{
 		"data":"data",	
 		"plot":{"parameters":"parameters","objective":"objective","label":"label"},
 		"mplstyle":"plot"
 	},
 	"ext":{
-		"data":"csv",	
+		"data":"pkl",	
 		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf"},
 		"mplstyle":"mplstyle"
-	},	
-	"train":1,
-	"plot":0,
+	}
+},
+"boolean":{
+	"train":0,
+	"load":1,
+	"dump":1,
+	"plot":1,
 	"test":0
 },
 "model":{
@@ -25,9 +29,9 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":500,
+	"M":1000,
 	"T":null,
-	"tau":1e-2,
+	"tau":1,
 	"p":2,
 	"space":"spin",		
 	"time":"linear",		
@@ -35,18 +39,20 @@
 	"system":{
 		"dtype":"complex",
 		"format":"array",
+		"key":null,
+		"seed":null,
 		"device":"cpu",
 		"verbose":"info"		
 	}
 },			
 "hyperparameters":{
 	"iterations":500,
-	"runs":5,
+	"runs":3,
 	"locality":"local",
-	"label":"random",
+	"label":"gate",
 	"optimizer":"cg",
-	"seed":null,
-	"eps":2e-2,
+	"seed":111,
+	"eps":1e-2,
 	"value":1,
 	"status":1,
 	"interpolation":1,"smoothness":4,"init":[0,1],
@@ -80,7 +86,7 @@
 		"name":"z",						
 		"category":"constant",
 		"locality":"local",
-		"parameters":[-1,0,1,0.5],
+		"parameters":[-0.1,0,0.1,0.05],
 		"size":1,
 		"group":[["z"]],
 		"scale":1,
@@ -91,7 +97,7 @@
 		"name":"zz",						
 		"category":"constant",
 		"locality":"local",
-		"parameters":[0.0724,-0.130,0.05,0.08,0.02,0.2],
+		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02],
 		"size":1,
 		"group":[["zz"]],
 		"scale":1,
@@ -107,6 +113,6 @@
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 	}
 },		
-"label": "random",
+"label": null,
 "value":null
 }

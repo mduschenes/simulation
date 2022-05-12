@@ -5,3 +5,5 @@
 **/*.out
 **/*ipynb*
 **/*.npy
+**/*.pkl
+**/*.pickle

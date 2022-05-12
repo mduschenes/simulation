@@ -1749,6 +1749,7 @@ def PRNGKey(seed=None,split=False):
 	Returns:
 		key (key,list[key]): Random key
 	'''	
+
 	if seed is None:
 		seed = onp.random.randint(1e12)
 
@@ -1758,7 +1759,7 @@ def PRNGKey(seed=None,split=False):
 		key = seed
 
 	if split:
-		key = jax.random.split(key,num=(split+1))
+		key = jax.random.split(key,num=split)
 
 	return key
 

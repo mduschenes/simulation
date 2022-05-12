@@ -35,7 +35,7 @@ from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradien
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner_abs2,inner_real2,inner_imag2,norm,interpolate,unique,allclose,isclose,parse
 from src.utils import pi,e
 
-from src.io import load,dump,path_join
+from src.io import load,dump,path_join,path_split
 
 # Logging
 import logging,logging.config
@@ -887,7 +887,7 @@ class Object(object):
 
 
 		status = (abs(self.hyperparameters['hyperparameters']['track']['objective'][-1] - self.hyperparameters['hyperparameters']['value']) > 
-				      self.hyperparameters['hyperparameters']['eps']*self.hyperparameters['hyperparameters']['value'])
+					  self.hyperparameters['hyperparameters']['eps']*self.hyperparameters['hyperparameters']['value'])
 
 		# self.log('status = %d\n'%(status))
 
@@ -1041,7 +1041,7 @@ class Object(object):
 		Load class data		
 		'''
 		if path is None:
-			path = '%s.%s'%(self,ext)
+			path = path_join(self,ext=ext)
 		data = array(load(path,dtype=self.dtype))
 		string = basename(path)
 		self.append(data,string=string)
@@ -1068,22 +1068,20 @@ class Object(object):
 
 
 		# Get plot config
-		directory = hyperparameters['sys']['directories']['config']
-		file = hyperparameters['sys']['files']['mplstyle']
-		ext = hyperparameters['sys']['ext']['mplstyle']
-
-		mplstyle = path_join(directory,file,ext=ext)
+		attr = 'mplstyle'
+		mplstyle = hyperparameters['sys']['path'][attr]
 
 
 		# Plot attributes
 
 		attr = 'parameters'
 		fig,ax = self.fig.get(attr),self.ax.get(attr)
-
-		directory = hyperparameters['sys']['directories']['dump']
-		file = hyperparameters['sys']['files']['plot'][attr]
-		ext = hyperparameters['sys']['ext']['plot'][attr]
-		path = path_join(directory,file,ext=ext)
+		
+		path = hyperparameters['sys']['path']['plot'][attr]
+		delimiter = '.'
+		directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+		file = delimiter.join([file,*[str(self.key)]])
+		path = path_join(directory,file,ext=ext,delimiter=delimiter)
 
 		layout = [shape[1],1]
 		plots = [None]*layout[0]
@@ -1160,10 +1158,11 @@ class Object(object):
 		attr = 'objective'
 		fig,ax = self.fig.get(attr),self.ax.get(attr)
 
-		directory = hyperparameters['sys']['directories']['dump']
-		file = hyperparameters['sys']['files']['plot'][attr]
-		ext = hyperparameters['sys']['ext']['plot'][attr]
-		path = path_join(directory,file,ext=ext)
+		path = hyperparameters['sys']['path']['plot'][attr]
+		delimiter = '.'
+		directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+		file = delimiter.join([file,*[str(self.key)]])
+		path = path_join(directory,file,ext=ext,delimiter=delimiter)
 
 		layout = []
 		plots = None
@@ -1192,7 +1191,7 @@ class Object(object):
 
 			ax.yaxis.offsetText.set_fontsize(fontsize=20)
 
-			ax.set_xticks(ticks=range(int(1*min(x)),int(1.1*max(x)),int(max(x)-min(x))//8))
+			ax.set_xticks(ticks=range(int(1*min(x)),int(1.1*max(x)),max(1,int(max(x)-min(x))//8)))
 			# ax.set_yticks(ticks=[1e-1,2e-1,4e-1,6e-1,8e-1,1e0])
 			ax.set_yticks(ticks=[5e-1,6e-1,8e-1,1e0])
 			ax.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
@@ -1451,21 +1450,9 @@ class Hamiltonian(Object):
 		# print()
 
 		# Update hyperparameters
-		hyperparameters['data'] = data
-		hyperparameters['operator'] = operator
-		hyperparameters['site'] = site
-		hyperparameters['string'] = string
-		hyperparameters['interaction'] = interaction
-		hyperparameters['identity'] = self.identity
 		hyperparameters['size'] = size
 		hyperparameters['shape'] = shape
 		hyperparameters['shapes'] = shapes
-		hyperparameters['N'] = self.N
-		hyperparameters['M'] = self.M
-		hyperparameters['D'] = self.D
-		hyperparameters['d'] = self.d
-		hyperparameters['n'] = self.n
-		hyperparameters['p'] = self.p
 		hyperparameters['coefficients'] = self.tau/self.p
 
 		# Update class attributes
@@ -1507,7 +1494,7 @@ class Hamiltonian(Object):
 
 		
 		# Get Trotterized order of copies of parameters
-		p = hyperparameters['p']
+		p = self.p
 		value = value.T
 		parameters = trotter(value,p)
 		parameters = parameters.T
@@ -1622,83 +1609,85 @@ class Hamiltonian(Object):
 			label = sp.linalg.expm(-1j*(label + label.conj().T)/2.0/self.n)
 
 		elif isinstance(label,str):
-			try:
-				label = array(load(label))
-			except:
+			
+			if label == 'random':
+				label = (rand(shape)+ 1j*rand(shape))/np.sqrt(2)
+				label = sp.linalg.expm(-1j*(label + label.conj().T)/2.0/self.n)
 
-				if label == 'random':
+				# [Q,R] = np.linalg.qr(label);
+				# R = np.diag(np.diag(R)/np.abs(np.diag(R)));
+				# label = Q.dot(R)
+				# assert np.allclose(np.eye(self.n),label.conj().T.dot(label))
+				# assert np.allclose(np.eye(self.n),label.dot(label.conj().T))
+
+			elif label == 'rank1':
+				label = np.diag(rand(self.n))
+				I = np.eye(self.n)
+				r = 4*self.N
+				k = rand(shape=(r,2),bounds=[0,self.n],random='randint')
+				for j in range(r):
+					v = np.outer(I[k[j,0]],I[k[j,1]].T)
+					c = (rand()+ 1j*rand())/np.sqrt(2)
+					v = (v + (v.T))
+					v = (c*v + np.conj(c)*(v.T))
+					label += v
+				label = sp.linalg.expm(-1j*label)
+
+			elif label == 'gate':
+				label = {
+					2: array([[1,0,0,0],
+							   [0,1,0,0],
+							   [0,0,0,1],
+							   [0,0,1,0]]),
+					# 2: tensorprod(((1/np.sqrt(2)))*array(
+					# 		[[[1,1],
+					# 		  [1,-1]]]*2)),
+					# 2: array([[1,0,0,0],
+					# 		   [0,1,0,0],
+					# 		   [0,0,1,0],
+					# 		   [0,0,0,1]]),					   		
+					# 2: tensorprod(((1/np.sqrt(2)))*array(
+					# 		[[[1,1],
+					# 		  [1,-1]],
+					# 		 [[1,1],
+					# 		  [1,-1]],
+					# 		  ])),
+					3: tensorprod(((1/np.sqrt(2)))*array(
+							[[[1,1],
+							  [1,-1]]]*3)),
+					# 3: array([[1,0,0,0,0,0,0,0],
+					# 		   [0,1,0,0,0,0,0,0],
+					# 		   [0,0,1,0,0,0,0,0],
+					# 		   [0,0,0,1,0,0,0,0],
+					# 		   [0,0,0,0,1,0,0,0],
+					# 		   [0,0,0,0,0,1,0,0],
+					# 		   [0,0,0,0,0,0,0,1],
+					# 		   [0,0,0,0,0,0,1,0]]),
+					# 4: tensorprod(((1/np.sqrt(2)))*array(
+					# 		[[[1,1],
+					# 		  [1,-1]],
+					# 		 [[1,1],
+					# 		  [1,-1]],
+					# 		  [[1,1],
+					# 		  [1,-1]],
+					# 		 [[1,1],
+					# 		  [1,-1]],							  
+					# 		 ])),	
+					4: tensorprod(array([[[1,0,0,0],
+							   [0,1,0,0],
+							   [0,0,0,1],
+							   [0,0,1,0]]]*2)),	
+					# 4: tensorprod(array([[[1,0,0,0],
+					# 		   [0,1,0,0],
+					# 		   [0,0,1,0],
+					# 		   [0,0,0,1]]]*2)),						   		 
+					}.get(self.N)
+			else:
+				try:
+					label = array(load(label))
+				except:
 					label = (rand(shape)+ 1j*rand(shape))/np.sqrt(2)
-					label = sp.linalg.expm(-1j*(label + label.conj().T)/2.0/self.n)
-
-					# [Q,R] = np.linalg.qr(label);
-					# R = np.diag(np.diag(R)/np.abs(np.diag(R)));
-					# label = Q.dot(R)
-					# assert np.allclose(np.eye(self.n),label.conj().T.dot(label))
-					# assert np.allclose(np.eye(self.n),label.dot(label.conj().T))
-
-				elif label == 'rank1':
-					label = np.diag(rand(self.n))
-					I = np.eye(self.n)
-					r = 4*self.N
-					k = rand(shape=(r,2),bounds=[0,self.n],random='randint')
-					for j in range(r):
-						v = np.outer(I[k[j,0]],I[k[j,1]].T)
-						c = (rand()+ 1j*rand())/np.sqrt(2)
-						v = (v + (v.T))
-						v = (c*v + np.conj(c)*(v.T))
-						label += v
-					label = sp.linalg.expm(-1j*label)
-
-				elif label == 'gate':
-					label = {
-						2: array([[1,0,0,0],
-								   [0,1,0,0],
-								   [0,0,0,1],
-								   [0,0,1,0]]),
-						2: tensorprod(((1/np.sqrt(2)))*array(
-								[[[1,1],
-								  [1,-1]]]*2)),
-						# 2: array([[1,0,0,0],
-						# 		   [0,1,0,0],
-						# 		   [0,0,1,0],
-						# 		   [0,0,0,1]]),					   		
-						# 2: tensorprod(((1/np.sqrt(2)))*array(
-						# 		[[[1,1],
-						# 		  [1,-1]],
-						# 		 [[1,1],
-						# 		  [1,-1]],
-						# 		  ])),
-						3: tensorprod(((1/np.sqrt(2)))*array(
-								[[[1,1],
-								  [1,-1]]]*3)),
-						# 3: array([[1,0,0,0,0,0,0,0],
-						# 		   [0,1,0,0,0,0,0,0],
-						# 		   [0,0,1,0,0,0,0,0],
-						# 		   [0,0,0,1,0,0,0,0],
-						# 		   [0,0,0,0,1,0,0,0],
-						# 		   [0,0,0,0,0,1,0,0],
-						# 		   [0,0,0,0,0,0,0,1],
-						# 		   [0,0,0,0,0,0,1,0]]),
-						# 4: tensorprod(((1/np.sqrt(2)))*array(
-						# 		[[[1,1],
-						# 		  [1,-1]],
-						# 		 [[1,1],
-						# 		  [1,-1]],
-						# 		  [[1,1],
-						# 		  [1,-1]],
-						# 		 [[1,1],
-						# 		  [1,-1]],							  
-						# 		 ])),	
-						4: tensorprod(array([[[1,0,0,0],
-								   [0,1,0,0],
-								   [0,0,0,1],
-								   [0,0,1,0]]]*2)),	
-						# 4: tensorprod(array([[[1,0,0,0],
-						# 		   [0,1,0,0],
-						# 		   [0,0,1,0],
-						# 		   [0,0,0,1]]]*2)),						   		 
-						}.get(self.N)
-
+					label = sp.linalg.expm(-1j*(label + label.conj().T)/2.0/self.n)					
 
 		label = label.astype(dtype=self.dtype)
 
@@ -1989,11 +1978,8 @@ def plot(hyperparameters):
 	key = keys[0]
 
 	# Get plot config
-	directory = hyperparameters[key]['sys']['directories']['config']
-	file = hyperparameters[key]['sys']['files']['mplstyle']
-	ext = hyperparameters[key]['sys']['ext']['mplstyle']
-	mplstyle = path_join(directory,file,ext=ext)
-
+	attr = 'mplstyle'
+	mplstyle = hyperparameters[key]['sys']['path'][attr]
 
 	# Plot attributes
 
@@ -2001,14 +1987,15 @@ def plot(hyperparameters):
 	key = keys[0]
 	fig,ax = None,None
 
-	directory = hyperparameters[key]['sys']['directories']['dump']
-	file = '%s.%s'%(hyperparameters[key]['sys']['files']['plot'][attr],'runs')
-	ext = hyperparameters[key]['sys']['ext']['plot'][attr]
-	path = path_join(directory,file,ext=ext)
+	path = hyperparameters[key]['sys']['path']['plot'][attr]
+	delimiter = '.'
+	directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+	file = delimiter.join([file,'all'])
+	path = path_join(directory,file,ext=ext,delimiter=delimiter)
 
 	layout = []
 	plots = None
-	shape = (len(hyperparameters[key]['hyperparameters']['runs']),hyperparameters[key]['hyperparameters']['iterations']+1)
+	shape = (len(hyperparameters[key]['hyperparameters']['runs']),max(hyperparameters[key]['hyperparameters']['track']['size'] for key in keys))
 	figsize = (8,8)
 
 	with matplotlib.style.context(mplstyle):
@@ -2079,11 +2066,11 @@ def plot(hyperparameters):
 	key = keys[0]	
 	fig,ax = None,None
 
-	directory = hyperparameters[key]['sys']['directories']['dump']
-	file = hyperparameters[key]['sys']['files']['plot'][attr]
-	ext = hyperparameters[key]['sys']['ext']['plot'][attr]
-	path = path_join(directory,file,ext=ext)
-
+	path = hyperparameters[key]['sys']['path']['plot'][attr]
+	delimiter = '.'
+	directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+	file = delimiter.join([file,'all'])
+	path = path_join(directory,file,ext=ext,delimiter=delimiter)
 
 	layout = [2]
 	plots = [None]*layout[0]
@@ -2126,16 +2113,30 @@ def setup(hyperparameters):
 
 	settings = {}
 
-	settings['key'] = {key: copy.deepcopy(hyperparameters) for key in hyperparameters['hyperparameters']['runs']}
+	settings['hyperparameters'] = {key: copy.deepcopy(hyperparameters) for key in hyperparameters['hyperparameters']['runs']}
 
-	settings['boolean'] = {attr: hyperparameters['sys'].get(attr,False) for attr in ['train','plot','test']}
+	settings['boolean'] = {attr: hyperparameters['boolean'].get(attr,False) for attr in hyperparameters['boolean']}
 
-	settings['seed'] = {key:seed for key,seed in zip(settings['key'],PRNGKey(hyperparameters['hyperparameters']['seed'],split=(len(settings['key'])-1)))}
+	settings['seed'] = {key:seed for key,seed in zip(settings['hyperparameters'],PRNGKey(hyperparameters['hyperparameters']['seed'],split=len(settings['hyperparameters'])))}
 
-	for key in settings['key']:
-		settings['key'][key]['model']['system']['key'] = key
-		settings['key'][key]['model']['system']['seed'] = settings['seed'][key]
-		settings['key'][key]['hyperparameters']['seed'] = settings['seed'][key]
+	for key in settings['hyperparameters']:
+		settings['hyperparameters'][key]['model']['system']['key'] = key
+		
+		settings['hyperparameters'][key]['model']['system']['seed'] = settings['seed'][key]
+		settings['hyperparameters'][key]['hyperparameters']['seed'] = settings['seed'][key]
+
+		settings['hyperparameters'][key]['sys']['path'] = {
+			attr: path_join(settings['hyperparameters'][key]['sys']['directory'][attr],
+							 settings['hyperparameters'][key]['sys']['file'][attr],
+							 ext=settings['hyperparameters'][key]['sys']['ext'][attr])
+					if isinstance(settings['hyperparameters'][key]['sys']['file'][attr],str) else
+					{i: path_join(settings['hyperparameters'][key]['sys']['directory'][attr][i],
+							 settings['hyperparameters'][key]['sys']['file'][attr][i],
+							 ext=settings['hyperparameters'][key]['sys']['ext'][attr][i])
+					for i in settings['hyperparameters'][key]['sys']['file'][attr]}
+			for attr in settings['hyperparameters'][key]['sys']['file']
+		}
+
 
 	return settings
 
@@ -2149,17 +2150,29 @@ def run(hyperparameters):
 
 	settings = setup(hyperparameters)
 
-	if settings['boolean']['train']:
+
 		
-		for key in settings['key']:			
+	for key in settings['hyperparameters']:			
 
-			hyperparameters = settings['key'][key]
+		if settings['boolean']['load']:
+			default = settings['hyperparameters'][key]
+			path = settings['hyperparameters'][key]['sys']['path']['data'] 
+			delimiter = '.'
+			directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+			file = delimiter.join([file,*[str(key)]])
+			path = path_join(directory,file,ext=ext,delimiter=delimiter)
+			settings['hyperparameters'][key] = load(path,default=default)
 
-			obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+		hyperparameters = settings['hyperparameters'][key]	
+
+		obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+
+
+		if settings['boolean']['train']:
 
 			parameters = obj.parameters
 			hyperparameters = hyperparameters['hyperparameters']
-			
+
 			func = obj.__func__
 			callback = obj.__callback__
 
@@ -2167,11 +2180,22 @@ def run(hyperparameters):
 
 			parameters = optimizer(parameters)
 
+		
+		if settings['boolean']['plot']:
+			parameters = obj.parameters
 			obj.__plot__(parameters)
 
+		if settings['boolean']['dump']:
+			data = settings['hyperparameters'][key]
+			path = settings['hyperparameters'][key]['sys']['path']['data'] 
+			delimiter = '.'
+			directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+			file = delimiter.join([file,*[str(key)]])
+			path = path_join(directory,file,ext=ext,delimiter=delimiter)
+			dump(data,path)
 
 	if settings['boolean']['plot']:
-		plot(settings['key'])
+		plot(settings['hyperparameters'])
 
 	if settings['boolean']['test']:
 

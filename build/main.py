@@ -315,7 +315,8 @@ def main(args):
 		if updates[attr]['conditions'](parameter,hyperparameters):
 			for attr in updates:
 				for group in hyperparameters['parameters'][parameter]['group']:
-					hyperparameters['parameters'][parameter][attr][group] = (lambda parameters,hyperparameters,parameter=parameter,group=group,func=updates[attr]['func']: func(parameters,hyperparameters,parameter=parameter,group=group))
+					# hyperparameters['parameters'][parameter][attr][group] = (lambda parameters,hyperparameters,parameter=parameter,group=group,func=updates[attr]['func']: func(parameters,hyperparameters,parameter=parameter,group=group))
+					hyperparameters['parameters'][parameter][attr][group] = partial(updates[attr]['func'],parameter=parameter,group=group)
 
 	updates = {
 		'locality': {

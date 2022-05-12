@@ -16,27 +16,27 @@ logger = logging.getLogger(__name__)
 from src.utils import returnargs
 
 # Split path into directory,file,ext
-def path_split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,ext_delimeter='.'):
+def path_split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,delimiter='.'):
 	if not (directory or file or ext):
 		return path
 	returns = {'directory':directory,'file':file or directory_file or file_ext,'ext':ext}
 	paths = {}
 	paths['directory'] = os.path.dirname(path)
 	paths['file'],paths['ext'] = os.path.splitext(path)
-	if paths['ext'].startswith(ext_delimeter):
-		paths['ext'] = ext_delimeter.join(paths['ext'].split(ext_delimeter)[1:])
+	if paths['ext'].startswith(delimiter):
+		paths['ext'] = delimiter.join(paths['ext'].split(delimiter)[1:])
 	if not directory_file:
 		paths['file'] = os.path.basename(paths['file'])
-	if file_ext and paths['ext'].startswith(ext_delimeter):
-		paths['file'] = ext_delimeter.join([paths['file'],paths['ext']])
+	if file_ext and paths['ext'].startswith(delimiter):
+		paths['file'] = delimiter.join([paths['file'],paths['ext']])
 	paths = [paths[k] for k in paths if returns[k]] 
 	return paths if len(paths)>1 else paths[0]
 
 # Join path by directories, with optional extension
-def path_join(*paths,ext=None,abspath=False,ext_delimeter='.'):
+def path_join(*paths,ext=None,abspath=False,delimiter='.'):
 	path = os.path.join(*paths)
-	if ext is not None and not path.endswith('%s%s'%(ext_delimeter,ext)):
-		path = ext_delimeter.join([path,ext])
+	if ext is not None and not path.endswith('%s%s'%(delimiter,ext)):
+		path = delimiter.join([path,ext])
 	if abspath:
 		path = os.path.abspath(path)
 	return path
@@ -77,10 +77,35 @@ def deserialize_json(obj,key='py/object'):
 		obj = pickle.loads(str(obj[key]))
 	return obj
 
+
+# Check if object can be written to file
+# Check if object can be pickled
+def pickleable(obj,path=None):
+	if isinstance(obj,dict):
+		pickleables = {k: pickleable(obj[k],path) for k in obj} 
+		for k in pickleables:
+			if not pickleables[k]:
+				obj.pop(k);
+				pickleables[k] = True		
+		return all([pickleables[k] for k in pickleables])
+	ispickleable = False
+	if path is None:
+		path  = '__tmp__.__tmp__.%d'%(np.random.randint(1,int(1e8)))
+	with open(path,'wb') as fobj:
+		try:
+			pickle.dump(obj,fobj)
+			ispickleable = True
+		except Exception as e:
+			pass
+	if os.path.exists(path):
+		os.remove(path)
+	return ispickleable
+
+
 # Load data - General file import
 def load(path,wr='r',default=None,verbose=False,**kwargs):
 	loaders = {ext: lambda obj,wr,ext=ext,**kwargs: _load(obj,wr,ext,**kwargs)
-				for ext in ['npy','csv','txt','pickle','json','hdf5']}
+				for ext in ['npy','csv','txt','pickle','pkl','json','hdf5']}
 
 	if not isinstance(path,str):
 		return default
@@ -109,7 +134,7 @@ def load(path,wr='r',default=None,verbose=False,**kwargs):
 						data = loader(obj,_wr,**kwargs)
 						logger.log(verbose,'Loading obj %s'%(path))
 						return data
-				except Exception as e:
+				except Exception as ee:
 					pass
 
 	return default			
@@ -125,8 +150,8 @@ def _load(obj,wr,ext,**kwargs):
 		data = getattr(pd,'read_%s'%ext)(obj,**{**kwargs})
 	elif ext in ['txt']:
 		data = np.loadtxt(obj,**{'delimiter':',',**kwargs})
-	elif ext in ['pickle']:
-		data = getattr(pd,'read_%s'%ext)(obj,**kwargs) if wr=='r' else (pickle.load(obj,**kwargs))
+	elif ext in ['pickle','pkl']:
+		data = pickle.load(obj,**kwargs)
 	elif ext in ['json']:
 		data = json.load(obj,**{'object_hook':deserialize_json,**kwargs})
 	elif ext in ['hdf5']:
@@ -166,7 +191,7 @@ def _load(obj,wr,ext,**kwargs):
 def dump(data,path,wr='w',verbose=False,**kwargs):
 
 	dumpers = {ext: lambda data,obj,wr,ext=ext,**kwargs: _dump(data,obj,wr,ext,**kwargs)
-				for ext in ['npy','csv','txt','pickle','json','tex','hdf5','pdf']}
+				for ext in ['npy','csv','txt','pickle','pkl','json','tex','hdf5','pdf']}
 
 	if not isinstance(path,str):
 		return
@@ -201,14 +226,8 @@ def dump(data,path,wr='w',verbose=False,**kwargs):
 						dumper(data,obj,_wr,**kwargs)
 						logger.log(verbose,'Dumping obj %s'%(path))
 						return
-					except Exception as e:
-						try:
-							dumper(data,path,**kwargs)
-						except:	
-							try:					
-								dumper(data,obj,**kwargs)
-							except:
-								pass
+					except Exception as ee:
+						pass
 	return
 
 
@@ -223,8 +242,8 @@ def _dump(data,obj,wr,ext,**kwargs):
 		getattr(data,'to_%s'%ext)(obj,**{'index':False,**kwargs})
 	elif ext in ['txt']:
 		np.savetxt(obj,data,**{'delimiter':',','fmt':'%.20f',**kwargs})
-	elif ext in ['pickle']:
-		getattr(data,'to_%s'%ext)(obj,**kwargs) if isinstance(data,pd.DataFrame) else pickle.dump(data,obj,protocol=pickle.HIGHEST_PROTOCOL,**kwargs)
+	elif ext in ['pickle','pkl']:		
+		pickle.dump(data,obj,protocol=pickle.HIGHEST_PROTOCOL,**kwargs)
 	elif ext in ['json']:
 		json.dump(data,obj,**{'default':serialize_json,'ensure_ascii':False,'indent':4,**kwargs})
 	elif ext in ['tex']:
