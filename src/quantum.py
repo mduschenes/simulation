@@ -35,6 +35,8 @@ from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradien
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner_abs2,inner_real2,inner_imag2,norm,interpolate,unique,allclose,isclose,parse
 from src.utils import pi,e
 
+from src.io import load,dump,path_join
+
 # Logging
 import logging,logging.config
 logger = logging.getLogger(__name__)
@@ -238,11 +240,11 @@ class Time(object):
 		assert self.T is not None or self.tau is not None, "Either T or tau must not be None"
 		self.tau = self.get_tau()
 		try:
+			self.T = self.get_T(self.tau)
+			self.M = self.get_M()			
+		except:
 			self.M = self.get_M(self.tau)
 			self.T = self.get_T()
-		except:
-			self.T = self.get_T(self.tau)
-			self.M = self.get_M()
 		return 
 
 	def __str__(self):
@@ -267,9 +269,9 @@ class Time(object):
 		if tau is None:
 			tau = self.tau		
 		if self.time in ['linear']:
-			return int(self.T/tau)
+			return round(self.T/tau)
 		else:
-			return int(self.T/tau)
+			return round(self.T/tau)
 		return
 
 	def get_tau(self):
@@ -849,15 +851,15 @@ class Object(object):
 				)
 			)
 
-			self.log('\t\t'.join([
-				'%s = %0.4e'%(attr,self.hyperparameters['hyperparameters']['track'][attr][-1])
-				for attr in ['alpha','beta']])
-			)
-
-			self.log('x = %0.4e\t\tgrad(x) = %0.4e'%(
+			self.log('|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
 				norm(self.hyperparameters['hyperparameters']['track']['parameters'][-1])/self.hyperparameters['hyperparameters']['track']['parameters'][-1].size,
 				norm(self.hyperparameters['hyperparameters']['track']['grad'][-1])/self.hyperparameters['hyperparameters']['track']['grad'][-1].size,
 				)
+			)
+
+			self.log('\t\t'.join([
+				'%s = %0.4e'%(attr,self.hyperparameters['hyperparameters']['track'][attr][-1])
+				for attr in ['alpha','beta']])
 			)
 
 			# self.log('x = \n%r \ngrad(x) = \n%r'%(
@@ -883,7 +885,7 @@ class Object(object):
 		status = (abs(self.hyperparameters['hyperparameters']['track']['objective'][-1] - self.hyperparameters['hyperparameters']['value']) > 
 				      self.hyperparameters['hyperparameters']['eps']*self.hyperparameters['hyperparameters']['value'])
 
-		self.log('status = %d\n'%(status))
+		# self.log('status = %d\n'%(status))
 
 		return status
 
@@ -1063,8 +1065,16 @@ class Object(object):
 		attr = 'parameters'
 		fig,ax = self.fig.get(attr),self.ax.get(attr)
 
-		path = os.path.join(hyperparameters['sys']['directories']['dump'],hyperparameters['sys']['files']['plot'][attr])
-		mplstyle = os.path.join(hyperparameters['sys']['directories']['config'],hyperparameters['sys']['files']['mplstyle'])
+		directory = hyperparameters['sys']['directories']['dump']
+		file = hyperparameters['sys']['files']['plot'][attr]
+		ext = hyperparameters['sys']['ext']['plot'][attr]
+		path = path_join(directory,file,ext=ext)
+
+		directory = hyperparameters['sys']['directories']['config']
+		file = hyperparameters['sys']['files']['mplstyle']
+		ext = hyperparameters['sys']['ext']['mplstyle']
+		mplstyle = path_join(directory,file,ext=ext)
+
 		size = (20,20)
 		iterations = [0,*[5,10,15,20],*[i*(hyperparameters['hyperparameters']['track']['size']-1)//n for n in [4] for i in range(1,n+1)]]
 
@@ -1133,12 +1143,19 @@ class Object(object):
 
 
 
-
 		attr = 'objective'
 		fig,ax = self.fig.get(attr),self.ax.get(attr)
 
-		path = os.path.join(hyperparameters['sys']['directories']['dump'],hyperparameters['sys']['files']['plot'][attr])
-		mplstyle = os.path.join(hyperparameters['sys']['directories']['config'],hyperparameters['sys']['files']['mplstyle'])
+		directory = hyperparameters['sys']['directories']['dump']
+		file = hyperparameters['sys']['files']['plot'][attr]
+		ext = hyperparameters['sys']['ext']['plot'][attr]
+		path = path_join(directory,file,ext=ext)
+
+		directory = hyperparameters['sys']['directories']['config']
+		file = hyperparameters['sys']['files']['mplstyle']
+		ext = hyperparameters['sys']['ext']['mplstyle']
+		mplstyle = path_join(directory,file,ext=ext)
+
 		size = (8,8)
 
 		with matplotlib.style.context(mplstyle):
@@ -1580,11 +1597,99 @@ class Hamiltonian(Object):
 		# 	print(hyperparameters['parameters'][parameter]['parameters'])
 		# print()
 
-		# Get value and label
+		# Get value of all parameters
 		hyperparameters['value'] = zeros(hyperparameters['shape'])
-		hyperparameters['label'] = hyperparameters['label'] #.conj().T
+		
+		# Get label
+		label = hyperparameters['label']
+		if label is None:
+			onp.random.seed(hyperparameters['hyperparameters']['seed'])
+			label = array(onp.random.rand(self.n,self.n)) + 1j*array(onp.random.rand(self.n,self.n))
+			label = sp.linalg.expm(-1j*(label + label.conj().T)/2.0/self.n)
+
+		elif isinstance(label,str):
+			try:
+				label = array(load(label))
+			except:
+				onp.random.seed(hyperparameters['hyperparameters']['seed'])
+
+				if label == 'random':
+					label = array(onp.random.rand(self.n,self.n)) + 1j*array(onp.random.rand(self.n,self.n))
+					label = sp.linalg.expm(-1j*(label + label.conj().T)/2.0/self.n)
+
+					# label = np.array(onp.random.randn(self.n,self.n) + 1j*onp.random.randn(self.n,self.n))/np.sqrt(2);
+					# [Q,R] = np.linalg.qr(label);
+					# R = np.diag(np.diag(R)/np.abs(np.diag(R)));
+					# label = Q.dot(R)
+					# assert np.allclose(np.eye(self.n),label.conj().T.dot(label))
+					# assert np.allclose(np.eye(self.n),label.dot(label.conj().T))
+
+				elif label == 'rank1':
+					label = np.diag(array(onp.random.rand(self.n)))
+					I = np.eye(self.n)
+					r = 4*self.N
+					k = onp.random.randint(self.n,size=(r,2))
+					for j in range(r):
+						v = np.outer(I[k[j,0]],I[k[j,1]].T)
+						c = (onp.random.rand() + 1j*onp.random.rand())/np.sqrt(2)
+						v = (v + (v.T))
+						v = (c*v + np.conj(c)*(v.T))
+						label += v
+					label = sp.linalg.expm(-1j*label)
+
+				elif label == 'gate':
+					label = {
+						2: array([[1,0,0,0],
+								   [0,1,0,0],
+								   [0,0,0,1],
+								   [0,0,1,0]]),
+						2: tensorprod(((1/np.sqrt(2)))*array(
+								[[[1,1],
+								  [1,-1]]]*2)),
+						# 2: array([[1,0,0,0],
+						# 		   [0,1,0,0],
+						# 		   [0,0,1,0],
+						# 		   [0,0,0,1]]),					   		
+						# 2: tensorprod(((1/np.sqrt(2)))*array(
+						# 		[[[1,1],
+						# 		  [1,-1]],
+						# 		 [[1,1],
+						# 		  [1,-1]],
+						# 		  ])),
+						3: tensorprod(((1/np.sqrt(2)))*array(
+								[[[1,1],
+								  [1,-1]]]*3)),
+						# 3: array([[1,0,0,0,0,0,0,0],
+						# 		   [0,1,0,0,0,0,0,0],
+						# 		   [0,0,1,0,0,0,0,0],
+						# 		   [0,0,0,1,0,0,0,0],
+						# 		   [0,0,0,0,1,0,0,0],
+						# 		   [0,0,0,0,0,1,0,0],
+						# 		   [0,0,0,0,0,0,0,1],
+						# 		   [0,0,0,0,0,0,1,0]]),
+						# 4: tensorprod(((1/np.sqrt(2)))*array(
+						# 		[[[1,1],
+						# 		  [1,-1]],
+						# 		 [[1,1],
+						# 		  [1,-1]],
+						# 		  [[1,1],
+						# 		  [1,-1]],
+						# 		 [[1,1],
+						# 		  [1,-1]],							  
+						# 		 ])),	
+						4: tensorprod(array([[[1,0,0,0],
+								   [0,1,0,0],
+								   [0,0,0,1],
+								   [0,0,1,0]]]*2)),	
+						# 4: tensorprod(array([[[1,0,0,0],
+						# 		   [0,1,0,0],
+						# 		   [0,0,1,0],
+						# 		   [0,0,0,1]]]*2)),						   		 
+						}.get(self.N)
 
 
+
+		hyperparameters['label'] = label #.conj().T
 
 		for parameter in hyperparameters['parameters']:
 			for group in hyperparameters['parameters'][parameter]['group']:
@@ -1594,9 +1699,6 @@ class Hamiltonian(Object):
 						hyperparameters)
 					)
 
-		# print()
-		# print('value')
-		# print(hyperparameters['value'].round(3))
 
 		# Get reshaped parameters
 		category = 'variable'		
@@ -1605,6 +1707,7 @@ class Hamiltonian(Object):
 		# Update class attributes
 		self.parameters = parameters
 		self.hyperparameters = hyperparameters
+
 
 		return parameters
 
@@ -1856,54 +1959,135 @@ def initialize(parameters,shape,bounds,reset,hyperparameters):
 
 
 
+def plot(hyperparameters):
+	'''
+	Plot runs
+	Args:
+		hyperparameters (dict): hyperparameters of runs
+	'''	
 
-def run(index,hyperparameters={}):
+	# objective = hyperparameters['hyperparameters']
 
-	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	# fig,ax = plt.subplots(2)
+	# plot0 = ax[0].imshow(V.real)
+	# plot1 = ax[1].imshow(V.imag)
+	# ax[0].set_title('Real')
+	# ax[1].set_title('Imag')
+	# plt.colorbar(plot0,ax=ax[0])
+	# plt.colorbar(plot1,ax=ax[1])
+	# fig.tight_layout()
+	# fig.savefig('output/V_%s_%s_%d.pdf'%(method,locality,i))
 
-	parameters = obj.parameters
-	hyperparameters = hyperparameters['hyperparameters']
+	# realizations = min(len(iteration),len(objective))	
+	# slices = slice(1,None)
+	# iteration = iteration.mean(0)
+	# objective,error = objective.mean(0),objective.std(0)
+
+
+
+	# x,y,yerr = iteration[slices],objective[slices],error[slices]
+	# config = 'config/plot.mplstyle'
+
+	# with matplotlib.style.context(config):
+
+	# 	fig,ax = plt.subplots()
+
+
+	# 	ax.set_yscale(value='log',base=10)
+
+	# 	ax.set_xlabel(r'$\textrm{Iteration}$')
+	# 	ax.set_ylabel(r'$\textrm{Fidelity}$')
+	# 	# ax.set_ylim(6e-1,1.2e0)
+	# 	ax.set_ylim(1e-1,1e0)
+	# 	# ax.set_yticks([80e-2,85e-2,90e-2,95e-2,100e-2])
+	# 	# ax.set_yticks([10e-2,20e-2,30e-2,40e-2,50e-2])
+	# 	ax.tick_params(axis='y',which='major')
+	# 	ax.tick_params(axis='y',which='minor')
+	# 	ax.tick_params(axis='x',which='major')
+	# 	ax.tick_params(axis='x',which='minor')
+	# 	ax.grid(True)
+
+	# 	# ax.plot(x,y,'--o')
+	# 	ax.errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=1,capsize=1)
+
+
+	# 	fig.set_size_inches(6,6)
+	# 	fig.subplots_adjust()
+	# 	fig.tight_layout()
+	# 	fig.savefig('output/fidelity_method%s_local%s_repeats%d__iterations%d_N%d_M%d.pdf'%(method,locality,realizations,iterations,N,M))
+
+	return
+
+
+def run(hyperparameters):
+	'''
+	Run simulations
+	Args:
+		hyperparameters (dict): hyperparameters
+	'''		
+
+	settings = copy.deepcopy(hyperparameters)
+
+	training = settings['sys']['train']
+	plotting = settings['sys']['plot']
+	testing = settings['sys']['test']
 	
-	func = obj.__func__
-	callback = obj.__callback__
+	if training:
+		realizations = {i: copy.deepcopy(settings) for i in range(settings['hyperparameters']['realizations'])}
+		for i in realizations:
+
+			hyperparameters = realizations[i]
+
+			obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+
+			parameters = obj.parameters
+			hyperparameters = hyperparameters['hyperparameters']
+			
+			func = obj.__func__
+			callback = obj.__callback__
+
+			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
+
+			parameters = optimizer(parameters)
+
+			obj.__plot__(parameters)
 
 
-	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
+	if plotting:
+		plot(realizations)
 
-	parameters = optimizer(parameters)
+	if testing:
 
-	obj.__plot__(parameters)
+		g = gradient_fwd(obj)
+		f = gradient_finite(obj,tol=6e-8)
+		h = obj.__derivative__
 
-	# g = gradient_fwd(obj)
-	# f = gradient_finite(obj,tol=6e-8)
-	# h = obj.__derivative__
+		# print(parameters)
+		# print(g(parameters))
+		# print()
+		# print(h(parameters))
 
-	# # print(parameters)
-	# # print(g(parameters))
-	# # print()
-	# # print(h(parameters))
+		print(allclose(g(parameters),f(parameters)))
+		print(allclose(g(parameters),h(parameters)))
+		print(allclose(f(parameters),h(parameters)))
 
-	# print(allclose(g(parameters),f(parameters)))
-	# print(allclose(g(parameters),h(parameters)))
-	# print(allclose(f(parameters),h(parameters)))
+		# print(g(parameters)-h(parameters))
 
-	# # print(g(parameters)-h(parameters))
+		grad = gradient(func)
+		fgrad = gradient_finite(func,tol=5e-8)
+		agrad = obj.__grad__
 
-	# grad = gradient(func)
-	# fgrad = gradient_finite(func,tol=5e-8)
-	# agrad = obj.__grad__
-
-	# print(allclose(grad(parameters),fgrad(parameters)))
-	# print(allclose(grad(parameters),agrad(parameters)))
+		print(allclose(grad(parameters),fgrad(parameters)))
+		print(allclose(grad(parameters),agrad(parameters)))
 
 
-	# print()
-	# print(parameters)
-	# print(obj.__constraints__(parameters))
-	# print(sigmoid(parameters[:4]))
-	# print(gradient(lambda x: sigmoid(x,scale=1e4).sum())(parameters[:4]))
-	# print(grad(parameters))
-	# print(agrad(parameters))
+		print()
+		print(parameters)
+		print(obj.__constraints__(parameters))
+		print(sigmoid(parameters[:4]))
+		print(gradient(lambda x: sigmoid(x,scale=1e4).sum())(parameters[:4]))
+		print(grad(parameters))
+		print(agrad(parameters))
 
-	# print(gradient(obj.__constraints__)(parameters))
+		print(gradient(obj.__constraints__)(parameters))
 	return

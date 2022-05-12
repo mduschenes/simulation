@@ -6,12 +6,18 @@
 		"config":"config"
 	},
 	"files":{
-		"data":"data.csv",	
-		"plot":{"parameters":"parameters.pdf","objective":"objective.pdf"},
-		"mplstyle":"plot.mplstyle"
+		"data":"data",	
+		"plot":{"parameters":"parameters","objective":"objective"},
+		"mplstyle":"plot"
 	},
+	"ext":{
+		"data":"csv",	
+		"plot":{"parameters":"pdf","objective":"pdf"},
+		"mplstyle":"mplstyle"
+	},	
 	"train":1,
-	"plot":1
+	"plot":1,
+	"test":0
 },
 "model":{
 	"N":2,
@@ -21,7 +27,7 @@
 	"delta":null,
 	"M":1000,
 	"T":null,
-	"tau":1e-3,
+	"tau":1e-2,
 	"p":2,
 	"space":"spin",		
 	"time":"linear",		
@@ -36,14 +42,14 @@
 "hyperparameters":{
 	"iterations":1000,
 	"realizations":1,
-	"locality":"local",
-	"method":"user",
+	"locality":"global",
+	"label":"gate",
 	"optimizer":"cg",
-	"seed":1200,
+	"seed":35325,
 	"eps":2e-2,
 	"value":1,
 	"status":1,
-	"interpolation":1,"smoothness":5,"init":[0,1],
+	"interpolation":1,"smoothness":4,"init":[0,1],
 	"initialization":"interpolation","random":"uniform","pad":"random",
 	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":200,"tol":1e-14,
 	"bound":1e4,"alpha":1e-4,"beta":1e-1,
@@ -101,6 +107,6 @@
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 	}
 },		
-"label": "input/V.txt",																
+"label": "random",
 "value":null
 }
