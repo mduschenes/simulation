@@ -354,7 +354,6 @@ class Lattice(object):
 
 		return
 
-
 	def set(self,attr,value):
 		'''	
 		Set class attribute
@@ -546,6 +545,7 @@ class Object(object):
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
 		hyperparameters (dict) : class hyperparameters
+		key (object): key for class		
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -561,7 +561,7 @@ class Object(object):
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},key=None,
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 
 		self.N = N
@@ -580,16 +580,18 @@ class Object(object):
 
 		self.hyperparameters = hyperparameters
 
+		self.key = key
+
 		self.data = array([])
 		self.operator = []
 		self.site = []
 		self.string = []
 		self.interaction = []
-		self.size = getattr(self,'size',0)
-		self.shape = (self.M,self.size,)
+		self.size = 0
+		self.shape = (self.M,*self.data.shape)
 
-		self.delimiter = getattr(self,'delimiter',' ')
-		self.basis = getattr(self,'basis',None)
+		self.delimiter = ' '
+		self.basis = None
 		self.diagonal = []
 		self._data = []
 		self.funcs = lambda parameters: None
@@ -598,8 +600,8 @@ class Object(object):
 		self.transformH = []
 		self.index = arange(self.size)
 
-		self.parameters = getattr(self,'parameters',None)
-		self.dim = getattr(self,'dim',0)
+		self.parameters = None
+		self.dim = 0
 
 		self.fig = {}
 		self.ax = {}
@@ -609,6 +611,8 @@ class Object(object):
 		self.__time__()
 		self.__lattice__()
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
+
+		self.log('Initialized %r'%(self.key))
 	
 		return	
 
@@ -708,7 +712,7 @@ class Object(object):
 		self.interaction.insert(index,interaction)
 
 		self.size = len(self.data)
-		self.shape = (self.M,self.size)
+		self.shape = (self.M,*self.data.shape)
 		self.hyperparameters.update(hyperparameters)
 
 		return
@@ -868,7 +872,7 @@ class Object(object):
 			# 	)
 			# )
 
-			self.log('U\n%r\nV\n%r'%(
+			self.log('U\n%r\nV\n%r\n'%(
 				abs(self(parameters)).round(4),
 				abs(self.hyperparameters['label']).round(4)
 				)
@@ -961,7 +965,7 @@ class Object(object):
 		self.T = self.time.T
 		self.p = self.time.p
 		self.tau = self.time.tau
-		self.shape = (self.M,self.size)
+		self.shape = (self.M,*self.data.shape)
 
 		return
 
@@ -1060,6 +1064,14 @@ class Object(object):
 		parameters = parameters.reshape(shape)
 
 
+		# Get plot config
+		directory = hyperparameters['sys']['directories']['config']
+		file = hyperparameters['sys']['files']['mplstyle']
+		ext = hyperparameters['sys']['ext']['mplstyle']
+
+		mplstyle = path_join(directory,file,ext=ext)
+
+
 		# Plot attributes
 
 		attr = 'parameters'
@@ -1070,18 +1082,18 @@ class Object(object):
 		ext = hyperparameters['sys']['ext']['plot'][attr]
 		path = path_join(directory,file,ext=ext)
 
-		directory = hyperparameters['sys']['directories']['config']
-		file = hyperparameters['sys']['files']['mplstyle']
-		ext = hyperparameters['sys']['ext']['mplstyle']
-		mplstyle = path_join(directory,file,ext=ext)
-
-		size = (20,20)
+		layout = [shape[1],1]
+		plots = [None]*layout[0]
+		figsize = (20,20)
 		iterations = [0,*[5,10,15,20],*[i*(hyperparameters['hyperparameters']['track']['size']-1)//n for n in [4] for i in range(1,n+1)]]
+		labels = [r'\alpha',r'\beta']
 
 		with matplotlib.style.context(mplstyle):
 		
 			if fig is None:
-				fig,ax = plt.subplots(shape[1],1)
+				fig,ax = plt.subplots(*layout)
+			elif ax is None:
+				ax = fig.gca()
 
 			for j,parameters in enumerate(hyperparameters['hyperparameters']['track']['parameters']):
 
@@ -1111,10 +1123,9 @@ class Object(object):
 					# x = x[1:-1]
 					# y = y[1:-1]
 
-					# label = [r'\alpha',r'\phi'][i%2]
-					label = [r'\alpha',r'\beta'][i%2]
+					label = labels[i%2]
 
-					ax[i].plot(x,y,
+					plots[i] = ax[i].plot(x,y,
 						color=getattr(plt.cm,'winter')((iterations.index(j)+1)/len(iterations)),
 						marker='',alpha=0.8,linewidth=3,
 						# label=r'${%s}^{(%s)}_{%s}$'%(label,str(iteration),str(i//2) if shape[1]>2 else '')
@@ -1133,10 +1144,10 @@ class Object(object):
 						ax[i].legend(loc=(0.15,1.1),ncol=min(4,len(ax[i].get_legend_handles_labels()[0])))
 
 
-			fig.set_size_inches(*size)
+			fig.set_size_inches(*figsize)
 			fig.subplots_adjust()
 			fig.tight_layout()
-			fig.savefig(path)
+			dump(fig,path)
 
 		self.fig[attr] = fig
 		self.ax[attr] = ax
@@ -1151,21 +1162,21 @@ class Object(object):
 		ext = hyperparameters['sys']['ext']['plot'][attr]
 		path = path_join(directory,file,ext=ext)
 
-		directory = hyperparameters['sys']['directories']['config']
-		file = hyperparameters['sys']['files']['mplstyle']
-		ext = hyperparameters['sys']['ext']['mplstyle']
-		mplstyle = path_join(directory,file,ext=ext)
-
-		size = (8,8)
+		layout = []
+		plots = None
+		figsize = (8,8)
 
 		with matplotlib.style.context(mplstyle):
 		
-			fig,ax = plt.subplots()
+			if fig is None:
+				fig,ax = plt.subplots(*layout)
+			elif ax is None:
+				ax = fig.gca()
 
 			x = hyperparameters['hyperparameters']['track']['iteration']
 			y = hyperparameters['hyperparameters']['track']['objective']
 
-			ax.plot(x,y,linewidth=4,marker='o',markersize=10)
+			plots = ax.plot(x,y,linewidth=4,marker='o',markersize=10)
 
 			ax.set_ylabel(ylabel=r'$\textrm{%s}$'%('Objective'))
 			ax.set_xlabel(xlabel=r'$\textrm{%s}$'%('Iteration'))
@@ -1197,10 +1208,10 @@ class Object(object):
 			ax.set_aspect(aspect='auto')
 			ax.grid(visible=True,which='both',axis='both')	
 
-			fig.set_size_inches(*size)
+			fig.set_size_inches(*figsize)
 			fig.subplots_adjust()
 			fig.tight_layout()
-			fig.savefig(path)
+			dump(fig,path)
 
 
 		self.fig[attr] = fig
@@ -1224,6 +1235,7 @@ class Hamiltonian(Object):
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
 		hyperparameters (dict) : class hyperparameters
+		key (object): key for class
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -1239,9 +1251,9 @@ class Hamiltonian(Object):
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},key=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
-		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,key=key,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
@@ -1602,22 +1614,20 @@ class Hamiltonian(Object):
 		
 		# Get label
 		label = hyperparameters['label']
+		shape = self.shape[2:]
 		if label is None:
-			onp.random.seed(hyperparameters['hyperparameters']['seed'])
-			label = array(onp.random.rand(self.n,self.n)) + 1j*array(onp.random.rand(self.n,self.n))
+			label = (rand(shape)+ 1j*rand(shape))/np.sqrt(2)
 			label = sp.linalg.expm(-1j*(label + label.conj().T)/2.0/self.n)
 
 		elif isinstance(label,str):
 			try:
 				label = array(load(label))
 			except:
-				onp.random.seed(hyperparameters['hyperparameters']['seed'])
 
 				if label == 'random':
-					label = array(onp.random.rand(self.n,self.n)) + 1j*array(onp.random.rand(self.n,self.n))
+					label = (rand(shape)+ 1j*rand(shape))/np.sqrt(2)
 					label = sp.linalg.expm(-1j*(label + label.conj().T)/2.0/self.n)
 
-					# label = np.array(onp.random.randn(self.n,self.n) + 1j*onp.random.randn(self.n,self.n))/np.sqrt(2);
 					# [Q,R] = np.linalg.qr(label);
 					# R = np.diag(np.diag(R)/np.abs(np.diag(R)));
 					# label = Q.dot(R)
@@ -1625,13 +1635,13 @@ class Hamiltonian(Object):
 					# assert np.allclose(np.eye(self.n),label.dot(label.conj().T))
 
 				elif label == 'rank1':
-					label = np.diag(array(onp.random.rand(self.n)))
+					label = np.diag(rand(self.n))
 					I = np.eye(self.n)
 					r = 4*self.N
-					k = onp.random.randint(self.n,size=(r,2))
+					k = rand(shape=(r,2),bounds=[0,self.n],random='randint')
 					for j in range(r):
 						v = np.outer(I[k[j,0]],I[k[j,1]].T)
-						c = (onp.random.rand() + 1j*onp.random.rand())/np.sqrt(2)
+						c = (rand()+ 1j*rand())/np.sqrt(2)
 						v = (v + (v.T))
 						v = (c*v + np.conj(c)*(v.T))
 						label += v
@@ -1688,6 +1698,7 @@ class Hamiltonian(Object):
 						}.get(self.N)
 
 
+		label = label.astype(dtype=self.dtype)
 
 		hyperparameters['label'] = label #.conj().T
 
@@ -1728,6 +1739,7 @@ class Unitary(Hamiltonian):
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
 		hyperparameters (dict) : class hyperparameters
+		key (object): key for class		
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -1743,9 +1755,9 @@ class Unitary(Hamiltonian):
 		system (dict,System): System attributes (dtype,format,device,seed,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},key=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
-		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,key=key,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
@@ -1966,55 +1978,145 @@ def plot(hyperparameters):
 		hyperparameters (dict): hyperparameters of runs
 	'''	
 
-	# objective = hyperparameters['hyperparameters']
+	# Get keys of hyperparameters
+	keys = list(hyperparameters)
+	k = len(keys)
 
-	# fig,ax = plt.subplots(2)
-	# plot0 = ax[0].imshow(V.real)
-	# plot1 = ax[1].imshow(V.imag)
-	# ax[0].set_title('Real')
-	# ax[1].set_title('Imag')
-	# plt.colorbar(plot0,ax=ax[0])
-	# plt.colorbar(plot1,ax=ax[1])
-	# fig.tight_layout()
-	# fig.savefig('output/V_%s_%s_%d.pdf'%(method,locality,i))
+	if k == 0:
+		return
 
-	# realizations = min(len(iteration),len(objective))	
-	# slices = slice(1,None)
-	# iteration = iteration.mean(0)
-	# objective,error = objective.mean(0),objective.std(0)
+	key = keys[0]
+
+	# Get plot config
+	directory = hyperparameters[key]['sys']['directories']['config']
+	file = hyperparameters[key]['sys']['files']['mplstyle']
+	ext = hyperparameters[key]['sys']['ext']['mplstyle']
+	mplstyle = path_join(directory,file,ext=ext)
 
 
+	# Plot attributes
 
-	# x,y,yerr = iteration[slices],objective[slices],error[slices]
-	# config = 'config/plot.mplstyle'
+	attr = 'objective'
+	key = keys[0]
+	fig,ax = None,None
 
-	# with matplotlib.style.context(config):
+	directory = hyperparameters[key]['sys']['directories']['dump']
+	file = '%s.%s'%(hyperparameters[key]['sys']['files']['plot'][attr],'runs')
+	ext = hyperparameters[key]['sys']['ext']['plot'][attr]
+	path = path_join(directory,file,ext=ext)
 
-	# 	fig,ax = plt.subplots()
+	layout = []
+	plots = None
+	shape = (len(hyperparameters[key]['hyperparameters']['runs']),hyperparameters[key]['hyperparameters']['iterations']+1)
+	figsize = (8,8)
+
+	with matplotlib.style.context(mplstyle):
+	
+		if fig is None:
+			fig,ax = plt.subplots(*layout)
+		elif ax is None:
+			ax = fig.gca()
+
+		x = zeros(shape)	
+		y = zeros(shape)
+		yerr = zeros(shape)
+
+		for i,key in enumerate(keys):
+			size = hyperparameters[key]['hyperparameters']['track']['size']
+
+			x = x.at[i,:].set(arange(shape[1]))
+			y = y.at[i,:size].set(hyperparameters[key]['hyperparameters']['track']['objective'])
+			y = y.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['objective'][-1])
+			yerr = yerr.at[i,:size].set(hyperparameters[key]['hyperparameters']['track']['objective'])
+			yerr = yerr.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['objective'][-1])
+
+		x = x.mean(0).astype(int)
+		y = y.mean(0)
+		yerr = yerr.std(0)
+
+		plots = ax.errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=2,capsize=2)
+
+		ax.set_ylabel(ylabel=r'$\textrm{%s}$'%('Objective'))
+		ax.set_xlabel(xlabel=r'$\textrm{%s}$'%('Iteration'))
+
+		# ax.set_ylim(ymin=0,ymax=1)
+		# ax.set_yscale(value='linear')
+
+		ax.set_ylim(ymin=5e-1,ymax=1e0)
+		ax.set_yscale(value='log',base=10)
+
+		ax.yaxis.offsetText.set_fontsize(fontsize=20)
+
+		ax.set_xticks(ticks=range(int(1*min(x)),int(1.1*max(x)),int(max(x)-min(x))//8))
+		# ax.set_yticks(ticks=[1e-1,2e-1,4e-1,6e-1,8e-1,1e0])
+		ax.set_yticks(ticks=[5e-1,6e-1,8e-1,1e0])
+		ax.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
+		# ax.yaxis.set_major_locator(matplotlib.ticker.LogLocator(base=10.0,subs=(1.0,),numticks=100))
+		ax.ticklabel_format(axis='y',style='sci',scilimits=[-1,2])	
+
+		ax.yaxis.set_minor_locator(matplotlib.ticker.LogLocator(base=10.0,subs=np.arange(2,10)*.1,numticks=100))
+		ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
 
 
-	# 	ax.set_yscale(value='log',base=10)
+		ax.tick_params(axis='y',which='major',length=8,width=1)
+		ax.tick_params(axis='y',which='minor',length=4,width=0.5)
+		ax.tick_params(axis='x',which='major',length=8,width=1)
+		ax.tick_params(axis='x',which='minor',length=4,width=0.5)
 
-	# 	ax.set_xlabel(r'$\textrm{Iteration}$')
-	# 	ax.set_ylabel(r'$\textrm{Fidelity}$')
-	# 	# ax.set_ylim(6e-1,1.2e0)
-	# 	ax.set_ylim(1e-1,1e0)
-	# 	# ax.set_yticks([80e-2,85e-2,90e-2,95e-2,100e-2])
-	# 	# ax.set_yticks([10e-2,20e-2,30e-2,40e-2,50e-2])
-	# 	ax.tick_params(axis='y',which='major')
-	# 	ax.tick_params(axis='y',which='minor')
-	# 	ax.tick_params(axis='x',which='major')
-	# 	ax.tick_params(axis='x',which='minor')
-	# 	ax.grid(True)
+		ax.set_aspect(aspect='auto')
+		ax.grid(visible=True,which='both',axis='both')	
 
-	# 	# ax.plot(x,y,'--o')
-	# 	ax.errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=1,capsize=1)
+		fig.set_size_inches(*figsize)
+		fig.subplots_adjust()
+		fig.tight_layout()
+		dump(fig,path)
 
 
-	# 	fig.set_size_inches(6,6)
-	# 	fig.subplots_adjust()
-	# 	fig.tight_layout()
-	# 	fig.savefig('output/fidelity_method%s_local%s_repeats%d__iterations%d_N%d_M%d.pdf'%(method,locality,realizations,iterations,N,M))
+
+
+	attr = 'label'
+	key = keys[0]	
+	fig,ax = None,None
+
+	directory = hyperparameters[key]['sys']['directories']['dump']
+	file = hyperparameters[key]['sys']['files']['plot'][attr]
+	ext = hyperparameters[key]['sys']['ext']['plot'][attr]
+	path = path_join(directory,file,ext=ext)
+
+
+	layout = [2]
+	plots = [None]*layout[0]
+	shape = (len(hyperparameters[key]['hyperparameters']['runs']),*hyperparameters[key]['label'].shape)
+	figsize = (8,8)
+	labels = {'real':r'$U~\textrm{Real}$','imag':r'$U~\textrm{Imag}$'}
+	dtype = hyperparameters[key]['label'].dtype
+
+	with matplotlib.style.context(mplstyle):
+	
+		if fig is None:
+			fig,ax = plt.subplots(*layout)
+		elif ax is None:
+			ax = fig.gca()
+
+		x = zeros(shape,dtype=dtype)
+
+		for i,key in enumerate(keys):
+			x = x.at[i].set(hyperparameters[key]['label'])
+
+		x = x.mean(0)
+
+		for i,attr in enumerate(labels):
+			plots[i] = ax[i].imshow(getattr(x,attr))
+			
+			ax[i].set_title(labels[attr])
+			
+			plt.colorbar(plots[i],ax=ax[i])
+
+		fig.set_size_inches(*figsize)
+		fig.subplots_adjust()
+		fig.tight_layout()
+		dump(fig,path)
+
 
 	return
 
@@ -2033,12 +2135,15 @@ def run(hyperparameters):
 	testing = settings['sys']['test']
 	
 	if training:
-		realizations = {i: copy.deepcopy(settings) for i in range(settings['hyperparameters']['realizations'])}
-		for i in realizations:
+		
+		keys = {key: copy.deepcopy(settings) for key in settings['hyperparameters']['runs']}
+		k = len(keys)
 
-			hyperparameters = realizations[i]
+		for key in keys:			
 
-			obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+			hyperparameters = keys[key]
+
+			obj = Unitary(key=key,**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 			parameters = obj.parameters
 			hyperparameters = hyperparameters['hyperparameters']
@@ -2054,7 +2159,7 @@ def run(hyperparameters):
 
 
 	if plotting:
-		plot(realizations)
+		plot(keys)
 
 	if testing:
 

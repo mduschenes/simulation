@@ -7,12 +7,12 @@
 	},
 	"files":{
 		"data":"data",	
-		"plot":{"parameters":"parameters","objective":"objective"},
+		"plot":{"parameters":"parameters","objective":"objective","label":"label"},
 		"mplstyle":"plot"
 	},
 	"ext":{
 		"data":"csv",	
-		"plot":{"parameters":"pdf","objective":"pdf"},
+		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf"},
 		"mplstyle":"mplstyle"
 	},	
 	"train":1,
@@ -25,7 +25,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":1000,
+	"M":100,
 	"T":null,
 	"tau":1e-2,
 	"p":2,
@@ -40,12 +40,12 @@
 	}
 },			
 "hyperparameters":{
-	"iterations":1000,
-	"realizations":1,
-	"locality":"global",
-	"label":"gate",
+	"iterations":10,
+	"runs":3,
+	"locality":"local",
+	"label":"random",
 	"optimizer":"cg",
-	"seed":35325,
+	"seed":null,
 	"eps":2e-2,
 	"value":1,
 	"status":1,

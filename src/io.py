@@ -166,7 +166,7 @@ def _load(obj,wr,ext,**kwargs):
 def dump(data,path,wr='w',verbose=False,**kwargs):
 
 	dumpers = {ext: lambda data,obj,wr,ext=ext,**kwargs: _dump(data,obj,wr,ext,**kwargs)
-				for ext in ['npy','csv','txt','pickle','json','tex','hdf5']}
+				for ext in ['npy','csv','txt','pickle','json','tex','hdf5','pdf']}
 
 	if not isinstance(path,str):
 		return
@@ -231,6 +231,8 @@ def _dump(data,obj,wr,ext,**kwargs):
 		obj.write(data,**kwargs)
 	elif ext in ['hdf5']:
 		pass
+	elif ext in ['pdf']:
+		data.savefig(obj,**{**kwargs})
 
 	return
 

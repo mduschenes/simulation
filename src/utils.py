@@ -645,6 +645,8 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 
 	if random in ['uniform','rand']:
 		return jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
+	elif random in ['randint']:
+		return jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1])		
 	elif random in ['zeros']:
 		return zeros(shape)
 	elif random in ['ones']:

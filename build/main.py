@@ -263,6 +263,21 @@ def main(args):
 
 
 	updates = {
+		'runs': {
+			'value': (lambda hyperparameters: list(range(hyperparameters['hyperparameters']['runs']))),
+			'default': 1,
+			'conditions': (lambda hyperparameters: not isinstance(hyperparameters['hyperparameters']['runs'],(list,tuple,array)))
+		},
+	}			
+	for attr in updates:						
+		hyperparameters['hyperparameters'][attr] = hyperparameters['hyperparameters'].get(attr,updates[attr]['default'])
+
+	if updates[attr]['conditions'](hyperparameters):
+		for attr in updates:
+			hyperparameters['hyperparameters'][attr] = updates[attr]['value'](hyperparameters)
+
+
+	updates = {
 		'group': {
 			'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters['parameters'][parameter]['group']]),
 			'default': [],
