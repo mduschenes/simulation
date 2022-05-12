@@ -32,7 +32,8 @@ from src.utils import array,dictionary,ones,zeros,arange,rand,identity,PRNGKey
 from src.utils import tensorprod,trace,broadcast_to,expand_dims,moveaxis
 from src.utils import summation,exponentiation
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
-from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner_abs2,inner_real2,inner_imag2,norm,interpolate,unique,allclose,isclose,parse
+from src.utils import maximum,minimum,abs,real,imag,cos,sin,heaviside,sigmoid,inner_abs2,inner_real2,inner_imag2,norm,interpolate,unique,allclose,isclose
+from src.utils import parse,to_str
 from src.utils import pi,e
 
 from src.io import load,dump,path_join,path_split
@@ -872,9 +873,9 @@ class Object(object):
 			# 	)
 			# )
 
-			self.log('U\n%r\nV\n%r\n'%(
-				abs(self(parameters)).round(4),
-				abs(self.hyperparameters['label']).round(4)
+			self.log('U\n%s\nV\n%s\n'%(
+				to_str(abs(self(parameters)).round(4)),
+				to_str(abs(self.hyperparameters['label']).round(4))
 				)
 			)
 			# self.log('norm: %0.4e\nmax: %0.4e\nmin: %0.4e\nbcs:\n%r\n%r\n\n'%(
@@ -1086,7 +1087,7 @@ class Object(object):
 		layout = [shape[1],1]
 		plots = [None]*layout[0]
 		figsize = (20,20)
-		iterations = [0,*[5,10,15,20],*[i*(hyperparameters['hyperparameters']['track']['size']-1)//n for n in [4] for i in range(1,n+1)]]
+		iterations = list(sorted(list(set([0,*[5,10,15,20],*[i*(hyperparameters['hyperparameters']['track']['size']-1)//n for n in [4] for i in range(1,n+1)]]))))
 		labels = [r'\alpha',r'\beta']
 
 		with matplotlib.style.context(mplstyle):
@@ -1113,7 +1114,7 @@ class Object(object):
 
 
 					# y = abs((y - hyperparameters['hyperparameters']['track']['parameters'][0].reshape(shape)[:,i])/
-					# 	maximum(1,abs(hyperparameters['hyperparameters']['track']['parameters'][0].reshape(shape)[:,i])))
+					# 	maximum(y,abs(hyperparameters['hyperparameters']['track']['parameters'][0].reshape(shape)[:,i])))
 
 					# if i == 0:
 					# 	scale = (1)*(2*pi/4/(20e-6))
@@ -1134,7 +1135,7 @@ class Object(object):
 					)
 
 					ax[i].set_xlim(xmin=0,xmax=shape[0])
-					# ax[i].set_ylim(ymin=-0.25,ymax=1.25)
+					ax[i].set_ylim(ymin=-0.25,ymax=1.25)
 					ax[i].set_ylabel(ylabel=r'${%s}_{%s}$'%(label,str(i//2) if shape[1]>2 else ''))
 					ax[i].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
 					ax[i].set_yscale(value='linear')

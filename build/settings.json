@@ -17,8 +17,8 @@
 	}
 },
 "boolean":{
-	"train":0,
-	"load":1,
+	"train":1,
+	"load":0,
 	"dump":1,
 	"plot":1,
 	"test":0
@@ -31,7 +31,7 @@
 	"delta":null,
 	"M":1000,
 	"T":null,
-	"tau":1,
+	"tau":8e-1,
 	"p":2,
 	"space":"spin",		
 	"time":"linear",		
@@ -59,7 +59,7 @@
 	"initialization":"interpolation","random":"uniform","pad":"random",
 	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":200,"tol":1e-14,
 	"bound":1e4,"alpha":1e-4,"beta":1e-1,
-	"lambda":[5e-2,5e-2,1e-2],
+	"lambda":[5e0,5e0,1e1],
 	"line_search":1,
 	"track":{
 		"track":{"log":1,"track":10,"callback":1},

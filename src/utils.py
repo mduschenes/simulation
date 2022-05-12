@@ -622,6 +622,31 @@ class toffoli(array):
 			return array([[out,out],[out,-out]],*args,**kwargs)
 
 
+
+def PRNGKey(seed=None,split=False):
+	'''
+	Generate PRNG key
+	Args:
+		seed (int): Seed for random number generation or random key for future seeding
+		split(bool,int): Number of splits of random key
+	Returns:
+		key (key,list[key]): Random key
+	'''	
+
+	if seed is None:
+		seed = onp.random.randint(1e12)
+
+	if isinstance(seed,(int)):
+		key = jax.random.PRNGKey(seed)
+	else:
+		key = seed
+
+	if split:
+		key = jax.random.split(key,num=split)
+
+	return key
+
+
 def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 	'''
 	Get random array
@@ -1740,30 +1765,6 @@ def isdiag(a):
 	return ~a.ravel()[:-1].reshape(n-1,m+1)[:,1:].any()
 
 
-def PRNGKey(seed=None,split=False):
-	'''
-	Generate PRNG key
-	Args:
-		seed (int): Seed for random number generation or random key for future seeding
-		split(bool,int): Number of splits of random key
-	Returns:
-		key (key,list[key]): Random key
-	'''	
-
-	if seed is None:
-		seed = onp.random.randint(1e12)
-
-	if isinstance(seed,(int)):
-		key = jax.random.PRNGKey(seed)
-	else:
-		key = seed
-
-	if split:
-		key = jax.random.split(key,num=split)
-
-	return key
-
-
 
 def issparse(a,*args,**kwargs):
 	'''
@@ -2277,3 +2278,19 @@ def gradient_sigmoid(a,scale=1e4):
 		out (array): Gradient of sigmoid
 	'''
 	return scale*sigmoid(a,scale)*sigmoid(-a,scale)
+
+
+
+def to_str(a,**kwargs):
+	'''
+	Convert array to string representation
+	Args:
+		a (array): Array to represent
+		kwargs (dict): Additional keyword formatting options
+	Returns:
+		string (str): String representation of array
+	'''
+
+	string = np.array_str(a,**kwargs)
+
+	return string
