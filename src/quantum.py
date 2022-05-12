@@ -28,7 +28,7 @@ for PATH in PATHS:
 
 from src.optimize import Optimizer,Objective
 from src.utils import jit,gradient,gradient_finite,gradient_fwd
-from src.utils import array,dictionary,ones,zeros,arange,rand,identity
+from src.utils import array,dictionary,ones,zeros,arange,rand,identity,PRNGKey
 from src.utils import tensorprod,trace,broadcast_to,expand_dims,moveaxis
 from src.utils import summation,exponentiation
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
@@ -56,6 +56,7 @@ class System(dictionary):
 		format (str): Format of array
 		device (str): Device for computation
 		seed (array,int): Seed for random number generation
+		key (object): key for class
 		verbose (bool,str): Verbosity of class	
 		args (dict,System): Additional system attributes
 		kwargs (dict): Additional system attributes
@@ -79,13 +80,15 @@ class System(dictionary):
 			'format':'array',
 			'device':'cpu',
 			'seed':None,
+			'key':None,
 			'verbose':False,
 		}
 
 		args = {k:v for a in args for k,v in ({} if a is None else a).items()}
 		attrs = {**args,**kwargs}
 		attrs.update({attr: defaults[attr] for attr in defaults if attrs.get(attr) is None})
-		attrs.update({attr: updates.get(attr,{}).get(attrs[attr],attrs[attr]) for attr in attrs})
+
+		attrs.update({attr: updates.get(attr,{}).get(attrs[attr],attrs[attr]) if attr in updates else attrs[attr] for attr in attrs})
 
 		super().__init__(**attrs)
 
@@ -293,7 +296,7 @@ class Lattice(object):
 		L (int,float): Scale in system
 		delta (float): Length scale in system	
 		lattice (str,Lattice): Type of lattice, allowed strings in ['square','square-nearest']
-		system (dict,System): System attributes (dtype,format,device,seed,verbose)		
+		system (dict,System): System attributes (dtype,format,device,seed,key,verbose)		
 	'''	
 	def __init__(self,N,d,L=1,delta=1,lattice='square',system=None):
 		
@@ -544,8 +547,7 @@ class Object(object):
 		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
-		hyperparameters (dict) : class hyperparameters
-		key (object): key for class		
+		hyperparameters (dict) : class hyperparameters				
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -558,10 +560,10 @@ class Object(object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		system (dict,System): System attributes (dtype,format,device,seed,verbose)
+		system (dict,System): System attributes (dtype,format,device,seed,key,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},key=None,
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 
 		self.N = N
@@ -579,8 +581,6 @@ class Object(object):
 		self.system = system
 
 		self.hyperparameters = hyperparameters
-
-		self.key = key
 
 		self.data = array([])
 		self.operator = []
@@ -899,12 +899,15 @@ class Object(object):
 		'''
 		Set system attributes
 		Args:
-			system (dict,System): System attributes (dtype,format,device,seed,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,verbose)		
 		'''
 		system = self.system if system is None else system
 		
 		self.system = System(system)		
 		self.dtype = self.system.dtype
+		self.format = self.system.format
+		self.seed = self.system.seed
+		self.key = self.system.key
 		self.verbose = self.system.verbose
 
 		return
@@ -920,7 +923,7 @@ class Object(object):
 			L (int,float): Scale in system
 			delta (float): Length scale in system
 			space (str,Space): Type of Hilbert space
-			system (dict,System): System attributes (dtype,format,device,seed,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,verbose)		
 		'''
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -951,7 +954,7 @@ class Object(object):
 			tau (float): Simulation time scale
 			p (int): Trotter order		
 			time (str,Time): Type of Time evolution space						
-			system (dict,System): System attributes (dtype,format,device,seed,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,verbose)		
 		'''
 		M = self.M if M is None else M
 		T = self.T if T is None else T
@@ -980,7 +983,7 @@ class Object(object):
 			L (int,float): Scale in system
 			delta (float): Length scale in system			
 			lattice (str,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,seed,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,verbose)		
 		'''		
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -1235,7 +1238,6 @@ class Hamiltonian(Object):
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
 		hyperparameters (dict) : class hyperparameters
-		key (object): key for class
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -1248,12 +1250,12 @@ class Hamiltonian(Object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		system (dict,System): System attributes (dtype,format,device,seed,verbose)
+		system (dict,System): System attributes (dtype,format,device,seed,key,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},key=None,
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
-		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,key=key,
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
@@ -1739,7 +1741,6 @@ class Unitary(Hamiltonian):
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
 		hyperparameters (dict) : class hyperparameters
-		key (object): key for class		
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -1752,12 +1753,12 @@ class Unitary(Hamiltonian):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		system (dict,System): System attributes (dtype,format,device,seed,verbose)
+		system (dict,System): System attributes (dtype,format,device,seed,key,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},key=None,
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
-		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,key=key,
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
@@ -2121,6 +2122,24 @@ def plot(hyperparameters):
 	return
 
 
+def setup(hyperparameters):
+
+	settings = {}
+
+	settings['key'] = {key: copy.deepcopy(hyperparameters) for key in hyperparameters['hyperparameters']['runs']}
+
+	settings['boolean'] = {attr: hyperparameters['sys'].get(attr,False) for attr in ['train','plot','test']}
+
+	settings['seed'] = {key:seed for key,seed in zip(settings['key'],PRNGKey(hyperparameters['hyperparameters']['seed'],split=(len(settings['key'])-1)))}
+
+	for key in settings['key']:
+		settings['key'][key]['model']['system']['key'] = key
+		settings['key'][key]['model']['system']['seed'] = settings['seed'][key]
+		settings['key'][key]['hyperparameters']['seed'] = settings['seed'][key]
+
+	return settings
+
+
 def run(hyperparameters):
 	'''
 	Run simulations
@@ -2128,22 +2147,15 @@ def run(hyperparameters):
 		hyperparameters (dict): hyperparameters
 	'''		
 
-	settings = copy.deepcopy(hyperparameters)
+	settings = setup(hyperparameters)
 
-	training = settings['sys']['train']
-	plotting = settings['sys']['plot']
-	testing = settings['sys']['test']
-	
-	if training:
+	if settings['boolean']['train']:
 		
-		keys = {key: copy.deepcopy(settings) for key in settings['hyperparameters']['runs']}
-		k = len(keys)
+		for key in settings['key']:			
 
-		for key in keys:			
+			hyperparameters = settings['key'][key]
 
-			hyperparameters = keys[key]
-
-			obj = Unitary(key=key,**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+			obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 			parameters = obj.parameters
 			hyperparameters = hyperparameters['hyperparameters']
@@ -2158,10 +2170,15 @@ def run(hyperparameters):
 			obj.__plot__(parameters)
 
 
-	if plotting:
-		plot(keys)
+	if settings['boolean']['plot']:
+		plot(settings['key'])
 
-	if testing:
+	if settings['boolean']['test']:
+
+		key = None
+		obj = Unitary(key=key,**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+		parameters = obj.parameters
+		hyperparameters = hyperparameters['hyperparameters']
 
 		g = gradient_fwd(obj)
 		f = gradient_finite(obj,tol=6e-8)

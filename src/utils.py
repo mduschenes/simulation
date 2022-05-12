@@ -1744,22 +1744,23 @@ def PRNGKey(seed=None,split=False):
 	'''
 	Generate PRNG key
 	Args:
-		seed (int,array): Seed for random number generation or random key for future seeding
+		seed (int): Seed for random number generation or random key for future seeding
+		split(bool,int): Number of splits of random key
 	Returns:
-		key (array): Random key
-		subkey (array): Random array (if split is True)
+		key (key,list[key]): Random key
 	'''	
 	if seed is None:
 		seed = onp.random.randint(1e12)
+
 	if isinstance(seed,(int)):
 		key = jax.random.PRNGKey(seed)
 	else:
 		key = seed
+
 	if split:
-		key,subkey = jax.random.split(key)	
-		return key,subkey
-	else:
-		return key
+		key = jax.random.split(key,num=(split+1))
+
+	return key
 
 
 

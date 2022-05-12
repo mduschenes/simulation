@@ -16,16 +16,16 @@
 		"mplstyle":"mplstyle"
 	},	
 	"train":1,
-	"plot":1,
+	"plot":0,
 	"test":0
 },
 "model":{
-	"N":2,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":100,
+	"M":500,
 	"T":null,
 	"tau":1e-2,
 	"p":2,
@@ -40,8 +40,8 @@
 	}
 },			
 "hyperparameters":{
-	"iterations":10,
-	"runs":3,
+	"iterations":500,
+	"runs":5,
 	"locality":"local",
 	"label":"random",
 	"optimizer":"cg",
