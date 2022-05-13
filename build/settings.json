@@ -47,11 +47,11 @@
 },			
 "hyperparameters":{
 	"iterations":500,
-	"runs":1,
+	"runs":10,
 	"locality":"local",
 	"label":"random",
 	"optimizer":"cg",
-	"seed":11,
+	"seed":112323,
 	"eps":1e-3,
 	"scale":1,
 	"value":1,

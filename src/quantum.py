@@ -1806,9 +1806,9 @@ def distance(a,b):
 	Returns:
 		out (array): Distance between arrays
 	'''
-	# return norm(a-b,axis=None,ord=2)/a.shape[0]
+	return norm(a-b,axis=None,ord=2)/a.shape[0]
 	# return 1-inner_real2(a,b)+inner_imag2(a,b)
-	return 1-inner_abs2(a,b)
+	# return 1-inner_abs2(a,b)
 	# return 1-(np.real(trace((a-b).conj().T.dot(a-b))/a.size)/2 - np.imag(trace((a-b).conj().T.dot(a-b))/a.size)/2)/2
 	# return 2*np.sqrt(1-np.abs(np.linalg.eigvals(a.dot(b))[0])**2)
 
