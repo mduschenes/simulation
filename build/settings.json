@@ -1,19 +1,19 @@
 {
 "sys":{
 	"directory":{
-		"data":"output",	
+		"data":{"data":"output"},	
 		"plot":{"parameters":"output","objective":"output","label":"output"},
-		"mplstyle":"config"
+		"config":{"settings":"output","mplstyle":"config"}
 	},
 	"file":{
-		"data":"data",	
+		"data":{"data":"data"},			
 		"plot":{"parameters":"parameters","objective":"objective","label":"label"},
-		"mplstyle":"plot"
+		"config":{"settings":"settings","mplstyle":"plot"}
 	},
 	"ext":{
-		"data":"pkl",	
+		"data":{"data":"pkl"},	
 		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf"},
-		"mplstyle":"mplstyle"
+		"config":{"settings":"json","mplstyle":"mplstyle"}
 	}
 },
 "boolean":{
@@ -24,7 +24,7 @@
 	"test":0
 },
 "model":{
-	"N":2,
+	"N":4,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -47,20 +47,20 @@
 },			
 "hyperparameters":{
 	"iterations":500,
-	"runs":5,
+	"runs":1,
 	"locality":"local",
-	"label":"gate",
+	"label":"random",
 	"optimizer":"cg",
-	"seed":1101,
-	"eps":1e-2,
+	"seed":11,
+	"eps":1e-3,
 	"scale":1,
 	"value":1,
 	"status":1,
 	"interpolation":1,"smoothness":4,"init":[0,1],
 	"initialization":"interpolation","random":"uniform","pad":"random",
-	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":200,"tol":1e-14,
+	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":1e6,"tol":1e-14,
 	"bound":1e4,"alpha":1e-4,"beta":1e-1,
-	"lambda":[5e0,5e0,1e1],
+	"lambda":[5e-1,5e-1,1e1],
 	"line_search":1,
 	"track":{
 		"track":{"log":1,"track":10,"callback":1},

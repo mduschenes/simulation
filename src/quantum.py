@@ -19,6 +19,9 @@ jax.config.update('jax_enable_x64', True)
 # os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
 # np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
+# Logging
+import logging
+logger = logging.getLogger(__name__)
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -37,16 +40,6 @@ from src.utils import parse,to_str
 from src.utils import pi,e
 
 from src.io import load,dump,path_join,path_split
-
-# Logging
-import logging,logging.config
-logger = logging.getLogger(__name__)
-conf = 'config/logging.conf'
-try: 
-	logging.config.fileConfig(conf,disable_existing_loggers=False) 
-except:
-	pass
-logger = logging.getLogger(__name__)
 
 
 class System(dictionary):
@@ -613,7 +606,7 @@ class Object(object):
 		self.__lattice__()
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
-		self.log('Initialized %r'%(self.key))
+		self.log('%s\n'%('\n'.join(['%s: %r'%(attr,getattr(self,attr)) for attr in ['key','N','D','d','M','tau','p','seed']])))
 	
 		return	
 
@@ -1070,7 +1063,7 @@ class Object(object):
 
 		# Get plot config
 		attr = 'mplstyle'
-		mplstyle = hyperparameters['sys']['path'][attr]
+		mplstyle = hyperparameters['sys']['path']['config'][attr]
 
 
 		# Plot attributes
@@ -1079,15 +1072,17 @@ class Object(object):
 		fig,ax = self.fig.get(attr),self.ax.get(attr)
 		
 		path = hyperparameters['sys']['path']['plot'][attr]
-		delimiter = '.'
-		directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
-		file = delimiter.join([file,*[str(self.key)]])
-		path = path_join(directory,file,ext=ext,delimiter=delimiter)
 
 		layout = [shape[1],1]
 		plots = [None]*layout[0]
 		figsize = (20,20)
-		iterations = list(sorted(list(set([0,*[5,10,15,20],*[i*(hyperparameters['hyperparameters']['track']['size']-1)//n for n in [4] for i in range(1,n+1)]]))))
+		iterations = list(sorted(list(set([min(hyperparameters['hyperparameters']['track']['size']-1,i) 
+							for i in [
+							0,
+							*[5,10,15,20],
+							*[i*(hyperparameters['hyperparameters']['track']['size']-1)//n 
+							for n in [4] for i in range(1,n+1)]]
+							]))))
 		labels = [r'\alpha',r'\beta']
 
 		with matplotlib.style.context(mplstyle):
@@ -1097,16 +1092,9 @@ class Object(object):
 			elif ax is None:
 				ax = fig.gca()
 
-			for j,parameters in enumerate(hyperparameters['hyperparameters']['track']['parameters']):
+			for j in iterations:
 
-				if j not in iterations:
-					continue
-
-				parameters = parameters.reshape(shape)
-
-				# iteration = {0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[j]
-				iteration = j#{0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[j]
-				# iteration = {0:0,1:hyperparameters['hyperparameters']['track']['iteration'][-1]}[j]
+				parameters = hyperparameters['hyperparameters']['track']['parameters'][j].reshape(shape)
 
 				for i in range(shape[1]):
 					x = np.arange(shape[0])
@@ -1128,10 +1116,10 @@ class Object(object):
 					label = labels[i%2]
 
 					plots[i] = ax[i].plot(x,y,
-						color=getattr(plt.cm,'winter')((iterations.index(j)+1)/len(iterations)),
+						color=getattr(plt.cm,'winter')((j+1)/len(iterations)),
 						marker='',alpha=0.8,linewidth=3,
-						# label=r'${%s}^{(%s)}_{%s}$'%(label,str(iteration),str(i//2) if shape[1]>2 else '')
-						label=r'${%s}^{(%s)}_{%s}$'%(r'\theta',str(iteration),'')
+						# label=r'${%s}^{(%s)}_{%s}$'%(label,str(j),str(i//2) if shape[1]>2 else '')
+						label=r'${%s}^{(%s)}_{%s}$'%(r'\theta',str(j),'')
 					)
 
 					ax[i].set_xlim(xmin=0,xmax=shape[0])
@@ -1160,10 +1148,6 @@ class Object(object):
 		fig,ax = self.fig.get(attr),self.ax.get(attr)
 
 		path = hyperparameters['sys']['path']['plot'][attr]
-		delimiter = '.'
-		directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
-		file = delimiter.join([file,*[str(self.key)]])
-		path = path_join(directory,file,ext=ext,delimiter=delimiter)
 
 		layout = []
 		plots = None
@@ -1192,7 +1176,7 @@ class Object(object):
 
 			ax.yaxis.offsetText.set_fontsize(fontsize=20)
 
-			ax.set_xticks(ticks=range(int(1*min(x)),int(1.1*max(x)),max(1,int(max(x)-min(x))//8)))
+			ax.set_xticks(ticks=range(int(1*min(0,0,*x)),int(1.1*max(0,0,*x)),max(1,int(max(0,0,*x)-min(0,0,*x))//8)))
 			# ax.set_yticks(ticks=[1e-1,2e-1,4e-1,6e-1,8e-1,1e0])
 			ax.set_yticks(ticks=[5e-1,6e-1,8e-1,1e0])
 			ax.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
@@ -1980,7 +1964,7 @@ def plot(hyperparameters):
 
 	# Get plot config
 	attr = 'mplstyle'
-	mplstyle = hyperparameters[key]['sys']['path'][attr]
+	mplstyle = hyperparameters[key]['sys']['path']['config'][attr]
 
 	# Plot attributes
 
@@ -1991,7 +1975,7 @@ def plot(hyperparameters):
 	path = hyperparameters[key]['sys']['path']['plot'][attr]
 	delimiter = '.'
 	directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
-	file = delimiter.join([file,'all'])
+	file = delimiter.join([*file.split(delimiter)[:-1],'all'])
 	path = path_join(directory,file,ext=ext,delimiter=delimiter)
 
 	layout = []
@@ -2015,9 +1999,9 @@ def plot(hyperparameters):
 
 			x = x.at[i,:].set(arange(shape[1]))
 			y = y.at[i,:size].set(hyperparameters[key]['hyperparameters']['track']['objective'])
-			y = y.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['objective'][-1])
+			y = y.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['objective'][-1:])
 			yerr = yerr.at[i,:size].set(hyperparameters[key]['hyperparameters']['track']['objective'])
-			yerr = yerr.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['objective'][-1])
+			yerr = yerr.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['objective'][-1:])
 
 		x = x.mean(0).astype(int)
 		y = y.mean(0)
@@ -2036,7 +2020,7 @@ def plot(hyperparameters):
 
 		ax.yaxis.offsetText.set_fontsize(fontsize=20)
 
-		ax.set_xticks(ticks=range(int(1*min(x)),int(1.1*max(x)),int(max(x)-min(x))//8))
+		ax.set_xticks(ticks=range(int(1*min(0,0,*x)),int(1.1*max(0,0,*x)),max(1,int(max(0,0,*x)-min(0,0,*x))//8)))
 		# ax.set_yticks(ticks=[1e-1,2e-1,4e-1,6e-1,8e-1,1e0])
 		ax.set_yticks(ticks=[5e-1,6e-1,8e-1,1e0])
 		ax.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
@@ -2070,15 +2054,16 @@ def plot(hyperparameters):
 	path = hyperparameters[key]['sys']['path']['plot'][attr]
 	delimiter = '.'
 	directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
-	file = delimiter.join([file,'all'])
+	file = delimiter.join([*file.split(delimiter)[:-1],'all'])
 	path = path_join(directory,file,ext=ext,delimiter=delimiter)
 
 	layout = [2]
 	plots = [None]*layout[0]
-	shape = (len(hyperparameters[key]['hyperparameters']['runs']),*hyperparameters[key]['label'].shape)
+	label = hyperparameters[key]['label'] if isinstance(hyperparameters[key]['label'],array) else rand((1,1))
+	shape = (len(hyperparameters[key]['hyperparameters']['runs']),*label.shape)
 	figsize = (8,8)
 	labels = {'real':r'$U~\textrm{Real}$','imag':r'$U~\textrm{Imag}$'}
-	dtype = hyperparameters[key]['label'].dtype
+	dtype = label.dtype
 
 	with matplotlib.style.context(mplstyle):
 	
@@ -2090,7 +2075,7 @@ def plot(hyperparameters):
 		x = zeros(shape,dtype=dtype)
 
 		for i,key in enumerate(keys):
-			x = x.at[i].set(hyperparameters[key]['label'])
+			x = x.at[i].set(label)
 
 		x = x.mean(0)
 
@@ -2123,19 +2108,19 @@ def setup(hyperparameters):
 	for key in settings['hyperparameters']:
 		settings['hyperparameters'][key]['model']['system']['key'] = key
 		
-		settings['hyperparameters'][key]['model']['system']['seed'] = settings['seed'][key]
+		settings['hyperparameters'][key]['model']['system']['seed'] = hyperparameters['hyperparameters']['seed']
 		settings['hyperparameters'][key]['hyperparameters']['seed'] = settings['seed'][key]
 
 		settings['hyperparameters'][key]['sys']['path'] = {
 			attr: path_join(settings['hyperparameters'][key]['sys']['directory'][attr],
-							 settings['hyperparameters'][key]['sys']['file'][attr],
+							 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr],*[str(key)]]) if attr in ['data','plot'] else settings['hyperparameters'][key]['sys']['file'][attr],
 							 ext=settings['hyperparameters'][key]['sys']['ext'][attr])
 					if isinstance(settings['hyperparameters'][key]['sys']['file'][attr],str) else
 					{i: path_join(settings['hyperparameters'][key]['sys']['directory'][attr][i],
-							 settings['hyperparameters'][key]['sys']['file'][attr][i],
+							 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr][i],*[str(key)]]) if attr in ['data','plot'] else settings['hyperparameters'][key]['sys']['file'][attr][i],							 
 							 ext=settings['hyperparameters'][key]['sys']['ext'][attr][i])
 					for i in settings['hyperparameters'][key]['sys']['file'][attr]}
-			for attr in settings['hyperparameters'][key]['sys']['file']
+			for attr in settings['hyperparameters'][key]['sys']['file']			 
 		}
 
 
@@ -2154,20 +2139,20 @@ def run(hyperparameters):
 
 		
 	for key in settings['hyperparameters']:			
-
+		
 		if settings['boolean']['load']:
 			default = settings['hyperparameters'][key]
-			path = settings['hyperparameters'][key]['sys']['path']['data'] 
-			delimiter = '.'
-			directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
-			file = delimiter.join([file,*[str(key)]])
-			path = path_join(directory,file,ext=ext,delimiter=delimiter)
+			path = settings['hyperparameters'][key]['sys']['path']['data']['data']
 			settings['hyperparameters'][key] = load(path,default=default)
+
+		if settings['boolean']['dump']:
+			data = copy.deepcopy(settings['hyperparameters'][key])
+			path = settings['hyperparameters'][key]['sys']['path']['config']['settings'] 
+			dump(data,path,callables=False)
 
 		hyperparameters = settings['hyperparameters'][key]	
 
 		obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
-
 
 		if settings['boolean']['train']:
 
@@ -2188,11 +2173,7 @@ def run(hyperparameters):
 
 		if settings['boolean']['dump']:
 			data = settings['hyperparameters'][key]
-			path = settings['hyperparameters'][key]['sys']['path']['data'] 
-			delimiter = '.'
-			directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
-			file = delimiter.join([file,*[str(key)]])
-			path = path_join(directory,file,ext=ext,delimiter=delimiter)
+			path = settings['hyperparameters'][key]['sys']['path']['data']['data'] 
 			dump(data,path)
 
 	if settings['boolean']['plot']:

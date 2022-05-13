@@ -20,15 +20,8 @@ jax.config.update('jax_enable_x64', True)
 # np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 # Logging
-import logging,logging.config
+import logging
 logger = logging.getLogger(__name__)
-conf = 'config/logging.conf'
-try: 
-	logging.config.fileConfig(conf,disable_existing_loggers=False) 
-except:
-	pass
-logger = logging.getLogger(__name__)
-
 
 # Import user modules
 from utils import jit,value_and_gradient,gradient

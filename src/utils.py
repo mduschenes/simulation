@@ -2,6 +2,7 @@
 
 # Import python modules
 import os,sys,itertools,functools,copy
+import logging.config,configparser
 from functools import partial
 
 import matplotlib
@@ -21,20 +22,47 @@ jax.config.update('jax_enable_x64', True)
 
 
 # Logging
-import logging,logging.config
+import logging
 logger = logging.getLogger(__name__)
-conf = 'config/logging.conf'
-try: 
-	logging.config.fileConfig(conf,disable_existing_loggers=False) 
-except:
-	pass
-logger = logging.getLogger(__name__)
-
 
 
 # Constants
 pi = np.pi
 e = np.exp(1)
+
+
+def logconfig(name,conf=None):
+	'''
+	Configure logging
+	Args:
+		name (str): File name for logger
+		conf (str): Path for logging config
+	Returns:
+		logger (logger): Configured logger
+	'''
+
+	logger = logging.getLogger(__name__)
+	if conf is not None:
+		try:
+			config = configparser.ConfigParser()
+			config.read(conf)
+			key = 'formatter'
+			value = 'file'
+			args = 'args'
+
+			for section in config:
+				if config[section].get(key) == value:
+					path = str(config[section][args][1:-1].split(',')[0][1:])
+					path = os.path.abspath(os.path.dirname(os.path.abspath(path)))
+					if not os.path.exists(path):
+						os.makedirs(path)
+			logging.config.fileConfig(conf,disable_existing_loggers=False) 	
+		except Exception as e:
+			print(e)
+			pass	
+		logger = logging.getLogger(__name__)
+
+	return logger
 
 
 def jit(func,*,static_argnums=None):
