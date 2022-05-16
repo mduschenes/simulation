@@ -41,12 +41,12 @@ from src.io import load,dump,path_join,path_split
 # @partial(jit,static_argnums=(1,))
 def bound(a,hyperparameters):
 	# return 1/(1+np.exp(-eps*a))
-	return sigmoid(a,hyperparameters['hyperparameters']['bound'])
+	return sigmoid(a,hyperparameters['hyperparameters']['sigmoid'])
 
 # @partial(jit,static_argnums=(1,))
 def gradient_bound(a,hyperparameters):
 	# return 1/(1+np.exp(-eps*a))
-	return gradient_sigmoid(a,hyperparameters['hyperparameters']['bound'])	
+	return gradient_sigmoid(a,hyperparameters['hyperparameters']['sigmoid'])	
 
 # @partial(jit,static_argnums=(1,2,3,))
 def params(parameters,hyperparameters,parameter,group):
@@ -57,8 +57,8 @@ def params(parameters,hyperparameters,parameter,group):
 	if parameter in ['xy'] and group in [('x',)]:
 		param = (
 			hyperparameters['parameters'][parameter]['scale']*
-			parameters[:,indices[0::2]]*
-			cos(2*pi*parameters[:,indices[1::2]])
+			sigmoid(parameters[:,indices[0::2]])*
+			cos(2*pi*sigmoid(parameters[:,indices[1::2]]))
 		)
 		# param = (
 		# 	hyperparameters['parameters'][parameter]['scale']*
@@ -68,8 +68,8 @@ def params(parameters,hyperparameters,parameter,group):
 	elif parameter in ['xy'] and group in [('y',)]:
 		param = (
 			hyperparameters['parameters'][parameter]['scale']*
-			parameters[:,indices[0::2]]*
-			sin(2*pi*parameters[:,indices[1::2]])
+			sigmoid(parameters[:,indices[0::2]])*
+			sin(2*pi*sigmoid(parameters[:,indices[1::2]]))
 		)		
 		# param = (
 		# 	hyperparameters['parameters'][parameter]['scale']*
@@ -99,21 +99,21 @@ def constraints(parameters,hyperparameters,parameter,group):
 
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		constraint = (
-			(hyperparameters['hyperparameters']['lambda'][0]*bound(
-				(hyperparameters['parameters'][parameter]['bounds'][0] - 
-				parameters[:,indices[0::2]]),
-				hyperparameters) +
-			hyperparameters['hyperparameters']['lambda'][1]*bound(
-				(hyperparameters['parameters'][parameter]['bounds'][0] - 
-				parameters[:,indices[1::2]]),
-				hyperparameters)
-			).sum() +				 
+			# (hyperparameters['hyperparameters']['lambda'][0]*bound(
+			# 	(hyperparameters['parameters'][parameter]['bounds'][0] - 
+			# 	parameters[:,indices[0::2]]),
+			# 	hyperparameters) +
+			# hyperparameters['hyperparameters']['lambda'][1]*bound(
+			# 	(hyperparameters['parameters'][parameter]['bounds'][0] - 
+			# 	parameters[:,indices[1::2]]),
+			# 	hyperparameters)
+			# ).sum() +				 
 			(sum(
 				hyperparameters['hyperparameters']['lambda'][2]*(
-				(hyperparameters['parameters'][parameter]['boundaries'][i]-
-				parameters[i,indices]
+				(i[1]-
+				parameters[i[0][0],indices]
 				)**2)
-				for i in hyperparameters['parameters'][parameter]['boundaries'])
+				for i in hyperparameters['parameters'][parameter]['constants'])
 			).sum()
 		)
 		# x = (
@@ -131,8 +131,8 @@ def constraints(parameters,hyperparameters,parameter,group):
 		# 	# +
 		# 	# (sum(
 		# 	# 	hyperparameters['hyperparameters']['lambda'][2]*(
-		# 	# 	(hyperparameters['parameters'][parameter]['boundaries'][i] - x[i]))**2
-		# 	# 	for i in hyperparameters['parameters'][parameter]['boundaries'])
+		# 	# 	(i[1] - x[i[0][0]]))**2
+		# 	# 	for i in hyperparameters['parameters'][parameter]['constants'])
 		# 	# ).sum()
 		# )
 
@@ -165,10 +165,10 @@ def gradient_constraints(parameters,hyperparameters,parameter,group):
 		# 	).sum() +				 
 		# 	(sum(
 		# 		hyperparameters['hyperparameters']['lambda'][2]*(
-		# 		(hyperparameters['parameters'][parameter]['boundaries'][i]-
-		# 		parameters[i,indices]
+		# 		(i[1]-
+		# 		parameters[i[0][0],indices]
 		# 		)**2)
-		# 		for i in hyperparameters['parameters'][parameter]['boundaries'])
+		# 		for i in hyperparameters['parameters'][parameter]['constants'])
 		# 	).sum()
 		# )
 		x = (
@@ -187,8 +187,8 @@ def gradient_constraints(parameters,hyperparameters,parameter,group):
 			# +
 			# (sum(
 			# 	-2*hyperparameters['hyperparameters']['lambda'][2]*(
-			# 	(hyperparameters['parameters'][parameter]['boundaries'][i] - x[i]))
-			# 	for i in hyperparameters['parameters'][parameter]['boundaries'])
+			# 	(i[1] - x[i[0][0]]))
+			# 	for i in hyperparameters['parameters'][parameter]['constants'])
 			# ).sum()
 		)
 	

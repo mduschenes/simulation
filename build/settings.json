@@ -24,12 +24,12 @@
 	"test":0
 },
 "model":{
-	"N":4,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":1000,
+	"M":12,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -46,21 +46,21 @@
 	}
 },			
 "hyperparameters":{
-	"iterations":500,
-	"runs":10,
+	"iterations":200,
+	"runs":1,
 	"locality":"local",
-	"label":"random",
+	"label":"gate",
 	"optimizer":"cg",
-	"seed":112323,
+	"seed":13321,
 	"eps":1e-3,
 	"scale":1,
 	"value":1,
 	"status":1,
-	"interpolation":1,"smoothness":4,"init":[0,1],
+	"interpolation":1,"smoothness":7,"init":[0,1],
 	"initialization":"interpolation","random":"uniform","pad":"random",
 	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":1e6,"tol":1e-14,
-	"bound":1e4,"alpha":1e-4,"beta":1e-1,
-	"lambda":[5e-1,5e-1,1e1],
+	"sigmoid":1e4,"alpha":1e-4,"beta":1e-1,
+	"lambda":[5e-2,5e-2,1e1],
 	"line_search":1,
 	"track":{
 		"track":{"log":1,"track":10,"callback":1},
@@ -77,33 +77,36 @@
 		"category":"variable",
 		"locality":"local",
 		"parameters":null,
-		"size":2,
+		"size":[1,2],
+		"repeats":[],		
 		"group":[["x"],["y"]],
 		"scale":1,
 		"bounds":[0,1],
-		"boundaries":{"0":0,"-1":0}
+		"constants":[[[0,null],0],[[-1,null],0]]
 	},
 	"z": {
 		"name":"z",						
 		"category":"constant",
 		"locality":"local",
 		"parameters":[-0.1,0,0.1,0.05],
-		"size":1,
+		"size":[1,1],
+		"repeats":[0],		
 		"group":[["z"]],
 		"scale":1,
 		"bounds":[-1,1],
-		"boundaries":{"0":null,"-1":null}	
+		"constants":[]
 	},
 	"zz": {
 		"name":"zz",						
 		"category":"constant",
 		"locality":"local",
-		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02],
-		"size":1,
+		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
+		"size":[1,1],
+		"repeats":[0],
 		"group":[["zz"]],
 		"scale":1,
 		"bounds":[-1,1],
-		"boundaries":{"0":null,"-1":null}
+		"constants":[]
 	}
 },
 "data":{
@@ -114,6 +117,5 @@
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 	}
 },		
-"label": null,
-"value":null
+"label": null
 }

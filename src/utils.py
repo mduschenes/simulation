@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 # Constants
 pi = np.pi
 e = np.exp(1)
+itg = np.integer
+flt = np.float32
+dbl = np.float64
 
 
 def logconfig(name,conf=None):
@@ -220,6 +223,18 @@ def gradient_rev(func):
 		return moveaxis(jax.jacrev(func)(x),-1,0)
 
 	return _gradient
+
+
+def datatype(dtype):
+	'''
+	Get underlying data type of dtype
+	Args:
+		dtype (str,datatype): Datatype
+	Returns:
+		dtype (datatype): Underlying datatype
+	'''
+	
+	return array([],dtype=dtype).real.dtype
 
 class dictionary(dict):
 	'''
@@ -700,6 +715,8 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 		return jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
 	elif random in ['randint']:
 		return jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1])		
+	elif random in ['randint']:
+		return jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1])				
 	elif random in ['zeros']:
 		return zeros(shape)
 	elif random in ['ones']:
@@ -743,6 +760,32 @@ def svd(A,k=None):
 	S = onp.diag(S)
 
 	return U,S,V
+
+
+@jit
+def eigh(a):
+	'''
+	Compute eigenvalues and eigenvectors of a hermitian array
+	Args:
+		a (array): Array to compute eigenvalues and eigenvectors of shape (...,n,n)
+	Returns:
+		e (array): Vector of eigenvalues of shape (...,n)
+		v (array): Array of normalized eigenvectors of shape (...,n,n)
+	'''
+	return np.linalg.eigh(a)
+
+
+@jit
+def qr(a):
+	'''
+	Compute QR decomposition of array
+	Args:
+		a (array): Array to compute QR decomposition of shape (...,n,n)
+	Returns:
+		Q (array): Q factor of shape (...,n,n)
+		R (array): R factor of shape (...,n,n)
+	'''
+	return np.linalg.qr(a)
 
 
 @partial(jit,static_argnums=(1,2,))
@@ -877,6 +920,20 @@ def gradient_inner_imag2(a,b,da):
 		return 2*(trace(tensordot(da[i],b.conj().T,1)).imag)*(trace(tensordot(a,b.conj().T,1))).imag/(a.shape[0]*b.shape[0])
 	return vmap(func)(arange(da.shape[0]))
 
+
+
+
+@jit
+def outer(a,b):
+	'''
+	Calculate outer product of arrays a and b
+	Args:
+		a (array): Array to calculate outer product
+		b (array): Array to calculate outer product
+	Returns:
+		out (array): Outer product
+	'''	
+	return trace(tensordot(a,b.conj().T,1))/sqrt(a.shape[0]*b.shape[0])
 
 
 @jit
@@ -1319,21 +1376,6 @@ def imag(a):
 
 
 @jit
-def eigh(a):
-	'''
-	Compute eigenvalues and eigenvectors of a hermitian array
-	Args:
-		a (array): Array to compute eigenvalues and eigenvectors of shape (...,n,n)
-	Returns:
-		e (array): Vector of eigenvalues of shape (...,n)
-		v (array): Array of normalized eigenvectors of shape (...,n,n)
-	'''
-	return np.linalg.eigh(a)
-	
-
-
-
-@jit
 def sqrtm(a):
 	'''
 	Calculate matrix square-root of array a
@@ -1525,7 +1567,41 @@ def tanh(a):
 	return np.tanh(a)
 
 
+@jit
+def ceil(a):
+	'''
+	Calculate ceiling of array
+	Args:
+		a (array): Array to compute ceiling
+	Returns:
+		out (array): Ceiling of array
+	'''
+	return np.ceil(a)
 
+
+@jit
+def floor(a):
+	'''
+	Calculate floor of array
+	Args:
+		a (array): Array to compute floor
+	Returns:
+		out (array): Floor of array
+	'''
+	return np.floor(a)
+
+
+@jit
+def maximum(a,b):
+	'''
+	Calculate maximum of array a and b
+	Args:
+		a (array): Array to compute maximum
+		b (array): Array to compute maximum
+	Returns:
+		out (array): Maximum of array a and b
+	'''
+	return np.maximum(a,b)
 
 @jit
 def maximum(a,b):
@@ -1553,6 +1629,19 @@ def minimum(a,b):
 
 
 @partial(jit,static_argnums=(1,))
+def sort(a,axis):
+	'''
+	Sort array along axis
+	Args:
+		a (array): Array to sort
+		axis (int): Axis to sort array
+	Returns:
+		out (array): Sorted array
+	'''
+	return np.sort(a,axis)
+
+
+@partial(jit,static_argnums=(1,))
 def concatenate(a,axis):
 	'''
 	Concatenate iterables along axis
@@ -1563,6 +1652,29 @@ def concatenate(a,axis):
 		out (iterable): Concatenation row-wise
 	'''
 	return np.concatenate(a,axis)
+
+
+@jit
+def hstack(a):
+	'''
+	Concatenate iterables horizontally
+	Args:
+		a (iterable): Iterables to concatenate
+	Returns:
+		out (iterable): Concatenation column-wise
+	'''
+	return np.hstack(a)
+
+@jit
+def vstack(a):
+	'''
+	Concatenate iterables vertically
+	Args:
+		a (iterable): Iterables to concatenate
+	Returns:
+		out (iterable): Concatenation row-wise
+	'''
+	return np.vstack(a)
 
 
 @jit
@@ -1613,7 +1725,6 @@ def uniqueobjs(a,axis=None):
 	return onp.unique(a,axis=axis)
 
 
-@partial(jit,static_argnums=(1,2,))
 def repeat(a,repeats,axis):
 	'''
 	Repeat array repeats-times along axis
@@ -1628,7 +1739,63 @@ def repeat(a,repeats,axis):
 	return np.repeat(a,repeats,axis)
 
 
-@partial(jit,static_argnums=(1,2,))
+def take(a,indices,axes):
+	'''
+	Take slices from array
+	Args:
+		a (array): Array to take
+		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
+		axes (int,interable[int]): Axis or axes corresponding to indices to slice
+	Returns:
+		out (array): Sliced array
+	'''
+	if isinstance(axes,int):
+		axes = [axes]
+		indices = [indices]
+
+	for axis,index in zip(axes,indices):
+		if isinstance(index,int):
+			index = slice(index)
+		else:
+			index = array(index)
+		a = np.take(a,index,axis)
+	return a
+
+
+def put(a,b,indices,axes):
+	'''
+	Take slices from array to array
+	Args:
+		a (array): Array to put
+		b (array): Array to take
+		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
+		axes (int,interable[int]): Axis or axes corresponding to indices to slice
+	Returns:
+		out (array): Put array
+	'''
+	if isinstance(axes,int):
+		axes = [axes]
+		indices = [indices]
+
+	ndim = b.ndim
+
+	if len(indices) < ndim:
+		indices = [indices[axis-len([a for a in axes if a<axis])] if axis in axes else [None]  for axis in range(ndim)]
+
+	lengths = [len(i) for i in indices]
+	ax = [axis for axis in axes if lengths[axis] == max(lengths)]
+	indices = [[i[axis-len([a for a in ax if a<axis])] if axis not in ax else indices[axis] for axis in axes] for i in itertools.product(*[indices[axis] for axis in axes if axis not in ax])]
+
+	for axis,index in zip(axes,indices):
+		if isinstance(index,int):
+			index = slice(index)
+		else:
+			index = array(index)
+		a = np.take(a,index,axis)
+	return a
+
+
+
 def broadcast_to(a,shape):
 	'''
 	Broadcast array to shape
@@ -2263,10 +2430,13 @@ def interpolate(x,y,x_new,kind):
 	Returns:
 		out (array): Interpolated values at new points
 	'''		
+	def _interpolate(x,y,x_new,kind):
+		return osp.interpolate.interp1d(x,y,kind)(x_new)
+
 	if y.ndim>1:
-		return array([osp.interpolate.interp1d(x,y[:,i],kind)(x_new) for i in range(y.shape[1])]).T
+		return array([_interpolate(x,y[:,i],x_new,kind) for i in range(y.shape[1])]).T
 	else:
-		return array(osp.interpolate.interp1d(x,y,kind)(x_new))
+		return array(_intepolate(x,y,x_new,kind))
 
 
 
@@ -2283,7 +2453,7 @@ def heaviside(a):
 
 
 @jit
-def sigmoid(a,scale=1e4):
+def sigmoid(a,scale=1):
 	'''
 	Calculate sigmoid function with scale
 	Args:
@@ -2296,7 +2466,7 @@ def sigmoid(a,scale=1e4):
 	# return sp.special.expit(scale*a)
 
 @jit
-def gradient_sigmoid(a,scale=1e4):
+def gradient_sigmoid(a,scale=1):
 	'''
 	Calculate gradient of sigmoid function with scale
 	Args:
