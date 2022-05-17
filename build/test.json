@@ -1,0 +1,127 @@
+{
+"sys":{
+	"directory":{
+		"data":{"data":"output"},
+		"plot":{"parameters":"output","objective":"output","label":"output"},
+		"config":{"settings":"output","mplstyle":"config"}
+	},
+	"file":{
+		"data":{"data":"data"},
+		"plot":{"parameters":"parameters","objective":"objective","label":"label"},
+		"config":{"settings":"settings","mplstyle":"plot"}
+	},
+	"ext":{
+		"data":{"data":"pkl"},
+		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf"},
+		"config":{"settings":"json","mplstyle":"mplstyle"}
+	}
+},
+"boolean":{
+	"train":0,
+	"load":0,
+	"dump":0,
+	"plot":0,
+	"test":1
+},
+"model":{
+	"N":4,
+	"D":2,
+	"d":1,
+	"L":1,
+	"delta":null,
+	"M":100,
+	"T":null,
+	"tau":10e-1,
+	"p":2,
+	"space":"spin",
+	"time":"linear",
+	"lattice":"square",
+	"system":{
+		"dtype":"complex",
+		"format":"array",
+		"key":null,
+		"seed":null,
+		"device":"cpu",
+		"verbose":"info"
+	}
+},
+"hyperparameters":{
+	"iterations":50,
+	"runs":3,
+	"locality":"local",
+	"label":"gate",
+	"optimizer":"cg",
+	"seed":12321,
+	"eps":1e-3,
+	"scale":1,
+	"value":1,
+	"status":1,
+	"interpolation":1,"smoothness":4,"init":[0,1],
+	"initialization":"interpolation","random":"normal","pad":"random",
+	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":1e6,"tol":1e-14,
+	"sigmoid":1e4,"alpha":1e-4,"beta":1e-1,
+	"lambda":[5e-2,5e-2,1e1],
+	"line_search":1,
+	"track":{
+		"track":{"log":1,"track":10,"callback":1},
+		"size":0,
+		"iteration":[],"objective":[],
+		"value":[],"grad":[],"search":[],
+		"alpha":[],"beta":[],"lambda":[],
+		"parameters":[]
+	}
+},
+"parameters":{
+	"xy": {
+		"name":"xy",
+		"category":"variable",
+		"locality":"local",
+		"parameters":null,
+		"ndim":2,
+		"size":[1,2],
+		"repeats":[],
+		"group":[["x"],["y"]],
+		"scale":1,
+		"bounds":[-10,10],
+		"boundaries":[{"0":0,"-1":0},{}],
+		"constants":[{"0":0,"-1":0},{}]
+	},
+	"z": {
+		"name":"z",
+		"category":"constant",
+		"locality":"local",
+		"parameters":[-0.1,0,0.1,0.05],
+		"ndim":2,
+		"size":[1,1],
+		"repeats":[0],
+		"group":[["z"]],
+		"scale":1,
+		"bounds":[-1,1],
+		"boundaries":[{},{}],
+		"constants":[{},{}]
+	},
+	"zz": {
+		"name":"zz",
+		"category":"constant",
+		"locality":"local",
+		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
+		"ndim":2,
+		"size":[1,1],
+		"repeats":[0],
+		"group":[["zz"]],
+		"scale":1,
+		"bounds":[-1,1],
+		"boundaries":[{},{}],
+		"constants":[{},{}]
+	}
+},
+"data":{
+	"data":{
+		"x":{"operator":["X"],"site":["i"],"string":"x","interaction":"i"},
+		"y":{"operator":["Y"],"site":["i"],"string":"y","interaction":"i"},
+		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
+		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
+	}
+},
+"label": null
+}
