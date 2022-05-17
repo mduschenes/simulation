@@ -1711,10 +1711,10 @@ class Hamiltonian(Object):
 					variables = variables.at[indices].set(
 						hyperparameters['parameters'][parameter]['variables'][group](parameters,hyperparameters))
 
-		print('param,vars')
-		print(parameters.round(3))
-		print(variables.round(3))
-		print()
+		# print('param,vars')
+		# print(parameters.round(3))
+		# print(variables.round(3))
+		# print()
 
 		# Get Trotterized order of copies of variables
 		p = self.p
@@ -1738,7 +1738,6 @@ class Hamiltonian(Object):
 		'''
 
 		# Get class attributes
-		self.parameters = parameters
 		hyperparameters = self.hyperparameters
 
 		# Set all features
@@ -1808,6 +1807,9 @@ class Hamiltonian(Object):
 
 				# Boundaries of the form [[[slice_i[axis] for axis in axes],value_i]] 
 				boundary = hyperparameters['parameters'][parameter].get('boundaries',[])
+
+				# Constants of the form [[[slice_i[axis] for axis in axes],value_i]] 
+				constant = hyperparameters['parameters'][parameter].get('boundaries',[])				
 				
 				# If parameters exist
 				reset =  params is None
@@ -1844,6 +1846,16 @@ class Hamiltonian(Object):
 				
 						parameters[category] = parameters[category].at[tuple(slices)].set(value)
 
+
+				for axis in axes:
+					for i in constant[axis]:
+						slices = [slice(None) for axis in axes]
+						value = None
+				
+						slices[axis] = i
+						value = constant[axis][i]
+				
+						parameters[category] = parameters[category].at[tuple(slices)].set(value)
 
 
 		# Get variables
@@ -2028,19 +2040,23 @@ class Unitary(Hamiltonian):
 		
 		category = 'variable'
 		axis = 1
+		_shape = self.hyperparameters['shape'][category]
 		shape = self.hyperparameters['shapes'][category]
+		_index = self.hyperparameters['index'][category]
 		index = self.hyperparameters['indexes'][category]
 		parameters = self.__parameters__(parameters)
 		coefficients = self.coefficients
 
 		grad = gradient_expm(-1j*coefficients*parameters,self.data,self.identity)
 		grad *= -1j*coefficients
-		grad = grad.reshape((shape[0],-1,*grad.shape[1:]))
+		grad = grad.reshape((*_shape[:1],-1,*self.shape[2:]))
+		grad = grad[index[0]]
+		grad = grad.reshape((shape[0],-1,*self.shape[2:]))
 
-		grad = grad.transpose(axis,0,*range(axis+1,grad.ndim))
+		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
 		grad = gradient_trotter(grad,self.p)
 		grad = grad[index[axis]]
-		grad = grad.transpose(axis,0,*range(axis+1,grad.ndim))
+		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
 		
 		grad = grad.reshape((-1,*grad.shape[2:]))
 
@@ -2194,7 +2210,7 @@ def initialize(parameters,shape,axes,bounds,dtype,reset,hyperparameters):
 			smoothness = min(shape[0]//2,hyperparameters['hyperparameters']['smoothness'])
 			shape_interp = (shape[0]//smoothness,*shape[1:])
 
-			pts_interp = (shape_interp[0])*smoothness*arange(shape_interp[0])-0.5
+			pts_interp = (shape_interp[0]+0.5)*smoothness*arange(shape_interp[0])-0.5
 			pts = arange(shape[0])
 
 			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
@@ -2510,6 +2526,7 @@ def run(hyperparameters):
 
 	settings = setup(hyperparameters)
 
+	defaults = copy.deepcopy(hyperparameters)
 
 		
 	for key in settings['hyperparameters']:			
@@ -2526,7 +2543,7 @@ def run(hyperparameters):
 
 		hyperparameters = settings['hyperparameters'][key]	
 
-		# obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+		obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 		if settings['boolean']['train']:
 
@@ -2555,6 +2572,8 @@ def run(hyperparameters):
 
 	if settings['boolean']['test']:
 
+		hyperparameters = defaults
+
 		obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 		func = obj.__func__
@@ -2564,18 +2583,13 @@ def run(hyperparameters):
 
 		g = gradient_fwd(obj)
 		f = gradient_finite(obj,tol=6e-8)
-		h = obj.__derivative__
-
-		# print(parameters)
-		# print(g(parameters))
-		# print()
-		# print(h(parameters))
+		a = obj.__derivative__
 
 		print(allclose(g(parameters),f(parameters)))
-		print(allclose(g(parameters),h(parameters)))
-		print(allclose(f(parameters),h(parameters)))
+		print(allclose(g(parameters),a(parameters)))
+		print(allclose(f(parameters),a(parameters)))
 
-		print((g(parameters)-h(parameters))/g(parameters))
+		print((g(parameters)-a(parameters))/g(parameters))
 
 		grad = gradient(func)
 		fgrad = gradient_finite(func,tol=5e-8)

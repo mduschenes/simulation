@@ -17,11 +17,11 @@
 	}
 },
 "boolean":{
-	"train":0,
+	"train":1,
 	"load":0,
-	"dump":0,
-	"plot":0,
-	"test":1
+	"dump":1,
+	"plot":1,
+	"test":0
 },
 "model":{
 	"N":3,
@@ -83,7 +83,8 @@
 		"group":[["x"],["y"]],
 		"scale":1,
 		"bounds":[-10,10],
-		"boundaries":[{"0":0,"-1":0},{}]
+		"boundaries":[{"0":0,"-1":0},{}],
+		"constants":[{"0":0,"-1":0},{}]
 	},
 	"z": {
 		"name":"z",
@@ -96,7 +97,8 @@
 		"group":[["z"]],
 		"scale":1,
 		"bounds":[-1,1],
-		"boundaries":[{},{}]
+		"boundaries":[{},{}],
+		"constants":[{},{}]
 	},
 	"zz": {
 		"name":"zz",
@@ -109,7 +111,8 @@
 		"group":[["zz"]],
 		"scale":1,
 		"bounds":[-1,1],
-		"boundaries":[{},{}]
+		"boundaries":[{},{}],
+		"constants":[{},{}]
 	}
 },
 "data":{
