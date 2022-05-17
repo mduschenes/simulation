@@ -1,27 +1,27 @@
 {
 "sys":{
 	"directory":{
-		"data":{"data":"output"},	
+		"data":{"data":"output"},
 		"plot":{"parameters":"output","objective":"output","label":"output"},
 		"config":{"settings":"output","mplstyle":"config"}
 	},
 	"file":{
-		"data":{"data":"data"},			
+		"data":{"data":"data"},
 		"plot":{"parameters":"parameters","objective":"objective","label":"label"},
 		"config":{"settings":"settings","mplstyle":"plot"}
 	},
 	"ext":{
-		"data":{"data":"pkl"},	
+		"data":{"data":"pkl"},
 		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf"},
 		"config":{"settings":"json","mplstyle":"mplstyle"}
 	}
 },
 "boolean":{
-	"train":1,
+	"train":0,
 	"load":0,
-	"dump":1,
-	"plot":1,
-	"test":0
+	"dump":0,
+	"plot":0,
+	"test":1
 },
 "model":{
 	"N":3,
@@ -29,12 +29,12 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":12,
+	"M":10,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
-	"space":"spin",		
-	"time":"linear",		
+	"space":"spin",
+	"time":"linear",
 	"lattice":"square",
 	"system":{
 		"dtype":"complex",
@@ -42,22 +42,22 @@
 		"key":null,
 		"seed":null,
 		"device":"cpu",
-		"verbose":"info"		
+		"verbose":"info"
 	}
-},			
+},
 "hyperparameters":{
-	"iterations":200,
-	"runs":1,
+	"iterations":50,
+	"runs":3,
 	"locality":"local",
 	"label":"gate",
 	"optimizer":"cg",
-	"seed":13321,
+	"seed":12321,
 	"eps":1e-3,
 	"scale":1,
 	"value":1,
 	"status":1,
-	"interpolation":1,"smoothness":7,"init":[0,1],
-	"initialization":"interpolation","random":"uniform","pad":"random",
+	"interpolation":1,"smoothness":4,"init":[0,1],
+	"initialization":"interpolation","random":"normal","pad":"random",
 	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":1e6,"tol":1e-14,
 	"sigmoid":1e4,"alpha":1e-4,"beta":1e-1,
 	"lambda":[5e-2,5e-2,1e1],
@@ -77,36 +77,39 @@
 		"category":"variable",
 		"locality":"local",
 		"parameters":null,
+		"ndim":2,
 		"size":[1,2],
-		"repeats":[],		
+		"repeats":[],
 		"group":[["x"],["y"]],
 		"scale":1,
-		"bounds":[0,1],
-		"constants":[[[0,null],0],[[-1,null],0]]
+		"bounds":[-10,10],
+		"boundaries":[{"0":0,"-1":0},{}]
 	},
 	"z": {
-		"name":"z",						
+		"name":"z",
 		"category":"constant",
 		"locality":"local",
 		"parameters":[-0.1,0,0.1,0.05],
+		"ndim":2,
 		"size":[1,1],
-		"repeats":[0],		
+		"repeats":[0],
 		"group":[["z"]],
 		"scale":1,
 		"bounds":[-1,1],
-		"constants":[]
+		"boundaries":[{},{}]
 	},
 	"zz": {
-		"name":"zz",						
+		"name":"zz",
 		"category":"constant",
 		"locality":"local",
 		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
+		"ndim":2,
 		"size":[1,1],
 		"repeats":[0],
 		"group":[["zz"]],
 		"scale":1,
 		"bounds":[-1,1],
-		"constants":[]
+		"boundaries":[{},{}]
 	}
 },
 "data":{
@@ -116,6 +119,6 @@
 		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 	}
-},		
+},
 "label": null
 }

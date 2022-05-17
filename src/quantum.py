@@ -37,9 +37,9 @@ from src.utils import summation,exponentiation
 from src.utils import inner_abs2,inner_real2,inner_imag2
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
 from src.utils import eigh,qr
-from src.utils import maximum,minimum,abs,real,imag,cos,sin,sqrt,mod,ceil,floor,heaviside,sigmoid
-from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose
-from src.utils import parse,to_str,datatype
+from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
+from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,isnaninf
+from src.utils import parse,to_str,to_number,datatype,_len_,_max_,_min_,_iter_
 from src.utils import pi,e
 from src.utils import itg,flt,dbl
 
@@ -599,6 +599,7 @@ class Object(object):
 		self.index = arange(self.size)
 
 		self.parameters = None
+		self.coefficients = 1
 		self.dim = 0
 
 		self.fig = {}
@@ -711,7 +712,7 @@ class Object(object):
 		self.interaction.insert(index,interaction)
 
 		self.size = len(self.data)
-		self.shape = (self.M,*self.data.shape)
+		self.shape = (self.shape[0],*self.data.shape)
 		self.hyperparameters.update(hyperparameters)
 
 		return
@@ -743,6 +744,18 @@ class Object(object):
 		self.parameters = parameters
 		variables = parameters
 		return variables
+
+	@partial(jit,static_argnums=(0,))
+	def __features__(self,parameters):
+		''' 
+		Setup features
+		Args:
+			parameters (array): parameters
+		Returns:
+			features (array): features
+		'''
+		features = parameters
+		return features		
 
 	@partial(jit,static_argnums=(0,))
 	def __constraints__(self,parameters):
@@ -797,8 +810,8 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		# return self.__loss__(parameters)
-		return self.__loss__(parameters) + self.__constraints__(parameters)
+		return self.__loss__(parameters)
+		# return self.__loss__(parameters) + self.__constraints__(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
@@ -969,7 +982,8 @@ class Object(object):
 		self.T = self.time.T
 		self.p = self.time.p
 		self.tau = self.time.tau
-		self.shape = (self.M,*self.data.shape)
+		self.coefficients = self.tau/self.p
+		self.shape = (self.shape[0],*self.data.shape)
 
 		return
 
@@ -1064,9 +1078,14 @@ class Object(object):
 
 		# Get parameters
 		category = 'variable'
-		shape = hyperparameters['shapes'][category]
-		parameters = parameters.reshape(shape)
-
+		axis = 1
+		p = self.p
+		# shape = hyperparameters['shapes'][category]
+		# coefficients = 1
+		shape = self.shape[:2]
+		shape = (*shape[:1],shape[1]*p,*shape[2:])
+		size = hyperparameters['shapes'][category][axis]
+		coefficients = self.coefficients
 
 		# Get plot config
 		attr = 'mplstyle'
@@ -1080,7 +1099,7 @@ class Object(object):
 		
 		path = hyperparameters['sys']['path']['plot'][attr]
 
-		layout = [shape[1],1]
+		layout = [size,1]
 		plots = [None]*layout[0]
 		figsize = (20,20)
 		iterations = list(sorted(list(set([min(hyperparameters['hyperparameters']['track']['size']-1,i) 
@@ -1090,7 +1109,31 @@ class Object(object):
 							*[i*(hyperparameters['hyperparameters']['track']['size']-1)//n 
 							for n in [4] for i in range(1,n+1)]]
 							]))))
-		labels = [r'\alpha',r'\beta']
+		labels = [r'\alpha',r'\phi']
+		# lims = [[-0.25,1.25],[-1.25,1.25]]
+		lims = [[-0.25,1.25],[-0.25,1.25]]
+
+		# parameters0 = hyperparameters['hyperparameters']['track'][attr][0]
+		# parameters0 = parameters0.reshape(shape)
+		
+		parameters0 = self.__parameters__(hyperparameters['hyperparameters']['track'][attr][0])
+		parameters0 = parameters0.reshape(shape)
+
+		parameters0 = invtrotter(parameters0.T,p).T
+		parameters0 /= coefficients
+
+		parameters0 = parameters0[:,:size]
+
+		parameters0 = parameters0.T
+		parameters0 = array([
+			*sqrt(parameters0[:size//2]**2 + parameters0[:size//2]**2),
+			*arctan(parameters0[size//2:],parameters0[:size//2])/(2*pi),
+			])
+		variables0 = parameters0
+		variables0 = variables0.at[0::2].set(parameters0[:size//2])
+		variables0 = variables0.at[1::2].set(parameters0[size//2:])
+		parameters0 = variables0
+		parameters0 = parameters0.T
 
 		with matplotlib.style.context(mplstyle):
 		
@@ -1101,15 +1144,36 @@ class Object(object):
 
 			for j in iterations:
 
-				parameters = hyperparameters['hyperparameters']['track']['parameters'][j].reshape(shape)
 
-				for i in range(shape[1]):
+				# parameters = hyperparameters['hyperparameters']['track'][attr][j]
+				# parameters = parameters.reshape(shape)
+
+				parameters = self.__parameters__(hyperparameters['hyperparameters']['track'][attr][j])
+				parameters = parameters.reshape(shape)
+
+				parameters = invtrotter(parameters.T,p).T
+				parameters /= coefficients
+
+				parameters = parameters[:,:size]
+
+				parameters = parameters.T
+				parameters = array([
+					*sqrt(parameters[:size//2]**2 + parameters[:size//2]**2),
+					*arctan(parameters[size//2:],parameters[:size//2])/(2*pi),
+					])
+				variables = parameters
+				variables = variables.at[0::2].set(parameters[:size//2])
+				variables = variables.at[1::2].set(parameters[size//2:])
+				parameters = variables
+				parameters = parameters.T
+
+				for i in range(size):
 					x = arange(shape[0])
 					y = parameters[:,i]
 
 
-					# y = abs((y - hyperparameters['hyperparameters']['track']['parameters'][0].reshape(shape)[:,i])/
-					# 	maximum(y,abs(hyperparameters['hyperparameters']['track']['parameters'][0].reshape(shape)[:,i])))
+					y0 = parameters0[:,i]
+					y = abs((y - y0)/(maximum(y,y0)+1e-20))
 
 					# if i == 0:
 					# 	scale = (1)*(2*pi/4/(20e-6))
@@ -1123,14 +1187,14 @@ class Object(object):
 					label = labels[i%2]
 
 					plots[i] = ax[i].plot(x,y,
-						color=getattr(plt.cm,'winter')((j+1)/len(iterations)),
+						color=getattr(plt.cm,'viridis')((iterations.index(j)*10)/(len(iterations)*10)),
 						marker='',alpha=0.8,linewidth=3,
 						# label=r'${%s}^{(%s)}_{%s}$'%(label,str(j),str(i//2) if shape[1]>2 else '')
 						label=r'${%s}^{(%s)}_{%s}$'%(r'\theta',str(j),'')
 					)
 
 					ax[i].set_xlim(xmin=0,xmax=shape[0])
-					ax[i].set_ylim(ymin=-0.25,ymax=1.25)
+					ax[i].set_ylim(ymin=lims[i%2][0],ymax=lims[i%2][1])
 					ax[i].set_ylabel(ylabel=r'${%s}_{%s}$'%(label,str(i//2) if shape[1]>2 else ''))
 					ax[i].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
 					ax[i].set_yscale(value='linear')
@@ -1359,7 +1423,7 @@ class Hamiltonian(Object):
 		size = len(data)
 
 		# Get shape of variables
-		shape = (self.M,size)
+		shape = (self.shape[0],size)
 		ndim = len(shape)
 		axes = list(range(ndim))
 
@@ -1398,6 +1462,15 @@ class Hamiltonian(Object):
 
 		# All categories of parameters
 		categories = list(set([hyperparameters['parameters'][parameter]['category'] for parameter in hyperparameters['parameters']]))
+		
+		# All groups for categories
+		groups = {category: list(set([group
+			for parameter in hyperparameters['parameters'] 
+			for group in hyperparameters['parameters'][parameter]['group']
+			if hyperparameters['parameters'][parameter]['category'] == category
+			]))
+			for category in categories
+		}
 
 		# indices indices of variables within all variables
 		indices = {category:{} for category in categories}
@@ -1405,57 +1478,121 @@ class Hamiltonian(Object):
 		# slices of parameters within all parameters of category
 		slices = {category:{} for category in categories}
 
-
 		# shapes of slices of parameters within all parameters of category
 		shapes = {category:{} for category in categories}
+
+		# All boundaries for category
+		boundaries = {category: {group: [list(set([i 
+			for parameter in hyperparameters['parameters'] 
+			for i in hyperparameters['parameters'][parameter]['boundaries'][axis]
+			if ((hyperparameters['parameters'][parameter]['category'] == category) and 
+				(all(g in group for g in hyperparameters['parameters'][parameter]['group'])))
+			]))
+			for axis in axes]
+			for group in groups[category]
+			}
+			for category in categories
+		}
+
 
 		for parameter in hyperparameters['parameters']:
 
 			category = hyperparameters['parameters'][parameter]['category']
 			locality = hyperparameters['parameters'][parameter]['locality']
-			constants = hyperparameters['parameters'][parameter]['constants']
+			boundary = hyperparameters['parameters'][parameter]['boundaries']
 
 			# Length of existing slice for parameters for this category
-			length_parameter = [max([-1,*[max(slices[category][group][axis]) for group in slices[category]]])+1 for axis in axes]
+			length_parameter = [max([0,*[slices[category][group][axis].stop for group in slices[category]]]) for axis in axes]
 
 			for group in hyperparameters['parameters'][parameter]['group']:
 
 				# Get indices of variables corresponding to data for category, parameter, and group
-				indices[category][group] = [
-					[(shape[0]+i if i<0 else i) for i in range(shape[0]) if (shape[0]+i if i<0 else i) not in [constant[0][0] for constant in constants]],
-					[i for i,s in enumerate(string) 
-					if any(g in group for g in [s,'_'.join([s,''.join(['%d'%j for j in site[i]])])])]
-				] 
+				indices[category][group] = tuple([
+					*[slice(0+sum(any((j in boundary[axis]) for j in i) for i in [[0]]),
+							shape[axis]-sum(any((j in boundary[axis]) for j in i) for i in [[shape[axis],-1]]),
+							1) for axis in axes[:1]],
+					*[[i for i,s in enumerate(string) 
+					   if any(g in group for g in [s,'_'.join([s,''.join(['%d'%j for j in site[i]])])])] for axis in axes[1:2]],
+					*[slice(0+sum(any((j in boundary[axis]) for j in i) for i in [[0]]),
+							shape[axis]-sum(any((j in boundary[axis]) for j in i) for i in [[shape[axis],-1]]),
+							1) for axis in axes[2:]],					   
+				])
 			
 				# Get length of variable indices for local variables
-				length_local = [len(indices[category][group][axis]) if hyperparameters['parameters'][parameter]['locality'] in ['local'] else 1 for axis in axes]
+				length_local = [_len_(indices[category][group][axis]) if ((axis==0) or (locality in ['local'])) else 1 for axis in axes]
 
 				# Get number of parameters per variable for parameter
 				length_size = [hyperparameters['parameters'][parameter]['size'][axis] for axis in axes]
 
-				# Get slice of parameters corresponding to locality and number of parameters per variable
-				slices[category][group] = [
-					[(shape[0]+i if i<0 else i) for i in range(shape[0]) if (shape[0]+i if i<0 else i) not in [constant[0][0] for constant in constants]],
-					[length_parameter[1] + i*length_size[1] + j for i in range(length_local[1]) for j in range(length_size[1]) if (shape[1]+i if i<0 else i) not in [constant[0][1] for constant in constants]]
-					]
+				# Get slice of parameters with parameters of category and group,
+				# corresponding to locality and number of parameters per variable, 
+				# accounting for boundaries
+				slices[category][group] = tuple([
+					*[slice(0+sum((any((j in boundary[axis]) for j in i)-any((j in boundaries[category][group]) for j in i)) for i in [[0]]),
+						    shape[axis]-sum((any((j in boundary[axis]) for j in i)-any((j in boundaries[category][group]) for j in i)) 
+						    for i in [[shape[axis],-1]]),1) 
+						for axis in axes[:1]],
+					*[slice(length_parameter[axis],length_parameter[axis]+length_local[axis]*length_size[axis],1) 
+						for axis in axes[1:]]
+					])
 
 				# Get total shape of parameters for group
-				shapes[category][group] = [length_local[axis]*length_size[axis] for axis in axes]
+				shapes[category][group] = [(slices[category][group][axis].stop-slices[category][group][axis].start)//slices[category][group][axis].step 
+										   for axis in axes]
 
-			hyperparameters['parameters'][parameter]['index'] = {group: [j for j in indices[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
-			hyperparameters['parameters'][parameter]['slice'] = {group: [j for j in slices[category][group]] for group in hyperparameters['parameters'][parameter]['group']}
+			hyperparameters['parameters'][parameter]['index'] = {group: indices[category][group] for group in hyperparameters['parameters'][parameter]['group']}
+			hyperparameters['parameters'][parameter]['slice'] = {group: slices[category][group] for group in hyperparameters['parameters'][parameter]['group']}
 			hyperparameters['parameters'][parameter]['shape'] =  {group: shapes[category][group] for group in hyperparameters['parameters'][parameter]['group']}
 			hyperparameters['parameters'][parameter]['site'] =  {group: [site[j] for j in indices[category][group][-1]] for group in hyperparameters['parameters'][parameter]['group']}
 			hyperparameters['parameters'][parameter]['string'] = {group: ['_'.join([string[j],''.join(['%d'%(k) for k in site[j]]),''.join(operator[j])]) for j in indices[category][group][-1]] for group in hyperparameters['parameters'][parameter]['group']}
 
-		# Update shape of categories
+
+
+		# slices of categories, including parameters and excluding boundaries
+		slcs = {
+			category: tuple([
+						slice(
+							*array(list(set([i
+							for parameter in hyperparameters['parameters']
+							for group in hyperparameters['parameters'][parameter]['group']
+							for i in [
+								*_iter_(hyperparameters['parameters'][parameter]['slice'][group][axis]),
+								] 
+						   if hyperparameters['parameters'][parameter]['category'] == category])))[array([0,-1])]+array([0,1])
+						,1)
+						for axis in axes
+						])
+			for category in categories
+		}
+
+		# slices of categories, including parameters and including boundaries
+		slc = {
+			category: tuple([
+						slice(
+							*array(list(set([i
+							for parameter in hyperparameters['parameters']
+							for group in hyperparameters['parameters'][parameter]['group']
+							for i in [
+								*_iter_(hyperparameters['parameters'][parameter]['slice'][group][axis]),
+								*[shape[axis]+i if i< 0 else i for i in hyperparameters['parameters'][parameter]['boundaries'][axis]]
+								] 
+						   if hyperparameters['parameters'][parameter]['category'] == category])))[array([0,-1])]+array([0,1])
+						,1)
+						for axis in axes
+						])
+			for category in categories
+		}
+
+		# shape of categories, including parameters and excluding boundaries
 		shapes = {
 			category: tuple([
 						len(							
-							set([(shape[axis]+i if i<0 else i) 
+							set([i
 							for parameter in hyperparameters['parameters']
 							for group in hyperparameters['parameters'][parameter]['group']
-							for i in [*hyperparameters['parameters'][parameter]['slice'][group][axis],*[constant[0][axis] for constant in constants]] 
+							for i in [
+								*_iter_(hyperparameters['parameters'][parameter]['slice'][group][axis]),
+								] 
 						   if hyperparameters['parameters'][parameter]['category'] == category])
 						)
 						for axis in axes
@@ -1463,32 +1600,43 @@ class Hamiltonian(Object):
 			for category in categories
 		}
 
-		# print([
-		# 	len(
-		# 					set([(shape[axis]+i if i<0 else i) 
-		# 					for parameter in hyperparameters['parameters']
-		# 					for group in hyperparameters['parameters'][parameter]['group']
-		# 					for i in [*hyperparameters['parameters'][parameter]['slice'][group][axis],*[constant[0][axis] for constant in constants]] 
-		# 				   if hyperparameters['parameters'][parameter]['category'] == category])
-		# 		)
-		# 				for axis in axes
-		# 				])
+		# shape of categories, including parameters and including boundaries
+		shape = {
+			category: tuple([
+						len(							
+							set([i
+							for parameter in hyperparameters['parameters']
+							for group in hyperparameters['parameters'][parameter]['group']
+							for i in [
+								*_iter_(hyperparameters['parameters'][parameter]['slice'][group][axis]),
+								*[shape[axis]+i if i< 0 else i for i in hyperparameters['parameters'][parameter]['boundaries'][axis]]
+								] 
+						   if hyperparameters['parameters'][parameter]['category'] == category])
+						)
+						for axis in axes
+						])
+			for category in categories
+		}
+	
 
-		print('slice, index, length, shape')
-		for parameter in hyperparameters['parameters']:
-			for group in hyperparameters['parameters'][parameter]['group']:
-				print(parameter,group,hyperparameters['parameters'][parameter]['category'],
-					hyperparameters['parameters'][parameter]['slice'][group],
-					hyperparameters['parameters'][parameter]['index'][group],
-					hyperparameters['parameters'][parameter]['shape'][group],
-					shapes[hyperparameters['parameters'][parameter]['category']])
-		print()
+		# print('\t\t\t\tslice,\t\t\t\t index,\t\t   sliceshape,  catshapes,  totshape')
+		# for parameter in hyperparameters['parameters']:
+		# 	for group in hyperparameters['parameters'][parameter]['group']:
+		# 		print(parameter,group,hyperparameters['parameters'][parameter]['category'],
+		# 			hyperparameters['parameters'][parameter]['slice'][group],
+		# 			hyperparameters['parameters'][parameter]['index'][group],
+		# 			hyperparameters['parameters'][parameter]['shape'][group],
+		# 			shapes[hyperparameters['parameters'][parameter]['category']],
+		# 			shape[hyperparameters['parameters'][parameter]['category']])
+		# print()
 
 		# Update hyperparameters
 		hyperparameters['size'] = size
-		hyperparameters['shape'] = shape
 		hyperparameters['shapes'] = shapes
-		hyperparameters['coefficients'] = self.tau/self.p
+		hyperparameters['shape'] = shape
+		hyperparameters['slices'] = slcs
+		hyperparameters['slice'] = slc
+		hyperparameters['coefficients'] = self.coefficients
 
 		# Update class attributes
 		self.__extend__(data,operator,site,string,interaction,hyperparameters)
@@ -1523,27 +1671,66 @@ class Hamiltonian(Object):
 		for parameter in hyperparameters['parameters']:
 			if hyperparameters['parameters'][parameter]['category'] == category:
 				for group in hyperparameters['parameters'][parameter]['group']:
-					variables = variables.at[
-						hyperparameters['parameters'][parameter]['index'][group][0],
-						hyperparameters['parameters'][parameter]['index'][group][1]].set(
-						hyperparameters['parameters'][parameter]['func'][group](parameters,hyperparameters))
+					indices = hyperparameters['parameters'][parameter]['index'][group]
+					variables = variables.at[indices].set(
+						hyperparameters['parameters'][parameter]['variables'][group](parameters,hyperparameters))
 
+		print('param,vars')
+		print(parameters.round(3))
+		print(variables.round(3))
+		print()
 
-		
 		# Get Trotterized order of copies of variables
 		p = self.p
-		variables = variables.T
-		variables = trotter(variables,p)
-		variables = variables.T
+		variables = trotter(variables.T,p).T
 
-		# Get coefficients (time step tau and trotter constants)
-		coefficients = hyperparameters['coefficients']
-		variables *= coefficients
 
 		# Get reshaped variables
 		variables = variables.ravel()
 		
 		return variables
+
+
+	@partial(jit,static_argnums=(0,))
+	def __features__(self,parameters):
+		''' 
+		Setup features
+		Args:
+			parameters (array): parameters
+		Returns:
+			features (array): features
+		'''
+
+		# Get class attributes
+		self.parameters = parameters
+		hyperparameters = self.hyperparameters
+
+		# Set all features
+		
+		category = 'variable'
+		shape = hyperparameters['shapes'][category]
+		size = max(hyperparameters['parameters'][parameter]['size'] for parameter in hyperparameters['parameters'] if hyperparameters['parameters'][parameter]['category'] == category)
+		ndim = len(shape)
+		parameters = parameters.reshape(shape)
+
+		features = repeat(hyperparameters['variables'],repeats=size,axis=-1)
+
+		for parameter in hyperparameters['parameters']:
+			if hyperparameters['parameters'][parameter]['category'] == category:
+				for group in hyperparameters['parameters'][parameter]['group']:
+					feature = hyperparameters['parameters'][parameter]['features'][group](parameters,hyperparameters)
+
+					indices = tuple([i if j < (ndim) else i 
+									for j,i in enumerate(hyperparameters['parameters'][parameter]['index'][group]) 
+								])
+					features = features.at[indices].set(feature[0])
+					
+					indices = tuple([i if j < (ndim-1) else slice(2*i.start,2*i.start+(i.stop-i.start),i.step)
+									for j,i in enumerate(hyperparameters['parameters'][parameter]['index'][group]) 
+								])					
+					features = features.at[indices].set(feature[1])
+
+		return features
 
 
 	def __init__parameters__(self,parameters):
@@ -1566,7 +1753,7 @@ class Hamiltonian(Object):
 		# Get parameters for each category
 		# reshape, bound, impose boundary conditions accordingly, and assign category parameters
 		for category in categories:
-			shape = hyperparameters['shapes'][category]
+			shape = hyperparameters['shape'][category]
 			ndim = len(shape)
 			axes = list(range(ndim))
 
@@ -1582,13 +1769,13 @@ class Hamiltonian(Object):
 				params = hyperparameters['parameters'][parameter].get('parameters',None)
 
 				# Bounds on parameters
-				bounds = hyperparameters['parameters'][parameter]['bounds']
+				bounds = hyperparameters['parameters'][parameter].get('bounds',None)
 
 				# Axes to repeat existing parameters
-				repeats = hyperparameters['parameters'][parameter]['repeats']
+				repeats = hyperparameters['parameters'][parameter].get('repeats',[])
 
-				# Constants of the form [[[slice_i[axis] for axis in axes],value_i]] 
-				constants = hyperparameters['parameters'][parameter].get('constants',[])
+				# Boundaries of the form [[[slice_i[axis] for axis in axes],value_i]] 
+				boundary = hyperparameters['parameters'][parameter].get('boundaries',[])
 				
 				# If parameters exist
 				reset =  params is None
@@ -1607,86 +1794,37 @@ class Hamiltonian(Object):
 					for axis in repeats:
 						params = repeat(expand_dims(params,axis),shapes[axis],axis)
 
-					params = take(params,slices,axes)
+					params = take(params,shapes,axes)
 
-					print(parameter,group,parameters[category].shape,params.shape,slices)
 					parameters[category] = (
-						parameters[category].at[tuple(slices)].set(
-							params
-						# 	initialize(params,shapes,bounds,dtype,reset,hyperparameters)
+						parameters[category].at[slices].set(
+							initialize(params,shapes,axes,bounds,dtype,reset,hyperparameters)
 						)
 					)
 
-				for constant in constants:					
-					parameters[category] = parameters[category].at[tuple(constant[0])].set(constant[1])
+				for axis in axes:
+					for i in boundary[axis]:
+						slices = [slice(None) for axis in axes]
+						value = None
+				
+						slices[axis] = i
+						value = boundary[axis][i]
+				
+						parameters[category] = parameters[category].at[tuple(slices)].set(value)
 
 
-				print(parameter,hyperparameters['parameters'][parameter]['parameters'].shape,shape,reset)
-				print(hyperparameters['parameters'][parameter]['parameters'])
-				print()
-				continue
-
-			exit()
-
-			# _shape = hyperparameters['parameters'][parameter]['parameters'].shape
-			# _parameters = hyperparameters['parameters'][parameter]['parameters']
-			
-			# hyperparameters['parameters'][parameter]['parameters'] = zeros(shape)
-
-			# for group in hyperparameters['parameters'][parameter]['group']:
-
-			# 	length = len(hyperparameters['parameters'][parameter]['slice'][group])
-			# 	shape = hyperparameters['shapes'][category]
-			# 	shape = (*shape[0:1],length,*shape[2:])	
-			# 	include = [i for i in range(length) if i < _shape[-1]]
-			# 	params = _parameters[:,include]
-
-			# 	hyperparameters['parameters'][parameter]['parameters'] = hyperparameters['parameters'][parameter]['parameters'].at[:,:].set(					
-			# 			initialize(params,shape,bounds,dtype,reset,hyperparameters)
-			# 		)					
-
-			# for axis in axes:
-			# 	for i in list(hyperparameters['parameters'][parameter]['constants'][axis]):				
-			# 		hyperparameters['parameters'][parameter]['constants'][axis][i] = hyperparameters['parameters'][parameter]['constants'][axis].pop(i) 
-			# 		if hyperparameters['parameters'][parameter]['constants'][axis][i] is not None:
-			# 			hyperparameters['parameters'][parameter]['parameters'] = hyperparameters['parameters'][parameter]['parameters'].at[i,:].set(
-			# 				hyperparameters['parameters'][parameter]['constants'][axis][i])
-
-
-			# for group in hyperparameters['parameters'][parameter]['group']:
-			# 	parameters[category] = (
-			# 		parameters[category].at[hyperparameters['parameters'][parameter]['slice'][group][0],hyperparameters['parameters'][parameter]['slice'][group][1]].set(
-			# 		hyperparameters['parameters'][parameter]['parameters'][hyperparameters['parameters'][parameter]['slice'][group][0],:])
-			# 	)
-
-		exit()
-
-		print()
-		print('parameters - categories')
-		for i in parameters:
-			print(i)
-			print(parameters[i])
-			print()
-		print()
-		print('parameters - variables')
-		for parameter in hyperparameters['parameters']:
-			print(parameter)
-			print(hyperparameters['parameters'][parameter]['parameters'])
-		print()
-
-		exit()
 
 		# Get variables
-		hyperparameters['variables'] = zeros(hyperparameters['shape'])
+		hyperparameters['variables'] = zeros(self.shape[:2])
 		
 		for parameter in hyperparameters['parameters']:
+			category = hyperparameters['parameters'][parameter]['category']
 			for group in hyperparameters['parameters'][parameter]['group']:
-				hyperparameters['variables'] = hyperparameters['variables'].at[hyperparameters['parameters'][parameter]['index'][group][0],hyperparameters['parameters'][parameter]['index'][group][1]].set(
-					hyperparameters['parameters'][parameter]['func'][group](
-						parameters[hyperparameters['parameters'][parameter]['category']],
-						hyperparameters)
-					)		
-
+				slices = hyperparameters['parameters'][parameter]['slice'][group]
+				indices = hyperparameters['parameters'][parameter]['index'][group]
+				hyperparameters['variables'] = hyperparameters['variables'].at[indices].set(
+					hyperparameters['parameters'][parameter]['variables'][group](parameters[category][slices],hyperparameters)
+					)
 
 		# Get label
 		label = hyperparameters['label']
@@ -1784,7 +1922,8 @@ class Hamiltonian(Object):
 
 		# Get reshaped parameters
 		category = 'variable'		
-		parameters = parameters[category].ravel()
+		slices = hyperparameters['slices'][category]
+		parameters = parameters[category][slices].ravel()
 
 		# Update class attributes
 		self.parameters = parameters
@@ -1841,7 +1980,8 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
-		return exponentiation(-1j*parameters,self.data,self.identity)
+		coefficients = self.coefficients
+		return exponentiation(-1j*coefficients*parameters,self.data,self.identity)
 
 
 	# @partial(jit,static_argnums=(0,))
@@ -1862,9 +2002,9 @@ class Unitary(Hamiltonian):
 			for i in self.hyperparameters['parameters'][parameter]['index'][group][-1]
 			if self.hyperparameters['parameters'][parameter]['category'] == category])))
 		parameters = self.__parameters__(parameters)
-		coefficients = self.hyperparameters['coefficients']
+		coefficients = self.coefficients
 
-		grad = gradient_expm(-1j*parameters,self.data,self.identity)
+		grad = gradient_expm(-1j*coefficients*parameters,self.data,self.identity)
 		grad *= -1j*coefficients
 		grad = grad.reshape(shape[0],-1,*grad.shape[1:])
 
@@ -1944,14 +2084,26 @@ def gradient_trotter(da,p):
 	return sum([da[:n][::i] if i>0 else da[-n:][::i] for i in [1,-1,1,-1][:p]])
 
 
+def invtrotter(a,p):
+	'''
+	Calculate inverse of p-order trotter series of array
+	Args:
+		a (array): Array to calculate inverse trotter series
+		p (int): Order of trotter series
+	Returns:
+		out (array): Inverse trotter series of array
+	'''	
+	n = a.shape[0]//p
+	return a[:n]
 
 
-def initialize(parameters,shape,bounds,dtype,reset,hyperparameters):
+def initialize(parameters,shape,axes,bounds,dtype,reset,hyperparameters):
 	'''
 	Initialize parameters
 	Args:
 		parameters (array): parameters array
 		shape (iterable): shape of parameters
+		axes (iterable): axes of parameters
 		bounds (iterable): bounds on parameters
 		dtype (str,datatype): data type of parameters
 		reset (bool): Overwrite existing parameters
@@ -1971,10 +2123,12 @@ def initialize(parameters,shape,bounds,dtype,reset,hyperparameters):
 	ndim = len(shape)
 	axes = list(range(ndim))
 
-	bounds = [
-		bounds[0] + (bounds[1]-bounds[0])*hyperparameters['hyperparameters']['init'][0],
-		bounds[1]*hyperparameters['hyperparameters']['init'][1],
-	]
+	bounds = [to_number(i,dtype) for i in bounds]
+	if not any(isnaninf(i) for i in bounds):
+		bounds = [
+			bounds[0] + (bounds[1]-bounds[0])*hyperparameters['hyperparameters']['init'][0],
+			bounds[1]*hyperparameters['hyperparameters']['init'][1],
+		]
 
 	# Add random padding of values if parameters not reset
 	if not reset:
@@ -2004,39 +2158,30 @@ def initialize(parameters,shape,bounds,dtype,reset,hyperparameters):
 		_parameters = broadcast_to(parameters,_shape)
 		parameters = _parameters
 
-		return parameters
-
-
-	if initialization in ["interpolation"]:
-		# Parameters are initialized as interpolated random values between bounds
-		interpolation = hyperparameters['hyperparameters']['interpolation']
-		smoothness = min(shape[0],hyperparameters['hyperparameters']['smoothness'])
-		shape_interp = (shape[0]//smoothness + 2 - (smoothness==1),*shape[1:])
-
-		pts_interp = smoothness*arange(shape_interp[0])
-		pts = arange(shape[0])
-
-		parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
-		parameters_interp = parameters_interp/((((parameters_interp**2).sum(1))**(1/2))[:,None])
-	
-		parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
-
-	elif initialization in ['uniform']:
-	
-		parameters = ((bounds[0]+bounds[1])/2)*ones(shape)
-
-	elif initialization in ['random']:
-		
-		parameters = rand(shape,key=key,bounds=bounds,random=random)
-
-	elif initialization in ['zero']:
-		parameters = zeros(shape)
-
 	else:
-		parameters = rand(shape,key=key,bounds=bounds,random=random)		
+		if initialization in ["interpolation"]:
+			# Parameters are initialized as interpolated random values between bounds
+			interpolation = hyperparameters['hyperparameters']['interpolation']
+			smoothness = min(shape[0]//2,hyperparameters['hyperparameters']['smoothness'])
+			shape_interp = (shape[0]//smoothness,*shape[1:])
 
+			pts_interp = (shape_interp[0])*smoothness*arange(shape_interp[0])-0.5
+			pts = arange(shape[0])
 
-	parameters = minimum(bounds[1],maximum(bounds[0],parameters))
+			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
+
+			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
+
+			parameters = minimum(bounds[1],maximum(bounds[0],parameters))
+
+		elif initialization in ['uniform']:
+			parameters = ((bounds[0]+bounds[1])/2)*ones(shape)
+		elif initialization in ['random']:
+			parameters = rand(shape,key=key,bounds=bounds,random=random)
+		elif initialization in ['zero']:
+			parameters = zeros(shape)
+		else:
+			parameters = rand(shape,key=key,bounds=bounds,random=random)		
 
 	return parameters
 
@@ -2103,15 +2248,15 @@ def plot(hyperparameters):
 		y = y.mean(0)
 		yerr = yerr.std(0)
 
-		plots = ax.errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=2,capsize=2)
+		plots = ax.errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=2,capsize=3)
 
 		ax.set_ylabel(ylabel=r'$\textrm{%s}$'%('Objective'))
 		ax.set_xlabel(xlabel=r'$\textrm{%s}$'%('Iteration'))
 
-		# ax.set_ylim(ymin=0,ymax=1)
+		# ax.set_ylim(ymin=0,ymax=1.1)
 		# ax.set_yscale(value='linear')
 
-		ax.set_ylim(ymin=5e-1,ymax=1e0)
+		ax.set_ylim(ymin=5e-1,ymax=1.05e0)
 		ax.set_yscale(value='log',base=10)
 
 		ax.yaxis.offsetText.set_fontsize(fontsize=20)
@@ -2193,7 +2338,109 @@ def plot(hyperparameters):
 	return
 
 
+def check(hyperparameters):
+
+	section = None
+	updates = {
+		'label': {
+			'value': (lambda hyperparameters: hyperparameters['hyperparameters']['label']),
+			'default': (lambda hyperparameters: None),
+			'conditions': (lambda hyperparameters: hyperparameters['hyperparameters'].get('label') is not None)				
+		},
+	}			
+	for attr in updates:								
+		hyperparameters[attr] = hyperparameters.get(attr,updates[attr]['default'](hyperparameters))
+		if updates[attr]['conditions'](hyperparameters):
+			hyperparameters[attr] = updates[attr]['value'](hyperparameters)
+
+
+	section = 'sys'
+	updates = {
+		'path': {
+			'value': (lambda hyperparameters: 	{
+				attr: path_join(hyperparameters[section]['directory'][attr],
+								 '.'.join([hyperparameters[section]['file'][attr]]) if attr in ['data','plot'] else hyperparameters[section]['file'][attr],
+								 ext=hyperparameters[section]['ext'][attr])
+						if isinstance(hyperparameters[section]['file'][attr],str) else
+						{i: path_join(hyperparameters[section]['directory'][attr][i],
+								 '.'.join([hyperparameters[section]['file'][attr][i]]) if attr in ['data','plot'] else hyperparameters[section]['file'][attr][i],							 
+								 ext=hyperparameters[section]['ext'][attr][i])
+						for i in hyperparameters[section]['file'][attr]}
+				for attr in hyperparameters[section]['file']			 
+			}),
+			'default': (lambda hyperparameters: None),
+			'conditions': (lambda hyperparameters: hyperparameters[section].get('path') is None)
+		},		
+	}			
+	for attr in updates:						
+		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
+		if updates[attr]['conditions'](hyperparameters):
+			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
+
+
+
+	section = 'model'
+	updates = {
+		'tau': {
+			'value': (lambda hyperparameters: hyperparameters[section]['tau']/hyperparameters['hyperparameters']['scale']),
+			'default': (lambda hyperparameters: 1),
+			'conditions': (lambda hyperparameters: True)
+		},		
+	}			
+	for attr in updates:						
+		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
+		if updates[attr]['conditions'](hyperparameters):
+			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
+
+
+	section = 'hyperparameters'
+	updates = {
+		'runs': {
+			'value': (lambda hyperparameters: list(range(hyperparameters[section]['runs']))),
+			'default': (lambda hyperparameters: 1),
+			'conditions': (lambda hyperparameters: not isinstance(hyperparameters[section]['runs'],(list,tuple,array)))
+		},
+	}			
+	for attr in updates:						
+		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
+		if updates[attr]['conditions'](hyperparameters):
+			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
+
+
+	section = 'parameters'
+	updates = {
+		'boundaries': {
+			'value': (lambda parameter,hyperparameters: [{int(j):i[j] for j in i} for i in hyperparameters[section][parameter]['boundaries']]),
+			'default': (lambda parameter,hyperparameters: []),
+			'conditions': (lambda parameter,hyperparameters: True)				
+		},
+		'group': {
+			'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters[section][parameter]['group']]),
+			'default': (lambda parameter,hyperparameters: []),
+			'conditions': (lambda parameter,hyperparameters: True)				
+		},
+		'scale': {
+			'value': (lambda parameter,hyperparameters: hyperparameters['hyperparameters']['scale']*hyperparameters[section][parameter]['scale']),
+			'default': (lambda parameter,hyperparameters: 1),
+			'conditions': (lambda parameter,hyperparameters: True)						
+		},
+		'locality': {
+			'value':(lambda parameter,hyperparameters: hyperparameters['hyperparameters']['locality']),
+			'default':(lambda parameter,hyperparameters: None),
+			'conditions': (lambda parameter,hyperparameters: hyperparameters['parameters'][parameter]['category'] in ['variable'])
+		},		
+	}			
+	for parameter in hyperparameters[section]:
+		for attr in updates:						
+			hyperparameters[section][parameter][attr] = hyperparameters[section][parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
+			if updates[attr]['conditions'](parameter,hyperparameters):
+				hyperparameters[section][parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
+
+	return
+
 def setup(hyperparameters):
+
+	check(hyperparameters)
 
 	settings = {}
 
@@ -2250,7 +2497,7 @@ def run(hyperparameters):
 
 		hyperparameters = settings['hyperparameters'][key]	
 
-		obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+		# obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 		if settings['boolean']['train']:
 
@@ -2279,8 +2526,10 @@ def run(hyperparameters):
 
 	if settings['boolean']['test']:
 
-		key = None
-		obj = Unitary(key=key,**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+		obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+
+		func = obj.__func__
+
 		parameters = obj.parameters
 		hyperparameters = hyperparameters['hyperparameters']
 
@@ -2299,21 +2548,21 @@ def run(hyperparameters):
 
 		# print(g(parameters)-h(parameters))
 
-		grad = gradient(func)
-		fgrad = gradient_finite(func,tol=5e-8)
-		agrad = obj.__grad__
+		# grad = gradient(func)
+		# fgrad = gradient_finite(func,tol=5e-8)
+		# agrad = obj.__grad__
 
-		print(allclose(grad(parameters),fgrad(parameters)))
-		print(allclose(grad(parameters),agrad(parameters)))
+		# print(allclose(grad(parameters),fgrad(parameters)))
+		# print(allclose(grad(parameters),agrad(parameters)))
 
 
-		print()
-		print(parameters)
-		print(obj.__constraints__(parameters))
-		print(sigmoid(parameters[:4]))
-		print(gradient(lambda x: sigmoid(x,scale=1e4).sum())(parameters[:4]))
-		print(grad(parameters))
-		print(agrad(parameters))
+		# print()
+		# print(parameters)
+		# print(obj.__constraints__(parameters))
+		# print(sigmoid(parameters[:4]))
+		# print(gradient(lambda x: sigmoid(x,scale=1e4).sum())(parameters[:4]))
+		# print(grad(parameters))
+		# print(agrad(parameters))
 
-		print(gradient(obj.__constraints__)(parameters))
+		# print(gradient(obj.__constraints__)(parameters))
 	return

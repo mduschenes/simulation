@@ -61,7 +61,6 @@ def logconfig(name,conf=None):
 						os.makedirs(path)
 			logging.config.fileConfig(conf,disable_existing_loggers=False) 	
 		except Exception as e:
-			print(e)
 			pass	
 		logger = logging.getLogger(__name__)
 
@@ -712,17 +711,20 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 		key = PRNGKey(key)
 
 	if random in ['uniform','rand']:
-		return jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
+		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
 	elif random in ['randint']:
-		return jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1])		
-	elif random in ['randint']:
-		return jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1])				
+		out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1])		
+	elif random in ['gaussian','normal']:
+		out = jax.random.normal(key,shape)
+		# out = (bounds[1]+bounds[0])/2 + sqrt(bounds[1]-bounds[0])*jax.random.normal(key,shape)				
 	elif random in ['zeros']:
-		return zeros(shape)
+		out = zeros(shape)
 	elif random in ['ones']:
-		return ones(shape)		
+		out = ones(shape)		
 	else:
-		return jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
+		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
+
+	return out
 
 
 def svd(A,k=None):
@@ -1249,6 +1251,113 @@ def slices(a,start,size):
 	return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
 
 
+def _len_(obj):
+	'''
+	Get length of object
+	Args:
+		obj (object): Object to be sized
+	Returns:
+		length (int): Length of object
+	'''
+	try:
+		length = len(obj)
+	except:
+		if isinstance(obj,slice):
+			start = obj.start
+			stop = obj.stop
+			step = obj.step
+			
+			assert all(s is not None for s in [start,stop]), "Slice must have static start and stop to be sized"
+			step = 1 if step is None else step
+
+			length = (stop-start)//step
+		else:
+			length = len(obj)
+	
+	return length
+
+
+def _max_(obj):
+	'''
+	Get maximum of object
+	Args:
+		obj (object): Object to be maximized
+	Returns:
+		maximum (int): Maximum of object
+	'''
+	try:
+		maximum = max(obj)
+	except:
+		if isinstance(obj,slice):
+			start = obj.start
+			stop = obj.stop
+			step = obj.step
+			
+			assert all(s is not None for s in [start,stop]), "Slice must have static start and stop to be sized"
+
+			step = 1 if step is None else step
+
+			maximum = stop-step
+		else:
+			maximum = max(obj)
+	
+	return maximum
+
+
+def _min_(obj):
+	'''
+	Get minimum of object
+	Args:
+		obj (object): Object to be minimized
+	Returns:
+		minimum (int): Minimum of object
+	'''
+	try:
+		minimum = min(obj)
+	except:
+		if isinstance(obj,slice):
+			start = obj.start
+			stop = obj.stop
+			step = obj.step
+			
+			assert all(s is not None for s in [start,stop]), "Slice must have static start and stop to be sized"
+			step = 1 if step is None else step
+
+			minimum = start
+		else:
+			minimum = min(obj)
+	
+	return minimum
+
+
+def _iter_(obj):
+	'''
+	Get iterator of object
+	Args:
+		obj (object): Object to be iterated
+	Returns:
+		iterator (int): Iterator of object
+	'''
+	try:
+		iterator = obj.__iter__()
+		iterator = obj
+	except:
+		if isinstance(obj,slice):
+			start = obj.start
+			stop = obj.stop
+			step = obj.step
+			
+			assert all(s is not None for s in [start,stop]), "Slice must have static start and stop to be sized"
+			step = 1 if step is None else step
+
+			iterator = range(start,stop,step)
+		else:
+			iterator = obj
+	
+	return iterator
+
+
+
 def powerset(iterable,probability=1):
 	'''
 	Get power set of iterable
@@ -1526,7 +1635,7 @@ def tan(a):
 	'''
 	Calculate tan of array a
 	Args:
-		a (array): Array to compute sine
+		a (array): Array to compute tan
 	Returns:
 		out (array): Tan of array
 	'''
@@ -1560,11 +1669,87 @@ def tanh(a):
 	'''
 	Calculate tanh of array a
 	Args:
-		a (array): Array to compute sine
+		a (array): Array to compute tanh
 	Returns:
 		out (array): Tanh of array
 	'''
 	return np.tanh(a)
+
+
+@jit
+def arcsin(a):
+	'''
+	Calculate inverse sine of array a
+	Args:
+		a (array): Array to compute inverse sine
+	Returns:
+		out (array): Inverse Sine of array
+	'''
+	return np.arcsin(a)
+
+
+@jit
+def arccos(a):
+	'''
+	Calculate inverse cosine of array a
+	Args:
+		a (array): Array to compute inverse cosine
+	Returns:
+		out (array): Inverse cosine of array
+	'''
+	return np.arccos(a)
+
+
+# @partial(jit,static_argnums=(1,))
+@jit
+def arctan(a,b=None):
+	'''
+	Calculate inverse tan of array a or a/b
+	Args:
+		a (array): Array to compute inverse tan a or a/b
+		b (array): Array to compute inverse tan a/b
+	Returns:
+		out (array): Inverse tan of array
+	'''
+	if b is None:
+		return np.arctan(a)
+	else:
+		return np.arctan2(a,b)
+
+
+@jit
+def arcsinh(a):
+	'''
+	Calculate inverse sinh of array a
+	Args:
+		a (array): Array to compute inverse sinh
+	Returns:
+		out (array): Inverse sinh of array
+	'''
+	return np.arcsinh(a)
+
+
+@jit
+def arccosh(a):
+	'''
+	Calculate inverse cosinh of array a
+	Args:
+		a (array): Array to compute inverse cosinh
+	Returns:
+		out (array): Inverse cosinh of array
+	'''
+	return np.arccosh(a)
+
+@jit
+def arctanh(a):
+	'''
+	Calculate inverse tanh of array a
+	Args:
+		a (array): Array to compute inverse tanh
+	Returns:
+		out (array): Inverse tanh of array
+	'''
+	return np.arctanh(a)
 
 
 @jit
@@ -1755,16 +1940,16 @@ def take(a,indices,axes):
 
 	for axis,index in zip(axes,indices):
 		if isinstance(index,int):
-			index = slice(index)
+			index = array(range(index))
 		else:
-			index = array(index)
+			index = array(_iter_(index))
 		a = np.take(a,index,axis)
 	return a
 
 
 def put(a,b,indices,axes):
 	'''
-	Take slices from array to array
+	Put array to slices array
 	Args:
 		a (array): Array to put
 		b (array): Array to take
@@ -2478,6 +2663,26 @@ def gradient_sigmoid(a,scale=1):
 	return scale*sigmoid(a,scale)*sigmoid(-a,scale)
 
 
+def to_number(a,dtype,**kwargs):
+	'''
+	Convert object to number
+	Args:
+		a (int,float,str): Object to convert to number
+		dtype (data_type): Datatype of number
+	Returns:
+		number (object): Number representation of object
+	'''
+	prefixes = {'-':-1}
+	coefficient = 1
+	if not isinstance(a,str):
+		number = a
+	else:
+		for prefix in prefixes:
+			if a.startswith(prefix):
+				a = prefix.join(a.split(prefix)[1:])
+				coefficient *= prefixes[prefix]
+		number = onp.asarray([(coefficient*float(a))],dtype=dtype)[0]
+	return number
 
 def to_str(a,**kwargs):
 	'''

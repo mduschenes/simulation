@@ -38,93 +38,193 @@ from src.utils import gradient_sigmoid
 from src.utils import pi,e
 from src.io import load,dump,path_join,path_split
 
-# @partial(jit,static_argnums=(1,))
 def bound(a,hyperparameters):
-	# return 1/(1+np.exp(-eps*a))
+	'''
+	Bound array
+	Args:
+		a (array): Array to bound
+		hyperparameters (dict): Hyperparameters for bounds
+	Returns:
+		out (array): Bounded array
+	'''
 	return sigmoid(a,hyperparameters['hyperparameters']['sigmoid'])
 
-# @partial(jit,static_argnums=(1,))
 def gradient_bound(a,hyperparameters):
-	# return 1/(1+np.exp(-eps*a))
+	'''
+	Gradient of bound array
+	Args:
+		a (array): Array to bound
+		hyperparameters (dict): Hyperparameters for bounds
+	Returns:
+		out (array): Gradient of bounded array
+	'''
 	return gradient_sigmoid(a,hyperparameters['hyperparameters']['sigmoid'])	
 
-# @partial(jit,static_argnums=(1,2,3,))
-def params(parameters,hyperparameters,parameter,group):
+def variables(parameters,hyperparameters,parameter,group):
+	'''
+	Get variables from parameters, compute features, and variables from features
+	Args:
+		parameters (array): Array of parameters to compute variables
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for variables
+		group (str): Parameter group for variables
+	Returns:
+		variable (array): variables
+	'''
+	shape = parameters.shape
+	n = shape[-1]
 
-	indices = hyperparameters['parameters'][parameter]['slice'][group]
-	n = len(indices)
+	feature = features(parameters,hyperparameters,parameter,group)
 
 	if parameter in ['xy'] and group in [('x',)]:
-		param = (
-			hyperparameters['parameters'][parameter]['scale']*
-			sigmoid(parameters[:,indices[0::2]])*
-			cos(2*pi*sigmoid(parameters[:,indices[1::2]]))
+		variable = (
+			hyperparameters['parameters'][parameter]['scale']*feature[0]*
+			cos(2*pi*feature[1])
 		)
-		# param = (
-		# 	hyperparameters['parameters'][parameter]['scale']*
-		# 	parameters[:,indices[:n//2]]
-		# )
+		variable = (
+			hyperparameters['parameters'][parameter]['scale']*
+			parameters[:,0:n//2]
+		)
 
 	elif parameter in ['xy'] and group in [('y',)]:
-		param = (
-			hyperparameters['parameters'][parameter]['scale']*
-			sigmoid(parameters[:,indices[0::2]])*
-			sin(2*pi*sigmoid(parameters[:,indices[1::2]]))
+		variable = (
+			hyperparameters['parameters'][parameter]['scale']*feature[0]*
+			sin(2*pi*feature[1])
 		)		
-		# param = (
-		# 	hyperparameters['parameters'][parameter]['scale']*
-		# 	parameters[:,indices[n//2:]]
-		# )		
+		variable = (
+			hyperparameters['parameters'][parameter]['scale']*
+			parameters[:,n//2:]
+		)		
 
 	elif parameter in ['z'] and group in [('z',)]:
-		param = (
+		variable = (
 			hyperparameters['parameters'][parameter]['scale']*
-			parameters[:,indices]
+			feature[0]
 		)
 
 	elif parameter in ['zz'] and group in [('zz',)]:
-		param = (
+		variable = (
 			hyperparameters['parameters'][parameter]['scale']*
-			parameters[:,indices]
+			feature[0]
 		)
 
-	return param
 
-# @partial(jit,static_argnums=(1,2,3,))
+	elif parameter in ['xy'] and group in [('x_0','x_1'),('x_2','x_3')]:
+		variable = (
+			hyperparameters['parameters'][parameter]['scale']*feature[0]*
+			cos(2*pi*feature[1])
+		)		
+		# variable = (
+		# 	hyperparameters['parameters'][parameter]['scale']*
+		# 	parameters[:,0:n//2]
+		# )
+
+	elif parameter in ['xy'] and group in [('y_0','y_1'),('y_2','y_3')]:
+		variable = (
+			hyperparameters['parameters'][parameter]['scale']*feature[0]*
+			sin(2*pi*feature[1])
+		)
+		# variable = (
+		# 	hyperparameters['parameters'][parameter]['scale']*
+		# 	parameters[:,n//2:]
+		# )		
+
+	elif parameter in ['z'] and group in [('z',)]:
+		variable = (
+			hyperparameters['parameters'][parameter]['scale']*
+			feature[0]
+		)
+
+	elif parameter in ['zz'] and group in [('zz',)]:
+		variable = (
+			hyperparameters['parameters'][parameter]['scale']*
+			feature[0]
+		)		
+
+	return variable
+
+
+def features(parameters,hyperparameters,parameter,group):
+	'''
+	Get features from parameters
+	Args:
+		parameters (array): Array of parameters to compute features
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for features
+		group (str): Parameter group for features
+	Returns:
+		feature (array): features
+	'''
+	shape = parameters.shape
+	n = shape[-1]
+
+	if parameter in ['xy'] and group in [('x',)]:
+		feature = (
+			sigmoid(parameters[:,0::2]),
+			sigmoid(parameters[:,1::2])
+		)
+
+	elif parameter in ['xy'] and group in [('y',)]:
+		feature = (
+			sigmoid(parameters[:,0::2]),
+			sigmoid(parameters[:,1::2])
+		)		
+
+	elif parameter in ['z'] and group in [('z',)]:
+		feature = (
+			parameters,
+		)
+
+	elif parameter in ['zz'] and group in [('zz',)]:
+		feature = (
+			parameters,
+		)
+
+	return feature
+
 def constraints(parameters,hyperparameters,parameter,group):
-
-	indices = hyperparameters['parameters'][parameter]['slice'][group]
-	slices = slice(1,-1)
-	n = len(indices)
+	'''
+	Get constraints from parameters
+	Args:
+		parameters (array): Array of parameters to compute constraints
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for constraints
+		group (str): Parameter group for constraints
+	Returns:
+		constraints (array): constraints
+	'''
+	shape = parameters.shape
+	n = shape[-1]
 
 	if parameter in ['xy'] and group in [('x',),('y',)]:
-		constraint = (
+		constraint = 0
+		# constraint = (
 			# (hyperparameters['hyperparameters']['lambda'][0]*bound(
 			# 	(hyperparameters['parameters'][parameter]['bounds'][0] - 
-			# 	parameters[:,indices[0::2]]),
+			# 	parameters[:,0::2]),
 			# 	hyperparameters) +
 			# hyperparameters['hyperparameters']['lambda'][1]*bound(
 			# 	(hyperparameters['parameters'][parameter]['bounds'][0] - 
-			# 	parameters[:,indices[1::2]]),
+			# 	parameters[:,1::2]),
 			# 	hyperparameters)
 			# ).sum() +				 
-			(sum(
-				hyperparameters['hyperparameters']['lambda'][2]*(
-				(i[1]-
-				parameters[i[0][0],indices]
-				)**2)
-				for i in hyperparameters['parameters'][parameter]['constants'])
-			).sum()
-		)
+			# (sum(
+			# 	hyperparameters['hyperparameters']['lambda'][2]*(
+			# 	(hyperparameters['parameters'][parameter]['boundaries'][0][i]-
+			# 	parameters[i,:]
+			# 	)**2)
+			# 	for i in hyperparameters['parameters'][parameter]['boundaries'][0])
+			# ).sum()
+		# )
 		# x = (
-		# 	parameters[:,indices[:n//2]]**2+
-		# 	parameters[:,indices[n//2:]]**2
+		# 	parameters[:,0:n//2]**2+
+		# 	parameters[:,n//2:]**2
 		# 	)**(1/2)
 
 		# constraint = (
 		# 	(
 		# 	hyperparameters['hyperparameters']['lambda'][1]*bound(
-		# 		(-hyperparameters['parameters'][parameter]['bounds'][1] + x[slices]),
+		# 		(-hyperparameters['parameters'][parameter]['bounds'][1] + x),
 		# 		hyperparameters
 		# 		)
 		# 	).sum()
@@ -132,7 +232,7 @@ def constraints(parameters,hyperparameters,parameter,group):
 		# 	# (sum(
 		# 	# 	hyperparameters['hyperparameters']['lambda'][2]*(
 		# 	# 	(i[1] - x[i[0][0]]))**2
-		# 	# 	for i in hyperparameters['parameters'][parameter]['constants'])
+		# 	# 	for i in hyperparameters['parameters'][parameter]['boundaries'])
 		# 	# ).sum()
 		# )
 
@@ -147,40 +247,48 @@ def constraints(parameters,hyperparameters,parameter,group):
 
 # @partial(jit,static_argnums=(1,2,3,))
 def gradient_constraints(parameters,hyperparameters,parameter,group):
-
-	indices = hyperparameters['parameters'][parameter]['slice'][group]
-	slices = slice(1,-1)	
-	n = len(indices)
+	'''
+	Get gradients of constraints from parameters
+	Args:
+		parameters (array): Array of parameters to compute constraints
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for constraints
+		group (str): Parameter group for constraints
+	Returns:
+		grad (array): gradient of constraints
+	'''
+	shape = parameters.shape
+	n = shape[-1]
 
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		# grad = (
 		# 	(hyperparameters['hyperparameters']['lambda'][0]*bound(
 		# 		(hyperparameters['parameters'][parameter]['bounds'][0] - 
-		# 		parameters[:,indices[0::2]]),
+		# 		parameters[:,0::2]),
 		# 		hyperparameters) +
 		# 	hyperparameters['hyperparameters']['lambda'][1]*bound(
 		# 		(hyperparameters['parameters'][parameter]['bounds'][0] - 
-		# 		parameters[:,indices[1::2]]),
+		# 		parameters[:,1::2]),
 		# 		hyperparameters)
 		# 	).sum() +				 
 		# 	(sum(
 		# 		hyperparameters['hyperparameters']['lambda'][2]*(
 		# 		(i[1]-
-		# 		parameters[i[0][0],indices]
+		# 		parameters[i[0][0],:]
 		# 		)**2)
-		# 		for i in hyperparameters['parameters'][parameter]['constants'])
+		# 		for i in hyperparameters['parameters'][parameter]['boundaries'])
 		# 	).sum()
 		# )
 		x = (
-			parameters[:,indices[:n//2]]**2+
-			parameters[:,indices[n//2:]]**2
+			parameters[:,0:n//2]**2+
+			parameters[:,n//2:]**2
 			)**(1/2)
 
 		grad = np.zeros(parameters.shape)
 		_grad = (
 			(
 			hyperparameters['hyperparameters']['lambda'][1]*gradient_bound(
-				(-hyperparameters['parameters'][parameter]['bounds'][1] + x[slices]),
+				(-hyperparameters['parameters'][parameter]['bounds'][1] + x),
 				hyperparameters
 				)
 			)
@@ -188,16 +296,16 @@ def gradient_constraints(parameters,hyperparameters,parameter,group):
 			# (sum(
 			# 	-2*hyperparameters['hyperparameters']['lambda'][2]*(
 			# 	(i[1] - x[i[0][0]]))
-			# 	for i in hyperparameters['parameters'][parameter]['constants'])
+			# 	for i in hyperparameters['parameters'][parameter]['boundaries'])
 			# ).sum()
 		)
 	
-		grad = jax.lax.dynamic_update_slice(grad,_grad*parameters[slices][:,indices[:n//2]]/x[slices],(1,indices[0]))
-		grad = jax.lax.dynamic_update_slice(grad,_grad*parameters[slices][:,indices[n//2:]]/x[slices],(1,indices[n//2]))
+		grad = jax.lax.dynamic_update_slice(grad,_grad*parameters[:,0:n//2]/x,(1,0))
+		grad = jax.lax.dynamic_update_slice(grad,_grad*parameters[:,n//2:]/x,(1,n//2))
 
-		# grad = grad.at[slices].at[:,indices[:n//2]].set(_grad*parameters[slices][:,indices[:n//2]]/x[slices])
-		# grad = grad.at[slices].at[:,indices[n//2:]].set(_grad*parameters[slices][:,indices[n//2:]]/x[slices])
-		# grad[slices][:,indices[n//2:]] = _grad*parameters[slices][:,indices[n//2:]]/x[slices]
+		# grad = grad.at[:,0:n//2].set(_grad*parameters[:,0:n//2]/x)
+		# grad = grad.at[:,n//2:].set(_grad*parameters[:,n//2:]/x)
+		# grad[:,n//2:] = _grad*parameters[:,n//2:]/x
 	elif parameter in ['z'] and group in [('z',)]:
 		grad = np.zeros(parameters.shape)
 	elif parameter in ['zz'] and group in [('zz',)]:
@@ -208,16 +316,26 @@ def gradient_constraints(parameters,hyperparameters,parameter,group):
 	return grad	
 
 
-# @partial(jit,static_argnums=(1,2,3,))
-def grads(parameters,hyperparameters,parameter,group):
-	#TODO (finish analytic derivatives for params functions as a matrix of (k,l) shape for k output parameters and l parameters)
+def gradients(parameters,hyperparameters,parameter,group):
+	'''
+	Get gradient of variables from parameters
+	Args:
+		parameters (array): Array of parameters to compute variables
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for variables
+		group (str): Parameter group for variables
+	Returns:
+		grad (array): gradient of variables
+	'''	
+
+	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
 	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
-	if group in [('x',)]:
-		param = hyperparameters['parameters'][parameter]['scale']*(
+	if group in [('x',),('x_0','x_1'),('x_2','x_3'),]:
+		variable = hyperparameters['parameters'][parameter]['scale']*(
 			parameters[:,hyperparameters['parameters'][parameter]['slice'][group][:n//2]])
 
-	elif group in [('y',)]:
-		param = hyperparameters['parameters'][parameter]['scale']*(
+	elif group in [('y',),('y_0','y_1'),('y_2','y_3')]:
+		variable = hyperparameters['parameters'][parameter]['scale']*(
 			parameters[:,hyperparameters['parameters'][parameter]['slice'][group][n//2:]])		
 
 	elif parameter in ['z'] and group in [('z',)]:
@@ -225,116 +343,39 @@ def grads(parameters,hyperparameters,parameter,group):
 	elif parameter in ['zz'] and group in [('zz',)]:
 		grad = np.zeros(parameters.shape)
 	
-	return param	
+	return variable	
 
 
 
 def setup(hyperparameters):
-
-	section = None
-	updates = {
-		'label': {
-			'value': (lambda hyperparameters: hyperparameters['hyperparameters']['label']),
-			'default': (lambda hyperparameters: None),
-			'conditions': (lambda hyperparameters: hyperparameters['hyperparameters'].get('label') is not None)				
-		},
-	}			
-	for attr in updates:								
-		hyperparameters[attr] = hyperparameters.get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[attr] = updates[attr]['value'](hyperparameters)
-
-
-	section = 'sys'
-	updates = {
-		'path': {
-			'value': (lambda hyperparameters: 	{
-				attr: path_join(hyperparameters[section]['directory'][attr],
-								 '.'.join([hyperparameters[section]['file'][attr]]) if attr in ['data','plot'] else hyperparameters[section]['file'][attr],
-								 ext=hyperparameters[section]['ext'][attr])
-						if isinstance(hyperparameters[section]['file'][attr],str) else
-						{i: path_join(hyperparameters[section]['directory'][attr][i],
-								 '.'.join([hyperparameters[section]['file'][attr][i]]) if attr in ['data','plot'] else hyperparameters[section]['file'][attr][i],							 
-								 ext=hyperparameters[section]['ext'][attr][i])
-						for i in hyperparameters[section]['file'][attr]}
-				for attr in hyperparameters[section]['file']			 
-			}),
-			'default': (lambda hyperparameters: None),
-			'conditions': (lambda hyperparameters: hyperparameters[section].get('path') is None)
-		},		
-	}			
-	for attr in updates:						
-		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
-
-
-	section = 'model'
-	updates = {
-		'tau': {
-			'value': (lambda hyperparameters: hyperparameters[section]['tau']/hyperparameters['hyperparameters']['scale']),
-			'default': (lambda hyperparameters: 1),
-			'conditions': (lambda hyperparameters: True)
-		},		
-	}			
-	for attr in updates:						
-		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
-
-	section = 'hyperparameters'
-	updates = {
-		'runs': {
-			'value': (lambda hyperparameters: list(range(hyperparameters[section]['runs']))),
-			'default': (lambda hyperparameters: 1),
-			'conditions': (lambda hyperparameters: not isinstance(hyperparameters[section]['runs'],(list,tuple,array)))
-		},
-	}			
-	for attr in updates:						
-		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
+	'''
+	Setup hyperparameters
+	Args:
+		hyperparameters (dict): Hyperparameters
+	'''
 
 	section = 'parameters'
 	updates = {
-		'group': {
-			'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters[section][parameter]['group']]),
-			'default': (lambda parameter,hyperparameters: []),
-			'conditions': (lambda parameter,hyperparameters: True)				
-		},
-		'scale': {
-			'value': (lambda parameter,hyperparameters: hyperparameters['hyperparameters']['scale']*hyperparameters[section][parameter]['scale']),
-			'default': (lambda parameter,hyperparameters: 1),
-			'conditions': (lambda parameter,hyperparameters: True)						
-		},
-		'locality': {
-			'value':(lambda parameter,hyperparameters: hyperparameters['hyperparameters']['locality']),
-			'default':(lambda parameter,hyperparameters: None),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters['parameters'][parameter]['category'] in ['variable'])
-		},		
-	}			
-	for parameter in hyperparameters[section]:
-		for attr in updates:						
-			hyperparameters[section][parameter][attr] = hyperparameters[section][parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
-			if updates[attr]['conditions'](parameter,hyperparameters):
-				hyperparameters[section][parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
-
-
-	section = 'parameters'
-	updates = {
-		'func':{
-			'value':(lambda parameter,hyperparameters: params),
+		'variables':{
+			'value':(lambda parameter,hyperparameters: variables),
 			'default':(lambda parameter,hyperparameters: {}),
 			'conditions': (lambda parameter,hyperparameters: True)
 		},
+		'features':{
+			'value':(lambda parameter,hyperparameters: features),
+			'default':(lambda parameter,hyperparameters: {}),
+			'conditions': (lambda parameter,hyperparameters: True)
+		},		
 		'constraints':{
 			'value':(lambda parameter,hyperparameters: constraints),
 			'default': (lambda parameter,hyperparameters: {}),
 			'conditions': (lambda parameter,hyperparameters: True)
 		},
+		'gradients':{
+			'value':(lambda parameter,hyperparameters: gradients),
+			'default':(lambda parameter,hyperparameters: {}),
+			'conditions': (lambda parameter,hyperparameters: True)
+		},			
 		'gradient_constraints':{
 			'value':(lambda parameter,hyperparameters: gradient_constraints),
 			'default': (lambda parameter,hyperparameters: {}),
@@ -347,7 +388,8 @@ def setup(hyperparameters):
 			if updates[attr]['conditions'](parameter,hyperparameters):
 				for group in hyperparameters[section][parameter]['group']:
 					# hyperparameters[section][parameter][attr][group] = (lambda parameters,hyperparameters,parameter=parameter,group=group,func=updates[attr]['value'](parameter,hyperparameters): func(parameters,hyperparameters,parameter=parameter,group=group))
-					hyperparameters[section][parameter][attr][group] = partial(updates[attr]['value'](parameter,hyperparameters),parameter=parameter,group=group)
+					group = tuple(group)
+					hyperparameters[section][parameter][attr][group] = (partial(updates[attr]['value'](parameter,hyperparameters),parameter=parameter,group=group))
 
 	return
 
