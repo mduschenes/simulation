@@ -1370,7 +1370,7 @@ def powerset(iterable,probability=1):
 
 	for number,iteration in enumerate(itertools.product(*[[[], [i]] for i in iterable])):
 		iteration = (j for i in iteration for j in i)
-		if (probability==1) or (onp.random.rand() >= probability):
+		if (probability==1) or (rand() >= probability):
 			yield iteration
 		else:
 			continue
@@ -2034,7 +2034,7 @@ def randomstring(K,N,D=2):
 	
 	assert D==2,"Qudits for D=%d > 2 not implemented"%(D)
 	
-	seed = onp.random.randint(1e6)
+	seed = None
 	key = PRNGKey(seed)
 
 	d = int(D**2)
@@ -2067,7 +2067,7 @@ def paulistring(string,N,K,D=2):
 	
 	assert D==2,"Qudits for D=%d > 2 not implemented"%(D)
 	
-	seed = onp.random.randint(1e6)
+	seed = None
 	key = PRNGKey(seed)
 
 	d = int(D**2)

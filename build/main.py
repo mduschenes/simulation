@@ -74,40 +74,49 @@ def variables(parameters,hyperparameters,parameter,group):
 	shape = parameters.shape
 	n = shape[-1]
 
-	feature = features(parameters,hyperparameters,parameter,group)
+	# feature = features(parameters,hyperparameters,parameter,group)
 
 	if parameter in ['xy'] and group in [('x',)]:
-		variable = (
-			hyperparameters['parameters'][parameter]['scale']*feature[0]*
-			cos(2*pi*feature[1])
-		)
+		# variable = (
+		# 	hyperparameters['parameters'][parameter]['scale']*feature[0]*
+		# 	cos(2*pi*feature[1])
+		# )
 		variable = (
 			hyperparameters['parameters'][parameter]['scale']*
 			parameters[:,0:n//2]
 		)
 
 	elif parameter in ['xy'] and group in [('y',)]:
-		variable = (
-			hyperparameters['parameters'][parameter]['scale']*feature[0]*
-			sin(2*pi*feature[1])
-		)		
+		# variable = (
+		# 	hyperparameters['parameters'][parameter]['scale']*feature[0]*
+		# 	sin(2*pi*feature[1])
+		# )		
 		variable = (
 			hyperparameters['parameters'][parameter]['scale']*
 			parameters[:,n//2:]
 		)		
 
 	elif parameter in ['z'] and group in [('z',)]:
+		# variable = (
+		# 	hyperparameters['parameters'][parameter]['scale']*
+		# 	feature[0]
+		# )
+
 		variable = (
 			hyperparameters['parameters'][parameter]['scale']*
-			feature[0]
-		)
+			parameters
+		)		
 
 	elif parameter in ['zz'] and group in [('zz',)]:
+		# variable = (
+		# 	hyperparameters['parameters'][parameter]['scale']*
+		# 	feature[0]
+		# )
+
 		variable = (
 			hyperparameters['parameters'][parameter]['scale']*
-			feature[0]
-		)
-
+			parameters
+		)		
 
 	elif parameter in ['xy'] and group in [('x_0','x_1'),('x_2','x_3')]:
 		variable = (

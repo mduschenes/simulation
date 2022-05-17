@@ -810,8 +810,7 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		return self.__loss__(parameters)
-		# return self.__loss__(parameters) + self.__constraints__(parameters)
+		return self.__loss__(parameters) + self.__constraints__(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
@@ -1583,6 +1582,41 @@ class Hamiltonian(Object):
 			for category in categories
 		}
 
+		# indices of categories, including variables and excluding boundaries
+		indexs = {
+			category: tuple([
+						slice(
+							*array(list(set([i
+							for parameter in hyperparameters['parameters']
+							for group in hyperparameters['parameters'][parameter]['group']
+							for i in [
+								*_iter_(hyperparameters['parameters'][parameter]['index'][group][axis]),
+								] 
+						   if hyperparameters['parameters'][parameter]['category'] == category])))[array([0,-1])]+array([0,1])
+						,1)
+						for axis in axes
+						])
+			for category in categories
+		}
+
+		# indices of categories, including variables and including boundaries
+		index = {
+			category: tuple([
+						slice(
+							*array(list(set([i
+							for parameter in hyperparameters['parameters']
+							for group in hyperparameters['parameters'][parameter]['group']
+							for i in [
+								*_iter_(hyperparameters['parameters'][parameter]['index'][group][axis]),
+								*[shape[axis]+i if i< 0 else i for i in hyperparameters['parameters'][parameter]['boundaries'][axis]]
+								] 
+						   if hyperparameters['parameters'][parameter]['category'] == category])))[array([0,-1])]+array([0,1])
+						,1)
+						for axis in axes
+						])
+			for category in categories
+		}
+
 		# shape of categories, including parameters and excluding boundaries
 		shapes = {
 			category: tuple([
@@ -1636,6 +1670,8 @@ class Hamiltonian(Object):
 		hyperparameters['shape'] = shape
 		hyperparameters['slices'] = slcs
 		hyperparameters['slice'] = slc
+		hyperparameters['indexes'] = indexs
+		hyperparameters['index'] = index
 		hyperparameters['coefficients'] = self.coefficients
 
 		# Update class attributes
@@ -1719,16 +1755,12 @@ class Hamiltonian(Object):
 			if hyperparameters['parameters'][parameter]['category'] == category:
 				for group in hyperparameters['parameters'][parameter]['group']:
 					feature = hyperparameters['parameters'][parameter]['features'][group](parameters,hyperparameters)
-
-					indices = tuple([i if j < (ndim) else i 
-									for j,i in enumerate(hyperparameters['parameters'][parameter]['index'][group]) 
-								])
-					features = features.at[indices].set(feature[0])
-					
-					indices = tuple([i if j < (ndim-1) else slice(2*i.start,2*i.start+(i.stop-i.start),i.step)
-									for j,i in enumerate(hyperparameters['parameters'][parameter]['index'][group]) 
-								])					
-					features = features.at[indices].set(feature[1])
+					length = len(feature)
+					for l in range(length):
+						indices = tuple([i if j < (ndim-1) else slice(l*(i.stop-i.start)+i.start,(l+1)*(i.stop-i.start)+i.start,i.step)
+										for j,i in enumerate(hyperparameters['parameters'][parameter]['index'][group]) 
+									])					
+						features = features.at[indices].set(feature[l])
 
 		return features
 
@@ -1995,25 +2027,22 @@ class Unitary(Hamiltonian):
 		'''		
 		
 		category = 'variable'
+		axis = 1
 		shape = self.hyperparameters['shapes'][category]
-		index = array(list(set([
-			i for parameter in self.hyperparameters['parameters'] 
-			for group in self.hyperparameters['parameters'][parameter]['group'] 
-			for i in self.hyperparameters['parameters'][parameter]['index'][group][-1]
-			if self.hyperparameters['parameters'][parameter]['category'] == category])))
+		index = self.hyperparameters['indexes'][category]
 		parameters = self.__parameters__(parameters)
 		coefficients = self.coefficients
 
 		grad = gradient_expm(-1j*coefficients*parameters,self.data,self.identity)
 		grad *= -1j*coefficients
-		grad = grad.reshape(shape[0],-1,*grad.shape[1:])
+		grad = grad.reshape((shape[0],-1,*grad.shape[1:]))
 
-		grad = grad.transpose(1,0,*range(2,grad.ndim))
+		grad = grad.transpose(axis,0,*range(axis+1,grad.ndim))
 		grad = gradient_trotter(grad,self.p)
-		grad = grad[index]
-		grad = grad.transpose(1,0,*range(2,grad.ndim))
+		grad = grad[index[axis]]
+		grad = grad.transpose(axis,0,*range(axis+1,grad.ndim))
 		
-		grad = grad.reshape(-1,*grad.shape[2:])
+		grad = grad.reshape((-1,*grad.shape[2:]))
 
 		derivative = grad
 		
@@ -2546,14 +2575,14 @@ def run(hyperparameters):
 		print(allclose(g(parameters),h(parameters)))
 		print(allclose(f(parameters),h(parameters)))
 
-		# print(g(parameters)-h(parameters))
+		print((g(parameters)-h(parameters))/g(parameters))
 
-		# grad = gradient(func)
-		# fgrad = gradient_finite(func,tol=5e-8)
-		# agrad = obj.__grad__
+		grad = gradient(func)
+		fgrad = gradient_finite(func,tol=5e-8)
+		agrad = obj.__grad__
 
-		# print(allclose(grad(parameters),fgrad(parameters)))
-		# print(allclose(grad(parameters),agrad(parameters)))
+		print(allclose(grad(parameters),fgrad(parameters)))
+		print(allclose(grad(parameters),agrad(parameters)))
 
 
 		# print()
