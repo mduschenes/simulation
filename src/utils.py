@@ -79,6 +79,16 @@ def jit(func,*,static_argnums=None):
 	# return func
 	return jax.jit(func,static_argnums=static_argnums)
 
+def jitpartial(func,*,static_argnums=None,**kwargs):
+	'''
+	Just-in-time compile function
+	Args:
+		func (callable): Function to compile
+		static_argnums (dict): Arguments to statically compile
+	Returns:
+		func (callable): Compiled function
+	'''
+	return jax.jit(partial(func,**kwargs),static_argnums=static_argnums)
 
 
 
@@ -557,6 +567,30 @@ class arange(array):
 	def __new__(self,*args,**kwargs):
 		return jax.device_put(np.arange(*args,**kwargs))
 
+class linspace(array):
+	'''
+	array class of linspace
+	Args:
+		args (iterable): Array arguments
+		kwargs (dict): Array keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return jax.device_put(np.linspace(*args,**kwargs))
+
+class logspace(array):
+	'''
+	array class of linspace
+	Args:
+		args (iterable): Array arguments
+		kwargs (dict): Array keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return jax.device_put(np.logspace(*args,**kwargs))
+
 
 class identity(array):
 	'''
@@ -665,15 +699,19 @@ class toffoli(array):
 
 
 
-def PRNGKey(seed=None,split=False):
+def PRNGKey(seed=None,split=False,reset=None):
 	'''
 	Generate PRNG key
 	Args:
 		seed (int): Seed for random number generation or random key for future seeding
 		split(bool,int): Number of splits of random key
+		reset (bool,int): Reset seed
 	Returns:
 		key (key,list[key]): Random key
 	'''	
+
+	if reset is not None:
+		onp.random.seed(reset)
 
 	if seed is None:
 		seed = onp.random.randint(1e12)
@@ -1938,11 +1976,14 @@ def take(a,indices,axes):
 		axes = [axes]
 		indices = [indices]
 
+	shape = a.shape
+
 	for axis,index in zip(axes,indices):
 		if isinstance(index,int):
 			index = array(range(index))
 		else:
 			index = array(_iter_(index))
+		index = minimum(shape[axis]-1,index)[:shape[axis]]
 		a = np.take(a,index,axis)
 	return a
 

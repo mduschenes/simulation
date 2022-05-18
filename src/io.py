@@ -140,7 +140,7 @@ def deserialize_json(obj,key='py/object'):
 	return obj
 
 
-def pickleable(obj,path=None,callables=True):
+def pickleable(obj,path=None,callables=True,verbose=True):
 	'''
 	Check if object can be written to file and can be pickled
 	Args:
@@ -154,6 +154,7 @@ def pickleable(obj,path=None,callables=True):
 		pickleables = {k: pickleable(obj[k],path,callables=callables) for k in obj} 
 		for k in pickleables:
 			if not pickleables[k] or (not callables and callable(pickleables[k])):
+				logger.log(verbose,'Cannot pickle (key,value) %r, %r'%(k,obj[k]))
 				obj.pop(k);
 				pickleables[k] = True		
 		return all([pickleables[k] for k in pickleables])
