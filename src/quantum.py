@@ -814,7 +814,7 @@ class Object(object):
 		'''	
 		return self.__loss__(parameters) + self.__constraints__(parameters)
 
-	# @partial(jit,static_argnums=(0,))
+	@partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
 		''' 
 		Setup gradient of objective
@@ -843,7 +843,6 @@ class Object(object):
 		return grad
 		# return gradient(self.__func__)(parameters)
 
-	# @partial(jit,static_argnums=(0,))
 	def __callback__(self,parameters):
 		''' 
 		Setup callback and logging
@@ -863,7 +862,7 @@ class Object(object):
 
 			self.hyperparameters['hyperparameters']['track']['parameters'].append(copy.deepcopy(parameters))		
 
-			self.log('%d f(x) = %0.4f'%(
+			self.log('%d f(x) = %0.10f'%(
 				self.hyperparameters['hyperparameters']['track']['iteration'][-1],
 				self.hyperparameters['hyperparameters']['track']['objective'][-1],
 				)
@@ -1104,6 +1103,8 @@ class Object(object):
 
 		layout = [shape[1],1]
 		plots = [None]*layout[0]
+		layout = [shape[1],2]		
+		plots = [[None]*layout[1]]*layout[0]
 		figsize = (20,20)
 		iterations = list(sorted(list(set([min(size-1,i) 
 							for i in [
@@ -1114,6 +1115,7 @@ class Object(object):
 							]))))
 		labels = [r'\alpha',r'\phi']
 		lims = [[-0.25,1.25],[-1.25,1.25]]
+		lims = [[None,None],[None,None]]
 
 		j = 0
 		parameters0 = self.__features__(hyperparameters['hyperparameters']['track'][attr][j])[indices]
@@ -1122,6 +1124,12 @@ class Object(object):
 		
 			if fig is None:
 				fig,ax = plt.subplots(*layout)
+				if layout[0] == 1 and layout[1] == 1:
+					ax = [[ax]]
+				elif layout[0] == 1:
+					ax = [ax]
+				elif layout[1] == 1:
+					ax = [[a] for a in ax]
 			elif ax is None:
 				ax = fig.gca()
 
@@ -1129,38 +1137,54 @@ class Object(object):
 
 				parameters = self.__features__(hyperparameters['hyperparameters']['track'][attr][j])[indices]
 
-				for i in range(shape[1]):
-					x = arange(shape[0])
-					y = parameters[:,i]
+				for i in range(layout[0]):
+					for k in range(layout[1]):
+						x = arange(shape[0])
+						y = parameters[:,i]
 
+						if layout[1] > 1:
+							if k == 0:
+								y = parameters[:,i]
+							elif k == 1:
+								y0 = parameters0[:,i]
+								y = abs((y - y0)/(maximum(y,y0)+1e-20))	
+						else:
+							y0 = parameters0[:,i]
+							y = abs((y - y0)/(maximum(y,y0)+1e-20))
 
-					# y0 = parameters0[:,i]
-					# y = abs((y - y0)/(maximum(y,y0)+1e-20))
+						label = labels[i%2]
 
-					label = labels[i%2]
+						plots[i][k] = ax[i][k].plot(x,y,
+							color=getattr(plt.cm,'viridis')((iterations.index(j)*10)/(len(iterations)*10)),
+							marker='',alpha=0.8,linewidth=3,
+							# label=r'${%s}^{(%s)}_{%s}$'%(label,str(j),str(i//2) if shape[1]>2 else '')
+							label=r'${%s}^{(%s)}_{%s}$'%(r'\theta',str(j),'')
+						)
 
-					plots[i] = ax[i].plot(x,y,
-						color=getattr(plt.cm,'viridis')((iterations.index(j)*10)/(len(iterations)*10)),
-						marker='',alpha=0.8,linewidth=3,
-						# label=r'${%s}^{(%s)}_{%s}$'%(label,str(j),str(i//2) if shape[1]>2 else '')
-						label=r'${%s}^{(%s)}_{%s}$'%(r'\theta',str(j),'')
-					)
+						ax[i][k].set_xlim(xmin=0,xmax=shape[0])
+						# ax[i][k].set_ylim(ymin=lims[i%2][0],ymax=lims[i%2][1])
+						ax[i][k].set_ylabel(ylabel=r'${%s}_{%s}$'%(label,str(i//2) if shape[1]>2 else ''))
+						ax[i][k].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
+						ax[i][k].set_yscale(value='linear')
+						# ax[i][k].set_yscale(value='log')
+						ax[i][k].grid(True)	
 
-					ax[i].set_xlim(xmin=0,xmax=shape[0])
-					ax[i].set_ylim(ymin=lims[i%2][0],ymax=lims[i%2][1])
-					ax[i].set_ylabel(ylabel=r'${%s}_{%s}$'%(label,str(i//2) if shape[1]>2 else ''))
-					ax[i].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
-					ax[i].set_yscale(value='linear')
-					# ax[i].set_yscale(value='log')
-					ax[i].grid(True)	
-
-					if i == 0:
-						ax[i].legend(loc=(0.15,1.1),ncol=min(4,len(ax[i].get_legend_handles_labels()[0])))
-
+						if i == 0:
+							if layout[1] > 1:
+								if k == 0:
+									ax[i][k].legend(
+										title=r'${%s}^{(%s)}_{%s} ~, ~ \abs{({%s}^{(%s)}_{%s} - {%s}^{(%s)}_{%s})/\textrm{max}({%s}^{(%s)}_{%s},{%s}^{(%s)}_{%s})}$'%(
+											r'\theta','i','',r'\theta','i','',r'\theta','0','',r'\theta','i','',r'\theta','0',''),
+										loc=(0.15,1.05),ncol=min(6,len(ax[i][k].get_legend_handles_labels()[0]))
+										)
+							else:
+								ax[i][k].legend(
+									loc=(0.15,1.1),ncol=min(4,len(ax[i][k].get_legend_handles_labels()[0]))
+									)
 
 			fig.set_size_inches(*figsize)
 			fig.subplots_adjust()
-			fig.tight_layout()
+			# fig.tight_layout()
 			dump(fig,path)
 
 		self.fig[attr] = fig
@@ -1771,11 +1795,11 @@ class Hamiltonian(Object):
 				# Axes to repeat existing parameters
 				repeats = hyperparameters['parameters'][parameter].get('repeats',[])
 
-				# Boundaries of the form [[[slice_i[axis] for axis in axes],value_i]] 
+				# Boundaries of the form [{i:value} for axis in axes]
 				boundary = hyperparameters['parameters'][parameter].get('boundaries',[])
 
-				# Constants of the form [[[slice_i[axis] for axis in axes],value_i]] 
-				constant = hyperparameters['parameters'][parameter].get('boundaries',[])				
+				# Constants of the form [{i:value} for axis in axes]
+				constant = hyperparameters['parameters'][parameter].get('constants',[])				
 				
 				# If parameters exist
 				reset =  params is None
@@ -1994,7 +2018,7 @@ class Unitary(Hamiltonian):
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
-	# @partial(jit,static_argnums=(0,))
+	@partial(jit,static_argnums=(0,))
 	def __call__(self,parameters):
 		'''
 		Return parameterized operator expm(parameters*data)
@@ -2007,7 +2031,7 @@ class Unitary(Hamiltonian):
 		return exponentiation(-1j*self.coefficients*parameters,self.data,self.identity)
 
 
-	# @partial(jit,static_argnums=(0,))
+	@partial(jit,static_argnums=(0,))
 	def __derivative__(self,parameters):
 		'''
 		Return gradient of parameterized operator expm(parameters*data)
@@ -2135,6 +2159,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 
 	# Initialization hyperparameters
 	bounds = hyperparameters['bounds']
+	constant = hyperparameters['constants']	
 	initialization = hyperparameters['initialization']
 	random = hyperparameters['random']
 	pad = hyperparameters['pad']
@@ -2189,11 +2214,16 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 			interpolation = hyperparameters['interpolation']
 			smoothness = min(shape[0]//2,hyperparameters['smoothness'])
 			shape_interp = (shape[0]//smoothness,*shape[1:])
-
-			pts_interp = (shape_interp[0]+0.5)*smoothness*arange(shape_interp[0])-0.5
+			pts_interp = (shape_interp[0])*smoothness*arange(shape_interp[0])
 			pts = arange(shape[0])
 
 			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
+
+			for axis in axes:
+				for i in constant[axis]:
+					slices = tuple([slice(None) if ax != axis else i for ax in axes])
+					value = constant[axis][i]			
+					parameters_interp = parameters_interp.at[slices].set(value)
 
 			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
 
@@ -2438,6 +2468,11 @@ def check(hyperparameters):
 			'default': (lambda parameter,hyperparameters: []),
 			'conditions': (lambda parameter,hyperparameters: True)				
 		},
+		'constants': {
+			'value': (lambda parameter,hyperparameters: [{int(j):i[j] for j in i} for i in hyperparameters[section][parameter]['constants']]),
+			'default': (lambda parameter,hyperparameters: []),
+			'conditions': (lambda parameter,hyperparameters: True)				
+		},		
 		'group': {
 			'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters[section][parameter]['group']]),
 			'default': (lambda parameter,hyperparameters: []),

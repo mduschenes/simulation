@@ -410,7 +410,12 @@ def main(args):
 
 	path = args[0] if nargs>0 else None
 
-	hyperparameters = load(path)
+	obj = load(path)
+
+	if obj is None:
+		return
+
+	hyperparameters = obj
 
 	setup(hyperparameters)
 

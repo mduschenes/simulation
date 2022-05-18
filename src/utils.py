@@ -361,10 +361,10 @@ class Array(onp.ndarray):
 		return self.string
 
 	def to_numpy(self):
-		return onp.asarray(self)
+		return onp.array(self)
 
 	def to_jax(self):
-		return np.asarray(self)
+		return np.array(self)
 
 	def log(self,msg):
 		'''
@@ -467,6 +467,45 @@ def decorator(*args,**kwargs):
 		return wrapped
 	return wrapper
 
+
+class array(np.ndarray):
+	'''
+	array class
+	Args:
+		args (iterable): Array arguments
+		kwargs (dict): Array keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return jax.device_put(np.array(*args,**kwargs))
+
+
+class oarray(onp.ndarray):
+	'''
+	array class
+	Args:
+		args (iterable): Array arguments
+		kwargs (dict): Array keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return onp.array(*args,**kwargs)
+
+class asarray(onp.ndarray):
+	'''
+	array class
+	Args:
+		args (iterable): Array arguments
+		kwargs (dict): Array keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return onp.asarray(*args,**kwargs)
+
+
 class objs(onp.ndarray):
 	'''
 	array class of objects
@@ -490,33 +529,7 @@ class asobjs(onp.ndarray):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return onp.asarray(*args,**kwargs)
-
-
-class array(np.ndarray):
-	'''
-	array class
-	Args:
-		args (iterable): Array arguments
-		kwargs (dict): Array keyword arguments
-	Returns:
-		out (array): array
-	'''
-	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.array(*args,**kwargs))
-
-
-class asarray(onp.ndarray):
-	'''
-	array class
-	Args:
-		args (iterable): Array arguments
-		kwargs (dict): Array keyword arguments
-	Returns:
-		out (array): array
-	'''
-	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.asarray(*args,**kwargs))
+		return asarray(*args,**kwargs)
 
 class ones(array):
 	'''
@@ -2722,7 +2735,7 @@ def to_number(a,dtype,**kwargs):
 			if a.startswith(prefix):
 				a = prefix.join(a.split(prefix)[1:])
 				coefficient *= prefixes[prefix]
-		number = onp.asarray([(coefficient*float(a))],dtype=dtype)[0]
+		number = asarray([(coefficient*float(a))],dtype=dtype)[0]
 	return number
 
 def to_str(a,**kwargs):
