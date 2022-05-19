@@ -29,7 +29,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":200,
+	"M":16,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -46,8 +46,8 @@
 	}
 },
 "hyperparameters":{
-	"iterations":100,
-	"runs":1,
+	"iterations":200,
+	"runs":3,
 	"locality":"global",
 	"label":"gate",
 	"optimizer":"cg",
@@ -86,13 +86,13 @@
 		"initialization":"interpolation",
 		"random":"uniform",
 		"interpolation":3,
-		"smoothness":1,	
+		"smoothness":3,	
 		"pad":"random",	
 		"seed":null,		
 		"init":[0,1],
-		"bounds":[-20,20],
+		"bounds":[-2,2],
 		"boundaries":[{"0":0,"-1":0},{}],
-		"boundaries":[{},{}],		
+		"boundaries":[{},{}],
 		"constants":[{"0":-10,"-1":-10},{}]
 	},
 	"z": {

@@ -214,7 +214,7 @@ def _has(iterable,elements,_split=False):
 	except:
 		return False
 
-def _update(iterable,elements,_copy=False,_clear=True,_func=None):
+def _update(iterable,elements,_copy=False,_clear=False,_func=None):
 	'''
 	Update nested iterable with elements
 

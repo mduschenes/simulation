@@ -766,8 +766,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 	elif random in ['randint']:
 		out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1])		
 	elif random in ['gaussian','normal']:
-		out = jax.random.normal(key,shape)
-		# out = (bounds[1]+bounds[0])/2 + sqrt(bounds[1]-bounds[0])*jax.random.normal(key,shape)				
+		out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape)				
 	elif random in ['zeros']:
 		out = zeros(shape)
 	elif random in ['ones']:
@@ -2675,7 +2674,7 @@ def interpolate(x,y,x_new,kind):
 	if y.ndim>1:
 		return array([_interpolate(x,y[:,i],x_new,kind) for i in range(y.shape[1])]).T
 	else:
-		return array(_intepolate(x,y,x_new,kind))
+		return array(_interpolate(x,y,x_new,kind))
 
 
 
