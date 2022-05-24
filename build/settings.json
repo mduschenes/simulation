@@ -24,12 +24,12 @@
 	"test":0
 },
 "model":{
-	"N":2,
+	"N":4,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":16,
+	"M":12,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -47,8 +47,8 @@
 },
 "hyperparameters":{
 	"iterations":200,
-	"runs":3,
-	"locality":"global",
+	"runs":10,
+	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["local","local"]},			
 	"label":"gate",
 	"optimizer":"cg",
 	"seed":12321,
@@ -76,11 +76,9 @@
 	"xy": {
 		"name":"xy",
 		"category":"variable",
-		"locality":"local",
+		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},				
 		"parameters":null,
-		"ndim":2,
-		"size":[1,2],
-		"repeats":[],
+		"size":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
 		"scale":1,
 		"initialization":"interpolation",
@@ -91,18 +89,15 @@
 		"seed":null,		
 		"init":[0,1],
 		"bounds":[-2,2],
-		"boundaries":[{"0":0,"-1":0},{}],
-		"boundaries":[{},{}],
-		"constants":[{"0":-10,"-1":-10},{}]
+		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{}],"variables":[{},{}]}
 	},
 	"z": {
 		"name":"z",
 		"category":"constant",
-		"locality":"local",
+		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},				
 		"parameters":[-0.1,0,0.1,0.05],
-		"ndim":2,
-		"size":[1,1],
-		"repeats":[0],
+		"size":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["z"]],
 		"scale":1,
 		"initialization":"random",
@@ -113,17 +108,15 @@
 		"seed":null,
 		"init":[0,1],		
 		"bounds":[-1,1],
-		"boundaries":[{},{}],
-		"constants":[{},{}]
+		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
 	},
 	"zz": {
 		"name":"zz",
 		"category":"constant",
-		"locality":"local",
+		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},		
 		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
-		"ndim":2,
-		"size":[1,1],
-		"repeats":[0],
+		"size":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
 		"initialization":"random",
@@ -134,8 +127,8 @@
 		"seed":null,	
 		"init":[0,1],			
 		"bounds":[-1,1],		
-		"boundaries":[{},{}],
-		"constants":[{},{}]
+		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
 	}
 },
 "data":{
@@ -146,5 +139,6 @@
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 	}
 },
-"label": null
+"label": null,
+"permutations":{"model__M":[16,32,64,128,256,512],"hyperparameters__iterations":[8,16,64,128,256,512]}
 }

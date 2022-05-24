@@ -73,7 +73,7 @@ def variables(parameters,hyperparameters,parameter,group):
 	'''
 	
 	shape = parameters.shape
-	n = shape[-1]
+	n = shape[0]
 
 	feature = features(parameters,hyperparameters,parameter,group)
 	scale = [hyperparameters['parameters'][parameter]['scale'],2*pi]
@@ -84,12 +84,12 @@ def variables(parameters,hyperparameters,parameter,group):
 			cos(scale[1]*feature[1])
 		)		
 		# variable = (
-		# 	scale[0]*sigmoid(parameters[:,0::2])*
-		# 	cos(scale[1]*sigmoid(parameters[:,1::2]))
+		# 	scale[0]*sigmoid(parameters[0::2])*
+		# 	cos(scale[1]*sigmoid(parameters[1::2]))
 		# )
 		# variable = (
 		# 	scale[0]*
-		# 	parameters[:,:n//2]
+		# 	parameters[:n//2]
 		# )
 
 	elif parameter in ['xy'] and group in [('y',)]:
@@ -98,12 +98,12 @@ def variables(parameters,hyperparameters,parameter,group):
 			sin(scale[1]*feature[1])
 		)		
 		# variable = (
-		# 	scale[0]*sigmoid(parameters[:,0::2])*
-		# 	sin(scale[1]*sigmoid(parameters[:,1::2]))
+		# 	scale[0]*sigmoid(parameters[0::2])*
+		# 	sin(scale[1]*sigmoid(parameters[1::2]))
 		# )		
 		# variable = (
 		# 	scale[0]*
-		# 	parameters[:,n//2:]
+		# 	parameters[n//2:]
 		# )	
 
 	elif parameter in ['xy_0','xy_1'] and group in [('x_0','x_2'),('x_1','x_3')]:
@@ -112,12 +112,12 @@ def variables(parameters,hyperparameters,parameter,group):
 			cos(scale[1]*feature[1])
 		)		
 		# variable = (
-		# 	scale[0]*sigmoid(parameters[:,0::2])*
-		# 	sin(scale[1]*sigmoid(parameters[:,1::2]))
+		# 	scale[0]*sigmoid(parameters[0::2])*
+		# 	sin(scale[1]*sigmoid(parameters[1::2]))
 		# )		
 		# variable = (
 		# 	scale[0]*
-		# 	parameters[:,n//2:]
+		# 	parameters[n//2:]
 		# )	
 
 	elif parameter in ['xy_0','xy_1'] and group in [('y_0','y_2'),('y_1','y_3')]:
@@ -126,12 +126,12 @@ def variables(parameters,hyperparameters,parameter,group):
 			sin(scale[1]*feature[1])
 		)		
 		# variable = (
-		# 	scale[0]*sigmoid(parameters[:,0::2])*
-		# 	sin(scale[1]*sigmoid(parameters[:,1::2]))
+		# 	scale[0]*sigmoid(parameters[0::2])*
+		# 	sin(scale[1]*sigmoid(parameters[1::2]))
 		# )		
 		# variable = (
 		# 	scale[0]*
-		# 	parameters[:,n//2:]
+		# 	parameters[n//2:]
 		# )	
 
 
@@ -162,7 +162,7 @@ def variables(parameters,hyperparameters,parameter,group):
 		)		
 		# variable = (
 		# 	scale[0]*
-		# 	parameters[:,:n//2]
+		# 	parameters[:n//2]
 		# )
 
 	elif parameter in ['xy'] and group in [('y_0','y_1'),('y_2','y_3')]:
@@ -172,7 +172,7 @@ def variables(parameters,hyperparameters,parameter,group):
 		)
 		# variable = (
 		# 	scale[0]*
-		# 	parameters[:,n//2:]
+		# 	parameters[n//2:]
 		# )		
 
 	elif parameter in ['z'] and group in [('z',)]:
@@ -202,30 +202,30 @@ def features(parameters,hyperparameters,parameter,group):
 		feature (array): features
 	'''
 	shape = parameters.shape
-	n = shape[-1]
+	n = shape[0]
 
 	if parameter in ['xy'] and group in [('x',)]:
 		feature = array([
-			sigmoid(parameters[:,0::2]),
-			sigmoid(parameters[:,1::2])
+			sigmoid(parameters[0::2]),
+			sigmoid(parameters[1::2])
 		])
 
 	elif parameter in ['xy'] and group in [('y',)]:
 		feature = array([
-			sigmoid(parameters[:,0::2]),
-			sigmoid(parameters[:,1::2]),
+			sigmoid(parameters[0::2]),
+			sigmoid(parameters[1::2]),
 		])		
 
 	elif parameter in ['xy_0','xy_1'] and group in [('x_0','x_2'),('x_1','x_3')]:
 		feature = array([
-			sigmoid(parameters[:,0::2]),
-			sigmoid(parameters[:,1::2])
+			sigmoid(parameters[0::2]),
+			sigmoid(parameters[1::2])
 		])
 
 	elif parameter in ['xy_0','xy_1'] and group in [('y_0','y_2'),('y_1','y_3')]:
 		feature = array([
-			sigmoid(parameters[:,0::2]),
-			sigmoid(parameters[:,1::2]),
+			sigmoid(parameters[0::2]),
+			sigmoid(parameters[1::2]),
 		])				
 
 	elif parameter in ['z'] and group in [('z',)]:
@@ -252,7 +252,7 @@ def constraints(parameters,hyperparameters,parameter,group):
 		constraints (array): constraints
 	'''
 	shape = parameters.shape
-	n = shape[-1]
+	n = shape[0]
 	m = shape[0]//10
 
 	feature = features(parameters,hyperparameters,parameter,group)
@@ -271,8 +271,8 @@ def constraints(parameters,hyperparameters,parameter,group):
 		# 	(scale[0]*sigmoid(feature[0][m:] - 1/cosh(linspace(0,m,m))[::1,None]))).sum()
 		# 	)
 		# x = (
-		# 	parameters[:,:n//2]**2+
-		# 	parameters[:,n//2:]**2
+		# 	parameters[:n//2]**2+
+		# 	parameters[n//2:]**2
 		# 	)**(1/2)
 
 		# constraint = (
@@ -318,7 +318,7 @@ def gradient_constraints(parameters,hyperparameters,parameter,group):
 		grad (array): gradient of constraints
 	'''
 	shape = parameters.shape
-	n = shape[-1]
+	n = shape[0]
 
 	feature = features(parameters,hyperparameters,parameter,group)
 	scale = hyperparameters['hyperparameters']['lambda']
@@ -328,11 +328,11 @@ def gradient_constraints(parameters,hyperparameters,parameter,group):
 		# grad = (
 		# 	(scale[0]*bound(
 		# 		(hyperparameters['parameters'][parameter]['bounds'][0] - 
-		# 		parameters[:,0::2]),
+		# 		parameters[0::2]),
 		# 		hyperparameters) +
 		# 	scale[1]*bound(
 		# 		(hyperparameters['parameters'][parameter]['bounds'][0] - 
-		# 		parameters[:,1::2]),
+		# 		parameters[1::2]),
 		# 		hyperparameters)
 		# 	).sum() +				 
 		# 	(sum(
@@ -344,8 +344,8 @@ def gradient_constraints(parameters,hyperparameters,parameter,group):
 		# 	).sum()
 		# )
 		x = (
-			parameters[:,:n//2]**2+
-			parameters[:,n//2:]**2
+			parameters[:n//2]**2+
+			parameters[n//2:]**2
 			)**(1/2)
 
 		grad = np.zeros(parameters.shape)
@@ -364,12 +364,12 @@ def gradient_constraints(parameters,hyperparameters,parameter,group):
 			# ).sum()
 		)
 	
-		grad = jax.lax.dynamic_update_slice(grad,_grad*parameters[:,:n//2]/x,(1,0))
-		grad = jax.lax.dynamic_update_slice(grad,_grad*parameters[:,n//2:]/x,(1,n//2))
+		grad = jax.lax.dynamic_update_slice(grad,_grad*parameters[:n//2]/x,(1,0))
+		grad = jax.lax.dynamic_update_slice(grad,_grad*parameters[n//2:]/x,(1,n//2))
 
-		# grad = grad.at[:,:n//2].set(_grad*parameters[:,:n//2]/x)
-		# grad = grad.at[:,n//2:].set(_grad*parameters[:,n//2:]/x)
-		# grad[:,n//2:] = _grad*parameters[:,n//2:]/x
+		# grad = grad.at[:n//2].set(_grad*parameters[:n//2]/x)
+		# grad = grad.at[n//2:].set(_grad*parameters[n//2:]/x)
+		# grad[n//2:] = _grad*parameters[n//2:]/x
 	elif parameter in ['z'] and group in [('z',)]:
 		grad = np.zeros(parameters.shape)
 	elif parameter in ['zz'] and group in [('zz',)]:
@@ -394,6 +394,10 @@ def gradients(parameters,hyperparameters,parameter,group):
 
 	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
 	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
+
+	shape = parameters.shape
+	n = shape[0]
+
 	scale = [hyperparameters['parameters'][parameter]['scale'],2*pi]	
 	if group in [('x',),('x_0','x_1'),('x_2','x_3'),]:
 		variable = scale[0]*parameters[:n//2]
