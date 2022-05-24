@@ -1301,6 +1301,93 @@ def slices(a,start,size):
 	return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
 
 
+def slice_size(*slices):
+	'''
+	Get length of merged slices
+	Args:
+		slice (slice): Slice to size
+	Returns:
+		size (int): Length of merged slices
+	'''
+	slices = slice_merged(*slices)
+	size = (slices.stop-slices.start)//(slices.step if slices.step is not None else 1)
+	return size	
+
+def slice_merge(*slices):
+	'''
+	Merge slices
+	Args:
+		slices (slice): Slices to merge
+	Returns:
+		slices (slice): Merged slice
+	'''
+	start = [s.start for s in slices if s is not None]
+	stop = [s.stop for s in slices if s is not None]
+	step = [s.step for s in slices if s is not None]
+
+	assert len(set(step)) <= 1, "All step sizes must be equal for merged slices"
+
+	if start == []:
+		start = None
+	else:
+		start = min(start)
+
+	if stop == []:
+		stop = None
+	else:
+		stop = max(stop)
+
+	if step == []:
+		step = None
+	else:
+		step = min(step)
+
+	slices = slice(stop,start,step)
+
+	return slices
+
+
+def slice_slice(*slices,index=None):
+	'''
+	Get new slice indices of slices[index] within merged slices
+	Args:
+		slices (slice): Slices to merge
+		index (int): Index of slices to re-index within merged slices
+	Returns:
+		slices (slice,iterable[slice]): Re-indexed slice of slices[index], or all re-indexed slices if index is None
+	'''
+
+	isint = isinstance(index,int)
+
+	if index is None:
+		index = range(len(slices))
+	elif isint:
+		index = [index]
+
+	length = len(slices)
+	merged = slice_merge(*slices)
+	size = slice_size(merged)
+
+	sliced = []
+	for i in index:
+		submerged = slice_merge(*slices[:index])
+		
+		start = submerged.stop + slices[index].start
+		stop = submerged.stop + slices[index].stop
+		step = slices[index].step
+		
+		subsliced = slice(start,stop,step)
+		
+		sliced.append(subsliced)
+
+	if isint:
+		slices = sliced[0]
+	else:
+		slices = sliced
+
+	return slices
+
+
 def _len_(obj):
 	'''
 	Get length of object
