@@ -714,7 +714,7 @@ class Object(object):
 		self.interaction.insert(index,interaction)
 
 		self.size = len(self.data)
-		self.shape = (*self.data.shape[0:1],*self.shape.shape[1:2],*self.data.shape[1:])
+		self.shape = (*self.data.shape[0:1],*self.shape[1:2],*self.data.shape[1:])
 
 		self.hyperparameters.update(hyperparameters)
 
@@ -1401,16 +1401,132 @@ class Hamiltonian(Object):
 		# Assert all data satisfies data**2 = identity for matrix exponentials
 		assert all(allclose(d.dot(d),self.identity) for d in data), "data is not involutory and data**2 != identity"
 
-		# Get size of data
-		size = len(data)
-
-		# Get shape of variables
-		shapes = (size,*self.shape[1:2])
-
 		# Get Trotterized order of p copies of data for products of data
 		data = trotter(data,self.p)
 
+		# Update class attributes
+		self.__extend__(data,operator,site,string,interaction,hyperparameters)
 
+		# Initialize parameters
+		self.__init__parameters__(parameters)
+
+		return
+
+
+	def __parameters__(self,parameters):
+		''' 
+		Setup parameters
+		Args:
+			parameters (array): parameters
+		Returns:
+			variables (array): variables
+		'''		
+
+		# Get class attributes
+		self.parameters = parameters
+		hyperparameters = self.hyperparameters
+
+		# Set all variables
+		category = 'variable'
+		shape = hyperparameters['shape']['take']['parameters'][category]
+		parameters = parameters.reshape(shape)
+
+		variables = hyperparameters['variables']
+
+		for parameter in hyperparameters['parameters']:
+			if hyperparameters['parameters'][parameter]['category'] == category:
+				for group in hyperparameters['parameters'][parameter]['group']:
+					indices = hyperparameters['parameters'][parameter]['slice']['variables'][group]
+					variables = variables.at[indices].set(hyperparameters['parameters'][parameter]['variables'][group](parameters))
+
+
+		# parameters = parameters.ravel()
+		# features = self.__features__(parameters)		
+		# shape = hyperparameters['shape']['put']['features'][category]
+		# print('param,feats,vars')
+		# print(parameters.round(3))
+		# print(features.round(3)[:shape[0]])
+		# print(variables.round(3))
+		# print(sigmoid(parameters).round(3))
+		# print()
+
+		# Get Trotterized order of copies of variables
+		p = self.p
+		variables = trotter(variables,p)
+
+
+		# Get reshaped variables (tranpose for shape (M,K) and reshape to (MK,) with periodicity of data)
+		variables = variables.T.ravel()
+		
+		return variables
+
+
+	@partial(jit,static_argnums=(0,))
+	def __features__(self,parameters):
+		''' 
+		Setup features
+		Args:
+			parameters (array): parameters
+		Returns:
+			features (array): features
+		'''
+
+		# Get class attributes
+		hyperparameters = self.hyperparameters
+
+		# Set parameters
+		category = 'variable'
+		shape = hyperparameters['shape']['take']['parameters'][category]
+		parameters = parameters.reshape(shape)		
+
+		# Set all features
+		shape = hyperparameters['shape']['take']['features'][category]
+		axes = hyperparameters['axes']['features'][category]
+		index = hyperparameters['slice']['put']['features'][category]		
+
+		# features = take(hyperparameters['features'],index,axes)
+		features = hyperparameters['features']
+
+		for parameter in hyperparameters['parameters']:
+			if hyperparameters['parameters'][parameter]['category'] == category:
+				for group in hyperparameters['parameters'][parameter]['group']:
+					index = hyperparameters['parameters'][parameter]['slice']['features'][group]
+					feature = hyperparameters['parameters'][parameter]['features'][group](parameters)
+					length = feature.shape[0]
+					for l in range(length):
+						indices = tuple([(
+							index[axis] if axis != axes[-1] else 
+							slice(
+								index[axis].start+l,
+								index[axis].stop+l,
+								index[axis].step*length)
+							) if isinstance(index[axis],slice) else array(index[axis])*length+l
+							for axis in axes
+							])
+						features = features.at[indices].set(feature[l])
+
+		return features
+
+
+	def __init__parameters__(self,parameters):
+		''' 
+		Setup initial parameters
+		Args:
+			parameters (array): parameters
+		'''
+
+		# Get class attributes
+		hyperparameters = self.hyperparameters
+		dtype = self._dtype
+
+		# Setup parameter shapes and slices based on data
+
+		# Get shape of data
+		size = self.shape[0:2]
+
+		# Get site and strings for data
+		site = self.site
+		string = self.string
 
 		# Get parameters and groups based on operator strings, and ensure groups are hashable as tuples
 		for parameter in list(hyperparameters['parameters']):
@@ -1514,7 +1630,7 @@ class Hamiltonian(Object):
 		groups = {
 			layer: {
 				category: {
-					parameter: list(set([group for group in hyperparameters['parameters'][parameter]['group']])) 
+					parameter: list(set([tuple(group) for group in hyperparameters['parameters'][parameter]['group']])) 
 						for parameter in parameters[category]					
 					}
 					for category in categories
@@ -1527,7 +1643,7 @@ class Hamiltonian(Object):
 
 		# Get shapes,slices of axes based on number of variables per group and locality, of variables,features,parameters for each index type
 
-		# - Indices of data for axes beyond (in front of) data shapes (of len(shapes)=ndims=2) are assumed to be [0] of fixed size 1
+		# - Indices of data for axes beyond (in front of) data size (of len(size)=ndim=2) are assumed to be [0] of fixed size 1
 		
 		attrs = ['ndim','locality','size','indices','boundaries','constants','shape','slice']
 		attrs = {
@@ -1553,22 +1669,47 @@ class Hamiltonian(Object):
 
 						attrs['ndim'][layer][category][parameter][group] = len(hyperparameters['parameters'][parameter]['shape'][layer])
 
-						attrs['locality'][layer][category][parameter][group] = [*hyperparameters['parameters'][parameter]['locality'][layer]]
+						attrs['locality'][layer][category][parameter][group] = list(hyperparameters['parameters'][parameter]['locality'][layer])
 
-						attrs['size'][layer][category][parameter][group] = [*hyperparameters['parameters'][parameter]['shape'][layer]]
+						attrs['size'][layer][category][parameter][group] = list(hyperparameters['parameters'][parameter]['shape'][layer])
 
 						attrs['indices'][layer][category][parameter][group] = [
-							*[[i for i in range(1)] for axis in range(0,attrs['ndim'][layer][category][parameter][group]-len(shapes))],
-							*[[i for i in range(shapes[axis]) 
+							*[[i for i in range(1)] for axis in range(0,attrs['ndim'][layer][category][parameter][group]-len(size))],
+							*[[i for i in range(size[axis]) 
 							  if any(g in group for g in [string[i],'_'.join([string[i],''.join(['%d'%j for j in site[i]])])])]
 							 for axis in range(0,1)],
-							*[[i for i in range(shapes[axis])] for axis in range(1,len(shapes))],
+							*[[i for i in range(size[axis])] for axis in range(1,len(size))],
+							]
+						attrs['boundaries'][layer][category][parameter][group] = [
+							dict({
+								((i if i>=0 else len(attrs['indices'][layer][category][parameter][group][axis])+int(i))
+								if isinstance(i,int) or (isinstance(i,str) and int(i) == float(i)) else
+								(int(len(attrs['indices'][layer][category][parameter][group][axis])*float(i)))):
+								hyperparameters['parameters'][parameter]['boundaries'][layer][axis][i]
+								for i in hyperparameters['parameters'][parameter]['boundaries'][layer][axis]
+								})
+							for axis in range(0,attrs['ndim'][layer][category][parameter][group])
+							]
+						
+						attrs['constants'][layer][category][parameter][group] = [
+							dict({
+								((i if i>=0 else len(attrs['indices'][layer][category][parameter][group][axis])+int(i))
+								if isinstance(i,int) or (isinstance(i,str) and int(i) == float(i)) else
+								(int(len(attrs['indices'][layer][category][parameter][group][axis])*float(i)))):
+								hyperparameters['parameters'][parameter]['constants'][layer][axis][i]
+								for i in hyperparameters['parameters'][parameter]['constants'][layer][axis]
+								})
+							for axis in range(0,attrs['ndim'][layer][category][parameter][group])
 							]
 
-					subindex = ['key','all']
-					for group in groups[layer][category][parameter]:
 
-						for index in ['_'.join(['put',*subindex])]:
+		subindex = ['key','all']
+		for layer in groups:
+			for category in groups[layer]:
+				for parameter in groups[layer][category]:			
+					for group in groups[layer][category][parameter]:
+						index = ['put']
+						for index in ['_'.join([*index,*subindex])]:
 							attrs['shape'][layer][category][parameter][group][index] = tuple([
 								(
 								(-attrs['size'][layer][category][parameter][group][axis]*
@@ -1576,7 +1717,7 @@ class Hamiltonian(Object):
 								if attrs['size'][layer][category][parameter][group][axis]<0 else 
 								attrs['size'][layer][category][parameter][group][axis]
 								)
-								for axis in range(attrs['ndim'][layer][category][parameter][group])
+								for axis in range(0,attrs['ndim'][layer][category][parameter][group])
 								])
 
 							attrs['slice'][layer][category][parameter][group][index] = tuple([
@@ -1587,10 +1728,11 @@ class Hamiltonian(Object):
 								  slice(0,attrs['shape'][layer][category][parameter][group][index][axis],1))
 								for axis in range(0,1)],
 								*[slice(0,attrs['shape'][layer][category][parameter][group][index][axis],1)
-								for axis in range(1,attrs['ndim'][layer][category][parameter][group])],																
+								for axis in range(1,attrs['ndim'][layer][category][parameter][group])],
 								])
 
-						for index in ['_'.join(['take',*subindex])]:
+						index = ['take']
+						for index in ['_'.join([*index,*subindex])]:
 							attrs['shape'][layer][category][parameter][group][index] = tuple([
 								(
 								(-attrs['size'][layer][category][parameter][group][axis]*
@@ -1599,7 +1741,7 @@ class Hamiltonian(Object):
 								if attrs['size'][layer][category][parameter][group][axis]<0 else 
 								attrs['size'][layer][category][parameter][group][axis]
 								)
-								for axis in range(attrs['ndim'][layer][category][parameter][group])
+								for axis in range(0,attrs['ndim'][layer][category][parameter][group])
 								])
 							
 							attrs['slice'][layer][category][parameter][group][index] = tuple([
@@ -1610,69 +1752,104 @@ class Hamiltonian(Object):
 								  slice(0,attrs['shape'][layer][category][parameter][group][index][axis],1))
 								for axis in range(0,1)],
 								*[slice(0,attrs['shape'][layer][category][parameter][group][index][axis],1)
-								for axis in range(1,attrs['ndim'][layer][category][parameter][group])],																
+								for axis in range(1,attrs['ndim'][layer][category][parameter][group])],
 								])
 
-				# 	subindex = ['key','value']					
-				# 	for group in groups[layer][category][parameter]:
+		
+		subindex = ['key','value']
+		for layer in groups:
+			for category in groups[layer]:
+				for parameter in groups[layer][category]:			
+					for group in groups[layer][category][parameter]:
+						index = ['put']
+						refindex = ['key','all']
+						refindex = '_'.join([*index,*refindex])
+						for index in ['_'.join([*index,*subindex])]:							
+							attrs['shape'][layer][category][parameter][group][index] = tuple([
+								(attrs['shape'][layer][category][parameter][group][refindex][axis] - 
+								len(attrs['boundaries'][layer][category][parameter][group][axis]))
+								for axis in range(0,attrs['ndim'][layer][category][parameter][group])
+								])
 
-				# 	attrs['slice'][attr][category][group] = tuple([
-				# 	*[slice(0+sum(any((j in boundary[attr][axis]) for j in i) for i in [[0]]),
-				# 			attrs['shape'][axis]-sum(any((j in boundary[attr][axis]) for j in i) for i in [[attrs['shape'][axis],-1]]),
-				# 			1) for axis in range(attrs['ndim'][category])[:1]],
-				# 	*[[i for i,s in enumerate(string) 
-				# 	   if any(g in group for g in [s,'_'.join([s,''.join(['%d'%j for j in site[i]])])])] for axis in range(attrs['ndim'][category])[1:2]],
-				# 	*[slice(0+sum(any((j in boundary[attr][axis]) for j in i) for i in [[0]]),
-				# 			attrs['shape'][axis]-sum(any((j in boundary[attr][axis]) for j in i) for i in [[attrs['shape'][axis],-1]]),
-				# 			1) for axis in range(attrs['ndim'][category])[2:]],					   
-				# ])
+							attrs['slice'][layer][category][parameter][group][index] = tuple([
+								(slice(
+									(attrs['slice'][layer][category][parameter][group][refindex][axis].start + 
+									sum(any((j in attrs['boundaries'][layer][category][parameter][group][axis]) for j in i) 
+										for i in [[0]])),
+									(attrs['slice'][layer][category][parameter][group][refindex][axis].stop - 
+									sum(any((j in attrs['boundaries'][layer][category][parameter][group][axis]) for j in i) 
+										for i in [[attrs['shape'][layer][category][parameter][group][refindex][axis]-1]])),										
+									(attrs['slice'][layer][category][parameter][group][refindex][axis].step)
+									)
+								if isinstance(attrs['slice'][layer][category][parameter][group][refindex][axis],slice) else
+								[i for i in attrs['slice'][layer][category][parameter][group][refindex][axis] 
+									if i not in attrs['boundaries'][layer][category][parameter][group][axis]])
+								for axis in range(0,attrs['ndim'][layer][category][parameter][group])
+								])
 
-				# 		for index in ['_'.join(['put',*subindex])]:
-				# 			attrs['shape'][layer][category][parameter][group][index] = tuple([
-				# 				(
-				# 				(-attrs['size'][layer][category][parameter][group][axis]*
-				# 				(len(attrs['indices'][layer][category][parameter][group][axis]))) 
-				# 				if attrs['size'][layer][category][parameter][group][axis]<0 else 
-				# 				attrs['size'][layer][category][parameter][group][axis]
-				# 				)
-				# 				for axis in range(attrs['ndim'][layer][category][parameter][group])
-				# 				])
+						index = ['take']
+						refindex = ['key','all']
+						refindex = '_'.join([*index,*refindex])
+						for index in ['_'.join([*index,*subindex])]:
+							attrs['shape'][layer][category][parameter][group][index] = tuple([
+								(attrs['shape'][layer][category][parameter][group][refindex][axis] - 
+								len(attrs['boundaries'][layer][category][parameter][group][axis]))
+								for axis in range(0,attrs['ndim'][layer][category][parameter][group])
+								])
 
-				# 			attrs['slice'][layer][category][parameter][group][index] = tuple([
-				# 				*[slice(0,attrs['shape'][layer][category][parameter][group][index][axis],1)
-				# 				for axis in range(0,0)],
-				# 				*[(attrs['indices'][layer][category][parameter][group][axis] 
-				# 				  if layer in ['variables'] else 
-				# 				  slice(0,attrs['shape'][layer][category][parameter][group][index][axis],1))
-				# 				for axis in range(0,1)],
-				# 				*[slice(0,attrs['shape'][layer][category][parameter][group][index][axis],1)
-				# 				for axis in range(1,attrs['ndim'][layer][category][parameter][group])],																
-				# 				])
+							attrs['slice'][layer][category][parameter][group][index] = tuple([
+								(slice(
+									(attrs['slice'][layer][category][parameter][group][refindex][axis].start + 
+									sum(any((j in attrs['boundaries'][layer][category][parameter][group][axis]) for j in i) 
+										for i in [[0]])),
+									(attrs['slice'][layer][category][parameter][group][refindex][axis].stop - 
+									sum(any((j in attrs['boundaries'][layer][category][parameter][group][axis]) for j in i) 
+										for i in [[attrs['shape'][layer][category][parameter][group][refindex][axis]-1]])),										
+									(attrs['slice'][layer][category][parameter][group][refindex][axis].step)
+									)		
+								if isinstance(attrs['slice'][layer][category][parameter][group][refindex][axis],slice) else
+								[i for i in attrs['slice'][layer][category][parameter][group][refindex][axis] 
+									if i not in attrs['boundaries'][layer][category][parameter][group][axis]])
+								for axis in range(0,attrs['ndim'][layer][category][parameter][group])
+								])
 
-				# 		for index in ['_'.join(['take',*subindex])]:
-				# 			attrs['shape'][layer][category][parameter][group][index] = tuple([
-				# 				(
-				# 				(-attrs['size'][layer][category][parameter][group][axis]*
-				# 				(len(attrs['indices'][layer][category][parameter][group][axis]) 
-				# 				 if attrs['locality'][layer][category][parameter][group][axis] in ['local'] else 1))
-				# 				if attrs['size'][layer][category][parameter][group][axis]<0 else 
-				# 				attrs['size'][layer][category][parameter][group][axis]
-				# 				)
-				# 				for axis in range(attrs['ndim'][layer][category][parameter][group])
-				# 				])
-							
-				# 			attrs['slice'][layer][category][parameter][group][index] = tuple([
-				# 				*[slice(0,attrs['shape'][layer][category][parameter][group][index][axis],1)
-				# 				for axis in range(0,0)],
-				# 				*[(attrs['indices'][layer][category][parameter][group][axis] 
-				# 				  if layer in [] else 
-				# 				  slice(0,attrs['shape'][layer][category][parameter][group][index][axis],1))
-				# 				for axis in range(0,1)],
-				# 				*[slice(0,attrs['shape'][layer][category][parameter][group][index][axis],1)
-				# 				for axis in range(1,attrs['ndim'][layer][category][parameter][group])],																
-				# 				])							
+		subindex = ['key','constant']
+		for layer in groups:
+			for category in groups[layer]:
+				for parameter in groups[layer][category]:			
+					for group in groups[layer][category][parameter]:
+						index = ['put']
+						refindex = ['key','all']
+						refindex = '_'.join([*index,*refindex])
+						for index in ['_'.join([*index,*subindex])]:							
+							attrs['shape'][layer][category][parameter][group][index] = tuple([
+								len(attrs['boundaries'][layer][category][parameter][group][axis])
+								for axis in range(0,attrs['ndim'][layer][category][parameter][group])
+								])
 
+							attrs['slice'][layer][category][parameter][group][index] = tuple([
+								[i for i in attrs['boundaries'][layer][category][parameter][group][axis]]
+								for axis in range(0,attrs['ndim'][layer][category][parameter][group])
+								])
 
+						index = ['take']
+						refindex = ['key','all']
+						refindex = '_'.join([*index,*refindex])
+						for index in ['_'.join([*index,*subindex])]:
+							attrs['shape'][layer][category][parameter][group][index] = tuple([
+								len(attrs['boundaries'][layer][category][parameter][group][axis])
+								for axis in range(0,attrs['ndim'][layer][category][parameter][group])
+								])
+
+							attrs['slice'][layer][category][parameter][group][index] = tuple([
+								([i for i in range(*attrs['slice'][layer][category][parameter][group][refindex][axis].indices(
+									attrs['shape'][layer][category][parameter][group][refindex][axis])) 
+									if i in attrs['boundaries'][layer][category][parameter][group][axis]]								
+								if isinstance(attrs['slice'][layer][category][parameter][group][refindex][axis],slice) else
+								[i for i in attrs['slice'][layer][category][parameter][group][refindex][axis] 
+									if i in attrs['boundaries'][layer][category][parameter][group][axis]])
+								for axis in range(0,attrs['ndim'][layer][category][parameter][group])
+								])							
 
 		for layer in groups:
 			print('layer: ',layer)
@@ -1683,7 +1860,11 @@ class Hamiltonian(Object):
 					for group in groups[layer][category][parameter]:
 						print('Group: ',group)
 						for attr in attrs:
-							print(attr,attrs[attr][layer][category][parameter][group])
+							if isinstance(attrs[attr][layer][category][parameter][group],dict):
+								for index in attrs[attr][layer][category][parameter][group]:
+									print(attr,index,attrs[attr][layer][category][parameter][group][index])
+							else:
+								print(attr,attrs[attr][layer][category][parameter][group])
 						print()
 					print()
 				print()
@@ -1895,120 +2076,7 @@ class Hamiltonian(Object):
 		hyperparameters['slice']['put'] = _slices #including bcs
 		hyperparameters['axes'] = axes
 
-		# Update class attributes
-		self.__extend__(data,operator,site,string,interaction,hyperparameters)
 
-		# Initialize parameters
-		self.__init__parameters__(parameters)
-
-		return
-
-
-	def __parameters__(self,parameters):
-		''' 
-		Setup parameters
-		Args:
-			parameters (array): parameters
-		Returns:
-			variables (array): variables
-		'''		
-
-		# Get class attributes
-		self.parameters = parameters
-		hyperparameters = self.hyperparameters
-
-		# Set all variables
-		category = 'variable'
-		shape = hyperparameters['shape']['take']['parameters'][category]
-		parameters = parameters.reshape(shape)
-
-		variables = hyperparameters['variables']
-
-		for parameter in hyperparameters['parameters']:
-			if hyperparameters['parameters'][parameter]['category'] == category:
-				for group in hyperparameters['parameters'][parameter]['group']:
-					indices = hyperparameters['parameters'][parameter]['slice']['variables'][group]
-					variables = variables.at[indices].set(hyperparameters['parameters'][parameter]['variables'][group](parameters))
-
-
-		# parameters = parameters.ravel()
-		# features = self.__features__(parameters)		
-		# shape = hyperparameters['shape']['put']['features'][category]
-		# print('param,feats,vars')
-		# print(parameters.round(3))
-		# print(features.round(3)[:shape[0]])
-		# print(variables.round(3))
-		# print(sigmoid(parameters).round(3))
-		# print()
-
-		# Get Trotterized order of copies of variables
-		p = self.p
-		variables = trotter(variables,p)
-
-
-		# Get reshaped variables (tranpose for shape (M,K) and reshape to (MK,) with periodicity of data)
-		variables = variables.T.ravel()
-		
-		return variables
-
-
-	@partial(jit,static_argnums=(0,))
-	def __features__(self,parameters):
-		''' 
-		Setup features
-		Args:
-			parameters (array): parameters
-		Returns:
-			features (array): features
-		'''
-
-		# Get class attributes
-		hyperparameters = self.hyperparameters
-
-		# Set parameters
-		category = 'variable'
-		shape = hyperparameters['shape']['take']['parameters'][category]
-		parameters = parameters.reshape(shape)		
-
-		# Set all features
-		shape = hyperparameters['shape']['take']['features'][category]
-		axes = hyperparameters['axes']['features'][category]
-		index = hyperparameters['slice']['put']['features'][category]		
-
-		# features = take(hyperparameters['features'],index,axes)
-		features = hyperparameters['features']
-
-		for parameter in hyperparameters['parameters']:
-			if hyperparameters['parameters'][parameter]['category'] == category:
-				for group in hyperparameters['parameters'][parameter]['group']:
-					index = hyperparameters['parameters'][parameter]['slice']['features'][group]
-					feature = hyperparameters['parameters'][parameter]['features'][group](parameters)
-					length = feature.shape[0]
-					for l in range(length):
-						indices = tuple([(
-							index[axis] if axis != axes[-1] else 
-							slice(
-								index[axis].start+l,
-								index[axis].stop+l,
-								index[axis].step*length)
-							) if isinstance(index[axis],slice) else array(index[axis])*length+l
-							for axis in axes
-							])
-						features = features.at[indices].set(feature[l])
-
-		return features
-
-
-	def __init__parameters__(self,parameters):
-		''' 
-		Setup initial parameters
-		Args:
-			parameters (array): parameters
-		'''
-
-		# Get class attributes
-		hyperparameters = self.hyperparameters
-		dtype = self._dtype
 
 		# Initialize parameters
 
