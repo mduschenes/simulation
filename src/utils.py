@@ -1309,7 +1309,7 @@ def slice_size(*slices):
 	Returns:
 		size (int): Length of merged slices
 	'''
-	slices = slice_merged(*slices)
+	slices = slice_merge(*slices)
 	size = (slices.stop-slices.start)//(slices.step if slices.step is not None else 1)
 	return size	
 
@@ -1342,7 +1342,7 @@ def slice_merge(*slices):
 	else:
 		step = min(step)
 
-	slices = slice(stop,start,step)
+	slices = slice(start,stop,step)
 
 	return slices
 
@@ -1370,15 +1370,18 @@ def slice_slice(*slices,index=None):
 
 	sliced = []
 	for i in index:
-		submerged = slice_merge(*slices[:index])
-		
-		start = submerged.stop + slices[index].start
-		stop = submerged.stop + slices[index].stop
-		step = slices[index].step
-		
-		subsliced = slice(start,stop,step)
-		
-		sliced.append(subsliced)
+		if i == 0:
+			sliced.append(slices[i])
+		else:
+			submerged = slice_merge(*slices[:i])
+			
+			start = submerged.stop + slices[i].start
+			stop = submerged.stop + slices[i].stop
+			step = slices[i].step
+			
+			subsliced = slice(start,stop,step)
+			
+			sliced.append(subsliced)
 
 	if isint:
 		slices = sliced[0]

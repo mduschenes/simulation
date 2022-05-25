@@ -1569,6 +1569,9 @@ class Hamiltonian(Object):
 
 		label = init_operators(label,shape,hyperparams,index=index,dtype=dtype)
 
+		print(label)
+		exit()
+
 		hyperparameters['label'] = label #.conj().T
 
 		# Get reshaped parameters
