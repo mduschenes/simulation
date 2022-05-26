@@ -121,22 +121,20 @@ def init_parameters(data,shape,hyperparameters,func=None):
 
 	# For a given indices,locality,and sizes of layer,category,parameter,group and axis, 
 	
-	# The shapes and slices for each individual set of values 'take,put_key_all' for these keys are:
+	# The shapes and slices for each individual set of values ('take,put','key','all') for these keys are:
 	# s = sizes 
-	# k = len(indices) (k[axis=0 (parameter,variables), axis=1 (features)] = O(N) for data with datum on each of N sites, k[axis=1] = O(M) for M time steps)
+	# k = len(indices) (k[axis=0 (parameters,variables), axis=1 (features)] = O(N) for data with datum on each of N sites, k[axis=1] = O(M) for M time steps)
 	# The shape of the values will be 
-	# shape['put_key_all'] = -s*k if s < 0 else s
-	# shape['take_value'] = -s*(k if local in ['local'] else 1) if s < 0 else s
+	# shape['features','parameters','variables'][('put','key','all')] = -s*k if s < 0 else s
+	# shape['features','parameters','variables'][('put','value','all')] = -s*(k if local in ['local'] else 1) if s < 0 else s
 
-	# slice['variables']['put_key_all'] = indices if axis == 0 else slice(0,shape['put_key_all'],1)
-	# shape['variables']['take_key_all'] = slice(0,shape['take_key_all'],1)
-	# shape['features','parameters']['put_key_all'] = slice(0,shape['put_key_all'],1)
-	# shape['features','parameters']['take_key_all'] = slice(0,shape['take_key_all'],1)
+	# slice['variables'][('put','key','all')] = indices if axis == 0 else slice(0,shape[('put','key','all')],1)
+	# shape['variables'][('take','key','all')] = slice(0,shape['take_key_all'],1)
+	# shape['features','parameters'][('put','key','all')] = slice(0,shape[('put','key','all')],1)
+	# shape['features','parameters'][('take','key','all')] = slice(0,shape[('take','key','all')],1)
 
-	# The other 'take,put_<type>' indexes involve summing all shapes corresponding to the keys that are within the type group, 
+	# The other ('take,put',<type>) indexes involve summing all shapes corresponding to the keys that are within the type group, 
 	# plus subtracting shapes corresponding with boundaries and constants
-	# i.e) For 'take,put_parameter', all shapes for keys associated with a given parameter grouping are the total shape for all of these keys
-	# and all slices are indices within this larger shape.
 
 
 	# Get number of dimensions of data
@@ -257,24 +255,6 @@ def init_parameters(data,shape,hyperparameters,func=None):
 						]
 
 
-	# for layer in groups:
-	# 	for category in groups[layer]:
-	# 		for parameter in groups[layer][category]:			
-	# 			for group in groups[layer][category][parameter]:
-
-	# 				print(layer,category,parameter,group,data['indices'][layer][category][parameter][group])
-
-	# 				print([(sum(len(data['indices'][layr][catgry][param][grp][axis]) 
-	# 								for l,layr in enumerate([layer])
-	# 								for c,catgry in enumerate([catgry for catgry in groups[layr]])
-	# 								for p,param in enumerate([param for param in groups[layr][catgry]])
-	# 								for g,grp in enumerate([*[grp for grp in groups[layr][catgry][param]][:]]))
-	# 								if layer in ['variables'] else None)
-	# 							for axis in range(data['ndim'][layer][category][parameter][group]-ndim,
-	# 								data['ndim'][layer][category][parameter][group]-ndim+1)])
-	# 				print()
-
-	# exit()
 	# Get indexed attributes for data
 	subindex = ('key','all',)
 	for layer in groups:
@@ -391,7 +371,7 @@ def init_parameters(data,shape,hyperparameters,func=None):
 		for category in groups[layer]:
 			for parameter in groups[layer][category]:			
 				for group in groups[layer][category][parameter]:
-					
+
 					index = ('put',)
 					refindex = ('key','all',)
 					refindex = (*index,*refindex)
@@ -399,8 +379,8 @@ def init_parameters(data,shape,hyperparameters,func=None):
 						data['shape'][layer][category][parameter][group][index] = tuple([
 							(data['shape'][layer][category][parameter][group][refindex][axis]
 							if ((len(data['boundaries'][layer][category][parameter][group][axis]) == 0) and
-								(any(len(data['boundaries'][layer][category][parameter][group][ax]) > 0)
-								for ax in range(0,data['ndim'][layer][category][parameter][group]))) else
+								(any(len(data['boundaries'][layer][category][parameter][group][ax]) > 0
+								for ax in range(0,data['ndim'][layer][category][parameter][group])))) else
 							data['shape'][layer][category][parameter][group][refindex][axis])
 							for axis in range(0,data['ndim'][layer][category][parameter][group])
 							])
@@ -408,8 +388,8 @@ def init_parameters(data,shape,hyperparameters,func=None):
 						data['slice'][layer][category][parameter][group][index] = tuple([
 							(slice(0,data['shape'][layer][category][parameter][group][refindex][axis],1)
 							if ((len(data['boundaries'][layer][category][parameter][group][axis]) == 0) and
-								(any(len(data['boundaries'][layer][category][parameter][group][ax]) > 0)
-								for ax in range(0,data['ndim'][layer][category][parameter][group]))) else								
+								(any(len(data['boundaries'][layer][category][parameter][group][ax]) > 0
+								for ax in range(0,data['ndim'][layer][category][parameter][group])))) else								
 							[i for i in data['boundaries'][layer][category][parameter][group][axis]])
 							for axis in range(0,data['ndim'][layer][category][parameter][group])
 							])
@@ -421,8 +401,8 @@ def init_parameters(data,shape,hyperparameters,func=None):
 						data['shape'][layer][category][parameter][group][index] = tuple([
 							(data['shape'][layer][category][parameter][group][refindex][axis]
 							if ((len(data['boundaries'][layer][category][parameter][group][axis]) == 0) and
-								(any(len(data['boundaries'][layer][category][parameter][group][ax]) > 0)
-								for ax in range(0,data['ndim'][layer][category][parameter][group]))) else
+								(any(len(data['boundaries'][layer][category][parameter][group][ax]) > 0
+								for ax in range(0,data['ndim'][layer][category][parameter][group])))) else
 							len(data['boundaries'][layer][category][parameter][group][axis]))							
 							for axis in range(0,data['ndim'][layer][category][parameter][group])
 							])
@@ -430,8 +410,8 @@ def init_parameters(data,shape,hyperparameters,func=None):
 						data['slice'][layer][category][parameter][group][index] = tuple([
 							(slice(0,data['shape'][layer][category][parameter][group][refindex][axis],1)							
 							if ((len(data['boundaries'][layer][category][parameter][group][axis]) == 0) and
-								(any(len(data['boundaries'][layer][category][parameter][group][ax]) > 0)
-								for ax in range(0,data['ndim'][layer][category][parameter][group]))) else							
+								(any(len(data['boundaries'][layer][category][parameter][group][ax]) > 0
+								for ax in range(0,data['ndim'][layer][category][parameter][group])))) else							
 							([i for i in range(*data['slice'][layer][category][parameter][group][refindex][axis].indices(
 								data['shape'][layer][category][parameter][group][refindex][axis])) 
 								if i in data['boundaries'][layer][category][parameter][group][axis]]								
@@ -865,29 +845,6 @@ def init_parameters(data,shape,hyperparameters,func=None):
 									data['ndim'][layer][category][parameter][group])],
 							])
 
-						if layer == 'features':
-							axis = 1
-							print([data['slice'][layr][catgry][param][grp][refindex][axis] 
-										for l,layr in enumerate([layer])
-										for c,catgry in enumerate([catgry for catgry in groups[layr]])
-										for p,param in enumerate([param for param in groups[layr][catgry]])
-										for g,grp in enumerate([*[grp for grp in groups[layr][catgry][param]][0:1]])],
-										[all([layr==layer,catgry==category,param==parameter])
-										for l,layr in enumerate([layer])
-										for c,catgry in enumerate([catgry for catgry in groups[layr]])
-										for p,param in enumerate([param for param in groups[layr][catgry]])
-										for g,grp in enumerate([*[grp for grp in groups[layr][catgry][param]][0:1]])].index(True),
-								slice_slice(*[data['slice'][layr][catgry][param][grp][refindex][axis] 
-									for l,layr in enumerate([layer])
-									for c,catgry in enumerate([catgry for catgry in groups[layr]])
-									for p,param in enumerate([param for param in groups[layr][catgry]])
-									for g,grp in enumerate([*[grp for grp in groups[layr][catgry][param]][0:1]])],
-									index=[all([layr==layer,catgry==category,param==parameter])
-									for l,layr in enumerate([layer])
-									for c,catgry in enumerate([catgry for catgry in groups[layr]])
-									for p,param in enumerate([param for param in groups[layr][catgry]])
-									for g,grp in enumerate([*[grp for grp in groups[layr][catgry][param]][0:1]])].index(True)))
-
 						data['slice'][layer][category][parameter][group][index] = tuple([
 							*[data['slice'][layer][category][parameter][group][refindex][axis] 
 								for axis in range(0,data['ndim'][layer][category][parameter][group]-ndim)],
@@ -995,9 +952,9 @@ def init_parameters(data,shape,hyperparameters,func=None):
 		# 	continue
 		# if layer not in ['features']:
 		# 	continue			
-		if layer not in ['variables']:
-			continue						
-		# print('layer: ',layer)
+		# if layer not in ['variables']:
+		# 	continue						
+		print('Layer: ',layer)
 		for category in groups[layer]:
 			print('Category: ',category)
 			for parameter in groups[layer][category]:
