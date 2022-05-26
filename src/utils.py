@@ -2762,7 +2762,7 @@ def interpolate(x,y,x_new,kind):
 		return osp.interpolate.interp1d(x,y,kind)(x_new)
 
 	if y.ndim>1:
-		return array([_interpolate(x,y[:,i],x_new,kind) for i in range(y.shape[1])]).T
+		return array([_interpolate(x,y[i],x_new,kind) for i in range(y.shape[0])])
 	else:
 		return array(_interpolate(x,y,x_new,kind))
 
