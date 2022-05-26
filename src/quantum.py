@@ -1561,149 +1561,261 @@ class Hamiltonian(Object):
 		attributes = init_parameters(parameters,shape,hyperparams,func=func)
 
 
-# # Initialize parameters
+		# Initialize parameters
 
-		# # Get shape of parameters of different category
-		# categories = list(set([hyperparameters['parameters'][parameter]['category'] for parameter in hyperparameters['parameters']]))
-		# parameters = {}
+		# Get shape of parameters of different category
+		categories = list(set([hyperparameters['parameters'][parameter]['category'] for parameter in hyperparameters['parameters']]))
+		values = {}
 
-		# # Get parameters for each category
-		# # reshape, bound, impose boundary conditions accordingly, and assign category parameters
-		# for category in categories:
-		# 	shape = hyperparameters['shape']['put']['parameters'][category]
-		# 	axes = hyperparameters['axes']['features'][category]
+		# Get parameters for each layer,category,parameter,group
+		# reshape, bound, impose boundary conditions accordingly, and assign category parameters
+		attribute = 'shape'
 
-		# 	parameters[category] = zeros(shape,dtype=dtype)
+		for layer in attributes[attribute]:
+			values[layer] = {}
+			for category in attributes[attribute][layer]:
+				values[layer][category] = None
+				for parameter in attributes[attribute][layer][category]:
+					for group in attributes[attribute][layer][category][parameter]:
+						if values[layer][category] is None:							
+							attr = 'shape'
+							index = ('put','category','all')
+							shape = attributes[attr][layer][category][parameter][group][index]
 
-		# 	# Assign group parameters to category of parameters
-		# 	for parameter in hyperparameters['parameters']:
-				
-		# 		if not (hyperparameters['parameters'][parameter]['category'] == category):
-		# 			continue
+							values[layer][category] = zeros(shape,dtype=dtype)
 
 
-		# 		# Existing parameters for parameter
-		# 		params = hyperparameters['parameters'][parameter].get('parameters',None)
+					# Hyperparameters for parameter
+					hyperparams = hyperparameters['parameters'][parameter]		
 
-		# 		# Get shape of parameters of each time
-		# 		size = hyperparameters['parameters'][parameter].get('size',shape)
+					# Get number of dimensions
+					attr = 'ndim'
+					ndim = attributes[attr][layer][category][parameter][group]
 
-		# 		# Boundaries of the form [{i:value} for axis in axes]
-		# 		boundary = hyperparameters['parameters'][parameter].get('boundaries',[])
+					# Existing parameters for parameter
+					attr = 'parameters'
+					params = attributes[attr][layer][category][parameter][group]
 
-		# 		# Constants of the form [{i:value} for axis in axes]
-		# 		constant = hyperparameters['parameters'][parameter].get('constants',[])				
-				
-		# 		# If parameters exist
-		# 		reset =  params is None
+					# Existence of params
+					reset =  params is None
+		
+					# Get slices and shape of params to initialize
+					attr = 'slice'
+					index = ('put','category','variable')
+					slices = attributes[attr][layer][category][parameter][group][index]
 
-		# 		# Hyperparameters for parameter
-		# 		hyperparams = hyperparameters['parameters'][parameter]
+					attr = 'shape'
+					index = ('put','category','variable')
+					shape = attributes[attr][layer][category][parameter][group][index]
 
-		# 		# Assign to category parameters for each group
-		# 		for group in hyperparameters['parameters'][parameter]['group']:
+					# Set params depending on existence
+					if reset:
+						params = zeros(shape,dtype=dtype)
+					else:
+						params = array(params,dtype=dtype)
+
+					# for axis in axes:
+					# 	params = repeat(params,shapes[axis]-params.shape[axis],axis)
+
+					# params = take(params,shapes,axes)
+
+					if layer in ['parameters']:
+						values[layer][category] = (
+							values[layer][category].at[slices].set(
+								initialize(params,shape,reset=reset,dtype=dtype,hyperparameters=hyperparams)
+							)
+						)
+
+					elif layer in ['features']:
 					
-		# 			slices = hyperparameters['parameters'][parameter]['slice']['parameters'][group]
-		# 			shapes = hyperparameters['parameters'][parameter]['shape']['parameters'][group]
+					elif layer in ['variables']:
 
-		# 			if reset:
-		# 				params = zeros(shapes,dtype=dtype)
-		# 			else:
-		# 				params = array(params,dtype=dtype)
 
-		# 			for axis in axes:
-		# 				params = repeat(params,shapes[axis]-params.shape[axis],axis)
 
-		# 			params = take(params,shapes,axes)
 
-		# 			parameters[category] = (
-		# 				parameters[category].at[slices].set(
-		# 					initialize(params,shapes,reset=reset,dtype=dtype,hyperparameters=hyperparams)
-		# 				)
-		# 			)
+					# Boundaries of the form [{i:value} for axis in axes]
+					attr = 'boundaries'
+					boundary = [expand_dims([attributes[attr][layer][category][parameter][group][axis][i] 
+						for i in attributes[attr][layer][category][parameter][group]],[ax for ax in range(ndim) if ax != axis])
+						for axis in range(ndim)]
 
-		# 		attr = 'parameters'
-		# 		for axis in axes:
-		# 			for i in boundary[attr][axis]:
-		# 				slices = [slice(None) for axis in axes]
-		# 				value = None
+					# Get slices and shape of boundaries to initialize
+					attr = 'slice'
+					index = ('put','category','constant')
+					slices = attributes[attr][layer][category][parameter][group][index]
+
+					attr = 'shape'
+					index = ('put','category','constant')
+					shape = attributes[attr][layer][category][parameter][group][index]
+
+					for axis in range(ndim):
+						values[layer][category][]						
+
+					# Constants of the form [{i:value} for axis in axes]
+					attr = 'constants'
+					constant = [expand_dims([attributes[attr][layer][category][parameter][group][axis][i] 
+						for i in attributes[attr][layer][category][parameter][group]],[ax for ax in range(ndim) if ax != axis])
+						for axis in range(ndim)]
+					attr = 'parameters'
+					for axis in axes:
+						for i in boundary[attr][axis]:
+							slices = [slice(None) for axis in axes]
+							value = None
+					
+							slices[axis] = i
+							value = boundary[attr][axis][i]
+					
+							parameters[category] = parameters[category].at[tuple(slices)].set(value)
+
+
+					for axis in axes:
+						for i in constant[axis]:
+							slices = [slice(None) for axis in axes]
+							value = None
+					
+							slices[axis] = i
+							value = constant[axis][i]
+					
+							parameters[category] = parameters[category].at[tuple(slices)].set(value)
+
+
+
+
+		for category in categories:
+			shape = hyperparameters['shape']['put']['parameters'][category]
+			axes = hyperparameters['axes']['features'][category]
+
+			parameters[category] = zeros(shape,dtype=dtype)
+
+			# Assign group parameters to category of parameters
+			for parameter in hyperparameters['parameters']:
 				
-		# 				slices[axis] = i
-		# 				value = boundary[attr][axis][i]
+				if not (hyperparameters['parameters'][parameter]['category'] == category):
+					continue
+
+
+				# Existing parameters for parameter
+				params = hyperparameters['parameters'][parameter].get('parameters',None)
+
+				# Get shape of parameters of each time
+				size = hyperparameters['parameters'][parameter].get('size',shape)
+
+				# Boundaries of the form [{i:value} for axis in axes]
+				boundary = hyperparameters['parameters'][parameter].get('boundaries',[])
+
+				# Constants of the form [{i:value} for axis in axes]
+				constant = hyperparameters['parameters'][parameter].get('constants',[])				
 				
-		# 				parameters[category] = parameters[category].at[tuple(slices)].set(value)
+				# If parameters exist
+				reset =  params is None
 
+				# Hyperparameters for parameter
+				hyperparams = hyperparameters['parameters'][parameter]
 
-		# 		for axis in axes:
-		# 			for i in constant[axis]:
-		# 				slices = [slice(None) for axis in axes]
-		# 				value = None
+				# Assign to category parameters for each group
+				for group in hyperparameters['parameters'][parameter]['group']:
+					
+					slices = hyperparameters['parameters'][parameter]['slice']['parameters'][group]
+					shapes = hyperparameters['parameters'][parameter]['shape']['parameters'][group]
+
+					if reset:
+						params = zeros(shapes,dtype=dtype)
+					else:
+						params = array(params,dtype=dtype)
+
+					for axis in axes:
+						params = repeat(params,shapes[axis]-params.shape[axis],axis)
+
+					params = take(params,shapes,axes)
+
+					parameters[category] = (
+						parameters[category].at[slices].set(
+							initialize(params,shapes,reset=reset,dtype=dtype,hyperparameters=hyperparams)
+						)
+					)
+
+				attr = 'parameters'
+				for axis in axes:
+					for i in boundary[attr][axis]:
+						slices = [slice(None) for axis in axes]
+						value = None
 				
-		# 				slices[axis] = i
-		# 				value = constant[axis][i]
+						slices[axis] = i
+						value = boundary[attr][axis][i]
 				
-		# 				parameters[category] = parameters[category].at[tuple(slices)].set(value)
+						parameters[category] = parameters[category].at[tuple(slices)].set(value)
 
 
-		# # Get variables
-		# axes = list(set([axis for category in categories for axis in hyperparameters['axes']['variables'][category]]))
-		# shape = tuple([len(							
-		# 			set([i
-		# 			for category in categories						
-		# 			for i in [
-		# 			*_iter_(hyperparameters['slice']['put']['variables'][category][axis]),
-		# 			]
-		# 			if axis in hyperparameters['axes']['variables'][category]
-		# 			] 
-		# 			))
-		# 	for axis in axes
-		# 	])
+				for axis in axes:
+					for i in constant[axis]:
+						slices = [slice(None) for axis in axes]
+						value = None
+				
+						slices[axis] = i
+						value = constant[axis][i]
+				
+						parameters[category] = parameters[category].at[tuple(slices)].set(value)
 
-		# hyperparameters['variables'] = zeros(shape)		
 
-		# for parameter in hyperparameters['parameters']:
-		# 	category = hyperparameters['parameters'][parameter]['category']
-		# 	for group in hyperparameters['parameters'][parameter]['group']:
-		# 		slices = hyperparameters['parameters'][parameter]['slice']['parameters'][group]
-		# 		indices = hyperparameters['parameters'][parameter]['slice']['variables'][group]
-		# 		hyperparameters['variables'] = hyperparameters['variables'].at[indices].set(
-		# 			hyperparameters['parameters'][parameter]['variables'][group](parameters[category][slices])
-		# 			)
+		# Get variables
+		axes = list(set([axis for category in categories for axis in hyperparameters['axes']['variables'][category]]))
+		shape = tuple([len(							
+					set([i
+					for category in categories						
+					for i in [
+					*_iter_(hyperparameters['slice']['put']['variables'][category][axis]),
+					]
+					if axis in hyperparameters['axes']['variables'][category]
+					] 
+					))
+			for axis in axes
+			])
 
-		# # Get features
-		# axes = list(set([axis for category in categories for axis in hyperparameters['axes']['features'][category]]))
-		# shape = tuple([len(							
-		# 			set([i
-		# 			for category in categories						
-		# 			for i in [
-		# 			*_iter_(hyperparameters['slice']['put']['features'][category][axis]),
-		# 			]
-		# 			if axis in hyperparameters['axes']['features'][category]
-		# 			] 
-		# 			))
-		# 	for axis in axes
-		# 	])		
+		hyperparameters['variables'] = zeros(shape)		
 
-		# hyperparameters['features'] = zeros(shape)		
+		for parameter in hyperparameters['parameters']:
+			category = hyperparameters['parameters'][parameter]['category']
+			for group in hyperparameters['parameters'][parameter]['group']:
+				slices = hyperparameters['parameters'][parameter]['slice']['parameters'][group]
+				indices = hyperparameters['parameters'][parameter]['slice']['variables'][group]
+				hyperparameters['variables'] = hyperparameters['variables'].at[indices].set(
+					hyperparameters['parameters'][parameter]['variables'][group](parameters[category][slices])
+					)
 
-		# for parameter in hyperparameters['parameters']:
-		# 	category = hyperparameters['parameters'][parameter]['category']
-		# 	for group in hyperparameters['parameters'][parameter]['group']:
-		# 		slices = hyperparameters['parameters'][parameter]['slice']['parameters'][group]
-		# 		indices = hyperparameters['parameters'][parameter]['slice']['features'][group]
-		# 		feature = hyperparameters['parameters'][parameter]['features'][group](parameters[category][slices])
-		# 		length = feature.shape[0]
-		# 		for l in range(length):
-		# 			index = tuple([(
-		# 				indices[axis] if axis != axes[-1] else 
-		# 				slice(
-		# 					indices[axis].start+l,
-		# 					indices[axis].stop+l,
-		# 					indices[axis].step*length)
-		# 				) if isinstance(indices[axis],slice) else array(indices[axis])*length+l
-		# 				for axis in axes
-		# 				])
-		# 			hyperparameters['features'] = hyperparameters['features'].at[index].set(feature[l])
+		# Get features
+		axes = list(set([axis for category in categories for axis in hyperparameters['axes']['features'][category]]))
+		shape = tuple([len(							
+					set([i
+					for category in categories						
+					for i in [
+					*_iter_(hyperparameters['slice']['put']['features'][category][axis]),
+					]
+					if axis in hyperparameters['axes']['features'][category]
+					] 
+					))
+			for axis in axes
+			])		
+
+		hyperparameters['features'] = zeros(shape)		
+
+		for parameter in hyperparameters['parameters']:
+			category = hyperparameters['parameters'][parameter]['category']
+			for group in hyperparameters['parameters'][parameter]['group']:
+				slices = hyperparameters['parameters'][parameter]['slice']['parameters'][group]
+				indices = hyperparameters['parameters'][parameter]['slice']['features'][group]
+				feature = hyperparameters['parameters'][parameter]['features'][group](parameters[category][slices])
+				length = feature.shape[0]
+				for l in range(length):
+					index = tuple([(
+						indices[axis] if axis != axes[-1] else 
+						slice(
+							indices[axis].start+l,
+							indices[axis].stop+l,
+							indices[axis].step*length)
+						) if isinstance(indices[axis],slice) else array(indices[axis])*length+l
+						for axis in axes
+						])
+					hyperparameters['features'] = hyperparameters['features'].at[index].set(feature[l])
 
 
 		# Get label

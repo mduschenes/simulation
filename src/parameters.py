@@ -141,7 +141,7 @@ def init_parameters(data,shape,hyperparameters,func=None):
 	ndim = len(shape)
 
 	# Get properties of hyperparameters
-	properties = ['category','group','shape','locality','boundaries','constants']
+	properties = ['category','group','shape','locality','boundaries','constants','parameters']
 
 	assert all(all(prop in hyperparameters[parameter] for prop in properties) for parameter in hyperparameters), "hyperparameters missing properties"
 
@@ -221,6 +221,8 @@ def init_parameters(data,shape,hyperparameters,func=None):
 			for parameter in groups[layer][category]:			
 				for group in groups[layer][category][parameter]:
 
+					data['parameters'][layer][category][parameter][group] = hyperparameters[parameter]['parameters']
+					
 					data['ndim'][layer][category][parameter][group] = len(hyperparameters[parameter]['shape'][layer])
 
 					data['locality'][layer][category][parameter][group] = list(hyperparameters[parameter]['locality'][layer])
@@ -947,34 +949,34 @@ def init_parameters(data,shape,hyperparameters,func=None):
 
 
 
-	for layer in groups:
-		# if layer not in ['parameters']:
-		# 	continue
-		# if layer not in ['features']:
-		# 	continue			
-		# if layer not in ['variables']:
-		# 	continue						
-		print('Layer: ',layer)
-		for category in groups[layer]:
-			print('Category: ',category)
-			for parameter in groups[layer][category]:
-				print('Parameter: ',parameter)
-				for group in groups[layer][category][parameter]:
-					# if group not in [('x_0', 'x_2', 'x_4')]:
-					# if group not in [('y_1', 'y_3',)]:
-					# 	continue					
-					print('Group: ',group)
-					for attribute in data:
-						if isinstance(data[attribute][layer][category][parameter][group],dict):
-							for index in data[attribute][layer][category][parameter][group]:
-								print(attribute,index,data[attribute][layer][category][parameter][group][index])
-						else:
-							print(attribute,data[attribute][layer][category][parameter][group])
-					print()
-				print()
-			print()
+	# for layer in groups:
+	# 	# if layer not in ['parameters']:
+	# 	# 	continue
+	# 	# if layer not in ['features']:
+	# 	# 	continue			
+	# 	# if layer not in ['variables']:
+	# 	# 	continue						
+	# 	print('Layer: ',layer)
+	# 	for category in groups[layer]:
+	# 		print('Category: ',category)
+	# 		for parameter in groups[layer][category]:
+	# 			print('Parameter: ',parameter)
+	# 			for group in groups[layer][category][parameter]:
+	# 				# if group not in [('x_0', 'x_2', 'x_4')]:
+	# 				# if group not in [('y_1', 'y_3',)]:
+	# 				# 	continue					
+	# 				print('Group: ',group)
+	# 				for attribute in data:
+	# 					if isinstance(data[attribute][layer][category][parameter][group],dict):
+	# 						for index in data[attribute][layer][category][parameter][group]:
+	# 							print(attribute,index,data[attribute][layer][category][parameter][group][index])
+	# 					else:
+	# 						print(attribute,data[attribute][layer][category][parameter][group])
+	# 				print()
+	# 			print()
+	# 		print()
 
-	exit()
+	# exit()
 
 
 
