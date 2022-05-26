@@ -1601,11 +1601,11 @@ class Hamiltonian(Object):
 		
 					# Get slices and shape of params to initialize
 					attr = 'slice'
-					index = ('put','category','variable')
+					index = ('take','category','variable')
 					slices = attributes[attr][layer][category][parameter][group][index]
 
 					attr = 'shape'
-					index = ('put','category','variable')
+					index = ('take','category','variable')
 					shape = attributes[attr][layer][category][parameter][group][index]
 
 					# Set params depending on existence
@@ -1614,209 +1614,55 @@ class Hamiltonian(Object):
 					else:
 						params = array(params,dtype=dtype)
 
+					print(layer,category,parameter,group,index)
+					print(shape,slices,params.shape,values[layer][category].shape)
+
 					# for axis in axes:
 					# 	params = repeat(params,shapes[axis]-params.shape[axis],axis)
 
 					# params = take(params,shapes,axes)
 
 					if layer in ['parameters']:
+						reflayer = 'parameters'
+						func = initialize
 						values[layer][category] = (
 							values[layer][category].at[slices].set(
-								initialize(params,shape,reset=reset,dtype=dtype,hyperparameters=hyperparams)
+								func(params,shape,reset=reset,dtype=dtype,hyperparameters=hyperparams)
 							)
 						)
 
 					elif layer in ['features']:
-					
+						reflayer = 'parameters'						
+						func = hyperparameters['parameters'][parameter][layer][group]
+						values[layer][category] = (
+							values[layer][category].at[slices].set(func(values[reflayer][category]))
+							)
+
 					elif layer in ['variables']:
+						reflayer = 'features'
+						func = hyperparameters['parameters'][parameter][layer][group]
+						values[layer][category] = (
+							values[layer][category].at[slices].set(func(values[reflayer][category]))
+							)
 
+					# Boundaries and constants of the form [{i:value} for axis in axes]
+					attrs = ['boundaries','constants']
+					for attr in attrs:
+						value = [expand_dims([attributes[attr][layer][category][parameter][group][axis][i] 
+							for i in attributes[attr][layer][category][parameter][group][axis]],[ax for ax in range(ndim) if ax != axis])
+							for axis in range(ndim)]
 
+						# Get slices and shape of boundaries to initialize
+						attr = 'slice'
+						index = ('put','category','constant')
+						slices = attributes[attr][layer][category][parameter][group][index]
 
+						attr = 'shape'
+						index = ('put','category','constant')
+						shape = attributes[attr][layer][category][parameter][group][index]
 
-					# Boundaries of the form [{i:value} for axis in axes]
-					attr = 'boundaries'
-					boundary = [expand_dims([attributes[attr][layer][category][parameter][group][axis][i] 
-						for i in attributes[attr][layer][category][parameter][group]],[ax for ax in range(ndim) if ax != axis])
-						for axis in range(ndim)]
-
-					# Get slices and shape of boundaries to initialize
-					attr = 'slice'
-					index = ('put','category','constant')
-					slices = attributes[attr][layer][category][parameter][group][index]
-
-					attr = 'shape'
-					index = ('put','category','constant')
-					shape = attributes[attr][layer][category][parameter][group][index]
-
-					for axis in range(ndim):
-						values[layer][category][]						
-
-					# Constants of the form [{i:value} for axis in axes]
-					attr = 'constants'
-					constant = [expand_dims([attributes[attr][layer][category][parameter][group][axis][i] 
-						for i in attributes[attr][layer][category][parameter][group]],[ax for ax in range(ndim) if ax != axis])
-						for axis in range(ndim)]
-					attr = 'parameters'
-					for axis in axes:
-						for i in boundary[attr][axis]:
-							slices = [slice(None) for axis in axes]
-							value = None
-					
-							slices[axis] = i
-							value = boundary[attr][axis][i]
-					
-							parameters[category] = parameters[category].at[tuple(slices)].set(value)
-
-
-					for axis in axes:
-						for i in constant[axis]:
-							slices = [slice(None) for axis in axes]
-							value = None
-					
-							slices[axis] = i
-							value = constant[axis][i]
-					
-							parameters[category] = parameters[category].at[tuple(slices)].set(value)
-
-
-
-
-		for category in categories:
-			shape = hyperparameters['shape']['put']['parameters'][category]
-			axes = hyperparameters['axes']['features'][category]
-
-			parameters[category] = zeros(shape,dtype=dtype)
-
-			# Assign group parameters to category of parameters
-			for parameter in hyperparameters['parameters']:
-				
-				if not (hyperparameters['parameters'][parameter]['category'] == category):
-					continue
-
-
-				# Existing parameters for parameter
-				params = hyperparameters['parameters'][parameter].get('parameters',None)
-
-				# Get shape of parameters of each time
-				size = hyperparameters['parameters'][parameter].get('size',shape)
-
-				# Boundaries of the form [{i:value} for axis in axes]
-				boundary = hyperparameters['parameters'][parameter].get('boundaries',[])
-
-				# Constants of the form [{i:value} for axis in axes]
-				constant = hyperparameters['parameters'][parameter].get('constants',[])				
-				
-				# If parameters exist
-				reset =  params is None
-
-				# Hyperparameters for parameter
-				hyperparams = hyperparameters['parameters'][parameter]
-
-				# Assign to category parameters for each group
-				for group in hyperparameters['parameters'][parameter]['group']:
-					
-					slices = hyperparameters['parameters'][parameter]['slice']['parameters'][group]
-					shapes = hyperparameters['parameters'][parameter]['shape']['parameters'][group]
-
-					if reset:
-						params = zeros(shapes,dtype=dtype)
-					else:
-						params = array(params,dtype=dtype)
-
-					for axis in axes:
-						params = repeat(params,shapes[axis]-params.shape[axis],axis)
-
-					params = take(params,shapes,axes)
-
-					parameters[category] = (
-						parameters[category].at[slices].set(
-							initialize(params,shapes,reset=reset,dtype=dtype,hyperparameters=hyperparams)
-						)
-					)
-
-				attr = 'parameters'
-				for axis in axes:
-					for i in boundary[attr][axis]:
-						slices = [slice(None) for axis in axes]
-						value = None
-				
-						slices[axis] = i
-						value = boundary[attr][axis][i]
-				
-						parameters[category] = parameters[category].at[tuple(slices)].set(value)
-
-
-				for axis in axes:
-					for i in constant[axis]:
-						slices = [slice(None) for axis in axes]
-						value = None
-				
-						slices[axis] = i
-						value = constant[axis][i]
-				
-						parameters[category] = parameters[category].at[tuple(slices)].set(value)
-
-
-		# Get variables
-		axes = list(set([axis for category in categories for axis in hyperparameters['axes']['variables'][category]]))
-		shape = tuple([len(							
-					set([i
-					for category in categories						
-					for i in [
-					*_iter_(hyperparameters['slice']['put']['variables'][category][axis]),
-					]
-					if axis in hyperparameters['axes']['variables'][category]
-					] 
-					))
-			for axis in axes
-			])
-
-		hyperparameters['variables'] = zeros(shape)		
-
-		for parameter in hyperparameters['parameters']:
-			category = hyperparameters['parameters'][parameter]['category']
-			for group in hyperparameters['parameters'][parameter]['group']:
-				slices = hyperparameters['parameters'][parameter]['slice']['parameters'][group]
-				indices = hyperparameters['parameters'][parameter]['slice']['variables'][group]
-				hyperparameters['variables'] = hyperparameters['variables'].at[indices].set(
-					hyperparameters['parameters'][parameter]['variables'][group](parameters[category][slices])
-					)
-
-		# Get features
-		axes = list(set([axis for category in categories for axis in hyperparameters['axes']['features'][category]]))
-		shape = tuple([len(							
-					set([i
-					for category in categories						
-					for i in [
-					*_iter_(hyperparameters['slice']['put']['features'][category][axis]),
-					]
-					if axis in hyperparameters['axes']['features'][category]
-					] 
-					))
-			for axis in axes
-			])		
-
-		hyperparameters['features'] = zeros(shape)		
-
-		for parameter in hyperparameters['parameters']:
-			category = hyperparameters['parameters'][parameter]['category']
-			for group in hyperparameters['parameters'][parameter]['group']:
-				slices = hyperparameters['parameters'][parameter]['slice']['parameters'][group]
-				indices = hyperparameters['parameters'][parameter]['slice']['features'][group]
-				feature = hyperparameters['parameters'][parameter]['features'][group](parameters[category][slices])
-				length = feature.shape[0]
-				for l in range(length):
-					index = tuple([(
-						indices[axis] if axis != axes[-1] else 
-						slice(
-							indices[axis].start+l,
-							indices[axis].stop+l,
-							indices[axis].step*length)
-						) if isinstance(indices[axis],slice) else array(indices[axis])*length+l
-						for axis in axes
-						])
-					hyperparameters['features'] = hyperparameters['features'].at[index].set(feature[l])
-
+						for axis in range(ndim):
+							values[layer][category] = values[layer][category].at[slices].set(value[axis])
 
 		# Get label
 		label = hyperparameters['label']
@@ -2024,7 +1870,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 
 	# Initialization hyperparameters
 	bounds = hyperparameters['bounds']
-	constant = hyperparameters['constants']	
+	# constant = hyperparameters['constants']	
 	initialization = hyperparameters['initialization']
 	random = hyperparameters['random']
 	pad = hyperparameters['pad']
@@ -2084,11 +1930,11 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 
 			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
 
-			for axis in axes:
-				for i in constant[axis]:
-					slices = tuple([slice(None) if ax != axis else i for ax in axes])
-					value = constant[axis][i]			
-					parameters_interp = parameters_interp.at[slices].set(value)
+			# for axis in axes:
+			# 	for i in constant[axis]:
+			# 		slices = tuple([slice(None) if ax != axis else i for ax in axes])
+			# 		value = constant[axis][i]			
+			# 		parameters_interp = parameters_interp.at[slices].set(value)
 
 			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
 

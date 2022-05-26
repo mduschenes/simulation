@@ -146,7 +146,7 @@ def init_parameters(data,shape,hyperparameters,func=None):
 	assert all(all(prop in hyperparameters[parameter] for prop in properties) for parameter in hyperparameters), "hyperparameters missing properties"
 
 	# Get attributes
-	attributes = ['ndim','locality','size','indices','boundaries','constants','shape','slice']
+	attributes = ['parameters','ndim','locality','size','indices','boundaries','constants','shape','slice']
 
 	# Get layers across all parameter groupings
 	layers = [layer 
@@ -271,7 +271,7 @@ def init_parameters(data,shape,hyperparameters,func=None):
 						data['shape'][layer][category][parameter][group][index] = tuple([
 							((-data['size'][layer][category][parameter][group][axis]*
 							(len(data['indices'][layer][category][parameter][group][axis])
-							if (True or data['locality'][layer][category][parameter][group][axis] in ['local'] or layer in ['variables']) else 1))
+							if (data['locality'][layer][category][parameter][group][axis] in ['local'] or layer in ['variables']) else 1))
 							if data['size'][layer][category][parameter][group][axis] < 0 else 
 							data['size'][layer][category][parameter][group][axis]
 							)
