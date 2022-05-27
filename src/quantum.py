@@ -2037,7 +2037,7 @@ def check(hyperparameters):
 		'tau': {
 			'value': (lambda hyperparameters: hyperparameters[section]['tau']/hyperparameters['hyperparameters']['scale']),
 			'default': (lambda hyperparameters: 1),
-			'conditions': (lambda hyperparameters: True)
+			'conditions': (lambda hyperparameters: hyperparameters['hyperparameters'].get('scale') is not None)
 		},		
 	}			
 	for attr in updates:						
@@ -2092,7 +2092,7 @@ def check(hyperparameters):
 		'locality': {
 			'value':(lambda parameter,hyperparameters: hyperparameters['hyperparameters']['locality']),
 			'default':(lambda parameter,hyperparameters: None),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters['parameters'][parameter]['category'] in ['variable'])
+			'conditions': (lambda parameter,hyperparameters: hyperparameters['hyperparameters'].get('locality') is not None and hyperparameters['parameters'][parameter]['locality'] in ['variable'])
 		},		
 	}			
 	for parameter in hyperparameters[section]:
