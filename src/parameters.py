@@ -29,8 +29,8 @@ PATHS = ['',".."]
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,trace,broadcast_to,expand_dims,moveaxis,repeat,take,inner,outer
+from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid
+from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
 from src.utils import slice_slice
 from src.utils import pi,e
 
@@ -1024,7 +1024,7 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 	# reshape, bound, impose boundary conditions accordingly, and assign category parameters
 
 	if initialize is None:
-		initialize = lambda parameters,shape,hyperparameters,reset=None,dtype=None: parameters
+		initialize = lambda parameters,shape,hyperparameters,**kwargs: parameters
 
 	attribute = 'values'
 
@@ -1073,11 +1073,21 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 						index = ('take','layer','variable')
 						shape = data[attr][reflayer][category][parameter][group][index]
 
-						# Get slice of values to take
+
+
+						# Get shape of values to put
+						attr = 'shape'
+						reflayer = 'parameters'
+						index = ('put','layer','variable')
+						shapes = data[attr][reflayer][category][parameter][group][index]
+
+						print('shapes',shapes)
+
+						# Get slice of values to put
 						attr = 'slice'
 						reflayer = 'parameters'
-						index = ('take','layer','variable')
-						indices = data[attr][reflayer][category][parameter][group][index]
+						index = ('put','layer','variable')
+						slices = data[attr][reflayer][category][parameter][group][index]
 
 						# Set values depending on existence
 						if reset:
@@ -1085,12 +1095,9 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 						else:
 							values = array(values,dtype=dtype)
 
-						if values.ndim < ndim:
-							values = expand_dims(values,range(values.ndim,ndim))
-
-						values = take(values,shape,range(ndim))
-
-						values = func(values,shape,reset=reset,dtype=dtype,hyperparameters=hyperparams)
+						values = padding(values,shape,random=None)
+						
+						values = func(values,shape,hyperparams,reset=reset,slices=slices,shapes=shapes,layer=layer,dtype=dtype)
 
 						# Get slices of values to put
 						for catgry in [None,category]:
@@ -1118,11 +1125,10 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 						index = ('take','layer','variable')
 						indices = data[attr][reflayer][category][parameter][group][index]
 
-						# Get values to put
+						# Get values to take to put
 						values = data[attribute][reflayer][None][indices]
 
 						values = func(values)
-
 
 						# Get slices of values to put
 						for catgry in [None,category]:
@@ -1151,7 +1157,7 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 						index = ('put','layer','variable')
 						indices = data[attr][reflayer][category][parameter][group][index]
 
-						# Get values to put
+						# Get values to take to put
 						values = data[attribute][reflayer][None][indices]
 
 						values = func(values)
@@ -1201,11 +1207,53 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 
 										data[attribute][layer][catgry] = data[attribute][layer][catgry].at[refslices].set(values[axis][refindices])
 
-					if layer in ['parameters','features','variables']:
-						for catgry in [None,category]:
-							print(layer,category,parameter,group)
-							print(data[attribute][layer][catgry].round(3))
+					if layer in ['parameters','features','variables'] and category in ['variable','constant']:# and parameter in ['xy'] and group in [('y',)]:
+						if layer in ['parameters']:
+
+							func = hyperparameters[parameter]['features'][group]
+							func2 = hyperparameters[parameter]['variables'][group]
+
+							index = 'take'
+							attr = 'slice'
+							reflayer = 'parameters'						
+							refindex = (index,'category','variable')
+							slices = data[attr][reflayer][category][parameter][group][refindex]
+
+							attr = 'values'
+							values = data[attr][layer][category][slices]
+
+							_values = data[attr][layer][category]
+							print(parameter,group,data[attr][layer][category].shape,values.shape,slices)							
+							for ilayer in ['parameters','features','variables']:
+								print(ilayer)
+								for index in ['put','take']:
+									attr = 'shape'
+									reflayer = ilayer						
+									refindex = (index,'category','variable')
+									shape = data[attr][reflayer][category][parameter][group][refindex]
+
+									attr = 'slice'
+									reflayer = ilayer						
+									refindex = (index,'category','variable')
+									slices = data[attr][reflayer][category][parameter][group][refindex]
+									print(index,shape,slices)
+							
+
+							print('parameters',values.shape)
+							print(values.round(3))
+							print(_values.round(3))
+							print()
+							print('features',func(values).shape)
+							print(func(values).round(3))
+							print()
+							print('variables',func2(func(values)).shape)							
+							print(func2(func(values)).round(3))
+							print()
+					# if layer in ['variables']:
+					# 	for catgry in [None,category]:
+					# 		print(layer,category,parameter,group)
+					# 		print(data[attribute][layer][catgry].round(3))
 					print()
 
-
+	exit()
 	return data

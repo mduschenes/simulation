@@ -29,7 +29,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":100,
+	"M":17,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -48,7 +48,7 @@
 "hyperparameters":{
 	"iterations":200,
 	"runs":10,
-	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["local","local"]},			
+	"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
 	"label":"gate",
 	"optimizer":"cg",
 	"seed":12321,
@@ -88,10 +88,9 @@
 		"pad":"random",	
 		"seed":null,		
 		"init":[0,1],
-		"bounds":[-2,2],
-		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-5,5],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
+		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
 	},
 	"z": {
 		"name":"z",

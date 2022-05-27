@@ -745,7 +745,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 	Get random array
 	Args:
 		shape (int,iterable): Size or Shape of random array
-		key (jax.key,int): PRNG key or seed
+		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
 	Returns:
@@ -2161,6 +2161,53 @@ def expand_dims(a,axis):
 	'''
 
 	return np.expand_dims(a,axis)
+
+
+
+def padding(a,shape,key=None,bounds=[0,1],random='zeros'):
+	'''
+	Ensure array is shape and pad with values
+	Args:
+		a (array): Array to be padded
+		shape (int,iterable[int]): Size or shape of array
+		key (key,int): PRNG key or seed
+		bounds (iterable): Bounds on array
+		random (str): Type of random distribution
+	Returns:
+		out (array): Padded array
+	'''
+
+	if isinstance(shape,int):
+		shape = [shape]
+
+	ndim = len(shape)
+
+	if a.ndim < ndim:
+		a = expand_dims(a,range(a.ndim,ndim))
+
+	a = take(a,shape,range(ndim))
+
+	if random is not None:
+		ax = 0
+		new = [a.shape[axis] for axis in range(ndim)]
+		diff = [shape[axis] - new[axis] for axis in range(ndim)]
+
+		for axis in range(ndim-1,-1,-1):
+			if diff[axis] > 0:
+
+
+				new[axis] = diff[axis] 
+				pad = rand(new,key=key,bounds=bounds,random=random)
+				new[axis] = shape[axis]
+
+				a = moveaxis(a,axis,ax)
+				pad = moveaxis(pad,axis,ax)
+
+				a = array([*a,*pad])
+
+				a = moveaxis(a,ax,axis)	
+
+	return a
 
 
 @partial(jit,static_argnums=(0,1,2,))

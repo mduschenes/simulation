@@ -33,7 +33,7 @@ from src.optimize import Optimizer,Objective
 
 from src.utils import jit,gradient,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,trace,broadcast_to,expand_dims,moveaxis,repeat,take,inner,outer
+from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
 from src.utils import summation,exponentiation
 from src.utils import inner_abs2,inner_real2,inner_imag2
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
@@ -1532,21 +1532,9 @@ class Hamiltonian(Object):
 		string = self.string
 
 		# Get function to check if index of data for axis corresponds to group 
-		def check(group,index,axis):
-			'''
-			Function to check if index of data for axis corresponds to group
-			Args:
-				group (iterable[str]): Group of strings, i.e) elements of string, or with postfixes of site integers
-				index (int): Index of data to check
-				axis (int): Axis of data to check
-			Returns:
-				boolean (bool): Boolean of whether index and axis corresponds to group
-			'''
-			if axis != 0:
-				boolean = True
-			else:
-				boolean = any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])])
-			return boolean
+		check = lambda group,index,axis: (
+			(axis != 0) or 
+			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
 
 		# Get parameters data
 		parameters = None
@@ -1559,6 +1547,18 @@ class Hamiltonian(Object):
 
 		# Get attributes of parameters
 		attributes = init_parameters(parameters,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
+
+		attribute = 'values'
+		layer = 'parameters'
+		category = 'variable'
+
+		parameters = attributes[attribute][layer][category]
+		print(parameters.shape)
+		print(parameters.round(3))
+
+
+
+		exit()
 
 		# Get label
 		label = hyperparameters['label']
@@ -1750,7 +1750,7 @@ def invtrotter(a,p):
 	return a[:n]
 
 
-def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
+def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=None,shapes=None,dtype=None):
 	'''
 	Initialize parameters
 	Args:
@@ -1758,14 +1758,18 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 		shape (iterable): shape of parameters
 		hyperparameters (dict): hyperparameters for initialization
 		reset (bool): Overwrite existing parameters
+		layer (str): Layer type of parameters
+		slices (iterable): slices of array within containing array
+		shapes (iterable): shape of containing array of parameters
 		dtype (str,datatype): data type of parameters		
 	Returns:
 		out (array): initialized slice of parameters
 	'''	
 
 	# Initialization hyperparameters
-	bounds = hyperparameters['bounds']['parameters']
-	constant = hyperparameters['constants']['parameters']	
+	layer = 'parameters' if layer is None else layer
+	bounds = hyperparameters['bounds'][layer]
+	constant = hyperparameters['constants'][layer]	
 	initialization = hyperparameters['initialization']
 	random = hyperparameters['random']
 	pad = hyperparameters['pad']
@@ -1776,6 +1780,13 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 	shape = shape
 	ndim = len(shape)
 
+	if shapes is None:
+		shapes = shape
+
+	if slices is None:
+		slices = tuple([slice(0,shapes[axis],1) for axis in range(ndim)])
+
+
 	bounds = [to_number(i,dtype) for i in bounds]
 	if not any(isnaninf(i) for i in bounds):
 		bounds = [
@@ -1783,30 +1794,11 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 			bounds[1]*hyperparameters['init'][1],
 		]
 
+
+
 	# Add random padding of values if parameters not reset
 	if not reset:
-
-		_shape = [i for i in parameters.shape]
-		_diff = [shape[axis] - _shape[axis] for axis in range(ndim)]
-		_bounds = bounds
-		_random = pad
-		for axis in range(ndim-1,-1,-1):
-			if _diff[axis] > 0:
-
-				j = 0
-
-				_shape[axis] = _diff[axis] 
-				_key = None
-				_parameters = rand(_shape,key=_key,bounds=_bounds,random=_random)
-				_shape[axis] = shape[axis]
-
-				parameters = moveaxis(parameters,axis,j)
-				_parameters = moveaxis(_parameters,axis,j)
-
-				parameters = array([*parameters,*_parameters])
-
-				parameters = moveaxis(parameters,j,axis)				
-
+		parameters = padding(parameters,shape,key=None,bounds=bounds,random=pad)
 	else:
 		if initialization in ["interpolation"]:
 			# Parameters are initialized as interpolated random values between bounds
@@ -1820,9 +1812,13 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 
 			for axis in range(ndim):
 				for i in constant[axis]:
-					slices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-					value = constant[axis][i]			
-					parameters_interp = parameters_interp.at[slices].set(value)
+					i = shapes[axis] + i if i < 0 else i
+					print('consideirng',axis,i,shapes,slices,shape,i < shape_interp[axis], i >= slices[axis].start, i < slices[axis].stop)
+					if i >= slices[axis].start and i < slices[axis].stop:
+						print('doing')
+						shapes = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
+						value = constant[axis][i]			
+						parameters_interp = parameters_interp.at[shapes].set(value)
 
 			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
 
@@ -2092,7 +2088,7 @@ def check(hyperparameters):
 		'locality': {
 			'value':(lambda parameter,hyperparameters: hyperparameters['hyperparameters']['locality']),
 			'default':(lambda parameter,hyperparameters: None),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters['hyperparameters'].get('locality') is not None and hyperparameters['parameters'][parameter]['locality'] in ['variable'])
+			'conditions': (lambda parameter,hyperparameters: hyperparameters['hyperparameters'].get('locality') is not None and hyperparameters['parameters'][parameter]['category'] in ['variable'])
 		},		
 	}			
 	for parameter in hyperparameters[section]:
@@ -2126,6 +2122,8 @@ def setup(hyperparameters):
 		
 		settings['hyperparameters'][key]['model']['system']['seed'] = hyperparameters['hyperparameters']['seed']
 		settings['hyperparameters'][key]['hyperparameters']['seed'] = settings['seed'][key]
+		for parameter in settings['hyperparameters'][key]['parameters']:
+			settings['hyperparameters'][key]['parameters'][parameter]['seed'] = settings['seed'][key]
 
 		settings['hyperparameters'][key]['sys']['path'] = {
 			attr: path_join(settings['hyperparameters'][key]['sys']['directory'][attr],
