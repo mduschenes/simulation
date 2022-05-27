@@ -1764,8 +1764,8 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 	'''	
 
 	# Initialization hyperparameters
-	bounds = hyperparameters['bounds']
-	# constant = hyperparameters['constants']	
+	bounds = hyperparameters['bounds']['parameters']
+	constant = hyperparameters['constants']['parameters']	
 	initialization = hyperparameters['initialization']
 	random = hyperparameters['random']
 	pad = hyperparameters['pad']
@@ -1818,11 +1818,11 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 
 			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
 
-			# for axis in range(ndim):
-			# 	for i in constant[axis]:
-			# 		slices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-			# 		value = constant[axis][i]			
-			# 		parameters_interp = parameters_interp.at[slices].set(value)
+			for axis in range(ndim):
+				for i in constant[axis]:
+					slices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
+					value = constant[axis][i]			
+					parameters_interp = parameters_interp.at[slices].set(value)
 
 			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
 

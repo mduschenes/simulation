@@ -89,6 +89,17 @@ def variables(parameters,hyperparameters,parameter,group):
 			sin(scale[1]*parameters[1])
 		)		
 
+	elif parameter in ['z'] and group in [('z',)]:
+		variable = (
+			scale[0]*
+			parameters[0]
+		)
+		
+	elif parameter in ['zz'] and group in [('zz',)]:
+		variable = (
+			scale[0]*
+			parameters[0]
+		)
 
 	elif parameter in ['xy_024'] and group in [('x_0','x_2','x_4')]:
 		variable = (
@@ -112,18 +123,6 @@ def variables(parameters,hyperparameters,parameter,group):
 		variable = (
 			scale[0]*parameters[0]*
 			sin(scale[1]*parameters[1])
-		)
-
-	elif parameter in ['z'] and group in [('z',)]:
-		variable = (
-			scale[0]*
-			parameters[0]
-		)
-		
-	elif parameter in ['zz'] and group in [('zz',)]:
-		variable = (
-			scale[0]*
-			parameters[0]
 		)
 
 	return variable
@@ -155,6 +154,16 @@ def features(parameters,hyperparameters,parameter,group):
 			sigmoid(parameters[1::2]),
 		])		
 
+	elif parameter in ['z'] and group in [('z',)]:
+		feature = array([
+			parameters,
+		])
+
+	elif parameter in ['zz'] and group in [('zz',)]:
+		feature = array([
+			parameters,
+		])
+
 	elif parameter in ['xy_024'] and group in [('x_0','x_2','x_4')]:
 		feature = array([
 			sigmoid(parameters[0::4]),
@@ -184,16 +193,6 @@ def features(parameters,hyperparameters,parameter,group):
 			sigmoid(parameters[1::2])
 		])
 
-	elif parameter in ['z'] and group in [('z',)]:
-		feature = array([
-			parameters,
-		])
-
-	elif parameter in ['zz'] and group in [('zz',)]:
-		feature = array([
-			parameters,
-		])
-
 	return feature
 
 def constraints(parameters,hyperparameters,parameter,group):
@@ -216,8 +215,8 @@ def constraints(parameters,hyperparameters,parameter,group):
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		constraint = 0
 		constraint = (
-			((scale[0]*(parameters[0][0,:] - 0)**2).sum())+
-			((scale[0]*(parameters[0][-1,:] - 0)**2).sum())
+			((scale[0]*(parameters[0][0] - 0)**2).sum())+
+			((scale[0]*(parameters[0][-1] - 0)**2).sum())
 			)
 		# constraint = (
 		# 	((scale[0]*sigmoid(parameters[0][:m] - 1/cosh(linspace(0,m,m))[::-1,None])) +
@@ -242,13 +241,6 @@ def constraints(parameters,hyperparameters,parameter,group):
 		# 	# 	for i in hyperparameters['parameters'][parameter]['boundaries'])
 		# 	# ).sum()
 		# )
-
-	elif parameter in ['xy_0','xy_1'] and group in [('x_0','x_2'),('x_1','x_3'),('y_0','y_2'),('y_1','y_3')]:
-		constraint = 0
-		constraint = (
-			((scale[0]*(parameters[0][0,:] - 0)**2).sum())+
-			((scale[0]*(parameters[0][-1,:] - 0)**2).sum())
-			)
 
 	elif parameter in ['z'] and group in [('z',)]:
 		constraint = 0

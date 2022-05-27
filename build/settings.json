@@ -29,7 +29,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":17,
+	"M":100,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -76,7 +76,7 @@
 	"xy": {
 		"name":"xy",
 		"category":"variable",
-		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},				
+		"locality":{"parameters":["global","local"],"features":["local","local","local"],"variables":["local","local"]},				
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -89,8 +89,9 @@
 		"seed":null,		
 		"init":[0,1],
 		"bounds":[-2,2],
+		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{}],"variables":[{},{}]}
+		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
 	},
 	"z": {
 		"name":"z",
@@ -107,7 +108,7 @@
 		"pad":"random",	
 		"seed":null,
 		"init":[0,1],		
-		"bounds":[-1,1],
+		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
 	},
@@ -126,7 +127,7 @@
 		"pad":"random",
 		"seed":null,	
 		"init":[0,1],			
-		"bounds":[-1,1],		
+		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
 	}
