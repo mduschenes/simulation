@@ -275,7 +275,7 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 						data['shape'][layer][category][parameter][group][index] = tuple([
 							((-data['size'][layer][category][parameter][group][axis]*
 							(len(data['indices'][layer][category][parameter][group][axis])
-							if (data['locality'][layer][category][parameter][group][axis] in ['local'] or layer in ['variables']) else 1))
+							if (axis > (ndim-data['ndim'][layer][category][parameter][group]) or data['locality'][layer][category][parameter][group][axis] in ['local'] or layer in ['variables']) else 1))
 							if data['size'][layer][category][parameter][group][axis] < 0 else 
 							data['size'][layer][category][parameter][group][axis]
 							)
@@ -965,100 +965,162 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 	attribute = 'values'
 
 	for layer in groups:
+		data[attribute][layer] = None
 		for category in groups[layer]:
-			data[attribute][layer][category] = None
 			for parameter in groups[layer][category]:			
 				for group in groups[layer][category][parameter]:
 
-					if data[attribute][layer][category] is None:							
+					if data[attribute][layer] is None:							
 						attr = 'shape'
-						index = ('put','category','all')
+						index = ('put','layer','all')
 						shape = data[attr][layer][category][parameter][group][index]
 
-						data[attribute][layer][category] = zeros(shape,dtype=dtype)
+						data[attribute][layer] = zeros(shape,dtype=dtype)
 
 
-				# Hyperparameters for parameter
-				hyperparams = hyperparameters[parameter]		
+					# Create in category and set in both category and layer
 
-				# Get number of dimensions
-				attr = 'ndim'
-				ndim = data[attr][layer][category][parameter][group]
+					if layer in ['parameters']:
 
-				# Existing parameters for parameter
-				attr = 'parameters'
-				params = data[attr][layer][category][parameter][group]
+						# Function for values
+						func = initialize
 
-				# Existence of params
-				reset =  params is None
-	
-				# Get slices and shape of params to initialize
-				attr = 'slice'
-				index = ('take','category','variable')
-				slices = data[attr][layer][category][parameter][group][index]
+						# Hyperparameters for parameter
+						hyperparams = hyperparameters[parameter]		
 
-				attr = 'shape'
-				index = ('take','category','variable')
-				shape = data[attr][layer][category][parameter][group][index]
+						# Get number of dimensions
+						attr = 'ndim'
+						ndim = data[attr][layer][category][parameter][group]
 
-				# Set params depending on existence
-				if reset:
-					params = zeros(shape,dtype=dtype)
-				else:
-					params = array(params,dtype=dtype)
+						# Existing parameters for parameter
+						attr = 'parameters'
+						values = data[attr][layer][category][parameter][group]
 
-				print(layer,category,parameter,group,index)
-				print(shape,slices,params.shape,data[attribute][layer][category].shape)
+						# Existence of values
+						reset =  values is None
+			
+						# Get slices of values to put
+						attr = 'slice'
+						reflayer = layer						
+						index = ('put','layer','variable')
+						slices = data[attr][reflayer][category][parameter][group][index]
 
-				# for axis in range(ndim):
-				# 	params = repeat(params,shape[axis]-params.shape[axis],axis)
+						# Get shape of values to take
+						attr = 'shape'
+						reflayer = layer						
+						index = ('take','layer','variable')
+						shape = data[attr][reflayer][category][parameter][group][index]
 
-				# params = take(params,shape,range(ndim))
+						# Get slice of values to take
+						attr = 'slice'
+						reflayer = 'parameters'
+						index = ('take','layer','variable')
+						indices = data[attr][reflayer][category][parameter][group][index]
 
-				if layer in ['parameters']:
-					reflayer = 'parameters'
-					func = initialize
-					data[attribute][layer][category] = (
-						data[attribute][layer][category].at[slices].set(
-							func(params,shape,reset=reset,dtype=dtype,hyperparameters=hyperparams)
-						)
-					)
+						# Set values depending on existence
+						if reset:
+							values = zeros(shape,dtype=dtype)
+						else:
+							values = array(values,dtype=dtype)
 
-				elif layer in ['features']:
-					reflayer = 'parameters'						
-					func = hyperparameters['parameters'][parameter][layer][group]
-					data[attribute][layer][category] = (
-						data[attribute][layer][category].at[slices].set(func(data[attribute][reflayer][category]))
-						)
+						if values.ndim < ndim:
+							values = expand_dims(values,range(values.ndim,ndim))
 
-				elif layer in ['variables']:
-					reflayer = 'features'
-					func = hyperparameters['parameters'][parameter][layer][group]
-					data[attribute][layer][category] = (
-						data[attribute][layer][category].at[slices].set(func(data[attribute][reflayer][category]))
+						values = take(values,shape,range(ndim))
+
+						data[attribute][layer] = (
+							data[attribute][layer].at[slices].set(
+								func(values,shape,reset=reset,dtype=dtype,hyperparameters=hyperparams)
+							)
 						)
 
-				# Boundaries and constants of the form [{i:value} for axis in axes]
-				attrs = ['boundaries','constants']
-				for attr in attrs:
-					value = [expand_dims(array([data[attr][layer][category][parameter][group][axis][i] 
-								for i in data[attr][layer][category][parameter][group][axis]]),
-								[ax for ax in range(ndim) if ax != axis])
-						for axis in range(ndim)]
+					elif layer in ['features']:
 
-					# Get slices and shape of boundaries,constants to initialize
-					attr = 'slice'
-					index = ('put','category','constant')
-					slices = data[attr][layer][category][parameter][group][index]
+						# Function for values
+						func = hyperparameters[parameter][layer][group]
 
-					attr = 'shape'
-					index = ('put','category','constant')
-					shape = data[attr][layer][category][parameter][group][index]
-					for axis in range(ndim):
-						if value[axis].size > 0:
-							data[attribute][layer][category] = data[attribute][layer][category].at[slices].set(value[axis])
+						# Get slice of values to put
+						attr = 'slice'
+						reflayer = layer
+						index = ('put','layer','variable')
+						slices = data[attr][reflayer][category][parameter][group][index]
+
+						# Get shape of values to take
+						attr = 'shape'
+						reflayer = 'parameters'						
+						index = ('take','layer','variable')
+						shape = data[attr][reflayer][category][parameter][group][index]
+
+						# Get slice of values to take
+						attr = 'slice'
+						reflayer = 'parameters'						
+						index = ('take','layer','variable')
+						indices = data[attr][reflayer][category][parameter][group][index]
+
+						# Get values to put
+						values = data[attribute][reflayer][indices]
+
+						data[attribute][layer] = (
+							data[attribute][layer].at[slices].set(func(values))
+							)
+
+					elif layer in ['variables']:
+
+						# Function for values					
+						func = hyperparameters[parameter][layer][group]
+
+						# Get slice of values to put
+						attr = 'slice'
+						reflayer = layer
+						index = ('put','layer','variable')
+						slices = data[attr][reflayer][category][parameter][group][index]
+
+						# Get shape of values to take
+						attr = 'shape'
+						reflayer = 'features'						
+						index = ('take','layer','variable')
+						shape = data[attr][reflayer][category][parameter][group][index]
+
+						# Get shape of values to take
+						attr = 'slice'
+						reflayer = 'features'
+						index = ('put','layer','variable')
+						indices = data[attr][reflayer][category][parameter][group][index]
+
+						# Get values to put
+						values = data[attribute][reflayer][indices]
+
+						data[attribute][layer] = (
+							data[attribute][layer].at[slices].set(func(values))
+							)
 
 
+					print(layer,category,parameter,group)
+					print(shape,slices,indices,values.shape,data[attribute][layer].shape)
+
+					# Boundaries and constants of the form [{i:value} for axis in axes]
+					attrs = ['boundaries','constants']
+					for attr in attrs:
+						values = [expand_dims(array([data[attr][layer][category][parameter][group][axis][i] 
+									for i in data[attr][layer][category][parameter][group][axis]]),
+									[ax for ax in range(ndim) if ax != axis])
+							for axis in range(ndim)]
+
+						# Get slices and shape of boundaries,constants to initialize
+						attr = 'slice'
+						index = ('put','layer','constant')
+						slices = data[attr][layer][category][parameter][group][index]
+
+						attr = 'shape'
+						index = ('put','layer','constant')
+						shape = data[attr][layer][category][parameter][group][index]
+						for axis in range(ndim):
+							if values[axis].size > 0:
+								data[attribute][layer] = data[attribute][layer].at[slices].set(values[axis])
+
+					if layer in ['parameters','features','variables']:
+						print(data[attribute][layer].round(5))
+					print()
 	# for layer in groups:
 	# 	# if layer not in ['parameters']:
 	# 	# 	continue
@@ -1077,11 +1139,11 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 	# 				# 	continue					
 	# 				print('Group: ',group)
 	# 				for attribute in data:
-	# 					if isinstance(data[attribute][layer][category][parameter][group],dict):
-	# 						for index in data[attribute][layer][category][parameter][group]:
-	# 							print(attribute,index,data[attribute][layer][category][parameter][group][index])
+	# 					if isinstance(data[attribute][layer][parameter][group],dict):
+	# 						for index in data[attribute][layer][parameter][group]:
+	# 							print(attribute,index,data[attribute][layer][parameter][group][index])
 	# 					else:
-	# 						print(attribute,data[attribute][layer][category][parameter][group])
+	# 						print(attribute,data[attribute][layer][parameter][group])
 	# 				print()
 	# 			print()
 	# 		print()

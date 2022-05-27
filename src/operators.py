@@ -158,6 +158,10 @@ def init_operators(data,shape,hyperparameters,index=None,dtype=None):
 	else:
 		data = array(data)
 
+	if data is None:
+		data = (rand(shape)+ 1j*rand(shape))/sqrt(2)
+		data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)					
+
 	data = data.astype(dtype=dtype)
 
 

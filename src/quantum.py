@@ -1569,7 +1569,7 @@ class Hamiltonian(Object):
 
 		label = init_operators(label,shape,hyperparams,index=index,dtype=dtype)
 
-		print(label)
+		# print(label)
 		exit()
 
 		hyperparameters['label'] = label #.conj().T
@@ -1583,7 +1583,6 @@ class Hamiltonian(Object):
 		self.parameters = parameters
 		self.hyperparameters = hyperparameters
 		self.attributes = attributes
-
 
 		return
 
@@ -1786,35 +1785,27 @@ def initialize(parameters,shape,hyperparameters,reset=None,dtype=None):
 
 	# Add random padding of values if parameters not reset
 	if not reset:
-		parameters = expand_dims(parameters,parameters.shape,range(ndim))
 
-		# _shape = [i for i in parameters.shape]
-		# _diff = [shape[axis] - _shape[axis] for axis in range(ndim)]
-		# _bounds = bounds
-		# _random = pad
-		# for axis in range(ndim-1,0,-1):
-		# 	if _diff[axis] > 0:
+		_shape = [i for i in parameters.shape]
+		_diff = [shape[axis] - _shape[axis] for axis in range(ndim)]
+		_bounds = bounds
+		_random = pad
+		for axis in range(ndim-1,-1,-1):
+			if _diff[axis] > 0:
 
-		# 		j = 0
+				j = 0
 
-		# 		_shape[axis] = _diff[axis] 
-		# 		_key = None
-		# 		_parameters = rand(_shape,key=_key,bounds=_bounds,random=_random)
-		# 		_shape[axis] = shape[axis]
+				_shape[axis] = _diff[axis] 
+				_key = None
+				_parameters = rand(_shape,key=_key,bounds=_bounds,random=_random)
+				_shape[axis] = shape[axis]
 
-		# 		parameters = moveaxis(parameters,axis,j)
-		# 		_parameters = moveaxis(_parameters,axis,j)
+				parameters = moveaxis(parameters,axis,j)
+				_parameters = moveaxis(_parameters,axis,j)
 
-		# 		parameters = array([*parameters,*_parameters])
-				
-		# 		parameters = moveaxis(parameters,j,axis)				
-		# 		_parameters = moveaxis(_parameters,j,axis)
+				parameters = array([*parameters,*_parameters])
 
-		# axis = 0
-		# _shape[axis] += _diff[axis]
-		# _shape = tuple(_shape)
-		# _parameters = broadcast_to(parameters,_shape)
-		# parameters = _parameters
+				parameters = moveaxis(parameters,j,axis)				
 
 	else:
 		if initialization in ["interpolation"]:
