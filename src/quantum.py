@@ -1545,20 +1545,44 @@ class Hamiltonian(Object):
 		# Get parameters hyperparameters
 		hyperparams = hyperparameters['parameters']
 
-		# Get attributes of parameters
+		# Get attributes of parameters of the form {attribute:{category:{parameter:{group:{layer:[]}}}}
 		attributes = init_parameters(parameters,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
 
-		attribute = 'values'
-		layer = 'parameters'
+		shape = self.shape[:2]
+		values = zeros(shape,dtype=dtype)
+
+		attribute = 'shape'
 		category = 'variable'
 
-		parameters = attributes[attribute][layer][category]
-		print(parameters.shape)
-		print(parameters.round(3))
+		for category in attributes[attribute]:
+			for parameter in attributes[attribute][category]:
+				for group in attributes[attribute][category][parameter]:
+
+					attr = 'slice'
+					index = ('take','layer','variable')
+					layer = 'parameters'
+					# print(category,parameters,group,layer,index)
+					slices = attributes[attr][category][parameter][group][layer][index]				
+					
+					attr = 'values'
+					parameters = attributes[attr][layer][slices]
+
+					# print(parameters)
+					attr = 'slice'
+					index = ('put','layer','variable')
+					layer = 'variables'
+					slices = attributes[attr][category][parameter][group][layer][index]				
+
+					layer = 'variables'
+					funcs = [attributes[attr][category][parameter][group][layer] for attr in ['features','variables']]
+
+					values = values.at[slices].set(funcs[1](funcs[0](parameters)))
 
 
+		print(values.round(8))
 
 		exit()
+
 
 		# Get label
 		label = hyperparameters['label']
@@ -1568,9 +1592,6 @@ class Hamiltonian(Object):
 		dtype = self.dtype
 
 		label = init_operators(label,shape,hyperparams,index=index,dtype=dtype)
-
-		# print(label)
-		exit()
 
 		hyperparameters['label'] = label #.conj().T
 
@@ -1798,7 +1819,6 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 		parameters = padding(parameters,shape,key=None,bounds=bounds,random=pad)
 	else:
 		if initialization in ["interpolation"]:
-			
 			# Parameters are initialized as interpolated random values between bounds
 			interpolation = hyperparameters['interpolation']
 			smoothness = min(shape[-1]//2,hyperparameters['smoothness'])

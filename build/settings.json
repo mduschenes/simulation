@@ -63,6 +63,7 @@
 	"sigmoid":1e4,"alpha":1e-4,"beta":1e-1,
 	"lambda":[5e1,5e-2,1e1],
 	"line_search":1,
+	"reset":0,
 	"track":{
 		"track":{"log":1,"track":10,"callback":1},
 		"size":0,
@@ -97,7 +98,7 @@
 		"name":"z",
 		"category":"constant",
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},				
-		"parameters":[-0.1,0,0.1,0.05],
+		"parameters":[-0.1,0,0.1,0.05,-0.2],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["z"]],
 		"scale":1,

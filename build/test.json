@@ -48,7 +48,7 @@
 "hyperparameters":{
 	"iterations":200,
 	"runs":1,
-	"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
+	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
 	"label":"gate",
 	"optimizer":"cg",
 	"seed":12321,
@@ -63,6 +63,7 @@
 	"sigmoid":1e4,"alpha":1e-4,"beta":1e-1,
 	"lambda":[5e1,5e-2,1e1],
 	"line_search":1,
+	"reset":0,
 	"track":{
 		"track":{"log":1,"track":10,"callback":1},
 		"size":0,
@@ -89,8 +90,8 @@
 		"seed":null,		
 		"init":[0,1],
 		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
-		"boundaries":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]},
-		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
+		"boundaries":{"parameters":[{},{"0":2,"-1":-2}],"features":[{},{},{"0":-3,"-1":3}],"variables":[{},{"0":0,"-1":0}]},
+		"constants":{"parameters":[{},{"0":2,"-1":-2}],"features":[{},{},{"0":3,"-1":-1}],"variables":[{},{"0":0,"-1":0}]}
 	},
 	"xy_13": {
 		"name":"xy_13",
@@ -109,8 +110,7 @@
 		"init":[0,1],
 		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
+		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":2,"-1":0}],"variables":[{},{"0":2,"-1":-1}]}
 	},	
 	"z": {
 		"name":"z",
@@ -135,7 +135,7 @@
 		"name":"zz",
 		"category":"constant",
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},				
-		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
+		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,

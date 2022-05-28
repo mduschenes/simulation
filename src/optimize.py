@@ -106,6 +106,7 @@ class Base(object):
 			'search':0,
 			'iterations':0,
 			'status':1,
+			'reset':0,
 			'track':{'track':{'log':1,'track':10,'callback':1},'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
@@ -118,6 +119,8 @@ class Base(object):
 		self.alpha = hyperparameters['alpha']
 		self.search = hyperparameters['search'] 
 		self.status = hyperparameters['status']
+		
+		self.reset(hyperparameters['reset'])
 
 		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
 
@@ -225,6 +228,21 @@ class Base(object):
 
 		return value,grad,parameters
 
+	def reset(self,reset=False):
+		'''
+		Reset tracking of optimization
+		Args:
+			reset (bool): Boolean of resetting optimization
+		'''
+
+		if reset:
+			self.track['size'] = 0
+
+			for attr in self.track:
+				if isinstance(self.track[attr],list):
+					self.track[attr].clear()
+
+		return
 
 class Optimizer(Base):
 	'''
