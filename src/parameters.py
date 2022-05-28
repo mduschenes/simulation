@@ -1240,20 +1240,20 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 										print(index,ref,shape,slices)
 							
 
-							print('parameters',layer,values.shape)
+							print('func parameters',layer,values.shape)
 							print(values.round(3))
 							print(_values.round(3))
 							print(_values_.round(3))
 							print()
-							print('features',func(values).shape)
+							print('func features',func(values).shape)
 							print(func(values).round(3))
 							print()
-							print('variables',func2(func(values)).shape)							
+							print('func variables',func2(func(values)).shape)							
 							print(func2(func(values)).round(3))
 							print()
 					# if layer in ['variables']:
 					for catgry in [None,category]:
-						print(layer,category,catgry,parameter,group)
+						print('vals!@!',layer,category,catgry,parameter,group)
 						print(data[attribute][layer][catgry].round(3))
 					print()
 

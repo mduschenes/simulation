@@ -62,7 +62,7 @@ def gradient_bound(a,hyperparameters):
 
 def variables(parameters,hyperparameters,parameter,group):
 	'''
-	Get variables from parameters, compute features, and variables from features
+	Get variables from parameters
 	Args:
 		parameters (array): Array of parameters to compute variables
 		hyperparameters (dict): Hyperparameters for parameters
@@ -194,6 +194,22 @@ def features(parameters,hyperparameters,parameter,group):
 		])
 
 	return feature
+
+
+def parameters(parameters,hyperparameters,parameter,group):
+	'''
+	Get parameters from parameters
+	Args:
+		parameters (array): Array of parameters to compute parameters
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for parameters
+		group (str): Parameter group for parameters
+	Returns:
+		parameters (array): parameters
+	'''
+
+	return parameters
+
 
 def constraints(parameters,hyperparameters,parameter,group):
 	'''
