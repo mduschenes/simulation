@@ -1330,7 +1330,7 @@ def slice_merge(*slices):
 	if start == []:
 		start = None
 	else:
-		start = sum(start)
+		start = min(start)
 
 	if stop == []:
 		stop = None

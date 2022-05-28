@@ -1081,8 +1081,6 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 						index = ('put','layer','variable')
 						shapes = data[attr][reflayer][category][parameter][group][index]
 
-						print('shapes',shapes)
-
 						# Get slice of values to put
 						attr = 'slice'
 						reflayer = 'parameters'
@@ -1215,7 +1213,7 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 
 							index = 'take'
 							attr = 'slice'
-							reflayer = 'parameters'						
+							reflayer = layer						
 							refindex = (index,'category','variable')
 							slices = data[attr][reflayer][category][parameter][group][refindex]
 
@@ -1223,25 +1221,29 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 							values = data[attr][layer][category][slices]
 
 							_values = data[attr][layer][category]
-							print(parameter,group,data[attr][layer][category].shape,values.shape,slices)							
+							_values_ = data[attr][layer][None]
+
+							print('layer---',parameter,group,data[attr][layer][category].shape,values.shape,slices)							
 							for ilayer in ['parameters','features','variables']:
 								print(ilayer)
 								for index in ['put','take']:
-									attr = 'shape'
-									reflayer = ilayer						
-									refindex = (index,'category','variable')
-									shape = data[attr][reflayer][category][parameter][group][refindex]
+									for ref in ['category','layer']:
+										attr = 'shape'
+										reflayer = ilayer						
+										refindex = (index,ref,'variable')
+										shape = data[attr][reflayer][category][parameter][group][refindex]
 
-									attr = 'slice'
-									reflayer = ilayer						
-									refindex = (index,'category','variable')
-									slices = data[attr][reflayer][category][parameter][group][refindex]
-									print(index,shape,slices)
+										attr = 'slice'
+										reflayer = ilayer						
+										refindex = (index,ref,'variable')
+										slices = data[attr][reflayer][category][parameter][group][refindex]
+										print(index,ref,shape,slices)
 							
 
-							print('parameters',values.shape)
+							print('parameters',layer,values.shape)
 							print(values.round(3))
 							print(_values.round(3))
+							print(_values_.round(3))
 							print()
 							print('features',func(values).shape)
 							print(func(values).round(3))
@@ -1250,9 +1252,9 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 							print(func2(func(values)).round(3))
 							print()
 					# if layer in ['variables']:
-					# 	for catgry in [None,category]:
-					# 		print(layer,category,parameter,group)
-					# 		print(data[attribute][layer][catgry].round(3))
+					for catgry in [None,category]:
+						print(layer,category,catgry,parameter,group)
+						print(data[attribute][layer][catgry].round(3))
 					print()
 
 	exit()

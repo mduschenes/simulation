@@ -24,12 +24,12 @@
 	"test":0
 },
 "model":{
-	"N":4,
+	"N":5,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":17,
+	"M":11,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -73,13 +73,13 @@
 	}
 },
 "parameters":{
-	"xy": {
-		"name":"xy",
+	"xy_024": {
+		"name":"xy_024",
 		"category":"variable",
-		"locality":{"parameters":["global","local"],"features":["local","local","local"],"variables":["local","local"]},				
+		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},		
 		"parameters":null,
-		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
-		"group":[["x"],["y"]],
+		"shape":{"parameters":[-4,-1],"features":[4,-1,-1],"variables":[-1,-1]},
+		"group":[["x_0","x_2","x_4"],["y_0","y_2","y_4"]],
 		"scale":1,
 		"initialization":"interpolation",
 		"random":"uniform",
@@ -88,16 +88,34 @@
 		"pad":"random",	
 		"seed":null,		
 		"init":[0,1],
-		"bounds":{"parameters":[-5,5],"features":[0,1],"variables":[-1,1]},
-		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"boundaries":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]},
-		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
+		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
+		"boundaries":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]},
+		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
 	},
+	"xy_13": {
+		"name":"xy_13",
+		"category":"variable",
+		"locality":{"parameters":["global","local"],"features":["global","local","local"],"variables":["local","local"]},		
+		"parameters":null,
+		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
+		"group":[["x_1","x_3"],["y_1","y_3"]],
+		"scale":1,
+		"initialization":"interpolation",
+		"random":"uniform",
+		"interpolation":3,
+		"smoothness":3,	
+		"pad":"random",	
+		"seed":null,		
+		"init":[0,1],
+		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
+		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
+	},	
 	"z": {
 		"name":"z",
 		"category":"constant",
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},				
-		"parameters":[-0.1,0,0.1,0.05],
+		"parameters":[-0.1,0.22,0.1,0.05],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["z"]],
 		"scale":1,
@@ -115,7 +133,7 @@
 	"zz": {
 		"name":"zz",
 		"category":"constant",
-		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},		
+		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},				
 		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
@@ -126,7 +144,7 @@
 		"smoothness":1,	
 		"pad":"random",
 		"seed":null,	
-		"init":[0,1],			
+		"init":[0,1],	
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}

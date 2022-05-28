@@ -1786,7 +1786,6 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 	if slices is None:
 		slices = tuple([slice(0,shapes[axis],1) for axis in range(ndim)])
 
-
 	bounds = [to_number(i,dtype) for i in bounds]
 	if not any(isnaninf(i) for i in bounds):
 		bounds = [
@@ -1794,13 +1793,12 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 			bounds[1]*hyperparameters['init'][1],
 		]
 
-
-
 	# Add random padding of values if parameters not reset
 	if not reset:
 		parameters = padding(parameters,shape,key=None,bounds=bounds,random=pad)
 	else:
 		if initialization in ["interpolation"]:
+			
 			# Parameters are initialized as interpolated random values between bounds
 			interpolation = hyperparameters['interpolation']
 			smoothness = min(shape[-1]//2,hyperparameters['smoothness'])
@@ -1812,13 +1810,11 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 
 			for axis in range(ndim):
 				for i in constant[axis]:
-					i = shapes[axis] + i if i < 0 else i
-					print('consideirng',axis,i,shapes,slices,shape,i < shape_interp[axis], i >= slices[axis].start, i < slices[axis].stop)
-					if i >= slices[axis].start and i < slices[axis].stop:
-						print('doing')
-						shapes = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
+					j = shapes[axis] + i if i < 0 else i
+					if j >= slices[axis].start and j < slices[axis].stop:
+						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
 						value = constant[axis][i]			
-						parameters_interp = parameters_interp.at[shapes].set(value)
+						parameters_interp = parameters_interp.at[indices].set(value)
 
 			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
 
