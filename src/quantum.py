@@ -1548,8 +1548,7 @@ class Hamiltonian(Object):
 		# Get attributes of parameters of the form {attribute:{category:{parameter:{group:{layer:[]}}}}
 		attributes = init_parameters(parameters,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
 
-		shape = self.shape[:2]
-		values = zeros(shape,dtype=dtype)
+		values = None
 
 		attribute = 'shape'
 		category = 'variable'
@@ -1557,6 +1556,58 @@ class Hamiltonian(Object):
 		for category in attributes[attribute]:
 			for parameter in attributes[attribute][category]:
 				for group in attributes[attribute][category][parameter]:
+
+					if values is None:
+						attr = 'shape'
+						index = ('put','layer','all')
+						layer = 'features'
+
+						shape = attributes[attr][category][parameter][group][layer][index]	
+
+						values = zeros(shape,dtype=dtype)			
+
+
+					attr = 'slice'
+					index = ('take','layer','variable')
+					layer = 'parameters'
+					# print(category,parameters,group,layer,index)
+					slices = attributes[attr][category][parameter][group][layer][index]				
+					
+					attr = 'values'
+					parameters = attributes[attr][layer][slices]
+
+					# print(parameters)
+					attr = 'slice'
+					index = ('put','layer','variable')
+					layer = 'features'
+					slices = attributes[attr][category][parameter][group][layer][index]				
+
+					layer = 'features'
+					funcs = [attributes[attr][category][parameter][group][layer] for attr in ['features']]
+
+					values = values.at[slices].set(funcs[0](parameters))
+
+		print(values.round(8))
+
+
+		values = None
+
+		attribute = 'shape'
+		category = 'variable'
+
+		for category in attributes[attribute]:
+			for parameter in attributes[attribute][category]:
+				for group in attributes[attribute][category][parameter]:
+
+					if values is None:
+						attr = 'shape'
+						index = ('put','layer','all')
+						layer = 'variables'
+
+						shape = attributes[attr][category][parameter][group][layer][index]	
+
+						values = zeros(shape,dtype=dtype)			
+
 
 					attr = 'slice'
 					index = ('take','layer','variable')
@@ -1577,7 +1628,6 @@ class Hamiltonian(Object):
 					funcs = [attributes[attr][category][parameter][group][layer] for attr in ['features','variables']]
 
 					values = values.at[slices].set(funcs[1](funcs[0](parameters)))
-
 
 		print(values.round(8))
 
