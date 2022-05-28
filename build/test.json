@@ -79,7 +79,7 @@
 		"category":"variable",
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},		
 		"parameters":null,
-		"shape":{"parameters":[-4,-1],"features":[4,-1,-1],"variables":[-1,-1]},
+		"shape":{"parameters":[-5,-1],"features":[5,-1,-1],"variables":[-1,-1]},
 		"group":[["x_0","x_2","x_4"],["y_0","y_2","y_4"]],
 		"scale":1,
 		"initialization":"interpolation",

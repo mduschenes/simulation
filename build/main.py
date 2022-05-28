@@ -103,13 +103,13 @@ def variables(parameters,hyperparameters,parameter,group):
 
 	elif parameter in ['xy_024'] and group in [('x_0','x_2','x_4')]:
 		variable = (
-			parameters[2] + scale[0]*parameters[0]*parameters[3]*
+			parameters[2]*parameters[4] + scale[0]*parameters[0]*parameters[3]*
 			cos(scale[1]*parameters[1])
 		)
 
 	elif parameter in ['xy_024'] and group in [('y_0','y_2','y_4')]:
 		variable = (
-			parameters[2] + scale[0]*parameters[0]*parameters[3]*
+			parameters[2]*parameters[4] + scale[0]*parameters[0]*parameters[3]*
 			sin(scale[1]*parameters[1])
 		)
 
@@ -163,23 +163,23 @@ def features(parameters,hyperparameters,parameter,group):
 		feature = array([
 			parameters,
 		])
-
 	elif parameter in ['xy_024'] and group in [('x_0','x_2','x_4')]:
 		feature = array([
-			sigmoid(parameters[0::4]),
-			sigmoid(parameters[1::4]),
-			sigmoid(parameters[2::4]),
-			sigmoid(parameters[3::4]),			
+			sigmoid(parameters[0::5]),
+			sigmoid(parameters[1::5]),
+			sigmoid(parameters[2::5]),
+			sigmoid(parameters[3::5]),			
+			sigmoid(parameters[4::5]),			
 		])
 
 	elif parameter in ['xy_024'] and group in [('y_0','y_2','y_4')]:
 		feature = array([
-			sigmoid(parameters[0::4]),
-			sigmoid(parameters[1::4]),
-			sigmoid(parameters[2::4]),
-			sigmoid(parameters[3::4]),						
+			sigmoid(parameters[0::5]),
+			sigmoid(parameters[1::5]),
+			sigmoid(parameters[2::5]),
+			sigmoid(parameters[3::5]),						
+			sigmoid(parameters[4::5]),						
 		])		
-
 
 	elif parameter in ['xy_13'] and group in [('x_1','x_3')]:
 		feature = array([

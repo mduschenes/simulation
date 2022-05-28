@@ -1587,7 +1587,20 @@ class Hamiltonian(Object):
 
 					values = values.at[slices].set(funcs[0](parameters))
 
+		category = 'variable'
+		parameter = 'xy_024'
+		group = ('x_0','x_2','x_4')
+		
+		attr = 'slice'
+		index = ('take','layer','variable')
+		layer = 'features'
+		# print(category,parameters,group,layer,index)
+		slices = attributes[attr][category][parameter][group][layer][index]				
+		
+		values = values[slices]
+
 		print(values.round(8))
+		exit()
 
 
 		values = None
@@ -1629,18 +1642,6 @@ class Hamiltonian(Object):
 
 					values = values.at[slices].set(funcs[1](funcs[0](parameters)))
 
-
-		category = 'variable'
-		parameter = 'xy_024'
-		group = ('x_0','x_2','x_4')
-		
-		attr = 'slice'
-		index = ('take','layer','variable')
-		layer = 'features'
-		# print(category,parameters,group,layer,index)
-		slices = attributes[attr][category][parameter][group][layer][index]				
-		
-		values = values[slices]
 
 		print(values.round(8))
 
