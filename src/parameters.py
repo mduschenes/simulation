@@ -1313,7 +1313,6 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 					print(category,parameter,group,layer,':',shape,slices,'->',shapes,indices)
 
 					# print(data[attribute][category][layer])
-					values = data[attribute][layer]
 					print(data[attribute][layer])
 					print()
 
@@ -1372,4 +1371,4 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 # 					print(data[attribute][layer].round(3))
 	# 				print()
 
-	return data,values
+	return data
