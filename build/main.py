@@ -228,8 +228,8 @@ def constraints(parameters,hyperparameters,parameter,group):
 
 	scale = hyperparameters['hyperparameters']['lambda']
 
+
 	if parameter in ['xy'] and group in [('x',),('y',)]:
-		constraint = 0
 		constraint = (
 			((scale[0]*(parameters[0][0] - 0)**2).sum())+
 			((scale[0]*(parameters[0][-1] - 0)**2).sum())
@@ -263,6 +263,30 @@ def constraints(parameters,hyperparameters,parameter,group):
 	
 	elif parameter in ['zz'] and group in [('zz',)]:
 		constraint = 0
+
+	elif parameter in ['xy_024'] and group in [('x_0','x_2','x_4')]:
+		constraint = (
+			((scale[0]*(parameters[0][0] - 0)**2).sum())+
+			((scale[0]*(parameters[0][-1] - 0)**2).sum())
+			)
+
+	elif parameter in ['xy_024'] and group in [('y_0','y_2','y_4')]:
+		constraint = (
+			((scale[0]*(parameters[0][0] - 0)**2).sum())+
+			((scale[0]*(parameters[0][-1] - 0)**2).sum())
+			)
+
+	elif parameter in ['xy_13'] and group in [('x_1','x_3')]:
+		constraint = (
+			((scale[0]*(parameters[0][0] - 0)**2).sum())+
+			((scale[0]*(parameters[0][-1] - 0)**2).sum())
+			)
+
+	elif parameter in ['xy_13'] and group in [('y_1','y_3')]:
+		constraint = (
+			((scale[0]*(parameters[0][0] - 0)**2).sum())+
+			((scale[0]*(parameters[0][-1] - 0)**2).sum())
+			)
 
 	return constraint
 

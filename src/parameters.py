@@ -147,12 +147,12 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 	ndim = len(shape)
 
 	# Get properties of hyperparameters
-	properties = ['category','group','shape','locality','boundaries','constants','parameters','features','variables']
+	properties = ['category','group','shape','locality','boundaries','constants','parameters','features','variables','constraints']
 
 	assert all(all(prop in hyperparameters[parameter] for prop in properties) for parameter in hyperparameters), "hyperparameters missing properties"
 
 	# Get attributes
-	attributes = ['ndim','locality','size','indices','boundaries','constants','shape','slice','parameters','features','variables','values']
+	attributes = ['ndim','locality','size','indices','boundaries','constants','shape','slice','parameters','features','variables','values','constraints']
 
 	# Get categories across all parameter groupings
 	categories = [hyperparameters[parameter]['category'] for parameter in hyperparameters]
@@ -232,7 +232,7 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 			for group in groups[category][parameter]:			
 				for layer in groups[category][parameter][group]:
 
-					for l in layers:
+					for l in [*layers,'constraints']:
 						if isinstance(hyperparameters[parameter][l],dict):
 							data[l][category][parameter][group][layer] = hyperparameters[parameter][l][group]
 						else:
