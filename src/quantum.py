@@ -1432,36 +1432,57 @@ class Hamiltonian(Object):
 		self.parameters = parameters
 		hyperparameters = self.hyperparameters
 
+
 		# Set all variables
+		reshape = False 
+
+		attribute = 'values'
+		layer = 'variables'
+
+		variables = self.attributes[attribute][layer]
+
+		attribute = 'slice'
 		category = 'variable'
-		shape = hyperparameters['shape']['take']['parameters'][category]
-		parameters = parameters.reshape(shape)
 
-		variables = hyperparameters['variables']
+		for parameter in attributes[attribute][category]:
+			for group in attributes[attribute][category][parameter]:
 
-		for parameter in hyperparameters['parameters']:
-			if hyperparameters['parameters'][parameter]['category'] == category:
-				for group in hyperparameters['parameters'][parameter]['group']:
-					indices = hyperparameters['parameters'][parameter]['slice']['variables'][group]
-					variables = variables.at[indices].set(hyperparameters['parameters'][parameter]['variables'][group](parameters))
+				if reshape:
+					attr = 'shape'
+					layer = 'parameters'
+					index = ('take','category','variable')
+
+					shape = attributes[attr][category][parameter][group][layer][index]	
+
+					parameters = parameters.reshape(shape)
+
+					reshape = False
+
+				layer = 'parameters'
+				index = ('take','layer','variable')
+				slices = attributes[attribute][category][parameter][group][layer][index]	
+
+				layer = 'variables'
+				index = ('put','layer','variable')
+				indices = attributes[attribute][category][parameter][group][layer][index]				
+				
+				layer = 'variables'
+				funcs = [attributes[attr][category][parameter][group][layer] for attr in ['features','variables']]
+
+				variables = variables.at[indices].set(funcs[1](funcs[0](parameters[slices])))
 
 
-		# parameters = parameters.ravel()
-		# features = self.__features__(parameters)		
-		# shape = hyperparameters['shape']['put']['features'][category]
-		# print('param,feats,vars')
-		# print(parameters.round(3))
-		# print(features.round(3)[:shape[0]])
-		# print(variables.round(3))
-		# print(sigmoid(parameters).round(3))
-		# print()
+		print(parameters.round(3))
+		print(variables.round(3))
+
+		exit()
 
 		# Get Trotterized order of copies of variables
 		p = self.p
 		variables = trotter(variables,p)
 
 
-		# Get reshaped variables (tranpose for shape (M,K) and reshape to (MK,) with periodicity of data)
+		# Get reshaped variables (transpose for shape (M,K) and reshape to (MK,) with periodicity of data)
 		variables = variables.T.ravel()
 		
 		return variables
@@ -1476,6 +1497,57 @@ class Hamiltonian(Object):
 		Returns:
 			features (array): features
 		'''
+
+
+		# Get class attributes
+		self.parameters = parameters
+		hyperparameters = self.hyperparameters
+
+
+		# Set all variables
+		reshape = False 
+
+		attribute = 'values'
+		layer = 'features'
+
+		features = self.attributes[attribute][layer]
+
+		attribute = 'slice'
+
+		for category in attributes[attribute]:
+			for parameter in attributes[attribute][category]:
+				for group in attributes[attribute][category][parameter]:
+
+					if reshape:
+						attr = 'shape'
+						layer = 'parameters'
+						index = ('take','category','variable')
+
+						shape = attributes[attr][category][parameter][group][layer][index]	
+
+						parameters = parameters.reshape(shape)
+
+						reshape = False
+
+					layer = 'parameters'
+					index = ('take','layer','variable')
+					slices = attributes[attribute][category][parameter][group][layer][index]	
+
+					layer = 'variables'
+					index = ('put','layer','variable')
+					indices = attributes[attribute][category][parameter][group][layer][index]				
+					
+					layer = 'variables'
+					funcs = [attributes[attr][category][parameter][group][layer] for attr in ['features']]
+
+					features = features.at[indices].set(funcs[0](parameters[slices]))
+
+
+		print(parameters.round(4))
+		print(features.round(4))
+
+		exit()
+
 
 		# Get class attributes
 		hyperparameters = self.hyperparameters
@@ -1546,106 +1618,131 @@ class Hamiltonian(Object):
 		hyperparams = hyperparameters['parameters']
 
 		# Get attributes of parameters of the form {attribute:{category:{parameter:{group:{layer:[]}}}}
-		attributes = init_parameters(parameters,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
+		attributes,values = init_parameters(parameters,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
 
-		values = None
 
-		attribute = 'shape'
+		# Get parameters
+		attribute = 'values'
+		category = 'variable'
+		layer = 'parameters'
+		parameters = attributes[attribute][category][layer]
+
+		attribute = 'slice'
 		category = 'variable'
 
-		for category in attributes[attribute]:
-			for parameter in attributes[attribute][category]:
-				for group in attributes[attribute][category][parameter]:
+		sliced = False
+		print(parameters)
+		print(parameters.shape)
 
-					if values is None:
-						attr = 'shape'
-						index = ('put','layer','all')
-						layer = 'features'
+		for parameter in attributes[attribute][category]:
+			for group in attributes[attribute][category][parameter]:
+				attr = 'slice'
+				index = ('put','category','variable')
+				layer = 'parameters'
+				slices = tuple([slice(None),*attributes[attr][category][parameter][group][layer][index][1:]])
 
-						shape = attributes[attr][category][parameter][group][layer][index]	
-
-						values = zeros(shape,dtype=dtype)			
-
-
-					attr = 'slice'
-					index = ('take','layer','variable')
-					layer = 'parameters'
-					# print(category,parameters,group,layer,index)
-					slices = attributes[attr][category][parameter][group][layer][index]				
+				print('slices',slices)	
+				if not sliced:
 					
-					attr = 'values'
-					parameters = attributes[attr][layer][slices]
+					
 
-					# print(parameters)
-					attr = 'slice'
-					index = ('put','layer','variable')
-					layer = 'features'
-					slices = attributes[attr][category][parameter][group][layer][index]				
 
-					layer = 'features'
-					funcs = [attributes[attr][category][parameter][group][layer] for attr in ['features']]
+					parameters = parameters[slices]
 
-					values = values.at[slices].set(funcs[0](parameters))
+					sliced = True
 
+		print(parameters)
+		print(parameters.shape)
+		exit()
+
+		attribute = 'values'
+		layer = 'parameters'
+		parameters = attributes[attribute][layer]
+
+		attribute = 'slice'
 		category = 'variable'
-		parameter = 'xy_024'
-		group = ('x_0','x_2','x_4')
-		
-		attr = 'slice'
-		index = ('take','layer','variable')
-		layer = 'features'
-		# print(category,parameters,group,layer,index)
-		slices = attributes[attr][category][parameter][group][layer][index]				
-		
-		values = values[slices]
 
-		print(values.round(8))
+		sliced = False
+
+		for parameter in attributes[attribute][category]:
+			for group in attributes[attribute][category][parameter]:
+
+				if not sliced:
+					
+					attr = 'slice'
+					index = ('take','category','variable')
+					layer = 'parameters'
+					slices = attributes[attr][category][parameter][group][layer][index]		
+
+					parameters = parameters[slices]
+
+					sliced = True
+
+				index = ('take','category','variable')
+				layer = 'parameters'
+				slices = [slice(None),*attributes[attribute][category][parameter][group][layer][index][1:]]
+
+				index = ('put','layer','variable')
+				layer = 'variables'
+				indices = attributes[attribute][category][parameter][group][layer][index]				
+
+				layer = 'variables'
+				funcs = [attributes[attr][category][parameter][group][layer] for attr in ['features','variables']]
+
+				print(category,parameter,group,parameters[slices].shape)
+
+				variables = variables.at[indices].set(funcs[1](funcs[0](parameters[slices])))
+
+
+
+		# print(parameters)
+		print(variables.round(8))
+		print(allclose(values[:,1:-1],variables[:,1:-1]))
 		exit()
 
 
-		values = None
 
-		attribute = 'shape'
-		category = 'variable'
+
+
+		attribute = 'values'
+		layer = 'variables'
+		variables = attributes[attribute][layer]
+
+
+		attribute = 'values'
+		layer = 'parameters'
+		parameters = attributes[attribute][layer]
+
+		attribute = 'slice'
+
+		print(variables)
+		print(allclose(values,variables))
+
 
 		for category in attributes[attribute]:
 			for parameter in attributes[attribute][category]:
 				for group in attributes[attribute][category][parameter]:
 
-					if values is None:
-						attr = 'shape'
-						index = ('put','layer','all')
-						layer = 'variables'
-
-						shape = attributes[attr][category][parameter][group][layer][index]	
-
-						values = zeros(shape,dtype=dtype)			
-
-
-					attr = 'slice'
 					index = ('take','layer','variable')
 					layer = 'parameters'
-					# print(category,parameters,group,layer,index)
-					slices = attributes[attr][category][parameter][group][layer][index]				
-					
-					attr = 'values'
-					parameters = attributes[attr][layer][slices]
+					slices = attributes[attribute][category][parameter][group][layer][index]				
 
-					# print(parameters)
-					attr = 'slice'
 					index = ('put','layer','variable')
 					layer = 'variables'
-					slices = attributes[attr][category][parameter][group][layer][index]				
+					indices = attributes[attribute][category][parameter][group][layer][index]				
 
 					layer = 'variables'
 					funcs = [attributes[attr][category][parameter][group][layer] for attr in ['features','variables']]
 
-					values = values.at[slices].set(funcs[1](funcs[0](parameters)))
+					print(category,parameter,group,parameters[slices].shape)
+
+					variables = variables.at[indices].set(funcs[1](funcs[0](parameters[slices])))
 
 
-		print(values.round(8))
 
-
+		# print(parameters)
+		print(variables.round(8))
+		print(allclose(values[:,1:-1],variables[:,1:-1]))
 		exit()
 
 
