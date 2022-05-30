@@ -44,7 +44,7 @@ from src.utils import itg,flt,dbl
 
 from src.io import load,dump,path_join,path_split
 
-def init_operators(data,shape,hyperparameters,index=None,dtype=None):
+def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 	'''
 	Initialize operators
 	Args:

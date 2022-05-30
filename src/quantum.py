@@ -40,14 +40,14 @@ from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradien
 from src.utils import eigh,qr
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,isnaninf
-from src.utils import parse,to_str,to_number,datatype,_len_,_iter_
+from src.utils import parse,to_str,to_number,datatype,slice_size
 from src.utils import pi,e
 from src.utils import itg,flt,dbl
 
 from src.dictionary import _update
 
-from src.parameters import init_parameters
-from src.operators import init_operators
+from src.parameters import parameterize
+from src.operators import operatorize
 
 from src.io import load,dump,path_join,path_split
 
@@ -659,7 +659,13 @@ class Object(object):
 
 		data = [self.identity.copy() for i in range(size)]
 
+		parameters = None
+
+		# Update class attributes
 		self.__extend__(data,operator,site,string,interaction,hyperparameters)
+		
+		# Initialize parameters
+		self.__initialize__(parameters)
 
 		return
 
@@ -727,6 +733,67 @@ class Object(object):
 		return
 
 
+
+	def __initialize__(self,parameters):
+		''' 
+		Setup initial parameters and attributes
+		Args:
+			parameters (array): parameters
+		'''
+
+		# Get class attributes
+		hyperparameters = self.hyperparameters
+		dtype = self._dtype
+
+		# Setup parameter shapes and slices based on data
+
+		# Get site and strings for data
+		site = self.site
+		string = self.string
+
+		# Get function to check if index of data for axis corresponds to group 
+		check = lambda group,index,axis: (
+			(axis != 0) or 
+			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
+
+		# Get parameters data
+		parameters = None
+
+		# Get shape of data
+		shape = self.shape[0:2]
+
+		# Get parameters hyperparameters
+		hyperparams = hyperparameters['parameters']
+
+		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
+		data = parameters
+		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
+
+		# Get label
+		data = hyperparameters['label']
+		shape = self.shape[2:]
+		hyperparams = hyperparameters['hyperparameters']
+		index = self.N
+		dtype = self.dtype
+
+		operator = operatorize(data,shape,hyperparams,index=index,dtype=dtype)
+
+		hyperparameters['label'] = operator #.conj().T
+
+		# Get reshaped parameters
+		attribute = 'values'
+		layer = 'parameters'
+		parameters = attributes[attribute][layer]
+
+		parameters = parameters.ravel()
+
+		# Update class attributes
+		self.parameters = parameters
+		self.hyperparameters = hyperparameters
+		self.attributes = attributes
+
+		return
+
 	@partial(jit,static_argnums=(0,))
 	def __call__(self,parameters):
 		'''
@@ -754,40 +821,28 @@ class Object(object):
 		variables = parameters
 		return variables
 
-	@partial(jit,static_argnums=(0,))
-	def __features__(self,parameters):
-		''' 
-		Setup features
-		Args:
-			parameters (array): parameters
-		Returns:
-			features (array): features
-		'''
-		features = parameters
-		return features		
 
-	@partial(jit,static_argnums=(0,))
-	def __constraints__(self,parameters):
+	@partial(jit,static_argnums=(0,2))
+	def __layers__(self,parameters,layer='variables'):
 		''' 
-		Setup constraints
+		Setup layer
 		Args:
 			parameters (array): parameters
+			layer (str): layer
 		Returns:
-			constraint (array): constraints
-		'''		
+			values (array): values
+		'''
 
 		# Get class attributes
+		self.parameters = parameters
 		attributes = self.attributes
 
 		attribute = 'shape'
-		layer = 'parameters'
-		parameters = parameters.reshape(attributes[attribute][layer])
-
-		layer = 'constraints'
+		layr = 'parameters'
+		parameters = parameters.reshape(attributes[attribute][layr])
 
 		attribute = 'values'
-		attr = 'shape'
-		constraints = attributes[attribute][layer]
+		features = attributes[attribute][layer]
 
 		# Get variables
 		attribute = 'slice'
@@ -803,7 +858,22 @@ class Object(object):
 				attr = 'index'
 				indices = attributes[attr][layer][parameter][group]
 
-				constraints = func(parameters,constraints,slices,indices)
+				features = func(parameters,features,slices,indices)
+
+		return features
+
+	@partial(jit,static_argnums=(0,))
+	def __constraints__(self,parameters):
+		''' 
+		Setup constraints
+		Args:
+			parameters (array): parameters
+		Returns:
+			constraints (array): constraints
+		'''		
+
+		layer = 'constraints'
+		constraints = self.__layers__(parameters,layer)
 
 		return constraints
 
@@ -855,17 +925,6 @@ class Object(object):
 		grad = zeros(shape)
 
 		grad = grad + gradient_distance(self(parameters),self.hyperparameters['label'],self.__derivative__(parameters))
-
-
-		# category = 'variable'
-		# shape = self.hyperparameters['shape']['take']['parameters'][category]
-		# parameters = parameters.reshape(shape)
-
-		# for parameter in self.hyperparameters['parameters']:
-		# 	for group in self.hyperparameters['parameters'][parameter]['group']:
-		# 		grad = grad + self.hyperparameters['parameters'][parameter]['gradient_constraints'][group](parameters)
-
-		# grad = grad.ravel()
 
 		return grad
 		# return gradient(self.__func__)(parameters)
@@ -1101,37 +1160,47 @@ class Object(object):
 			kwargs (dict): Plot settings
 		'''
 
-		# Get hyperparameters
+		# Get class hyperparameters and attributes
 		hyperparameters = self.hyperparameters
+		attributes = self.attributes
 
-		# Get parameters shape and slices of features
-		category = 'variable'
-		shape = hyperparameters['shape']['put']['parameters'][category]
+
+		# Get parameters shape and indices of features
+		attribute = 'shape'
+		layer = 'features'
+		shape = attributes[attribute][layer]
+
+		attribute = 'index'
+		layer = 'features'		
+		parameter = list(attributes[attribute][layer])[0]
+		group = list(attributes[attribute][layer][parameter])[0]
+		indices = attributes[attribute][layer][parameter][group]
+
+		shape = [slice_size(index) if isinstance(index,slice) else len(index) for index in indices]
+
+		# Get number of iterations
 		size = hyperparameters['hyperparameters']['track']['size']
 
 		# Get plot config
 		attr = 'mplstyle'
 		mplstyle = hyperparameters['sys']['path']['config'][attr]
 
-
 		# Plot attributes
-		attr = 'size'
-		value = hyperparameters['hyperparameters']['track'][attr]
-		if value == 0:
-			return
-
 
 		attr = 'parameters'
+
+		layer = 'features'
+
 		fig,ax = self.fig.get(attr),self.ax.get(attr)
 		
 		path = hyperparameters['sys']['path']['plot'][attr]
 
-		layout = [shape[0],1]
+		layout = [shape[0]*shape[1],1]
 		plots = [None]*layout[0]
-		layout = [shape[0],2]		
+		layout = [shape[0]*shape[1],2]		
 		plots = [[None]*layout[1]]*layout[0]
 		figsize = (20,20)
-		iterations = list(sorted(list(set([min(size-1,i) 
+		iterations = list(sorted(list(set([max(0,min(size-1,i))
 							for i in [
 							0,
 							*[5,10,15,20],
@@ -1142,8 +1211,15 @@ class Object(object):
 		lims = [[-0.1,1.1],[-0.1,1.1]]
 		# lims = [[None,None],[None,None]]
 
-		j = 0
-		parameters0 = self.__features__(hyperparameters['hyperparameters']['track'][attr][j])
+		iteration = 0
+		if iteration >= size:
+			parameters0 = parameters
+		else:
+			parameters0 = hyperparameters['hyperparameters']['track'][attr][iteration]
+		parameters0 = self.__layers__(parameters0,layer)
+
+		parameters0 = parameters0[indices]
+
 
 		with matplotlib.style.context(mplstyle):
 		
@@ -1158,63 +1234,73 @@ class Object(object):
 			elif ax is None:
 				ax = fig.gca()
 
-			for j in iterations:
+			for iteration in iterations:
 
-				parameters = self.__features__(hyperparameters['hyperparameters']['track'][attr][j])
+				if iteration >= size:
+					parameters = parameters
+				else:
+					parameters = hyperparameters['hyperparameters']['track'][attr][iteration]
+				parameters = self.__layers__(parameters,layer)
 
-				for i in range(layout[0]):
-					for k in range(layout[1]):
-						x = arange(shape[1])
-						y = parameters[i]
+				parameters = parameters[indices]
 
-						if layout[1] > 1:
-							if k == 0:
-								y = parameters[i]
-							elif k == 1:
-								y0 = parameters0[i]
-								y = abs((y - y0)/(y0+1e-20))	
-						else:
-							y0 = parameters0[i]
-							y = abs((y - y0)/(y0+1e-20))
+				for i in range(shape[0]):
+					for j in range(shape[1]):
+						for k in range(layout[1]):
 
-						label = labels[i%2]
+							index = [i*shape[1] + j,k]
 
-						plots[i][k] = ax[i][k].plot(x,y,
-							color=getattr(plt.cm,'viridis')((iterations.index(j)*10)/(len(iterations)*10)),
-							marker='',alpha=0.45,linewidth=4,zorder=max(iterations)+1-j,
-							# label=r'${%s}^{(%s)}_{%s}$'%(label,str(j),str(i//2) if shape[0]>2 else '')
-							label=r'${%s}^{(%s)}_{%s}$'%(r'\theta',str(j),'')
-						)
+							x = arange(shape[-1])
+							y = parameters[i][j]
 
-						ax[i][k].set_xlim(xmin=0,xmax=shape[0])
-						ax[i][k].set_ylim(ymin=lims[i%2][0],ymax=lims[i%2][1])
-						ax[i][k].set_ylabel(ylabel=r'${%s}_{%s}$'%(label,str(i//2) if shape[0]>2 else ''))
-						ax[i][k].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
-						ax[i][k].set_yscale(value='linear')
-						# ax[i][k].set_yscale(value='log')
-						ax[i][k].grid(True,zorder=0)	
-
-
-						if i == 0:
 							if layout[1] > 1:
-								if k == 0:
-									ax[i][k].legend(
-										loc=(0.2,1.15),ncol=min(5,len(ax[i][k].get_legend_handles_labels()[0]))
-										)
-								if k == 0:
-									ax[i][k].set_title(label=r'${%s}^{(%s)}_{%s}$'%(
-											r'\theta','i',''))
-								elif k == 1:
-									ax[i][k].set_title(label=r'$\abs{({%s}^{(%s)}_{%s} - {%s}^{(%s)}_{%s})/{%s}^{(%s)}_{%s}}$'%(
-											r'\theta','i','',r'\theta','0','',r'\theta','0',''))
+								if index[1] == 0:
+									y = parameters[i][j]
+								elif index[1] == 1:
+									y0 = parameters0[i][j]
+									y = abs((y - y0)/(y0+1e-20))	
 							else:
-								ax[i][k].legend(
-									loc=(0.15,1.1),ncol=min(4,len(ax[i][k].get_legend_handles_labels()[0]))
-									)
+								y0 = parameters0[i][j]
+								y = abs((y - y0)/(y0+1e-20))
+
+							label = labels[i]
+
+							plots[index[0]][index[1]] = ax[index[0]][index[1]].plot(x,y,
+								color=getattr(plt.cm,'viridis')((iterations.index(iteration)*10)/(len(iterations)*10)),
+								marker='',alpha=0.45,linewidth=4,zorder=max(iterations)+1-iteration,
+								# label=r'${%s}^{(%s)}_{%s}$'%(label,str(iteration),str(j) if shape[1]>1 else '')
+								label=r'${%s}^{(%s)}_{%s}$'%(r'\theta',str(iteration),'')
+							)
+
+							ax[index[0]][index[1]].set_xlim(xmin=0,xmax=shape[-1])
+							ax[index[0]][index[1]].set_ylim(ymin=lims[i][0],ymax=lims[i][1])
+							ax[index[0]][index[1]].set_ylabel(ylabel=r'${%s}_{%s}$'%(label,str(j) if shape[1]>1 else ''))
+							ax[index[0]][index[1]].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
+							ax[index[0]][index[1]].set_yscale(value='linear')
+							# ax[index[0]][index[1]].set_yscale(value='log')
+							ax[index[0]][index[1]].grid(True,zorder=0)	
+
+
+							if i == 0 and j == 0:
+								if layout[1] > 1:
+									if index[1] == 0:
+										ax[index[0]][index[1]].legend(
+											loc=(0.2,1.15),ncol=min(5,len(ax[index[0]][index[1]].get_legend_handles_labels()[0]))
+											)
+									if index[1] == 0:
+										ax[index[0]][index[1]].set_title(label=r'${%s}^{(%s)}_{%s}$'%(
+												r'\theta','i',''))
+									elif index[1] == 1:
+										ax[index[0]][index[1]].set_title(label=r'$\abs{({%s}^{(%s)}_{%s} - {%s}^{(%s)}_{%s})/{%s}^{(%s)}_{%s}}$'%(
+												r'\theta','i','',r'\theta','0','',r'\theta','0',''))
+								else:
+									ax[index[0]][index[1]].legend(
+										loc=(0.15,1.1),ncol=min(4,len(ax[index[0]][index[1]].get_legend_handles_labels()[0]))
+										)
 
 			fig.set_size_inches(*figsize)
 			fig.subplots_adjust()
-			# fig.tight_layout()
+			fig.tight_layout()
 			dump(fig,path)
 
 		self.fig[attr] = fig
@@ -1434,11 +1520,12 @@ class Hamiltonian(Object):
 		self.__extend__(data,operator,site,string,interaction,hyperparameters)
 
 		# Initialize parameters
-		self.__init__parameters__(parameters)
+		self.__initialize__(parameters)
 
 		return
 
 
+	@partial(jit,static_argnums=(0,))
 	def __parameters__(self,parameters):
 		''' 
 		Setup parameters
@@ -1448,36 +1535,8 @@ class Hamiltonian(Object):
 			variables (array): variables
 		'''		
 
-		# Get class attributes
-		self.parameters = parameters
-		attributes = self.attributes
-
-		attribute = 'shape'
-		layer = 'parameters'
-		parameters = parameters.reshape(attributes[attribute][layer])
-
 		layer = 'variables'
-
-		attribute = 'values'
-		attr = 'shape'
-		variables = attributes[attribute][layer]
-
-		# Get variables
-		attribute = 'slice'
-		for parameter in attributes[attribute][layer]:
-			for group in attributes[attribute][layer][parameter]:
-
-				attr = layer
-				func = attributes[attr][layer][parameter][group]
-				
-				attr = 'slice'
-				slices = attributes[attr][layer][parameter][group]
-				
-				attr = 'index'
-				indices = attributes[attr][layer][parameter][group]
-
-				variables = func(parameters,variables,slices,indices)
-
+		variables = self.__layers__(parameters,layer)
 
 		# Get Trotterized order of copies of variables
 		p = self.p
@@ -1489,500 +1548,6 @@ class Hamiltonian(Object):
 		return variables
 
 
-	@partial(jit,static_argnums=(0,))
-	def __features__(self,parameters):
-		''' 
-		Setup features
-		Args:
-			parameters (array): parameters
-		Returns:
-			features (array): features
-		'''
-
-		# Get class attributes
-		self.parameters = parameters
-		attributes = self.attributes
-
-		attribute = 'shape'
-		layer = 'parameters'
-		parameters = parameters.reshape(attributes[attribute][layer])
-
-		layer = 'features'
-
-		attribute = 'values'
-		attr = 'shape'
-		features = attributes[attribute][layer]
-
-		# Get variables
-		attribute = 'slice'
-		for parameter in attributes[attribute][layer]:
-			for group in attributes[attribute][layer][parameter]:
-
-				attr = layer
-				func = attributes[attr][layer][parameter][group]
-				
-				attr = 'slice'
-				slices = attributes[attr][layer][parameter][group]
-				
-				attr = 'index'
-				indices = attributes[attr][layer][parameter][group]
-
-				features = func(parameters,features,slices,indices)
-
-		return features
-
-
-	def __init__parameters__(self,parameters):
-		''' 
-		Setup initial parameters
-		Args:
-			parameters (array): parameters
-		'''
-
-		# Get class attributes
-		hyperparameters = self.hyperparameters
-		dtype = self._dtype
-
-		# Setup parameter shapes and slices based on data
-
-		# Get site and strings for data
-		site = self.site
-		string = self.string
-
-		# Get function to check if index of data for axis corresponds to group 
-		check = lambda group,index,axis: (
-			(axis != 0) or 
-			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
-
-		# Get parameters data
-		parameters = None
-
-		# Get shape of data
-		shape = self.shape[0:2]
-
-		# Get parameters hyperparameters
-		hyperparams = hyperparameters['parameters']
-
-		# Get attributes data of parameters of the form {attribute:{category:{parameter:{group:{layer:[]}}}}
-		data = parameters
-		data = init_parameters(data,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
-
-		# Setup attributes
-		attrs = ['shape','values','slice','index','parameters','features','variables','constraints']
-		attributes = {attr:{} for attr in attrs}
-
-		# Get parameters
-
-		layer = 'parameters'
-		attributes['shape'][layer] = None
-		attributes['values'][layer] = None
-		attributes['slice'][layer] = {}
-		attributes['index'][layer] = {}
-		attributes[layer][layer] = {}
-
-		attribute = 'values'
-		category = 'variable'
-		layer = 'parameters'
-		values = data[attribute][category][layer]
-
-		attribute = 'values'
-		category = 'variable'
-		layer = 'parameters'
-		parameters = data[attribute][category][layer]
-
-		sliced = False
-
-		attribute = 'slice'
-		category = 'variable'
-
-		for parameter in data[attribute][category]:
-			layer = 'parameters'
-			attributes['slice'][layer][parameter] = {}
-			attributes['index'][layer][parameter] = {}
-			attributes[layer][layer][parameter] = {}
-			for group in data[attribute][category][parameter]:
-			
-				if not sliced:
-
-					attr = 'ndim'
-					layer = 'parameters'
-					ndim = data[attr][category][parameter][group][layer]
-
-					attr = 'slice'
-					layer = 'parameters'
-					index = ('put','category','variable')
-					slices = data[attr][category][parameter][group][layer][index]
-
-					slices = tuple([*[slice(None)]*(ndim-parameters.ndim),slice(None),*slices[ndim-parameters.ndim+1:]])
-
-					values = parameters[slices]
-
-					sliced = True
-
-
-				layer = 'parameters'
-				attr = 'slice'
-				layer = 'parameters'
-				index = ('put','category','variable')
-				slices = data[attr][category][parameter][group][layer][index]
-
-				slices = tuple([
-					*slices[:ndim-values.ndim],
-					slices[ndim-values.ndim],
-					*[slice(0,values.shape[axis],1) for axis in range(ndim-values.ndim+1,ndim)]
-					])
-
-				layer = 'parameters'
-				attr = 'slice'
-				layer = 'parameters'
-				index = ('put','category','variable')
-				indices = data[attr][category][parameter][group][layer][index]	
-
-
-				layer = 'parameters'
-				funcs = []			
-
-				func = lambda parameters,values,slices,indices,funcs=funcs: parameters
-
-				layer = 'parameters'
-				attr = 'slice'
-				attributes[attr][layer][parameter][group] = slices
-
-				layer = 'parameters'
-				attr = 'index'				
-				attributes[attr][layer][parameter][group] = indices
-
-				layer = 'parameters'
-				attr = layer
-				attributes[attr][layer][parameter][group] = func
-
-
-		layer = 'parameters'
-		shape = values.shape
-		values = values
-
-		attributes['shape'][layer] = shape
-		attributes['values'][layer] = values
-
-
-		# Get features
-
-		layer = 'features'
-		attributes['shape'][layer] = None
-		attributes['values'][layer] = None
-		attributes['slice'][layer] = {}
-		attributes['index'][layer] = {}
-		attributes[layer][layer] = {}
-
-		attribute = 'values'
-		layer = 'features'
-		values = data[attribute][layer]
-
-		attribute = 'values'
-		attr = 'shape'
-		layer = 'parameters'
-		parameters = attributes[attribute][layer].reshape(attributes[attr][layer])
-
-		attribute = 'slice'
-		category = 'variable'
-
-		for parameter in data[attribute][category]:
-			layer = 'features'
-			attributes['slice'][layer][parameter] = {}
-			attributes['index'][layer][parameter] = {}
-			attributes[layer][layer][parameter] = {}
-			for group in data[attribute][category][parameter]:
-
-				attr = 'ndim'
-				layer = 'parameters'
-				ndim = data[attr][category][parameter][group][layer]
-
-				index = ('take','category','variable')
-				layer = 'parameters'
-				slices = data[attribute][category][parameter][group][layer][index]
-
-				slices = tuple([
-					*slices[:ndim-parameters.ndim],
-					slices[ndim-parameters.ndim],
-					*[slice(0,parameters.shape[axis],1) for axis in range(ndim-parameters.ndim+1,ndim)]
-					])
-
-				index = ('put','layer','variable')
-				layer = 'features'
-				indices = data[attribute][category][parameter][group][layer][index]				
-
-				layer = 'features'
-				funcs = [data[attr][category][parameter][group][layer] for attr in ['features']]
-
-				func = lambda parameters,values,slices,indices,funcs=funcs: values.at[indices].set(funcs[0](parameters[slices]))
-
-				values = func(parameters,values,slices,indices)
-
-				layer = 'features'
-				attr = 'slice'
-				attributes[attr][layer][parameter][group] = slices
-
-				layer = 'features'
-				attr = 'index'				
-				attributes[attr][layer][parameter][group] = indices
-
-				layer = 'features'
-				attr = layer
-				attributes[attr][layer][parameter][group] = func
-
-
-		layer = 'features'
-		shape = values.shape
-		values = values
-
-		attributes['shape'][layer] = shape
-		attributes['values'][layer] = values
-		
-
-
-		# Get variables
-
-		layer = 'variables'
-		attributes['shape'][layer] = None
-		attributes['values'][layer] = None
-		attributes['slice'][layer] = {}
-		attributes['index'][layer] = {}
-		attributes[layer][layer] = {}
-
-		attribute = 'values'
-		layer = 'variables'
-		values = data[attribute][layer]
-
-		attribute = 'values'
-		attr = 'shape'
-		layer = 'parameters'
-		parameters = attributes[attribute][layer].reshape(attributes[attr][layer])
-
-		attribute = 'slice'
-		category = 'variable'
-
-		for parameter in data[attribute][category]:
-			layer = 'variables'
-			attributes['slice'][layer][parameter] = {}
-			attributes['index'][layer][parameter] = {}			
-			attributes[layer][layer][parameter] = {}			
-			for group in data[attribute][category][parameter]:
-
-				attr = 'ndim'
-				layer = 'parameters'
-				ndim = data[attr][category][parameter][group][layer]
-
-				index = ('take','category','variable')
-				layer = 'parameters'
-				slices = data[attribute][category][parameter][group][layer][index]
-
-				slices = tuple([
-					*slices[:ndim-parameters.ndim],
-					slices[ndim-parameters.ndim],
-					*[slice(0,parameters.shape[axis],1) for axis in range(ndim-parameters.ndim+1,ndim)]
-					])
-
-				index = ('put','layer','variable')
-				layer = 'variables'
-				indices = data[attribute][category][parameter][group][layer][index]				
-
-				layer = 'variables'
-				funcs = [data[attr][category][parameter][group][layer] for attr in ['features','variables']]
-
-				func = lambda parameters,values,slices,indices,funcs=funcs: values.at[indices].set(funcs[1](funcs[0](parameters[slices])))
-
-				values = func(parameters,values,slices,indices)
-
-				layer = 'variables'
-				attr = 'slice'
-				attributes[attr][layer][parameter][group] = slices
-
-				layer = 'variables'
-				attr = 'index'				
-				attributes[attr][layer][parameter][group] = indices
-
-				layer = 'variables'
-				attr = layer
-				attributes[attr][layer][parameter][group] = func
-
-
-		layer = 'variables'
-		shape = values.shape
-		values = values
-
-		attributes['shape'][layer] = shape
-		attributes['values'][layer] = values
-
-
-
-		# Get constraints
-
-		layer = 'constraints'
-		attributes['shape'][layer] = None
-		attributes['values'][layer] = None
-		attributes['slice'][layer] = {}
-		attributes['index'][layer] = {}
-		attributes[layer][layer] = {}
-
-		attribute = 'values'
-		layer = 'variables'
-		values = 0
-
-		attribute = 'values'
-		attr = 'shape'
-		layer = 'parameters'
-		parameters = attributes[attribute][layer].reshape(attributes[attr][layer])
-
-		attribute = 'slice'
-		category = 'variable'
-
-		for parameter in data[attribute][category]:
-			layer = 'constraints'
-			attributes['slice'][layer][parameter] = {}
-			attributes['index'][layer][parameter] = {}			
-			attributes[layer][layer][parameter] = {}			
-			for group in data[attribute][category][parameter]:
-
-				attr = 'ndim'
-				layer = 'parameters'
-				ndim = data[attr][category][parameter][group][layer]
-
-				index = ('take','category','variable')
-				layer = 'parameters'
-				slices = data[attribute][category][parameter][group][layer][index]
-
-				slices = tuple([
-					*slices[:ndim-parameters.ndim],
-					slices[ndim-parameters.ndim],
-					*[slice(0,parameters.shape[axis],1) for axis in range(ndim-parameters.ndim+1,ndim)]
-					])
-
-				index = ('put','layer','variable')
-				layer = 'variables'
-				indices = data[attribute][category][parameter][group][layer][index]				
-
-				layer = 'variables'
-				funcs = [data[attr][category][parameter][group][layer] for attr in ['features','constraints']]
-
-				func = lambda parameters,values,slices,indices,funcs=funcs: values + (funcs[1](funcs[0](parameters[slices])))
-
-				values = func(parameters,values,slices,indices)
-
-				layer = 'constraints'
-				attr = 'slice'
-				attributes[attr][layer][parameter][group] = slices
-
-				layer = 'constraints'
-				attr = 'index'				
-				attributes[attr][layer][parameter][group] = indices
-
-				layer = 'constraints'
-				attr = layer
-				attributes[attr][layer][parameter][group] = func
-
-		layer = 'constraints'
-		shape = ()
-		values = values
-
-		attributes['shape'][layer] = shape
-		attributes['values'][layer] = values
-
-
-		# Print
-		attribute = 'values'
-		for layer in attributes[attribute]:
-			print(layer)
-			for attr in attributes:
-				if layer not in attributes[attr]:
-					continue
-				if isinstance(attributes[attr][layer],dict):
-					print(attr)
-					for parameter in attributes[attr][layer]:
-						for group in attributes[attr][layer][parameter]:
-							print(parameter,group,attributes[attr][layer][parameter][group])
-				elif attr not in [attribute]:
-					print(attr)
-					print(attributes[attr][layer])
-				elif attr in [attribute]:
-					print(attr)
-					attr = 'shape'
-					print(attributes[attribute][layer].reshape(attributes[attr][layer]))
-
-
-
-
-		# Get label
-		data = hyperparameters['label']
-		shape = self.shape[2:]
-		hyperparams = hyperparameters['hyperparameters']
-		index = self.N
-		dtype = self.dtype
-
-		data = init_operators(data,shape,hyperparams,index=index,dtype=dtype)
-
-		label = data
-		hyperparameters['label'] = label #.conj().T
-
-		# Get reshaped parameters
-		attribute = 'values'
-		layer = 'parameters'
-		parameters = attributes[attribute][layer]
-
-		# Update class attributes
-		self.parameters = parameters
-		self.hyperparameters = hyperparameters
-		self.attributes = attributes
-
-
-
-		print()
-
-		# Test
-		attribute = 'values'
-		attr = 'shape'
-		layer = 'parameters'
-		parameters = self.attributes[attribute][layer].reshape(self.attributes[attr][layer])
-
-		parameters = parameters + onp.random.rand(*parameters.shape)
-
-
-		attribute = 'shape'
-		layer = 'parameters'
-		parameters = parameters.reshape(self.attributes[attribute][layer])
-
-		attribute = 'slice'
-
-		layers = self.attributes[attribute]
-		layers = ['variables']
-		for layer in layers:
-			attr = 'values'
-			atr = 'shape'
-			values = self.attributes[attr][layer].reshape(self.attributes[atr][layer])
-			for parameter in self.attributes[attribute][layer]:
-				for group in self.attributes[attribute][layer][parameter]:
-
-					attr = layer
-					func = self.attributes[attr][layer][parameter][group]
-					
-					attr = 'slice'
-					slices = self.attributes[attr][layer][parameter][group]
-					
-					attr = 'index'
-					indices = self.attributes[attr][layer][parameter][group]
-
-					# print(layer,parameter,group,slices,indices,parameters.shape,values.shape)
-
-					values = func(parameters,values,slices,indices)
-
-
-		
-			print(layer)
-			print(values)
-			print()
-
-		exit()
-
-		return
 
 
 
@@ -2045,21 +1610,36 @@ class Unitary(Hamiltonian):
 			derivative (array): Gradient of parameterized operator
 		'''		
 		
-		category = 'variable'
-		axis = 1
-		_shape = self.hyperparameters['shape']['put']['variables'][category]
-		shape = self.hyperparameters['shape']['take']['variables'][category]
-		_index = self.hyperparameters['slice']['put']['variables'][category]
-		index = self.hyperparameters['slice']['take']['variables'][category]
+		# Get shape and indices of variable variables for gradient
+		attribute = 'shape'
+		layer = 'variables'
+		shape = attributes[attribute][layer]
+
+		attribute = 'index'
+		layer = 'variables'
+		indices = attributes[attribute][layer]		
+
+		print(shape,indices)
+		exit()
+
+		# Calculate parameters and gradient
 		parameters = self.__parameters__(parameters)
 
 		grad = gradient_expm(-1j*self.coefficients*parameters,self.data,self.identity)
 		grad *= -1j*self.coefficients
+
+		# Reshape gradient
+
+		# Axis of trotterization
+		axis = 0
+
+		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
+
+
 		grad = grad.reshape((*_shape[:1],-1,*self.shape[2:]))
 		grad = grad[index[0]]
 		grad = grad.reshape((shape[0],-1,*self.shape[2:]))
 
-		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
 		grad = gradient_trotter(grad,self.p)
 		grad = grad[index[axis]]
 		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
@@ -2067,17 +1647,6 @@ class Unitary(Hamiltonian):
 		grad = grad.reshape((-1,*grad.shape[2:]))
 
 		derivative = grad
-		
-		# derivative = zeros(shape)
-
-		# for parameter in self.hyperparameters['parameters']:
-		# 	if self.hyperparameters['parameters'][parameter]['category'] == category:
-		# 		for group in self.hyperparameters['parameters'][parameter]['group']:
-		# 			derivative = derivative.at[self.hyperparameters['parameters'][parameter]['slice']['variables'][group][1]].set(
-		# 				derivative.at[self.hyperparameters['parameters'][parameter]['slice']['variables'][group][1]] + 
-		# 				self.hyperparameters['parameters'][parameter]['grad'][group](parameters).dot(
-		# 				grad[self.hyperparameters['parameters'][parameter]['slice']['variables'][group][-1]])
-		# 				)
 
 		return derivative
 
@@ -2239,9 +1808,9 @@ def plot(hyperparameters):
 
 	# Get keys of hyperparameters
 	keys = list(hyperparameters)
-	k = len(keys)
+	length = len(keys)
 
-	if k == 0:
+	if length == 0:
 		return
 
 	key = keys[0]

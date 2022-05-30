@@ -36,7 +36,7 @@ from src.utils import pi,e
 
 from src.io import load,dump,path_join,path_split
 
-def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=None):
+def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=None):
 	'''
 	Initialize data of shapes of parameters based on shape of data
 	Args:
@@ -53,17 +53,24 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 		initialize (callable): Function with signature initialize(parameters,shape,hyperparameters,reset=None,dtype=None) to initialize parameter values
 		dtype (data_type): Data type of values		
 	Returns:
-		data (dict): Dictionary of parameter data, with nested keys of categories,parameters,groups,layers, and data of
-			'ndim': int : Number of dimensions of value corresponding to key
-			'locality': iterable[int] : Locality of value for each axis of value corresponding to key
-			'size': iterable[int] : Shape of multiplicative value of data shape for each axis of value corresponding to key
-			'indices': iterable[iterable[int]]: Indices of data for each axis of value corresponding to key
-			'boundaries': iterable[dict[int,float]]: Boundary indices and values for each axis of value corresponding to key
-			'constants': iterable[dict[int,float]]: Boundary indices and values for each axis of value corresponding to key
-			'shape': dict[str,tuple[int]]: Shape of value for different index types for each axis of value corresponding to key
-			'slice': dict[str,tuple[slice]]: Slices of value for different index types for each axis of value corresponding to key
+		attributes (dict): Dictionary of parameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
+			for parameter,group keys and for layers ['parameters',features','variables','constraints']
+			Attributes are used to yield layer outputs, given input variable parameters, with layer functions acting on slices of parameters, yielding values at indices
+			
+			Attributes dictionaries are of the form :
+			
+			{attribute:{layer:{parameter:group:...}}} for attributes: 'slice','index',layers 
+			'slice' (tuple[slice]): slices along each axis of the input values to that layer for that parameter,group key
+			'index' (tuple[slice]): slices along each axis of the output values of that layer for that parameter,group key
+			layer (callable): Callable function with signature func(parameters,values,slices,indices) for input parameters[slices] that yields values[indices] for that layer
 
+			{attribute:{layer:...}} for attributes: 'shape','values'
+			'shape' (tuple[int]): shape of values for that layer
+			'values': (array): array of values for that layer with variable + boundary/constant values
+			'index' (tuple[slice]): slices along each axis of the output values of that layer for that parameter,group key
+			layer (callable): Callable function with signature func(parameters,values,slices,indices) for input parameters[slices] that yields values[indices] for that layer
 	'''
+	
 	# Implicit parameterizations that interact with the data to produce the output are called variables x
 	# These variables are parameterized by the explicit parameters theta such that x = x(theta)
 	# Variables have a shape x = S = (s_0,...s_{d-1})
@@ -83,8 +90,19 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 	# each with an associated category i,
 	# and groups of parameters g^(i) that use a subset of theta^(i)
 
-	# Each set of values is described by keys of categories,parameters,groups,layers
-	
+	# Each set of values is described by keys of categories,parameters,groups,layers:
+
+	# data (dict): Dictionary of parameter data, with nested keys of categories,parameters,groups,layers, and data of
+	# 	'ndim': int : Number of dimensions of value corresponding to key
+	# 	'locality': iterable[int] : Locality of value for each axis of value corresponding to key
+	# 	'size': iterable[int] : Shape of multiplicative value of data shape for each axis of value corresponding to key
+	# 	'indices': iterable[iterable[int]]: Indices of data for each axis of value corresponding to key
+	# 	'boundaries': iterable[dict[int,float]]: Boundary indices and values for each axis of value corresponding to key
+	# 	'constants': iterable[dict[int,float]]: Boundary indices and values for each axis of value corresponding to key
+	# 	'shape': dict[str,tuple[int]]: Shape of value for different index types for each axis of value corresponding to key
+	# 	'slice': dict[str,tuple[slice]]: Slices of value for different index types for each axis of value corresponding to key
+	# 	layer (callable): Callable function with signature func(parameters) for input parameters that yields values for that layer
+
 
 	# Shape of axes for keys of categories,parameters,groups,layers
 	# Shapes are based on indices of data, plus sizes multipliers from hyperparameters
@@ -123,7 +141,7 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 	# locality in ['local']  exact shape of the 'put' indexed variables
 	# locality in ['global'] broadcastable (size 1) shape of the 'put' sliced variables
 	# For example if a function of 'take' sliced values of size (l,k,) and the 'put' sliced values are of size (k,), 
-	# then the function should roughly use the l values to return the correct shape
+	# then the function should roughly use the l values to return the correct shape (k,)
 
 	# For a given indices,locality,and sizes of category,parameter,group,layer and axis, 
 	
@@ -132,7 +150,7 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 	# k = len(indices) (k[axis=0 (parameters,variables), axis=1 (features)] = O(N) for data with datum on each of N sites, k[axis=1] = O(M) for M time steps)
 	# The shape of the values will be 
 	# shape['features','parameters','variables'][('put','key','all')] = -s*k if s < 0 else s
-	# shape['features','parameters','variables'][('put','value','all')] = -s*(k if local in ['local'] else 1) if s < 0 else s
+	# shape['features','parameters','variables'][('take','key','all')] = -s*(k if local in ['local'] else 1) if s < 0 else s
 
 	# slice['variables'][('put','key','all')] = indices if axis == 0 else slice(0,shape[('put','key','all')],1)
 	# shape['variables'][('take','key','all')] = slice(0,shape['take_key_all'],1)
@@ -1071,6 +1089,8 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 	# 	print()
 
 	# exit()
+
+
 	# Initialize values
 
 	# Get values of parameters of different category
@@ -1316,59 +1336,396 @@ def init_parameters(data,shape,hyperparameters,check=None,initialize=None,dtype=
 					print(data[attribute][layer])
 					print()
 
+	# Setup attributes from data
+	attrs = ['shape','values','slice','index','parameters','features','variables','constraints']
+	attributes = {attr:{} for attr in attrs}
+
+	# Get parameters
+
+	layer = 'parameters'
+	attributes['shape'][layer] = None
+	attributes['values'][layer] = None
+	attributes['slice'][layer] = {}
+	attributes['index'][layer] = {}
+	attributes[layer][layer] = {}
+
+	attribute = 'values'
+	category = 'variable'
+	layer = 'parameters'
+	values = data[attribute][category][layer]
+
+	attribute = 'values'
+	category = 'variable'
+	layer = 'parameters'
+	parameters = data[attribute][category][layer]
+
+	sliced = False
+
+	attribute = 'slice'
+	category = 'variable'
+
+	for parameter in data[attribute][category]:
+		layer = 'parameters'
+		attributes['slice'][layer][parameter] = {}
+		attributes['index'][layer][parameter] = {}
+		attributes[layer][layer][parameter] = {}
+		for group in data[attribute][category][parameter]:
+		
+			if not sliced:
+
+				attr = 'ndim'
+				layer = 'parameters'
+				ndim = data[attr][category][parameter][group][layer]
+
+				attr = 'slice'
+				layer = 'parameters'
+				index = ('put','category','variable')
+				slices = data[attr][category][parameter][group][layer][index]
+
+				slices = tuple([*[slice(None)]*(ndim-parameters.ndim),slice(None),*slices[ndim-parameters.ndim+1:]])
+
+				values = parameters[slices]
+
+				sliced = True
 
 
-	# 				if layer in ['parameters','features','variables'] and category in ['variable','constant']:# and parameter in ['xy'] and group in [('y',)]:
-	# 					if layer in ['parameters']:
+			layer = 'parameters'
+			attr = 'slice'
+			layer = 'parameters'
+			index = ('put','category','variable')
+			slices = data[attr][category][parameter][group][layer][index]
 
-	# 						func = hyperparameters[parameter]['features'][group]
-	# 						func2 = hyperparameters[parameter]['variables'][group]
+			slices = tuple([
+				*slices[:ndim-values.ndim],
+				slices[ndim-values.ndim],
+				*[slice(0,values.shape[axis],1) for axis in range(ndim-values.ndim+1,ndim)]
+				])
 
-	# 						index = 'take'
-	# 						attr = 'slice'
-	# 						reflayer = layer						
-	# 						refindex = (index,'category','variable')
-	# 						slices = data[attr][category][parameter][group][reflayer][refindex]
+			layer = 'parameters'
+			attr = 'slice'
+			layer = 'parameters'
+			index = ('put','category','variable')
+			indices = data[attr][category][parameter][group][layer][index]	
 
-	# 						attr = 'values'
-	# 						values = data[attr][layer][category][slices]
 
-	# 						_values = data[attr][layer][category]
-	# 						_values_ = data[attr][layer][None]
+			layer = 'parameters'
+			funcs = []			
 
-	# 						print('layer---',parameter,group,data[attr][layer][category].shape,values.shape,slices)							
-	# 						for ilayer in ['parameters','features','variables']:
-	# 							print(ilayer)
-	# 							for index in ['put','take']:
-	# 								for ref in ['category','layer']:
-	# 									attr = 'shape'
-	# 									reflayer = ilayer						
-	# 									refindex = (index,ref,'variable')
-	# 									shape = data[attr][category][parameter][group][reflayer][refindex]
+			func = lambda parameters,values,slices,indices,funcs=funcs: parameters
 
-	# 									attr = 'slice'
-	# 									reflayer = ilayer						
-	# 									refindex = (index,ref,'variable')
-	# 									slices = data[attr][category][parameter][group][reflayer][refindex]
-	# 									print(index,ref,shape,slices)
-							
+			layer = 'parameters'
+			attr = 'slice'
+			attributes[attr][layer][parameter][group] = slices
 
-	# 						print('func parameters',layer,values.shape)
-	# 						print(values.round(3))
-	# 						print(_values.round(3))
-	# 						print(_values_.round(3))
-	# 						print()
-	# 						print('func features',func(values).shape)
-	# 						print(func(values).round(3))
-	# 						print()
-	# 						print('func variables',func2(func(values)).shape)							
-	# 						print(func2(func(values)).round(3))
-	# 						print()
-	# 				# if layer in ['variables']:
-# 					print('vals!@!',layer,category,parameter,group)
-# 					print(data[attribute][category][layer].round(3))
-# 					print('vals!@!',layer,None,parameter,group)
-# 					print(data[attribute][layer].round(3))
-	# 				print()
+			layer = 'parameters'
+			attr = 'index'				
+			attributes[attr][layer][parameter][group] = indices
 
-	return data
+			layer = 'parameters'
+			attr = layer
+			attributes[attr][layer][parameter][group] = func
+
+
+	layer = 'parameters'
+	shape = values.shape
+	values = values
+
+	attributes['shape'][layer] = shape
+	attributes['values'][layer] = values
+
+
+	# Get features
+
+	layer = 'features'
+	attributes['shape'][layer] = None
+	attributes['values'][layer] = None
+	attributes['slice'][layer] = {}
+	attributes['index'][layer] = {}
+	attributes[layer][layer] = {}
+
+	attribute = 'values'
+	layer = 'features'
+	values = data[attribute][layer]
+
+	attribute = 'values'
+	attr = 'shape'
+	layer = 'parameters'
+	parameters = attributes[attribute][layer].reshape(attributes[attr][layer])
+
+	attribute = 'slice'
+	category = 'variable'
+
+	for parameter in data[attribute][category]:
+		layer = 'features'
+		attributes['slice'][layer][parameter] = {}
+		attributes['index'][layer][parameter] = {}
+		attributes[layer][layer][parameter] = {}
+		for group in data[attribute][category][parameter]:
+
+			attr = 'ndim'
+			layer = 'parameters'
+			ndim = data[attr][category][parameter][group][layer]
+
+			index = ('take','category','variable')
+			layer = 'parameters'
+			slices = data[attribute][category][parameter][group][layer][index]
+
+			slices = tuple([
+				*slices[:ndim-parameters.ndim],
+				slices[ndim-parameters.ndim],
+				*[slice(0,parameters.shape[axis],1) for axis in range(ndim-parameters.ndim+1,ndim)]
+				])
+
+			index = ('put','layer','variable')
+			layer = 'features'
+			indices = data[attribute][category][parameter][group][layer][index]				
+
+			layer = 'features'
+			funcs = [data[attr][category][parameter][group][layer] for attr in ['features']]
+
+			func = lambda parameters,values,slices,indices,funcs=funcs: values.at[indices].set(funcs[0](parameters[slices]))
+
+			values = func(parameters,values,slices,indices)
+
+			layer = 'features'
+			attr = 'slice'
+			attributes[attr][layer][parameter][group] = slices
+
+			layer = 'features'
+			attr = 'index'				
+			attributes[attr][layer][parameter][group] = indices
+
+			layer = 'features'
+			attr = layer
+			attributes[attr][layer][parameter][group] = func
+
+
+	layer = 'features'
+	shape = values.shape
+	values = values
+
+	attributes['shape'][layer] = shape
+	attributes['values'][layer] = values
+	
+
+
+	# Get variables
+
+	layer = 'variables'
+	attributes['shape'][layer] = None
+	attributes['values'][layer] = None
+	attributes['slice'][layer] = {}
+	attributes['index'][layer] = {}
+	attributes[layer][layer] = {}
+
+	attribute = 'values'
+	layer = 'variables'
+	values = data[attribute][layer]
+
+	attribute = 'values'
+	attr = 'shape'
+	layer = 'parameters'
+	parameters = attributes[attribute][layer].reshape(attributes[attr][layer])
+
+	attribute = 'slice'
+	category = 'variable'
+
+	for parameter in data[attribute][category]:
+		layer = 'variables'
+		attributes['slice'][layer][parameter] = {}
+		attributes['index'][layer][parameter] = {}			
+		attributes[layer][layer][parameter] = {}			
+		for group in data[attribute][category][parameter]:
+
+			attr = 'ndim'
+			layer = 'parameters'
+			ndim = data[attr][category][parameter][group][layer]
+
+			index = ('take','category','variable')
+			layer = 'parameters'
+			slices = data[attribute][category][parameter][group][layer][index]
+
+			slices = tuple([
+				*slices[:ndim-parameters.ndim],
+				slices[ndim-parameters.ndim],
+				*[slice(0,parameters.shape[axis],1) for axis in range(ndim-parameters.ndim+1,ndim)]
+				])
+
+			index = ('put','layer','variable')
+			layer = 'variables'
+			indices = data[attribute][category][parameter][group][layer][index]				
+
+			layer = 'variables'
+			funcs = [data[attr][category][parameter][group][layer] for attr in ['features','variables']]
+
+			func = lambda parameters,values,slices,indices,funcs=funcs: values.at[indices].set(funcs[1](funcs[0](parameters[slices])))
+
+			values = func(parameters,values,slices,indices)
+
+			layer = 'variables'
+			attr = 'slice'
+			attributes[attr][layer][parameter][group] = slices
+
+			layer = 'variables'
+			attr = 'index'				
+			attributes[attr][layer][parameter][group] = indices
+
+			layer = 'variables'
+			attr = layer
+			attributes[attr][layer][parameter][group] = func
+
+
+	layer = 'variables'
+	shape = values.shape
+	values = values
+
+	attributes['shape'][layer] = shape
+	attributes['values'][layer] = values
+
+
+
+	# Get constraints
+
+	layer = 'constraints'
+	attributes['shape'][layer] = None
+	attributes['values'][layer] = None
+	attributes['slice'][layer] = {}
+	attributes['index'][layer] = {}
+	attributes[layer][layer] = {}
+
+	attribute = 'values'
+	layer = 'variables'
+	values = 0
+
+	attribute = 'values'
+	attr = 'shape'
+	layer = 'parameters'
+	parameters = attributes[attribute][layer].reshape(attributes[attr][layer])
+
+	attribute = 'slice'
+	category = 'variable'
+
+	for parameter in data[attribute][category]:
+		layer = 'constraints'
+		attributes['slice'][layer][parameter] = {}
+		attributes['index'][layer][parameter] = {}			
+		attributes[layer][layer][parameter] = {}			
+		for group in data[attribute][category][parameter]:
+
+			attr = 'ndim'
+			layer = 'parameters'
+			ndim = data[attr][category][parameter][group][layer]
+
+			index = ('take','category','variable')
+			layer = 'parameters'
+			slices = data[attribute][category][parameter][group][layer][index]
+
+			slices = tuple([
+				*slices[:ndim-parameters.ndim],
+				slices[ndim-parameters.ndim],
+				*[slice(0,parameters.shape[axis],1) for axis in range(ndim-parameters.ndim+1,ndim)]
+				])
+
+			index = ('put','layer','variable')
+			layer = 'variables'
+			indices = data[attribute][category][parameter][group][layer][index]				
+
+			layer = 'variables'
+			funcs = [data[attr][category][parameter][group][layer] for attr in ['features','constraints']]
+
+			func = lambda parameters,values,slices,indices,funcs=funcs: values + (funcs[1](funcs[0](parameters[slices])))
+
+			values = func(parameters,values,slices,indices)
+
+			layer = 'constraints'
+			attr = 'slice'
+			attributes[attr][layer][parameter][group] = slices
+
+			layer = 'constraints'
+			attr = 'index'				
+			attributes[attr][layer][parameter][group] = indices
+
+			layer = 'constraints'
+			attr = layer
+			attributes[attr][layer][parameter][group] = func
+
+	layer = 'constraints'
+	shape = ()
+	values = values
+
+	attributes['shape'][layer] = shape
+	attributes['values'][layer] = values
+
+
+	# # Print
+	# attribute = 'values'
+	# for layer in attributes[attribute]:
+	# 	print(layer)
+	# 	for attr in attributes:
+	# 		if layer not in attributes[attr]:
+	# 			continue
+	# 		if isinstance(attributes[attr][layer],dict):
+	# 			print(attr)
+	# 			for parameter in attributes[attr][layer]:
+	# 				for group in attributes[attr][layer][parameter]:
+	# 					print(parameter,group,attributes[attr][layer][parameter][group])
+	# 		elif attr not in [attribute]:
+	# 			print(attr)
+	# 			print(attributes[attr][layer])
+	# 		elif attr in [attribute]:
+	# 			print(attr)
+	# 			attr = 'shape'
+	# 			print(attributes[attribute][layer].reshape(attributes[attr][layer]))
+
+
+	# print()
+	# print('---- Testing Start ----')
+
+	# # Test
+	# attribute = 'values'
+	# layer = 'parameters'
+	# attr = 'shape'
+	# parameters = attributes[attribute][layer].reshape(attributes[attr][layer])
+
+	# parameters = parameters + 0*onp.random.rand(*parameters.shape)
+
+
+	# attribute = 'shape'
+	# layer = 'parameters'
+	# parameters = parameters.reshape(attributes[attribute][layer])
+
+	# attribute = 'slice'
+
+	# layers = attributes[attribute]
+	# layers = ['variables']
+	# for layer in layers:
+	# 	attr = 'values'
+	# 	atr = 'shape'
+	# 	values = attributes[attr][layer].reshape(attributes[atr][layer])
+	# 	for parameter in attributes[attribute][layer]:
+	# 		for group in attributes[attribute][layer][parameter]:
+
+	# 			attr = layer
+	# 			func = attributes[attr][layer][parameter][group]
+				
+	# 			attr = 'slice'
+	# 			slices = attributes[attr][layer][parameter][group]
+				
+	# 			attr = 'index'
+	# 			indices = attributes[attr][layer][parameter][group]
+
+	# 			# print(layer,parameter,group,slices,indices,parameters.shape,values.shape)
+
+	# 			values = func(parameters,values,slices,indices)
+
+
+	
+	# 	print(layer)
+	# 	print(values)
+	# 	print()
+
+
+	# print('---- Testing Complete ----')
+
+
+	return attributes

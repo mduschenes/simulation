@@ -24,12 +24,12 @@
 	"test":0
 },
 "model":{
-	"N":4,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":17,
+	"M":20,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -91,7 +91,6 @@
 		"init":[0,1],
 		"bounds":{"parameters":[-5,5],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"boundaries":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]},
 		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
 	},
 	"z": {
