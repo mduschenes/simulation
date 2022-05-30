@@ -1164,7 +1164,6 @@ class Object(object):
 		hyperparameters = self.hyperparameters
 		attributes = self.attributes
 
-
 		# Get parameters shape and indices of features
 		attribute = 'shape'
 		layer = 'features'
@@ -1608,22 +1607,46 @@ class Unitary(Hamiltonian):
 			parameters (array): Parameters to parameterize operator
 		Returns
 			derivative (array): Gradient of parameterized operator
-		'''		
-		
+		'''
+
+		# Get class hyperparameters and attributes
+		hyperparameters = self.hyperparameters
+		attributes = self.attributes
+
 		# Get shape and indices of variable variables for gradient
 		attribute = 'shape'
 		layer = 'variables'
 		shape = attributes[attribute][layer]
 
+		ndim = len(shape)
+
+		attribute = 'slice'
+		layer = 'variables'
+		slices = attributes[attribute][layer]		
+
 		attribute = 'index'
 		layer = 'variables'
 		indices = attributes[attribute][layer]		
 
-		print(shape,indices)
-		exit()
+		slices = tuple([
+			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
+				for axis in range(0,1)],
+			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
+				for axis in range(1,ndim)]
+		])
+
+		indices = tuple([
+			*[array([i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]])
+				for axis in range(0,1)],
+			*[[indices[parameter][group][axis] for parameter in indices for group in indices[parameter]][0]
+				for axis in range(1,ndim)]
+		])
 
 		# Calculate parameters and gradient
 		parameters = self.__parameters__(parameters)
+
+
+		print(shape,parameters.shape,slices,indices)
 
 		grad = gradient_expm(-1j*self.coefficients*parameters,self.data,self.identity)
 		grad *= -1j*self.coefficients
@@ -1631,19 +1654,17 @@ class Unitary(Hamiltonian):
 		# Reshape gradient
 
 		# Axis of trotterization
-		axis = 0
-
-		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
-
-
-		grad = grad.reshape((*_shape[:1],-1,*self.shape[2:]))
-		grad = grad[index[0]]
-		grad = grad.reshape((shape[0],-1,*self.shape[2:]))
-
+		axis = 1
+		print(grad.shape)
+		grad = grad.reshape((self.shape[axis],-1,*self.shape[2:]))
+		print(grad.shape)
+		grad = grad[indices[axis]]
+		print(grad.shape)
 		grad = gradient_trotter(grad,self.p)
-		grad = grad[index[axis]]
 		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
-		
+		grad = grad[indices[0]]
+		print(grad.round(3))
+		print(grad.shape)		
 		grad = grad.reshape((-1,*grad.shape[2:]))
 
 		derivative = grad
