@@ -1046,6 +1046,16 @@ def add(a):
 	'''
 	return forloop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
 
+def product(a):
+	'''
+	Get product of elements in iterable
+	Args:
+		a (iterable): Array to compute product of elements
+	Returns:
+		out (array): Reduced array of product of elements
+	'''
+	return onp.prod(a)
+
 @jit
 def _matmul(a,b):
 	'''

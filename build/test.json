@@ -17,11 +17,11 @@
 	}
 },
 "boolean":{
-	"train":0,
+	"train":1,
 	"load":0,
 	"dump":1,
 	"plot":1,
-	"test":1
+	"test":0
 },
 "model":{
 	"N":5,
@@ -46,7 +46,7 @@
 	}
 },
 "hyperparameters":{
-	"iterations":200,
+	"iterations":10,
 	"runs":1,
 	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
 	"label":"gate",

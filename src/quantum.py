@@ -33,7 +33,7 @@ from src.optimize import Optimizer,Objective
 
 from src.utils import jit,gradient,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
+from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
 from src.utils import summation,exponentiation
 from src.utils import inner_abs2,inner_real2,inner_imag2
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
@@ -842,7 +842,7 @@ class Object(object):
 		parameters = parameters.reshape(attributes[attribute][layr])
 
 		attribute = 'values'
-		features = attributes[attribute][layer]
+		values = attributes[attribute][layer]
 
 		# Get variables
 		attribute = 'slice'
@@ -858,9 +858,9 @@ class Object(object):
 				attr = 'index'
 				indices = attributes[attr][layer][parameter][group]
 
-				features = func(parameters,features,slices,indices)
+				values = func(parameters,values,slices,indices)
 
-		return features
+		return values
 
 	@partial(jit,static_argnums=(0,))
 	def __constraints__(self,parameters):
@@ -1165,17 +1165,44 @@ class Object(object):
 		attributes = self.attributes
 
 		# Get parameters shape and indices of features
-		attribute = 'shape'
-		layer = 'features'
-		shape = attributes[attribute][layer]
-
 		attribute = 'index'
 		layer = 'features'		
-		parameter = list(attributes[attribute][layer])[0]
-		group = list(attributes[attribute][layer][parameter])[0]
-		indices = attributes[attribute][layer][parameter][group]
+		indices = attributes[attribute][layer]
 
-		shape = [slice_size(index) if isinstance(index,slice) else len(index) for index in indices]
+		ndim = min(len(indices[parameter][group]) 
+			for parameter in indices 
+			for group in indices[parameter])
+
+		shape = [int(
+					((max(indices[parameter][group][axis].stop
+						for parameter in indices for group in indices[parameter]) - 
+					min(indices[parameter][group][axis].start
+						for parameter in indices for group in indices[parameter])) //
+					min(indices[parameter][group][axis].step
+						for parameter in indices for group in indices[parameter]))
+					if all(isinstance(indices[parameter][group][axis],slice)
+							for parameter in indices for group in indices[parameter]) else
+					len(list(set(i 
+						for parameter in indices for group in indices[parameter] 
+						for i in indices[parameter][group][axis])))
+					)
+					for axis in range(ndim)]
+
+		indices = tuple([(
+					slice(
+					min(indices[parameter][group][axis].start
+						for parameter in indices for group in indices[parameter]),
+					max(indices[parameter][group][axis].stop
+						for parameter in indices for group in indices[parameter]),
+					min(indices[parameter][group][axis].step
+						for parameter in indices for group in indices[parameter]))
+					if all(isinstance(indices[parameter][group][axis],slice)
+							for parameter in indices for group in indices[parameter]) else
+					list(set(i 
+						for parameter in indices for group in indices[parameter] 
+						for i in indices[parameter][group][axis]))
+					)
+					for axis in range(ndim)])
 
 		# Get number of iterations
 		size = hyperparameters['hyperparameters']['track']['size']
@@ -1194,9 +1221,9 @@ class Object(object):
 		
 		path = hyperparameters['sys']['path']['plot'][attr]
 
-		layout = [shape[0]*shape[1],1]
+		layout = [int(product(shape[:-1])),1]
 		plots = [None]*layout[0]
-		layout = [shape[0]*shape[1],2]		
+		layout = [int(product(shape[:-1])),2]		
 		plots = [[None]*layout[1]]*layout[0]
 		figsize = (20,20)
 		iterations = list(sorted(list(set([max(0,min(size-1,i))
@@ -1207,7 +1234,7 @@ class Object(object):
 							for n in [4] for i in range(1,n+1)]]
 							]))))
 		labels = [r'\alpha',r'\phi']
-		lims = [[-0.1,1.1],[-0.1,1.1]]
+		lims = [[[0,shape[-1]],[-0.1,1.1]],[[0,shape[-1]],[-0.1,1.1]]]
 		# lims = [[None,None],[None,None]]
 
 		iteration = 0
@@ -1219,6 +1246,7 @@ class Object(object):
 
 		parameters0 = parameters0[indices]
 
+		print(shape,indices)
 
 		with matplotlib.style.context(mplstyle):
 		
@@ -1262,7 +1290,7 @@ class Object(object):
 								y0 = parameters0[i][j]
 								y = abs((y - y0)/(y0+1e-20))
 
-							label = labels[i]
+							label = labels[i%len(labels)]
 
 							plots[index[0]][index[1]] = ax[index[0]][index[1]].plot(x,y,
 								color=getattr(plt.cm,'viridis')((iterations.index(iteration)*10)/(len(iterations)*10)),
@@ -1271,8 +1299,8 @@ class Object(object):
 								label=r'${%s}^{(%s)}_{%s}$'%(r'\theta',str(iteration),'')
 							)
 
-							ax[index[0]][index[1]].set_xlim(xmin=0,xmax=shape[-1])
-							ax[index[0]][index[1]].set_ylim(ymin=lims[i][0],ymax=lims[i][1])
+							ax[index[0]][index[1]].set_xlim(xmin=lims[i%len(lims)][0][0],xmax=lims[i%len(lims)][0][1])
+							ax[index[0]][index[1]].set_ylim(ymin=lims[i%len(lims)][1][0],ymax=lims[i%len(lims)][1][1])
 							ax[index[0]][index[1]].set_ylabel(ylabel=r'${%s}_{%s}$'%(label,str(j) if shape[1]>1 else ''))
 							ax[index[0]][index[1]].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
 							ax[index[0]][index[1]].set_yscale(value='linear')
@@ -1617,6 +1645,11 @@ class Unitary(Hamiltonian):
 		attribute = 'shape'
 		layer = 'variables'
 		shape = attributes[attribute][layer]
+
+		# Get trotterized shape
+		p = self.p
+		shape = list(shape[::-1])
+		shape[-1] *= p
 
 		ndim = len(shape)
 
@@ -2199,16 +2232,19 @@ def run(hyperparameters):
 		f = gradient_finite(obj,tol=6e-8)
 		a = obj.__derivative__
 
+		print('derivatives')
 		print(allclose(g(parameters),f(parameters)))
 		print(allclose(g(parameters),a(parameters)))
 		print(allclose(f(parameters),a(parameters)))
 
+		print('equal')
 		print((g(parameters)-a(parameters))/g(parameters))
 
 		grad = gradient(func)
 		fgrad = gradient_finite(func,tol=5e-8)
 		agrad = obj.__grad__
 
+		print('gradients')
 		print(allclose(grad(parameters),fgrad(parameters)))
 		print(allclose(grad(parameters),agrad(parameters)))
 
