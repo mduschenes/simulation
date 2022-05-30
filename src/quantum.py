@@ -1285,7 +1285,7 @@ class Object(object):
 								if layout[1] > 1:
 									if index[1] == 0:
 										ax[index[0]][index[1]].legend(
-											loc=(0.2,1.15),ncol=min(5,len(ax[index[0]][index[1]].get_legend_handles_labels()[0]))
+											loc=(0.2,1.25),ncol=min(5,len(ax[index[0]][index[1]].get_legend_handles_labels()[0]))
 											)
 									if index[1] == 0:
 										ax[index[0]][index[1]].set_title(label=r'${%s}^{(%s)}_{%s}$'%(
@@ -1299,8 +1299,8 @@ class Object(object):
 										)
 
 			fig.set_size_inches(*figsize)
-			fig.subplots_adjust()
-			fig.tight_layout()
+			fig.subplots_adjust(hspace=0.5)
+			# fig.tight_layout()
 			dump(fig,path)
 
 		self.fig[attr] = fig

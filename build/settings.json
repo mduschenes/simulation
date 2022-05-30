@@ -46,9 +46,10 @@
 	}
 },
 "hyperparameters":{
-	"iterations":200,
+	"iterations":20,
 	"runs":1,
 	"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
+	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
 	"label":"gate",
 	"optimizer":"cg",
 	"seed":12321,

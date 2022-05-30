@@ -304,7 +304,8 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 						data['shape'][category][parameter][group][layer][index] = tuple([
 							((-data['size'][category][parameter][group][layer][axis]*
 							(len(data['indices'][category][parameter][group][layer][axis])
-							if (axis > (ndim-data['ndim'][category][parameter][group][layer]) or data['locality'][category][parameter][group][layer][axis] in ['local'] or layer in ['variables']) else 1))
+							# if (axis > (ndim-data['ndim'][category][parameter][group][layer]) or data['locality'][category][parameter][group][layer][axis] in ['local'] or layer in ['variables']) else 1))
+							if (data['locality'][category][parameter][group][layer][axis] in ['local'] or layer in ['variables']) else 1))
 							if data['size'][category][parameter][group][layer][axis] < 0 else 
 							data['size'][category][parameter][group][layer][axis]
 							)
@@ -1330,11 +1331,11 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 					index = ('put','layer','variable')
 					indices = data[attr][category][parameter][group][layer][index]					
 					
-					print(category,parameter,group,layer,':',shape,slices,'->',shapes,indices)
+					# print(category,parameter,group,layer,':',shape,slices,'->',shapes,indices)
 
 					# print(data[attribute][category][layer])
-					print(data[attribute][layer])
-					print()
+					# print(data[attribute][layer])
+					# print()
 
 	# Setup attributes from data
 	attrs = ['shape','values','slice','index','parameters','features','variables','constraints']
