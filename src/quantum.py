@@ -1669,7 +1669,7 @@ class Unitary(Hamiltonian):
 		])
 
 		indices = tuple([
-			*[array([i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]])
+			*[[i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]]
 				for axis in range(0,1)],
 			*[[indices[parameter][group][axis] for parameter in indices for group in indices[parameter]][0]
 				for axis in range(1,ndim)]
@@ -1678,27 +1678,21 @@ class Unitary(Hamiltonian):
 		# Calculate parameters and gradient
 		parameters = self.__parameters__(parameters)
 
-
-		print(shape,parameters.shape,slices,indices)
-
 		grad = gradient_expm(-1j*self.coefficients*parameters,self.data,self.identity)
 		grad *= -1j*self.coefficients
 
 		# Reshape gradient
-
-		# Axis of trotterization
 		axis = 1
-		print(grad.shape)
-		grad = grad.reshape((self.shape[axis],-1,*self.shape[2:]))
-		print(grad.shape)
-		grad = grad[indices[axis]]
-		print(grad.shape)
-		grad = gradient_trotter(grad,self.p)
+
+		grad = grad.reshape((*shape,*grad.shape[axis:]))
+
 		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
-		grad = grad[indices[0]]
-		print(grad.round(3))
-		print(grad.shape)		
-		grad = grad.reshape((-1,*grad.shape[2:]))
+
+		grad = gradient_trotter(grad,p)
+
+		grad = grad[indices]
+
+		grad = grad.reshape((-1,*grad.shape[axis+1:]))
 
 		derivative = grad
 
@@ -2237,8 +2231,8 @@ def run(hyperparameters):
 		print(allclose(g(parameters),a(parameters)))
 		print(allclose(f(parameters),a(parameters)))
 
-		print('equal')
-		print((g(parameters)-a(parameters))/g(parameters))
+		# print('equal')
+		# print((g(parameters)-a(parameters))/g(parameters))
 
 		grad = gradient(func)
 		fgrad = gradient_finite(func,tol=5e-8)

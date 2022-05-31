@@ -17,11 +17,11 @@
 	}
 },
 "boolean":{
-	"train":1,
+	"train":0,
 	"load":0,
 	"dump":0,
-	"plot":1,
-	"test":0
+	"plot":0,
+	"test":1
 },
 "model":{
 	"N":4,
@@ -48,8 +48,8 @@
 "hyperparameters":{
 	"iterations":10,
 	"runs":1,
-	"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
 	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
+	"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
 	"label":"gate",
 	"optimizer":"cg",
 	"seed":12321,
