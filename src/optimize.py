@@ -384,12 +384,12 @@ class ConjugateGradient(Base):
 		
 		restart = (iteration%self.hyperparameters['restart']) == 0
 		beta = 0 if (restart or isnaninf(beta) or beta>1e3) else beta
-		_search = -_grad + beta*search
+		search = -_grad + beta*search
 
 
 		self.alpha = alpha
 		self.beta = beta
-		self.search = _search
+		self.search = search
 		
 		self.track['alpha'].append(self.alpha)
 		self.track['beta'].append(self.beta)
@@ -449,6 +449,15 @@ class Adam(Base):
 		value,grad,parameters = self.opt_step(iteration,state)
 
 		state = self._opt_update(iteration,grad,state)
+
+		alpha = self.alpha
+		search = -grad
+
+		self.alpha = alpha
+		self.search = search
+
+		self.track['alpha'].append(self.alpha)			
+		self.track['search'].append(self.search)			
 
 		parameters = self.get_params(state)
 		

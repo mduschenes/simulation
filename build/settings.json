@@ -1,35 +1,35 @@
 {
 "sys":{
 	"directory":{
-		"data":{"data":"output"},
+		"data":{"data":"output","settings":"output"},
 		"plot":{"parameters":"output","objective":"output","label":"output"},
-		"config":{"settings":"output","mplstyle":"config"}
+		"config":{"mplstyle":"config"}
 	},
 	"file":{
-		"data":{"data":"data"},
+		"data":{"data":"data","settings":"settings"},
 		"plot":{"parameters":"parameters","objective":"objective","label":"label"},
-		"config":{"settings":"settings","mplstyle":"plot"}
+		"config":{"mplstyle":"plot"}
 	},
 	"ext":{
-		"data":{"data":"pkl"},
+		"data":{"data":"pkl","settings":"json"},
 		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf"},
-		"config":{"settings":"json","mplstyle":"mplstyle"}
+		"config":{"mplstyle":"mplstyle"}
 	}
 },
 "boolean":{
 	"train":0,
 	"load":0,
-	"dump":0,
+	"dump":1,
 	"plot":0,
-	"test":1
+	"test":0
 },
 "model":{
-	"N":4,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":11,
+	"M":300,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -46,13 +46,11 @@
 	}
 },
 "hyperparameters":{
-	"iterations":10,
-	"runs":1,
-	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
+	"iterations":200,
 	"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
+	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
 	"label":"gate",
 	"optimizer":"cg",
-	"seed":12321,
 	"eps":1e-5,
 	"tol":1e-12,
 	"scale":1,
@@ -85,14 +83,14 @@
 		"scale":1,
 		"initialization":"interpolation",
 		"random":"uniform",
-		"interpolation":3,
-		"smoothness":3,	
+		"interpolation":2,
+		"smoothness":1,	
 		"pad":"random",	
 		"seed":null,		
 		"init":[0,1],
-		"bounds":{"parameters":[-5,5],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
+		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
 	},
 	"z": {
 		"name":"z",
@@ -142,5 +140,8 @@
 	}
 },
 "label": null,
-"permutations":{"model__M":[16,32,64,128,256,512],"hyperparameters__iterations":[8,16,64,128,256,512]}
+"key":null,
+"seed":12321,
+"permutations":{"seed":1,"model__M":[1e2,2e1,1e1],"model__tau":[1e-1,5e-1,1e0], "hyperparameters__iterations":[100]},
+"groups":[["model__M","model__tau"]]
 }

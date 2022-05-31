@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['',".."]
+PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
@@ -41,10 +41,10 @@ from src.utils import eigh,qr
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,isnaninf
 from src.utils import parse,to_str,to_number,datatype,slice_size
-from src.utils import pi,e
+from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
 
-from src.dictionary import _update
+from src.dictionary import updater,getter,setter,permuter
 
 from src.parameters import parameterize
 from src.operators import operatorize
@@ -145,7 +145,7 @@ class Space(object):
 		return
 
 	def __size__(self):
-		assert self.L is not None or self.delta is not None, "Either L or delta must not be None"		
+		assert self.L is not None or self.delta is not None, 'Either L or delta must not be None'		
 		self.delta = self.get_delta()
 		self.L = self.get_L(self.delta)
 		self.n = self.get_n()
@@ -246,7 +246,7 @@ class Time(object):
 		self.string = self.time
 		return
 	def __size__(self):
-		assert self.T is not None or self.tau is not None, "Either T or tau must not be None"
+		assert self.T is not None or self.tau is not None, 'Either T or tau must not be None'
 		self.tau = self.get_tau()
 		try:
 			self.T = self.get_T(self.tau)
@@ -278,9 +278,9 @@ class Time(object):
 		if tau is None:
 			tau = self.tau		
 		if self.time in ['linear']:
-			return round(self.T/tau)
+			return int(round(self.T/tau))
 		else:
-			return round(self.T/tau)
+			return int(round(self.T/tau))
 		return
 
 	def get_tau(self):
@@ -336,11 +336,11 @@ class Lattice(object):
 		elif self.lattice in ['square','square-nearest']:
 			n = int(N**(1/d))
 			z = 2*d
-			assert n**d == N, "N != n^d for N=%d, d=%d, n=%d"%(N,d,n)
+			assert n**d == N, 'N != n^d for N=%d, d=%d, n=%d'%(N,d,n)
 		else:
 			n = int(N**(1/d))
 			z = 2*d
-			assert n**d == N, "N != n^d for N=%d, d=%d, n=%d"%(N,d,n)
+			assert n**d == N, 'N != n^d for N=%d, d=%d, n=%d'%(N,d,n)
 
 		self.n = n
 		self.z = z
@@ -389,7 +389,7 @@ class Lattice(object):
 		'''
 		Get list of lists of sites of lattice
 		Args:
-			site (str,int): Type of sites, either int for unique site-length list of vertices, or string in allowed ["i","i,j","i<j"]
+			site (str,int): Type of sites, either int for unique site-length list of vertices, or string in allowed ['i','i,j','i<j']
 		Returns:
 			sites (list): List of site-length lists of lattice
 		'''
@@ -400,15 +400,15 @@ class Lattice(object):
 			conditions = None
 			sites = self.iterable(k,conditions)
 		elif isinstance(site,(str)):
-			if site in ["i"]:
+			if site in ['i']:
 				sites = [[i] for i in self.vertices]
-			elif site in ["i,j"]:
+			elif site in ['i,j']:
 				sites = [[i,j] for i in self.vertices for j in self.vertices]
-			elif site in ["i<j"]:
+			elif site in ['i<j']:
 				k = 2
 				conditions = lambda i,k: all([i[j]<i[j+1] for j in range(k-1)])	
 				sites = self.iterable(k,conditions)
-			elif site in ["<ij>"]:
+			elif site in ['<ij>']:
 				if self.z > self.N:
 					sites = []
 				else:
@@ -546,13 +546,13 @@ class Object(object):
 	Args:
 		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			operator (iterable[str]): string names of operators
-		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 		string (iterable[str]): string labels of operators
-		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		hyperparameters (dict) : class hyperparameters				
 		N (int): Number of qudits
 		D (int): Dimension of qudits
@@ -591,6 +591,7 @@ class Object(object):
 		self.site = []
 		self.string = []
 		self.interaction = []
+		self.indices = []
 		self.size = 0
 		self.shape = (*self.data.shape[0:1],*[self.M],*self.data.shape[1:])
 
@@ -607,6 +608,7 @@ class Object(object):
 		self.hyperparameters = hyperparameters
 		self.parameters = None
 		self.attributes = {}
+		self.constants = None
 		self.coefficients = 1
 		self.dim = 0
 
@@ -620,7 +622,7 @@ class Object(object):
 
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
-		self.log('%s\n'%('\n'.join(['%s: %r'%(attr,getattr(self,attr)) for attr in ['key','N','D','d','M','tau','p','seed']])))
+		self.log('%s\n'%('\n'.join(['%s: %r'%(attr,getattr(self,attr)) for attr in ['key','N','D','d','M','tau','T','p','seed']])))
 	
 		return	
 
@@ -630,14 +632,14 @@ class Object(object):
 		Args:
 			data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 				operator (iterable[str]): string names of operators
-				site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+				site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 				string (iterable[str]): string labels of operators
-				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 				operator (iterable[str]): string names of operators		
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (dict) : class hyperparameters
 		'''
 
@@ -678,7 +680,7 @@ class Object(object):
 			operator (str): string name of operator
 			site (int): site of local operator
 			string (str): string label of operator
-			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (dict) : class hyperparameters
 		'''
 		index = -1
@@ -691,9 +693,9 @@ class Object(object):
 		Args:
 			data (iterable[array]): data of operator
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (dict) : class hyperparameters
 		'''
 
@@ -712,7 +714,7 @@ class Object(object):
 			operator (str): string name of operator
 			site (int): site of local operator
 			string (str): string label of operator
-			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (dict) : class hyperparameters
 		'''
 
@@ -768,6 +770,60 @@ class Object(object):
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
 		data = parameters
 		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
+
+
+		# # Get indices of variable and constant data
+
+		# attribute = 'shape'
+		# layer = 'variables'
+		# shape = attributes[attribute][layer]
+
+		# attribute = 'index'
+		# layer = 'variables'
+		# indices = attributes[attribute][layer]
+
+		# axes = [0]
+		# ndim = len(shape)
+
+		# indices = tuple([(
+		# 			slice(
+		# 			min(indices[parameter][group][axis].start
+		# 				for parameter in indices for group in indices[parameter]),
+		# 			max(indices[parameter][group][axis].stop
+		# 				for parameter in indices for group in indices[parameter]),
+		# 			min(indices[parameter][group][axis].step
+		# 				for parameter in indices for group in indices[parameter]))
+		# 			if all(isinstance(indices[parameter][group][axis],slice)
+		# 					for parameter in indices for group in indices[parameter]) else
+		# 			list(set(i 
+		# 				for parameter in indices for group in indices[parameter] 
+		# 				for i in indices[parameter][group][axis]))
+		# 			)
+		# 			for axis in range(ndim)])
+
+
+
+		# # Get variable data
+		# attribute = 'values'
+		# layer = 'parameters'
+		# variable = indices
+		# variables = attributes[attribute][layer][variable]
+
+		# # Get constant data
+		# attribute = 'values'
+		# layer = 'parameters'
+		# constant = [indices[axis] if axis not in axes else 
+		# 	[i for i in range(shape[axis]) 
+		# 	if i not in (
+		# 		range(*indices[axis].indices(shape[axis])) if isinstance(indices[axis],slice) else 
+		# 		indices[axis])
+		# 	]
+		# 	for axis in range(ndim)]
+		# attribute = 'values'
+		# layer = 'parameters'
+		# variable = indices
+		# variables = attributes[attribute][layer][variable]
+
 
 		# Get label
 		data = hyperparameters['label']
@@ -962,7 +1018,9 @@ class Object(object):
 
 			self.log('\t\t'.join([
 				'%s = %0.4e'%(attr,self.hyperparameters['hyperparameters']['track'][attr][-1])
-				for attr in ['alpha','beta']])
+				for attr in ['alpha','beta']
+				if attr in self.hyperparameters['hyperparameters']['track'] and len(self.hyperparameters['hyperparameters']['track'][attr])>0
+				])
 			)
 
 			# self.log('x = \n%r \ngrad(x) = \n%r'%(
@@ -1073,6 +1131,7 @@ class Object(object):
 		self.p = self.time.p
 		self.tau = self.time.tau
 		self.coefficients = self.tau/self.p
+		self.shape = (*self.data.shape[0:1],*[self.M],*self.data.shape[1:])		
 
 		return
 
@@ -1246,8 +1305,6 @@ class Object(object):
 
 		parameters0 = parameters0[indices]
 
-		print(shape,indices)
-
 		with matplotlib.style.context(mplstyle):
 		
 			if fig is None:
@@ -1402,14 +1459,14 @@ class Hamiltonian(Object):
 	Args:
 		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			operator (iterable[str]): string names of operators
 		operator (iterable[str]): string names of operators
-		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 		string (iterable[str]): string labels of operators
-		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		hyperparameters (dict) : class hyperparameters
 		N (int): Number of qudits
 		D (int): Dimension of qudits
@@ -1452,14 +1509,14 @@ class Hamiltonian(Object):
 		Args:
 			data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 				operator (iterable[str]): string names of operators
-				site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+				site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 				string (iterable[str]): string labels of operators
-				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 				operator (iterable[str]): string names of operators		
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (dict) : class hyperparameters
 		'''
 
@@ -1538,7 +1595,7 @@ class Hamiltonian(Object):
 		data = array([tensorprod([basis[j] for j in i]) for i in operator])
 
 		# Assert all data satisfies data**2 = identity for matrix exponentials
-		assert all(allclose(d.dot(d),self.identity) for d in data), "data is not involutory and data**2 != identity"
+		assert all(allclose(d.dot(d),self.identity) for d in data), 'data is not involutory and data**2 != identity'
 
 		# Get Trotterized order of p copies of data for products of data
 		data = trotter(data,self.p)
@@ -1584,14 +1641,14 @@ class Unitary(Hamiltonian):
 	Args:
 		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			operator (iterable[str]): string names of operators
 		operator (iterable[str]): string names of operators
-		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [["i"],["i","j"]]
+		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 		string (iterable[str]): string labels of operators
-		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ["i","i,j","i<j","i...j"]
+		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		hyperparameters (dict) : class hyperparameters
 		N (int): Number of qudits
 		D (int): Dimension of qudits
@@ -1812,7 +1869,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 	if not reset:
 		parameters = padding(parameters,shape,key=None,bounds=bounds,random=pad)
 	else:
-		if initialization in ["interpolation"]:
+		if initialization in ['interpolation']:
 			# Parameters are initialized as interpolated random values between bounds
 			interpolation = hyperparameters['interpolation']
 			smoothness = min(shape[-1]//2,hyperparameters['smoothness'])
@@ -1961,7 +2018,7 @@ def plot(hyperparameters):
 
 	layout = [2]
 	plots = [None]*layout[0]
-	label = hyperparameters[key]['label'] if isinstance(hyperparameters[key]['label'],array) else rand((1,1))
+	label = hyperparameters[key]['label'] #if isinstance(hyperparameters[key]['label'],array) else rand((1,1))
 	shape = (len(hyperparameters[key]['hyperparameters']['runs']),*label.shape)
 	figsize = (8,8)
 	labels = {'real':r'$U~\textrm{Real}$','imag':r'$U~\textrm{Imag}$'}
@@ -2002,6 +2059,22 @@ def check(hyperparameters):
 
 	section = None
 	updates = {
+		'permutations': {
+			'value': (lambda hyperparameters: {
+							**{'seed':[None]},
+							**{attr: (hyperparameters['permutations'][attr] 
+									if not isinstance(hyperparameters['permutations'][attr],int) else 
+									range(hyperparameters['permutations'][attr]))
+								for attr in hyperparameters.get('permutations',{})}
+							}),
+			'default': (lambda hyperparameters: {}),
+			'conditions': (lambda hyperparameters: True)
+		},
+		'groups': {
+			'value': (lambda hyperparameters: hyperparameters['groups']),
+			'default': (lambda hyperparameters: None),
+			'conditions': (lambda hyperparameters: True)
+		},		
 		'label': {
 			'value': (lambda hyperparameters: hyperparameters['hyperparameters']['label']),
 			'default': (lambda hyperparameters: None),
@@ -2019,11 +2092,11 @@ def check(hyperparameters):
 		'path': {
 			'value': (lambda hyperparameters: 	{
 				attr: path_join(hyperparameters[section]['directory'][attr],
-								 '.'.join([hyperparameters[section]['file'][attr]]) if attr in ['data','plot'] else hyperparameters[section]['file'][attr],
+								 '.'.join([hyperparameters[section]['file'][attr]]) if attr not in ['config'] else hyperparameters[section]['file'][attr],
 								 ext=hyperparameters[section]['ext'][attr])
 						if isinstance(hyperparameters[section]['file'][attr],str) else
 						{i: path_join(hyperparameters[section]['directory'][attr][i],
-								 '.'.join([hyperparameters[section]['file'][attr][i]]) if attr in ['data','plot'] else hyperparameters[section]['file'][attr][i],							 
+								 '.'.join([hyperparameters[section]['file'][attr][i]]) if attr not in ['config'] else hyperparameters[section]['file'][attr][i],							 
 								 ext=hyperparameters[section]['ext'][attr][i])
 						for i in hyperparameters[section]['file'][attr]}
 				for attr in hyperparameters[section]['file']			 
@@ -2053,13 +2126,7 @@ def check(hyperparameters):
 
 
 	section = 'hyperparameters'
-	updates = {
-		'runs': {
-			'value': (lambda hyperparameters: list(range(hyperparameters[section]['runs']))),
-			'default': (lambda hyperparameters: 1),
-			'conditions': (lambda hyperparameters: not isinstance(hyperparameters[section]['runs'],(list,tuple,array)))
-		},
-	}			
+	updates = {}			
 	for attr in updates:						
 		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
 		if updates[attr]['conditions'](hyperparameters):
@@ -2090,7 +2157,7 @@ def check(hyperparameters):
 			} for attr in ['scale','initialization','random','init','smoothness','interpolation','pad']
 		},
 		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: hyperparameters['hyperparameters'].get(attr)),
+			'value': (lambda parameter,hyperparameters,attr=attr: hyperparameters.get(attr)),
 			'default': (lambda parameter,hyperparameters,attr=attr: None),
 			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is not None)						
 			} for attr in ['seed']
@@ -2114,38 +2181,57 @@ def setup(hyperparameters):
 	check(hyperparameters)
 
 	settings = {}
+	attributes = ['seed','boolean','hyperparameters']
+	permutations = permuter(hyperparameters['permutations'],groups=hyperparameters['groups'])
 
-	settings['hyperparameters'] = {key: copy.deepcopy(hyperparameters) for key in hyperparameters['hyperparameters']['runs']}
+	settings['seed'] = PRNGKey(
+		seed=hyperparameters['seed'],
+		split=len(hyperparameters['permutations']['seed']),
+		reset=hyperparameters['seed'])
 
-	settings['boolean'] = {attr: hyperparameters['boolean'].get(attr,False) for attr in hyperparameters['boolean']}
-	settings['boolean'].update({attr: settings['boolean'].get(attr,False) and (not settings['boolean'].get('load',False)) for attr in ['train']})
+	settings['boolean'] = {attr: (
+			(hyperparameters['boolean'].get(attr,False)) and 
+			(attr not in ['train'] or not hyperparameters['boolean'].get('load',False)))
+			for attr in hyperparameters['boolean']}
 
-	settings['seed'] = {key:seed for key,seed in zip(
-		settings['hyperparameters'],
-		PRNGKey(hyperparameters['hyperparameters']['seed'],
-			split=len(settings['hyperparameters']),
-			reset=hyperparameters['hyperparameters']['seed'])
-		)}
+	settings['hyperparameters'] = {}
 
-	for key in settings['hyperparameters']:
-		settings['hyperparameters'][key]['model']['system']['key'] = key
+	for key,permutation in enumerate(permutations):
 		
-		settings['hyperparameters'][key]['model']['system']['seed'] = hyperparameters['hyperparameters']['seed']
-		settings['hyperparameters'][key]['hyperparameters']['seed'] = settings['seed'][key]
-		for parameter in settings['hyperparameters'][key]['parameters']:
-			settings['hyperparameters'][key]['parameters'][parameter]['seed'] = settings['seed'][key]
+		settings['hyperparameters'][key] = copy.deepcopy(hyperparameters)
 
-		settings['hyperparameters'][key]['sys']['path'] = {
-			attr: path_join(settings['hyperparameters'][key]['sys']['directory'][attr],
-							 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr],*[str(key)]]) if attr in ['data','plot'] else settings['hyperparameters'][key]['sys']['file'][attr],
-							 ext=settings['hyperparameters'][key]['sys']['ext'][attr])
-					if isinstance(settings['hyperparameters'][key]['sys']['file'][attr],str) else
-					{i: path_join(settings['hyperparameters'][key]['sys']['directory'][attr][i],
-							 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr][i],*[str(key)]]) if attr in ['data','plot'] else settings['hyperparameters'][key]['sys']['file'][attr][i],							 
-							 ext=settings['hyperparameters'][key]['sys']['ext'][attr][i])
-					for i in settings['hyperparameters'][key]['sys']['file'][attr]}
-			for attr in settings['hyperparameters'][key]['sys']['file']			 
-		}
+		values = {}		
+
+		values.update({
+			'key':key,
+			'model__system__key': key,
+			'model__system__seed': settings['hyperparameters'][key]['seed'],
+			'sys__path': {
+				attr: path_join(settings['hyperparameters'][key]['sys']['directory'][attr],
+								 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key]['sys']['file'][attr],
+								 ext=settings['hyperparameters'][key]['sys']['ext'][attr])
+						if isinstance(settings['hyperparameters'][key]['sys']['file'][attr],str) else
+						{i: path_join(settings['hyperparameters'][key]['sys']['directory'][attr][i],
+								 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr][i],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key]['sys']['file'][attr][i],							 
+								 ext=settings['hyperparameters'][key]['sys']['ext'][attr][i])
+						for i in settings['hyperparameters'][key]['sys']['file'][attr]}
+				for attr in settings['hyperparameters'][key]['sys']['file']			 
+			},			
+			**{'parameters__%s__seed'%(parameter): settings['seed'][hyperparameters['permutations']['seed'].index(permutation['seed'])] 
+				for parameter in settings['hyperparameters'][key]['parameters']},
+		})
+
+		values.update({
+			**permutation
+		})
+
+		values.update({
+			'seed': settings['hyperparameters'][key]['seed']
+		})
+
+		for element in values:
+			setter(settings['hyperparameters'][key],element,values[element],delimiter=delim,copy=True,reset=False)
+
 
 
 	return settings
@@ -2162,7 +2248,7 @@ def run(hyperparameters):
 
 	defaults = copy.deepcopy(hyperparameters)
 
-	for key in settings['hyperparameters']:			
+	for key in settings['hyperparameters']:		
 
 		hyperparameters = settings['hyperparameters'][key]	
 		
@@ -2174,11 +2260,11 @@ def run(hyperparameters):
 				return e if not callable(i) else i
 			path = hyperparameters['sys']['path']['data']['data']
 			data = load(path,default=default)
-			_update(hyperparameters,data,_func=func)
+			updater(hyperparameters,data,_func=func)
 
 		if settings['boolean']['dump']:
 			data = copy.deepcopy(hyperparameters)
-			path = hyperparameters['sys']['path']['config']['settings'] 
+			path = hyperparameters['sys']['path']['data']['settings'] 
 			dump(data,path,callables=False)
 
 

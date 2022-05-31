@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 # Constants
 pi = np.pi
 e = np.exp(1)
+delim = "__"
+
+# Types
 itg = np.integer
 flt = np.float32
 dbl = np.float64

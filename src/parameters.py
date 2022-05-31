@@ -1367,9 +1367,9 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 
 	for parameter in data[attribute][category]:
 		layer = 'parameters'
-		attributes['slice'][layer][parameter] = {}
-		attributes['index'][layer][parameter] = {}
-		attributes[layer][layer][parameter] = {}
+		attrs = ['slice','index',layer]
+		for attr in attrs:
+			attributes[attr][layer][parameter] = {}
 		for group in data[attribute][category][parameter]:
 		
 			if not sliced:
@@ -1458,9 +1458,9 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 
 	for parameter in data[attribute][category]:
 		layer = 'features'
-		attributes['slice'][layer][parameter] = {}
-		attributes['index'][layer][parameter] = {}
-		attributes[layer][layer][parameter] = {}
+		attrs = ['slice','index',layer]
+		for attr in attrs:
+			attributes[attr][layer][parameter] = {}
 		for group in data[attribute][category][parameter]:
 
 			attr = 'ndim'
@@ -1533,9 +1533,9 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 
 	for parameter in data[attribute][category]:
 		layer = 'variables'
-		attributes['slice'][layer][parameter] = {}
-		attributes['index'][layer][parameter] = {}			
-		attributes[layer][layer][parameter] = {}			
+		attrs = ['slice','index',layer]
+		for attr in attrs:
+			attributes[attr][layer][parameter] = {}
 		for group in data[attribute][category][parameter]:
 
 			attr = 'ndim'
@@ -1608,9 +1608,9 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 
 	for parameter in data[attribute][category]:
 		layer = 'constraints'
-		attributes['slice'][layer][parameter] = {}
-		attributes['index'][layer][parameter] = {}			
-		attributes[layer][layer][parameter] = {}			
+		attrs = ['slice','index',layer]
+		for attr in attrs:
+			attributes[attr][layer][parameter] = {}
 		for group in data[attribute][category][parameter]:
 
 			attr = 'ndim'
