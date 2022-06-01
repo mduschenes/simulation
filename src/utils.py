@@ -2433,6 +2433,24 @@ def isscalar(a,*args,**kwargs):
 	'''
 	return (not isarray(a) and not islisttuple(a)) or (isarray(a) and (a.ndim<1) and (a.size<2))
 
+def isnumber(s,*args,**kwargs):
+	'''
+	Check if object is a float or integer number
+	Args:
+		s(object): Object to be checked as number
+	Returns:
+		Boolean of whether object s is a number
+	'''
+	try:
+		s = float(s)
+		return True
+	except:
+		try:
+			s = int(s)
+			return True
+		except:
+			return False
+
 def isnone(a,*args,**kwargs):
 	'''
 	Check if array is None
@@ -2899,4 +2917,61 @@ def to_str(a,**kwargs):
 
 	string = np.array_str(a,**kwargs)
 
+	return string
+
+def scinotation(number,decimals=2,base=10,order=2,zero=True,scilimits=[-1,1],usetex=False):
+	'''
+	Put number into scientific notation string
+	Args:
+		number (str,int,float): Number to be processed
+		decimals (int): Number of decimals in base part of number
+		base (int): Base of scientific notation
+		order (int): Max power of number allowed for rounding
+		zero (bool): Make numbers that equal 0 be the int representation
+		scilimits (list): Limits on where not to represent with scientific notation
+		usetex (bool): Render string with Latex
+	
+	Returns:
+		String with scientific notation format for number
+
+	'''
+	if not isnumber(number):
+		return str(number)
+	try:
+		number = int(number) if int(number) == float(number) else float(number)
+	except:
+		string = number
+		return string
+
+	maxnumber = base**order
+	if number > maxnumber:
+		number = number/maxnumber
+		if int(number) == number:
+			number = int(number)
+		string = str(number)
+	
+	if zero and number == 0:
+		string = '%d'%(number)
+	
+	elif isinstance(number,(int,np.integer)):
+		string = str(number)
+		# if usetex:
+		# 	string = r'\textrm{%s}'%(string)
+	
+	elif isinstance(number,(float,np.float64)):		
+		string = '%0.*e'%(decimals,number)
+		string = string.split('e')
+		basechange = np.log(10)/np.log(base)
+		basechange = int(basechange) if int(basechange) == basechange else basechange
+		flt = string[0]
+		exp = str(int(string[1])*basechange)
+		if int(exp) in range(*scilimits):
+			flt = '%0.*f'%(decimals,float(flt)/(base**(-int(exp))))
+			string = r'%s'%(flt)
+		else:
+			string = r'%s%s%s'%(flt if decimals > 0 else '',r'\cdot' if decimals > 0 else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
+	if usetex:
+		string = r'%s'%(string.replace('$',''))
+	else:
+		string = string.replace('$','')
 	return string

@@ -112,7 +112,7 @@ class Base(object):
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
 
 		self.optimizer = hyperparameters['optimizer']		
-		self.iterations = hyperparameters['iterations']
+		self.iterations = int(hyperparameters['iterations'])
 		self.track = hyperparameters['track']
 		self.hyperparameters = hyperparameters
 

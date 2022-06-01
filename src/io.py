@@ -252,7 +252,6 @@ def load(path,wr='r',default=None,verbose=False,**kwargs):
 						logger.log(verbose,'Loading obj %s'%(path))
 						return data
 				except Exception as ee:
-					print(e,ee)
 					pass
 
 	return default			

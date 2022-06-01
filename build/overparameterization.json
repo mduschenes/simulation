@@ -17,19 +17,19 @@
 	}
 },
 "boolean":{
-	"train":1,
-	"load":0,
+	"train":0,
+	"load":1,
 	"dump":1,
 	"plot":1,
 	"test":0
 },
 "model":{
-	"N":4,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":500,
+	"M":300,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -51,7 +51,7 @@
 	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
 	"label":"gate",
 	"optimizer":"cg",
-	"eps":1e-5,
+	"eps":1e-3,
 	"tol":1e-12,
 	"scale":1,
 	"value":1,
@@ -141,5 +141,6 @@
 },
 "label": null,
 "key":null,
-"seed":12321
+"seed":12321,
+"permutations":{"seed":1,"model__M":[20,50,75,100,200,500,750,1000,1200,2000], "hyperparameters__iterations":[1000]}
 }
