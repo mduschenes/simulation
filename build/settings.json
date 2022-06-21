@@ -17,19 +17,19 @@
 	}
 },
 "boolean":{
-	"train":1,
-	"load":0,
+	"train":0,
+	"load":1,
 	"dump":1,
 	"plot":1,
 	"test":0
 },
 "model":{
-	"N":4,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":500,
+	"M":300,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -49,14 +49,15 @@
 	"iterations":200,
 	"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
 	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
-	"label":"gate",
+	"seed":12321,
+	"split":1,
 	"optimizer":"cg",
-	"eps":1e-5,
+	"eps":1e-3,
 	"tol":1e-12,
 	"scale":1,
 	"value":1,
 	"status":1,
-	"interpolation":3,"smoothness":1,"init":[0,1],
+	"interpolation":3,"smoothness":1,
 	"initialization":"interpolation","random":"normal","pad":"random",
 	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":1e6,
 	"sigmoid":1e4,"alpha":1e-4,"beta":1e-1,
@@ -87,7 +88,6 @@
 		"smoothness":1,	
 		"pad":"random",	
 		"seed":null,		
-		"init":[0,1],
 		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
@@ -106,7 +106,6 @@
 		"smoothness":1,	
 		"pad":"random",	
 		"seed":null,
-		"init":[0,1],		
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
@@ -125,7 +124,6 @@
 		"smoothness":1,	
 		"pad":"random",
 		"seed":null,	
-		"init":[0,1],			
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
@@ -139,7 +137,14 @@
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 	}
 },
-"label": null,
-"key":null,
-"seed":12321
+"label": {
+	"parameters":null,
+	"shape":[-1,-1],
+	"scale":1,
+	"initialization":"random",
+	"random":"random",
+	"seed":null,
+	"bounds":[-1,1]
+},
+"permutations":{}
 }

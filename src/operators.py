@@ -48,7 +48,7 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 	'''
 	Initialize operators
 	Args:
-		data (str,array): Label or path or array of operator
+		data (dict,str,array): Label or path or array of operator
 		shape (iterable[int]): Shape of operator
 		hyperparameters (dict): Dictionary of hyperparameters for operator
 		index (int): Index to initialize operator

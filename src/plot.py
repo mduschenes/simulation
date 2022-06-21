@@ -176,7 +176,7 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 			# 	for axis in AXIS},				
 			**{'set_%sticklabels'%(axis):['labels']
 				for axis in AXIS},	
-			**{k:['label'] for k in ['plot','scatter','axvline','axhline','vlines','hlines','plot_surface']},								
+			**{k:['label'] for k in ['plot','scatter','errorbar','axvline','axhline','vlines','hlines','plot_surface']},								
 			**{'set_title':['label'],'suptitle':['t'],
 			'annotate':['s'],
 			'legend':['title']},
@@ -205,7 +205,7 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 				for key,label in [('%slabel'%(axis),'%slabel'%(axis)),
 								  ('%sticks'%(axis),'ticks'),
 								  ('%sticklabels'%(axis),'labels')]},
-			**{k:['label'] for k in ['plot','scatter','axvline','axhline','vlines','hlines','plot_surface']},	
+			**{k:['label'] for k in ['plot','scatter','errorbar','axvline','axhline','vlines','hlines','plot_surface']},	
 			**{
 				'set_title':['label'],
 				'suptitle':['t'],
@@ -297,6 +297,33 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 
 				args.extend([kwargs.pop(k) for k in ['x','y'] if kwargs.get(k) is not None])
 
+				call = True
+
+			elif attr in ['errorbar']:
+				fields = ['color']
+				for field in fields:
+					# try:
+						if kwargs.get(field) == '__cycle__':
+							try:
+								_obj = _attr[-1]
+							except:
+								_obj = _attr
+							values = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)
+							kwargs[field] = values[-1]
+						
+						elif kwargs.get(field) == '__lines__':
+							_obj = getattr(obj,'get_lines')()[-1]
+							kwargs[field] = getattr(_obj,'get_%s'%(field))()
+						
+						else:
+							continue
+					# except:
+					# 	kwargs.pop(field)
+					# 	pass
+
+				args.extend([kwargs.pop(k) for k in ['x','y','yerr','xerr'] if kwargs.get(k) is not None])
+
+				call = True				
 
 			elif attr in ['plot_surface','contour','contourf','scatter']:
 				args.extend([kwargs.pop(k) for k in ['x','y','z'] if kwargs.get(k) is not None])

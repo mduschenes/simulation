@@ -758,9 +758,6 @@ class Object(object):
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
 
-		# Get parameters data
-		parameters = None
-
 		# Get shape of data
 		shape = self.shape[0:2]
 
@@ -768,73 +765,19 @@ class Object(object):
 		hyperparams = hyperparameters['parameters']
 
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
-		data = parameters
+		data = None
 		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
 
-
-		# # Get indices of variable and constant data
-
-		# attribute = 'shape'
-		# layer = 'variables'
-		# shape = attributes[attribute][layer]
-
-		# attribute = 'index'
-		# layer = 'variables'
-		# indices = attributes[attribute][layer]
-
-		# axes = [0]
-		# ndim = len(shape)
-
-		# indices = tuple([(
-		# 			slice(
-		# 			min(indices[parameter][group][axis].start
-		# 				for parameter in indices for group in indices[parameter]),
-		# 			max(indices[parameter][group][axis].stop
-		# 				for parameter in indices for group in indices[parameter]),
-		# 			min(indices[parameter][group][axis].step
-		# 				for parameter in indices for group in indices[parameter]))
-		# 			if all(isinstance(indices[parameter][group][axis],slice)
-		# 					for parameter in indices for group in indices[parameter]) else
-		# 			list(set(i 
-		# 				for parameter in indices for group in indices[parameter] 
-		# 				for i in indices[parameter][group][axis]))
-		# 			)
-		# 			for axis in range(ndim)])
-
-
-
-		# # Get variable data
-		# attribute = 'values'
-		# layer = 'parameters'
-		# variable = indices
-		# variables = attributes[attribute][layer][variable]
-
-		# # Get constant data
-		# attribute = 'values'
-		# layer = 'parameters'
-		# constant = [indices[axis] if axis not in axes else 
-		# 	[i for i in range(shape[axis]) 
-		# 	if i not in (
-		# 		range(*indices[axis].indices(shape[axis])) if isinstance(indices[axis],slice) else 
-		# 		indices[axis])
-		# 	]
-		# 	for axis in range(ndim)]
-		# attribute = 'values'
-		# layer = 'parameters'
-		# variable = indices
-		# variables = attributes[attribute][layer][variable]
-
-
 		# Get label
-		data = hyperparameters['label']
+		data = None
 		shape = self.shape[2:]
-		hyperparams = hyperparameters['hyperparameters']
+		hyperparams = hyperparameters['label']
 		index = self.N
 		dtype = self.dtype
 
 		operator = operatorize(data,shape,hyperparams,index=index,dtype=dtype)
 
-		hyperparameters['label'] = operator #.conj().T
+		hyperparameters['label']['parameters'] = operator #.conj().T
 
 		# Get reshaped parameters
 		attribute = 'values'
@@ -943,7 +886,7 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		return 1-distance(self(parameters),self.hyperparameters['label'])
+		return 1-distance(self(parameters),self.hyperparameters['label']['parameters'])
 
 	@partial(jit,static_argnums=(0,))
 	def __loss__(self,parameters):
@@ -954,7 +897,7 @@ class Object(object):
 		Returns:
 			loss (array): loss
 		'''	
-		return distance(self(parameters),self.hyperparameters['label'])
+		return distance(self(parameters),self.hyperparameters['label']['parameters'])
 
 	@partial(jit,static_argnums=(0,))
 	def __func__(self,parameters):
@@ -980,7 +923,7 @@ class Object(object):
 		shape = parameters.shape
 		grad = zeros(shape)
 
-		grad = grad + gradient_distance(self(parameters),self.hyperparameters['label'],self.__derivative__(parameters))
+		grad = grad + gradient_distance(self(parameters),self.hyperparameters['label']['parameters'],self.__derivative__(parameters))
 
 		return grad
 		# return gradient(self.__func__)(parameters)
@@ -1031,7 +974,7 @@ class Object(object):
 
 			self.log('U\n%s\nV\n%s\n'%(
 				to_str(abs(self(parameters)).round(4)),
-				to_str(abs(self.hyperparameters['label']).round(4))
+				to_str(abs(self.hyperparameters['label']['parameters']).round(4))
 				)
 			)
 			# self.log('norm: %0.4e\nmax: %0.4e\nmin: %0.4e\nbcs:\n%r\n%r\n\n'%(
@@ -1860,10 +1803,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 
 	bounds = [to_number(i,dtype) for i in bounds]
 	if not any(isnaninf(i) for i in bounds):
-		bounds = [
-			bounds[0] + (bounds[1]-bounds[0])*hyperparameters['init'][0],
-			bounds[1]*hyperparameters['init'][1],
-		]
+		bounds = [bounds[0],bounds[1]]
 
 	# Add random padding of values if parameters not reset
 	if not reset:
@@ -2025,7 +1965,7 @@ def plot(objects,hyperparameters):
 
 	layout = [2]
 	plots = [None]*layout[0]
-	label = hyperparameters[key]['label'] #if isinstance(hyperparameters[key]['label'],array) else rand((1,1))
+	label = hyperparameters[key]['label']['parameters']
 	shape = (length,*label.shape)
 	figsize = (8,8)
 	labels = {'real':r'$U~\textrm{Real}$','imag':r'$U~\textrm{Imag}$'}
@@ -2289,7 +2229,6 @@ def check(hyperparameters):
 	updates = {
 		'permutations': {
 			'value': (lambda hyperparameters: {
-							**{'seed':[None]},
 							**{attr: (hyperparameters['permutations'][attr] 
 									if not isinstance(hyperparameters['permutations'][attr],int) else 
 									range(hyperparameters['permutations'][attr]))
@@ -2304,7 +2243,7 @@ def check(hyperparameters):
 			'conditions': (lambda hyperparameters: True)
 		},		
 		'label': {
-			'value': (lambda hyperparameters: hyperparameters['hyperparameters']['label']),
+			'value': (lambda hyperparameters: hyperparameters['hyperparameters']['label']['parameters']),
 			'default': (lambda hyperparameters: None),
 			'conditions': (lambda hyperparameters: hyperparameters['hyperparameters'].get('label') is not None)				
 		},
@@ -2388,10 +2327,10 @@ def check(hyperparameters):
 			'value': (lambda parameter,hyperparameters,attr=attr: hyperparameters['hyperparameters'].get(attr)),
 			'default': (lambda parameter,hyperparameters,attr=attr: None),
 			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
-			} for attr in ['scale','initialization','random','init','smoothness','interpolation','pad']
+			} for attr in ['scale','initialization','random','smoothness','interpolation','pad']
 		},
 		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: hyperparameters.get(attr)),
+			'value': (lambda parameter,hyperparameters,attr=attr: hyperparameters.get('seed',{}).get(attr)),
 			'default': (lambda parameter,hyperparameters,attr=attr: None),
 			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is not None)						
 			} for attr in ['seed']
@@ -2419,61 +2358,56 @@ def setup(hyperparameters):
 	permutations = permuter(hyperparameters['permutations'],groups=hyperparameters['groups'])
 
 	seeds = PRNGKey(
-		seed=hyperparameters['seed'],
-		split=len(hyperparameters['permutations']['seed']),
-		reset=hyperparameters['seed'])
+		seed=hyperparameters['seed']['seed'],
+		split=hyperparameters['seed']['split'],
+		reset=hyperparameters['seed']['reset'])
 
+	keys = {key: [instance for instance,seed in enumerate(seeds)] for key,permutation in enumerate(permutations)}
 
-	 settings['seed'] = seeds
+	settings['seed'] = seeds
 
 	settings['boolean'] = {attr: (
 			(hyperparameters['boolean'].get(attr,False)) and 
 			(attr not in ['train'] or not hyperparameters['boolean'].get('load',False)))
 			for attr in hyperparameters['boolean']}
 
-	settings['hyperparameters'] = {}
-	settings['object'] = {}
+	settings['hyperparameters'] = {key: {instance:None for instance in keys[key]} for key in keys}
+
+	settings['object'] = {key: {instance:None for instance in keys[key]} for key in keys}
 
 	for key,permutation in enumerate(permutations):
-		settings['hyperparameters'][key] = {}
-		settings['object'][key] = {}
-		for seed in seeds:			
-			settings['hyperparameters'][key][seed] = copy.deepcopy(hyperparameters)
-			settings['object'][key][seed] = None
+		for instance,seed in enumerate(seeds):			
+			
+			settings['hyperparameters'][key][instance] = copy.deepcopy(hyperparameters)
+			settings['object'][key][instance] = None
 
-			values = {}		
+			updates = {}		
 
-			values.update({
-				'key':key,
+			updates.update({
 				'model__system__key': key,
-				'model__system__seed': settings['hyperparameters'][key]['seed'],
+				'model__system__seed': seed,
 				'sys__path': {
-					attr: path_join(settings['hyperparameters'][key]['sys']['directory'][attr],
-									 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key]['sys']['file'][attr],
-									 ext=settings['hyperparameters'][key]['sys']['ext'][attr])
-							if isinstance(settings['hyperparameters'][key]['sys']['file'][attr],str) else
-							{i: path_join(settings['hyperparameters'][key]['sys']['directory'][attr][i],
-									 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr][i],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key]['sys']['file'][attr][i],							 
-									 ext=settings['hyperparameters'][key]['sys']['ext'][attr][i])
-							for i in settings['hyperparameters'][key]['sys']['file'][attr]}
-					for attr in settings['hyperparameters'][key]['sys']['file']			 
+					attr: path_join(settings['hyperparameters'][key][instance]['sys']['directory'][attr],
+									 '.'.join([settings['hyperparameters'][key][instance]['sys']['file'][attr],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key][instance]['sys']['file'][attr],
+									 ext=settings['hyperparameters'][key][instance]['sys']['ext'][attr])
+							if isinstance(settings['hyperparameters'][key][instance]['sys']['file'][attr],str) else
+							{i: path_join(settings['hyperparameters'][key][instance]['sys']['directory'][attr][i],
+									 '.'.join([settings['hyperparameters'][key][instance]['sys']['file'][attr][i],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key][instance]['sys']['file'][attr][i],							 
+									 ext=settings['hyperparameters'][key][instance]['sys']['ext'][attr][i])
+							for i in settings['hyperparameters'][key][instance]['sys']['file'][attr]}
+					for attr in settings['hyperparameters'][key][instance]['sys']['file']			 
 				},			
-				**{'parameters__%s__seed'%(parameter): settings['seed'][hyperparameters['permutations']['seed'].index(permutation['seed'])] 
-					for parameter in settings['hyperparameters'][key]['parameters']},
+				**{'parameters__%s__seed'%(parameter): seed 
+					for parameter in settings['hyperparameters'][key][instance]['parameters']},
 			})
 
-			values.update({
+			updates.update({
 				**permutation
 			})
 
-			values.update({
-				'seed': settings['hyperparameters'][key]['seed']
-			})
+			setter(settings['hyperparameters'][key][instance],updates,delimiter=delim,copy=True,reset=False)
 
-			for element in values:
-				setter(settings['hyperparameters'][key],element,values[element],delimiter=delim,copy=True,reset=False)
-
-		# check(settings['hyperparameters'][key])
+		# check(settings['hyperparameters'][key][instance])
 
 	return settings
 
@@ -2489,11 +2423,11 @@ def run(hyperparameters):
 
 	defaults = copy.deepcopy(hyperparameters)
 
-	for key in settings['hyperparameters']:		
 
-		for seed in settings['seed']:
+	for key in settings['hyperparameters']:				
+		for instance in settings['hyperparameters'][key]:
 
-			hyperparameters = settings['hyperparameters'][key][seed]
+			hyperparameters = settings['hyperparameters'][key][instance]
 			
 			if settings['boolean']['load']:
 				default = hyperparameters
@@ -2513,7 +2447,7 @@ def run(hyperparameters):
 
 			obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
-			settings['object'][key][seed] = obj
+			settings['object'][key][instance] = obj
 
 			if settings['boolean']['train']:
 

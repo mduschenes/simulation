@@ -50,56 +50,63 @@ def clone(iterable,twin,copy=False):
 
 
 
-def setter(iterable,elements,value,delimiter=False,copy=False,reset=True):
+def setter(iterable,elements,delimiter=False,copy=False,reset=True):
 	'''
 	Set nested value in iterable with nested elements keys
 
 	Args:
 		iterable (dict): dictionary to be set in-place with value
-		elements (str,list): DELIMITER separated string or list to nested keys of location to set value
-		value (object): data to be set in iterable
+		elements (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
 	'''
 
-	# Get copy of value in elements
-	i = iterable
-	e = 0
-	value = copier(elements,value,copy)
-	
 	assert isinstance(iterable,dict), "Error - iterable is not dictionary"
+	assert isinstance(elements,dict), "Error - elements is not dictionary"
 
-	# Convert string instance of elements to list, splitting string based on delimiter delimiter
-	if isinstance(elements,str) and delimiter:
-		elements = elements.split(delimiter)
+	for element in elements:
+	
+		# Get copy of value in elements
+		value = copier(element,elements[element],copy)
 
-	# Boolean whether elements is a list, otherwise is object that is explicit key in dictionary
-	islist = isinstance(elements,list)
 
-	# Update iterable with elements 
-	if not islist:
-		# elements is object and iterable is to be updated at first level of nesting
-		isdict = not reset and isinstance(i.get(elements),dict) and isinstance(value,dict)
-		if isdict:
-			i[elements].update(value)
-		else:
-			i[elements] = value
-	else:
-		# elements is list of nested keys and the nested values are to be extracted from iterable and set with value
-		try:
-			while e<len(elements)-1:
-				if i.get(elements[e]) is None:
-					i[elements[e]] = {}
-				i = i[elements[e]]
-				e+=1
-			isdict = not reset and isinstance(i.get(elements[e]),dict) and isinstance(value,dict)
+		# Get iterable, and index of tuple of nested element key
+		i = iterable
+		e = 0
+
+		# Convert string instance of elements to list, splitting string based on delimiter delimiter
+		if isinstance(element,str) and delimiter:
+			element = tuple(element.split(delimiter))
+		elif not isinstance(element,str):
+			element = tuple(element)
+
+		# Boolean whether element is a tuple, otherwise is object that is explicit key in dictionary
+		istuple = isinstance(element,tuple)
+
+		# Update iterable with elements 
+		if not istuple:
+			# elements is object and iterable is to be updated at first level of nesting
+			isdict = not reset and isinstance(i.get(element),dict) and isinstance(value,dict)
 			if isdict:
-				i[elements[e]].update(value)
+				i[element].update(value)
 			else:
-				i[elements[e]] = value
-		except:
-			pass
+				i[element] = value
+		else:
+			# elements is list of nested keys and the nested values are to be extracted from iterable and set with value
+			try:
+				while e<len(element)-1:
+					if i.get(element[e]) is None:
+						i[element[e]] = {}
+					i = i[element[e]]
+					e+=1
+				isdict = not reset and isinstance(i.get(element[e]),dict) and isinstance(value,dict)
+				if isdict:
+					i[element[e]].update(value)
+				else:
+					i[element[e]] = value
+			except:
+				pass
 
 	return
 
