@@ -142,5 +142,5 @@
 "label": null,
 "key":null,
 "seed":12321,
-"permutations":{"seed":1,"model__M":[20,50,75,100,200,500,750,1000,1200,2000], "hyperparameters__iterations":[1000]}
+"permutations":{"model__M":[20,50,75,100,200,500,750,1000,1200,2000], "hyperparameters__iterations":[1000]}
 }

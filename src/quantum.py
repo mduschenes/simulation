@@ -2418,10 +2418,13 @@ def setup(hyperparameters):
 	attributes = ['seed','boolean','hyperparameters','object']
 	permutations = permuter(hyperparameters['permutations'],groups=hyperparameters['groups'])
 
-	settings['seed'] = PRNGKey(
+	seeds = PRNGKey(
 		seed=hyperparameters['seed'],
 		split=len(hyperparameters['permutations']['seed']),
 		reset=hyperparameters['seed'])
+
+
+	 settings['seed'] = seeds
 
 	settings['boolean'] = {attr: (
 			(hyperparameters['boolean'].get(attr,False)) and 
@@ -2432,41 +2435,43 @@ def setup(hyperparameters):
 	settings['object'] = {}
 
 	for key,permutation in enumerate(permutations):
-		
-		settings['hyperparameters'][key] = copy.deepcopy(hyperparameters)
-		settings['object'][key] = None
+		settings['hyperparameters'][key] = {}
+		settings['object'][key] = {}
+		for seed in seeds:			
+			settings['hyperparameters'][key][seed] = copy.deepcopy(hyperparameters)
+			settings['object'][key][seed] = None
 
-		values = {}		
+			values = {}		
 
-		values.update({
-			'key':key,
-			'model__system__key': key,
-			'model__system__seed': settings['hyperparameters'][key]['seed'],
-			'sys__path': {
-				attr: path_join(settings['hyperparameters'][key]['sys']['directory'][attr],
-								 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key]['sys']['file'][attr],
-								 ext=settings['hyperparameters'][key]['sys']['ext'][attr])
-						if isinstance(settings['hyperparameters'][key]['sys']['file'][attr],str) else
-						{i: path_join(settings['hyperparameters'][key]['sys']['directory'][attr][i],
-								 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr][i],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key]['sys']['file'][attr][i],							 
-								 ext=settings['hyperparameters'][key]['sys']['ext'][attr][i])
-						for i in settings['hyperparameters'][key]['sys']['file'][attr]}
-				for attr in settings['hyperparameters'][key]['sys']['file']			 
-			},			
-			**{'parameters__%s__seed'%(parameter): settings['seed'][hyperparameters['permutations']['seed'].index(permutation['seed'])] 
-				for parameter in settings['hyperparameters'][key]['parameters']},
-		})
+			values.update({
+				'key':key,
+				'model__system__key': key,
+				'model__system__seed': settings['hyperparameters'][key]['seed'],
+				'sys__path': {
+					attr: path_join(settings['hyperparameters'][key]['sys']['directory'][attr],
+									 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key]['sys']['file'][attr],
+									 ext=settings['hyperparameters'][key]['sys']['ext'][attr])
+							if isinstance(settings['hyperparameters'][key]['sys']['file'][attr],str) else
+							{i: path_join(settings['hyperparameters'][key]['sys']['directory'][attr][i],
+									 '.'.join([settings['hyperparameters'][key]['sys']['file'][attr][i],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key]['sys']['file'][attr][i],							 
+									 ext=settings['hyperparameters'][key]['sys']['ext'][attr][i])
+							for i in settings['hyperparameters'][key]['sys']['file'][attr]}
+					for attr in settings['hyperparameters'][key]['sys']['file']			 
+				},			
+				**{'parameters__%s__seed'%(parameter): settings['seed'][hyperparameters['permutations']['seed'].index(permutation['seed'])] 
+					for parameter in settings['hyperparameters'][key]['parameters']},
+			})
 
-		values.update({
-			**permutation
-		})
+			values.update({
+				**permutation
+			})
 
-		values.update({
-			'seed': settings['hyperparameters'][key]['seed']
-		})
+			values.update({
+				'seed': settings['hyperparameters'][key]['seed']
+			})
 
-		for element in values:
-			setter(settings['hyperparameters'][key],element,values[element],delimiter=delim,copy=True,reset=False)
+			for element in values:
+				setter(settings['hyperparameters'][key],element,values[element],delimiter=delim,copy=True,reset=False)
 
 		# check(settings['hyperparameters'][key])
 
@@ -2486,54 +2491,57 @@ def run(hyperparameters):
 
 	for key in settings['hyperparameters']:		
 
-		hyperparameters = settings['hyperparameters'][key]	
-		
-		if settings['boolean']['load']:
-			default = hyperparameters
-			def func(key,iterable,elements): 
-				i = iterable.get(key)
-				e = elements.get(key,i)
-				return e if not callable(i) else i
-			path = hyperparameters['sys']['path']['data']['data']
-			data = load(path,default=default)
-			updater(hyperparameters,data,func=func)
+		for seed in settings['seed']:
 
-		if settings['boolean']['dump']:
-			data = copy.deepcopy(hyperparameters)
-			path = hyperparameters['sys']['path']['data']['settings'] 
-			dump(data,path,callables=False)
+			hyperparameters = settings['hyperparameters'][key][seed]
+			
+			if settings['boolean']['load']:
+				default = hyperparameters
+				def func(key,iterable,elements): 
+					i = iterable.get(key)
+					e = elements.get(key,i)
+					return e if not callable(i) else i
+				path = hyperparameters['sys']['path']['data']['data']
+				data = load(path,default=default)
+				updater(hyperparameters,data,func=func)
+
+			if settings['boolean']['dump']:
+				data = copy.deepcopy(hyperparameters)
+				path = hyperparameters['sys']['path']['data']['settings'] 
+				dump(data,path,callables=False)
 
 
-		obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+			obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
-		settings['object'][key] = obj
+			settings['object'][key][seed] = obj
 
-		if settings['boolean']['train']:
+			if settings['boolean']['train']:
 
-			parameters = obj.parameters
-			hyperparameters = hyperparameters['hyperparameters']
+				parameters = obj.parameters
+				hyperparameters = hyperparameters['hyperparameters']
 
-			func = obj.__func__
-			callback = obj.__callback__
+				func = obj.__func__
+				callback = obj.__callback__
 
-			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
+				optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
 
-			parameters = optimizer(parameters)
+				parameters = optimizer(parameters)
 
-		
-		if settings['boolean']['plot']:
-			parameters = obj.parameters
-			obj.__plot__(parameters)
+			
+			if settings['boolean']['plot']:
+				parameters = obj.parameters
+				obj.__plot__(parameters)
 
-		if settings['boolean']['dump']:
-			hyperparameters = obj.hyperparameters			
-			data = copy.deepcopy(hyperparameters)
-			path = hyperparameters['sys']['path']['data']['data'] 
-			dump(data,path)
+			if settings['boolean']['dump']:
+				hyperparameters = obj.hyperparameters			
+				data = copy.deepcopy(hyperparameters)
+				path = hyperparameters['sys']['path']['data']['data'] 
+				dump(data,path)
 
 	if settings['boolean']['plot']:
+		objs = settings['object']
 		hyperparameters = settings['hyperparameters']
-		plot(settings['object'],settings['hyperparameters'])
+		plot(objs,hyperparameters)
 
 	if settings['boolean']['test']:
 
