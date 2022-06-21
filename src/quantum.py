@@ -1967,7 +1967,7 @@ def plot(objects,hyperparameters):
 
 		x = x.mean(0).astype(int)
 		y = y.mean(0)
-		yerr = yerr.std(0)
+		yerr = yerr.std(0)/sqrt(yerr.shape[0]-1)
 
 		plots = ax.errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=2,capsize=3)
 
@@ -2151,7 +2151,7 @@ def plot(objects,hyperparameters):
 
 			axes = tuple(range(1,ndim))
 			Y[key] = Y[key].mean(axes)
-			Yerr[key] = Yerr[key].std(axes)
+			Yerr[key] = Yerr[key].std(axes)/sqrt(product([Yerr[key].shape[ax] for ax in axes])-1)
 
 	# Get plot config
 	attr = 'mplstyle'

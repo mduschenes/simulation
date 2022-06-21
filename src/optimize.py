@@ -126,8 +126,6 @@ class Base(object):
 
 		self.callback = callback if callback is not None else (lambda parameters: None)
 
-		self.Optimizer = None
-
 		return
 
 	def __call__(self,parameters):
@@ -417,9 +415,9 @@ class Adam(Base):
 
 		super().__init__(func,grad,callback,hyperparameters)
 
-		self.Optimizer = getattr(jax.example_libraries.optimizers,self.optimizer)
+		self._optimizer = getattr(jax.example_libraries.optimizers,self.optimizer)
 
-		self._opt_init,self._opt_update,self._get_params = self.Optimizer(self.alpha)
+		self._opt_init,self._opt_update,self._get_params = self._optimizer(self.alpha)
 
 		return
 
