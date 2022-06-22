@@ -456,6 +456,30 @@ class System(dictionary):
 		return
 
 
+@tree_register
+class Parameters(dict):
+	
+	def __init__(self,parameters,children,auxiliary):
+		super().__init__(parameters)
+		self.children = children
+		self.auxiliary = auxiliary
+		return
+
+	def tree_flatten(self):
+		keys = (self.children,self.auxiliary,)
+		children = (*(self[parameter] for parameter in self.children),)
+		auxiliary = (*keys,*(self[parameter] for parameter in self.auxiliary),)
+		return (children,auxiliary)
+
+	@classmethod
+	def tree_unflatten(cls,auxiliary,children):
+		keys,auxiliary = auxiliary[:2],auxiliary[2:]
+		parameters = {
+			**dict(zip(keys[0],children)),
+			**dict(zip(keys[1],auxiliary))
+			}
+		return cls(parameters)
+
 
 def decorator(*args,**kwargs):
 	'''

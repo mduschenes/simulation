@@ -3,6 +3,8 @@
 # Import python modules
 import os,sys,itertools,functools,copy
 from functools import partial
+import time
+from time import time as timer
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -160,6 +162,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	# The other ('take,put',<type>) indexes involve summing all shapes corresponding to the keys that are within the type group, 
 	# plus subtracting shapes corresponding with boundaries and constants
 
+	#time = timer()
 
 	# Get number of dimensions of data
 	ndim = len(shape)
@@ -244,6 +247,11 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	}
 
 
+	#Time = timer()
+	#msg = 'setup'
+	#print(msg,Time-time)
+	#time = Time
+
 	# Get non-indexed attributes for data
 	for category in groups:
 		for parameter in groups[category]:
@@ -289,6 +297,10 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 						for axis in range(0,data['ndim'][category][parameter][group][layer])
 						]
 
+	#Time = timer()
+	#msg = 'data'
+	#print(msg,Time-time)
+	#time = Time
 
 	# Get indexed attributes for data
 	subindex = ('key','all',)
@@ -1076,20 +1088,26 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 
 
 	# for category in groups:
-	# 	print(category)
+	# 	#print(category)
 	# 	for parameter in groups[category]:
 	# 		for group in groups[category][parameter]:
-	# 			print(group)
+	# 			#print(group)
 	# 			for layer in groups[category][parameter][group]:
-	# 				print(layer)
+	# 				#print(layer)
 	# 				for attr in ['shape','slice']:
-	# 					print(attr)
+	# 					#print(attr)
 	# 					for index in data[attr][category][parameter][group][layer]:
-	# 						print(index,data[attr][category][parameter][group][layer][index])
-	# 			print()
-	# 	print()
+	# 						#print(index,data[attr][category][parameter][group][layer][index])
+	# 			#print()
+	# 	#print()
 
 	# exit()
+
+
+	#Time = timer()
+	#msg = 'dict'
+	#print(msg,Time-time)
+	#time = Time
 
 
 	# Initialize values
@@ -1107,6 +1125,10 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	data[attribute].update({**{category:{layer:None for layer in layers} for category in categories},**{layer:None for layer in layers}})
 
 	for category in groups:
+		#Time = timer()
+		#msg = 'category %s'%(category)
+		#print(msg,Time-time)
+		#time = Time
 		for parameter in groups[category]:
 			for group in groups[category][parameter]:			
 				for layer in groups[category][parameter][group]:
@@ -1171,9 +1193,15 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 						else:
 							values = array(values,dtype=dtype)
 
+						#a = timer()
 						values = padding(values,shape,random=None)
-						
+						#b = timer()
+						#print('padding',b-a)
+
+						#a = timer()
 						values = func(values,shape,hyperparams,reset=reset,slices=slices,shapes=shapes,layer=layer,dtype=dtype)
+						#b = timer()
+						#print(layer,'init',b-a)
 
 						# Get slices of values to put
 						attr = 'slice'
@@ -1210,7 +1238,10 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 						# Get values to take to put
 						values = data[attribute][reflayer][indices]
 
+						#a = timer()
 						values = func(values)
+						#b = timer()
+						#print(layer,'init',b-a)
 
 						# Get slices of values to put
 						attr = 'slice'
@@ -1248,8 +1279,10 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 						# Get values to take to put
 						values = data[attribute][reflayer][indices]
 
+						#a = timer()
 						values = func(values)
-
+						#b = timer()
+						#print(layer,'init',b-a)
 
 						# Get slices of values to put
 						attr = 'slice'
@@ -1281,7 +1314,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 						[ax for ax in range(ndim) if ax != axis])
 						for axis in range(ndim)]
 
-
+					#a = timer()
 					# Get slices and shape of boundaries,constants to initialize
 					for axis in range(ndim):
 						if values[axis].size > 0:
@@ -1315,6 +1348,9 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 
 									data[attribute][layer] = data[attribute][layer].at[refslices].set(values[axis][refindices])
 
+					#b = timer()
+					#print('bcs',b-a)
+
 					attr = 'shape'
 					index = ('take','layer','variable')
 					shape = data[attr][category][parameter][group][layer][index]
@@ -1331,11 +1367,11 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 					index = ('put','layer','variable')
 					indices = data[attr][category][parameter][group][layer][index]					
 					
-					# print(category,parameter,group,layer,':',shape,slices,'->',shapes,indices)
+					# #print(category,parameter,group,layer,':',shape,slices,'->',shapes,indices)
 
-					# print(data[attribute][category][layer])
-					# print(data[attribute][layer])
-					# print()
+					# #print(data[attribute][category][layer])
+					# #print(data[attribute][layer])
+					# #print()
 
 	# Setup attributes from data
 	attrs = ['shape','values','slice','index','parameters','features','variables','constraints']
@@ -1366,6 +1402,11 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	category = 'variable'
 
 	for parameter in data[attribute][category]:
+		#Time = timer()
+		#msg = 'param %s'%(parameter)
+		#print(msg,Time-time)
+		#time = Time
+
 		layer = 'parameters'
 		attrs = ['slice','index',layer]
 		for attr in attrs:
@@ -1457,6 +1498,12 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	category = 'variable'
 
 	for parameter in data[attribute][category]:
+
+		#Time = timer()
+		#msg = 'param %s'%(parameter)
+		#print(msg,Time-time)
+		#time = Time
+
 		layer = 'features'
 		attrs = ['slice','index',layer]
 		for attr in attrs:
@@ -1532,6 +1579,12 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	category = 'variable'
 
 	for parameter in data[attribute][category]:
+		
+		#Time = timer()
+		#msg = 'param %s'%(parameter)
+		#print(msg,Time-time)
+		#time = Time		
+
 		layer = 'variables'
 		attrs = ['slice','index',layer]
 		for attr in attrs:
@@ -1607,6 +1660,12 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	category = 'variable'
 
 	for parameter in data[attribute][category]:
+
+		#Time = timer()
+		#msg = 'param %s'%(parameter)
+		#print(msg,Time-time)
+		#time = Time
+
 		layer = 'constraints'
 		attrs = ['slice','index',layer]
 		for attr in attrs:
@@ -1661,26 +1720,26 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	# # Print
 	# attribute = 'values'
 	# for layer in attributes[attribute]:
-	# 	print(layer)
+	# 	#print(layer)
 	# 	for attr in attributes:
 	# 		if layer not in attributes[attr]:
 	# 			continue
 	# 		if isinstance(attributes[attr][layer],dict):
-	# 			print(attr)
+	# 			#print(attr)
 	# 			for parameter in attributes[attr][layer]:
 	# 				for group in attributes[attr][layer][parameter]:
-	# 					print(parameter,group,attributes[attr][layer][parameter][group])
+	# 					#print(parameter,group,attributes[attr][layer][parameter][group])
 	# 		elif attr not in [attribute]:
-	# 			print(attr)
-	# 			print(attributes[attr][layer])
+	# 			#print(attr)
+	# 			#print(attributes[attr][layer])
 	# 		elif attr in [attribute]:
-	# 			print(attr)
+	# 			#print(attr)
 	# 			attr = 'shape'
-	# 			print(attributes[attribute][layer].reshape(attributes[attr][layer]))
+	# 			#print(attributes[attribute][layer].reshape(attributes[attr][layer]))
 
 
-	# print()
-	# print('---- Testing Start ----')
+	# #print()
+	# #print('---- Testing Start ----')
 
 	# # Test
 	# attribute = 'values'
@@ -1715,18 +1774,18 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	# 			attr = 'index'
 	# 			indices = attributes[attr][layer][parameter][group]
 
-	# 			# print(layer,parameter,group,slices,indices,parameters.shape,values.shape)
+	# 			# #print(layer,parameter,group,slices,indices,parameters.shape,values.shape)
 
 	# 			values = func(parameters,values,slices,indices)
 
 
 	
-	# 	print(layer)
-	# 	print(values)
-	# 	print()
+	# 	#print(layer)
+	# 	#print(values)
+	# 	#print()
 
 
-	# print('---- Testing Complete ----')
+	# #print('---- Testing Complete ----')
 
 
 	return attributes

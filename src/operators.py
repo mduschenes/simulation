@@ -61,14 +61,22 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 	d = min(shape)
 
 	if data is None:
+
 		data = (rand(shape)+ 1j*rand(shape))/sqrt(2)
-		data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)
+		# data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)
+
+		Q,R = qr(data);
+		R = diag(diag(R)/abs(diag(R)));
+		data = Q.dot(R)
+
+		# data = (rand(shape)+ 1j*rand(shape))/sqrt(2)
+		# data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)
 
 	elif isinstance(data,str):
 		
 		if data == 'random':
 			data = (rand(shape)+ 1j*rand(shape))/sqrt(2)
-			data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)
+			# data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)
 
 			Q,R = qr(data);
 			R = diag(diag(R)/abs(diag(R)));

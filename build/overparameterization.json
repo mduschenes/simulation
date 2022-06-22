@@ -2,17 +2,17 @@
 "sys":{
 	"directory":{
 		"data":{"data":"output","settings":"output"},
-		"plot":{"parameters":"output","objective":"output","label":"output","overparameterization":"output","iterations":"output"},
+		"plot":{"parameters":"output","objective":"output","label":"output","overparameterization":"output","iteration":"output"},
 		"config":{"mplstyle":"config"}
 	},
 	"file":{
 		"data":{"data":"data","settings":"settings"},
-		"plot":{"parameters":"parameters","objective":"objective","label":"label","overparameterization":"overparameterization","iterations":"iterations"},
+		"plot":{"parameters":"parameters","objective":"objective","label":"label","overparameterization":"overparameterization","iteration":"iteration"},
 		"config":{"mplstyle":"plot"}
 	},
 	"ext":{
 		"data":{"data":"pkl","settings":"json"},
-		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","overparameterization":"pdf","iterations":"pdf"},
+		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","overparameterization":"pdf","iteration":"pdf"},
 		"config":{"mplstyle":"mplstyle"}
 	}
 },
@@ -29,7 +29,8 @@
 	"reset":12321
 },
 "permutations":{
-	"model__M":[20,50,75,100],
+	"model__M":[20,100,1000,10000],
+	"model__N":[4],
 	"hyperparameters__iterations":[1000]
 },
 "model":{

@@ -2,6 +2,8 @@
 
 # Import python modules
 import os,sys,itertools,functools,copy
+import time
+from time import time as timer
 from functools import partial
 
 import matplotlib
@@ -775,7 +777,15 @@ class Object(object):
 		index = self.N
 		dtype = self.dtype
 
+
+		#time = timer()
+
 		operator = operatorize(data,shape,hyperparams,index=index,dtype=dtype)
+
+		#Time = timer()
+		#msg = 'operator'
+		#print(msg,Time-time)
+		#time = Time
 
 		hyperparameters['label']['parameters'] = operator #.conj().T
 
@@ -1065,7 +1075,7 @@ class Object(object):
 		T = self.T if T is None else T
 		tau = self.tau if tau is None else tau
 		p = self.p if p is None else p
-		time = self.time if time is None else time
+		#time = self.time if time is None else time
 		system = self.system if system is None else system
 
 		self.time = Time(M,T,tau,p,time,system)		
@@ -1106,7 +1116,7 @@ class Object(object):
 
 	def __str__(self):
 		size = self.size
-		multiple_time = (self.M>1)
+		multiple_#time = (self.M>1)
 		multiple_space = [size>1 and False for i in range(size)]
 		return '%s%s%s%s'%(
 				'{' if multiple_time else '',
@@ -1463,6 +1473,8 @@ class Hamiltonian(Object):
 			hyperparameters (dict) : class hyperparameters
 		'''
 
+		#time = timer()
+
 		# Get parameters
 		parameters = None		
 
@@ -1534,20 +1546,46 @@ class Hamiltonian(Object):
 				string.append(_string_)
 				interaction.append(_interaction_)
 
+
+		#Time = timer()
+		#msg = 'indices'
+		#print(msg,Time-time)
+		#time = Time
+
 		# Form (size,n,n) shape operator from local strings for each data term
 		data = array([tensorprod([basis[j] for j in i]) for i in operator])
 
 		# Assert all data satisfies data**2 = identity for matrix exponentials
 		assert all(allclose(d.dot(d),self.identity) for d in data), 'data is not involutory and data**2 != identity'
 
+		#Time = timer()
+		#msg = 'data'
+		#print(msg,Time-time)
+		#time = Time
+
 		# Get Trotterized order of p copies of data for products of data
 		data = trotter(data,self.p)
+
+		#Time = timer()
+		#msg = 'trotter'
+		#print(msg,Time-time)
+		#time = Time
 
 		# Update class attributes
 		self.__extend__(data,operator,site,string,interaction,hyperparameters)
 
+		#Time = timer()
+		#msg = 'extend'
+		#print(msg,Time-time)
+		#time = Time
+
 		# Initialize parameters
 		self.__initialize__(parameters)
+
+		#Time = timer()
+		#msg = 'params'
+		#print(msg,Time-time)
+		#time = Time
 
 		return
 
@@ -1853,28 +1891,132 @@ def plot(objects,hyperparameters):
 	'''	
 
 
-	# Get keys of hyperparameters
-	keys = list(hyperparameters)
+	# Get keys and instances of hyperparameters
+	keys = list(set(hyperparameters))
+	instances = list(set(instance for key in keys for instance in hyperparameters[key]))
 	length = len(keys)
 
 	if length == 0:
 		return
 
+	# Get attributes and tracked/object attributes for x and y 
+	# (None yields an arange(len(y))))
+	attrs = {
+		'objective':{'x':None,'y':'objective','yerr':'objective','xerr':None},
+		'parameters':{'x':'M','y':'objective','yerr':'parameters','xerr':None},
+		'overparameterization':{'x':'M','y':'parameters','yerr':'parameters','xerr':None},
+		'label':{'x':None,'y':'label','yerr':'label','xerr':None},
+		'iteration':{'x':'M','y':'iteration','yerr':'iteration','xerr':None}
+		}
+
+	# Get statistics of attributes over instances
+	stats = {stat:{attr:{key:{instance:None for instance in instances} for key in keys} for attr in attrs[stat]} for stat in stats}
+
+	for key in keys:
+		for instance in instances:
+
+			# Get object
+			obj = objects[key][instance]
+
+			# Get class hyperparameters and attributes
+			hyperparams = obj.hyperparameters
+			attributes = obj.attributes
+
+			# Get parameters shape and indices of features
+			attribute = 'index'
+			layer = 'features'		
+			indices = attributes[attribute][layer]
+
+			ndim = min(len(indices[parameter][group]) 
+				for parameter in indices 
+				for group in indices[parameter])
+
+			shape = [int(
+						((max(indices[parameter][group][axis].stop
+							for parameter in indices for group in indices[parameter]) - 
+						min(indices[parameter][group][axis].start
+							for parameter in indices for group in indices[parameter])) //
+						min(indices[parameter][group][axis].step
+							for parameter in indices for group in indices[parameter]))
+						if all(isinstance(indices[parameter][group][axis],slice)
+								for parameter in indices for group in indices[parameter]) else
+						len(list(set(i 
+							for parameter in indices for group in indices[parameter] 
+							for i in indices[parameter][group][axis])))
+						)
+						for axis in range(ndim)]
+
+			indices = tuple([(
+						slice(
+						min(indices[parameter][group][axis].start
+							for parameter in indices for group in indices[parameter]),
+						max(indices[parameter][group][axis].stop
+							for parameter in indices for group in indices[parameter]),
+						min(indices[parameter][group][axis].step
+							for parameter in indices for group in indices[parameter]))
+						if all(isinstance(indices[parameter][group][axis],slice)
+								for parameter in indices for group in indices[parameter]) else
+						list(set(i 
+							for parameter in indices for group in indices[parameter] 
+							for i in indices[parameter][group][axis]))
+						)
+						for axis in range(ndim)])
+
+			# Get function of parameters
+			func = lambda parameters,obj=obj,layer=layer,indices=indices: obj.__layers__(parameters,layer)[indices]
+
+			# Get number of iterations
+			size = hyperparams['hyperparameters']['track']['size']
+
+			iterations = [-1]
+
+			# Get relative difference in parameters (at features level)
+			attr = 'parameters'
+
+			iteration = 0
+			if iteration >= size:
+				parameters0 = parameters
+			else:
+				parameters0 = hyperparams['hyperparameters']['track'][attr][iteration]
+			parameters0 = func(parameters0)
+
+			for iteration in iterations:
+
+				if iteration >= size:
+					parameters = parameters
+				else:
+					parameters = hyperparams['hyperparameters']['track'][attr][iteration]
+				
+				parameters = func(parameters)
+
+
+				
+				Y[key] = abs((parameters-parameters0)/(parameters0 + 1e-20))
+				X[key] = array([obj.M]*len(Y[key]))
+				Yerr[key] = Y[key]
+
+				axes = tuple(range(1,ndim))
+				Y[key] = Y[key].mean(axes)
+				Yerr[key] = Yerr[key].std(axes)/sqrt(product([Yerr[key].shape[ax] for ax in axes])-1)
+
+
 
 	# Get plot config
 	attr = 'mplstyle'
 	key = keys[0]	
-	mplstyle = hyperparameters[key]['sys']['path']['config'][attr]
+	instance = instances[0]
+	mplstyle = hyperparameters[key][instance]['sys']['path']['config'][attr]
 
 
 	# Plot attributes
 
 	attr = 'objective'
 	key = keys[0]
+	instance = instances[0]
 
 	fig,ax = None,None
 
-	path = hyperparameters[key]['sys']['path']['plot'][attr]
+	path = hyperparameters[key][instance]['sys']['path']['plot'][attr]
 	delimiter = '.'
 	directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
 	file = delimiter.join([*file.split(delimiter)[:-1],'all'])
@@ -1882,7 +2024,9 @@ def plot(objects,hyperparameters):
 
 	layout = []
 	plots = None
-	shape = (length,max(hyperparameters[key]['hyperparameters']['track']['size'] for key in keys))
+	length = len(keys)
+	size = max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances)
+	shape = (length,size)
 	figsize = (8,8)
 
 	with matplotlib.style.context(mplstyle):
@@ -1899,7 +2043,8 @@ def plot(objects,hyperparameters):
 		for i,key in enumerate(keys):
 			size = hyperparameters[key]['hyperparameters']['track']['size']
 
-			x = x.at[i,:].set(arange(shape[1]))
+			x = x.at[i,:size].set(hyperparameters[key]['hyperparameters']['track']['iteration'])
+			x = x.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['iteration'][-1:])
 			y = y.at[i,:size].set(hyperparameters[key]['hyperparameters']['track']['objective'])
 			y = y.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['objective'][-1:])
 			yerr = yerr.at[i,:size].set(hyperparameters[key]['hyperparameters']['track']['objective'])
@@ -2005,93 +2150,95 @@ def plot(objects,hyperparameters):
 	X = {}
 	Y = {}
 	Yerr = {}
+	Xerr = {}
 
-	for k,key in enumerate(keys):
+	for key in keys:
+		for instance in instances:
 
-		# Get object
-		obj = objects[key]
+			# Get object
+			obj = objects[key][instance]
 
-		# Get class hyperparameters and attributes
-		hyperparams = obj.hyperparameters
-		attributes = obj.attributes
+			# Get class hyperparameters and attributes
+			hyperparams = obj.hyperparameters
+			attributes = obj.attributes
 
-		# Get parameters shape and indices of features
-		attribute = 'index'
-		layer = 'features'		
-		indices = attributes[attribute][layer]
+			# Get parameters shape and indices of features
+			attribute = 'index'
+			layer = 'features'		
+			indices = attributes[attribute][layer]
 
-		ndim = min(len(indices[parameter][group]) 
-			for parameter in indices 
-			for group in indices[parameter])
+			ndim = min(len(indices[parameter][group]) 
+				for parameter in indices 
+				for group in indices[parameter])
 
-		shape = [int(
-					((max(indices[parameter][group][axis].stop
-						for parameter in indices for group in indices[parameter]) - 
-					min(indices[parameter][group][axis].start
-						for parameter in indices for group in indices[parameter])) //
-					min(indices[parameter][group][axis].step
-						for parameter in indices for group in indices[parameter]))
-					if all(isinstance(indices[parameter][group][axis],slice)
-							for parameter in indices for group in indices[parameter]) else
-					len(list(set(i 
-						for parameter in indices for group in indices[parameter] 
-						for i in indices[parameter][group][axis])))
-					)
-					for axis in range(ndim)]
+			shape = [int(
+						((max(indices[parameter][group][axis].stop
+							for parameter in indices for group in indices[parameter]) - 
+						min(indices[parameter][group][axis].start
+							for parameter in indices for group in indices[parameter])) //
+						min(indices[parameter][group][axis].step
+							for parameter in indices for group in indices[parameter]))
+						if all(isinstance(indices[parameter][group][axis],slice)
+								for parameter in indices for group in indices[parameter]) else
+						len(list(set(i 
+							for parameter in indices for group in indices[parameter] 
+							for i in indices[parameter][group][axis])))
+						)
+						for axis in range(ndim)]
 
-		indices = tuple([(
-					slice(
-					min(indices[parameter][group][axis].start
-						for parameter in indices for group in indices[parameter]),
-					max(indices[parameter][group][axis].stop
-						for parameter in indices for group in indices[parameter]),
-					min(indices[parameter][group][axis].step
-						for parameter in indices for group in indices[parameter]))
-					if all(isinstance(indices[parameter][group][axis],slice)
-							for parameter in indices for group in indices[parameter]) else
-					list(set(i 
-						for parameter in indices for group in indices[parameter] 
-						for i in indices[parameter][group][axis]))
-					)
-					for axis in range(ndim)])
+			indices = tuple([(
+						slice(
+						min(indices[parameter][group][axis].start
+							for parameter in indices for group in indices[parameter]),
+						max(indices[parameter][group][axis].stop
+							for parameter in indices for group in indices[parameter]),
+						min(indices[parameter][group][axis].step
+							for parameter in indices for group in indices[parameter]))
+						if all(isinstance(indices[parameter][group][axis],slice)
+								for parameter in indices for group in indices[parameter]) else
+						list(set(i 
+							for parameter in indices for group in indices[parameter] 
+							for i in indices[parameter][group][axis]))
+						)
+						for axis in range(ndim)])
 
 
 
-		# Get number of iterations
-		size = hyperparams['hyperparameters']['track']['size']
+			# Get number of iterations
+			size = hyperparams['hyperparameters']['track']['size']
 
-		iterations = [-1]
+			iterations = [-1]
 
-		# Get relative difference in parameters (at features level)
-		attr = 'parameters'
+			# Get relative difference in parameters (at features level)
+			attr = 'parameters'
 
-		iteration = 0
-		if iteration >= size:
-			parameters0 = parameters
-		else:
-			parameters0 = hyperparams['hyperparameters']['track'][attr][iteration]
-		parameters0 = obj.__layers__(parameters0,layer)
-
-		parameters0 = parameters0[indices]
-
-		for iteration in iterations:
-
+			iteration = 0
 			if iteration >= size:
-				parameters = parameters
+				parameters0 = parameters
 			else:
-				parameters = hyperparams['hyperparameters']['track'][attr][iteration]
-			parameters = obj.__layers__(parameters,layer)
+				parameters0 = hyperparams['hyperparameters']['track'][attr][iteration]
+			parameters0 = obj.__layers__(parameters0,layer)
 
-			parameters = parameters[indices]
+			parameters0 = parameters0[indices]
+
+			for iteration in iterations:
+
+				if iteration >= size:
+					parameters = parameters
+				else:
+					parameters = hyperparams['hyperparameters']['track'][attr][iteration]
+				parameters = obj.__layers__(parameters,layer)
+
+				parameters = parameters[indices]
 
 
-			Y[key] = abs((parameters-parameters0)/(parameters0 + 1e-20))
-			X[key] = array([obj.M]*len(Y[key]))
-			Yerr[key] = Y[key]
+				Y[key] = abs((parameters-parameters0)/(parameters0 + 1e-20))
+				X[key] = array([obj.M]*len(Y[key]))
+				Yerr[key] = Y[key]
 
-			axes = tuple(range(1,ndim))
-			Y[key] = Y[key].mean(axes)
-			Yerr[key] = Yerr[key].std(axes)/sqrt(product([Yerr[key].shape[ax] for ax in axes])-1)
+				axes = tuple(range(1,ndim))
+				Y[key] = Y[key].mean(axes)
+				Yerr[key] = Yerr[key].std(axes)/sqrt(product([Yerr[key].shape[ax] for ax in axes])-1)
 
 	# Get plot config
 	attr = 'mplstyle'
@@ -2179,7 +2326,7 @@ def plot(objects,hyperparameters):
 
 	# Plot attributes
 
-	attr = 'iterations'
+	attr = 'iteration'
 
 	fig,ax = None,None
 
@@ -2492,30 +2639,30 @@ def run(hyperparameters):
 		f = gradient_finite(obj,tol=6e-8)
 		a = obj.__derivative__
 
-		print('derivatives')
-		print(allclose(g(parameters),f(parameters)))
-		print(allclose(g(parameters),a(parameters)))
-		print(allclose(f(parameters),a(parameters)))
+		#print('derivatives')
+		#print(allclose(g(parameters),f(parameters)))
+		#print(allclose(g(parameters),a(parameters)))
+		#print(allclose(f(parameters),a(parameters)))
 
-		# print('equal')
-		# print((g(parameters)-a(parameters))/g(parameters))
+		# #print('equal')
+		# #print((g(parameters)-a(parameters))/g(parameters))
 
 		grad = gradient(func)
 		fgrad = gradient_finite(func,tol=5e-8)
 		agrad = obj.__grad__
 
-		print('gradients')
-		print(allclose(grad(parameters),fgrad(parameters)))
-		print(allclose(grad(parameters),agrad(parameters)))
+		#print('gradients')
+		#print(allclose(grad(parameters),fgrad(parameters)))
+		#print(allclose(grad(parameters),agrad(parameters)))
 
 
-		# print()
-		# print(parameters)
-		# print(obj.__constraints__(parameters))
-		# print(sigmoid(parameters[:4]))
-		# print(gradient(lambda x: sigmoid(x,scale=1e4).sum())(parameters[:4]))
-		# print(grad(parameters))
-		# print(agrad(parameters))
+		# #print()
+		# #print(parameters)
+		# #print(obj.__constraints__(parameters))
+		# #print(sigmoid(parameters[:4]))
+		# #print(gradient(lambda x: sigmoid(x,scale=1e4).sum())(parameters[:4]))
+		# #print(grad(parameters))
+		# #print(agrad(parameters))
 
-		# print(gradient(obj.__constraints__)(parameters))
+		# #print(gradient(obj.__constraints__)(parameters))
 	return
