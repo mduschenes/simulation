@@ -1898,7 +1898,7 @@ def plotter(objects,hyperparameters):
 				'key':'iteration',
 				'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key])),
 				'value':None,
-				'func': lambda value: value.mean(1),
+				'func': lambda value: arange(value.shape[2])[None,...]
 			},
 			'y':{
 				'key':'objective',

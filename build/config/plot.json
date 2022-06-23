@@ -19,6 +19,7 @@
 		"set_ylabel":{"ylabel":"$\\textrm{Objective}$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
+		"set_xnbins":{"nbins":5},
 		"set_ynbins":{"nbins":5},
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim":{"ymin":5e-1,"ymax":1.05e0},
