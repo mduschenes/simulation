@@ -2138,30 +2138,28 @@ def plotter(objects,hyperparameters):
 
 
 	# Get settings
-	
-	path = hyperparameters[key][instance]['sys']['path']['config']['plot']
-	delimiter = '.'
-
-	settings = load(path)
+	settings = hyperparameters[key][instance]['plot']
 
 	_settings = {
 		attr:{
 			'fig':{
 				'savefig':{
 					'fname':path_join(
-						path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=True,file=False,ext=False,delimiter=delimiter),
-						delimiter.join([*path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=True,ext=False,delimiter=delimiter).split(delimiter)[:-1],'all']),
-						ext=path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=False,ext=True,delimiter=delimiter),
-						delimiter=delimiter
+						path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=True,file=False,ext=False,delimiter='.'),
+						'.'.join([*path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=True,ext=False,delimiter='.').split('.')[:-1],'all']),
+						ext=path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=False,ext=True,delimiter='.'),
+						delimiter='.'
 						)
 					},
 				},
 			'ax':{
 				'errorbar':[
 					{
-					'label':r'$%d$'%(k),
+					'label':r'$%d$'%(objects[key][instances[key][0]].M),
 					**settings.get(attr,{}).get('ax',{}).get('errorbar',{}),
 					**{arg:statistics[attr][arg]['value'][k] for arg in statistics[attr]},
+					**{'ecolor':getattr(plt.cm,'tab10')(k%10)},
+					**{'color':getattr(plt.cm,'tab10')(k%10)},
 					}
 				for k,key in enumerate(keys)
 				]
@@ -2460,6 +2458,15 @@ def plotter(objects,hyperparameters):
 
 def check(hyperparameters):
 
+	# Copy hyperparameters
+	_hyperparameters = copy.deepcopy(hyperparameters)
+
+	# Load default hyperparameters
+	path = 'config/settings.json'
+	updater(hyperparameters,load(path))
+	updater(hyperparameters,_hyperparameters)
+
+	# Check sections for correct attributes
 	section = None
 	updates = {
 		'permutations': {

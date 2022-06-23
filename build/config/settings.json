@@ -17,20 +17,18 @@
 		}
 	},
 "boolean":{
-	"train":1,
+	"train":0,
 	"load":0,
-	"dump":1,
-	"plot":1,
+	"dump":0,
+	"plot":0,
 	"test":0
 	},
 "seed":{
-	"seed":1234321,
-	"split":2,
-	"reset":1234321
+	"seed":12321,
+	"split":1,
+	"reset":12321
 	},
 "permutations":{
-	"model__M":[200,400],
-	"hyperparameters__iterations":[1000]
 	},
 "model":{
 	"N":2,
@@ -38,7 +36,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":300,
+	"M":100,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -174,7 +172,7 @@
 			"set_ylabel":{"ylabel":"$\\textrm{Objective}$"},
 			"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
 			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-			"set_xnbins":{"nbins":4},
+			"set_xnbins":{"nbins":5},
 			"set_ynbins":{"nbins":5},
 			"set_yscale":{"value":"log","base":10},
 			"set_ylim":{"ymin":5e-1,"ymax":1.05e0},
@@ -190,17 +188,7 @@
 				{"axis":"x","which":"minor","length":4,"width":0.5}
 				],
 			"set_aspect":{"aspect":"auto"},
-			"grid":{"visible":true,"which":"both","axis":"both"},
-			"legend":{
-				"title_fontsize": 20,
-				"prop": {"size": 20},
-				"markerscale": 1.2,
-				"handlelength": 3,
-				"framealpha": 0.8,
-				"loc": "lower right",
-				"ncol": 2,
-				"set_zorder":{"level":100}
-				}			
+			"grid":{"visible":true,"which":"both","axis":"both"}
 			},
 		"style":{
 			"texify":null,

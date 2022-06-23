@@ -1,0 +1,47 @@
+{
+"fig":{
+	"set_size_inches":{"w":10,"h":10},
+	"subplots_adjust":{},
+	"tight_layout":{},
+	"savefig":{"fname":"plot.pdf","bbox_inches":"tight"},
+	"close":{}
+	},
+"ax":{
+	"set_ylabel":{"ylabel":"$y$"},
+	"set_xlabel":{"xlabel":"$x$"},
+	"yaxis.offsetText.set_fontsize":{"fontsize":20},											
+	"set_xnbins":{"nbins":5},
+	"set_ynbins":{"nbins":5},
+	"set_yscale":{"value":"linear"},
+	"set_ylim":{"ymin":null,"ymax":null},
+	"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
+	"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,2]},
+	"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
+	"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
+	"tick_params":[
+		{"axis":"y","which":"major","length":8,"width":1},
+		{"axis":"y","which":"minor","length":4,"width":0.5},
+		{"axis":"x","which":"major","length":8,"width":1},
+		{"axis":"x","which":"minor","length":4,"width":0.5}
+		],
+	"set_aspect":{"aspect":"auto"},
+	"grid":{"visible":true,"which":"both","axis":"both"},
+	"legend":{
+		"title_fontsize": 20,
+		"prop": {"size": 20},
+		"markerscale": 1.2,
+		"handlelength": 3,
+		"framealpha": 0.8,
+		"loc": "lower right",
+		"ncol": 2,
+		"set_zorder":{"level":100}
+		}
+	},
+"style":{
+	"texify":null,
+	"mplstyle":"plot.mplstyle",	
+	"rcParams":{"font.size":25},
+	"layout":{"nrows":1,"ncols":1,"index":1},
+	"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
+	}
+}

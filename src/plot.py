@@ -23,7 +23,7 @@ warnings.simplefilter('ignore', (UserWarning,DeprecationWarning,FutureWarning))
 DELIMITER='__'
 
 # Update nested elements
-def _update(iterable,elements,_copy=False,_clear=True,_func=None):
+def updater(iterable,elements,_copy=False,_clear=True,_func=None):
 	if not callable(_func):
 		_func = lambda key,iterable,elements: elements[key]
 	if _clear and elements == {}:
@@ -36,10 +36,16 @@ def _update(iterable,elements,_copy=False,_clear=True,_func=None):
 			if e not in iterable:
 				iterable.update({e: elements[e]})
 			else:
-				_update(iterable[e],elements[e],_copy=_copy,_clear=_clear,_func=_func)
+				updater(iterable[e],elements[e],_copy=_copy,_clear=_clear,_func=_func)
 		else:
 			iterable.update({e:elements[e]})
 	return
+
+# Load from path
+def load(path):
+	with open(path,'r') as f:
+		data = json.load(f)
+	return data
 
 
 # List from generator
@@ -84,7 +90,11 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 	AXES = ['colorbar']
 	LAYOUT = ['nrows','ncols','index']
 	DIM = 2
-
+	PATHS = {
+		'plot':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.json'),
+		'mplstyle':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.mplstyle'),		
+		'mplstyle.notex':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.notex.mplstyle'),
+		}
 	def _layout(settings):
 		if isinstance(settings,(list,tuple)):
 			return dict(zip(LAYOUT,settings))
@@ -264,13 +274,13 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				# 		for k,v in zip(['handles','labels'],
 				# 						getattr(obj,'get_legend_handles_labels')())
 				# 		})
-				if (handles == [] or all([kwargs[k] is None for k in kwargs])):# and all([kwargs.get(k) is None for k in ['handles','labels']]):
+				if ((handles == [] or labels == []) or (min(len(handles),len(labels))==1) or all([kwargs[k] is None for k in kwargs])):# and all([kwargs.get(k) is None for k in ['handles','labels']]):
 					call = False
 				else:
 					kwargs.update(dict(zip(['handles','labels'],[handles,labels])))
 				_kwds.update({
-					'set_zorder':{'level':100},
-					'set_title':{**({'title': kwargs.pop('title',None),'prop':{'size':kwargs.get('prop',{}).get('size')}} 
+					'set_zorder':kwargs.pop('set_zorder',{'level':100}),
+					'set_title':{**({'title': kwargs.pop('set_title',None),'prop':{'size':kwargs.get('prop',{}).get('size')}} 
 									if 'title' in kwargs else {'title':None})},
 					})
 
@@ -516,7 +526,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 
 		def _setup(settings,_settings):
-			_update(settings,_settings)
+			updater(settings,_settings)
 			return
 		def _index(i,N,method='row'):
 			
@@ -535,9 +545,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		defaults = {'ax':{},'fig':{},'subplot':{},'style':{}}
 
 		if isinstance(settings,str):
-			with open(settings,'r') as file:
-				settings = json.load(file)
-		
+			settings = load(settings)
 
 		if settings == {}:
 			settings.update({None:{}})
@@ -568,26 +576,23 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				settings[key]['style']['layout'].update(dict(zip([*LAYOUT[:DIM],LAYOUT[-1]],_index(i,len(y),'row'))))
 		for key in y:
 
-			_settings = {
-				'fig':{
-						'set_size_inches':{'w':10,'h':10},
-						# 'subplots_adjust':{'wspace':2,'hspace':2},
-						# 'tight_layout':{'pad':500,'h_pad':300,'w_pad':300},								   			
-						'tight_layout':{},								   			
-					    'savefig':{'fname':'plot.pdf'},
-					    'close': {'fig':None},
-						**settings[key].get('fig',{})},
-				'style':{'layout':{s:settings[key]['style'].get('layout',{}).get(s,1) 
-					for s in LAYOUT}}
-				}
+			_settings = load(PATHS['plot'])
+
+			_settings['style'].update({
+				'layout':{s:settings[key]['style'].get('layout',{}).get(s,1) for s in LAYOUT}
+				})
 			if update:
 				plotsettings = settings[key].get('ax',{}).pop('plot',{})				
-				_settings.update({'ax':{
+				_settings['ax'].update({
 					**{'plot':[{'x':_x,'y':_y,**(plotsettings if isinstance(plotsettings,dict) else plotsettings[_i])} 
 								for _i,(_x,_y) in enumerate(zip(x.get(key,[None]*len(y[key])),y[key]))]},
 					**settings[key].pop('ax',{}), 
-					},
 					})
+
+			for attr in settings[key]:
+				if attr in _settings:
+					_settings[attr].update(settings[key][attr])
+
 			_setup(settings[key],_settings)	
 
 		for key in settings:
@@ -611,13 +616,9 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		return settings,fig,ax
 
 
-	mplstyles = [mplstyle,
-				os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.mplstyle'),
-				matplotlib.matplotlib_fname()]
+	mplstyles = [mplstyle,PATHS['mplstyle'],matplotlib.matplotlib_fname()]
 
-	_mplstyles = [mplstyle,
-					os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot_notex.mplstyle'),
-					matplotlib.matplotlib_fname()]
+	_mplstyles = [mplstyle,PATHS['mplstyle.notex'],matplotlib.matplotlib_fname()]
 
 	for mplstyle in mplstyles:
 		if mplstyle is not None and os.path.isfile(mplstyle):
@@ -626,9 +627,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		if _mplstyle is not None and os.path.isfile(_mplstyle):
 			break			
 
-	settingss = [settings,
-				os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.json'),
-				{}]
+	settingss = [settings,PATHS['plot'],{}]
 	for settings in settingss:
 		if ((settings is not None) or (isinstance(settings,str) and os.path.isfile(settings))):
 			break
@@ -661,8 +660,7 @@ if __name__ == '__main__':
 	df = pd.concat([pd.read_csv(d) for d in glob.glob(data)],
 					axis=0,ignore_index=True)
 
-	with open(settings,'r') as f:
-		_settings = json.load(f)
+	_settings = load(settings)
 
 	settings = {}
 
