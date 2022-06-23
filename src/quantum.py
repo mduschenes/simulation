@@ -53,6 +53,8 @@ from src.operators import operatorize
 
 from src.io import load,dump,path_join,path_split
 
+from src.plot import plot
+
 from src.optimize import Optimizer,Objective
 
 
@@ -597,6 +599,8 @@ class Object(object):
 		self.size = 0
 		self.shape = (*self.data.shape[0:1],*[self.M],*self.data.shape[1:])
 
+		self.key = None
+
 		self.delimiter = ' '
 		self.basis = None
 		self.diagonal = []
@@ -607,8 +611,10 @@ class Object(object):
 		self.transformH = []
 		self.index = arange(self.size)
 
+		
 		self.hyperparameters = hyperparameters
 		self.parameters = None
+		self.label = None
 		self.attributes = {}
 		self.constants = None
 		self.coefficients = 1
@@ -747,47 +753,18 @@ class Object(object):
 
 		# Get class attributes
 		hyperparameters = self.hyperparameters
-		dtype = self._dtype
-
-		# Setup parameter shapes and slices based on data
-
-		# Get site and strings for data
-		site = self.site
-		string = self.string
-
-		# Get function to check if index of data for axis corresponds to group 
-		check = lambda group,index,axis: (
-			(axis != 0) or 
-			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
-
-		# Get shape of data
-		shape = self.shape[0:2]
-
-		# Get parameters hyperparameters
-		hyperparams = hyperparameters['parameters']
 
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
 		data = None
+		shape = self.shape[0:2]		
+		hyperparams = hyperparameters['parameters']
+		check = lambda group,index,axis,site=self.site,string=self.string: (
+			(axis != 0) or 
+			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
+		dtype = self._dtype
+
 		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
 
-		# Get label
-		data = None
-		shape = self.shape[2:]
-		hyperparams = hyperparameters['label']
-		index = self.N
-		dtype = self.dtype
-
-
-		#time = timer()
-
-		operator = operatorize(data,shape,hyperparams,index=index,dtype=dtype)
-
-		#Time = timer()
-		#msg = 'operator'
-		#print(msg,Time-time)
-		#time = Time
-
-		hyperparameters['label']['parameters'] = operator #.conj().T
 
 		# Get reshaped parameters
 		attribute = 'values'
@@ -796,8 +773,19 @@ class Object(object):
 
 		parameters = parameters.ravel()
 
+
+		# Get label
+		data = None
+		shape = self.shape[2:]
+		hyperparams = hyperparameters['label']
+		index = self.N
+		dtype = self.dtype
+
+		label = operatorize(data,shape,hyperparams,index=index,dtype=dtype)
+
 		# Update class attributes
 		self.parameters = parameters
+		self.label = label
 		self.hyperparameters = hyperparameters
 		self.attributes = attributes
 
@@ -896,7 +884,7 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		return 1-distance(self(parameters),self.hyperparameters['label']['parameters'])
+		return 1-distance(self(parameters),self.label)
 
 	@partial(jit,static_argnums=(0,))
 	def __loss__(self,parameters):
@@ -907,7 +895,7 @@ class Object(object):
 		Returns:
 			loss (array): loss
 		'''	
-		return distance(self(parameters),self.hyperparameters['label']['parameters'])
+		return distance(self(parameters),self.label)
 
 	@partial(jit,static_argnums=(0,))
 	def __func__(self,parameters):
@@ -933,7 +921,7 @@ class Object(object):
 		shape = parameters.shape
 		grad = zeros(shape)
 
-		grad = grad + gradient_distance(self(parameters),self.hyperparameters['label']['parameters'],self.__derivative__(parameters))
+		grad = grad + gradient_distance(self(parameters),self.label,self.__derivative__(parameters))
 
 		return grad
 		# return gradient(self.__func__)(parameters)
@@ -984,7 +972,7 @@ class Object(object):
 
 			self.log('U\n%s\nV\n%s\n'%(
 				to_str(abs(self(parameters)).round(4)),
-				to_str(abs(self.hyperparameters['label']['parameters']).round(4))
+				to_str(abs(self.label).round(4))
 				)
 			)
 			# self.log('norm: %0.4e\nmax: %0.4e\nmin: %0.4e\nbcs:\n%r\n%r\n\n'%(
@@ -1882,7 +1870,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 
 
 
-def plot(objects,hyperparameters):
+def plotter(objects,hyperparameters):
 	'''
 	Plot keys
 	Args:
@@ -1893,478 +1881,578 @@ def plot(objects,hyperparameters):
 
 	# Get keys and instances of hyperparameters
 	keys = list(set(hyperparameters))
-	instances = list(set(instance for key in keys for instance in hyperparameters[key]))
+	instances = {key: list(set(hyperparameters[key])) for key in keys}
 	length = len(keys)
+	shape = (
+		len(keys),
+		max(len(instances[key]) for key in keys),
+		)
 
-	if length == 0:
-		return
-
-	# Get attributes and tracked/object attributes for x and y 
-	# (None yields an arange(len(y))))
-	attrs = {
-		'objective':{'x':None,'y':'objective','yerr':'objective','xerr':None},
-		'parameters':{'x':'M','y':'objective','yerr':'parameters','xerr':None},
-		'overparameterization':{'x':'M','y':'parameters','yerr':'parameters','xerr':None},
-		'label':{'x':None,'y':'label','yerr':'label','xerr':None},
-		'iteration':{'x':'M','y':'iteration','yerr':'iteration','xerr':None}
-		}
 
 	# Get statistics of attributes over instances
-	stats = {stat:{attr:{key:{instance:None for instance in instances} for key in keys} for attr in attrs[stat]} for stat in stats}
-
-	for key in keys:
-		for instance in instances:
-
-			# Get object
-			obj = objects[key][instance]
-
-			# Get class hyperparameters and attributes
-			hyperparams = obj.hyperparameters
-			attributes = obj.attributes
-
-			# Get parameters shape and indices of features
-			attribute = 'index'
-			layer = 'features'		
-			indices = attributes[attribute][layer]
-
-			ndim = min(len(indices[parameter][group]) 
-				for parameter in indices 
-				for group in indices[parameter])
-
-			shape = [int(
-						((max(indices[parameter][group][axis].stop
-							for parameter in indices for group in indices[parameter]) - 
-						min(indices[parameter][group][axis].start
-							for parameter in indices for group in indices[parameter])) //
-						min(indices[parameter][group][axis].step
-							for parameter in indices for group in indices[parameter]))
-						if all(isinstance(indices[parameter][group][axis],slice)
-								for parameter in indices for group in indices[parameter]) else
-						len(list(set(i 
-							for parameter in indices for group in indices[parameter] 
-							for i in indices[parameter][group][axis])))
-						)
-						for axis in range(ndim)]
-
-			indices = tuple([(
-						slice(
-						min(indices[parameter][group][axis].start
-							for parameter in indices for group in indices[parameter]),
-						max(indices[parameter][group][axis].stop
-							for parameter in indices for group in indices[parameter]),
-						min(indices[parameter][group][axis].step
-							for parameter in indices for group in indices[parameter]))
-						if all(isinstance(indices[parameter][group][axis],slice)
-								for parameter in indices for group in indices[parameter]) else
-						list(set(i 
-							for parameter in indices for group in indices[parameter] 
-							for i in indices[parameter][group][axis]))
-						)
-						for axis in range(ndim)])
-
-			# Get function of parameters
-			func = lambda parameters,obj=obj,layer=layer,indices=indices: obj.__layers__(parameters,layer)[indices]
-
-			# Get number of iterations
-			size = hyperparams['hyperparameters']['track']['size']
-
-			iterations = [-1]
-
-			# Get relative difference in parameters (at features level)
-			attr = 'parameters'
-
-			iteration = 0
-			if iteration >= size:
-				parameters0 = parameters
-			else:
-				parameters0 = hyperparams['hyperparameters']['track'][attr][iteration]
-			parameters0 = func(parameters0)
-
-			for iteration in iterations:
-
-				if iteration >= size:
-					parameters = parameters
-				else:
-					parameters = hyperparams['hyperparameters']['track'][attr][iteration]
-				
-				parameters = func(parameters)
-
-
-				
-				Y[key] = abs((parameters-parameters0)/(parameters0 + 1e-20))
-				X[key] = array([obj.M]*len(Y[key]))
-				Yerr[key] = Y[key]
-
-				axes = tuple(range(1,ndim))
-				Y[key] = Y[key].mean(axes)
-				Yerr[key] = Yerr[key].std(axes)/sqrt(product([Yerr[key].shape[ax] for ax in axes])-1)
-
-
-
-	# Get plot config
-	attr = 'mplstyle'
-	key = keys[0]	
-	instance = instances[0]
-	mplstyle = hyperparameters[key][instance]['sys']['path']['config'][attr]
-
-
-	# Plot attributes
-
-	attr = 'objective'
-	key = keys[0]
-	instance = instances[0]
-
-	fig,ax = None,None
-
-	path = hyperparameters[key][instance]['sys']['path']['plot'][attr]
-	delimiter = '.'
-	directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
-	file = delimiter.join([*file.split(delimiter)[:-1],'all'])
-	path = path_join(directory,file,ext=ext,delimiter=delimiter)
-
-	layout = []
-	plots = None
-	length = len(keys)
-	size = max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances)
-	shape = (length,size)
-	figsize = (8,8)
-
-	with matplotlib.style.context(mplstyle):
-	
-		if fig is None:
-			fig,ax = plt.subplots(*layout)
-		elif ax is None:
-			ax = fig.gca()
-
-		x = zeros(shape)	
-		y = zeros(shape)
-		yerr = zeros(shape)
-
-		for i,key in enumerate(keys):
-			size = hyperparameters[key]['hyperparameters']['track']['size']
-
-			x = x.at[i,:size].set(hyperparameters[key]['hyperparameters']['track']['iteration'])
-			x = x.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['iteration'][-1:])
-			y = y.at[i,:size].set(hyperparameters[key]['hyperparameters']['track']['objective'])
-			y = y.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['objective'][-1:])
-			yerr = yerr.at[i,:size].set(hyperparameters[key]['hyperparameters']['track']['objective'])
-			yerr = yerr.at[i,size:].set(hyperparameters[key]['hyperparameters']['track']['objective'][-1:])
-
-		x = x.mean(0).astype(int)
-		y = y.mean(0)
-		yerr = yerr.std(0)/sqrt(yerr.shape[0]-1)
-
-		plots = ax.errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=2,capsize=3)
-
-		ax.set_ylabel(ylabel=r'$\textrm{%s}$'%('Objective'))
-		ax.set_xlabel(xlabel=r'$\textrm{%s}$'%('Iteration'))
-
-		# ax.set_ylim(ymin=0,ymax=1.1)
-		# ax.set_yscale(value='linear')
-
-		ax.set_ylim(ymin=5e-1,ymax=1.05e0)
-		ax.set_yscale(value='log',base=10)
-
-		ax.yaxis.offsetText.set_fontsize(fontsize=20)
-
-		ax.set_xticks(ticks=range(int(1*min(0,0,*x)),int(1.1*max(0,0,*x)),max(1,int(max(0,0,*x)-min(0,0,*x))//8)))
-		# ax.set_yticks(ticks=[1e-1,2e-1,4e-1,6e-1,8e-1,1e0])
-		ax.set_yticks(ticks=[5e-1,6e-1,8e-1,1e0])
-		ax.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
-		# ax.yaxis.set_major_locator(matplotlib.ticker.LogLocator(base=10.0,subs=(1.0,),numticks=100))
-		ax.ticklabel_format(axis='y',style='sci',scilimits=[-1,2])	
-
-		ax.yaxis.set_minor_locator(matplotlib.ticker.LogLocator(base=10.0,subs=arange(2,10)*.1,numticks=100))
-		ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
-
-
-		ax.tick_params(axis='y',which='major',length=8,width=1)
-		ax.tick_params(axis='y',which='minor',length=4,width=0.5)
-		ax.tick_params(axis='x',which='major',length=8,width=1)
-		ax.tick_params(axis='x',which='minor',length=4,width=0.5)
-
-		ax.set_aspect(aspect='auto')
-		ax.grid(visible=True,which='both',axis='both')	
-
-		fig.set_size_inches(*figsize)
-		fig.subplots_adjust()
-		fig.tight_layout()
-		dump(fig,path)
-
-		plt.close(fig);
-
-
-	# Plot label
-
-	attr = 'label'
-
-	fig,ax = None,None
-
-	attr = 'label'
-	key = keys[0]
-	path = hyperparameters[key]['sys']['path']['plot'][attr]
-	delimiter = '.'
-	directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
-	file = delimiter.join([*file.split(delimiter)[:-1],'all'])
-	path = path_join(directory,file,ext=ext,delimiter=delimiter)
-
-	layout = [2]
-	plots = [None]*layout[0]
-	label = hyperparameters[key]['label']['parameters']
-	shape = (length,*label.shape)
-	figsize = (8,8)
-	labels = {'real':r'$U~\textrm{Real}$','imag':r'$U~\textrm{Imag}$'}
-	dtype = label.dtype
-
-	with matplotlib.style.context(mplstyle):
-	
-		if fig is None:
-			fig,ax = plt.subplots(*layout)
-		elif ax is None:
-			ax = fig.gca()
-
-		x = zeros(shape,dtype=dtype)
-
-		for i,key in enumerate(keys):
-			x = x.at[i].set(label)
-
-		x = x.mean(0)
-
-		for i,attr in enumerate(labels):
-			plots[i] = ax[i].imshow(getattr(x,attr))
-			
-			ax[i].set_title(labels[attr])
-			
-			plt.colorbar(plots[i],ax=ax[i])
-
-		fig.set_size_inches(*figsize)
-		fig.subplots_adjust()
-		fig.tight_layout()
-		dump(fig,path)
-
-		plt.close(fig);
-
-
-	# Plot parameters relative differences
-
-	X = {}
-	Y = {}
-	Yerr = {}
-	Xerr = {}
-
-	for key in keys:
-		for instance in instances:
-
-			# Get object
-			obj = objects[key][instance]
-
-			# Get class hyperparameters and attributes
-			hyperparams = obj.hyperparameters
-			attributes = obj.attributes
-
-			# Get parameters shape and indices of features
-			attribute = 'index'
-			layer = 'features'		
-			indices = attributes[attribute][layer]
-
-			ndim = min(len(indices[parameter][group]) 
-				for parameter in indices 
-				for group in indices[parameter])
-
-			shape = [int(
-						((max(indices[parameter][group][axis].stop
-							for parameter in indices for group in indices[parameter]) - 
-						min(indices[parameter][group][axis].start
-							for parameter in indices for group in indices[parameter])) //
-						min(indices[parameter][group][axis].step
-							for parameter in indices for group in indices[parameter]))
-						if all(isinstance(indices[parameter][group][axis],slice)
-								for parameter in indices for group in indices[parameter]) else
-						len(list(set(i 
-							for parameter in indices for group in indices[parameter] 
-							for i in indices[parameter][group][axis])))
-						)
-						for axis in range(ndim)]
-
-			indices = tuple([(
-						slice(
-						min(indices[parameter][group][axis].start
-							for parameter in indices for group in indices[parameter]),
-						max(indices[parameter][group][axis].stop
-							for parameter in indices for group in indices[parameter]),
-						min(indices[parameter][group][axis].step
-							for parameter in indices for group in indices[parameter]))
-						if all(isinstance(indices[parameter][group][axis],slice)
-								for parameter in indices for group in indices[parameter]) else
-						list(set(i 
-							for parameter in indices for group in indices[parameter] 
-							for i in indices[parameter][group][axis]))
-						)
-						for axis in range(ndim)])
-
-
-
-			# Get number of iterations
-			size = hyperparams['hyperparameters']['track']['size']
-
-			iterations = [-1]
-
-			# Get relative difference in parameters (at features level)
-			attr = 'parameters'
-
-			iteration = 0
-			if iteration >= size:
-				parameters0 = parameters
-			else:
-				parameters0 = hyperparams['hyperparameters']['track'][attr][iteration]
-			parameters0 = obj.__layers__(parameters0,layer)
-
-			parameters0 = parameters0[indices]
-
-			for iteration in iterations:
-
-				if iteration >= size:
-					parameters = parameters
-				else:
-					parameters = hyperparams['hyperparameters']['track'][attr][iteration]
-				parameters = obj.__layers__(parameters,layer)
-
-				parameters = parameters[indices]
-
-
-				Y[key] = abs((parameters-parameters0)/(parameters0 + 1e-20))
-				X[key] = array([obj.M]*len(Y[key]))
-				Yerr[key] = Y[key]
-
-				axes = tuple(range(1,ndim))
-				Y[key] = Y[key].mean(axes)
-				Yerr[key] = Yerr[key].std(axes)/sqrt(product([Yerr[key].shape[ax] for ax in axes])-1)
-
-	# Get plot config
-	attr = 'mplstyle'
-	key = keys[0]
-	mplstyle = hyperparameters[key]['sys']['path']['config'][attr]
-
-	# Plot attributes
-
-	attr = 'overparameterization'
-
-	fig,ax = None,None
-
-	path = hyperparameters[key]['sys']['path']['plot'][attr]
-	delimiter = '.'
-	directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
-	file = delimiter.join([*file.split(delimiter)[:-1],'all'])
-	path = path_join(directory,file,ext=ext,delimiter=delimiter)
-	
-
-	size = min(Y[key].size for key in keys)
-	layout = (1,size,)
-	plots = [None]*size
-	labels = [r'\alpha',r'\phi']
-	figsize = (14,12)
-
-
-	with matplotlib.style.context(mplstyle):
-	
-		fig,ax = plt.subplots(*layout)	
-
-		for i in range(layout[-1]):
-
-			x = array([X[key][i] for key in keys])
-			y = array([Y[key][i] for key in keys])
-			yerr = array([Yerr[key][i] for key in keys])
-
-			plots[i] = ax[i].errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=2,capsize=3)
-
-			ax[i].set_xlabel(xlabel=r'$\textrm{Number of Time Steps}$')
-			ax[i].set_ylabel(ylabel=r'${%s}_{%s}$'%(labels[i%len(labels)],str(i) if layout[0]>len(labels) else ''))
-			ax[i].grid(visible=True,which='both',axis='both')	
-
-			ax[i].set_xlim(xmin=int(x.min()*0.9),xmax=int(x.max()*1)+100)
-			ax[i].set_xticks(ticks=[100*(i//100) for i in range(min(10,min(0,*x)),int(max(0,*x)*1+100),(int(max(0,*x)*1 + 100) - min(10,min(0,*x)))//4)])
-
-			ax[i].set_yscale(value='log',base=10)
-			ax[i].set_ylim(ymin=1e-4,ymax=1e0)
-			ax[i].set_yticks(ticks=[1e-4,1e-3,1e-2,1e-1,1e0])
-
-			if i == 0:
-				fig.suptitle(t=r'$\abs{({%s}^{(%s)}_{%s} - {%s}^{(%s)}_{%s})/{%s}^{(%s)}_{%s}}$'%(
-						r'\varphi','f','',r'\varphi','i','',r'\varphi','i',''))
-				# ax[i].set_title(label=r'$\abs{({%s}^{(%s)}_{%s} - {%s}^{(%s)}_{%s})/{%s}^{(%s)}_{%s}}$'%(
-				# 		r'\varphi','i','',r'\varphi','0','',r'\varphi','0',''))
-
-		fig.set_size_inches(*figsize)
-		# fig.subplots_adjust(hspace=0.5)
-		fig.tight_layout()
-		dump(fig,path)
-
-
-	# Plot iterations required to achieve objective tolerance
-
-	X = {}
-	Y = {}
+	# For args None yields an arange(len(y))))
+
+	statistics = {
+		'objective':{
+			'x':{
+				'key':'iteration',
+				'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key])),
+				'value':None,
+				'func': lambda value: value.mean(1),
+			},
+			'y':{
+				'key':'objective',
+				'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key])),
+				'value':None,
+				'func': lambda value: value.mean(1),				
+			},
+			'yerr':{
+				'key':'objective',
+				'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key])),
+				'value':None,
+				'func': lambda value: value.std(1),				
+			},
+		},
+		# 'parameters':{
+		# 	'x':{
+		# 		'key':'M',
+		# 		'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key]),),				
+		# 		'value':None,
+		# 		'func': lambda value: value.mean(1),
+		# 	},
+		# 	'y':{
+		# 		'key':'parameters',
+		# 		'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key]),),
+		# 		'value':None,
+		# 		'func': lambda value: value.mean(1),				
+		# 	},
+		# 	'yerr':{
+		# 		'key':'parameters',
+		# 		'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key]),),
+		# 		'value':None,
+		# 		'func': lambda value: value.std(1),				
+		# 	},
+		# },
+		# 'overparameterization':{
+		# 	'x':{
+		# 		'key':'M',
+		# 		'shape':(*shape,),
+		# 		'value':None,
+		# 		'func': lambda value: value.mean(1),
+		# 	},
+		# 	'y':{
+		# 		'key':'parameters',
+		# 		'shape':(*shape,),
+		# 		'value':None,
+		# 		'func': lambda value: value.mean(1),				
+		# 	},
+		# 	'yerr':{
+		# 		'key':'parameters',
+		# 		'shape':(*shape,),
+		# 		'value':None,
+		# 		'func': lambda value: value.std(1),				
+		# 	},
+		# },		
+		# 'label':{
+		# 	'x':{
+		# 		'key':'M',
+		# 		'shape':(*shape,),
+		# 		'value':None,
+		# 		'func': lambda value: value.mean(1),
+		# 	},
+		# 	'y':{
+		# 		'key':'parameters',
+		# 		'shape':(*shape,),
+		# 		'value':None,
+		# 		'func': lambda value: value.mean(1),				
+		# 	},
+		# 	'yerr':{
+		# 		'key':'parameters',
+		# 		'shape':(*shape,),
+		# 		'value':None,
+		# 		'func': lambda value: value.std(1),				
+		# 	},
+		# },
+		# 'iteration':{
+		# 	'x':{
+		# 		'key':'M',
+		# 		'shape':(*shape),
+		# 		'value':None,
+		# 		'func': lambda value: value.mean(1),
+		# 	},
+		# 	'y':{
+		# 		'key':'parameters',
+		# 		'shape':(*shape,),
+		# 		'value':None,
+		# 		'func': lambda value: value.mean(1),				
+		# 	},
+		# 	'yerr':{
+		# 		'key':'parameters',
+		# 		'shape':(*shape,),
+		# 		'value':None,
+		# 		'func': lambda value: value.std(1),				
+		# 	},
+		# },		
+	}
+
+
+	# Get fig,ax
+	fig = {attr:None for attr in statistics}
+	ax = {attr:None for attr in statistics}
 
 	for k,key in enumerate(keys):
+		for i,instance in enumerate(instances[key]):
 
-		# Get object
-		obj = objects[key]
+			# Get object for key and instance
+			obj = objects[key][instance]
 
-		# Get class hyperparameters and attributes
-		hyperparams = obj.hyperparameters
-		
-		# Get iterations
-		X[key] = obj.M
-		Y[key] = hyperparams['hyperparameters']['track']['size']
+			# Get class hyperparameters and attributes for key and instance
+			hyperparams = obj.hyperparameters
+			attributes = obj.attributes			
 
-		attributes = obj.attributes
+			# Get stats for key and instance			
+			stats = {
+				**{attr:{
+					arg:{
+						'shape':(),
+						'slice': tuple((k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size']))),
+						'_slice': tuple((k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'],None))),
+						'func': lambda value,*args,**kwargs:value,						
+						'args':(),
+						'kwargs':{},
+						}
+					for arg in statistics[attr]
+					}
+				for attr in ['objective']
+				},
+				# **{attr:{
+				# 	arg:{
+				# 		'shape':(obj.parameters.shape),
+				# 		'slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'])),
+				# 		'_slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'],None)),
+						# 'func':lambda value,obj,layer,indices: (
+						# 	((obj.__layers__(value[-1],layer)[indices] - 
+						# 	obj.__layers__(value[0],layer)[indices])/(
+						# 	 obj.__layers__(value[0],layer)[indices]+1e-20)).mean()
+						# 	) if arg in ['y','yerr'] else value,
+						# 'args':(),						
+				# 		'kwargs':{
+				# 			'obj':obj,
+				# 			'layer':'features',
+				# 			'indices': tuple([(
+				# 				slice(
+				# 				min(attributes['index']['features'][parameter][group][axis].start
+				# 					for parameter in attributes['index']['features'] 
+				# 					for group in attributes['index']['features'][parameter]),
+				# 				max(attributes['index']['features'][parameter][group][axis].stop
+				# 					for parameter in attributes['index']['features'] 
+				# 					for group in attributes['index']['features'][parameter]),
+				# 				min(attributes['index']['features'][parameter][group][axis].step
+				# 					for parameter in attributes['index']['features'] 
+				# 					for group in attributes['index']['features'][parameter]))
+				# 				if all(isinstance(attributes['index']['features'][parameter][group][axis],slice)
+				# 					for parameter in attributes['index']['features'] 
+				# 					for group in attributes['index']['features'][parameter]) else
+				# 				list(set(i 
+				# 					for parameter in attributes['index']['features'] 
+				# 					for group in attributes['index']['features'][parameter] 
+				# 					for i in attributes['index']['features'][parameter][group][axis]))
+				# 				)
+				# 				for axis in range(min(len(attributes['index']['features'][parameter][group]) 
+				# 									for parameter in attributes['index']['features'] 
+				# 									for group in attributes['index']['features'][parameter]))
+				# 				])
+				# 		},					
+				# 		}
+				# 	for arg in statistics[attr]
+				# 	}
+				# for attr in ['parameters','overparameterization']
+				# },
+				# **{attr:{
+				# 	arg:{
+				# 		'shape':(*statistics[attr][arg]['shape'][:2],*[1,]),
+				# 		'slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'])),
+				# 		'_slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'],None)),
+				# 		'kwargs':{}						
+				# 		}
+				# 	for arg in statistics[attr]
+				# 	}
+				# for attr in ['label']
+				# },
+				# **{attr:{
+				# 	arg:{
+				# 		'shape':(*statistics[attr][arg]['shape'][:2],*[1,]),
+				# 		'slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'])),
+				# 		'_slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'],None)),
+				# 		'kwargs':{}						
+				# 		}
+				# 	for arg in statistics[attr]
+				# 	}
+				# for attr in ['iteration']
+				# },
+			}								
 
-	# Get plot config
-	attr = 'mplstyle'
-	key = keys[0]
-	mplstyle = hyperparameters[key]['sys']['path']['config'][attr]
 
-	# Plot attributes
+			for attr in statistics:
+				for arg in statistics[attr]:
+					if statistics[attr][arg]['value'] is None:
+						statistics[attr][arg]['value'] = zeros((*statistics[attr][arg]['shape'],*stats[attr][arg]['shape']))
 
-	attr = 'iteration'
+			for attr in statistics:
+				for arg in statistics[attr]:				
+					if statistics[attr][arg]['key'] in hyperparameters[key][instance]['hyperparameters']['track']:
+						statistics[attr][arg]['value'] = statistics[attr][arg]['value'].at[stats[attr][arg]['slice']].set(
+							stats[attr][arg]['func'](
+								hyperparameters[key][instance]['hyperparameters']['track'][statistics[attr][arg]['key']],
+								*stats[attr][arg]['args'],
+								**stats[attr][arg]['kwargs']
+								)
+							)
+						statistics[attr][arg]['value'] = statistics[attr][arg]['value'].at[stats[attr][arg]['_slice']].set(
+							stats[attr][arg]['func'](
+								hyperparameters[key][instance]['hyperparameters']['track'][statistics[attr][arg]['key']][-1],
+								*stats[attr][arg]['args'],
+								**stats[attr][arg]['kwargs']
+								)
+							)							
+					
+					elif getattr(obj,statistics[attr][arg]['key']) is not None:
+						statistics[attr][arg]['value'] = statistics[attr][arg]['value'].at[k,i].set(
+							stats[attr][arg]['func'](
+								getattr(obj,statistics[attr][arg]['key'])*ones(statistics[attr][arg]['shape'])
+								*stats[attr][arg]['args'],
+								**stats[attr][arg]['kwargs']
+								)
+							)							
 
-	fig,ax = None,None
+					elif statistics[attr][arg]['key'] is None:
+						statistics[attr][arg]['value'] = statistics[attr][arg]['value'].at[k,j].set(
+							arange(stats[attr][arg]['shape'][2])
+							)
 
-	path = hyperparameters[key]['sys']['path']['plot'][attr]
+	# Get statistics of attrs
+	for attr in statistics:
+		for arg in statistics[attr]:
+			statistics[attr][arg]['value'] = statistics[attr][arg]['func'](statistics[attr][arg]['value'])
+
+
+
+	# Get settings
+	
+	path = hyperparameters[key][instance]['sys']['path']['config']['plot']
 	delimiter = '.'
-	directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
-	file = delimiter.join([*file.split(delimiter)[:-1],'all'])
-	path = path_join(directory,file,ext=ext,delimiter=delimiter)
+
+	settings = load(path)
+
+	_settings = {
+		attr:{
+			'fig':{
+				'savefig':{
+					'fname':path_join(
+						path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=True,file=False,ext=False,delimiter=delimiter),
+						delimiter.join([*path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=True,ext=False,delimiter=delimiter).split(delimiter)[:-1],'all']),
+						ext=path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=False,ext=True,delimiter=delimiter),
+						delimiter=delimiter
+						)
+					},
+				},
+			'ax':{
+				'errorbar':[
+					{
+					'label':r'$%d$'%(k),
+					**settings.get(attr,{}).get('ax',{}).get('errorbar',{}),
+					**{arg:statistics[attr][arg]['value'][k] for arg in statistics[attr]},
+					}
+				for k,key in enumerate(keys)
+				]
+			},
+		'style':{
+			'mplstyle':hyperparameters[key][instance]['sys']['path']['config']['mplstyle']
+			}
+		}
+		for attr in statistics
+	}
+
+		
+	updater(settings,_settings,copy=True)
+
+
+	# Plot
+	for attr in settings:
+		fig[attr],ax[attr] = plot(settings=settings[attr],fig=fig[attr],ax=ax[attr])
+
 	
-	plots = None
-	figsize = (8,8)
+	# # Plot label
 
-	with matplotlib.style.context(mplstyle):
+	# attr = 'label'
+
+	# fig,ax = None,None
+
+	# attr = 'label'
+	# key = keys[0]
+	# path = hyperparameters[key]['sys']['path']['plot'][attr]
+	# delimiter = '.'
+	# directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+	# file = delimiter.join([*file.split(delimiter)[:-1],'all'])
+	# path = path_join(directory,file,ext=ext,delimiter=delimiter)
+
+	# layout = [2]
+	# plots = [None]*layout[0]
+	# label = hyperparameters[key]['label']['parameters']
+	# shape = (length,*label.shape)
+	# figsize = (8,8)
+	# labels = {'real':r'$U~\textrm{Real}$','imag':r'$U~\textrm{Imag}$'}
+	# dtype = label.dtype
+
+	# with matplotlib.style.context(mplstyle):
 	
-		fig,ax = plt.subplots()	
+	# 	if fig is None:
+	# 		fig,ax = plt.subplots(*layout)
+	# 	elif ax is None:
+	# 		ax = fig.gca()
+
+	# 	x = zeros(shape,dtype=dtype)
+
+	# 	for i,key in enumerate(keys):
+	# 		x = x.at[i].set(label)
+
+	# 	x = x.mean(0)
+
+	# 	for i,attr in enumerate(labels):
+	# 		plots[i] = ax[i].imshow(getattr(x,attr))
+			
+	# 		ax[i].set_title(labels[attr])
+			
+	# 		plt.colorbar(plots[i],ax=ax[i])
+
+	# 	fig.set_size_inches(*figsize)
+	# 	fig.subplots_adjust()
+	# 	fig.tight_layout()
+	# 	dump(fig,path)
+
+	# 	plt.close(fig);
 
 
-		x = array([X[key] for key in keys])
-		y = array([Y[key] for key in keys])
+	# # Plot parameters relative differences
 
-		plots = ax.plot(x,y,marker='o',linestyle='--')
+	# X = {}
+	# Y = {}
+	# Yerr = {}
+	# Xerr = {}
 
-		ax.set_xlabel(xlabel=r'$\textrm{Number of Time Steps}$')
-		ax.set_ylabel(ylabel=r'$\textrm{Number of Iterations}$')
-		ax.grid(visible=True,which='both',axis='both')	
+	# for key in keys:
+	# 	for instance in instances:
+
+	# 		# Get object
+	# 		obj = objects[key][instance]
+
+	# 		# Get class hyperparameters and attributes
+	# 		hyperparams = obj.hyperparameters
+	# 		attributes = obj.attributes
+
+	# 		# Get parameters shape and indices of features
+	# 		attribute = 'index'
+	# 		layer = 'features'		
+	# 		indices = attributes[attribute][layer]
+
+	# 		ndim = min(len(indices[parameter][group]) 
+	# 			for parameter in indices 
+	# 			for group in indices[parameter])
+
+	# 		shape = [int(
+	# 					((max(indices[parameter][group][axis].stop
+	# 						for parameter in indices for group in indices[parameter]) - 
+	# 					min(indices[parameter][group][axis].start
+	# 						for parameter in indices for group in indices[parameter])) //
+	# 					min(indices[parameter][group][axis].step
+	# 						for parameter in indices for group in indices[parameter]))
+	# 					if all(isinstance(indices[parameter][group][axis],slice)
+	# 							for parameter in indices for group in indices[parameter]) else
+	# 					len(list(set(i 
+	# 						for parameter in indices for group in indices[parameter] 
+	# 						for i in indices[parameter][group][axis])))
+	# 					)
+	# 					for axis in range(ndim)]
+
+	# 		indices = tuple([(
+	# 					slice(
+	# 					min(indices[parameter][group][axis].start
+	# 						for parameter in indices for group in indices[parameter]),
+	# 					max(indices[parameter][group][axis].stop
+	# 						for parameter in indices for group in indices[parameter]),
+	# 					min(indices[parameter][group][axis].step
+	# 						for parameter in indices for group in indices[parameter]))
+	# 					if all(isinstance(indices[parameter][group][axis],slice)
+	# 							for parameter in indices for group in indices[parameter]) else
+	# 					list(set(i 
+	# 						for parameter in indices for group in indices[parameter] 
+	# 						for i in indices[parameter][group][axis]))
+	# 					)
+	# 					for axis in range(ndim)])
 
 
-		ax.set_xlim(xmin=int(x.min()*0.9),xmax=int(x.max()*1)+100)
-		ax.set_xticks(ticks=[100*(i//100) for i in range(min(10,min(0,*x)),int(max(0,*x)*1+100),(int(max(0,*x)*1 + 100) - min(10,min(0,*x)))//4)])
 
-		ax.set_yscale(value='log',base=10)
+	# 		# Get number of iterations
+	# 		size = hyperparams['hyperparameters']['track']['size']
 
-		ax.set_title(label=r'$\epsilon = %s$'%(scinotation(hyperparameters[key]['hyperparameters']['eps'],decimals=0,usetex=False)))
+	# 		iterations = [-1]
 
-		fig.set_size_inches(*figsize)
-		# fig.subplots_adjust()
-		fig.tight_layout()
-		dump(fig,path)
+	# 		# Get relative difference in parameters (at features level)
+	# 		attr = 'parameters'
+
+	# 		iteration = 0
+	# 		if iteration >= size:
+	# 			parameters0 = parameters
+	# 		else:
+	# 			parameters0 = hyperparams['hyperparameters']['track'][attr][iteration]
+	# 		parameters0 = obj.__layers__(parameters0,layer)
+
+	# 		parameters0 = parameters0[indices]
+
+	# 		for iteration in iterations:
+
+	# 			if iteration >= size:
+	# 				parameters = parameters
+	# 			else:
+	# 				parameters = hyperparams['hyperparameters']['track'][attr][iteration]
+	# 			parameters = obj.__layers__(parameters,layer)
+
+	# 			parameters = parameters[indices]
+
+
+	# 			Y[key] = abs((parameters-parameters0)/(parameters0 + 1e-20))
+	# 			X[key] = array([obj.M]*len(Y[key]))
+	# 			Yerr[key] = Y[key]
+
+	# 			axes = tuple(range(1,ndim))
+	# 			Y[key] = Y[key].mean(axes)
+	# 			Yerr[key] = Yerr[key].std(axes)/sqrt(product([Yerr[key].shape[ax] for ax in axes])-1)
+
+	# # Get plot config
+	# attr = 'mplstyle'
+	# key = keys[0]
+	# mplstyle = hyperparameters[key]['sys']['path']['config'][attr]
+
+	# # Plot attributes
+
+	# attr = 'overparameterization'
+
+	# fig,ax = None,None
+
+	# path = hyperparameters[key]['sys']['path']['plot'][attr]
+	# delimiter = '.'
+	# directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+	# file = delimiter.join([*file.split(delimiter)[:-1],'all'])
+	# path = path_join(directory,file,ext=ext,delimiter=delimiter)
+	
+
+	# size = min(Y[key].size for key in keys)
+	# layout = (1,size,)
+	# plots = [None]*size
+	# labels = [r'\alpha',r'\phi']
+	# figsize = (14,12)
+
+
+	# with matplotlib.style.context(mplstyle):
+	
+	# 	fig,ax = plt.subplots(*layout)	
+
+	# 	for i in range(layout[-1]):
+
+	# 		x = array([X[key][i] for key in keys])
+	# 		y = array([Y[key][i] for key in keys])
+	# 		yerr = array([Yerr[key][i] for key in keys])
+
+	# 		plots[i] = ax[i].errorbar(x,y,yerr,fmt='--o',ecolor='k',elinewidth=2,capsize=3)
+
+	# 		ax[i].set_xlabel(xlabel=r'$\textrm{Number of Time Steps}$')
+	# 		ax[i].set_ylabel(ylabel=r'${%s}_{%s}$'%(labels[i%len(labels)],str(i) if layout[0]>len(labels) else ''))
+	# 		ax[i].grid(visible=True,which='both',axis='both')	
+
+	# 		ax[i].set_xlim(xmin=int(x.min()*0.9),xmax=int(x.max()*1)+100)
+	# 		ax[i].set_xticks(ticks=[100*(i//100) for i in range(min(10,min(0,*x)),int(max(0,*x)*1+100),(int(max(0,*x)*1 + 100) - min(10,min(0,*x)))//4)])
+
+	# 		ax[i].set_yscale(value='log',base=10)
+	# 		ax[i].set_ylim(ymin=1e-4,ymax=1e0)
+	# 		ax[i].set_yticks(ticks=[1e-4,1e-3,1e-2,1e-1,1e0])
+
+	# 		if i == 0:
+	# 			fig.suptitle(t=r'$\abs{({%s}^{(%s)}_{%s} - {%s}^{(%s)}_{%s})/{%s}^{(%s)}_{%s}}$'%(
+	# 					r'\varphi','f','',r'\varphi','i','',r'\varphi','i',''))
+	# 			# ax[i].set_title(label=r'$\abs{({%s}^{(%s)}_{%s} - {%s}^{(%s)}_{%s})/{%s}^{(%s)}_{%s}}$'%(
+	# 			# 		r'\varphi','i','',r'\varphi','0','',r'\varphi','0',''))
+
+	# 	fig.set_size_inches(*figsize)
+	# 	# fig.subplots_adjust(hspace=0.5)
+	# 	fig.tight_layout()
+	# 	dump(fig,path)
+
+
+	# # Plot iterations required to achieve objective tolerance
+
+	# X = {}
+	# Y = {}
+
+	# for k,key in enumerate(keys):
+
+	# 	# Get object
+	# 	obj = objects[key]
+
+	# 	# Get class hyperparameters and attributes
+	# 	hyperparams = obj.hyperparameters
+		
+	# 	# Get iterations
+	# 	X[key] = obj.M
+	# 	Y[key] = hyperparams['hyperparameters']['track']['size']
+
+	# 	attributes = obj.attributes
+
+	# # Get plot config
+	# attr = 'mplstyle'
+	# key = keys[0]
+	# mplstyle = hyperparameters[key]['sys']['path']['config'][attr]
+
+	# # Plot attributes
+
+	# attr = 'iteration'
+
+	# fig,ax = None,None
+
+	# path = hyperparameters[key]['sys']['path']['plot'][attr]
+	# delimiter = '.'
+	# directory,file,ext = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+	# file = delimiter.join([*file.split(delimiter)[:-1],'all'])
+	# path = path_join(directory,file,ext=ext,delimiter=delimiter)
+	
+	# plots = None
+	# figsize = (8,8)
+
+	# with matplotlib.style.context(mplstyle):
+	
+	# 	fig,ax = plt.subplots()	
+
+
+	# 	x = array([X[key] for key in keys])
+	# 	y = array([Y[key] for key in keys])
+
+	# 	plots = ax.plot(x,y,marker='o',linestyle='--')
+
+	# 	ax.set_xlabel(xlabel=r'$\textrm{Number of Time Steps}$')
+	# 	ax.set_ylabel(ylabel=r'$\textrm{Number of Iterations}$')
+	# 	ax.grid(visible=True,which='both',axis='both')	
+
+
+	# 	ax.set_xlim(xmin=int(x.min()*0.9),xmax=int(x.max()*1)+100)
+	# 	ax.set_xticks(ticks=[100*(i//100) for i in range(min(10,min(0,*x)),int(max(0,*x)*1+100),(int(max(0,*x)*1 + 100) - min(10,min(0,*x)))//4)])
+
+	# 	ax.set_yscale(value='log',base=10)
+
+	# 	ax.set_title(label=r'$\epsilon = %s$'%(scinotation(hyperparameters[key]['hyperparameters']['eps'],decimals=0,usetex=False)))
+
+	# 	fig.set_size_inches(*figsize)
+	# 	# fig.subplots_adjust()
+	# 	fig.tight_layout()
+	# 	dump(fig,path)
 
 
 	return
@@ -2400,7 +2488,6 @@ def check(hyperparameters):
 		if updates[attr]['conditions'](hyperparameters):
 			hyperparameters[attr] = updates[attr]['value'](hyperparameters)
 
-
 	section = 'sys'
 	updates = {
 		'path': {
@@ -2422,8 +2509,7 @@ def check(hyperparameters):
 	for attr in updates:						
 		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
 		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
+			hyperparameters[attr] = updates[attr]['value'](hyperparameters)
 
 	section = 'model'
 	updates = {
@@ -2436,8 +2522,7 @@ def check(hyperparameters):
 	for attr in updates:						
 		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
 		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
+			hyperparameters[attr] = updates[attr]['value'](hyperparameters)
 
 	section = 'hyperparameters'
 	updates = {
@@ -2450,8 +2535,7 @@ def check(hyperparameters):
 	for attr in updates:						
 		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
 		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
+			hyperparameters[attr] = updates[attr]['value'](hyperparameters)
 
 	section = 'parameters'
 	updates = {
@@ -2477,9 +2561,9 @@ def check(hyperparameters):
 			} for attr in ['scale','initialization','random','smoothness','interpolation','pad']
 		},
 		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: hyperparameters.get('seed',{}).get(attr)),
+			'value': (lambda parameter,hyperparameters,attr=attr: None),#hyperparameters.get('seed',{}).get(attr)),
 			'default': (lambda parameter,hyperparameters,attr=attr: None),
-			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is not None)						
+			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
 			} for attr in ['seed']
 		},		
 		'locality': {
@@ -2531,30 +2615,36 @@ def setup(hyperparameters):
 			updates = {}		
 
 			updates.update({
-				'model__system__key': key,
-				'model__system__seed': seed,
-				'sys__path': {
-					attr: path_join(settings['hyperparameters'][key][instance]['sys']['directory'][attr],
-									 '.'.join([settings['hyperparameters'][key][instance]['sys']['file'][attr],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key][instance]['sys']['file'][attr],
-									 ext=settings['hyperparameters'][key][instance]['sys']['ext'][attr])
-							if isinstance(settings['hyperparameters'][key][instance]['sys']['file'][attr],str) else
-							{i: path_join(settings['hyperparameters'][key][instance]['sys']['directory'][attr][i],
-									 '.'.join([settings['hyperparameters'][key][instance]['sys']['file'][attr][i],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key][instance]['sys']['file'][attr][i],							 
-									 ext=settings['hyperparameters'][key][instance]['sys']['ext'][attr][i])
-							for i in settings['hyperparameters'][key][instance]['sys']['file'][attr]}
-					for attr in settings['hyperparameters'][key][instance]['sys']['file']			 
-				},			
-				**{'parameters__%s__seed'%(parameter): seed 
-					for parameter in settings['hyperparameters'][key][instance]['parameters']},
-			})
+				'model':{
+					'system':{
+						'key':key,
+						'seed':list(seed),
+						},
+					},
+				'sys':{
+					'path': {
+						attr: path_join(settings['hyperparameters'][key][instance]['sys']['directory'][attr],
+										 '.'.join([settings['hyperparameters'][key][instance]['sys']['file'][attr],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key][instance]['sys']['file'][attr],
+										 ext=settings['hyperparameters'][key][instance]['sys']['ext'][attr])
+								if isinstance(settings['hyperparameters'][key][instance]['sys']['file'][attr],str) else
+								{i: path_join(settings['hyperparameters'][key][instance]['sys']['directory'][attr][i],
+										 '.'.join([settings['hyperparameters'][key][instance]['sys']['file'][attr][i],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key][instance]['sys']['file'][attr][i],							 
+										 ext=settings['hyperparameters'][key][instance]['sys']['ext'][attr][i])
+								for i in settings['hyperparameters'][key][instance]['sys']['file'][attr]}
+						for attr in settings['hyperparameters'][key][instance]['sys']['file']			 
+						},
+					},			
+				'parameters':{
+					parameter:{'seed':None}
+						for parameter in settings['hyperparameters'][key][instance]['parameters']
+						},
+				})
 
-			updates.update({
-				**permutation
-			})
+			setter(updates,permutation,delimiter=delim,copy=True)
 
-			setter(settings['hyperparameters'][key][instance],updates,delimiter=delim,copy=True,reset=False)
+			updater(settings['hyperparameters'][key][instance],updates,copy=True)
 
-		# check(settings['hyperparameters'][key][instance])
+			check(settings['hyperparameters'][key][instance])
 
 	return settings
 
@@ -2584,7 +2674,7 @@ def run(hyperparameters):
 					return e if not callable(i) else i
 				path = hyperparameters['sys']['path']['data']['data']
 				data = load(path,default=default)
-				updater(hyperparameters,data,func=func)
+				updater(hyperparameters,data,copy=True,func=func)
 
 			if settings['boolean']['dump']:
 				data = copy.deepcopy(hyperparameters)
@@ -2622,7 +2712,7 @@ def run(hyperparameters):
 	if settings['boolean']['plot']:
 		objs = settings['object']
 		hyperparameters = settings['hyperparameters']
-		plot(objs,hyperparameters)
+		plotter(objs,hyperparameters)
 
 	if settings['boolean']['test']:
 

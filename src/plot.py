@@ -76,9 +76,11 @@ def is_number(s):
 			return False
 
 # Plot data - General plotter
-def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,quiet=True):
+def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,quiet=True):
 
 	AXIS = ['x','y','z']
+	WHICH = ['major','minor']
+	FORMATTER = ['formatter','locator']
 	AXES = ['colorbar']
 	LAYOUT = ['nrows','ncols','index']
 	DIM = 2
@@ -125,24 +127,24 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 		return positions
 
 
-	def layout(key,fig,axes,settings):
-		if all([key in obj for obj in [fig,axes]]):
+	def layout(key,fig,ax,settings):
+		if all([key in obj for obj in [fig,ax]]):
 			return
 		_layout_ = _layout(settings[key]['style']['layout'])
 		add_subplot = True and (_layout_ != {})
 		other = {'%s_%s'%(key,k):settings[key]['style'].get(k) for k in AXES if isinstance(settings[key]['style'].get(k),dict)}
-		for k in axes:
-			__layout__ = _layout(settings.get(k,{}).get('style',{}).get('layout',axes[k].get_geometry()))
+		for k in ax:
+			__layout__ = _layout(settings.get(k,{}).get('style',{}).get('layout',ax[k].get_geometry()))
 			if all([_layout_[s]==__layout__[s] for s in _layout_]):
-				axes[key] = axes[k]
+				ax[key] = ax[k]
 				add_subplot = False
 				break
 
 		if fig.get(key) is None:
-			if (fig == {} or settings[key]['style'].get('unique_fig',False)) and not hasattr(axes.get(key),'figure'):
+			if (fig == {} or settings[key]['style'].get('unique_fig',False)) and not hasattr(ax.get(key),'figure'):
 				fig[key] = plt.figure()
-			elif hasattr(axes.get(key),'figure'):
-				fig[key] = getattr(axes.get(key),'figure')
+			elif hasattr(ax.get(key),'figure'):
+				fig[key] = getattr(ax.get(key),'figure')
 			else:
 				k = list(fig)[0]
 				fig[key] = fig[k]
@@ -150,11 +152,11 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 		if add_subplot:					
 			args = [_layout_.pop(s) for s in LAYOUT]
 			gs = gridspec.GridSpec(*args[:DIM])
-			axes[key] = fig[key].add_subplot(list(gs)[args[-1]-1],**_layout_)
+			ax[key] = fig[key].add_subplot(list(gs)[args[-1]-1],**_layout_)
 
 
 			for k in other:
-				axes[k] = fig[key].add_axes(**other[k])
+				ax[k] = fig[key].add_axes(**other[k])
 		return
 
 	def attr_texify(string,attr,kwarg,texify,**kwargs):
@@ -328,30 +330,35 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 			elif attr in ['plot_surface','contour','contourf','scatter']:
 				args.extend([kwargs.pop(k) for k in ['x','y','z'] if kwargs.get(k) is not None])
 
-			elif attr in ['set_%smajor_formatter'%(axis) for axis in AXIS]:
-				axis = attr.replace('set_','').replace('major_formatter','')
+			elif attr in ['%saxis.set_%s_%s'%(axis,which,formatter) for axis in AXIS for which in WHICH for formatter in FORMATTER]:
+				axis = attr.split('.')[0].replace('axis','')
+				which = attr.split('.')[1].replace('set_','').replace('_%s'%(attr.split('_')[-1]),'')
+				formatter = attr.split('_')[-1]
 				for k in kwargs:
-					getattr(getattr(obj,'get_%saxis'%(axis))(),'set_major_formatter')(
-						getattr(getattr(matplotlib,k),kwargs[k])())
+					for a in kwargs[k]:
+						getattr(getattr(obj,'%saxis'%(axis)),'set_%s_%s'%(which,formatter))(
+							getattr(getattr(matplotlib,k),a)(**kwargs[k][a]))					
 				call = False
 
 			elif attr in ['set_%snbins'%(axis) for axis in AXIS]:
 				axis = attr.replace('set_','').replace('nbins','')
+				which = 'major'
+				formatter = 'locator'
+				k = 'ticker'
 				try:
-					locator = 'MaxNLocator'
-					locator = getattr(plt,locator)(**kwargs)
+					a = 'MaxNLocator'
+					getattr(getattr(obj,'%saxis'%(axis)),'set_%s_%s'%(which,formatter))(
+							getattr(getattr(matplotlib,k),a)(**kwargs))
 				except:
-					locator = 'LogLocator'
-					locator = getattr(plt,locator)(**kwargs)
-
-				getattr(getattr(obj,'%saxis'%(axis)),'set_major_locator')(locator)
+					a = 'LogLocator'
+					getattr(getattr(obj,'%saxis'%(axis)),'set_%s_%s'%(which,formatter))(
+							getattr(getattr(matplotlib,k),a)(**kwargs))
 				call = False
 
-			elif attr in ['set_%soffsetText_fontsize'%(axis) for axis in AXIS]:
-				axis = attr.replace('set_','').replace('offsetText_fontsize','')
-				getattr(getattr(getattr(obj,'%saxis'%(axis)),'offsetText'),'set_fontsize')(**kwargs)
-				call = False
-
+			# elif attr in ['%saxis.offsetText.set_fontsize'%(axis) for axis in AXIS]:
+			# 	axis = attr.split('.')[0].replace('axis','')
+			# 	getattr(getattr(getattr(obj,'%saxis'%(axis)),'offsetText'),'set_fontsize')(**kwargs)
+			# 	call = False
 
 			elif attr in ['set_colorbar']:
 				values = kwargs.get('values')
@@ -374,9 +381,9 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 
 			elif attr in ['close']:
 				try:
-					plt.close(**kwargs)
+					plt.close(obj,**kwargs)
 				except:
-					plt.close()
+					plt.close(obj)
 				call = False
 				
 			if not call:	
@@ -421,7 +428,7 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 			_attr = attrs(obj,attr,_attr,**_wrapper(_kwarg,attr,**kwargs))
 		return
 
-	def obj_wrap(attr,key,fig,axes,settings):
+	def obj_wrap(attr,key,fig,ax,settings):
 		attr_kwargs = lambda attr,key,settings:{
 			'texify':settings[key]['style'].get('texify'),
 			'share':settings[key]['style'].get('share',{}).get(attr,{}),
@@ -431,8 +438,8 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 		matplotlib.rcParams.update(settings[key]['style'].get('rcParams',{}))
 
 
-		objs = lambda attr,key,fig,axes: {'fig':fig.get(key),'ax':axes.get(key),**{'%s_%s'%('ax',k):axes.get('%s_%s'%(key,k)) for k in AXES}}[attr]
-		obj = objs(attr,key,fig,axes)
+		objs = lambda attr,key,fig,ax: {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in AXES}}[attr]
+		obj = objs(attr,key,fig,ax)
 
 		exceptions = {
 			**{
@@ -496,16 +503,16 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 		return
 		
 		
-	def context(x,y,settings,fig,axes,mplstyle,texify):
+	def context(x,y,settings,fig,ax,mplstyle,texify):
 		with matplotlib.style.context(mplstyle):
-			settings,fig,axes = setup(x,y,settings,fig,axes,mplstyle,texify)
+			settings,fig,ax = setup(x,y,settings,fig,ax,mplstyle,texify)
 			for key in settings:
 				for attr in ['ax',*['%s_%s'%('ax',k) for k in AXES],'fig']:
-					obj_wrap(attr,key,fig,axes,settings)
+					obj_wrap(attr,key,fig,ax,settings)
 
-		return fig,axes
+		return fig,ax
 
-	def setup(x,y,settings,fig,axes,mplstyle,texify):
+	def setup(x,y,settings,fig,ax,mplstyle,texify):
 
 
 		def _setup(settings,_settings):
@@ -590,18 +597,18 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 		if fig in [None]:
 			fig = {}
 
-		if axes in [None]:
-			axes = {}
+		if ax in [None]:
+			ax = {}
 
 		for key in settings:
 			attr = 'layout'
-			layout(key,fig,axes,settings)
+			layout(key,fig,ax,settings)
 
 			attr = 'style'
 			for prop,obj in zip(['mplstyle','texify'],[mplstyle,texify]):
 				settings[key][attr][prop] = settings[key][attr].get(prop,obj)
 
-		return settings,fig,axes
+		return settings,fig,ax
 
 
 	mplstyles = [mplstyle,
@@ -627,15 +634,15 @@ def plot(x=None,y=None,settings={},fig=None,axes=None,mplstyle=None,texify=None,
 			break
 
 	try:
-		fig,axes = context(x,y,settings,fig,axes,mplstyle,texify)
+		fig,ax = context(x,y,settings,fig,ax,mplstyle,texify)
 	except:
 		rc_params = {'text.usetex': False}
 		matplotlib.rcParams.update(rc_params)
 		matplotlib.use('pdf') 
 
-		fig,axes = context(x,y,settings,fig,axes,_mplstyle,texify)
+		fig,ax = context(x,y,settings,fig,ax,_mplstyle,texify)
 
-	return fig,axes
+	return fig,ax
 
 
 
@@ -671,4 +678,4 @@ if __name__ == '__main__':
 		settings[key]['style']['layout'] = {'ncols':len(Y),'nrows':1,'index':i}
 		settings[key]['fig']['savefig'] = {'fname':path,'bbox_inches':'tight'}
 
-	fig,axes = plot(settings=settings,mplstyle=mplstyle) 
+	fig,ax = plot(settings=settings,mplstyle=mplstyle) 

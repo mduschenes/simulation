@@ -14,6 +14,9 @@ import jax
 import jax.numpy as np
 import jax.scipy as sp
 import jax.example_libraries.optimizers
+from jax.tree_util import register_pytree_node_class as tree_register
+from jax.tree_util import tree_map as tree_map
+
 jax.config.update('jax_platform_name','cpu')
 jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
@@ -458,9 +461,23 @@ class System(dictionary):
 
 @tree_register
 class Parameters(dict):
-	
-	def __init__(self,parameters,children,auxiliary):
+	'''
+	Class for pytree subclassed dict dictionary of parameters, with children and auxiliary keys
+	Args:
+		parameters (dict): Dictionary of parameters
+		children (iterable): Iterable of tree leaf children keys
+		auxiliary (iterable): Iterable of tree leaf auxiliary keys
+	'''
+	def __init__(self,parameters,children=None,auxiliary=None):
 		super().__init__(parameters)
+
+		if children is None:
+			children = [parameter for parameter in parameters]
+		if auxiliary is None:
+			auxiliary = []
+		else:
+			auxiliary = [parameter for parameter in parameters if parameters not in children]
+
 		self.children = children
 		self.auxiliary = auxiliary
 		return
@@ -479,6 +496,36 @@ class Parameters(dict):
 			**dict(zip(keys[1],auxiliary))
 			}
 		return cls(parameters)
+
+@partial(jit,static_argnums=(2,))
+def tree_func(a,b,func):
+	'''
+	Perform binary function on trees a and b
+	Args:
+		a (pytree): Pytree object to perform binary function
+		b (pytree): Pytree object to perform binary function
+		func (callable): Callable binary function with signature func(a,b)
+	Returns:
+		tree_map (pytree): Return pytree of function call
+	'''
+	return tree_map(func,a,b)
+
+
+@jit
+def tree_dot(a,b):
+	'''
+	Perform dot product function on trees a and b
+	Args:
+		a (pytree): Pytree object to perform dot product function
+		b (pytree): Pytree object to perform dot product function
+	Returns:
+		tree_map (pytree): Return pytree of function call
+	'''
+	@jit
+	def func(a,b):
+		return a.ravel().dot(b.ravel())
+	return tree_func(a,b,func)
+
 
 
 def decorator(*args,**kwargs):
@@ -787,6 +834,14 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 		key = PRNGKey(key)
 	elif isinstance(key,int):
 		key = PRNGKey(key)
+
+	b = len(bounds)
+	for i in range(b):
+		if isinstance(bounds[i],str):
+			if random in ['gaussian','normal']:
+				bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
+			else:
+				bounds[i] = float(bounds)
 
 	if random in ['uniform','rand']:
 		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])

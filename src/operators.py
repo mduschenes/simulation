@@ -61,16 +61,23 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 	d = min(shape)
 
 	if data is None:
-
-		data = (rand(shape)+ 1j*rand(shape))/sqrt(2)
-		# data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)
+		if hyperparameters['initialization'] in ['random']:
+			data = (hyperparameters['scale']/sqrt(2)*( 
+				rand(shape,
+					bounds=hyperparameters['bounds'],
+					random=hyperparameters['random'],
+					key=hyperparameters['seed']) + 
+				1j*
+				rand(shape,
+					bounds=hyperparameters['bounds'],
+					random=hyperparameters['random'],
+					key=hyperparameters['seed'])
+				)
+			)
 
 		Q,R = qr(data);
 		R = diag(diag(R)/abs(diag(R)));
 		data = Q.dot(R)
-
-		# data = (rand(shape)+ 1j*rand(shape))/sqrt(2)
-		# data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)
 
 	elif isinstance(data,str):
 		
@@ -81,8 +88,6 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 			Q,R = qr(data);
 			R = diag(diag(R)/abs(diag(R)));
 			data = Q.dot(R)
-			assert allclose(eye(d),data.conj().T.dot(data))
-			assert allclose(eye(d),data.dot(data.conj().T))
 
 		elif data == 'rank1':
 			data = diag(rand(d))
@@ -169,6 +174,9 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 	if data is None:
 		data = (rand(shape)+ 1j*rand(shape))/sqrt(2)
 		data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)					
+
+	assert allclose(eye(d),data.conj().T.dot(data))
+	assert allclose(eye(d),data.dot(data.conj().T))
 
 	data = data.astype(dtype=dtype)
 

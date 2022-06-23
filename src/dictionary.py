@@ -236,7 +236,7 @@ def updater(iterable,elements,copy=False,clear=False,func=None):
 
 	# Setup func as callable
 	if not callable(func):
-		func = lambda key,iterable,elements: elements[key]
+		func = lambda key,iterable,elements: (elements[key] if isinstance(elements,dict) else elements)
 
 	# Clear iterable if clear and elements is empty dictionary
 	if clear and elements == {}:
@@ -244,18 +244,21 @@ def updater(iterable,elements,copy=False,clear=False,func=None):
 
 	if not isinstance(elements,(dict)):
 		# elements is object and iterable is directly set as elements
-		iterable = elements
+		key = None
+		iterable = copier(key,func(key,iterable,elements),copy)
 		return
 
 	# Recursively update iterable with elements
-	for e in elements:
-		if isinstance(iterable.get(e),dict):
-			if e not in iterable:
-				iterable.update({e: copier(e,func(e,iterable,elements),copy)})
+	for key in elements:
+		if isinstance(iterable.get(key),dict):
+			if key not in iterable:
+				iterable.update({key: copier(key,func(key,iterable,elements),copy)})
+			elif not isinstance(elements[key],dict):
+				iterable[key] = copier(key,func(key,iterable,elements),copy)
 			else:
-				updater(iterable[e],elements[e],copy=copy,clear=clear,func=func)
+				updater(iterable[key],elements[key],copy=copy,clear=clear,func=func)
 		else:
-			iterable.update({e:copier(e,func(e,iterable,elements),copy)})
+			iterable.update({key:copier(key,func(key,iterable,elements),copy)})
 	return
 
 def permuter(dictionary,copy=False,groups=None,ordered=True):
