@@ -1653,6 +1653,9 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
+		# print(parameters.round(3))
+		# print(self.string)
+		# exit()
 		return exponentiation(-1j*self.coefficients*parameters,self.data,self.identity)
 
 
@@ -2744,36 +2747,6 @@ def run(hyperparameters):
 		func = obj.__func__
 
 		parameters = obj.parameters
-		hyperparameters = hyperparameters['hyperparameters']
+		
 
-		g = gradient_fwd(obj)
-		f = gradient_finite(obj,tol=6e-8)
-		a = obj.__derivative__
-
-		#print('derivatives')
-		print(allclose(g(parameters),f(parameters)))
-		print(allclose(g(parameters),a(parameters)))
-		print(allclose(f(parameters),a(parameters)))
-
-		# #print('equal')
-		# #print((g(parameters)-a(parameters))/g(parameters))
-
-		grad = gradient(func)
-		fgrad = gradient_finite(func,tol=5e-8)
-		agrad = obj.__grad__
-
-		#print('gradients')
-		print(allclose(grad(parameters),fgrad(parameters)))
-		print(allclose(grad(parameters),agrad(parameters)))
-
-
-		# #print()
-		# #print(parameters)
-		# #print(obj.__constraints__(parameters))
-		# #print(sigmoid(parameters[:4]))
-		# #print(gradient(lambda x: sigmoid(x,scale=1e4).sum())(parameters[:4]))
-		# #print(grad(parameters))
-		# #print(agrad(parameters))
-
-		# #print(gradient(obj.__constraints__)(parameters))
 	return

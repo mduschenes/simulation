@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['',".."]
+PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
@@ -170,7 +170,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	# Get properties of hyperparameters
 	properties = ['category','group','shape','locality','boundaries','constants','parameters','features','variables','constraints']
 
-	assert all(all(prop in hyperparameters[parameter] for prop in properties) for parameter in hyperparameters), "hyperparameters missing properties"
+	assert all(all(prop in hyperparameters[parameter] for prop in properties) for parameter in hyperparameters), 'hyperparameters missing properties'
 
 	# Get attributes
 	attributes = ['ndim','locality','size','indices','boundaries','constants','shape','slice','parameters','features','variables','values','constraints']

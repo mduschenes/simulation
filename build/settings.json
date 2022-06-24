@@ -24,12 +24,12 @@
 	"test":0
 	},
 "seed":{
-	"seed":111,
+	"seed":1234321,
 	"split":3,
-	"reset":111
+	"reset":1234321
 	},
 "permutations":{
-	"model__M":[10,20,200,400,1000,10000],
+	"model__M":[200],
 	"hyperparameters__iterations":[1000]
 	},
 "model":{
@@ -95,9 +95,9 @@
 		"smoothness":1,	
 		"pad":"random",	
 		"seed":null,		
-		"bounds":{"parameters":[0,1],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
+		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
 		},
 	"z": {
 		"string":"z",

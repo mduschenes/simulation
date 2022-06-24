@@ -75,18 +75,18 @@ def variables(parameters,hyperparameters,parameter,group):
 	scale = [hyperparameters['parameters'][parameter]['scale'],2*pi]
 
 	if parameter in ['xy'] and group in [('x',)]:
-		variable = (
-			scale[0]*parameters[0]*
-			cos(scale[1]*parameters[1])
-		)		
-		# variable = parameters[0]
+		# variable = (
+		# 	scale[0]*parameters[0]*
+		# 	cos(scale[1]*parameters[1])
+		# )		
+		variable = parameters[0]
 
 	elif parameter in ['xy'] and group in [('y',)]:
-		variable = (
-			scale[0]*parameters[0]*
-			sin(scale[1]*parameters[1])
-		)		
-		# variable = parameters[1]
+		# variable = (
+		# 	scale[0]*parameters[0]*
+		# 	sin(scale[1]*parameters[1])
+		# )		
+		variable = parameters[1]
 
 	elif parameter in ['z'] and group in [('z',)]:
 		variable = (
@@ -142,8 +142,8 @@ def features(parameters,hyperparameters,parameter,group):
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		l = 2
 		shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
-		feature = sigmoid(parameters).reshape(shape) 
-		# feature = (parameters).reshape(shape) 
+		# feature = sigmoid(parameters).reshape(shape) 
+		feature = (parameters).reshape(shape) 
 		# feature = array([
 		# 	sigmoid(parameters[0::2]),
 		# 	sigmoid(parameters[1::2])
@@ -435,24 +435,27 @@ def setup(hyperparameters):
 
 	return
 
+
+def functions(hyperparameters):
+
+	if isinstance(hyperparameters,str):
+		hyperparameters = load(hyperparameters)
+
+	assert isinstance(hyperparameters,dict), "hyperparameters is not dict"
+
+	setup(hyperparameters)
+
+	return hyperparameters
+
 def main(args):
 
 	nargs = len(args)
 
 	path = args[0] if nargs>0 else None
 
-	obj = load(path)
+	hyperparameters = functions(path)
 
-	if obj is None:
-		return
-
-	hyperparameters = obj
-
-	setup(hyperparameters)
-
-	run(hyperparameters)
-
-	return
+	return hyperparameters
 
 if __name__ == '__main__':
 	main(sys.argv[1:])

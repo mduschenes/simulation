@@ -24,8 +24,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import user modules
-from utils import jit,value_and_gradient,gradient
-from utils import isnaninf
+from src.utils import jit,value_and_gradient,gradient
+from src.utils import isnaninf
 
 
 def value_and_grad(func,grad=None):
