@@ -61,7 +61,7 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 	d = min(shape)
 
 	if data is None:
-		if hyperparameters['initialization'] in ['random']:
+		if hyperparameters['string'] in ['random','U','haar']:
 			data = (hyperparameters['scale']/sqrt(2)*( 
 				rand(shape,
 					bounds=hyperparameters['bounds'],

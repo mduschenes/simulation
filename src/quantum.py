@@ -597,7 +597,7 @@ class Object(object):
 		self.interaction = []
 		self.indices = []
 		self.size = 0
-		self.shape = (*self.data.shape[0:1],*[self.M],*self.data.shape[1:])
+		self.shape = (self.size,self.M,*self.data.shape[1:])
 
 		self.key = None
 
@@ -706,7 +706,6 @@ class Object(object):
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (dict) : class hyperparameters
 		'''
-
 		for _data,_operator,_site,_string,_interaction in zip(data,operator,site,string,interaction):
 			self.__append__(_data,_operator,_site,_string,_interaction,hyperparameters)
 
@@ -736,7 +735,7 @@ class Object(object):
 		self.interaction.insert(index,interaction)
 
 		self.size = len(self.data)
-		self.shape = (*self.data.shape[0:1],*self.shape[1:2],*self.data.shape[1:])
+		self.shape = (self.size,self.M,*self.data.shape[1:])
 
 		self.hyperparameters.update(hyperparameters)
 
@@ -756,7 +755,7 @@ class Object(object):
 
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
 		data = None
-		shape = self.shape[0:2]		
+		shape = (self.size//self.p,self.M)
 		hyperparams = hyperparameters['parameters']
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
@@ -1071,8 +1070,8 @@ class Object(object):
 		self.T = self.time.T
 		self.p = self.time.p
 		self.tau = self.time.tau
-		self.coefficients = self.tau/self.p
-		self.shape = (*self.data.shape[0:1],*[self.M],*self.data.shape[1:])		
+		self.coefficients = self.tau/self.p		
+		self.shape = (self.size,self.M,*self.shape[2:])	
 
 		return
 
@@ -1552,7 +1551,12 @@ class Hamiltonian(Object):
 		#time = Time
 
 		# Get Trotterized order of p copies of data for products of data
-		data = trotter(data,self.p)
+		p = self.p
+		data = trotter(data,p)
+		operator = trotter(operator,p)
+		site = trotter(site,p)
+		string = trotter(string,p)
+		interaction = trotter(interaction,p)
 
 		#Time = timer()
 		#msg = 'trotter'
@@ -1593,8 +1597,7 @@ class Hamiltonian(Object):
 
 		# Get Trotterized order of copies of variables
 		p = self.p
-		variables = trotter(variables,p)
-
+		variables = array(trotter(variables,p))
 		# Get reshaped variables (transpose for shape (K,M) to (M,K) and reshape to (MK,) with periodicity of data)
 		variables = variables.T.ravel()
 		
@@ -1675,6 +1678,7 @@ class Unitary(Hamiltonian):
 		# Get trotterized shape
 		p = self.p
 		shape = list(shape[::-1])
+
 		shape[-1] *= p
 
 		ndim = len(shape)
@@ -1714,7 +1718,7 @@ class Unitary(Hamiltonian):
 
 		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
 
-		grad = gradient_trotter(grad,p)
+		grad = array(gradient_trotter(grad,p))
 
 		grad = grad[indices]
 
@@ -1756,23 +1760,24 @@ def gradient_distance(a,b,da):
 
 def trotter(a,p):
 	'''
-	Calculate p-order trotter series of array
+	Calculate p-order trotter series of iterable
 	Args:
-		a (array): Array to calculate trotter series
+		a (iterable): Iterable to calculate trotter series
 		p (int): Order of trotter series
 	Returns:
-		out (array): Trotter series of array
+		out (iterable): Trotter series of iterable
 	'''	
-	return array([v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u])
+	# return [v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u]	
+	return [u for i in [1,-1,1,-1][:p] for u in a[::i]]
 
 def gradient_trotter(da,p):
 	'''
-	Calculate gradient of p-order trotter series of array
+	Calculate gradient of p-order trotter series of iterable
 	Args:
-		da (array): Gradient of array to calculate trotter series		
+		da (iterable): Gradient of iterable to calculate trotter series		
 		p (int): Order of trotter series
 	Returns:
-		out (array): Gradient of trotter series of array
+		out (iterable): Gradient of trotter series of iterable
 	'''	
 	n = da.shape[0]//p
 	return sum([da[:n][::i] if i>0 else da[-n:][::i] for i in [1,-1,1,-1][:p]])
@@ -1780,12 +1785,12 @@ def gradient_trotter(da,p):
 
 def invtrotter(a,p):
 	'''
-	Calculate inverse of p-order trotter series of array
+	Calculate inverse of p-order trotter series of iterable
 	Args:
-		a (array): Array to calculate inverse trotter series
+		a (iterable): Iterable to calculate inverse trotter series
 		p (int): Order of trotter series
 	Returns:
-		out (array): Inverse trotter series of array
+		out (iterable): Inverse trotter series of iterable
 	'''	
 	n = a.shape[0]//p
 	return a[:n]
@@ -1854,6 +1859,14 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 						parameters_interp = parameters_interp.at[indices].set(value)
 
 			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
+
+			for axis in range(ndim):
+				for i in constant[axis]:
+					j = shapes[axis] + i if i < 0 else i
+					if j >= slices[axis].start and j < slices[axis].stop:
+						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
+						value = constant[axis][i]			
+						parameters = parameters.at[indices].set(value)
 
 			parameters = minimum(bounds[1],maximum(bounds[0],parameters))
 
@@ -2146,7 +2159,7 @@ def plotter(objects,hyperparameters):
 				'savefig':{
 					'fname':path_join(
 						path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=True,file=False,ext=False,delimiter='.'),
-						'.'.join([*path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=True,ext=False,delimiter='.').split('.')[:-1],'all']),
+						'.'.join([*path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=True,ext=False,delimiter='.').split('.')[:-2],'all']),
 						ext=path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=False,ext=True,delimiter='.'),
 						delimiter='.'
 						)
@@ -2155,11 +2168,18 @@ def plotter(objects,hyperparameters):
 			'ax':{
 				'errorbar':[
 					{
-					'label':r'$%d$'%(objects[key][instances[key][0]].M),
 					**settings.get(attr,{}).get('ax',{}).get('errorbar',{}),
 					**{arg:statistics[attr][arg]['value'][k] for arg in statistics[attr]},
-					**{'ecolor':getattr(plt.cm,'tab10')(k%10)},
-					**{'color':getattr(plt.cm,'tab10')(k%10)},
+					**{
+						prop:r'$%s$'%(str(
+							getattr(objects[key][instances[key][0]],
+									settings.get(attr,{}).get('ax',{}).get('errorbar',{}).get(prop,''))))
+						for prop in ['label']
+						},
+					**{
+						prop:getattr(plt.cm,settings.get(attr,{}).get('ax',{}).get('errorbar',{}).get(prop,''))(k)
+						for prop in ['color','ecolor']
+						},
 					}
 				for k,key in enumerate(keys)
 				]
@@ -2499,11 +2519,7 @@ def check(hyperparameters):
 	updates = {
 		'path': {
 			'value': (lambda hyperparameters: 	{
-				attr: path_join(hyperparameters[section]['directory'][attr],
-								 '.'.join([hyperparameters[section]['file'][attr]]) if attr not in ['config'] else hyperparameters[section]['file'][attr],
-								 ext=hyperparameters[section]['ext'][attr])
-						if isinstance(hyperparameters[section]['file'][attr],str) else
-						{i: path_join(hyperparameters[section]['directory'][attr][i],
+				attr: {i: path_join(hyperparameters[section]['directory'][attr][i],
 								 '.'.join([hyperparameters[section]['file'][attr][i]]) if attr not in ['config'] else hyperparameters[section]['file'][attr][i],							 
 								 ext=hyperparameters[section]['ext'][attr][i])
 						for i in hyperparameters[section]['file'][attr]}
@@ -2625,18 +2641,16 @@ def setup(hyperparameters):
 				'model':{
 					'system':{
 						'key':key,
-						'seed':list(seed),
+						'seed':instance,
 						},
 					},
 				'sys':{
 					'path': {
-						attr: path_join(settings['hyperparameters'][key][instance]['sys']['directory'][attr],
-										 '.'.join([settings['hyperparameters'][key][instance]['sys']['file'][attr],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key][instance]['sys']['file'][attr],
-										 ext=settings['hyperparameters'][key][instance]['sys']['ext'][attr])
-								if isinstance(settings['hyperparameters'][key][instance]['sys']['file'][attr],str) else
-								{i: path_join(settings['hyperparameters'][key][instance]['sys']['directory'][attr][i],
-										 '.'.join([settings['hyperparameters'][key][instance]['sys']['file'][attr][i],*[str(key)]]) if attr not in ['config'] else settings['hyperparameters'][key][instance]['sys']['file'][attr][i],							 
-										 ext=settings['hyperparameters'][key][instance]['sys']['ext'][attr][i])
+						attr:   {i: path_join(settings['hyperparameters'][key][instance]['sys']['directory'][attr][i],
+									'.'.join([settings['hyperparameters'][key][instance]['sys']['file'][attr][i],
+										*[str(key),str(instance)]]) 
+									if attr not in ['config'] else settings['hyperparameters'][key][instance]['sys']['file'][attr][i],							 
+									 ext=settings['hyperparameters'][key][instance]['sys']['ext'][attr][i])
 								for i in settings['hyperparameters'][key][instance]['sys']['file'][attr]}
 						for attr in settings['hyperparameters'][key][instance]['sys']['file']			 
 						},
@@ -2737,9 +2751,9 @@ def run(hyperparameters):
 		a = obj.__derivative__
 
 		#print('derivatives')
-		#print(allclose(g(parameters),f(parameters)))
-		#print(allclose(g(parameters),a(parameters)))
-		#print(allclose(f(parameters),a(parameters)))
+		print(allclose(g(parameters),f(parameters)))
+		print(allclose(g(parameters),a(parameters)))
+		print(allclose(f(parameters),a(parameters)))
 
 		# #print('equal')
 		# #print((g(parameters)-a(parameters))/g(parameters))
@@ -2749,8 +2763,8 @@ def run(hyperparameters):
 		agrad = obj.__grad__
 
 		#print('gradients')
-		#print(allclose(grad(parameters),fgrad(parameters)))
-		#print(allclose(grad(parameters),agrad(parameters)))
+		print(allclose(grad(parameters),fgrad(parameters)))
+		print(allclose(grad(parameters),agrad(parameters)))
 
 
 		# #print()

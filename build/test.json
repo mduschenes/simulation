@@ -1,35 +1,42 @@
 {
 "sys":{
 	"directory":{
-		"data":{"data":"output"},
-		"plot":{"parameters":"output","objective":"output","label":"output"},
-		"config":{"settings":"output","mplstyle":"config"}
-	},
+		"data":{"data":"output","settings":"output"},
+		"plot":{"parameters":"output","objective":"output","label":"output","overparameterization":"output","iteration":"output"},
+		"config":{"settings":"config","plot":"config","mplstyle":"config"}
+		},
 	"file":{
-		"data":{"data":"data"},
-		"plot":{"parameters":"parameters","objective":"objective","label":"label"},
-		"config":{"settings":"settings","mplstyle":"plot"}
-	},
+		"data":{"data":"data","settings":"settings"},
+		"plot":{"parameters":"parameters","objective":"objective","label":"label","overparameterization":"overparameterization","iteration":"iteration"},
+		"config":{"settings":"settings","plot":"plot","mplstyle":"plot"}
+		},
 	"ext":{
-		"data":{"data":"pkl"},
-		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf"},
-		"config":{"settings":"json","mplstyle":"mplstyle"}
-	}
-},
+		"data":{"data":"pkl","settings":"json"},
+		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","overparameterization":"pdf","iteration":"pdf"},
+		"config":{"settings":"json","plot":"json","mplstyle":"mplstyle"}
+		}
+	},
 "boolean":{
-	"train":1,
+	"train":0,
 	"load":0,
-	"dump":1,
-	"plot":1,
-	"test":0
-},
+	"dump":0,
+	"plot":0,
+	"test":1
+	},
+"seed":{
+	"seed":111,
+	"split":1,
+	"reset":111
+	},
+"permutations":{
+	},
 "model":{
-	"N":5,
+	"N":4,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":11,
+	"M":20,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -43,21 +50,19 @@
 		"seed":null,
 		"device":"cpu",
 		"verbose":"info"
-	}
-},
+		}
+	},
 "hyperparameters":{
-	"iterations":10,
-	"runs":1,
+	"iterations":200,
 	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
-	"label":"gate",
+	"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
 	"optimizer":"cg",
-	"seed":12321,
-	"eps":1e-5,
+	"eps":1e-2,
 	"tol":1e-12,
 	"scale":1,
 	"value":1,
 	"status":1,
-	"interpolation":3,"smoothness":1,"init":[0,1],
+	"interpolation":3,"smoothness":1,
 	"initialization":"interpolation","random":"normal","pad":"random",
 	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":1e6,
 	"sigmoid":1e4,"alpha":1e-4,"beta":1e-1,
@@ -71,53 +76,32 @@
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[],"lambda":[],
 		"parameters":[]
-	}
-},
-"parameters":{
-	"xy_024": {
-		"name":"xy_024",
-		"category":"variable",
-		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},		
-		"parameters":null,
-		"shape":{"parameters":[-5,-1],"features":[5,-1,-1],"variables":[-1,-1]},
-		"group":[["x_0","x_2","x_4"],["y_0","y_2","y_4"]],
-		"scale":1,
-		"initialization":"interpolation",
-		"random":"uniform",
-		"interpolation":3,
-		"smoothness":3,	
-		"pad":"random",	
-		"seed":null,		
-		"init":[0,1],
-		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
-		"boundaries":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":-3,"-1":3}],"variables":[{},{"0":0,"-1":0}]},
-		"constants":{"parameters":[{},{"0":2,"-1":-2}],"features":[{},{},{"0":3,"-1":-1}],"variables":[{},{"0":0,"-1":0}]}
+		}
 	},
-	"xy_13": {
-		"name":"xy_13",
+"parameters":{
+	"xy": {
+		"string":"xy",
 		"category":"variable",
-		"locality":{"parameters":["global","local"],"features":["global","local","local"],"variables":["local","local"]},		
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},				
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
-		"group":[["x_1","x_3"],["y_1","y_3"]],
+		"group":[["x"],["y"]],
 		"scale":1,
 		"initialization":"interpolation",
 		"random":"uniform",
-		"interpolation":3,
-		"smoothness":3,	
+		"interpolation":2,
+		"smoothness":1,	
 		"pad":"random",	
 		"seed":null,		
-		"init":[0,1],
-		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[0,1],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"boundaries":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":-3,"-1":3}],"variables":[{},{"0":0,"-1":0}]},
-		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":2,"-1":0}],"variables":[{},{"0":2,"-1":-1}]}
-	},	
+		"constants":{"parameters":[{},{"0":0,"-1":0}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
+		},
 	"z": {
-		"name":"z",
+		"string":"z",
 		"category":"constant",
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},				
-		"parameters":[-0.1,0.22,0.1,0.05],
+		"parameters":[-0.1,0,0.1,0.05,-0.2],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["z"]],
 		"scale":1,
@@ -127,16 +111,15 @@
 		"smoothness":1,	
 		"pad":"random",	
 		"seed":null,
-		"init":[0,1],		
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
-	},
+		},
 	"zz": {
-		"name":"zz",
+		"string":"zz",
 		"category":"constant",
-		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},				
-		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003],
+		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},		
+		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
@@ -146,20 +129,89 @@
 		"smoothness":1,	
 		"pad":"random",
 		"seed":null,	
-		"init":[0,1],	
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
-	}
-},
+		}
+	},
 "data":{
 	"data":{
-		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
-		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"},		
 		"x":{"operator":["X"],"site":["i"],"string":"x","interaction":"i"},
-		"y":{"operator":["Y"],"site":["i"],"string":"y","interaction":"i"}
+		"y":{"operator":["Y"],"site":["i"],"string":"y","interaction":"i"},
+		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
+		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
+		}
+	},
+"label": {
+	"string":"U",
+	"category":"constant",
+	"parameters":null,
+	"shape":[-1,-1],
+	"scale":1,
+	"initialization":"random",
+	"random":"random",
+	"seed":null,
+	"bounds":[-1,1]
+	},
+"plot":{
+	"objective":{
+		"fig":{
+			"set_size_inches":{"w":8,"h":8},
+			"subplots_adjust":{},
+			"tight_layout":{},
+			"savefig":{"fname":null,"bbox_inches":"tight"},
+			"close":{}
+			},
+		"ax":{
+			"errorbar":{
+				"x":"iteration",
+				"y":"objective",
+				"yerr":"objective",
+				"label":"M",
+				"fmt":"--o",
+				"color":"tab10",
+				"ecolor":"tab10",
+				"elinewidth":2,
+				"capsize":3
+				},
+			"set_ylabel":{"ylabel":"$\\textrm{Objective}$"},
+			"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
+			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
+			"set_xnbins":{"nbins":4},
+			"set_ynbins":{"nbins":5},
+			"set_yscale":{"value":"log","base":10},
+			"set_ylim":{"ymin":5e-1,"ymax":1.05e0},
+			"set_yticks":{"ticks":[5e-1,6e-1,8e-1,1e0]},
+			"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
+			"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,2]},
+			"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
+			"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
+			"tick_params":[
+				{"axis":"y","which":"major","length":8,"width":1},
+				{"axis":"y","which":"minor","length":4,"width":0.5},
+				{"axis":"x","which":"major","length":8,"width":1},
+				{"axis":"x","which":"minor","length":4,"width":0.5}
+				],
+			"set_aspect":{"aspect":"auto"},
+			"grid":{"visible":true,"which":"both","axis":"both"},
+			"legend":{
+				"title_fontsize": 20,
+				"prop": {"size": 20},
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": "lower right",
+				"ncol": 2,
+				"set_zorder":{"level":100}
+				}			
+			},
+		"style":{
+			"texify":null,
+			"mplstyle":"plot.mplstyle",	
+			"rcParams":{"font.size":25},
+			"layout":{"nrows":1,"ncols":1,"index":1},
+			"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
+			}
+		}
 	}
-},
-"label": null,
-"permutations":{"model__M":[16,32,64,128,256,512],"hyperparameters__iterations":[8,16,64,128,256,512]}
 }

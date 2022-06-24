@@ -75,16 +75,18 @@ def variables(parameters,hyperparameters,parameter,group):
 	scale = [hyperparameters['parameters'][parameter]['scale'],2*pi]
 
 	if parameter in ['xy'] and group in [('x',)]:
-		variable = (
-			scale[0]*parameters[0]*
-			cos(scale[1]*parameters[1])
-		)		
+		# variable = (
+		# 	scale[0]*parameters[0]*
+		# 	cos(scale[1]*parameters[1])
+		# )		
+		variable = parameters[0]
 
 	elif parameter in ['xy'] and group in [('y',)]:
-		variable = (
-			scale[0]*parameters[0]*
-			sin(scale[1]*parameters[1])
-		)		
+		# variable = (
+		# 	scale[0]*parameters[0]*
+		# 	sin(scale[1]*parameters[1])
+		# )		
+		variable = parameters[1]
 
 	elif parameter in ['z'] and group in [('z',)]:
 		variable = (
@@ -140,8 +142,8 @@ def features(parameters,hyperparameters,parameter,group):
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		l = 2
 		shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
-		feature = sigmoid(parameters).reshape(shape) 
-		# feature = (parameters).reshape(shape) 
+		# feature = sigmoid(parameters).reshape(shape) 
+		feature = (parameters).reshape(shape) 
 		# feature = array([
 		# 	sigmoid(parameters[0::2]),
 		# 	sigmoid(parameters[1::2])
@@ -226,7 +228,8 @@ def constraints(parameters,hyperparameters,parameter,group):
 		constraint = (
 			# (scale[0]*(parameters[...,[i for i in constants]] - array([constants[i] for i in constants])**2).sum())
 			# (scale[0]*((parameters[0,...,[i for i in constants]])**2).sum())
-			(scale[0]*(parameters[0,...,[i for i in constants]]**2).sum())
+			# (scale[0]*(parameters[0,...,[i for i in constants]]**2).sum())
+			0
 			)
 		# constraint = (
 		# 	((scale[0]*sigmoid(parameters[0][:m] - 1/cosh(linspace(0,m,m))[::-1,None])) +

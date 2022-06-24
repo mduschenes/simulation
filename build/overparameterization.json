@@ -24,12 +24,12 @@
 	"test":0
 	},
 "seed":{
-	"seed":1234321,
-	"split":2,
-	"reset":1234321
+	"seed":111,
+	"split":3,
+	"reset":111
 	},
 "permutations":{
-	"model__M":[200,400],
+	"model__M":[20,200,400,1000,10000],
 	"hyperparameters__iterations":[1000]
 	},
 "model":{
@@ -84,7 +84,7 @@
 	"xy": {
 		"name":"xy",
 		"category":"variable",
-		"locality":{"parameters":["global","local"],"features":["local","local","local"],"variables":["local","local"]},				
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},				
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -164,10 +164,13 @@
 			},
 		"ax":{
 			"errorbar":{
-				"x":null,
-				"y":null,
+				"x":"iteration",
+				"y":"objective",
+				"yerr":"objective",
+				"label":"M",
 				"fmt":"--o",
-				"ecolor":"k",
+				"color":"tab10",
+				"ecolor":"tab10",
 				"elinewidth":2,
 				"capsize":3
 				},
