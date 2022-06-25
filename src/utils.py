@@ -814,7 +814,7 @@ def PRNGKey(seed=None,split=False,reset=None):
 	return key
 
 
-def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
+def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 	'''
 	Get random array
 	Args:
@@ -822,6 +822,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
+		dtype (data_type): Datatype of array		
 	Returns:
 		out (array): Random array
 	'''	
@@ -843,6 +844,9 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 			else:
 				bounds[i] = float(bounds)
 
+	if iscomplexdtype(dtype):
+		shape = (2,*shape)
+
 	if random in ['uniform','rand']:
 		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
 	elif random in ['randint']:
@@ -855,6 +859,11 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform'):
 		out = ones(shape)		
 	else:
 		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
+
+	if iscomplexdtype(dtype):
+		out = out[0] + 1j*out[1]
+
+	out = out.astype(dtype)
 
 	return out
 
@@ -2578,6 +2587,55 @@ def isnan(a,*args,**kwargs):
 		out (bool): If array is nan
 	'''
 	return np.isnan(a)
+
+
+def isrealdtype(dtype,*args,**kwargs):
+	'''
+	Check if dtype is real
+	Args:
+		dtype (data_type): Datatype to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If dtype is real
+	'''
+	return isintdtype(dtype,*args,**kwargs) or isfloatdtype(dtype,*args,**kwargs)
+
+def isintdtype(dtype,*args,**kwargs):
+	'''
+	Check if dtype is integer
+	Args:
+		dtype (data_type): Datatype to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If dtype is integer
+	'''
+	return np.issubdtype(dtype, np.integer)
+
+def isfloatdtype(dtype,*args,**kwargs):
+	'''
+	Check if dtype is floating
+	Args:
+		dtype (data_type): Datatype to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If dtype is floating
+	'''
+	return np.issubdtype(dtype, np.floating)
+
+def iscomplexdtype(dtype,*args,**kwargs):
+	'''
+	Check if dtype is complex
+	Args:
+		dtype (data_type): Datatype to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If dtype is complex
+	'''
+	return np.issubdtype(dtype, np.complexfloating)
 
 def islist(a,*args,**kwargs):
 	'''

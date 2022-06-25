@@ -44,6 +44,111 @@ from src.utils import itg,flt,dbl
 
 from src.io import load,dump,path_join,path_split
 
+def haar(shape,bounds,random,seed,dtype):
+	'''
+	Initialize haar random unitary operator
+	Args:
+		shape (iterable[int]): Shape of operator
+		bounds (iterable): Bounds on operator value
+		random (str): Type of random value
+		seed (int,key): Seed for random number generator
+		dtype (data_type): Data type of operator
+	Returns:
+		data (array): Array of operator
+	'''
+	data = rand(shape
+		bounds=hyperparameters['bounds'],
+		random=hyperparameters['random'],
+		key=hyperparameters['seed'],
+		dtype=dtype)
+	data /= sqrt(2)
+
+	Q,R = qr(data)
+	R = diag(R)
+	R = diag(R/abs(R))
+	
+	data = Q.dot(R)
+
+	data = data.astype(dtype)
+
+	return data
+
+
+
+def cnot(shape,bounds,random,seed,dtype):
+	'''
+	Initialize cnot unitary operator
+	Args:
+		shape (iterable[int]): Shape of operator
+		bounds (iterable): Bounds on operator value
+		random (str): Type of random value
+		seed (int,key): Seed for random number generator
+		dtype (data_type): Data type of operator
+	Returns:
+		data (array): Array of operator
+	'''
+	
+	data = array([
+		[1,0,0,0],
+		[0,1,0,0],
+		[0,0,0,1],
+		[0,0,1,0]])
+
+	data = data.astype(dtype)
+
+	return data
+
+
+def hadamard(shape,bounds,random,seed,dtype):
+	'''
+	Initialize hadamard unitary operator
+	Args:
+		shape (iterable[int]): Shape of operator
+		bounds (iterable): Bounds on operator value
+		random (str): Type of random value
+		seed (int,key): Seed for random number generator
+		dtype (data_type): Data type of operator
+	Returns:
+		data (array): Array of operator
+	'''
+	
+	data = array([
+		[1,1,],
+		[1,-1]])/sqrt(2)
+
+	data = data.astype(dtype)
+
+	return data	
+
+
+def toffoli(shape,bounds,random,seed,dtype):
+	'''
+	Initialize toffoli unitary operator
+	Args:
+		shape (iterable[int]): Shape of operator
+		bounds (iterable): Bounds on operator value
+		random (str): Type of random value
+		seed (int,key): Seed for random number generator
+		dtype (data_type): Data type of operator
+	Returns:
+		data (array): Array of operator
+	'''
+	
+	data = array([
+		[1,0,0,0,0,0,0,0],
+		[0,1,0,0,0,0,0,0],
+		[0,0,1,0,0,0,0,0],
+		[0,0,0,1,0,0,0,0],
+		[0,0,0,0,1,0,0,0],
+		[0,0,0,0,0,1,0,0],
+		[0,0,0,0,0,0,0,1],
+		[0,0,0,0,0,0,1,0]])
+
+	data = data.astype(dtype)
+
+	return data	
+
+
 def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 	'''
 	Initialize operators
@@ -60,125 +165,54 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 	# Dimension of data
 	d = min(shape)
 
+	# Delimiter for string
+	delimiter = '_'
+
+	# Properties for strings
+	props = {
+		**{string: {'func':haar,'locality':index} for string in ['random','U','haar']},
+		**{string: {'func':hadamard,'locality':1} for string in ['hadamard','H']},
+		**{string: {'func':cnot,'locality':2} for string in ['cnot','CNOT','C']},
+		**{string: {'func':toffoli,'locality':3} for string in ['toffoli','TOFFOLI','T']},
+		None: {'func':haar,'locality':index},
+		}
+
+
 	if data is None:
-		if hyperparameters['string'] in ['random','U','haar']:
-			data = (hyperparameters['scale']/sqrt(2)*( 
-				rand(shape,
-					bounds=hyperparameters['bounds'],
-					random=hyperparameters['random'],
-					key=hyperparameters['seed']) + 
-				1j*
-				rand(shape,
-					bounds=hyperparameters['bounds'],
-					random=hyperparameters['random'],
-					key=hyperparameters['seed'])
-				)
-			)
-
-		Q,R = qr(data);
-		R = diag(diag(R)/abs(diag(R)));
-		data = Q.dot(R)
-
+		string = hyperparameters['string']
 	elif isinstance(data,str):
-		
-		if data == 'random':
-			data = (rand(shape)+ 1j*rand(shape))/sqrt(2)
-			# data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)
+		string = data
+	elif isinstance(data,array):
+		string = None
 
-			Q,R = qr(data);
-			R = diag(diag(R)/abs(diag(R)));
-			data = Q.dot(R)
+	if string is None or isinstance(string,str):
 
-		elif data == 'rank1':
-			data = diag(rand(d))
-			I = eye(d)
-			r = 4*index
-			k = rand(shape=(r,2),bounds=[0,d],random='randint')
-			for j in range(r):
-				v = outer(I[k[j,0]],I[k[j,1]].T)
-				c = (rand()+ 1j*rand())/sqrt(2)
-				v = (v + (v.T))
-				v = (c*v + c.conj()*(v.T))
-				data += v
-			data = sp.linalg.expm(-1j*data)
-
-		elif data == 'gate':
-			data = {
-				2: array([[1,0,0,0],
-						   [0,1,0,0],
-						   [0,0,0,1],
-						   [0,0,1,0]]),
-				# 2: tensorprod(((1/sqrt(2)))*array(
-				# 		[[[1,1],
-				# 		  [1,-1]]]*2)),
-				# 2: array([[1,0,0,0],
-				# 		   [0,1,0,0],
-				# 		   [0,0,1,0],
-				# 		   [0,0,0,1]]),					   		
-				# 2: tensorprod(((1/sqrt(2)))*array(
-				# 		[[[1,1],
-				# 		  [1,-1]],
-				# 		 [[1,1],
-				# 		  [1,-1]],
-				# 		  ])),
-				3: tensorprod(((1/sqrt(2)))*array(
-						[[[1,1],
-						  [1,-1]]]*3)),
-				3: array([[1,0,0,0,0,0,0,0],
-						   [0,1,0,0,0,0,0,0],
-						   [0,0,1,0,0,0,0,0],
-						   [0,0,0,1,0,0,0,0],
-						   [0,0,0,0,1,0,0,0],
-						   [0,0,0,0,0,1,0,0],
-						   [0,0,0,0,0,0,0,1],
-						   [0,0,0,0,0,0,1,0]]),
-				4: tensorprod(
-					array(
-						[tensorprod((1/sqrt(2))*array(
-							[[[1,1],
-							  [1,-1]]]*2)),
-						[[1,0,0,0],
-						[0,1,0,0],
-						[0,0,0,1],
-						[0,0,1,0]]
-					])
-					),					
-				# 4: tensorprod(((1/sqrt(2)))*array(
-				# 		[[[1,1],
-				# 		  [1,-1]],
-				# 		 [[1,1],
-				# 		  [1,-1]],
-				# 		  [[1,1],
-				# 		  [1,-1]],
-				# 		 [[1,1],
-				# 		  [1,-1]],							  
-				# 		 ])),	
-				# 4: tensorprod(array([[[1,0,0,0],
-				# 		   [0,1,0,0],
-				# 		   [0,0,0,1],
-				# 		   [0,0,1,0]]]*2)),	
-				# 4: tensorprod(array([[[1,0,0,0],
-				# 		   [0,1,0,0],
-				# 		   [0,0,1,0],
-				# 		   [0,0,0,1]]]*2)),						   		 
-				}.get(index)
+		if string is None:
+			strings = [string]
+		elif all(string in props for string in string.split(delimiter))
+			strings = string.split(delimiter)
 		else:
-			try:
-				data = array(load(data))
-			except:
-				data = (rand(shape)+ 1j*rand(shape))/sqrt(2)
-				data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)					
-	else:
-		data = array(data)
+			strings = None
 
-	if data is None:
-		data = (rand(shape)+ 1j*rand(shape))/sqrt(2)
-		data = sp.linalg.expm(-1j*(data + data.conj().T)/2.0/d)					
-
+		if string is not None:
+			data = tensorprod(array([
+				props[string]['func'](shape,
+					bounds=hyperparameters['bounds'],
+					random=hyperparameters['random'],
+					seed=hyperparameters['seed'],
+					dtype=dtype
+					)
+				for string in strings
+				]*index//sum(props[string]['locality'] for string in strings))
+			)
+		else:
+			data = array(load(data))
+	
+	# Assert data is unitary
 	assert allclose(eye(d),data.conj().T.dot(data))
 	assert allclose(eye(d),data.dot(data.conj().T))
 
+	# Set dtype of data
 	data = data.astype(dtype=dtype)
-
 
 	return data

@@ -142,54 +142,13 @@ def features(parameters,hyperparameters,parameter,group):
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		l = 2
 		shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
-		feature = sigmoid(parameters).reshape(shape) 
-		# feature = (parameters).reshape(shape) 
-		# feature = array([
-		# 	sigmoid(parameters[0::2]),
-		# 	sigmoid(parameters[1::2])
-		# ])
+		feature = bound(parameters,hyperparameters).reshape(shape) 
 
 	elif parameter in ['z'] and group in [('z',)]:
 		feature = parameters[None,...]
 
 	elif parameter in ['zz'] and group in [('zz',)]:
 		feature = parameters[None,...]
-
-	elif parameter in ['xy_024'] and group in [('x_0','x_2','x_4')]:
-		l = 5
-		shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
-		feature = sigmoid(parameters).reshape(shape) 
-		# feature = array([		
-		# 	sigmoid(parameters[0::5]),
-		# 	sigmoid(parameters[1::5]),
-		# 	sigmoid(parameters[2::5]),
-		# 	sigmoid(parameters[3::5]),						
-		# 	sigmoid(parameters[4::5]),						
-		# ])		
-
-	elif parameter in ['xy_024'] and group in [('y_0','y_2','y_4')]:
-		l = 5
-		shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
-		feature = sigmoid(parameters).reshape(shape) 		
-		# feature = array([
-		# 	sigmoid(parameters[0::5]),
-		# 	sigmoid(parameters[1::5]),
-		# 	sigmoid(parameters[2::5]),
-		# 	sigmoid(parameters[3::5]),						
-		# 	sigmoid(parameters[4::5]),						
-		# ])		
-
-	elif parameter in ['xy_13'] and group in [('x_1','x_3')]:
-		feature = array([
-			sigmoid(parameters[0::2]),
-			sigmoid(parameters[1::2])
-		])
-
-	elif parameter in ['xy_13'] and group in [('y_1','y_3')]:
-		feature = array([
-			sigmoid(parameters[0::2]),
-			sigmoid(parameters[1::2])
-		])
 
 	return feature
 
@@ -224,12 +183,11 @@ def constraints(parameters,hyperparameters,parameter,group):
 	scale = hyperparameters['hyperparameters']['lambda']
 	constants = hyperparameters['parameters'][parameter]['constants']['features'][-1]
 
+
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		constraint = (
 			# (scale[0]*(parameters[...,[i for i in constants]] - array([constants[i] for i in constants])**2).sum())
-			# (scale[0]*((parameters[0,...,[i for i in constants]])**2).sum())
-			# (scale[0]*(parameters[0,...,[i for i in constants]]**2).sum())
-			0
+			(scale[0]*(parameters[0,...,[i for i in constants]]**2).sum())
 			)
 		# constraint = (
 		# 	((scale[0]*sigmoid(parameters[0][:m] - 1/cosh(linspace(0,m,m))[::-1,None])) +

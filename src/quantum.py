@@ -47,6 +47,7 @@ from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
 
 from src.dictionary import updater,getter,setter,permuter
+from src.dictionary import branches,leaves,counts
 
 from src.parameters import parameterize
 from src.operators import operatorize
@@ -935,37 +936,37 @@ class Object(object):
 		'''	
 
 
-		self.hyperparameters['hyperparameters']['track']['objective'].append(
-			# 1-self.hyperparameters['hyperparameters']['track']['value'][-1] + self.__constraints__(parameters)
+		self.hyperparameters['optimize']['track']['objective'].append(
+			# 1-self.hyperparameters['optimize']['track']['value'][-1] + self.__constraints__(parameters)
 			self.__objective__(parameters)
 			)
 
-		if self.hyperparameters['hyperparameters']['track']['iteration'][-1]%self.hyperparameters['hyperparameters']['track']['track']['log'] == 0:			
+		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['track']['track']['log'] == 0:			
 
-			self.hyperparameters['hyperparameters']['track']['parameters'].append(copy.deepcopy(parameters))		
+			self.hyperparameters['optimize']['track']['parameters'].append(copy.deepcopy(parameters))		
 
 			self.log('%d f(x) = %0.10f'%(
-				self.hyperparameters['hyperparameters']['track']['iteration'][-1],
-				self.hyperparameters['hyperparameters']['track']['objective'][-1],
+				self.hyperparameters['optimize']['track']['iteration'][-1],
+				self.hyperparameters['optimize']['track']['objective'][-1],
 				)
 			)
 
 			self.log('|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
-				norm(self.hyperparameters['hyperparameters']['track']['parameters'][-1])/self.hyperparameters['hyperparameters']['track']['parameters'][-1].size,
-				norm(self.hyperparameters['hyperparameters']['track']['grad'][-1])/self.hyperparameters['hyperparameters']['track']['grad'][-1].size,
+				norm(self.hyperparameters['optimize']['track']['parameters'][-1])/self.hyperparameters['optimize']['track']['parameters'][-1].size,
+				norm(self.hyperparameters['optimize']['track']['grad'][-1])/self.hyperparameters['optimize']['track']['grad'][-1].size,
 				)
 			)
 
 			self.log('\t\t'.join([
-				'%s = %0.4e'%(attr,self.hyperparameters['hyperparameters']['track'][attr][-1])
+				'%s = %0.4e'%(attr,self.hyperparameters['optimize']['track'][attr][-1])
 				for attr in ['alpha','beta']
-				if attr in self.hyperparameters['hyperparameters']['track'] and len(self.hyperparameters['hyperparameters']['track'][attr])>0
+				if attr in self.hyperparameters['optimize']['track'] and len(self.hyperparameters['optimize']['track'][attr])>0
 				])
 			)
 
 			# self.log('x = \n%r \ngrad(x) = \n%r'%(
-			# 	self.hyperparameters['hyperparameters']['track']['parameters'][-1],
-			# 	self.hyperparameters['hyperparameters']['track']['search'][-1],
+			# 	self.hyperparameters['optimize']['track']['parameters'][-1],
+			# 	self.hyperparameters['optimize']['track']['search'][-1],
 			# 	)
 			# )
 
@@ -984,10 +985,10 @@ class Object(object):
 
 
 		status = (
-			(abs(self.hyperparameters['hyperparameters']['track']['objective'][-1] - self.hyperparameters['hyperparameters']['value']) > 
-				 self.hyperparameters['hyperparameters']['eps']*self.hyperparameters['hyperparameters']['value']) and
-			(norm(self.hyperparameters['hyperparameters']['track']['grad'][-1])/self.hyperparameters['hyperparameters']['track']['grad'][-1].size > 
-				  self.hyperparameters['hyperparameters']['tol'])
+			(abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['value']['objective']) > 
+				 self.hyperparameters['optimize']['eps']['objective']*self.hyperparameters['optimize']['value']['objective']) and
+			(norm(self.hyperparameters['optimize']['track']['grad'][-1] - self.hyperparameters['optimize']['value']['grad'])/self.hyperparameters['optimize']['track']['grad'][-1].size > 
+				  self.hyperparameters['optimize']['eps']['grad'])
 			)
 
 		# self.log('status = %d\n'%(status))
@@ -1204,7 +1205,7 @@ class Object(object):
 					for axis in range(ndim)])
 
 		# Get number of iterations
-		size = hyperparameters['hyperparameters']['track']['size']
+		size = hyperparameters['optimize']['track']['size']
 
 		# Get plot config
 		attr = 'mplstyle'
@@ -1240,7 +1241,7 @@ class Object(object):
 		if iteration >= size:
 			parameters0 = parameters
 		else:
-			parameters0 = hyperparameters['hyperparameters']['track'][attr][iteration]
+			parameters0 = hyperparameters['optimize']['track'][attr][iteration]
 		parameters0 = self.__layers__(parameters0,layer)
 
 		parameters0 = parameters0[indices]
@@ -1263,7 +1264,7 @@ class Object(object):
 				if iteration >= size:
 					parameters = parameters
 				else:
-					parameters = hyperparameters['hyperparameters']['track'][attr][iteration]
+					parameters = hyperparameters['optimize']['track'][attr][iteration]
 				parameters = self.__layers__(parameters,layer)
 
 				parameters = parameters[indices]
@@ -1346,8 +1347,8 @@ class Object(object):
 			elif ax is None:
 				ax = fig.gca()
 
-			x = hyperparameters['hyperparameters']['track']['iteration']
-			y = hyperparameters['hyperparameters']['track'][attr]
+			x = hyperparameters['optimize']['track']['iteration']
+			y = hyperparameters['optimize']['track'][attr]
 
 			plots = ax.plot(x,y,linewidth=4,marker='o',markersize=10)
 
@@ -1552,7 +1553,7 @@ class Hamiltonian(Object):
 
 		# Get Trotterized order of p copies of data for products of data
 		p = self.p
-		data = trotter(data,p)
+		data = array(trotter(data,p))
 		operator = trotter(operator,p)
 		site = trotter(site,p)
 		string = trotter(string,p)
@@ -1912,19 +1913,19 @@ def plotter(objects,hyperparameters):
 		'objective':{
 			'x':{
 				'key':'iteration',
-				'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key])),
+				'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key])),
 				'value':None,
 				'func': lambda value: arange(value.shape[2])[None,...]
 			},
 			'y':{
 				'key':'objective',
-				'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key])),
+				'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key])),
 				'value':None,
 				'func': lambda value: value.mean(1),				
 			},
 			'yerr':{
 				'key':'objective',
-				'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key])),
+				'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key])),
 				'value':None,
 				'func': lambda value: value.std(1),				
 			},
@@ -1932,19 +1933,19 @@ def plotter(objects,hyperparameters):
 		# 'parameters':{
 		# 	'x':{
 		# 		'key':'M',
-		# 		'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key]),),				
+		# 		'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key]),),				
 		# 		'value':None,
 		# 		'func': lambda value: value.mean(1),
 		# 	},
 		# 	'y':{
 		# 		'key':'parameters',
-		# 		'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key]),),
+		# 		'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key]),),
 		# 		'value':None,
 		# 		'func': lambda value: value.mean(1),				
 		# 	},
 		# 	'yerr':{
 		# 		'key':'parameters',
-		# 		'shape':(*shape,max(hyperparameters[key][instance]['hyperparameters']['track']['size'] for key in keys for instance in instances[key]),),
+		# 		'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key]),),
 		# 		'value':None,
 		# 		'func': lambda value: value.std(1),				
 		# 	},
@@ -2031,8 +2032,8 @@ def plotter(objects,hyperparameters):
 				**{attr:{
 					arg:{
 						'shape':(),
-						'slice': tuple((k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size']))),
-						'_slice': tuple((k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'],None))),
+						'slice': tuple((k,i,slice(hyperparameters[key][instance]['optimize']['track']['size']))),
+						'_slice': tuple((k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'],None))),
 						'func': lambda value,*args,**kwargs:value,						
 						'args':(),
 						'kwargs':{},
@@ -2044,8 +2045,8 @@ def plotter(objects,hyperparameters):
 				# **{attr:{
 				# 	arg:{
 				# 		'shape':(obj.parameters.shape),
-				# 		'slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'])),
-				# 		'_slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'],None)),
+				# 		'slice': tuple(k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'])),
+				# 		'_slice': tuple(k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'],None)),
 						# 'func':lambda value,obj,layer,indices: (
 						# 	((obj.__layers__(value[-1],layer)[indices] - 
 						# 	obj.__layers__(value[0],layer)[indices])/(
@@ -2087,8 +2088,8 @@ def plotter(objects,hyperparameters):
 				# **{attr:{
 				# 	arg:{
 				# 		'shape':(*statistics[attr][arg]['shape'][:2],*[1,]),
-				# 		'slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'])),
-				# 		'_slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'],None)),
+				# 		'slice': tuple(k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'])),
+				# 		'_slice': tuple(k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'],None)),
 				# 		'kwargs':{}						
 				# 		}
 				# 	for arg in statistics[attr]
@@ -2098,8 +2099,8 @@ def plotter(objects,hyperparameters):
 				# **{attr:{
 				# 	arg:{
 				# 		'shape':(*statistics[attr][arg]['shape'][:2],*[1,]),
-				# 		'slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'])),
-				# 		'_slice': tuple(k,i,slice(hyperparameters[key][instance]['hyperparameters']['track']['size'],None)),
+				# 		'slice': tuple(k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'])),
+				# 		'_slice': tuple(k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'],None)),
 				# 		'kwargs':{}						
 				# 		}
 				# 	for arg in statistics[attr]
@@ -2116,17 +2117,17 @@ def plotter(objects,hyperparameters):
 
 			for attr in statistics:
 				for arg in statistics[attr]:				
-					if statistics[attr][arg]['key'] in hyperparameters[key][instance]['hyperparameters']['track']:
+					if statistics[attr][arg]['key'] in hyperparameters[key][instance]['optimize']['track']:
 						statistics[attr][arg]['value'] = statistics[attr][arg]['value'].at[stats[attr][arg]['slice']].set(
 							stats[attr][arg]['func'](
-								hyperparameters[key][instance]['hyperparameters']['track'][statistics[attr][arg]['key']],
+								hyperparameters[key][instance]['optimize']['track'][statistics[attr][arg]['key']],
 								*stats[attr][arg]['args'],
 								**stats[attr][arg]['kwargs']
 								)
 							)
 						statistics[attr][arg]['value'] = statistics[attr][arg]['value'].at[stats[attr][arg]['_slice']].set(
 							stats[attr][arg]['func'](
-								hyperparameters[key][instance]['hyperparameters']['track'][statistics[attr][arg]['key']][-1],
+								hyperparameters[key][instance]['optimize']['track'][statistics[attr][arg]['key']][-1],
 								*stats[attr][arg]['args'],
 								**stats[attr][arg]['kwargs']
 								)
@@ -2314,7 +2315,7 @@ def plotter(objects,hyperparameters):
 
 
 	# 		# Get number of iterations
-	# 		size = hyperparams['hyperparameters']['track']['size']
+	# 		size = hyperparams['optimize']['track']['size']
 
 	# 		iterations = [-1]
 
@@ -2325,7 +2326,7 @@ def plotter(objects,hyperparameters):
 	# 		if iteration >= size:
 	# 			parameters0 = parameters
 	# 		else:
-	# 			parameters0 = hyperparams['hyperparameters']['track'][attr][iteration]
+	# 			parameters0 = hyperparams['optimize']['track'][attr][iteration]
 	# 		parameters0 = obj.__layers__(parameters0,layer)
 
 	# 		parameters0 = parameters0[indices]
@@ -2335,7 +2336,7 @@ def plotter(objects,hyperparameters):
 	# 			if iteration >= size:
 	# 				parameters = parameters
 	# 			else:
-	# 				parameters = hyperparams['hyperparameters']['track'][attr][iteration]
+	# 				parameters = hyperparams['optimize']['track'][attr][iteration]
 	# 			parameters = obj.__layers__(parameters,layer)
 
 	# 			parameters = parameters[indices]
@@ -2424,7 +2425,7 @@ def plotter(objects,hyperparameters):
 		
 	# 	# Get iterations
 	# 	X[key] = obj.M
-	# 	Y[key] = hyperparams['hyperparameters']['track']['size']
+	# 	Y[key] = hyperparams['optimize']['track']['size']
 
 	# 	attributes = obj.attributes
 
@@ -2468,7 +2469,7 @@ def plotter(objects,hyperparameters):
 
 	# 	ax.set_yscale(value='log',base=10)
 
-	# 	ax.set_title(label=r'$\epsilon = %s$'%(scinotation(hyperparameters[key]['hyperparameters']['eps'],decimals=0,usetex=False)))
+	# 	ax.set_title(label=r'$\epsilon = %s$'%(scinotation(hyperparameters[key]['optimize']['eps']['value'],decimals=0,usetex=False)))
 
 	# 	fig.set_size_inches(*figsize)
 	# 	# fig.subplots_adjust()
@@ -2612,14 +2613,21 @@ def setup(hyperparameters):
 
 	settings = {}
 	attributes = ['seed','boolean','hyperparameters','object']
-	permutations = permuter(hyperparameters['permutations'],groups=hyperparameters['groups'])
 
-	seeds = PRNGKey(
-		seed=hyperparameters['seed']['seed'],
-		split=hyperparameters['seed']['split'],
-		reset=hyperparameters['seed']['reset'])
+	permutations = hyperparameters['permutations']
+	groups = hyperparameters['groups']
+	permutations = permuter(permutations,groups=groups)
+
+	seed = hyperparameters['seed']['seed']
+	reset = hyperparameters['seed']['reset']
+	shape = (hyperparameters['seed']['split'],len(hyperparameters['seed']['seeds']))
+	split = product(shape)
+	seeds = PRNGKey(seed=seed,split=split,reset=reset).reshape(shape)
+	print(seeds)
+	exit()
 
 	keys = {key: [instance for instance,seed in enumerate(seeds)] for key,permutation in enumerate(permutations)}
+
 
 	settings['seed'] = seeds
 
@@ -2657,11 +2665,24 @@ def setup(hyperparameters):
 								for i in settings['hyperparameters'][key][instance]['sys']['file'][attr]}
 						for attr in settings['hyperparameters'][key][instance]['sys']['file']			 
 						},
-					},			
+					},
+				})
+
+
+			for keys in settings['hyperparameters'][key][instance]['seed']['seeds']:
+				elements = settings['hyperparameters'][key][instance]
+				value = seeds[instance][]
+				nester(,)
+				value = {}
+				for a in attr:
+					value[a] = {}
+					value = value[a]
 				'parameters':{
-					parameter:{'seed':None}
-						for parameter in settings['hyperparameters'][key][instance]['parameters']
+					parameter:{'seed':settings['hyperparameters'][key][instance]['seed'] None}
+						
+						if 
 						},
+
 				})
 
 			setter(updates,permutation,delimiter=delim,copy=True)
@@ -2713,7 +2734,7 @@ def run(hyperparameters):
 			if settings['boolean']['train']:
 
 				parameters = obj.parameters
-				hyperparameters = hyperparameters['hyperparameters']
+				hyperparameters = hyperparameters['optimize']
 
 				func = obj.__func__
 				callback = obj.__callback__

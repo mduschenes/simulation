@@ -222,6 +222,100 @@ def hasser(iterable,elements,delimiter=False):
 	except:
 		return False
 
+
+def grow(dictionary,keys,value):
+	'''
+	Insert nested keys into dictionary in-place
+	Args:
+		dictionary (dict): Dictionary to insert nested keys
+		keys (iterable): Iterable of nested keys
+		value (object): Object to insert at leaf of nested keys
+	'''
+	temporary = dictionary
+	depth = len(keys)
+	for length,key in enumerate(keys):
+		nest = length < (depth-1)
+		old = temporary.get(key)
+		if nest:
+			if not isinstance(old,dict):
+				new = {}
+			else:
+				new = old
+		else:
+			new = value
+		temporary[key] = temporary.get(key,new)
+		if nest:
+			temporary = temporary[key]
+	return
+
+
+def branches(dictionary,key):
+	'''
+	Find and yield branch of key in nested dictionary
+
+	Args:
+		dictionary (dict): dictionary to search
+		key (object): key to find in iterable dictionary
+
+	Yields:
+		Found values with path of branch in dictionary
+	'''	
+
+	# Recursively find and yield branch of key in iterable		
+	try:
+		if not isinstance(dictionary,dict):
+			raise
+		for k in dictionary:
+			if k == key:
+				yield (k,)
+			for v in branches(dictionary[k],key):
+				yield (k,*v)
+	except:
+		pass
+	return
+
+
+def leaves(dictionary,key):
+	'''
+	Find and yield key in nested iterable
+
+	Args:
+		dictionary (dict): dictionary to search
+		key (object): key to find in iterable dictionary
+
+	Yields:
+		Found values with key in dictionary
+	'''	
+
+	# Recursively find and yield value associated with key in dictionary		
+	try:
+		if not isinstance(dictionary,dict):
+			raise
+		for k in dictionary:
+			if k == key:
+				yield dictionary[k]
+			for v in leaves(dictionary[k],key):
+				yield v
+	except:
+		pass
+	return
+
+def counts(dictionary):
+	'''
+	Count number of leaves in nested dictionary
+	Args:
+		dictionary (dict): Dictionary of nested keys
+	Returns:
+		count (int): Number of leaves in dictionary
+	'''
+	count = 0
+	if isinstance(dictionary,dict):
+		for key in dictionary:
+			count += counts(dictionary[key])
+	else:
+		count = 1
+	return count
+
 def updater(iterable,elements,copy=False,clear=False,func=None):
 	'''
 	Update nested iterable with elements
@@ -315,7 +409,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 		'''
 		return [{k:d[k] for d in dicts for k in d} for dicts in itertools.product(*dictionaries)]
 
-	def nester(keys,values):
+	def retriever(keys,values):
 		'''
 		Get values of permuted nested dictionaries in values.
 		Recurse permute until values are lists and not dictionaries.
@@ -327,7 +421,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 					group = groups.get(key,group)
 				else:
 					group = groups
-				values[i] = permuter(value,copy=copy,groups=group)    
+				values[i] = permuter(value,copy=copy,groups=group) 
 		return keys,values
 
 
@@ -339,7 +433,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 
 
 	# Get values of permuted nested dictionaries in values
-	keys,values = nester(keys,values)
+	keys,values = retriever(keys,values)
 
 	# Retain ordering of keys in dictionary
 	keys_ordered = keys
@@ -358,7 +452,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 	# Retain original ordering of keys if ordered is True
 	if ordered:
 		for i,d in enumerate(dictionaries):
-			dictionaries[i] = {k: dictionaries[i][k] for k in keys_ordered}    
+			dictionaries[i] = {k: dictionaries[i][k] for k in keys_ordered}
 	return dictionaries
 
 
@@ -380,7 +474,6 @@ def finder(iterable,key):
 		if not isinstance(iterable,dict):
 			raise
 		for k in iterable:
-			# print(k)
 			if k == key:
 				yield iterable[k]
 			for v in finder(iterable[k],key):
@@ -397,7 +490,7 @@ def replacer(iterable,key,replacement,append=False,copy=True,values=False):
 		iterable (dict): dictionary to be searched
 		key (object): key to be replaced with replacement key
 		replacement (object): dictionary key to replace key
-		append (bool): boolean on  whether to append replacement key to dictionary with value associated with key
+		append (bool): boolean on whether to append replacement key to dictionary with value associated with key
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		values (bool): boolean of whether to replace any values that equal key with replacement in the iterable 
 	'''	
@@ -412,7 +505,7 @@ def replacer(iterable,key,replacement,append=False,copy=True,values=False):
 					k = replacement
 				else:
 					iterable[replacement] = copier(replacement,iterable.pop(key),copy)
-					k = replacement   
+					k = replacement  
 			if values and iterable[k] == key:
 				iterable[k] = copier(k,replacement,copy)
 			replacer(iterable[k],key,replacement,append=append,copy=copy,values=values)

@@ -17,23 +17,27 @@
 		}
 	},
 "boolean":{
-	"train":1,
-	"load":0,
+	"train":0,
+	"load":1,
 	"dump":1,
 	"plot":1,
 	"test":0
 	},
 "seed":{
 	"seed":1234321,
+	"seeds":{
+		"parameters":{"xy":"seed","z":"seed","zz":"seed",},
+		"label":"seed"
+		},
 	"split":3,
 	"reset":1234321
 	},
 "permutations":{
-	"model__M":[200],
-	"hyperparameters__iterations":[1000]
+	"model__M":[50,100,200,1000,10000],
+	"optimize__iterations":[200]
 	},
 "model":{
-	"N":2,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -55,22 +59,27 @@
 		}
 	},
 "hyperparameters":{
-	"iterations":200,
 	"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
 	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
-	"optimizer":"cg",
-	"eps":1e-2,
-	"tol":1e-12,
 	"scale":1,
-	"value":1,
-	"status":1,
-	"interpolation":3,"smoothness":1,
-	"initialization":"interpolation","random":"normal","pad":"random",
-	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":1e6,
-	"sigmoid":1e4,"alpha":1e-4,"beta":1e-1,
+	"interpolation":3,
+	"smoothness":1,
+	"initialization":"interpolation",
+	"random":"normal",
+	"pad":"random",
+	"sigmoid":1e4,
 	"lambda":[5e1,5e-2,1e1],
+	},
+"optimize":{
+	"iterations":200,
+	"optimizer":"cg",
+	"eps":{"objective":1e-2,"grad":1e-12},
+	"value":{"objective":1,"grad":0},
+	"status":1,
 	"line_search":1,
 	"reset":0,
+	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":1e6,
+	"alpha":1e-4,"beta":1e-1,
 	"track":{
 		"track":{"log":1,"track":10,"callback":1},
 		"size":0,
@@ -79,7 +88,7 @@
 		"alpha":[],"beta":[],"lambda":[],
 		"parameters":[]
 		}
-	},
+	},	
 "parameters":{
 	"xy": {
 		"string":"xy",
@@ -151,8 +160,8 @@
 	"shape":[-1,-1],
 	"scale":1,
 	"initialization":"random",
-	"random":"random",
-	"seed":null,
+	"random":"gaussian",
+	"seed":[null,null],
 	"bounds":[-1,1]
 	},
 "plot":{
@@ -180,10 +189,10 @@
 			"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
 			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 			"set_xnbins":{"nbins":4},
-			"set_ynbins":{"nbins":5},
+			"set_ynbins":{"nbins":6},
 			"set_yscale":{"value":"log","base":10},
-			"set_ylim":{"ymin":5e-1,"ymax":1.05e0},
-			"set_yticks":{"ticks":[5e-1,6e-1,8e-1,1e0]},
+			"set_ylim":{"ymin":0.5e-1,"ymax":1.05e0},
+			"set_yticks":{"ticks":[1e-1,5e-1,6e-1,8e-1,1e0]},
 			"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
 			"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,2]},
 			"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
