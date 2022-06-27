@@ -139,6 +139,7 @@ class Base(object):
 
 		state = self.opt_init(parameters)
 		for iteration in range(self.iterations):
+
 			state = self.opt_update(iteration,state)
 
 			if not self.status:

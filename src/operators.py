@@ -56,11 +56,7 @@ def haar(shape,bounds,random,seed,dtype):
 	Returns:
 		data (array): Array of operator
 	'''
-	data = rand(shape
-		bounds=hyperparameters['bounds'],
-		random=hyperparameters['random'],
-		key=hyperparameters['seed'],
-		dtype=dtype)
+	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
 	data /= sqrt(2)
 
 	Q,R = qr(data)
@@ -189,7 +185,7 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 
 		if string is None:
 			strings = [string]
-		elif all(string in props for string in string.split(delimiter))
+		elif all(string in props for string in string.split(delimiter)):
 			strings = string.split(delimiter)
 		else:
 			strings = None
@@ -203,7 +199,8 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 					dtype=dtype
 					)
 				for string in strings
-				]*index//sum(props[string]['locality'] for string in strings))
+				]*(index//sum(props[string]['locality'] for string in strings))
+				)
 			)
 		else:
 			data = array(load(data))

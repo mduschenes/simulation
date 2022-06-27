@@ -1,43 +1,38 @@
 {
 "sys":{
 	"directory":{
-		"data":{"data":"output","settings":"output"},
+		"data":{"data":"output","settings":"output","log":"output"},
 		"plot":{"parameters":"output","objective":"output","label":"output","overparameterization":"output","iteration":"output"},
-		"config":{"settings":"config","plot":"config","mplstyle":"config"}
+		"config":{"settings":"config","plot":"config","mplstyle":"config","logger":"config"}
 		},
 	"file":{
-		"data":{"data":"data","settings":"settings"},
+		"data":{"data":"data","settings":"settings","log":"log"},
 		"plot":{"parameters":"parameters","objective":"objective","label":"label","overparameterization":"overparameterization","iteration":"iteration"},
-		"config":{"settings":"settings","plot":"plot","mplstyle":"plot"}
+		"config":{"settings":"settings","plot":"plot","mplstyle":"plot","logger":"logging"}
 		},
 	"ext":{
-		"data":{"data":"pkl","settings":"json"},
+		"data":{"data":"pkl","settings":"json","log":"log"},
 		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","overparameterization":"pdf","iteration":"pdf"},
-		"config":{"settings":"json","plot":"json","mplstyle":"mplstyle"}
+		"config":{"settings":"json","plot":"json","mplstyle":"mplstyle","logger":"conf"}
 		}
 	},
 "boolean":{
-	"train":0,
-	"load":1,
+	"train":1,
+	"load":0,
 	"dump":1,
-	"plot":1,
-	"test":0
+	"plot":1
 	},
 "seed":{
 	"seed":1234321,
-	"seeds":{
-		"parameters":{"xy":"seed","z":"seed","zz":"seed",},
-		"label":"seed"
-		},
-	"split":3,
+	"split":1,
 	"reset":1234321
 	},
 "permutations":{
-	"model__M":[50,100,200,1000,10000],
-	"optimize__iterations":[200]
+	"model__M":[10],
+	"optimize__iterations":[1000]
 	},
 "model":{
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -59,16 +54,8 @@
 		}
 	},
 "hyperparameters":{
-	"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
-	"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
-	"scale":1,
-	"interpolation":3,
-	"smoothness":1,
-	"initialization":"interpolation",
-	"random":"normal",
-	"pad":"random",
-	"sigmoid":1e4,
-	"lambda":[5e1,5e-2,1e1],
+	"sigmoid":1,
+	"lambda":[5e1,5e-2,1e1]
 	},
 "optimize":{
 	"iterations":200,
@@ -78,7 +65,7 @@
 	"status":1,
 	"line_search":1,
 	"reset":0,
-	"c1":0.0001,"c2":0.9,"maxiter":100,"restart":1e6,
+	"c1":0.0001,"c2":0.9,"maxiter":200,"restart":1e6,
 	"alpha":1e-4,"beta":1e-1,
 	"track":{
 		"track":{"log":1,"track":10,"callback":1},
@@ -94,17 +81,18 @@
 		"string":"xy",
 		"category":"variable",
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},				
+		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
 		"scale":1,
 		"initialization":"interpolation",
 		"random":"uniform",
-		"interpolation":2,
-		"smoothness":1,	
+		"interpolation":3,
+		"smoothness":2,	
 		"pad":"random",	
 		"seed":null,		
-		"bounds":{"parameters":[-2,2],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
 		},
@@ -118,8 +106,6 @@
 		"scale":1,
 		"initialization":"random",
 		"random":"uniform",
-		"interpolation":2,
-		"smoothness":1,	
 		"pad":"random",	
 		"seed":null,
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
@@ -136,8 +122,6 @@
 		"scale":1,
 		"initialization":"random",
 		"random":"uniform",		
-		"interpolation":2,
-		"smoothness":1,	
 		"pad":"random",
 		"seed":null,	
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
@@ -154,14 +138,14 @@
 		}
 	},
 "label": {
-	"string":"U",
+	"string":"cnot",
 	"category":"constant",
 	"parameters":null,
 	"shape":[-1,-1],
 	"scale":1,
 	"initialization":"random",
 	"random":"gaussian",
-	"seed":[null,null],
+	"seed":null,
 	"bounds":[-1,1]
 	},
 "plot":{

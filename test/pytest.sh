@@ -11,4 +11,5 @@ cmd+=(${options[@]})
 
 
 # ${cmd[@]}
-${cmd[@]} -k="main"
+# ${cmd[@]} -k="main"
+${cmd[@]} -k="data"

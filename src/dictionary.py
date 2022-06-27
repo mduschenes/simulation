@@ -223,17 +223,32 @@ def hasser(iterable,elements,delimiter=False):
 		return False
 
 
-def grow(dictionary,keys,value):
+def plant(old,new,key):
 	'''
-	Insert nested keys into dictionary in-place
+	Transfer branches and leaf values corresponding to key of old dictionary to new dictionary
 	Args:
-		dictionary (dict): Dictionary to insert nested keys
-		keys (iterable): Iterable of nested keys
-		value (object): Object to insert at leaf of nested keys
+		old (dict): Old dictionary to retrieve branches and leaves corresponding to key
+		new (dict): New dictionary to place branches and leaves corresponding to key
+		key (object): Key of leaves to retrieve
+	'''
+
+	for branch,leaf in branches_leaves(old,key):
+		grow(new,branch,leaf)
+
+	return
+
+
+def grow(dictionary,branch,leaf):
+	'''
+	Insert nested branch into dictionary in-place
+	Args:
+		dictionary (dict): Dictionary to insert nested branch
+		branch (iterable): Iterable of nested branch
+		leaf (object): Object to insert at leaf of nested branch
 	'''
 	temporary = dictionary
-	depth = len(keys)
-	for length,key in enumerate(keys):
+	depth = len(branch)
+	for length,key in enumerate(branch):
 		nest = length < (depth-1)
 		old = temporary.get(key)
 		if nest:
@@ -242,8 +257,8 @@ def grow(dictionary,keys,value):
 			else:
 				new = old
 		else:
-			new = value
-		temporary[key] = temporary.get(key,new)
+			new = leaf
+		temporary[key] = new
 		if nest:
 			temporary = temporary[key]
 	return
@@ -256,9 +271,8 @@ def branches(dictionary,key):
 	Args:
 		dictionary (dict): dictionary to search
 		key (object): key to find in iterable dictionary
-
 	Yields:
-		Found values with path of branch in dictionary
+		value (tuple[object]): Found path of branch in dictionary
 	'''	
 
 	# Recursively find and yield branch of key in iterable		
@@ -266,7 +280,7 @@ def branches(dictionary,key):
 		if not isinstance(dictionary,dict):
 			raise
 		for k in dictionary:
-			if k == key:
+			if not isinstance(dictionary[k],dict) and k == key:
 				yield (k,)
 			for v in branches(dictionary[k],key):
 				yield (k,*v)
@@ -284,7 +298,7 @@ def leaves(dictionary,key):
 		key (object): key to find in iterable dictionary
 
 	Yields:
-		Found values with key in dictionary
+		value (object): Found values with key in dictionary
 	'''	
 
 	# Recursively find and yield value associated with key in dictionary		
@@ -292,10 +306,36 @@ def leaves(dictionary,key):
 		if not isinstance(dictionary,dict):
 			raise
 		for k in dictionary:
-			if k == key:
+			if not isinstance(dictionary[k],dict) and k == key:
 				yield dictionary[k]
 			for v in leaves(dictionary[k],key):
 				yield v
+	except:
+		pass
+	return
+
+
+def branches_leaves(dictionary,key):
+	'''
+	Find and yield key and value in nested iterable
+
+	Args:
+		dictionary (dict): dictionary to search
+		key (object): key to find in iterable dictionary
+
+	Yields:
+		value (tuple[tuple[object],object]): Found branches and values with key in dictionary
+	'''	
+
+	# Recursively find and yield value associated with key in dictionary		
+	try:
+		if not isinstance(dictionary,dict):
+			raise
+		for k in dictionary:
+			if not isinstance(dictionary[k],dict) and k == key:
+				yield ((k,),dictionary[k])
+			for v in branches_leaves(dictionary[k],key):
+				yield ((k,*v[0]),v[1])
 	except:
 		pass
 	return
@@ -330,7 +370,7 @@ def updater(iterable,elements,copy=False,clear=False,func=None):
 
 	# Setup func as callable
 	if not callable(func):
-		func = lambda key,iterable,elements: (elements[key] if isinstance(elements,dict) else elements)
+		func = lambda key,iterable,elements: elements[key]
 
 	# Clear iterable if clear and elements is empty dictionary
 	if clear and elements == {}:
@@ -339,7 +379,7 @@ def updater(iterable,elements,copy=False,clear=False,func=None):
 	if not isinstance(elements,(dict)):
 		# elements is object and iterable is directly set as elements
 		key = None
-		iterable = copier(key,func(key,iterable,elements),copy)
+		iterable = copier(key,elements,copy)
 		return
 
 	# Recursively update iterable with elements
@@ -466,7 +506,7 @@ def finder(iterable,key):
 		key (object): key to find in iterable dictionary
 
 	Yields:
-		Found values with key in iterable
+		value (object): Found values with key in iterable
 	'''	
 
 	# Recursively find and yield value associated with key in iterable		

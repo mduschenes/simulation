@@ -54,6 +54,7 @@ def pytest_addoption(parser):
 def pytest_generate_tests(metafunc):
 	# This is called for every test. Only get/set command line arguments
 	# if the argument is specified in the list of test 'fixturenames'.
+	
 	for arg in args:
 		value = _argparser(arg,getattr(metafunc.config.option,arg),args)
 		allowed = args[arg].get('allowed')
@@ -68,8 +69,14 @@ def pytest_make_parametrize_id(config,val,argname):
 	return id
 
 
-# @pytest.mark.parametrize('n',)
+# @pytest.mark.parametrize('path',)
 # @pytest.fixture
-# def parameters(path,tol):
-# 	parameters = {'path':path,'tol':tol}
-# 	return parameters
+# def path():
+
+# 	path = 'config/tes.'
+
+# 	# Logging
+# 	from src.utils import logconfig
+# 	conf = 'config/logging.conf'
+# 	logger = logconfig(__name__,conf=conf)
+# 	return path

@@ -277,7 +277,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 
 					data['boundaries'][category][parameter][group][layer] = [
 						dict({
-							((i if i>=0 else len(data['indices'][category][parameter][group][layer][axis])+int(i))
+							((int(i) if i>=0 else len(data['indices'][category][parameter][group][layer][axis])+int(i))
 							if isinstance(i,int) or (isinstance(i,str) and int(i) == float(i)) else
 							(int(len(data['indices'][category][parameter][group][layer][axis])*float(i)))):
 							hyperparameters[parameter]['boundaries'][layer][axis][i]
@@ -288,7 +288,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 					
 					data['constants'][category][parameter][group][layer] = [
 						dict({
-							((i if i>=0 else len(data['indices'][category][parameter][group][layer][axis])+int(i))
+							((int(i) if i>=0 else len(data['indices'][category][parameter][group][layer][axis])+int(i))
 							if isinstance(i,int) or (isinstance(i,str) and int(i) == float(i)) else
 							(int(len(data['indices'][category][parameter][group][layer][axis])*float(i)))):
 							hyperparameters[parameter]['constants'][layer][axis][i]

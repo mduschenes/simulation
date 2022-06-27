@@ -47,7 +47,7 @@ from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
 
 from src.dictionary import updater,getter,setter,permuter
-from src.dictionary import branches,leaves,counts
+from src.dictionary import branches,leaves,counts,branches_leaves,plant,grow
 
 from src.parameters import parameterize
 from src.operators import operatorize
@@ -991,8 +991,6 @@ class Object(object):
 				  self.hyperparameters['optimize']['eps']['grad'])
 			)
 
-		# self.log('status = %d\n'%(status))
-
 		return status
 
 
@@ -1654,9 +1652,7 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
-		# print(parameters.round(3))
-		# print(self.string)
-		# exit()
+
 		return exponentiation(-1j*self.coefficients*parameters,self.data,self.identity)
 
 
@@ -1842,7 +1838,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 
 	# Add random padding of values if parameters not reset
 	if not reset:
-		parameters = padding(parameters,shape,key=None,bounds=bounds,random=pad)
+		parameters = padding(parameters,shape,key=key,bounds=bounds,random=pad)
 	else:
 		if initialization in ['interpolation']:
 			# Parameters are initialized as interpolated random values between bounds
@@ -2482,13 +2478,11 @@ def plotter(objects,hyperparameters):
 
 def check(hyperparameters):
 
-	# Copy hyperparameters
-	_hyperparameters = copy.deepcopy(hyperparameters)
 
 	# Load default hyperparameters
 	path = 'config/settings.json'
-	updater(hyperparameters,load(path))
-	updater(hyperparameters,_hyperparameters)
+	func = lambda key,iterable,elements: iterable.get(key,elements[key])
+	updater(hyperparameters,load(path),func=func)
 
 	# Check sections for correct attributes
 	section = None
@@ -2509,7 +2503,7 @@ def check(hyperparameters):
 			'conditions': (lambda hyperparameters: True)
 		},		
 		'label': {
-			'value': (lambda hyperparameters: hyperparameters['hyperparameters']['label']['parameters']),
+			'value': (lambda hyperparameters: hyperparameters['hyperparameters']['label']),
 			'default': (lambda hyperparameters: None),
 			'conditions': (lambda hyperparameters: hyperparameters['hyperparameters'].get('label') is not None)				
 		},
@@ -2567,12 +2561,16 @@ def check(hyperparameters):
 	section = 'parameters'
 	updates = {
 		'boundaries': {
-			'value': (lambda parameter,hyperparameters: {attr: [{int(j):i[j] for j in i} for i in hyperparameters[section][parameter]['boundaries'][attr]] for attr in hyperparameters[section][parameter]['boundaries']}),
+			'value': (lambda parameter,hyperparameters: {attr: [{int(j):i[j] for j in i} 
+				for i in hyperparameters[section][parameter]['boundaries'][attr]] 
+				for attr in hyperparameters[section][parameter]['boundaries']}),
 			'default': (lambda parameter,hyperparameters: {}),
 			'conditions': (lambda parameter,hyperparameters: True)				
 		},
 		'constants': {
-			'value': (lambda parameter,hyperparameters: {attr: [{int(j):i[j] for j in i} for i in hyperparameters[section][parameter]['constants'][attr]] for attr in hyperparameters[section][parameter]['constants']}),
+			'value': (lambda parameter,hyperparameters: {attr: [{int(j):i[j] for j in i} 
+				for i in hyperparameters[section][parameter]['constants'][attr]] 
+				for attr in hyperparameters[section][parameter]['constants']}),
 			'default': (lambda parameter,hyperparameters: []),
 			'conditions': (lambda parameter,hyperparameters: True)				
 		},		
@@ -2596,7 +2594,7 @@ def check(hyperparameters):
 		'locality': {
 			'value':(lambda parameter,hyperparameters: hyperparameters['hyperparameters']['locality']),
 			'default':(lambda parameter,hyperparameters: None),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters['hyperparameters'].get('locality') is not None and hyperparameters['parameters'][parameter]['category'] in ['variable'])
+			'conditions': (lambda parameter,hyperparameters: hyperparameters['hyperparameters'].get('locality') is not None)
 		},		
 	}			
 	for parameter in hyperparameters[section]:
@@ -2607,27 +2605,40 @@ def check(hyperparameters):
 
 	return
 
+
 def setup(hyperparameters):
 
+	# Get settings
+	settings = {}	
+
+	# Check hyperparameters have correct values
 	check(hyperparameters)
 
-	settings = {}
-	attributes = ['seed','boolean','hyperparameters','object']
-
+	# Get permutations of hyperparameters
 	permutations = hyperparameters['permutations']
 	groups = hyperparameters['groups']
 	permutations = permuter(permutations,groups=groups)
 
+	# Get seeds for number of splits/seedings, for all nested hyperparameters branches that involve a seed
 	seed = hyperparameters['seed']['seed']
+	split = hyperparameters['seed']['split']
 	reset = hyperparameters['seed']['reset']
-	shape = (hyperparameters['seed']['split'],len(hyperparameters['seed']['seeds']))
-	split = product(shape)
-	seeds = PRNGKey(seed=seed,split=split,reset=reset).reshape(shape)
-	print(seeds)
-	exit()
 
+	key = 'seed'
+	exclude = [('seed','seed',),('model','system','seed')]
+	seedlings = [branch for branch in branches(hyperparameters,key) if branch not in exclude]
+	count = len(seedlings)
+	
+	shape = (split,count,-1)
+	split *= count
+
+	seeds = PRNGKey(seed=seed,split=split,reset=reset).reshape(shape)
+	
+
+	# Get all enumerated keys and seeds for permutations and seedings of hyperparameters
 	keys = {key: [instance for instance,seed in enumerate(seeds)] for key,permutation in enumerate(permutations)}
 
+	# Set settings with key and seed instances
 
 	settings['seed'] = seeds
 
@@ -2640,6 +2651,7 @@ def setup(hyperparameters):
 
 	settings['object'] = {key: {instance:None for instance in keys[key]} for key in keys}
 
+	# Update key/seed instances of hyperparameters with updates
 	for key,permutation in enumerate(permutations):
 		for instance,seed in enumerate(seeds):			
 			
@@ -2668,22 +2680,8 @@ def setup(hyperparameters):
 					},
 				})
 
-
-			for keys in settings['hyperparameters'][key][instance]['seed']['seeds']:
-				elements = settings['hyperparameters'][key][instance]
-				value = seeds[instance][]
-				nester(,)
-				value = {}
-				for a in attr:
-					value[a] = {}
-					value = value[a]
-				'parameters':{
-					parameter:{'seed':settings['hyperparameters'][key][instance]['seed'] None}
-						
-						if 
-						},
-
-				})
+			for branch,leaf in zip(seedlings,seed):
+				grow(updates,branch,leaf)
 
 			setter(updates,permutation,delimiter=delim,copy=True)
 
@@ -2705,12 +2703,11 @@ def run(hyperparameters):
 
 	defaults = copy.deepcopy(hyperparameters)
 
-
 	for key in settings['hyperparameters']:				
 		for instance in settings['hyperparameters'][key]:
 
 			hyperparameters = settings['hyperparameters'][key][instance]
-			
+
 			if settings['boolean']['load']:
 				default = hyperparameters
 				def func(key,iterable,elements): 
@@ -2757,17 +2754,6 @@ def run(hyperparameters):
 	if settings['boolean']['plot']:
 		objs = settings['object']
 		hyperparameters = settings['hyperparameters']
-		plotter(objs,hyperparameters)
-
-	if settings['boolean']['test']:
-
-		hyperparameters = defaults
-
-		obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
-
-		func = obj.__func__
-
-		parameters = obj.parameters
-		
+		plotter(objs,hyperparameters)		
 
 	return

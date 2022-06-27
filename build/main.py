@@ -183,7 +183,6 @@ def constraints(parameters,hyperparameters,parameter,group):
 	scale = hyperparameters['hyperparameters']['lambda']
 	constants = hyperparameters['parameters'][parameter]['constants']['features'][-1]
 
-
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		constraint = (
 			# (scale[0]*(parameters[...,[i for i in constants]] - array([constants[i] for i in constants])**2).sum())

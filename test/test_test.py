@@ -2,37 +2,14 @@
 
 # Import python modules
 import pytest
-import os,sys,itertools,functools,copy
-import time
-from time import time as timer
-from functools import partial
-
-import matplotlib
-import matplotlib.pyplot as plt
-
-import numpy as onp
-import scipy as osp
-import jax
-import jax.numpy as np
-import jax.scipy as sp
-import jax.example_libraries.optimizers
-jax.config.update('jax_platform_name','cpu')
-jax.config.update('jax_enable_x64', True)
-# jax.set_cpu_device_count(8)
-# os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
-# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
-
-# Logging
-import logging
-logger = logging.getLogger(__name__)
-
+import os,sys
+import itertools,functools,copy
+	
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
-
-from src.optimize import Optimizer,Objective
 
 from src.utils import jit,gradient,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
@@ -59,10 +36,16 @@ from src.plot import plot
 from src.optimize import Optimizer,Objective
 
 from src.quantum import Unitary,Hamiltonian,Object
-from src.quantum import check
+from src.quantum import check,trotter
+
 from src.functions import functions
+
 from src.main import main
 
+# Logging
+from src.utils import logconfig
+conf = 'config/logging.conf'
+logger = logconfig(__name__,conf=conf)
 
 
 def test_functions(path,tol):
@@ -86,6 +69,37 @@ def test_unitary(path,tol):
 	check(hyperparameters)
 
 	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+
+	return
+
+def test_data(path,tol):
+
+	hyperparameters = functions(path)
+
+	check(hyperparameters)
+
+	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+
+	I = array([[1,0],[0,1]],dtype=obj.dtype)
+	X = array([[0,1],[1,0]],dtype=obj.dtype)
+	Y = array([[0,-1j],[1j,0]],dtype=obj.dtype)
+	Z = array([[1,0],[0,-1]],dtype=obj.dtype)
+	data = [
+		tensorprod(array([X,I])),
+		tensorprod(array([I,X])),
+		tensorprod(array([Y,I])),
+		tensorprod(array([I,Y])),
+		tensorprod(array([Z,I])),
+		tensorprod(array([I,Z])),
+		tensorprod(array([Z,Z])),
+		]
+	string = ['XI','IX','YI','IY','ZI','IZ','ZZ']
+
+	data = trotter(data,obj.p)
+	string = trotter(string,obj.p)
+
+	for i in range(obj.size):
+		assert allclose(data[i],obj.data[i]), "data[%d] incorrect"%(i)
 
 	return
 
