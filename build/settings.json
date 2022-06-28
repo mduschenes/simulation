@@ -1,8 +1,8 @@
 {
 "sys":{
 	"directory":{
-		"data":{"data":"output","settings":"output","log":"output"},
-		"plot":{"parameters":"output","objective":"output","label":"output","overparameterization":"output","iteration":"output"},
+		"data":{"data":"data","settings":"data","log":"data"},
+		"plot":{"parameters":"data","objective":"data","label":"data","overparameterization":"data","iteration":"data"},
 		"config":{"settings":"config","plot":"config","mplstyle":"config","logger":"config"}
 		},
 	"file":{
@@ -28,11 +28,11 @@
 	"reset":1234321
 	},
 "permutations":{
-	"model__M":[300],
-	"optimize__iterations":[10]
+	"model__M":[50,100,200,300,1000,50000,10000],
+	"optimize__iterations":[500]
 	},
 "model":{
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -50,7 +50,8 @@
 		"key":null,
 		"seed":null,
 		"device":"cpu",
-		"verbose":"info"
+		"verbose":"info",
+		"logger":null,
 		}
 	},
 "hyperparameters":{
@@ -138,7 +139,7 @@
 		}
 	},
 "label": {
-	"string":"toffoli",
+	"string":"cnot",
 	"category":"constant",
 	"parameters":null,
 	"shape":[-1,-1],

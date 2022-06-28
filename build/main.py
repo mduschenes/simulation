@@ -26,17 +26,15 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import logconfig
-
-conf = 'config/logging.conf'
-logger = logconfig(__name__,conf=conf)
-
 from src.quantum import run
 
 from src.utils import jit,array,sin,cos,cosh,abs,sigmoid,linspace
 from src.utils import gradient_sigmoid
 from src.utils import pi,e
-from src.io import load,dump,path_join,path_split
+
+from src.dictionary import updater
+
+from src.io import load,dump
 
 def bound(a,hyperparameters):
 	'''
@@ -347,12 +345,18 @@ def gradients(parameters,hyperparameters,parameter,group):
 
 
 
-def setup(hyperparameters):
+def check(hyperparameters):
 	'''
-	Setup hyperparameters
+	Check hyperparameters
 	Args:
 		hyperparameters (dict): Hyperparameters
 	'''
+
+	# Load default hyperparameters
+	path = 'config/settings.json'
+	func = lambda key,iterable,elements: iterable.get(key,elements[key])
+	updater(hyperparameters,load(path),func=func)
+
 
 	section = 'parameters'
 	updates = {
@@ -392,18 +396,29 @@ def setup(hyperparameters):
 
 	return
 
+
+
+def setup(hyperparameters):
+	'''
+	Setup hyperparameters
+	Args:
+		hyperparameters (dict): Hyperparameters
+	'''
+	
+	# Check hyperparameters have correct values
+	check(hyperparameters)
+
+	return
+
+
 def main(args):
 
 	nargs = len(args)
 
 	path = args[0] if nargs>0 else None
+	default = {}
 
-	obj = load(path)
-
-	if obj is None:
-		return
-
-	hyperparameters = obj
+	hyperparameters = load(path,default=default)
 
 	setup(hyperparameters)
 

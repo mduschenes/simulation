@@ -1,19 +1,19 @@
 {
 "sys":{
 	"directory":{
-		"data":{"data":"output","settings":"output"},
-		"plot":{"parameters":"output","objective":"output","label":"output","overparameterization":"output","iteration":"output"},
-		"config":{"settings":"config","plot":"config","mplstyle":"config"}
+		"data":{"data":"data","settings":"data","log":"data"},
+		"plot":{"parameters":"data","objective":"data","label":"data","overparameterization":"data","iteration":"data"},
+		"config":{"settings":"config","plot":"config","mplstyle":"config","logger":"config"}
 		},
 	"file":{
-		"data":{"data":"data","settings":"settings"},
+		"data":{"data":"data","settings":"settings","log":"log"},
 		"plot":{"parameters":"parameters","objective":"objective","label":"label","overparameterization":"overparameterization","iteration":"iteration"},
-		"config":{"settings":"settings","plot":"plot","mplstyle":"plot"}
+		"config":{"settings":"settings","plot":"plot","mplstyle":"plot","logger":"logging"}
 		},
 	"ext":{
-		"data":{"data":"pkl","settings":"json"},
+		"data":{"data":"pkl","settings":"json","log":"log"},
 		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","overparameterization":"pdf","iteration":"pdf"},
-		"config":{"settings":"json","plot":"json","mplstyle":"mplstyle"}
+		"config":{"settings":"json","plot":"json","mplstyle":"mplstyle","logger":"conf"}
 		}
 	},
 "boolean":{
@@ -28,8 +28,8 @@
 	"reset":1234321
 	},
 "permutations":{
-	"model__M":[20],
-	"optimize__iterations":[1000]
+	"model__M":[50,100,200,300,1000,50000,10000],
+	"optimize__iterations":[500]
 	},
 "model":{
 	"N":2,
@@ -60,7 +60,7 @@
 "optimize":{
 	"iterations":200,
 	"optimizer":"cg",
-	"eps":{"objective":1e-2,"grad":1e-12},
+	"eps":{"objective":1e-4,"grad":1e-12},
 	"value":{"objective":1,"grad":0},
 	"status":1,
 	"line_search":1,
@@ -80,8 +80,8 @@
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},				
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},				
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -89,7 +89,7 @@
 		"initialization":"interpolation",
 		"random":"uniform",
 		"interpolation":3,
-		"smoothness":1,	
+		"smoothness":2,	
 		"pad":"random",	
 		"seed":null,		
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},

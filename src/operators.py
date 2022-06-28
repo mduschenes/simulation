@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['',".."]
+PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
@@ -185,10 +185,15 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 
 		if string is None:
 			strings = [string]
+			locality = index
 		elif all(string in props for string in string.split(delimiter)):
 			strings = string.split(delimiter)
+			locality = sum(props[string]['locality'] for string in strings)
 		else:
 			strings = None
+			locality = index			
+
+		assert (index%locality == 0), 'Incorrect operator with locality %d !%% index %d'%(locality,index)
 
 		if string is not None:
 			data = tensorprod(array([
@@ -199,7 +204,7 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 					dtype=dtype
 					)
 				for string in strings
-				]*(index//sum(props[string]['locality'] for string in strings))
+				]*(index//locality)
 				)
 			)
 		else:

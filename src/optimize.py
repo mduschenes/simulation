@@ -100,6 +100,17 @@ class Base(object):
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
+		updates = {
+			'verbose': {
+				'notset':0,'debug':10,'info':20,'warning':30,'error':40,'critical':50,
+				'Notset':0,'Debug':10,'Info':20,'Warning':30,'Error':40,'Critical':50,
+				'NOTSET':0,'DEBUG':10,'INFO':20,'WARNING':30,'ERROR':40,'CRITICAL':50,
+				10:10,20:20,30:30,40:40,50:50,
+				2:20,3:30,4:40,5:50,
+				True:20,False:0,None:0,
+				}
+			}
+
 		defaults = {
 			'optimizer':None,
 			'alpha':0,
@@ -107,9 +118,14 @@ class Base(object):
 			'iterations':0,
 			'status':1,
 			'reset':0,
+			'verbose':False,
 			'track':{'track':{'log':1,'track':10,'callback':1},'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
+		
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
+		hyperparameters.update({attr: updates.get(attr,{}).get(hyperparameters[attr],hyperparameters[attr]) 
+			if attr in updates else hyperparameters[attr] for attr in hyperparameters})
+
 
 		self.optimizer = hyperparameters['optimizer']		
 		self.iterations = int(hyperparameters['iterations'])
@@ -119,6 +135,7 @@ class Base(object):
 		self.alpha = hyperparameters['alpha']
 		self.search = hyperparameters['search'] 
 		self.status = hyperparameters['status']
+		self.verbose = hyperparameters['verbose']
 		
 		self.reset(hyperparameters['reset'])
 

@@ -50,7 +50,7 @@ def logconfig(name,conf=None):
 		logger (logger): Configured logger
 	'''
 
-	logger = logging.getLogger(__name__)
+	logger = logging.getLogger(name)
 	if conf is not None:
 		try:
 			config = configparser.ConfigParser()
@@ -68,7 +68,7 @@ def logconfig(name,conf=None):
 			logging.config.fileConfig(conf,disable_existing_loggers=False) 	
 		except Exception as e:
 			pass	
-		logger = logging.getLogger(__name__)
+		logger = logging.getLogger(name)
 
 	return logger
 

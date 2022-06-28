@@ -23,7 +23,6 @@ jax.config.update('jax_enable_x64', True)
 
 # Logging
 import logging
-logger = logging.getLogger(__name__)
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -31,8 +30,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.optimize import Optimizer,Objective
-
+from src.utils import logconfig
 from src.utils import jit,gradient,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
@@ -69,6 +67,7 @@ class System(dictionary):
 		seed (array,int): Seed for random number generation
 		key (object): key for class
 		verbose (bool,str): Verbosity of class	
+		logger (logger): Python logging logger
 		args (dict,System): Additional system attributes
 		kwargs (dict): Additional system attributes
 	'''
@@ -83,7 +82,8 @@ class System(dictionary):
 				10:10,20:20,30:30,40:40,50:50,
 				2:20,3:30,4:40,5:50,
 				True:20,False:0,None:0,
-				}
+				},
+			'logger':{None:logging.getLogger(__name__)},
 			}
 
 		defaults = {
@@ -93,6 +93,7 @@ class System(dictionary):
 			'seed':None,
 			'key':None,
 			'verbose':False,
+			'logger':None,
 		}
 
 		args = {k:v for a in args for k,v in ({} if a is None else a).items()}
@@ -329,6 +330,7 @@ class Lattice(object):
 		self.system = System(system)
 		self.dtype = self.system.dtype
 		self.verbose = self.system.verbose
+		self.logger = self.system.logger		
 
 		self.dtype = self.dtype if self.dtype in ['int','Int32','Int64'] else int
 
@@ -387,7 +389,7 @@ class Lattice(object):
 		Args:
 			msg (str): Message to log
 		'''
-		logger.log(self.verbose,msg)
+		self.logger.log(self.verbose,msg)
 		return
 
 	def __call__(self,site=None):
@@ -997,6 +999,7 @@ class Object(object):
 		self.seed = self.system.seed
 		self.key = self.system.key
 		self.verbose = self.system.verbose
+		self.logger = self.system.logger
 
 		return
 
@@ -1113,7 +1116,7 @@ class Object(object):
 		Args:
 			msg (str): Message to log
 		'''
-		logger.log(self.verbose,msg)
+		self.logger.log(self.verbose,msg)
 		return	
 
 	def dump(self,path,parameters,ext='txt'):
@@ -2464,7 +2467,11 @@ def plotter(objects,hyperparameters):
 
 
 def check(hyperparameters):
-
+	'''
+	Check hyperparameters
+	Args:
+		hyperparameters (dict): Hyperparameters
+	'''
 
 	# Load default hyperparameters
 	path = 'config/settings.json'
@@ -2517,7 +2524,7 @@ def check(hyperparameters):
 	for attr in updates:						
 		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
 		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[attr] = updates[attr]['value'](hyperparameters)
+			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
 
 	section = 'model'
 	updates = {
@@ -2594,6 +2601,11 @@ def check(hyperparameters):
 
 
 def setup(hyperparameters):
+	'''
+	Setup hyperparameters
+	Args:
+		hyperparameters (dict): Hyperparameters
+	'''
 
 	# Get settings
 	settings = {}	
@@ -2637,6 +2649,7 @@ def setup(hyperparameters):
 	settings['hyperparameters'] = {key: {instance:None for instance in keys[key]} for key in keys}
 
 	settings['object'] = {key: {instance:None for instance in keys[key]} for key in keys}
+	settings['logger'] = {key: {instance:None for instance in keys[key]} for key in keys}
 
 	# Update key/seed instances of hyperparameters with updates
 	for key,permutation in enumerate(permutations):
@@ -2644,6 +2657,8 @@ def setup(hyperparameters):
 			
 			settings['hyperparameters'][key][instance] = copy.deepcopy(hyperparameters)
 			settings['object'][key][instance] = None
+			settings['logger'][key][instance] = logconfig(__name__,
+				conf=settings['hyperparameters'][key][instance]['sys']['path']['config']['logger'])
 
 			updates = {}		
 
