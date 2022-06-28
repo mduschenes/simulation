@@ -943,45 +943,32 @@ class Object(object):
 
 		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['track']['track']['log'] == 0:			
 
-			self.hyperparameters['optimize']['track']['parameters'].append(copy.deepcopy(parameters))		
+			self.hyperparameters['optimize']['track']['parameters'].append(parameters)		
 
-			self.log('%d f(x) = %0.10f'%(
-				self.hyperparameters['optimize']['track']['iteration'][-1],
-				self.hyperparameters['optimize']['track']['objective'][-1],
-				)
-			)
-
-			self.log('|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
-				norm(self.hyperparameters['optimize']['track']['parameters'][-1])/self.hyperparameters['optimize']['track']['parameters'][-1].size,
-				norm(self.hyperparameters['optimize']['track']['grad'][-1])/self.hyperparameters['optimize']['track']['grad'][-1].size,
-				)
-			)
-
-			self.log('\t\t'.join([
-				'%s = %0.4e'%(attr,self.hyperparameters['optimize']['track'][attr][-1])
-				for attr in ['alpha','beta']
-				if attr in self.hyperparameters['optimize']['track'] and len(self.hyperparameters['optimize']['track'][attr])>0
-				])
-			)
-
-			# self.log('x = \n%r \ngrad(x) = \n%r'%(
-			# 	self.hyperparameters['optimize']['track']['parameters'][-1],
-			# 	self.hyperparameters['optimize']['track']['search'][-1],
-			# 	)
-			# )
-
-			self.log('U\n%s\nV\n%s\n'%(
+			msg = '\n'.join([
+				'%d f(x) = %0.10f'%(
+					self.hyperparameters['optimize']['track']['iteration'][-1],
+					self.hyperparameters['optimize']['track']['objective'][-1],
+				),
+				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
+					norm(self.hyperparameters['optimize']['track']['parameters'][-1])/
+						 self.hyperparameters['optimize']['track']['parameters'][-1].size,
+					norm(self.hyperparameters['optimize']['track']['grad'][-1])/
+						 self.hyperparameters['optimize']['track']['grad'][-1].size,
+				),
+				'\t\t'.join([
+					'%s = %0.4e'%(attr,self.hyperparameters['optimize']['track'][attr][-1])
+					for attr in ['alpha','beta']
+					if attr in self.hyperparameters['optimize']['track'] and len(self.hyperparameters['optimize']['track'][attr])>0
+					]),
+				'U\n%s\nV\n%s\n'%(
 				to_str(abs(self(parameters)).round(4)),
-				to_str(abs(self.label).round(4))
-				)
-			)
-			# self.log('norm: %0.4e\nmax: %0.4e\nmin: %0.4e\nbcs:\n%r\n%r\n\n'%(
-			# 	norm(parameters)/parameters.size,
-			# 	parameters.max(),parameters.min(),
-			# 	parameters.reshape(self.hyperparameters['shape']['take']['parameters'])[:,0],
-			# 	parameters.reshape(self.hyperparameters['shape']['take']['parameters'])[:,-1],
-			# 	)
-			# )
+				to_str(abs(self.label).round(4))),
+
+				])
+
+
+			self.log(msg)
 
 
 		status = (

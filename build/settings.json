@@ -28,11 +28,11 @@
 	"reset":1234321
 	},
 "permutations":{
-	"model__M":[10],
-	"optimize__iterations":[1000]
+	"model__M":[300],
+	"optimize__iterations":[10]
 	},
 "model":{
-	"N":2,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -60,7 +60,7 @@
 "optimize":{
 	"iterations":200,
 	"optimizer":"cg",
-	"eps":{"objective":1e-2,"grad":1e-12},
+	"eps":{"objective":1e-4,"grad":1e-12},
 	"value":{"objective":1,"grad":0},
 	"status":1,
 	"line_search":1,
@@ -80,8 +80,8 @@
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},				
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},				
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -138,7 +138,7 @@
 		}
 	},
 "label": {
-	"string":"cnot",
+	"string":"toffoli",
 	"category":"constant",
 	"parameters":null,
 	"shape":[-1,-1],
