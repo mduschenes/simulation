@@ -836,6 +836,13 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 	elif isinstance(key,int):
 		key = PRNGKey(key)
 
+	if bounds is None:
+		bounds = ["-inf","inf"]
+	elif len(bounds)==0:
+		bounds = ["-inf","inf"]
+
+	bounds = [to_number(i,dtype) for i in bounds]
+
 	b = len(bounds)
 	for i in range(b):
 		if isinstance(bounds[i],str):
@@ -2295,7 +2302,6 @@ def padding(a,shape,key=None,bounds=[0,1],random='zeros'):
 
 		for axis in range(ndim-1,-1,-1):
 			if diff[axis] > 0:
-
 
 				new[axis] = diff[axis] 
 				pad = rand(new,key=key,bounds=bounds,random=random)

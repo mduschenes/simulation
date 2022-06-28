@@ -196,7 +196,7 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 		assert (index%locality == 0), 'Incorrect operator with locality %d !%% index %d'%(locality,index)
 
 		if string is not None:
-			data = tensorprod(array([
+			data = tensorprod([
 				props[string]['func'](shape,
 					bounds=hyperparameters['bounds'],
 					random=hyperparameters['random'],
@@ -205,7 +205,6 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 					)
 				for string in strings
 				]*(index//locality)
-				)
 			)
 		else:
 			data = array(load(data))

@@ -77,14 +77,14 @@ def variables(parameters,hyperparameters,parameter,group):
 			scale[0]*parameters[0]*
 			cos(scale[1]*parameters[1])
 		)		
-		# variable = parameters[0]
+		# variable = scale[0]*parameters[0]
 
 	elif parameter in ['xy'] and group in [('y',)]:
 		variable = (
 			scale[0]*parameters[0]*
 			sin(scale[1]*parameters[1])
 		)		
-		# variable = parameters[1]
+		# variable = scale[0]*parameters[1]
 
 	elif parameter in ['z'] and group in [('z',)]:
 		variable = (
@@ -96,30 +96,6 @@ def variables(parameters,hyperparameters,parameter,group):
 		variable = (
 			scale[0]*
 			parameters[0]
-		)
-
-	elif parameter in ['xy_024'] and group in [('x_0','x_2','x_4')]:
-		variable = (
-			parameters[2]*parameters[4] + scale[0]*parameters[0]*parameters[3]*
-			cos(scale[1]*parameters[1])
-		)
-
-	elif parameter in ['xy_024'] and group in [('y_0','y_2','y_4')]:
-		variable = (
-			parameters[2]*parameters[4] + scale[0]*parameters[0]*parameters[3]*
-			sin(scale[1]*parameters[1])
-		)
-
-	elif parameter in ['xy_13'] and group in [('x_1','x_3')]:
-		variable = (
-			scale[0]*parameters[0]*
-			cos(scale[1]*parameters[1])
-		)
-
-	elif parameter in ['xy_13'] and group in [('y_1','y_3')]:
-		variable = (
-			scale[0]*parameters[0]*
-			sin(scale[1]*parameters[1])
 		)
 
 	return variable
@@ -141,6 +117,7 @@ def features(parameters,hyperparameters,parameter,group):
 		l = 2
 		shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
 		feature = bound(parameters,hyperparameters).reshape(shape) 
+		# feature = parameters.reshape(shape) 
 
 	elif parameter in ['z'] and group in [('z',)]:
 		feature = parameters[None,...]
@@ -183,8 +160,8 @@ def constraints(parameters,hyperparameters,parameter,group):
 
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		constraint = (
-			# (scale[0]*(parameters[...,[i for i in constants]] - array([constants[i] for i in constants])**2).sum())
-			(scale[0]*(parameters[0,...,[i for i in constants]]**2).sum())
+			(scale[0]*(parameters[...,constants['slice']] - constants['value'])**2).sum()
+			# 0
 			)
 		# constraint = (
 		# 	((scale[0]*sigmoid(parameters[0][:m] - 1/cosh(linspace(0,m,m))[::-1,None])) +

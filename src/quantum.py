@@ -814,11 +814,10 @@ class Object(object):
 		Args:
 			parameters (array): parameters
 		Returns:
-			variables (array): variables
+			parameters (array): parameters
 		'''
 		self.parameters = parameters
-		variables = parameters
-		return variables
+		return parameters
 
 
 	@partial(jit,static_argnums=(0,2))
@@ -843,7 +842,7 @@ class Object(object):
 		attribute = 'values'
 		values = attributes[attribute][layer]
 
-		# Get variables
+		# Get values
 		attribute = 'slice'
 		for parameter in attributes[attribute][layer]:
 			for group in attributes[attribute][layer][parameter]:
@@ -1578,19 +1577,19 @@ class Hamiltonian(Object):
 		Args:
 			parameters (array): parameters
 		Returns:
-			variables (array): variables
+			parameters (array): parameters
 		'''		
 
 		layer = 'variables'
-		variables = self.__layers__(parameters,layer)
+		parameters = self.__layers__(parameters,layer)
 
-		# Get Trotterized order of copies of variables
+		# Get Trotterized order of copies of parameters
 		p = self.p
-		variables = array(trotter(variables,p))
-		# Get reshaped variables (transpose for shape (K,M) to (M,K) and reshape to (MK,) with periodicity of data)
-		variables = variables.T.ravel()
+		parameters = array(trotter(parameters,p))
+		# Get reshaped parameters (transpose for shape (K,M) to (M,K) and reshape to (MK,) with periodicity of data)
+		parameters = parameters.T.ravel()
 		
-		return variables
+		return parameters
 
 
 
@@ -1642,7 +1641,6 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
-
 		return exponentiation(-1j*self.coefficients*parameters,self.data,self.identity)
 
 
@@ -1660,7 +1658,7 @@ class Unitary(Hamiltonian):
 		hyperparameters = self.hyperparameters
 		attributes = self.attributes
 
-		# Get shape and indices of variable variables for gradient
+		# Get shape and indices of variable parameters for gradient
 		attribute = 'shape'
 		layer = 'variables'
 		shape = attributes[attribute][layer]
@@ -1822,9 +1820,12 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 	if slices is None:
 		slices = tuple([slice(0,shapes[axis],1) for axis in range(ndim)])
 
+	if bounds is None:
+		bounds = ["-inf","inf"]
+	elif len(bounds)==0:
+		bounds = ["-inf","inf"]
+
 	bounds = [to_number(i,dtype) for i in bounds]
-	if not any(isnaninf(i) for i in bounds):
-		bounds = [bounds[0],bounds[1]]
 
 	# Add random padding of values if parameters not reset
 	if not reset:
@@ -1841,21 +1842,19 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
 
 			for axis in range(ndim):
-				for i in constant[axis]:
+				for i,value in zip(constant[axis]['slice'],constant[axis]['value']):
 					j = shapes[axis] + i if i < 0 else i
 					if j >= slices[axis].start and j < slices[axis].stop:
 						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-						value = constant[axis][i]			
 						parameters_interp = parameters_interp.at[indices].set(value)
 
 			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
 
 			for axis in range(ndim):
-				for i in constant[axis]:
+				for i,value in zip(constant[axis]['slice'],constant[axis]['value']):
 					j = shapes[axis] + i if i < 0 else i
 					if j >= slices[axis].start and j < slices[axis].stop:
 						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-						value = constant[axis][i]			
 						parameters = parameters.at[indices].set(value)
 
 			parameters = minimum(bounds[1],maximum(bounds[0],parameters))
@@ -2555,14 +2554,14 @@ def check(hyperparameters):
 	section = 'parameters'
 	updates = {
 		'boundaries': {
-			'value': (lambda parameter,hyperparameters: {attr: [{int(j):i[j] for j in i} 
+			'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
 				for i in hyperparameters[section][parameter]['boundaries'][attr]] 
 				for attr in hyperparameters[section][parameter]['boundaries']}),
 			'default': (lambda parameter,hyperparameters: {}),
 			'conditions': (lambda parameter,hyperparameters: True)				
 		},
 		'constants': {
-			'value': (lambda parameter,hyperparameters: {attr: [{int(j):i[j] for j in i} 
+			'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
 				for i in hyperparameters[section][parameter]['constants'][attr]] 
 				for attr in hyperparameters[section][parameter]['constants']}),
 			'default': (lambda parameter,hyperparameters: []),

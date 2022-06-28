@@ -28,11 +28,11 @@
 	"reset":1234321
 	},
 "permutations":{
-	"model__M":[50,100,200,300,1000,50000,10000],
-	"optimize__iterations":[500]
+	"model__M":[128,256,512,1024,4096,8192],
+	"optimize__iterations":[100]
 	},
 "model":{
-	"N":2,
+	"N":4,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -51,7 +51,7 @@
 		"seed":null,
 		"device":"cpu",
 		"verbose":"info",
-		"logger":null,
+		"logger":null
 		}
 	},
 "hyperparameters":{
@@ -95,7 +95,7 @@
 		"seed":null,		
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-10,-10]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]}
 		},
 	"z": {
 		"string":"z",
@@ -139,7 +139,7 @@
 		}
 	},
 "label": {
-	"string":"cnot",
+	"string":"hadamard_hadamard_cnot",
 	"category":"constant",
 	"parameters":null,
 	"shape":[-1,-1],
