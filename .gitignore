@@ -9,4 +9,4 @@
 **/*.pickle
 **/*.fig
 **/output
-**/keep
+**/data
