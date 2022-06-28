@@ -10,6 +10,6 @@ cmd+=(${files[@]})
 cmd+=(${options[@]})
 
 
-# ${cmd[@]}
+${cmd[@]}
 # ${cmd[@]} -k="main"
-${cmd[@]} -k="data"
+# ${cmd[@]} -k="data"

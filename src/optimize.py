@@ -51,11 +51,13 @@ def line_search(func,grad,parameters,alpha,value,gradient,search,hyperparameters
 		return returns
 	returns = osp.optimize.line_search(func,grad,parameters,search[-1],gradient[-1],value[-1],**attrs)
 	returns = dict(zip(['alpha','func','grad','value','_value','slope'],returns))
+	print('alpha = ',returns['alpha'])
 	if returns['alpha'] is None:
 		if len(alpha) > 1:
 			returns['alpha'] = alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2])
 		else:
 			returns['alpha'] = alpha[-1]
+	print('final alpha = ',returns['alpha'])
 	# returns['alpha'] = min(1,returns['alpha'])
 	# elif returns['value'] > value[-1]:
 	# 	returns['alpha'] = (alpha[-1] if len(alpha)>0 else 1e-1)*gradient[-1].dot(search[-1])/gradient[-min(2,len(gradient))].dot(search[-min(2,len(search))])
@@ -113,13 +115,15 @@ class Base(object):
 
 		defaults = {
 			'optimizer':None,
+			'eps':{'objective':1e-4,'grad':1e-12,'alpha':1e-12,'beta':1e3},
 			'alpha':0,
 			'search':0,
 			'iterations':0,
 			'status':1,
 			'reset':0,
 			'verbose':False,
-			'track':{'track':{'log':1,'track':10,'callback':1},'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
+			'modulo':{'log':1,'size':10,'callback':1,'restart':1e10},
+			'track':{'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
 		
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
@@ -130,11 +134,13 @@ class Base(object):
 		self.optimizer = hyperparameters['optimizer']		
 		self.iterations = int(hyperparameters['iterations'])
 		self.track = hyperparameters['track']
+		self.modulo = hyperparameters['modulo']
 		self.hyperparameters = hyperparameters
 
 		self.alpha = hyperparameters['alpha']
 		self.search = hyperparameters['search'] 
 		self.status = hyperparameters['status']
+		self.eps = hyperparameters['eps']
 		self.verbose = hyperparameters['verbose']
 		
 		self.reset(hyperparameters['reset'])
@@ -232,7 +238,7 @@ class Base(object):
 		parameters = self.get_params(state)
 		value,grad = self.value_and_grad(parameters)
 
-		if self.track['size'] > self.track['track']['track']:
+		if self.track['size'] > self.modulo['size']:
 			self.track['grad'].pop(0)
 			self.track['search'].pop(0)
 
@@ -398,8 +404,8 @@ class ConjugateGradient(Base):
 		beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
-		restart = (iteration%self.hyperparameters['restart']) == 0
-		beta = 0 if (restart or isnaninf(beta) or beta>1e3) else beta
+		restart = (iteration%self.modulo['restart']) == 0
+		beta = 0 if (restart or isnaninf(beta) or beta>self.eps['beta']) else beta
 		search = -_grad + beta*search
 
 

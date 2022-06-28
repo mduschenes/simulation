@@ -47,7 +47,6 @@ from src.utils import logconfig
 conf = 'config/logging.conf'
 logger = logconfig(__name__,conf=conf)
 
-
 def test_functions(path,tol):
 
 	hyperparameters = functions(path)

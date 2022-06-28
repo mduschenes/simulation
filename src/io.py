@@ -11,6 +11,7 @@ from natsort import natsorted, ns,index_natsorted,order_by_index
 # Logging
 import logging
 logger = logging.getLogger(__name__)
+debug = 100
 
 # Import user modules
 from src.utils import returnargs
@@ -109,12 +110,15 @@ class funcclass(object):
 	def __call__(self,*args,**kwargs):
 		return self.func(*args,**kwargs)
 
-def serialize_json(obj,key='py/object'):
+def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 	'''
 	Serialize objects into json
 	Args:
 		obj (object): Object to serialize
 		key (str): Key to serialize on
+		wr (str): Dump mode
+		ext (str): Extension type of object
+		kwargs (dict): Additional loading keyword arguments		
 	Returns:
 		obj (object): Serialized object
 	'''	
@@ -126,18 +130,133 @@ def serialize_json(obj,key='py/object'):
 		obj = obj.tolist()
 	return obj
 
-def deserialize_json(obj,key='py/object'):
+def load_json(obj,key='py/object',wr='r',ext='json',**kwargs):
 	'''
 	De-serialize objects into json
 	Args:
 		obj (object): Object to de-serialize
 		key (str): Key to de-serialize on
+		wr (str): Read mode
+		ext (str): Extension type of object
+		kwargs (dict): Additional loading keyword arguments		
 	Returns:
 		obj (object): De-serialized object
 	'''	
 	if isinstance(obj,dict) and key in obj:
 		obj = pickle.loads(str(obj[key]))
 	return obj
+
+def load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
+	'''
+	Load objects from path into hdf5
+	Args:
+		obj (str,object): Path or file object to load object
+		wr (str): Read mode
+		ext (str): Extension type of object
+		kwargs (dict): Additional loading keyword arguments
+	Returns:
+		data (object): Loaded object
+	'''		
+	if isinstance(obj,str):
+		with h5py.File(obj,wr) as file:
+			data = _load_hdf5(file,wr=wr,ext=ext,**kwargs)
+	else:
+		file = obj
+		data = _load_hdf5(file,wr=wr,ext=ext,**kwargs)
+	return data
+
+
+def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
+	'''
+	Load objects from path into hdf5
+	Args:
+		obj (object): hdf5 object to load object
+		wr (str): Read mode
+		ext (str): Extension type of object
+		kwargs (dict): Additional loading keyword arguments
+	Returns:
+		data (object): Loaded object
+	'''	
+	
+	data = {}
+	
+	if isinstance(obj, h5py._hl.group.Group):
+		names = natsorted(obj)
+		for name in names:
+			if isinstance(obj[name], h5py._hl.group.Group):	
+				data[name] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
+			else:
+				# assert isinstance(obj[name],h5py._hl.dataset.Dataset)
+				name = name.replace('.real','').replace('.imag','')
+				try:
+					name_real = "%s.%s"%(name,'real')
+					data_real = obj[name_real][...]
+
+					name_imag = "%s.%s"%(name,'imag')
+					data_imag = obj[name_imag][...]
+
+					data[name] = data_real + 1j*data_imag
+				except:
+					data[name] = obj[name][...]
+
+		names = list(set((name for name in obj.attrs)))
+		for name in names:
+			data[name] = obj.attrs[name]
+	else:
+		data = obj.value
+	return data
+
+def dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
+	'''
+	Dump objects into hdf5
+	Args:
+		obj (object): Object to dump
+		path (str,object): Path object to dump to
+		wr (str): Write mode
+		ext (str): Extension type of object
+		kwargs (dict): Additional loading keyword arguments
+	'''		
+	if isinstance(path,str):
+		with h5py.File(path,wr) as file:
+			_dump_hdf5(obj,file,wr=wr,ext=ext,**kwargs)
+	else:	
+		file = path
+		_dump_hdf5(obj,file,wr=wr,ext=ext,**kwargs)
+
+	return
+
+def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
+	'''
+	Dump objects into hdf5
+	Args:
+		obj (object): object to dump
+		path (object): hdf5 object to dump to
+		wr (str): Write mode
+		ext (str): Extension type of object
+		kwargs (dict): Additional loading keyword arguments
+	'''		
+
+	def convert(name):
+		key = str(name)
+		return key
+
+	if isinstance(obj,dict):
+		names = obj
+		for name in names:
+			key = convert(name)
+			if isinstance(obj[name],dict):
+				path.create_group(key)
+				_dump_hdf5(obj[name],path[key],wr=wr,ext=ext,**kwargs)
+			elif isinstance(obj[name],(int,np.integer,float,np.floating,str)):
+				path.attrs[key] = obj[name]
+			else:
+				path[key] = obj[name]
+	else:
+		path = obj
+
+	return
+
+
 
 
 def pickleable(obj,path=None,callables=True,verbose=True):
@@ -198,7 +317,7 @@ def jsonable(obj,path=None,callables=False):
 		path  = '__tmp__.__tmp__.%d'%(np.random.randint(1,int(1e8)))
 	with open(path,'w') as fobj:
 		try:
-			json.dump(obj,fobj,**{'default':serialize_json,'ensure_ascii':False,'indent':4})
+			json.dump(obj,fobj,**{'default':dump_json,'ensure_ascii':False,'indent':4})
 			isjsonable = True
 		except Exception as e:
 			pass
@@ -246,12 +365,14 @@ def load(path,wr='r',default=None,verbose=False,**kwargs):
 				logger.log(verbose,'Loading path %s'%(path))
 				return data
 			except Exception as e:
+				logger.log(debug,e)			
 				try:
 					with open(path,_wr) as obj:
 						data = loader(obj,_wr,**kwargs)
 						logger.log(verbose,'Loading obj %s'%(path))
 						return data
 				except Exception as ee:
+					logger.log(debug,ee)					
 					pass
 
 	return default			
@@ -279,36 +400,9 @@ def _load(obj,wr,ext,**kwargs):
 	elif ext in ['pickle','pkl']:
 		data = pickle.load(obj,**kwargs)
 	elif ext in ['json']:
-		data = json.load(obj,**{'object_hook':deserialize_json,**kwargs})
+		data = json.load(obj,**{'object_hook':load_json,**kwargs})
 	elif ext in ['hdf5']:
-
-		file = h5py.File(obj,wr)
-
-		data = {}
-
-		for group in natsorted(file):
-			data[group] = {}
-
-			names = list(set((name.replace('.real','').replace('.imag','') for name in file[group])))
-			for name in names:
-
-				try:
-					name_real = "%s.%s"%(name,'real')
-					data_real = file[group][name_real][...]
-
-					name_imag = "%s.%s"%(name,'imag')
-					data_imag = file[group][name_imag][...]
-
-					data[group][name] = data_real + 1j*data_imag
-				except:
-					data[group][name] = file[group][name][...]
-
-			names = list(set((name for name in file[group].attrs)))
-			for name in names:
-				data[group][name] = file[group].attrs[name]
-
-		file.close()
-
+		data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 	return data
 
 
@@ -349,18 +443,20 @@ def dump(data,path,wr='w',verbose=False,**kwargs):
 		dumper = dumpers[path]
 
 		for _wr in [wr,'w','wb']:		
-			with open(path,_wr) as obj:
+			try:
+				dumper(data,path,_wr,**kwargs)
+				logger.log(verbose,'Dumping path %s'%(path))
+				return
+			except Exception as e:
+				logger.log(debug,'---- %r'%(e))
 				try:
-					dumper(data,path,_wr,**kwargs)
-					logger.log(verbose,'Dumping path %s'%(path))
-					return
-				except Exception as e:
-					try:
+					with open(path,_wr) as obj:
 						dumper(data,obj,_wr,**kwargs)
 						logger.log(verbose,'Dumping obj %s'%(path))
-						return
-					except Exception as ee:
-						pass
+					return
+				except Exception as ee:
+					logger.log(debug,ee)
+					pass
 	return
 
 
@@ -387,11 +483,11 @@ def _dump(data,obj,wr,ext,**kwargs):
 		pickle.dump(data,obj,protocol=pickle.HIGHEST_PROTOCOL,**kwargs)
 	elif ext in ['json']:
 		jsonable(data,callables=kwargs.pop('callables',False))	
-		json.dump(data,obj,**{'default':serialize_json,'ensure_ascii':False,'indent':4,**kwargs})
+		json.dump(data,obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
 	elif ext in ['tex']:
 		obj.write(data,**kwargs)
 	elif ext in ['hdf5']:
-		pass
+		dump_hdf5(data,obj,wr=wr,ext=ext,**kwargs)
 	elif ext in ['pdf']:
 		data.savefig(obj,**{**kwargs})
 

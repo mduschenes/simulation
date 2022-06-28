@@ -942,7 +942,7 @@ class Object(object):
 			self.__objective__(parameters)
 			)
 
-		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['track']['track']['log'] == 0:			
+		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['modulo']['log'] == 0:			
 
 			self.hyperparameters['optimize']['track']['parameters'].append(parameters)		
 
@@ -1880,81 +1880,113 @@ def plotter(objects,hyperparameters):
 		hyperparameters (dict): hyperparameters of keys
 	'''	
 
-
 	# Get keys and instances of hyperparameters
-	keys = list(set(hyperparameters))
-	instances = {key: list(set(hyperparameters[key])) for key in keys}
+	keys = {key: list(set(objects[key])) for key in list(set(objects))}
 	length = len(keys)
 	shape = (
 		len(keys),
-		max(len(instances[key]) for key in keys),
+		max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in keys[key]),
+		max(len(keys[key]) for key in keys),
 		)
 
 
-	# Get statistics of attributes over instances
+	# Get data
+	data = {
+		key: {
+			instance: {
+				**{attr:hyperparameters[key][instance]['optimize']['track'][attr] 
+					for attr in hyperparameters[key][instance]['optimize']['track']},
+				**{attr: getattr(objects[key][instance],attr)
+					for attr in objects[key][instance].__dict__
+					if (
+						(not callable(getattr(objects[key][instance],attr))) and
+						(isinstance(getattr(objects[key][instance],attr),(int,np.integer,float,np.floating,str)))
+						)
+					}
+				}
+			for instance in keys[key]
+			}
+		for key in keys
+		}
+
+
+	path = 'data.hdf5'
+	dump(data,path)
+	exit()
+
+
+	# Get statistics of attributes over keys
 	# For args None yields an arange(len(y))))
 
 	statistics = {
 		'objective':{
 			'x':{
 				'key':'iteration',
-				'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key])),
+				'shape':(shape[0],shape[1],shape[2]),
 				'value':None,
-				'func': lambda value: arange(value.shape[2])[None,...]
+				'func': lambda value: arange(value.shape[-1])[None,...]
 			},
 			'y':{
 				'key':'objective',
-				'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key])),
+				'shape':(shape[0],shape[1],shape[2]),
 				'value':None,
-				'func': lambda value: value.mean(1),				
+				'func': lambda value: value.mean((1,)),				
 			},
 			'yerr':{
 				'key':'objective',
-				'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key])),
+				'shape':(shape[0],shape[1],shape[2]),
 				'value':None,
-				'func': lambda value: value.std(1),				
+				'func': lambda value: value.std((1,)),				
 			},
+			'label':{
+				'key':'M',
+				'shape':(shape[0],shape[1],shape[2]),
+				'value':None,
+				'func': lambda value: value,				
+			},			
 		},
+		'overparameterization':{
+			'x':{
+				'key':'M',
+				'shape':(1,shape[2]*shape,),
+				'value':None,
+				'func': lambda value: value.mean((1,)),
+			},
+			'y':{
+				'key':'parameters',
+				'shape':(1,*shape,),
+				'axis':(0,),								
+				'value':None,
+				'func': lambda value: value.mean((1,)),				
+			},
+			'yerr':{
+				'key':'parameters',
+				'shape':(1,*shape,),
+				'axis':(0,),								
+				'value':None,
+				'func': lambda value: value.std((1,)),				
+			},
+		},				
 		# 'parameters':{
 		# 	'x':{
 		# 		'key':'M',
-		# 		'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key]),),				
+		# 		'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in keys[key]),),				
 		# 		'value':None,
 		# 		'func': lambda value: value.mean(1),
 		# 	},
 		# 	'y':{
 		# 		'key':'parameters',
-		# 		'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key]),),
+		# 		'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in keys[key]),),
 		# 		'value':None,
 		# 		'func': lambda value: value.mean(1),				
 		# 	},
 		# 	'yerr':{
 		# 		'key':'parameters',
-		# 		'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in instances[key]),),
+		# 		'shape':(*shape,max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in keys[key]),),
 		# 		'value':None,
 		# 		'func': lambda value: value.std(1),				
 		# 	},
 		# },
-		# 'overparameterization':{
-		# 	'x':{
-		# 		'key':'M',
-		# 		'shape':(*shape,),
-		# 		'value':None,
-		# 		'func': lambda value: value.mean(1),
-		# 	},
-		# 	'y':{
-		# 		'key':'parameters',
-		# 		'shape':(*shape,),
-		# 		'value':None,
-		# 		'func': lambda value: value.mean(1),				
-		# 	},
-		# 	'yerr':{
-		# 		'key':'parameters',
-		# 		'shape':(*shape,),
-		# 		'value':None,
-		# 		'func': lambda value: value.std(1),				
-		# 	},
-		# },		
 		# 'label':{
 		# 	'x':{
 		# 		'key':'M',
@@ -2003,7 +2035,7 @@ def plotter(objects,hyperparameters):
 	ax = {attr:None for attr in statistics}
 
 	for k,key in enumerate(keys):
-		for i,instance in enumerate(instances[key]):
+		for i,instance in enumerate(keys[key]):
 
 			# Get object for key and instance
 			obj = objects[key][instance]
@@ -2019,7 +2051,7 @@ def plotter(objects,hyperparameters):
 						'shape':(),
 						'slice': tuple((k,i,slice(hyperparameters[key][instance]['optimize']['track']['size']))),
 						'_slice': tuple((k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'],None))),
-						'func': lambda value,*args,**kwargs:value,						
+						# 'func': lambda value,*args,**kwargs: (value if arg not in ['label'] else get,						
 						'args':(),
 						'kwargs':{},
 						}
@@ -2027,49 +2059,49 @@ def plotter(objects,hyperparameters):
 					}
 				for attr in ['objective']
 				},
-				# **{attr:{
-				# 	arg:{
-				# 		'shape':(obj.parameters.shape),
-				# 		'slice': tuple(k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'])),
-				# 		'_slice': tuple(k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'],None)),
-						# 'func':lambda value,obj,layer,indices: (
-						# 	((obj.__layers__(value[-1],layer)[indices] - 
-						# 	obj.__layers__(value[0],layer)[indices])/(
-						# 	 obj.__layers__(value[0],layer)[indices]+1e-20)).mean()
-						# 	) if arg in ['y','yerr'] else value,
-						# 'args':(),						
-				# 		'kwargs':{
-				# 			'obj':obj,
-				# 			'layer':'features',
-				# 			'indices': tuple([(
-				# 				slice(
-				# 				min(attributes['index']['features'][parameter][group][axis].start
-				# 					for parameter in attributes['index']['features'] 
-				# 					for group in attributes['index']['features'][parameter]),
-				# 				max(attributes['index']['features'][parameter][group][axis].stop
-				# 					for parameter in attributes['index']['features'] 
-				# 					for group in attributes['index']['features'][parameter]),
-				# 				min(attributes['index']['features'][parameter][group][axis].step
-				# 					for parameter in attributes['index']['features'] 
-				# 					for group in attributes['index']['features'][parameter]))
-				# 				if all(isinstance(attributes['index']['features'][parameter][group][axis],slice)
-				# 					for parameter in attributes['index']['features'] 
-				# 					for group in attributes['index']['features'][parameter]) else
-				# 				list(set(i 
-				# 					for parameter in attributes['index']['features'] 
-				# 					for group in attributes['index']['features'][parameter] 
-				# 					for i in attributes['index']['features'][parameter][group][axis]))
-				# 				)
-				# 				for axis in range(min(len(attributes['index']['features'][parameter][group]) 
-				# 									for parameter in attributes['index']['features'] 
-				# 									for group in attributes['index']['features'][parameter]))
-				# 				])
-				# 		},					
-				# 		}
-				# 	for arg in statistics[attr]
-				# 	}
-				# for attr in ['parameters','overparameterization']
-				# },
+				**{attr:{
+					arg:{
+						'shape':(),
+						'slice': tuple(k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'])),
+						'_slice': tuple(k,i,slice(hyperparameters[key][instance]['optimize']['track']['size'],None)),
+						'func':lambda value,obj,layer,indices: (
+							((obj.__layers__(value[-1],layer)[indices] - 
+							obj.__layers__(value[0],layer)[indices])/(
+							 obj.__layers__(value[0],layer)[indices]+1e-20)).mean()
+							) if arg in ['y','yerr'] else value,
+						'args':(),						
+						'kwargs':{
+							'obj':obj,
+							'layer':'features',
+							'indices': tuple([(
+								slice(
+								min(attributes['index']['features'][parameter][group][axis].start
+									for parameter in attributes['index']['features'] 
+									for group in attributes['index']['features'][parameter]),
+								max(attributes['index']['features'][parameter][group][axis].stop
+									for parameter in attributes['index']['features'] 
+									for group in attributes['index']['features'][parameter]),
+								min(attributes['index']['features'][parameter][group][axis].step
+									for parameter in attributes['index']['features'] 
+									for group in attributes['index']['features'][parameter]))
+								if all(isinstance(attributes['index']['features'][parameter][group][axis],slice)
+									for parameter in attributes['index']['features'] 
+									for group in attributes['index']['features'][parameter]) else
+								list(set(i 
+									for parameter in attributes['index']['features'] 
+									for group in attributes['index']['features'][parameter] 
+									for i in attributes['index']['features'][parameter][group][axis]))
+								)
+								for axis in range(min(len(attributes['index']['features'][parameter][group]) 
+													for parameter in attributes['index']['features'] 
+													for group in attributes['index']['features'][parameter]))
+								])
+						},					
+						}
+					for arg in statistics[attr]
+					}
+				for attr in ['overparameterization']
+				},
 				# **{attr:{
 				# 	arg:{
 				# 		'shape':(*statistics[attr][arg]['shape'][:2],*[1,]),
@@ -2140,7 +2172,9 @@ def plotter(objects,hyperparameters):
 
 
 	# Get settings
-	settings = hyperparameters[key][instance]['plot']
+	path = hyperparameters[key][instance]['sys']['path']['config']['plot']
+	settings = load(path,default={})
+	settings = updater(settings,hyperparameters[key][instance]['plot'],copy=True)
 
 	_settings = {
 		attr:{
@@ -2161,13 +2195,13 @@ def plotter(objects,hyperparameters):
 					**{arg:statistics[attr][arg]['value'][k] for arg in statistics[attr]},
 					**{
 						prop:r'$%s$'%(str(
-							getattr(objects[key][instances[key][0]],
+							getattr(objects[key][keys[key][0]],
 									settings.get(attr,{}).get('ax',{}).get('errorbar',{}).get(prop,''))))
-						for prop in ['label']
+						for prop in ['label'] if settings.get(attr,{}).get('ax',{}).get('errorbar',{}).get(prop) is not None
 						},
 					**{
 						prop:getattr(plt.cm,settings.get(attr,{}).get('ax',{}).get('errorbar',{}).get(prop,''))(k)
-						for prop in ['color','ecolor']
+						for prop in ['color','ecolor'] if settings.get(attr,{}).get('ax',{}).get('errorbar',{}).get(prop) is not None
 						},
 					}
 				for k,key in enumerate(keys)
@@ -2248,7 +2282,7 @@ def plotter(objects,hyperparameters):
 	# Xerr = {}
 
 	# for key in keys:
-	# 	for instance in instances:
+	# 	for instance in keys:
 
 	# 		# Get object
 	# 		obj = objects[key][instance]
