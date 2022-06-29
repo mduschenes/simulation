@@ -14,6 +14,7 @@ import jax
 import jax.numpy as np
 import jax.scipy as sp
 import jax.example_libraries.optimizers as optimizers
+
 jax.config.update('jax_platform_name','cpu')
 jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient
 from src.utils import isnaninf
+from src.line_search import line_search,armijo
 
 
 def value_and_grad(func,grad=None):
@@ -158,7 +160,8 @@ class Line_Search(LineSearchBase):
 		'''
 		self.hyperparameters['old_old_fval'] = value[-2] if len(value)>1 else None
 		
-		returns = osp.optimize.line_search(self.func,self.grad,
+		# returns = osp.optimize.line_search(self.func,self.grad,
+		returns = line_search(self.func,self.grad,
 			parameters,search[-1],gradient[-1],value[-1],
 			**self.hyperparameters)
 		
@@ -199,7 +202,8 @@ class Armijo(LineSearchBase):
 		Returns:
 			returns (dict): Dictionary of returned values of line search
 		'''
-		returns = osp.optimize.linesearch.line_search_armijo(self.func,self.grad,
+		# returns = osp.optimize.linesearch.line_search_armijo(self.func,self.grad,
+		returns = armijo(self.func,self.grad,
 			parameters,search[-1],gradient[-1],value[-1],
 			**self.hyperparameters)
 
