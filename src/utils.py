@@ -555,7 +555,7 @@ class array(np.ndarray):
 		return jax.device_put(np.array(*args,**kwargs))
 
 
-class oarray(onp.ndarray):
+class nparray(onp.ndarray):
 	'''
 	array class
 	Args:

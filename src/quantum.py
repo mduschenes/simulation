@@ -50,7 +50,9 @@ from src.dictionary import branches,leaves,counts,branches_leaves,plant,grow
 from src.parameters import parameterize
 from src.operators import operatorize
 
-from src.io import load,dump,path_join,path_split
+from src.io import load,dump,path_join,path_split,path_edit
+
+from src.process import process
 
 from src.plot import plot
 
@@ -329,9 +331,8 @@ class Lattice(object):
 		# Define system
 		self.system = System(system)
 		self.dtype = self.system.dtype
-		self.verbose = self.system.verbose
-		self.logger = self.system.logger		
 
+		# Check system
 		self.dtype = self.dtype if self.dtype in ['int','Int32','Int64'] else int
 
 		# Define linear size n and coordination number z	
@@ -368,28 +369,6 @@ class Lattice(object):
 		self.I = eye(self.d)
 		self.R = arange(1,max(2,ceil(self.n/2)),dtype=self.dtype)
 
-		return
-
-	def set(self,attr,value):
-		'''	
-		Set class attribute
-		'''
-		setattr(self,attr,value)
-		return
-		
-	def get(self,attr,default=None):
-		'''
-		Get class attribute
-		'''
-		return getattr(self,attr,default)
-
-	def log(self,msg):
-		'''
-		Log messages
-		Args:
-			msg (str): Message to log
-		'''
-		self.logger.log(self.verbose,msg)
 		return
 
 	def __call__(self,site=None):
@@ -621,7 +600,6 @@ class Object(object):
 		self.attributes = {}
 		self.constants = None
 		self.coefficients = 1
-		self.dim = 0
 
 		self.fig = {}
 		self.ax = {}
@@ -634,7 +612,7 @@ class Object(object):
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) for attr in ['key','N','D','d','M','tau','T','p','seed']])))
-	
+
 		return	
 
 	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={}):
@@ -739,6 +717,7 @@ class Object(object):
 
 		self.size = len(self.data)
 		self.shape = (self.size,self.M,*self.data.shape[1:])
+		self.index = arange(self.size)
 
 		self.hyperparameters.update(hyperparameters)
 
@@ -1886,7 +1865,7 @@ def plotter(objects,hyperparameters):
 	shape = (
 		max(hyperparameters[key]['optimize']['track']['size'] for key in keys),
 		)
-
+	key = list(keys)[0]
 
 	# Get data
 	data = {
@@ -1897,19 +1876,28 @@ def plotter(objects,hyperparameters):
 				for attr in objects[key].__dict__
 				if (
 					(not callable(getattr(objects[key],attr))) and
-					(isinstance(getattr(objects[key],attr),(int,np.integer,float,np.floating,str)))
+					(isinstance(getattr(objects[key],attr),(int,np.integer,float,np.floating)))
 					)
 				}
 			}
 		for key in objects
 		}
 
-
 	key = list(keys)[0]
 	path = hyperparameters[key]['sys']['path']['data']['data']
+	path = path_edit(
+			path=path,
+			directory=None,
+			file=(lambda directory,file,ext,delimiter: delimiter.join([*file.split(delimiter)[:-2],'all'])),
+			ext=None,
+			delimiter='.'
+			)
 	dump(data,path)
-	exit()
+	
+	# Process data
+	process(path)
 
+	exit()
 
 	# Get statistics of attributes over keys
 	# For args None yields an arange(len(y))))
@@ -2176,10 +2164,11 @@ def plotter(objects,hyperparameters):
 		attr:{
 			'fig':{
 				'savefig':{
-					'fname':path_join(
-						path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=True,file=False,ext=False,delimiter='.'),
-						'.'.join([*path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=True,ext=False,delimiter='.').split('.')[:-2],'all']),
-						ext=path_split(hyperparameters[key][instance]['sys']['path']['plot'][attr],directory=False,file=False,ext=True,delimiter='.'),
+					'fname':path_edit(
+						path=hyperparameters[key][instance]['sys']['path']['plot'][attr],
+						directory=None,
+						file=(lambda directory,file,ext,delimiter: delimiter.join([*file.split(delimiter)[:-2],'all'])),
+						ext=None,
 						delimiter='.'
 						)
 					},
@@ -2735,7 +2724,10 @@ def run(hyperparameters):
 
 	defaults = copy.deepcopy(hyperparameters)
 
-	for key in settings['hyperparameters']:				
+	for key in settings['hyperparameters']:		
+
+		if not any(settings['boolean'][attr] for attr in ['load','dump','train','plot']):
+			continue		
 
 		hyperparameters = settings['hyperparameters'][key]
 
@@ -2782,9 +2774,22 @@ def run(hyperparameters):
 			path = hyperparameters['sys']['path']['data']['model'] 
 			dump(data,path)
 
+	if settings['boolean']['process']:
+		key = list(settings['hyperparameters'])[0]
+		path = settings['hyperparameters'][key]['sys']['path']['data']['data']
+		path = path_edit(
+			path=path,
+			directory=None,
+			file=(lambda directory,file,ext,delimiter: delimiter.join([*file.split(delimiter)[:-2],'all'])),
+			ext=None,
+			delimiter='.'
+			)	
+		hyperparameters = settings['hyperparameters'][key]['process'] 
+		process(path,hyperparameters)
+
 	if settings['boolean']['plot']:
-		objs = settings['object']
+		objects = settings['object']
 		hyperparameters = settings['hyperparameters']
-		plotter(objs,hyperparameters)		
+		plotter(objects,hyperparameters)		
 
 	return

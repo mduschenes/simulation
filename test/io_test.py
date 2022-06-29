@@ -15,12 +15,26 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.io import load,dump,path_join,path_split
+from src.io import load,dump,path_join,path_split,path_edit
 
 # Logging
 # from src.utils import logconfig
 # conf = 'config/logging.conf'
 # logger = logconfig(__name__,conf=conf)
+
+
+def test_path(path='data/data.hdf5'):
+	new = path_edit(
+			path=path,
+			directory=None,
+			file=(lambda directory,file,ext,delimiter: delimiter.join([*file.split(delimiter)[:]])),
+			ext=None,
+			delimiter='.'
+			)
+
+	assert new == path, "Incorrect path edit"
+
+	return
 
 def test_hdf5(path='data/data.hdf5'):
 

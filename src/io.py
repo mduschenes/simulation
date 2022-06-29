@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,copy,warnings,itertools,inspect
+import os,sys,copy,warnings,itertools,inspect,traceback
 import glob,json,jsonpickle,h5py,pickle,dill
 import numpy as np
 import pandas as pd
@@ -86,6 +86,41 @@ def path_file(path,**kwargs):
 		file (str): Filename
 	'''	
 	return os.path.basename(os.path.splitext(path)[0])
+
+
+def path_edit(path,directory=None,file=None,ext=None,delimiter='.'):
+	'''
+	Edit directory,file,ext of path
+	Args:
+		path (str): Path to split
+		directory (callable,str): Function to edit directory with signature(directory,file,ext,delimiter), or string to replace directory
+		file (callable,str): Function to edit file with signature(directory,file,ext,delimiter), or string to replace file
+		ext (callable,str): Function to edit ext with signature(directory,file,ext,delimiter), or string to replace ext
+		delimiter (str): Delimiter to separate file name from extension
+	Returns:
+		path (str): Edited path
+	'''	
+
+	path = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+
+	if directory is None:
+		directory = path[0]
+	elif callable(directory):
+		directory = directory(*path,delimiter=delimiter)
+
+	if file is None:
+		file = path[1]
+	elif callable(file):
+		file = file(*path,delimiter=delimiter)
+
+	if ext is None:
+		ext = path[2]
+	elif callable(ext):
+		ext = ext(*path,delimiter=delimiter)
+
+	path = path_join(directory,file,ext=ext,delimiter=delimiter)
+
+	return path
 
 def basename(path,**kwargs):
 	'''
@@ -243,6 +278,7 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 	if isinstance(obj,dict):
 		names = obj
 		for name in names:
+			print(name,type(obj[name]))
 			key = convert(name)
 			if isinstance(obj[name],dict):
 				path.create_group(key)
@@ -327,53 +363,40 @@ def jsonable(obj,path=None,callables=False):
 
 
 
-def load(path,wr='r',default=None,verbose=False,**kwargs):
+def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):
 	'''
 	Load objects from path
 	Args:
 		path (str): Path to load object
 		wr (str): Read mode
 		default (object): Default return object if load fails
+		delimiter (str): Delimiter to separate file name from extension		
 		verbose (bool,int): Verbose logging of loading
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
 		data (object): Loaded object
 	'''
-
-	loaders = {ext: lambda obj,wr,ext=ext,**kwargs: _load(obj,wr,ext,**kwargs)
-				for ext in ['npy','csv','txt','pickle','pkl','json','hdf5']}
+	exts = ['npy','csv','txt','pickle','pkl','json','hdf5','h5']
+	wrs = [wr,'r','rb']
 
 	if not isinstance(path,str):
 		return default
 	
-	if path is None:
-		return default
+	ext = path_split(path,ext=True,delimiter=delimiter)
 
-	ext = path.split('.')[-1]
-	if ('.' in path) and (ext in loaders):
-		paths = {ext: path}
-	else:
-		paths = {e: '%s.%s'%(path,e) for e in loaders}
-
-	loaders = {paths[e]: loaders[e] for e in paths}
-
-	for path in loaders:
-		loader = loaders[path]
-		for _wr in [wr,'r','rb']:
+	for wr in wrs:
+		try:
+			data = _load(path,wr=wr,ext=ext,**kwargs)
+			return data
+		except Exception as e:			
+			logger.log(debug,e)			
 			try:
-				data = loader(path,_wr,**kwargs)
-				logger.log(verbose,'Loading path %s'%(path))
-				return data
-			except Exception as e:
-				logger.log(debug,e)			
-				try:
-					with open(path,_wr) as obj:
-						data = loader(obj,_wr,**kwargs)
-						logger.log(verbose,'Loading obj %s'%(path))
-						return data
-				except Exception as ee:
-					logger.log(debug,ee)					
-					pass
+				with open(path,wr) as obj:
+					data = _load(obj,wr=wr,ext=ext,**kwargs)
+					return data
+			except Exception as ee:
+				logger.log(debug,ee)					
+				pass
 
 	return default			
 
@@ -401,64 +424,50 @@ def _load(obj,wr,ext,**kwargs):
 		data = pickle.load(obj,**kwargs)
 	elif ext in ['json']:
 		data = json.load(obj,**{'object_hook':load_json,**kwargs})
-	elif ext in ['hdf5']:
+	elif ext in ['hdf5','h5']:
 		data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 	return data
 
 
 
-def dump(data,path,wr='w',verbose=False,**kwargs):
+def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
 	'''
 	Dump objects to path
 	Args:
 		data (object): Object to dump
 		path (str): Path to dump object
 		wr (str): Write mode
+		delimiter (str): Delimiter to separate file name from extension		
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
 	'''
-	dumpers = {ext: lambda data,obj,wr,ext=ext,**kwargs: _dump(data,obj,wr,ext,**kwargs)
-				for ext in ['npy','csv','txt','pickle','pkl','json','tex','hdf5','pdf']}
+	exts = ['npy','csv','txt','pickle','pkl','json','tex','hdf5','h5','pdf']
+	wrs = [wr,'w','wb']
 
 	if not isinstance(path,str):
 		return
-	
-	if path is None:
-		return
 
-	ext = path.split('.')[-1]
-	if ('.' in path) and (ext in dumpers):
-		paths = {ext: path}
-	else:
-		paths = {e: '%s.%s'%(path,e) for e in dumpers}
+	ext = path_split(path,ext=True,delimiter=delimiter)
 
-	dumpers = {paths[e]: dumpers[e] for e in paths}
+	directory = os.path.abspath(os.path.dirname(path))
+	if not os.path.exists(directory):
+		os.makedirs(directory)
 
-	for path in dumpers:
-		dirname = os.path.abspath(os.path.dirname(path))
-		if not os.path.exists(dirname):
-			os.makedirs(dirname)
-
-	for path in dumpers:
-		dumper = dumpers[path]
-
-		for _wr in [wr,'w','wb']:		
+	for wr in wrs:		
+		try:
+			_dump(data,path,wr=wr,ext=ext,**kwargs)
+			return
+		except Exception as e:
+			print(traceback.format_exc())
+			logger.log(debug,'---- %r'%(e))
 			try:
-				dumper(data,path,_wr,**kwargs)
-				logger.log(verbose,'Dumping path %s'%(path))
+				with open(path,wr) as obj:
+					_dump(data,obj,wr=wr,ext=ext,**kwargs)
 				return
-			except Exception as e:
-				logger.log(debug,'---- %r'%(e))
-				try:
-					with open(path,_wr) as obj:
-						dumper(data,obj,_wr,**kwargs)
-						logger.log(verbose,'Dumping obj %s'%(path))
-					return
-				except Exception as ee:
-					logger.log(debug,ee)
-					pass
+			except Exception as ee:
+				logger.log(debug,ee)
+				pass
 	return
-
 
 
 
@@ -486,7 +495,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 		json.dump(data,obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
 	elif ext in ['tex']:
 		obj.write(data,**kwargs)
-	elif ext in ['hdf5']:
+	elif ext in ['hdf5','h5']:
 		dump_hdf5(data,obj,wr=wr,ext=ext,**kwargs)
 	elif ext in ['pdf']:
 		data.savefig(obj,**{**kwargs})

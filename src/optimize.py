@@ -288,7 +288,7 @@ class Base(object):
 			'modulo':{'log':1,'size':10,'callback':1,'restart':1e10},
 			'track':{'size':0,'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
-		
+
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
 		hyperparameters.update({attr: updates.get(attr,{}).get(hyperparameters[attr],hyperparameters[attr]) 
 			if attr in updates else hyperparameters[attr] for attr in hyperparameters})
@@ -513,8 +513,9 @@ class ConjugateGradient(Base):
 
 		super().__init__(func,grad,callback,hyperparameters)
 
+		defaults = {'beta':[]}
 		self.beta = 0
-		self.track.update(**{attr: [] for attr in ['beta'] if attr not in self.track})
+		self.track.update({attr: self.track.get(attr,defaults[attr]) for attr in defaults})
 
 		return
 
