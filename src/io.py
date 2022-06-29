@@ -11,7 +11,7 @@ from natsort import natsorted, ns,index_natsorted,order_by_index
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-debug = 100
+debug = 0
 
 # Import user modules
 from src.utils import returnargs

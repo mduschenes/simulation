@@ -633,7 +633,7 @@ class Object(object):
 
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
-		self.log('%s\n'%('\n'.join(['%s: %r'%(attr,getattr(self,attr)) for attr in ['key','N','D','d','M','tau','T','p','seed']])))
+		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) for attr in ['key','N','D','d','M','tau','T','p','seed']])))
 	
 		return	
 
@@ -1881,36 +1881,32 @@ def plotter(objects,hyperparameters):
 	'''	
 
 	# Get keys and instances of hyperparameters
-	keys = {key: list(set(objects[key])) for key in list(set(objects))}
+	keys = list(set(objects))
 	length = len(keys)
 	shape = (
-		len(keys),
-		max(hyperparameters[key][instance]['optimize']['track']['size'] for key in keys for instance in keys[key]),
-		max(len(keys[key]) for key in keys),
+		max(hyperparameters[key]['optimize']['track']['size'] for key in keys),
 		)
 
 
 	# Get data
 	data = {
 		key: {
-			instance: {
-				**{attr:hyperparameters[key][instance]['optimize']['track'][attr] 
-					for attr in hyperparameters[key][instance]['optimize']['track']},
-				**{attr: getattr(objects[key][instance],attr)
-					for attr in objects[key][instance].__dict__
-					if (
-						(not callable(getattr(objects[key][instance],attr))) and
-						(isinstance(getattr(objects[key][instance],attr),(int,np.integer,float,np.floating,str)))
-						)
-					}
+			**{attr:hyperparameters[key]['optimize']['track'][attr] 
+				for attr in hyperparameters[key]['optimize']['track']},
+			**{attr: getattr(objects[key],attr)
+				for attr in objects[key].__dict__
+				if (
+					(not callable(getattr(objects[key],attr))) and
+					(isinstance(getattr(objects[key],attr),(int,np.integer,float,np.floating,str)))
+					)
 				}
-			for instance in keys[key]
 			}
-		for key in keys
+		for key in objects
 		}
 
 
-	path = 'data.hdf5'
+	key = list(keys)[0]
+	path = hyperparameters[key]['sys']['path']['data']['data']
 	dump(data,path)
 	exit()
 
@@ -2668,7 +2664,9 @@ def setup(hyperparameters):
 	
 
 	# Get all enumerated keys and seeds for permutations and seedings of hyperparameters
-	keys = {key: [instance for instance,seed in enumerate(seeds)] for key,permutation in enumerate(permutations)}
+	keys = {'.'.join(['%d'%(k) for k in [iteration,instance]]): (permutation,seed) 
+		for iteration,permutation in enumerate(permutations) 
+		for instance,seed in enumerate(seeds)}
 
 	# Set settings with key and seed instances
 
@@ -2679,50 +2677,49 @@ def setup(hyperparameters):
 			(attr not in ['train'] or not hyperparameters['boolean'].get('load',False)))
 			for attr in hyperparameters['boolean']}
 
-	settings['hyperparameters'] = {key: {instance:None for instance in keys[key]} for key in keys}
-
-	settings['object'] = {key: {instance:None for instance in keys[key]} for key in keys}
-	settings['logger'] = {key: {instance:None for instance in keys[key]} for key in keys}
+	settings['hyperparameters'] = {key: None for key in keys}
+	settings['object'] = {key: None for key in keys}
+	settings['logger'] = {key: None for key in keys}
 
 	# Update key/seed instances of hyperparameters with updates
-	for key,permutation in enumerate(permutations):
-		for instance,seed in enumerate(seeds):			
-			
-			settings['hyperparameters'][key][instance] = copy.deepcopy(hyperparameters)
-			settings['object'][key][instance] = None
-			settings['logger'][key][instance] = logconfig(__name__,
-				conf=settings['hyperparameters'][key][instance]['sys']['path']['config']['logger'])
+	for key in keys:
 
-			updates = {}		
+		permutation,seed = keys[key]
+		
+		settings['hyperparameters'][key] = copy.deepcopy(hyperparameters)
+		settings['object'][key] = None
+		settings['logger'][key] = logconfig(__name__,
+			conf=settings['hyperparameters'][key]['sys']['path']['config']['logger'])
 
-			updates.update({
-				'model':{
-					'system':{
-						'key':key,
-						'seed':instance,
-						},
+		updates = {}		
+
+		updates.update({
+			'model':{
+				'system':{
+					'key':key,
+					'seed':hyperparameters['seed']['seed'],
 					},
-				'sys':{
-					'path': {
-						attr:   {i: path_join(settings['hyperparameters'][key][instance]['sys']['directory'][attr][i],
-									'.'.join([settings['hyperparameters'][key][instance]['sys']['file'][attr][i],
-										*[str(key),str(instance)]]) 
-									if attr not in ['config'] else settings['hyperparameters'][key][instance]['sys']['file'][attr][i],							 
-									 ext=settings['hyperparameters'][key][instance]['sys']['ext'][attr][i])
-								for i in settings['hyperparameters'][key][instance]['sys']['file'][attr]}
-						for attr in settings['hyperparameters'][key][instance]['sys']['file']			 
-						},
+				},
+			'sys':{
+				'path': {
+					attr:   {i: path_join(settings['hyperparameters'][key]['sys']['directory'][attr][i],
+								'.'.join([settings['hyperparameters'][key]['sys']['file'][attr][i],key])
+								if attr not in ['config'] else settings['hyperparameters'][key]['sys']['file'][attr][i],							 
+								 ext=settings['hyperparameters'][key]['sys']['ext'][attr][i])
+							for i in settings['hyperparameters'][key]['sys']['file'][attr]}
+					for attr in settings['hyperparameters'][key]['sys']['file']			 
 					},
-				})
+				},
+			})
 
-			for branch,leaf in zip(seedlings,seed):
-				grow(updates,branch,leaf)
+		for branch,leaf in zip(seedlings,seed):
+			grow(updates,branch,leaf)
 
-			setter(updates,permutation,delimiter=delim,copy=True)
+		setter(updates,permutation,delimiter=delim,copy=True)
 
-			updater(settings['hyperparameters'][key][instance],updates,copy=True)
+		updater(settings['hyperparameters'][key],updates,copy=True)
 
-			check(settings['hyperparameters'][key][instance])
+		check(settings['hyperparameters'][key])
 
 	return settings
 
@@ -2739,52 +2736,51 @@ def run(hyperparameters):
 	defaults = copy.deepcopy(hyperparameters)
 
 	for key in settings['hyperparameters']:				
-		for instance in settings['hyperparameters'][key]:
 
-			hyperparameters = settings['hyperparameters'][key][instance]
+		hyperparameters = settings['hyperparameters'][key]
 
-			if settings['boolean']['load']:
-				default = hyperparameters
-				def func(key,iterable,elements): 
-					i = iterable.get(key)
-					e = elements.get(key,i)
-					return e if not callable(i) else i
-				path = hyperparameters['sys']['path']['data']['data']
-				data = load(path,default=default)
-				updater(hyperparameters,data,copy=True,func=func)
+		if settings['boolean']['load']:
+			default = hyperparameters
+			def func(key,iterable,elements): 
+				i = iterable.get(key)
+				e = elements.get(key,i)
+				return e if not callable(i) else i
+			path = hyperparameters['sys']['path']['data']['model']
+			data = load(path,default=default)
+			updater(hyperparameters,data,copy=True,func=func)
 
-			if settings['boolean']['dump']:
-				data = copy.deepcopy(hyperparameters)
-				path = hyperparameters['sys']['path']['data']['settings'] 
-				dump(data,path,callables=False)
+		if settings['boolean']['dump']:
+			data = copy.deepcopy(hyperparameters)
+			path = hyperparameters['sys']['path']['data']['settings'] 
+			dump(data,path,callables=False)
 
 
-			obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+		obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
-			settings['object'][key][instance] = obj
+		settings['object'][key] = obj
 
-			if settings['boolean']['train']:
+		if settings['boolean']['train']:
 
-				parameters = obj.parameters
-				hyperparameters = hyperparameters['optimize']
+			parameters = obj.parameters
+			hyperparameters = hyperparameters['optimize']
 
-				func = obj.__func__
-				callback = obj.__callback__
+			func = obj.__func__
+			callback = obj.__callback__
 
-				optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
+			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
 
-				parameters = optimizer(parameters)
+			parameters = optimizer(parameters)
 
-			
-			if settings['boolean']['plot']:
-				parameters = obj.parameters
-				obj.__plot__(parameters)
+		
+		if settings['boolean']['plot']:
+			parameters = obj.parameters
+			obj.__plot__(parameters)
 
-			if settings['boolean']['dump']:
-				hyperparameters = obj.hyperparameters			
-				data = copy.deepcopy(hyperparameters)
-				path = hyperparameters['sys']['path']['data']['data'] 
-				dump(data,path)
+		if settings['boolean']['dump']:
+			hyperparameters = obj.hyperparameters			
+			data = copy.deepcopy(hyperparameters)
+			path = hyperparameters['sys']['path']['data']['model'] 
+			dump(data,path)
 
 	if settings['boolean']['plot']:
 		objs = settings['object']

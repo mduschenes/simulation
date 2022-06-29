@@ -170,6 +170,7 @@ def operatorize(data,shape,hyperparameters,index=None,dtype=None):
 		**{string: {'func':hadamard,'locality':1} for string in ['hadamard','H']},
 		**{string: {'func':cnot,'locality':2} for string in ['cnot','CNOT','C']},
 		**{string: {'func':toffoli,'locality':3} for string in ['toffoli','TOFFOLI','T']},
+		**{string: {'func':{2:cnot,3:toffoli}[index],'locality':index} for string in ['control']},
 		None: {'func':haar,'locality':index},
 		}
 

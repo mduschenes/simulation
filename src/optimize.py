@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 import numpy as onp
 import scipy as osp
+
 import jax
 import jax.numpy as np
 import jax.scipy as sp
@@ -43,26 +44,183 @@ def value_and_grad(func,grad=None):
 	return func_and_grad,func,grad
 
 
-def line_search(func,grad,parameters,alpha,value,gradient,search,hyperparameters):
-	attrs = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':value[-2] if len(value)>1 else None}
-	attrs.update({attr: hyperparameters.get(attr,attrs[attr]) for attr in attrs})
-	if not hyperparameters.get('line_search'):
-		returns = {'alpha':hyperparameters['alpha']}
-		return returns
-	returns = osp.optimize.line_search(func,grad,parameters,search[-1],gradient[-1],value[-1],**attrs)
-	returns = dict(zip(['alpha','func','grad','value','_value','slope'],returns))
-	print('alpha = ',returns['alpha'])
-	if returns['alpha'] is None:
-		if len(alpha) > 1:
-			returns['alpha'] = alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2])
-		else:
-			returns['alpha'] = alpha[-1]
-	print('final alpha = ',returns['alpha'])
-	# returns['alpha'] = min(1,returns['alpha'])
-	# elif returns['value'] > value[-1]:
-	# 	returns['alpha'] = (alpha[-1] if len(alpha)>0 else 1e-1)*gradient[-1].dot(search[-1])/gradient[-min(2,len(gradient))].dot(search[-min(2,len(search))])
-	return returns
+class LineSearchBase(object):
+	def __init__(self,func,grad,hyperparameters):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+		'''
+		returns = ['alpha']
 
+		self.func = func
+		self.grad = grad
+		self.hyperparameters = hyperparameters
+		self.returns = returns
+
+		return
+
+	def __call__(self,parameters,alpha,value,gradient,search):
+		'''
+		Perform line search
+		Args:
+			parameters (array): Objective parameters
+			alpha (iterable): Previous alpha
+			value (iterable): Previous objective values
+			gradient (array): Previous objective gradients
+			search (array): Previous objective search directions
+		Returns:
+			returns (dict): Dictionary of returned values of line search
+		'''
+		returns = (alpha[-1],)
+
+		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
+
+		return returns
+
+	def __callback__(self,returns,parameters,alpha,value,gradient,search):
+		'''
+		Check return values of line search
+		Args:
+			returns (iterable): Iterable of returned values of line search
+			parameters (array): Objective parameters
+			alpha (iterable): Previous alpha
+			value (iterable): Previous objective values
+			gradient (array): Previous objective gradients
+			search (array): Previous objective search directions
+		Returns:
+			returns (dict): Dictionary of returned values of line search
+		'''
+		
+		returns = dict(zip(self.returns,returns))
+
+		if returns['alpha'] is None:
+			if len(alpha) > 1:
+				returns['alpha'] = alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2])
+			else:
+				returns['alpha'] = alpha[-1]
+		return returns
+
+class LineSearch(LineSearchBase):
+	'''
+	Line Search class
+	Args:
+		func (callable): function to optimize, with signature function(parameters)
+		grad (callable): gradient of function to optimize, with signature grad(parameters)
+		hyperparameters (dict): line search hyperparameters
+	'''
+	def __new__(cls,func,grad,hyperparameters={}):
+	
+		defaults = {'line_search':None}
+		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
+
+		line_searches = {'line_search':Line_Search,'armijo':Armijo,None:Null_Search}
+
+		line_search = hyperparameters['line_search']
+		
+		self = line_searches.get(line_search,line_searches[None])(func,grad,hyperparameters)
+
+		return self
+
+
+class Line_Search(LineSearchBase):
+	def __init__(self,func,grad,hyperparameters):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+		'''
+		defaults = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':None}
+		returns = ['alpha','nfunc','ngrad','value','_value','slope']
+		hyperparameters = {attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults}
+
+		super().__init__(func,grad,hyperparameters)
+
+		self.returns = returns
+
+		return
+
+	def __call__(self,parameters,alpha,value,gradient,search):
+		'''
+		Perform line search
+		Args:
+			parameters (array): Objective parameters
+			alpha (iterable): Previous alpha
+			value (iterable): Previous objective values
+			gradient (array): Previous objective gradients
+			search (array): Previous objective search directions
+		Returns:
+			returns (dict): Dictionary of returned values of line search
+		'''
+		self.hyperparameters['old_old_fval'] = value[-2] if len(value)>1 else None
+		
+		returns = osp.optimize.line_search(self.func,self.grad,
+			parameters,search[-1],gradient[-1],value[-1],
+			**self.hyperparameters)
+		
+		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
+
+		return returns
+
+
+
+class Armijo(LineSearchBase):
+	def __init__(self,func,grad,hyperparameters):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+		'''
+		defaults = {'c1':0.0001}
+		returns = ['alpha','nfunc','value']
+		hyperparameters = {attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults}
+
+		super().__init__(func,grad,hyperparameters)
+
+		self.returns = returns
+
+		return
+
+	def __call__(self,parameters,alpha,value,gradient,search):
+		'''
+		Perform line search
+		Args:
+			parameters (array): Objective parameters
+			alpha (iterable): Previous alpha
+			value (iterable): Previous objective values
+			gradient (array): Previous objective gradients
+			search (array): Previous objective search directions
+		Returns:
+			returns (dict): Dictionary of returned values of line search
+		'''
+		returns = osp.optimize.linesearch.line_search_armijo(self.func,self.grad,
+			parameters,search[-1],gradient[-1],value[-1],
+			**self.hyperparameters)
+
+		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
+		
+		return returns
+
+
+class Null_Search(LineSearchBase):
+	def __init__(self,func,grad,hyperparameters):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+		'''
+
+		super().__init__(func,grad,hyperparameters)
+
+		return
 
 
 class Objective(object):		
@@ -115,6 +273,7 @@ class Base(object):
 
 		defaults = {
 			'optimizer':None,
+			'line_search':'line_search',
 			'eps':{'objective':1e-4,'grad':1e-12,'alpha':1e-12,'beta':1e3},
 			'alpha':0,
 			'search':0,
@@ -146,6 +305,8 @@ class Base(object):
 		self.reset(hyperparameters['reset'])
 
 		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
+
+		self.line_search = LineSearch(self.func,self.grad,self.hyperparameters)
 
 		self.callback = callback if callback is not None else (lambda parameters: None)
 
@@ -379,13 +540,12 @@ class ConjugateGradient(Base):
 
 		parameters = self.get_params(state)
 
-		returns = line_search(
-			self.func,self.grad,parameters,
+		returns = self.line_search(
+			parameters,
 			self.track['alpha'],
 			self.track['value'],
 			self.track['grad'],
-			self.track['search'],
-			self.hyperparameters)
+			self.track['search'])
 
 		alpha = returns['alpha']
 		search = self.track['search'][-1]

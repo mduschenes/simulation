@@ -29,15 +29,6 @@ from lib.utils.plot import plot
 
 def texify(string,usetex=True):
 	strings = {
-		'N':r'$N$'%(),
-		'h':r'$h/J$'%(),
-		'U':r'$U$'%(),
-		'order':r'$\sigma/NJ$'%(),
-		# 'energy':r'$\epsilon - \epsilon_0 / N$'%(),
-		'energy':r'$\epsilon/NJ$'%(),
-		'gap':r'$\Delta/J$'%(),
-		'entanglement':r'$S$'%(),
-		'partition':r'$L/N$'%(),
 	}
 	if not isinstance(string,str):
 		string = str(string)

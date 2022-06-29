@@ -1,17 +1,17 @@
 {
 "sys":{
 	"directory":{
-		"data":{"data":"data","settings":"data","log":"data"},
+		"data":{"model":"data","data":"data","settings":"data","log":"data"},
 		"plot":{"parameters":"data","objective":"data","label":"data","overparameterization":"data","iteration":"data"},
 		"config":{"settings":"config","plot":"config","mplstyle":"config","logger":"config"}
 		},
 	"file":{
-		"data":{"data":"data","settings":"settings","log":"log"},
+		"data":{"model":"model","data":"data","settings":"settings","log":"log"},
 		"plot":{"parameters":"parameters","objective":"objective","label":"label","overparameterization":"overparameterization","iteration":"iteration"},
 		"config":{"settings":"settings","plot":"plot","mplstyle":"plot","logger":"logging"}
 		},
 	"ext":{
-		"data":{"data":"pkl","settings":"json","log":"log"},
+		"data":{"model":"pkl","data":"hdf5","settings":"json","log":"log"},
 		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","overparameterization":"pdf","iteration":"pdf"},
 		"config":{"settings":"json","plot":"json","mplstyle":"mplstyle","logger":"conf"}
 		}
@@ -61,10 +61,10 @@
 "optimize":{
 	"iterations":200,
 	"optimizer":"cg",
+	"line_search":"line_search",	
 	"eps":{"objective":1e-4,"grad":1e-12,"alpha":1e-12,"beta":1e3},
 	"value":{"objective":1,"grad":0,"alpha":0,"beta":0},
 	"status":1,
-	"line_search":1,
 	"reset":0,
 	"c1":0.0001,"c2":0.9,"maxiter":200,"restart":1e6,
 	"alpha":1e-4,"beta":1e-1,
