@@ -45,7 +45,7 @@ from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
 
 from src.dictionary import updater,getter,setter,permuter
-from src.dictionary import branches,leaves,counts,branches_leaves,plant,grow
+from src.dictionary import leaves,counts,plant,grow
 
 from src.parameters import parameterize
 from src.operators import operatorize
@@ -1850,29 +1850,202 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 	return parameters
 
 
-
-def plotter(objects,hyperparameters):
+def processor(objects,hyperparameters):
 	'''
-	Plot keys
+	Process objects
 	Args:
 		objects (dict): objects of keys
 		hyperparameters (dict): hyperparameters of keys
 	'''	
 
 	# Get keys and instances of hyperparameters
-	keys = list(set(objects))
-	length = len(keys)
-	shape = (
-		max(hyperparameters[key]['optimize']['track']['size'] for key in keys),
-		)
-	key = list(keys)[0]
+	keys = list(objects)
+
+	# Process attribute values
+	def func(attr,value,obj):
+		'''
+		Process attribute values
+		Args:
+			attr (str): Attribute to process
+			value (object): Values to process
+			obj (object): Class instance to process
+		Returns:
+			returns (dict): Processed values
+		'''
+		hyperparameters = obj.hyperparameters
+		attributes = obj.attributes
+
+		returns = {}
+
+		if attr in obj.hyperparameters['optimize']['track']:
+			new = attr
+			New = array(value)
+			if New.ndim > 1:
+				New = New.transpose(*range(1,New.ndim),0)
+			returns[new] = New
+		else:
+			new = attr
+			New = value #array(value)
+			# if New.ndim == 0:
+			# 	New = array([New])
+			returns[new] = New
+
+		if attr in ['parameters']:
+			
+			layer = 'features'
+			indices = tuple([(
+				slice(
+				min(attributes['index'][layer][parameter][group][axis].start
+					for parameter in attributes['index'][layer] 
+					for group in attributes['index'][layer][parameter]),
+				max(attributes['index'][layer][parameter][group][axis].stop
+					for parameter in attributes['index'][layer] 
+					for group in attributes['index'][layer][parameter]),
+				min(attributes['index'][layer][parameter][group][axis].step
+					for parameter in attributes['index'][layer] 
+					for group in attributes['index'][layer][parameter]))
+				if all(isinstance(attributes['index'][layer][parameter][group][axis],slice)
+					for parameter in attributes['index'][layer] 
+					for group in attributes['index'][layer][parameter]) else
+				list(set(i 
+					for parameter in attributes['index'][layer] 
+					for group in attributes['index'][layer][parameter] 
+					for i in attributes['index'][layer][parameter][group][axis]))
+				)
+				for axis in range(min(len(attributes['index'][layer][parameter][group]) 
+									for parameter in attributes['index'][layer] 
+									for group in attributes['index'][layer][parameter]))
+				])
+
+			new = 'features'
+			New = ((obj.__layers__(value[-1],layer)[indices] - 
+				obj.__layers__(value[0],layer)[indices])/(
+				obj.__layers__(value[0],layer)[indices]+1e-20)).mean()
+			returns[new] = New
+
+		return returns
 
 	# Get data
 	data = {
 		key: {
-			**{attr:hyperparameters[key]['optimize']['track'][attr] 
+
+			**{attr: hyperparameters[key]['optimize']['track'][attr]
 				for attr in hyperparameters[key]['optimize']['track']},
+			
 			**{attr: getattr(objects[key],attr)
+				for attr in objects[key].__dict__
+				if (
+					(not callable(getattr(objects[key],attr))) and
+					(isinstance(getattr(objects[key],attr),(int,np.integer,float,np.floating)))
+					)
+				}
+			}
+		for key in objects
+		}
+
+	# Process data
+	# data have axis of ('sample,model',*'value-shape','iterations') 
+	# and must be transposed with func such that optimization tracked data has iterations as -1 axis
+	for key in list(data):
+		for attr in list(data[key]):
+			data[key].update(func(attr,data[key][attr],objects[key]))
+
+	# Dump data
+	key = list(keys)[0]
+	path = hyperparameters[key]['sys']['path']['data']['data']
+	path = path_edit(
+			path=path,
+			directory=None,
+			file=(lambda directory,file,ext,delimiter: delimiter.join([*file.split(delimiter)[:-2],'all'])),
+			ext=None,
+			delimiter='.'
+			)
+	dump(data,path)
+	
+	# Process data
+	data = hyperparameters[key]['sys']['path']['data']['data']
+	settings = hyperparameters[key]['sys']['path']['config']['plot']
+
+	data = path_edit(
+		path=data,
+		directory=None,
+		file=(lambda directory,file,ext,delimiter: delimiter.join([*file.split(delimiter)[:-2],'all'])),
+		ext=None,
+		delimiter='.'
+		)
+	settings = path_edit(
+		path=settings,
+		directory=None,
+		file=None,
+		ext=None,
+		delimiter='.'
+		)	
+
+	process(data,settings)
+
+	return
+
+def plotter(objects,hyperparameters):
+	'''
+	Plot objects
+	Args:
+		objects (dict): objects of keys
+		hyperparameters (dict): hyperparameters of keys
+	'''	
+
+	# Get keys and instances of hyperparameters
+	keys = list(objects)
+	length = len(keys)
+
+	def func(attr,value,obj):
+		
+		hyperparameters = obj.hyperparameters
+		attributes = obj.attributes
+
+		if attr in ['parameters']:
+			layer = 'features'
+			indices = tuple([(
+				slice(
+				min(attributes['index'][layer][parameter][group][axis].start
+					for parameter in attributes['index'][layer] 
+					for group in attributes['index'][layer][parameter]),
+				max(attributes['index'][layer][parameter][group][axis].stop
+					for parameter in attributes['index'][layer] 
+					for group in attributes['index'][layer][parameter]),
+				min(attributes['index'][layer][parameter][group][axis].step
+					for parameter in attributes['index'][layer] 
+					for group in attributes['index'][layer][parameter]))
+				if all(isinstance(attributes['index'][layer][parameter][group][axis],slice)
+					for parameter in attributes['index'][layer] 
+					for group in attributes['index'][layer][parameter]) else
+				list(set(i 
+					for parameter in attributes['index'][layer] 
+					for group in attributes['index'][layer][parameter] 
+					for i in attributes['index'][layer][parameter][group][axis]))
+				)
+				for axis in range(min(len(attributes['index'][layer][parameter][group]) 
+									for parameter in attributes['index'][layer] 
+									for group in attributes['index'][layer][parameter]))
+				])
+
+			value = ((obj.__layers__(value[-1],layer)[indices] - 
+				obj.__layers__(value[0],layer)[indices])/(
+				obj.__layers__(value[0],layer)[indices]+1e-20)).mean()
+
+		elif attr in ['grad','search']:
+			value = norm(value,axis=-1)
+
+		return value
+
+	# Get data
+	data = {
+		key: {
+			**{attr: 
+				func(attr,hyperparameters[key]['optimize']['track'][attr],objects[key])
+				for attr in hyperparameters[key]['optimize']['track']},
+			
+			**{attr: 
+				func(attr,getattr(objects[key],attr),objects[key])
 				for attr in objects[key].__dict__
 				if (
 					(not callable(getattr(objects[key],attr))) and
@@ -2636,14 +2809,14 @@ def setup(hyperparameters):
 	groups = hyperparameters['groups']
 	permutations = permuter(permutations,groups=groups)
 
-	# Get seeds for number of splits/seedings, for all nested hyperparameters branches that involve a seed
+	# Get seeds for number of splits/seedings, for all nested hyperparameters leaves that involve a seed
 	seed = hyperparameters['seed']['seed']
 	split = hyperparameters['seed']['split']
 	reset = hyperparameters['seed']['reset']
 
 	key = 'seed'
 	exclude = [('seed','seed',),('model','system','seed')]
-	seedlings = [branch for branch in branches(hyperparameters,key) if branch not in exclude]
+	seedlings = [branch for branch in leaves(hyperparameters,key) if branch not in exclude]
 	count = len(seedlings)
 	
 	shape = (split,count,-1)
@@ -2722,7 +2895,28 @@ def run(hyperparameters):
 
 	settings = setup(hyperparameters)
 
-	defaults = copy.deepcopy(hyperparameters)
+	key = list(settings)[0]
+	hyperparameters = settings
+	data = hyperparameters[key]['sys']['path']['data']['data']
+	settings = hyperparameters[key]['sys']['path']['config']['plot']
+
+	data = path_edit(
+		path=data,
+		directory=None,
+		file=(lambda directory,file,ext,delimiter: delimiter.join([*file.split(delimiter)[:-2],'all'])),
+		ext=None,
+		delimiter='.'
+		)
+	settings = path_edit(
+		path=settings,
+		directory=None,
+		file=None,
+		ext=None,
+		delimiter='.'
+		)	
+
+	process(data,settings)
+	exit()
 
 	for key in settings['hyperparameters']:		
 
@@ -2775,17 +2969,9 @@ def run(hyperparameters):
 			dump(data,path)
 
 	if settings['boolean']['process']:
-		key = list(settings['hyperparameters'])[0]
-		path = settings['hyperparameters'][key]['sys']['path']['data']['data']
-		path = path_edit(
-			path=path,
-			directory=None,
-			file=(lambda directory,file,ext,delimiter: delimiter.join([*file.split(delimiter)[:-2],'all'])),
-			ext=None,
-			delimiter='.'
-			)	
-		hyperparameters = settings['hyperparameters'][key]['process'] 
-		process(path,hyperparameters)
+		objects = settings['object']
+		hyperparameters = settings['hyperparameters']
+		processor(objects,hyperparameters)
 
 	if settings['boolean']['plot']:
 		objects = settings['object']

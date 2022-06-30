@@ -202,8 +202,8 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 
 		if attr in attrs and kwarg in attrs[attr]:
-			if isinstance(string,(str,tuple)):
-				string = texify(string)
+			if isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
+				string = texify(str(string))
 			elif isinstance(string,list):
 				string = [texify(s) for s in string]
 		return string
@@ -274,10 +274,20 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				# 		for k,v in zip(['handles','labels'],
 				# 						getattr(obj,'get_legend_handles_labels')())
 				# 		})
-				if ((handles == [] or labels == []) or (min(len(handles),len(labels))==1) or all([kwargs[k] is None for k in kwargs])):# and all([kwargs.get(k) is None for k in ['handles','labels']]):
-					call = False
-				else:
-					kwargs.update(dict(zip(['handles','labels'],[handles,labels])))
+				handles,labels = (
+					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
+					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)]
+					)				
+
+				call = not (
+					(handles == [] or labels == []) or 
+					(min(len(handles),len(labels))==1) or 
+					all([kwargs[k] is None for k in kwargs])
+					# and all([kwargs.get(k) is None for k in ['handles','labels']]):
+					)
+
+				kwargs.update(dict(zip(['handles','labels'],[handles,labels])))
+
 				_kwds.update({
 					'set_zorder':kwargs.pop('set_zorder',{'level':100}),
 					'set_title':{**({'title': kwargs.pop('set_title',None),'prop':{'size':kwargs.get('prop',{}).get('size')}} 
@@ -454,7 +464,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		exceptions = {
 			**{
 				prop: {
-					'settings':{'set_%sscale'%(AXES[-1]):{'value':'log'}},
+					'settings':{'set_%sscale'%(AXIS[-1]):{'value':'log'}},
 					'kwargs':{kwarg: (lambda settings,prop=prop,kwarg=kwarg,obj=obj: (np.log10(settings[prop][kwarg]))) 
 														for kwarg in ['z']},
 					'pop':False,
@@ -463,24 +473,33 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				},
 			**{
 				prop: {
-					'settings':{'set_%sscale'%(AXES[-1]):{'value':'log'}},
-					'kwargs':{kwarg: (lambda settings,prop=prop,kwarg=kwarg,obj=obj: ([r'$10^{%d}$'%(round(t,-1)) 
-														for t in (settings['set_%sticks'%(AXES[-1])]['ticks'] if (
-														'set_%sticks'%(AXES[-1]) in settings) else (
-														getattr(obj,('set_%sticks'%(AXES[-1])).replace('set','get'))() if (
-														hasattr(obj,'set_%sticks'%(AXES[-1]).replace('set','get'))) else [0]))])) 
-														for kwarg in ['labels']},
+					'settings':{'set_%sscale'%(AXIS[-2]):{'value':'log'}},
+					'kwargs':{kwarg: (lambda settings,prop=prop,kwarg=kwarg,obj=obj: ((settings[prop][kwarg]))) 
+														for kwarg in ['yerr']},
 					'pop':False,
 					}
-				for prop in ['set_%sticklabels'%(AXES[-1])]
+				for prop in ['errorbar']
 				},				
 			**{
 				prop: {
-					'settings':{'set_%sscale'%(AXES[-1]):{'value':'log'}},
+					'settings':{'set_%sscale'%(AXIS[-1]):{'value':'log'}},
+					'kwargs':{kwarg: (lambda settings,prop=prop,kwarg=kwarg,obj=obj: ([r'$10^{%d}$'%(round(t,-1)) 
+														for t in (settings['set_%sticks'%(AXIS[-1])]['ticks'] if (
+														'set_%sticks'%(AXIS[-1]) in settings) else (
+														getattr(obj,('set_%sticks'%(AXIS[-1])).replace('set','get'))() if (
+														hasattr(obj,'set_%sticks'%(AXIS[-1]).replace('set','get'))) else [0]))])) 
+														for kwarg in ['labels']},
+					'pop':False,
+					}
+				for prop in ['set_%sticklabels'%(AXIS[-1])]
+				},				
+			**{
+				prop: {
+					'settings':{'set_%sscale'%(AXIS[-1]):{'value':'log'}},
 					'kwargs':{},
 					'pop':True,
 					}
-				for prop in ['set_%sscale'%(AXES[-1])]
+				for prop in ['set_%sscale'%(AXIS[-1])]
 				},	
 
 			}
@@ -505,7 +524,13 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 														for k in exceptions[prop]['settings'] 
 														for l in exceptions[prop]['settings'][k]]):
 					for kwarg in exceptions[prop]['kwargs']:
-						settings[key][attr][kwarg] = exceptions[prop]['kwargs'][kwarg](settings[key][attr])
+						if isinstance(settings[key][attr][prop],dict):
+							settings[key][attr][prop][kwarg] = exceptions[prop]['kwargs'][kwarg](settings[key][attr])
+						else:
+							for i in range(len(settings[key][attr][prop])):
+								settings[key][attr][prop][i][kwarg] = exceptions[prop]['kwargs'][kwarg](
+									{_prop: settings[key][attr][_prop] if _prop !=prop else settings[key][attr][_prop][i] 
+										for _prop in settings[key][attr]})
 					if exceptions[prop]['pop']:
 						continue
 

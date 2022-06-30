@@ -1,5 +1,5 @@
 {
-"objective":{
+"iteration__objective__M":{
 	"fig":{
 		"set_size_inches":{"w":8,"h":8},
 		"subplots_adjust":{},
@@ -12,12 +12,14 @@
 			"x":"iteration",
 			"y":"objective",
 			"yerr":"objective",
+			"xerr":null,			
 			"label":"M",
-			"fmt":"--o",
-			"color":"tab10",
-			"ecolor":"tab10",
+			"marker":"o",
+			"linestyle":"--",
 			"elinewidth":2,
-			"capsize":3
+			"capsize":3,
+			"color":"viridis",
+			"ecolor":"viridis"
 			},
 		"set_ylabel":{"ylabel":"$\\textrm{Objective}$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
@@ -58,7 +60,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
-"overparameterization":{
+"M__features__N":{
 	"fig":{
 		"suptitle":{"t":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$"},
 		"set_size_inches":{"w":14,"h":12},
@@ -70,13 +72,16 @@
 	"ax":{
 		"errorbar":{
 			"x":"M",
-			"y":"parameters",
-			"yerr":"parameters",
-			"fmt":"--o",
-			"color":"tab10",
-			"ecolor":"tab10",
+			"y":"features",
+			"yerr":"features",
+			"xerr":null,
+			"label":null,
+			"marker":"o",
+			"linestyle":"--",
 			"elinewidth":2,
-			"capsize":3
+			"capsize":3,						
+			"color":"tab10",
+			"ecolor":"tab10"
 			},
 		"set_ylabel":{"ylabel":"$\\varphi$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Number of Time Steps}$"},
@@ -97,7 +102,7 @@
 			{"axis":"x","which":"minor","length":4,"width":0.5}
 			],
 		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
+		"grid":{"visible":true,"which":"both","axis":"both"}
 		},
 	"style":{
 		"texify":null,

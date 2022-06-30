@@ -278,7 +278,6 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 	if isinstance(obj,dict):
 		names = obj
 		for name in names:
-			print(name,type(obj[name]))
 			key = convert(name)
 			if isinstance(obj[name],dict):
 				path.create_group(key)
@@ -389,13 +388,13 @@ def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):
 			data = _load(path,wr=wr,ext=ext,**kwargs)
 			return data
 		except Exception as e:			
-			logger.log(debug,e)			
+			logger.log(debug,'Path: %r\n%r'%(e,traceback.format_exc()))
 			try:
 				with open(path,wr) as obj:
 					data = _load(obj,wr=wr,ext=ext,**kwargs)
 					return data
 			except Exception as ee:
-				logger.log(debug,ee)					
+				logger.log(debug,'Object: %r\n%r'%(ee,traceback.format_exc()))
 				pass
 
 	return default			
@@ -458,14 +457,13 @@ def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
 			_dump(data,path,wr=wr,ext=ext,**kwargs)
 			return
 		except Exception as e:
-			print(traceback.format_exc())
-			logger.log(debug,'---- %r'%(e))
+			logger.log(debug,'Path: %r\n%r'%(e,traceback.format_exc()))
 			try:
 				with open(path,wr) as obj:
 					_dump(data,obj,wr=wr,ext=ext,**kwargs)
 				return
 			except Exception as ee:
-				logger.log(debug,ee)
+				logger.log(debug,'Object: %r\n%r'%(ee,traceback.format_exc()))
 				pass
 	return
 

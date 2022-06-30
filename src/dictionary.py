@@ -264,94 +264,61 @@ def grow(dictionary,branch,leaf):
 	return
 
 
-def branches(dictionary,key):
+def leaves(iterable,key,types=(dict,),returns='value'):
 	'''
-	Find and yield branch of key in nested dictionary
-
+	Find and yield branch of key in nested iterable
 	Args:
-		dictionary (dict): dictionary to search
-		key (object): key to find in iterable dictionary
+		iterable (iterable): Iterable of nested keys
+		key (object): Key in iterable
+		types (tuple[type]): Allowed nested types of iterable values		
+		returns (str): Return of either {'value',key','both'}
 	Yields:
-		value (tuple[object]): Found path of branch in dictionary
+		value (tuple[object]): Found path of branch in iterable
 	'''	
-
-	# Recursively find and yield branch of key in iterable		
 	try:
-		if not isinstance(dictionary,dict):
+		if not isinstance(iterable,types):
 			raise
-		for k in dictionary:
-			if not isinstance(dictionary[k],dict) and k == key:
-				yield (k,)
-			for v in branches(dictionary[k],key):
-				yield (k,*v)
+		for item in iterable:
+			if isinstance(iterable,dict):
+				value = iterable[item]
+			else:
+				value = item
+			if not isinstance(value,types) and item == key:
+				if returns == 'value':
+					yield value
+				elif returns == 'key':
+					yield (item,)				
+				elif returns == 'both':
+					yield ((item,),value)				
+			for value in leaves(value,key,types=types,returns=returns):
+				if returns == 'value':
+					yield value
+				elif returns == 'key':
+					yield (item,*value)				
+				elif returns == 'both':
+					yield ((item,*value[0]),value[1])				
 	except:
 		pass
 	return
 
 
-def leaves(dictionary,key):
+def counts(iterable,types=(dict,)):
 	'''
-	Find and yield key in nested iterable
-
+	Count number of leaves in nested iterable
 	Args:
-		dictionary (dict): dictionary to search
-		key (object): key to find in iterable dictionary
-
-	Yields:
-		value (object): Found values with key in dictionary
-	'''	
-
-	# Recursively find and yield value associated with key in dictionary		
-	try:
-		if not isinstance(dictionary,dict):
-			raise
-		for k in dictionary:
-			if not isinstance(dictionary[k],dict) and k == key:
-				yield dictionary[k]
-			for v in leaves(dictionary[k],key):
-				yield v
-	except:
-		pass
-	return
-
-
-def branches_leaves(dictionary,key):
-	'''
-	Find and yield key and value in nested iterable
-
-	Args:
-		dictionary (dict): dictionary to search
-		key (object): key to find in iterable dictionary
-
-	Yields:
-		value (tuple[tuple[object],object]): Found branches and values with key in dictionary
-	'''	
-
-	# Recursively find and yield value associated with key in dictionary		
-	try:
-		if not isinstance(dictionary,dict):
-			raise
-		for k in dictionary:
-			if not isinstance(dictionary[k],dict) and k == key:
-				yield ((k,),dictionary[k])
-			for v in branches_leaves(dictionary[k],key):
-				yield ((k,*v[0]),v[1])
-	except:
-		pass
-	return
-
-def counts(dictionary):
-	'''
-	Count number of leaves in nested dictionary
-	Args:
-		dictionary (dict): Dictionary of nested keys
+		iterable (iterable): Iterable of nested keys
+		types (tuple[type]): Allowed nested types of iterable values
 	Returns:
-		count (int): Number of leaves in dictionary
+		count (int): Number of leaves in iterable
 	'''
 	count = 0
-	if isinstance(dictionary,dict):
-		for key in dictionary:
-			count += counts(dictionary[key])
+	if isinstance(iterable,types):
+		for item in iterable:
+			if isinstance(iterable,dict):
+				value = iterable[item]
+			else:
+				value = item
+			count += counts(value)
 	else:
 		count = 1
 	return count
