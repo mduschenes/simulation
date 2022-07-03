@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 debug = 0
 
 # Import user modules
+from src.utils import array,isarray,isndarray
 from src.utils import returnargs
 
 def path_split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,delimiter='.'):
@@ -420,6 +421,7 @@ def _load(obj,wr,ext,**kwargs):
 	elif ext in ['txt']:
 		data = np.loadtxt(obj,**{'delimiter':',',**kwargs})
 	elif ext in ['pickle','pkl']:
+		# TODO: Load specific types as wrapped types (i.e) onp.array -> np.array for JAX)
 		data = pickle.load(obj,**kwargs)
 	elif ext in ['json']:
 		data = json.load(obj,**{'object_hook':load_json,**kwargs})

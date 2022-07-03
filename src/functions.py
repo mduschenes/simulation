@@ -437,7 +437,6 @@ def setup(hyperparameters):
 
 
 def functions(hyperparameters):
-	print(hyperparameters)
 	if isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters)
 

@@ -234,32 +234,36 @@ def hasser(iterable,elements,delimiter=False):
 		return False
 
 
-def equalizer(a,b,exceptions=None):
+def equalizer(a,b,types=(dict,),exceptions=None):
 	'''
-	Check if nested dictionaries have equal keys and values
+	Check if nested iterables have equal keys and values
 	Args:
-		a (dict): Dictionary to check
-		b (dict): Dictionary to check
-		exceptions (callable): Check for exceptions of value equality, returning True for exception, with signature exceptions(a[key],b[key])
+		a (dict): Iterable to check
+		b (dict): Iterable to check
+		types (tuple[type]): Allowed nested types of iterable values		
+		exceptions (callable): Check for exceptions of value equality, returning True for exception, with signature exceptions(a,b)
 	Raises:
-		Assertion Error if dictionaries are not equal for given key and value
+		Assertion Error if iterables are not equal for given key and value
 	'''
 	if exceptions is None:
 		exceptions = lambda a,b: False
 
-	assert isiterable(a) and isiterable(b), "objects are not iterable"
-	assert len(a) == len(b), "dictionaries are not equal lengths"
+	if (not isinstance(a,types)) and (not isinstance(b,types)): 
+		assert exceptions(a,b) or (a == b),"%r != %r"%(a,b) 
+		return
 
-	for key in a:
-		assert key in b, "key %r not in both dictionaries"%(key)
+	assert isinstance(a,types) and isinstance(b,types), "iterables %r,%r, are not of type %r"%(type(a),type(b),types,)
+	assert len(a) == len(b), "iterables are not equal lengths"
 
+	for i,item in enumerate(a):
+		if not isinstance(item,types):
+			assert item in b, "%r not in both iterables"%(item)	
 		if isinstance(a,dict) and isinstance(b,dict):
-		if isinstance(a[key],dict):
-			equalizer(a[key],b[key],exceptions=exceptions)
+			key = item
 		else:
-			try:
+			key = i
+		equalizer(a[key],b[key],types=types,exceptions=exceptions)
 
-			assert exceptions(a[key],b[key]) or (a[key] == b[key]), "key %r:\n\t%r\n!=\n\t%r not in both dictionaries"%(key,a[key],b[key])
 	return
 
 def plant(old,new,key):
