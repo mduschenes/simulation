@@ -294,7 +294,7 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 
 
 
-def pickleable(obj,path=None,callables=True,verbose=True):
+def pickleable(obj,path=None,callables=True,verbose=False):
 	'''
 	Check if object can be written to file and can be pickled
 	Args:

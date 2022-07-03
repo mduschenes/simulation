@@ -234,6 +234,34 @@ def hasser(iterable,elements,delimiter=False):
 		return False
 
 
+def equalizer(a,b,exceptions=None):
+	'''
+	Check if nested dictionaries have equal keys and values
+	Args:
+		a (dict): Dictionary to check
+		b (dict): Dictionary to check
+		exceptions (callable): Check for exceptions of value equality, returning True for exception, with signature exceptions(a[key],b[key])
+	Raises:
+		Assertion Error if dictionaries are not equal for given key and value
+	'''
+	if exceptions is None:
+		exceptions = lambda a,b: False
+
+	assert isiterable(a) and isiterable(b), "objects are not iterable"
+	assert len(a) == len(b), "dictionaries are not equal lengths"
+
+	for key in a:
+		assert key in b, "key %r not in both dictionaries"%(key)
+
+		if isinstance(a,dict) and isinstance(b,dict):
+		if isinstance(a[key],dict):
+			equalizer(a[key],b[key],exceptions=exceptions)
+		else:
+			try:
+
+			assert exceptions(a[key],b[key]) or (a[key] == b[key]), "key %r:\n\t%r\n!=\n\t%r not in both dictionaries"%(key,a[key],b[key])
+	return
+
 def plant(old,new,key):
 	'''
 	Transfer leaf keys and values corresponding to key of old dictionary to new dictionary

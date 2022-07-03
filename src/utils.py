@@ -2465,7 +2465,7 @@ def issparsematrix(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is sparse matrix
 	'''
-	return sp.sparse.issparse(a)
+	return osp.sparse.issparse(a)
 
 def issparsearray(a,*args,**kwargs):
 	'''
@@ -2477,7 +2477,8 @@ def issparsearray(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is sparse array
 	'''
-	return isinstance(a,sparray.SparseArray)
+	return osp.sparse.issparse(a)
+	# return isinstance(a,sparray.SparseArray)
 
 def isndarray(a,*args,**kwargs):
 	'''

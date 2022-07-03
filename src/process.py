@@ -86,25 +86,42 @@ def process(data,settings,hyperparameters):
 	'''
 	Process data
 	Args:
-		data (str,dict): Path to or dictionary of data to process
-		settings (str,dict): Path to or dictionary of plot settings
-		hyperparameters (str,dict): Path to or dictionary of process settings
+		data (str,dict,iterable[str,dict]): Path(s) to or dictionary(ies) of data to process
+		settings (str,dict,iterable[str,dict]): Path(s) to or dictionary(ies) of plot settings
+		hyperparameters (str,dict,iterable[str,dict]): Path(s) to or dictionary(ies) of process settings
 	'''
 
 	scalars = (int,np.integer,float,np.float)
 
 	if isinstance(data,str):
-		default = {}
-		data = load(data,default=default)
+		data = [data]
+	if not isinstance(data,dict):
+		paths = data
+		data = {}
+		for path in paths:
+			default = {}
+			data.update(load(path,default=default))
 
 	if isinstance(settings,str):
-		default = {}
-		settings = load(settings,default=default)
+		settings = [settings]
+	if not isinstance(settings,dict):
+		paths = settings
+		settings = {}
+		for path in paths:
+			default = {}
+			settings.update(load(path,default=default))
 
 	if isinstance(hyperparameters,str):
-		default = {}
-		hyperparameters = load(hyperparameters,default=default)		
+		hyperparameters = [hyperparameters]
+	if not isinstance(hyperparameters,dict):
+		paths = hyperparameters
+		hyperparameters = {}
+		for path in paths:
+			default = {}
+			hyperparameters.update(hyperparameters(data,default=default))
 
+	
+	# Get attributes of data
 	attrs = list(set([attr for name in data for attr in data[name]]))
 
 	sort = {attr: list(sorted(set([data[name][attr] 

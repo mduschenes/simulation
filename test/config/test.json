@@ -1,35 +1,39 @@
 {
 "sys":{
 	"directory":{
-		"data":{"data":"output","settings":"output"},
-		"plot":{"parameters":"output","objective":"output","label":"output","overparameterization":"output","iteration":"output"},
-		"config":{"settings":"config","plot":"config","mplstyle":"config"}
+		"data":{"model":"data","data":"data","settings":"data","log":"data"},
+		"process":{"plot":"data"},
+		"plot":{"parameters":"data","objective":"data","label":"data","features":"data","iteration":"data"},
+		"config":{"settings":"config","plot":"config","process":"config","mplstyle":"config","logger":"config","data":"data"}
 		},
 	"file":{
-		"data":{"data":"data","settings":"settings"},
-		"plot":{"parameters":"parameters","objective":"objective","label":"label","overparameterization":"overparameterization","iteration":"iteration"},
-		"config":{"settings":"settings","plot":"plot","mplstyle":"plot"}
+		"data":{"model":"model","data":"data","settings":"settings","log":"log"},
+		"process":{"plot":"plot"},		
+		"plot":{"parameters":"parameters","objective":"objective","label":"label","features":"features","iteration":"iteration"},
+		"config":{"settings":"settings","plot":"plot","process":"process","mplstyle":"plot","logger":"logging","data":"data"}
 		},
 	"ext":{
-		"data":{"data":"pkl","settings":"json"},
-		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","overparameterization":"pdf","iteration":"pdf"},
-		"config":{"settings":"json","plot":"json","mplstyle":"mplstyle"}
+		"data":{"model":"pkl","data":"hdf5","settings":"json","log":"log"},
+		"process":{"plot":"pdf"},		
+		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","features":"pdf","iteration":"pdf"},
+		"config":{"settings":"json","plot":"json","process":"json","mplstyle":"mplstyle","logger":"conf","data":"hdf5"}
 		}
 	},
 "boolean":{
 	"train":1,
 	"load":0,
 	"dump":1,
+	"process":1,
 	"plot":1
 	},
 "seed":{
-	"seed":1234321,
-	"split":1,
-	"reset":1234321
+	"seed":123321,
+	"split":3,
+	"reset":123321
 	},
 "permutations":{
-	"model__M":[10],
-	"optimize__iterations":[1000]
+	"model__M":[16,32],
+	"optimize__iterations":[5]
 	},
 "model":{
 	"N":2,
@@ -50,7 +54,8 @@
 		"key":null,
 		"seed":null,
 		"device":"cpu",
-		"verbose":"info"
+		"verbose":"info",
+		"logger":null
 		}
 	},
 "hyperparameters":{
@@ -60,28 +65,31 @@
 "optimize":{
 	"iterations":200,
 	"optimizer":"cg",
-	"eps":{"objective":1e-2,"grad":1e-12},
-	"value":{"objective":1,"grad":0},
+	"line_search":"line_search",
+	"eps":{"objective":1e-4,"grad":1e-12,"alpha":1e-12,"beta":1e3},
+	"value":{"objective":1,"grad":0,"alpha":0,"beta":0},
 	"status":1,
-	"line_search":1,
 	"reset":0,
 	"c1":0.0001,"c2":0.9,"maxiter":200,"restart":1e6,
 	"alpha":1e-4,"beta":1e-1,
+	"modulo":{"log":1,"history":10,"callback":1,"restart":1e10},
+	"attributes":{
+		"value":[],"grad":[],"search":[],
+		"alpha":[],"beta":[]
+		},
 	"track":{
-		"track":{"log":1,"track":10,"callback":1},
-		"size":0,
 		"iteration":[],"objective":[],
 		"value":[],"grad":[],"search":[],
-		"alpha":[],"beta":[],"lambda":[],
+		"alpha":[],"beta":[],		
 		"parameters":[]
 		}
-	},	
+	},
 "parameters":{
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},				
-		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},			
+		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},		
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -89,24 +97,24 @@
 		"initialization":"interpolation",
 		"random":"uniform",
 		"interpolation":3,
-		"smoothness":2,	
-		"pad":"random",	
-		"seed":null,		
+		"smoothness":2,
+		"pad":"random",
+		"seed":null,	
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"0":-10,"-1":-10}],"features":[{},{},{"0":0,"-1":0}],"variables":[{},{"0":0,"-1":0}]}
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-10,-10]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]}
 		},
 	"z": {
 		"string":"z",
 		"category":"constant",
-		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},				
+		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-0.1,0,0.1,0.05,-0.2],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["z"]],
 		"scale":1,
 		"initialization":"random",
 		"random":"uniform",
-		"pad":"random",	
+		"pad":"random",
 		"seed":null,
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
@@ -115,15 +123,15 @@
 	"zz": {
 		"string":"zz",
 		"category":"constant",
-		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},		
+		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
 		"initialization":"random",
-		"random":"uniform",		
+		"random":"uniform",	
 		"pad":"random",
-		"seed":null,	
+		"seed":null,
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
@@ -138,7 +146,7 @@
 		}
 	},
 "label": {
-	"string":"cnot",
+	"string":"control",
 	"category":"constant",
 	"parameters":null,
 	"shape":[-1,-1],
@@ -148,65 +156,8 @@
 	"seed":null,
 	"bounds":[-1,1]
 	},
-"plot":{
-	"objective":{
-		"fig":{
-			"set_size_inches":{"w":8,"h":8},
-			"subplots_adjust":{},
-			"tight_layout":{},
-			"savefig":{"fname":null,"bbox_inches":"tight"},
-			"close":{}
-			},
-		"ax":{
-			"errorbar":{
-				"x":"iteration",
-				"y":"objective",
-				"yerr":"objective",
-				"label":"M",
-				"fmt":"--o",
-				"color":"tab10",
-				"ecolor":"tab10",
-				"elinewidth":2,
-				"capsize":3
-				},
-			"set_ylabel":{"ylabel":"$\\textrm{Objective}$"},
-			"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
-			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-			"set_xnbins":{"nbins":4},
-			"set_ynbins":{"nbins":6},
-			"set_yscale":{"value":"log","base":10},
-			"set_ylim":{"ymin":0.5e-1,"ymax":1.05e0},
-			"set_yticks":{"ticks":[1e-1,5e-1,6e-1,8e-1,1e0]},
-			"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
-			"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,2]},
-			"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-			"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-			"tick_params":[
-				{"axis":"y","which":"major","length":8,"width":1},
-				{"axis":"y","which":"minor","length":4,"width":0.5},
-				{"axis":"x","which":"major","length":8,"width":1},
-				{"axis":"x","which":"minor","length":4,"width":0.5}
-				],
-			"set_aspect":{"aspect":"auto"},
-			"grid":{"visible":true,"which":"both","axis":"both"},
-			"legend":{
-				"title_fontsize": 20,
-				"prop": {"size": 20},
-				"markerscale": 1.2,
-				"handlelength": 3,
-				"framealpha": 0.8,
-				"loc": "lower right",
-				"ncol": 2,
-				"set_zorder":{"level":100}
-				}			
-			},
-		"style":{
-			"texify":null,
-			"mplstyle":"plot.mplstyle",	
-			"rcParams":{"font.size":25},
-			"layout":{"nrows":1,"ncols":1,"index":1},
-			"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-			}
-		}
-	}
+"process": {
+	"sort": ["N","D","d","L","delta","M","T","tau","iteration"]
+},
+"plot": {}
 }
