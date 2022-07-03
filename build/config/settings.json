@@ -2,17 +2,17 @@
 "sys":{
 	"directory":{
 		"data":{"model":"data","data":"data","settings":"data","log":"data"},
-		"plot":{"parameters":"data","objective":"data","label":"data","overparameterization":"data","iteration":"data"},
+		"plot":{"parameters":"data","objective":"data","label":"data","features":"data","iteration":"data"},
 		"config":{"settings":"config","plot":"config","mplstyle":"config","logger":"config"}
 		},
 	"file":{
 		"data":{"model":"model","data":"data","settings":"settings","log":"log"},
-		"plot":{"parameters":"parameters","objective":"objective","label":"label","overparameterization":"overparameterization","iteration":"iteration"},
+		"plot":{"parameters":"parameters","objective":"objective","label":"label","features":"features","iteration":"iteration"},
 		"config":{"settings":"settings","plot":"plot","mplstyle":"plot","logger":"logging"}
 		},
 	"ext":{
 		"data":{"model":"pkl","data":"hdf5","settings":"json","log":"log"},
-		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","overparameterization":"pdf","iteration":"pdf"},
+		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","features":"pdf","iteration":"pdf"},
 		"config":{"settings":"json","plot":"json","mplstyle":"mplstyle","logger":"conf"}
 		}
 	},
@@ -20,12 +20,13 @@
 	"train":1,
 	"load":0,
 	"dump":1,
-	"plot":1
+	"process":0,
+	"plot":0
 	},
 "seed":{
-	"seed":1234321,
+	"seed":123321,
 	"split":1,
-	"reset":1234321
+	"reset":123321
 	},
 "permutations":{
 	},
@@ -66,12 +67,15 @@
 	"reset":0,
 	"c1":0.0001,"c2":0.9,"maxiter":200,"restart":1e6,
 	"alpha":1e-4,"beta":1e-1,
-	"modulo":{"log":1,"size":10,"callback":1,"restart":1e10},
+	"modulo":{"log":1,"history":10,"callback":1,"restart":1e10},
+	"attributes":{
+		"value":[],"grad":[],"search":[],
+		"alpha":[],"beta":[]
+		},
 	"track":{
-		"size":0,
 		"iteration":[],"objective":[],
 		"value":[],"grad":[],"search":[],
-		"alpha":[],"beta":[],"lambda":[],
+		"alpha":[],"beta":[],
 		"parameters":[]
 		}
 	},
@@ -137,7 +141,7 @@
 		}
 	},
 "label": {
-	"string":"cnot",
+	"string":"control",
 	"category":"constant",
 	"parameters":null,
 	"shape":[-1,-1],
@@ -146,6 +150,5 @@
 	"random":"gaussian",
 	"seed":null,
 	"bounds":[-1,1]
-	},
-"plot":{}
+	}
 }

@@ -7,6 +7,17 @@ import copy as copying
 warnings.simplefilter("ignore", (UserWarning,DeprecationWarning,FutureWarning))
 
 
+def isiterable(obj,exceptions=()):
+	'''
+	Check if object is iterable
+	Args:
+		obj (object): object to be tested
+		exceptions (tuple[type]): Exceptional iterable types to exclude
+	Returns:
+		iterable (bool): whether object is iterable
+	'''
+	return hasattr(obj,'__iter__') and not isinstance(obj,exceptions)
+
 def copier(key,value,copy):
 	'''
 	Copy value based on associated key 
@@ -225,16 +236,15 @@ def hasser(iterable,elements,delimiter=False):
 
 def plant(old,new,key):
 	'''
-	Transfer branches and leaf values corresponding to key of old dictionary to new dictionary
+	Transfer leaf keys and values corresponding to key of old dictionary to new dictionary
 	Args:
-		old (dict): Old dictionary to retrieve branches and leaves corresponding to key
-		new (dict): New dictionary to place branches and leaves corresponding to key
+		old (dict): Old dictionary to retrieve leaves corresponding to key
+		new (dict): New dictionary to place leaves corresponding to key
 		key (object): Key of leaves to retrieve
 	'''
 
-	for branch,leaf in branches_leaves(old,key):
+	for branch,leaf in leaves(old,key,types=(dict,),returns='both'):
 		grow(new,branch,leaf)
-
 	return
 
 
@@ -300,6 +310,57 @@ def leaves(iterable,key,types=(dict,),returns='value'):
 	except:
 		pass
 	return
+
+
+def branches(iterable,keys,types=(dict,),returns='value',exceptions=(str,)):
+	'''
+	Find and yield branch of set of keys at same depth in nested iterable
+	Args:
+		iterable (iterable): Iterable of nested keys
+		keys (iterable[object],object): Keys in iterable
+		types (tuple[type]): Allowed nested types of iterable values		
+		returns (str): Return of either {'value',key','both'}
+		exceptions (tuple[type]): Exceptional iterable key types to exclude		
+	Yields:
+		value (tuple[object]): Found path of branch in iterable
+	'''	
+	# TODO: Fix bug of returning expanded keys instead of nested key+value
+	raise
+	if not isiterable(keys,exceptions=exceptions):		
+		keys = (keys,)
+		slices = 0
+	else:
+		slices = slice(None)
+	try:
+		if not isinstance(iterable,types):
+			raise
+		if all(key in iterable for key in keys):
+			if isinstance(iterable,dict):
+				values = [iterable[key] for key in keys]
+			else:
+				values = keys		
+			if returns == 'value':
+				yield values[slices]
+			elif returns == 'key':
+				yield [(key,) for key in keys][slices]
+			elif returns == 'both':
+				yield [((key,),value) for key,value in zip(keys,values)][slices]
+		for item in iterable:
+			if isinstance(iterable,dict):
+				value = iterable[item]
+			else:
+				value = item
+			for values in branches(value,keys,types=types,returns=returns,exceptions=exceptions):
+				for value in values:
+					if returns == 'value':
+						yield value
+					elif returns == 'key':
+						yield (item,*value)
+					elif returns == 'both':
+						yield ((item,*value[0]),value[1])
+	except:
+		pass
+	return	
 
 
 def counts(iterable,types=(dict,)):
