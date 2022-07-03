@@ -26,7 +26,6 @@ def test_equalizer():
 			for exception in [[callable],[isarray,isndarray]])
 
 	x,y = a[1][4][2][0][4],b[1][4][2][0][4]
-	print(type(x),type(y),isarray(x),isarray(y),isndarray(x),isndarray(y))
 
 	try:
 		equalizer(a,b,types=types,exceptions=exceptions)

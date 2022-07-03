@@ -2514,7 +2514,7 @@ def isarray(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is array
 	'''
-	return isndarray(a) or issparse(a)
+	return isinstance(a,array) #isndarray(a) or issparse(a)
 
 def isscalar(a,*args,**kwargs):
 	'''

@@ -233,7 +233,8 @@ def hasser(iterable,elements,delimiter=False):
 	except:
 		return False
 
-
+import numpy as onp
+import jax.numpy as np
 def equalizer(a,b,types=(dict,),exceptions=None):
 	'''
 	Check if nested iterables have equal keys and values
@@ -250,6 +251,8 @@ def equalizer(a,b,types=(dict,),exceptions=None):
 
 	if (not isinstance(a,types)) and (not isinstance(b,types)): 
 		assert exceptions(a,b) or (a == b),"%r != %r"%(a,b) 
+		return
+	elif exceptions(a,b):
 		return
 
 	assert isinstance(a,types) and isinstance(b,types), "iterables %r,%r, are not of type %r"%(type(a),type(b),types,)

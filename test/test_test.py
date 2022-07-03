@@ -93,7 +93,9 @@ def test_load_dump(path,tol):
 	new.load()
 
 	types = (dict,list,)
-	exceptions = lambda a,b: any(any(e(a) for e in exception) and any(e(b) for e in exception) for exception in [[callable],[isarray,isndarray]])
+	exceptions = lambda a,b: any(any(e(a) for e in exception) and any(e(b) for e in exception) 
+		for exception in [[callable],[isarray,isndarray],
+							[lambda a: isinstance(a,dict) and ((len(a)==0) or all(callable(a[item]) for item in a))]])
 	equalizer(obj.hyperparameters,new.hyperparameters,types=types,exceptions=exceptions)
 
 	return
