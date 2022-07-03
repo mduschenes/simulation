@@ -2200,7 +2200,9 @@ def setup(hyperparameters):
 
 	settings['boolean'] = {attr: (
 			(hyperparameters['boolean'].get(attr,False)) and 
-			(attr not in ['train'] or not hyperparameters['boolean'].get('load',False)))
+			# (attr not in ['train'] or not hyperparameters['boolean'].get('load',False))
+			True
+			)
 			for attr in hyperparameters['boolean']}
 
 	settings['hyperparameters'] = {key: None for key in keys}
