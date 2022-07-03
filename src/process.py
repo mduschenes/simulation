@@ -96,7 +96,7 @@ def process(data,settings,hyperparameters):
 	if isinstance(data,str):
 		data = [data]
 	if not isinstance(data,dict):
-		paths = data
+		paths = set(data)
 		data = {}
 		for path in paths:
 			default = {}
@@ -105,7 +105,7 @@ def process(data,settings,hyperparameters):
 	if isinstance(settings,str):
 		settings = [settings]
 	if not isinstance(settings,dict):
-		paths = settings
+		paths = set(settings)
 		settings = {}
 		for path in paths:
 			default = {}
@@ -114,7 +114,7 @@ def process(data,settings,hyperparameters):
 	if isinstance(hyperparameters,str):
 		hyperparameters = [hyperparameters]
 	if not isinstance(hyperparameters,dict):
-		paths = hyperparameters
+		paths = set(hyperparameters)
 		hyperparameters = {}
 		for path in paths:
 			default = {}

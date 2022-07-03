@@ -1220,7 +1220,7 @@ class Object(object):
 		Load class data		
 		'''
 		def func(key,iterable,elements): 
-			i = iterable.get(key)
+			i = iterable.get(key,elements.get(key))
 			e = elements.get(key,i)
 			return e if not callable(i) else i
 	
@@ -1970,17 +1970,26 @@ def plotter(objects,hyperparameters):
 		hyperparameters (dict): hyperparameters of keys
 	'''	
 
-	# Get keys and instances of hyperparameters
-	key = list(objects)[0]
+	# Get paths and kwargs
+	paths = {'data':('sys','path','data','data'),'settings':('sys','path','config','plot'),'hyperparameters':('sys','path','config','process')}
 
-	# Get kwargs
-	kwargs = {'data':'data','settings':'plot','hyperparameters':'process'}
+	# kwargs = {'data':[],'settings':[],'hyperparameters':[]}
+	
+	kwargs = {'data':{},'settings':{},'hyperparameters':{}}
+	func = lambda key,iterable,elements: iterable.get(key,elements[key])
 
-	for kwarg in paths:
-		path = hyperparameters[key]['sys']['path']['config'][kwargs[kwarg]]
-		kwargs[kwarg] = hyperparameters.get(kwargs[kwarg],{})
-		updater(kwargs[kwarg],load(path),func=func)
+	for kwarg in kwargs:
+		for key in hyperparameters:
+			path = hyperparameters[key]
+			for i in paths[kwarg]:
+				path = path[i]
 
+			# kwargs[kwarg].append(path)
+
+			updater(kwargs[kwarg],hyperparameters[key],get(kwarg,{}),func=func)
+			updater(kwargs[kwarg],load(path),func=func)
+
+	print(kwargs['hyperparameters'])
 	process(**kwargs)
 
 	return
@@ -2284,10 +2293,12 @@ def run(hyperparameters):
 		if settings['boolean']['load']:
 			obj.load()
 
+			print(obj.hyperparameters['optimize']['track']['alpha'])
+
 		settings['object'][key] = obj
 
 		if settings['boolean']['train']:
-
+			print('training',key)
 			parameters = obj.parameters
 			hyperparameters = hyperparameters['optimize']
 
@@ -2305,11 +2316,6 @@ def run(hyperparameters):
 
 		if settings['boolean']['dump']:	
 			obj.dump()
-
-	if settings['boolean']['process']:
-		objects = settings['object']
-		hyperparameters = settings['hyperparameters']
-		processor(objects,hyperparameters)
 
 	if settings['boolean']['plot']:
 		objects = settings['object']
