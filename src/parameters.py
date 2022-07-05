@@ -36,7 +36,7 @@ from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis
 from src.utils import slice_slice
 from src.utils import pi,e
 
-from src.io import load,dump,path_join,path_split
+from src.io import load,dump,join,split
 
 def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=None):
 	'''

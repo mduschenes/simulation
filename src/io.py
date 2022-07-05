@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,copy,warnings,itertools,inspect,traceback
-import glob,json,jsonpickle,h5py,pickle,dill
+import os,sys,warnings,itertools,inspect,traceback
+import shutil
+import glob as globber
+import json,jsonpickle,h5py,pickle,dill
 import numpy as np
 import pandas as pd
 
@@ -17,7 +19,7 @@ debug = 0
 from src.utils import array,isarray,isndarray
 from src.utils import returnargs
 
-def path_split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,delimiter='.'):
+def split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,delimiter='.'):
 	'''
 	Split path into directory,file,ext
 	Args:
@@ -46,7 +48,7 @@ def path_split(path,directory=False,file=False,ext=False,directory_file=False,fi
 	paths = [paths[k] for k in paths if returns[k]] 
 	return paths if len(paths)>1 else paths[0]
 
-def path_join(*paths,ext=None,abspath=False,delimiter='.'):
+def join(*paths,ext=None,abspath=False,delimiter='.'):
 	'''
 	Join paths into path, with optional extension
 	Args:
@@ -57,7 +59,6 @@ def path_join(*paths,ext=None,abspath=False,delimiter='.'):
 	Returns:
 		paths (str): Joined path
 	'''	
-
 	path = os.path.join(*paths)
 	if ext is not None and not path.endswith('%s%s'%(delimiter,ext)):
 		path = delimiter.join([path,ext])
@@ -66,7 +67,7 @@ def path_join(*paths,ext=None,abspath=False,delimiter='.'):
 	return path
 
 
-def path_glob(path,**kwargs):
+def glob(path,**kwargs):
 	'''
 	Expand path
 	Args:
@@ -75,21 +76,9 @@ def path_glob(path,**kwargs):
 	Returns:
 		path (str): Expanded, absolute path
 	'''
-	return glob.glob(os.path.abspath(os.path.expanduser(path)),**kwargs)
+	return globber.glob(os.path.abspath(os.path.expanduser(path)),**kwargs)
 
-def path_file(path,**kwargs):
-	'''
-	Get file name from path
-	Args:
-		path (str): Path
-		kwargs (dict): Additional path keyword arguments
-	Returns:
-		file (str): Filename
-	'''	
-	return os.path.basename(os.path.splitext(path)[0])
-
-
-def path_edit(path,directory=None,file=None,ext=None,delimiter='.'):
+def edit(path,directory=None,file=None,ext=None,delimiter='.'):
 	'''
 	Edit directory,file,ext of path
 	Args:
@@ -102,7 +91,7 @@ def path_edit(path,directory=None,file=None,ext=None,delimiter='.'):
 		path (str): Edited path
 	'''	
 
-	path = path_split(path,directory=True,file=True,ext=True,delimiter=delimiter)
+	path = split(path,directory=True,file=True,ext=True,delimiter=delimiter)
 
 	if directory is None:
 		directory = path[0]
@@ -119,7 +108,7 @@ def path_edit(path,directory=None,file=None,ext=None,delimiter='.'):
 	elif callable(ext):
 		ext = ext(*path,delimiter=delimiter)
 
-	path = path_join(directory,file,ext=ext,delimiter=delimiter)
+	path = join(directory,file,ext=ext,delimiter=delimiter)
 
 	return path
 
@@ -321,7 +310,7 @@ def pickleable(obj,path=None,callables=True,verbose=False):
 		try:
 			pickle.dump(obj,fobj)
 			ispickleable = True
-		except Exception as e:
+		except Exception as exception:
 			pass
 	if os.path.exists(path):
 		os.remove(path)
@@ -355,13 +344,30 @@ def jsonable(obj,path=None,callables=False):
 		try:
 			json.dump(obj,fobj,**{'default':dump_json,'ensure_ascii':False,'indent':4})
 			isjsonable = True
-		except Exception as e:
+		except Exception as exception:
 			pass
 	if os.path.exists(path):
 		os.remove(path)
 	return isjsonable
 
 
+def copy(source,destination,**kwargs):
+	'''
+	Copy objects from source to destination
+	Args:
+		source (str): Path of source object
+		destination (str): Path of destination object
+		kwargs (dict): Additional copying keyword arguments
+	'''
+	assert os.path.exists(source), "source %s does not exist"%(source)
+
+	directory = os.path.abspath(os.path.dirname(destination))
+	if not os.path.exists(directory):
+		os.makedirs(directory)
+
+	shutil.copy2(source,destination)
+
+	return
 
 def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):
 	'''
@@ -376,26 +382,25 @@ def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):
 	Returns:
 		data (object): Loaded object
 	'''
-	exts = ['npy','csv','txt','pickle','pkl','json','hdf5','h5']
 	wrs = [wr,'r','rb']
 
 	if not isinstance(path,str):
 		return default
 	
-	ext = path_split(path,ext=True,delimiter=delimiter)
+	ext = split(path,ext=True,delimiter=delimiter)
 
 	for wr in wrs:
 		try:
 			data = _load(path,wr=wr,ext=ext,**kwargs)
 			return data
-		except Exception as e:			
-			logger.log(debug,'Path: %r\n%r'%(e,traceback.format_exc()))
+		except (AttributeError,TypeError) as exception:			
+			logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
 			try:
 				with open(path,wr) as obj:
 					data = _load(obj,wr=wr,ext=ext,**kwargs)
 					return data
-			except Exception as ee:
-				logger.log(debug,'Object: %r\n%r'%(ee,traceback.format_exc()))
+			except (AttributeError,TypeError) as exception:
+				logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
 				pass
 
 	return default			
@@ -414,6 +419,10 @@ def _load(obj,wr,ext,**kwargs):
 		data (object): Loaded object
 	'''	
 	
+	exts = ['npy','csv','txt','pickle','pkl','json','hdf5','h5']
+
+	assert ext in exts, "Cannot load extension %s"%(ext)
+
 	if ext in ['npy']:
 		data = np.load(obj,**{**kwargs})
 	elif ext in ['csv']:
@@ -442,13 +451,13 @@ def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
 	'''
-	exts = ['npy','csv','txt','pickle','pkl','json','tex','hdf5','h5','pdf']
+
 	wrs = [wr,'w','wb']
 
 	if not isinstance(path,str):
 		return
 
-	ext = path_split(path,ext=True,delimiter=delimiter)
+	ext = split(path,ext=True,delimiter=delimiter)
 
 	directory = os.path.abspath(os.path.dirname(path))
 	if not os.path.exists(directory):
@@ -458,14 +467,14 @@ def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
 		try:
 			_dump(data,path,wr=wr,ext=ext,**kwargs)
 			return
-		except Exception as e:
-			logger.log(debug,'Path: %r\n%r'%(e,traceback.format_exc()))
+		except (AttributeError,TypeError) as exception:
+			logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
 			try:
 				with open(path,wr) as obj:
 					_dump(data,obj,wr=wr,ext=ext,**kwargs)
 				return
-			except Exception as ee:
-				logger.log(debug,'Object: %r\n%r'%(ee,traceback.format_exc()))
+			except (AttributeError,TypeError) as exception:
+				logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
 				pass
 	return
 
@@ -481,6 +490,10 @@ def _dump(data,obj,wr,ext,**kwargs):
 		wr (str): Write mode
 		kwargs (dict): Additional dumping keyword arguments
 	'''	
+
+	exts = ['npy','csv','txt','pickle','pkl','json','tex','hdf5','h5','pdf']
+	assert ext in exts, "Cannot dump extension %s"%(ext)
+
 	if ext in ['npy']:
 		np.save(obj,data,**{**kwargs})
 	elif ext in ['csv']:

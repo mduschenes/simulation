@@ -42,7 +42,7 @@ from src.utils import parse,to_str,to_number,datatype,_len_,_iter_
 from src.utils import pi,e
 from src.utils import itg,flt,dbl
 
-from src.io import load,dump,path_join,path_split
+from src.io import load,dump,join,split
 
 def haar(shape,bounds,random,seed,dtype):
 	'''

@@ -29,7 +29,7 @@ from src.dictionary import updater,getter,setter,permuter,equalizer
 from src.parameters import parameterize
 from src.operators import operatorize
 
-from src.io import load,dump,path_join,path_split
+from src.io import load,dump,join,split
 
 from src.plot import plot
 

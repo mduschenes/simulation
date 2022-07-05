@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,copy
-import time
+import os,sys,itertools,functools
+from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
 
@@ -50,7 +50,7 @@ from src.dictionary import leaves,counts,plant,grow
 from src.parameters import parameterize
 from src.operators import operatorize
 
-from src.io import load,dump,path_join,path_split,path_edit
+from src.io import load,dump,copy,join,split
 
 from src.process import process
 
@@ -1227,7 +1227,7 @@ class Object(object):
 		path = self.hyperparameters['sys']['path']['data']['model']
 		default = self.hyperparameters
 		hyperparameters = load(path,default=default)
-		updater(self.hyperparameters,hyperparameters,copy=True,func=func)
+		updater(self.hyperparameters,hyperparameters,func=func)
 		return
 
 
@@ -1297,8 +1297,9 @@ class Object(object):
 		layer = 'features'
 
 		fig,ax = self.fig.get(attr),self.ax.get(attr)
-		
-		path = hyperparameters['sys']['path']['plot'][attr]
+
+		# path = hyperparameters['sys']['directory']['plot'][attr]		
+		path = 'data/%s.pdf'%(attr)
 
 		layout = [1,int(product(shape[:-1]))]
 		plots = [None]*layout[0]
@@ -1413,7 +1414,8 @@ class Object(object):
 		attr = 'objective'
 		fig,ax = self.fig.get(attr),self.ax.get(attr)
 
-		path = hyperparameters['sys']['path']['plot'][attr]
+		# path = hyperparameters['sys']['path']['plot'][attr]
+		path = 'data/%s.pdf'%(attr)
 
 		layout = []
 		plots = None
@@ -1593,20 +1595,20 @@ class Hamiltonian(Object):
 			_interaction = interaction.pop(0);
 			if any(j in indices for j in _site):
 				for s in sites[_interaction]:
-					_site_ = copy.deepcopy([dict(zip(indices,s if not isinstance(s,int) else [s])).get(j,parse(j,int)) for j in _site])
-					_operator_ = copy.deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
-					_string_ = copy.deepcopy(_string)
-					_interaction_ = copy.deepcopy(_interaction)
+					_site_ = deepcopy([dict(zip(indices,s if not isinstance(s,int) else [s])).get(j,parse(j,int)) for j in _site])
+					_operator_ = deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
+					_string_ = deepcopy(_string)
+					_interaction_ = deepcopy(_interaction)
 					
 					operator.append(_operator_)
 					site.append(_site_)
 					string.append(_string_)
 					interaction.append(_interaction_)
 			else:
-				_site_ = copy.deepcopy(_site)
-				_operator_ = copy.deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
-				_string_ = copy.deepcopy(_string)
-				_interaction_ = copy.deepcopy(_interaction)
+				_site_ = deepcopy(_site)
+				_operator_ = deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
+				_string_ = deepcopy(_string)
+				_interaction_ = deepcopy(_interaction)
 
 				operator.append(_operator_)
 				site.append(_site_)
@@ -1970,30 +1972,23 @@ def plotter(hyperparameters):
 	'''	
 
 	# Get paths and kwargs
+
 	paths = {
 		'data':('sys','path','data','data'),
 		'settings':('sys','path','config','plot'),
-		'hyperparameters':('sys','path','config','process')
+		'hyperparameters':('sys','path','config','process'),
 		}
-
-	# kwargs = {'data':[],'settings':[],'hyperparameters':[]}
 	
-	kwargs = {'data':{},'settings':{},'hyperparameters':{}}
-	func = lambda key,iterable,elements: iterable.get(key,elements[key])
+	kwargs = {kwarg: [] for kwarg in paths}
 
 	for kwarg in kwargs:
 		for key in hyperparameters:
 			path = hyperparameters[key]
 			for i in paths[kwarg]:
 				path = path[i]
-
-			# kwargs[kwarg].append(path)
-
-			updater(kwargs[kwarg],hyperparameters[key].get(paths[kwarg][-1],{}),func=func)
-			updater(kwargs[kwarg],load(path),func=func)
+			kwargs[kwarg].append(path)
 
 	process(**kwargs)
-
 	return
 
 
@@ -2043,12 +2038,16 @@ def check(hyperparameters):
 	updates = {
 		'path': {
 			'value': (lambda hyperparameters: 	{
-				attr: {i: path_join(hyperparameters[section]['directory'][attr][i],
-								 '.'.join([hyperparameters[section]['file'][attr][i]]) if attr not in ['config'] else hyperparameters[section]['file'][attr][i],							 
-								 ext=hyperparameters[section]['ext'][attr][i])
-						for i in hyperparameters[section]['file'][attr]}
-				for attr in hyperparameters[section]['file']			 
-			}),
+				attr: {
+					path: join(
+						split(hyperparameters[section]['path'][attr][path],directory=True),
+						split(hyperparameters[section]['path'][attr][path],file=True),
+						ext=split(hyperparameters[section]['path'][attr][path],ext=True)
+					)
+					for path in hyperparameters[section]['path'][attr]
+					}
+				for attr in hyperparameters[section]['path']
+				}),
 			'default': (lambda hyperparameters: None),
 			'conditions': (lambda hyperparameters: hyperparameters[section].get('path') is None)
 		},		
@@ -2133,13 +2132,14 @@ def check(hyperparameters):
 	section = 'process'
 	updates = {
 		'path': {
-			'value': (lambda hyperparameters: {
-							attr:path_join(
-								hyperparameters['sys']['directory']['plot'][attr],
-								'.'.join([hyperparameters['sys']['file']['plot'][attr]]),
-								 ext=hyperparameters['sys']['ext']['plot'][attr])
-							for attr in hyperparameters['sys']['directory']['plot']
-							}),
+			'value': (lambda hyperparameters: 	{
+				path: join(
+					split(hyperparameters['sys']['path']['plot'][path],directory=True),
+					'.'.join(split(hyperparameters['sys']['path']['plot'][path],file=True).split('.')[:1]),
+					ext=split(hyperparameters['sys']['path']['plot'][path],ext=True)
+				)
+				for path in hyperparameters['sys']['path']['plot']
+				}),
 			'default': (lambda hyperparameters: {}),
 			'conditions': (lambda hyperparameters: (hyperparameters[section].get('path') is not None))
 		},		
@@ -2156,6 +2156,7 @@ def check(hyperparameters):
 		if updates[attr]['conditions'](hyperparameters):
 			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
 
+
 	return
 
 
@@ -2171,6 +2172,7 @@ def setup(hyperparameters):
 
 	# Check hyperparameters have correct values
 	check(hyperparameters)
+
 	# Get permutations of hyperparameters
 	permutations = hyperparameters['permutations']
 	groups = hyperparameters['groups']
@@ -2178,7 +2180,7 @@ def setup(hyperparameters):
 
 	# Get seeds for number of splits/seedings, for all nested hyperparameters leaves that involve a seed
 	seed = hyperparameters['seed']['seed']
-	split = hyperparameters['seed']['split']
+	size = hyperparameters['seed']['size']
 	reset = hyperparameters['seed']['reset']
 
 	key = 'seed'
@@ -2186,10 +2188,10 @@ def setup(hyperparameters):
 	seedlings = [branch for branch in leaves(hyperparameters,key,returns='key') if branch not in exclude]
 	count = len(seedlings)
 	
-	shape = (split,count,-1)
-	split *= count
+	shape = (size,count,-1)
+	size *= count
 
-	seeds = PRNGKey(seed=seed,split=split,reset=reset).reshape(shape)
+	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape)
 	
 	# Get all enumerated keys and seeds for permutations and seedings of hyperparameters
 	keys = {'.'.join(['%d'%(k) for k in [iteration,instance]]): (permutation,seed) 
@@ -2213,14 +2215,17 @@ def setup(hyperparameters):
 	# Update key/seed instances of hyperparameters with updates
 	for key in keys:
 
+		# Set seed and key
 		iteration,instance = map(int,key.split('.'))
 		permutation,seed = keys[key]
 		
-		settings['hyperparameters'][key] = copy.deepcopy(hyperparameters)
+		# Set settings
+		settings['hyperparameters'][key] = deepcopy(hyperparameters)
 		settings['object'][key] = None
 		settings['logger'][key] = logconfig(__name__,
 			conf=settings['hyperparameters'][key]['sys']['path']['config']['logger'])
 
+		# Set hyperparameters updates with key/instance dependent settings
 		updates = {}		
 
 		updates.update({
@@ -2232,22 +2237,68 @@ def setup(hyperparameters):
 				},
 			'sys':{
 				'path': {
-					attr:   {i: path_join(settings['hyperparameters'][key]['sys']['directory'][attr][i],
-								'.'.join([settings['hyperparameters'][key]['sys']['file'][attr][i],key])
-								if attr not in ['config'] else settings['hyperparameters'][key]['sys']['file'][attr][i],							 
-								 ext=settings['hyperparameters'][key]['sys']['ext'][attr][i])
-							for i in settings['hyperparameters'][key]['sys']['file'][attr]}
-					for attr in settings['hyperparameters'][key]['sys']['file']			 
+					attr: {
+						path: join(
+							split(settings['hyperparameters'][key]['sys']['path'][attr][path],directory=True),
+							'.'.join([
+								split(settings['hyperparameters'][key]['sys']['path'][attr][path],file=True),
+								*([key] if attr not in [] else [])
+								]),
+							ext=split(settings['hyperparameters'][key]['sys']['path'][attr][path],ext=True)
+						)
+						for path in settings['hyperparameters'][key]['sys']['path'][attr]
+						}
+					for attr in settings['hyperparameters'][key]['sys']['path']
 					},
 				},
 			})
+
 		for branch,leaf in zip(seedlings,seed):
 			grow(updates,branch,leaf)
 
+
+		# Update hyperparameters
 		setter(updates,permutation,delimiter=delim,copy=True)
 
 		updater(settings['hyperparameters'][key],updates,copy=True)
 		check(settings['hyperparameters'][key])
+
+		
+		# Copy config files
+		directory = settings['hyperparameters'][key]['sys']['directory']['config']
+		paths = settings['hyperparameters'][key]['sys']['path']['config']
+		func = lambda key,iterable,elements: iterable.get(key,elements[key])
+		for path in paths:
+			source = paths[path]
+			destination = join(directory,paths[path])
+
+			if path in ['settings']:
+				data = deepcopy(settings['hyperparameters'][key])
+			else:
+				data = settings['hyperparameters'][key].get(path,{})
+			try:
+				try:
+					source = load(source)
+				except:
+					try:
+						source = join(
+							split(source,directory=True),
+							'.'.join(split(source,file=True).split('.')[:1]),
+							ext=split(source,ext=True))
+						source = load(source)
+					except:
+						raise
+				updater(data,source,func=func)
+				dump(data,destination)
+			except:
+				copy(source,destination)
+
+
+		# Update config paths
+		directory = settings['hyperparameters'][key]['sys']['directory']['config']
+		paths = settings['hyperparameters'][key]['sys']['path']['config']
+		for path in paths:
+			paths[path] = join(directory,paths[path])
 
 	return settings
 

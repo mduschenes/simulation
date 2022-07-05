@@ -21,8 +21,10 @@ for PATH in PATHS:
 
 from src.utils import array,product
 from src.dictionary import leaves
-from src.io import setup,load,dump,path_join,path_split
+from src.io import setup,load,dump,join,split
 from src.plot import plot
+
+scalars = (int,np.integer,float,np.float)
 
 
 def texify(string,usetex=True):
@@ -91,8 +93,6 @@ def process(data,settings,hyperparameters):
 		hyperparameters (str,dict,iterable[str,dict]): Path(s) to or dictionary(ies) of process settings
 	'''
 
-	scalars = (int,np.integer,float,np.float)
-
 	if isinstance(data,str):
 		data = [data]
 	if not isinstance(data,dict):
@@ -118,12 +118,16 @@ def process(data,settings,hyperparameters):
 		hyperparameters = {}
 		for path in paths:
 			default = {}
-			hyperparameters.update(load(hyperparameters,default=default))
+			hyperparameters.update(load(path,default=default))
 
 	
 	# Get attributes of data
 	attrs = list(set([attr for name in data for attr in data[name]]))
 
+	for name in data:
+		for attr in attrs:
+			if attr not in data[name]:
+				print(name,attr)
 	sort = {attr: list(sorted(set([data[name][attr] 
 					for name in data if (
 					attr in data[name] and 
@@ -136,20 +140,22 @@ def process(data,settings,hyperparameters):
 	for name in data:
 		for attr in data[name]:
 			data[name][attr] = np.array(data[name][attr])
-			data[name][attr] = data[name][attr].reshape(*[1]*(max(0,2-data[name][attr].ndim)),*data[name][attr].shape)
+			data[name][attr] = data[name][attr].reshape(*[1]*(max(0,1-data[name][attr].ndim)),*data[name][attr].shape)
 	
 	# Data names correspond to the instances of the models and samples of that model
 	# Data attributes have ndim dimensions
 	# Shape of data is shape of attribute + number of iterations, which have a maximum size across the data names
-	subndim = {attr: min(max(0,data[name][attr].ndim-2) for name in data) for attr in attrs}
-	subshape = {attr: tuple((min(data[name][attr].shape[axis] for name in data) for axis in range(subndim[attr]))) for attr in attrs}
+	subndim = {attr: min(max(0,data[name][attr].ndim-1) for name in data) for attr in attrs}
+	subshape = {attr: tuple((max(data[name][attr].shape[axis] for name in data) for axis in range(subndim[attr]))) for attr in attrs}
 	ndim = {attr: min(data[name][attr].ndim for name in data) for attr in attrs}
 	shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in data)))) for attr in attrs}
 
 	print(subndim)
 	print(subshape)
+	print()
 	print(ndim)
 	print(shape)
+	print()
 
 	xy = {'x':None,'y':None,'label':None}
 	
@@ -157,7 +163,7 @@ def process(data,settings,hyperparameters):
 	# Get hyperparameters
 	file,directory,ext = {},{},{}
 	for attr in hyperparameters.get('path',{}):
-		file[attr],directory[attr],ext[attr] = path_split(hyperparameters.get('path',{}).get(attr),directory=True,file=True,ext=True)
+		file[attr],directory[attr],ext[attr] = split(hyperparameters.get('path',{}).get(attr),directory=True,file=True,ext=True)
 
 	# Get all keys from find
 	keys = (leaves(settings,prop,types=(dict,list),returns='value') for prop in xy)
@@ -185,6 +191,9 @@ def process(data,settings,hyperparameters):
 						  if all([params[k] == dict(zip(sort,permute))[k] for k in params]) and 
 						  	 len([name for name in names if all([data[name][k] == j for k,j in zip(sort,permute)])]) > 0
 						  }
+
+				if len(unique) == 0:
+					continue
 
 				length = (len(unique),max(len(unique[permute]) for permute in unique))
 
@@ -269,7 +278,7 @@ def process(data,settings,hyperparameters):
 					},
 					**{attr:{
 						**settings[key].get(obj,{}).get(attr,{}),
-						'fname':path_join(directory['plot'],'.'.join([file['plot'],key['x'],key['y'],*key['label']]),ext=ext['plot']),
+						'fname':join(directory['plot'],'.'.join([file['plot'],key['x'],key['y'],*key['label']]),ext=ext['plot']),
 						}
 					for attr in (['savefig'] if obj in ['fig'] else [])
 					},
@@ -285,6 +294,9 @@ def process(data,settings,hyperparameters):
 						} for i,permutation in enumerate(variables[key][index])]
 					for attr in (['errorbar'] if obj in ['ax'] else [])
 					},
+					**{attr: join(directory[attr],file[attr],ext=ext[attr])
+					for attr in (['mplstyle'] if obj in ['style'] else [])
+					},					
 				}
 				for obj in settings[key]
 			}

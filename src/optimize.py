@@ -594,7 +594,6 @@ class ConjugateGradient(Base):
 		search = -_grad + beta*search
 
 
-
 		self.attributes['alpha'].append(alpha)
 		self.attributes['beta'].append(beta)
 		self.attributes['search'].append(search)

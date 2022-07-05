@@ -786,12 +786,12 @@ class toffoli(array):
 
 
 
-def PRNGKey(seed=None,split=False,reset=None):
+def PRNGKey(seed=None,size=False,reset=None):
 	'''
 	Generate PRNG key
 	Args:
 		seed (int): Seed for random number generation or random key for future seeding
-		split(bool,int): Number of splits of random key
+		size(bool,int): Number of splits of random key
 		reset (bool,int): Reset seed
 	Returns:
 		key (key,list[key]): Random key
@@ -808,8 +808,8 @@ def PRNGKey(seed=None,split=False,reset=None):
 	else:
 		key = seed
 
-	if split:
-		key = jax.random.split(key,num=split)
+	if size:
+		key = jax.random.split(key,num=size)
 
 	return key
 
