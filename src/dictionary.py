@@ -233,8 +233,6 @@ def hasser(iterable,elements,delimiter=False):
 	except:
 		return False
 
-import numpy as onp
-import jax.numpy as np
 def equalizer(a,b,types=(dict,),exceptions=None):
 	'''
 	Check if nested iterables have equal keys and values
@@ -328,7 +326,7 @@ def leaves(iterable,key,types=(dict,),returns='value'):
 				value = iterable[item]
 			else:
 				value = item
-			if not isinstance(value,types) and item == key:
+			if item == key:
 				if returns == 'value':
 					yield value
 				elif returns == 'key':
