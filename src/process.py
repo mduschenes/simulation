@@ -118,7 +118,7 @@ def process(data,settings,hyperparameters):
 		hyperparameters = {}
 		for path in paths:
 			default = {}
-			hyperparameters.update(hyperparameters(data,default=default))
+			hyperparameters.update(load(hyperparameters,default=default))
 
 	
 	# Get attributes of data

@@ -1962,16 +1962,19 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 
 	return parameters
 
-def plotter(objects,hyperparameters):
+def plotter(hyperparameters):
 	'''
-	Plot objects
+	Plot models
 	Args:
-		objects (dict): objects of keys
-		hyperparameters (dict): hyperparameters of keys
+		hyperparameters (dict): hyperparameters of models
 	'''	
 
 	# Get paths and kwargs
-	paths = {'data':('sys','path','data','data'),'settings':('sys','path','config','plot'),'hyperparameters':('sys','path','config','process')}
+	paths = {
+		'data':('sys','path','data','data'),
+		'settings':('sys','path','config','plot'),
+		'hyperparameters':('sys','path','config','process')
+		}
 
 	# kwargs = {'data':[],'settings':[],'hyperparameters':[]}
 	
@@ -1986,10 +1989,9 @@ def plotter(objects,hyperparameters):
 
 			# kwargs[kwarg].append(path)
 
-			updater(kwargs[kwarg],hyperparameters[key],get(kwarg,{}),func=func)
+			updater(kwargs[kwarg],hyperparameters[key].get(paths[kwarg][-1],{}),func=func)
 			updater(kwargs[kwarg],load(path),func=func)
 
-	print(kwargs['hyperparameters'])
 	process(**kwargs)
 
 	return
@@ -2131,9 +2133,15 @@ def check(hyperparameters):
 	section = 'process'
 	updates = {
 		'path': {
-			'value': (lambda hyperparameters: hyperparameters['sys']['path'][section]),
+			'value': (lambda hyperparameters: {
+							attr:path_join(
+								hyperparameters['sys']['directory']['plot'][attr],
+								'.'.join([hyperparameters['sys']['file']['plot'][attr]]),
+								 ext=hyperparameters['sys']['ext']['plot'][attr])
+							for attr in hyperparameters['sys']['directory']['plot']
+							}),
 			'default': (lambda hyperparameters: {}),
-			'conditions': (lambda hyperparameters: hyperparameters['sys'].get('path',{}).get(section) is not None)
+			'conditions': (lambda hyperparameters: (hyperparameters[section].get('path') is not None))
 		},		
 	}			
 	for attr in updates:						
@@ -2142,13 +2150,7 @@ def check(hyperparameters):
 			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
 
 	section = 'plot'
-	updates = {
-		'path': {
-			'value': (lambda hyperparameters: hyperparameters['sys']['path'][section]),
-			'default': (lambda hyperparameters: {}),
-			'conditions': (lambda hyperparameters: hyperparameters['sys'].get('path',{}).get(section) is not None)
-		},		
-	}			
+	updates = {}			
 	for attr in updates:						
 		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
 		if updates[attr]['conditions'](hyperparameters):
@@ -2199,9 +2201,8 @@ def setup(hyperparameters):
 	settings['seed'] = seeds
 
 	settings['boolean'] = {attr: (
-			(hyperparameters['boolean'].get(attr,False)) and 
+			(hyperparameters['boolean'].get(attr,False)) 
 			# (attr not in ['train'] or not hyperparameters['boolean'].get('load',False))
-			True
 			)
 			for attr in hyperparameters['boolean']}
 
@@ -2260,32 +2261,9 @@ def run(hyperparameters):
 
 	settings = setup(hyperparameters)
 
-	# key = list(settings['hyperparameters'])[0]
-	# hyperparameters = settings['hyperparameters']
-	# data = hyperparameters[key]['sys']['path']['data']['data']
-	# settings = hyperparameters[key]['sys']['path']['config']['plot']
-
-	# data = path_edit(
-	# 	path=data,
-	# 	directory=None,
-	# 	file=(lambda directory,file,ext,delimiter: delimiter.join([*file.split(delimiter)[:-2]])),
-	# 	ext=None,
-	# 	delimiter='.'
-	# 	)
-	# settings = path_edit(
-	# 	path=settings,
-	# 	directory=None,
-	# 	file=None,
-	# 	ext=None,
-	# 	delimiter='.'
-	# 	)	
-
-	# process(data,settings)
-	# exit()
-
 	for key in settings['hyperparameters']:		
 
-		if not any(settings['boolean'][attr] for attr in ['load','dump','train','plot']):
+		if not any(settings['boolean'][attr] for attr in ['load','dump','train']):
 			continue		
 
 		hyperparameters = settings['hyperparameters'][key]
@@ -2295,12 +2273,10 @@ def run(hyperparameters):
 		if settings['boolean']['load']:
 			obj.load()
 
-			print(obj.hyperparameters['optimize']['track']['alpha'])
-
 		settings['object'][key] = obj
 
 		if settings['boolean']['train']:
-			print('training',key)
+
 			parameters = obj.parameters
 			hyperparameters = hyperparameters['optimize']
 
@@ -2320,8 +2296,7 @@ def run(hyperparameters):
 			obj.dump()
 
 	if settings['boolean']['plot']:
-		objects = settings['object']
 		hyperparameters = settings['hyperparameters']
-		plotter(objects,hyperparameters)		
+		plotter(hyperparameters)		
 
 	return
