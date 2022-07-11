@@ -19,7 +19,7 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,product
+from src.utils import array,product,is_number,to_number,to_key_value
 from src.dictionary import leaves
 from src.io import setup,load,dump,join,split
 from src.plot import plot
@@ -176,10 +176,11 @@ def process(data,settings,hyperparameters):
 	props = ['x','y','label']
 	props = {prop:{'%s'%(prop):'mean','%serr'%(prop):'std'} if prop not in ['label'] else {} for prop in props}
 	keys = (leaves(settings,prop,types=(dict,list),returns='value') for prop in props)
-	keys = map(lambda i: dict(zip(props,(*i[:2],(i[2],) if isinstance(i[2],str) else tuple(i[2])))),zip(*keys))
+	keys = map(lambda i: dict(zip(props,(*i[:2],tuple((dict(zip(['key','value'],to_key_value(i[2]))),)) if isinstance(i[2],str) else tuple((dict(zip(['key','value'],to_key_value(j))) for j in i[2]))))),zip(*keys))
+	keys = 
+	# Parse labels for specific values with attribute=value
+	parse = to_key_value
 
-
-	variables = {}
 
 	# Get variables data for each attribute of x,y,label properties
 	# Shapes of variables of 2 + ndim + 1 dimensions of 
@@ -189,16 +190,18 @@ def process(data,settings,hyperparameters):
 	#  attribute shape (ndim dimensions for attribute),
 	#  # iterations (1 for fixed model sort that don't vary over optimization)
 	#  )
+	variables = {}
+
 	for occurrence,key in enumerate(keys):
 		variables[occurrence] = {}
 		keysort = {attr:sort[attr] for attr in sort if attr not in [attr for attr in nullsort if attr not in [key['x'],key['y'],*key['label']]]}
 		for index in itertools.product(*(range(subshape[key['y']][axis]) for axis in range(subndim[key['y']]))):
 			variables[occurrence][index] = {}
-			for permutation in itertools.product(*[sort[attr] for attr in key['label'] if attr in sort and attr not in [key['x'],key['y']]]):
+			for permutation in itertools.product(*[sort[attr.split('=')] for attr in key['label'] if attr in sort and attr not in [key['x'],key['y']]]):
 				params = dict(zip(key['label'],permutation))
 				names = [name for name in data if all(data[name][attr] == params[attr] for attr in params)]
 				unique = {permute: [name for name in names if all([data[name][k] == j for k,j in zip(keysort,permute)])]
-						  for permute in itertools.product(*[keysort[k] for k in keysort])# if k not in [l for l in nullsort if l not in [key['x'],key['y'],*key['label']]]])
+						  for permute in itertools.product(*[keysort[k] for k in keysort])
 						  if all([params[k] == dict(zip(keysort,permute))[k] for k in params]) and 
 						  	 len([name for name in names if all([data[name][k] == j for k,j in zip(keysort,permute)])]) > 0
 						  }

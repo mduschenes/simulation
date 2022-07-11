@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient
-from src.utils import isnaninf
+from src.utils import is_naninf
 from src.line_search import line_search,armijo
 
 
@@ -590,7 +590,7 @@ class ConjugateGradient(Base):
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
 		restart = (iteration%self.modulo['restart']) == 0
-		beta = 0 if (restart or isnaninf(beta) or beta>self.eps['beta']) else beta
+		beta = 0 if (restart or is_naninf(beta) or beta>self.eps['beta']) else beta
 		search = -_grad + beta*search
 
 

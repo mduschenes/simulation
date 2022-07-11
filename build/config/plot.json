@@ -58,7 +58,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
-"M__features__N":{
+"M__features__N__iteration":{
 	"fig":{
 		"suptitle":{"t":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$"},
 		"set_size_inches":{"w":14,"h":12},
@@ -71,7 +71,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"features",
-			"label":"N",
+			"label":["N","iteration=-1"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,

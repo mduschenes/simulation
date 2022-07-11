@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 debug = 0
 
 # Import user modules
-from src.utils import array,isarray,isndarray
+from src.utils import array,is_array,is_ndarray
 from src.utils import returnargs
 
 def split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,delimiter='.'):

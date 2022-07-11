@@ -29,18 +29,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient,gradient_finite,gradient_fwd
-from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,trace,broadcast_to,expand_dims,moveaxis,repeat,take,inner,outer
-from src.utils import summation,exponentiation
-from src.utils import inner_abs2,inner_real2,inner_imag2
-from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
-from src.utils import eigh,qr
-from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
-from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,isnaninf
-from src.utils import parse,to_str,to_number,datatype,_len_,_iter_
+from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid
+from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
+from src.utils import slice_slice
 from src.utils import pi,e
-from src.utils import itg,flt,dbl
 
 from src.io import load,dump,join,split
 

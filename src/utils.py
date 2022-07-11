@@ -1110,7 +1110,7 @@ def multiply(a):
 	'''
 	out = a[0]
 
-	sparse = issparse(out)
+	sparse = is_sparse(out)
 
 	for b in a[1:]:
 		if not sparse:
@@ -2417,7 +2417,7 @@ def isclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
 
 
 
-def isiterable(obj):
+def is_iterable(obj):
 	'''
 	Check if object is iterable
 	Args:
@@ -2429,7 +2429,7 @@ def isiterable(obj):
 
 
 @jit
-def isdiag(a):
+def is_diag(a):
 	'''
 	Check if array is diagonal
 	Args:
@@ -2443,7 +2443,7 @@ def isdiag(a):
 
 
 
-def issparse(a,*args,**kwargs):
+def is_sparse(a,*args,**kwargs):
 	'''
 	Check if array is sparse
 	Args:
@@ -2453,9 +2453,9 @@ def issparse(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is sparse
 	'''
-	return issparsematrix(a) or issparsearray(a)
+	return is_sparsematrix(a) or is_sparsearray(a)
 
-def issparsematrix(a,*args,**kwargs):
+def is_sparsematrix(a,*args,**kwargs):
 	'''
 	Check if array is sparse matrix
 	Args:
@@ -2467,7 +2467,7 @@ def issparsematrix(a,*args,**kwargs):
 	'''
 	return osp.sparse.issparse(a)
 
-def issparsearray(a,*args,**kwargs):
+def is_sparsearray(a,*args,**kwargs):
 	'''
 	Check if array is sparse array
 	Args:
@@ -2480,7 +2480,7 @@ def issparsearray(a,*args,**kwargs):
 	return osp.sparse.issparse(a)
 	# return isinstance(a,sparray.SparseArray)
 
-def isndarray(a,*args,**kwargs):
+def is_ndarray(a,*args,**kwargs):
 	'''
 	Check if array is numpy array
 	Args:
@@ -2492,7 +2492,7 @@ def isndarray(a,*args,**kwargs):
 	'''
 	return isinstance(a,(onp.ndarray))
 
-def isdataframe(a,*args,**kwargs):
+def is_dataframe(a,*args,**kwargs):
 	'''
 	Check if array is pandas dataframe
 	Args:
@@ -2504,7 +2504,7 @@ def isdataframe(a,*args,**kwargs):
 	'''
 	return isinstance(a,(pd.DataFrame))
 
-def isarray(a,*args,**kwargs):
+def is_array(a,*args,**kwargs):
 	'''
 	Check if array is array
 	Args:
@@ -2514,9 +2514,9 @@ def isarray(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is array
 	'''
-	return isinstance(a,array) #isndarray(a) or issparse(a)
+	return isinstance(a,array) #isndarray(a) or is_sparse(a)
 
-def isscalar(a,*args,**kwargs):
+def is_scalar(a,*args,**kwargs):
 	'''
 	Check if array is scalar
 	Args:
@@ -2526,40 +2526,64 @@ def isscalar(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is scalar
 	'''
-	return (not isarray(a) and not islisttuple(a)) or (isarray(a) and (a.ndim<1) and (a.size<2))
+	return (not is_array(a) and not islisttuple(a)) or (is_array(a) and (a.ndim<1) and (a.size<2))
 
-def isnumber(s,*args,**kwargs):
+def is_float(a,*args,**kwargs):
+	'''
+	Check if object is a float number
+	Args:
+		a (object): Object to be checked as float
+	Returns:
+		out (boolean): If object is a float
+	'''
+	try:
+		a = float(a)
+		return True
+	except:
+		return False
+
+def is_int(a,*args,**kwargs):
+	'''
+	Check if object is an integer number
+	Args:
+		a (object): Object to be checked as int
+	Returns:
+		out (boolean): If object is an int
+	'''
+	try:
+		a = int(a)
+		return True
+	except:
+		return False
+
+def is_number(a,*args,**kwargs):
 	'''
 	Check if object is a float or integer number
 	Args:
-		s(object): Object to be checked as number
+		a (object): Object to be checked as number
 	Returns:
-		Boolean of whether object s is a number
+		out (boolean): If object is a number
 	'''
-	try:
-		s = float(s)
-		return True
-	except:
-		try:
-			s = int(s)
-			return True
-		except:
-			return False
+	return is_float(a,*args,**kwargs) or is_int(a,*args,**kwargs)
 
-def isnone(a,*args,**kwargs):
+def is_none(a,*args,**kwargs):
 	'''
-	Check if array is None
+	Check if object is None
 	Args:
-		a (array): Array to check
+		a (object): Object to check
 		args (tuple): Additional arguments
 		kwargs (dict): Additional keyword arguments
 	Returns:
-		out (bool): If array is None
+		out (bool): If object is None
 	'''
-	return a is None
+	if a is None:
+		return True
+	elif isinstance(a,str) and a in ['none','None','null','Null']:
+		return True
+	else:
+		return False
 
-
-def isnaninf(a,*args,**kwargs):
+def is_naninf(a,*args,**kwargs):
 	'''
 	Check if array is nan or inf
 	Args:
@@ -2569,9 +2593,9 @@ def isnaninf(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is nan or inf
 	'''
-	return isnan(a,*args,**kwargs) or isinf(a,*args,**kwargs)
+	return is_nan(a,*args,**kwargs) or is_inf(a,*args,**kwargs)
 
-def isinf(a,*args,**kwargs):
+def is_inf(a,*args,**kwargs):
 	'''
 	Check if array is inf
 	Args:
@@ -2583,7 +2607,7 @@ def isinf(a,*args,**kwargs):
 	'''
 	return np.isinf(a)
 
-def isnan(a,*args,**kwargs):
+def is_nan(a,*args,**kwargs):
 	'''
 	Check if array is nan
 	Args:
@@ -2596,7 +2620,7 @@ def isnan(a,*args,**kwargs):
 	return np.isnan(a)
 
 
-def isrealdtype(dtype,*args,**kwargs):
+def is_realdtype(dtype,*args,**kwargs):
 	'''
 	Check if dtype is real
 	Args:
@@ -2606,9 +2630,9 @@ def isrealdtype(dtype,*args,**kwargs):
 	Returns:
 		out (bool): If dtype is real
 	'''
-	return isintdtype(dtype,*args,**kwargs) or isfloatdtype(dtype,*args,**kwargs)
+	return is_intdtype(dtype,*args,**kwargs) or isfloatdtype(dtype,*args,**kwargs)
 
-def isintdtype(dtype,*args,**kwargs):
+def is_intdtype(dtype,*args,**kwargs):
 	'''
 	Check if dtype is integer
 	Args:
@@ -2620,7 +2644,7 @@ def isintdtype(dtype,*args,**kwargs):
 	'''
 	return np.issubdtype(dtype, np.integer)
 
-def isfloatdtype(dtype,*args,**kwargs):
+def is_floatdtype(dtype,*args,**kwargs):
 	'''
 	Check if dtype is floating
 	Args:
@@ -2632,7 +2656,7 @@ def isfloatdtype(dtype,*args,**kwargs):
 	'''
 	return np.issubdtype(dtype, np.floating)
 
-def iscomplexdtype(dtype,*args,**kwargs):
+def is_complexdtype(dtype,*args,**kwargs):
 	'''
 	Check if dtype is complex
 	Args:
@@ -2644,7 +2668,7 @@ def iscomplexdtype(dtype,*args,**kwargs):
 	'''
 	return np.issubdtype(dtype, np.complexfloating)
 
-def islist(a,*args,**kwargs):
+def is_list(a,*args,**kwargs):
 	'''
 	Check if array is list
 	Args:
@@ -2656,7 +2680,7 @@ def islist(a,*args,**kwargs):
 	'''
 	return isinstance(a,(list))
 
-def istuple(a,*args,**kwargs):
+def is_tuple(a,*args,**kwargs):
 	'''
 	Check if array is tuple
 	Args:
@@ -2668,7 +2692,7 @@ def istuple(a,*args,**kwargs):
 	'''
 	return isinstance(a,(tuple))
 
-def islisttuple(a,*args,**kwargs):
+def is_listtuple(a,*args,**kwargs):
 	'''
 	Check if array is list or tuple
 	Args:
@@ -2678,7 +2702,7 @@ def islisttuple(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is list or tuple
 	'''
-	return islist(a) or istuple(a)
+	return is_list(a) or is_tuple(a)
 
 
 def flattener(iterable,notiterable=(str,)):
@@ -3039,14 +3063,14 @@ def to_number(a,dtype,**kwargs):
 	'''
 	prefixes = {'-':-1}
 	coefficient = 1
-	if not isinstance(a,str):
-		number = a
-	else:
+	number = a
+	if isinstance(a,str):
 		for prefix in prefixes:
 			if a.startswith(prefix):
 				a = prefix.join(a.split(prefix)[1:])
 				coefficient *= prefixes[prefix]
-		number = asarray([(coefficient*float(a))],dtype=dtype)[0]
+		if is_number(a):
+			number = asarray([(coefficient*float(a))],dtype=dtype)[0]
 	return number
 
 def to_str(a,**kwargs):
@@ -3062,6 +3086,32 @@ def to_str(a,**kwargs):
 	string = np.array_str(a,**kwargs)
 
 	return string
+
+def to_key_value(string,delimiter='=',**kwargs):
+	'''
+	Parse strings for specific values with key=value
+	Args:
+		string (str): String to parse
+		delimiter (str): Delimiter separating key and value
+		kwargs (dict): Additional keyword formatting options
+	Returns:
+		key (str): Key of string
+		value (int,float,bool,None): Value of string 
+	'''
+	string = string.split(delimiter)
+	if len(attr) == 1:
+		key = delimiter.join(string)
+		value = None
+	else:
+		key = delimiter.join(string[:-1])
+		value = string[-1]
+		if is_number(value):
+			value = to_number(value)
+		elif is_none(value):
+			value = None
+		else:
+			value = value
+	return key,value
 
 def scinotation(number,decimals=2,base=10,order=2,zero=True,scilimits=[-1,1],usetex=False):
 	'''
