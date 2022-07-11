@@ -3052,7 +3052,7 @@ def gradient_sigmoid(a,scale=1):
 	return scale*sigmoid(a,scale)*sigmoid(-a,scale)
 
 
-def to_number(a,dtype,**kwargs):
+def to_number(a,dtype=None,**kwargs):
 	'''
 	Convert object to number
 	Args:
@@ -3069,6 +3069,10 @@ def to_number(a,dtype,**kwargs):
 			if a.startswith(prefix):
 				a = prefix.join(a.split(prefix)[1:])
 				coefficient *= prefixes[prefix]
+		if is_int(a):
+			dtype = int
+		elif is_float(a):
+			dtype = float
 		if is_number(a):
 			number = asarray([(coefficient*float(a))],dtype=dtype)[0]
 	return number
@@ -3099,7 +3103,7 @@ def to_key_value(string,delimiter='=',**kwargs):
 		value (int,float,bool,None): Value of string 
 	'''
 	string = string.split(delimiter)
-	if len(attr) == 1:
+	if len(string) == 1:
 		key = delimiter.join(string)
 		value = None
 	else:

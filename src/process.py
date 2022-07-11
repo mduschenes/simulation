@@ -138,7 +138,7 @@ def process(data,settings,hyperparameters):
 					for name in data if (
 					attr in data[name] and 
 					isinstance(data[name][attr],scalars) and 
-					attr in hyperparameters.get('nullsort',attrs)
+					attr in hyperparameters.get('nullsort',[])
 					)]))) 
 			for attr in attrs}
 	nullsort = {attr: nullsort[attr] for attr in nullsort if len(nullsort[attr])>0}
@@ -172,15 +172,53 @@ def process(data,settings,hyperparameters):
 	for attr in hyperparameters.get('path',{}):
 		file[attr],directory[attr],ext[attr] = split(hyperparameters.get('path',{}).get(attr),directory=True,file=True,ext=True)
 
-	# Get all keys from finding leaves with props
+	# Get all keys from finding leaves of settings dictionary with keys in props
+
+	# Get plot props from settings
 	props = ['x','y','label']
 	props = {prop:{'%s'%(prop):'mean','%serr'%(prop):'std'} if prop not in ['label'] else {} for prop in props}
-	keys = (leaves(settings,prop,types=(dict,list),returns='value') for prop in props)
-	keys = map(lambda i: dict(zip(props,(*i[:2],tuple((dict(zip(['key','value'],to_key_value(i[2]))),)) if isinstance(i[2],str) else tuple((dict(zip(['key','value'],to_key_value(j))) for j in i[2]))))),zip(*keys))
-	keys = 
-	# Parse labels for specific values with attribute=value
-	parse = to_key_value
 
+	# Get keys of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
+	keys = (leaves(settings,prop,types=(dict,list),returns='value') for prop in props)
+	keys = map(lambda key: dict(zip(props,(*key[:2],tuple((dict(zip(['key','value'],to_key_value(key[2]))),)) if isinstance(key[2],str) else tuple((dict(zip(['key','value'],to_key_value(j))) for j in key[2]))))),zip(*keys))
+	keys = [{prop:key[prop] if prop not in ['label'] else {label:tuple((value[label] for value in key[prop])) for label in set(label for value in key[prop] for label in value)}
+			 for prop in key} for key in keys]
+
+	# For 'label' prop with attributes and values to sort on, 
+	# datasets are sorted into sets of unique datasets that correspond 
+	# to all possible combinations of the label values. i.e) if label is ('M','N'), 
+	# will sort into sets of datasets that correspond to each possible 'M','N' pair. 
+	# For each combination of specific label values, statistics about the set of sample datasets 
+	# corresponding to the label values are computed
+	# Label attributes with a non-None value indicate fixed values that the datasets must equal for that attribute
+	# when sorting, and the set of datasets for that label combination are constrained to be those with the fixed values.
+	# Get function to accept dataset give label attributes and values 
+	# as an acceptable sample for statistics of the particular label attributes
+	# i.e) Include all datasets with attribute if attribute value is None, else only if dataset equals attribute value
+
+	def include(key,value,data):
+		'''
+		Include data if conditions on key and value of data are True
+		Args:
+			key (str,tuple[str]): Key(s) of data to check
+			value (object,tuple[object]): Values(s) of data to check
+		Returns:
+			boolean (bool): Accept inclusion of dataset
+		'''
+		boolean = False
+		if not isinstance(key,tuple):
+			key = (key,)
+		if not isinstance(value,tuple):
+			value = (value,)
+		if all(v is None for v  in value):
+			boolean = True			
+		if value
+	values = {key:None for key in keys}
+	print(values)
+	exit()
+	
+	# Get variables sets of datasets for all combinations of 'label' prop values, 
+	# as per label attribute values constraints. 
 
 	# Get variables data for each attribute of x,y,label properties
 	# Shapes of variables of 2 + ndim + 1 dimensions of 
@@ -191,14 +229,31 @@ def process(data,settings,hyperparameters):
 	#  # iterations (1 for fixed model sort that don't vary over optimization)
 	#  )
 	variables = {}
+	for occurrence,key in enumerate(keys):
+		variables[occurrence] = {}
+		combinatations = [sort[attr] for attr in sort if attr]
+		keysort = {attr:sort[attr] for attr in sort if attr not in [attr for attr in nullsort if attr not in [key['x'],key['y'],*key['label']['key']]]}
+		combinations = [sort[attr] for attr,value in zip(key['label']['key'],key['label']['value']) if attr in sort and attr not in [key['x'],key['y']]]
+		for combination in itertools.product(*combinations):
+			variables[occurrence][combination] = None
+			params = dict(zip(key['label']['key'],combination))
+
+			names = [name for name in data if all(data[name][attr] == params[attr] for attr in params)]
+			unique = {permute: [name for name in names if all([data[name][k] == j for k,j in zip(keysort,permute)])]
+					  for permute in itertools.product(*[keysort[k] for k in keysort])
+					  if all([params[k] == dict(zip(keysort,permute))[k] for k in params]) and 
+					  	 len([name for name in names if all([data[name][k] == j for k,j in zip(keysort,permute)])]) > 0
+					  }
+
+
 
 	for occurrence,key in enumerate(keys):
 		variables[occurrence] = {}
-		keysort = {attr:sort[attr] for attr in sort if attr not in [attr for attr in nullsort if attr not in [key['x'],key['y'],*key['label']]]}
+		keysort = {attr:sort[attr] for attr in sort if attr not in [attr for attr in nullsort if attr not in [key['x'],key['y'],*key['label']['key']]]}
 		for index in itertools.product(*(range(subshape[key['y']][axis]) for axis in range(subndim[key['y']]))):
 			variables[occurrence][index] = {}
-			for permutation in itertools.product(*[sort[attr.split('=')] for attr in key['label'] if attr in sort and attr not in [key['x'],key['y']]]):
-				params = dict(zip(key['label'],permutation))
+			for combination in itertools.product(*[sort[attr] for attr in key['label']['key'] if attr in sort and attr not in [key['x'],key['y']]]):
+				params = dict(zip(key['label']['key'],combination))
 				names = [name for name in data if all(data[name][attr] == params[attr] for attr in params)]
 				unique = {permute: [name for name in names if all([data[name][k] == j for k,j in zip(keysort,permute)])]
 						  for permute in itertools.product(*[keysort[k] for k in keysort])
@@ -215,7 +270,7 @@ def process(data,settings,hyperparameters):
 				shapes = {}
 				shapes['y'] = (*length,*shape[key['y']])
 				shapes['x'] = (*length,*shape[key['x']]) if key['x'] in shape else shapes['y']
-				# shapes['label'] = (*length,*map(max,zip(*(shape[attr] for attr in key['label']))))
+				# shapes['label'] = (*length,*map(max,zip(*(shape[attr] for attr in key['label']['key']))))
 
 				print(key,index,params)		
 				print(len(names),names)			
@@ -223,7 +278,7 @@ def process(data,settings,hyperparameters):
 				print(unique)
 				print()
 
-				# Set props values for index and permutation
+				# Set props values for index and combination
 				xy = {}
 				for prop in props:
 
@@ -248,47 +303,47 @@ def process(data,settings,hyperparameters):
 					'y':np.array([np.array([data[name][key['y']] for name in unique[permute]]).mean(0) for permute in unique]).astype(data[name][key['y']].dtype),
 					'xerr':np.array([np.array([data[name][key['x']] for name in unique[permute]]).std(0) for permute in unique]).astype(data[name][key['x']].dtype),
 					'yerr':np.array([np.array([data[name][key['y']] for name in unique[permute]]).std(0) for permute in unique]).astype(data[name][key['y']].dtype),
-					'label':[[[data[name][attr] for attr in key['label']] for name in unique[permute]] for permute in unique],
+					'label':[[[data[name][attr] for attr in key['label']['key']] for name in unique[permute]] for permute in unique],
 					}
 
-				variables[occurrence][index][permutation] = {}				
+				variables[occurrence][index][combination] = {}				
 
-				variables[occurrence][index][permutation]['argsort'] = np.argsort(xy['x'][index])
-				variables[occurrence][index][permutation]['x'] = xy['x'][index].reshape(-1)
-				variables[occurrence][index][permutation]['y'] = xy['y'][index].reshape(-1)
-				variables[occurrence][index][permutation]['xerr'] = xy['xerr'][index].reshape(-1)
-				variables[occurrence][index][permutation]['yerr'] = xy['yerr'][index].reshape(-1)
+				variables[occurrence][index][combination]['argsort'] = np.argsort(xy['x'][index])
+				variables[occurrence][index][combination]['x'] = xy['x'][index].reshape(-1)
+				variables[occurrence][index][combination]['y'] = xy['y'][index].reshape(-1)
+				variables[occurrence][index][combination]['xerr'] = xy['xerr'][index].reshape(-1)
+				variables[occurrence][index][combination]['yerr'] = xy['yerr'][index].reshape(-1)
 
-				variables[occurrence][index][permutation]['xfunc'] = ({						
-						('iteration','objective',('M',)): variables[occurrence][index][permutation]['x'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][permutation]['x'],
+				variables[occurrence][index][combination]['xfunc'] = ({						
+						('iteration','objective',('M',)): variables[occurrence][index][combination]['x'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][combination]['x'],
 						}[occurrence])
 
-				variables[occurrence][index][permutation]['yfunc'] = ({
-						('iteration','objective',('M',)): variables[occurrence][index][permutation]['y'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][permutation]['y'],
+				variables[occurrence][index][combination]['yfunc'] = ({
+						('iteration','objective',('M',)): variables[occurrence][index][combination]['y'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][combination]['y'],
 						}[occurrence])
 
-				variables[occurrence][index][permutation]['xfuncerr'] = ({						
-						('iteration','objective',('M',)): variables[occurrence][index][permutation]['xerr'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][permutation]['xerr'],
+				variables[occurrence][index][combination]['xfuncerr'] = ({						
+						('iteration','objective',('M',)): variables[occurrence][index][combination]['xerr'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][combination]['xerr'],
 						}[occurrence])
 
-				variables[occurrence][index][permutation]['yfuncerr'] = ({
-						('iteration','objective',('M',)): variables[occurrence][index][permutation]['yerr'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][permutation]['yerr'],
+				variables[occurrence][index][combination]['yfuncerr'] = ({
+						('iteration','objective',('M',)): variables[occurrence][index][combination]['yerr'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][combination]['yerr'],
 						}[occurrence])				
 
-				variables[occurrence][index][permutation]['xfit'] = ({
-						('iteration','objective',('M',)): variables[occurrence][index][permutation]['xfunc'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][permutation]['xfunc'],
+				variables[occurrence][index][combination]['xfit'] = ({
+						('iteration','objective',('M',)): variables[occurrence][index][combination]['xfunc'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][combination]['xfunc'],
 						}[occurrence])
 
-				variables[occurrence][index][permutation]['yfit'] = ({
-						('iteration','objective',('M',)): variables[occurrence][index][permutation]['yfunc'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][permutation]['yfunc'],
+				variables[occurrence][index][combination]['yfit'] = ({
+						('iteration','objective',('M',)): variables[occurrence][index][combination]['yfunc'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][combination]['yfunc'],
 						}[occurrence])
 	
-				variables[occurrence][index][permutation]['xcoef'] = ({
-						('iteration','objective',('M',)): variables[occurrence][index][permutation]['xfunc'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][permutation]['xfunc'],
+				variables[occurrence][index][combination]['xcoef'] = ({
+						('iteration','objective',('M',)): variables[occurrence][index][combination]['xfunc'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][combination]['xfunc'],
 						}[occurrence])
 
-				variables[occurrence][index][permutation]['ycoef'] = ({
-						('iteration','objective',('M',)): variables[occurrence][index][permutation]['yfunc'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][permutation]['yfunc'],
+				variables[occurrence][index][combination]['ycoef'] = ({
+						('iteration','objective',('M',)): variables[occurrence][index][combination]['yfunc'] if (tuple(key) == ('iteration','objective',('M',))) else variables[occurrence][index][combination]['yfunc'],
 						}[occurrence])
 
 
@@ -304,20 +359,20 @@ def process(data,settings,hyperparameters):
 					},
 					**{attr:{
 						**settings[key].get(obj,{}).get(attr,{}),
-						'fname':join(directory['plot'],'.'.join([file['plot'],key['x'],key['y'],*key['label']]),ext=ext['plot']),
+						'fname':join(directory['plot'],'.'.join([file['plot'],key['x'],key['y'],*key['label']['key']]),ext=ext['plot']),
 						}
 					for attr in (['savefig'] if obj in ['fig'] else [])
 					},
 					**{attr:[{
 						**settings[key].get(obj,{}).get(attr,{}),
-						'x': variables[key][index][permutation]['xfunc'],
-						'y': variables[key][index][permutation]['yfunc'],
-						'xerr': variables[key][index][permutation]['xfuncerr'],
-						'yerr': variables[key][index][permutation]['yfuncerr'],						
+						'x': variables[key][index][combination]['xfunc'],
+						'y': variables[key][index][combination]['yfunc'],
+						'xerr': variables[key][index][combination]['xfuncerr'],
+						'yerr': variables[key][index][combination]['yfuncerr'],						
 						'color':getattr(plt.cm,settings[key].get(obj,{}).get(attr,{}).get('color','viridis'))((len(variables[key][index]) - 1 - i)/len(variables[key][index])),
 						'ecolor':getattr(plt.cm,settings[key].get(obj,{}).get(attr,{}).get('ecolor','viridis'))((len(variables[key][index]) - 1 - i)/len(variables[key][index])),
-						'label':dict(zip(key['label'],permutation))[key['label'][0]],
-						} for i,permutation in enumerate(variables[key][index])]
+						'label':dict(zip(key['label']['key'],combination))[key['label']['key'][0]],
+						} for i,combination in enumerate(variables[key][index])]
 					for attr in (['errorbar'] if obj in ['ax'] else [])
 					},
 					**{attr: join(directory[attr],file[attr],ext=ext[attr])

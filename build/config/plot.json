@@ -121,7 +121,7 @@
 		"errorbar":{
 			"x":null,
 			"y":"parameters",
-			"label":["iteration","M"],
+			"label":["iteration=%10","M"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
