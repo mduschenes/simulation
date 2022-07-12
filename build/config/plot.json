@@ -71,7 +71,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"features",
-			"label":["N","iteration=-1"],
+			"label":["N","iteration=#-1"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -118,17 +118,17 @@
 		"close":{}
 		},
 	"ax":{
-		"errorbar":{
+		"errorbar":[{
 			"x":null,
 			"y":"parameters",
-			"label":["iteration=%10","M"],
+			"label":["M=$16,32","iteration=%0,4,2"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
 			"capsize":3,						
 			"color":"tab10",
 			"ecolor":"tab10"
-			},
+			}],
 		"set_ylabel":{"ylabel":"$\\varphi$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											

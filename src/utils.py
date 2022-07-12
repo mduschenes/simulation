@@ -2528,19 +2528,6 @@ def is_scalar(a,*args,**kwargs):
 	'''
 	return (not is_array(a) and not islisttuple(a)) or (is_array(a) and (a.ndim<1) and (a.size<2))
 
-def is_float(a,*args,**kwargs):
-	'''
-	Check if object is a float number
-	Args:
-		a (object): Object to be checked as float
-	Returns:
-		out (boolean): If object is a float
-	'''
-	try:
-		a = float(a)
-		return True
-	except:
-		return False
 
 def is_int(a,*args,**kwargs):
 	'''
@@ -2556,15 +2543,29 @@ def is_int(a,*args,**kwargs):
 	except:
 		return False
 
+def is_float(a,*args,**kwargs):
+	'''
+	Check if object is a float number
+	Args:
+		a (object): Object to be checked as float
+	Returns:
+		out (boolean): If object is a float
+	'''
+	try:
+		a = float(a)
+		return True
+	except:
+		return False
+
 def is_number(a,*args,**kwargs):
 	'''
-	Check if object is a float or integer number
+	Check if object is an integer float number
 	Args:
 		a (object): Object to be checked as number
 	Returns:
 		out (boolean): If object is a number
 	'''
-	return is_float(a,*args,**kwargs) or is_int(a,*args,**kwargs)
+	return is_int(a,*args,**kwargs) or is_float(a,*args,**kwargs)
 
 def is_none(a,*args,**kwargs):
 	'''
@@ -3062,8 +3063,11 @@ def to_number(a,dtype=None,**kwargs):
 		number (object): Number representation of object
 	'''
 	prefixes = {'-':-1}
+	dtypes = {'int':int,'float':float}
+
 	coefficient = 1
 	number = a
+	dtype = dtypes.get(dtype,dtype)
 	if isinstance(a,str):
 		for prefix in prefixes:
 			if a.startswith(prefix):
@@ -3074,7 +3078,7 @@ def to_number(a,dtype=None,**kwargs):
 		elif is_float(a):
 			dtype = float
 		if is_number(a):
-			number = asarray([(coefficient*float(a))],dtype=dtype)[0]
+			number = dtype(coefficient*a)
 	return number
 
 def to_str(a,**kwargs):
@@ -3102,19 +3106,23 @@ def to_key_value(string,delimiter='=',**kwargs):
 		key (str): Key of string
 		value (int,float,bool,None): Value of string 
 	'''
-	string = string.split(delimiter)
-	if len(string) == 1:
-		key = delimiter.join(string)
+	if not isinstance(string,str):
+		key = string
 		value = None
 	else:
-		key = delimiter.join(string[:-1])
-		value = string[-1]
-		if is_number(value):
-			value = to_number(value)
-		elif is_none(value):
+		string = string.split(delimiter)
+		if len(string) == 1:
+			key = delimiter.join(string)
 			value = None
 		else:
-			value = value
+			key = delimiter.join(string[:-1])
+			value = string[-1]
+			if is_number(value):
+				value = to_number(value)
+			elif is_none(value):
+				value = None
+			else:
+				value = value
 	return key,value
 
 def scinotation(number,decimals=2,base=10,order=2,zero=True,scilimits=[-1,1],usetex=False):

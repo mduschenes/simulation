@@ -122,25 +122,25 @@ def process(data,settings,hyperparameters):
 
 	
 	# Get dataset names of data
-	names = list(set(name for name in data))
+	names = list(sorted(set(name for name in data),key=lambda name:name))
 
 	# Get attributes of data
-	attrs = list(set(attr for name in data for attr in data[name]))
+	attrs = list(set(attr for name in names for attr in data[name]))
 
 	# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
 	sort = {attr: tuple(sorted(set(data[name][attr] 
-					for name in data 
+					for name in names 
 					if (
 					(attr in data[name]) and 
 					(isinstance(data[name][attr],scalars)) and 
 					(attr in hyperparameters.get('sort',attrs)) and
 					(attr not in hyperparameters.get('nullsort',[]))
-					)))) 
+					))))
 			for attr in attrs}
 	sort = {attr: sort[attr] for attr in sort if len(sort[attr])>0}
 
 	# Get data as arrays, with at least 1 leading dimension
-	for name in data:
+	for name in names:
 		for attr in data[name]:
 			data[name][attr] = np.array(data[name][attr])
 			data[name][attr] = data[name][attr].reshape(*[1]*(max(0,1-data[name][attr].ndim)),*data[name][attr].shape)
@@ -148,17 +148,17 @@ def process(data,settings,hyperparameters):
 	# Data names correspond to the instances of the models and samples of that model
 	# Data attributes have ndim dimensions
 	# Shape of data is shape of attribute + number of iterations, which have a maximum size across the data names
-	subndim = {attr: min(max(0,data[name][attr].ndim-1) for name in data) for attr in attrs}
-	subshape = {attr: tuple((max(data[name][attr].shape[axis] for name in data) for axis in range(subndim[attr]))) for attr in attrs}
-	ndim = {attr: min(data[name][attr].ndim for name in data) for attr in attrs}
-	shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in data)))) for attr in attrs}
+	subndim = {attr: min(max(0,data[name][attr].ndim-1) for name in names) for attr in attrs}
+	subshape = {attr: tuple(max(data[name][attr].shape[axis] for name in names) for axis in range(subndim[attr])) for attr in attrs}
+	ndim = {attr: min(data[name][attr].ndim for name in names) for attr in attrs}
+	shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in names)))) for attr in attrs}
 
-	print(subndim)
-	print(subshape)
-	print()
-	print(ndim)
-	print(shape)
-	print()
+	# print(subndim)
+	# print(subshape)
+	# print()
+	# print(ndim)
+	# print(shape)
+	# print()
 
 
 
@@ -175,83 +175,163 @@ def process(data,settings,hyperparameters):
 
 	# Get keys of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
 	keys = (leaves(settings,prop,types=(dict,list),returns='value') for prop in props)
-	keys = map(lambda key: dict(zip(props,(*key[:2],tuple((dict(zip(['key','value'],to_key_value(key[2]))),)) if isinstance(key[2],str) else tuple((dict(zip(['key','value'],to_key_value(j))) for j in key[2]))))),zip(*keys))
-	keys = [{prop:key[prop] if prop not in ['label'] else {label:tuple((value[label] for value in key[prop])) for label in set(label for value in key[prop] for label in value)}
+	keys = map(lambda key: dict(zip(
+		props,(*key[:2],tuple((dict(zip(['key','value'],to_key_value(key[2],delimiter='='))),))
+		if key[2] is None or isinstance(key[2],str) 
+		else tuple(dict(zip(['key','value'],to_key_value(j,delimiter='='))) for j in key[2])))),
+		zip(*keys))
+	keys = [{prop:key[prop] if prop not in ['label'] else 
+			{label:tuple(value[label] for value in key[prop]) for label in set(
+				label for value in key[prop] for label in value)}
 			 for prop in key} for key in keys]
 
-	print('-----')
-	print(keys)
+	'''
+	For 'label' prop with attributes and values to sort on, 
+	datasets are sorted into sets of unique datasets that correspond 
+	to all possible combinations of the label values. i.e) if label is ('M','N'), 
+	will sort into sets of datasets that correspond to each possible 'M','N' pair. 
+	For each combination of specific label values, statistics about the set of sample datasets 
+	corresponding to the label values are computed
+	Label attributes with a non-None value indicate fixed values that the datasets must equal for that attribute
+	when sorting, and the set of datasets for that label combination are constrained to be those with the fixed values.
+	Get function to accept dataset give label attributes and values 
+	as an acceptable sample for statistics of the particular label attributes
+	i.e) Include all datasets with attribute if attribute value is None, else only if dataset equals attribute value
 
-	# For 'label' prop with attributes and values to sort on, 
-	# datasets are sorted into sets of unique datasets that correspond 
-	# to all possible combinations of the label values. i.e) if label is ('M','N'), 
-	# will sort into sets of datasets that correspond to each possible 'M','N' pair. 
-	# For each combination of specific label values, statistics about the set of sample datasets 
-	# corresponding to the label values are computed
-	# Label attributes with a non-None value indicate fixed values that the datasets must equal for that attribute
-	# when sorting, and the set of datasets for that label combination are constrained to be those with the fixed values.
-	# Get function to accept dataset give label attributes and values 
-	# as an acceptable sample for statistics of the particular label attributes
-	# i.e) Include all datasets with attribute if attribute value is None, else only if dataset equals attribute value
+	Get variables sets of datasets for all combinations of sort attributes, given constraints on 'label' attributes and values
+	'label' attributes and values for each key are used to sort included datasets into those that share all sort attributes
 
-	def accept(key,value,data):
+	- Iterate over all combinations of 'label' attributes and values, to get included dataset that share these attributes
+	
+	- Iterate over all permutations of sort attributes and values, constrained by the specific combination of 'label' attributes and values
+	to get included dataset that share all sort attributes
+	
+	- Get statistics (mean,variance) across samples datasets that share all attributes
+
+	- Merge datasets across permutations of sort attributes for a given combination of 'label' attributes and values
+	
+	- After statistics and merging, variables data for each combination for x,y,... props 
+	has shape of (2 + ndim) dimensions, with axes: 
+	(# of combinations for each 'label', # of iterations of sort for each combination, ndim of datasets)	
+	'''
+
+	# Function to include dataset with datum value of possible data attribute values for sorting with attribute key and value
+	def include(key,value,datum,data):
 		'''
-		Include data if conditions values of data are True
+		Include data if conditions on key and value are True
 		Args:
-			values (dict[str,object): Values of key-values to check
-			data (dict[str,object]): Values of data to check
+			key (str): Reference key to check
+			value (object): Reference value to check, allowed strings in ['$value,',#index,','%start,stop,step'] 
+							for comma-delimited values, indices, or slices values
+			datum (object): Data value to check
+			data (dict[str,object,iterable[object]]): Data of keys and iterable of values to compare
 		Returns:
 			boolean (bool): Accept inclusion of dataset
 		'''
-		boolean = all(data[attr] == values[attr] for attr in values)
+		boolean = False
+		if value is None:
+			value = [datum]
+		elif isinstance(value,str):			
+			if value.startswith('$'):
+				parser = lambda value: (to_number(value) if len(value)>0 else 0)
+				values = value.replace('$','').split(',')
+				values = [parser(value) for value in values]
+				value = [value for value in values]
+			elif value.startswith('#'):
+				parser = lambda value: (int(value) if len(value)>0 else 0)
+				indices = value.replace('#','').split(',')
+				indices = [parser(index) for index in indices]
+				value = [data[key][index] for index in indices]
+			elif value.startswith('%'):
+				parser = lambda value: (int(value) if len(value)>0 else None)
+				if value.count(',') == 0:
+					slices = value.replace('%','')
+					slices = 0,None,parser(slices)
+				elif value.count(',') == 1:
+					slices = value.replace('%','').split(',')
+					slices = parser(slices[0]),parser(slices[1]),None
+				elif value.count(',') == 2:
+					slices = value.replace('%','').split(',')
+					slices = parser(slices[0]),parser(slices[1]),parser(slices[2])
+				else:
+					slices = None,None,None
+				slices = slice(*slices)
+				value = data[key][slices]
+			else:
+				parser = lambda value: (value)
+				value = [parser(value)]
+		else:
+			value = [value]
+		boolean = datum in value
+		
 		return boolean
 
-	def include(data,values):
-		'''
-		Include data if conditions values of data are True
-		Args:
-			values (dict[str,object): Values of key-values to check
-			data (dict[str,object]): Values of data to check
-		Returns:
-			boolean (bool): Accept inclusion of dataset
-		'''
-		boolean = all(data[attr] == values[attr] for attr in values)
-		return boolean
 
-	# Get variables sets of datasets for all combinations of 'label' prop values, 
-	# as per label attribute values constraints. 
-
-	# Get variables data for each attribute of x,y,label properties
-	# Shapes of variables of 2 + ndim + 1 dimensions of 
-	# (
-	#  # different models (excluding fixed x,y,label properties),
-	#  # samples (for given fixed  x,y,label properties),
-	#  attribute shape (ndim dimensions for attribute),
-	#  # iterations (1 for fixed model sort that don't vary over optimization)
-	#  )
 	variables = {}
+	variable = {}
 	for occurrence,key in enumerate(keys):
 		variables[occurrence] = {}
 		combinations = [
-			[val for val in sort[attr] if accept(attr,value,val,sort)
-			if ((key['label']['value'][key['label']['key'].index(attr)] is None) or 
-			   (value == key['label']['value'][key['label']['key'].index(attr)])
-			)]
+			[val for val in sort.get(attr,[]) if include(attr,value,val,sort)]
 			for attr,value in zip(key['label']['key'],key['label']['value'])
-			if ((attr in sort) and 
-				(attr not in [key['x'],key['y']])
-			)]
+			if all(attr is not None for attr in key['label']['key'])
+			]
+		
+		print('****************************************************************************************************')
+		print(key)		
+
 		for combination in itertools.product(*combinations):
+			variables[occurrence][combination] = {}
 			values = dict(zip(key['label']['key'],combination))
-			included = [name for name in data if include(values,data[name])]
-			print(key)
+			permutations = [
+				[val for val in sort[attr] if ((attr not in values) or include(attr,values[attr],val,sort))]
+				for attr in sort
+				]
+			included = [name for name in names if all(include(attr,values[attr],data[name][attr],data[name]) for attr in values)]
+			if len(included) == 0:
+				continue
+
+			print('------------------------')
 			print(values)
-			print(included)
+			variable = {}
+			for permutation in itertools.product(*permutations):
+				variables[occurrence][combination][permutation] = {}
+				values = dict(zip(sort,permutation))
+				included = [name for name in names if all(include(attr,values[attr],data[name][attr],data[name]) for attr in values)]
+				if len(included) == 0:
+					continue
+
+				# for prop in props:
+				# 	for stat in props[prop]:
+				# 		variables[occurrence][combination][permutation][stat] = getattr()
+
+
+
+				# xy = {
+				# 	'x':np.array([np.array([data[name][key['x']] for name in unique[permutation]]).mean(0) for permutation in unique]).astype(data[name][key['x']].dtype),
+				# 	'y':np.array([np.array([data[name][key['y']] for name in unique[permutation]]).mean(0) for permutation in unique]).astype(data[name][key['y']].dtype),
+				# 	'xerr':np.array([np.array([data[name][key['x']] for name in unique[permutation]]).std(0) for permutation in unique]).astype(data[name][key['x']].dtype),
+				# 	'yerr':np.array([np.array([data[name][key['y']] for name in unique[permutation]]).std(0) for permutation in unique]).astype(data[name][key['y']].dtype),
+				# 	'label':[[[data[name][attr] for attr in key['label']['key']] for name in unique[permutation]] for permutation in unique],
+				# 	}
+
+				# variables[occurrence][index][combination] = {}				
+
+				# variables[occurrence][index][combination]['argsort'] = np.argsort(xy['x'][index])
+				# variables[occurrence][index][combination]['x'] = xy['x'][index].reshape(-1)
+				# variables[occurrence][index][combination]['y'] = xy['y'][index].reshape(-1)
+				# variables[occurrence][index][combination]['xerr'] = xy['xerr'][index].reshape(-1)
+				# variables[occurrence][index][combination]['yerr'] = xy['yerr'][index].reshape(-1)
+
+
+
+				print('----')	
+				print(values)
+				print(included)
 			print()
+		print()
+		print()	
 
-			variables[occurrence][combination] = None
-
-	print()
 	exit()
 
 
