@@ -268,14 +268,13 @@ def process(data,settings,hyperparameters):
 
 
 	variables = {}
-	variable = {}
 	for occurrence,key in enumerate(keys):
 		variables[occurrence] = {}
-		combinations = [
-			[val for val in sort.get(attr,[]) if include(attr,value,val,sort)]
+		combinations = (
+			(val for val in sort.get(attr,[]) if include(attr,value,val,sort))
 			for attr,value in zip(key['label']['key'],key['label']['value'])
 			if all(attr is not None for attr in key['label']['key'])
-			]
+			)
 		
 		print('****************************************************************************************************')
 		print(key)		
@@ -283,17 +282,16 @@ def process(data,settings,hyperparameters):
 		for combination in itertools.product(*combinations):
 			variables[occurrence][combination] = {}
 			values = dict(zip(key['label']['key'],combination))
-			permutations = [
-				[val for val in sort[attr] if ((attr not in values) or include(attr,values[attr],val,sort))]
+			permutations = (
+				(val for val in sort[attr] if ((attr not in values) or include(attr,values[attr],val,sort)))
 				for attr in sort
-				]
+				)
 			included = [name for name in names if all(include(attr,values[attr],data[name][attr],data[name]) for attr in values)]
 			if len(included) == 0:
 				continue
 
 			print('------------------------')
 			print(values)
-			variable = {}
 			for permutation in itertools.product(*permutations):
 				variables[occurrence][combination][permutation] = {}
 				values = dict(zip(sort,permutation))
@@ -301,9 +299,9 @@ def process(data,settings,hyperparameters):
 				if len(included) == 0:
 					continue
 
-				# for prop in props:
-				# 	for stat in props[prop]:
-				# 		variables[occurrence][combination][permutation][stat] = getattr()
+				for prop in props:
+					for stat in props[prop]:
+						variables[occurrence][combination][permutation][stat] = getattr()
 
 
 
