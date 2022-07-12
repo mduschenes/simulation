@@ -121,28 +121,23 @@ def process(data,settings,hyperparameters):
 			hyperparameters.update(load(path,default=default))
 
 	
+	# Get dataset names of data
+	names = list(set(name for name in data))
+
 	# Get attributes of data
-	attrs = list(set([attr for name in data for attr in data[name]]))
+	attrs = list(set(attr for name in data for attr in data[name]))
 
 	# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
-	sort = {attr: list(sorted(set([data[name][attr] 
-					for name in data if (
-					attr in data[name] and 
-					isinstance(data[name][attr],scalars) and 
-					attr in hyperparameters.get('sort',attrs)
-					)]))) 
+	sort = {attr: tuple(sorted(set(data[name][attr] 
+					for name in data 
+					if (
+					(attr in data[name]) and 
+					(isinstance(data[name][attr],scalars)) and 
+					(attr in hyperparameters.get('sort',attrs)) and
+					(attr not in hyperparameters.get('nullsort',[]))
+					)))) 
 			for attr in attrs}
 	sort = {attr: sort[attr] for attr in sort if len(sort[attr])>0}
-
-	nullsort = {attr: list(sorted(set([data[name][attr] 
-					for name in data if (
-					attr in data[name] and 
-					isinstance(data[name][attr],scalars) and 
-					attr in hyperparameters.get('nullsort',[])
-					)]))) 
-			for attr in attrs}
-	nullsort = {attr: nullsort[attr] for attr in nullsort if len(nullsort[attr])>0}
-
 
 	# Get data as arrays, with at least 1 leading dimension
 	for name in data:
@@ -184,6 +179,9 @@ def process(data,settings,hyperparameters):
 	keys = [{prop:key[prop] if prop not in ['label'] else {label:tuple((value[label] for value in key[prop])) for label in set(label for value in key[prop] for label in value)}
 			 for prop in key} for key in keys]
 
+	print('-----')
+	print(keys)
+
 	# For 'label' prop with attributes and values to sort on, 
 	# datasets are sorted into sets of unique datasets that correspond 
 	# to all possible combinations of the label values. i.e) if label is ('M','N'), 
@@ -196,27 +194,30 @@ def process(data,settings,hyperparameters):
 	# as an acceptable sample for statistics of the particular label attributes
 	# i.e) Include all datasets with attribute if attribute value is None, else only if dataset equals attribute value
 
-	def include(key,value,data):
+	def accept(key,value,data):
 		'''
-		Include data if conditions on key and value of data are True
+		Include data if conditions values of data are True
 		Args:
-			key (str,tuple[str]): Key(s) of data to check
-			value (object,tuple[object]): Values(s) of data to check
+			values (dict[str,object): Values of key-values to check
+			data (dict[str,object]): Values of data to check
 		Returns:
 			boolean (bool): Accept inclusion of dataset
 		'''
-		boolean = False
-		if not isinstance(key,tuple):
-			key = (key,)
-		if not isinstance(value,tuple):
-			value = (value,)
-		if all(v is None for v  in value):
-			boolean = True			
-		if value
-	values = {key:None for key in keys}
-	print(values)
-	exit()
-	
+		boolean = all(data[attr] == values[attr] for attr in values)
+		return boolean
+
+	def include(data,values):
+		'''
+		Include data if conditions values of data are True
+		Args:
+			values (dict[str,object): Values of key-values to check
+			data (dict[str,object]): Values of data to check
+		Returns:
+			boolean (bool): Accept inclusion of dataset
+		'''
+		boolean = all(data[attr] == values[attr] for attr in values)
+		return boolean
+
 	# Get variables sets of datasets for all combinations of 'label' prop values, 
 	# as per label attribute values constraints. 
 
@@ -231,19 +232,27 @@ def process(data,settings,hyperparameters):
 	variables = {}
 	for occurrence,key in enumerate(keys):
 		variables[occurrence] = {}
-		combinatations = [sort[attr] for attr in sort if attr]
-		keysort = {attr:sort[attr] for attr in sort if attr not in [attr for attr in nullsort if attr not in [key['x'],key['y'],*key['label']['key']]]}
-		combinations = [sort[attr] for attr,value in zip(key['label']['key'],key['label']['value']) if attr in sort and attr not in [key['x'],key['y']]]
+		combinations = [
+			[val for val in sort[attr] if accept(attr,value,val,sort)
+			if ((key['label']['value'][key['label']['key'].index(attr)] is None) or 
+			   (value == key['label']['value'][key['label']['key'].index(attr)])
+			)]
+			for attr,value in zip(key['label']['key'],key['label']['value'])
+			if ((attr in sort) and 
+				(attr not in [key['x'],key['y']])
+			)]
 		for combination in itertools.product(*combinations):
-			variables[occurrence][combination] = None
-			params = dict(zip(key['label']['key'],combination))
+			values = dict(zip(key['label']['key'],combination))
+			included = [name for name in data if include(values,data[name])]
+			print(key)
+			print(values)
+			print(included)
+			print()
 
-			names = [name for name in data if all(data[name][attr] == params[attr] for attr in params)]
-			unique = {permute: [name for name in names if all([data[name][k] == j for k,j in zip(keysort,permute)])]
-					  for permute in itertools.product(*[keysort[k] for k in keysort])
-					  if all([params[k] == dict(zip(keysort,permute))[k] for k in params]) and 
-					  	 len([name for name in names if all([data[name][k] == j for k,j in zip(keysort,permute)])]) > 0
-					  }
+			variables[occurrence][combination] = None
+
+	print()
+	exit()
 
 
 
@@ -255,17 +264,17 @@ def process(data,settings,hyperparameters):
 			for combination in itertools.product(*[sort[attr] for attr in key['label']['key'] if attr in sort and attr not in [key['x'],key['y']]]):
 				params = dict(zip(key['label']['key'],combination))
 				names = [name for name in data if all(data[name][attr] == params[attr] for attr in params)]
-				unique = {permute: [name for name in names if all([data[name][k] == j for k,j in zip(keysort,permute)])]
-						  for permute in itertools.product(*[keysort[k] for k in keysort])
-						  if all([params[k] == dict(zip(keysort,permute))[k] for k in params]) and 
-						  	 len([name for name in names if all([data[name][k] == j for k,j in zip(keysort,permute)])]) > 0
+				unique = {permutation: [name for name in names if all([data[name][k] == j for k,j in zip(keysort,permutation)])]
+						  for permutation in itertools.product(*[keysort[k] for k in keysort])
+						  if all([params[k] == dict(zip(keysort,permutation))[k] for k in params]) and 
+						  	 len([name for name in names if all([data[name][k] == j for k,j in zip(keysort,permutation)])]) > 0
 						  }
 
 				# if len(unique) == 0:
 
 				# 	continue
 
-				length = (len(unique),max(len(unique[permute]) for permute in unique))
+				length = (len(unique),max(len(unique[permutation]) for permutation in unique))
 
 				shapes = {}
 				shapes['y'] = (*length,*shape[key['y']])
@@ -287,8 +296,8 @@ def process(data,settings,hyperparameters):
 
 					for _prop_ in props[prop]:
 						xy[_prop_] = np.zeros(shapes[prop])
-						for p,permute in enumerate(unique):
-							for n,name in enumerate(unique[permute]):
+						for p,permutation in enumerate(unique):
+							for n,name in enumerate(unique[permutation]):
 								if key[prop] not in data[name]:
 									data[name][key[prop]] = n*np.ones(shape[key['y']])
 								print(key,prop,shapes[prop],data[name][key[prop]].shape)
@@ -299,11 +308,11 @@ def process(data,settings,hyperparameters):
 
 
 				xy = {
-					'x':np.array([np.array([data[name][key['x']] for name in unique[permute]]).mean(0) for permute in unique]).astype(data[name][key['x']].dtype),
-					'y':np.array([np.array([data[name][key['y']] for name in unique[permute]]).mean(0) for permute in unique]).astype(data[name][key['y']].dtype),
-					'xerr':np.array([np.array([data[name][key['x']] for name in unique[permute]]).std(0) for permute in unique]).astype(data[name][key['x']].dtype),
-					'yerr':np.array([np.array([data[name][key['y']] for name in unique[permute]]).std(0) for permute in unique]).astype(data[name][key['y']].dtype),
-					'label':[[[data[name][attr] for attr in key['label']['key']] for name in unique[permute]] for permute in unique],
+					'x':np.array([np.array([data[name][key['x']] for name in unique[permutation]]).mean(0) for permutation in unique]).astype(data[name][key['x']].dtype),
+					'y':np.array([np.array([data[name][key['y']] for name in unique[permutation]]).mean(0) for permutation in unique]).astype(data[name][key['y']].dtype),
+					'xerr':np.array([np.array([data[name][key['x']] for name in unique[permutation]]).std(0) for permutation in unique]).astype(data[name][key['x']].dtype),
+					'yerr':np.array([np.array([data[name][key['y']] for name in unique[permutation]]).std(0) for permutation in unique]).astype(data[name][key['y']].dtype),
+					'label':[[[data[name][attr] for attr in key['label']['key']] for name in unique[permutation]] for permutation in unique],
 					}
 
 				variables[occurrence][index][combination] = {}				
