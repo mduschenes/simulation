@@ -567,7 +567,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 
 		_defaults = {None:{}}
-		defaults = {'ax':{},'fig':{},'subplot':{},'style':{}}
+		defaults = {'ax':{},'fig':{},'style':{}}
 
 		if isinstance(settings,str):
 			settings = load(settings)

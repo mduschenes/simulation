@@ -71,7 +71,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"features",
-			"label":["N","iteration=#-1"],
+			"label":["N","iteration=#-1#"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -121,7 +121,7 @@
 		"errorbar":[{
 			"x":null,
 			"y":"parameters",
-			"label":["M=$16,32","iteration=%0,4,2"],
+			"label":["M=$16,32$","iteration=%0,4,2%"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,

@@ -2172,6 +2172,29 @@ def repeat(a,repeats,axis):
 	return np.repeat(a,repeats,axis)
 
 
+def repeats(a,repeats,axis):
+	'''
+	Repeat array repeats-times along axis
+	Concatenate iterables row-wise
+	Args:
+		a (array): Array to repeat
+		repeats (int,iterable[int]): Number of times to repeat along each axis
+		axis (int,iterable[int]): Axes along which to repeat
+	Returns:
+		out (array): Repeated array
+	'''
+	if isinstance(repeats,int):
+		repeats = (repeats,)
+	if isinstance(axis,int):
+		axis = (axis,)		
+	a = expand_dims(a,range(a.ndim,max(axis)+1))
+	for rep,ax in zip(repeats,axis):
+		a = repeat(a,rep,ax)
+	return a
+
+
+
+
 def take(a,indices,axes):
 	'''
 	Take slices from array
