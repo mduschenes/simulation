@@ -272,7 +272,7 @@ def process(data,settings,hyperparameters):
 	# Get keys of properties of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
 	keys = find(settings,properties)
 
-	# Get variables data from keys
+	# Get variables data and statistics from keys
 	variables = {}
 	for occurrence,key in enumerate(keys):
 		variables[occurrence] = {}
@@ -324,11 +324,15 @@ def process(data,settings,hyperparameters):
 								value = data[name][key[prop]]
 
 							slices = (index,*(slice(data[name][key[prop]].shape[axis]) for axis in range(data[name][key[prop]].ndim)))
+
 							variables[occurrence][combination][permutation][stat][slices] = value
 
 							slices = (index,*(slice(data[name][key[prop]].shape[axis],None) for axis in range(data[name][key[prop]].ndim)))
 							indices = (*(-1 for axis in range(data[name][key[prop]].ndim)),)
 							variables[occurrence][combination][permutation][stat][slices] = value[indices]
+							
+							print('***** stats %s *****'%(stat))
+							print(variables[occurrence][combination][permutation][stat])
 
 						variables[occurrence][combination][permutation][stat] = properties[reference][stat](
 							key,variables[occurrence][combination][permutation][stat])
@@ -354,9 +358,6 @@ def process(data,settings,hyperparameters):
 		print()
 		print()	
 
-
-	exit()
-
 	# Plot data
 	
 	# Default setting objects for each settings instance
@@ -368,76 +369,137 @@ def process(data,settings,hyperparameters):
 	# Updates to settings depending on variables data keys and shape
 	updates = {'ax':['plot','errorbar'],'style':{'layout':['nrows','ncols','index']}}
 
-	for instance in settings:
-		
-		# Set default plot settings
+	# Track updated keys
+	updated = []
+
+	# Set default plot settings
+	for instance in settings:	
 		if any(setting in settings[instance] for setting in defaults):
 			subinstance = None
 			settings[instance] = {subinstance: settings[instance]}
 
-		# Set subplots layout based on keys and variables shape
-		# Reshape variables data based on hyperparameters axis and layout specifications 
-		# for flattening based on stat shape
-		stat = 'y'
-		subsettings = {subinstance: settings[instance].pop(subinstance) for subinstance in settings[instance]}
-		for subinstance in subsettings:
+
+	# Get layout of plot instances		
+	dim = 2
+	layout = {
+		instance:{
+			'nrows': max(settings[instance][subinstance]['style'].get('layout',{}).get('nrows',len(settings[instance])) 
+				for subinstance in settings[instance]),
+			'ncols': max(settings[instance][subinstance]['style'].get('layout',{}).get('ncols',1) 
+				for subinstance in settings[instance]),
+			'index':{subinstance: settings[instance][subinstance]['style'].get('layout',{}).get('index',1)
+				for subinstance in settings[instance]},
+			}
+		for instance in settings
+		}
+
+
+	print('-------')
+	for instance in layout:
+		print(instance)
+		for prop in layout[instance]:
+			if isinstance(layout[instance][prop],dict):
+				for subinstance in layout[instance][prop]:
+					print(prop,subinstance,layout[instance][prop][subinstance])
+			else:
+				print(prop,layout[instance][prop])
+			print()
+		print()
+
+	# Update plot instance settings with variables data dependent layout
+	for instance in settings:
+		
+		# Get update to layout based on (reshaped) variables data shape and 
+		# reshaping of variables data based on 
+		# hyperparameters['axis'] = {attr:[[axis for ncols],[axis for nrows],[axis for plot]]}
+
+		subsettings = {}
+
+		for subinstance in list(settings[instance]):
+			
+			subsettings = copy.deepcopy(settings[instance].pop(subinstance))
+			sublayout = {
+				**{prop: layout[instance][prop] for prop in ['nrows','ncols']},
+				'index': layout[instance]['index'].pop(subinstance)}
+
 			for setting in checks:
 				for check in checks[setting]:
-					if check in subsettings[subinstance][setting]:
-						if isinstance(subsettings[subinstance][setting][check],dict):
-							subsettings[subinstance][setting][check] = [subsettings[subinstance][setting][check]]
-						for i in range(len(subsettings[subinstance][setting][check])):							
-							key = find(subsettings[subinstance][setting][check][i])
-							occurence = keys.index(key)
-							value = variables[occurence][combination][stat]
-							if hyperparameters.get('axis',{}).get(stat,None) is None:
-								value = value.reshape(-1)
-							else:
-								value = value.reshape((product(axis) for axis in hyperparameters['axis'][stat]))
-
-							isNone = any(key[prop] is None for prop in properties)
-							if isNone:
-								_subndim = 0
-							else:
-								_subndim = 1
-							subndim = min(variables[occurence][combination][stat].ndim
-										for combination in variables[occurence])
-							subshape = np.array([
-									max(variables[occurence][combination][stat].shape[axis] 
-										for combination in variables[occurence])
-									for axis in range(_subndim,subndim-1)
-									])
-							subndim += (1-)
-
-							for index in itertools.product(*(range(subsize) for subsize in subshape)):
-								sublayout = [product(index)]
-								subndim = [0,1,2,3]
-								indexinstance = (subinstance,*index)
-								settings[instance][indexinstance] = copy.deepcopy(subsettings[instance][subinstance])
-								for subsetting in updates:
-									for update in updates[subsetting]:
-										for attr in updates[subsetting][update]:
-											if subsetting in ['style']:
-												if update in ['layout']:
-													if attr in ['nrows']:
-														if isNone
-														settings[instance][indexinstance][subsetting][update][attr] = subshape[]
-
-
-
-
-							subsize = len(iter)
-							size = len(itertools.product(*(range(subshape[key['y']][axis]) for axis in range(subndim[key['y']]))))
-
-							if subsettings[subinstance][setting][check][i]
-
-		keys = find(subsettings)
-		if any
+					if check in subsettings[setting]:
+						if isinstance(subsettings[setting][check],dict):
+							subsettings[setting][check] = [subsettings[setting][check]]
+						print(subinstance)
+						size = [1 for axis in range(dim)]
+						for i in range(len(subsettings[setting][check])):							
+							key = find(subsettings[setting][check][i],properties)[0]
 							occurrence = keys.index(key)
-							size = len(itertools.product(*(range(subshape[key['y']][axis]) for axis in range(subndim[key['y']]))))
-							subsettings[subinstance][setting][attr] *= size
+
+							subndim = min(variables[occurrence][combination][stat].ndim
+								for combination in variables[occurrence]
+								for stat in variables[occurrence][combination])
+
+							subaxis = hyperparameters.get('axis',{}).get(key['y'])
+							if subaxis is None:
+								subaxis = [[],[],[axis for axis in range(subndim)]]
+							else:
+								subaxis = [[axis] if isinstance(axis,int) else axis for axis in subaxis]
 
 
+							if key not in updated:
+								
+								updated.append(key)
+
+								for combination in variables[occurrence]:
+									for stat in variables[occurrence][combination]:
+										variables[occurrence][combination][stat] = variables[occurrence][combination][stat].transpose(
+											[ax for axis in subaxis for ax in axis]).reshape(
+											[max(1,int(product([variables[occurrence][combination][stat].shape[ax]
+												for ax in axis])))
+												for axis in subaxis]
+											)
+
+							size = [max(size[axis],max(variables[occurrence][combination][stat].shape[axis]
+											for combination in variables[occurrence]
+											for stat in variables[occurrence][combination]))
+										for axis in range(dim)]			
+							print(size)
+
+						for index,position in enumerate(
+									itertools.product(*(range(size[axis]) for axis in range(dim)))):
+							print(index,position)
+						print()
+
+						layout[instance].update({
+							**{prop: 
+								layout[instance][prop] + size[axis] - 1
+								for axis,prop in enumerate(['nrows','ncols'])
+							},
+							'index':{
+								**{(subinstance,*position): sublayout['index'] + index - 1
+									for index,position in enumerate(
+									itertools.product(*(range(size[axis]) for axis in range(dim))))},
+								**{subinst: layout[instance]['index'][subinst] + int(product(size)) - 1 for subinst in layout[instance]['index']},
+								}
+							})
+
+						break		
+
+
+	print('-------')
+	for instance in layout:
+		print(instance)
+		for prop in layout[instance]:
+			if isinstance(layout[instance][prop],dict):
+				for subinstance in layout[instance][prop]:
+					print(prop,subinstance,layout[instance][prop][subinstance])
+			else:
+				print(prop,layout[instance][prop])
+			print()
+		print()
+	exit()
+
+
+	# Set plot settings
+	for instance in settings:
 		# Set standard plot settings		
 		for subinstance in settings[instance]:
 			for setting in defaults:
@@ -460,21 +522,21 @@ def process(data,settings,hyperparameters):
 							settings[instance][subinstance][setting][attr] = [settings[instance][subinstance][setting][attr]]	
 						elif ((isinstance(settings[instance][subinstance][setting].get(attr),list)) and 
 							  (len(settings[instance][subinstance][setting].get(attr))==1)):
-							key = find(settings[instance][subinstance][setting].get(attr)[0])[0] 
+							key = find(settings[instance][subinstance][setting].get(attr)[0],properties)[0] 
 							occurrence = keys.index(key)
 							size = len(itertools.product(*(range(subshape[key['y']][axis]) for axis in range(subndim[key['y']]))))
 							settings[instance][subinstance][setting][attr] *= size
 						for i in range(len(settings[instance][subinstance][setting][attr])):
-							key = find(settings[instance][subinstance][setting].get(attr)[0])[0] 
+							key = find(settings[instance][subinstance][setting].get(attr)[0],properties)[0] 
 							occurrence = keys.index(key)
 							settings[instance][subinstance][setting][attr][i] = {
 								**settings[instance][subinstance][setting][attr][i],
-								'x': variables[occurence][combination]['xfunc'][i],
-								'y': variables[occurence][combination]['yfunc'][i],
-								'xerr': variables[occurence][combination]['xfuncerr'][i],
-								'yerr': variables[occurence][combination]['yfuncerr'][i],						
-								'color':getattr(plt.cm,settings[instance][subinstance][setting].get(attr,{}).get('color','viridis'))((len(variables[occurence]) - 1 - i)/len(variables[occurence])),
-								'ecolor':getattr(plt.cm,settings[instance][subinstance][setting].get(attr,{}).get('ecolor','viridis'))((len(variables[occurence]) - 1 - i)/len(variables[occurence])),
+								'x': variables[occurrence][combination]['xfunc'][i],
+								'y': variables[occurrence][combination]['yfunc'][i],
+								'xerr': variables[occurrence][combination]['xfuncerr'][i],
+								'yerr': variables[occurrence][combination]['yfuncerr'][i],						
+								'color':getattr(plt.cm,settings[instance][subinstance][setting].get(attr,{}).get('color','viridis'))((len(variables[occurrence]) - 1 - i)/len(variables[occurrence])),
+								'ecolor':getattr(plt.cm,settings[instance][subinstance][setting].get(attr,{}).get('ecolor','viridis'))((len(variables[occurrence]) - 1 - i)/len(variables[occurrence])),
 								'label':dict(zip(key['label']['key'],combination))[key['label']['key'][0]],
 							}
 
@@ -482,17 +544,24 @@ def process(data,settings,hyperparameters):
 		for subinstance in settings[instance]:
 			for setting in defaults:
 				pass
+
+	exit()
 	for instance in settings:
 		plot(settings=settings[instance])
 
 	return
 
 def main(args):
+
+	Nargs = 3
+
 	nargs = len(args)
+	
+	assert nargs < Nargs, "Incorrect number of arguments passed"
 
-	path = args[0] if nargs>0 else None
-
-	process(path)
+	data,settings,hyperparameters = args[:Nargs]
+	
+	process(data,settings,hyperparameters)
 
 	return
 

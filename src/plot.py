@@ -349,6 +349,17 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 			elif attr in ['plot_surface','contour','contourf','scatter']:
 				args.extend([kwargs.pop(k) for k in ['x','y','z'] if kwargs.get(k) is not None])
+				call = True
+
+			elif attr in ['imshow']:
+				fields = ['X','y','x']
+				for field in fields:
+					if field in kwargs:
+						args.append(kwargs.pop(field))
+						break
+				for field in fields:
+					kwargs.pop(field)
+				call = True
 
 			elif attr in ['%saxis.set_%s_%s'%(axis,which,formatter) for axis in AXIS for which in WHICH for formatter in FORMATTER]:
 				axis = attr.split('.')[0].replace('axis','')
