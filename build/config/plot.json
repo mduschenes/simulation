@@ -104,7 +104,7 @@
 		"texify":null,
 		"mplstyle":"plot.mplstyle",	
 		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":2,"index":1},
+		"layout":{"nrows":1,"ncols":1,"index":1},
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},	
@@ -168,7 +168,7 @@
 			"texify":null,
 			"mplstyle":"plot.mplstyle",	
 			"rcParams":{"font.size":25},
-			"layout":{"nrows":1,"ncols":1,"index":1},
+			"layout":{"nrows":1,"ncols":2,"index":1},
 			"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 			}
 		},

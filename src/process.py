@@ -413,19 +413,16 @@ def process(data,settings,hyperparameters):
 		# reshaping of variables data based on 
 		# hyperparameters['axis'] = {attr:[[axis for ncols],[axis for nrows],[axis for plot]]}
 
-		subsettings = None
-
 		for subinstance in list(settings[instance]):
-			
 			for setting in checks:
 				for check in checks[setting]:
-					if check in subsettings[setting]:
-						if isinstance(subsettings[setting][check],dict):
-							subsettings[setting][check] = [subsettings[setting][check]]
+					if check in settings[instance][subinstance][setting]:
+						if isinstance(settings[instance][subinstance][setting][check],dict):
+							settings[instance][subinstance][setting][check] = [settings[instance][subinstance][setting][check]]
 						print(subinstance)
 						size = [1 for axis in range(dim)]
-						for i in range(len(subsettings[setting][check])):							
-							key = find(subsettings[setting][check][i],properties)[0]
+						for i in range(len(settings[instance][subinstance][setting][check])):							
+							key = find(settings[instance][subinstance][setting][check][i],properties)[0]
 							occurrence = keys.index(key)
 
 							subndim = min(variables[occurrence][combination][stat].ndim
@@ -455,13 +452,12 @@ def process(data,settings,hyperparameters):
 							size = [max(size[axis],max(variables[occurrence][combination][stat].shape[axis]
 											for combination in variables[occurrence]
 											for stat in variables[occurrence][combination]))
-										for axis in range(dim)]			
-							print(size)
+										for axis in range(dim)]	
+							index = max(layout[instance]['index'][subinst] 
+								for subinst in layout[instance]['index'] 
+								if subinst == subinstance or subinstance in subinst) 
 
-						for index,position in enumerate(
-									itertools.product(*(range(size[axis]) for axis in range(dim)))):
-							print(index,position)
-						print()
+							print(size,index)
 
 						layout[instance].update({
 							**{prop: 
@@ -469,17 +465,19 @@ def process(data,settings,hyperparameters):
 								for axis,prop in enumerate(['nrows','ncols'])
 							},
 							'index':{
-								**{(subinstance,*position): max(layout[instance]['index'][subinst] for subinst in layout[instance]['index'] if subinst == subinstance or subinstance in subinst) + index
-									for index,position in enumerate(
+								**{(subinstance,index + i - 1): index + i - 1
+									for i,position in enumerate(
 									itertools.product(*(range(size[axis]) for axis in range(dim))))},
-								**{subinst: layout[instance]['index'][subinst] + int(product(size)) - 1 for subinst in layout[instance]['index']},
+								**{subinst: layout[instance]['index'][subinst] + int(product(size)) for subinst in layout[instance]['index']},
 								}
 							})
 
+
+						layout[instance]['index'].pop(subinstance)
 						break		
 
 
-	print('-------')
+	print('&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&')
 	for instance in layout:
 		print(instance)
 		for prop in layout[instance]:
