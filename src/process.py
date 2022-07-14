@@ -394,6 +394,7 @@ def process(data,settings,hyperparameters):
 		}
 
 
+
 	print('-------')
 	for instance in layout:
 		print(instance)
@@ -409,6 +410,8 @@ def process(data,settings,hyperparameters):
 	# Update plot instance settings with variables data dependent layout
 	for instance in settings:
 		
+		print('---------------------',list(layout[instance]['index']))
+
 		# Get update to layout based on (reshaped) variables data shape and 
 		# reshaping of variables data based on 
 		# hyperparameters['axis'] = {attr:[[axis for ncols],[axis for nrows],[axis for plot]]}
@@ -455,7 +458,7 @@ def process(data,settings,hyperparameters):
 										for axis in range(dim)]	
 							index = max(layout[instance]['index'][subinst] 
 								for subinst in layout[instance]['index'] 
-								if subinst == subinstance or subinstance in subinst) 
+								if (subinst == subinstance) or (isinstance(subinst,tuple) and subinstance in subinst))+1
 
 							print(size,index)
 
@@ -468,12 +471,12 @@ def process(data,settings,hyperparameters):
 								**{(subinstance,index + i - 1): index + i - 1
 									for i,position in enumerate(
 									itertools.product(*(range(size[axis]) for axis in range(dim))))},
-								**{subinst: layout[instance]['index'][subinst] + int(product(size)) for subinst in layout[instance]['index']},
+								**{subinst: layout[instance]['index'][subinst] + (int(product(size)) if layout[instance]['index'][subinst] >= index else 0)
+									for subinst in layout[instance]['index']
+									if (subinst != subinstance) or (isinstance(subinst,tuple) and subinstance not in subinst)},
 								}
 							})
 
-
-						layout[instance]['index'].pop(subinstance)
 						break		
 
 
