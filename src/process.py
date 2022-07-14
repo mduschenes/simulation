@@ -361,7 +361,17 @@ def process(data,settings,hyperparameters):
 	# Plot data
 	
 	# Default setting objects for each settings instance
-	defaults = {setting:{} for setting in ['ax','fig','style']}
+	defaults = {}
+
+	defaults['ax'] = {}
+	defaults['fig'] = {}
+	defaults['style'] = {
+		'layout': {
+			'nrows':1,'ncols':1,'index':1,
+			'left':0,'right':1,'top':1,'bottom':0,
+			'hspace':0,'wspace':0,'pad':0
+			}
+	}
 	
 	# Checks to plot variables data keys (to check for updates to setting depending on variables data shape)
 	checks = {'ax':['plot','errorbar']}
@@ -380,18 +390,56 @@ def process(data,settings,hyperparameters):
 
 
 	# Get layout of plot instances		
+	updated = []
 	dim = 2
 	layout = {
 		instance:{
-			'nrows': max(settings[instance][subinstance]['style'].get('layout',{}).get('nrows',len(settings[instance])) 
-				for subinstance in settings[instance]),
-			'ncols': max(settings[instance][subinstance]['style'].get('layout',{}).get('ncols',1) 
-				for subinstance in settings[instance]),
-			'index':{subinstance: settings[instance][subinstance]['style'].get('layout',{}).get('index',1)
-				for subinstance in settings[instance]},
+			subinstance: {
+				kwarg: settings[instance][subinstance]['style'].get('layout',{}).get(kwarg,defaults['style']['layout'][kwarg])
+					for kwarg in defaults['style']['layout']
+					}
+			for subinstance in settings[instance]
 			}
 		for instance in settings
 		}
+
+	
+
+	for instance in settings:
+		for subinstance in settings[instance]
+
+			if isinstance(settings[instance][subinstance][setting][check],dict):
+				settings[instance][subinstance][setting][check] = [settings[instance][subinstance][setting][check]]
+
+			for i in range(len(settings[instance][subinstance][setting][check])):							
+				key = find(settings[instance][subinstance][setting][check][i],properties)[0]
+				occurrence = keys.index(key)
+
+				subndim = min(variables[occurrence][combination][stat].ndim
+					for combination in variables[occurrence]
+					for stat in variables[occurrence][combination])
+
+				subaxis = hyperparameters.get('axis',{}).get(key['y'])
+				if subaxis is None:
+					subaxis = [[],[],[axis for axis in range(subndim)]]
+				else:
+					subaxis = [[axis] if isinstance(axis,int) else axis for axis in subaxis]
+
+
+				if key not in updated:
+					
+					updated.append(key)
+
+					for combination in variables[occurrence]:
+						for stat in variables[occurrence][combination]:
+							variables[occurrence][combination][stat] = variables[occurrence][combination][stat].transpose(
+								[ax for axis in subaxis for ax in axis]).reshape(
+								[max(1,int(product([variables[occurrence][combination][stat].shape[ax]
+									for ax in axis])))
+									for axis in subaxis]
+								)
+
+
 
 
 
@@ -417,6 +465,13 @@ def process(data,settings,hyperparameters):
 		# hyperparameters['axis'] = {attr:[[axis for ncols],[axis for nrows],[axis for plot]]}
 
 		for subinstance in list(settings[instance]):
+
+
+
+
+
+
+
 			for setting in checks:
 				for check in checks[setting]:
 					if check in settings[instance][subinstance][setting]:
@@ -451,6 +506,8 @@ def process(data,settings,hyperparameters):
 												for ax in axis])))
 												for axis in subaxis]
 											)
+
+
 
 							size = [max(size[axis],max(variables[occurrence][combination][stat].shape[axis]
 											for combination in variables[occurrence]
@@ -553,7 +610,7 @@ def main(args):
 
 	nargs = len(args)
 	
-	assert nargs < Nargs, "Incorrect number of arguments passed"
+	assert nargs < Nargs, 'Incorrect number of arguments passed'
 
 	data,settings,hyperparameters = args[:Nargs]
 	

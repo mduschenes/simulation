@@ -4,7 +4,7 @@
 		"set_size_inches":{"w":8,"h":8},
 		"subplots_adjust":{},
 		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight"},
+		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
 		"close":{}
 		},
 	"ax":{
@@ -64,7 +64,7 @@
 		"set_size_inches":{"w":14,"h":12},
 		"subplots_adjust":{"hspace":0.5},
 		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight"},
+		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
 		"close":{}
 		},
 	"ax":{
@@ -115,7 +115,7 @@
 			"set_size_inches":{"w":14,"h":12},
 			"subplots_adjust":{"hspace":0.5},
 			"tight_layout":{},
-			"savefig":{"fname":null,"bbox_inches":"tight"},
+			"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
 			"close":{}
 			},
 		"ax":{
@@ -168,7 +168,7 @@
 			"texify":null,
 			"mplstyle":"plot.mplstyle",	
 			"rcParams":{"font.size":25},
-			"layout":{"nrows":1,"ncols":2,"index":1},
+			"layout":{"nrows":1,"ncols":1,"index":1,"left":0,"right":0.5,"top":1,"bottom":0,"hspace":null,"wspace":null,"pad":0.1},
 			"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 			}
 		},
@@ -178,7 +178,7 @@
 			"set_size_inches":{"w":14,"h":12},
 			"subplots_adjust":{"hspace":0.5},
 			"tight_layout":{},
-			"savefig":{"fname":null,"bbox_inches":"tight"},
+			"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
 			"close":{}
 			},
 		"ax":{
@@ -218,7 +218,7 @@
 			"texify":null,
 			"mplstyle":"plot.mplstyle",	
 			"rcParams":{"font.size":25},
-			"layout":{"nrows":1,"ncols":2,"index":2},
+			"layout":{"nrows":1,"ncols":2,"index":2,"left":0.5,"right":1,"top":1,"bottom":0,"hspace":null,"wspace":null,"pad":0.1},
 			"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 			}
 		}

@@ -70,13 +70,13 @@ def list_from_generator(generator,field=None):
 	return items
 
 # Check if obj is number
-def is_number(s):
+def is_number(obj):
 	try:
-		s = float(s)
+		obj = float(obj)
 		return True
 	except:
 		try:
-			s = int(s)
+			obj = int(obj)
 			return True
 		except:
 			return False
@@ -88,7 +88,8 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 	WHICH = ['major','minor']
 	FORMATTER = ['formatter','locator']
 	AXES = ['colorbar']
-	LAYOUT = ['nrows','ncols','index']
+	LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
+	NULLLAYOUT = ['index','pad']
 	DIM = 2
 	PATHS = {
 		'plot':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.json'),
@@ -106,6 +107,8 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				_layout_ = {k: int(pos[i]) for i,k in zip(range(len(pos)),LAYOUT)}
 		elif all([k in settings and settings.get(k) not in [None] for k in LAYOUT]):
 			_layout_ = {k: settings[k] for k in LAYOUT}
+		else:
+			_layout_ = {k: settings[k] for k in settings}
 		if _layout_ != {}:
 			settings.update(_layout_)
 		else:
@@ -113,14 +116,14 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		return _layout_
 
 	def _position(layout):
-		if all([s == t for s,t in zip(LAYOUT,['nrows','ncols'])]):
+		if all([kwarg == _kwarg for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
 			position = ((((layout['index']-1)//layout['ncols'])%layout['nrows'])+1,((layout['index']-1)%layout['ncols'])+1)
 		else:
 			position = (1,1)
 		return position
 
 	def _positions(layout):
-		if all([s == t for s,t in zip(LAYOUT,['nrows','ncols'])]):
+		if all([kwarg == _kwarg for kwarg,_kwarg in zip(LAYOUT,['nrows','ncols'])]):
 			positions = {
 				'top':(1,None),'bottom':(layout['nrows'],None),
 				'left':(None,1),'right':(None,layout['ncols']),
@@ -145,7 +148,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		other = {'%s_%s'%(key,k):settings[key]['style'].get(k) for k in AXES if isinstance(settings[key]['style'].get(k),dict)}
 		for k in ax:
 			__layout__ = _layout(settings.get(k,{}).get('style',{}).get('layout',ax[k].get_geometry()))
-			if all([_layout_[s]==__layout__[s] for s in _layout_]):
+			if all([_layout_[kwarg]==__layout__[kwarg] for kwarg in _layout_]):
 				ax[key] = ax[k]
 				add_subplot = False
 				break
@@ -160,10 +163,25 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				fig[key] = fig[k]
 
 		if add_subplot:					
-			args = [_layout_.pop(s) for s in LAYOUT]
-			gs = gridspec.GridSpec(*args[:DIM])
-			ax[key] = fig[key].add_subplot(list(gs)[args[-1]-1],**_layout_)
 
+			kwargs = {kwarg: _layout_.get(kwarg) for kwarg in LAYOUT if kwarg not in NULLLAYOUT}
+			nullkwargs = {kwarg: _layout_.get(kwarg) for kwarg in LAYOUT if kwarg in NULLLAYOUT}
+
+			for kwarg in kwargs:
+				if kwarg in ['left','right','top','bottom'] and kwargs.get(kwarg) is not None:
+					if kwarg in ['right','top']:
+						kwargs[kwarg] = max(0,kwargs[kwarg]-nullkwargs['pad'])
+					elif kwarg in ['left','bottom']:
+						kwargs[kwarg] = min(1,kwargs[kwarg]+nullkwargs['pad'])
+				else:
+					kwargs[kwarg] = kwargs[kwarg]
+
+			gs = gridspec.GridSpec(**kwargs)
+
+			for index,ax in enumerate(gs):
+				index += 1
+				if index == nullkwargs['index']:
+					ax[key] = fig[key].add_subplot(ax)
 
 			for k in other:
 				ax[k] = fig[key].add_axes(**other[k])
@@ -171,16 +189,16 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 	def attr_texify(string,attr,kwarg,texify,**kwargs):
 		def texwrapper(string):
-			s = string.replace('$','')
-			if not any([t in s for t in [r'\textrm','_','^','\\']]):
+			substring = string.replace('$','')
+			if not any([t in substring for t in [r'\textrm','_','^','\\']]):
 				pass
-				# s = r'\textrm{%s}'%s
+				# substring = r'\textrm{%s}'%(subtring)
 			# for t in ['_','^']:
-			# 	s = s.split(t)
-			# 	s = [r'\textrm{%s}'%i  if (not (is_number(i) or any([j in i for j in ['$','textrm','_','^','\\','}','{']]))) else i for i in s]
-			# 	s = t.join(['{%s}'%i for i in s])
-			s = r'$%s$'%(s)
-			return s
+			# 	substring = substring.split(t)
+			# 	substring = [r'\textrm{%s}'%i  if (not (is_number(i) or any([j in i for j in ['$','textrm','_','^','\\','}','{']]))) else i for i in substring]
+			# 	substring = t.join(['{%s}'%i for i in substring])
+			substring = r'$%s$'%(substring)
+			return substring
 		attrs = {
 			**{'set_%slabel'%(axis):['%slabel'%(axis)]
 				for axis in AXIS},
@@ -205,7 +223,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 			if isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
 				string = texify(str(string))
 			elif isinstance(string,list):
-				string = [texify(s) for s in string]
+				string = [texify(substring) for substring in string]
 		return string
 
 
@@ -577,7 +595,19 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				return [1,N,i+1]
 
 
-		_defaults = {None:{}}
+		_defaults = {
+			'ax':{},
+			'fig':{},
+			'style':{
+				'layout':{
+					'nrows':1,'ncols':1,'index':1,
+					'left':None,'right':None,'top':None,'bottom':None,
+					'hspace':None,'wspace':None,
+					'width_ratios':None,'height_ratios':None,
+					'pad':0,
+					}
+				}
+			}
 		defaults = {'ax':{},'fig':{},'style':{}}
 
 		if isinstance(settings,str):
@@ -608,14 +638,16 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		for i,key in enumerate(y):
 			if not isinstance(settings[key]['style'].get('layout'),dict):
 				settings[key]['style']['layout'] = {}
-			if not all([s in settings[key]['style']['layout'] for s in LAYOUT]):
-				settings[key]['style']['layout'].update(dict(zip([*LAYOUT[:DIM],LAYOUT[-1]],_index(i,len(y),'row'))))
+			if not all([kwarg in settings[key]['style']['layout'] for kwarg in LAYOUT[:DIM+1]]):
+				settings[key]['style']['layout'].update(dict(zip([*LAYOUT[:DIM],LAYOUT[DIM]],_index(i,len(y),'row'))))
 		for key in y:
 
 			_settings = load(PATHS['plot'])
 
 			_settings['style'].update({
-				'layout':{s:settings[key]['style'].get('layout',{}).get(s,1) for s in LAYOUT}
+				'layout':{kwarg:settings[key]['style'].get('layout',{}).get(kwarg,_defaults['style']['layout'][kwarg])
+							if settings[key]['style'].get('layout',{}).get(kwarg) is None else settings[key]['style'].get('layout',{}).get(kwarg) 
+							for kwarg in LAYOUT}
 				})
 			if update:
 				plotsettings = settings[key].get('ax',{}).pop('plot',{})				
