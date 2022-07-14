@@ -413,15 +413,10 @@ def process(data,settings,hyperparameters):
 		# reshaping of variables data based on 
 		# hyperparameters['axis'] = {attr:[[axis for ncols],[axis for nrows],[axis for plot]]}
 
-		subsettings = {}
+		subsettings = None
 
 		for subinstance in list(settings[instance]):
 			
-			subsettings = copy.deepcopy(settings[instance].pop(subinstance))
-			sublayout = {
-				**{prop: layout[instance][prop] for prop in ['nrows','ncols']},
-				'index': layout[instance]['index'].pop(subinstance)}
-
 			for setting in checks:
 				for check in checks[setting]:
 					if check in subsettings[setting]:
@@ -474,7 +469,7 @@ def process(data,settings,hyperparameters):
 								for axis,prop in enumerate(['nrows','ncols'])
 							},
 							'index':{
-								**{(subinstance,*position): sublayout['index'] + index - 1
+								**{(subinstance,*position): max(layout[instance]['index'][subinst] for subinst in layout[instance]['index'] if subinst == subinstance or subinstance in subinst) + index
 									for index,position in enumerate(
 									itertools.product(*(range(size[axis]) for axis in range(dim))))},
 								**{subinst: layout[instance]['index'][subinst] + int(product(size)) - 1 for subinst in layout[instance]['index']},
