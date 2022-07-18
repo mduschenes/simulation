@@ -334,6 +334,7 @@ def process(data,settings,hyperparameters):
 							print('***** stats %s *****'%(stat))
 							print(variables[occurrence][combination][permutation][stat])
 
+						# Get statistics
 						variables[occurrence][combination][permutation][stat] = properties[reference][stat](
 							key,variables[occurrence][combination][permutation][stat])
 				print('----')	
@@ -390,58 +391,113 @@ def process(data,settings,hyperparameters):
 
 
 	# Get layout of plot instances		
-	updated = []
 	dim = 2
+	updated = []
+	subupdated = []
 	layout = {
 		instance:{
-			subinstance: {
-				kwarg: settings[instance][subinstance]['style'].get('layout',{}).get(kwarg,defaults['style']['layout'][kwarg])
-					for kwarg in defaults['style']['layout']
-					}
-			for subinstance in settings[instance]
+			kwarg: {
+				subinstance: settings[instance][subinstance]['style'].get('layout',{}).get(
+					kwarg,defaults['style']['layout'][kwarg])
+					for subinstance in settings[instance]
+				}
+			for kwarg in defaults['style']['layout']
 			}
 		for instance in settings
 		}
+	sublayout = {}
 
-	
 
+
+	# Form grids of layout depending on shape of variables in each plot
+	# Get update to layout based on (reshaped) variables data shape and 
+	# reshaping of variables data based on 
+	# hyperparameters['axis'] = {attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}
 	for instance in settings:
-		for subinstance in settings[instance]
 
-			if isinstance(settings[instance][subinstance][setting][check],dict):
-				settings[instance][subinstance][setting][check] = [settings[instance][subinstance][setting][check]]
+		sublayout.clear()
 
-			for i in range(len(settings[instance][subinstance][setting][check])):							
-				key = find(settings[instance][subinstance][setting][check][i],properties)[0]
-				occurrence = keys.index(key)
+		for subinstance in settings[instance]:
 
-				subndim = min(variables[occurrence][combination][stat].ndim
-					for combination in variables[occurrence]
-					for stat in variables[occurrence][combination])
+			subupdated.clear()
 
-				subaxis = hyperparameters.get('axis',{}).get(key['y'])
-				if subaxis is None:
-					subaxis = [[],[],[axis for axis in range(subndim)]]
-				else:
-					subaxis = [[axis] if isinstance(axis,int) else axis for axis in subaxis]
+			for setting in checks:
+				for check in checks[setting]:
+					if check in settings[instance][subinstance][setting]:
 
+						if isinstance(settings[instance][subinstance][setting][check],dict):
+							settings[instance][subinstance][setting][check] = [settings[instance][subinstance][setting][check]]
 
-				if key not in updated:
-					
-					updated.append(key)
+						for i in range(len(settings[instance][subinstance][setting][check])):							
+							key = find(settings[instance][subinstance][setting][check][i],properties)[0]
+							occurrence = keys.index(key)
 
-					for combination in variables[occurrence]:
-						for stat in variables[occurrence][combination]:
-							variables[occurrence][combination][stat] = variables[occurrence][combination][stat].transpose(
-								[ax for axis in subaxis for ax in axis]).reshape(
-								[max(1,int(product([variables[occurrence][combination][stat].shape[ax]
-									for ax in axis])))
-									for axis in subaxis]
-								)
+							subndim = min(variables[occurrence][combination][stat].ndim
+								for combination in variables[occurrence]
+								for stat in variables[occurrence][combination])
+
+							subaxis = hyperparameters.get('axis',{}).get(key['y'])
+							if subaxis is None:
+								subaxis = [[],[],[],[axis for axis in range(subndim)]]
+							else:
+								subaxis = [[axis] if isinstance(axis,int) else axis for axis in subaxis]
 
 
+							if occurrence not in updated:
+								
+								updated.append(occurrence)
+
+								for combination in variables[occurrence]:
+									for stat in variables[occurrence][combination]:
+										variables[occurrence][combination][stat] = variables[occurrence][combination][stat].transpose(
+											[ax for axis in subaxis for ax in axis]).reshape(
+											[max(1,int(product([variables[occurrence][combination][stat].shape[ax]
+												for ax in axis])))
+												for axis in subaxis]
+											)
+							if occurrence not in subupdated:
+								subupdated.append(occurrence)
 
 
+			sublayout[subinstance] = [max(variables[occurrence][combination][stat].shape[axis]
+							for occurrence in subupdated
+							for combination in variables[occurrence]
+							for stat in variables[occurrence][combination])
+							for axis in range(dim)]
+
+		# Get unique and max layouts
+		uniquelayout = {kwarg: set(layout[instance][kwarg][subinstance] for subinstance in settings[instance])
+						for kwarg in layout[instance]
+					}
+
+		maxlayout = {kwarg: (max(layout[instance][kwarg][subinstance] for subinstance in settings[instance]) 
+							if all(layout[instance][kwarg][subinstance] is not None for subinstance in settings[instance]) 
+							else None)
+						for kwarg in layout[instance]
+					}					
+
+
+		
+		# Get layout of subinstances
+		setlayout = {kwarg: {
+			tuple((subinstance for subinstance in settings[instance] 
+				if layout[instance][kwarg][subinstance] == value)):value for value in uniquelayout[kwarg]}
+			for kwarg in uniquelayout}
+
+
+		print(instance)
+		for kwarg in sublayout:
+			print(kwarg,maxlayout[kwarg],sublayout[kwarg])
+			print()
+		print()
+
+
+
+
+
+
+
+	exit()
 
 	print('-------')
 	for instance in layout:
@@ -460,9 +516,7 @@ def process(data,settings,hyperparameters):
 		
 		print('---------------------',list(layout[instance]['index']))
 
-		# Get update to layout based on (reshaped) variables data shape and 
-		# reshaping of variables data based on 
-		# hyperparameters['axis'] = {attr:[[axis for ncols],[axis for nrows],[axis for plot]]}
+
 
 		for subinstance in list(settings[instance]):
 
