@@ -369,16 +369,13 @@ def process(data,settings,hyperparameters):
 	defaults['style'] = {
 		'layout': {
 			'nrows':1,'ncols':1,'index':1,
-			'left':0,'right':1,'top':1,'bottom':0,
-			'hspace':0,'wspace':0,'pad':0
+			'left':None,'right':None,'top':None,'bottom':None,
+			'hspace':None,'wspace':None,'pad':None
 			}
 	}
 	
 	# Checks to plot variables data keys (to check for updates to setting depending on variables data shape)
 	checks = {'ax':['plot','errorbar']}
-
-	# Updates to settings depending on variables data keys and shape
-	updates = {'ax':['plot','errorbar'],'style':{'layout':['nrows','ncols','index']}}
 
 	# Track updated keys
 	updated = []
@@ -392,6 +389,7 @@ def process(data,settings,hyperparameters):
 
 	# Get layout of plot instances		
 	dim = 2
+	kwargs = list(defaults['style']['layout'])
 	updated = []
 	subupdated = []
 	layout = {
@@ -401,7 +399,7 @@ def process(data,settings,hyperparameters):
 					kwarg,defaults['style']['layout'][kwarg])
 					for subinstance in settings[instance]
 				}
-			for kwarg in defaults['style']['layout']
+			for kwarg in kwargs
 			}
 		for instance in settings
 		}
@@ -465,36 +463,94 @@ def process(data,settings,hyperparameters):
 							for stat in variables[occurrence][combination])
 							for axis in range(dim)]
 
-		# Get unique and max layouts
-		uniquelayout = {kwarg: set(layout[instance][kwarg][subinstance] for subinstance in settings[instance])
+		# Get unique layouts
+		setlayout = {kwarg: set(layout[instance][kwarg][subinstance] for subinstance in layout[instance][kwarg])
 						for kwarg in layout[instance]
 					}
 
-		maxlayout = {kwarg: (max(layout[instance][kwarg][subinstance] for subinstance in settings[instance]) 
-							if all(layout[instance][kwarg][subinstance] is not None for subinstance in settings[instance]) 
-							else None)
-						for kwarg in layout[instance]
-					}					
+		# Get subinstances for each unique layout
+		layouts = {}
+		for samplelayout in itertools.product(*(setlayout[kwarg] for kwarg in setlayout)):
+			
+			samplelayout = dict(zip(setlayout,samplelayout))
+			
+			subinstances = set(subinstance 
+				for kwarg in layout[instance] 
+				for subinstance in layout[instance][kwarg])
+			subinstances = [subinstance for subinstance in subinstances
+							if all(layout[instance][kwarg][subinstance]==samplelayout[kwarg] 
+								for kwarg in samplelayout)]
+			
+			if len(subinstances) == 0:
+				continue
+
+			layouts[tuple((samplelayout[kwarg] for kwarg in samplelayout))] = subinstances
 
 
-		
-		# Get layout of subinstances
-		setlayout = {kwarg: {
-			tuple((subinstance for subinstance in settings[instance] 
-				if layout[instance][kwarg][subinstance] == value)):value for value in uniquelayout[kwarg]}
-			for kwarg in uniquelayout}
+		# Boolean whether to form grid of subsubplots of subplots, or subplots directly
+		subsublayouts = len(layouts) > 1
+
+		if subsublayouts:
+			shapelayout = {kwargs[axis]:max(
+							layout[instance][kwargs[axis]][subinstance]
+							for samplelayout in layouts
+							for subinstance in layouts[samplelayout])
+							for axis in range(dim)}
+			shapelayout['top'] = 1/shapelayout['nrows'] if shapelayout['nrows'] > 1 else 1
+			shapelayout['bottom'] = 0
+			shapelayout['left'] = 0
+			shapelayout['right'] = 1/shapelayout['ncols'] if shapelayout['ncols'] > 1 else 1
+			shapelayout['hspace'] = None
+			shapelayout['wspace'] = None
+			shapelayout['pad'] = None
+
+			for samplelayout in layouts:
+				for subinstance in layouts[samplelayout]
+
+		else:
+			shapelayout = {kwargs[axis]:max(
+							sublayout[subinstance][axis] 
+							for samplelayout in layouts 
+							for subinstance in layouts[samplelayout])
+							for axis in range(dim)}
+			shapelayout['top'] = None
+			shapelayout['bottom'] = None
+			shapelayout['left'] = None
+			shapelayout['right'] = None
+			shapelayout['hspace'] = None
+			shapelayout['wspace'] = None
+			shapelayout['pad'] = None
+
+			for samplelayout in layouts:
 
 
-		print(instance)
-		for kwarg in sublayout:
-			print(kwarg,maxlayout[kwarg],sublayout[kwarg])
-			print()
-		print()
+
+		print(layouts,shapelayout)
 
 
 
+		# 	if len(subinstances) == 0:
+		# 		continue
 
+		# 	singlelayout = all((
+		# 		all(samplelayout[kwarg] in [1] for kwarg in kwargs[:dim+1]),
+		# 		all(samplelayout[kwarg] in [None] for kwarg in kwargs[dim+1:]),
+		# 		))
 
+		# 	singlesubplot = (len(subinstances) == 1)
+
+		# 	if singlelayout:
+		# 		print('single layout',samplelayout,subinstances)
+
+		# 	else:
+		# 		print('multi layout',samplelayout,subinstances)
+
+		# 		sublayouts = [max(sublayout[subinstance][axis] for subinstance in subinstances)
+		# 						for axis in range(dim)]
+
+		# 		for index,position in enumerate(itertools.product(*(range(sublayouts[axis]) for axis in range(dim)))):
+
+		# print()
 
 
 	exit()

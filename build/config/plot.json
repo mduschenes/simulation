@@ -168,7 +168,7 @@
 			"texify":null,
 			"mplstyle":"plot.mplstyle",	
 			"rcParams":{"font.size":25},
-			"layout":{"nrows":1,"ncols":1,"index":1,"left":0,"right":0.5,"top":1,"bottom":0,"hspace":null,"wspace":null,"pad":0.1},
+			"layout":{"nrows":1,"ncols":2,"index":1,"left":null,"right":null,"top":null,"bottom":null,"hspace":null,"wspace":null,"pad":null},
 			"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 			}
 		},
@@ -218,7 +218,7 @@
 			"texify":null,
 			"mplstyle":"plot.mplstyle",	
 			"rcParams":{"font.size":25},
-			"layout":{"nrows":1,"ncols":2,"index":2,"left":0.5,"right":1,"top":1,"bottom":0,"hspace":null,"wspace":null,"pad":0.1},
+			"layout":{"nrows":1,"ncols":2,"index":2,"left":null,"right":null,"top":null,"bottom":null,"hspace":null,"wspace":null,"pad":null},
 			"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 			}
 		}
