@@ -411,11 +411,11 @@ def process(data,settings,hyperparameters):
 	# Get update to layout based on (reshaped) variables data shape and 
 	# reshaping of variables data based on 
 	# hyperparameters['axis'] = {attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}
-	for instance in settings:
+	for instance in list(settings):
 
 		sublayout.clear()
 
-		for subinstance in settings[instance]:
+		for subinstance in list(settings[instance]):
 
 			subupdated.clear()
 
@@ -496,6 +496,8 @@ def process(data,settings,hyperparameters):
 							for samplelayout in layouts
 							for subinstance in layouts[samplelayout])
 							for axis in range(dim)}
+
+			shapelayout['index'] = None							
 			shapelayout['top'] = 1/shapelayout['nrows'] if shapelayout['nrows'] > 1 else 1
 			shapelayout['bottom'] = 0
 			shapelayout['left'] = 0
@@ -505,7 +507,54 @@ def process(data,settings,hyperparameters):
 			shapelayout['pad'] = None
 
 			for samplelayout in layouts:
-				for subinstance in layouts[samplelayout]
+				for subinstance in layouts[samplelayout]:
+					for index,position in enumerate(itertools.product(*(range(sublayout[subinstance][axis]) for axis in range(dim)))):
+						
+						settings[instance][(subinstance,*position)] = copy.deepcopy(settings[instance][subinstance])
+
+						settings[instance][(subinstance,*position)]['style']['layout'] = {
+							**shapelayout,
+							'index':index,
+							'top':1-shapelayout['top']-shapelayout['bottom']	
+							'bottom':
+							'right':
+							'left':
+						}				
+
+						for setting in checks:
+							for check in checks[setting]:
+								if check in settings[instance][subinstance][setting]:
+
+									settings[instance][(subinstance,*position)][setting][check].clear()
+
+									for i in range(len(settings[instance][subinstance][setting][check])):
+										key = find(settings[instance][subinstance][setting][check][i],properties)[0]
+										occurrence = keys.index(key)
+										size = max(variables[occurrence][combination][stat].shape[dim-1+1]
+													for combination in variables[occurrence]
+													for stat in variables[occurrence][combination])
+										for enum,(combination,j) in enumerate(itertools.product(variables[occurrence],range(size))):
+											subsize = max(variables[occurrence][combination][stat].shape[dim-1+1]
+													for stat in variables[occurrence][combination])
+											if j >= subsize:
+												continue
+
+											subsettings = copy.deepcopy(settings[instance][subinstance][setting][check][j])
+
+											for stat in variables[occurrence][combination]:
+												if stat in subsettings:
+													pos = tuple(
+														(*(position[axis]%variables[occurrence][combination][stat].shape[axis] for axis in range(dim)),
+														j%variables[occurrence][combination][stat].shape[dim-1+1]))
+													subsettings[stat] = variables[occurrence][combination][stat][pos]
+
+											subsettings.update({
+												'color':getattr(plt.cm,subsettings.get('color','viridis'))((size-enum)/size),
+												'ecolor':getattr(plt.cm,subsettings.get('ecolor','viridis'))((size-enum)/size),
+												'label':dict(zip(key['label']['key'],combination))[key['label']['key'][0]],
+												})
+
+											settings[instance][(subinstance,*position)][setting][check].append(subsettings)
 
 		else:
 			shapelayout = {kwargs[axis]:max(
@@ -521,13 +570,17 @@ def process(data,settings,hyperparameters):
 			shapelayout['wspace'] = None
 			shapelayout['pad'] = None
 
-			for samplelayout in layouts:
+			# for samplelayout in layouts:
 
 
 
-		print(layouts,shapelayout)
+
+		# print(layouts,shapelayout)
 
 
+		for samplelayout in layouts:
+			for subinstance in layouts[samplelayout]:
+				settings[instance].pop(subinstance)
 
 		# 	if len(subinstances) == 0:
 		# 		continue
@@ -553,6 +606,14 @@ def process(data,settings,hyperparameters):
 		# print()
 
 
+
+	for instance in settings:
+		print('----',instance,'----')
+		for subinstance in settings[instance]:
+			print(subinstance)
+			print(settings[instance][subinstance]['style']['layout'])
+			print()
+		print()
 	exit()
 
 	print('-------')
