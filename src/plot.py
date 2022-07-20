@@ -168,7 +168,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 			nullkwargs = {kwarg: _layout_.get(kwarg) for kwarg in LAYOUT if kwarg in NULLLAYOUT}
 
 			for kwarg in kwargs:
-				if kwarg in ['left','right','top','bottom'] and kwargs.get(kwarg) is not None:
+				if kwarg in ['left','right','top','bottom'] and kwargs.get(kwarg) is not None and nullkwargs['pad'] is not None:
 					if kwarg in ['right','top']:
 						kwargs[kwarg] = max(0,kwargs[kwarg]-nullkwargs['pad'])
 					elif kwarg in ['left','bottom']:
@@ -178,10 +178,10 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 			gs = gridspec.GridSpec(**kwargs)
 
-			for index,ax in enumerate(gs):
+			for index,g in enumerate(gs):
 				index += 1
 				if index == nullkwargs['index']:
-					ax[key] = fig[key].add_subplot(ax)
+					ax[key] = fig[key].add_subplot(g)
 
 			for k in other:
 				ax[k] = fig[key].add_axes(**other[k])
@@ -700,14 +700,16 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		if ((settings is not None) or (isinstance(settings,str) and os.path.isfile(settings))):
 			break
 
-	try:
-		fig,ax = context(x,y,settings,fig,ax,mplstyle,texify)
-	except:
-		rc_params = {'text.usetex': False}
-		matplotlib.rcParams.update(rc_params)
-		matplotlib.use('pdf') 
+	fig,ax = context(x,y,settings,fig,ax,mplstyle,texify)
 
-		fig,ax = context(x,y,settings,fig,ax,_mplstyle,texify)
+	# try:
+	# 	fig,ax = context(x,y,settings,fig,ax,mplstyle,texify)
+	# except:
+	# 	rc_params = {'text.usetex': False}
+	# 	matplotlib.rcParams.update(rc_params)
+	# 	matplotlib.use('pdf') 
+
+	# 	fig,ax = context(x,y,settings,fig,ax,_mplstyle,texify)
 
 	return fig,ax
 

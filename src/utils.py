@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 # Constants
 pi = np.pi
 e = np.exp(1)
+nan = np.nan
 delim = "__"
 
 # Types
