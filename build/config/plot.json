@@ -58,7 +58,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
-"None.parameters.relative.N.iteration":{
+"M.parameters.relative.mean.N.iteration":{
 	"fig":{
 		"suptitle":{"t":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$","x":0.55,"y":0.9},
 		"set_size_inches":{"w":8,"h":8},
@@ -69,8 +69,8 @@
 		},
 	"ax":{
 		"errorbar":{
-			"x":"",
-			"y":"parameters.relative",
+			"x":"M",
+			"y":"parameters.relative.mean",
 			"label":["N","iteration=#-1#"],
 			"marker":"o",
 			"linestyle":"--",
@@ -80,11 +80,11 @@
 			"ecolor":"tab10"
 			},
 		"set_ylabel":{"ylabel":"$\\varphi$"},
-		"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
+		"set_xlabel":{"xlabel":"$\\textrm{Number of Time Steps}$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":4},
 		"set_ynbins":{"nbins":6},
-		"set_yscale":{"value":"linear"},
+		"set_yscale":{"value":"log","base":10},
 		"set_ylim":{"ymin":1e-6,"ymax":1e0},
 		"set_yticks":{"ticks":[1e-6,1e-4,1e-3,1e-2,1e-1,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
@@ -121,7 +121,7 @@
 				"x":"",
 				"y":"parameters",
 				"label":["N","M","iteration=%50%"],
-				"marker":"o",
+				"marker":"",
 				"linestyle":"--",
 				"elinewidth":2,
 				"capsize":3,						
@@ -163,7 +163,7 @@
 				}
 			}
 		},
-	"None.parameters.relative.mean.iteration.M":{
+	"None.parameters.relative.iteration.M":{
 		"fig":{
 			"set_size_inches":{"w":14,"h":12},
 			"subplots_adjust":{"hspace":0.5},
@@ -174,9 +174,9 @@
 		"ax":{
 			"errorbar":{
 				"x":"",
-				"y":"parameters.relative.mean",
+				"y":"parameters.relative",
 				"label":["N","M","iteration=%50%"],
-				"marker":"o",
+				"marker":"",
 				"linestyle":"--",
 				"elinewidth":2,
 				"capsize":3,						

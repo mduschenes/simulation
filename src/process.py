@@ -215,34 +215,28 @@ def process(data,settings,hyperparameters):
 	  If the 'x' property is None, also iterate over the 0 (# of permutations of sort) axis variables data, and plot the ndim-1 axis for each 'label' 
 	'''
 
-	if isinstance(data,str):
-		data = [data]
-	if not isinstance(data,dict):
-		paths = set(data)
-		data = {}
-		for path in paths:
-			default = {}
-			data.update(load(path,default=default))
 
-	if isinstance(settings,str):
-		settings = [settings]
-	if not isinstance(settings,dict):
-		paths = set(settings)
-		settings = {}
-		for path in paths:
-			default = {}
-			settings.update(load(path,default=default))
+	# Setup kwargs
+	kwargs = ['data','settings','hyperparameters']
+	kwargs = {kwarg: {'value':value,'size':None,} for kwarg,value in zip(kwargs,[data,settings,hyperparameters])}
 
-	if isinstance(hyperparameters,str):
-		hyperparameters = [hyperparameters]
-	if not isinstance(hyperparameters,dict):
-		paths = set(hyperparameters)
-		hyperparameters = {}
-		for path in paths:
-			default = {}
-			hyperparameters.update(load(path,default=default))
+	for kwarg in kwargs:
+		if isinstance(kwargs[kwarg]['value'],str):
+			kwargs[kwarg]['value'] = [kwargs[kwarg]['value']]
+		if not isinstance(kwargs[kwarg]['value'],dict):
+			paths = set(kwargs[kwarg]['value'])
+			kwargs[kwarg]['value'] = {}
+			kwargs[kwarg]['size'] = len(paths)
+			for path in paths:
+				default = {}
+				kwargs[kwarg]['value'].update(load(path,default=default))
+		else:
+			kwargs[kwarg]['size'] = 1
 
-	
+
+	data,settings,hyperparameters = [kwargs[kwarg]['value'] for kwarg in kwargs]
+	sizes = {kwarg: kwargs[kwarg]['size'] for kwarg in kwargs}
+
 	# Get dataset names of data
 	names = list(sorted(set(name for name in data),key=lambda name:name))
 
@@ -275,6 +269,9 @@ def process(data,settings,hyperparameters):
 	file,directory,ext = {},{},{}
 	for attr in hyperparameters.get('path',{}):
 		directory[attr],file[attr],ext[attr] = split(hyperparameters.get('path',{}).get(attr),directory=True,file=True,ext=True)
+		
+		if sizes['hyperparameters'] is not None and sizes['hyperparameters'] > 1:
+			file[atrr] = file[attr].split('.')[0]
 
 	# Get texify
 	texify = lambda string: Texify(string,hyperparameters.get('texify',{}),usetex=hyperparameters.get('usetex',True))
@@ -351,7 +348,6 @@ def process(data,settings,hyperparameters):
 				variables[occurrence][combination][permutation] = {}
 				values = dict(zip(sort,permutation))
 				included = [name for name in names if all(include(attr,values[attr],data[name][attr],data[name]) for attr in values)]
-				length = len(included)
 				
 				if len(included) == 0:
 					variables[occurrence][combination].pop(permutation);
@@ -381,14 +377,12 @@ def process(data,settings,hyperparameters):
 							 (stat not in [None]))):
 							continue
 
-						variables[occurrence][combination][permutation][kwarg][stat] = np.nan*np.ones((length,*shape[key[prop]]))
+						variables[occurrence][combination][permutation][kwarg][stat] = np.nan*np.ones((len(included),*shape[key[prop]]))
 
 						# if kwarg in ['y']:
 						# 	print(kwarg,key,included)
 
-						for index in range(length):
-
-							name = included[index]
+						for index,name in enumerate(included):
 
 							value = expand_dims(np.arange(data[name][key[prop]].shape[-1]),range(0,ndim[key[prop]]-1)) if isnull else data[name][key[prop]]
 							slices = (index,*(slice(data[name][key[prop]].shape[axis]) for axis in range(data[name][key[prop]].ndim)))
@@ -507,7 +501,7 @@ def process(data,settings,hyperparameters):
 
 	# Get layout of plot instances		
 	dim = 2
-	kwargs = list(defaults['style']['layout'])
+	kwargslayout = list(defaults['style']['layout'])
 	updated = []
 	subupdated = []
 	layout = {
@@ -517,7 +511,7 @@ def process(data,settings,hyperparameters):
 					kwarg,defaults['style']['layout'][kwarg])
 					for subinstance in settings[instance]
 				}
-			for kwarg in kwargs
+			for kwarg in kwargslayout
 			}
 		for instance in settings
 		}
@@ -550,10 +544,16 @@ def process(data,settings,hyperparameters):
 								)
 
 							subaxis = plotting.get(key['y'],{}).get(key['x'],{}).get('axis')
+							print(subaxis)
 							if subaxis is None:
 								subaxis = [[],[],[],[axis for axis in range(subndim)]]
 							else:
 								subaxis = [[axis] if isinstance(axis,int) else axis for axis in subaxis]
+
+							subaxis = [*([ax for ax in axis] for axis in subaxis[:-1]),
+										[ax for ax in range(subndim) 
+										 if (ax in subaxis[-1] or (ax == (subndim-1) and -1 in subaxis[-1])) or 
+										 ax not in [ax for axis in subaxis[:-1] for ax in axis]]]
 
 
 							if occurrence not in updated:
@@ -563,7 +563,7 @@ def process(data,settings,hyperparameters):
 								for combination in variables[occurrence]:
 									for kwarg in variables[occurrence][combination]:
 										for stat in variables[occurrence][combination][kwarg]:
-											transpose = [ax for axis in subaxis for ax in axis]
+											transpose = [ax for axis in subaxis for ax in axis]											
 											reshape = [max(1,int(product([variables[occurrence][combination][kwarg][stat].shape[ax]
 													for ax in axis])))
 													for axis in subaxis]
@@ -617,7 +617,7 @@ def process(data,settings,hyperparameters):
 
 					if not 	subsublayouts:
 						samplelayouts.update({
-							kwarg: 1 for kwarg in kwargs[:dim+1]
+							kwarg: 1 for kwarg in kwargslayout[:dim+1]
 							})
 
 
@@ -630,7 +630,7 @@ def process(data,settings,hyperparameters):
 					settings[instance][(subinstance,*position)]['style']['layout'] = {
 						kwarg:{
 							**{kwarg: layout[instance][kwarg][subinstance] for kwarg in layout[instance]},
-							**{kwargs[axis]:subshape[subinstance][axis] for axis in range(dim)},
+							**{kwargslayout[axis]:subshape[subinstance][axis] for axis in range(dim)},
 							'index':index+1,
 							'top':1 - (nrow)/samplelayouts['nrows'] if subsublayouts and samplelayouts['nrows']>1 else None,
 							'bottom':1 - (nrow+1)/samplelayouts['nrows'] if subsublayouts and samplelayouts['nrows']>1 else None,

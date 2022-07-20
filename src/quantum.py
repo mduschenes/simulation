@@ -1164,7 +1164,7 @@ class Object(object):
 				returns[new] = New
 
 				new = '%s.relative.mean'%(attr)
-				New = New.mean(1)
+				New = New.mean()
 				returns[new] = New				
 
 				new = attr
@@ -1235,13 +1235,38 @@ class Object(object):
 		return
 
 
-	def __plot__(self,parameters,**kwargs):
+	def __plot__(self,parameters):
 		'''
 		Plot Parameters
 		Args:
 			parameters (array): Parameters
 			kwargs (dict): Plot settings
 		'''
+
+		# Get paths and kwargs
+
+		paths = {
+			'data':('sys','path','data','data'),
+			'settings':('sys','path','config','plot'),
+			'hyperparameters':('sys','path','config','process'),
+			}
+
+		hyperparameters = self.hyperparameters
+		
+		kwargs = {kwarg: [] for kwarg in paths}
+
+		for kwarg in kwargs:
+			path = hyperparameters
+			for i in paths[kwarg]:
+				path = path[i]
+			kwargs[kwarg].append(path)
+
+
+		print("PROCESS KWARGS",kwargs)
+		process(**kwargs)
+		return
+
+
 
 		# Get class hyperparameters and attributes
 		hyperparameters = self.hyperparameters
@@ -1992,6 +2017,7 @@ def plotter(hyperparameters):
 				path = path[i]
 			kwargs[kwarg].append(path)
 
+	print("ALL PROCESS KWARGS",kwargs)
 	process(**kwargs)
 	return
 
@@ -2139,7 +2165,7 @@ def check(hyperparameters):
 			'value': (lambda hyperparameters: 	{
 				path: join(
 					split(hyperparameters['sys']['path']['plot'][path],directory=True),
-					'.'.join(split(hyperparameters['sys']['path']['plot'][path],file=True).split('.')[:1]),
+					'.'.join(split(hyperparameters['sys']['path']['plot'][path],file=True).split('.')[:]),
 					ext=split(hyperparameters['sys']['path']['plot'][path],ext=True)
 				)
 				for path in hyperparameters['sys']['path']['plot']
@@ -2318,7 +2344,7 @@ def run(hyperparameters):
 
 	for key in settings['hyperparameters']:		
 
-		if not any(settings['boolean'][attr] for attr in ['load','dump','train']):
+		if not any(settings['boolean'][attr] for attr in ['load','dump','train','plot']):
 			continue		
 
 		hyperparameters = settings['hyperparameters'][key]
