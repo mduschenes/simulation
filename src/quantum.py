@@ -1157,11 +1157,15 @@ class Object(object):
 										for group in attributes['index'][layer][parameter]))
 					])
 
-				new = 'features'
+				new = '%s.relative'%(attr)
 				New = np.abs((obj.__layers__(value,layer)[indices] - 
 					obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices])/(
-					obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices]+1e-20)).mean()
+					obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices]+1e-20))
 				returns[new] = New
+
+				new = '%s.relative.mean'%(attr)
+				New = New.mean(1)
+				returns[new] = New				
 
 				new = attr
 				New = obj.__layers__(value,layer)[indices]

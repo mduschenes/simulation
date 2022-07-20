@@ -28,6 +28,7 @@ from src.plot import plot
 scalars = (int,np.integer,float,np.float)
 nulls = ('',None)
 
+# Texify strings
 def Texify(string,texify={},usetex=True):
 	strings = {
 		**texify,
@@ -45,6 +46,12 @@ def Texify(string,texify={},usetex=True):
 	return string
 
 
+# Normalize data
+def norm(a,axis=None,ord=2):
+	out = np.linalg.norm(a,axis=axis,ord=ord)
+	return out
+
+# Fit data
 def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
 
 	x[np.isnan(x) | np.isinf(x)] = 0
@@ -240,7 +247,7 @@ def process(data,settings,hyperparameters):
 	names = list(sorted(set(name for name in data),key=lambda name:name))
 
 	# Get attributes of data
-	attrs = list(set(attr for name in names for attr in data[name]))
+	attributes = list(set(attr for name in names for attr in data[name]))
 
 	# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
 	sort = {attr: tuple(sorted(set(data[name][attr] 
@@ -248,10 +255,10 @@ def process(data,settings,hyperparameters):
 					if (
 					(attr in data[name]) and 
 					(isinstance(data[name][attr],scalars)) and 
-					(attr in hyperparameters.get('sort',attrs)) and
+					(attr in hyperparameters.get('sort',attributes)) and
 					(attr not in hyperparameters.get('nullsort',[]))
 					))))
-			for attr in attrs}
+			for attr in attributes}
 	sort = {attr: sort[attr] for attr in sort if len(sort[attr])>0}
 
 	# Get data as arrays, with at least 1 leading dimension
@@ -261,8 +268,8 @@ def process(data,settings,hyperparameters):
 			data[name][attr] = data[name][attr].reshape(*[1]*(max(0,1-data[name][attr].ndim)),*data[name][attr].shape)
 	
 	# Get number of dimensions and maximum shape of data attributes
-	ndim = {attr: min(data[name][attr].ndim for name in names) for attr in attrs}
-	shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in names)))) for attr in attrs}
+	ndim = {attr: min(data[name][attr].ndim for name in names) for attr in attributes}
+	shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in names)))) for attr in attributes}
 
 	# Get paths
 	file,directory,ext = {},{},{}
@@ -312,34 +319,41 @@ def process(data,settings,hyperparameters):
 	# Get keys of properties of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
 	keys = find(settings,properties)
 
+	# Get combinations of key attributes and permutations of shared attributes for combination across data
+	combinations = {}
+	permutations = {}
+
 	# Get variables data and statistics from keys
 	variables = {}
 	for occurrence,key in enumerate(keys):
 		variables[occurrence] = {}
-		combinations = (
+		combinations[occurrence] = [
 			[val for val in sort.get(attr,[]) if include(attr,value,val,sort)]
 			for attr,value in zip(key['label']['key'],key['label']['value'])
 			if all(attr is not None for attr in key['label']['key'])
-			)
-		for combination in itertools.product(*combinations):
+			]
+		permutations[occurrence] = {}
+
+		for combination in itertools.product(*combinations[occurrence]):
 			variables[occurrence][combination] = {}
 			values = dict(zip(key['label']['key'],combination))
-			permutations = (
+			permutations[occurrence][combination] = (
 				[val for val in sort[attr] if ((attr not in values) or include(attr,values[attr],val,sort))]
 				for attr in sort
 				)
 			included = [name for name in names if all(include(attr,values[attr],data[name][attr],data[name]) for attr in values)]
-			length = len(included)
-			if length == 0:
+			
+			if len(included) == 0:
 				variables[occurrence].pop(combination);
 				continue
 
-			for permutation in itertools.product(*permutations):
+			for permutation in itertools.product(*permutations[occurrence][combination]):
 				variables[occurrence][combination][permutation] = {}
 				values = dict(zip(sort,permutation))
 				included = [name for name in names if all(include(attr,values[attr],data[name][attr],data[name]) for attr in values)]
 				length = len(included)
-				if length == 0:
+				
+				if len(included) == 0:
 					variables[occurrence][combination].pop(permutation);
 					continue
 
@@ -369,8 +383,8 @@ def process(data,settings,hyperparameters):
 
 						variables[occurrence][combination][permutation][kwarg][stat] = np.nan*np.ones((length,*shape[key[prop]]))
 
-						if kwarg in ['y']:
-							print(kwarg,key,included)
+						# if kwarg in ['y']:
+						# 	print(kwarg,key,included)
 
 						for index in range(length):
 
@@ -381,10 +395,10 @@ def process(data,settings,hyperparameters):
 							variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 
 
-							if kwarg in ['y']:
-								print(name)
-								print(data[name][key[prop]])
-								print()
+							# if kwarg in ['y']:
+							# 	print(name)
+							# 	print(data[name][key[prop]])
+							# 	print()
 
 							# value = nan
 							# slices = (index,*(slice(
@@ -393,22 +407,22 @@ def process(data,settings,hyperparameters):
 							# variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 							
 						# Get statistics
-						if kwarg in ['y']:
-							print('---')
-							print(variables[occurrence][combination][permutation][kwarg][stat])
-							print('--- mean 0---')							
-							print(np.nanmean(variables[occurrence][combination][permutation][kwarg][stat],axis=0))
+						# if kwarg in ['y']:
+						# 	print('---')
+						# 	print(variables[occurrence][combination][permutation][kwarg][stat])
+						# 	print('--- mean 0---')							
+						# 	print(np.nanmean(variables[occurrence][combination][permutation][kwarg][stat],axis=0))
 
 						variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
 							key,variables[occurrence][combination][permutation][kwarg][stat],
 							variables=variables[occurrence][combination][permutation],dtype=dtype)
-						if kwarg in ['y']:
-							print('---')
-							print(variables[occurrence][combination][permutation][kwarg][stat])							
-							print('---')							
-							print()
-							print()
-							print()
+						# if kwarg in ['y']:
+						# 	print('---')
+						# 	print(variables[occurrence][combination][permutation][kwarg][stat])							
+						# 	print('---')							
+						# 	print()
+						# 	print()
+						# 	print()
 
 			variables[occurrence][combination] = {
 				kwarg:{
@@ -419,6 +433,10 @@ def process(data,settings,hyperparameters):
 						for permutation in variables[occurrence][combination])
 					}
 				for kwarg in statistics}
+
+
+		if len(variables[occurrence]) == 0:
+			variables.pop(occurrence)
 
 		# exit()
 		# 	print('---value---')
@@ -455,12 +473,37 @@ def process(data,settings,hyperparameters):
 	# Track updated keys
 	updated = []
 
-	# Set default plot settings
-	for instance in settings:	
+	# Set default plot settings and remove plots with no variables data
+	for instance in list(settings):	
 		if any(setting in settings[instance] for setting in defaults):
 			subinstance = None
 			settings[instance] = {subinstance: settings[instance]}
 
+		for subinstance in list(settings[instance]):
+			for setting in special:
+				for attr in special[setting]:
+					if attr in settings[instance][subinstance][setting]:
+
+						if isinstance(settings[instance][subinstance][setting][attr],dict):
+							settings[instance][subinstance][setting][attr] = [settings[instance][subinstance][setting][attr]]
+
+						for i in range(len(settings[instance][subinstance][setting][attr])-1,-1,-1):							
+							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
+							occurrence = keys.index(key)
+
+							if occurrence not in variables:
+								settings[instance][subinstance][setting][attr].pop(i)
+								continue
+
+						if len(settings[instance][subinstance][setting][attr]) == 0:
+							settings[instance][subinstance][setting].pop(attr)
+			if not any(attr in settings[instance][subinstance][setting] 
+				for setting in special 
+				for attr in special[setting]):
+				settings[instance].pop(subinstance)
+
+		if len(settings[instance]) == 0:
+			settings.pop(instance)
 
 	# Get layout of plot instances		
 	dim = 2
@@ -481,26 +524,24 @@ def process(data,settings,hyperparameters):
 	subshape = {}
 
 
+
 	# Form grids of layout depending on shape of variables in each plot
 	# Get update to layout based on (reshaped) variables data shape and 
 	# reshaping of variables data based on 
 	# hyperparameters['plot'] = {'y':{'x':{'axis':{attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}}}}
 	for instance in list(settings):
-
 		for subinstance in list(settings[instance]):
-
 			subupdated.clear()
-
 			for setting in special:
 				for attr in special[setting]:
 					if attr in settings[instance][subinstance][setting]:
 
-						if isinstance(settings[instance][subinstance][setting][attr],dict):
-							settings[instance][subinstance][setting][attr] = [settings[instance][subinstance][setting][attr]]
-
 						for i in range(len(settings[instance][subinstance][setting][attr])):							
 							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 							occurrence = keys.index(key)
+
+							if occurrence not in variables:
+								continue
 
 							subndim = min(variables[occurrence][combination][kwarg][stat].ndim
 								for combination in variables[occurrence]
@@ -522,11 +563,13 @@ def process(data,settings,hyperparameters):
 								for combination in variables[occurrence]:
 									for kwarg in variables[occurrence][combination]:
 										for stat in variables[occurrence][combination][kwarg]:
-											variables[occurrence][combination][kwarg][stat] = variables[occurrence][combination][kwarg][stat].transpose(
-												[ax for axis in subaxis for ax in axis]).reshape(
-												[max(1,int(product([variables[occurrence][combination][kwarg][stat].shape[ax]
+											transpose = [ax for axis in subaxis for ax in axis]
+											reshape = [max(1,int(product([variables[occurrence][combination][kwarg][stat].shape[ax]
 													for ax in axis])))
 													for axis in subaxis]
+											variables[occurrence][combination][kwarg][stat] = (
+												variables[occurrence][combination][kwarg][stat].transpose(
+												transpose).reshape(reshape)
 												)
 							if occurrence not in subupdated:
 								subupdated.append(occurrence)
@@ -630,7 +673,13 @@ def process(data,settings,hyperparameters):
 												pos = tuple(
 													(*(position[axis]%variables[occurrence][combination][kwarg][stat].shape[axis] for axis in range(dim)),
 													j%variables[occurrence][combination][kwarg][stat].shape[dim-1+1]))
-												subsettings[kwarg] = variables[occurrence][combination][kwarg][stat][pos]
+
+												value = variables[occurrence][combination][kwarg][stat][pos]
+
+												if kwarg in ['%serr'%(ax) for ax in axes] and norm(value) == 0:
+													value = None
+
+												subsettings[kwarg] = value
 
 											settings[instance][(subinstance,*position)][setting][attr][
 												(combination,j,occurrence,stat)] = subsettings
@@ -653,7 +702,7 @@ def process(data,settings,hyperparameters):
 					if attr not in settings[instance][subinstance][setting]:
 						continue 
 
-					combinations,js,occurences,stats = zip(*settings[instance][subinstance][setting][attr])
+					subcombinations,subj,suboccurences,substats = zip(*settings[instance][subinstance][setting][attr])
 					for i,subsubinstance in enumerate(settings[instance][subinstance][setting][attr]):
 
 						combination,j,occurrence,stat = subsubinstance
@@ -665,7 +714,7 @@ def process(data,settings,hyperparameters):
 							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
 								continue
 							value = getattr(plt.cm,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])(
-								(combinations.index(tuple((combination[k] for k in combination))))/len(combinations))
+								(subcombinations.index(tuple((combination[k] for k in combination))))/len(subcombinations))
 
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 
@@ -675,7 +724,9 @@ def process(data,settings,hyperparameters):
 								continue
 
 							if stat in [None]:
-								value = texify('%s'%(', '.join(['%s'%(str(combination[k])) for k in combination])))
+								value = texify('%s'%(', '.join(['%s'%(str(combination[k])) for k in combination
+									if len(set(combinations[occurrence][key['label']['key'].index(k)])) > 1
+									])))
 							else:
 								value = None
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
@@ -697,12 +748,16 @@ def process(data,settings,hyperparameters):
 
 						subattr = 'legend'
 						kwargs = ['set_title']
-
-						if subattr not in settings[instance][subinstance][setting]:
-							settings[instance][subinstance][setting][subattr] = {} 
-						
+						if settings[instance][subinstance][setting].get(subattr) is None:
+							continue
 						for kwarg in kwargs:
-							value = ',~'.join([texify(k) for k in key['label']['key']])
+							value = ',~'.join([(
+								texify(k)
+								if len(set(combinations[occurrence][key['label']['key'].index(k)])) > 1 else 
+								'%s%s: %s%s'%('\\' if i > 0 else '',texify(k),texify(combination[k]),'\\' if i < (len(combination)-1) else '',)
+								)
+								for i,k in enumerate(combination)
+								])
 						settings[instance][subinstance][setting][subattr][kwarg] = value
 
 
@@ -713,19 +768,57 @@ def process(data,settings,hyperparameters):
 
 
 
-				# Set custom plot settings
-				if setting in ['fig']:
-					for attr in ['savefig']:
-						settings[instance][subinstance][setting][attr] = {
-							**settings[instance][subinstance][setting].get(attr,{}),
-							'fname':join(
-								directory['plot'],
-								'.'.join([file['plot'],instance]),
-								ext=ext['plot']),
-							}
+			# Set custom plot settings
+			attrs = {
+				'fig':{'savefig':['fname']},
+				'ax':{'set_ylabel':['ylabel']},
+				}
+			for setting in attrs:
+				if setting not in settings[instance][subinstance]:
+					settings[instance][subinstance][setting] = {}
+				for attr in attrs[setting]:
+					if attr not in settings[instance][subinstance][setting]:
+						settings[instance][subinstance][setting][attr] = {}
+					elif settings[instance][subinstance][setting][attr] is None:
+						continue
+					for kwarg in attrs[setting][attr]:
+						if kwarg not in settings[instance][subinstance][setting][attr]:
+							settings[instance][subinstance][setting][attr][kwarg] = {}
 
-				elif setting in ['ax']:
-					pass
+						if setting in ['fig'] and attr in ['savefig'] and kwarg in ['fname']:
+							settings[instance][subinstance][setting][attr][kwarg] = (
+								join(directory['plot'],'.'.join([file['plot'],instance]),
+									ext=ext['plot'])
+								)
+
+						elif setting in ['ax'] and attr in ['set_ylabel'] and kwarg in ['ylabel']:
+
+							index = settings[instance][subinstance]['style']['layout']['index']
+							nrows = settings[instance][subinstance]['style']['layout']['nrows']
+							ncols = settings[instance][subinstance]['style']['layout']['ncols']
+
+							if ((nrows is None) or (nrows == 1)) and ((ncols is None) or (ncols == 1)):
+								continue
+
+							index = index - 1	
+							nrow = (index - index%ncols)//ncols
+							ncol = index%ncols
+							if nrows == 1:
+								nrow = ''
+							elif ncols == 1:
+								ncol = ''
+							nrow = str(nrow)
+							ncol = str(ncol)
+
+							settings[instance][subinstance][setting][attr][kwarg] = (
+								'{%s}_{%s%s}'%(
+									settings[instance][subinstance][setting][attr][kwarg].replace('$',''),
+									nrow,
+									ncol
+									)
+								)
+
+
 
 	verbose = 0
 
@@ -742,10 +835,10 @@ def process(data,settings,hyperparameters):
 						if isinstance(settings[instance][subinstance][setting][kwarg],list):
 							for value in settings[instance][subinstance][setting][kwarg]:
 								print(value)
-						else:
-							value = settings[instance][subinstance][setting][kwarg]
-							print(value)
-						print()
+					# 	else:
+					# 		value = settings[instance][subinstance][setting][kwarg]
+					# 		print(value)
+					# 	print()
 					print()
 				print()
 

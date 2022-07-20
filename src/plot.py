@@ -69,6 +69,7 @@ def list_from_generator(generator,field=None):
 			break
 	return items
 
+
 # Check if obj is number
 def is_number(obj):
 	try:
@@ -363,7 +364,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 					# 	kwargs.pop(field)
 					# 	pass
 
-				args.extend([kwargs.pop(k) for k in ['x','y','yerr','xerr'] if kwargs.get(k) is not None])
+				args.extend([kwargs.pop(k) for k in ['x','y','yerr','xerr'] if k in kwargs and kwargs.get(k) is not None ])
 
 				call = True				
 
@@ -448,7 +449,6 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 					break			
 			if args != []:
 				_attr = _obj(*args,**kwargs)
-
 			else:
 				_attr = _obj(**kwargs)
 
@@ -701,6 +701,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 	for settings in settingss:
 		if ((settings is not None) or (isinstance(settings,str) and os.path.isfile(settings))):
 			break
+
 
 	try:
 		fig,ax = context(x,y,settings,fig,ax,mplstyle,texify)

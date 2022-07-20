@@ -58,7 +58,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
-"M.features.N.iteration":{
+"None.parameters.relative.N.iteration":{
 	"fig":{
 		"suptitle":{"t":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$","x":0.55,"y":0.9},
 		"set_size_inches":{"w":8,"h":8},
@@ -69,9 +69,9 @@
 		},
 	"ax":{
 		"errorbar":{
-			"x":"M",
-			"y":"features",
-			"label":["N","iteration=%2%"],
+			"x":"",
+			"y":"parameters.relative",
+			"label":["N","iteration=#-1#"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -80,16 +80,15 @@
 			"ecolor":"tab10"
 			},
 		"set_ylabel":{"ylabel":"$\\varphi$"},
-		"set_xlabel":{"xlabel":"$\\textrm{Number of Time Steps}$"},
+		"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":4},
 		"set_ynbins":{"nbins":6},
-		"set_yscale":{"value":"log","base":10},
+		"set_yscale":{"value":"linear"},
 		"set_ylim":{"ymin":1e-6,"ymax":1e0},
 		"set_yticks":{"ticks":[1e-6,1e-4,1e-3,1e-2,1e-1,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
 		"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,2]},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
@@ -108,54 +107,111 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
-"None.parameters.single.iteration.M":{
-	"fig":{
-		"suptitle":{"t":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$"},
-		"set_size_inches":{"w":14,"h":12},
-		"subplots_adjust":{"hspace":0.5},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":{
-			"x":"",
-			"y":"parameters",
-			"label":["M=$16,32$","iteration=%0,4,2%"],
-			"marker":"o",
-			"linestyle":"--",
-			"elinewidth":2,
-			"capsize":3,						
-			"color":"tab10",
-			"ecolor":"tab10"
+"None.parameters.iteration.M":{
+	"None.parameters.all.iteration.M":{
+		"fig":{
+			"suptitle":{"t":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$"},
+			"set_size_inches":{"w":14,"h":12},
+			"subplots_adjust":{"hspace":0.5},
+			"tight_layout":{},
+			"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
+			"close":{}
 			},
-		"set_ylabel":{"ylabel":"$\\varphi$"},
-		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":4},
-		"set_ynbins":{"nbins":6},
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-4,"ymax":1e0},
-		"set_yticks":{"ticks":[1e-4,1e-3,1e-2,1e-1,1e0]},
-		"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
-		"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,2]},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"}
+		"ax":{
+			"errorbar":{
+				"x":"",
+				"y":"parameters",
+				"label":["M","iteration=%50%"],
+				"marker":"o",
+				"linestyle":"--",
+				"elinewidth":2,
+				"capsize":3,						
+				"color":"viridis_r",
+				"ecolor":"viridis_r"
+				},
+			"legend":null,				
+			"set_ylabel":{"ylabel":"$\\varphi$"},
+			"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
+			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
+			"set_xnbins":{"nbins":4},
+			"set_ynbins":{"nbins":6},
+			"set_yscale":{"value":"linear"},
+			"set_ylim":{"ymin":-0.1,"ymax":1.1},			
+			"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
+			"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,2]},
+			"tick_params":[
+				{"axis":"y","which":"major","length":8,"width":1},
+				{"axis":"y","which":"minor","length":0,"width":0},
+				{"axis":"x","which":"major","length":8,"width":1},
+				{"axis":"x","which":"minor","length":0,"width":0}
+				],
+			"set_aspect":{"aspect":"auto"},
+			"grid":{"visible":true,"which":"major","axis":"both"}
+			},
+		"style":{
+			"texify":null,
+			"mplstyle":"plot.mplstyle",	
+			"rcParams":{"font.size":25},
+			"layout":{"nrows":1,"ncols":2,"index":1,"left":null,"right":null,"top":null,"bottom":null,"hspace":0.5,"wspace":0.5,"pad":0.1},
+			"share": {"ax":{"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},"set_xlabel":{"xlabel":"bottom"},"set_ylabel":{"ylabel":"left"}}}
+			}
 		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1,"left":null,"right":null,"top":null,"bottom":null,"hspace":null,"wspace":null,"pad":null},
-		"share": {"ax":{"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},"set_xlabel":{"xlabel":"bottom"}}}
+	"None.parameters.relative.mean.iteration.M":{
+		"fig":{
+			"suptitle":{"t":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$"},
+			"set_size_inches":{"w":14,"h":12},
+			"subplots_adjust":{"hspace":0.5},
+			"tight_layout":{},
+			"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
+			"close":{}
+			},
+		"ax":{
+			"errorbar":{
+				"x":"",
+				"y":"parameters.relative.mean",
+				"label":["M","iteration=%50%"],
+				"marker":"o",
+				"linestyle":"--",
+				"elinewidth":2,
+				"capsize":3,						
+				"color":"viridis_r",
+				"ecolor":"viridis_r"
+				},
+			"legend":{
+				"title_fontsize": 20,
+				"prop": {"size": 20},
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [1.1,0.8],
+				"ncol": 1,
+				"set_zorder":{"level":100}
+				},			
+			"set_ylabel":{"ylabel":"$\\varphi$"},
+			"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
+			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
+			"set_xnbins":{"nbins":4},
+			"set_ynbins":{"nbins":6},
+			"set_yscale":{"value":"linear"},
+			"set_ylim":{"ymin":-0.1,"ymax":1.1},
+			"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
+			"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,2]},
+			"tick_params":[
+				{"axis":"y","which":"major","length":8,"width":1},
+				{"axis":"y","which":"minor","length":0,"width":0},
+				{"axis":"x","which":"major","length":8,"width":1},
+				{"axis":"x","which":"minor","length":0,"width":0}
+				],
+			"set_aspect":{"aspect":"auto"},
+			"grid":{"visible":true,"which":"major","axis":"both"}
+			},
+		"style":{
+			"texify":null,
+			"mplstyle":"plot.mplstyle",	
+			"rcParams":{"font.size":25},
+			"layout":{"nrows":1,"ncols":2,"index":2,"left":null,"right":null,"top":null,"bottom":null,"hspace":0.5,"wspace":0.5,"pad":0.1},
+			"share": {"ax":{"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},"set_xlabel":{"xlabel":"bottom"},"set_ylabel":{"ylabel":"left"}}}
+			}
 		}
-	}	
+	}		
 }

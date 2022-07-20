@@ -852,7 +852,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 			else:
 				bounds[i] = float(bounds)
 
-	if iscomplexdtype(dtype):
+	if is_complexdtype(dtype):
 		shape = (2,*shape)
 
 	if random in ['uniform','rand']:
@@ -868,7 +868,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 	else:
 		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
 
-	if iscomplexdtype(dtype):
+	if is_complexdtype(dtype):
 		out = out[0] + 1j*out[1]
 
 	out = out.astype(dtype)
