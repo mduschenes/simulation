@@ -110,7 +110,6 @@
 "None.parameters.iteration.M":{
 	"None.parameters.all.iteration.M":{
 		"fig":{
-			"suptitle":{"t":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$"},
 			"set_size_inches":{"w":14,"h":12},
 			"subplots_adjust":{"hspace":0.5},
 			"tight_layout":{},
@@ -121,7 +120,7 @@
 			"errorbar":{
 				"x":"",
 				"y":"parameters",
-				"label":["M","iteration=%50%"],
+				"label":["N","M","iteration=%50%"],
 				"marker":"o",
 				"linestyle":"--",
 				"elinewidth":2,
@@ -129,11 +128,12 @@
 				"color":"viridis_r",
 				"ecolor":"viridis_r"
 				},
-			"legend":null,				
+			"legend":null,			
+			"set_title":{"label":"$\\varphi$","pad":12},	
 			"set_ylabel":{"ylabel":"$\\varphi$"},
 			"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
 			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-			"set_xnbins":{"nbins":4},
+			"set_xnbins":{"nbins":5},
 			"set_ynbins":{"nbins":6},
 			"set_yscale":{"value":"linear"},
 			"set_ylim":{"ymin":-0.1,"ymax":1.1},			
@@ -153,12 +153,18 @@
 			"mplstyle":"plot.mplstyle",	
 			"rcParams":{"font.size":25},
 			"layout":{"nrows":1,"ncols":2,"index":1,"left":null,"right":null,"top":null,"bottom":null,"hspace":0.5,"wspace":0.5,"pad":0.1},
-			"share": {"ax":{"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},"set_xlabel":{"xlabel":"bottom"},"set_ylabel":{"ylabel":"left"}}}
+			"share": {
+				"ax":{
+					"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},
+					"set_xlabel":{"xlabel":"bottom"},
+					"set_ylabel":{"ylabel":"left"},
+					"set_title":{"label":"top"}
+					}
+				}
 			}
 		},
 	"None.parameters.relative.mean.iteration.M":{
 		"fig":{
-			"suptitle":{"t":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$"},
 			"set_size_inches":{"w":14,"h":12},
 			"subplots_adjust":{"hspace":0.5},
 			"tight_layout":{},
@@ -169,7 +175,7 @@
 			"errorbar":{
 				"x":"",
 				"y":"parameters.relative.mean",
-				"label":["M","iteration=%50%"],
+				"label":["N","M","iteration=%50%"],
 				"marker":"o",
 				"linestyle":"--",
 				"elinewidth":2,
@@ -179,18 +185,20 @@
 				},
 			"legend":{
 				"title_fontsize": 20,
+				"get_title":{"ha":"center"},
 				"prop": {"size": 20},
 				"markerscale": 1.2,
 				"handlelength": 3,
 				"framealpha": 0.8,
-				"loc": [1.1,0.8],
+				"loc": [1.1,0.6],
 				"ncol": 1,
 				"set_zorder":{"level":100}
 				},			
+			"set_title":{"label":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$","pad":12},				
 			"set_ylabel":{"ylabel":"$\\varphi$"},
 			"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
 			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-			"set_xnbins":{"nbins":4},
+			"set_xnbins":{"nbins":5},
 			"set_ynbins":{"nbins":6},
 			"set_yscale":{"value":"linear"},
 			"set_ylim":{"ymin":-0.1,"ymax":1.1},
@@ -210,7 +218,14 @@
 			"mplstyle":"plot.mplstyle",	
 			"rcParams":{"font.size":25},
 			"layout":{"nrows":1,"ncols":2,"index":2,"left":null,"right":null,"top":null,"bottom":null,"hspace":0.5,"wspace":0.5,"pad":0.1},
-			"share": {"ax":{"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},"set_xlabel":{"xlabel":"bottom"},"set_ylabel":{"ylabel":"left"}}}
+			"share": {
+				"ax":{
+					"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},
+					"set_xlabel":{"xlabel":"bottom"},
+					"set_ylabel":{"ylabel":"left"},
+					"set_title":{"label":"top"}
+					}
+				}			
 			}
 		}
 	}		

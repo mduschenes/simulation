@@ -36,7 +36,7 @@ def Texify(string,texify={},usetex=True):
 	if not isinstance(string,str):
 		string = str(string)
 
-	default = r'$%s$'%(string.replace('$',''))
+	default = '\n'.join(['$%s$'%(substring.replace('$','')) for substring in string.split('\n')])
 
 	string = strings.get(string,default)
 
@@ -724,9 +724,8 @@ def process(data,settings,hyperparameters):
 								continue
 
 							if stat in [None]:
-								value = texify('%s'%(', '.join(['%s'%(str(combination[k])) for k in combination
-									if len(set(combinations[occurrence][key['label']['key'].index(k)])) > 1
-									])))
+								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
+								value = ',~'.join([texify(str(combination[k])) for k in value])
 							else:
 								value = None
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
@@ -751,14 +750,13 @@ def process(data,settings,hyperparameters):
 						if settings[instance][subinstance][setting].get(subattr) is None:
 							continue
 						for kwarg in kwargs:
-							value = ',~'.join([(
-								texify(k)
-								if len(set(combinations[occurrence][key['label']['key'].index(k)])) > 1 else 
-								'%s%s: %s%s'%('\\' if i > 0 else '',texify(k),texify(combination[k]),'\\' if i < (len(combination)-1) else '',)
-								)
-								for i,k in enumerate(combination)
-								])
-						settings[instance][subinstance][setting][subattr][kwarg] = value
+							value = [
+								[(k,combination[k]) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) == 1],
+								[(k,) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1],
+								]
+							value = '\n'.join(['~,'.join([': '.join([texify(l) for l in k]) for k in v]) for v in value])
+
+							settings[instance][subinstance][setting][subattr][kwarg] = value
 
 
 					settings[instance][subinstance][setting][attr] = [

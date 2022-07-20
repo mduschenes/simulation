@@ -190,7 +190,8 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 	def attr_texify(string,attr,kwarg,texify,**kwargs):
 		def _texify(string):
-			substring = string.replace('$','')
+			substring = '\n'.join(['%s'%(substring.replace('$','')) for substring in string.split('\n')])
+
 			if not any([t in substring for t in [r'\textrm','_','^','\\']]):
 				pass
 				# substring = r'\textrm{%s}'%(subtring)
@@ -198,7 +199,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 			# 	substring = substring.split(t)
 			# 	substring = [r'\textrm{%s}'%i  if (not (is_number(i) or any([j in i for j in ['$','textrm','_','^','\\','}','{']]))) else i for i in substring]
 			# 	substring = t.join(['{%s}'%i for i in substring])
-			substring = r'$%s$'%(substring)
+			substring = '\n'.join(['$%s$'%(substring.replace('$','')) for substring in string.split('\n')])
 			return substring
 		attrs = {
 			**{'set_%slabel'%(axis):['%slabel'%(axis)]
@@ -303,8 +304,12 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 				_kwds.update({
 					'set_zorder':kwargs.pop('set_zorder',{'level':100}),
-					'set_title':{**({'title': kwargs.pop('set_title',kwargs.pop('title',None)),'prop':{'size':kwargs.get('prop',{}).get('size')}} 
+					'set_title':{
+						**({'title': kwargs.pop('set_title',kwargs.pop('title',None)),
+							'prop':{'size':kwargs.get('prop',{}).get('size')},
+							} 
 									if 'set_title' in kwargs or 'title' in kwargs else {'title':None})},
+					'get_title':{**kwargs.pop('get_title',{})},
 					})
 
 
@@ -453,7 +458,24 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				_attr = _obj(**kwargs)
 
 			for k in _kwds:
-				getattr(_attr,k)(**_kwds[k])
+				_attr_ = _attr
+				for a in k.split('.')[:-1]:
+					try:
+						_attr_ = getattr(_attr_,a)()
+					except:
+						_attr_ = getattr(_attr_,a)
+				a = k.split('.')[-1]
+
+				try:
+					getattr(_attr_,a)(**_kwds[k])
+				except:
+					try:
+						plt.setp(getattr(_attr_,a)(),**_kwds[k])
+					except:
+						try:
+							plt.setp(getattr(_attr_,a),**_kwds[k])
+						except:
+							pass
 				
 
 			# except:
