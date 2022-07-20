@@ -26,7 +26,7 @@ from src.io import setup,load,dump,join,split
 from src.plot import plot
 
 scalars = (int,np.integer,float,np.float)
-
+nulls = ('',None)
 
 def Texify(string,texify={},usetex=True):
 	strings = {
@@ -270,8 +270,18 @@ def process(data,settings,hyperparameters):
 		directory[attr],file[attr],ext[attr] = split(hyperparameters.get('path',{}).get(attr),directory=True,file=True,ext=True)
 
 	# Get texify
-
 	texify = lambda string: Texify(string,hyperparameters.get('texify',{}),usetex=hyperparameters.get('usetex',True))
+
+	# Get plot variables setting
+	plotting = hyperparameters.get('plotting',{})
+	for attr in list(plotting):
+		for subattr in list(plotting[attr]):
+			if subattr in nulls:
+				for null in nulls:
+					plotting[attr][null] = plotting[attr][subattr]
+		if attr in nulls:
+			for null in nulls:
+				plotting[null] = plotting[attr]
 
 	# Get plot properties and statistics from settings
 	axes = ['x','y']
@@ -282,16 +292,16 @@ def process(data,settings,hyperparameters):
 			**{kwarg:{
 				'property':kwarg.replace('',''),
 				'statistic':{
-					'value': lambda key,data,dtype=None: np.nanmean(data,axis=0).astype(dtype),
-					'func': lambda key,data,dtype=None: np.nanmean(data,axis=0).astype(dtype),
+					None: lambda key,data,dtype=None: np.nanmean(data,axis=0).astype(dtype),
+					'fit': lambda key,data,dtype=None: np.nanmean(data,axis=0).astype(dtype),
 					}
 				} 
 			 	for kwarg in ['%s'%(ax) for ax in axes]},
 			**{kwarg:{
 				'property':kwarg.replace('err',''),
 				'statistic':{			
-					'value': lambda key,data,dtype=None: np.nanstd(data,axis=0).astype(dtype),
-					'func': lambda key,data,dtype=None: np.nanstd(data,axis=0).astype(dtype),
+					None: lambda key,data,dtype=None: np.nanstd(data,axis=0).astype(dtype),
+					'fit': lambda key,data,dtype=None: np.nanstd(data,axis=0).astype(dtype),
 					}
 				}	 
 			 	for kwarg in ['%serr'%(ax) for ax in axes]},
@@ -338,31 +348,42 @@ def process(data,settings,hyperparameters):
 					variables[occurrence][combination][permutation][kwarg] = {}
 
 					prop = statistics[kwarg]['property']
-					isNone = key[prop] is None
-					if isNone:
+					isnull = key[prop] in nulls
+					if isnull:
 						prop = 'y'					
 						dtype = int
 					else:
+						prop = prop
 						dtype = data[name][key[prop]].dtype
 				
 					variables[occurrence][combination][permutation][kwarg] = {}
 
+
+					print(kwarg,key,included,data[name][key[prop]].shape)
+
 					# Insert data into variables (with nan padding)
 					for stat in statistics[kwarg]['statistic']:
+						if (((plotting.get(key['y'],{}).get(key['x'],{}).get('plot') is not None) and
+							 (stat not in [None,*plotting.get(key['y'],{}).get(key['x'],{}).get('plot',[])])) or
+							((plotting.get(key['y'],{}).get(key['x']) is None) and 
+							 (stat not in [None]))):
+							continue
+
 						variables[occurrence][combination][permutation][kwarg][stat] = np.zeros((length,*shape[key[prop]]))
 						for index,name in enumerate(included):
 
-							value = expand_dims(np.arange(data[name][key[prop]].shape[-1]),range(0,ndim[key[prop]]-1)) if isNone else data[name][key[prop]]
+							value = expand_dims(np.arange(data[name][key[prop]].shape[-1]),range(0,ndim[key[prop]]-1)) if isnull else data[name][key[prop]]
 							slices = (index,*(slice(data[name][key[prop]].shape[axis]) for axis in range(data[name][key[prop]].ndim)))
 							variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 
 							value = nan
 							slices = (index,*(slice(
-									data[name][key[prop]].shape[axis] if axis >= (ndim[key[prop]]-1) else None,None) 
+									data[name][key[prop]].shape[axis] if axis == (ndim[key[prop]]-1) else None,None) 
 								for axis in range(data[name][key[prop]].ndim)))
 							variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 							
 						# Get statistics
+
 						variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
 							key,variables[occurrence][combination][permutation][kwarg][stat],dtype=dtype)
 
@@ -371,10 +392,12 @@ def process(data,settings,hyperparameters):
 					stat: np.array([variables[occurrence][combination][permutation][kwarg][stat] 
 									for permutation in variables[occurrence][combination]])
 					for stat in statistics[kwarg]['statistic']
+					if all(stat in variables[occurrence][combination][permutation][kwarg]
+						for permutation in variables[occurrence][combination])
 					}
 				for kwarg in statistics}
 
-
+		# exit()
 		# 	print('---value---')
 		# 	for kwarg in statistics:
 		# 		for stat in statistics[kwarg]['statistic']:
@@ -438,7 +461,7 @@ def process(data,settings,hyperparameters):
 	# Form grids of layout depending on shape of variables in each plot
 	# Get update to layout based on (reshaped) variables data shape and 
 	# reshaping of variables data based on 
-	# hyperparameters['axis'] = {attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}
+	# hyperparameters['plot'] = {'y':{'x':{'axis':{attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}}}}
 	for instance in list(settings):
 
 		for subinstance in list(settings[instance]):
@@ -462,7 +485,7 @@ def process(data,settings,hyperparameters):
 								for stat in variables[occurrence][combination][kwarg]
 								)
 
-							subaxis = hyperparameters.get('axis',{}).get(key['y'])
+							subaxis = plotting.get(key['y'],{}).get(key['x'],{}).get('axis')
 							if subaxis is None:
 								subaxis = [[],[],[],[axis for axis in range(subndim)]]
 							else:
@@ -575,6 +598,7 @@ def process(data,settings,hyperparameters):
 										substatistics = set(stat 
 											for kwarg in variables[occurrence][combination] 
 											for stat in variables[occurrence][combination][kwarg])
+										print(key,substatistics)
 										for stat in substatistics:
 
 											subsettings = copy.deepcopy(settings[instance][subinstance][setting][attr][j])
@@ -627,7 +651,7 @@ def process(data,settings,hyperparameters):
 							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
 								continue
 
-							if stat in ['value']:
+							if stat in [None]:
 								value = texify('%s'%(', '.join(['%s'%(str(combination[k])) for k in combination])))
 							else:
 								value = None
@@ -638,9 +662,9 @@ def process(data,settings,hyperparameters):
 							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
 								continue
 
-							if stat in ['value']:
+							if stat in [None]:
 								value = '--'
-							elif stat in ['func']:
+							elif stat in ['fit']:
 								value = '-'
 							else:
 								value = None
