@@ -326,7 +326,7 @@ def process(data,settings,hyperparameters):
 						prop = 'y'					
 						dtype = int
 					else:
-						dtype = None
+						dtype = data[name][key[prop]].dtype
 				
 					variables[occurrence][combination][permutation][kwarg] = {}
 
@@ -526,7 +526,7 @@ def process(data,settings,hyperparameters):
 						kwarg:{
 							**{kwarg: layout[instance][kwarg][subinstance] for kwarg in layout[instance]},
 							**{kwargs[axis]:subshape[subinstance][axis] for axis in range(dim)},
-							'index':index,
+							'index':index+1,
 							'top':1 - (nrow)/samplelayouts['nrows'] if subsublayouts and samplelayouts['nrows']>1 else None,
 							'bottom':1 - (nrow+1)/samplelayouts['nrows'] if subsublayouts and samplelayouts['nrows']>1 else None,
 							'right':(ncol+1)/samplelayouts['ncols'] if subsublayouts and samplelayouts['ncols']>1 else None,
@@ -569,8 +569,14 @@ def process(data,settings,hyperparameters):
 													j%variables[occurrence][combination][kwarg][stat].shape[dim-1+1]))
 												subsettings[kwarg] = variables[occurrence][combination][kwarg][stat][pos]
 
-											subsettings.update({
-												'label':'%s   %s'%(stat, ', '.join(['%s: %s'%(str(k),str(c)) for k,c in zip(key['label']['key'],combination)]))
+											if stat in ['value']:
+												subsettings.update({
+													'label':'%s'%(', '.join(['%s'%(str(c)) for k,c in zip(key['label']['key'],combination)]))
+													})
+
+
+											settings[instance][(subinstance,*position)][setting]['legend'].update({
+												'set_title':' '.join(key['label']['key']),
 												})
 
 											settings[instance][(subinstance,*position)][setting][special].append(subsettings)
@@ -580,21 +586,20 @@ def process(data,settings,hyperparameters):
 				settings[instance].pop(subinstance)
 
 
-	for instance in settings:
-		print('----',instance,'----')
-		for subinstance in settings[instance]:
-			print(subinstance)
-			print(settings[instance][subinstance]['style']['layout'])
-			for special in settings[instance][subinstance]['ax']['errorbar']:
-				print(special)
-			print()
-		print()
+	# for instance in settings:
+	# 	print('----',instance,'----')
+	# 	for subinstance in settings[instance]:
+	# 		print(subinstance)
+	# 		print(settings[instance][subinstance]['style']['layout'])
+	# 		for special in settings[instance][subinstance]['ax']['errorbar']:
+	# 			print(special)
+	# 		print()
+	# 	print()
 
 	# Set plot settings
 	for instance in settings:
 		for subinstance in settings[instance]:
 			for setting in settings[instance][subinstance]:
-
 				for attr in specials.get(setting,{}):
 					if attr not in settings[instance][subinstance][setting]:
 						continue 
@@ -634,6 +639,24 @@ def process(data,settings,hyperparameters):
 					pass
 
 	for instance in settings:
+
+		for subinstance in settings[instance]:
+			print(subinstance)
+			for setting in settings[instance][subinstance]:
+				print(setting)
+				for kwarg in settings[instance][subinstance][setting]:
+					print(kwarg)
+					if isinstance(settings[instance][subinstance][setting][kwarg],list):
+						for value in settings[instance][subinstance][setting][kwarg]:
+							print(value)
+					else:
+						value = settings[instance][subinstance][setting][kwarg]
+						print(value)
+					print()
+				print()
+			print()
+
+
 		plot(settings=settings[instance])
 
 	return

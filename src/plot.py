@@ -209,7 +209,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 			**{k:['label'] for k in ['plot','scatter','errorbar','axvline','axhline','vlines','hlines','plot_surface']},								
 			**{'set_title':['label'],'suptitle':['t'],
 			'annotate':['s'],
-			'legend':['title']},
+			'legend':['title','set_title']},
 		}
 		if texify is None:
 			texify = texwrapper
@@ -308,8 +308,8 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 				_kwds.update({
 					'set_zorder':kwargs.pop('set_zorder',{'level':100}),
-					'set_title':{**({'title': kwargs.pop('set_title',None),'prop':{'size':kwargs.get('prop',{}).get('size')}} 
-									if 'title' in kwargs else {'title':None})},
+					'set_title':{**({'title': kwargs.pop('set_title',kwargs.pop('title',None)),'prop':{'size':kwargs.get('prop',{}).get('size')}} 
+									if 'set_title' in kwargs or 'title' in kwargs else {'title':None})},
 					})
 
 			
@@ -535,6 +535,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 		ordering = {'close':-1,'savefig':-2}
 
+
 		if obj is not None:
 			props = list(settings[key][attr])
 			for prop in ordering:
@@ -562,7 +563,6 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 										for _prop in settings[key][attr]})
 					if exceptions[prop]['pop']:
 						continue
-
 				attr_wrap(obj,prop,settings[key][attr][prop],**kwargs)
 		return
 		
@@ -700,16 +700,13 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		if ((settings is not None) or (isinstance(settings,str) and os.path.isfile(settings))):
 			break
 
-	fig,ax = context(x,y,settings,fig,ax,mplstyle,texify)
-
-	# try:
-	# 	fig,ax = context(x,y,settings,fig,ax,mplstyle,texify)
-	# except:
-	# 	rc_params = {'text.usetex': False}
-	# 	matplotlib.rcParams.update(rc_params)
-	# 	matplotlib.use('pdf') 
-
-	# 	fig,ax = context(x,y,settings,fig,ax,_mplstyle,texify)
+	try:
+		fig,ax = context(x,y,settings,fig,ax,mplstyle,texify)
+	except:
+		rc_params = {'text.usetex': False}
+		matplotlib.rcParams.update(rc_params)
+		matplotlib.use('pdf') 
+		fig,ax = context(x,y,settings,fig,ax,_mplstyle,texify)
 
 	return fig,ax
 
