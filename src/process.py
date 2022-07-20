@@ -292,16 +292,16 @@ def process(data,settings,hyperparameters):
 			**{kwarg:{
 				'property':kwarg.replace('',''),
 				'statistic':{
-					None: lambda key,data,dtype=None: np.nanmean(data,axis=0).astype(dtype),
-					'fit': lambda key,data,dtype=None: np.nanmean(data,axis=0).astype(dtype),
+					None: lambda key,data,variables=None,dtype=None: np.nanmean(data,axis=0).astype(dtype),
+					'fit': lambda key,data,variables=None,dtype=None: np.nanmean(data,axis=0).astype(dtype),
 					}
 				} 
 			 	for kwarg in ['%s'%(ax) for ax in axes]},
 			**{kwarg:{
 				'property':kwarg.replace('err',''),
 				'statistic':{			
-					None: lambda key,data,dtype=None: np.nanstd(data,axis=0).astype(dtype),
-					'fit': lambda key,data,dtype=None: np.nanstd(data,axis=0).astype(dtype),
+					None: lambda key,data,variables=None,dtype=None: np.nanstd(data,axis=0).astype(dtype),
+					'fit': lambda key,data,variables=None,dtype=None: np.nanstd(data,axis=0).astype(dtype),
 					}
 				}	 
 			 	for kwarg in ['%serr'%(ax) for ax in axes]},
@@ -359,8 +359,6 @@ def process(data,settings,hyperparameters):
 					variables[occurrence][combination][permutation][kwarg] = {}
 
 
-					print(kwarg,key,included,data[name][key[prop]].shape)
-
 					# Insert data into variables (with nan padding)
 					for stat in statistics[kwarg]['statistic']:
 						if (((plotting.get(key['y'],{}).get(key['x'],{}).get('plot') is not None) and
@@ -369,23 +367,48 @@ def process(data,settings,hyperparameters):
 							 (stat not in [None]))):
 							continue
 
-						variables[occurrence][combination][permutation][kwarg][stat] = np.zeros((length,*shape[key[prop]]))
-						for index,name in enumerate(included):
+						variables[occurrence][combination][permutation][kwarg][stat] = np.nan*np.ones((length,*shape[key[prop]]))
+
+						if kwarg in ['y']:
+							print(kwarg,key,included)
+
+						for index in range(length):
+
+							name = included[index]
 
 							value = expand_dims(np.arange(data[name][key[prop]].shape[-1]),range(0,ndim[key[prop]]-1)) if isnull else data[name][key[prop]]
 							slices = (index,*(slice(data[name][key[prop]].shape[axis]) for axis in range(data[name][key[prop]].ndim)))
 							variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 
-							value = nan
-							slices = (index,*(slice(
-									data[name][key[prop]].shape[axis] if axis == (ndim[key[prop]]-1) else None,None) 
-								for axis in range(data[name][key[prop]].ndim)))
-							variables[occurrence][combination][permutation][kwarg][stat][slices] = value
+
+							if kwarg in ['y']:
+								print(name)
+								print(data[name][key[prop]])
+								print()
+
+							# value = nan
+							# slices = (index,*(slice(
+							# 		data[name][key[prop]].shape[axis] if axis == (ndim[key[prop]]-1) else None,None) 
+							# 	for axis in range(data[name][key[prop]].ndim)))
+							# variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 							
 						# Get statistics
+						if kwarg in ['y']:
+							print('---')
+							print(variables[occurrence][combination][permutation][kwarg][stat])
+							print('--- mean 0---')							
+							print(np.nanmean(variables[occurrence][combination][permutation][kwarg][stat],axis=0))
 
 						variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
-							key,variables[occurrence][combination][permutation][kwarg][stat],dtype=dtype)
+							key,variables[occurrence][combination][permutation][kwarg][stat],
+							variables=variables[occurrence][combination][permutation],dtype=dtype)
+						if kwarg in ['y']:
+							print('---')
+							print(variables[occurrence][combination][permutation][kwarg][stat])							
+							print('---')							
+							print()
+							print()
+							print()
 
 			variables[occurrence][combination] = {
 				kwarg:{
@@ -598,7 +621,7 @@ def process(data,settings,hyperparameters):
 										substatistics = set(stat 
 											for kwarg in variables[occurrence][combination] 
 											for stat in variables[occurrence][combination][kwarg])
-										print(key,substatistics)
+										
 										for stat in substatistics:
 
 											subsettings = copy.deepcopy(settings[instance][subinstance][setting][attr][j])

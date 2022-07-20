@@ -240,7 +240,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				'set_title':['label'],
 				'suptitle':['t'],
 				'annotate':['s'],
-				'legend':['handles','labels','title']},
+				'legend':['handles','labels','title','set_title']},
 		}					
 		if ((attr in attrs) and (attr in share) and (kwarg in attrs[attr]) and (kwarg in share[attr])):
 			share = share[attr][kwarg]
@@ -280,7 +280,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 	def attr_wrap(obj,attr,settings,**kwargs):
 
-		def attrs(obj,attr,_attr,**kwargs):
+		def attrs(obj,attr,_attr,_kwargs,**kwargs):
 			call = True
 			args = []
 			kwds = {}
@@ -288,29 +288,31 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 			_kwds = {}
 			if attr in ['legend']:
 				handles,labels = getattr(obj,'get_legend_handles_labels')()
-				# kwargs.update({k: attr_share(attr_texify(v,attr,k,**kwargs),attr,k,**kwargs)  
-				# 		for k,v in zip(['handles','labels'],
-				# 						getattr(obj,'get_legend_handles_labels')())
-				# 		})
 				handles,labels = (
 					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
 					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)]
-					)				
-
-				call = not (
-					(handles == [] or labels == []) or 
-					(min(len(handles),len(labels))==1) or 
-					all([kwargs[k] is None for k in kwargs])
-					# and all([kwargs.get(k) is None for k in ['handles','labels']]):
 					)
 
-				kwargs.update(dict(zip(['handles','labels'],[handles,labels])))
+
+				kwargs.update({k: attr_share(attr_texify(v,attr,k,**{**kwargs,**_kwargs}),attr,k,**{**kwargs,**_kwargs})  
+						for k,v in zip(['handles','labels'],[handles,labels])
+						})
+
+				# kwargs.update(dict(zip(['handles','labels'],[handles,labels])))
 
 				_kwds.update({
 					'set_zorder':kwargs.pop('set_zorder',{'level':100}),
 					'set_title':{**({'title': kwargs.pop('set_title',kwargs.pop('title',None)),'prop':{'size':kwargs.get('prop',{}).get('size')}} 
 									if 'set_title' in kwargs or 'title' in kwargs else {'title':None})},
 					})
+
+
+				call = not (
+					(kwargs['handles'] == [] or kwargs['labels'] == []) or 
+					(min(len(kwargs['handles']),len(kwargs['labels']))==1) or 
+					all([kwargs[k] is None for k in kwargs])
+					# and all([kwargs.get(k) is None for k in ['handles','labels']]):
+					)
 
 			
 			elif attr in ['plot','axvline','axhline']:
@@ -474,7 +476,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		else:
 			return
 		for _kwarg in _kwargs:
-			_attr = attrs(obj,attr,_attr,**_wrapper(_kwarg,attr,**kwargs))
+			_attr = attrs(obj,attr,_attr,kwargs,**_wrapper(_kwarg,attr,**kwargs))
 		return
 
 	def obj_wrap(attr,key,fig,ax,settings):

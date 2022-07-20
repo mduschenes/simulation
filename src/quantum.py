@@ -1158,7 +1158,7 @@ class Object(object):
 					])
 
 				new = 'features'
-				New = ((obj.__layers__(value,layer)[indices] - 
+				New = np.abs((obj.__layers__(value,layer)[indices] - 
 					obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices])/(
 					obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices]+1e-20)).mean()
 				returns[new] = New
