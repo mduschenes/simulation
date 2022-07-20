@@ -357,8 +357,11 @@ def branches(iterable,keys,types=(dict,),returns='value',exceptions=(str,)):
 	Yields:
 		value (tuple[object]): Found path of branch in iterable
 	'''	
-	# TODO: Fix bug of returning expanded keys instead of nested key+value
-	raise
+	
+	# TODO: Fix bug of returning expanded keys in groups of keys instead of separate yields for each key
+	
+	assert returns in ['value'], 'TODO: returns "%s" not implemented'%(returns)
+
 	if not isiterable(keys,exceptions=exceptions):		
 		keys = (keys,)
 		slices = 0
@@ -369,28 +372,29 @@ def branches(iterable,keys,types=(dict,),returns='value',exceptions=(str,)):
 			raise
 		if all(key in iterable for key in keys):
 			if isinstance(iterable,dict):
-				values = [iterable[key] for key in keys]
+				values = (iterable[key] for key in keys)
 			else:
-				values = keys		
+				values = keys	
 			if returns == 'value':
-				yield values[slices]
+				yield tuple(values)[slices]
 			elif returns == 'key':
-				yield [(key,) for key in keys][slices]
+				for key in keys:
+					yield tuple((key,))
 			elif returns == 'both':
-				yield [((key,),value) for key,value in zip(keys,values)][slices]
+				for key,value in zip(keys,values):
+					yield tuple(((key,),value))
 		for item in iterable:
 			if isinstance(iterable,dict):
 				value = iterable[item]
 			else:
 				value = item
 			for values in branches(value,keys,types=types,returns=returns,exceptions=exceptions):
-				for value in values:
-					if returns == 'value':
-						yield value
-					elif returns == 'key':
-						yield (item,*value)
-					elif returns == 'both':
-						yield ((item,*value[0]),value[1])
+				if returns == 'value':
+					yield values
+				elif returns == 'key':
+					yield (item,*values)
+				elif returns == 'both':
+					yield ((item,*values[0]),values[1])
 	except:
 		pass
 	return	

@@ -188,7 +188,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		return
 
 	def attr_texify(string,attr,kwarg,texify,**kwargs):
-		def texwrapper(string):
+		def _texify(string):
 			substring = string.replace('$','')
 			if not any([t in substring for t in [r'\textrm','_','^','\\']]):
 				pass
@@ -212,11 +212,11 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 			'legend':['title','set_title']},
 		}
 		if texify is None:
-			texify = texwrapper
+			texify = _texify
 		elif isinstance(texify,dict):
 			Tex = Texify(**texify)
 			texify = Tex.texify
-			texify = lambda string,texify=texify: texwrapper(texify(string))
+			texify = lambda string,texify=texify: _texify(texify(string))
 
 
 		if attr in attrs and kwarg in attrs[attr]:

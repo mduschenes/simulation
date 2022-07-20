@@ -21,15 +21,16 @@ for PATH in PATHS:
 
 from src.utils import array,product,expand_dims,is_number,to_number,to_key_value
 from src.utils import nan
-from src.dictionary import leaves
+from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split
 from src.plot import plot
 
 scalars = (int,np.integer,float,np.float)
 
 
-def texify(string,usetex=True):
+def Texify(string,texify={},usetex=True):
 	strings = {
+		**texify,
 	}
 	if not isinstance(string,str):
 		string = str(string)
@@ -146,12 +147,22 @@ def find(dictionary,properties):
 	Returns:
 		keys (list[dict]): Formatted keys based on found properties in dictionary
 	'''
-	keys = (leaves(dictionary,prop,types=(dict,list),returns='value') for prop in properties)
+
+	# keys = (leaves(dictionary,prop,types=(dict,list),returns='value') for prop in properties)
+	# keys = map(lambda key: dict(zip(
+	# 	properties,(*key[:2],tuple((dict(zip(['key','value'],to_key_value(key[2],delimiter='='))),))
+	# 	if key[2] is None or isinstance(key[2],str) 
+	# 	else tuple(dict(zip(['key','value'],to_key_value(j,delimiter='='))) for j in key[2])))),
+	# 	zip(*keys))
+
+	keys = branches(dictionary,properties,types=(dict,list),returns='value')
+
 	keys = map(lambda key: dict(zip(
 		properties,(*key[:2],tuple((dict(zip(['key','value'],to_key_value(key[2],delimiter='='))),))
 		if key[2] is None or isinstance(key[2],str) 
 		else tuple(dict(zip(['key','value'],to_key_value(j,delimiter='='))) for j in key[2])))),
-		zip(*keys))
+		keys)
+
 	keys = [{prop:key[prop] if prop not in ['label'] else 
 			{label:tuple(value[label] for value in key[prop]) for label in set(
 				label for value in key[prop] for label in value)}
@@ -253,10 +264,14 @@ def process(data,settings,hyperparameters):
 	ndim = {attr: min(data[name][attr].ndim for name in names) for attr in attrs}
 	shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in names)))) for attr in attrs}
 
-	# Get hyperparameters
+	# Get paths
 	file,directory,ext = {},{},{}
 	for attr in hyperparameters.get('path',{}):
 		directory[attr],file[attr],ext[attr] = split(hyperparameters.get('path',{}).get(attr),directory=True,file=True,ext=True)
+
+	# Get texify
+
+	texify = lambda string: Texify(string,hyperparameters.get('texify',{}),usetex=hyperparameters.get('usetex',True))
 
 	# Get plot properties and statistics from settings
 	axes = ['x','y']
@@ -268,6 +283,7 @@ def process(data,settings,hyperparameters):
 				'property':kwarg.replace('',''),
 				'statistic':{
 					'value': lambda key,data,dtype=None: np.nanmean(data,axis=0).astype(dtype),
+					'func': lambda key,data,dtype=None: np.nanmean(data,axis=0).astype(dtype),
 					}
 				} 
 			 	for kwarg in ['%s'%(ax) for ax in axes]},
@@ -275,6 +291,7 @@ def process(data,settings,hyperparameters):
 				'property':kwarg.replace('err',''),
 				'statistic':{			
 					'value': lambda key,data,dtype=None: np.nanstd(data,axis=0).astype(dtype),
+					'func': lambda key,data,dtype=None: np.nanstd(data,axis=0).astype(dtype),
 					}
 				}	 
 			 	for kwarg in ['%serr'%(ax) for ax in axes]},
@@ -387,7 +404,7 @@ def process(data,settings,hyperparameters):
 	}
 	
 	# Special settings to set variables depending on variables data shape, with additional settings to custom set form settings string
-	specials = {'ax':{'plot':['color'],'errorbar':['color','ecolor']}}
+	special = {'ax':['plot','errorbar']}
 
 	# Track updated keys
 	updated = []
@@ -418,7 +435,6 @@ def process(data,settings,hyperparameters):
 	subshape = {}
 
 
-
 	# Form grids of layout depending on shape of variables in each plot
 	# Get update to layout based on (reshaped) variables data shape and 
 	# reshaping of variables data based on 
@@ -429,15 +445,15 @@ def process(data,settings,hyperparameters):
 
 			subupdated.clear()
 
-			for setting in specials:
-				for special in specials[setting]:
-					if special in settings[instance][subinstance][setting]:
+			for setting in special:
+				for attr in special[setting]:
+					if attr in settings[instance][subinstance][setting]:
 
-						if isinstance(settings[instance][subinstance][setting][special],dict):
-							settings[instance][subinstance][setting][special] = [settings[instance][subinstance][setting][special]]
+						if isinstance(settings[instance][subinstance][setting][attr],dict):
+							settings[instance][subinstance][setting][attr] = [settings[instance][subinstance][setting][attr]]
 
-						for i in range(len(settings[instance][subinstance][setting][special])):							
-							key = find(settings[instance][subinstance][setting][special][i],properties)[0]
+						for i in range(len(settings[instance][subinstance][setting][attr])):							
+							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 							occurrence = keys.index(key)
 
 							subndim = min(variables[occurrence][combination][kwarg][stat].ndim
@@ -535,14 +551,14 @@ def process(data,settings,hyperparameters):
 						for kwarg in layout[instance]
 						}
 
-					for setting in specials:
-						for special in specials[setting]:
-							if special in settings[instance][subinstance][setting]:
+					for setting in special:
+						for attr in special[setting]:
+							if attr in settings[instance][subinstance][setting]:
 
-								settings[instance][(subinstance,*position)][setting][special].clear()
+								settings[instance][(subinstance,*position)][setting][attr] = {}
 
-								for i in range(len(settings[instance][subinstance][setting][special])):
-									key = find(settings[instance][subinstance][setting][special][i],properties)[0]
+								for i in range(len(settings[instance][subinstance][setting][attr])):
+									key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 									occurrence = keys.index(key)
 									size = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
 												for combination in variables[occurrence]
@@ -561,7 +577,7 @@ def process(data,settings,hyperparameters):
 											for stat in variables[occurrence][combination][kwarg])
 										for stat in substatistics:
 
-											subsettings = copy.deepcopy(settings[instance][subinstance][setting][special][j])
+											subsettings = copy.deepcopy(settings[instance][subinstance][setting][attr][j])
 
 											for kwarg in variables[occurrence][combination]:
 												pos = tuple(
@@ -569,60 +585,86 @@ def process(data,settings,hyperparameters):
 													j%variables[occurrence][combination][kwarg][stat].shape[dim-1+1]))
 												subsettings[kwarg] = variables[occurrence][combination][kwarg][stat][pos]
 
-											if stat in ['value']:
-												subsettings.update({
-													'label':'%s'%(', '.join(['%s'%(str(c)) for k,c in zip(key['label']['key'],combination)]))
-													})
-
-
-											settings[instance][(subinstance,*position)][setting]['legend'].update({
-												'set_title':' '.join(key['label']['key']),
-												})
-
-											settings[instance][(subinstance,*position)][setting][special].append(subsettings)
+											settings[instance][(subinstance,*position)][setting][attr][
+												(combination,j,occurrence,stat)] = subsettings
 
 		for samplelayout in layouts:
 			for subinstance in layouts[samplelayout]:
 				settings[instance].pop(subinstance)
 
 
-	# for instance in settings:
-	# 	print('----',instance,'----')
-	# 	for subinstance in settings[instance]:
-	# 		print(subinstance)
-	# 		print(settings[instance][subinstance]['style']['layout'])
-	# 		for special in settings[instance][subinstance]['ax']['errorbar']:
-	# 			print(special)
-	# 		print()
-	# 	print()
+
 
 	# Set plot settings
+
 	for instance in settings:
 		for subinstance in settings[instance]:
 			for setting in settings[instance][subinstance]:
-				for attr in specials.get(setting,{}):
+				
+				for attr in special.get(setting,{}):
+
 					if attr not in settings[instance][subinstance][setting]:
 						continue 
-					if isinstance(settings[instance][subinstance][setting][attr],dict):
-						settings[instance][subinstance][setting][attr] = [settings[instance][subinstance][setting][attr]]
-					else:
-						settings[instance][subinstance][setting][attr] = list(settings[instance][subinstance][setting][attr])					
-					for i in range(len(settings[instance][subinstance][setting][attr])):
-						settings[instance][subinstance][setting][attr][i] = {
-							**settings[instance][subinstance][setting][attr][i],
-							**{kwarg: getattr(plt.cm,settings[instance][subinstance][setting][attr][i][kwarg])(
-								(len(settings[instance][subinstance][setting][attr]) - 1 -i)/len(variables[occurrence]))
-								for kwarg in specials[setting][attr]
-								if (
-								(kwarg in settings[instance][subinstance][setting][attr][i]) and
-								(kwarg in ['color','ecolor'])
-								)},
-						}
 
-				# if setting in ['ax']:
-				# 	attr = 'errorbar'
-				# 	for i in range(len(settings[instance][subinstance][setting][attr])):
-				# 		print('adjusting',i,settings[instance][subinstance][setting][attr][i]['color'])
+					combinations,js,occurences,stats = zip(*settings[instance][subinstance][setting][attr])
+					for i,subsubinstance in enumerate(settings[instance][subinstance][setting][attr]):
+
+						combination,j,occurrence,stat = subsubinstance
+						key = keys[occurrence]
+						combination = dict(zip(key['label']['key'],combination))
+
+						kwargs = ['color','ecolor']
+						for kwarg in kwargs:
+							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
+								continue
+							value = getattr(plt.cm,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])(
+								(combinations.index(tuple((combination[k] for k in combination))))/len(combinations))
+
+							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
+
+						kwargs = ['label']
+						for kwarg in kwargs:
+							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
+								continue
+
+							if stat in ['value']:
+								value = texify('%s'%(', '.join(['%s'%(str(combination[k])) for k in combination])))
+							else:
+								value = None
+							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
+						
+						kwargs = ['linestyle']
+						for kwarg in kwargs:
+							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
+								continue
+
+							if stat in ['value']:
+								value = '--'
+							elif stat in ['func']:
+								value = '-'
+							else:
+								value = None
+
+							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
+
+
+						subattr = 'legend'
+						kwargs = ['set_title']
+
+						if subattr not in settings[instance][subinstance][setting]:
+							settings[instance][subinstance][setting][subattr] = {} 
+						
+						for kwarg in kwargs:
+							value = ',~'.join([texify(k) for k in key['label']['key']])
+						settings[instance][subinstance][setting][subattr][kwarg] = value
+
+
+					settings[instance][subinstance][setting][attr] = [
+						settings[instance][subinstance][setting][attr][subsubinstance]
+						for subsubinstance in settings[instance][subinstance][setting][attr]
+						]
+
+
 
 				# Set custom plot settings
 				if setting in ['fig']:
@@ -638,23 +680,27 @@ def process(data,settings,hyperparameters):
 				elif setting in ['ax']:
 					pass
 
+	verbose = 0
+
+
 	for instance in settings:
 
-		for subinstance in settings[instance]:
-			print(subinstance)
-			for setting in settings[instance][subinstance]:
-				print(setting)
-				for kwarg in settings[instance][subinstance][setting]:
-					print(kwarg)
-					if isinstance(settings[instance][subinstance][setting][kwarg],list):
-						for value in settings[instance][subinstance][setting][kwarg]:
+		if verbose:
+			for subinstance in settings[instance]:
+				print(subinstance)
+				for setting in settings[instance][subinstance]:
+					print(setting)
+					for kwarg in settings[instance][subinstance][setting]:
+						print(kwarg)
+						if isinstance(settings[instance][subinstance][setting][kwarg],list):
+							for value in settings[instance][subinstance][setting][kwarg]:
+								print(value)
+						else:
+							value = settings[instance][subinstance][setting][kwarg]
 							print(value)
-					else:
-						value = settings[instance][subinstance][setting][kwarg]
-						print(value)
+						print()
 					print()
 				print()
-			print()
 
 
 		plot(settings=settings[instance])
