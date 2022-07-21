@@ -16,8 +16,6 @@
 	"set_ylim":{"ymin":null,"ymax":null},
 	"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
 	"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,2]},
-	"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-	"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
 	"tick_params":[
 		{"axis":"y","which":"major","length":8,"width":1},
 		{"axis":"y","which":"minor","length":4,"width":0.5},

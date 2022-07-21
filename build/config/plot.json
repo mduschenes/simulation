@@ -60,7 +60,7 @@
 	},
 "M.parameters.relative.mean.N.iteration":{
 	"fig":{
-		"suptitle":{"t":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$","x":0.55,"y":0.9},
+		"suptitle":{"t":"$\\abs{({\\varphi}^{(i)}_{} - {\\varphi}^{(0)}_{})/{\\varphi}^{(0)}_{}}$","x":0.55,"y":0.9},
 		"set_size_inches":{"w":8,"h":8},
 		"subplots_adjust":{"hspace":0.5},
 		"tight_layout":{},
@@ -156,7 +156,7 @@
 			"share": {
 				"ax":{
 					"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},
-					"set_xlabel":{"xlabel":"bottom"},
+					"set_xlabel":{"xlabel":null},
 					"set_ylabel":{"ylabel":"left"},
 					"set_title":{"label":"top"}
 					}
@@ -194,7 +194,7 @@
 				"ncol": 1,
 				"set_zorder":{"level":100}
 				},			
-			"set_title":{"label":"$\\abs{({\\varphi}^{(f)}_{} - {\\varphi}^{(i)}_{})/{\\varphi}^{(i)}_{}}$","pad":12},				
+			"set_title":{"label":"$\\abs{({\\varphi}^{(i)}_{} - {\\varphi}^{(0)}_{})/{\\varphi}^{(0)}_{}}$","pad":12},				
 			"set_ylabel":{"ylabel":"$\\varphi$"},
 			"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
 			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
@@ -221,7 +221,7 @@
 			"share": {
 				"ax":{
 					"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},
-					"set_xlabel":{"xlabel":"bottom"},
+					"set_xlabel":{"xlabel":null},
 					"set_ylabel":{"ylabel":"left"},
 					"set_title":{"label":"top"}
 					}

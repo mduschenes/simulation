@@ -3205,3 +3205,90 @@ def scinotation(number,decimals=2,base=10,order=2,zero=True,scilimits=[-1,1],use
 	else:
 		string = string.replace('$','')
 	return string
+
+
+def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=None,shapes=None,dtype=None):
+	'''
+	Initialize parameters
+	Args:
+		parameters (array): parameters array
+		shape (iterable): shape of parameters
+		hyperparameters (dict): hyperparameters for initialization
+		reset (bool): Overwrite existing parameters
+		layer (str): Layer type of parameters
+		slices (iterable): slices of array within containing array
+		shapes (iterable): shape of containing array of parameters
+		dtype (str,datatype): data type of parameters		
+	Returns:
+		out (array): initialized slice of parameters
+	'''	
+
+	# Initialization hyperparameters
+	layer = 'parameters' if layer is None else layer
+	bounds = hyperparameters['bounds'][layer]
+	constant = hyperparameters['constants'][layer]	
+	initialization = hyperparameters['initialization']
+	random = hyperparameters['random']
+	pad = hyperparameters['pad']
+	seed = hyperparameters['seed']
+	key = seed
+
+	# Parameters shape and bounds
+	shape = shape
+	ndim = len(shape)
+
+	if shapes is None:
+		shapes = shape
+
+	if slices is None:
+		slices = tuple([slice(0,shapes[axis],1) for axis in range(ndim)])
+
+	if bounds is None:
+		bounds = ['-inf','inf']
+	elif len(bounds)==0:
+		bounds = ['-inf','inf']
+
+	bounds = [to_number(i,dtype) for i in bounds]
+
+	# Add random padding of values if parameters not reset
+	if not reset:
+		parameters = padding(parameters,shape,key=key,bounds=bounds,random=pad)
+	else:
+		if initialization in ['interpolation']:
+			# Parameters are initialized as interpolated random values between bounds
+			interpolation = hyperparameters['interpolation']
+			smoothness = min(shape[-1]//2,hyperparameters['smoothness'])
+			shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
+			pts_interp = smoothness*arange(shape_interp[-1])
+			pts = arange(shape[-1])
+
+			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
+
+			for axis in range(ndim):
+				for i,value in zip(constant[axis]['slice'],constant[axis]['value']):
+					j = shapes[axis] + i if i < 0 else i
+					if j >= slices[axis].start and j < slices[axis].stop:
+						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
+						parameters_interp = parameters_interp.at[indices].set(value)
+
+			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
+
+			for axis in range(ndim):
+				for i,value in zip(constant[axis]['slice'],constant[axis]['value']):
+					j = shapes[axis] + i if i < 0 else i
+					if j >= slices[axis].start and j < slices[axis].stop:
+						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
+						parameters = parameters.at[indices].set(value)
+
+			parameters = minimum(bounds[1],maximum(bounds[0],parameters))
+
+		elif initialization in ['uniform']:
+			parameters = ((bounds[0]+bounds[1])/2)*ones(shape)
+		elif initialization in ['random']:
+			parameters = rand(shape,key=key,bounds=bounds,random=random)
+		elif initialization in ['zero']:
+			parameters = zeros(shape)
+		else:
+			parameters = rand(shape,key=key,bounds=bounds,random=random)		
+
+	return parameters

@@ -26,7 +26,9 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.quantum import run
+from src.run import run
+
+from src.quantum import Unitary
 
 from src.utils import jit,array,sin,cos,cosh,abs,sigmoid,linspace
 from src.utils import gradient_sigmoid

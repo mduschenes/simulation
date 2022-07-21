@@ -10,3 +10,4 @@
 **/*.fig
 **/output
 **/data
+**/templates

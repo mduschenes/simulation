@@ -1,34 +1,46 @@
 {
+"class":"src.quantum.Unitary",
 "sys":{
 	"directory":{
-		"data":{"model":"data","data":"data","settings":"data","log":"data"},
-		"plot":{"parameters":"data","objective":"data","label":"data","features":"data","iteration":"data"},
-		"config":{"settings":"config","plot":"config","mplstyle":"config","logger":"config"}
-		},
-	"file":{
-		"data":{"model":"model","data":"data","settings":"settings","log":"log"},
-		"plot":{"parameters":"parameters","objective":"objective","label":"label","features":"features","iteration":"iteration"},
-		"config":{"settings":"settings","plot":"plot","mplstyle":"plot","logger":"logging"}
-		},
-	"ext":{
-		"data":{"model":"pkl","data":"hdf5","settings":"json","log":"log"},
-		"plot":{"parameters":"pdf","objective":"pdf","label":"pdf","features":"pdf","iteration":"pdf"},
-		"config":{"settings":"json","plot":"json","mplstyle":"mplstyle","logger":"conf"}
+		"data":"data",
+		"plot":"data",
+		"config":"data"
+	},
+	"path":{
+		"data":{
+			"model":"data/model.pkl",
+			"data":"data/data.hdf5",
+			"settings":"data/settings.json",
+			"log":"data/log.log"
+			},
+		"plot":{
+			"plot":"data/plot.pdf",
+			"process":"data/process.hdf5"
+			},
+		"config":{
+			"settings":"config/settings.json",
+			"plot":"config/plot.json",
+			"process":"config/process.json",
+			"mplstyle":"config/plot.mplstyle",
+			"logger":"config/logging.conf"
+			}
 		}
 	},
 "boolean":{
 	"train":1,
 	"load":0,
 	"dump":1,
-	"process":0,
-	"plot":0
+	"plot":1
 	},
 "seed":{
 	"seed":123321,
-	"split":1,
+	"size":3,
 	"reset":123321
 	},
 "permutations":{
+	"model__N":[2],
+	"model__M":[100,200,500,1000],
+	"optimize__iterations":[500]
 	},
 "model":{
 	"N":2,
@@ -48,6 +60,7 @@
 		"format":"array",
 		"key":null,
 		"seed":null,
+		"timestamp":null,
 		"device":"cpu",
 		"verbose":"info",
 		"logger":null
@@ -75,7 +88,7 @@
 	"track":{
 		"iteration":[],"objective":[],
 		"value":[],"grad":[],"search":[],
-		"alpha":[],"beta":[],"lambda":[],
+		"alpha":[],"beta":[],		
 		"parameters":[]
 		}
 	},
@@ -150,5 +163,22 @@
 	"random":"gaussian",
 	"seed":null,
 	"bounds":[-1,1]
+	},
+"process": {
+	"sort": ["N","D","d","L","delta","M","T","tau","iteration"],
+	"nullsort": [],
+	"load":0,
+	"dump":0,
+	"delimiter":".",
+	"plotting":{
+		"objective":{"iteration":{"plot":[]}},
+		"parameters":{"":{"axis":[[0,1],[2],[],[-1]]}},
+		"parameters.relative":{"":{"axis":[[0,1],[2],[],[-1]]}},
+		"parameters.relative.mean":{"M":{"axis":[[],[],[],[-1]]}}
+	},	
+	"texify":{
+		"iteration":"\\textrm{Iteration}~i"
 	}
+},
+"plot": {}
 }

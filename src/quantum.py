@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools
+import os,sys,itertools,functools,datetime
 from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
@@ -40,7 +40,7 @@ from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradien
 from src.utils import eigh,qr
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
-from src.utils import parse,to_str,to_number,scinotation,datatype,slice_size
+from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size
 from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
 
@@ -68,6 +68,7 @@ class System(dictionary):
 		device (str): Device for computation
 		seed (array,int): Seed for random number generation
 		key (object): key for class
+		timestamp (str): timestamp for class
 		verbose (bool,str): Verbosity of class	
 		logger (logger): Python logging logger
 		args (dict,System): Additional system attributes
@@ -94,6 +95,7 @@ class System(dictionary):
 			'device':'cpu',
 			'seed':None,
 			'key':None,
+			'timestamp':None,
 			'verbose':False,
 			'logger':None,
 		}
@@ -583,6 +585,7 @@ class Object(object):
 
 		self.key = None
 
+		self.timestamp = None
 		self.delimiter = ' '
 		self.basis = None
 		self.diagonal = []
@@ -966,7 +969,7 @@ class Object(object):
 		'''
 		Set system attributes
 		Args:
-			system (dict,System): System attributes (dtype,format,device,seed,key,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,verbose)		
 		'''
 		system = self.system if system is None else system
 		
@@ -976,6 +979,7 @@ class Object(object):
 		self.format = self.system.format
 		self.seed = self.system.seed
 		self.key = self.system.key
+		self.timestamp = self.system.timestamp
 		self.verbose = self.system.verbose
 		self.logger = self.system.logger
 
@@ -1169,14 +1173,13 @@ class Object(object):
 
 				new = attr
 				New = obj.__layers__(value,layer)[indices]
-				# New = array([obj.__layers__(v,layer)[indices] for v in value])
-				# if New.ndim > 1:
-				# 	New = New.transpose(*range(1,New.ndim),0)
+
 				returns[new] = New
 
 			return returns
 
 		# Get data
+		timestamp = str(self.timestamp)
 		keys = [self.key]
 		iterations = {
 			key: range(min(len(self.hyperparameters['optimize']['track'][attr]) 
@@ -1185,7 +1188,7 @@ class Object(object):
 			}
 
 		data = {
-			'%s.%d'%(key,iteration): {
+			'%s.%s.%d'%(timestamp,key,iteration): {
 				**{attr: self.hyperparameters['optimize']['track'][attr][iteration]
 					for attr in self.hyperparameters['optimize']['track']},			
 				**{attr: getattr(self,attr)
@@ -1235,12 +1238,9 @@ class Object(object):
 		return
 
 
-	def __plot__(self,parameters):
+	def plot(self):
 		'''
-		Plot Parameters
-		Args:
-			parameters (array): Parameters
-			kwargs (dict): Plot settings
+		Plot class
 		'''
 
 		# Get paths and kwargs
@@ -1261,246 +1261,7 @@ class Object(object):
 				path = path[i]
 			kwargs[kwarg].append(path)
 
-
-		print("PROCESS KWARGS",kwargs)
-		process(**kwargs)
-		return
-
-
-
-		# Get class hyperparameters and attributes
-		hyperparameters = self.hyperparameters
-		attributes = self.attributes
-
-		# Get parameters shape and indices of features
-		attribute = 'index'
-		layer = 'features'		
-		indices = attributes[attribute][layer]
-
-		ndim = min(len(indices[parameter][group]) 
-			for parameter in indices 
-			for group in indices[parameter])
-
-		shape = [int(
-					((max(indices[parameter][group][axis].stop
-						for parameter in indices for group in indices[parameter]) - 
-					min(indices[parameter][group][axis].start
-						for parameter in indices for group in indices[parameter])) //
-					min(indices[parameter][group][axis].step
-						for parameter in indices for group in indices[parameter]))
-					if all(isinstance(indices[parameter][group][axis],slice)
-							for parameter in indices for group in indices[parameter]) else
-					len(list(set(i 
-						for parameter in indices for group in indices[parameter] 
-						for i in indices[parameter][group][axis])))
-					)
-					for axis in range(ndim)]
-
-		indices = tuple([(
-					slice(
-					min(indices[parameter][group][axis].start
-						for parameter in indices for group in indices[parameter]),
-					max(indices[parameter][group][axis].stop
-						for parameter in indices for group in indices[parameter]),
-					min(indices[parameter][group][axis].step
-						for parameter in indices for group in indices[parameter]))
-					if all(isinstance(indices[parameter][group][axis],slice)
-							for parameter in indices for group in indices[parameter]) else
-					list(set(i 
-						for parameter in indices for group in indices[parameter] 
-						for i in indices[parameter][group][axis]))
-					)
-					for axis in range(ndim)])
-
-		# Get number of iterations
-		size = min(len(hyperparameters['optimize']['track'][attr]) for attr in hyperparameters['optimize']['track'])
-
-		# Get plot config
-		attr = 'mplstyle'
-		mplstyle = hyperparameters['sys']['path']['config'][attr]
-
-		# Plot attributes
-
-		attr = 'parameters'
-
-		layer = 'features'
-
-		fig,ax = self.fig.get(attr),self.ax.get(attr)
-
-		# path = hyperparameters['sys']['directory']['plot'][attr]		
-		path = 'data/%s.pdf'%(attr)
-
-		layout = [1,int(product(shape[:-1]))]
-		plots = [None]*layout[0]
-		layout = [int(product(shape[:-1])),2]		
-		plots = [[None]*layout[1]]*layout[0]
-		figsize = (20,20)
-		iterations = list(sorted(list(set([max(0,min(size-1,i))
-							for i in [
-							0,
-							*[5,10,15,20],
-							*[i*(size-1)//n 
-							for n in [4] for i in range(1,n+1)]]
-							]))))
-		labels = [r'\alpha',r'\phi']
-		lims = [[[0,shape[-1]],[-0.1,1.1]],[[0,shape[-1]],[-0.1,1.1]]]
-		# lims = [[None,None],[None,None]]
-
-		iteration = 0
-		if iteration >= size:
-			parameters0 = parameters
-		else:
-			parameters0 = hyperparameters['optimize']['track'][attr][iteration]
-		parameters0 = self.__layers__(parameters0,layer)
-
-		parameters0 = parameters0[indices]
-
-		with matplotlib.style.context(mplstyle):
-		
-			if fig is None:
-				fig,ax = plt.subplots(*layout)
-				if layout[0] == 1 and layout[1] == 1:
-					ax = [[ax]]
-				elif layout[0] == 1:
-					ax = [ax]
-				elif layout[1] == 1:
-					ax = [[a] for a in ax]
-			elif ax is None:
-				ax = fig.gca()
-
-			for iteration in iterations:
-
-				if iteration >= size:
-					parameters = parameters
-				else:
-					parameters = hyperparameters['optimize']['track'][attr][iteration]
-				parameters = self.__layers__(parameters,layer)
-
-				parameters = parameters[indices]
-
-				for i in range(shape[0]):
-					for j in range(shape[1]):
-						for k in range(layout[1]):
-
-							index = [i*shape[1] + j,k]
-
-							x = arange(shape[-1])
-							y = parameters[i][j]
-
-							if layout[1] > 1:
-								if index[1] == 0:
-									y = parameters[i][j]
-								elif index[1] == 1:
-									y0 = parameters0[i][j]
-									y = abs((y - y0)/(y0+1e-20))	
-							else:
-								y0 = parameters0[i][j]
-								y = abs((y - y0)/(y0+1e-20))
-
-							label = labels[i%len(labels)]
-
-							plots[index[0]][index[1]] = ax[index[0]][index[1]].plot(x,y,
-								color=getattr(plt.cm,'viridis')((iterations.index(iteration)*10)/(len(iterations)*10)),
-								marker='',alpha=0.45,linewidth=4,zorder=max(iterations)+1-iteration,
-								# label=r'${%s}^{(%s)}_{%s}$'%(label,str(iteration),str(j) if shape[1]>1 else '')
-								label=r'${%s}^{(%s)}_{%s}$'%(r'\varphi',str(iteration),'')
-							)
-
-							ax[index[0]][index[1]].set_xlim(xmin=lims[i%len(lims)][0][0],xmax=lims[i%len(lims)][0][1])
-							ax[index[0]][index[1]].set_ylim(ymin=lims[i%len(lims)][1][0],ymax=lims[i%len(lims)][1][1])
-							ax[index[0]][index[1]].set_ylabel(ylabel=r'${%s}_{%s}$'%(label,str(j) if shape[1]>1 else ''))
-							ax[index[0]][index[1]].set_xlabel(xlabel=r'$\textrm{%s}$'%('Time'))
-							ax[index[0]][index[1]].set_yscale(value='linear')
-							# ax[index[0]][index[1]].set_yscale(value='log')
-							ax[index[0]][index[1]].grid(True,zorder=0)	
-
-
-							if i == 0 and j == 0:
-								if layout[1] > 1:
-									if index[1] == 0:
-										ax[index[0]][index[1]].legend(
-											loc=(0.2,1.15),ncol=min(5,len(ax[index[0]][index[1]].get_legend_handles_labels()[0]))
-											)
-									if index[1] == 0:
-										ax[index[0]][index[1]].set_title(label=r'${%s}^{(%s)}_{%s}$'%(
-												r'\varphi','i',''))
-									elif index[1] == 1:
-										ax[index[0]][index[1]].set_title(label=r'$\abs{({%s}^{(%s)}_{%s} - {%s}^{(%s)}_{%s})/{%s}^{(%s)}_{%s}}$'%(
-												r'\varphi','f','',r'\varphi','i','',r'\varphi','i',''))
-								else:
-									ax[index[0]][index[1]].legend(
-										loc=(0.15,1.05),ncol=min(4,len(ax[index[0]][index[1]].get_legend_handles_labels()[0]))
-										)
-
-			fig.set_size_inches(*figsize)
-			fig.subplots_adjust(hspace=0.5)
-			# fig.tight_layout()
-			dump(fig,path)
-
-		self.fig[attr] = fig
-		self.ax[attr] = ax
-
-		attr = 'objective'
-		fig,ax = self.fig.get(attr),self.ax.get(attr)
-
-		# path = hyperparameters['sys']['path']['plot'][attr]
-		path = 'data/%s.pdf'%(attr)
-
-		layout = []
-		plots = None
-		figsize = (8,8)
-
-		with matplotlib.style.context(mplstyle):
-		
-			if fig is None:
-				fig,ax = plt.subplots(*layout)
-			elif ax is None:
-				ax = fig.gca()
-
-			x = hyperparameters['optimize']['track']['iteration']
-			y = hyperparameters['optimize']['track'][attr]
-
-			plots = ax.plot(x,y,linewidth=4,marker='o',markersize=10)
-
-			ax.set_ylabel(ylabel=r'$\textrm{%s}$'%('Objective'))
-			ax.set_xlabel(xlabel=r'$\textrm{%s}$'%('Iteration'))
-
-			# ax.set_ylim(ymin=0,ymax=1)
-			# ax.set_yscale(value='linear')
-
-			ax.set_ylim(ymin=1e-1,ymax=1e0)
-			ax.set_yscale(value='log',base=10)
-
-			ax.yaxis.offsetText.set_fontsize(fontsize=20)
-
-			ax.set_xticks(ticks=range(int(1*min(0,0,*x)),int(1.1*max(0,0,*x)),max(1,int(max(0,0,*x)-min(0,0,*x))//8)))
-			# ax.set_yticks(ticks=[1e-1,2e-1,4e-1,6e-1,8e-1,1e0])
-			ax.set_yticks(ticks=[1e-1,5e-1,6e-1,8e-1,1e0])
-			ax.yaxis.set_major_formatter(matplotlib.ticker.ScalarFormatter())
-			# ax.yaxis.set_major_locator(matplotlib.ticker.LogLocator(base=10.0,subs=(1.0,),numticks=100))
-			ax.ticklabel_format(axis='y',style='sci',scilimits=[-1,2])	
-
-			ax.yaxis.set_minor_locator(matplotlib.ticker.LogLocator(base=10.0,subs=arange(2,10)*.1,numticks=100))
-			ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
-
-
-			ax.tick_params(axis='y',which='major',length=8,width=1)
-			ax.tick_params(axis='y',which='minor',length=4,width=0.5)
-			ax.tick_params(axis='x',which='major',length=8,width=1)
-			ax.tick_params(axis='x',which='minor',length=4,width=0.5)
-
-			ax.set_aspect(aspect='auto')
-			ax.grid(visible=True,which='both',axis='both')	
-
-			fig.set_size_inches(*figsize)
-			fig.subplots_adjust()
-			fig.tight_layout()
-			dump(fig,path)
-
-
-		self.fig[attr] = fig
-		self.ax[attr] = ax
-
+		self.fig,self.ax = process(**kwargs)
 		return
 
 
@@ -1906,478 +1667,3 @@ def invtrotter(a,p):
 	n = a.shape[0]//p
 	return a[:n]
 
-
-def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=None,shapes=None,dtype=None):
-	'''
-	Initialize parameters
-	Args:
-		parameters (array): parameters array
-		shape (iterable): shape of parameters
-		hyperparameters (dict): hyperparameters for initialization
-		reset (bool): Overwrite existing parameters
-		layer (str): Layer type of parameters
-		slices (iterable): slices of array within containing array
-		shapes (iterable): shape of containing array of parameters
-		dtype (str,datatype): data type of parameters		
-	Returns:
-		out (array): initialized slice of parameters
-	'''	
-
-	# Initialization hyperparameters
-	layer = 'parameters' if layer is None else layer
-	bounds = hyperparameters['bounds'][layer]
-	constant = hyperparameters['constants'][layer]	
-	initialization = hyperparameters['initialization']
-	random = hyperparameters['random']
-	pad = hyperparameters['pad']
-	seed = hyperparameters['seed']
-	key = seed
-
-	# Parameters shape and bounds
-	shape = shape
-	ndim = len(shape)
-
-	if shapes is None:
-		shapes = shape
-
-	if slices is None:
-		slices = tuple([slice(0,shapes[axis],1) for axis in range(ndim)])
-
-	if bounds is None:
-		bounds = ["-inf","inf"]
-	elif len(bounds)==0:
-		bounds = ["-inf","inf"]
-
-	bounds = [to_number(i,dtype) for i in bounds]
-
-	# Add random padding of values if parameters not reset
-	if not reset:
-		parameters = padding(parameters,shape,key=key,bounds=bounds,random=pad)
-	else:
-		if initialization in ['interpolation']:
-			# Parameters are initialized as interpolated random values between bounds
-			interpolation = hyperparameters['interpolation']
-			smoothness = min(shape[-1]//2,hyperparameters['smoothness'])
-			shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
-			pts_interp = smoothness*arange(shape_interp[-1])
-			pts = arange(shape[-1])
-
-			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
-
-			for axis in range(ndim):
-				for i,value in zip(constant[axis]['slice'],constant[axis]['value']):
-					j = shapes[axis] + i if i < 0 else i
-					if j >= slices[axis].start and j < slices[axis].stop:
-						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-						parameters_interp = parameters_interp.at[indices].set(value)
-
-			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
-
-			for axis in range(ndim):
-				for i,value in zip(constant[axis]['slice'],constant[axis]['value']):
-					j = shapes[axis] + i if i < 0 else i
-					if j >= slices[axis].start and j < slices[axis].stop:
-						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-						parameters = parameters.at[indices].set(value)
-
-			parameters = minimum(bounds[1],maximum(bounds[0],parameters))
-
-		elif initialization in ['uniform']:
-			parameters = ((bounds[0]+bounds[1])/2)*ones(shape)
-		elif initialization in ['random']:
-			parameters = rand(shape,key=key,bounds=bounds,random=random)
-		elif initialization in ['zero']:
-			parameters = zeros(shape)
-		else:
-			parameters = rand(shape,key=key,bounds=bounds,random=random)		
-
-	return parameters
-
-def plotter(hyperparameters):
-	'''
-	Plot models
-	Args:
-		hyperparameters (dict): hyperparameters of models
-	'''	
-
-	# Get paths and kwargs
-
-	paths = {
-		'data':('sys','path','data','data'),
-		'settings':('sys','path','config','plot'),
-		'hyperparameters':('sys','path','config','process'),
-		}
-	
-	kwargs = {kwarg: [] for kwarg in paths}
-
-	for kwarg in kwargs:
-		for key in hyperparameters:
-			path = hyperparameters[key]
-			for i in paths[kwarg]:
-				path = path[i]
-			kwargs[kwarg].append(path)
-
-	print("ALL PROCESS KWARGS",kwargs)
-	process(**kwargs)
-	return
-
-
-
-def check(hyperparameters):
-	'''
-	Check hyperparameters
-	Args:
-		hyperparameters (dict): Hyperparameters
-	'''
-
-	# Load default hyperparameters
-	path = 'config/settings.json'
-	func = lambda key,iterable,elements: iterable.get(key,elements[key])
-	updater(hyperparameters,load(path),func=func)
-
-	# Check sections for correct attributes
-	section = None
-	updates = {
-		'permutations': {
-			'value': (lambda hyperparameters: {
-							**{attr: (hyperparameters['permutations'][attr] 
-									if not isinstance(hyperparameters['permutations'][attr],int) else 
-									range(hyperparameters['permutations'][attr]))
-								for attr in hyperparameters.get('permutations',{})}
-							}),
-			'default': (lambda hyperparameters: {}),
-			'conditions': (lambda hyperparameters: True)
-		},
-		'groups': {
-			'value': (lambda hyperparameters: hyperparameters['groups']),
-			'default': (lambda hyperparameters: None),
-			'conditions': (lambda hyperparameters: True)
-		},		
-		'label': {
-			'value': (lambda hyperparameters: hyperparameters['hyperparameters']['label']),
-			'default': (lambda hyperparameters: None),
-			'conditions': (lambda hyperparameters: hyperparameters['hyperparameters'].get('label') is not None)				
-		},
-	}			
-	for attr in updates:								
-		hyperparameters[attr] = hyperparameters.get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[attr] = updates[attr]['value'](hyperparameters)
-
-	section = 'sys'
-	updates = {
-		'path': {
-			'value': (lambda hyperparameters: 	{
-				attr: {
-					path: join(
-						split(hyperparameters[section]['path'][attr][path],directory=True),
-						split(hyperparameters[section]['path'][attr][path],file=True),
-						ext=split(hyperparameters[section]['path'][attr][path],ext=True)
-					)
-					for path in hyperparameters[section]['path'][attr]
-					}
-				for attr in hyperparameters[section]['path']
-				}),
-			'default': (lambda hyperparameters: None),
-			'conditions': (lambda hyperparameters: hyperparameters[section].get('path') is None)
-		},		
-	}			
-	for attr in updates:						
-		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
-	section = 'model'
-	updates = {
-		'tau': {
-			'value': (lambda hyperparameters: hyperparameters[section]['tau']/hyperparameters['hyperparameters']['scale']),
-			'default': (lambda hyperparameters: 1),
-			'conditions': (lambda hyperparameters: hyperparameters['hyperparameters'].get('scale') is not None)
-		},		
-	}			
-	for attr in updates:						
-		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
-	section = 'hyperparameters'
-	updates = {
-		'iterations': {
-			'value': (lambda hyperparameters: int(hyperparameters[section]['iterations'])),
-			'default': (lambda hyperparameters: 0),
-			'conditions': (lambda hyperparameters: True)
-		},		
-	}			
-	for attr in updates:						
-		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
-	section = 'parameters'
-	updates = {
-		'boundaries': {
-			'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
-				for i in hyperparameters[section][parameter]['boundaries'][attr]] 
-				for attr in hyperparameters[section][parameter]['boundaries']}),
-			'default': (lambda parameter,hyperparameters: {}),
-			'conditions': (lambda parameter,hyperparameters: True)				
-		},
-		'constants': {
-			'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
-				for i in hyperparameters[section][parameter]['constants'][attr]] 
-				for attr in hyperparameters[section][parameter]['constants']}),
-			'default': (lambda parameter,hyperparameters: []),
-			'conditions': (lambda parameter,hyperparameters: True)				
-		},		
-		'group': {
-			'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters[section][parameter]['group']]),
-			'default': (lambda parameter,hyperparameters: []),
-			'conditions': (lambda parameter,hyperparameters: True)				
-		},
-		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: hyperparameters['hyperparameters'].get(attr)),
-			'default': (lambda parameter,hyperparameters,attr=attr: None),
-			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
-			} for attr in ['scale','initialization','random','smoothness','interpolation','pad']
-		},
-		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: None),#hyperparameters.get('seed',{}).get(attr)),
-			'default': (lambda parameter,hyperparameters,attr=attr: None),
-			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
-			} for attr in ['seed']
-		},		
-		'locality': {
-			'value':(lambda parameter,hyperparameters: hyperparameters['hyperparameters']['locality']),
-			'default':(lambda parameter,hyperparameters: None),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters['hyperparameters'].get('locality') is not None)
-		},		
-	}			
-	for parameter in hyperparameters[section]:
-		for attr in updates:						
-			hyperparameters[section][parameter][attr] = hyperparameters[section][parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
-			if updates[attr]['conditions'](parameter,hyperparameters):
-				hyperparameters[section][parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
-
-
-	section = 'process'
-	updates = {
-		'path': {
-			'value': (lambda hyperparameters: 	{
-				path: join(
-					split(hyperparameters['sys']['path']['plot'][path],directory=True),
-					'.'.join(split(hyperparameters['sys']['path']['plot'][path],file=True).split('.')[:]),
-					ext=split(hyperparameters['sys']['path']['plot'][path],ext=True)
-				)
-				for path in hyperparameters['sys']['path']['plot']
-				}),
-			'default': (lambda hyperparameters: {}),
-			'conditions': (lambda hyperparameters: (hyperparameters[section].get('path') is not None))
-		},		
-	}			
-	for attr in updates:						
-		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
-	section = 'plot'
-	updates = {}			
-	for attr in updates:						
-		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
-
-	return
-
-
-def setup(hyperparameters):
-	'''
-	Setup hyperparameters
-	Args:
-		hyperparameters (dict): Hyperparameters
-	'''
-
-	# Get settings
-	settings = {}	
-
-	# Check hyperparameters have correct values
-	check(hyperparameters)
-
-	# Get permutations of hyperparameters
-	permutations = hyperparameters['permutations']
-	groups = hyperparameters['groups']
-	permutations = permuter(permutations,groups=groups)
-
-	# Get seeds for number of splits/seedings, for all nested hyperparameters leaves that involve a seed
-	seed = hyperparameters['seed']['seed']
-	size = hyperparameters['seed']['size']
-	reset = hyperparameters['seed']['reset']
-
-	key = 'seed'
-	exclude = [('seed','seed',),('model','system','seed')]
-	seedlings = [branch for branch in leaves(hyperparameters,key,returns='key') if branch not in exclude]
-	count = len(seedlings)
-	
-	shape = (size,count,-1)
-	size *= count
-
-	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape)
-	
-	# Get all enumerated keys and seeds for permutations and seedings of hyperparameters
-	keys = {'.'.join(['%d'%(k) for k in [iteration,instance]]): (permutation,seed) 
-		for iteration,permutation in enumerate(permutations) 
-		for instance,seed in enumerate(seeds)}
-
-	# Set settings with key and seed instances
-
-	settings['seed'] = seeds
-
-	settings['boolean'] = {attr: (
-			(hyperparameters['boolean'].get(attr,False)) 
-			# (attr not in ['train'] or not hyperparameters['boolean'].get('load',False))
-			)
-			for attr in hyperparameters['boolean']}
-
-	settings['hyperparameters'] = {key: None for key in keys}
-	settings['object'] = {key: None for key in keys}
-	settings['logger'] = {key: None for key in keys}
-
-	# Update key/seed instances of hyperparameters with updates
-	for key in keys:
-
-		# Set seed and key
-		iteration,instance = map(int,key.split('.'))
-		permutation,seed = keys[key]
-		
-		# Set settings
-		settings['hyperparameters'][key] = deepcopy(hyperparameters)
-		settings['object'][key] = None
-		settings['logger'][key] = logconfig(__name__,
-			conf=settings['hyperparameters'][key]['sys']['path']['config']['logger'])
-
-		# Set hyperparameters updates with key/instance dependent settings
-		updates = {}		
-
-		updates.update({
-			'model':{
-				'system':{
-					'key':key,
-					'seed':instance,
-					},
-				},
-			'sys':{
-				'path': {
-					attr: {
-						path: join(
-							split(settings['hyperparameters'][key]['sys']['path'][attr][path],directory=True),
-							'.'.join([
-								split(settings['hyperparameters'][key]['sys']['path'][attr][path],file=True),
-								*([key] if attr not in [] else [])
-								]),
-							ext=split(settings['hyperparameters'][key]['sys']['path'][attr][path],ext=True)
-						)
-						for path in settings['hyperparameters'][key]['sys']['path'][attr]
-						}
-					for attr in settings['hyperparameters'][key]['sys']['path']
-					},
-				},
-			})
-
-		for branch,leaf in zip(seedlings,seed):
-			grow(updates,branch,leaf)
-
-
-		# Update hyperparameters
-		setter(updates,permutation,delimiter=delim,copy=True)
-
-		updater(settings['hyperparameters'][key],updates,copy=True)
-		check(settings['hyperparameters'][key])
-
-		
-		# Copy config files
-		directory = settings['hyperparameters'][key]['sys']['directory']['config']
-		paths = settings['hyperparameters'][key]['sys']['path']['config']
-		func = lambda key,iterable,elements: iterable.get(key,elements[key])
-		for path in paths:
-			source = paths[path]
-			destination = join(directory,paths[path])
-
-			if path in ['settings']:
-				data = deepcopy(settings['hyperparameters'][key])
-			else:
-				data = settings['hyperparameters'][key].get(path,{})
-			try:
-				try:
-					source = load(source)
-				except:
-					try:
-						source = join(
-							split(source,directory=True),
-							'.'.join(split(source,file=True).split('.')[:1]),
-							ext=split(source,ext=True))
-						source = load(source)
-					except:
-						raise
-				updater(data,source,func=func)
-				dump(data,destination)
-			except:
-				copy(source,destination)
-
-
-		# Update config paths
-		directory = settings['hyperparameters'][key]['sys']['directory']['config']
-		paths = settings['hyperparameters'][key]['sys']['path']['config']
-		for path in paths:
-			paths[path] = join(directory,paths[path])
-
-	return settings
-
-
-def run(hyperparameters):
-	'''
-	Run simulations
-	Args:
-		hyperparameters (dict): hyperparameters
-	'''		
-
-	settings = setup(hyperparameters)
-
-	for key in settings['hyperparameters']:		
-
-		if not any(settings['boolean'][attr] for attr in ['load','dump','train','plot']):
-			continue		
-
-		hyperparameters = settings['hyperparameters'][key]
-
-		obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
-
-		if settings['boolean']['load']:
-			obj.load()
-
-		settings['object'][key] = obj
-
-		if settings['boolean']['train']:
-
-			parameters = obj.parameters
-			hyperparameters = hyperparameters['optimize']
-
-			func = obj.__func__
-			callback = obj.__callback__
-
-			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
-
-			parameters = optimizer(parameters)
-
-		
-		if settings['boolean']['plot']:
-			parameters = obj.parameters
-			obj.__plot__(parameters)
-
-		if settings['boolean']['dump']:	
-			obj.dump()
-
-	if settings['boolean']['plot']:
-		hyperparameters = settings['hyperparameters']
-		plotter(hyperparameters)		
-
-	return

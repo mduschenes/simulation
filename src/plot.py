@@ -82,9 +82,24 @@ def is_number(obj):
 		except:
 			return False
 
-# Plot data - General plotter
-def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,quiet=True):
-
+def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=None):
+	'''
+	Plot x,y,z with settings
+	settings are of the form of keys for subplots
+	x,y,z data may be passed explicitly, or within settings
+	Args:
+		x (dict,array): x variable to plot
+		y (dict,array): y variable to plot
+		z (dict,array): z variable to plot
+		settings (dict): Plot settings for subplot keys {key:{'fig':{},'ax':{},'style':{}}}
+		fig (dict,matplotlib.figure): Existing figure or dictionary of subplots of figures to plot to {key: figure}
+		ax (dict,matplotlib.axes): Existing axes or dictionary of subplots of axes to plot to {key: axes}
+		mplstyle (str): Path to mplstyle file
+		texify (dict,callable): Dictionary to initialize Texify class, or function to return texified string texify(string)
+	Returns:
+		fig (dict): dictionary of subplots of figures of plots {key: figure}
+		ax (dict): dictionary of subplots of axes of plots {key: figure}
+	'''
 	AXIS = ['x','y','z']
 	WHICH = ['major','minor']
 	FORMATTER = ['formatter','locator']
@@ -200,6 +215,9 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 			# 	substring = [r'\textrm{%s}'%i  if (not (is_number(i) or any([j in i for j in ['$','textrm','_','^','\\','}','{']]))) else i for i in substring]
 			# 	substring = t.join(['{%s}'%i for i in substring])
 			substring = '\n'.join(['$%s$'%(substring.replace('$','')) for substring in string.split('\n')])
+
+			if len(substring) == 0:
+				substring = substring.replace('$','')
 			return substring
 		attrs = {
 			**{'set_%slabel'%(axis):['%slabel'%(axis)]
@@ -213,13 +231,15 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 			'annotate':['s'],
 			'legend':['title','set_title']},
 		}
+
 		if texify is None:
 			texify = _texify
 		elif isinstance(texify,dict):
 			Tex = Texify(**texify)
 			texify = Tex.texify
 			texify = lambda string,texify=texify: _texify(texify(string))
-
+		elif callable(texify):
+			pass
 
 		if attr in attrs and kwarg in attrs[attr]:
 			if isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
@@ -345,6 +365,10 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 				args.extend([kwargs.pop(k) for k in ['x','y'] if kwargs.get(k) is not None])
 
+				nullkwargs = ['z']
+				for kwarg in nullkwargs:
+					kwargs.pop(kwarg,None)
+
 				call = True
 
 			elif attr in ['errorbar']:
@@ -370,6 +394,10 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 					# 	pass
 
 				args.extend([kwargs.pop(k) for k in ['x','y','yerr','xerr'] if k in kwargs and kwargs.get(k) is not None ])
+
+				nullkwargs = ['z']
+				for kwarg in nullkwargs:
+					kwargs.pop(kwarg,None)
 
 				call = True				
 
@@ -452,10 +480,14 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 					_obj = getattr(_obj,a)
 				except:
 					break			
-			if args != []:
-				_attr = _obj(*args,**kwargs)
-			else:
-				_attr = _obj(**kwargs)
+
+			try:
+				if args != []:
+					_attr = _obj(*args,**kwargs)
+				else:
+					_attr = _obj(**kwargs)
+			except Exception as e:
+				print(e,attr,kwargs)
 
 			for k in _kwds:
 				_attr_ = _attr
@@ -591,16 +623,16 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		return
 		
 		
-	def context(x,y,settings,fig,ax,mplstyle,texify):
+	def context(x,y,z,settings,fig,ax,mplstyle,texify):
 		with matplotlib.style.context(mplstyle):
-			settings,fig,ax = setup(x,y,settings,fig,ax,mplstyle,texify)
+			settings,fig,ax = setup(x,y,z,settings,fig,ax,mplstyle,texify)
 			for key in settings:
 				for attr in ['ax',*['%s_%s'%('ax',k) for k in AXES],'fig']:
 					obj_wrap(attr,key,fig,ax,settings)
 
 		return fig,ax
 
-	def setup(x,y,settings,fig,ax,mplstyle,texify):
+	def setup(x,y,z,settings,fig,ax,mplstyle,texify):
 
 
 		def _setup(settings,_settings):
@@ -645,6 +677,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 		if any([key in settings for key in defaults]):
 			settings = {key:copy.deepcopy(settings) for key in (y if update and isinstance(y,dict) else [None])}
 
+
 		if not isinstance(y,dict):
 			if not isinstance(y,tuple):
 				y = (y,)
@@ -655,6 +688,11 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				x = (x,)
 			x = {key: x for key in settings}
 
+		if not isinstance(z,dict):
+			if not isinstance(z,tuple):
+				z = (z,)
+			z = {key: z for key in settings}
+
 		for key in settings:
 			settings[key].update({k:copy.deepcopy(defaults[k])
 				for k in defaults if k not in settings[key]})
@@ -664,6 +702,7 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 				settings[key]['style']['layout'] = {}
 			if not all([kwarg in settings[key]['style']['layout'] for kwarg in LAYOUT[:DIM+1]]):
 				settings[key]['style']['layout'].update(dict(zip([*LAYOUT[:DIM],LAYOUT[DIM]],_index(i,len(y),'row'))))
+		
 		for key in y:
 
 			_settings = load(PATHS['plot'])
@@ -676,8 +715,8 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 			if update:
 				plotsettings = settings[key].get('ax',{}).pop('plot',{})				
 				_settings['ax'].update({
-					**{'plot':[{'x':_x,'y':_y,**(plotsettings if isinstance(plotsettings,dict) else plotsettings[_i])} 
-								for _i,(_x,_y) in enumerate(zip(x.get(key,[None]*len(y[key])),y[key]))]},
+					**{'plot':[{'x':_x,'y':_y,'z':_z,**(plotsettings if isinstance(plotsettings,dict) else plotsettings[_i])} 
+								for _i,(_x,_y,_z) in enumerate(zip(x.get(key,[None]*len(y[key])),y[key],z[key]))]},
 					**settings[key].pop('ax',{}), 
 					})
 
@@ -726,12 +765,12 @@ def plot(x=None,y=None,settings={},fig=None,ax=None,mplstyle=None,texify=None,qu
 
 
 	try:
-		fig,ax = context(x,y,settings,fig,ax,mplstyle,texify)
+		fig,ax = context(x,y,z,settings,fig,ax,mplstyle,texify)
 	except:
 		rc_params = {'text.usetex': False}
 		matplotlib.rcParams.update(rc_params)
 		matplotlib.use('pdf') 
-		fig,ax = context(x,y,settings,fig,ax,_mplstyle,texify)
+		fig,ax = context(x,y,z,settings,fig,ax,_mplstyle,texify)
 
 	return fig,ax
 
@@ -746,6 +785,7 @@ if __name__ == '__main__':
 	mplstyle = sys.argv[4]
 	Y = sys.argv[5].split(' ')
 	X = sys.argv[6].split(' ')
+	Z = sys.argv[7].split(' ')
 
 
 
@@ -756,15 +796,17 @@ if __name__ == '__main__':
 
 	settings = {}
 
-	for i,(x,y) in enumerate(zip(X,Y)):
+	for i,(x,y,z) in enumerate(zip(X,Y,Z)):
 		key = y
 
 		settings[key] = copy.deepcopy(_settings)
 
 		settings[key]['ax']['plot']['x'] = df[x].values if x in df else df.index.values
 		settings[key]['ax']['plot']['y'] = df[y].values if y in df else df.index.values
+		settings[key]['ax']['plot']['z'] = df[z].values if z in df else df.index.values
 		settings[key]['ax']['set_xlabel'] = {'xlabel':x.capitalize() if x in df else None}
 		settings[key]['ax']['set_ylabel'] = {'ylabel':y.capitalize() if y in df else None }
+		settings[key]['ax']['set_zlabel'] = {'zlabel':z.capitalize() if y in df else None }
 		settings[key]['style']['layout'] = {'ncols':len(Y),'nrows':1,'index':i}
 		settings[key]['fig']['savefig'] = {'fname':path,'bbox_inches':'tight'}
 

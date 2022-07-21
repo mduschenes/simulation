@@ -4,6 +4,7 @@
 import os,sys,warnings,itertools,inspect,traceback
 import shutil
 import glob as globber
+import importlib
 import json,jsonpickle,h5py,pickle,dill
 import numpy as np
 import pandas as pd
@@ -24,7 +25,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 	Split path into directory,file,ext
 	Args:
 		path (str): Path to split
-		directory (bool): Return split directory name
+		directory (bool,int,tuple): Return split directory name, or number of intermediate directories after root / before directory containing folder
 		file (bool): Return split file name
 		ext (bool): Return split extension name
 		directory_file (bool): Return split and joined directory and file name
@@ -33,11 +34,19 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 	Returns:
 		paths (iterable): Split path,directory,file,ext depending on booleans
 	'''	
+
 	if not (directory or file or ext):
 		return path
 	returns = {'directory':directory,'file':file or directory_file or file_ext,'ext':ext}
 	paths = {}
-	paths['directory'] = os.path.dirname(path)
+	if not isinstance(directory,bool):
+		if isinstance(directory,int):
+			slices = slice(directory-1,None) if directory > 0 else slice(None,directory) 
+		else:
+			slices = slice(*(directory[0],directory[1],*directory[2:]))
+		paths['directory'] = os.sep.join(os.path.dirname(path).split(os.sep)[slices])
+	else:
+		paths['directory'] = os.path.dirname(path)			
 	paths['file'],paths['ext'] = os.path.splitext(path)
 	if paths['ext'].startswith(delimiter):
 		paths['ext'] = delimiter.join(paths['ext'].split(delimiter)[1:])
@@ -202,14 +211,20 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 	Returns:
 		data (object): Loaded object
 	'''	
-	
+	def convert(name,conversion=None,**kwargs):
+		if conversion is None:
+			conversion = lambda name: str(name)
+		key = conversion(name)
+		return key
+
 	data = {}
 	
 	if isinstance(obj, h5py._hl.group.Group):
 		names = natsorted(obj)
 		for name in names:
+			key = convert(name,**kwargs)
 			if isinstance(obj[name], h5py._hl.group.Group):	
-				data[name] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
+				data[key] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
 			else:
 				# assert isinstance(obj[name],h5py._hl.dataset.Dataset)
 				name = name.replace('.real','').replace('.imag','')
@@ -220,13 +235,14 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 					name_imag = "%s.%s"%(name,'imag')
 					data_imag = obj[name_imag][...]
 
-					data[name] = data_real + 1j*data_imag
+					data[key] = data_real + 1j*data_imag
 				except:
-					data[name] = obj[name][...]
+					data[key] = obj[name][...]
 
 		names = list(set((name for name in obj.attrs)))
 		for name in names:
-			data[name] = obj.attrs[name]
+			key = convert(name,**kwargs)
+			data[key] = obj.attrs[name]
 	else:
 		data = obj.value
 	return data
@@ -261,14 +277,16 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 		kwargs (dict): Additional loading keyword arguments
 	'''		
 
-	def convert(name):
-		key = str(name)
+	def convert(name,conversion=None,**kwargs):
+		if conversion is None:
+			conversion = lambda name: str(name)
+		key = conversion(name)
 		return key
 
 	if isinstance(obj,dict):
 		names = obj
 		for name in names:
-			key = convert(name)
+			key = convert(name,**kwargs)
 			if isinstance(obj[name],dict):
 				path.create_group(key)
 				_dump_hdf5(obj[name],path[key],wr=wr,ext=ext,**kwargs)
@@ -421,7 +439,14 @@ def _load(obj,wr,ext,**kwargs):
 	
 	exts = ['npy','csv','txt','pickle','pkl','json','hdf5','h5']
 
-	assert ext in exts, "Cannot load extension %s"%(ext)
+	try:
+		assert ext in exts, "Cannot load extension %s"%(ext)
+	except Exception as exception:
+		try:
+			obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
+			data = getattr(importlib.import_module(obj),module)
+		except:
+			raise exception
 
 	if ext in ['npy']:
 		data = np.load(obj,**{**kwargs})
@@ -436,6 +461,7 @@ def _load(obj,wr,ext,**kwargs):
 		data = json.load(obj,**{'object_hook':load_json,**kwargs})
 	elif ext in ['hdf5','h5']:
 		data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
+
 	return data
 
 
@@ -463,17 +489,17 @@ def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
 	if not os.path.exists(directory):
 		os.makedirs(directory)
 
-	for wr in wrs:		
+	for wr in wrs:	
 		try:
 			_dump(data,path,wr=wr,ext=ext,**kwargs)
 			return
-		except (AttributeError,TypeError) as exception:
+		except (ValueError,AttributeError,TypeError) as exception:
 			logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
 			try:
 				with open(path,wr) as obj:
 					_dump(data,obj,wr=wr,ext=ext,**kwargs)
 				return
-			except (AttributeError,TypeError) as exception:
+			except (ValueError,AttributeError,TypeError) as exception:
 				logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
 				pass
 	return
