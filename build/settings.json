@@ -27,20 +27,20 @@
 		}
 	},
 "boolean":{
-	"train":1,
+	"train":0,
 	"load":0,
-	"dump":1,
+	"dump":0,
 	"plot":1
 	},
 "seed":{
 	"seed":123321,
-	"size":3,
+	"size":1,
 	"reset":123321
 	},
 "permutations":{
 	"model__N":[2],
-	"model__M":[100,200,500,1000],
-	"optimize__iterations":[500]
+	"model__M":[100,500],
+	"optimize__iterations":[200]
 	},
 "model":{
 	"N":2,

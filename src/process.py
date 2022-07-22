@@ -93,7 +93,7 @@ def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
 	return _y,coef
 
 
-def include(key,value,datum,data):
+def include(key,value,datum,keys,data):
 	'''
 	Include data if conditions on key and value are True
 	Args:
@@ -101,25 +101,41 @@ def include(key,value,datum,data):
 		value (object): Reference value to check, allowed strings in ['$value,',#index,','%start,stop,step'] 
 						for comma-delimited values, indices, or slices values
 		datum (object): Data value to check
-		data (dict[str,object,iterable[object]]): Data of keys and iterable of values to compare
+		keys (iterable[str]): List of keys of conditions
+		values (dict[str,object,iterable[object]]): Data of keys and iterable of values to compare
+		data (dict[str,dict[str:object]]): Data of datasets of keys and values to compare
 	Returns:
 		boolean (bool): Accept inclusion of dataset
 	'''
 	boolean = False
+	relative = False
 	if value is None:
+		relative = False		
 		value = [datum]
 	elif isinstance(value,str):			
 		if value.startswith('$') and value.endswith('$'):
+			relative = False
 			parser = lambda value: (to_number(value) if len(value)>0 else 0)
-			values = value.replace('$','').split(',')
-			values = [parser(value) for value in values]
-			value = [value for value in values]
+			value = value.replace('$','').split(',')
+			value = [parser(v) for v in value]
+			value = [v for v in value]
 		elif value.startswith('#') and value.endswith('#'):
+			relative = True			
 			parser = lambda value: (int(value) if len(value)>0 else 0)
 			indices = value.replace('#','').split(',')
 			indices = [parser(index) for index in indices]
-			value = [data[key][index] for index in indices]
+			if indices == [-1]:
+				nullkeys = [k for k in set((k for name in data for k in data[name])) if k not in keys]
+				nullvalues = [values[k] for k in nullkeys]
+				sort = itertools.product(*nullvalues)
+				sort = []
+				sort = {k: itertools.}
+				value = [data[name][key] for name in data if values[key].index(data[name][key]) in indices]
+				# print('sorting',key,value)
+			else:
+				value = [values[key][index] for index in indices]
 		elif value.startswith('%') and value.endswith('%'):
+			relative = True			
 			parser = lambda value: (int(value) if len(value)>0 else None)
 			slices = value.replace('%','').split(',')
 			if value.count(',') == 0:
@@ -131,13 +147,18 @@ def include(key,value,datum,data):
 			else:
 				slices = None,None,None
 			slices = slice(*slices)
-			value = data[key][slices]
+			value = values[key][slices]
 		else:
 			parser = lambda value: (value)
 			value = [parser(value)]
 	else:
+		relative = False		
 		value = [value]
-	boolean = datum in value
+
+	if not relative:
+		boolean = datum in value
+	else:
+		boolean = datum in value		
 	
 	return boolean
 
@@ -253,7 +274,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 					for name in names 
 					if (
 					(attr in data[name]) and 
-					(isinstance(data[name][attr],scalars)) and 
+					# (isinstance(data[name][attr],scalars)) and 
 					(attr in hyperparameters.get('sort',attributes)) and
 					(attr not in hyperparameters.get('nullsort',[]))
 					))))
@@ -372,20 +393,29 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		for occurrence,key in enumerate(keys):
 			variables[occurrence] = {}
 			combinations[occurrence] = [
-				[val for val in sort.get(attr,[]) if include(attr,value,val,sort)]
+				[val for val in sort.get(attr,[]) if include(attr,value,val,key['label']['key'],sort,data)]
 				for attr,value in zip(key['label']['key'],key['label']['value'])
 				if all(attr is not None for attr in key['label']['key'])
 				]
+			print(key)
+			print(dict(zip(key['label']['key'],combinations[occurrence])))
 			permutations[occurrence] = {}
 
 			for combination in itertools.product(*combinations[occurrence]):
 				variables[occurrence][combination] = {}
 				values = dict(zip(key['label']['key'],combination))
 				permutations[occurrence][combination] = [
-					[val for val in sort[attr] if ((attr not in values) or include(attr,values[attr],val,sort))]
+					[val for val in sort[attr] 
+					if ((attr not in values) or 
+						include(attr,values[attr],val,sort,sort,data))]
 					for attr in sort
 					]
-				included = [name for name in names if all(include(attr,values[attr],data[name][attr],data[name]) for attr in values)]
+				print(values,dict(zip(sort,permutations[occurrence][combination])))
+				print()
+				continue
+				included = [name for name in names 
+					if all(include(attr,values[attr],data[name][attr],values,data[name],data) 
+					for attr in values)]
 				
 				if len(included) == 0:
 					variables[occurrence].pop(combination);
@@ -394,7 +424,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 				for permutation in itertools.product(*permutations[occurrence][combination]):
 					variables[occurrence][combination][permutation] = {}
 					values = dict(zip(sort,permutation))
-					included = [name for name in names if all(include(attr,values[attr],data[name][attr],data[name]) for attr in values)]
+					included = [name for name in names 
+						if all(include(attr,values[attr],data[name][attr],values,data[name],data) 
+						for attr in values)]
 					
 					if len(included) == 0:
 						variables[occurrence][combination].pop(permutation);
@@ -475,7 +507,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 						}
 					for kwarg in statistics}
 
-
+			print()
 			if len(variables[occurrence]) == 0:
 				variables.pop(occurrence)
 
@@ -491,7 +523,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		# 	print()
 		# print()
 		# print()	
-
+	return fig,ax
 	# Dump data
 	if hyperparameters.get('dump'):
 		attr = 'process'

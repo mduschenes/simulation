@@ -1261,7 +1261,7 @@ class Object(object):
 				path = path[i]
 			kwargs[kwarg].append(path)
 
-		self.fig,self.ax = process(**kwargs)
+		# self.fig,self.ax = process(**kwargs)
 		return
 
 
