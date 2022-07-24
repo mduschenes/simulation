@@ -1134,47 +1134,60 @@ class Object(object):
 				New = value
 				returns[new] = New
 
-			if attr in ['parameters']:
-				
-				layer = 'features'
-				indices = tuple([(
-					slice(
-					min(attributes['index'][layer][parameter][group][axis].start
-						for parameter in attributes['index'][layer] 
-						for group in attributes['index'][layer][parameter]),
-					max(attributes['index'][layer][parameter][group][axis].stop
-						for parameter in attributes['index'][layer] 
-						for group in attributes['index'][layer][parameter]),
-					min(attributes['index'][layer][parameter][group][axis].step
-						for parameter in attributes['index'][layer] 
-						for group in attributes['index'][layer][parameter]))
-					if all(isinstance(attributes['index'][layer][parameter][group][axis],slice)
-						for parameter in attributes['index'][layer] 
-						for group in attributes['index'][layer][parameter]) else
-					list(set(i 
-						for parameter in attributes['index'][layer] 
-						for group in attributes['index'][layer][parameter] 
-						for i in attributes['index'][layer][parameter][group][axis]))
-					)
-					for axis in range(min(len(attributes['index'][layer][parameter][group]) 
-										for parameter in attributes['index'][layer] 
-										for group in attributes['index'][layer][parameter]))
-					])
 
-				new = '%s.relative'%(attr)
-				New = np.abs((obj.__layers__(value,layer)[indices] - 
-					obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices])/(
-					obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices]+1e-20))
-				returns[new] = New
+			if attr in obj.hyperparameters['optimize']['track']:
 
-				new = '%s.relative.mean'%(attr)
-				New = New.mean()
-				returns[new] = New				
+				if attr in ['parameters']:
+					
+					layer = 'features'
+					indices = tuple([(
+						slice(
+						min(attributes['index'][layer][parameter][group][axis].start
+							for parameter in attributes['index'][layer] 
+							for group in attributes['index'][layer][parameter]),
+						max(attributes['index'][layer][parameter][group][axis].stop
+							for parameter in attributes['index'][layer] 
+							for group in attributes['index'][layer][parameter]),
+						min(attributes['index'][layer][parameter][group][axis].step
+							for parameter in attributes['index'][layer] 
+							for group in attributes['index'][layer][parameter]))
+						if all(isinstance(attributes['index'][layer][parameter][group][axis],slice)
+							for parameter in attributes['index'][layer] 
+							for group in attributes['index'][layer][parameter]) else
+						list(set(i 
+							for parameter in attributes['index'][layer] 
+							for group in attributes['index'][layer][parameter] 
+							for i in attributes['index'][layer][parameter][group][axis]))
+						)
+						for axis in range(min(len(attributes['index'][layer][parameter][group]) 
+											for parameter in attributes['index'][layer] 
+											for group in attributes['index'][layer][parameter]))
+						])
 
-				new = attr
-				New = obj.__layers__(value,layer)[indices]
+					new = '%s.relative'%(attr)
+					New = np.abs((obj.__layers__(value,layer)[indices] - 
+						obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices])/(
+						obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices]+1e-20))
+					returns[new] = New
 
-				returns[new] = New
+					new = '%s.relative.mean'%(attr)
+					New = New.mean()
+					returns[new] = New				
+
+					new = attr
+					New = obj.__layers__(value,layer)[indices]
+
+					returns[new] = New
+
+				elif attr in ['iteration']:
+					new = '%s.max'%(attr)
+					New = hyperparameters['optimize']['track'][attr][-1]
+
+					returns[new] = New
+
+				elif attr in ['value']:
+					new = 'infidelity'
+					New = 1 - value
 
 			return returns
 

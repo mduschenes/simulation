@@ -1,5 +1,5 @@
 {
-"iteration.objective.M":{
+"iteration.infidelity.M":{
 	"fig":{
 		"set_size_inches":{"w":8,"h":8},
 		"subplots_adjust":{},
@@ -10,7 +10,7 @@
 	"ax":{
 		"errorbar":{
 			"x":"iteration",
-			"y":"objective",
+			"y":"infidelity",
 			"label":"M",
 			"marker":"o",
 			"linestyle":"--",
@@ -19,7 +19,7 @@
 			"color":"viridis",
 			"ecolor":"viridis"
 			},
-		"set_ylabel":{"ylabel":"$\\textrm{Objective}$"},
+		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":6},
@@ -71,7 +71,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"parameters.relative.mean",
-			"label":["N","iteration=#-1#"],
+			"label":["N","iteration=@iteration.max@"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -107,6 +107,53 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
+"M.iteration.max.N":{
+	"fig":{
+		"set_size_inches":{"w":8,"h":8},
+		"subplots_adjust":{"hspace":0.5},
+		"tight_layout":{},
+		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
+		"close":{}
+		},
+	"ax":{
+		"errorbar":{
+			"x":"M",
+			"y":"iteration.max",
+			"label":["N","iteration=@iteration.max@"],			
+			"marker":"o",
+			"linestyle":"--",
+			"elinewidth":2,
+			"capsize":3,						
+			"color":"tab10",
+			"ecolor":"tab10"
+			},
+		"set_ylabel":{"ylabel":"$\\textrm{Number of Iterations}$"},
+		"set_xlabel":{"xlabel":"$\\textrm{Number of Time Steps}$"},
+		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
+		"set_xnbins":{"nbins":4},
+		"set_ynbins":{"nbins":6},
+		"set_yscale":{"value":"linear"},
+		"set_ylim":{"ymin":0,"ymax":200},
+		"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
+		"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,2]},
+		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
+		"tick_params":[
+			{"axis":"y","which":"major","length":8,"width":1},
+			{"axis":"y","which":"minor","length":4,"width":0.5},
+			{"axis":"x","which":"major","length":8,"width":1},
+			{"axis":"x","which":"minor","length":4,"width":0.5}
+			],
+		"set_aspect":{"aspect":"auto"},
+		"grid":{"visible":true,"which":"both","axis":"both"}
+		},
+	"style":{
+		"texify":null,
+		"mplstyle":"plot.mplstyle",	
+		"rcParams":{"font.size":36},
+		"layout":{"nrows":1,"ncols":1,"index":1},
+		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
+		}
+	},	
 "None.parameters.iteration.M":{
 	"None.parameters.all.iteration.M":{
 		"fig":{

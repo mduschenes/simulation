@@ -5,6 +5,8 @@ import os,sys,itertools,warnings,copy
 import numpy as np
 import scipy as sp
 import scipy.special
+import pandas as pd
+from natsort import natsorted
 import matplotlib.pyplot as plt
 warnings.filterwarnings('ignore')
 
@@ -25,7 +27,7 @@ from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split
 from src.plot import plot
 
-scalars = (int,np.integer,float,np.float)
+scalars = (int,np.integer,float,np.float,str)
 nulls = ('',None)
 
 # Texify strings
@@ -92,50 +94,43 @@ def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
 		coef = np.zeros(3)
 	return _y,coef
 
-
-def include(key,value,datum,keys,data):
+def check(key,value,datum,keys,values,data):
 	'''
-	Include data if conditions on key and value are True
+	Include key if conditions on key and value are True
 	Args:
 		key (str): Reference key to check
-		value (object): Reference value to check, allowed strings in ['$value,',#index,','%start,stop,step'] 
-						for comma-delimited values, indices, or slices values
+		value (object): Reference value to check, allowed strings in ['$value$,','@key@,','#index#,','%start,stop,step%'] 
+						for comma-delimited: values, other key, indices, or slices values
 		datum (object): Data value to check
-		keys (iterable[str]): List of keys of conditions
+		keys (dict[str,str]): Keys of conditions	
 		values (dict[str,object,iterable[object]]): Data of keys and iterable of values to compare
 		data (dict[str,dict[str:object]]): Data of datasets of keys and values to compare
 	Returns:
 		boolean (bool): Accept inclusion of dataset
 	'''
 	boolean = False
-	relative = False
 	if value is None:
-		relative = False		
-		value = [datum]
-	elif isinstance(value,str):			
+		if datum is not None:
+			value = [datum]
+		else:
+			value = []
+	elif isinstance(value,str):
 		if value.startswith('$') and value.endswith('$'):
-			relative = False
 			parser = lambda value: (to_number(value) if len(value)>0 else 0)
 			value = value.replace('$','').split(',')
 			value = [parser(v) for v in value]
 			value = [v for v in value]
+		elif value.startswith('@') and value.endswith('@'):
+			# parser = lambda value: (str(value) if len(value)>0 else 0)
+			# value = value.replace('@','').split(',')
+			# value = [parser(v) for v in value]
+			value = [None]#,*[u for v in value for u in values[v]]]
 		elif value.startswith('#') and value.endswith('#'):
-			relative = True			
 			parser = lambda value: (int(value) if len(value)>0 else 0)
 			indices = value.replace('#','').split(',')
 			indices = [parser(index) for index in indices]
-			if indices == [-1]:
-				nullkeys = [k for k in set((k for name in data for k in data[name])) if k not in keys]
-				nullvalues = [values[k] for k in nullkeys]
-				sort = itertools.product(*nullvalues)
-				sort = []
-				sort = {k: itertools.}
-				value = [data[name][key] for name in data if values[key].index(data[name][key]) in indices]
-				# print('sorting',key,value)
-			else:
-				value = [values[key][index] for index in indices]
+			value = [values[key][index] for index in indices]
 		elif value.startswith('%') and value.endswith('%'):
-			relative = True			
 			parser = lambda value: (int(value) if len(value)>0 else None)
 			slices = value.replace('%','').split(',')
 			if value.count(',') == 0:
@@ -152,15 +147,146 @@ def include(key,value,datum,keys,data):
 			parser = lambda value: (value)
 			value = [parser(value)]
 	else:
-		relative = False		
 		value = [value]
 
-	if not relative:
-		boolean = datum in value
-	else:
-		boolean = datum in value		
+	boolean = datum in value
 	
 	return boolean
+
+
+def include(name,keys,values,data):
+	'''
+	Include data if conditions on key and value are True
+	Args:
+		name (str): Dataset name
+		keys (dict[str,str]): Keys of conditions	
+		values (dict[str,object,iterable[object]]): Data of keys and iterable of values to compare
+		data (dict[str,dict[str:object]]): Data of datasets of keys and values to compare
+	Returns:
+		boolean (bool): Accept inclusion of dataset
+	'''
+
+	def exception(name,key,keys,values,data):
+		boolean = True
+		if key in keys:
+			if keys[key] is None:
+				value = [values[key]]
+			elif keys[key].startswith('@') and keys[key].endswith('@'):
+				parser = lambda value: (str(value) if len(value)>0 else 0)
+				value = keys[key].replace('@','').split(',')
+				value = [parser(v) for v in value]
+				value = [data[name][v] for v in value]
+			else:
+				value = [values[key]]
+			boolean = data[name][key] in value
+
+		return boolean
+
+
+	rules = lambda name,key,keys,values,data: (((data[name][key]==values[key]) or (values[key] is None)) and
+												exception(name,key,keys,values,data))
+
+	boolean = all(rules(name,key,keys,values,data) for key in values)
+
+	return boolean
+
+def permute(key,value,keys,values):
+	'''
+	Get permutations of values based on grouping by subset key of keys, constrained by the value of each key
+	Args:
+		key (iterable[str]): Key(s) to group with
+		value (iterale[str]): Values of grouping keys to constrain grouping and permutation of values to check, 
+			allowed strings in ['$value,',#index,','%start,stop,step'] for comma-delimited values, indices, or slices values
+		keys (iterable[str]): All keys of value to group with
+		values (dict[str,dict[str,object]]): All dataset values of {name:{key:value}}
+	Returns:
+		permutations (dict): Dictionary of all permutations of keys {tuple(value of k in key):list(tuple(value of k for k in keys))}	
+	'''
+
+	def apply(group,key,value):
+		
+		def _apply(group,key,value):
+			group = group.groupby(key)
+			groups = list(group.groups)
+			if value is None:
+				value = slice(None)
+			elif isinstance(value,str):
+				if value.startswith('#') and value.endswith('#'):
+					parser = lambda value: (int(value) if len(value)>0 else 0)
+					value = value.replace('#','').split(',')
+					value = [parser(v) for v in value]
+				elif value.startswith('%') and value.endswith('%'):
+					parser = lambda value: (int(value) if len(value)>0 else 0)
+					value = value.replace('%','').split(',')
+					value = [parser(v) for v in value]                
+					if len(value) == 1:
+						value = None,None,*value[:1]
+					elif len(value) == 2:
+						value = *value[:2],None
+					else:
+						value = *value[:3],
+					value = slice(*value)
+				elif value.startswith('$') and value.endswith('$'):
+					parser = lambda value: (to_number(value) if len(value)>0 else 0)
+					value = value.replace('$','').split(',')
+					value = [parser(v) for v in value]
+					value = [groups.index(v) for v in value if v in groups]
+				else:
+					value = slice(None)
+			
+			elif isinstance(value,(tuple,list,slice)):
+				pass
+			else:
+				value = slice(None)
+			groups = np.array(groups)
+
+
+			return {v: group.get_group(v).index.values.tolist() for v in groups[value]}
+		
+		_group = {}
+		for _key,_value in zip(key,value):
+
+			by = [_key_ for _key_ in key if _key_!=_key]
+			
+			index = [by.index(_key_) if _key_ in by else -1 for _key_ in key]
+			
+			if len(by) == 0:            
+				_group_ = {():_apply(group,key=_key,value=_value)}
+			else:
+				_group_ = dict(group.groupby(by).apply(_apply,key=_key,value=_value))
+
+			_group[_key] = {
+				tuple(([*(_key_ if isinstance(_key_,tuple) else [_key_]),__key__][i] for i in index)):__value__
+				for _key_,_value_ in _group_.items()
+				for __key__,__value__ in _value_.items()
+			}
+
+		unique = list(set.intersection(*map(set,_group.values())))
+		return unique
+
+	values = pd.DataFrame.from_dict(values,orient='index').reset_index()
+	values[keys] = values[keys].applymap(lambda data:np.squeeze(data))
+	values = values.sort_values(keys)
+
+	by = [*[attr for attr in keys if attr not in key]]
+	
+	values = values.groupby(by)
+	
+	unique = dict(values.apply(apply,key=key,value=value))
+
+	unique = {u if isinstance(u,tuple) else (u,):unique[u] for u in unique}
+
+	combinations = list(sorted(set((v if isinstance(v,tuple) else (v,) for u in unique.values() for v in u))))
+
+	permutations = {combination: [
+		tuple((combination[key.index(attr)] if attr in key else u[by.index(attr)] for attr in keys))
+		for u in unique if combination in unique[u]] for combination in combinations}
+	
+	return permutations
+
+
+
+
 
 
 
@@ -264,21 +390,32 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	multiple = sizes['hyperparameters'] > 1
 
 	# Get dataset names of data
-	names = list(sorted(set(name for name in data),key=lambda name:name))
+	names = list(natsorted(set(name for name in data),key=lambda name:name))
 
 	# Get attributes of data
-	attributes = list(set(attr for name in names for attr in data[name]))
+	attributes = list(set(attr for name in names 
+		for attr in data[name]
+		))
+
+
+	# Get unique scalar attributes
+	unique = {attr: tuple((*sorted(set(np.asscalar(data[name][attr])
+					for name in names 
+					if ((attr in data[name]) and (isinstance(data[name][attr],scalars)))
+					)),None))
+			for attr in attributes
+			}
+	unique = {attr: unique[attr] for attr in unique if len(unique[attr])>0}	
 
 	# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
-	sort = {attr: tuple(sorted(set(data[name][attr] 
+	sort = {attr: tuple((*sorted(set(data[name][attr] 
 					for name in names 
-					if (
-					(attr in data[name]) and 
-					# (isinstance(data[name][attr],scalars)) and 
-					(attr in hyperparameters.get('sort',attributes)) and
-					(attr not in hyperparameters.get('nullsort',[]))
-					))))
-			for attr in attributes}
+					if ((attr in data[name]) and (isinstance(data[name][attr],scalars)))
+					)),None))
+			for attr in attributes
+			if ((attr in hyperparameters.get('sort',attributes)) and
+			    (attr not in hyperparameters.get('nullsort',[])))
+			}
 	sort = {attr: sort[attr] for attr in sort if len(sort[attr])>0}
 
 	# Get data as arrays, with at least 1 leading dimension
@@ -334,7 +471,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 					'fit': lambda key,data,variables=None,dtype=None: np.nanmean(data,axis=0).astype(dtype),
 					}
 				} 
-			 	for kwarg in ['%s'%(ax) for ax in axes]},
+				for kwarg in ['%s'%(ax) for ax in axes]},
 			**{kwarg:{
 				'property':kwarg.replace('err',''),
 				'statistic':{			
@@ -342,13 +479,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 					'fit': lambda key,data,variables=None,dtype=None: np.nanstd(data,axis=0).astype(dtype),
 					}
 				}	 
-			 	for kwarg in ['%serr'%(ax) for ax in axes]},
+				for kwarg in ['%serr'%(ax) for ax in axes]},
 			}[kwarg]
 		for kwarg in statistics 			 	 			 	 
 		}
 
 	# Get keys of properties of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
 	keys = find(settings,properties)
+	labels = [dict(zip(key['label']['key'],key['label']['value'])) for key in keys]
 
 	# Load data
 	if hyperparameters.get('load'):
@@ -389,48 +527,71 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		permutations = {}
 
 		# Get variables data and statistics from keys
-
 		for occurrence,key in enumerate(keys):
 			variables[occurrence] = {}
-			combinations[occurrence] = [
-				[val for val in sort.get(attr,[]) if include(attr,value,val,key['label']['key'],sort,data)]
-				for attr,value in zip(key['label']['key'],key['label']['value'])
-				if all(attr is not None for attr in key['label']['key'])
+
+			# combinations[occurrence] = permute(key['label']['key'],key['label']['value'],list(sort),data)
+			combinations[occurrence] = 	[
+				[val for val in sort.get(attr,[]) 
+				if check(attr,labels[occurrence][attr],val,labels,unique,data)]
+				for attr in labels[occurrence]
 				]
-			print(key)
-			print(dict(zip(key['label']['key'],combinations[occurrence])))
+
 			permutations[occurrence] = {}
 
+			print('key',key)
+
+
+			# for combination in combinations[occurrence]:
 			for combination in itertools.product(*combinations[occurrence]):
 				variables[occurrence][combination] = {}
-				values = dict(zip(key['label']['key'],combination))
+				label = dict(zip(key['label']['key'],combination))
+				
+				# permutations[occurrence][combination] = combinations[occurrence][combination]
 				permutations[occurrence][combination] = [
 					[val for val in sort[attr] 
-					if ((attr not in values) or 
-						include(attr,values[attr],val,sort,sort,data))]
+					if (((attr not in label) and (val is not None)) or ((attr in label) and (val == label[attr])))]
 					for attr in sort
 					]
-				print(values,dict(zip(sort,permutations[occurrence][combination])))
-				print()
-				continue
-				included = [name for name in names 
-					if all(include(attr,values[attr],data[name][attr],values,data[name],data) 
-					for attr in values)]
+
+				# included = [name for name in names 
+				# 	if all(data[name][attr] == values[attr]
+				# 	for attr in values)]
+				allincluded = [name for name in names 
+					if include(name,labels[occurrence],label,data)] 
 				
-				if len(included) == 0:
+				if len(allincluded) == 0:
 					variables[occurrence].pop(combination);
 					continue
 
+				print('combination',label,combination,dict(zip(sort,permutations[occurrence][combination])))
+				print()
+				print(allincluded)
+				print()
+
+				# for permutation in permutations[occurrence][combination]:
 				for permutation in itertools.product(*permutations[occurrence][combination]):
 					variables[occurrence][combination][permutation] = {}
 					values = dict(zip(sort,permutation))
-					included = [name for name in names 
-						if all(include(attr,values[attr],data[name][attr],values,data[name],data) 
-						for attr in values)]
+
+					# included = [name for name in names 
+					# 	if all(data[name][attr] == values[attr]
+					# 	for attr in values)]
+
+					included = [name for name in allincluded 
+						if include(name,labels[occurrence],values,data)]
 					
 					if len(included) == 0:
 						variables[occurrence][combination].pop(permutation);
 						continue
+
+					print('permutation',label,values)
+					print()
+					print(included)					
+					print()
+					print()
+					print()
+					# continue
 
 					for kwarg in statistics:
 
@@ -467,36 +628,12 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								slices = (index,*(slice(data[name][key[prop]].shape[axis]) for axis in range(data[name][key[prop]].ndim)))
 								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 
-
-								# if kwarg in ['y']:
-								# 	print(name)
-								# 	print(data[name][key[prop]])
-								# 	print()
-
-								# value = nan
-								# slices = (index,*(slice(
-								# 		data[name][key[prop]].shape[axis] if axis == (ndim[key[prop]]-1) else None,None) 
-								# 	for axis in range(data[name][key[prop]].ndim)))
-								# variables[occurrence][combination][permutation][kwarg][stat][slices] = value
-								
 							# Get statistics
-							# if kwarg in ['y']:
-							# 	print('---')
-							# 	print(variables[occurrence][combination][permutation][kwarg][stat])
-							# 	print('--- mean 0---')							
-							# 	print(np.nanmean(variables[occurrence][combination][permutation][kwarg][stat],axis=0))
-
 							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
 								key,variables[occurrence][combination][permutation][kwarg][stat],
 								variables=variables[occurrence][combination][permutation],dtype=dtype)
-							# if kwarg in ['y']:
-							# 	print('---')
-							# 	print(variables[occurrence][combination][permutation][kwarg][stat])							
-							# 	print('---')							
-							# 	print()
-							# 	print()
-							# 	print()
 
+				# continue
 				variables[occurrence][combination] = {
 					kwarg:{
 						stat: np.array([variables[occurrence][combination][permutation][kwarg][stat] 
@@ -507,23 +644,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 						}
 					for kwarg in statistics}
 
-			print()
 			if len(variables[occurrence]) == 0:
 				variables.pop(occurrence)
 
-	# 	print('---value---')
-	# 	for kwarg in statistics:
-	# 		for stat in statistics[kwarg]['statistic']:
-	# 			print(stat,variables[occurrence][combination][kwarg][stat].shape)
-	# 			if stat == 'x' and key['y'] == 'parameters':
-	# 				print(variables[occurrence][combination][kwarg][stat][0,0,0])
-	# 				print(variables[occurrence][combination][kwarg][stat][-1,-1,-1])
+	# return fig,ax
 
-
-		# 	print()
-		# print()
-		# print()	
-	return fig,ax
 	# Dump data
 	if hyperparameters.get('dump'):
 		attr = 'process'

@@ -415,7 +415,7 @@ def run(hyperparameters):
 
 	for key in settings['hyperparameters']:		
 
-		if not any(settings['boolean'][attr] for attr in ['load','dump','train','plot']):
+		if not any(settings['boolean'][attr] for attr in ['load','dump','train']):
 			continue		
 
 		hyperparameters = settings['hyperparameters'][key]
