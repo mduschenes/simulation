@@ -454,6 +454,20 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			for null in nulls:
 				plotting[null] = plotting[attr]
 
+	nullplotting = hyperparameters.get('nullplotting',{})
+	for instance in list(nullplotting):
+		if instance not in settings:
+			nullplotting.pop(instance)
+			continue
+		if nullplotting[instance] is None:
+			nullplotting[instance] = settings[instance]
+		
+		for subinstance in nullplotting:
+			if subinstance in settings[instance]:
+				settings[instance].pop(subinstance)
+		if len(settings[instance]) == 0:
+			settings.pop(instance)
+
 	# Get texify
 	texify = lambda string: Texify(string,hyperparameters.get('texify',{}),usetex=hyperparameters.get('usetex',True))
 

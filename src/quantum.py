@@ -1182,12 +1182,25 @@ class Object(object):
 				elif attr in ['iteration']:
 					new = '%s.max'%(attr)
 					New = hyperparameters['optimize']['track'][attr][-1]
+					returns[new] = New
+
+					new = 'status'
+					New = value/hyperparameters['optimize']['track'][attr][-1]
+
+					n = 4
+					close = [i/n for i in range(n)]
+
+					for i in range(n):
+						i /= n
+						if New > i and abs(New-i)< 1/hyperparameters['optimize']['track'][attr][-1]:
+							New = i
 
 					returns[new] = New
 
-				elif attr in ['value']:
+				elif attr in ['objective']:
 					new = 'infidelity'
 					New = 1 - value
+					returns[new] = New
 
 			return returns
 
@@ -1222,7 +1235,8 @@ class Object(object):
 		for key in list(data):
 			for attr in list(data[key]):			
 				data[key].update(func(attr,data[key][attr],self))
-
+			attr = 'status'
+			print(key,list(data[key]),attr,data[key][attr])
 
 		# Dump data
 		path = self.hyperparameters['sys']['path']['data']['data']
