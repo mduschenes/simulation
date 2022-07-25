@@ -323,6 +323,39 @@ def find(dictionary,properties):
 			 for prop in key} for key in keys]
 	return keys
 
+def loader(kwargs):
+	'''
+	Load data
+	Args:
+		kwargs (dict[str,object]): Data to load
+	'''
+
+	returns = {}
+
+	returns['multiple'] = False
+
+	for kwarg in kwargs:
+		if isinstance(kwargs[kwarg],str):
+			kwargs[kwarg] = [kwargs[kwarg]]		
+		if not isinstance(kwargs[kwarg],dict):
+			# paths = ['data/data.hdf5']
+			paths = set(kwargs[kwarg])
+			default = {}
+			kwargs[kwarg] = {}
+			returns['multiple'] |= len(paths)>1
+			for path in paths:
+				print('Loading:',path)
+				directory,ext = split(path,directory=-1,ext=True)
+				kwargs[kwarg].update(load(path,default=default))
+			# print('Dumping',kwarg,directory,ext)
+			# dump(kwargs[kwarg]['value'],join(directory,kwarg,ext=ext))
+		else:
+			kwargs[kwarg] = kwargs[kwarg]
+			returns['multiple'] |= False
+	
+	return returns
+
+
 def process(data,settings,hyperparameters,fig=None,ax=None):
 	'''
 	Process data
@@ -368,26 +401,13 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 	# Setup kwargs
 	kwargs = ['data','settings','hyperparameters']
-	kwargs = {kwarg: {'value':value,'size':None,} for kwarg,value in zip(kwargs,[data,settings,hyperparameters])}
+	kwargs = {kwarg: value for kwarg,value in zip(kwargs,[data,settings,hyperparameters])}
 
-	for kwarg in kwargs:
-		if isinstance(kwargs[kwarg]['value'],str):
-			kwargs[kwarg]['value'] = [kwargs[kwarg]['value']]
-		if not isinstance(kwargs[kwarg]['value'],dict):
-			paths = set(kwargs[kwarg]['value'])
-			kwargs[kwarg]['value'] = {}
-			kwargs[kwarg]['size'] = len(paths)
-			for path in paths:
-				default = {}
-				kwargs[kwarg]['value'].update(load(path,default=default))
-		else:
-			kwargs[kwarg]['value'] = kwargs[kwarg]['value']
-			kwargs[kwarg]['size'] = 1
+	returns = loader(kwargs)
+
+	data,settings,hyperparameters = (kwargs[kwarg] for kwarg in kwargs)
 
 
-	data,settings,hyperparameters = [kwargs[kwarg]['value'] for kwarg in kwargs]
-	sizes = {kwarg: kwargs[kwarg]['size'] for kwarg in kwargs}
-	multiple = sizes['hyperparameters'] > 1
 
 	# Get dataset names of data
 	names = list(natsorted(set(name for name in data),key=lambda name:name))
@@ -397,26 +417,46 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		for attr in data[name]
 		))
 
+	subattributes = [attr
+		for attr in attributes
+		if ((attr in hyperparameters.get('sort',attributes)) and
+	    (attr not in hyperparameters.get('nullsort',[])))
+	    ]
+
 
 	# Get unique scalar attributes
 	unique = {attr: tuple((*sorted(set(np.asscalar(data[name][attr])
 					for name in names 
-					if ((attr in data[name]) and (isinstance(data[name][attr],scalars)))
+					if ((attr in data[name]) and 
+						((data[name][attr].size == 1) and isinstance(np.asscalar(data[name][attr]),scalars))
+						)
 					)),None))
 			for attr in attributes
 			}
 	unique = {attr: unique[attr] for attr in unique if len(unique[attr])>0}	
 
 	# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
-	sort = {attr: tuple((*sorted(set(data[name][attr] 
+	sort = {attr: tuple((*sorted(set(np.asscalar(data[name][attr])
 					for name in names 
-					if ((attr in data[name]) and (isinstance(data[name][attr],scalars)))
+					if ((attr in data[name]) and 
+						((data[name][attr].size == 1) and isinstance(np.asscalar(data[name][attr]),scalars))
+						)
 					)),None))
-			for attr in attributes
-			if ((attr in hyperparameters.get('sort',attributes)) and
-			    (attr not in hyperparameters.get('nullsort',[])))
+			for attr in subattributes
 			}
 	sort = {attr: sort[attr] for attr in sort if len(sort[attr])>0}
+
+
+	# Get combinations of attributes (including None) to sort on and attributes not to sort on if not existent in plot properties x,y,label
+	allowed = list(natsorted(set((tuple((np.asscalar(data[name][attr])
+				for attr in subattributes))
+				for name in names
+				))))
+	allowed = [
+				*allowed,
+				*sorted(set([(*value[:i],None,*value[i+1:]) for value in allowed for i in range(len(value))]),
+						key = lambda x: tuple(((u is not None,u) for u in x)))
+			]
 
 	# Get data as arrays, with at least 1 leading dimension
 	for name in names:
@@ -434,7 +474,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		delimiter[attr] = hyperparameters.get('delimiter','.')
 		directory[attr],file[attr],ext[attr] = split(
 			hyperparameters.get('path',{}).get(attr),
-			directory=True if not multiple else -1,file=True,ext=True)
+			directory=True if (0 and not returns['multiple']) else -1,file=True,ext=True)
 		path[attr] = join(directory[attr],file[attr],ext=ext[attr])
 
 	# Get plot fig and axes
@@ -460,9 +500,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			nullplotting.pop(instance)
 			continue
 		if nullplotting[instance] is None:
-			nullplotting[instance] = settings[instance]
+			nullplotting[instance] = list(settings[instance])
 		
-		for subinstance in nullplotting:
+		for subinstance in nullplotting[instance]:
 			if subinstance in settings[instance]:
 				settings[instance].pop(subinstance)
 		if len(settings[instance]) == 0:
@@ -542,6 +582,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 		# Get variables data and statistics from keys
 		for occurrence,key in enumerate(keys):
+			if occurrence  < 0:
+				continue
 			variables[occurrence] = {}
 
 			# combinations[occurrence] = permute(key['label']['key'],key['label']['value'],list(sort),data)
@@ -555,17 +597,23 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 			print('key',key)
 
-
 			# for combination in combinations[occurrence]:
 			for combination in itertools.product(*combinations[occurrence]):
 				variables[occurrence][combination] = {}
 				label = dict(zip(key['label']['key'],combination))
 				
 				# permutations[occurrence][combination] = combinations[occurrence][combination]
+				# permutations[occurrence][combination] = [
+				# 	[val for val in sort[attr] 
+				# 	if (((attr not in label) and (val is not None)) or ((attr in label) and (val == label[attr])))]
+				# 	for attr in sort
+					# ]
+
 				permutations[occurrence][combination] = [
-					[val for val in sort[attr] 
-					if (((attr not in label) and (val is not None)) or ((attr in label) and (val == label[attr])))]
-					for attr in sort
+					permutation for permutation in allowed if all(
+						(((attr not in label) and (val is not None)) or ((attr in label) and (val == label[attr])))
+						for attr,val in zip(subattributes,permutation)
+						)
 					]
 
 				# included = [name for name in names 
@@ -576,17 +624,18 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 				
 				if len(allincluded) == 0:
 					variables[occurrence].pop(combination);
+					print('continue --',combination)
 					continue
 
-				print('combination',label,combination,dict(zip(sort,permutations[occurrence][combination])))
-				print()
-				print(allincluded)
-				print()
+				print('combination',label,combination)
+				# print()
+				# print(allincluded)
+				# print()
 
-				# for permutation in permutations[occurrence][combination]:
-				for permutation in itertools.product(*permutations[occurrence][combination]):
+				for permutation in permutations[occurrence][combination]:
+				# for permutation in itertools.product(*permutations[occurrence][combination]):
 					variables[occurrence][combination][permutation] = {}
-					values = dict(zip(sort,permutation))
+					values = dict(zip(subattributes,permutation))
 
 					# included = [name for name in names 
 					# 	if all(data[name][attr] == values[attr]
@@ -597,13 +646,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 					
 					if len(included) == 0:
 						variables[occurrence][combination].pop(permutation);
+						print('continue',permutation)
 						continue
 
 					print('permutation',label,values)
-					print()
 					print(included)					
-					print()
-					print()
 					print()
 					# continue
 
@@ -647,7 +694,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								key,variables[occurrence][combination][permutation][kwarg][stat],
 								variables=variables[occurrence][combination][permutation],dtype=dtype)
 
+				# print()
 				# continue
+				print('merging')
 				variables[occurrence][combination] = {
 					kwarg:{
 						stat: np.array([variables[occurrence][combination][permutation][kwarg][stat] 
@@ -664,13 +713,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	# return fig,ax
 
 	# Dump data
-	if hyperparameters.get('dump'):
+	if hyperparameters.get('dump') or 1:
 		attr = 'process'
 		kwargs = {
 			'conversion':lambda name: (
 				str(name) if not isinstance(name,tuple) else 
 				'____'+'____'.join((str(i) for i in name)))
 		}
+		print('Dumping',path[attr])
 		dump(variables,path[attr],**kwargs)
 	
 
@@ -752,6 +802,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	# reshaping of variables data based on 
 	# plotting = {'y':{'x':{'axis':{attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}}}}
 	for instance in list(settings):
+		print('instance',instance)
 		for subinstance in list(settings[instance]):
 			subupdated.clear()
 			for setting in special:
@@ -969,7 +1020,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								continue
 
 							if stat in [None]:
-								value = '--'
+								value = '-'
 							elif stat in ['fit']:
 								value = '-'
 							else:

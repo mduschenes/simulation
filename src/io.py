@@ -211,37 +211,40 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 	Returns:
 		data (object): Loaded object
 	'''	
-	def convert(name,conversion=None,**kwargs):
-		if conversion is None:
-			conversion = lambda name: str(name)
-		key = conversion(name)
-		return key
+	# def convert(name,conversion=None,**kwargs):
+	# 	if conversion is None:
+	# 		conversion = lambda name: str(name)
+	# 	key = conversion(name)
+	# 	return key
 
 	data = {}
 	
 	if isinstance(obj, h5py._hl.group.Group):
 		names = natsorted(obj)
 		for name in names:
-			key = convert(name,**kwargs)
+			key = name #convert(name,**kwargs)
 			if isinstance(obj[name], h5py._hl.group.Group):	
 				data[key] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
 			else:
 				# assert isinstance(obj[name],h5py._hl.dataset.Dataset)
-				name = name.replace('.real','').replace('.imag','')
-				try:
-					name_real = "%s.%s"%(name,'real')
-					data_real = obj[name_real][...]
+				if any(attr in name for attr in ('.real','.imag')):
+					name = name.replace('.real','').replace('.imag','')
+					try:
+						name_real = "%s.%s"%(name,'real')
+						data_real = obj[name_real][...]
 
-					name_imag = "%s.%s"%(name,'imag')
-					data_imag = obj[name_imag][...]
+						name_imag = "%s.%s"%(name,'imag')
+						data_imag = obj[name_imag][...]
 
-					data[key] = data_real + 1j*data_imag
-				except:
+						data[key] = data_real + 1j*data_imag
+					except:
+						data[key] = obj[name][...]
+				else:
 					data[key] = obj[name][...]
 
 		names = list(set((name for name in obj.attrs)))
 		for name in names:
-			key = convert(name,**kwargs)
+			key = name #convert(name,**kwargs)
 			data[key] = obj.attrs[name]
 	else:
 		data = obj.value
@@ -277,16 +280,16 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 		kwargs (dict): Additional loading keyword arguments
 	'''		
 
-	def convert(name,conversion=None,**kwargs):
-		if conversion is None:
-			conversion = lambda name: str(name)
-		key = conversion(name)
-		return key
+	# def convert(name,conversion=None,**kwargs):
+	# 	if conversion is None:
+	# 		conversion = lambda name: str(name)
+	# 	key = conversion(name)
+	# 	return key
 
 	if isinstance(obj,dict):
 		names = obj
 		for name in names:
-			key = convert(name,**kwargs)
+			key = name #convert(name,**kwargs)
 			if isinstance(obj[name],dict):
 				path.create_group(key)
 				_dump_hdf5(obj[name],path[key],wr=wr,ext=ext,**kwargs)

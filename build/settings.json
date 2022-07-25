@@ -28,9 +28,9 @@
 	},
 "boolean":{
 	"train":0,
-	"load":1,
-	"dump":1,
-	"plot":0
+	"load":0,
+	"dump":0,
+	"plot":1
 	},
 "seed":{
 	"seed":123321,
@@ -164,11 +164,20 @@
 	"seed":null,
 	"bounds":[-1,1]
 	},
+"state": {
+	"string":"haar",
+	"category":"random",
+	"shape":[1,-1,-1],
+	"initialization":"random",
+	"random":"gaussian",
+	"seed":null,
+	"bounds":[-1,1]	
+},
 "process": {
-	"sort": ["N","D","d","L","delta","M","T","tau","status"],
+	"sort": ["N","D","d","L","delta","M","T","tau","iteration"],
 	"nullsort": [],
-	"load":0,
-	"dump":0,
+	"load":1,
+	"dump":1,
 	"delimiter":".",
 	"plotting":{
 		"objective":{"iteration":{"plot":[]}},

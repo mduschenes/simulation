@@ -33,7 +33,7 @@ for PATH in PATHS:
 from src.utils import logconfig
 from src.utils import jit,gradient,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
+from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
 from src.utils import summation,exponentiation
 from src.utils import inner_abs2,inner_real2,inner_imag2
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
@@ -49,6 +49,7 @@ from src.dictionary import leaves,counts,plant,grow
 
 from src.parameters import parameterize
 from src.operators import operatorize
+from src.states import stateize
 
 from src.io import load,dump,copy,join,split
 
@@ -762,10 +763,20 @@ class Object(object):
 		data = None
 		shape = self.shape[2:]
 		hyperparams = hyperparameters['label']
-		index = self.N
+		size = self.N
 		dtype = self.dtype
 
-		label = operatorize(data,shape,hyperparams,index=index,dtype=dtype)
+		label = operatorize(data,shape,hyperparams,size=size,dtype=dtype)
+
+
+		# Get states
+		data = None
+		shape = [-1,*self.shape[2:]]
+		hyperparameters = hyperparameters['state']
+		size = self.N
+		dtype = self.dtype
+
+		states = stateize(data,shape,hyperparams,size=size,dtype=dtype)
 
 		# Update class attributes
 		self.parameters = parameters
@@ -1165,7 +1176,7 @@ class Object(object):
 						])
 
 					new = '%s.relative'%(attr)
-					New = np.abs((obj.__layers__(value,layer)[indices] - 
+					New = abs((obj.__layers__(value,layer)[indices] - 
 						obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices])/(
 						obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices]+1e-20))
 					returns[new] = New
@@ -1186,14 +1197,6 @@ class Object(object):
 
 					new = 'status'
 					New = value/hyperparameters['optimize']['track'][attr][-1]
-
-					n = 4
-					close = [i/n for i in range(n)]
-
-					for i in range(n):
-						i /= n
-						if New > i and abs(New-i)< 1/hyperparameters['optimize']['track'][attr][-1]:
-							New = i
 
 					returns[new] = New
 
@@ -1236,7 +1239,7 @@ class Object(object):
 			for attr in list(data[key]):			
 				data[key].update(func(attr,data[key][attr],self))
 			attr = 'status'
-			print(key,list(data[key]),attr,data[key][attr])
+			print(key,data[key][attr])
 
 		# Dump data
 		path = self.hyperparameters['sys']['path']['data']['data']
@@ -1628,6 +1631,85 @@ class Unitary(Hamiltonian):
 		return derivative
 
 
+def bloch(state,path=None):
+	'''
+	Plot state on Bloch Sphere
+	Args:
+		state (array): States of shape (d,) or (n,d) or (n,d,d) for n, d dimensional states
+		path (str,boolean): Path to save plot, or boolean to save
+	Returns:
+		fig (matplotlib.figure): Figure of plots
+		ax (matplotlib.axes): Axes of plots
+	'''
+	
+	import numpy as np
+	# import matplotlib
+	# import matplotlib.pyplot as plt
+
+	def coordinates(state):
+		'''
+		Convert state vector to Bloch vector
+		Args:
+			state (array): States of shape (d,) or (n,d) or (n,d,d)  for n, d dimensional states
+		Returns:
+			state (array): States of shape (1,d) or (n,d) or (n,d,d) for n, d dimensional states
+		'''
+
+		transformation = np.array([
+			[[0, 1], [1, 0]],
+			[[0, -1j], [1j, 0]],
+			[[1, 0], [0, -1]]
+			])
+
+		ndim = state.ndim - 1
+
+		if ndim == 0:
+			state = np.tensordot(state.conj(),np.tensordot(transformation,state,([-1],[-1])),([-1],[-1])).reshape(1,-1)
+		elif ndim == 1:
+			# state = np.tensordot(state.conj(),np.tensordot(transformation,state,([-1],[-1])),([-1],[-1]))
+			state = np.array([np.tensordot(s.conj(),np.tensordot(transformation,s,([-1],[-1])),([-1],[-1])) for s in state])
+		elif ndim == 2:
+			# state = np.tensordot(state.conj(),np.tensordot(transformation,state,([-1],[-1])),([-1],[-1]))
+			state = np.array([np.tensordot(s.conj(),np.tensordot(transformation,s,([-1],[-1])),([-1],[-1])) for s in state])
+		else:
+			pass
+		return state
+
+
+	fig = plt.figure(figsize=(6, 6))
+	ax = fig.add_subplot(111, projection='3d')
+	fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+
+	ax.grid(False)
+	ax.set_axis_off()
+	ax.view_init(30, 45)
+	ax.dist = 7
+
+	# Draw the axes (source: https://github.com/matplotlib/matplotlib/issues/13575)
+	x, y, z = np.array([[-1.5,0,0], [0,-1.5,0], [0,0,-1.5]])
+	u, v, w = np.array([[3,0,0], [0,3,0], [0,0,3]])
+	ax.quiver(x, y, z, u, v, w, arrow_length_ratio=0.05, color='black', linewidth=0.5)
+
+	ax.text(0, 0, 1.7, r'|0⟩', color='black', fontsize=16)
+	ax.text(0, 0, -1.9, r'|1⟩', color='black', fontsize=16)
+	ax.text(1.9, 0, 0, r'|+⟩', color='black', fontsize=16)
+	ax.text(-1.7, 0, 0, r'|–⟩', color='black', fontsize=16)
+	ax.text(0, 1.7, 0, r'|i+⟩', color='black', fontsize=16)
+	ax.text(0,-1.9, 0, r'|i–⟩', color='black', fontsize=16)
+
+	state = coordinates(state)
+
+	print(state.shape)
+
+	ax.scatter(state[:,0], state[:,1], state[:, 2], c='#e29d9e', alpha=0.3
+	)
+
+	if path:
+		if not isinstance(path,str):
+			path = 'bloch.pdf'
+		fig.savefig(path,bbox_inches='tight')
+
+	return fig,ax
 
 def distance(a,b):
 	'''
