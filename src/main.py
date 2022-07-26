@@ -31,7 +31,7 @@ from src.utils import logconfig
 conf = 'config/logging.conf'
 logger = logconfig(__name__,conf=conf)
 
-from src.quantum import run
+from src.run import run
 from src.functions import functions
 
 def main(args):

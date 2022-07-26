@@ -1160,7 +1160,6 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 						attr = 'shape'
 						index = ('put','category','all')
 						shape = data[attr][category][parameter][group][layer][index]
-
 						data[attribute][category][layer] = zeros(shape,dtype=dtype)
 
 					if data[attribute][layer] is None:							

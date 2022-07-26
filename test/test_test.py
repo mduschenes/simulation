@@ -19,7 +19,7 @@ from src.utils import inner_abs2,inner_real2,inner_imag2
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
 from src.utils import eigh,qr
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
-from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isarray,isndarray,isclose,isnaninf
+from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,is_array,is_ndarray,isclose,is_naninf
 from src.utils import parse,to_str,to_number,scinotation,datatype,slice_size
 from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
@@ -94,7 +94,7 @@ def test_load_dump(path,tol):
 
 	types = (dict,list,)
 	exceptions = lambda a,b: any(any(e(a) for e in exception) and any(e(b) for e in exception) 
-		for exception in [[callable],[isarray,isndarray],
+		for exception in [[callable],[is_array,is_ndarray],
 							[lambda a: isinstance(a,dict) and ((len(a)==0) or all(callable(a[item]) for item in a))]])
 	equalizer(obj.hyperparameters,new.hyperparameters,types=types,exceptions=exceptions)
 
@@ -177,3 +177,9 @@ def test_grad(path,tol):
 def test_main(path,tol):
 	main([path])
 	return
+
+if __name__ == '__main__':
+	path = 'config/test.json'
+	tol = 5e-8 
+	test_derivative(path,tol)
+	test_grad(path,tol)

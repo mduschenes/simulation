@@ -159,11 +159,11 @@ def value_and_gradient(func):
 	Returns:
 		value_and_grad (callable): Value and Gradient of function
 	'''
-	@jit
-	def _value_and_gradient(x):
-		return jax.value_and_grad(func)(x)
-
-	return _value_and_gradient
+	# @jit
+	# def _value_and_gradient(x):
+	# 	return jax.value_and_grad(func)(x)
+	value_and_grad = jit(jax.value_and_grad(func))
+	return value_and_grad
 
 def gradient(func):
 	'''
@@ -173,11 +173,11 @@ def gradient(func):
 	Returns:
 		grad (callable): Gradient of function
 	'''
-	@jit
-	def _gradient(x):
-		return jax.grad(func)(x)
-
-	return _gradient	
+	# @jit
+	# def grad(x):
+	# 	return jax.grad(func)(x)
+	grad = jit(jax.grad(func))
+	return 
 
 
 def gradient_finite(func,tol=1e-6):
@@ -190,10 +190,10 @@ def gradient_finite(func,tol=1e-6):
 		out (array): Array of gradient
 	'''
 	@jit
-	def _gradient(x):
+	def grad(x):
 		return vmap(lambda v,x=x,tol=tol: (func(x+tol*v)-func(x-tol*v))/(2*tol))(eye(x.size))
 
-	return _gradient
+	return grad
 
 
 def value_and_gradient_finite(func,tol=1e-6):
@@ -206,10 +206,10 @@ def value_and_gradient_finite(func,tol=1e-6):
 		out (array): Array of gradient
 	'''
 	@jit
-	def _value_and_gradient(x):
+	def value_and_grad(x):
 		return (func(x),vmap(lambda v,x=x,tol=tol: (func(x+tol*v)-func(x-tol*v))/(2*tol))(eye(x.size)))
 	
-	return _value_and_gradient
+	return value_and_grad
 
 
 def gradient_fwd(func):
@@ -221,10 +221,9 @@ def gradient_fwd(func):
 		grad (callable): Gradient of function
 	'''
 	@jit
-	def _gradient(x):
+	def grad(x):
 		return moveaxis(jax.jacfwd(func)(x),-1,0)
-
-	return _gradient
+	return grad
 
 def gradient_rev(func):
 	'''
@@ -235,10 +234,26 @@ def gradient_rev(func):
 		grad (callable): Gradient of function
 	'''
 	@jit
-	def _gradient(x):
+	def grad(x):
 		return moveaxis(jax.jacrev(func)(x),-1,0)
+	return grad
 
-	return _gradient
+
+def hessian(func):
+	'''
+	Compute hessian of function
+	Args:
+		func (callable): Function to compile
+	Returns:
+		grad (callable): Hessian of function
+	'''
+	# @jit
+	# def grad(x):
+	# 	return gradient_fwd(gradient_rev(func))(x)
+	grad = jit(jax.jacfwd(jax.jacrev(func)))
+	return grad
+
+
 
 
 def datatype(dtype):
@@ -690,7 +705,7 @@ class identity(array):
 		out (array): array
 	'''
 	def __new__(self,n,*args,**kwargs):
-		return jax.device_put(np.eye(n,*args,**kwargs))
+		return jax.device_put(np.eye(*((n,) if isinstance(n,int) else n),*args,**kwargs))
 
 
 class hadamard(array):
@@ -1686,6 +1701,20 @@ def trace(a):
 		out (array): Trace of array
 	'''	
 	return np.trace(a)
+
+@partial(jit,static_argnums=(1,))
+def rank(a,tol=None):
+	'''
+	Calculate rank of array
+	Args:
+		a (array): Array to calculate rank
+	Returns:
+		out (array): rank of array
+	'''		
+	try:
+		return np.linalg.matrix_rank(a,tol=tol)
+	except:
+		return 0
 
 @jit
 def abs(a):
@@ -3257,13 +3286,12 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 		if initialization in ['interpolation']:
 			# Parameters are initialized as interpolated random values between bounds
 			interpolation = hyperparameters['interpolation']
-			smoothness = min(shape[-1]//2,hyperparameters['smoothness'])
+			smoothness = max(1,min(shape[-1]//2,hyperparameters['smoothness']))
 			shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
 			pts_interp = smoothness*arange(shape_interp[-1])
 			pts = arange(shape[-1])
 
 			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
-
 			for axis in range(ndim):
 				for i,value in zip(constant[axis]['slice'],constant[axis]['value']):
 					j = shapes[axis] + i if i < 0 else i
@@ -3271,7 +3299,10 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
 						parameters_interp = parameters_interp.at[indices].set(value)
 
-			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
+			try:
+				parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
+			except:
+				parameters = rand(shape,key=key,bounds=bounds,random=random)
 
 			for axis in range(ndim):
 				for i,value in zip(constant[axis]['slice'],constant[axis]['value']):

@@ -153,11 +153,11 @@ def check(hyperparameters):
 
 	section = 'model'
 	updates = {
-		# 'tau': {
-		# 	'value': (lambda hyperparameters: hyperparameters[section]['tau']/hyperparameters['hyperparameters']['scale']),
-		# 	'default': (lambda hyperparameters: 1),
-		# 	'conditions': (lambda hyperparameters: hyperparameters['hyperparameters'].get('scale') is not None)
-		# },		
+		'tau': {
+			'value': (lambda hyperparameters: hyperparameters[section]['tau']/hyperparameters['hyperparameters']['scale']),
+			'default': (lambda hyperparameters: 1),
+			'conditions': (lambda hyperparameters: hyperparameters['hyperparameters'].get('scale') is not None)
+		},		
 	}			
 	for attr in updates:						
 		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
@@ -265,6 +265,8 @@ def setup(hyperparameters):
 	settings = {}	
 
 	# Check hyperparameters have correct values
+	if hyperparameters is None:
+		hyperparameters = {}
 	check(hyperparameters)
 
 	# Get timestamp

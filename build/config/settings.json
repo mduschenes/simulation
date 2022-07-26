@@ -1,4 +1,5 @@
 {
+"class":"src.quantum.Unitary",
 "sys":{
 	"directory":{
 		"data":"data",
@@ -29,17 +30,17 @@
 	"train":1,
 	"load":0,
 	"dump":1,
-	"plot":1
+	"plot":0
 	},
 "seed":{
 	"seed":123321,
-	"size":3,
+	"size":1,
 	"reset":123321
 	},
 "permutations":{
-	"model__N":[2],
-	"model__M":[200],
-	"optimize__iterations":[10]
+	"model__N":[3],
+	"model__M":[1000],
+	"optimize__iterations":[20]
 	},
 "model":{
 	"N":2,
@@ -59,6 +60,7 @@
 		"format":"array",
 		"key":null,
 		"seed":null,
+		"timestamp":null,
 		"device":"cpu",
 		"verbose":"info",
 		"logger":null
@@ -87,7 +89,9 @@
 		"iteration":[],"objective":[],
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[],		
-		"parameters":[]
+		"parameters":[],
+		"fisher":[],
+		"hessian":[]
 		}
 	},
 "parameters":{
@@ -152,7 +156,7 @@
 		}
 	},
 "label": {
-	"string":"control",
+	"string":"random",
 	"category":"constant",
 	"parameters":null,
 	"shape":[-1,-1],
@@ -162,11 +166,20 @@
 	"seed":null,
 	"bounds":[-1,1]
 	},
+"state": {
+	"string":"haar",
+	"category":"constant",
+	"shape":[1,-1,-1],
+	"initialization":"random",
+	"random":"gaussian",
+	"seed":null,
+	"bounds":[-1,1]	
+},
 "process": {
 	"sort": ["N","D","d","L","delta","M","T","tau","iteration"],
 	"nullsort": [],
 	"load":0,
-	"dump":0,
+	"dump":1,
 	"delimiter":".",
 	"plotting":{
 		"objective":{"iteration":{"plot":[]}},
@@ -174,6 +187,7 @@
 		"parameters.relative":{"":{"axis":[[0,1],[2],[],[-1]]}},
 		"parameters.relative.mean":{"M":{"axis":[[],[],[],[-1]]}}
 	},	
+	"nullplotting":{"None.parameters.iteration.M":null},
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i"
 	}

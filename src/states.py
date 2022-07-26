@@ -43,27 +43,31 @@ def haar(shape,bounds,random,seed,dtype):
 	'''
 	Initialize haar random state from 0 state
 	Args:
-		shape (iterable[int]): Shape of operator
-		bounds (iterable): Bounds on operator value
+		shape (iterable[int]): Shape of state
+		bounds (iterable): Bounds on state value
 		random (str): Type of random value
 		seed (int,key): Seed for random number generator
-		dtype (data_type): Data type of operator
+		dtype (data_type): Data type of state
 	Returns:
-		data (array): Array of operator
+		data (array): Array of state
 	'''
 
 	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
 	data /= sqrt(2)
 
-	Q,R = qr(data)
-	R = diag(R)
-	R = diag(R/abs(R))
-	
-	data = Q.dot(R)
+	if data.ndim == 2:
+		data = data.reshape(1,*data.shape)
 
-	data = data[:,0]
+	n = data.shape[0]
+	for i in range(n):
 
-	data = data.astype(dtype)
+		Q,R = qr(data[i])
+		R = diag(R)
+		R = diag(R/abs(R))
+		
+		data = data.at[i].set(Q.dot(R))
+
+	data = data.reshape(shape).astype(dtype)[:,:,0]
 
 	return data
 
@@ -87,7 +91,7 @@ def stateize(data,shape,hyperparameters,size=None,dtype=None):
 		states (array): Array of states
 	'''
 
-	# Update shape
+	# Shape of data
 	if isinstance(shape,int):
 		shape = [-1,shape,shape]
 	elif len(shape) < 3:
@@ -96,9 +100,6 @@ def stateize(data,shape,hyperparameters,size=None,dtype=None):
 		hyperparameters['shape'] = [hyperparameters['shape'],-1,-1]
 	shape = [(hyperparameters['shape'][0] if hyperparameters['shape'][0] != -1 else 1) if shape[0] == -1 else shape[0],
 			*[(s if t==-1 else t) for s,t in zip(shape[1:],hyperparameters['shape'][1:])]]
-
-	# Dimension of data
-	n,shape = shape[0],shape[1:]
 
 	# Delimiter for string
 	delimiter = '_'
@@ -129,11 +130,16 @@ def stateize(data,shape,hyperparameters,size=None,dtype=None):
 			strings = None
 			locality = size			
 
-		assert (size%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,size)
+		assert (size%locality == 0), 'Incorrect state with locality %d !%% size %d'%(locality,size)
+
+		# TODO: Vectorized tensorproduct over state samples
+		assert (size == locality), 'Only locality = size states'
 
 		if string is not None:
-			def func(i,shape=shape,string=string,locality=locality,hyperparameters=hyperparameters,dtype=dtype):
-				state = tensorprod([
+			# def func(i,shape=shape,string=string,locality=locality,hyperparameters=hyperparameters,dtype=dtype):
+			# 	return state
+			# data = vmap(func)(arange(n))
+			data = state = tensorprod([
 					props[string]['func'](shape,
 						bounds=hyperparameters['bounds'],
 						random=hyperparameters['random'],
@@ -143,8 +149,6 @@ def stateize(data,shape,hyperparameters,size=None,dtype=None):
 					for string in strings
 					]*(size//locality)
 					)
-				return state
-			data = vmap(func)(arange(n))
 		else:
 			data = array(load(data))
 	

@@ -29,7 +29,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr
+from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,allclose
 from src.utils import slice_slice
 from src.utils import pi,e
@@ -62,6 +62,24 @@ def haar(shape,bounds,random,seed,dtype):
 	return data
 
 
+def id(shape,bounds,random,seed,dtype):
+	'''
+	Initialize identity unitary operator
+	Args:
+		shape (iterable[int]): Shape of operator
+		bounds (iterable): Bounds on operator value
+		random (str): Type of random value
+		seed (int,key): Seed for random number generator
+		dtype (data_type): Data type of operator
+	Returns:
+		data (array): Array of operator
+	'''
+	
+	data = identity(shape)
+
+	data = data.astype(dtype)
+
+	return data
 
 def cnot(shape,bounds,random,seed,dtype):
 	'''
@@ -162,7 +180,7 @@ def operatorize(data,shape,hyperparameters,size=None,dtype=None):
 		**{string: {'func':hadamard,'locality':1} for string in ['hadamard','H']},
 		**{string: {'func':cnot,'locality':2} for string in ['cnot','CNOT','C']},
 		**{string: {'func':toffoli,'locality':3} for string in ['toffoli','TOFFOLI','T']},
-		**{string: {'func':{2:cnot,3:toffoli}[size],'locality':size} for string in ['control']},
+		**{string: {'func':{1:id,2:cnot,3:toffoli}.get(size,id),'locality':size} for string in ['control']},
 		None: {'func':haar,'locality':size},
 		}
 

@@ -27,20 +27,20 @@
 		}
 	},
 "boolean":{
-	"train":0,
+	"train":1,
 	"load":0,
-	"dump":0,
-	"plot":1
+	"dump":1,
+	"plot":0
 	},
 "seed":{
 	"seed":123321,
-	"size":10,
+	"size":1,
 	"reset":123321
 	},
 "permutations":{
 	"model__N":[3],
-	"model__M":[200,500,1000,2000,10000],
-	"optimize__iterations":[500]
+	"model__M":[1000],
+	"optimize__iterations":[20]
 	},
 "model":{
 	"N":2,
@@ -48,7 +48,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":10,
+	"M":100,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -99,8 +99,9 @@
 		"string":"xy",
 		"category":"variable",
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},		
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},			
 		"parameters":null,
-		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
+		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
 		"scale":1,
 		"initialization":"interpolation",

@@ -31,12 +31,12 @@ from src.utils import logconfig
 conf = 'config/logging.conf'
 logger = logconfig(__name__,conf=conf)
 
-from src.quantum import run
+from src.run import run
 
 from src.utils import jit,array,sin,cos,cosh,abs,sigmoid,linspace
 from src.utils import gradient_sigmoid
 from src.utils import pi,e
-from src.io import load,dump,path_join,path_split
+from src.io import load,dump,join,split
 
 def bound(a,hyperparameters):
 	'''
