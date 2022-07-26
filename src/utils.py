@@ -177,7 +177,7 @@ def gradient(func):
 	# def grad(x):
 	# 	return jax.grad(func)(x)
 	grad = jit(jax.grad(func))
-	return 
+	return grad
 
 
 def gradient_finite(func,tol=1e-6):

@@ -31,9 +31,9 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import logconfig
-from src.utils import jit,gradient,gradient_finite,gradient_fwd
+from src.utils import jit,gradient,hessian,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
+from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,rank
 from src.utils import summation,exponentiation
 from src.utils import inner_abs2,inner_real2,inner_imag2
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
@@ -619,6 +619,9 @@ class Object(object):
 
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
+		self.func = self.__func__
+		self.grad = jit(gradient(self.func))
+		self.hessian = jit(hessian(self.func))
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) for attr in ['key','N','D','d','M','tau','T','p','seed']])))
 
@@ -899,7 +902,7 @@ class Object(object):
 	@partial(jit,static_argnums=(0,))
 	def __func__(self,parameters):
 		''' 
-		Setup objective
+		Class objective
 		Args:
 			parameters (array): parameters
 		Returns:
@@ -910,19 +913,33 @@ class Object(object):
 	@partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
 		''' 
-		Setup gradient of objective
+		Class gradient of objective
 		Args:
 			parameters (array): parameters
 		Returns:
 			grad (array): gradient of objective
 		'''	
 
-		shape = parameters.shape
-		grad = zeros(shape)
+		return self.grad(parameters)
 
-		grad = grad + gradient_distance(self(parameters),self.label,self.__derivative__(parameters))
+	@partial(jit,static_argnums=(0,))
+	def __hessian__(self,parameters):
+		''' 
+		Class hessian of objective
+		Args:
+			parameters (array): parameters
+		Returns:
+			grad (array): hessian of objective
+		'''	
 
-		return grad
+		return self.hessian(parameters)
+
+		# shape = parameters.shape
+		# grad = zeros(shape)
+
+		# grad = grad + gradient_distance(self(parameters),self.label,self.__derivative__(parameters))
+
+		# return grad
 		# return gradient(self.__func__)(parameters)
 
 	def __callback__(self,parameters):
@@ -939,6 +956,13 @@ class Object(object):
 			# 1-self.hyperparameters['optimize']['track']['value'][-1] + self.__constraints__(parameters)
 			self.__objective__(parameters)
 			)
+		# self.hyperparameters['optimize']['track']['hessian'].append(
+		# 	rank(self.__hessian__(parameters))
+		# 	)	
+
+		# self.hyperparameters['optimize']['track']['fisher'].append(
+		# 	trace()			rank(self.__hessian__(parameters))
+		# 	)					
 
 		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['modulo']['log'] == 0:			
 
@@ -957,7 +981,7 @@ class Object(object):
 				),
 				'\t\t'.join([
 					'%s = %0.4e'%(attr,self.hyperparameters['optimize']['track'][attr][-1])
-					for attr in ['alpha','beta']
+					for attr in ['alpha','beta','hessian']
 					if attr in self.hyperparameters['optimize']['track'] and len(self.hyperparameters['optimize']['track'][attr])>0
 					]),
 				'U\n%s\nV\n%s\n'%(
@@ -1217,14 +1241,18 @@ class Object(object):
 		keys = [self.key]
 		iterations = {
 			key: range(min(len(self.hyperparameters['optimize']['track'][attr]) 
-			for attr in self.hyperparameters['optimize']['track']))
+			for attr in self.hyperparameters['optimize']['track']
+			if len(self.hyperparameters['optimize']['track'][attr]) > 0
+			))
 			for key in keys
 			}
 
 		data = {
 			'%s.%s.%d'%(timestamp,key,iteration): {
 				**{attr: self.hyperparameters['optimize']['track'][attr][iteration]
-					for attr in self.hyperparameters['optimize']['track']},			
+					for attr in self.hyperparameters['optimize']['track']
+					if len(self.hyperparameters['optimize']['track'][attr]) > 0
+				},	
 				**{attr: getattr(self,attr)
 					for attr in self.__dict__
 					if (
@@ -1250,7 +1278,7 @@ class Object(object):
 		
 		# Dump hyperparameters
 		path = self.hyperparameters['sys']['path']['data']['model'] 
-		hyperparameters = self.hyperparameters			
+		hyperparameters = self.hyperparameters	
 		dump(hyperparameters,path)
 
 		return

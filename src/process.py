@@ -595,7 +595,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 			permutations[occurrence] = {}
 
-			print('key',key)
+			print('key',key,combinations[occurrence])
 
 			# for combination in combinations[occurrence]:
 			for combination in itertools.product(*combinations[occurrence]):
