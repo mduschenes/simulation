@@ -25,7 +25,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 	Split path into directory,file,ext
 	Args:
 		path (str): Path to split
-		directory (bool,int,tuple): Return split directory name, or number of intermediate directories after root / before directory containing folder
+		directory (bool,int,iterable[int]): Return split directory name, or number of intermediate directories after root / before directory containing folder
 		file (bool): Return split file name
 		ext (bool): Return split extension name
 		directory_file (bool): Return split and joined directory and file name
@@ -414,13 +414,13 @@ def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):
 		try:
 			data = _load(path,wr=wr,ext=ext,**kwargs)
 			return data
-		except (AttributeError,TypeError,UnicodeDecodeError) as exception:			
+		except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError) as exception:			
 			logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
 			try:
 				with open(path,wr) as obj:
 					data = _load(obj,wr=wr,ext=ext,**kwargs)
 					return data
-			except (AttributeError,TypeError,UnicodeDecodeError) as exception:
+			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError) as exception:
 				logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
 				pass
 

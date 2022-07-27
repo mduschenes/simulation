@@ -408,7 +408,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	data,settings,hyperparameters = (kwargs[kwarg] for kwarg in kwargs)
 
 
-
 	# Get dataset names of data
 	names = list(natsorted(set(name for name in data),key=lambda name:name))
 

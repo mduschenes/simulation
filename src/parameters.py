@@ -285,10 +285,16 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 		for parameter in hyperparameters), 'hyperparameters missing properties'
 
 	# Update properties of hyperparameters
-	attr = 'group'
-	func = lambda parameter,attr,value: [tuple(v) for v in value] if value is not None else []
-	for parameter in hyperparameters:
-		hyperparameters[parameter][attr] = func(parameter,attr,hyperparameters[parameter].get(attr))
+	attrs = {
+		('group',): (lambda parameter,attr,value: (
+			[tuple(v) for v in value] if value is not None else [])),
+		('boundaries','constants',): (lambda parameter,attr,value: (
+			{k: [{prop:array(v.get(prop,[])) for prop in v} for v in value[k]] for k in value})),
+		}
+	for section in attrs:
+		for attr in section:
+			for parameter in hyperparameters:
+				hyperparameters[parameter][attr] = attrs[section](parameter,attr,hyperparameters[parameter].get(attr))
 
 	# Set layer functions
 	funcs = {
@@ -305,12 +311,16 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 				hyperparameters[parameter][prop] = {}
 			for group in hyperparameters[parameter]['group']:
 				if not callable(hyperparameters[parameter][prop].get(group)):
+					hyperparameters[parameter][prop][group] = funcs[prop]
+				try:
 					hyperparameters[parameter][prop][group] = jit(partial(
-						funcs[prop],
+						hyperparameters[parameter][prop][group],
 						hyperparameters=hyperparameters,
 						parameter=parameter,
 						group=group)
 					)
+				except:
+					hyperparameters[parameter][prop][group] = jit(hyperparameters[parameter][prop][group])
 
 	# Get attributes
 	attributes = ['ndim','locality','size','indices','boundaries','constants','shape','slice','parameters','features','variables','values','constraints']

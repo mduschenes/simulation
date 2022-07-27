@@ -372,7 +372,7 @@ def check(hyperparameters):
 			if updates[attr]['conditions'](parameter,hyperparameters):
 				for group in hyperparameters[section][parameter]['group']:
 					group = tuple(group)
-					hyperparameters[section][parameter][attr][group] = jit(partial(updates[attr]['value'](parameter,hyperparameters),hyperparameters=hyperparameters[section],parameter=parameter,group=group))
+					hyperparameters[section][parameter][attr][group] = updates[attr]['value'](parameter,hyperparameters)
 
 	return
 

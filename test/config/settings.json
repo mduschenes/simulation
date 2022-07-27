@@ -27,14 +27,15 @@
 		}
 	},
 "boolean":{
-	"train":1,
-	"load":0,
+	"train":0,
+	"load":1,
 	"dump":1,
-	"plot":1
+	"plot":1,
+	"plot.obj":0
 	},
 "seed":{
 	"seed":123321,
-	"size":1,
+	"size":3,
 	"reset":123321
 	},
 "permutations":{
@@ -42,11 +43,11 @@
 	"model__M":[50,100,200,500,1000,2000,5000,10000],
 	"model__M":[5000,10000],
 	"model__M":[10],
-	"optimize__iterations":[200]
+	"optimize__iterations":[10]
 	},
 "groups":[],
 "model":{
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
