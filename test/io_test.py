@@ -15,7 +15,7 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.io import load,dump,path_join,path_split,path_edit
+from src.io import load,dump,join,split,edit
 
 # Logging
 # from src.utils import logconfig
@@ -24,7 +24,7 @@ from src.io import load,dump,path_join,path_split,path_edit
 
 
 def test_path(path='data/data.hdf5'):
-	new = path_edit(
+	new = edit(
 			path=path,
 			directory=None,
 			file=(lambda directory,file,ext,delimiter: delimiter.join([*file.split(delimiter)[:]])),

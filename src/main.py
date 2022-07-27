@@ -32,15 +32,12 @@ conf = 'config/logging.conf'
 logger = logconfig(__name__,conf=conf)
 
 from src.run import run
-from src.functions import functions
 
 def main(args):
 
 	nargs = len(args)
 
-	path = args[0] if nargs>0 else None
-
-	hyperparameters = functions(path)
+	hyperparameters = args[0] if nargs>0 else None
 
 	run(hyperparameters)
 

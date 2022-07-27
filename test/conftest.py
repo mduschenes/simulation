@@ -29,8 +29,8 @@ def _argparser(arg,value,args):
 # Command line arguments for fixtures with {arg: {action,default,type,allowed,...})}
 args = {
 	'path':{
-		# 'default':[os.path.join(os.path.dirname(os.path.abspath(__file__)),'test.json')],
-		'default':['config/test.json'],
+		# 'default':[os.path.join(os.path.dirname(os.path.abspath(__file__)),'settings.json')],
+		'default':['config/settings.json'],
 		'type':int,
 		'action':'append',
 		'allowed':None,

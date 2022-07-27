@@ -14,7 +14,7 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import isarray,isndarray
+from src.utils import is_array,is_ndarray
 from src.dictionary import updater,getter,setter,permuter,equalizer
 
 def test_equalizer():
@@ -23,7 +23,7 @@ def test_equalizer():
 
 	types = (dict,list,)
 	exceptions = lambda a,b: any(any(e(a) for e in exception) and any(e(b) for e in exception) 
-			for exception in [[callable],[isarray,isndarray]])
+			for exception in [[callable],[is_array,is_ndarray]])
 
 	x,y = a[1][4][2][0][4],b[1][4][2][0][4]
 

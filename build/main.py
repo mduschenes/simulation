@@ -47,7 +47,7 @@ def bound(a,hyperparameters):
 	Returns:
 		out (array): Bounded array
 	'''
-	return sigmoid(a,hyperparameters['hyperparameters']['sigmoid'])
+	return sigmoid(a,hyperparameters['sigmoid'])
 
 def gradient_bound(a,hyperparameters):
 	'''
@@ -58,7 +58,7 @@ def gradient_bound(a,hyperparameters):
 	Returns:
 		out (array): Gradient of bounded array
 	'''
-	return gradient_sigmoid(a,hyperparameters['hyperparameters']['sigmoid'])	
+	return gradient_sigmoid(a,hyperparameters['sigmoid'])	
 
 def variables(parameters,hyperparameters,parameter,group):
 	'''
@@ -72,7 +72,8 @@ def variables(parameters,hyperparameters,parameter,group):
 		variable (array): variables
 	'''
 	
-	scale = [hyperparameters['parameters'][parameter]['scale'],2*pi]
+	# scale = [hyperparameters[parameter]['scale'],2*pi]
+	scale = [2*pi]*2
 
 	if parameter in ['xy'] and group in [('x',)]:
 		variable = (
@@ -118,7 +119,7 @@ def features(parameters,hyperparameters,parameter,group):
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		l = 2
 		shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
-		feature = bound(parameters,hyperparameters).reshape(shape) 
+		feature = bound(parameters,hyperparameters[parameter]['kwargs']).reshape(shape) 
 		# feature = parameters.reshape(shape) 
 
 	elif parameter in ['z'] and group in [('z',)]:
@@ -157,8 +158,8 @@ def constraints(parameters,hyperparameters,parameter,group):
 		constraints (array): constraints
 	'''
 
-	scale = hyperparameters['hyperparameters']['lambda']
-	constants = hyperparameters['parameters'][parameter]['constants']['features'][-1]
+	scale = hyperparameters[parameter]['kwargs']['lambda']
+	constants = hyperparameters[parameter]['constants']['features'][-1]
 
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		constraint = (
@@ -177,15 +178,15 @@ def constraints(parameters,hyperparameters,parameter,group):
 		# constraint = (
 		# 	(
 		# 	scale[1]*bound(
-		# 		(-hyperparameters['parameters'][parameter]['bounds'][1] + x),
-		# 		hyperparameters
+		# 		(-hyperparameters[parameter]['bounds'][1] + x),
+		# 		hyperparameters[parameter]['kwargs']
 		# 		)
 		# 	).sum()
 		# 	# +
 		# 	# (sum(
 		# 	# 	scale[2]*(
 		# 	# 	(i[1] - x[i[0][0]]))**2
-		# 	# 	for i in hyperparameters['parameters'][parameter]['boundaries'])
+		# 	# 	for i in hyperparameters[parameter]['boundaries'])
 		# 	# ).sum()
 		# )
 
@@ -232,25 +233,25 @@ def gradient_constraints(parameters,hyperparameters,parameter,group):
 	shape = parameters.shape
 	n = shape[0]
 
-	scale = hyperparameters['hyperparameters']['lambda']
+	scale = hyperparameters[parameter]['kwargs']['lambda']
 
 	if parameter in ['xy'] and group in [('x',),('y',)]:
 		# grad = (
 		# 	(scale[0]*bound(
-		# 		(hyperparameters['parameters'][parameter]['bounds'][0] - 
+		# 		(hyperparameters[parameter]['bounds'][0] - 
 		# 		parameters[0::2]),
-		# 		hyperparameters) +
+		# 		hyperparameters[parameter]['kwargs']) +
 		# 	scale[1]*bound(
-		# 		(hyperparameters['parameters'][parameter]['bounds'][0] - 
+		# 		(hyperparameters[parameter]['bounds'][0] - 
 		# 		parameters[1::2]),
-		# 		hyperparameters)
+		# 		hyperparameters[parameter]['kwargs'])
 		# 	).sum() +				 
 		# 	(sum(
 		# 		scale[2]*(
 		# 		(i[1]-
 		# 		parameters[i[0][0],:]
 		# 		)**2)
-		# 		for i in hyperparameters['parameters'][parameter]['boundaries'])
+		# 		for i in hyperparameters[parameter]['boundaries'])
 		# 	).sum()
 		# )
 		x = (
@@ -262,15 +263,15 @@ def gradient_constraints(parameters,hyperparameters,parameter,group):
 		_grad = (
 			(
 			scale[1]*gradient_bound(
-				(-hyperparameters['parameters'][parameter]['bounds'][1] + x),
-				hyperparameters
+				(-hyperparameters[parameter]['bounds'][1] + x),
+				hyperparameters[parameter]['kwargs']
 				)
 			)
 			# +
 			# (sum(
 			# 	-2*scale[2]*(
 			# 	(i[1] - x[i[0][0]]))
-			# 	for i in hyperparameters['parameters'][parameter]['boundaries'])
+			# 	for i in hyperparameters[parameter]['boundaries'])
 			# ).sum()
 		)
 	
@@ -308,7 +309,7 @@ def gradients(parameters,hyperparameters,parameter,group):
 	shape = parameters.shape
 	n = shape[0]
 
-	scale = [hyperparameters['parameters'][parameter]['scale'],2*pi]	
+	scale = [hyperparameters[parameter]['scale'],2*pi]	
 	if group in [('x',),('x_0','x_1'),('x_2','x_3'),]:
 		variable = scale[0]*parameters[:n//2]
 
@@ -371,7 +372,7 @@ def check(hyperparameters):
 			if updates[attr]['conditions'](parameter,hyperparameters):
 				for group in hyperparameters[section][parameter]['group']:
 					group = tuple(group)
-					hyperparameters[section][parameter][attr][group] = jit(partial(updates[attr]['value'](parameter,hyperparameters),hyperparameters=hyperparameters,parameter=parameter,group=group))
+					hyperparameters[section][parameter][attr][group] = jit(partial(updates[attr]['value'](parameter,hyperparameters),hyperparameters=hyperparameters[section],parameter=parameter,group=group))
 
 	return
 

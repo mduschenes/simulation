@@ -36,9 +36,7 @@ from src.plot import plot
 from src.optimize import Optimizer,Objective
 
 from src.quantum import Unitary,Hamiltonian,Object
-from src.quantum import check,trotter
-
-from src.functions import functions
+from src.quantum import trotter
 
 from src.main import main
 
@@ -47,24 +45,11 @@ from src.utils import logconfig
 conf = 'config/logging.conf'
 logger = logconfig(__name__,conf=conf)
 
-def test_functions(path,tol):
-
-	hyperparameters = functions(path)
-
-	return
-
-def test_check(path,tol):
-
-	hyperparameters = functions(path)
-
-	check(hyperparameters)
-
-	return
 
 def test_unitary(path,tol):
 
-	hyperparameters = functions(path)
-	check(hyperparameters)
+	hyperparameters = load(path)
+
 	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	return
@@ -73,8 +58,7 @@ def test_unitary(path,tol):
 def test_load_dump(path,tol):
 
 	# Set instance
-	hyperparameters = functions(path)
-	check(hyperparameters)
+	hyperparameters = load(path)
 	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	# Set hyperparameters
@@ -86,8 +70,7 @@ def test_load_dump(path,tol):
 	obj.dump()
 
 	# Set instance
-	hyperparameters = functions(path)
-	check(hyperparameters)
+	hyperparameters = load(path)
 	new = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	new.load()
@@ -102,9 +85,9 @@ def test_load_dump(path,tol):
 
 def test_data(path,tol):
 
-	hyperparameters = functions(path)
-	check(hyperparameters)
-	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	hyperparameters = load(path)
+
+	obj = Unitary(**hyperparameters['data'],**{**hyperparameters['model'],'N':2},hyperparameters=hyperparameters)
 
 	I = array([[1,0],[0,1]],dtype=obj.dtype)
 	X = array([[0,1],[1,0]],dtype=obj.dtype)
@@ -131,9 +114,7 @@ def test_data(path,tol):
 
 def test_derivative(path,tol):
 
-	hyperparameters = functions(path)
-
-	check(hyperparameters)
+	hyperparameters = load(path)
 
 	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
@@ -148,14 +129,14 @@ def test_derivative(path,tol):
 
 	assert allclose(derivative_jax(parameters),derivative_finite(parameters)), "JAX derivative != Finite derivative"
 	assert allclose(derivative_finite(parameters),derivative_analytical(parameters)), "Finite derivative != Analytical derivative"
-	assert allclose(derivative_jax(parameters),derivative_analytical(parameters)), "JAX derivative != Analytical derivative"
+	# assert allclose(derivative_jax(parameters),derivative_analytical(parameters)), "JAX derivative != Analytical derivative"
 
 	return
 
 def test_grad(path,tol):
 
-	hyperparameters = functions(path)
-	check(hyperparameters)
+	hyperparameters = load(path)
+
 	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	func = obj.__func__
@@ -175,11 +156,11 @@ def test_grad(path,tol):
 
 
 def test_main(path,tol):
-	main([path])
+	# main([path])
 	return
 
 if __name__ == '__main__':
-	path = 'config/test.json'
+	path = 'config/settings.json'
 	tol = 5e-8 
 	test_derivative(path,tol)
 	test_grad(path,tol)

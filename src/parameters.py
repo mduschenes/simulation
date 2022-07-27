@@ -31,12 +31,123 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid
+from src.utils import jit,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
 from src.utils import slice_slice
 from src.utils import pi,e
 
 from src.io import load,dump,join,split
+
+
+def _variables(parameters,hyperparameters,parameter,group):
+	'''
+	Get variables from parameters
+	Args:
+		parameters (array): Array of parameters to compute variables
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for variables
+		group (str): Parameter group for variables
+	Returns:
+		variable (array): variables
+	'''
+
+	index = hyperparameters[parameter]['group'].index(group)
+	variable = parameters[index]
+
+	return variable
+
+
+def _features(parameters,hyperparameters,parameter,group):
+	'''
+	Get features from parameters
+	Args:
+		parameters (array): Array of parameters to compute features
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for features
+		group (str): Parameter group for features
+	Returns:
+		feature (array): features
+	'''
+
+	l = len(hyperparameters[parameter]['group'])
+	shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
+	feature = (parameters).reshape(shape) 
+
+	return feature
+
+
+def _parameters(parameters,hyperparameters,parameter,group):
+	'''
+	Get parameters from parameters
+	Args:
+		parameters (array): Array of parameters to compute parameters
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for parameters
+		group (str): Parameter group for parameters
+	Returns:
+		parameters (array): parameters
+	'''
+
+	return parameters
+
+
+def _constraints(parameters,hyperparameters,parameter,group):
+	'''
+	Get constraints from parameters
+	Args:
+		parameters (array): Array of parameters to compute constraints
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for constraints
+		group (str): Parameter group for constraints
+	Returns:
+		constraints (array): constraints
+	'''
+
+	constraint = 0
+
+	return constraint
+
+
+def _gradient_constraints(parameters,hyperparameters,parameter,group):
+	'''
+	Get gradients of constraints from parameters
+	Args:
+		parameters (array): Array of parameters to compute constraints
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for constraints
+		group (str): Parameter group for constraints
+	Returns:
+		grad (array): gradient of constraints
+	'''
+	shape = parameters.shape
+
+	grad = zeros(shape)
+
+	grad = grad.ravel()
+
+	return grad	
+
+
+def _gradients(parameters,hyperparameters,parameter,group):
+	'''
+	Get gradient of variables from parameters
+	Args:
+		parameters (array): Array of parameters to compute variables
+		hyperparameters (dict): Hyperparameters for parameters
+		parameter (str): Parameter name for variables
+		group (str): Parameter group for variables
+	Returns:
+		grad (array): gradient of variables
+	'''	
+
+	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
+	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
+
+	shape = parameters.shape
+	
+	grad = zeros(shape)
+	
+	return grad	
 
 def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=None):
 	'''
@@ -168,9 +279,38 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	ndim = len(shape)
 
 	# Get properties of hyperparameters
-	properties = ['category','group','shape','locality','boundaries','constants','parameters','features','variables','constraints']
+	properties = ['category','group','shape','locality','boundaries','constants','parameters']
+	assert all(all(prop in hyperparameters[parameter] 
+		for prop in properties) 
+		for parameter in hyperparameters), 'hyperparameters missing properties'
 
-	assert all(all(prop in hyperparameters[parameter] for prop in properties) for parameter in hyperparameters), 'hyperparameters missing properties'
+	# Update properties of hyperparameters
+	attr = 'group'
+	func = lambda parameter,attr,value: [tuple(v) for v in value] if value is not None else []
+	for parameter in hyperparameters:
+		hyperparameters[parameter][attr] = func(parameter,attr,hyperparameters[parameter].get(attr))
+
+	# Set layer functions
+	funcs = {
+		# 'parameters':_parameters,
+		'features':_features,
+		'variables':_variables,
+		'constraints':_constraints,
+		'gradients':_gradients,
+		'gradient_constraints':_gradient_constraints,
+		}
+	for parameter in hyperparameters:
+		for prop in funcs:
+			if not isinstance(hyperparameters[parameter].get(prop),dict):
+				hyperparameters[parameter][prop] = {}
+			for group in hyperparameters[parameter]['group']:
+				if not callable(hyperparameters[parameter][prop].get(group)):
+					hyperparameters[parameter][prop][group] = jit(partial(
+						funcs[prop],
+						hyperparameters=hyperparameters,
+						parameter=parameter,
+						group=group)
+					)
 
 	# Get attributes
 	attributes = ['ndim','locality','size','indices','boundaries','constants','shape','slice','parameters','features','variables','values','constraints']
@@ -263,7 +403,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 							data[l][category][parameter][group][layer] = hyperparameters[parameter][l][group]
 						else:
 							data[l][category][parameter][group][layer] = hyperparameters[parameter][l]
-					
+
 					data['ndim'][category][parameter][group][layer] = len(hyperparameters[parameter]['shape'][layer])
 
 					data['locality'][category][parameter][group][layer] = list(hyperparameters[parameter]['locality'][layer])
@@ -275,28 +415,6 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 						*[[i for i in range(shape[axis]) if check(group,i,axis)] for axis in range(0,ndim)],
 						]
 
-					# data['boundaries'][category][parameter][group][layer] = [
-					# 	dict({
-					# 		((i if i>=0 else len(data['indices'][category][parameter][group][layer][axis])+i)
-					# 		if isinstance(i,(int,np.integer)) else
-					# 		(int(len(data['indices'][category][parameter][group][layer][axis])*float(i)))):
-					# 		hyperparameters[parameter]['boundaries'][layer][axis][i]
-					# 		for i in hyperparameters[parameter]['boundaries'][layer][axis]
-					# 		})
-					# 	for axis in range(0,data['ndim'][category][parameter][group][layer])
-					# 	]
-
-					# data['constants'][category][parameter][group][layer] = [
-					# 	dict({
-							# ((i if i>=0 else len(data['indices'][category][parameter][group][layer][axis])+i)
-							# if isinstance(i,(int,np.integer)) else
-							# (int(len(data['indices'][category][parameter][group][layer][axis])*float(i)))):
-							# hyperparameters[parameter]['constants'][layer][axis][i]
-					# 		for i in hyperparameters[parameter]['constants'][layer][axis]
-					# 		})
-					# 	for axis in range(0,data['ndim'][category][parameter][group][layer])
-					# 	]						
-					
 					data['boundaries'][category][parameter][group][layer] = [
 						{
 						'slice': array([((i if i>=0 else len(data['indices'][category][parameter][group][layer][axis])+i)
@@ -319,11 +437,6 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 						for axis in range(0,data['ndim'][category][parameter][group][layer])
 						]
 					
-	#Time = timer()
-	#msg = 'data'
-	#print(msg,Time-time)
-	#time = Time
-
 	# Get indexed attributes for data
 	subindex = ('key','all',)
 	for category in groups:
@@ -1110,20 +1223,18 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 
 
 	# for category in groups:
-	# 	#print(category)
+	# 	print(category)
 	# 	for parameter in groups[category]:
 	# 		for group in groups[category][parameter]:
-	# 			#print(group)
+	# 			print(group)
 	# 			for layer in groups[category][parameter][group]:
-	# 				#print(layer)
+	# 				print(layer)
 	# 				for attr in ['shape','slice']:
-	# 					#print(attr)
+	# 					print(attr)
 	# 					for index in data[attr][category][parameter][group][layer]:
-	# 						#print(index,data[attr][category][parameter][group][layer][index])
-	# 			#print()
-	# 	#print()
-
-	# exit()
+	# 						print(index,data[attr][category][parameter][group][layer][index])
+	# 			print()
+	# 	print()
 
 
 	#Time = timer()
@@ -1810,6 +1921,5 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 
 
 	# #print('---- Testing Complete ----')
-
 
 	return attributes

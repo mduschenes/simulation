@@ -474,7 +474,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		delimiter[attr] = hyperparameters.get('delimiter','.')
 		directory[attr],file[attr],ext[attr] = split(
 			hyperparameters.get('path',{}).get(attr),
-			directory=True if (0 and not returns['multiple']) else -1,file=True,ext=True)
+			directory=True if (not returns['multiple']) else -1,file=True,ext=True)
 		path[attr] = join(directory[attr],file[attr],ext=ext[attr])
 
 	# Get plot fig and axes
@@ -595,7 +595,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 			permutations[occurrence] = {}
 
-			print('key',key,combinations[occurrence])
+			# print('key',key,combinations[occurrence])
 
 			# for combination in combinations[occurrence]:
 			for combination in itertools.product(*combinations[occurrence]):
@@ -624,10 +624,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 				
 				if len(allincluded) == 0:
 					variables[occurrence].pop(combination);
-					print('continue --',combination)
+					# print('continue --',combination)
 					continue
 
-				print('combination',label,combination)
+				# print('combination',label,combination)
 				# print()
 				# print(allincluded)
 				# print()
@@ -646,12 +646,12 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 					
 					if len(included) == 0:
 						variables[occurrence][combination].pop(permutation);
-						print('continue',permutation)
+						# print('continue',permutation)
 						continue
 
-					print('permutation',label,values)
-					print(included)					
-					print()
+					# print('permutation',label,values)
+					# print(included)					
+					# print()
 					# continue
 
 					for kwarg in statistics:
@@ -696,7 +696,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 				# print()
 				# continue
-				print('merging')
+				# print('merging')
 				variables[occurrence][combination] = {
 					kwarg:{
 						stat: np.array([variables[occurrence][combination][permutation][kwarg][stat] 
@@ -720,7 +720,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 				str(name) if not isinstance(name,tuple) else 
 				'____'+'____'.join((str(i) for i in name)))
 		}
-		print('Dumping',path[attr])
 		dump(variables,path[attr],**kwargs)
 	
 
@@ -802,7 +801,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	# reshaping of variables data based on 
 	# plotting = {'y':{'x':{'axis':{attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}}}}
 	for instance in list(settings):
-		print('instance',instance)
+		print('Plotting',instance)
 		for subinstance in list(settings[instance]):
 			subupdated.clear()
 			for setting in special:

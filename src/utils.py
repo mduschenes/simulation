@@ -83,7 +83,7 @@ def jit(func,*,static_argnums=None):
 	Returns:
 		func (callable): Compiled function
 	'''
-	# return func
+	return func
 	return jax.jit(func,static_argnums=static_argnums)
 
 def jitpartial(func,*,static_argnums=None,**kwargs):
@@ -1099,7 +1099,8 @@ def outer(a,b):
 	Returns:
 		out (array): Outer product
 	'''	
-	return trace(tensordot(a,b.conj().T,1))/sqrt(a.shape[0]*b.shape[0])
+	return np.outer(a,b)
+	# return trace(tensordot(a,b.conj().T,1))/sqrt(a.shape[0]*b.shape[0])
 
 
 @jit
@@ -3293,7 +3294,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 
 			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
 			for axis in range(ndim):
-				for i,value in zip(constant[axis]['slice'],constant[axis]['value']):
+				for i,value in zip(constant[axis].get('slice',[]),constant[axis].get('value',[])):
 					j = shapes[axis] + i if i < 0 else i
 					if j >= slices[axis].start and j < slices[axis].stop:
 						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
@@ -3305,7 +3306,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 				parameters = rand(shape,key=key,bounds=bounds,random=random)
 
 			for axis in range(ndim):
-				for i,value in zip(constant[axis]['slice'],constant[axis]['value']):
+				for i,value in zip(constant[axis].get('slice',[]),constant[axis].get('value',[])):
 					j = shapes[axis] + i if i < 0 else i
 					if j >= slices[axis].start and j < slices[axis].stop:
 						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])

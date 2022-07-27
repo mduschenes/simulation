@@ -563,7 +563,7 @@ class Object(object):
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 
-		setup(hyperparameters)
+		hyperparameters = self.__check__(hyperparameters)
 
 		self.N = N
 		self.D = D
@@ -601,10 +601,10 @@ class Object(object):
 		self.transformH = []
 		self.index = arange(self.size)
 
-		
 		self.hyperparameters = hyperparameters
 		self.parameters = None
 		self.label = None
+		self.states = None
 		self.attributes = {}
 		self.constants = None
 		self.coefficients = 1
@@ -621,6 +621,7 @@ class Object(object):
 
 		self.func = self.__func__
 		self.grad = jit(gradient(self.func))
+		self.derivative = jit(gradient_fwd(self))
 		self.hessian = jit(hessian(self.func))
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) for attr in ['key','N','D','d','M','tau','T','p','seed']])))
@@ -641,9 +642,10 @@ class Object(object):
 			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (dict) : class hyperparameters
+			hyperparameters (str,dict): Class hyperparameters, or path to load hyperparameters
 		'''
 
+		# Update data
 		if operator is None:
 			operator = []
 		if site is None:
@@ -671,6 +673,31 @@ class Object(object):
 		self.__initialize__(parameters)
 
 		return
+
+
+	def __check__(self,hyperparameters={}):
+		'''
+		Setup class hyperparameters
+		Args:
+			hyperparameters (str,dict): Class hyperparameters, or path to load hyperparameters
+		Returns:
+			hyperparameters (dict): Class hyperparameters
+		'''
+
+		path = 'config/settings.json'
+		default = {}
+
+
+		# Set hyperparameters
+		if hyperparameters is None:
+			hyperparameters = default
+		elif isinstance(hyperparameters,str):
+			hyperparameters = load(hyperparameters,default=default)
+
+		# func = lambda key,iterable,elements: iterable.get(key,elements[key])
+		# updater(hyperparameters,load(path,default=default),func=func)
+
+		return hyperparameters
 
 
 	def __append__(self,data,operator,site,string,interaction,hyperparameters={}):
@@ -776,19 +803,20 @@ class Object(object):
 
 		label = operatorize(data,shape,hyperparams,size=size,dtype=dtype)
 
-		# # Get states
-		# data = None
-		# shape = [-1,*self.shape[2:]]
-		# hyperparameters = hyperparameters['state']
-		# size = self.N
-		# dtype = self.dtype
+		# Get states
+		data = None
+		shape = [-1,*self.shape[2:]]
+		hyperparams = hyperparameters['state']
+		size = self.N
+		dtype = self.dtype
 
-		# states = stateize(data,shape,hyperparams,size=size,dtype=dtype)
+		states = stateize(data,shape,hyperparams,size=size,dtype=dtype)
 
 
 		# Update class attributes
 		self.parameters = parameters
 		self.label = label
+		self.states = states
 		self.hyperparameters = hyperparameters
 		self.attributes = attributes
 
@@ -956,13 +984,23 @@ class Object(object):
 			# 1-self.hyperparameters['optimize']['track']['value'][-1] + self.__constraints__(parameters)
 			self.__objective__(parameters)
 			)
+
 		# self.hyperparameters['optimize']['track']['hessian'].append(
 		# 	rank(self.__hessian__(parameters))
 		# 	)	
 
+		# fisher = 0
+		# G = self.derivative(parameters)
+		# for state in self.states:
+		# 	fisher += ((G.dot(state).conj()).dot((G.dot(state)).T) - 
+		# 				outer((G.dot(state).conj()).dot(state),
+		# 				  (G.dot(state).conj()).dot(state).conj())
+		# 			)
+		# fisher = fisher.real
+
 		# self.hyperparameters['optimize']['track']['fisher'].append(
-		# 	trace()			rank(self.__hessian__(parameters))
-		# 	)					
+		# 	rank(fisher)
+		# 	)
 
 		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['modulo']['log'] == 0:			
 
@@ -981,7 +1019,7 @@ class Object(object):
 				),
 				'\t\t'.join([
 					'%s = %0.4e'%(attr,self.hyperparameters['optimize']['track'][attr][-1])
-					for attr in ['alpha','beta','hessian']
+					for attr in ['alpha','beta','hessian','fisher']
 					if attr in self.hyperparameters['optimize']['track'] and len(self.hyperparameters['optimize']['track'][attr])>0
 					]),
 				'U\n%s\nV\n%s\n'%(
@@ -1322,7 +1360,7 @@ class Object(object):
 				path = path[i]
 			kwargs[kwarg].append(path)
 
-		# self.fig,self.ax = process(**kwargs)
+		self.fig,self.ax = process(**kwargs)
 		return
 
 
@@ -1514,6 +1552,7 @@ class Hamiltonian(Object):
 		# Get Trotterized order of copies of parameters
 		p = self.p
 		parameters = array(trotter(parameters,p))
+
 		# Get reshaped parameters (transpose for shape (K,M) to (M,K) and reshape to (MK,) with periodicity of data)
 		parameters = parameters.T.ravel()
 		
@@ -1796,126 +1835,12 @@ def invtrotter(a,p):
 	return a[:n]
 
 
-def variables(parameters,hyperparameters,parameter,group):
-	'''
-	Get variables from parameters
-	Args:
-		parameters (array): Array of parameters to compute variables
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for variables
-		group (str): Parameter group for variables
-	Returns:
-		variable (array): variables
-	'''
-	
-	variable = parameters[0]
-
-	return variable
-
-
-def features(parameters,hyperparameters,parameter,group):
-	'''
-	Get features from parameters
-	Args:
-		parameters (array): Array of parameters to compute features
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for features
-		group (str): Parameter group for features
-	Returns:
-		feature (array): features
-	'''
-
-	feature = parameters[None,...]
-
-	return feature
-
-
-def parameters(parameters,hyperparameters,parameter,group):
-	'''
-	Get parameters from parameters
-	Args:
-		parameters (array): Array of parameters to compute parameters
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for parameters
-		group (str): Parameter group for parameters
-	Returns:
-		parameters (array): parameters
-	'''
-
-	return parameters
-
-
-def constraints(parameters,hyperparameters,parameter,group):
-	'''
-	Get constraints from parameters
-	Args:
-		parameters (array): Array of parameters to compute constraints
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for constraints
-		group (str): Parameter group for constraints
-	Returns:
-		constraints (array): constraints
-	'''
-
-	constraint = 0
-
-	return constraint
-
-
-def gradient_constraints(parameters,hyperparameters,parameter,group):
-	'''
-	Get gradients of constraints from parameters
-	Args:
-		parameters (array): Array of parameters to compute constraints
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for constraints
-		group (str): Parameter group for constraints
-	Returns:
-		grad (array): gradient of constraints
-	'''
-	shape = parameters.shape
-
-	grad = zeros(shape)
-
-	grad = grad.ravel()
-
-	return grad	
-
-
-def gradients(parameters,hyperparameters,parameter,group):
-	'''
-	Get gradient of variables from parameters
-	Args:
-		parameters (array): Array of parameters to compute variables
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for variables
-		group (str): Parameter group for variables
-	Returns:
-		grad (array): gradient of variables
-	'''	
-
-	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
-	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
-
-	shape = parameters.shape
-	
-	grad = zeros(shape)
-	
-	return grad	
-
-
-
 def check(hyperparameters):
 	'''
 	Check hyperparameters
 	Args:
 		hyperparameters (dict): Hyperparameters
 	'''
-
-	# Load default hyperparameters
-	path = 'config/settings.json'
-	func = lambda key,iterable,elements: iterable.get(key,elements[key])
-	updater(hyperparameters,load(path),func=func)
 
 
 	section = 'parameters'
@@ -2005,6 +1930,6 @@ def setup(hyperparameters):
 	'''
 	
 	# Check hyperparameters have correct values
-	check(hyperparameters)
+	# check(hyperparameters)
 
 	return

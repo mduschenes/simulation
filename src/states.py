@@ -58,8 +58,7 @@ def haar(shape,bounds,random,seed,dtype):
 	if data.ndim == 2:
 		data = data.reshape(1,*data.shape)
 
-	n = data.shape[0]
-	for i in range(n):
+	for i in range(data.shape[0]):
 
 		Q,R = qr(data[i])
 		R = diag(R)
