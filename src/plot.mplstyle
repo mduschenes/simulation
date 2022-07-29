@@ -648,7 +648,7 @@ font.size : 20
 #axes.labelweight : bold
 axes.linewidth : 2  
 #axes.prop_cycle : cycler(color='tab10')
-figure.max_open_warning: 100
+#figure.max_open_warning: 100
 
 
 #   # matplotlib.rcParams['font.family'] = 'sans-serif'

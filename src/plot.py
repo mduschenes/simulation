@@ -365,7 +365,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				args.extend([kwargs.pop(k) for k in ['x','y'] if kwargs.get(k) is not None])
 
-				nullkwargs = ['z']
+				nullkwargs = ['x','y','z','xerr','yerr']				
 				for kwarg in nullkwargs:
 					kwargs.pop(kwarg,None)
 
@@ -393,13 +393,46 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					# 	kwargs.pop(field)
 					# 	pass
 
-				args.extend([kwargs.pop(k) for k in ['x','y','yerr','xerr'] if k in kwargs and kwargs.get(k) is not None ])
+				args.extend([kwargs.get(k) for k in ['x','y','yerr','xerr'] if k in kwargs and kwargs.get(k) is not None ])
 
-				nullkwargs = ['z']
+				nullkwargs = ['x','y','z','xerr','yerr']								
 				for kwarg in nullkwargs:
 					kwargs.pop(kwarg,None)
 
-				call = True				
+				call = True			
+
+			elif attr in ['fill_between']:
+				fields = ['color']
+				for field in fields:
+					# try:
+						if kwargs.get(field) == '__cycle__':
+							try:
+								_obj = _attr[-1]
+							except:
+								_obj = _attr
+							values = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)
+							kwargs[field] = values[-1]
+						
+						elif kwargs.get(field) == '__lines__':
+							_obj = getattr(obj,'get_lines')()[-1]
+							kwargs[field] = getattr(_obj,'get_%s'%(field))()
+						
+						else:
+							continue
+					# except:
+					# 	kwargs.pop(field)
+					# 	pass
+
+				if kwargs.get('yerr') is None:
+					call = False
+					args.extend([kwargs.get('x'),kwargs.get('y'),kwargs.get('y')])
+				else:
+					call = True
+					args.extend([kwargs.get('x'),kwargs.get('y')-kwargs.get('yerr'),kwargs.get('y')+kwargs.get('yerr')])
+
+				nullkwargs = ['x','y','z','xerr','yerr','label']
+				for kwarg in nullkwargs:
+					kwargs.pop(kwarg,None)
 
 			elif attr in ['plot_surface','contour','contourf','scatter']:
 				args.extend([kwargs.pop(k) for k in ['x','y','z'] if kwargs.get(k) is not None])

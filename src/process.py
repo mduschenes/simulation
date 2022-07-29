@@ -738,7 +738,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	}
 	
 	# Special settings to set variables depending on variables data shape, with additional settings to custom set form settings string
-	special = {'ax':['plot','errorbar']}
+	special = {'ax':['plot','errorbar','fill_between']}
 
 	# Track updated keys
 	updated = []

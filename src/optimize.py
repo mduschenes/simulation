@@ -536,6 +536,18 @@ class ConjugateGradient(Base):
 		self.track.update({attr: self.track.get(attr,defaults['track'][attr]) for attr in defaults['track']})
 		self.attributes.update({attr: self.attributes.get(attr,defaults['attributes'][attr]) for attr in defaults['attributes']})
 
+		null = {
+			'attributes':{},
+			'track':{}
+			}
+		for attr in null:
+			if attr not in ['attributes','track']:
+				self.hyperparameters.pop(attr,None)
+		for attr in null['track']:
+			self.track.pop(attr,None)
+		for attr in null['attributes']:
+			self.attributes.pop(attr,None)
+
 		return
 
 	def opt_update(self,iteration,state):
@@ -608,14 +620,6 @@ class ConjugateGradient(Base):
 		
 		self.status = self.callback(parameters)
 
-		# print(self.iteration,self.size)
-		# for attr in self.attributes:
-		# 	print(attr,len(self.attributes[attr]),self.attributes[attr][-2:])
-		# print()
-		# for attr in self.track:
-		# 	print(attr,len(self.track[attr]),self.track[attr][-2:])
-		# print()
-
 		return state
 
 
@@ -632,9 +636,24 @@ class Adam(Base):
 
 		super().__init__(func,grad,callback,hyperparameters)
 
+		null = {
+			'beta':{},
+			'attributes':{'beta':None},
+			'track':{'beta':None}
+			}
+		for attr in null:
+			if attr not in ['attributes','track']:
+				self.hyperparameters.pop(attr,None)
+		for attr in null['track']:
+			self.track.pop(attr,None)
+		for attr in null['attributes']:
+			self.attributes.pop(attr,None)
+
 		self._optimizer = getattr(jax.example_libraries.optimizers,self.optimizer)
 
 		self._opt_init,self._opt_update,self._get_params = self._optimizer(self.hyperparameters['alpha'])
+
+
 
 		return
 

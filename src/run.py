@@ -45,7 +45,7 @@ from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
 
 from src.dictionary import updater,getter,setter,permuter
-from src.dictionary import leaves,counts,plant,grow
+from src.dictionary import leaves,grow
 
 from src.parameters import parameterize
 from src.operators import operatorize
@@ -160,7 +160,8 @@ def setup(hyperparameters):
 
 	key = 'seed'
 	exclude = [('seed','seed',),('model','system','seed')]
-	seedlings = [branch for branch in leaves(hyperparameters,key,returns='key') if branch not in exclude]
+	seedlings = [branch[0] for branch in leaves(hyperparameters,key,returns='both') if branch[0] not in exclude and branch[1] is None]
+
 	count = len(seedlings)
 	
 	shape = (size,count,-1)
@@ -168,7 +169,7 @@ def setup(hyperparameters):
 
 	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape)
 	
-	# Get all enumerated keys and seeds for permutations and seedings of hyperparameters
+	# Get all enumerated keys and seeds for permutations and seedlings of hyperparameters
 	keys = {'.'.join(['%d'%(k) for k in [iteration,instance]]): (permutation,seed) 
 		for iteration,permutation in enumerate(permutations) 
 		for instance,seed in enumerate(seeds)}
@@ -308,7 +309,7 @@ def run(hyperparameters):
 		
 		if settings['boolean'].get('plot.obj'):
 			obj.plot()
-
+	exit()
 	if settings['boolean'].get('plot'):
 		hyperparameters = settings['hyperparameters']
 		plotter(hyperparameters)		
