@@ -95,7 +95,7 @@ def jit(func,*,static_argnums=None):
 	Returns:
 		func (callable): Compiled function
 	'''
-	return func
+	# return func
 	return jax.jit(func,static_argnums=static_argnums)
 
 def jitpartial(func,*,static_argnums=None,**kwargs):

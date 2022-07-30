@@ -1547,14 +1547,9 @@ class Hamiltonian(Object):
 			parameters (array): parameters
 		'''		
 
-		print(parameters.round(3))
-
 		layer = 'variables'
 		parameters = self.__layers__(parameters,layer)
 
-		print(parameters.round(3))
-
-		exit()
 		# Get Trotterized order of copies of parameters
 		p = self.p
 		parameters = array(trotter(parameters,p))
