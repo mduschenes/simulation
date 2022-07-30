@@ -196,12 +196,10 @@ def setup(hyperparameters):
 		permutation,seed = keys[key]
 		
 		# Set settings
-		settings['hyperparameters'][key] = deepcopy(hyperparameters)
-		settings['object'][key] = None
-		settings['logger'][key] = logconfig(__name__,
-			conf=settings['hyperparameters'][key]['sys']['path']['config']['logger'])
 
 		# Set hyperparameters updates with key/instance dependent settings
+		settings['hyperparameters'][key] = deepcopy(hyperparameters)
+
 		updates = {}		
 
 		updates.update({
@@ -264,6 +262,16 @@ def setup(hyperparameters):
 			except:
 				copy(sources[path],destinations[path])
 
+
+		# Set object
+		settings['object'][key] = None
+
+		# Set logger
+		settings['logger'][key] = logconfig(__name__,
+			conf=settings['hyperparameters'][key]['sys']['path']['config']['logger'],
+			**{'handler_file.formatter.file.args':settings['hyperparameters'][key]['sys']['path']['data']['log'],}
+			)
+
 	return settings
 
 
@@ -309,7 +317,7 @@ def run(hyperparameters):
 		
 		if settings['boolean'].get('plot.obj'):
 			obj.plot()
-	exit()
+
 	if settings['boolean'].get('plot'):
 		hyperparameters = settings['hyperparameters']
 		plotter(hyperparameters)		

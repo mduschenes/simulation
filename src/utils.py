@@ -41,12 +41,13 @@ flt = np.float32
 dbl = np.float64
 
 
-def logconfig(name,conf=None):
+def logconfig(name,conf=None,**kwargs):
 	'''
 	Configure logging
 	Args:
 		name (str): File name for logger
 		conf (str): Path for logging config
+		kwargs (dict): Additional keywork arguments to overwrite config
 	Returns:
 		logger (logger): Configured logger
 	'''
@@ -58,14 +59,25 @@ def logconfig(name,conf=None):
 			config.read(conf)
 			key = 'formatter'
 			value = 'file'
-			args = 'args'
+			arg = 'args'
 
 			for section in config:
 				if config[section].get(key) == value:
-					path = str(config[section][args][1:-1].split(',')[0][1:])
-					path = os.path.abspath(os.path.dirname(os.path.abspath(path)))
-					if not os.path.exists(path):
-						os.makedirs(path)
+
+					kwarg = '.'.join([section,key,value,arg])
+					if kwargs.get(kwarg) is not None:
+						path = kwargs[kwarg]
+					else:
+						path = str(config[section][arg][1:-1].split(',')[0])[1:-1]
+					directory = os.path.abspath(os.path.dirname(os.path.abspath(path)))
+					if not os.path.exists(directory):
+						os.makedirs(directory)
+
+					config[section][arg] = '(%s)'%(','.join(['"%s"'%(path),*config[section][arg][1:-1].split(',')[1:]]))
+
+
+			with open(conf, 'w') as configfile:
+			    config.write(configfile)
 			logging.config.fileConfig(conf,disable_existing_loggers=False) 	
 		except Exception as e:
 			pass	
@@ -83,7 +95,7 @@ def jit(func,*,static_argnums=None):
 	Returns:
 		func (callable): Compiled function
 	'''
-	# return func
+	return func
 	return jax.jit(func,static_argnums=static_argnums)
 
 def jitpartial(func,*,static_argnums=None,**kwargs):
