@@ -39,9 +39,9 @@
 	"reset":123321
 	},
 "permutations":{
-	"model__N":[3],
-	"model__M":[300],
-	"optimize__iterations":[300]
+	"model.N":[3],
+	"model.M":[300],
+	"optimize.iterations":[300]
 	},
 "groups":[],
 "model":{

@@ -312,15 +312,17 @@ def find(dictionary,properties):
 	keys = branches(dictionary,properties,types=(dict,list),returns='value')
 
 	keys = map(lambda key: dict(zip(
-		properties,(*key[:2],tuple((dict(zip(['key','value'],to_key_value(key[2],delimiter='='))),))
-		if key[2] is None or isinstance(key[2],str) 
-		else tuple(dict(zip(['key','value'],to_key_value(j,delimiter='='))) for j in key[2])))),
+		properties,(tuple((dict(zip(['key','value'],to_key_value(k,delimiter='='))),))
+						if k is None or isinstance(k,str) 
+						else tuple(dict(zip(['key','value'],to_key_value(j,delimiter='='))) for j in k) for k in key))),
 		keys)
 
-	keys = [{prop:key[prop] if prop not in ['label'] else 
-			{label:tuple(value[label] for value in key[prop]) for label in set(
-				label for value in key[prop] for label in value)}
-			 for prop in key} for key in keys]
+	keys = [{prop: {
+				label:tuple(value[label] for value in key[prop]) for label in set(
+					label for value in key[prop] for label in value)}
+			 for prop in key} 
+			 for key in keys]
+
 	return keys
 
 def loader(kwargs):
@@ -539,7 +541,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 	# Get keys of properties of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
 	keys = find(settings,properties)
-	labels = [dict(zip(key['label']['key'],key['label']['value'])) for key in keys]
+	labels = [{prop: dict(zip(key[prop]['key'],key[prop]['value'])) for prop in key} for key in keys]
 
 	# Load data
 	if hyperparameters.get('load'):
@@ -588,29 +590,29 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			# combinations[occurrence] = permute(key['label']['key'],key['label']['value'],list(sort),data)
 			combinations[occurrence] = 	[
 				[val for val in sort.get(attr,[]) 
-				if check(attr,labels[occurrence][attr],val,labels,unique,data)]
-				for attr in labels[occurrence]
+				if check(attr,labels[occurrence]['label'][attr],val,labels,unique,data)]
+				for attr in labels[occurrence]['label']
 				]
 
 			permutations[occurrence] = {}
 
-			# print('key',key,combinations[occurrence])
+			print('key',key,combinations[occurrence])
 
 			# for combination in combinations[occurrence]:
 			for combination in itertools.product(*combinations[occurrence]):
 				variables[occurrence][combination] = {}
-				label = dict(zip(key['label']['key'],combination))
+				label = {prop: dict(zip(labels[occurrence][prop],combination if prop in ['label'] else  )) for prop in labels[occurrence]}
 				
 				# permutations[occurrence][combination] = combinations[occurrence][combination]
 				# permutations[occurrence][combination] = [
 				# 	[val for val in sort[attr] 
-				# 	if (((attr not in label) and (val is not None)) or ((attr in label) and (val == label[attr])))]
+				# 	if (((attr not in label['label']) and (val is not None)) or ((attr in label['label']) and (val == label['label'][attr])))]
 				# 	for attr in sort
 					# ]
 
 				permutations[occurrence][combination] = [
 					permutation for permutation in allowed if all(
-						(((attr not in label) and (val is not None)) or ((attr in label) and (val == label[attr])))
+						(((attr not in label['label']) and (val is not None)) or ((attr in label['label']) and (val == label['label'][attr])))
 						for attr,val in zip(subattributes,permutation)
 						)
 					]
@@ -619,17 +621,17 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 				# 	if all(data[name][attr] == values[attr]
 				# 	for attr in values)]
 				allincluded = [name for name in names 
-					if include(name,labels[occurrence],label,data)] 
+					if include(name,labels[occurrence]['label'],label['label'],data)] 
 				
 				if len(allincluded) == 0:
 					variables[occurrence].pop(combination);
 					# print('continue --',combination)
 					continue
 
-				# print('combination',label,combination)
-				# print()
-				# print(allincluded)
-				# print()
+				print('combination',label,combination)
+				print()
+				print(allincluded)
+				print()
 
 				for permutation in permutations[occurrence][combination]:
 				# for permutation in itertools.product(*permutations[occurrence][combination]):
@@ -641,51 +643,56 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 					# 	for attr in values)]
 
 					included = [name for name in allincluded 
-						if include(name,labels[occurrence],values,data)]
+						if include(name,
+								{attr: labels[occurrence][prop][attr] 
+								for prop in labels[occurrence] 
+								for attr in labels[occurrence][prop]},
+								values,data)
+						]
 					
 					if len(included) == 0:
 						variables[occurrence][combination].pop(permutation);
 						# print('continue',permutation)
 						continue
 
-					# print('permutation',label,values)
-					# print(included)					
-					# print()
-					# continue
+					print('permutation',label,values)
+					print(included)					
+					print()
+					continue
 
 					for kwarg in statistics:
 
 						variables[occurrence][combination][permutation][kwarg] = {}
 
 						prop = statistics[kwarg]['property']
-						isnull = key[prop] in nulls
+						isnull = key[prop]['key'] in nulls
 						if isnull:
 							prop = 'y'					
 							dtype = int
 						else:
 							prop = prop
-							dtype = data[name][key[prop]].dtype
+							dtype = data[name][key[prop]['key']].dtype
 					
 						variables[occurrence][combination][permutation][kwarg] = {}
 
 
 						# Insert data into variables (with nan padding)
 						for stat in statistics[kwarg]['statistic']:
-							if (((plotting.get(key['y'],{}).get(key['x'],{}).get('plot') is not None) and
-								 (stat not in [None,*plotting.get(key['y'],{}).get(key['x'],{}).get('plot',[])])) or
-								((plotting.get(key['y'],{}).get(key['x']) is None) and 
+							if (((plotting.get(key['y']['key'],{}).get(key['x']['key'],{}).get('plot') is not None) and
+								 (stat not in [None,*plotting.get(key['y']['key'],{}).get(key['x']['key'],{}).get('plot',[])])) or
+								((plotting.get(key['y']['key'],{}).get(key['x']['key']) is None) and 
 								 (stat not in [None]))):
 								continue
 
-							variables[occurrence][combination][permutation][kwarg][stat] = np.nan*np.ones((len(included),*shape[key[prop]]))
+							variables[occurrence][combination][permutation][kwarg][stat] = np.nan*np.ones((len(included),*shape[key[prop]['key']]))
 
 							# if kwarg in ['y']:
 							# 	print(kwarg,key,included)
 
 							for index,name in enumerate(included):
 
-								value = expand_dims(np.arange(data[name][key[prop]].shape[-1]),range(0,ndim[key[prop]]-1)) if isnull else data[name][key[prop]]
-								slices = (index,*(slice(data[name][key[prop]].shape[axis]) for axis in range(data[name][key[prop]].ndim)))
+								value = expand_dims(np.arange(data[name][key[prop]['key']].shape[-1]),range(0,ndim[key[prop]['key']]-1)) if isnull else data[name][key[prop]['key']]
+								slices = (index,*(slice(data[name][key[prop]['key']].shape[axis]) for axis in range(data[name][key[prop]['key']].ndim)))
 								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 
 							# Get statistics
@@ -693,8 +700,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								key,variables[occurrence][combination][permutation][kwarg][stat],
 								variables=variables[occurrence][combination][permutation],dtype=dtype)
 
-				# print()
-				# continue
+				print()
+				continue
 				# print('merging')
 				variables[occurrence][combination] = {
 					kwarg:{
@@ -709,7 +716,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			if len(variables[occurrence]) == 0:
 				variables.pop(occurrence)
 
-	# return fig,ax
+	return fig,ax
 
 	# Dump data
 	if hyperparameters.get('dump') or 1:
@@ -820,7 +827,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								for stat in variables[occurrence][combination][kwarg]
 								)
 
-							subaxis = plotting.get(key['y'],{}).get(key['x'],{}).get('axis')
+							subaxis = plotting.get(key['y']['key'],{}).get(key['x']['key'],{}).get('axis')
 							
 							if subaxis is None:
 								subaxis = [[],[],[],[axis for axis in range(subndim)]]
