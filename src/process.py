@@ -144,7 +144,7 @@ def check(key,value,datum,keys,values,data):
 			slices = slice(*slices)
 			value = values[key][slices]
 		else:
-			parser = lambda value: (value)
+			parser = lambda value: (to_number(value))
 			value = [parser(value)]
 	else:
 		value = [value]
@@ -168,17 +168,46 @@ def include(name,keys,values,data):
 
 	def exception(name,key,keys,values,data):
 		boolean = True
-		if key in keys:
-			if keys[key] is None:
-				value = [values[key]]
-			elif keys[key].startswith('@') and keys[key].endswith('@'):
-				parser = lambda value: (str(value) if len(value)>0 else 0)
-				value = keys[key].replace('@','').split(',')
-				value = [parser(v) for v in value]
-				value = [data[name][v] for v in value]
-			else:
-				value = [values[key]]
-			boolean = data[name][key] in value
+		for prop in keys:
+			if key in keys[prop]:
+				if keys[prop][key] is None:
+					value = [values[key]]
+				elif isinstance(keys[prop][key],str):
+					if keys[prop][key].startswith('$') and keys[prop][key].endswith('$'):
+						parser = lambda value: (to_number(value) if len(value)>0 else 0)
+						value = keys[prop][key].replace('$','').split(',')
+						value = [parser(v) for v in value]
+						value = [v for v in value]
+					elif keys[prop][key].startswith('@') and keys[prop][key].endswith('@'):
+						parser = lambda value: (str(value) if len(value)>0 else 0)
+						value = keys[prop][key].replace('@','').split(',')
+						value = [parser(v) for v in value]
+						value = [data[name][v] for v in value]
+					elif keys[prop][key].startswith('#') and keys[prop][key].endswith('#'):
+						parser = lambda value: (int(value) if len(value)>0 else 0)
+						indices = keys[prop][key].replace('#','').split(',')
+						indices = [parser(index) for index in indices]
+						value = [list(set((np.asscalar(data[name][key]) for name in data)))[index] for index in indices]
+					elif keys[prop][key].startswith('%') and keys[prop][key].endswith('%'):
+						parser = lambda value: (int(value) if len(value)>0 else None)
+						slices = keys[prop][key].replace('%','').split(',')
+						if keys[prop][key].count(',') == 0:
+							slices = None,None,parser(slices[0])
+						elif keys[prop][key].count(',') == 1:
+							slices = parser(slices[0]),parser(slices[1]),None
+						elif keys[prop][key].count(',') == 2:
+							slices = parser(slices[0]),parser(slices[1]),parser(slices[2])
+						else:
+							slices = None,None,None
+						slices = slice(*slices)
+						value = list(set((np.asscalar(data[name][key]) for name in data)))[slices]
+					else:
+						parser = lambda value: (to_number(value))
+						value = [parser(value)]
+				else:
+					value = [values[key]]
+
+				boolean = data[name][key] in value
 
 		return boolean
 
@@ -317,11 +346,16 @@ def find(dictionary,properties):
 						else tuple(dict(zip(['key','value'],to_key_value(j,delimiter='='))) for j in k) for k in key))),
 		keys)
 
+
 	keys = [{prop: {
 				label:tuple(value[label] for value in key[prop]) for label in set(
 					label for value in key[prop] for label in value)}
 			 for prop in key} 
 			 for key in keys]
+
+	for key in keys:
+		if keys.count(key)>1:
+			keys.remove(key)
 
 	return keys
 
@@ -596,14 +630,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 			permutations[occurrence] = {}
 
-			print('key',key,combinations[occurrence])
+			# print('key',key,combinations[occurrence])
 
 			# for combination in combinations[occurrence]:
 			for combination in itertools.product(*combinations[occurrence]):
 				variables[occurrence][combination] = {}
 				label = {prop: dict(zip(
 					labels[occurrence][prop],
-					combination if prop in ['label'] else [value for value in labels[occurrence][prop]])) 
+					combination if prop in ['label'] else [labels[occurrence][prop][attr] for attr in labels[occurrence][prop]])) 
 				for prop in labels[occurrence]}
 				
 				# permutations[occurrence][combination] = combinations[occurrence][combination]
@@ -624,17 +658,20 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 				# 	if all(data[name][attr] == values[attr]
 				# 	for attr in values)]
 				allincluded = [name for name in names 
-					if include(name,labels[occurrence]['label'],label['label'],data)] 
+					if include(name,labels[occurrence],label['label'],data)] 
 				
 				if len(allincluded) == 0:
 					variables[occurrence].pop(combination);
 					# print('continue --',combination)
 					continue
 
-				print('combination',label,combination)
-				print()
-				print(allincluded)
-				print()
+				# print('combination',label,combination)
+				# print({attr: labels[occurrence][prop][attr] 
+				# 				for prop in labels[occurrence] 
+				# 				for attr in labels[occurrence][prop]})
+				# print()
+				# print(allincluded)
+				# print()
 
 				for permutation in permutations[occurrence][combination]:
 				# for permutation in itertools.product(*permutations[occurrence][combination]):
@@ -644,13 +681,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 					# included = [name for name in names 
 					# 	if all(data[name][attr] == values[attr]
 					# 	for attr in values)]
-
 					included = [name for name in allincluded 
-						if include(name,
-								{attr: labels[occurrence][prop][attr] 
-								for prop in labels[occurrence] 
-								for attr in labels[occurrence][prop]},
-								values,data)
+						if include(name,labels[occurrence],values,data)
 						]
 					
 					if len(included) == 0:
@@ -658,10 +690,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 						# print('continue',permutation)
 						continue
 
-					print('permutation',label,values)
-					print(included)					
-					print()
-					continue
+					# print('permutation',label,values)
+					# print(included)					
+					# print()
+					# continue
 
 					for kwarg in statistics:
 
@@ -703,8 +735,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								key,variables[occurrence][combination][permutation][kwarg][stat],
 								variables=variables[occurrence][combination][permutation],dtype=dtype)
 
-				print()
-				continue
+				# print()
+				# continue
 				# print('merging')
 				variables[occurrence][combination] = {
 					kwarg:{
@@ -719,7 +751,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			if len(variables[occurrence]) == 0:
 				variables.pop(occurrence)
 
-	return fig,ax
+	# return fig,ax
 
 	# Dump data
 	if hyperparameters.get('dump') or 1:
