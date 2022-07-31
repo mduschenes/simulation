@@ -601,7 +601,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			# for combination in combinations[occurrence]:
 			for combination in itertools.product(*combinations[occurrence]):
 				variables[occurrence][combination] = {}
-				label = {prop: dict(zip(labels[occurrence][prop],combination if prop in ['label'] else  )) for prop in labels[occurrence]}
+				label = {prop: dict(zip(
+					labels[occurrence][prop],
+					combination if prop in ['label'] else [value for value in labels[occurrence][prop]])) 
+				for prop in labels[occurrence]}
 				
 				# permutations[occurrence][combination] = combinations[occurrence][combination]
 				# permutations[occurrence][combination] = [
