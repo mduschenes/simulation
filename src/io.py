@@ -226,6 +226,8 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 			if isinstance(obj[name], h5py._hl.group.Group):	
 				data[key] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
 			else:
+				data[key] = obj[name][...]
+				continue		
 				# assert isinstance(obj[name],h5py._hl.dataset.Dataset)
 				if any(attr in name for attr in ('.real','.imag')):
 					name = name.replace('.real','').replace('.imag','')
