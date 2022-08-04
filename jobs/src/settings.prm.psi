@@ -1,0 +1,19 @@
+{
+"main__folders": [[{
+	"{\\mathcal{D}}_{103}": "quench-103"
+}]],
+"main__keys": [{"psi": {"type": "physics", "model": "psi"}}], 
+"main__info":["fit"],
+"sys__directories__cwd__dump": ["./build"], 
+"boolean__load": [1], 
+"boolean__plot": [1], 
+"terms__order": [4],
+"fit__kwargs__loss_weights": [[1,0]],
+"fit__kwargs__extrema__passes": [1],
+"fit__params__loss_func":["rmse"],
+"fit__params__params__loss_func": ["rmse"], 
+"fit__params__params__complexity_min": [1], 
+"plot__settings__BestFit__other__iterations": [[null]], 
+"plot__settings__Loss__ax__set_ylim":[{"ymin":5e-4,"ymax":1e-0}],
+"plot__fig":[{"BestFit":{},"Loss":{}}]
+}

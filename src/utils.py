@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 pi = np.pi
 e = np.exp(1)
 nan = np.nan
-delim = "__"
+delim = '.'
 
 # Types
 itg = np.integer
@@ -108,8 +108,6 @@ def jitpartial(func,*,static_argnums=None,**kwargs):
 		func (callable): Compiled function
 	'''
 	return jax.jit(partial(func,**kwargs),static_argnums=static_argnums)
-
-
 
 
 
@@ -262,7 +260,8 @@ def hessian(func):
 	# @jit
 	# def grad(x):
 	# 	return gradient_fwd(gradient_rev(func))(x)
-	grad = jit(jax.jacfwd(jax.jacrev(func)))
+	# grad = jit(jax.jacfwd(jax.jacrev(func)))
+	grad = jit(jax.hessian(func))
 	return grad
 
 
@@ -1171,7 +1170,8 @@ def add(a):
 	Returns:
 		out (ndarray) if out argument is not None
 	'''
-	return forloop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
+	# return forloop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
+	return a.sum(0)
 
 def product(a):
 	'''

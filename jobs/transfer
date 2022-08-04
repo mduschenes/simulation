@@ -1,0 +1,47 @@
+#!/bin/bash
+
+
+#export glbid_mduschen="2eb4a9be-a277-11e9-b594-0e56e8fd6d5a"
+#export glbid_umflux="f94e0c94-f006-11e7-8219-0a208f818180"
+#export glbid_umgl="e0370902-9f48-11e9-821b-02b7a92d8e58"
+#export glbid_umconflux="fa67b5dc-1b2d-11e9-9835-0262a1f2f698"
+
+#ENDPOINT1=${1:-"${glbid_umconflux}:~"}
+ENDPOINT1="${glbid_umconflux}:~"
+#ENDPOINT2=${2:-"${glbid_mduschen}:~/files/um/code/graphtheory"}
+ENDPOINT2="${glbid_mduschen}:~/files/um/code/graphtheory"
+#REVERSE=${3:-0}
+REVERSE=0
+options=()
+#options+=("-s exists")
+
+NAMES_BASE=(${@:-data})
+NAMES=($(realpath --relative-base=${HOME} ${@:-data}))
+
+if [[ $REVERSE == 1 ]]
+then
+	TEMP="${ENDPOINT1}"
+	ENDPOINT1="${ENDPOINT2}"
+	ENDPOINT2="${TEMP}"
+fi
+
+DIRS=($(dirname ${NAMES}))
+
+echo ${DIRS[@]}
+
+for i in ${!NAMES[@]}
+do
+	NAME=${NAMES[$i]}
+	NAME_BASE=${NAMES_BASE[$i]}
+	CMD=()
+	CMD+=("globus" "transfer")
+	if [[ -d ${HOME}/${NAME} ]]
+	then
+		CMD+=("-r")
+	fi
+	CMD+=(${options[@]} "${ENDPOINT1}/${NAME}" "${ENDPOINT2}/jobs/${NAME_BASE}")
+
+	echo ${CMD[@]}
+	${CMD[@]}
+done
+

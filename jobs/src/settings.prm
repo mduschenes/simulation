@@ -1,0 +1,15 @@
+{
+"main__folders": [[{"{\\mathcal{D}}_{103}": "quench-103"}]],
+"main__keys": [{"vol": {"type": "physics", "model": "vol"}}], 
+"sys__directories__cwd__dump": ["./build"], 
+"boolean__load": [0], 
+"boolean__plot": [1], 
+"fit__kwargs__loss_weights": [[1,0]],
+"fit__kwargs__extrema__passes": [1],
+"fit__params__loss_func":["weighted"],
+"fit__params__params__loss_func": ["weighted"], 
+"fit__params__params__complexity_min": [1], 
+"fit__params__params__params__loss_func": ["weighted"], 
+"plot__settings__BestFit__other__iterations": [[null]], 
+"plot__fig":[{"BestFit":{},"Loss":{}}]
+}

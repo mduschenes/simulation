@@ -231,7 +231,7 @@ def setup(hyperparameters):
 
 
 		# Update hyperparameters
-		setter(updates,permutation,delimiter='.',copy=True)
+		setter(updates,permutation,delimiter=delim,copy=True)
 
 		updater(settings['hyperparameters'][key],updates,copy=True)
 		check(settings['hyperparameters'][key])

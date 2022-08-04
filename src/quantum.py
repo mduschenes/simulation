@@ -1031,6 +1031,8 @@ class Object(object):
 
 			self.log(msg)
 
+			# print(self.__layers__(parameters,'variables').round(3))
+
 
 		status = (
 			(abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['value']['objective']) > 
@@ -1554,11 +1556,9 @@ class Hamiltonian(Object):
 		p = self.p
 		parameters = array(trotter(parameters,p))
 
-
 		# Get reshaped parameters (transpose for shape (K,M) to (M,K) and reshape to (MK,) with periodicity of data)
 		parameters = parameters.T.ravel()
 		
-
 		return parameters
 
 
