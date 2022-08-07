@@ -75,7 +75,7 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	if abspath:
 		path = os.path.abspath(path)
 	if root is not None:
-		if not path.startswith(root):
+		if not os.path.dirname(path).startswith(root):
 			path = os.path.join(root,path)
 	return path
 

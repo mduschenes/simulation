@@ -32,16 +32,12 @@
 	},
 "seed":{
 	"seed":123321,
-	"size":3,
+	"size":null,
 	"reset":123321,
 	"index":null
 	},
 "permutations":{
-	"permutations":{
-		"model.N":[2],
-		"model.M":[300],
-		"optimize.iterations":[200]
-		},
+	"permutations":{},
 	"groups":[],
 	"index":null
 	},

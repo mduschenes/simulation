@@ -6,14 +6,13 @@ import glob as globber
 from shutil import copy2 as cp
 import numpy as np
 
-CALL = 1 
+CALL = 0
 
 ARGS = {
 	'pc':{
 		'args': lambda args: ['./%s'%(args[0]),*args[1:]],
 		},
 	'lsf':{
-		#'args': lambda args: ['bsub','<<<',*args],
 		'args': lambda args: ['bsub','<',*args[:1]],
 		},	
 	'null': {
@@ -22,44 +21,6 @@ ARGS = {
 	}
 
 SETTINGS = {
-	# "sys.cwd.dump":[["./build"]],
-	# "boolean.load":[[0]],
-	# "boolean.plot":[[0]],
-	# "main.keys":[[[{"vol":{"type":"physics","model":"vol"}}]]],
-	"fit.kwargs.loss_weights": [[{"l1":1}],[{"l2":0.25,"l1":0.75}],[{"l2":0.50,"l1":0.5}],[{"l2":0.75,"l1":0.25}],[{"l2":1}]],
-	#"fit.params.params.params.loss_func":[["weighted"]],
-	#"fit.kwargs.extrema.passes":[[1]],
-	# "fit.kwargs.loss_weights":[[[x,1-x]] for x in np.linspace(0,1,5)],
-	#"fit.kwargs.loss_weights":[[[x,1-x]] for x in [0.75,1]],
-	# "plot.settings.BestFit.other.iterations":[[[None]]],
-	# "main.folders":[[
-	# 	*[[{r'{\mathcal{D}}_{%d}'%(s):'quench-%d'%(s)}] for s in [
-	# 		103, # 1352
-	# 	]],
-	# 	*[[{r'{\mathcal{D}}_{%d}'%(s):'quench-20191012-60x60-c_%d'%(s)}] for s in [
-	# 			 # 2, # 1451
-	# 			 # 8, # 1451
-	# 			 # 13, # 1071
-	# 			 # 32, # 884
-	# 			 # 41, # 1451
-	# 			 # 46, # 1451
-	# 			 # 48, # 1055
-	# 			 #  69, # 933
-	# 			 #  85, # 854
-	# 			 # 97, # 1451
-	# 			 # 102, # 945
-	# 			 # 116, # 1032
-	# 			 # 122, # 1451 
-	# 			 # 147, # 1451
-	# 			 # 154, # 1268
-	# 			 # 160, # 914
-	# 			 # 176, # 1451
-	# 			 # 178, # 1451
-	# 			 # 188, # 1192
-	# 			 # 200, # 1206
-	# 			 # 219, # 1319
-	# 	]]
-	# ]],
 }
 
 
@@ -85,17 +46,17 @@ def join(*paths,file=None,ext=None):
 	else:
 		return path
 
-# Read json data
-def read(path,obj):
+# Load json data
+def load(path,obj):
 	with open(path,'r') as fobj:
 		try:
-			obj.update(json.load(fobj))
+			return json.load(fobj)
 		except Exception as e:
-			pass
+			raise e
 	return
 
-# Write json data
-def write(path,obj):
+# Dump json data
+def dump(path,obj):
 	mkdir(path)
 	with open(path,'w') as fobj:
 		try:
@@ -211,15 +172,16 @@ def main(cwd,src,jobs,paths,arguments=None,settings={},default=None,**kwargs):
 
 	directory = datetime.datetime.today().strftime("%Y_%m_%d-%H_%M_%S")
 	iteration = -1
+	default
 
 	for job,path in zip(jobs,paths):
 		
 		_settings = {}
-		read(path,_settings)
+		_settings = load(path,default=_settings)
 
 		folder = join(cwd,directory)
 		_file,file = join(folder,file=path,ext='all')
-		write(_file,{**settings,
+		dump(_file,{**settings,
 				**{k:[_settings[k]] 
 					for k in _settings 
 					if k not in settings}})
@@ -235,7 +197,7 @@ def main(cwd,src,jobs,paths,arguments=None,settings={},default=None,**kwargs):
 
 			copy([src],folder,recursive=True,exceptions=['*.*'.join([*f.split('.')[:-1],'']) for f in [path,job]])
 			copy([job],folder)
-			write(file,_settings)
+			dump(file,_settings)
 
 			if callable(arguments):
 				args = arguments([_job,_file])
@@ -254,8 +216,8 @@ def main(cwd,src,jobs,paths,arguments=None,settings={},default=None,**kwargs):
 if __name__ == "__main__":
 	args = sys.argv[1:]
 	if len(args) >= 5:
-		arguments = ARGS.get(args[0],ARGS['null'])['args']
 		settings = SETTINGS
+		arguments = ARGS.get(args[0],ARGS['null'])['args']
 		cwd = args[1]
 		src = args[2]
 		default = args[3]

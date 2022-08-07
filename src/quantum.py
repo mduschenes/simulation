@@ -1903,7 +1903,7 @@ def check(hyperparameters):
 			} for attr in ['scale','initialization','random','smoothness','interpolation','pad']
 		},
 		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: None),#hyperparameters.get('seed',{}).get(attr)),
+			'value': (lambda parameter,hyperparameters,attr=attr: None),
 			'default': (lambda parameter,hyperparameters,attr=attr: None),
 			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
 			} for attr in ['seed']

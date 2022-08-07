@@ -213,8 +213,9 @@ def setup(hyperparameters):
 	size = hyperparameters['seed']['size']
 	reset = hyperparameters['seed']['reset']
 
-	# Get allowed indexes of permutations and seeds
-	index = {attr: hyperparameters[attr]['index'] for attr in ['permutations','seed']}
+	seed = seed if seed is not None else None
+	size = size if size is not None else 1
+	reset = reset if reset is not None else None
 
 
 	# Find keys of seeds in hyperparameters
@@ -228,31 +229,29 @@ def setup(hyperparameters):
 	size *= count
 
 	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape)
-	
-	# Get all enumerated keys and seeds for permutations and seedlings of hyperparameters
-	keys = {'.'.join(['%d'%(k) for k in [iteration,instance]]): (permutation,seed) 
-		for iteration,permutation in enumerate(permutations) 
-		for instance,seed in enumerate(seeds)
-		if allowed(
-			{'permutations':index['permutations'],'seed':index['seed']},
-			{'permutations':permutation,'seed':seed.tolist()},
-			{'permutations':permutations,'seed':seeds.tolist()}
-			)
-		}
 
+	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
+	index = {attr: hyperparameters[attr]['index'] for attr in ['permutations','seed']}
+	values = {attr: {'permutations':permutations,'seed':seeds}[attr] for attr in index}
+	keys = {
+		'.'.join(['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]):[v[1] for v in value]
+		for value in itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))
+		if allowed(
+			{attr: index[attr] for attr in index},
+			{attr: dict(zip(values,value))[attr] for attr in index},
+			{attr: values[attr] for attr in index},
+			)
+	}
 
 	# Set settings with key and seed instances
 	
-	# Update key/seed instances of hyperparameters with updates
 	for key in keys:
 
 
 		settings[key] = {}
 
-		# Set seed and key
-		iteration,instance = map(int,key.split('.'))
-		permutation,seed = keys[key]
-		
+		# Set seed and key values
+		values = dict(zip(values,keys[key]))
 
 		# Get paths
 		pwd = deepcopy(hyperparameters['sys']['pwd'])
@@ -282,7 +281,7 @@ def setup(hyperparameters):
 			'model':{
 				'system':{
 					'key':key,
-					'seed':instance,
+					'seed':key,
 					'timestamp':timestamp
 					},
 				},
@@ -302,12 +301,12 @@ def setup(hyperparameters):
 				}
 			})
 
-		for branch,leaf in zip(seedlings,seed):
+		for branch,leaf in zip(seedlings,values['seed']):
 			grow(updates,branch,leaf)
 
 
 		# Update hyperparameters
-		setter(updates,permutation,delimiter=delim,copy=True)
+		setter(updates,values['permutations'],delimiter=delim,copy=True)
 		updater(settings[key]['hyperparameters'],updates,copy=True)
 		check(settings[key]['hyperparameters'])
 

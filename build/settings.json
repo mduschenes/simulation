@@ -24,23 +24,20 @@
 		}
 	},
 "boolean":{
-	"train":0,
+	"train":1,
 	"load":0,
-	"dump":0,
+	"dump":1,
 	"plot":1,
 	"plot.obj":0
 	},
 "seed":{
 	"seed":123321,
-	"size":3,
+	"size":1,
 	"reset":123321,
 	"index":null
 	},
 "permutations":{
 	"permutations":{
-		"model.N":[2],
-		"model.M":[100,200,500],
-		"optimize.iterations":[200]
 		},
 	"groups":[],
 	"index":null
