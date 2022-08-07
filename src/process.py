@@ -48,10 +48,18 @@ def Texify(string,texify={},usetex=True):
 	return string
 
 
-# Normalize data
-def norm(a,axis=None,ord=2):
-	out = np.linalg.norm(a,axis=axis,ord=ord)
-	return out
+# Normalization of data
+def norm(data,axis=None,ord=2):
+	return np.linalg.norm(data,axis=axis,ord=ord)
+
+# Sample average of data
+def mean(data,axis=0,dtype=None):
+	return np.nanmean(data,axis=axis).astype(dtype)
+
+# Sample deviation of data
+def std(data,axis=0,dtype=None):
+	n = data.shape[axis]
+	return (np.nanstd(data,axis=axis,ddof=n>1)/np.sqrt(n)).astype(dtype)
 
 # Fit data
 def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
@@ -557,16 +565,16 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			**{kwarg:{
 				'property':kwarg.replace('',''),
 				'statistic':{
-					None: lambda key,data,variables=None,dtype=None: np.nanmean(data,axis=0).astype(dtype),
-					'fit': lambda key,data,variables=None,dtype=None: np.nanmean(data,axis=0).astype(dtype),
+					None: lambda key,data,variables=None,dtype=None: mean(data,axis=0,dtype=dtype),
+					'fit': lambda key,data,variables=None,dtype=None: mean(data,axis=0,dtype=dtype),
 					}
 				} 
 				for kwarg in ['%s'%(ax) for ax in axes]},
 			**{kwarg:{
 				'property':kwarg.replace('err',''),
 				'statistic':{			
-					None: lambda key,data,variables=None,dtype=None: np.nanstd(data,axis=0).astype(dtype),
-					'fit': lambda key,data,variables=None,dtype=None: np.nanstd(data,axis=0).astype(dtype),
+					None: lambda key,data,variables=None,dtype=None: std(data,axis=0,dtype=dtype),
+					'fit': lambda key,data,variables=None,dtype=None: std(data,axis=0,dtype=dtype),
 					}
 				}	 
 				for kwarg in ['%serr'%(ax) for ax in axes]},

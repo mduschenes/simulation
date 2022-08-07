@@ -72,8 +72,7 @@ def variables(parameters,hyperparameters,parameter,group):
 		variable (array): variables
 	'''
 	
-	# scale = [hyperparameters[parameter]['scale'],2*pi]
-	scale = [2*pi]*2
+	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
 
 	if parameter in ['xy'] and group in [('x',)]:
 		variable = (
@@ -309,7 +308,8 @@ def gradients(parameters,hyperparameters,parameter,group):
 	shape = parameters.shape
 	n = shape[0]
 
-	scale = [hyperparameters[parameter]['scale'],2*pi]	
+	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
+
 	if group in [('x',),('x_0','x_1'),('x_2','x_3'),]:
 		variable = scale[0]*parameters[:n//2]
 

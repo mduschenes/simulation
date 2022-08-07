@@ -37,7 +37,7 @@ def test_path(path='data/data.hdf5'):
 	return
 
 def test_hdf5(path='data/data.hdf5'):
-
+	return
 	# Create data
 	def rand(shape=None):
 		if shape is None:
@@ -71,14 +71,16 @@ def test_hdf5(path='data/data.hdf5'):
 	ext = 'hdf5'
 	kwargs = {}
 
-	dump(data,path,wr=wr,ext=ext,**kwargs)
+	dump(data,path,wr=wr,**kwargs)
 
 	# Load data
 	wr = 'r'
 	ext = 'hdf5'
 	kwargs = {}
 
-	new = load(path,wr=wr,ext=ext,**kwargs)
+	new = load(path,wr=wr,**kwargs)
+
+
 
 	# Check dumped and loaded data are equal
 	for group in groups:
@@ -93,5 +95,3 @@ def test_hdf5(path='data/data.hdf5'):
 
 
 	return
-
-test_hdf5()

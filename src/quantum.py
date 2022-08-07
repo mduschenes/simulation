@@ -15,6 +15,8 @@ import jax
 import jax.numpy as np
 import jax.scipy as sp
 import jax.example_libraries.optimizers
+import absl.logging
+absl.logging.set_verbosity(absl.logging.INFO)
 jax.config.update('jax_platform_name','cpu')
 jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
@@ -1314,11 +1316,11 @@ class Object(object):
 				data[key].update(func(attr,data[key][attr],self))
 
 		# Dump data
-		path = self.hyperparameters['sys']['path']['data']['data']
+		path = join(self.hyperparameters['sys']['path']['data']['data'],root=self.hyperparameters['sys']['cwd'])
 		dump(data,path)
 		
 		# Dump hyperparameters
-		path = self.hyperparameters['sys']['path']['data']['model'] 
+		path = join(self.hyperparameters['sys']['path']['data']['model'],root=self.hyperparameters['sys']['cwd'])
 		hyperparameters = self.hyperparameters	
 		dump(hyperparameters,path)
 
@@ -1333,7 +1335,7 @@ class Object(object):
 			e = elements.get(key,i)
 			return e if not callable(i) else i
 	
-		path = self.hyperparameters['sys']['path']['data']['model']
+		path = join(self.hyperparameters['sys']['path']['data']['model'],root=self.hyperparameters['sys']['cwd'])
 		default = self.hyperparameters
 		hyperparameters = load(path,default=default)
 		updater(self.hyperparameters,hyperparameters,func=func)
@@ -1346,7 +1348,7 @@ class Object(object):
 		'''
 
 		# Get paths and kwargs
-
+		root = self.hyperparameters['sys']['cwd']
 		paths = {
 			'data':('sys','path','data','data'),
 			'settings':('sys','path','config','plot'),
@@ -1361,6 +1363,8 @@ class Object(object):
 			path = hyperparameters
 			for i in paths[kwarg]:
 				path = path[i]
+			path = join(path,root=root)
+
 			kwargs[kwarg].append(path)
 
 		self.fig,self.ax = process(**kwargs)

@@ -1,21 +1,18 @@
 {
 "class":"src.quantum.Unitary",
 "sys":{
-	"directory":{
-		"data":"data",
-		"plot":"data",
-		"config":"data"
-	},
+	"pwd":".",
+	"cwd":"data",
 	"path":{
 		"data":{
-			"model":"data/model.pkl",
-			"data":"data/data.hdf5",
-			"settings":"data/settings.json",
-			"log":"data/log.log"
+			"model":"model.pkl",
+			"data":"data.hdf5",
+			"settings":"settings.json",
+			"log":"log.log"
 			},
 		"plot":{
-			"plot":"data/plot.pdf",
-			"process":"data/process.hdf5"
+			"plot":"plot.pdf",
+			"process":"process.hdf5"
 			},
 		"config":{
 			"settings":"config/settings.json",
@@ -27,8 +24,8 @@
 		}
 	},
 "boolean":{
-	"train":0,
-	"load":1,
+	"train":1,
+	"load":0,
 	"dump":1,
 	"plot":1,
 	"plot.obj":0
@@ -36,23 +33,25 @@
 "seed":{
 	"seed":123321,
 	"size":3,
-	"reset":123321
+	"reset":123321,
+	"index":null
 	},
 "permutations":{
-	"model.N":[2],
-	"model.M":[50,100,200,500,1000,2000,5000,10000],
-	"model.M":[5000,10000],
-	"model.M":[10],
-	"optimize.iterations":[10]
+	"permutations":{
+		"model.N":[2],
+		"model.M":[300],
+		"optimize.iterations":[200]
+		},
+	"groups":[],
+	"index":null
 	},
-"groups":[],
 "model":{
 	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":10,
+	"M":100,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -76,7 +75,7 @@
 	"iterations":200,
 	"optimizer":"cg",
 	"line_search":"line_search",
-	"eps":{"objective":1e-6,"grad":1e-12,"alpha":1e-12,"beta":1e3},
+	"eps":{"objective":1e-4,"grad":1e-12,"alpha":1e-12,"beta":1e3},
 	"value":{"objective":1,"grad":0,"alpha":0,"beta":0},
 	"status":1,
 	"reset":0,
@@ -100,8 +99,8 @@
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},					
-		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},		
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
+		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],

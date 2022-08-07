@@ -129,7 +129,7 @@ def test_derivative(path,tol):
 
 	assert allclose(derivative_jax(parameters),derivative_finite(parameters)), "JAX derivative != Finite derivative"
 	assert allclose(derivative_finite(parameters),derivative_analytical(parameters)), "Finite derivative != Analytical derivative"
-	# assert allclose(derivative_jax(parameters),derivative_analytical(parameters)), "JAX derivative != Analytical derivative"
+	assert allclose(derivative_jax(parameters),derivative_analytical(parameters)), "JAX derivative != Analytical derivative"
 
 	return
 
@@ -151,6 +151,8 @@ def test_grad(path,tol):
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
 	assert allclose(grad_jax(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
+
+	print('done')
 
 	return
 

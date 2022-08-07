@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 
 # Import python modules
-import sys,os,glob
-import datetime,itertools,json,subprocess
+import sys,os,datetime,itertools,json,subprocess
+import glob as globber
 from shutil import copy2 as cp
-from distutils.dir_util import copy_tree as cpdir
 import numpy as np
 
 CALL = 1 
@@ -23,17 +22,17 @@ ARGS = {
 	}
 
 SETTINGS = {
-	# "sys__cwd__dump":[["./build"]],
-	# "boolean__load":[[0]],
-	# "boolean__plot":[[0]],
-	# "main__keys":[[[{"vol":{"type":"physics","model":"vol"}}]]],
-	"fit__kwargs__loss_weights": [[{"l1":1}],[{"l2":0.25,"l1":0.75}],[{"l2":0.50,"l1":0.5}],[{"l2":0.75,"l1":0.25}],[{"l2":1}]],
-	#"fit__params__params__params__loss_func":[["weighted"]],
-	#"fit__kwargs__extrema__passes":[[1]],
-	# "fit__kwargs__loss_weights":[[[x,1-x]] for x in np.linspace(0,1,5)],
-	#"fit__kwargs__loss_weights":[[[x,1-x]] for x in [0.75,1]],
-	# "plot__settings__BestFit__other__iterations":[[[None]]],
-	# "main__folders":[[
+	# "sys.cwd.dump":[["./build"]],
+	# "boolean.load":[[0]],
+	# "boolean.plot":[[0]],
+	# "main.keys":[[[{"vol":{"type":"physics","model":"vol"}}]]],
+	"fit.kwargs.loss_weights": [[{"l1":1}],[{"l2":0.25,"l1":0.75}],[{"l2":0.50,"l1":0.5}],[{"l2":0.75,"l1":0.25}],[{"l2":1}]],
+	#"fit.params.params.params.loss_func":[["weighted"]],
+	#"fit.kwargs.extrema.passes":[[1]],
+	# "fit.kwargs.loss_weights":[[[x,1-x]] for x in np.linspace(0,1,5)],
+	#"fit.kwargs.loss_weights":[[[x,1-x]] for x in [0.75,1]],
+	# "plot.settings.BestFit.other.iterations":[[[None]]],
+	# "main.folders":[[
 	# 	*[[{r'{\mathcal{D}}_{%d}'%(s):'quench-%d'%(s)}] for s in [
 	# 		103, # 1352
 	# 	]],
@@ -65,8 +64,8 @@ SETTINGS = {
 
 
 # glob path
-def globify(paths,**kwargs):
-	return [p for path in paths for p in glob.glob(os.path.expanduser(path),**kwargs)]
+def glob(paths,**kwargs):
+	return [p for path in paths for p in globber.glob(os.path.expanduser(path),**kwargs)]
 
 # Join paths
 def join(*paths,file=None,ext=None):
@@ -121,29 +120,24 @@ def copy(sources,destination,name=None,recursive=False,exceptions=[]):
 	if recursive:
 		sources = ['%s%s%s'%(source,'' if source.endswith(os.path.sep)  else os.path.sep,'**')
 					for source in sources]
-	exceptions = globify(exceptions)
+	exceptions = glob(exceptions)
 
 	mkdir(destination)
 	if os.path.isdir(destination) and name is not None:
 		destination,name = join(destination,file=name)
-	for source in globify(sources):
+	for source in glob(sources):
 		if source not in exceptions:
 			cp(source,destination)
-		# except:
-		# 	try:
-		# 		cpdir(source,destination)
-		# 	except:
-		# 		pass
 	return
 
 # Class to safely change directories
 class cd(object):
-	def __init__(self,path):
+	def .init.(self,path):
 		self.path = path
-	def __enter__(self):
+	def .enter.(self):
 		self.cwd = os.getcwd()
 		os.chdir(self.path)
-	def __exit__(self,etype, value, traceback):
+	def .exit.(self,etype, value, traceback):
 		os.chdir(self.cwd)
 
 
@@ -204,10 +198,12 @@ def permute(dictionary,_groups=None,_keep_order=False):
 			dictionaries[i] = {k: dictionaries[i][k] for k in _keys}    
 	return dictionaries
 
+	
+
 
 def main(cwd,src,jobs,paths,arguments=None,settings={},default=None,**kwargs):
-	jobs = globify(jobs)
-	paths = globify(paths)
+	jobs = glob(jobs)
+	paths = glob(paths)
 	if len(jobs) == 1:
 		jobs = [jobs[0] for path in paths]
 
@@ -266,5 +262,3 @@ if __name__ == "__main__":
 		jobs = args[4:5]
 		paths = args[5:]
 		main(cwd,src,jobs,paths,arguments,settings,default)
-
-		./submit cwd

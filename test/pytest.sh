@@ -1,7 +1,7 @@
 #!/bin/bash
 
 files=(${@:-*_test.py})
-options=("-s" "-rA" "--durations=0" "-W ignore::DeprecationWarning")
+options=("-s" "-rA" "--durations=0" "-W ignore::DeprecationWarning" "--show-capture=no")
 # options=("-s" "-rA" "--durations=0" "-k dump")
 
 cmd=()

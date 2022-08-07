@@ -57,7 +57,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 	paths = [paths[k] for k in paths if returns[k]] 
 	return paths if len(paths)>1 else paths[0]
 
-def join(*paths,ext=None,abspath=False,delimiter='.'):
+def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	'''
 	Join paths into path, with optional extension
 	Args:
@@ -65,6 +65,7 @@ def join(*paths,ext=None,abspath=False,delimiter='.'):
 		ext (str): Extension to add to path
 		abspath (bool): Return absolute joined path
 		delimiter (str): Delimiter to separate file name from extension
+		root (str): Root path to insert at beginning of path if path does not already start with root
 	Returns:
 		paths (str): Joined path
 	'''	
@@ -73,6 +74,9 @@ def join(*paths,ext=None,abspath=False,delimiter='.'):
 		path = delimiter.join([path,ext])
 	if abspath:
 		path = os.path.abspath(path)
+	if root is not None:
+		if not path.startswith(root):
+			path = os.path.join(root,path)
 	return path
 
 

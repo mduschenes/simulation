@@ -2482,6 +2482,22 @@ def isclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
 	return np.isclose(a,b,rtol,atol,equal_nan)	
 
 
+def is_equal(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
+	'''
+	Check if object a and b are equal
+	Args:
+		a (object): object to be tested
+		b (object): object to be tested
+		rtol (float): Relative tolerance of arrays
+		atol (float): Absolute tolerance of arrays
+		equal_nan (bool): Compare nan's as equal		
+	Returns:
+		out (bool): whether objects are equals
+	'''
+	try:
+		return a is b
+	except ValueError:
+		return allclose(a,b,rtol=rtol,atol=atol,equal_nan=equal_nan)
 
 def is_iterable(obj):
 	'''
@@ -2489,7 +2505,7 @@ def is_iterable(obj):
 	Args:
 		obj (object): object to be tested
 	Returns:
-		iterable (bool): whether object is iterable
+		out (bool): whether object is iterable
 	'''
 	return hasattr(obj,'__iter__')
 
@@ -2501,7 +2517,7 @@ def is_diag(a):
 	Args:
 		a (array): Possible diagonal array of shape (n,n)
 	Returns:
-		iterable (bool): whether object is iterable
+		out (bool): whether object is iterable
 	'''	
 	n,m = a.shape
 	assert n == m

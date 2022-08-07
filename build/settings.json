@@ -1,21 +1,18 @@
 {
 "class":"src.quantum.Unitary",
 "sys":{
-	"directory":{
-		"data":"data",
-		"plot":"data",
-		"config":"data"
-	},
+	"pwd":".",
+	"cwd":"data",
 	"path":{
 		"data":{
-			"model":"data/model.pkl",
-			"data":"data/data.hdf5",
-			"settings":"data/settings.json",
-			"log":"data/log.log"
+			"model":"model.pkl",
+			"data":"data.hdf5",
+			"settings":"settings.json",
+			"log":"log.log"
 			},
 		"plot":{
-			"plot":"data/plot.pdf",
-			"process":"data/process.hdf5"
+			"plot":"plot.pdf",
+			"process":"process.hdf5"
 			},
 		"config":{
 			"settings":"config/settings.json",
@@ -36,14 +33,18 @@
 "seed":{
 	"seed":123321,
 	"size":3,
-	"reset":123321
+	"reset":123321,
+	"index":null
 	},
 "permutations":{
-	"model.N":[3],
-	"model.M":[300],
-	"optimize.iterations":[300]
+	"permutations":{
+		"model.N":[2],
+		"model.M":[100,200,500],
+		"optimize.iterations":[200]
+		},
+	"groups":[],
+	"index":null
 	},
-"groups":[],
 "model":{
 	"N":2,
 	"D":2,
@@ -183,7 +184,7 @@
 },
 "process": {
 	"sort": ["N","D","d","L","delta","M","T","tau","iteration"],
-	"nullsort": ["hi"],
+	"nullsort": [],
 	"load":0,
 	"dump":1,
 	"delimiter":".",

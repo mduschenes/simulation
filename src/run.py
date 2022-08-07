@@ -39,7 +39,7 @@ from src.utils import inner_abs2,inner_real2,inner_imag2
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
 from src.utils import eigh,qr
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
-from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
+from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_equal,is_naninf,to_key_value 
 from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size
 from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
@@ -82,11 +82,6 @@ def plotter(hyperparameters):
 				path = path[i]
 			kwargs[kwarg].append(path)
 
-		for path in list(kwargs[kwarg]):
-			path = join(split(path,directory=[None,-1]),split(path,file=1),ext=split(path,ext=1))
-			if path not in kwargs[kwarg]:
-				kwargs[kwarg].append(path)
-
 	fig,ax = process(**kwargs)
 	return
 
@@ -104,7 +99,37 @@ def check(hyperparameters):
 	func = lambda key,iterable,elements: iterable.get(key,elements[key])
 	updater(hyperparameters,load(path),func=func)
 
+
 	# Check sections for correct attributes
+	section = 'sys'
+	updates = {
+		**{attr: {
+			'value': (lambda hyperparameters,attr=attr: '' if hyperparameters[section].get(attr) is None else hyperparameters[section][attr]),
+			'default': (lambda hyperparameters: ''),
+			'conditions': (lambda hyperparameters: (True))
+			} for attr in ['pwd','cwd']
+		},		
+		'path': {
+			'value': (lambda hyperparameters: 	{
+				attr: {
+					path: join(
+						split(hyperparameters[section]['path'][attr][path],directory=True),
+						'.'.join(split(hyperparameters[section]['path'][attr][path],file=True).split('.')[:]),
+						ext=split(hyperparameters[section]['path'][attr][path],ext=True),
+					)
+					for path in hyperparameters[section]['path'][attr]
+					}
+				for attr in hyperparameters[section]['path']
+				}),
+			'default': (lambda hyperparameters: {}),
+			'conditions': (lambda hyperparameters: (hyperparameters[section].get('path') is not None))
+		},		
+	}			
+	for attr in updates:						
+		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
+		if updates[attr]['conditions'](hyperparameters):
+			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
+
 	section = 'process'
 	updates = {
 		'path': {
@@ -128,6 +153,36 @@ def check(hyperparameters):
 	return
 
 
+def allowed(index,value,values):
+	'''
+	Check if value is allowed as per index
+	Args:
+		index (dict): Dictionary of allowed integer indices or values of the form {attr: index/value (int,iterable[int]/dict,iterable[dict])}
+		value (dict): Dictionary of possible value of the form {attr: value (dict)}
+		values (dict): Dictionary of all values of the form {attr: values}
+	Returns:
+		boolean (bool) : Boolean if value is allowed
+	'''
+	boolean = True
+	for attr in index:
+		if index[attr] is None:
+			index[attr] = [index[attr]]
+		elif isinstance(index[attr],int):
+			if index[attr] < 0:
+				index[attr] += len(values[attr])
+			index[attr] = [index[attr]]
+		elif isinstance(index[attr],dict):
+			index[attr] = [index[attr]]
+		for subindex in index[attr]:
+			if subindex is None:
+				boolean &= True
+			elif isinstance(subindex,int):
+				boolean &= is_equal(values[attr].index(value[attr]),subindex)
+			elif isinstance(subindex,dict):
+				boolean &= all(is_equal(value[attr][key],subindex[key]) for key in subindex)
+
+	return boolean
+
 def setup(hyperparameters):
 	'''
 	Setup hyperparameters
@@ -149,8 +204,8 @@ def setup(hyperparameters):
 	timestamp = datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')
 
 	# Get permutations of hyperparameters
-	permutations = hyperparameters['permutations']
-	groups = hyperparameters['groups']
+	permutations = hyperparameters['permutations']['permutations']
+	groups = hyperparameters['permutations']['groups']
 	permutations = permuter(permutations,groups=groups)
 
 	# Get seeds for number of splits/seedings, for all nested hyperparameters leaves that involve a seed
@@ -158,6 +213,11 @@ def setup(hyperparameters):
 	size = hyperparameters['seed']['size']
 	reset = hyperparameters['seed']['reset']
 
+	# Get allowed indexes of permutations and seeds
+	index = {attr: hyperparameters[attr]['index'] for attr in ['permutations','seed']}
+
+
+	# Find keys of seeds in hyperparameters
 	key = 'seed'
 	exclude = [('seed','seed',),('model','system','seed')]
 	seedlings = [branch[0] for branch in leaves(hyperparameters,key,returns='both') if branch[0] not in exclude and branch[1] is None]
@@ -172,33 +232,49 @@ def setup(hyperparameters):
 	# Get all enumerated keys and seeds for permutations and seedlings of hyperparameters
 	keys = {'.'.join(['%d'%(k) for k in [iteration,instance]]): (permutation,seed) 
 		for iteration,permutation in enumerate(permutations) 
-		for instance,seed in enumerate(seeds)}
+		for instance,seed in enumerate(seeds)
+		if allowed(
+			{'permutations':index['permutations'],'seed':index['seed']},
+			{'permutations':permutation,'seed':seed.tolist()},
+			{'permutations':permutations,'seed':seeds.tolist()}
+			)
+		}
 
 
 	# Set settings with key and seed instances
-	settings['seed'] = seeds
-
-	settings['boolean'] = {attr: (
-			(hyperparameters['boolean'].get(attr,False)) 
-			# (attr not in ['train'] or not hyperparameters['boolean'].get('load',False))
-			)
-			for attr in hyperparameters['boolean']}
-
-	settings['hyperparameters'] = {}
-	settings['object'] = {}
-	settings['logger'] = {}
-
+	
 	# Update key/seed instances of hyperparameters with updates
 	for key in keys:
+
+
+		settings[key] = {}
 
 		# Set seed and key
 		iteration,instance = map(int,key.split('.'))
 		permutation,seed = keys[key]
 		
+
+		# Get paths
+		pwd = deepcopy(hyperparameters['sys']['pwd'])
+		cwd = deepcopy(hyperparameters['sys']['cwd'])
+		paths = deepcopy(hyperparameters['sys']['path'])
+
 		# Set settings
+		settings[key]['seed'] = seed
+
+		settings[key]['boolean'] = {attr: (
+				(hyperparameters['boolean'].get(attr,False)) 
+				# (attr not in ['train'] or not hyperparameters['boolean'].get('load',False))
+				)
+				for attr in hyperparameters['boolean']}
+
+		settings[key]['hyperparameters'] = {}
+		settings[key]['object'] = {}
+		settings[key]['logger'] = {}
+
 
 		# Set hyperparameters updates with key/instance dependent settings
-		settings['hyperparameters'][key] = deepcopy(hyperparameters)
+		settings[key]['hyperparameters'] = deepcopy(hyperparameters)
 
 		updates = {}		
 
@@ -214,16 +290,16 @@ def setup(hyperparameters):
 				'path': {
 					attr: {
 						path: join(
-							split(settings['hyperparameters'][key]['sys']['path'][attr][path],directory=True),
 							key,
-							split(settings['hyperparameters'][key]['sys']['path'][attr][path],file=True),
-							ext=split(settings['hyperparameters'][key]['sys']['path'][attr][path],ext=True)
-						)
-						for path in settings['hyperparameters'][key]['sys']['path'][attr]
+							split(settings[key]['hyperparameters']['sys']['path'][attr][path],directory=True),
+							split(settings[key]['hyperparameters']['sys']['path'][attr][path],file=True),
+							ext=split(settings[key]['hyperparameters']['sys']['path'][attr][path],ext=True),
+							root=join(cwd))
+						for path in settings[key]['hyperparameters']['sys']['path'][attr]
 						}
-					for attr in settings['hyperparameters'][key]['sys']['path']
+					for attr in settings[key]['hyperparameters']['sys']['path']
 					},
-				},
+				}
 			})
 
 		for branch,leaf in zip(seedlings,seed):
@@ -232,45 +308,59 @@ def setup(hyperparameters):
 
 		# Update hyperparameters
 		setter(updates,permutation,delimiter=delim,copy=True)
-
-		updater(settings['hyperparameters'][key],updates,copy=True)
-		check(settings['hyperparameters'][key])
+		updater(settings[key]['hyperparameters'],updates,copy=True)
+		check(settings[key]['hyperparameters'])
 
 		
-		# Copy config files
-		paths = settings['hyperparameters'][key]['sys']['path']['config']
-		directory = settings['hyperparameters'][key]['sys']['directory']['config']
+		# Copy files		
 		sources = {}
 		destinations = {}
-		for path in paths:
-			sources[path] = join(split(paths[path],directory=-1),split(paths[path],file=1),ext=split(paths[path],ext=1))
-			destinations[path] = join(directory,key,split(paths[path],file=1),ext=split(paths[path],ext=1))
-			paths[path] = destinations[path]
+
 		func = lambda key,iterable,elements: iterable.get(key,elements[key])
-		for path in paths:
 
-			if path in ['settings']:
-				data = deepcopy(settings['hyperparameters'][key])
-			else:
-				data = settings['hyperparameters'][key].get(path,{})
-			try:
-				source = load(sources[path])
-				destination = destinations[path]
+		# Set sources and destinations of files
+		attrs = paths
+		for attr in attrs:
+			sources[attr] = {}
+			destinations[attr] = {}
+			for path in paths[attr]:
+				sources[attr][path] = join(split(paths[attr][path],directory=True),split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(pwd))
+				destinations[attr][path] = join(split(paths[attr][path],directory=True),split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(cwd,key))
 
-				updater(data,source,func=func)
-				dump(data,destination)
-			except:
-				copy(sources[path],destinations[path])
 
+		# Dump files
+		attrs = ['config']
+		for attr in attrs:
+			for path in paths[attr]:
+
+				if path in ['settings']:
+					data = deepcopy(settings[key]['hyperparameters'])
+				else:
+					data = settings[key]['hyperparameters'].get(path,{})
+				try:
+					source = load(sources[attr][path])
+					destination = destinations[attr][path]
+
+					updater(data,source,func=func)
+					dump(data,destination)
+				except:
+					source = sources[attr][path]
+					destination = destinations[attr][path]
+
+					try:					
+						copy(source,destination)
+					except Exception as e:
+						raise e
 
 		# Set object
-		settings['object'][key] = None
+		settings[key]['object'] = None
 
 		# Set logger
-		settings['logger'][key] = logconfig(__name__,
-			conf=settings['hyperparameters'][key]['sys']['path']['config']['logger'],
-			**{'handler_file.formatter.file.args':settings['hyperparameters'][key]['sys']['path']['data']['log'],}
+		settings[key]['logger'] = logconfig(__name__,
+			conf=settings[key]['hyperparameters']['sys']['path']['config']['logger'],
+			**{'handler_file.formatter.file.args':settings[key]['hyperparameters']['sys']['path']['data']['log'],}
 			)
+
 
 	return settings
 
@@ -284,23 +374,23 @@ def run(hyperparameters):
 
 	settings = setup(hyperparameters)
 
-	for key in settings['hyperparameters']:		
+	for key in settings:		
 
-		if not any(settings['boolean'].get(attr) for attr in ['load','dump','train','plot.obj']):
+		if not any(settings[key]['boolean'].get(attr) for attr in ['load','dump','train','plot.obj']):
 			continue		
 
-		hyperparameters = settings['hyperparameters'][key]
+		hyperparameters = settings[key]['hyperparameters']
 
 		cls = load(hyperparameters['class'])
 
 		obj = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
-		if settings['boolean'].get('load'):
+		if settings[key]['boolean'].get('load'):
 			obj.load()
 
-		settings['object'][key] = obj
+		settings[key]['object'] = obj
 
-		if settings['boolean'].get('train'):
+		if settings[key]['boolean'].get('train'):
 
 			parameters = obj.parameters
 			hyperparameters = hyperparameters['optimize']
@@ -312,14 +402,14 @@ def run(hyperparameters):
 
 			parameters = optimizer(parameters)
 		
-		if settings['boolean'].get('dump'):	
+		if settings[key]['boolean'].get('dump'):	
 			obj.dump()
 		
-		if settings['boolean'].get('plot.obj'):
+		if settings[key]['boolean'].get('plot.obj'):
 			obj.plot()
 
-	if settings['boolean'].get('plot'):
-		hyperparameters = settings['hyperparameters']
+	if any(settings[key]['boolean'].get('plot') for key in settings):
+		hyperparameters = {key: settings[key]['hyperparameters'] for key in settings if settings[key]['boolean'].get('plot')}
 		plotter(hyperparameters)		
 
 	return
