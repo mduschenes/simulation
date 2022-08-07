@@ -3,26 +3,34 @@
 # Import python modules
 import sys,os,datetime,itertools,json,subprocess
 import glob as globber
+from copy import deepcopy
 from shutil import copy2 as cp
 import numpy as np
 
 CALL = 0
 
-ARGS = {
+DEVICES = {
 	'pc':{
 		'args': lambda args: ['./%s'%(args[0]),*args[1:]],
 		},
 	'lsf':{
 		'args': lambda args: ['bsub','<',*args[:1]],
 		},	
-	'null': {
+	None: {
 		'args': lambda args: [],
 		},
 	}
 
-SETTINGS = {
-}
 
+SETTINGS = {
+	"device":{"key":"device","value":"pc","type":"constant"},
+	"settings":{"key":"settings","value":"config/settings.json","type":"constant"},
+	"size":{"key":"seed.size","value":None,"type":"iterate"},
+	"permutations":{"key":"permutations.permutations","value":{},"type":"permute"},
+	"groups":{"key":"permutations.groups","value":[],"type":"constant"},
+	"pwd":{"key":"sys.pwd","value":".","type":"constant"},
+	"cwd":{"key":"sys.cwd","value":"data","type":"constant"},
+}
 
 # glob path
 def glob(paths,**kwargs):
@@ -47,7 +55,7 @@ def join(*paths,file=None,ext=None):
 		return path
 
 # Load json data
-def load(path,obj):
+def load(path,default=None):
 	with open(path,'r') as fobj:
 		try:
 			return json.load(fobj)
@@ -93,18 +101,18 @@ def copy(sources,destination,name=None,recursive=False,exceptions=[]):
 
 # Class to safely change directories
 class cd(object):
-	def .init.(self,path):
+	def __init__(self,path):
 		self.path = path
-	def .enter.(self):
+	def __enter__(self):
 		self.cwd = os.getcwd()
 		os.chdir(self.path)
-	def .exit.(self,etype, value, traceback):
+	def __exit__(self,etype, value, traceback):
 		os.chdir(self.cwd)
 
 
 
 # Submit call to command line
-def submit(*args,directory='.',call=CALL):
+def call(*args,directory='.',call=CALL):
 	with cd(directory):
 		if call:
 			# try:
@@ -114,6 +122,65 @@ def submit(*args,directory='.',call=CALL):
 			# 	pass
 		else:
 			print(*args)
+	return
+
+
+def setter(iterable,elements,delimiter=False,reset=True):
+	'''
+	Set nested value in iterable with nested elements keys
+
+	Args:
+		iterable (dict): dictionary to be set in-place with value
+		elements (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
+	'''
+
+	assert isinstance(iterable,dict), "Error - iterable is not dictionary"
+	assert isinstance(elements,dict), "Error - elements is not dictionary"
+
+	for element in elements:
+	
+		# Get copy of value in elements
+		value = deepcopy(elements[element])
+
+		# Get iterable, and index of tuple of nested element key
+		i = iterable
+		e = 0
+
+		# Convert string instance of elements to list, splitting string based on delimiter delimiter
+		if isinstance(element,str) and delimiter:
+			element = tuple(element.split(delimiter))
+		elif not isinstance(element,str):
+			element = tuple(element)
+
+		# Boolean whether element is a tuple, otherwise is object that is explicit key in dictionary
+		istuple = isinstance(element,tuple)
+
+		# Update iterable with elements 
+		if not istuple:
+			# elements is object and iterable is to be updated at first level of nesting
+			isdict = not reset and isinstance(i.get(element),dict) and isinstance(value,dict)
+			if isdict:
+				i[element].update(value)
+			else:
+				i[element] = value
+		else:
+			# elements is list of nested keys and the nested values are to be extracted from iterable and set with value
+			try:
+				while e<len(element)-1:
+					if i.get(element[e]) is None:
+						i[element[e]] = {}
+					i = i[element[e]]
+					e+=1
+				isdict = not reset and isinstance(i.get(element[e]),dict) and isinstance(value,dict)
+				if isdict:
+					i[element[e]].update(value)
+				else:
+					i[element[e]] = value
+			except:
+				pass
+
 	return
 
 # Get all combinations of dictionary of lists
@@ -159,18 +226,92 @@ def permute(dictionary,_groups=None,_keep_order=False):
 			dictionaries[i] = {k: dictionaries[i][k] for k in _keys}    
 	return dictionaries
 
-	
 
 
-def main(cwd,src,jobs,paths,arguments=None,settings={},default=None,**kwargs):
-	jobs = glob(jobs)
-	paths = glob(paths)
-	if len(jobs) == 1:
-		jobs = [jobs[0] for path in paths]
+# Get all combinations of ranges of sizes
+def iterate(sizes):
+	return [dict(zip(sizes,iteration)) 
+		for iteration in itertools.product(*(range(sizes[key] if sizes[key] is not None else 1) 
+		for key in sizes))]
 
-	arguments = [] if arguments is None else arguments
 
-	directory = datetime.datetime.today().strftime("%Y_%m_%d-%H_%M_%S")
+# Get all constant combinations of dictionaries
+def constant(constants):
+	return [constants]
+
+
+# Get all combinations of combinations of dictionaries
+def combine(combinations):
+	return [{key:combo[key] for combo in combination for key in combo}
+		for combination in itertools.product(*combinations)
+		]
+
+def submit(settings):
+	'''
+	Submit jobs permutations of settings
+	Args:
+		settings (str,dict): Path or dictionary of permutations of settings keys of the form
+		{
+			name: {"key": key, "value": value,"type": type}
+		}
+		name are names of settings for submitting, required names are
+			"device" (str): device to submit to, allowed devices in ['pc','lsf']
+			"settings": (str): path to update settings
+			"size" (int): number of seeds
+			"permutations" (dict[str,iterable]): dictionary of keys of settings to permute
+			"groups" (iterable): groups of permuted settings to permute collectively
+			"pwd" (str): input path for files
+			"cwd" (str): output path for files
+		"key" keys are keys of settings to update
+		"value" values are values of settings to update
+		"type" types are how to process values, allowed strings in ['constant','permute','iterate']
+		
+		Required keys are ["settings", "device"]
+	'''
+
+	timestamp = datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')
+	required = ['settings','device']
+	delim = '.'
+
+	settings = load(settings,default=SETTINGS)
+	settings.update({kwarg: SETTINGS[kwarg] for kwarg in SETTINGS if kwarg not in settings})
+
+
+	directory = timestamp
+
+	combinations = { 
+		'permute':permute({
+			key: settings[name]['value'][key] 
+			for name in settings
+			if settings[name]['type'] in ['permute']
+			for key in settings[name]['value'] 
+			}),
+		'iterate': iterate({settings[name]['key']: settings[name]['value']
+			for name in settings
+			if settings[name]['type'] in ['iterate']
+			}),
+		'constant': constant({settings[name]['key']: settings[name]['value']
+			for name in settings
+			if settings[name]['type'] in ['constant']
+			})
+		}
+
+	combinations = combine([combinations[combination] for combination in combinations])
+
+	assert all(all(key in combination for key in required) for combination in combinations)
+
+	for combination in combinations:
+
+		settings = load(combination['settings'])
+		device = combination['device']
+
+		setter(settings,combination,delimiter=delim)
+
+		print(combination,device,settings['model']['M'],settings['model']['N'])
+
+
+	exit()
+
 	iteration = -1
 	default
 
@@ -205,22 +346,22 @@ def main(cwd,src,jobs,paths,arguments=None,settings={},default=None,**kwargs):
 				args = arguments[:]
 				args.extend([_job,_file])
 
-			submit(*args,directory=folder)
+			call(*args,directory=folder)
 
 	return
 
 
 
+def main(**kwargs):
+	submit(**kwargs)
+	return
 
 
 if __name__ == "__main__":
+	defaults = {'settings':None}
 	args = sys.argv[1:]
-	if len(args) >= 5:
-		settings = SETTINGS
-		arguments = ARGS.get(args[0],ARGS['null'])['args']
-		cwd = args[1]
-		src = args[2]
-		default = args[3]
-		jobs = args[4:5]
-		paths = args[5:]
-		main(cwd,src,jobs,paths,arguments,settings,default)
+	
+	kwargs = defaults
+	kwargs.update(dict(zip(defaults,args)))
+
+	main(**kwargs)

@@ -1,5 +1,7 @@
 {
 "class":"src.quantum.Unitary",
+"device":"pc",
+"settings":"settings.json",
 "sys":{
 	"pwd":".",
 	"cwd":"data",
