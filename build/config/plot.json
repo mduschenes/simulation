@@ -11,7 +11,7 @@
 		"errorbar":{
 			"x":"iteration",
 			"y":"infidelity",
-			"label":"M",
+			"label":["N","architecture","M"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -24,7 +24,7 @@
 		"fill_between":{
 			"x":"iteration",
 			"y":"infidelity",
-			"label":"M",			
+			"label":["N","architecture","M"],
 			"alpha":0.5,			
 			"color":"viridis"
 			},			
@@ -49,6 +49,7 @@
 		"grid":{"visible":true,"which":"both","axis":"both"},
 		"legend":{
 			"title_fontsize": 20,
+			"get_title":{"ha":"center"},
 			"prop": {"size": 20},
 			"markerscale": 1.2,
 			"handlelength": 3,
@@ -78,7 +79,7 @@
 		"errorbar":{
 			"x":"iteration",
 			"y":"hessian",
-			"label":"M",
+			"label":["N","architecture","M"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -102,6 +103,7 @@
 		"grid":{"visible":true,"which":"both","axis":"both"},
 		"legend":{
 			"title_fontsize": 20,
+			"get_title":{"ha":"center"},	
 			"prop": {"size": 20},
 			"markerscale": 1.2,
 			"handlelength": 3,
@@ -131,7 +133,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"parameters.relative.mean",
-			"label":["N","iteration=@iteration.max@"],
+			"label":["N","architecture","iteration=@iteration.max@"],
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -141,6 +143,17 @@
 			"color":"viridis",
 			"ecolor":"viridis"
 			},
+		"legend":{
+			"title_fontsize": 20,
+			"get_title":{"ha":"center"},
+			"prop": {"size": 20},
+			"markerscale": 1.2,
+			"handlelength": 3,
+			"framealpha": 0.8,
+			"loc": [1.1,0.6],
+			"ncol": 1,
+			"set_zorder":{"level":100}
+			},			
 		"set_ylabel":{"ylabel":"$\\abs{({\\theta}^{(i)}_{} - {\\theta}^{(0)}_{})/{\\theta}^{(0)}_{}}$"},
 		"set_xlabel":{"xlabel":"$M$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
@@ -181,7 +194,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"iteration.max",
-			"label":["N","iteration=@iteration.max@"],			
+			"label":["N","architecture","iteration=@iteration.max@"],			
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -190,6 +203,17 @@
 			"capsize":3,						
 			"color":"viridis",
 			"ecolor":"viridis"
+			},
+		"legend":{
+			"title_fontsize": 20,
+			"get_title":{"ha":"center"},
+			"prop": {"size": 20},
+			"markerscale": 1.2,
+			"handlelength": 3,
+			"framealpha": 0.8,
+			"loc": [1.1,0.6],
+			"ncol": 1,
+			"set_zorder":{"level":100}
 			},
 		"set_ylabel":{"ylabel":"$\\textrm{Number of Iterations}$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Number of Time Steps}$"},
@@ -229,7 +253,7 @@
 			"errorbar":{
 				"x":"",
 				"y":"parameters",
-				"label":["N","M","iteration=%50%"],
+				"label":["N","architecture","M","iteration=%50%"],
 				"marker":"",
 				"linestyle":"--",
 				"elinewidth":2,
@@ -284,7 +308,7 @@
 			"errorbar":{
 				"x":"",
 				"y":"parameters.relative",
-				"label":["N","M","iteration=%50%"],
+				"label":["N","architecture","M","iteration=%50%"],
 				"marker":"",
 				"linestyle":"--",
 				"elinewidth":2,

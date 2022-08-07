@@ -1,0 +1,19 @@
+#!/bin/bash
+
+#BSUB -W 96:00              # wall time
+#BSUB -n 8            # number of tasks in job
+#BSUB -M 10000               # amount of memory in MB per process
+#BSUB -J "main"    # job name
+#BSUB -e ./errors.%J          # error file name in which %J is replaced by the job ID
+#BSUB -o ./output.%J          # output file name in which %J is replaced by the job ID
+##BSUB -q normal              # queue for submission
+##BSUB -q large_memory              # queue for submission
+#BSUB -q gpu_p100              # queue for submission
+#BSUB -N                    # email job end notification
+#BSUB -u mduschen@umich.edu     # email address to send notifications
+
+
+options=(${@:-settings.json})
+
+
+./command.sh ${options[@]}

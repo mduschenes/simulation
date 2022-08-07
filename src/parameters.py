@@ -31,7 +31,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid
+from src.utils import jit,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
 from src.utils import slice_slice
 from src.utils import pi,e
@@ -51,8 +51,36 @@ def _variables(parameters,hyperparameters,parameter,group):
 		variable (array): variables
 	'''
 
+	method = hyperparameters[parameter]['method']
+	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
 	index = hyperparameters[parameter]['group'].index(group)
-	variable = parameters[index]
+
+	if method in ['constrained']:
+		if parameter in ['xy'] and group in [('x',)]:
+			variable = (
+				scale[0]*parameters[0]*
+				cos(scale[1]*parameters[1])
+			)		
+
+		elif parameter in ['xy'] and group in [('y',)]:
+			variable = (
+				scale[0]*parameters[0]*
+				sin(scale[1]*parameters[1])
+			)		
+
+		elif parameter in ['z'] and group in [('z',)]:
+			variable = (
+				scale[index]*
+				parameters[index]
+			)
+			
+		elif parameter in ['zz'] and group in [('zz',)]:
+			variable = (
+				scale[index]*
+				parameters[index]
+			)
+	else:
+		variable = scale[index]*parameters[index]
 
 	return variable
 
@@ -69,9 +97,17 @@ def _features(parameters,hyperparameters,parameter,group):
 		feature (array): features
 	'''
 
+	method = hyperparameters[parameter]['method']
 	l = len(hyperparameters[parameter]['group'])
 	shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
-	feature = (parameters).reshape(shape) 
+
+	if method in ['constrained']:
+		wrapper = bound
+	else:
+		wrapper = nullbound
+
+
+	feature = wrapper(parameters,hyperparameters[parameter]['kwargs']).reshape(shape) 
 
 	return feature
 
@@ -103,7 +139,24 @@ def _constraints(parameters,hyperparameters,parameter,group):
 		constraints (array): constraints
 	'''
 
-	constraint = 0
+	method = hyperparameters[parameter]['method']
+	scale = hyperparameters[parameter]['kwargs']['lambda']
+	constants = hyperparameters[parameter]['constants']['features'][-1]
+
+	if method in ['constrained']:
+		if parameter in ['xy'] and group in [('x',),('y',)]:
+			constraint = (
+				(scale[0]*(parameters[...,constants['slice']] - constants['value'])**2).sum()
+			)
+
+		elif parameter in ['z'] and group in [('z',)]:
+			constraint = 0
+		
+		elif parameter in ['zz'] and group in [('zz',)]:
+			constraint = 0
+
+	else:
+		constraint = 0
 
 	return constraint
 
@@ -119,6 +172,13 @@ def _gradient_constraints(parameters,hyperparameters,parameter,group):
 	Returns:
 		grad (array): gradient of constraints
 	'''
+
+	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
+	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
+
+	method = hyperparameters[parameter]['method']
+	scale = hyperparameters[parameter]['kwargs']['lambda']
+
 	shape = parameters.shape
 
 	grad = zeros(shape)
@@ -142,6 +202,9 @@ def _gradients(parameters,hyperparameters,parameter,group):
 
 	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
 	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
+
+	method = hyperparameters[parameter]['method']
+	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
 
 	shape = parameters.shape
 	

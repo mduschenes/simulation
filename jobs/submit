@@ -7,6 +7,17 @@ from copy import deepcopy
 from shutil import copy2 as cp
 import numpy as np
 
+import logging
+
+# Import user modules
+ROOT = os.path.dirname(os.path.abspath(__file__))
+PATHS = ['','..']
+for PATH in PATHS:
+	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
+from src.dictionary import permuter
+
+
 CALL = 0
 
 DEVICES = {
@@ -22,12 +33,13 @@ DEVICES = {
 	}
 
 
-SETTINGS = {
+PARAMETERS = {
 	"device":{"key":"device","value":"pc","type":"constant"},
 	"settings":{"key":"settings","value":"config/settings.json","type":"constant"},
 	"size":{"key":"seed.size","value":None,"type":"iterate"},
-	"permutations":{"key":"permutations.permutations","value":{},"type":"permute"},
+	"permutations":{"key":"permutations","value":{"permutionat"},"type":"permute"},
 	"groups":{"key":"permutations.groups","value":[],"type":"constant"},
+	
 	"pwd":{"key":"sys.pwd","value":".","type":"constant"},
 	"cwd":{"key":"sys.cwd","value":"data","type":"constant"},
 }
@@ -186,6 +198,10 @@ def setter(iterable,elements,delimiter=False,reset=True):
 # Get all combinations of dictionary of lists
 def permute(dictionary,_groups=None,_keep_order=False):
 
+def permuter(dictionary,copy=False,groups=None,ordered=True):
+
+	return permuter(dictionary,_groups=_groups,_keep_order)
+
 	def indexer(keys,values,_groups):
 		if _groups is not None:
 			inds = [[keys.index(k) for k in g] for g in _groups]
@@ -228,10 +244,10 @@ def permute(dictionary,_groups=None,_keep_order=False):
 
 
 
-# Get all combinations of ranges of sizes
+# Get all combinations of repeats of sizes
 def iterate(sizes):
 	return [dict(zip(sizes,iteration)) 
-		for iteration in itertools.product(*(range(sizes[key] if sizes[key] is not None else 1) 
+		for iteration in itertools.product(*([sizes[key]]*(sizes[key] if sizes[key] is not None else 1) 
 		for key in sizes))]
 
 
@@ -242,19 +258,19 @@ def constant(constants):
 
 # Get all combinations of combinations of dictionaries
 def combine(combinations):
-	return [{key:combo[key] for combo in combination for key in combo}
-		for combination in itertools.product(*combinations)
-		]
+	return {tuple((combo[0] for combo in combination)):{key:combo[1][key] for combo in combination for key in combo[1]}
+		for combination in itertools.product(*(enumerate(combination) for combination in combinations))
+		}
 
-def submit(settings):
+def submit(parameters):
 	'''
 	Submit jobs permutations of settings
 	Args:
-		settings (str,dict): Path or dictionary of permutations of settings keys of the form
+		parameters (str,dict): Path or dictionary of permutations of parameters keys of the form
 		{
 			name: {"key": key, "value": value,"type": type}
 		}
-		name are names of settings for submitting, required names are
+		name are names of parameters for submitting, required names are
 			"device" (str): device to submit to, allowed devices in ['pc','lsf']
 			"settings": (str): path to update settings
 			"size" (int): number of seeds
@@ -271,43 +287,60 @@ def submit(settings):
 
 	timestamp = datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')
 	required = ['settings','device']
-	delim = '.'
+	delimiter = '.'
 
-	settings = load(settings,default=SETTINGS)
-	settings.update({kwarg: SETTINGS[kwarg] for kwarg in SETTINGS if kwarg not in settings})
+	parameters = load(parameters,default=PARAMETERS)
+	parameters.update({kwarg: PARAMETERS[kwarg] for kwarg in PARAMETERS if kwarg not in parameters})
 
 
 	directory = timestamp
 
 	combinations = { 
 		'permute':permute({
-			key: settings[name]['value'][key] 
-			for name in settings
-			if settings[name]['type'] in ['permute']
-			for key in settings[name]['value'] 
+			key: parameters[name]['value'][key] 
+			for name in parameters
+			if parameters[name]['type'] in ['permute']
+			for key in parameters[name]['value'] 
 			}),
-		'iterate': iterate({settings[name]['key']: settings[name]['value']
-			for name in settings
-			if settings[name]['type'] in ['iterate']
+		'iterate': iterate({parameters[name]['key']: parameters[name]['value']
+			for name in parameters
+			if parameters[name]['type'] in ['iterate']
 			}),
-		'constant': constant({settings[name]['key']: settings[name]['value']
-			for name in settings
-			if settings[name]['type'] in ['constant']
+		'constant': constant({parameters[name]['key']: parameters[name]['value']
+			for name in parameters
+			if parameters[name]['type'] in ['constant']
 			})
 		}
 
 	combinations = combine([combinations[combination] for combination in combinations])
 
-	assert all(all(key in combination for key in required) for combination in combinations)
+	# assert all(all(key in combination for key in required) for combination in combinations)
 
 	for combination in combinations:
+		
+		key = '.'.join(['%d'%(i) for i in combination[:2]])
 
-		settings = load(combination['settings'])
-		device = combination['device']
+		settings = load(combinations[combination]['settings'])
+		device = combinations[combination]['device']
 
-		setter(settings,combination,delimiter=delim)
 
-		print(combination,device,settings['model']['M'],settings['model']['N'])
+
+		for name in parameters:
+			if parameters[name]['type'] in ['permute','iterate']:
+				combinations[combination][delimiter.join([*parameters[name]['key'].split(delimiter)[:-1],'index'])] = combination[['permute','iterate'].index(parameters[name]['type'])]
+
+
+		setter(settings,combinations[combination],delimiter=delimiter)
+
+
+		print(key)
+		for attr in ['sys','model','permutations','seed']:
+			print(attr)
+			print(settings[attr])
+			print()
+		print()
+
+
 
 
 	exit()
@@ -358,7 +391,7 @@ def main(**kwargs):
 
 
 if __name__ == "__main__":
-	defaults = {'settings':None}
+	defaults = {'parameters':None}
 	args = sys.argv[1:]
 	
 	kwargs = defaults

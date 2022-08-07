@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 pi = np.pi
 e = np.exp(1)
 nan = np.nan
+scalars = (int,np.integer,float,onp.float,np.floating,str,type(None))
+nulls = ('',None)
 delim = '.'
 
 # Types
@@ -265,6 +267,17 @@ def hessian(func):
 	return grad
 
 
+def nullfunc(obj,*args,**kwargs):
+	'''
+	Null function
+	Args:
+		obj (object): Object to return
+		args (iterable): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		obj (object): Object to return
+	'''
+	return obj
 
 
 def datatype(dtype):
@@ -605,6 +618,21 @@ class asarray(onp.ndarray):
 	'''
 	def __new__(self,*args,**kwargs):
 		return onp.asarray(*args,**kwargs)
+
+class asscalar(onp.ndarray):
+	'''
+	array class
+	Args:
+		args (iterable): Array arguments
+		kwargs (dict): Array keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,a,*args,**kwargs):
+		try:
+			return onp.asscalar(a,*args,**kwargs)
+		except AttributeError:
+			return a
 
 
 class objs(onp.ndarray):
@@ -3121,6 +3149,31 @@ def sigmoid(a,scale=1):
 	'''		
 	return (tanh(a*scale/2)+1)/2
 	# return sp.special.expit(scale*a)
+
+@jit
+def bound(a,hyperparameters):
+	'''
+	Bound array
+	Args:
+		a (array): Array to bound
+		hyperparameters (dict): Hyperparameters for bounds
+	Returns:
+		out (array): Bounded array
+	'''
+	return sigmoid(a,hyperparameters['sigmoid'])
+
+
+@jit
+def nullbound(a,hyperparameters):
+	'''
+	Null nound array
+	Args:
+		a (array): Array to bound
+		hyperparameters (dict): Hyperparameters for bounds
+	Returns:
+		out (array): Bounded array
+	'''
+	return a
 
 @jit
 def gradient_sigmoid(a,scale=1):

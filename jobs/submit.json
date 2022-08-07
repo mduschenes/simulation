@@ -1,7 +1,7 @@
 {
 	"device":{"key":"device","value":"pc","type":"constant"},
 	"settings": {"key":"settings","value":"config/settings.json","type":"constant"},
-	"size":{"key":"seed.size","value":1,"type":"iterate"},
+	"size":{"key":"seed.size","value":2,"type":"iterate"},
 	"permutations":{"key":"permutations.permutations","value":{"model.M":[10,20],"model.N":[2,3]},"type":"permute"},
 	"groups":{"key":"permutations.groups","value":[],"type":"constant"},
 	"pwd":{"key":"sys.pwd","value":".","type":"constant"},

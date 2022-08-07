@@ -19,8 +19,9 @@ debug = 0
 # Import user modules
 from src.utils import array,is_array,is_ndarray
 from src.utils import returnargs
+from src.utils import scalars,nan
 
-def split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,delimiter='.'):
+def split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,abspath=None,delimiter='.'):
 	'''
 	Split path into directory,file,ext
 	Args:
@@ -30,6 +31,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 		ext (bool): Return split extension name
 		directory_file (bool): Return split and joined directory and file name
 		file_ext (bool): Return split and joined file and extension name
+		abspath (bool): Return absolute directory		
 		delimiter (str): Delimiter to separate file name from extension
 	Returns:
 		paths (iterable): Split path,directory,file,ext depending on booleans
@@ -46,7 +48,10 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 			slices = slice(*(directory[0],directory[1],*directory[2:]))
 		paths['directory'] = os.sep.join(os.path.dirname(path).split(os.sep)[slices])
 	else:
-		paths['directory'] = os.path.dirname(path)			
+		paths['directory'] = os.path.dirname(path)
+	if abspath:
+		paths['directory'] = os.path.abspath(paths['directory'])
+
 	paths['file'],paths['ext'] = os.path.splitext(path)
 	if paths['ext'].startswith(delimiter):
 		paths['ext'] = delimiter.join(paths['ext'].split(delimiter)[1:])
@@ -54,7 +59,9 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 		paths['file'] = os.path.basename(paths['file'])
 	if file_ext and paths['ext'].startswith(delimiter):
 		paths['file'] = delimiter.join([paths['file'],paths['ext']])
+	
 	paths = [paths[k] for k in paths if returns[k]] 
+	
 	return paths if len(paths)>1 else paths[0]
 
 def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
@@ -292,6 +299,8 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 	# 	key = conversion(name)
 	# 	return key
 
+	none = 'None'
+
 	if isinstance(obj,dict):
 		names = obj
 		for name in names:
@@ -299,8 +308,14 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 			if isinstance(obj[name],dict):
 				path.create_group(key)
 				_dump_hdf5(obj[name],path[key],wr=wr,ext=ext,**kwargs)
-			elif isinstance(obj[name],(int,np.integer,float,np.floating,str)):
-				path.attrs[key] = obj[name]
+			elif isinstance(obj[name],scalars):
+				try:
+					path.attrs[key] = obj[name]
+				except TypeError:
+					if obj[name] is None:
+						path.attrs[key] = none
+					else:
+						continue
 			else:
 				path[key] = obj[name]
 	else:
@@ -388,13 +403,28 @@ def copy(source,destination,**kwargs):
 	'''
 	assert os.path.exists(source), "source %s does not exist"%(source)
 
-	directory = os.path.abspath(os.path.dirname(destination))
-	if not os.path.exists(directory):
-		os.makedirs(directory)
+	mkdir(destination)
 
 	shutil.copy2(source,destination)
 
 	return
+
+
+
+def mkdir(path):
+	'''
+	Make path
+	Args:
+		path (str): path
+	'''
+
+	directory = split(path,directory=True,abspath=True)
+
+	if directory not in [''] and not os.path.exists(directory):
+		os.makedirs(directory)
+
+	return
+
 
 def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):
 	'''
@@ -494,9 +524,7 @@ def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
 
 	ext = split(path,ext=True,delimiter=delimiter)
 
-	directory = os.path.abspath(os.path.dirname(path))
-	if not os.path.exists(directory):
-		os.makedirs(directory)
+	mkdir(path)
 
 	for wr in wrs:	
 		try:

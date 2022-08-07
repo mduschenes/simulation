@@ -58,6 +58,21 @@ from src.plot import plot
 
 from src.optimize import Optimizer,Objective
 
+
+CALL = 0
+
+DEVICES = {
+	'pc':{
+		'args': lambda args: ['./%s'%(args[0]),*args[1:]],
+		},
+	'lsf':{
+		'args': lambda args: ['bsub','<',*args[:1]],
+		},	
+	None: {
+		'args': lambda args: [],
+		},
+	}
+
 def plotter(hyperparameters):
 	'''
 	Plot models
@@ -198,6 +213,7 @@ def setup(hyperparameters):
 		hyperparameters = {}
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters)
+
 	check(hyperparameters)
 
 	# Get timestamp
@@ -231,8 +247,8 @@ def setup(hyperparameters):
 	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape)
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
-	index = {attr: hyperparameters[attr]['index'] for attr in ['permutations','seed']}
-	values = {attr: {'permutations':permutations,'seed':seeds}[attr] for attr in index}
+	values = {'permutations':permutations,'seed':seeds}
+	index = {attr: hyperparameters[attr]['index'] for attr in values}
 	keys = {
 		'.'.join(['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]):[v[1] for v in value]
 		for value in itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))
@@ -282,7 +298,7 @@ def setup(hyperparameters):
 				'system':{
 					'key':key,
 					'seed':key,
-					'timestamp':timestamp
+					'timestamp':timestamp,
 					},
 				},
 			'sys':{
@@ -383,6 +399,11 @@ def run(hyperparameters):
 		cls = load(hyperparameters['class'])
 
 		obj = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+
+
+		# print(obj.__layers__(obj.parameters,'variables').round(3))
+		# continue
+
 
 		if settings[key]['boolean'].get('load'):
 			obj.load()

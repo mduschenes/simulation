@@ -43,7 +43,7 @@ from src.utils import eigh,qr
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
 from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size
-from src.utils import pi,e,delim
+from src.utils import pi,e,nan,delim,scalars,nulls
 from src.utils import itg,flt,dbl
 
 from src.dictionary import updater,getter,setter,permuter
@@ -72,6 +72,7 @@ class System(dictionary):
 		seed (array,int): Seed for random number generation
 		key (object): key for class
 		timestamp (str): timestamp for class
+		architecture (str): architecture for class
 		verbose (bool,str): Verbosity of class	
 		logger (logger): Python logging logger
 		args (dict,System): Additional system attributes
@@ -99,6 +100,7 @@ class System(dictionary):
 			'seed':None,
 			'key':None,
 			'timestamp':None,
+			'architecture':None,
 			'verbose':False,
 			'logger':None,
 		}
@@ -315,7 +317,7 @@ class Lattice(object):
 		L (int,float): Scale in system
 		delta (float): Length scale in system	
 		lattice (str,Lattice): Type of lattice, allowed strings in ['square','square-nearest']
-		system (dict,System): System attributes (dtype,format,device,seed,key,verbose)		
+		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
 	'''	
 	def __init__(self,N,d,L=1,delta=1,lattice='square',system=None):
 		
@@ -558,7 +560,7 @@ class Object(object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		system (dict,System): System attributes (dtype,format,device,seed,key,verbose)
+		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
@@ -592,6 +594,7 @@ class Object(object):
 		self.key = None
 
 		self.timestamp = None
+		self.architecture = None
 		self.delimiter = ' '
 		self.basis = None
 		self.diagonal = []
@@ -625,7 +628,9 @@ class Object(object):
 		self.derivative = jit(gradient_fwd(self))
 		self.hessian = jit(hessian(self.func))
 
-		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) for attr in ['key','N','D','d','M','tau','T','p','seed']])))
+		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
+			for attr in ['key','N','D','d','M','tau','T','p','seed','architecture']]
+			)))
 
 		return	
 
@@ -1067,6 +1072,7 @@ class Object(object):
 		self.seed = self.system.seed
 		self.key = self.system.key
 		self.timestamp = self.system.timestamp
+		self.architecture = self.system.architecture
 		self.verbose = self.system.verbose
 		self.logger = self.system.logger
 
@@ -1083,7 +1089,7 @@ class Object(object):
 			L (int,float): Scale in system
 			delta (float): Length scale in system
 			space (str,Space): Type of Hilbert space
-			system (dict,System): System attributes (dtype,format,device,seed,key,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
 		'''
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -1114,7 +1120,7 @@ class Object(object):
 			tau (float): Simulation time scale
 			p (int): Trotter order		
 			time (str,Time): Type of Time evolution space						
-			system (dict,System): System attributes (dtype,format,device,seed,key,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
 		'''
 		M = self.M if M is None else M
 		T = self.T if T is None else T
@@ -1144,7 +1150,7 @@ class Object(object):
 			L (int,float): Scale in system
 			delta (float): Length scale in system			
 			lattice (str,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,seed,key,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
 		'''		
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -1285,7 +1291,7 @@ class Object(object):
 			return returns
 
 		# Get data
-		timestamp = str(self.timestamp)
+		label = [str(self.timestamp)]
 		keys = [self.key]
 		iterations = {
 			key: range(min(len(self.hyperparameters['optimize']['track'][attr]) 
@@ -1296,7 +1302,7 @@ class Object(object):
 			}
 
 		data = {
-			'%s.%s.%d'%(timestamp,key,iteration): {
+			delim.join([*label,str(key),str(iteration)]): {
 				**{attr: self.hyperparameters['optimize']['track'][attr][iteration]
 					for attr in self.hyperparameters['optimize']['track']
 					if len(self.hyperparameters['optimize']['track'][attr]) > 0
@@ -1305,7 +1311,7 @@ class Object(object):
 					for attr in self.__dict__
 					if (
 						(not callable(getattr(self,attr))) and
-						(isinstance(getattr(self,attr),(int,np.integer,float,np.floating)))
+						(getattr(self,attr) is None or isinstance(getattr(self,attr),scalars))
 						)
 					}
 				}
@@ -1402,7 +1408,7 @@ class Hamiltonian(Object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		system (dict,System): System attributes (dtype,format,device,seed,key,verbose)
+		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
@@ -1605,7 +1611,7 @@ class Unitary(Hamiltonian):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		system (dict,System): System attributes (dtype,format,device,seed,key,verbose)
+		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},

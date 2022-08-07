@@ -22,13 +22,11 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,product,expand_dims,is_number,to_number,to_key_value
-from src.utils import nan
+from src.utils import asarray,asscalar
+from src.utils import e,pi,nan,scalars,nulls
 from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split
 from src.plot import plot
-
-scalars = (int,np.integer,float,np.float,str)
-nulls = ('',None)
 
 # Texify strings
 def Texify(string,texify={},usetex=True):
@@ -469,10 +467,15 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 
 	# Get unique scalar attributes
-	unique = {attr: tuple((*sorted(set(np.asscalar(data[name][attr])
+	# for attr in attributes:
+	# 	for name in names:
+	# 		if attr in data[name]:
+	# 			print(attr,name,data[name][attr])
+	# 			print(asarray(data[name][attr]).size)
+	unique = {attr: tuple((*natsorted(set(asscalar(data[name][attr])
 					for name in names 
 					if ((attr in data[name]) and 
-						((data[name][attr].size == 1) and isinstance(np.asscalar(data[name][attr]),scalars))
+						((asarray(data[name][attr]).size <= 1) and isinstance(asscalar(data[name][attr]),scalars))
 						)
 					)),None))
 			for attr in attributes
@@ -480,10 +483,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	unique = {attr: unique[attr] for attr in unique if len(unique[attr])>0}	
 
 	# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
-	sort = {attr: tuple((*sorted(set(np.asscalar(data[name][attr])
+	sort = {attr: tuple((*natsorted(set(asscalar(data[name][attr])
 					for name in names 
 					if ((attr in data[name]) and 
-						((data[name][attr].size == 1) and isinstance(np.asscalar(data[name][attr]),scalars))
+						((asarray(data[name][attr]).size == 1) and isinstance(asscalar(data[name][attr]),scalars))
 						)
 					)),None))
 			for attr in subattributes
@@ -492,13 +495,13 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 
 	# Get combinations of attributes (including None) to sort on and attributes not to sort on if not existent in plot properties x,y,label
-	allowed = list(natsorted(set((tuple((np.asscalar(data[name][attr])
+	allowed = list(natsorted(set((tuple((asscalar(data[name][attr])
 				for attr in subattributes))
 				for name in names
 				))))
 	allowed = [
 				*allowed,
-				*sorted(set([(*value[:i],None,*value[i+1:]) for value in allowed for i in range(len(value))]),
+				*natsorted(set([(*value[:i],None,*value[i+1:]) for value in allowed for i in range(len(value))]),
 						key = lambda x: tuple(((u is not None,u) for u in x)))
 			]
 
@@ -668,7 +671,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 				# included = [name for name in names 
 				# 	if all(data[name][attr] == values[attr]
 				# 	for attr in values)]
-				print('Trying',label)
+				# print('Trying',label)
+				
 				allincluded = [name for name in names 
 					if include(name,{'label':labels[occurrence]['label']},label['label'],sort,data)]
 
@@ -1087,7 +1091,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 							continue
 						for kwarg in kwargs:
 							value = [
-								[(k,combination[k]) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) == 1],
+								# [(k,combination[k]) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) == 1],
 								[(k,) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1],
 								]
 							value = ['~,'.join([': '.join([texify(l) for l in k]) for k in v]) for v in value]
