@@ -1,5 +1,7 @@
 {
 "class":"src.quantum.Unitary",
+"device":"pc",
+"settings":"settings.json",
 "sys":{
 	"pwd":".",
 	"cwd":"data",
@@ -32,15 +34,12 @@
 	},
 "seed":{
 	"seed":123321,
-	"size":3,
+	"size":1,
 	"reset":123321,
 	"index":null
 	},
 "permutations":{
 	"permutations":{
-		"model.N":[2],
-		"model.M":[300],
-		"optimize.iterations":[200]
 		},
 	"groups":[],
 	"index":null
@@ -51,7 +50,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":100,
+	"M":300,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -99,8 +98,9 @@
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
+		"use":true,		
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -120,6 +120,7 @@
 	"z": {
 		"string":"z",
 		"category":"constant",
+		"use":true,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-0.1,0,0.1,0.05,-0.2],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
@@ -138,6 +139,7 @@
 	"zz": {
 		"string":"zz",
 		"category":"constant",
+		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},

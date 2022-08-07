@@ -279,10 +279,16 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	ndim = len(shape)
 
 	# Get properties of hyperparameters
-	properties = ['category','group','shape','locality','boundaries','constants','parameters']
+	properties = ['category','group','shape','locality','boundaries','constants','use','parameters']
 	assert all(all(prop in hyperparameters[parameter] 
 		for prop in properties) 
 		for parameter in hyperparameters), 'hyperparameters missing properties'
+
+
+	# Remove not used parameters of hyperparameters
+	for parameter in list(hyperparameters):
+		if not hyperparameters[parameter]['use']:
+			hyperparameters.pop(parameter)
 
 	# Update properties of hyperparameters
 	attrs = {

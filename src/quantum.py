@@ -542,7 +542,6 @@ class Object(object):
 			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			operator (iterable[str]): string names of operators
 		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
@@ -586,7 +585,7 @@ class Object(object):
 		self.site = []
 		self.string = []
 		self.interaction = []
-		self.indices = []
+		self.indices = []		
 		self.size = 0
 		self.shape = (self.size,self.M,*self.data.shape[1:])
 
@@ -639,7 +638,6 @@ class Object(object):
 				site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 				string (iterable[str]): string labels of operators
 				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-				operator (iterable[str]): string names of operators		
 			operator (iterable[str]): string names of operators
 			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
@@ -655,12 +653,18 @@ class Object(object):
 		if string is None:
 			string = []
 		if interaction is None:
-			interaction = []									
+			interaction = []
 
-		operator.extend([data[name]['operator'] for name in data])
-		site.extend([data[name]['site'] for name in data])
-		string.extend([data[name]['string'] for name in data])
-		interaction.extend([data[name]['interaction'] for name in data])
+		names = [name for name in data 
+			if any(name in group 
+				for parameter in hyperparameters['parameters'] 
+				for group in hyperparameters['parameters'][parameter]['group'] 
+				if hyperparameters['parameters'][parameter]['use'])]
+
+		operator.extend([data[name]['operator'] for name in names])
+		site.extend([data[name]['site'] for name in names])
+		string.extend([data[name]['string'] for name in names])
+		interaction.extend([data[name]['interaction'] for name in names])
 
 		size = min([len(i) for i in [operator,site,string,interaction]])
 
@@ -711,6 +715,7 @@ class Object(object):
 			site (int): site of local operator
 			string (str): string label of operator
 			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			
 			hyperparameters (dict) : class hyperparameters
 		'''
 		index = -1
@@ -1380,7 +1385,6 @@ class Hamiltonian(Object):
 			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			operator (iterable[str]): string names of operators
 		operator (iterable[str]): string names of operators
 		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 		string (iterable[str]): string labels of operators
@@ -1430,7 +1434,6 @@ class Hamiltonian(Object):
 				site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 				string (iterable[str]): string labels of operators
 				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-				operator (iterable[str]): string names of operators		
 			operator (iterable[str]): string names of operators
 			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
@@ -1457,10 +1460,17 @@ class Hamiltonian(Object):
 		if interaction is None:
 			interaction = []									
 
-		operator.extend([data[name]['operator'] for name in data])
-		site.extend([data[name]['site'] for name in data])
-		string.extend([data[name]['string'] for name in data])
-		interaction.extend([data[name]['interaction'] for name in data])
+		names = [name for name in data 
+			if any(name in group 
+				for parameter in hyperparameters['parameters'] 
+				for group in hyperparameters['parameters'][parameter]['group'] 
+				if hyperparameters['parameters'][parameter]['use'])]
+
+
+		operator.extend([data[name]['operator'] for name in names])
+		site.extend([data[name]['site'] for name in names])
+		string.extend([data[name]['string'] for name in names])
+		interaction.extend([data[name]['interaction'] for name in names])
 
 
 		# Get number of operators
@@ -1578,7 +1588,6 @@ class Unitary(Hamiltonian):
 			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			operator (iterable[str]): string names of operators
 		operator (iterable[str]): string names of operators
 		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
 		string (iterable[str]): string labels of operators
