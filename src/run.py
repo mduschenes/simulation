@@ -349,9 +349,9 @@ def run(hyperparameters):
 
 	settings = setup(hyperparameters)
 
-	# for key in settings:		
-	# 	job = settings[key]['job']
-	# 	settings[key]['object'] = submit(**job)
+	for key in settings:		
+		job = settings[key]['job']
+		settings[key]['object'] = submit(**job)
 
 
 	if any(settings[key]['boolean'].get('plot') for key in settings):
