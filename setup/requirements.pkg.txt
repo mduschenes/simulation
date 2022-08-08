@@ -2,7 +2,6 @@ cython
 matplotlib=3.5
 pandas
 jax
-sparse
 h5py
 pyaml
 pytest

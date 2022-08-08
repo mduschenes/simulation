@@ -1,7 +1,8 @@
 {
 "path":".",
-"job":"config/job.lsf",
+"job":"config/job.slurm",
 "cmd":"/home/matt/files/uw/research/projects/simulation/code/src/train.py",
+"exe":false,
 "device":"pc",
 "class":"src.quantum.Unitary",
 "settings":"settings.json",
@@ -24,6 +25,7 @@
 			"plot":"config/plot.json",
 			"process":"config/process.json",
 			"mplstyle":"config/plot.mplstyle",
+			"job":"config/job.slurm",
 			"logger":"config/logging.conf"
 			}
 		}

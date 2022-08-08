@@ -1198,7 +1198,7 @@ def main(args):
 
 	nargs = len(args)
 	
-	assert nargs < Nargs, 'Incorrect number of arguments passed'
+	assert nargs >= Nargs, 'Incorrect number of arguments passed'
 
 	data,settings,hyperparameters = args[:Nargs]
 	

@@ -7,18 +7,6 @@ from copy import deepcopy as deepcopy
 import matplotlib
 import matplotlib.pyplot as plt
 
-import numpy as onp
-import scipy as osp
-import jax
-import jax.numpy as np
-import jax.scipy as sp
-import jax.example_libraries.optimizers
-jax.config.update('jax_platform_name','cpu')
-jax.config.update('jax_enable_x64', True)
-# jax.set_cpu_device_count(8)
-# os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
-# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
-
 # Logging
 import logging
 
@@ -217,9 +205,11 @@ def setup(hyperparameters):
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	values = {'permutations':permutations,'seed':seeds}
 	index = {attr: hyperparameters[attr]['index'] for attr in values}
+	# formatter = lambda instance,value,values: '%d'%(instance)	
+	formatter = lambda instance,value,values: ('.'.join(['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]))
 	keys = {
-		'.'.join(['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]):[v[1] for v in value]
-		for value in itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))
+		formatter(instance,value,values):[v[1] for v in value]
+		for instance,value in enumerate(itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values)))
 		if allowed(
 			{attr: index[attr] for attr in index},
 			{attr: dict(zip(values,value))[attr] for attr in index},
@@ -231,9 +221,8 @@ def setup(hyperparameters):
 	
 	for key in keys:
 
-
 		# Set attributes
-		attrs = ['seed','hyperparameters','boolean','object','args','path','device']
+		attrs = ['seed','hyperparameters','boolean','object','args','path','device','exe']
 		settings[key] = {}
 		for attr in attrs:
 			settings[key][attr] = {}
@@ -363,6 +352,8 @@ def setup(hyperparameters):
 		# Set device
 		settings[key]['device'] = settings[key]['hyperparameters']['device']
 
+		# Set exe
+		settings[key]['exe'] = settings[key]['hyperparameters']['exe']
 
 	return settings
 
@@ -380,10 +371,11 @@ def run(hyperparameters):
 	for key in settings:		
 
 		args = settings[key]['args']
-		path = settings[key]['path']
 		device = settings[key]['device']
+		path = settings[key]['path']
+		exe = settings[key]['exe']
 
-		settings[key]['object'] = submit(args,device=device,paths=path,exe=True)
+		settings[key]['object'] = submit(args,device=device,paths=path,exe=exe)
 
 
 	if any(settings[key]['boolean'].get('plot') for key in settings):

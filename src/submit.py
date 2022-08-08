@@ -21,7 +21,7 @@ from src.io import cd
 
 def submit_pc(*args):
 	job,cmd,args = os.path.abspath('%s'%(args[0])),os.path.abspath('%s'%(args[1])),' '.join(args[2:])
-	
+
 	updates = {'CMD':cmd,'ARGS':args}
 	replace(job,updates)
 
@@ -58,17 +58,14 @@ def call(*args,path='.',exe=True):
 	Returns:
 		stdout (str): Return of commands
 	'''
-	# print(path,args)
-	# print(' '.join(args))
-	# print()
-	# return
+
 	with cd(path):
 		if exe:
 			args = ' '.join(args)
 			stdout = os.system(args)
 		else:
 			args = ' '.join(args)			
-			print(args)
+			os.system('cat %s;echo;echo;echo;echo;echo'%(args))
 			stdout = args
 	return stdout
 
