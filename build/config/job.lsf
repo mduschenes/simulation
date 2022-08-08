@@ -1,19 +1,22 @@
 #!/bin/bash
 
-#BSUB -W 96:00              # wall time
-#BSUB -n 8            # number of tasks in job
-#BSUB -M 10000               # amount of memory in MB per process
-#BSUB -J "main"    # job name
-#BSUB -e ./errors.%J          # error file name in which %J is replaced by the job ID
-#BSUB -o ./output.%J          # output file name in which %J is replaced by the job ID
-##BSUB -q normal              # queue for submission
-##BSUB -q large_memory              # queue for submission
-#BSUB -q gpu_p100              # queue for submission
-#BSUB -N                    # email job end notification
-#BSUB -u mduschen@umich.edu     # email address to send notifications
+#SBATCH --account=mduschenes
+#SBATCH --job-name=test
+#SBATCH --output=%A.stdout
+#SBATCH --error=%A.stderr
+
+#SBATCH --cluster=cpu1
+#SBATCH --time=-01:00:00
+#SBATCH --mem=10G
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
 
 
-options=(${@:-settings.json})
+module purge &>/dev/null 2>&1
+module load jax0.2.24-cuda11.0-python3.8_jupyter &>/dev/null 2>&1
 
+CMD=/home/matt/files/uw/research/projects/simulation/code/src/train.py
+shift 1;
+ARGS=/home/matt/files/uw/research/projects/simulation/code/build/data/3.2/config/settings.json
 
-./command.sh ${options[@]}
+${CMD} ${ARGS[@]}

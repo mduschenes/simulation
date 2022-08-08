@@ -39,7 +39,7 @@ PARAMETERS = {
 	"size":{"key":"seed.size","value":None,"type":"iterate"},
 	"permutations":{"key":"permutations","value":{"permutionat"},"type":"permute"},
 	"groups":{"key":"permutations.groups","value":[],"type":"constant"},
-	
+
 	"pwd":{"key":"sys.pwd","value":".","type":"constant"},
 	"cwd":{"key":"sys.cwd","value":"data","type":"constant"},
 }
@@ -111,30 +111,8 @@ def copy(sources,destination,name=None,recursive=False,exceptions=[]):
 			cp(source,destination)
 	return
 
-# Class to safely change directories
-class cd(object):
-	def __init__(self,path):
-		self.path = path
-	def __enter__(self):
-		self.cwd = os.getcwd()
-		os.chdir(self.path)
-	def __exit__(self,etype, value, traceback):
-		os.chdir(self.cwd)
 
 
-
-# Submit call to command line
-def call(*args,directory='.',call=CALL):
-	with cd(directory):
-		if call:
-			# try:
-				args=' '.join(args)
-				stdout = os.system(args)
-			# except:
-			# 	pass
-		else:
-			print(*args)
-	return
 
 
 def setter(iterable,elements,delimiter=False,reset=True):

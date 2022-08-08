@@ -29,7 +29,7 @@
 	"train":1,
 	"load":0,
 	"dump":1,
-	"plot":1,
+	"plot":0,
 	"plot.obj":0
 	},
 "seed":{
@@ -40,17 +40,18 @@
 	},
 "permutations":{
 	"permutations":{
+		"parameters.xy.method":["constrained",null]		
 		},
 	"groups":[],
 	"index":null
 	},
 "model":{
-	"N":2,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":300,
+	"M":10,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -63,6 +64,7 @@
 		"key":null,
 		"seed":null,
 		"timestamp":null,
+		"architecture":null,
 		"device":"cpu",
 		"verbose":"info",
 		"logger":null
@@ -98,6 +100,7 @@
 	"xy": {
 		"string":"xy",
 		"category":"variable",
+		"method":"constrained",
 		"use":true,		
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
@@ -120,6 +123,7 @@
 	"z": {
 		"string":"z",
 		"category":"constant",
+		"method":null,		
 		"use":true,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-0.1,0,0.1,0.05,-0.2],
@@ -139,6 +143,7 @@
 	"zz": {
 		"string":"zz",
 		"category":"constant",
+		"method":null,		
 		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
@@ -185,7 +190,7 @@
 	"bounds":[-1,1]	
 },
 "process": {
-	"sort": ["N","D","d","L","delta","M","T","tau","iteration"],
+	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture"],
 	"nullsort": [],
 	"load":0,
 	"dump":1,
@@ -198,7 +203,11 @@
 	},	
 	"nullplotting":{"None.parameters.iteration.M":null,"iteration.hessian.M":null},
 	"texify":{
-		"iteration":"\\textrm{Iteration}~i"
+		"iteration":"\\textrm{Iteration}~i",
+		"None": "\\textrm{None}",
+		"architecture": "\\textrm{Architecture}",
+		"constrained": "\\textrm{Constrained}",
+		"unconstrained": "\\textrm{Unconstrained}"
 	}
 },
 "plot": {}

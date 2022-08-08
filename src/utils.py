@@ -3,7 +3,7 @@
 # Import python modules
 import os,sys,itertools,functools,copy
 import logging.config,configparser
-from functools import partial
+import functools
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -14,6 +14,8 @@ import jax
 import jax.numpy as np
 import jax.scipy as sp
 import jax.example_libraries.optimizers
+from jax.config import config as jaxconfig
+from jax._src import prng as jaxprng
 from jax.tree_util import register_pytree_node_class as tree_register
 from jax.tree_util import tree_map as tree_map
 
@@ -41,6 +43,9 @@ delim = '.'
 itg = np.integer
 flt = np.float32
 dbl = np.float64
+
+# Aliases
+partial = functools.partial
 
 
 def logconfig(name,conf=None,**kwargs):
@@ -845,12 +850,32 @@ def PRNGKey(seed=None,size=False,reset=None):
 	'''
 	Generate PRNG key
 	Args:
-		seed (int): Seed for random number generation or random key for future seeding
+		seed (int,array): Seed for random number generation or random key for future seeding
 		size(bool,int): Number of splits of random key
 		reset (bool,int): Reset seed
 	Returns:
 		key (key,list[key]): Random key
 	'''	
+	def default_prng_impl():
+		
+		'''
+		Get the default PRNG implementation.
+
+		The default implementation is determined by ``config.jax_default_prng_impl``,
+		which specifies it by name. This function returns the corresponding
+		``jax.prng.PRNGImpl`` instance.
+		'''
+
+		PRNG_IMPLS = {
+			'threefry2x32': jaxprng.threefry_prng_impl,
+			'rbg': jaxprng.rbg_prng_impl,
+			'unsafe_rbg': jaxprng.unsafe_rbg_prng_impl,
+			}
+
+		impl_name = jaxconfig.jax_default_prng_impl
+		assert impl_name in PRNG_IMPLS, impl_name
+		return PRNG_IMPLS[impl_name]
+
 
 	if reset is not None:
 		onp.random.seed(reset)
@@ -861,7 +886,7 @@ def PRNGKey(seed=None,size=False,reset=None):
 	if isinstance(seed,(int)):
 		key = jax.random.PRNGKey(seed)
 	else:
-		key = seed
+		key = asarray(seed,dtype=np.uint32)
 
 	if size:
 		key = jax.random.split(key,num=size)
@@ -874,7 +899,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 	Get random array
 	Args:
 		shape (int,iterable): Size or Shape of random array
-		key (key,int): PRNG key or seed
+		key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
 		dtype (data_type): Datatype of array		
@@ -886,10 +911,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 	elif isinstance(shape,int):
 		shape = shape
 
-	if key is None:
-		key = PRNGKey(key)
-	elif isinstance(key,int):
-		key = PRNGKey(key)
+	key = PRNGKey(key)
 
 	if bounds is None:
 		bounds = ["-inf","inf"]
@@ -3066,7 +3088,7 @@ def trotter(A,U,p):
 	if p == 1:
 		U = matmul(U)
 	elif p == 2:
-		U = matmul(asarray([*U[::1],*U[::-1]]))
+		U = matmul(array([*U[::1],*U[::-1]]))
 	else:
 		U = matmul(U)
 	return U
@@ -3094,13 +3116,13 @@ def trottergrad(A,U,p):
 	'''
 	k = len(U)
 	if p == 1:
-		U = array([matmul(asarray([*U[:i],A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
+		U = array([matmul(array([*U[:i],A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
 	elif p == 2:
-		U = array([matmul(asarray([*slices(U,0,i)[::1],A[i]/p,*slices(U,i,k-i)[::1],*U[::-1]])) + 
-				matmul(asarray([*U[::1],*slices(U,i,k-i)[::-1],A[i]/p,*slices(U,0,i)[::-1]]))
+		U = array([matmul(array([*slices(U,0,i)[::1],A[i]/p,*slices(U,i,k-i)[::1],*U[::-1]])) + 
+				matmul(array([*U[::1],*slices(U,i,k-i)[::-1],A[i]/p,*slices(U,0,i)[::-1]]))
 				for i in range(k)])
 	else:
-		U = array([matmul(asarray([*slices(U,0,i),A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
+		U = array([matmul(array([*slices(U,0,i),A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
 	return U
 
 

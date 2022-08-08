@@ -74,7 +74,6 @@ class System(dictionary):
 		timestamp (str): timestamp for class
 		architecture (str): architecture for class
 		verbose (bool,str): Verbosity of class	
-		logger (logger): Python logging logger
 		args (dict,System): Additional system attributes
 		kwargs (dict): Additional system attributes
 	'''
@@ -90,7 +89,6 @@ class System(dictionary):
 				2:20,3:30,4:40,5:50,
 				True:20,False:0,None:0,
 				},
-			'logger':{None:logging.getLogger(__name__)},
 			}
 
 		defaults = {
@@ -105,6 +103,8 @@ class System(dictionary):
 			'logger':None,
 		}
 
+
+
 		args = {k:v for a in args for k,v in ({} if a is None else a).items()}
 		attrs = {**args,**kwargs}
 		attrs.update({attr: defaults[attr] for attr in defaults if attrs.get(attr) is None})
@@ -114,6 +114,43 @@ class System(dictionary):
 		super().__init__(**attrs)
 
 		return
+
+
+
+class Logger(object):
+	'''
+	Logger class
+	Args:
+		name (str,logger): Name of logger or Pythong logging logger
+		conf (str): Path to configuration
+		kwargs (dict): Additional arguments
+	'''
+	def __init__(self,name,conf,file=None,verbose=True,**kwargs):
+		defaults = {
+			'handler_file.formatter.file.args':file
+		}
+		kwargs.update({kwarg: defaults[kwarg] for kwarg in defaults if kwarg not in kwargs and defaults[kwarg] is not None})
+
+		if isinstance(name,str):
+			try:
+				self.logger =  logconfig(name,conf=conf,**kwargs)
+			except:
+				self.logger = logging.getLogger(name)
+		else:
+			self.logger = name
+
+		return
+	
+	def log(self,verbose,msg):
+		'''
+		Log messages
+		Args:
+			verbose (int): Verbosity of message
+			msg (str): Message to log
+		'''
+		self.logger.log(verbose,msg)
+		return
+
 
 
 class Space(object):
@@ -620,6 +657,7 @@ class Object(object):
 		self.__space__()
 		self.__time__()
 		self.__lattice__()
+		self.__logger__()
 
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
@@ -1074,7 +1112,6 @@ class Object(object):
 		self.timestamp = self.system.timestamp
 		self.architecture = self.system.architecture
 		self.verbose = self.system.verbose
-		self.logger = self.system.logger
 
 		return
 
@@ -1165,6 +1202,23 @@ class Object(object):
 		return
 
 
+	def __logger__(self,hyperparameters=None):
+		'''
+		Setup logger
+		Args:
+			hyperparameters (dict): Hyperparameters
+		'''
+
+		hyperparameters = self.hyperparameters if hyperparameters is None else hyperparameters
+
+		name = __name__
+		conf = hyperparameters['sys']['path']['config']['logger']
+		file = hyperparameters['sys']['path']['data']['log']
+
+		self.logger = Logger(name,conf,file=file)
+
+		return
+
 	def __str__(self):
 		size = self.size
 		multiple_time = (self.M>1)
@@ -1185,13 +1239,16 @@ class Object(object):
 	def __len__(self):
 		return self.size
 
-	def log(self,msg):
+	def log(self,msg,verbose=None):
 		'''
 		Log messages
 		Args:
 			msg (str): Message to log
+			verbose (int): Verbosity of message			
 		'''
-		self.logger.log(self.verbose,msg)
+		if verbose is None:
+			verbose = self.verbose
+		self.logger.log(verbose,msg)
 		return	
 
 	def dump(self):

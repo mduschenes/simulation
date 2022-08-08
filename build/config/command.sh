@@ -8,7 +8,9 @@ if [[ ${cluster} == 1 ]]
 then
 	module purge
 
-	module load python-anaconda3/2019.10
+	module load jax0.2.24-cuda11.0-python3.8_jupyter
+
+	# module load python-anaconda3/2019.10
 	#pip install msgpack qtconsole pydot pydot-ng graphviz networkx python-igraph SALib configparser html2text pdf2image --user -q
 	# pip install natsort jsonpickle xarray  --user -q
 else
@@ -21,11 +23,11 @@ fi
 
 if [[ ${cluster} == 0 ]]
 then
-	src="/home/matt/files/uw/research/projects/simulation/code/build"
-	exe="main.py"
+	src="/home/matt/files/uw/research/projects/simulation/code/src"
+	exe="train.py"
 else
-	src="~/code/simulation/code/build"
-	exe="main.py"	
+	src="~/code/simulation/code/src"
+	exe="train.py"	
 fi
 
 
@@ -39,4 +41,3 @@ cmd+=("${exe}")
 cmd+=(${options[@]})
 
 ${cmd[@]}
-

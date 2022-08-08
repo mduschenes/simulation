@@ -3,8 +3,6 @@
 # Import python modules
 import os,sys,itertools,functools,datetime
 from copy import deepcopy as deepcopy
-from time import time as timer
-from functools import partial
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -30,54 +28,18 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import logconfig
-from src.utils import jit,gradient,gradient_finite,gradient_fwd
-from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
-from src.utils import summation,exponentiation
-from src.utils import inner_abs2,inner_real2,inner_imag2
-from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
-from src.utils import eigh,qr
-from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
-from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_equal,is_naninf,to_key_value 
-from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size
-from src.utils import pi,e,delim
-from src.utils import itg,flt,dbl
-
-from src.dictionary import updater,getter,setter,permuter
-from src.dictionary import leaves,grow
-
-from src.parameters import parameterize
-from src.operators import operatorize
-
+from src.utils import logconfig,PRNGKey,delim,partial
+from src.dictionary import updater,getter,setter,permuter,leaves,grow
 from src.io import load,dump,copy,join,split
-
+from src.submit import submit
 from src.process import process
-
-from src.plot import plot
-
-from src.optimize import Optimizer,Objective
-
-
-CALL = 0
-
-DEVICES = {
-	'pc':{
-		'args': lambda args: ['./%s'%(args[0]),*args[1:]],
-		},
-	'lsf':{
-		'args': lambda args: ['bsub','<',*args[:1]],
-		},	
-	None: {
-		'args': lambda args: [],
-		},
-	}
+from src.train import train
 
 def plotter(hyperparameters):
 	'''
 	Plot models
 	Args:
-		hyperparameters (dict): hyperparameters of models
+		hyperparameters (dict): Hyperparameters
 	'''	
 
 	# Get paths and kwargs
@@ -106,8 +68,14 @@ def check(hyperparameters):
 	'''
 	Check hyperparameters
 	Args:
-		hyperparameters (dict): Hyperparameters
+		hyperparameters (dict,str): Hyperparameters
 	'''
+
+	# Check hyperparameters
+	if hyperparameters is None:
+		hyperparameters = {}
+	elif isinstance(hyperparameters,str):
+		hyperparameters = load(hyperparameters)
 
 	# Load default hyperparameters
 	path = 'config/settings.json'
@@ -202,7 +170,7 @@ def setup(hyperparameters):
 	'''
 	Setup hyperparameters
 	Args:
-		hyperparameters (dict): Hyperparameters
+		hyperparameters (dict,str): Hyperparameters
 	'''
 
 	# Get settings
@@ -264,29 +232,22 @@ def setup(hyperparameters):
 	for key in keys:
 
 
+		# Set attributes
+		attrs = ['seed','hyperparameters','boolean','object','args','path','device']
 		settings[key] = {}
-
-		# Set seed and key values
-		values = dict(zip(values,keys[key]))
+		for attr in attrs:
+			settings[key][attr] = {}
 
 		# Get paths
 		pwd = deepcopy(hyperparameters['sys']['pwd'])
 		cwd = deepcopy(hyperparameters['sys']['cwd'])
 		paths = deepcopy(hyperparameters['sys']['path'])
 
-		# Set settings
+		# Set seed and key values
+		values = dict(zip(values,keys[key]))
+
+		# Set seed
 		settings[key]['seed'] = seed
-
-		settings[key]['boolean'] = {attr: (
-				(hyperparameters['boolean'].get(attr,False)) 
-				# (attr not in ['train'] or not hyperparameters['boolean'].get('load',False))
-				)
-				for attr in hyperparameters['boolean']}
-
-		settings[key]['hyperparameters'] = {}
-		settings[key]['object'] = {}
-		settings[key]['logger'] = {}
-
 
 		# Set hyperparameters updates with key/instance dependent settings
 		settings[key]['hyperparameters'] = deepcopy(hyperparameters)
@@ -294,6 +255,12 @@ def setup(hyperparameters):
 		updates = {}		
 
 		updates.update({
+			'settings':join(
+							key,
+							split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],directory=True),
+							split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],file=True),
+							ext=split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],ext=True),
+							root=join(cwd)),
 			'model':{
 				'system':{
 					'key':key,
@@ -367,66 +334,57 @@ def setup(hyperparameters):
 					except Exception as e:
 						raise e
 
+
+		# Set booleans
+		settings[key]['boolean'] = {attr: (
+				(hyperparameters['boolean'].get(attr,False)) 
+				# (attr not in ['train'] or not hyperparameters['boolean'].get('load',False))
+				)
+				for attr in hyperparameters['boolean']}
+
 		# Set object
 		settings[key]['object'] = None
 
-		# Set logger
-		settings[key]['logger'] = logconfig(__name__,
-			conf=settings[key]['hyperparameters']['sys']['path']['config']['logger'],
-			**{'handler_file.formatter.file.args':settings[key]['hyperparameters']['sys']['path']['data']['log'],}
-			)
+		# Set args
+		settings[key]['args'] = [
+				settings[key]['hyperparameters']['job'],
+				settings[key]['hyperparameters']['cmd'],
+				join(
+				split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],directory=True),
+				split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],file=True),
+				ext=split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],ext=True),
+				abspath=True,
+				root=join(cwd,key)),
+			]
+
+		# Set path
+		settings[key]['path'] = settings[key]['hyperparameters']['path']
+
+		# Set device
+		settings[key]['device'] = settings[key]['hyperparameters']['device']
 
 
 	return settings
+
 
 
 def run(hyperparameters):
 	'''
 	Run simulations
 	Args:
-		hyperparameters (dict): hyperparameters
+		hyperparameters (dict,str): hyperparameters
 	'''		
 
 	settings = setup(hyperparameters)
 
 	for key in settings:		
 
-		if not any(settings[key]['boolean'].get(attr) for attr in ['load','dump','train','plot.obj']):
-			continue		
+		args = settings[key]['args']
+		path = settings[key]['path']
+		device = settings[key]['device']
 
-		hyperparameters = settings[key]['hyperparameters']
+		settings[key]['object'] = submit(args,device=device,paths=path,exe=True)
 
-		cls = load(hyperparameters['class'])
-
-		obj = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
-
-
-		# print(obj.__layers__(obj.parameters,'variables').round(3))
-		# continue
-
-
-		if settings[key]['boolean'].get('load'):
-			obj.load()
-
-		settings[key]['object'] = obj
-
-		if settings[key]['boolean'].get('train'):
-
-			parameters = obj.parameters
-			hyperparameters = hyperparameters['optimize']
-
-			func = obj.__func__
-			callback = obj.__callback__
-
-			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
-
-			parameters = optimizer(parameters)
-		
-		if settings[key]['boolean'].get('dump'):	
-			obj.dump()
-		
-		if settings[key]['boolean'].get('plot.obj'):
-			obj.plot()
 
 	if any(settings[key]['boolean'].get('plot') for key in settings):
 		hyperparameters = {key: settings[key]['hyperparameters'] for key in settings if settings[key]['boolean'].get('plot')}

@@ -21,6 +21,9 @@ from src.utils import array,is_array,is_ndarray
 from src.utils import returnargs
 from src.utils import scalars,nan
 
+
+
+
 def split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,abspath=None,delimiter='.'):
 	'''
 	Split path into directory,file,ext
@@ -424,6 +427,20 @@ def mkdir(path):
 		os.makedirs(directory)
 
 	return
+
+class cd(object):
+	'''
+	Class to safely change paths and return to previous path
+	Args:
+		path (str): Path to change to
+	'''
+	def __init__(self,path):
+		self.path = path
+	def __enter__(self):
+		self.cwd = os.getcwd()
+		os.chdir(self.path)
+	def __exit__(self,etype, value, traceback):
+		os.chdir(self.cwd)
 
 
 def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):

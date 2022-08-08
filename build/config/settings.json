@@ -1,6 +1,9 @@
 {
-"class":"src.quantum.Unitary",
+"path":".",
+"job":"config/job.lsf",
+"cmd":"/home/matt/files/uw/research/projects/simulation/code/src/train.py",
 "device":"pc",
+"class":"src.quantum.Unitary",
 "settings":"settings.json",
 "sys":{
 	"pwd":".",
@@ -40,13 +43,12 @@
 	},
 "permutations":{
 	"permutations":{
-		"parameters.xy.method":["constrained",null]		
 		},
 	"groups":[],
 	"index":null
 	},
 "model":{
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -64,6 +66,7 @@
 		"key":null,
 		"seed":null,
 		"timestamp":null,
+		"architecture":null,
 		"device":"cpu",
 		"verbose":"info",
 		"logger":null
@@ -189,7 +192,7 @@
 	"bounds":[-1,1]	
 },
 "process": {
-	"sort": ["N","D","d","L","delta","M","T","tau","iteration"],
+	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture"],
 	"nullsort": [],
 	"load":0,
 	"dump":1,
@@ -202,7 +205,11 @@
 	},	
 	"nullplotting":{"None.parameters.iteration.M":null,"iteration.hessian.M":null},
 	"texify":{
-		"iteration":"\\textrm{Iteration}~i"
+		"iteration":"\\textrm{Iteration}~i",
+		"None": "\\textrm{None}",
+		"architecture": "\\textrm{Architecture}",
+		"constrained": "\\textrm{Constrained}",
+		"unconstrained": "\\textrm{Unconstrained}"
 	}
 },
 "plot": {}
