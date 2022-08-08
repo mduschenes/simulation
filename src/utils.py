@@ -3223,7 +3223,10 @@ def to_list(a,dtype=None,**kwargs):
 	try:
 		return a.tolist()
 	except:
-		return list(a)
+		try:
+			return list(a)
+		except TypeError:
+			return a
 
 
 def to_number(a,dtype=None,**kwargs):
