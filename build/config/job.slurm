@@ -15,10 +15,13 @@
 module purge &>/dev/null 2>&1
 # module load jax0.2.24-cuda11.0-python3.8_jupyter &>/dev/null 2>&1
 
-. ${HOME}/env/jax.env &>/dev/null 2>&1
+
+env=jax
+source ${HOME}/env/${env}.env
+source activate ${HOME}/condaenvs/${env}
 
 CMD=/home/matt/files/uw/research/projects/simulation/code/src/train.py
 shift 1;
-ARGS=/home/matt/files/uw/research/projects/simulation/code/build/data/3.1/config/settings.json
+ARGS=/h/mduschen/code/simulation/build/data/3.1/config/settings.json
 
 ${CMD} ${ARGS[@]}

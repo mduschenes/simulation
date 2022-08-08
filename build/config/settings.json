@@ -1,10 +1,5 @@
 {
-"path":".",
-"job":"config/job.lsf",
-"cmd":"/home/matt/files/uw/research/projects/simulation/code/src/train.py",
-"device":"pc",
 "class":"src.quantum.Unitary",
-"settings":"settings.json",
 "sys":{
 	"pwd":".",
 	"cwd":"data",
@@ -24,6 +19,7 @@
 			"plot":"config/plot.json",
 			"process":"config/process.json",
 			"mplstyle":"config/plot.mplstyle",
+			"job":"config/job.slurm",
 			"logger":"config/logging.conf"
 			}
 		}
@@ -68,8 +64,7 @@
 		"timestamp":null,
 		"architecture":null,
 		"device":"cpu",
-		"verbose":"info",
-		"logger":null
+		"verbose":"info"
 		}
 	},
 "hyperparameters":{
@@ -212,5 +207,13 @@
 		"unconstrained": "\\textrm{Unconstrained}"
 	}
 },
-"plot": {}
+"plot": {},
+"job":{
+	"job":"config/job.slurm",
+	"cmd":"../src/train.py",
+	"args":["settings.json"],
+	"path":".",
+	"device":"pc",
+	"exe":false
+	}
 }

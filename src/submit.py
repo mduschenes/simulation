@@ -71,12 +71,12 @@ def call(*args,path='.',exe=True):
 
 
 
-def submit(*args,paths='.',device='pc',exe=True):
+def submit(args,path='.',device='pc',exe=True):
 	'''
 	Submit commands to command line
 	Args:
 		args (iterable[iterable[str]]): Arguments to pass to command line
-		paths (str,iterable[str]): Paths to issue commands to command line
+		path (str,iterable[str]): Path to issue commands to command line
 		device (str): Name of device to submit to
 		exe (boolean): Boolean whether to issue commands
 	Returns:
@@ -97,9 +97,13 @@ def submit(*args,paths='.',device='pc',exe=True):
 	single = (len(args) == 1)
 
 	if isinstance(args[0],str):
-		args = [[args]]
-	if isinstance(paths,str):
-		paths = [paths]*len(args)
+		args = [args]
+	else:
+		args = args
+	if isinstance(path,str):
+		paths = [path]*len(args)
+	else:
+		paths = path
 
 	stdouts = []
 	for arg,path in zip(args,paths):

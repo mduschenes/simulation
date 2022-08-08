@@ -40,6 +40,8 @@ def train(hyperparameters):
 		hyperparameters (dict,str): hyperparameters
 	'''
 
+	print(hyperparameters)
+
 	# Check hyperparameters
 	if hyperparameters is None:
 		hyperparameters = {}

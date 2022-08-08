@@ -40,7 +40,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 		paths (iterable): Split path,directory,file,ext depending on booleans
 	'''	
 
-	if not (directory or file or ext):
+	if not (directory or file or ext or file_ext or directory_file):
 		return path
 	returns = {'directory':directory,'file':file or directory_file or file_ext,'ext':ext}
 	paths = {}
@@ -60,7 +60,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 		paths['ext'] = delimiter.join(paths['ext'].split(delimiter)[1:])
 	if not directory_file:
 		paths['file'] = os.path.basename(paths['file'])
-	if file_ext and paths['ext'].startswith(delimiter):
+	if file_ext:
 		paths['file'] = delimiter.join([paths['file'],paths['ext']])
 	
 	paths = [paths[k] for k in paths if returns[k]] 
@@ -82,11 +82,11 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	path = os.path.join(*paths)
 	if ext is not None and not path.endswith('%s%s'%(delimiter,ext)):
 		path = delimiter.join([path,ext])
-	if abspath:
-		path = os.path.abspath(path)
 	if root is not None:
 		if not os.path.dirname(path).startswith(root):
 			path = os.path.join(root,path)
+	if abspath:
+		path = os.path.abspath(path)
 	return path
 
 

@@ -65,12 +65,6 @@ def check(hyperparameters):
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters)
 
-	# Load default hyperparameters
-	path = 'config/settings.json'
-	func = lambda key,iterable,elements: iterable.get(key,elements[key])
-	updater(hyperparameters,load(path),func=func)
-
-
 	# Check sections for correct attributes
 	section = 'sys'
 	updates = {
@@ -164,11 +158,15 @@ def setup(hyperparameters):
 	# Get settings
 	settings = {}	
 
-	# Check hyperparameters have correct values
+	# Load default hyperparameters
 	if hyperparameters is None:
 		hyperparameters = {}
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters)
+
+	path = 'config/settings.json'
+	func = lambda key,iterable,elements: iterable.get(key,elements[key])
+	updater(hyperparameters,load(path),func=func)
 
 	check(hyperparameters)
 
@@ -202,6 +200,7 @@ def setup(hyperparameters):
 
 	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape)
 
+
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	values = {'permutations':permutations,'seed':seeds}
 	index = {attr: hyperparameters[attr]['index'] for attr in values}
@@ -222,7 +221,7 @@ def setup(hyperparameters):
 	for key in keys:
 
 		# Set attributes
-		attrs = ['seed','hyperparameters','boolean','object','args','path','device','exe']
+		attrs = ['seed','hyperparameters','boolean','object','job']
 		settings[key] = {}
 		for attr in attrs:
 			settings[key][attr] = {}
@@ -241,15 +240,9 @@ def setup(hyperparameters):
 		# Set hyperparameters updates with key/instance dependent settings
 		settings[key]['hyperparameters'] = deepcopy(hyperparameters)
 
-		updates = {}		
+		updates = {}	
 
 		updates.update({
-			'settings':join(
-							key,
-							split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],directory=True),
-							split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],file=True),
-							ext=split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],ext=True),
-							root=join(cwd)),
 			'model':{
 				'system':{
 					'key':key,
@@ -262,27 +255,48 @@ def setup(hyperparameters):
 					attr: {
 						path: join(
 							key,
-							split(settings[key]['hyperparameters']['sys']['path'][attr][path],directory=True),
+							# split(settings[key]['hyperparameters']['sys']['path'][attr][path],directory=True),
 							split(settings[key]['hyperparameters']['sys']['path'][attr][path],file=True),
 							ext=split(settings[key]['hyperparameters']['sys']['path'][attr][path],ext=True),
 							root=join(cwd))
 						for path in settings[key]['hyperparameters']['sys']['path'][attr]
 						}
 					for attr in settings[key]['hyperparameters']['sys']['path']
-					},
-				}
+				 	},
+				},
+			'job':{
+				'device': settings[key]['hyperparameters']['job'].pop('device'),
+				'args': [
+					join(split(settings[key]['hyperparameters']['job'].pop('job'),file_ext=True),abspath=True,root=join(cwd,key)),
+					join(settings[key]['hyperparameters']['job'].pop('cmd'),abspath=True),
+					*(join(arg,abspath=True,root=join(cwd,key)) for arg in settings[key]['hyperparameters']['job'].pop('args'))
+					],
+				'path': settings[key]['hyperparameters']['job'].pop('path'),
+				'exe': settings[key]['hyperparameters']['job'].pop('exe'),
+				}				
 			})
 
 		for branch,leaf in zip(seedlings,values['seed']):
 			grow(updates,branch,leaf)
-
 
 		# Update hyperparameters
 		setter(updates,values['permutations'],delimiter=delim,copy=True)
 		updater(settings[key]['hyperparameters'],updates,copy=True)
 		check(settings[key]['hyperparameters'])
 
-		
+		# Set booleans
+		settings[key]['boolean'] = {attr: (
+				(hyperparameters['boolean'].get(attr,False)) 
+				# (attr not in ['train'] or not hyperparameters['boolean'].get('load',False))
+				)
+				for attr in hyperparameters['boolean']}
+
+		# Set object
+		settings[key]['object'] = None
+
+		# Set job
+		settings[key]['job'] = settings[key]['hyperparameters']['job']
+
 		# Copy files		
 		sources = {}
 		destinations = {}
@@ -296,64 +310,29 @@ def setup(hyperparameters):
 			destinations[attr] = {}
 			for path in paths[attr]:
 				sources[attr][path] = join(split(paths[attr][path],directory=True),split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(pwd))
-				destinations[attr][path] = join(split(paths[attr][path],directory=True),split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(cwd,key))
+				destinations[attr][path] = join(split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(cwd,key))
 
 
 		# Dump files
 		attrs = ['config']
 		for attr in attrs:
 			for path in paths[attr]:
-
 				if path in ['settings']:
-					data = deepcopy(settings[key]['hyperparameters'])
-				else:
-					data = settings[key]['hyperparameters'].get(path,{})
-				try:
+					data = settings[key]['hyperparameters']
+					destination = destinations[attr][path]
+					dump(data,destination)
+				elif path in ['process','plot']:
+					data = deepcopy(settings[key]['hyperparameters'].get(path,{}))
 					source = load(sources[attr][path])
 					destination = destinations[attr][path]
-
 					updater(data,source,func=func)
-					dump(data,destination)
-				except:
+					dump(data,destination)					
+				else:
 					source = sources[attr][path]
 					destination = destinations[attr][path]
-
-					try:					
-						copy(source,destination)
-					except Exception as e:
-						raise e
+					copy(source,destination)
 
 
-		# Set booleans
-		settings[key]['boolean'] = {attr: (
-				(hyperparameters['boolean'].get(attr,False)) 
-				# (attr not in ['train'] or not hyperparameters['boolean'].get('load',False))
-				)
-				for attr in hyperparameters['boolean']}
-
-		# Set object
-		settings[key]['object'] = None
-
-		# Set args
-		settings[key]['args'] = [
-				settings[key]['hyperparameters']['job'],
-				settings[key]['hyperparameters']['cmd'],
-				join(
-				split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],directory=True),
-				split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],file=True),
-				ext=split(settings[key]['hyperparameters']['sys']['path']['config']['settings'],ext=True),
-				abspath=True,
-				root=join(cwd,key)),
-			]
-
-		# Set path
-		settings[key]['path'] = settings[key]['hyperparameters']['path']
-
-		# Set device
-		settings[key]['device'] = settings[key]['hyperparameters']['device']
-
-		# Set exe
-		settings[key]['exe'] = settings[key]['hyperparameters']['exe']
 
 	return settings
 
@@ -369,13 +348,8 @@ def run(hyperparameters):
 	settings = setup(hyperparameters)
 
 	for key in settings:		
-
-		args = settings[key]['args']
-		device = settings[key]['device']
-		path = settings[key]['path']
-		exe = settings[key]['exe']
-
-		settings[key]['object'] = submit(args,device=device,paths=path,exe=exe)
+		job = settings[key]['job']
+		settings[key]['object'] = submit(**job)
 
 
 	if any(settings[key]['boolean'].get('plot') for key in settings):
