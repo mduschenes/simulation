@@ -3219,11 +3219,11 @@ def to_list(a,dtype=None,**kwargs):
 	Returns:
 		out (list): List representation of iterable
 	'''
-	return a
-	# try:
-	# 	return a.tolist()
-	# except:
-	# 	return list(a)
+	
+	try:
+		return a.tolist()
+	except:
+		return list(a)
 
 
 def to_number(a,dtype=None,**kwargs):
