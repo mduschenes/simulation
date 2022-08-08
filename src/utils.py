@@ -3210,6 +3210,22 @@ def gradient_sigmoid(a,scale=1):
 	return scale*sigmoid(a,scale)*sigmoid(-a,scale)
 
 
+def to_list(a,dtype=None,**kwargs):
+	'''
+	Convert iterable to list
+	Args:
+		a (iterable): Iterable to convert to list
+		dtype (data_type): Datatype of number
+	Returns:
+		out (list): List representation of iterable
+	'''
+	return a
+	# try:
+	# 	return a.tolist()
+	# except:
+	# 	return list(a)
+
+
 def to_number(a,dtype=None,**kwargs):
 	'''
 	Convert object to number
