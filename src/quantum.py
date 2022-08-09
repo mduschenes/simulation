@@ -22,6 +22,7 @@ jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
 # os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
 # np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
+np.set_printoptions(linewidth=1000)#,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 # Logging
 import logging

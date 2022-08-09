@@ -25,15 +25,15 @@
 		}
 	},
 "boolean":{
-	"train":0,
+	"train":1,
 	"load":0,
-	"dump":0,
+	"dump":1,
 	"plot":1,
 	"plot.obj":0
 	},
 "seed":{
 	"seed":123321,
-	"size":2,
+	"size":20,
 	"reset":123321,
 	"index":null
 	},
@@ -44,9 +44,9 @@
 		"optimize.iterations":[5],
 		"parameters.xy.method":["constrained",null],
 		"model.system.architecture":["constrained","unconstrained"],
-		"model.M":[10],
-		"model.N":[2],
-		"optimize.iterations":[5],
+		"model.M":[100,200,500,1000,2000,5000],
+		"model.N":[4],
+		"optimize.iterations":[500],
 		"parameters.xy.method":["constrained"],
 		"model.system.architecture":["constrained"]		
 		},

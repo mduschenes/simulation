@@ -396,6 +396,10 @@ def loader(kwargs):
 			kwargs[kwarg] = kwargs[kwarg]
 			returns['multiple'] |= False
 	
+
+	if all(len(kwargs[kwarg]) < 1 for kwarg in kwargs):
+		returns = None
+
 	return returns
 
 
@@ -447,6 +451,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	kwargs = {kwarg: value for kwarg,value in zip(kwargs,[data,settings,hyperparameters])}
 
 	returns = loader(kwargs)
+
+	if returns is None:
+		return fig,ax
 
 	data,settings,hyperparameters = (kwargs[kwarg] for kwarg in kwargs)
 

@@ -17,8 +17,8 @@ module purge &>/dev/null 2>&1
 
 
 env=jax
-source ${HOME}/env/${env}.env
-source activate ${HOME}/condaenvs/${env}
+source ${HOME}/env/${env}.env  &>/dev/null 2>&1
+source activate ${HOME}/condaenvs/${env}  &>/dev/null 2>&1
 
 CMD=/home/matt/files/uw/research/projects/simulation/code/src/train.py
 shift 1;
