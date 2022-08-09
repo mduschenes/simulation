@@ -267,8 +267,9 @@ def setup(hyperparameters):
 			'job':{
 				'device': settings[key]['hyperparameters']['job'].pop('device'),
 				'args': [
-					join(split(settings[key]['hyperparameters']['job'].pop('job'),file_ext=True),abspath=True,root=join(cwd,key)),
+					join(split(settings[key]['hyperparameters']['job'].get('job'),file_ext=True),abspath=True,root=join(cwd,key)),
 					join(settings[key]['hyperparameters']['job'].pop('cmd'),abspath=True),
+					join(split(settings[key]['hyperparameters']['job'].pop('job'),directory=True),abspath=True,root=join(cwd,key)),	
 					*(join(arg,abspath=True,root=join(cwd,key)) for arg in settings[key]['hyperparameters']['job'].pop('args'))
 					],
 				'path': settings[key]['hyperparameters']['job'].pop('path'),

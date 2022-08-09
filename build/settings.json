@@ -28,12 +28,13 @@
 	"train":1,
 	"load":0,
 	"dump":1,
-	"plot":1,
+	"plot":0,
 	"plot.obj":0
 	},
 "seed":{
 	"seed":123321,
 	"size":20,
+	"size":2,
 	"reset":123321,
 	"index":null
 	},
@@ -45,6 +46,7 @@
 		"parameters.xy.method":["constrained",null],
 		"model.system.architecture":["constrained","unconstrained"],
 		"model.M":[100,200,500,1000,2000,5000],
+		"model.M":[10,20],
 		"model.N":[4],
 		"optimize.iterations":[500],
 		"parameters.xy.method":["constrained"],
@@ -83,7 +85,7 @@
 	"iterations":200,
 	"optimizer":"cg",
 	"line_search":"line_search",
-	"eps":{"objective":1e-4,"grad":1e-12,"alpha":1e-12,"beta":1e3},
+	"eps":{"objective":1e-8,"grad":1e-12,"alpha":1e-12,"beta":1e3},
 	"value":{"objective":1,"grad":0,"alpha":0,"beta":0},
 	"status":1,
 	"reset":0,
@@ -223,7 +225,7 @@
 	"cmd":"../src/train.py",
 	"args":["settings.json"],
 	"path":".",
-	"device":"pc",
-	"exe":true
+	"device":"slurm",
+	"exe":false
 	}
 }

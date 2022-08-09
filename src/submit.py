@@ -20,19 +20,29 @@ debug = 0
 from src.io import cd
 
 def submit_pc(*args):
-	job,cmd,args = os.path.abspath('%s'%(args[0])),os.path.abspath('%s'%(args[1])),' '.join(args[2:])
+	job,cmd,path,args = os.path.abspath('%s'%(args[0])),os.path.abspath('%s'%(args[1])),os.path.abspath('%s'%(args[2])),' '.join(args[3:])
 
-	updates = {'CMD':cmd,'ARGS':args}
-	replace(job,updates)
+	patterns = {
+		'cmd':{'pattern':r'CMD=.*','replacement':'CMD=%s'%(cmd)},
+		'args':{'pattern':r'ARGS=.*','replacement':'ARGS=%s'%(args)},
+		'stdout':{'pattern':r'#SBATCH --output=.*','replacement':r'#SBATCH --output=%s/%x.%A.stdout'},
+		'stderr':{'pattern':r'#SBATCH --error=.*','replacement':r'#SBATCH --error=%s/%x.%A.stderr'},
+		}
+	sed(job,patterns)
 
 	exe = [job]	
 	return exe
 
 def submit_slurm(*args):
-	job,cmd,args = os.path.abspath('%s'%(args[0])),os.path.abspath('%s'%(args[1])),' '.join(args[2:])
+	job,cmd,path,args = os.path.abspath('%s'%(args[0])),os.path.abspath('%s'%(args[1])),os.path.abspath('%s'%(args[2])),' '.join(args[3:])
 
-	updates = {'CMD':cmd,'ARGS':args}
-	replace(job,updates)
+	patterns = {
+		'cmd':{'pattern':r'CMD=.*','replacement':'CMD=%s'%(cmd)},
+		'args':{'pattern':r'ARGS=.*','replacement':'ARGS=%s'%(args)},
+		'stdout':{'pattern':r'#SBATCH --output=.*','replacement':r'#SBATCH --output=%s/%x.%A.stdout'},
+		'stderr':{'pattern':r'#SBATCH --error=.*','replacement':r'#SBATCH --error=%s/%x.%A.stderr'},
+		}
+	sed(job,patterns)
 
 	exe = ['sbatch','<',job]
 	return exe
@@ -42,9 +52,9 @@ def submit_null(*args):
 	return exe
 
 
-def replace(path,updates):
-	for update in updates:
-		update=['sed','-i','s%%%s=.*%%%s=%r%%g'%(update,update,updates[update]),path,]
+def sed(path,patterns):
+	for pattern in patterns:
+		update=['sed','-i','s%%%s%%%s%%g'%(patterns[patterns]['pattern'],patterns[patterns]['replacement']),path]
 		call(*update)
 	return
 
