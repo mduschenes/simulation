@@ -521,7 +521,6 @@ def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
 					_dump(data,obj,wr=wr,ext=ext,**kwargs)
 				return
 			except (ValueError,AttributeError,TypeError) as exception:
-				raise exception
 				logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
 				pass
 	return

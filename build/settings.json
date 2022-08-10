@@ -2,7 +2,7 @@
 "class":"src.quantum.Unitary",
 "sys":{
 	"pwd":".",
-	"cwd":"data_constrained",
+	"cwd":"data_many_constrained",
 	"path":{
 		"data":{
 			"model":"model.pkl",
@@ -33,7 +33,7 @@
 	},
 "seed":{
 	"seed":123321,
-	"size":20,
+	"size":50,
 	"reset":123321,
 	"index":null
 	},
@@ -42,8 +42,6 @@
 		"model.M":[100,200,500,1000,2000,5000],
 		"model.N":[4],
 		"optimize.iterations":[500],
-		"parameters.xy.method":[null],
-		"model.system.architecture":[null],
 		"parameters.xy.method":["constrained"],
 		"model.system.architecture":["constrained"]
 		},
@@ -107,8 +105,7 @@
 		"method":"constrained",
 		"use":true,		
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
-		"parameters":null,
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
 		"scale":1,
@@ -118,8 +115,10 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
+		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[0,0]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
