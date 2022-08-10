@@ -79,6 +79,8 @@ def _variables(parameters,hyperparameters,parameter,group):
 				scale[index]*
 				parameters[index]
 			)
+	elif method in ['unconstrained']:
+		variable = scale[index]*parameters[index]	
 	else:
 		variable = scale[index]*parameters[index]
 
@@ -103,6 +105,8 @@ def _features(parameters,hyperparameters,parameter,group):
 
 	if method in ['constrained']:
 		wrapper = bound
+	elif method in ['unconstrained']:
+		wrapper = nullbound
 	else:
 		wrapper = nullbound
 
@@ -154,7 +158,8 @@ def _constraints(parameters,hyperparameters,parameter,group):
 		
 		elif parameter in ['zz'] and group in [('zz',)]:
 			constraint = 0
-
+	elif method in ['unconstrained']:
+		constraint = 0
 	else:
 		constraint = 0
 
