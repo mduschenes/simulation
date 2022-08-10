@@ -3,6 +3,7 @@
 # Import python modules
 import os,sys,warnings,itertools,inspect,traceback
 import shutil
+import subprocess
 import glob as globber
 import importlib
 import json,jsonpickle,h5py,pickle,dill
@@ -21,7 +22,7 @@ from src.utils import array,is_array,is_ndarray
 from src.utils import returnargs
 from src.utils import scalars,nan
 
-
+from src.call import mkdir
 
 
 def split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,abspath=None,delimiter='.'):
@@ -396,51 +397,6 @@ def jsonable(obj,path=None,callables=False):
 	return isjsonable
 
 
-def copy(source,destination,**kwargs):
-	'''
-	Copy objects from source to destination
-	Args:
-		source (str): Path of source object
-		destination (str): Path of destination object
-		kwargs (dict): Additional copying keyword arguments
-	'''
-	assert os.path.exists(source), "source %s does not exist"%(source)
-
-	mkdir(destination)
-
-	shutil.copy2(source,destination)
-
-	return
-
-
-
-def mkdir(path):
-	'''
-	Make path
-	Args:
-		path (str): path
-	'''
-
-	directory = split(path,directory=True,abspath=True)
-
-	if directory not in [''] and not os.path.exists(directory):
-		os.makedirs(directory)
-
-	return
-
-class cd(object):
-	'''
-	Class to safely change paths and return to previous path
-	Args:
-		path (str): Path to change to
-	'''
-	def __init__(self,path):
-		self.path = path
-	def __enter__(self):
-		self.cwd = os.getcwd()
-		os.chdir(self.path)
-	def __exit__(self,etype, value, traceback):
-		os.chdir(self.cwd)
 
 
 def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):

@@ -57,7 +57,7 @@ def mean(data,axis=0,dtype=None):
 # Sample deviation of data
 def std(data,axis=0,dtype=None):
 	n = data.shape[axis]
-	return (np.nanstd(data,axis=axis,ddof=n>1)/np.sqrt(n)).astype(dtype)
+	return (np.nanstd(data,axis=axis,ddof=n>1)).astype(dtype)
 
 # Fit data
 def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):

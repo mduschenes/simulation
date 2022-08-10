@@ -2,7 +2,7 @@
 "class":"src.quantum.Unitary",
 "sys":{
 	"pwd":".",
-	"cwd":"data",
+	"cwd":"data_constrained",
 	"path":{
 		"data":{
 			"model":"model.pkl",
@@ -25,16 +25,15 @@
 		}
 	},
 "boolean":{
-	"train":1,
+	"train":0,
 	"load":0,
-	"dump":1,
-	"plot":0,
+	"dump":0,
+	"plot":1,
 	"plot.obj":0
 	},
 "seed":{
 	"seed":123321,
 	"size":20,
-	"size":2,
 	"reset":123321,
 	"index":null
 	},
@@ -46,11 +45,12 @@
 		"parameters.xy.method":["constrained",null],
 		"model.system.architecture":["constrained","unconstrained"],
 		"model.M":[100,200,500,1000,2000,5000],
-		"model.M":[10,20],
 		"model.N":[4],
 		"optimize.iterations":[500],
+		"parameters.xy.method":[null],
+		"model.system.architecture":[null],
 		"parameters.xy.method":["constrained"],
-		"model.system.architecture":["constrained"]		
+		"model.system.architecture":["constrained"]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null
@@ -226,6 +226,6 @@
 	"args":["settings.json"],
 	"path":".",
 	"device":"slurm",
-	"exe":false
+	"exe":true
 	}
 }

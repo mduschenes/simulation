@@ -18,8 +18,9 @@ for PATH in PATHS:
 
 from src.utils import logconfig,PRNGKey,delim,partial
 from src.dictionary import updater,getter,setter,permuter,leaves,grow
-from src.io import load,dump,copy,join,split
-from src.submit import submit
+from src.io import load,dump,join,split
+from src.call import copy
+from src.call import submit
 from src.process import process
 from src.train import train
 
@@ -267,9 +268,9 @@ def setup(hyperparameters):
 			'job':{
 				'device': settings[key]['hyperparameters']['job'].pop('device'),
 				'args': [
-					join(split(settings[key]['hyperparameters']['job'].get('job'),file_ext=True),abspath=True,root=join(cwd,key)),
+					join(split(settings[key]['hyperparameters']['job'].pop('job'),file_ext=True),abspath=True,root=join(cwd,key)),
 					join(settings[key]['hyperparameters']['job'].pop('cmd'),abspath=True),
-					join(split(settings[key]['hyperparameters']['job'].pop('job'),directory=True),abspath=True,root=join(cwd,key)),	
+					join(cwd,key),
 					*(join(arg,abspath=True,root=join(cwd,key)) for arg in settings[key]['hyperparameters']['job'].pop('args'))
 					],
 				'path': settings[key]['hyperparameters']['job'].pop('path'),
@@ -313,11 +314,12 @@ def setup(hyperparameters):
 				sources[attr][path] = join(split(paths[attr][path],directory=True),split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(pwd))
 				destinations[attr][path] = join(split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(cwd,key))
 
-
+		print(key)
 		# Dump files
 		attrs = ['config']
 		for attr in attrs:
 			for path in paths[attr]:
+				print(path)
 				if path in ['settings']:
 					data = settings[key]['hyperparameters']
 					destination = destinations[attr][path]
@@ -332,7 +334,7 @@ def setup(hyperparameters):
 					source = sources[attr][path]
 					destination = destinations[attr][path]
 					copy(source,destination)
-
+		print()
 
 
 	return settings
@@ -349,6 +351,10 @@ def run(hyperparameters):
 	settings = setup(hyperparameters)
 
 	for key in settings:		
+
+		if not any(settings[key]['boolean'].get(attr) for attr in ['load','dump','train','plot.obj']):
+			continue
+		
 		job = settings[key]['job']
 		settings[key]['object'] = submit(**job)
 
