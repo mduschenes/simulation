@@ -186,6 +186,14 @@
 	"seed":null,
 	"bounds":[-1,1]	
 },
+"job":{
+	"job":"config/job.slurm",
+	"cmd":"../src/train.py",
+	"args":["settings.json"],
+	"path":".",
+	"device":"pc",
+	"exe":false
+	},
 "process": {
 	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture"],
 	"nullsort": [],
@@ -207,13 +215,5 @@
 		"unconstrained": "\\textrm{Unconstrained}"
 	}
 },
-"plot": {},
-"job":{
-	"job":"config/job.slurm",
-	"cmd":"../src/train.py",
-	"args":["settings.json"],
-	"path":".",
-	"device":"pc",
-	"exe":false
-	}
+"plot": {}
 }

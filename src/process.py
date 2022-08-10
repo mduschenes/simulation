@@ -602,8 +602,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		attr = 'process'
 		kwargs = {
 			'conversion':lambda name: (
-				to_number(name) if '____' not in name else 
-				tuple((to_number(i) for i in name.split('____')[1:])))
+				to_number(name) if '--' not in name else 
+				tuple((to_number(i) for i in name.split('--')[1:])))
 			}
 
 		variables = load(path[attr],**kwargs)
@@ -782,7 +782,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		kwargs = {
 			'conversion':lambda name: (
 				str(name) if not isinstance(name,tuple) else 
-				'____'+'____'.join((str(i) for i in name)))
+				'--'+'--'.join((str(i) for i in name)))
 		}
 		dump(variables,path[attr],**kwargs)
 	

@@ -54,7 +54,7 @@ from src.parameters import parameterize
 from src.operators import operatorize
 from src.states import stateize
 
-from src.io import load,dump,copy,join,split
+from src.io import load,dump,join,split
 
 from src.process import process
 

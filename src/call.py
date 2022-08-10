@@ -2,6 +2,7 @@
 
 # Import python modules
 import os,sys,warnings,itertools,inspect,traceback
+import subprocess
 import shutil
 import glob as globber
 import importlib
@@ -17,6 +18,8 @@ logger = logging.getLogger(__name__)
 debug = 0
 
 # Import user modules
+from src.io import mkdir
+
 
 def call(*args,path='.',exe=True):
 	'''
@@ -31,9 +34,9 @@ def call(*args,path='.',exe=True):
 
 	with cd(path):
 		if exe:
-			# args = ' '.join(args)			
+			args = [' '.join(args)]
 			# stdout = os.system(args)
-			stdout = subprocess.check_output(args).strip().decode("utf-8")
+			stdout = subprocess.check_output(args,shell=True).strip().decode("utf-8")
 		else:
 			args = ' '.join(args)			
 			print(args)
@@ -57,20 +60,6 @@ def copy(source,destination,**kwargs):
 	stdout = call(*args)
 
 	# shutil.copy2(source,destination)
-
-	return
-
-def mkdir(path):
-	'''
-	Make path
-	Args:
-		path (str): path
-	'''
-
-	directory = split(path,directory=True,abspath=True)
-
-	if directory not in [''] and not os.path.exists(directory):
-		os.makedirs(directory)
 
 	return
 

@@ -3,7 +3,6 @@
 # Import python modules
 import os,sys,warnings,itertools,inspect,traceback
 import shutil
-import subprocess
 import glob as globber
 import importlib
 import json,jsonpickle,h5py,pickle,dill
@@ -22,8 +21,20 @@ from src.utils import array,is_array,is_ndarray
 from src.utils import returnargs
 from src.utils import scalars,nan
 
-from src.call import mkdir
 
+def mkdir(path):
+	'''
+	Make path
+	Args:
+		path (str): path
+	'''
+
+	directory = split(path,directory=True,abspath=True)
+
+	if directory not in [''] and not os.path.exists(directory):
+		os.makedirs(directory)
+
+	return
 
 def split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,abspath=None,delimiter='.'):
 	'''
@@ -226,18 +237,18 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 	Returns:
 		data (object): Loaded object
 	'''	
-	# def convert(name,conversion=None,**kwargs):
-	# 	if conversion is None:
-	# 		conversion = lambda name: str(name)
-	# 	key = conversion(name)
-	# 	return key
+	def convert(name,conversion=None,**kwargs):
+		if conversion is None:
+			conversion = lambda name: str(name)
+		key = conversion(name)
+		return key
 
 	data = {}
 	
 	if isinstance(obj, h5py._hl.group.Group):
 		names = natsorted(obj)
 		for name in names:
-			key = name #convert(name,**kwargs)
+			key = convert(name,**kwargs)
 			if isinstance(obj[name], h5py._hl.group.Group):	
 				data[key] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
 			else:
@@ -297,18 +308,18 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 		kwargs (dict): Additional loading keyword arguments
 	'''		
 
-	# def convert(name,conversion=None,**kwargs):
-	# 	if conversion is None:
-	# 		conversion = lambda name: str(name)
-	# 	key = conversion(name)
-	# 	return key
+	def convert(name,conversion=None,**kwargs):
+		if conversion is None:
+			conversion = lambda name: str(name)
+		key = conversion(name)
+		return key
 
 	none = 'None'
 
 	if isinstance(obj,dict):
 		names = obj
 		for name in names:
-			key = name #convert(name,**kwargs)
+			key = convert(name,**kwargs)
 			if isinstance(obj[name],dict):
 				path.create_group(key)
 				_dump_hdf5(obj[name],path[key],wr=wr,ext=ext,**kwargs)
@@ -457,7 +468,7 @@ def _load(obj,wr,ext,**kwargs):
 		try:
 			obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
 			data = getattr(importlib.import_module(obj),module)
-		except:
+		except Exception as exception:
 			raise exception
 
 	if ext in ['npy']:
@@ -510,6 +521,7 @@ def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
 					_dump(data,obj,wr=wr,ext=ext,**kwargs)
 				return
 			except (ValueError,AttributeError,TypeError) as exception:
+				raise exception
 				logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
 				pass
 	return
@@ -540,7 +552,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 		pickleable(data,callables=kwargs.pop('callables',True))
 		pickle.dump(data,obj,protocol=pickle.HIGHEST_PROTOCOL,**kwargs)
 	elif ext in ['json']:
-		jsonable(data,callables=kwargs.pop('callables',False))	
+		# jsonable(data,callables=kwargs.pop('callables',False))	
 		json.dump(data,obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
 	elif ext in ['tex']:
 		obj.write(data,**kwargs)

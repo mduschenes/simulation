@@ -314,28 +314,28 @@ def setup(hyperparameters):
 				sources[attr][path] = join(split(paths[attr][path],directory=True),split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(pwd))
 				destinations[attr][path] = join(split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(cwd,key))
 
-		print(key)
 		# Dump files
 		attrs = ['config']
 		for attr in attrs:
 			for path in paths[attr]:
-				print(path)
 				if path in ['settings']:
 					data = settings[key]['hyperparameters']
+					source = data
 					destination = destinations[attr][path]
-					dump(data,destination)
+					dump(source,destination)
 				elif path in ['process','plot']:
-					data = deepcopy(settings[key]['hyperparameters'].get(path,{}))
-					source = load(sources[attr][path])
+					# data = settings[key]['hyperparameters'].get(path,{})
+					# source = data
+					# destination = destinations[attr][path]
+					data = load(sources[attr][path])
+					source = deepcopy(settings[key]['hyperparameters'].get(path,{}))
 					destination = destinations[attr][path]
-					updater(data,source,func=func)
-					dump(data,destination)					
+					updater(source,data,func=func)
+					dump(source,destination)					
 				else:
 					source = sources[attr][path]
 					destination = destinations[attr][path]
 					copy(source,destination)
-		print()
-
 
 	return settings
 

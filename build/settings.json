@@ -39,11 +39,6 @@
 	},
 "permutations":{
 	"permutations":{
-		"model.M":[10],
-		"model.N":[2,3],
-		"optimize.iterations":[5],
-		"parameters.xy.method":["constrained",null],
-		"model.system.architecture":["constrained","unconstrained"],
 		"model.M":[100,200,500,1000,2000,5000],
 		"model.N":[4],
 		"optimize.iterations":[500],
@@ -198,6 +193,14 @@
 	"seed":null,
 	"bounds":[-1,1]	
 },
+"job":{
+	"job":"config/job.slurm",
+	"cmd":"../src/train.py",
+	"args":["settings.json"],
+	"path":".",
+	"device":"slurm",
+	"exe":true
+	},
 "process": {
 	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture"],
 	"nullsort": [],
@@ -219,13 +222,5 @@
 		"unconstrained": "\\textrm{Unconstrained}"
 	}
 },
-"plot": {},
-"job":{
-	"job":"config/job.slurm",
-	"cmd":"../src/train.py",
-	"args":["settings.json"],
-	"path":".",
-	"device":"slurm",
-	"exe":true
-	}
+"plot": {}
 }
