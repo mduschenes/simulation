@@ -2,7 +2,7 @@
 "class":"src.quantum.Unitary",
 "sys":{
 	"pwd":".",
-	"cwd":"data_4M",
+	"cwd":"data",
 	"path":{
 		"data":{
 			"model":"model.pkl",
@@ -199,8 +199,8 @@
 	"cmd":"../src/train.py",
 	"args":["settings.json"],
 	"path":".",
-	"device":"pc",
 	"device":"slurm",
+	"device":"pc",
 	"exe":true
 	},
 "process": {

@@ -603,8 +603,6 @@ class Object(object):
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 
-		hyperparameters = self.__check__(hyperparameters)
-
 		self.N = N
 		self.D = D
 		self.d = d
@@ -658,6 +656,8 @@ class Object(object):
 		self.__time__()
 		self.__lattice__()
 		self.__logger__()
+
+		self.__check__()
 
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
@@ -738,7 +738,6 @@ class Object(object):
 		path = 'config/settings.json'
 		default = {}
 
-
 		# Set hyperparameters
 		if hyperparameters is None:
 			hyperparameters = default
@@ -748,9 +747,11 @@ class Object(object):
 		func = lambda key,iterable,elements: iterable.get(key,elements[key])
 		updater(hyperparameters,load(path,default=default),func=func)
 
-		setup(hyperparameters)
+		setup(hyperparameters,cls=self)
 
-		return hyperparameters
+		self.hyperparameters.update(hyperparameters)
+
+		return
 
 
 	def __append__(self,data,operator,site,string,interaction,hyperparameters={}):
@@ -1927,12 +1928,21 @@ def invtrotter(a,p):
 	return a[:n]
 
 
-def check(hyperparameters):
+def check(hyperparameters,cls=None):
 	'''
 	Check hyperparameters
 	Args:
 		hyperparameters (dict): Hyperparameters
+		cls (object): Class instance to update hyperparameters		
 	'''
+
+	# Update with class attributes
+	if cls is not None:
+		section = 'model'
+		if section not in hyperparameters:
+			hyperparameters[section] = {}
+		hyperparameters[section].update({attr: getattr(cls,attr) for attr in cls.__dict__ 
+			if attr in hyperparameters[section]})
 
 
 	section = 'parameters'
@@ -1990,7 +2000,14 @@ def check(hyperparameters):
 		**{attr: {
 			'value': (lambda parameter,hyperparameters,attr=attr: {
 				**hyperparameters['parameters'][parameter][attr],
-				**{kwarg: hyperparameters[kwarg] for kwarg in ['model']}}),
+				**{kwarg: hyperparameters[section][kwarg] 
+					for section in ['model'] 
+					for kwarg in hyperparameters[section]
+					if (
+					isinstance(hyperparameters[section][kwarg],scalars) and 
+					not isinstance(hyperparameters[section][kwarg],str)
+					)}
+				}),
 			'default': (lambda parameter,hyperparameters,attr=attr: {}),
 			'conditions': (lambda parameter,hyperparameters,attr=attr: True)						
 			} for attr in ['kwargs']
@@ -2022,14 +2039,15 @@ def check(hyperparameters):
 
 
 
-def setup(hyperparameters):
+def setup(hyperparameters,cls=None):
 	'''
 	Setup hyperparameters
 	Args:
 		hyperparameters (dict): Hyperparameters
+		cls (object): Class instance to update hyperparameters
 	'''
-	
+
 	# Check hyperparameters have correct values
-	check(hyperparameters)
+	check(hyperparameters,cls=cls)
 
 	return

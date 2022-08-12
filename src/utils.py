@@ -3193,7 +3193,7 @@ def sigmoid(a,scale=1):
 	return (tanh(a*scale/2)+1)/2
 	# return sp.special.expit(scale*a)
 
-# @partial(jit,static_argnums=(1,))
+@jit
 def bound(a,kwargs):
 	'''
 	Bound array
@@ -3206,7 +3206,7 @@ def bound(a,kwargs):
 	return sigmoid(a,kwargs.get('sigmoid'))
 
 
-# @partial(jit,static_argnums=(1,))
+@jit
 def nullbound(a,kwargs):
 	'''
 	Null nound array
