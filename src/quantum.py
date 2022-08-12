@@ -991,7 +991,7 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		return self.__loss__(parameters) #+ self.__constraints__(parameters)
+		return self.__loss__(parameters) + self.__constraints__(parameters)
 
 	@partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):

@@ -40,8 +40,8 @@
 "permutations":{
 	"permutations":{
 		"model.M":[10,20,30,40,50,80,100,200],
-		"model.M":[100],
-		"model.N":[4],
+		"model.M":[500],
+		"model.N":[2],
 		"optimize.iterations":[500],
 		"parameters.xy.method":["constrained"],
 		"model.system.architecture":["constrained"]
