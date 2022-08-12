@@ -61,10 +61,11 @@ def check(hyperparameters):
 	'''
 
 	# Check hyperparameters
+	default = {}
 	if hyperparameters is None:
-		hyperparameters = {}
+		hyperparameters = default
 	elif isinstance(hyperparameters,str):
-		hyperparameters = load(hyperparameters)
+		hyperparameters = load(hyperparameters,default=default)
 
 	# Check sections for correct attributes
 	section = 'sys'
@@ -160,14 +161,16 @@ def setup(hyperparameters):
 	settings = {}	
 
 	# Load default hyperparameters
+	default = {}
 	if hyperparameters is None:
-		hyperparameters = {}
+		hyperparameters = default
 	elif isinstance(hyperparameters,str):
-		hyperparameters = load(hyperparameters)
+		hyperparameters = load(hyperparameters,default=default)
 
 	path = 'config/settings.json'
+	default = {}
 	func = lambda key,iterable,elements: iterable.get(key,elements[key])
-	updater(hyperparameters,load(path),func=func)
+	updater(hyperparameters,load(path,default=default),func=func)
 
 	check(hyperparameters)
 

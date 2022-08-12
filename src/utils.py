@@ -3203,7 +3203,7 @@ def bound(a,kwargs):
 	Returns:
 		out (array): Bounded array
 	'''
-	return sigmoid(a,kwargs.get('sigmoid'))
+	return sigmoid(a,kwargs['sigmoid'])
 
 
 @jit

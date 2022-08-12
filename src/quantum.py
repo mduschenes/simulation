@@ -735,21 +735,23 @@ class Object(object):
 			hyperparameters (dict): Class hyperparameters
 		'''
 
-		path = 'config/settings.json'
-		default = {}
+		self.hyperparameters.update(hyperparameters)
 
 		# Set hyperparameters
-		if hyperparameters is None:
-			hyperparameters = default
-		elif isinstance(hyperparameters,str):
-			hyperparameters = load(hyperparameters,default=default)
+		default = {}
+		if self.hyperparameters is None:
+			self.hyperparameters = default
+		elif isinstance(self.hyperparameters,str):
+			self.hyperparameters = load(self.hyperparameters,default=default)
 
+		# Set defaults
+		path = 'config/settings.json'
+		default = {}
 		func = lambda key,iterable,elements: iterable.get(key,elements[key])
-		updater(hyperparameters,load(path,default=default),func=func)
+		updater(self.hyperparameters,load(path,default=default),func=func)
 
-		setup(hyperparameters,cls=self)
+		setup(self.hyperparameters,cls=self)
 
-		self.hyperparameters.update(hyperparameters)
 
 		return
 
@@ -1047,15 +1049,15 @@ class Object(object):
 
 		# fisher = einsum()
 
-		fisher = 0
-		G = self.derivative(parameters)
+		# fisher = 0
+		# G = self.derivative(parameters)
 
-		for state in self.states:
-			fisher += ((G.dot(state).conj()).dot((G.dot(state)).T) - 
-						outer((G.dot(state).conj()).dot(state),
-						  (G.dot(state).conj()).dot(state).conj())
-					)
-		fisher = fisher.real
+		# for state in self.states:
+		# 	fisher += ((G.dot(state).conj()).dot((G.dot(state)).T) - 
+		# 				outer((G.dot(state).conj()).dot(state),
+		# 				  (G.dot(state).conj()).dot(state).conj())
+		# 			)
+		# fisher = fisher.real
 
 		# self.hyperparameters['optimize']['track']['fisher'].append(
 		# 	rank(fisher)
