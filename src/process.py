@@ -25,7 +25,7 @@ from src.utils import array,product,expand_dims,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
 from src.utils import e,pi,nan,scalars,nulls
 from src.dictionary import leaves,branches
-from src.io import setup,load,dump,join,split
+from src.io import setup,load,dump,join,split,glob
 from src.plot import plot
 
 # Texify strings
@@ -381,8 +381,8 @@ def loader(kwargs):
 		if isinstance(kwargs[kwarg],str):
 			kwargs[kwarg] = [kwargs[kwarg]]		
 		if not isinstance(kwargs[kwarg],dict):
-			# paths = ['data/data.hdf5']
-			paths = natsorted(set(kwargs[kwarg]))
+			paths = kwargs[kwarg]
+			paths = natsorted(set((subpath for path in set(paths) for subpath in glob(path))))
 			default = {}
 			kwargs[kwarg] = {}
 			returns['multiple'] |= len(paths)>1
@@ -399,6 +399,8 @@ def loader(kwargs):
 
 	if all(len(kwargs[kwarg]) < 1 for kwarg in kwargs):
 		returns = None
+
+	print(returns['multiple'])
 
 	return returns
 

@@ -111,7 +111,7 @@ def glob(path,**kwargs):
 	Returns:
 		path (str): Expanded, absolute path
 	'''
-	return globber.glob(os.path.abspath(os.path.expanduser(path)),**kwargs)
+	return globber.glob(os.path.abspath(os.path.expanduser(path)),recursive=True,**kwargs)
 
 def edit(path,directory=None,file=None,ext=None,delimiter='.'):
 	'''

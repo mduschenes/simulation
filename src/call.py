@@ -21,26 +21,33 @@ debug = 0
 from src.io import mkdir
 
 
-def call(*args,path='.',exe=True):
+def call(*args,path='.',device=None,exe=True,**kwargs):
 	'''
 	Submit call to command line
 	Args:
 		args (iterable[str]): Arguments to pass to command line
 		path (str): Path to call from
+		device (str): Name of device to submit to		
 		exe (boolean): Boolean whether to issue commands
 	Returns:
 		stdout (str): Return of commands
 	'''
+	if device in ['pc']:
+		caller = lambda args: subprocess.run(args,shell=True,stdout=sys.stdout,stderr=sys.stderr)
+	elif device in ['slurm']:
+		caller = lambda args: subprocess.check_output([' '.join(args)],shell=True).strip().decode("utf-8")
+	elif device is None:
+		caller = lambda args: subprocess.check_output([' '.join(args)],shell=True).strip().decode("utf-8")
+	else:
+		caller = lambda args: subprocess.run(args,shell=True,stdout=sys.stdout,stderr=sys.stderr)		
+
 
 	with cd(path):
 		if exe:
-			args = [' '.join(args)]
-			# stdout = os.system(args)
-			stdout = subprocess.check_output(args,shell=True).strip().decode("utf-8")
+			stdout = caller(args)
 		else:
-			args = ' '.join(args)			
 			print(args)
-			stdout = args
+			stdout = ' '.join(args)
 	return stdout
 
 def copy(source,destination,**kwargs):
@@ -57,7 +64,7 @@ def copy(source,destination,**kwargs):
 
 	args = ['cp','-rf',source,destination]
 
-	stdout = call(*args)
+	stdout = call(*args,device=None)
 
 	# shutil.copy2(source,destination)
 
@@ -71,7 +78,7 @@ def sed(path,patterns):
 			'sed','-i',
 			("s,%s,%s,g"%(patterns[pattern]['pattern'],patterns[pattern]['replacement'])).replace(r'-',r"\-").replace(r' ',r'\ '),
 			path]
-		call(*args)
+		call(*args,device=None)
 	return
 
 
@@ -119,12 +126,7 @@ def submit_slurm(*args):
 	exe = ['sbatch','<',job]
 	return exe
 
-def submit_null(*args):
-	exe = []
-	return exe
-
-
-def submit(args,path='.',device='pc',exe=True):
+def submit(args,path='.',device=None,exe=True):
 	'''
 	Submit commands to command line
 	Args:
@@ -139,7 +141,7 @@ def submit(args,path='.',device='pc',exe=True):
 	devices = {
 		'pc': submit_pc,
 		'slurm': submit_slurm,
-		None: submit_null,
+		None: submit_pc,
 		}
 
 	assert device in devices, 'device: "%s" not in allowed %r'%(device,list(devices))
@@ -161,7 +163,7 @@ def submit(args,path='.',device='pc',exe=True):
 	stdouts = []
 	for arg,path in zip(args,paths):
 		cmd = devices[device](*arg)
-		stdout = call(*cmd,path=path,exe=exe)
+		stdout = call(*cmd,path=path,device=device,exe=exe)
 		stdouts.append(stdout)
 
 	if single:

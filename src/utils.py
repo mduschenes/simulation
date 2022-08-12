@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 pi = np.pi
 e = np.exp(1)
 nan = np.nan
-scalars = (int,np.integer,float,onp.float,np.floating,str,type(None))
+scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
 
@@ -690,6 +690,18 @@ class zeros(array):
 	def __new__(self,*args,**kwargs):
 		return jax.device_put(np.zeros(*args,**kwargs))
 
+class empty(array):
+	'''
+	array class of empty
+	Args:
+		args (iterable): Array arguments
+		kwargs (dict): Array keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return jax.device_put(np.empty(*args,**kwargs))
+
 class eye(array):
 	'''
 	array class of eye
@@ -1084,14 +1096,16 @@ def gradient_inner_abs2(a,b,da):
 		out (array): Gradient of inner product
 	'''
 	def func(i):
-		return 2*(
+		return ((
 			trace(tensordot(da[i],b.conj().T,1))*
-			trace(tensordot(a.conj(),b.T,1))).real/(a.shape[0]*b.shape[0])
+			trace(tensordot(a.conj(),b.T,1))) + 
+			trace(tensordot(a,b.conj().T,1))*
+			trace(tensordot(da[i].conj(),b.T,1))).real/(a.shape[0]*b.shape[0])
 	return vmap(func)(arange(da.shape[0]))
 
 
 @jit
-def inner_real2(a,b):
+def inner_real(a,b):
 	'''
 	Calculate real square of inner product of arrays a and b
 	Args:
@@ -1100,11 +1114,11 @@ def inner_real2(a,b):
 	Returns:
 		out (array): Real square of inner product
 	'''	
-	return (abs2((trace(tensordot(a,b.conj().T,1))).real))/(a.shape[0]*b.shape[0])
+	return (trace(tensordot(a,b.conj().T,1))).real/sqrt(a.shape[0]*b.shape[0])
 
 
 @jit
-def gradient_inner_real2(a,b,da):
+def gradient_inner_real(a,b,da):
 	'''
 	Calculate gradient of real square inner product of arrays a and b with respect to a
 	Args:
@@ -1115,12 +1129,12 @@ def gradient_inner_real2(a,b,da):
 		out (array): Gradient of inner product
 	'''
 	def func(i):
-		return 2*(trace(tensordot(da[i],b.conj().T,1)).real)*(trace(tensordot(a,b.conj().T,1))).real/(a.shape[0]*b.shape[0])
+		return (trace(tensordot(da[i],b.conj().T,1)).real)/sqrt(a.shape[0]*b.shape[0])
 	return vmap(func)(arange(da.shape[0]))
 
 
 @jit
-def inner_imag2(a,b):
+def inner_imag(a,b):
 	'''
 	Calculate imaginary square of inner product of arrays a and b
 	Args:
@@ -1129,11 +1143,11 @@ def inner_imag2(a,b):
 	Returns:
 		out (array): Imaginary square of inner product
 	'''	
-	return (abs2((trace(tensordot(a,b.conj().T,1))).imag))/(a.shape[0]*b.shape[0])
+	return (trace(tensordot(a,b.conj().T,1))).imag/sqrt(a.shape[0]*b.shape[0])
 
 
 @jit
-def gradient_inner_imag2(a,b,da):
+def gradient_inner_imag(a,b,da):
 	'''
 	Calculate gradient of imaginary square inner product of arrays a and b with respect to a
 	Args:
@@ -1144,7 +1158,7 @@ def gradient_inner_imag2(a,b,da):
 		out (array): Gradient of inner product
 	'''
 	def func(i):
-		return 2*(trace(tensordot(da[i],b.conj().T,1)).imag)*(trace(tensordot(a,b.conj().T,1))).imag/(a.shape[0]*b.shape[0])
+		return (trace(tensordot(da[i],b.conj().T,1)).imag)/sqrt(a.shape[0]*b.shape[0])
 	return vmap(func)(arange(da.shape[0]))
 
 
@@ -1377,17 +1391,24 @@ def vntensorprod(a,n):
 
 
 @jit
-def einsum(a,subscripts):
+def einsum(subscripts,*shapes):
 	'''
-	Get summation of axes in array denoted by subscripts
+	Get optimal summation of axes in array denoted by subscripts
 	Args:
-		a (iterable): Arrays to compute summation of elements
 		subscripts (str): operations to perform for summation
+		shapes (iterable): Shapes of to compute summation of elements
 	Returns:
-		out (array): Reduced array of summed array
+		einsum (callable): Optimal einsum operator
 	'''
-	optimize = np.einsum_path(subscripts)
-	return np.einsum(*a,optimize=optimize)
+
+	a = (empty(shape) for shape in shapes)
+
+	optimize = np.einsum_path(subscripts,*a)
+
+	def _einsum(*a,optimize=optimize):
+		return np.einsum(*a,optimize=optimize)
+
+	return _einsum
 
 
 
@@ -3172,26 +3193,26 @@ def sigmoid(a,scale=1):
 	return (tanh(a*scale/2)+1)/2
 	# return sp.special.expit(scale*a)
 
-@jit
-def bound(a,hyperparameters):
+# @partial(jit,static_argnums=(1,))
+def bound(a,kwargs):
 	'''
 	Bound array
 	Args:
 		a (array): Array to bound
-		hyperparameters (dict): Hyperparameters for bounds
+		kwargs (dict): Keyword arguments for bounds
 	Returns:
 		out (array): Bounded array
 	'''
-	return sigmoid(a,hyperparameters['sigmoid'])
+	return sigmoid(a,kwargs.get('sigmoid'))
 
 
-@jit
-def nullbound(a,hyperparameters):
+# @partial(jit,static_argnums=(1,))
+def nullbound(a,kwargs):
 	'''
 	Null nound array
 	Args:
 		a (array): Array to bound
-		hyperparameters (dict): Hyperparameters for bounds
+		kwargs (dict): Keyword arguments for bounds
 	Returns:
 		out (array): Bounded array
 	'''

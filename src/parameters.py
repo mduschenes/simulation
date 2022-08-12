@@ -51,6 +51,7 @@ def _variables(parameters,hyperparameters,parameter,group):
 		variable (array): variables
 	'''
 
+	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
 	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
 	index = hyperparameters[parameter]['group'].index(group)
@@ -76,13 +77,25 @@ def _variables(parameters,hyperparameters,parameter,group):
 			
 		elif parameter in ['zz'] and group in [('zz',)]:
 			variable = (
-				scale[index]*
+				kwargs['model']['M']*scale[index]*
 				parameters[index]
 			)
 	elif method in ['unconstrained']:
-		variable = scale[index]*parameters[index]	
+		if parameter in ['zz'] and group in [('zz',)]:
+			variable = (
+				kwargs['model']['M']*scale[index]*
+				parameters[index]
+			)
+		else:
+			variable = scale[index]*parameters[index]	
 	else:
-		variable = scale[index]*parameters[index]
+		if parameter in ['zz'] and group in [('zz',)]:
+			variable = (
+				kwargs['model']['M']*scale[index]*
+				parameters[index]
+			)
+		else:
+			variable = scale[index]*parameters[index]
 
 	return variable
 
@@ -99,6 +112,7 @@ def _features(parameters,hyperparameters,parameter,group):
 		feature (array): features
 	'''
 
+	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
 	l = len(hyperparameters[parameter]['group'])
 	shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
@@ -111,7 +125,7 @@ def _features(parameters,hyperparameters,parameter,group):
 		wrapper = nullbound
 
 
-	feature = wrapper(parameters,hyperparameters[parameter]['kwargs']).reshape(shape) 
+	feature = wrapper(parameters,kwargs).reshape(shape) 
 
 	return feature
 
@@ -143,6 +157,7 @@ def _constraints(parameters,hyperparameters,parameter,group):
 		constraints (array): constraints
 	'''
 
+	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
 	scale = hyperparameters[parameter]['kwargs']['lambda']
 	constants = hyperparameters[parameter]['constants']['features'][-1]
@@ -152,7 +167,6 @@ def _constraints(parameters,hyperparameters,parameter,group):
 			constraint = (
 				(scale[0]*(parameters[...,constants['slice']] - constants['value'])**2).sum()
 			)
-
 		elif parameter in ['z'] and group in [('z',)]:
 			constraint = 0
 		
@@ -181,6 +195,7 @@ def _gradient_constraints(parameters,hyperparameters,parameter,group):
 	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
 	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
 
+	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
 	scale = hyperparameters[parameter]['kwargs']['lambda']
 

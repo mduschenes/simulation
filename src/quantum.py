@@ -21,7 +21,6 @@ jax.config.update('jax_platform_name','cpu')
 jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
 # os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
-# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 np.set_printoptions(linewidth=1000)#,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 # Logging
@@ -36,10 +35,10 @@ for PATH in PATHS:
 from src.utils import logconfig
 from src.utils import jit,gradient,hessian,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,rank
+from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,rank,einsum
 from src.utils import summation,exponentiation
-from src.utils import inner_abs2,inner_real2,inner_imag2
-from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real2,gradient_inner_imag2
+from src.utils import inner_abs2,inner_real,inner_imag
+from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import eigh,qr
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
@@ -666,6 +665,8 @@ class Object(object):
 		self.grad = jit(gradient(self.func))
 		self.derivative = jit(gradient_fwd(self))
 		self.hessian = jit(hessian(self.func))
+		# self.einsum = jit(einsum('ia,ic,uab,vbc->uv',*[self.states.shape]*2,*[self.shape[-2:]]*2))
+		self.metric = jit({'abs2':lambda a,b: 1-inner_abs2(a,b),'real':lambda a,b: 1-inner_real(a,b)}['abs2'])
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
 			for attr in ['key','N','D','d','M','tau','T','p','seed','architecture']]
@@ -744,8 +745,10 @@ class Object(object):
 		elif isinstance(hyperparameters,str):
 			hyperparameters = load(hyperparameters,default=default)
 
-		# func = lambda key,iterable,elements: iterable.get(key,elements[key])
-		# updater(hyperparameters,load(path,default=default),func=func)
+		func = lambda key,iterable,elements: iterable.get(key,elements[key])
+		updater(hyperparameters,load(path,default=default),func=func)
+
+		setup(hyperparameters)
 
 		return hyperparameters
 
@@ -987,7 +990,7 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		return self.__loss__(parameters) + self.__constraints__(parameters)
+		return self.__loss__(parameters) #+ self.__constraints__(parameters)
 
 	@partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
@@ -1001,6 +1004,14 @@ class Object(object):
 
 		return self.grad(parameters)
 
+		# shape = parameters.shape
+		# grad = zeros(shape)
+
+		# grad = grad + gradient_distance(self(parameters),self.label,self.__derivative__(parameters))
+
+		# return grad
+
+
 	@partial(jit,static_argnums=(0,))
 	def __hessian__(self,parameters):
 		''' 
@@ -1013,13 +1024,6 @@ class Object(object):
 
 		return self.hessian(parameters)
 
-		# shape = parameters.shape
-		# grad = zeros(shape)
-
-		# grad = grad + gradient_distance(self(parameters),self.label,self.__derivative__(parameters))
-
-		# return grad
-		# return gradient(self.__func__)(parameters)
 
 	def __callback__(self,parameters):
 		''' 
@@ -1040,14 +1044,17 @@ class Object(object):
 		# 	rank(self.__hessian__(parameters))
 		# 	)	
 
-		# fisher = 0
-		# G = self.derivative(parameters)
-		# for state in self.states:
-		# 	fisher += ((G.dot(state).conj()).dot((G.dot(state)).T) - 
-		# 				outer((G.dot(state).conj()).dot(state),
-		# 				  (G.dot(state).conj()).dot(state).conj())
-		# 			)
-		# fisher = fisher.real
+		# fisher = einsum()
+
+		fisher = 0
+		G = self.derivative(parameters)
+
+		for state in self.states:
+			fisher += ((G.dot(state).conj()).dot((G.dot(state)).T) - 
+						outer((G.dot(state).conj()).dot(state),
+						  (G.dot(state).conj()).dot(state).conj())
+					)
+		fisher = fisher.real
 
 		# self.hyperparameters['optimize']['track']['fisher'].append(
 		# 	rank(fisher)
@@ -1100,7 +1107,7 @@ class Object(object):
 		'''
 		Set system attributes
 		Args:
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
 		'''
 		system = self.system if system is None else system
 		
@@ -1701,67 +1708,71 @@ class Unitary(Hamiltonian):
 			derivative (array): Gradient of parameterized operator
 		'''
 
-		# Get class hyperparameters and attributes
-		hyperparameters = self.hyperparameters
-		attributes = self.attributes
+		return self.derivative(parameters)
 
-		# Get shape and indices of variable parameters for gradient
-		attribute = 'shape'
-		layer = 'variables'
-		shape = attributes[attribute][layer]
+		# # Get class hyperparameters and attributes
+		# hyperparameters = self.hyperparameters
+		# attributes = self.attributes
 
-		# Get trotterized shape
-		p = self.p
-		shape = list(shape[::-1])
+		# # Get shape and indices of variable parameters for gradient
+		# attribute = 'shape'
+		# layer = 'variables'
+		# shape = attributes[attribute][layer]
 
-		shape[-1] *= p
+		# # Get trotterized shape
+		# p = self.p
+		# shape = list(shape[::-1])
 
-		ndim = len(shape)
+		# shape[-1] *= p
 
-		attribute = 'slice'
-		layer = 'variables'
-		slices = attributes[attribute][layer]		
+		# ndim = len(shape)
 
-		attribute = 'index'
-		layer = 'variables'
-		indices = attributes[attribute][layer]		
+		# attribute = 'slice'
+		# layer = 'variables'
+		# slices = attributes[attribute][layer]		
 
-		slices = tuple([
-			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
-				for axis in range(0,1)],
-			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
-				for axis in range(1,ndim)]
-		])
+		# attribute = 'index'
+		# layer = 'variables'
+		# indices = attributes[attribute][layer]		
 
-		indices = tuple([
-			*[[i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]]
-				for axis in range(0,1)],
-			*[[indices[parameter][group][axis] for parameter in indices for group in indices[parameter]][0]
-				for axis in range(1,ndim)]
-		])
+		# slices = tuple([
+		# 	*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
+		# 		for axis in range(0,1)],
+		# 	*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
+		# 		for axis in range(1,ndim)]
+		# ])
 
-		# Calculate parameters and gradient
-		parameters = self.__parameters__(parameters)
+		# indices = tuple([
+		# 	*[[i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]]
+		# 		for axis in range(0,1)],
+		# 	*[[indices[parameter][group][axis] for parameter in indices for group in indices[parameter]][0]
+		# 		for axis in range(1,ndim)]
+		# ])
 
-		grad = gradient_expm(-1j*self.coefficients*parameters,self.data,self.identity)
-		grad *= -1j*self.coefficients
 
-		# Reshape gradient
-		axis = 1
 
-		grad = grad.reshape((*shape,*grad.shape[axis:]))
+		# # Calculate parameters and gradient
+		# parameters = self.__parameters__(parameters)
 
-		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
+		# grad = gradient_expm(-1j*self.coefficients*parameters,self.data,self.identity)
+		# grad *= -1j*self.coefficients*2*pi
 
-		grad = array(gradient_trotter(grad,p))
+		# # Reshape gradient
+		# axis = 1
 
-		grad = grad[indices]
+		# grad = grad.reshape((*shape,*grad.shape[axis:]))
 
-		grad = grad.reshape((-1,*grad.shape[axis+1:]))
+		# grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
 
-		derivative = grad
+		# grad = array(gradient_trotter(grad,p))
 
-		return derivative
+		# grad = grad[indices]
+
+		# grad = grad.reshape((-1,*grad.shape[axis+1:]))
+
+		# derivative = grad
+
+		# return derivative
 
 
 def bloch(state,path=None):
@@ -1859,7 +1870,7 @@ def distance(a,b):
 		out (array): Distance between arrays
 	'''
 	# return norm(a-b,axis=None,ord=2)/a.shape[0]
-	# return 1-inner_real2(a,b)+inner_imag2(a,b)
+	# return 1-inner_real(a,b)#+inner_imag2(a,b)
 	return 1-inner_abs2(a,b)
 	
 
@@ -1874,6 +1885,7 @@ def gradient_distance(a,b,da):
 	Returns:
 		out (array): Distance between arrays
 	'''
+	# return -gradient_inner_real(a,b,da)
 	return -gradient_inner_abs2(a,b,da)
 	
 
@@ -1925,31 +1937,31 @@ def check(hyperparameters):
 
 	section = 'parameters'
 	updates = {
-		'variables':{
-			'value':(lambda parameter,hyperparameters: variables),
-			'default':(lambda parameter,hyperparameters: {}),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('variables',{}) == {}),
-		},
-		'features':{
-			'value':(lambda parameter,hyperparameters: features),
-			'default':(lambda parameter,hyperparameters: {}),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('features',{}) == {}),
-		},		
-		'constraints':{
-			'value':(lambda parameter,hyperparameters: constraints),
-			'default': (lambda parameter,hyperparameters: {}),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('constraints',{}) == {}),
-		},
-		'gradients':{
-			'value':(lambda parameter,hyperparameters: gradients),
-			'default':(lambda parameter,hyperparameters: {}),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('gradients',{}) == {}),			
-		},			
-		'gradient_constraints':{
-			'value':(lambda parameter,hyperparameters: gradient_constraints),
-			'default': (lambda parameter,hyperparameters: {}),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('gradient_constraints',{}) == {}),
-		},
+		# 'variables':{
+		# 	'value':(lambda parameter,hyperparameters: variables),
+		# 	'default':(lambda parameter,hyperparameters: {}),
+		# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('variables',{}) == {}),
+		# },
+		# 'features':{
+		# 	'value':(lambda parameter,hyperparameters: features),
+		# 	'default':(lambda parameter,hyperparameters: {}),
+		# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('features',{}) == {}),
+		# },		
+		# 'constraints':{
+		# 	'value':(lambda parameter,hyperparameters: constraints),
+		# 	'default': (lambda parameter,hyperparameters: {}),
+		# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('constraints',{}) == {}),
+		# },
+		# 'gradients':{
+		# 	'value':(lambda parameter,hyperparameters: gradients),
+		# 	'default':(lambda parameter,hyperparameters: {}),
+		# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('gradients',{}) == {}),			
+		# },			
+		# 'gradient_constraints':{
+		# 	'value':(lambda parameter,hyperparameters: gradient_constraints),
+		# 	'default': (lambda parameter,hyperparameters: {}),
+		# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('gradient_constraints',{}) == {}),
+		# },
 		'boundaries': {
 			'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
 				for i in hyperparameters[section][parameter]['boundaries'][attr]] 
@@ -1975,6 +1987,14 @@ def check(hyperparameters):
 			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
 			} for attr in ['scale','initialization','random','smoothness','interpolation','pad']
 		},
+		**{attr: {
+			'value': (lambda parameter,hyperparameters,attr=attr: {
+				**hyperparameters['parameters'][parameter][attr],
+				**{kwarg: hyperparameters[kwarg] for kwarg in ['model']}}),
+			'default': (lambda parameter,hyperparameters,attr=attr: {}),
+			'conditions': (lambda parameter,hyperparameters,attr=attr: True)						
+			} for attr in ['kwargs']
+		},		
 		**{attr: {
 			'value': (lambda parameter,hyperparameters,attr=attr: None),
 			'default': (lambda parameter,hyperparameters,attr=attr: None),
@@ -2010,6 +2030,6 @@ def setup(hyperparameters):
 	'''
 	
 	# Check hyperparameters have correct values
-	# check(hyperparameters)
+	check(hyperparameters)
 
 	return
