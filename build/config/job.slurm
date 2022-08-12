@@ -1,9 +1,9 @@
 #!/bin/bash
 
 ##SBATCH --account=mduschenes
-#SBATCH --job-name=results
-#SBATCH --output=data/%x.%A.stdout
-#SBATCH --error=data/%x.%A.stderr
+#SBATCH --job-name=data
+#SBATCH --output=%x.%A.stdout
+#SBATCH --error=%x.%A.stderr
 
 #SBATCH --partition=cpu
 #SBATCH --time=02:00:00

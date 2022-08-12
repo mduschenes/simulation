@@ -26,20 +26,31 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.io import join
+from src.io import join,split
 from src.process import process
 
 def main(args):
 
+	kwargs = {
+		'data':'**/data.hdf5',
+		'settings':'**/plot.json',
+		'hyperparameters':'**/process.json',
+	}
+	nkwargs = len(kwargs)
 	nargs = len(args)
 
-	path = args[0] if nargs>0 else None
+	if nargs < 1:
+		return
 
-	data = join(path,'**/data.hdf5')
-	settings = join(path,'**/plot.json')
-	hyperparameters = join(path,'**/process.json')
+	path = args[0]
+	path,ext = split(path,directory_file=True,ext=True)
 
-	process(data,settings,hyperparameters)
+	args.extend([path]*(nkwargs-nargs))
+
+	kwargs.update({kwarg: join(arg,kwargs[kwarg]) if not (ext or split(arg,ext=True)) else arg 
+		for arg,kwarg in zip(args,kwargs)})
+
+	process(**kwargs)
 
 	return
 
