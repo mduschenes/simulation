@@ -273,7 +273,7 @@ class Time(object):
 		self.system = System(system)
 		self.M = M if M is not None else 1
 		self.T = T if T is not None else None
-		self.tau = tau if tau is not None and T is not None else 1
+		self.tau = tau if tau is not None or T is not None else None
 		self.p = p if p is not None else 1
 		self.time = time
 		self.default = 'linear'
@@ -2008,7 +2008,10 @@ def check(hyperparameters,cls=None):
 					if (
 					isinstance(hyperparameters[section][kwarg],scalars) and 
 					not isinstance(hyperparameters[section][kwarg],str)
-					)}
+					)},
+				**{'min':min(hyperparameters['parameters'][parameter]['parameters']) if hyperparameters['parameters'][parameter].get('parameters') else hyperparameters['parameters'][parameter]['bounds']['parameters'][0], 
+				   'max':max(hyperparameters['parameters'][parameter]['parameters']) if hyperparameters['parameters'][parameter].get('parameters') else hyperparameters['parameters'][parameter]['bounds']['parameters'][1] 
+					}
 				}),
 			'default': (lambda parameter,hyperparameters,attr=attr: {}),
 			'conditions': (lambda parameter,hyperparameters,attr=attr: True)						

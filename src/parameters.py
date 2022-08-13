@@ -71,24 +71,24 @@ def _variables(parameters,hyperparameters,parameter,group):
 
 		elif parameter in ['z'] and group in [('z',)]:
 			variable = (
-				kwargs['M']*scale[index]*
+				scale[index]*
 				parameters[index]
 			)
 			
 		elif parameter in ['zz'] and group in [('zz',)]:
 			variable = (
-				kwargs['M']*scale[index]*
+				scale[index]/(8*kwargs['min']*kwargs['delta'])*
 				parameters[index]
 			)
 	elif method in ['unconstrained']:
 		if parameter in ['z'] and group in [('z',)]:
 			variable = (
-				kwargs['M']*scale[index]*
+				scale[index]*
 				parameters[index]
 			)
 		elif parameter in ['zz'] and group in [('zz',)]:
 			variable = (
-				kwargs['M']*scale[index]*
+				scale[index]/(8*kwargs['min']*kwargs['delta'])*
 				parameters[index]
 			)
 		else:
@@ -96,12 +96,12 @@ def _variables(parameters,hyperparameters,parameter,group):
 	else:
 		if parameter in ['z'] and group in [('z',)]:
 			variable = (
-				kwargs['M']*scale[index]*
+				scale[index]*
 				parameters[index]
 			)
 		if parameter in ['zz'] and group in [('zz',)]:
 			variable = (
-				kwargs['M']*scale[index]*
+				scale[index]/(8*kwargs['min']*kwargs['delta'])*
 				parameters[index]
 			)
 		else:
