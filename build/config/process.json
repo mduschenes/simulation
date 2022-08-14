@@ -1,2 +1,25 @@
 {
+	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture"],
+	"load":0,
+	"dump":1,
+	"delimiter":".",
+	"parameters":[
+		{"key":["iteration","infidelity"],"plot":[["linear","linear"]]},
+		{"key":["","parameters"],"axis":[[0,1],[2],[],[-1]]},
+		{"key":["","parameters.relative"],"axis":[[0,1],[2],[],[-1]]},
+		{"key":["M","parameters.relative.mean"],"axis":[[],[],[],[-1]]}
+		],	
+	"null":{"None.parameters.iteration.M":null,"iteration.hessian.M":null},
+	"texify":{
+		"iteration":"\\textrm{Iteration}~i",
+		"None": "\\textrm{None}",
+		"architecture": "\\textrm{Architecture}",
+		"constrained": "\\textrm{Constrained}",
+		"unconstrained": "\\textrm{Unconstrained}"
+	},
+	"cwd":"test",
+	"path": {
+        "plot": "plot.pdf",
+        "process": "process.hdf5"
+    }
 }

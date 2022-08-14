@@ -428,7 +428,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					args.extend([kwargs.get('x'),kwargs.get('y'),kwargs.get('y')])
 				else:
 					call = True
-					args.extend([kwargs.get('x'),kwargs.get('y')-kwargs.get('yerr'),kwargs.get('y')+kwargs.get('yerr')])
+					if np.ndim(kwargs.get('yerr')) == 2 and len(kwargs.get('yerr'))==2:
+						args.extend([kwargs.get('x'),kwargs.get('y')-kwargs.get('yerr')[0],kwargs.get('y')+kwargs.get('yerr')[1]])
+					else:
+						args.extend([kwargs.get('x'),kwargs.get('y')-kwargs.get('yerr'),kwargs.get('y')+kwargs.get('yerr')])
 
 				nullkwargs = ['x','y','z','xerr','yerr','label']
 				for kwarg in nullkwargs:

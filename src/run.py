@@ -327,9 +327,6 @@ def setup(hyperparameters):
 					destination = destinations[attr][path]
 					dump(source,destination)
 				elif path in ['process','plot']:
-					# data = settings[key]['hyperparameters'].get(path,{})
-					# source = data
-					# destination = destinations[attr][path]
 					data = load(sources[attr][path])
 					source = deepcopy(settings[key]['hyperparameters'].get(path,{}))
 					destination = destinations[attr][path]

@@ -46,18 +46,40 @@ def Texify(string,texify={},usetex=True):
 	return string
 
 
+# Transform of data
+def transformation(transform=None):
+	if transform is None:
+		transform = lambda x:x
+		invtransform = lambda x:x
+	if not isinstance(transform,str):
+		transform,invtransform = transform
+	elif callable(transform):
+		transform,invtransform = transform, lambda x:x
+	elif transform in ['linear']:
+		transform = lambda x:x
+		invtransform = lambda x:x		
+	elif transform in ['log']:		
+		transform = lambda x: np.log(x)
+		invtransform = lambda x:np.exp(x)
+	else:
+		transform = lambda x:x		
+		invtransform = lambda x:x		
+	return transform,invtransform
+
 # Normalization of data
 def norm(data,axis=None,ord=2):
 	return np.linalg.norm(data,axis=axis,ord=ord)
 
 # Sample average of data
-def mean(data,axis=0,dtype=None):
-	return np.nanmean(data,axis=axis).astype(dtype)
+def mean(data,axis=0,transform=None,dtype=None):
+	transform,invtransform = transformation(transform)
+	return invtransform(np.nanmean(transform(data),axis=axis).astype(dtype))
 
 # Sample deviation of data
-def std(data,axis=0,dtype=None):
+def std(data,axis=0,transform=None,dtype=None):
+	transform,invtransform = transformation(transform)	
 	n = data.shape[axis]
-	return (np.nanstd(data,axis=axis,ddof=n>1)).astype(dtype)
+	return invtransform((np.nanstd(transform(data),axis=axis,ddof=n>1)).astype(dtype))
 
 # Fit data
 def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
@@ -440,8 +462,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	has shape of (1 + ndim) dimensions, with axes: 
 	(# of permutations of sort for each combination, ndim of datasets)	
 
-	- For plotting, we plot each combination for 'label' attributes and values variables data on the same plot, these being the labels.
-	  Subplots are plotted from iterating over over the 1...ndim-2 axis of the variables data, and plotting the 0 and ndim-1 axis for each 'label' set
+	- For parameters, we plot each combination for 'label' attributes and values variables data on the same plot, these being the labels.
+	  Subplots are plotted from iterating over over the 1...ndim-2 axis of the variables data, and parameters the 0 and ndim-1 axis for each 'label' set
 	  If the 'x' property is None, also iterate over the 0 (# of permutations of sort) axis variables data, and plot the ndim-1 axis for each 'label' 
 	'''
 
@@ -468,17 +490,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 	subattributes = [attr
 		for attr in attributes
-		if ((attr in hyperparameters.get('sort',attributes)) and
-	    (attr not in hyperparameters.get('nullsort',[])))
+		if ((attr in hyperparameters.get('sort',attributes)))
 	    ]
 
 
 	# Get unique scalar attributes
-	# for attr in attributes:
-	# 	for name in names:
-	# 		if attr in data[name]:
-	# 			print(attr,name,data[name][attr])
-	# 			print(asarray(data[name][attr]).size)
 	unique = {attr: tuple((*natsorted(set(asscalar(data[name][attr])
 					for name in names 
 					if ((attr in data[name]) and 
@@ -524,11 +540,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 	# Get paths
 	path,file,directory,ext,delimiter = {},{},{},{},{}
-	for attr in hyperparameters.get('path',{}):
+	hyperparameters['plot'] = {'plot':'plot.pdf','process':'process.hdf5',**hyperparameters.get('path',{})}
+	for attr in hyperparameters['plot']:
 		delimiter[attr] = hyperparameters.get('delimiter','.')
 		directory[attr],file[attr],ext[attr] = split(
-			hyperparameters.get('path',{}).get(attr),
-			directory=True if (not returns['multiple']) else -1,file=True,ext=True)
+			hyperparameters['plot'][attr],
+			directory=True if (not returns['multiple']) else -1,file=True,ext=True) 
+		if (hyperparameters.get('cwd') is not None):
+			directory[attr] = hyperparameters.get('cwd')
 		path[attr] = join(directory[attr],file[attr],ext=ext[attr])
 
 	# Get plot fig and axes
@@ -538,25 +557,17 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		ax = {}
 
 	# Get plot variables setting
-	plotting = hyperparameters.get('plotting',{})
-	for attr in list(plotting):
-		for subattr in list(plotting[attr]):
-			if subattr in nulls:
-				for null in nulls:
-					plotting[attr][null] = plotting[attr][subattr]
-		if attr in nulls:
-			for null in nulls:
-				plotting[null] = plotting[attr]
-
-	nullplotting = hyperparameters.get('nullplotting',{})
-	for instance in list(nullplotting):
+	hyperparameters['parameters'] = [*hyperparameters.get('parameters',[])]
+	parameters = hyperparameters['parameters']
+	null = hyperparameters.get('null',{})
+	for instance in list(null):
 		if instance not in settings:
-			nullplotting.pop(instance)
+			null.pop(instance)
 			continue
-		if nullplotting[instance] is None:
-			nullplotting[instance] = list(settings[instance])
+		if null[instance] is None:
+			null[instance] = list(settings[instance])
 		
-		for subinstance in nullplotting[instance]:
+		for subinstance in null[instance]:
 			if subinstance in settings[instance]:
 				settings[instance].pop(subinstance)
 		if len(settings[instance]) == 0:
@@ -568,26 +579,39 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 	# Get plot properties and statistics from settings
 	axes = ['x','y']
-	properties = [*['%s'%(ax) for ax in axes],'label']
-	statistics = [*['%s'%(ax) for ax in axes],*['%serr'%(ax) for ax in axes]]
+
+	properties = [*['%s'%(axis) for axis in axes],'label']
+	statistics = [*['%s'%(axis) for axis in axes],*['%serr'%(axis) for axis in axes]]
 	statistics = {
 		kwarg: {
 			**{kwarg:{
 				'property':kwarg.replace('',''),
 				'statistic':{
-					None: lambda key,data,variables=None,dtype=None: mean(data,axis=0,dtype=dtype),
-					'fit': lambda key,data,variables=None,dtype=None: mean(data,axis=0,dtype=dtype),
+					**{stat: lambda key,data,variables=None,dtype=None,axis=axis,stat=stat: mean(
+						data,axis=0,dtype=dtype,
+						# transform=stat[axis]
+						transform='linear',#stat[axis]
+						) for stat in itertools.product(['linear','log'],repeat=len(axes))
+					},
+					('fit','fit'): lambda key,data,variables=None,dtype=None,axis=axis: mean(
+						data,axis=0,dtype=dtype,transform=None),
 					}
 				} 
-				for kwarg in ['%s'%(ax) for ax in axes]},
+				for axis,kwarg in enumerate(['%s'%(axis) for axis in axes])},
 			**{kwarg:{
 				'property':kwarg.replace('err',''),
 				'statistic':{			
-					None: lambda key,data,variables=None,dtype=None: std(data,axis=0,dtype=dtype),
-					'fit': lambda key,data,variables=None,dtype=None: std(data,axis=0,dtype=dtype),
+					**{stat: lambda key,data,variables=None,dtype=None,axis=axis,stat=stat: std(
+						data,axis=0,dtype=dtype,
+						transform=stat[axis]						
+						# transform='linear',#stat[axis]
+						) for stat in itertools.product(['linear','log'],repeat=len(axes))
+					},				
+					('fit','fit'): lambda key,data,variables=None,dtype=None,axis=axis: std(
+						data,axis=0,dtype=dtype,transform=None),
 					}
 				}	 
-				for kwarg in ['%serr'%(ax) for ax in axes]},
+				for axis,kwarg in enumerate(['%serr'%(axis) for axis in axes])},
 			}[kwarg]
 		for kwarg in statistics 			 	 			 	 
 		}
@@ -736,10 +760,20 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 						# Insert data into variables (with nan padding)
 						for stat in statistics[kwarg]['statistic']:
-							if (((plotting.get(key['y']['key'],{}).get(key['x']['key'],{}).get('plot') is not None) and
-								 (stat not in [None,*plotting.get(key['y']['key'],{}).get(key['x']['key'],{}).get('plot',[])])) or
-								((plotting.get(key['y']['key'],{}).get(key['x']['key']) is None) and 
-								 (stat not in [None]))):
+
+							if 	(any(
+									(
+									((tuple(parameter['key']) == tuple([key[axis]['key'][-1] for axis in axes])) and
+									   (parameter.get('plot') is not None) and
+									   (stat not in [*(tuple(substat) for substat in parameter.get('plot',[[]]))]) or 
+									((tuple(parameter['key']) == tuple([key[axis]['key'][-1] for axis in axes])) and 
+									 (parameter.get('plot') is None) and 
+									 (stat not in [('linear','linear')]))
+									))
+									for parameter in parameters) or
+								all(((tuple(parameter['key']) != tuple([key[axis]['key'][-1] for axis in axes])) and
+									 (stat not in [('linear','linear')]))
+									for parameter in parameters)):
 								continue
 
 							variables[occurrence][combination][permutation][kwarg][stat] = np.nan*np.ones((len(included),*shape[key[prop]['key'][-1]]))
@@ -757,7 +791,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
 								key,variables[occurrence][combination][permutation][kwarg][stat],
 								variables=variables[occurrence][combination][permutation],dtype=dtype)
-
 				print()
 				# continue
 				# print('merging')
@@ -863,9 +896,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	# Form grids of layout depending on shape of variables in each plot
 	# Get update to layout based on (reshaped) variables data shape and 
 	# reshaping of variables data based on 
-	# plotting = {'y':{'x':{'axis':{attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}}}}
+	# parameters = {'y':{'x':{'axis':{attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}}}}
 	for instance in list(settings):
-		print('Plotting',instance)
+		print(instance)
 		for subinstance in list(settings[instance]):
 			subupdated.clear()
 			for setting in special:
@@ -885,17 +918,19 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								for stat in variables[occurrence][combination][kwarg]
 								)
 
-							subaxis = plotting.get(key['y']['key'],{}).get(key['x']['key'],{}).get('axis')
+							subaxis = [None,*(
+								parameter.get('axis') for parameter in parameters 
+								if tuple(parameter['key']) == tuple([key[axis]['key'][-1] for axis in axes]))][-1]
 							
 							if subaxis is None:
 								subaxis = [[],[],[],[axis for axis in range(subndim)]]
 							else:
 								subaxis = [[axis] if isinstance(axis,int) else axis for axis in subaxis]
 
-							subaxis = [*([ax for ax in axis] for axis in subaxis[:-1]),
-										[ax for ax in range(subndim) 
-										 if (ax in subaxis[-1] or (ax == (subndim-1) and -1 in subaxis[-1])) or 
-										 ax not in [ax for axis in subaxis[:-1] for ax in axis]]]
+							subaxis = [*([a for a in axis] for axis in subaxis[:-1]),
+										[a for a in range(subndim) 
+										 if (a in subaxis[-1] or (a == (subndim-1) and -1 in subaxis[-1])) or 
+										 a not in [a for axis in subaxis[:-1] for a in axis]]]
 
 
 							if occurrence not in updated:
@@ -905,11 +940,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								for combination in variables[occurrence]:
 									for kwarg in variables[occurrence][combination]:
 										for stat in variables[occurrence][combination][kwarg]:
-											transpose = [ax for axis in subaxis for ax in axis]											
+											transpose = [a for axis in subaxis for a in axis]											
 											reshape = [
 												max(1,int(product(
-												[variables[occurrence][combination][kwarg][stat].shape[ax]
-												for ax in axis])))
+												[variables[occurrence][combination][kwarg][stat].shape[a]
+												for a in axis])))
 												for axis in subaxis]
 											variables[occurrence][combination][kwarg][stat] = (
 												variables[occurrence][combination][kwarg][stat].transpose(
@@ -1020,7 +1055,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 												value = variables[occurrence][combination][kwarg][stat][pos]
 
-												if kwarg in ['%serr'%(ax) for ax in axes] and norm(value) == 0:
+												if kwarg in ['%serr'%(axis) for axis in axes] and norm(value) == 0:
 													value = None
 
 												subsettings[kwarg] = value
@@ -1070,7 +1105,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
 								continue
 
-							if stat in [None]:
+							if stat not in [('fit','fit')]:
 								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
 								value = ',~'.join([texify(str(combination[k])) for k in value])
 							else:
@@ -1082,9 +1117,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
 								continue
 
-							if stat in [None]:
+							if stat is None:
 								value = '-'
-							elif stat in ['fit']:
+							elif stat not in [('fit','fit')]:
 								value = '-'
 							else:
 								value = None
@@ -1118,30 +1153,48 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			# Set custom plot settings
 			attrs = {
 				'fig':{'savefig':['fname']},
-				'ax':{'set_ylabel':['ylabel']},
+				'ax':{'set_ylabel':['ylabel'],'errorbar':['%serr'%(axis) for axis in axes],'fill_between':['%serr'%(axis) for axis in axes]},
 				}
 			for setting in attrs:
 				if setting not in settings[instance][subinstance]:
 					settings[instance][subinstance][setting] = {}
 				for attr in attrs[setting]:
-					if attr not in settings[instance][subinstance][setting]:
-						settings[instance][subinstance][setting][attr] = {}
-					elif settings[instance][subinstance][setting][attr] is None:
+					if settings[instance][subinstance][setting].get(attr) is None:
 						continue
 					for kwarg in attrs[setting][attr]:
-						if kwarg not in settings[instance][subinstance][setting][attr]:
-							settings[instance][subinstance][setting][attr][kwarg] = {}
+
+						multiple = not isinstance(settings[instance][subinstance][setting][attr],dict)
+						length = len(settings[instance][subinstance][setting][attr]) if multiple else None
+
+						if not multiple:
+							if kwarg not in settings[instance][subinstance][setting][attr]:
+								settings[instance][subinstance][setting][attr][kwarg] = None
+						else:
+							for i in range(len(settings[instance][subinstance][setting][attr])):
+								if kwarg not in settings[instance][subinstance][setting][attr][i]:
+									settings[instance][subinstance][setting][attr][i][kwarg] = None	
+
+						value = settings[instance][subinstance][setting][attr]
 
 						if setting in ['fig'] and attr in ['savefig'] and kwarg in ['fname']:
-							value = 'plot'
-							value = join(directory[value],
-									delimiter[value].join([
-										*file[value].split(delimiter[value])[:],
-										instance,
-										]),
-									ext=ext[value])
 
-							settings[instance][subinstance][setting][attr][kwarg] = value
+							do = True
+
+							if not do:
+								continue
+
+							subvalue = 'plot'
+							new = join(directory[subvalue],
+										delimiter[subvalue].join([
+											*file[subvalue].split(delimiter[subvalue])[:],
+											instance,
+											]),
+										ext=ext[subvalue])
+							if not multiple:
+								value[kwarg] = new
+							else:
+								for i in range(length):
+									value[i][kwarg] = new
 
 						elif setting in ['ax'] and attr in ['set_ylabel'] and kwarg in ['ylabel']:
 
@@ -1149,7 +1202,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 							nrows = settings[instance][subinstance]['style']['layout']['nrows']
 							ncols = settings[instance][subinstance]['style']['layout']['ncols']
 
-							if ((nrows is None) or (nrows == 1)) and ((ncols is None) or (ncols == 1)):
+							do = not (((nrows is None) or (nrows == 1)) and ((ncols is None) or (ncols == 1)))
+
+							if not do:
 								continue
 
 							index = index - 1	
@@ -1162,18 +1217,59 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 							nrow = str(nrow)
 							ncol = str(ncol)
 
-							value = '{%s}_{%s%s}'%(
-									settings[instance][subinstance][setting][attr][kwarg].replace('$',''),
-									nrow,
-									ncol
-									)
+							if not multiple:
+								new = '{%s}_{%s%s}'%(
+										value[kwarg].replace('$',''),
+										nrow,
+										ncol
+										)
+								value[kwarg] = new
+							else:
+								for i in range(length):
+									new = '{%s}_{%s%s}'%(
+										value[i][kwarg].replace('$',''),
+										nrow,
+										ncol
+										)
+									value[i][kwarg] = new
 
-							settings[instance][subinstance][setting][attr][kwarg] = value
+						elif setting in ['ax'] and attr in ['errorbar','fill_between'] and kwarg in ['%serr'%(axis) for axis in axes]:
 
+							axis = kwarg.replace('err','')
+
+							subattr = 'set_%sscale'%(axis)
+							subkwarg = 'value'
+							
+							do = settings[instance][subinstance][setting].get(subattr,{}).get(subkwarg) in ['log']
+
+							if not do:
+								continue
+
+							subsetting = setting
+							subattr = attr
+							subkwarg = '%s'%(axis)
+							subvalue = settings[instance][subinstance][subsetting][subattr]
+
+							if not multiple:
+								if value[kwarg] is not None:
+									new = value[kwarg]
+									# new = [
+									# 	-subvalue[subkwarg]*(1/value[kwarg]-1),
+									# 	value[kwarg]
+									# 	subvalue[subkwarg]*(value[kwarg]-1)
+									# 	]
+									value[kwarg] = new
+							else:
+								for i in range(length):
+									new = value[i][kwarg]
+									# new = [
+									# 	-subvalue[i][kwarg]*(1/value[i][kwarg]-1),
+									# 	subvalue[i][subkwarg]*(value[i][kwarg]-1)
+									# 	]
+									value[i][kwarg] = new
 
 
 	verbose = 0
-
 
 	for instance in settings:
 
