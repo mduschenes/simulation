@@ -1252,7 +1252,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 							if not multiple:
 								if value[kwarg] is not None:
-									new = value[kwarg]
+									# new = value[kwarg]
+									new = [
+										subvalue[subkwarg]*(1-(subvalue[subkwarg]/(subvalue[subkwarg]+value[kwarg]))),
+										value[kwarg]
+										]
 									# new = [
 									# 	-subvalue[subkwarg]*(1/value[kwarg]-1),
 									# 	value[kwarg]
@@ -1261,7 +1265,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 									value[kwarg] = new
 							else:
 								for i in range(length):
-									new = value[i][kwarg]
+									# new = value[i][kwarg]
+									new = [
+										subvalue[i][subkwarg]*(1-(subvalue[i][subkwarg]/(subvalue[i][subkwarg]+value[i][kwarg]))),
+										value[i][kwarg]
+										]
 									# new = [
 									# 	-subvalue[i][kwarg]*(1/value[i][kwarg]-1),
 									# 	subvalue[i][subkwarg]*(value[i][kwarg]-1)
