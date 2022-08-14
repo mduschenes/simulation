@@ -400,8 +400,6 @@ def loader(kwargs):
 	if all(len(kwargs[kwarg]) < 1 for kwarg in kwargs):
 		returns = None
 
-	print(returns['multiple'])
-
 	return returns
 
 

@@ -55,7 +55,6 @@ def _variables(parameters,hyperparameters,parameter,group):
 	method = hyperparameters[parameter]['method']
 	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
 	index = hyperparameters[parameter]['group'].index(group)
-
 	if method in ['constrained']:
 		if parameter in ['xy'] and group in [('x',)]:
 			variable = (

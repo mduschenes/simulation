@@ -2,7 +2,7 @@
 "class":"src.quantum.Unitary",
 "sys":{
 	"pwd":".",
-	"cwd":"data",
+	"cwd":"test",
 	"path":{
 		"data":{
 			"model":"model.pkl",
@@ -40,11 +40,11 @@
 "permutations":{
 	"permutations":{
 		"model.M":[10,20,30,40,50,80,100,200],
-		"model.M":[60,80,100,200],
+		"model.M":[100,200,300,400],
 		"model.N":[4],
 		"optimize.iterations":[500],
-		"parameters.xy.method":["unconstrained"],
-		"model.system.architecture":["unconstrained"]
+		"parameters.xy.method":["constrained"],
+		"model.system.architecture":["constrained"]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null
@@ -105,8 +105,8 @@
 		"category":"variable",
 		"method":"constrained",
 		"use":true,		
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -120,8 +120,8 @@
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
 		},
