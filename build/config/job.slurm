@@ -1,13 +1,13 @@
 #!/bin/bash
 
 ##SBATCH --account=mduschenes
-#SBATCH --job-name=data
+#SBATCH --job-name=output
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
 #SBATCH --partition=cpu
-#SBATCH --time=02:00:00
-#SBATCH --mem=10G
+#SBATCH --time=06:00:00
+#SBATCH --mem=16G
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 

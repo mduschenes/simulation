@@ -392,7 +392,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					# except:
 					# 	kwargs.pop(field)
 					# 	pass
-
 				args.extend([kwargs.get(k) for k in ['x','y','yerr','xerr'] if k in kwargs and kwargs.get(k) is not None ])
 
 				nullkwargs = ['x','y','z','xerr','yerr']								
@@ -422,7 +421,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					# except:
 					# 	kwargs.pop(field)
 					# 	pass
-
 				if kwargs.get('yerr') is None:
 					call = False
 					args.extend([kwargs.get('x'),kwargs.get('y'),kwargs.get('y')])

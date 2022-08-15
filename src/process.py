@@ -493,6 +493,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		if ((attr in hyperparameters.get('sort',attributes)))
 	    ]
 
+	print(subattributes)
+
 
 	# Get unique scalar attributes
 	unique = {attr: tuple((*natsorted(set(asscalar(data[name][attr])
@@ -755,8 +757,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 							prop = prop
 							dtype = data[name][key[prop]['key'][-1]].dtype
 					
-						variables[occurrence][combination][permutation][kwarg] = {}
+						newshape = (len(included),*shape[key['y']['key'][-1]])
+						newndim = range(0,ndim[key['y']['key'][-1]]-ndim[key[prop]['key'][-1]])
 
+						variables[occurrence][combination][permutation][kwarg] = {}
 
 						# Insert data into variables (with nan padding)
 						for stat in statistics[kwarg]['statistic']:
@@ -776,22 +780,24 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 									for parameter in parameters)):
 								continue
 
-							variables[occurrence][combination][permutation][kwarg][stat] = np.nan*np.ones((len(included),*shape[key[prop]['key'][-1]]))
 
-							# if kwarg in ['y']:
-							# 	print(kwarg,key,included)
+							variables[occurrence][combination][permutation][kwarg][stat] = np.nan*np.ones(newshape)
+
 
 							for index,name in enumerate(included):
+								if isnull:
+									value = np.arange(data[name][key[prop]['key'][-1]].shape[-1])
+								else:
+									value = data[name][key[prop]['key'][-1]]
 
-								value = expand_dims(np.arange(data[name][key[prop]['key'][-1]].shape[-1]),range(0,ndim[key[prop]['key'][-1]]-1)) if isnull else data[name][key[prop]['key'][-1]]
-								slices = (index,*(slice(data[name][key[prop]['key'][-1]].shape[axis]) for axis in range(data[name][key[prop]['key'][-1]].ndim)))
+								value = expand_dims(value,newndim)
+								slices = (index,*(slice(data[name][key['y']['key'][-1]].shape[axis]) for axis in range(data[name][key['y']['key'][-1]].ndim)))
 								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 
-							# Get statistics
 							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
 								key,variables[occurrence][combination][permutation][kwarg][stat],
 								variables=variables[occurrence][combination][permutation],dtype=dtype)
-				print()
+
 				# continue
 				# print('merging')
 				variables[occurrence][combination] = {
@@ -925,6 +931,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								parameter.get('axis') for parameter in parameters 
 								if tuple(parameter['key']) == tuple([key[axis]['key'][-1] for axis in axes]))][-1]
 							
+
 							if subaxis is None:
 								subaxis = [[],[],[],[axis for axis in range(subndim)]]
 							else:
@@ -946,7 +953,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 											transpose = [a for axis in subaxis for a in axis]											
 											reshape = [
 												max(1,int(product(
-												[variables[occurrence][combination][kwarg][stat].shape[a]
+													[variables[occurrence][combination][kwarg][stat].shape[a]
 												for a in axis])))
 												for axis in subaxis]
 											variables[occurrence][combination][kwarg][stat] = (
@@ -1221,18 +1228,27 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 							ncol = str(ncol)
 
 							if not multiple:
+
+								if isinstance(value[kwarg],str):
+									string = value[kwarg]
+								else:
+									string = value[kwarg][index%len(value[kwarg])]
 								new = '{%s}_{%s%s}'%(
-										value[kwarg].replace('$',''),
-										nrow,
-										ncol
+										string.replace('$',''),
+										nrow if len(value[kwarg]) < nrows*ncols else '',
+										ncol if len(value[kwarg]) < nrows*ncols else ''
 										)
 								value[kwarg] = new
 							else:
 								for i in range(length):
+									if isinstance(value[i][kwarg],str):
+										string = value[i][kwarg]
+									else:
+										string = value[i][kwarg][index%len(value[i][kwarg])]
 									new = '{%s}_{%s%s}'%(
-										value[i][kwarg].replace('$',''),
-										nrow,
-										ncol
+										string.replace('$',''),
+										nrow if len(value[i][kwarg]) < nrows*ncols else '',
+										ncol if len(value[i][kwarg]) < nrows*ncols else ''
 										)
 									value[i][kwarg] = new
 
@@ -1268,16 +1284,17 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 									value[kwarg] = new
 							else:
 								for i in range(length):
-									# new = value[i][kwarg]
-									new = [
-										subvalue[i][subkwarg]*(1-(subvalue[i][subkwarg]/(subvalue[i][subkwarg]+value[i][kwarg]))),
-										value[i][kwarg]
-										]
-									# new = [
-									# 	-subvalue[i][kwarg]*(1/value[i][kwarg]-1),
-									# 	subvalue[i][subkwarg]*(value[i][kwarg]-1)
-									# 	]
-									value[i][kwarg] = new
+									if value[i][kwarg] is not None:
+										# new = value[i][kwarg]
+										new = [
+											subvalue[i][subkwarg]*(1-(subvalue[i][subkwarg]/(subvalue[i][subkwarg]+value[i][kwarg]))),
+											value[i][kwarg]
+											]
+										# new = [
+										# 	-subvalue[i][kwarg]*(1/value[i][kwarg]-1),
+										# 	subvalue[i][subkwarg]*(value[i][kwarg]-1)
+										# 	]
+										value[i][kwarg] = new
 
 
 	verbose = 0

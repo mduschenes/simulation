@@ -7,9 +7,10 @@
 		{"key":["iteration","infidelity"],"plot":[["linear","linear"]]},
 		{"key":["","parameters"],"axis":[[0,1],[2],[],[-1]]},
 		{"key":["","parameters.relative"],"axis":[[0,1],[2],[],[-1]]},
-		{"key":["M","parameters.relative.mean"],"axis":[[],[],[],[-1]]}
+		{"key":["M","parameters.relative.mean"],"axis":[[],[],[],[-1]]},
+		{"key":["M","parameters.relative.mean"],"axis":[[1],[2],[],[0]]}
 		],	
-	"null":{"None.parameters.iteration.M":null,"iteration.hessian.M":null},
+	"null":{"iteration.hessian.M":null},
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",
 		"None": "\\textrm{None}",
@@ -17,7 +18,7 @@
 		"constrained": "\\textrm{Constrained}",
 		"unconstrained": "\\textrm{Unconstrained}"
 	},
-	"cwd":"test",
+	"cwd":null,
 	"path": {
         "plot": "plot.pdf",
         "process": "process.hdf5"

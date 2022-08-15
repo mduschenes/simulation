@@ -1333,7 +1333,7 @@ class Object(object):
 					returns[new] = New
 
 					new = '%s.relative.mean'%(attr)
-					New = New.mean()
+					New = New.mean(-1)
 					returns[new] = New				
 
 					new = attr
