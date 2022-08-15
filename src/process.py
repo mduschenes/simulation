@@ -809,8 +809,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 	# return fig,ax
 
+	# Delete data
+	del data
+
 	# Dump data
-	if hyperparameters.get('dump') or 1:
+	if hyperparameters.get('dump'):
 		attr = 'process'
 		kwargs = {
 			'conversion':lambda name: (
