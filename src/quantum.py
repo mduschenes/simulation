@@ -586,7 +586,7 @@ class Metric(object):
 
 		self.system = System(system)
 		self.metric = metric
-		self.default = 'mse'
+		self.default = 'normed'
 
 		self.__setup__()
 		
@@ -745,8 +745,7 @@ class Object(object):
 		self.string = []
 		self.interaction = []
 		self.indices = []		
-		self.size = 0
-		self.shape = (self.size,self.M,*self.data.shape[1:])
+		self.shape = (*self.data.shape[:1],self.M,*self.data.shape[1:])
 
 		self.key = None
 
@@ -760,7 +759,7 @@ class Object(object):
 		self.expms = lambda parameters: None
 		self.transform = []
 		self.transformH = []
-		self.index = arange(self.size)
+		self.index = arange(len(self.data))
 
 		self.hyperparameters = hyperparameters
 		self.parameters = None
@@ -769,6 +768,7 @@ class Object(object):
 		self.attributes = {}
 		self.constants = None
 		self.coefficients = 1
+		self.size = None		
 
 		self.fig = {}
 		self.ax = {}
@@ -791,7 +791,7 @@ class Object(object):
 		# self.einsum = jit(einsum('ia,ic,uab,vbc->uv',*[self.states.shape]*2,*[self.shape[-2:]]*2))
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
-			for attr in ['key','N','D','d','M','tau','T','p','seed','architecture']]
+			for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','architecture','shape']]
 			)))
 
 		return	
@@ -1039,7 +1039,7 @@ class Object(object):
 		'''
 
 		if index == -1:
-			index = self.size
+			index = len(self.data)
 
 		self.data = array([*self.data[:index],data,*self.data[index:]],dtype=self.dtype)
 		self.operator.insert(index,operator)
@@ -1047,9 +1047,8 @@ class Object(object):
 		self.string.insert(index,string)
 		self.interaction.insert(index,interaction)
 
-		self.size = len(self.data)
-		self.shape = (self.size,self.M,*self.data.shape[1:])
-		self.index = arange(self.size)
+		self.shape = (*self.data.shape[:1],self.M,*self.data.shape[1:])
+		self.index = arange(len(self.data))
 
 		self.hyperparameters.update(hyperparameters)
 
@@ -1069,7 +1068,7 @@ class Object(object):
 
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
 		data = None
-		shape = (self.size//self.p,self.M)
+		shape = (len(self.data)//self.p,self.M)
 		hyperparams = hyperparameters['parameters']
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
@@ -1112,6 +1111,7 @@ class Object(object):
 		self.states = states
 		self.hyperparameters = hyperparameters
 		self.attributes = attributes
+		self.size = parameters.shape
 
 		return
 
@@ -1451,7 +1451,7 @@ class Object(object):
 		self.p = self.time.p
 		self.tau = self.time.tau
 		self.coefficients = self.tau/self.p		
-		self.shape = (self.size,self.M,*self.shape[2:])	
+		self.shape = (*self.shape[:1],self.M,*self.shape[2:])	
 
 		return
 
@@ -1514,7 +1514,7 @@ class Object(object):
 		return
 
 	def __str__(self):
-		size = self.size
+		size = len(self.data)
 		multiple_time = (self.M>1)
 		multiple_space = [size>1 and False for i in range(size)]
 		return '%s%s%s%s'%(
@@ -1531,7 +1531,7 @@ class Object(object):
 		return self.__str__()
 
 	def __len__(self):
-		return self.size
+		return len(self.data)
 
 	def log(self,msg,verbose=None):
 		'''
@@ -1907,6 +1907,8 @@ class Hamiltonian(Object):
 
 		# Initialize parameters
 		self.__initialize__(parameters)
+
+		parameters = self.parameters
 
 		return
 

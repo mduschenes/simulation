@@ -37,7 +37,7 @@ args = {
 		'id':'path',
 		},
 	'tol':{
-		'default':[5e-7],
+		'default':[1e-8],
 		'type':float,
 		'action':'append',
 		'allowed':None,

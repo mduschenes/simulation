@@ -111,8 +111,8 @@ def test_data(path,tol):
 	data = trotter(data,obj.p)
 	string = trotter(string,obj.p)
 
-	for i in range(obj.size):
-		assert allclose(data[i],obj.data[i]), "data[%d] incorrect"%(i)
+	for i,(d,o) in enumerate(zip(data,obj.data)):
+		assert allclose(d,o), "data[%d] incorrect"%(i)
 
 	return
 
