@@ -62,7 +62,7 @@
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"metric":"norm",
+	"metric":"infidelity",
 	"system":{
 		"dtype":"complex",
 		"format":"array",
