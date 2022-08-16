@@ -57,8 +57,11 @@ def test_unitary(path,tol):
 
 def test_load_dump(path,tol):
 
+
+
 	# Set instance
 	hyperparameters = load(path)
+
 	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	# Set hyperparameters
@@ -79,6 +82,7 @@ def test_load_dump(path,tol):
 	exceptions = lambda a,b: any(any(e(a) for e in exception) and any(e(b) for e in exception) 
 		for exception in [[callable],[is_array,is_ndarray],
 							[lambda a: isinstance(a,dict) and ((len(a)==0) or all(callable(a[item]) for item in a))]])
+	
 	equalizer(obj.hyperparameters,new.hyperparameters,types=types,exceptions=exceptions)
 
 	return
@@ -123,9 +127,9 @@ def test_derivative(path,tol):
 	parameters = obj.parameters
 
 	# Derivative of unitary
-	derivative_jax = gradient_fwd(obj)
+	derivative_jax = obj.__derivative__
 	derivative_finite = gradient_finite(obj,tol=tol)
-	derivative_analytical = obj.__derivative__
+	derivative_analytical = obj.__derivative_analytical__
 
 	assert allclose(derivative_jax(parameters),derivative_finite(parameters)), "JAX derivative != Finite derivative"
 	assert allclose(derivative_finite(parameters),derivative_analytical(parameters)), "Finite derivative != Analytical derivative"
@@ -144,9 +148,9 @@ def test_grad(path,tol):
 	parameters = obj.parameters
 
 	# Grad of objective
-	grad_jax = gradient(func)
+	grad_jax = obj.__grad__
 	grad_finite = gradient_finite(func,tol=tol)
-	grad_analytical = obj.__grad__
+	grad_analytical = obj.__grad_analytical__
 
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"

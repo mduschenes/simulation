@@ -25,25 +25,26 @@
 		}
 	},
 "boolean":{
-	"train":0,
+	"train":1,
 	"load":0,
-	"dump":0,
-	"plot":1,
+	"dump":1,
+	"plot":0,
 	"plot.obj":0
 	},
 "seed":{
 	"seed":123321,
-	"size":50,
+	"size":1,
 	"reset":123321,
 	"index":null
 	},
 "permutations":{
 	"permutations":{
-		"model.M":[100,200,500,1000,2000,5000],
-		"model.N":[4],
+		"model.M":[10,20,30,40,50,80,100,200],
+		"model.M":[100,200,300,400],
+		"model.N":[2],
 		"optimize.iterations":[500],
-		"parameters.xy.method":["constrained"],
-		"model.system.architecture":["constrained"]
+		"parameters.xy.method":["unconstrained"],
+		"model.system.architecture":["unconstrained"]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null
@@ -61,6 +62,7 @@
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
+	"metric":"infidelity.real.imag",
 	"system":{
 		"dtype":"complex",
 		"format":"array",
@@ -104,8 +106,8 @@
 		"category":"variable",
 		"method":"unconstrained",
 		"use":true,		
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},		"parameters":null,
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
+		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
 		"scale":1,
@@ -118,7 +120,6 @@
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
 		},
@@ -197,28 +198,9 @@
 	"args":["settings.json"],
 	"path":".",
 	"device":"slurm",
+	"device":"pc",
 	"exe":true
 	},
-"process": {
-	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture"],
-	"nullsort": [],
-	"load":0,
-	"dump":1,
-	"delimiter":".",
-	"plotting":{
-		"objective":{"iteration":{"plot":[]}},
-		"parameters":{"":{"axis":[[0,1],[2],[],[-1]]}},
-		"parameters.relative":{"":{"axis":[[0,1],[2],[],[-1]]}},
-		"parameters.relative.mean":{"M":{"axis":[[],[],[],[-1]]}}
-	},	
-	"nullplotting":{"None.parameters.iteration.M":null,"iteration.hessian.M":null},
-	"texify":{
-		"iteration":"\\textrm{Iteration}~i",
-		"None": "\\textrm{None}",
-		"architecture": "\\textrm{Architecture}",
-		"constrained": "\\textrm{Constrained}",
-		"unconstrained": "\\textrm{Unconstrained}"
-	}
-},
+"process": {},
 "plot": {}
 }

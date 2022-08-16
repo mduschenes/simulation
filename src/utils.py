@@ -1043,6 +1043,39 @@ def norm(a,axis=None,ord=2):
 
 
 @jit
+def normed(a,b):
+	'''
+	Calculate normed distance between arrays a and b
+	Args:
+		a (array): Array to calculate distance
+		b (array): Array to calculate distance
+	Returns:
+		out (array): Distance
+	'''	
+	out = a-b
+	# return (1/2)*(norm(a-b,axis=None,ord=2)**2)/sqrt(a.shape[0]*b.shape[0])
+	return (1/2)*(out.conj()*out).real.sum()/sqrt(a.shape[0]*b.shape[0])
+
+@jit
+def gradient_normed(a,b,da):
+	'''
+	Calculate gradient of norm of arrays a and b with respect to a
+	Args:
+		a (array): Array to calculate norm
+		b (array): Array to calculate norm
+		da (array): Gradient of array to calculate norm
+	Returns:
+		out (array): Gradient of norm
+	'''
+	def func(i):
+		return (((a-b).conj()*da[i]).real.sum())/sqrt(a.shape[0]*b.shape[0])
+	return vmap(func)(arange(da.shape[0]))
+	# return gradient(normed)(a,b)
+
+
+
+
+@jit
 def inner(a,b):
 	'''
 	Calculate inner product of arrays a and b
@@ -1390,7 +1423,6 @@ def vntensorprod(a,n):
 	return vmap(lambda a: ntensorprod(a,n))(a)
 
 
-@jit
 def einsum(subscripts,*shapes):
 	'''
 	Get optimal summation of axes in array denoted by subscripts
@@ -1404,7 +1436,9 @@ def einsum(subscripts,*shapes):
 	a = (empty(shape) for shape in shapes)
 
 	optimize = np.einsum_path(subscripts,*a)
+	print(optimize)
 
+	# @jit
 	def _einsum(*a,optimize=optimize):
 		return np.einsum(*a,optimize=optimize)
 
@@ -1440,7 +1474,6 @@ def summation(parameters,data,identity):
 	'''	
 	return add(parameters*data)
 
-
 @jit
 def multiplication(parameters,data,identity):
 	'''
@@ -1469,6 +1502,17 @@ def exponentiation(parameters,data,identity):
 	return expm(parameters,data,identity)
 
 
+@jit
+def distance(a,b):
+	'''
+	Calculate distance between two objects a,b
+	Args:
+		a (array): Object a
+		b (array): Object b
+	Returns:
+		out (array): Distance between objects a,b
+	'''	
+	return normed(a,b)
 
 @jit
 def swap(i,j,N,D):
@@ -1786,7 +1830,7 @@ def trace(a):
 	'''	
 	return np.trace(a)
 
-@partial(jit,static_argnums=(1,))
+@jit
 def rank(a,tol=None):
 	'''
 	Calculate rank of array
@@ -3086,65 +3130,102 @@ def binary(a,n,function):
 
 
 
-@partial(jit,static_argnums=(2,))
-def trotter(A,U,p):
-	r'''
-	Perform p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
-	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
-	k internally commuting components {A_i} of the matrix A = \sum_i^k A_i .
-	For example, for {U_i = e^{A_i}} :
-		f_0 = e^{\sum_i A_i}
-		f_1 = \prod_i^k U_i
-		f_2 = \prod_i^k U_i^{1/2} \prod_k^i U_i^{1/2}
-	For p>0, it will be checked if A_i objects have a matrix exponential module for efficient exponentials,
-	otherwise the standard expm function will be used.
+# @partial(jit,static_argnums=(2,))
+# def trotter(A,U,p):
+# 	r'''
+# 	Perform p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
+# 	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
+# 	k internally commuting components {A_i} of the matrix A = \sum_i^k A_i .
+# 	For example, for {U_i = e^{A_i}} :
+# 		f_0 = e^{\sum_i A_i}
+# 		f_1 = \prod_i^k U_i
+# 		f_2 = \prod_i^k U_i^{1/2} \prod_k^i U_i^{1/2}
+# 	For p>0, it will be checked if A_i objects have a matrix exponential module for efficient exponentials,
+# 	otherwise the standard expm function will be used.
 
-	Args:
-		A (iterable): Array of shape (k,n,n) of k components of a square matrix of shape (n,n) A_i	
-		U (iterable): Array of shape (k,n,n) of k components of the matrix exponential of a square matrix of shape (n,n) expm(A_i/p)
-		p (int): Order of trotterization p>0
-	Returns:
-		U (array): Trotterized matrix exponential of shape (n,n)
+# 	Args:
+# 		A (iterable): Array of shape (k,n,n) of k components of a square matrix of shape (n,n) A_i	
+# 		U (iterable): Array of shape (k,n,n) of k components of the matrix exponential of a square matrix of shape (n,n) expm(A_i/p)
+# 		p (int): Order of trotterization p>0
+# 	Returns:
+# 		U (array): Trotterized matrix exponential of shape (n,n)
+# 	'''
+# 	if p == 1:
+# 		U = matmul(U)
+# 	elif p == 2:
+# 		U = matmul(array([*U[::1],*U[::-1]]))
+# 	else:
+# 		U = matmul(U)
+# 	return U
+
+
+# @partial(jit,static_argnums=(2,))
+# def trottergrad(A,U,p):
+# 	r'''
+# 	Perform gradient of p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
+# 	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
+# 	k internally commuting components {A_i} of the matrix A = \sum_i^k A_i .
+# 	For example, for {U_i = e^{A_i}} :
+# 		f_0 = e^{\sum_i A_i}
+# 		f_1 = \prod_i^k U_i
+# 		f_2 = \prod_i^k U_i^{1/2} \prod_k^i U_i^{1/2}
+# 	For p>0, it will be checked if A_i objects have a matrix exponential module for efficient exponentials,
+# 	otherwise the standard expm function will be used.
+
+# 	Args:
+# 		A (iterable): Array of shape (k,n,n) of k components of a square matrix of shape (n,n) A_i
+# 		U (iterable): Array of shape (k,n,n) of k components of the matrix exponential of a square matrix of shape (n,n) expm(A_i/p)
+# 		p (int): Order of trotterization p>0
+# 	Returns:
+# 		U (array): Gradient of Trotterized matrix exponential of shape (k,n,n)
+# 	'''
+# 	k = len(U)
+# 	if p == 1:
+# 		U = array([matmul(array([*U[:i],A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
+# 	elif p == 2:
+# 		U = array([matmul(array([*slices(U,0,i)[::1],A[i]/p,*slices(U,i,k-i)[::1],*U[::-1]])) + 
+# 				matmul(array([*U[::1],*slices(U,i,k-i)[::-1],A[i]/p,*slices(U,0,i)[::-1]]))
+# 				for i in range(k)])
+# 	else:
+# 		U = array([matmul(array([*slices(U,0,i),A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
+# 	return U
+
+def trotter(a,p):
 	'''
-	if p == 1:
-		U = matmul(U)
-	elif p == 2:
-		U = matmul(array([*U[::1],*U[::-1]]))
-	else:
-		U = matmul(U)
-	return U
-
-
-@partial(jit,static_argnums=(2,))
-def trottergrad(A,U,p):
-	r'''
-	Perform gradient of p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
-	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
-	k internally commuting components {A_i} of the matrix A = \sum_i^k A_i .
-	For example, for {U_i = e^{A_i}} :
-		f_0 = e^{\sum_i A_i}
-		f_1 = \prod_i^k U_i
-		f_2 = \prod_i^k U_i^{1/2} \prod_k^i U_i^{1/2}
-	For p>0, it will be checked if A_i objects have a matrix exponential module for efficient exponentials,
-	otherwise the standard expm function will be used.
-
+	Calculate p-order trotter series of iterable
 	Args:
-		A (iterable): Array of shape (k,n,n) of k components of a square matrix of shape (n,n) A_i
-		U (iterable): Array of shape (k,n,n) of k components of the matrix exponential of a square matrix of shape (n,n) expm(A_i/p)
-		p (int): Order of trotterization p>0
+		a (iterable): Iterable to calculate trotter series
+		p (int): Order of trotter series
 	Returns:
-		U (array): Gradient of Trotterized matrix exponential of shape (k,n,n)
+		out (iterable): Trotter series of iterable
+	'''	
+	# return [v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u]	
+	return [u for i in [1,-1,1,-1][:p] for u in a[::i]]
+
+def gradient_trotter(da,p):
 	'''
-	k = len(U)
-	if p == 1:
-		U = array([matmul(array([*U[:i],A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
-	elif p == 2:
-		U = array([matmul(array([*slices(U,0,i)[::1],A[i]/p,*slices(U,i,k-i)[::1],*U[::-1]])) + 
-				matmul(array([*U[::1],*slices(U,i,k-i)[::-1],A[i]/p,*slices(U,0,i)[::-1]]))
-				for i in range(k)])
-	else:
-		U = array([matmul(array([*slices(U,0,i),A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
-	return U
+	Calculate gradient of p-order trotter series of iterable
+	Args:
+		da (iterable): Gradient of iterable to calculate trotter series		
+		p (int): Order of trotter series
+	Returns:
+		out (iterable): Gradient of trotter series of iterable
+	'''	
+	n = da.shape[0]//p
+	return sum([da[:n][::i] if i>0 else da[-n:][::i] for i in [1,-1,1,-1][:p]])
+
+
+def invtrotter(a,p):
+	'''
+	Calculate inverse of p-order trotter series of iterable
+	Args:
+		a (iterable): Iterable to calculate inverse trotter series
+		p (int): Order of trotter series
+	Returns:
+		out (iterable): Inverse trotter series of iterable
+	'''	
+	n = a.shape[0]//p
+	return a[:n]
 
 
 def interpolate(x,y,x_new,kind):
@@ -3467,3 +3548,89 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 			parameters = rand(shape,key=key,bounds=bounds,random=random)		
 
 	return parameters
+
+
+def bloch(state,path=None):
+	'''
+	Plot state on Bloch Sphere
+	Args:
+		state (array): States of shape (d,) or (n,d) or (n,d,d) for n, d dimensional states
+		path (str,boolean): Path to save plot, or boolean to save
+	Returns:
+		fig (matplotlib.figure): Figure of plots
+		ax (matplotlib.axes): Axes of plots
+	'''
+	
+	import numpy as np
+	import matplotlib
+	import matplotlib.pyplot as plt
+
+	def coordinates(state):
+		'''
+		Convert state vector to Bloch vector
+		Args:
+			state (array): States of shape (d,) or (n,d) or (n,d,d)  for n, d dimensional states
+		Returns:
+			state (array): States of shape (1,d) or (n,d) or (n,d,d) for n, d dimensional states
+		'''
+
+		transformation = np.array([
+			[[0, 1], [1, 0]],
+			[[0, -1j], [1j, 0]],
+			[[1, 0], [0, -1]]
+			])
+
+		ndim = state.ndim - 1
+
+		if ndim == 0:
+			state = np.tensordot(state.conj(),np.tensordot(transformation,state,([-1],[-1])),([-1],[-1])).reshape(1,-1)
+		elif ndim == 1:
+			state = np.array([np.tensordot(s.conj(),np.tensordot(transformation,s,([-1],[-1])),([-1],[-1])) for s in state])
+		elif ndim == 2:
+			state = np.array([np.tensordot(s.conj(),np.tensordot(transformation,s,([-1],[-1])),([-1],[-1])) for s in state])			
+		else:
+			pass
+		return state
+
+	try:
+		mplstyle = '../src/plot.mplstyle'
+		with matplotlib.style.context(mplstyle):
+			try:
+				try:
+					fig = plt.figure(figsize=(6, 6))
+					ax = fig.add_subplot(111, projection='3d')
+					fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+
+					ax.grid(False)
+					ax.set_axis_off()
+					ax.view_init(30, 45)
+					ax.dist = 7
+
+					x, y, z = np.array([[-1.5,0,0], [0,-1.5,0], [0,0,-1.5]])
+					u, v, w = np.array([[3,0,0], [0,3,0], [0,0,3]])
+					ax.quiver(x, y, z, u, v, w, arrow_length_ratio=0.05, color='black', linewidth=1.2)
+
+					ax.text(0, 0, 1.7, r'$\ket{0}$', color='black', fontsize=16)
+					ax.text(0, 0, -1.9, r'$\ket{1}$', color='black', fontsize=16)
+					ax.text(1.9, 0, 0, r'$\ket{+}$', color='black', fontsize=16)
+					ax.text(-1.7, 0, 0, r'$\ket{-}$', color='black', fontsize=16)
+					ax.text(0, 1.7, 0, r'$\ket{i+}$', color='black', fontsize=16)
+					ax.text(0,-1.9, 0, r'$\ket{i-}$', color='black', fontsize=16)
+
+					state = coordinates(state)
+
+					ax.scatter(state[:,0], state[:,1], state[:, 2], color=getattr(plt.cm,'viridis')(0.5),s=12,alpha=0.6)
+
+					if path:
+						if not isinstance(path,str):
+							path = 'bloch.pdf'
+						fig.savefig(path,bbox_inches='tight')
+
+				except Exception:
+					pass
+			except Exception:
+				pass
+	except Exception:
+		pass
+	return fig,ax
+

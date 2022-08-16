@@ -493,8 +493,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		if ((attr in hyperparameters.get('sort',attributes)))
 	    ]
 
-	print(subattributes)
-
 
 	# Get unique scalar attributes
 	unique = {attr: tuple((*natsorted(set(asscalar(data[name][attr])

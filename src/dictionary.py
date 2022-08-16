@@ -248,13 +248,13 @@ def equalizer(a,b,types=(dict,),exceptions=None):
 		exceptions = lambda a,b: False
 
 	if (not isinstance(a,types)) and (not isinstance(b,types)): 
-		assert exceptions(a,b) or (a == b),"%r != %r"%(a,b) 
+		assert exceptions(a,b) or (a == b),"%r (%r) != %r (%r)"%(a,b,type(a),type(b)) 
 		return
 	elif exceptions(a,b):
 		return
 
 	assert isinstance(a,types) and isinstance(b,types), "iterables %r,%r, are not of type %r"%(type(a),type(b),types,)
-	assert len(a) == len(b), "iterables are not equal lengths"
+	assert len(a) == len(b), "iterables are not equal lengths\n%r\n%r"%(a,b)
 
 	for i,item in enumerate(a):
 		if not isinstance(item,types):

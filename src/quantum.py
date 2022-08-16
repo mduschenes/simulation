@@ -37,8 +37,10 @@ from src.utils import jit,gradient,hessian,gradient_finite,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,rank,einsum
 from src.utils import summation,exponentiation
-from src.utils import inner_abs2,inner_real,inner_imag
-from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
+from src.utils import trotter,gradient_trotter
+from src.utils import gradient_expm,gradient_sigmoid
+from src.utils import normed,inner_abs2,inner_real,inner_imag
+from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import eigh,qr
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
@@ -201,6 +203,7 @@ class Space(object):
 		self.delta = self.get_delta()
 		self.L = self.get_L(self.delta)
 		self.n = self.get_n()
+		self.size = self.n
 		return 
 
 	def __str__(self):
@@ -572,6 +575,123 @@ class Lattice(object):
 		return iterable
 
 
+class Metric(object):
+	'''
+	Metric class for distance between Operators
+	Args:
+		metric (str,Metric): Type of metric
+		system (dict,System): System attributes
+	'''
+	def __init__(self,metric,system):
+
+		self.system = System(system)
+		self.metric = metric
+		self.default = 'mse'
+
+		self.__setup__()
+		
+		return
+
+	def __setup__(self):
+		'''
+		Setup metric attributes metric,string
+		'''
+		if isinstance(self.metric,Metric):
+			self.metric = self.metric.metric
+		if self.metric is None:
+			self.metric = self.default
+		self.__string__()
+		self.__size__()
+
+		self.get_metric()
+
+		return
+
+	def __string__(self):
+		self.string = str(self.metric)
+		return
+
+	def __size__(self):
+		self.size = None
+		return 
+
+	@partial(jit,static_argnums=(0,))
+	def __call__(self,a,b):
+		return self.func(a,b)
+
+	@partial(jit,static_argnums=(0,))
+	def __grad__(self,a,b,da):
+		return self.grad(a,b,da)		
+
+	def __str__(self):
+		return str(self.string)
+
+	def __repr__(self):
+		return str(self.string)
+
+	def get_metric(self):
+
+		if callable(self.metric):
+			func = jit(self.metric)
+			grad = jit(gradient(self.metric))
+		elif self.metric is None:
+			@jit
+			def func(a,b):
+				return normed(a,b)
+			@jit
+			def grad(a,b,da):
+				return gradient_normed(a,b,da)
+		elif self.metric in ['norm']:
+			@jit
+			def func(a,b):
+				return normed(a,b)
+			@jit
+			def grad(a,b,da):
+				return gradient_normed(a,b,da)
+		elif self.metric in ['infidelity']:
+			@jit
+			def func(a,b):
+				return 1-inner_abs2(a,b)
+			@jit
+			def grad(a,b,da):
+				return -gradient_inner_abs2(a,b,da)
+		elif self.metric in ['infidelity.abs']:
+			@jit
+			def func(a,b):
+				return 1-inner_abs2(a,b)
+			@jit
+			def grad(a,b,da):
+				return -gradient_inner_abs2(a,b,da)
+		elif self.metric in ['infidelity.real']:
+			@jit
+			def func(a,b):
+				return 1-inner_real(a,b)
+			@jit
+			def grad(a,b,da):
+				return -gradient_inner_real(a,b,da)
+		elif self.metric in ['infidelity.real.imag']:
+			@jit
+			def func(a,b):
+				return 1-(inner_real(a,b)+inner_imag(a,b))
+			@jit
+			def grad(a,b,da):
+				return -(gradient_inner_real(a,b,da)+gradient_inner_imag(a,b,da))
+		else:
+			@jit
+			def func(a,b):
+				return normed(a,b)
+			@jit
+			def grad(a,b,da):
+				return gradient_normed(a,b,da)
+
+
+		self.func = func
+
+		self.grad = grad
+
+		return
+	
+
 class Object(object):
 	'''
 	Class for object
@@ -597,11 +717,12 @@ class Object(object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
+		metric (str,Metric): Type of metric
 		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
+		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
 
 		self.N = N
 		self.D = D
@@ -615,6 +736,7 @@ class Object(object):
 		self.space = space
 		self.time = time
 		self.lattice = lattice
+		self.metric = metric
 		self.system = system
 
 		self.data = array([])
@@ -655,6 +777,7 @@ class Object(object):
 		self.__space__()
 		self.__time__()
 		self.__lattice__()
+		self.__metric__()
 		self.__logger__()
 
 		self.__check__()
@@ -666,7 +789,6 @@ class Object(object):
 		self.derivative = jit(gradient_fwd(self))
 		self.hessian = jit(hessian(self.func))
 		# self.einsum = jit(einsum('ia,ic,uab,vbc->uv',*[self.states.shape]*2,*[self.shape[-2:]]*2))
-		self.metric = jit({'abs2':lambda a,b: 1-inner_abs2(a,b),'real':lambda a,b: 1-inner_real(a,b)}['abs2'])
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
 			for attr in ['key','N','D','d','M','tau','T','p','seed','architecture']]
@@ -735,6 +857,121 @@ class Object(object):
 			hyperparameters (dict): Class hyperparameters
 		'''
 
+
+		def setup(hyperparameters,cls=None):
+			'''
+			Check hyperparameters
+			Args:
+				hyperparameters (dict): Hyperparameters
+				cls (object): Class instance to update hyperparameters		
+			'''
+
+			# Update with class attributes
+			if cls is not None:
+				section = 'model'
+				if section not in hyperparameters:
+					hyperparameters[section] = {}
+				hyperparameters[section].update({attr: getattr(cls,attr) for attr in cls.__dict__ 
+					if attr in hyperparameters[section] and isinstance(getattr(cls,attr),scalars)})
+
+
+			section = 'parameters'
+			updates = {
+				# 'variables':{
+				# 	'value':(lambda parameter,hyperparameters: variables),
+				# 	'default':(lambda parameter,hyperparameters: {}),
+				# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('variables',{}) == {}),
+				# },
+				# 'features':{
+				# 	'value':(lambda parameter,hyperparameters: features),
+				# 	'default':(lambda parameter,hyperparameters: {}),
+				# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('features',{}) == {}),
+				# },		
+				# 'constraints':{
+				# 	'value':(lambda parameter,hyperparameters: constraints),
+				# 	'default': (lambda parameter,hyperparameters: {}),
+				# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('constraints',{}) == {}),
+				# },
+				# 'gradients':{
+				# 	'value':(lambda parameter,hyperparameters: gradients),
+				# 	'default':(lambda parameter,hyperparameters: {}),
+				# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('gradients',{}) == {}),			
+				# },			
+				# 'gradient_constraints':{
+				# 	'value':(lambda parameter,hyperparameters: gradient_constraints),
+				# 	'default': (lambda parameter,hyperparameters: {}),
+				# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('gradient_constraints',{}) == {}),
+				# },
+				'boundaries': {
+					'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
+						for i in hyperparameters[section][parameter]['boundaries'][attr]] 
+						for attr in hyperparameters[section][parameter]['boundaries']}),
+					'default': (lambda parameter,hyperparameters: {}),
+					'conditions': (lambda parameter,hyperparameters: True)				
+				},
+				'constants': {
+					'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
+						for i in hyperparameters[section][parameter]['constants'][attr]] 
+						for attr in hyperparameters[section][parameter]['constants']}),
+					'default': (lambda parameter,hyperparameters: []),
+					'conditions': (lambda parameter,hyperparameters: True)				
+				},		
+				'group': {
+					'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters[section][parameter]['group']]),
+					'default': (lambda parameter,hyperparameters: []),
+					'conditions': (lambda parameter,hyperparameters: True)				
+				},
+				**{attr: {
+					'value': (lambda parameter,hyperparameters,attr=attr: hyperparameters['hyperparameters'].get(attr)),
+					'default': (lambda parameter,hyperparameters,attr=attr: None),
+					'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
+					} for attr in ['scale','initialization','random','smoothness','interpolation','pad']
+				},
+				**{attr: {
+					'value': (lambda parameter,hyperparameters,attr=attr: {
+						**hyperparameters['parameters'][parameter][attr],
+						**{kwarg: hyperparameters[section][kwarg] 
+							for section in ['model'] 
+							for kwarg in hyperparameters[section]
+							if (
+							isinstance(hyperparameters[section][kwarg],scalars) and 
+							not isinstance(hyperparameters[section][kwarg],str)
+							)},
+						**{'min':min(hyperparameters['parameters'][parameter]['parameters']) if hyperparameters['parameters'][parameter].get('parameters') else hyperparameters['parameters'][parameter]['bounds']['parameters'][0], 
+						   'max':max(hyperparameters['parameters'][parameter]['parameters']) if hyperparameters['parameters'][parameter].get('parameters') else hyperparameters['parameters'][parameter]['bounds']['parameters'][1] 
+							}
+						}),
+					'default': (lambda parameter,hyperparameters,attr=attr: {}),
+					'conditions': (lambda parameter,hyperparameters,attr=attr: True)						
+					} for attr in ['kwargs']
+				},		
+				**{attr: {
+					'value': (lambda parameter,hyperparameters,attr=attr: None),
+					'default': (lambda parameter,hyperparameters,attr=attr: None),
+					'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
+					} for attr in ['seed']
+				},		
+				'locality': {
+					'value':(lambda parameter,hyperparameters: hyperparameters['hyperparameters']['locality']),
+					'default':(lambda parameter,hyperparameters: None),
+					'conditions': (lambda parameter,hyperparameters: hyperparameters['hyperparameters'].get('locality') is not None)
+				},				
+			}
+			for parameter in hyperparameters[section]:
+				for attr in updates:
+					hyperparameters[section][parameter][attr] = hyperparameters[section][parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
+					if updates[attr]['conditions'](parameter,hyperparameters):
+						if callable(updates[attr]['value'](parameter,hyperparameters)):
+							for group in hyperparameters[section][parameter]['group']:
+									group = tuple(group)
+									hyperparameters[section][parameter][attr][group] = jit(partial(updates[attr]['value'](parameter,hyperparameters),hyperparameters=hyperparameters,parameter=parameter,group=group))
+						else:
+							hyperparameters[section][parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
+
+			return
+
+
+
 		self.hyperparameters.update(hyperparameters)
 
 		# Set hyperparameters
@@ -751,7 +988,6 @@ class Object(object):
 		updater(self.hyperparameters,load(path,default=default),func=func)
 
 		setup(self.hyperparameters,cls=self)
-
 
 		return
 
@@ -971,7 +1207,7 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		return 1-distance(self(parameters),self.label)
+		return 1-self.metric(self(parameters),self.label)
 
 	@partial(jit,static_argnums=(0,))
 	def __loss__(self,parameters):
@@ -982,7 +1218,7 @@ class Object(object):
 		Returns:
 			loss (array): loss
 		'''	
-		return distance(self(parameters),self.label)
+		return self.metric(self(parameters),self.label)
 
 	@partial(jit,static_argnums=(0,))
 	def __func__(self,parameters):
@@ -1007,13 +1243,6 @@ class Object(object):
 
 		return self.grad(parameters)
 
-		# shape = parameters.shape
-		# grad = zeros(shape)
-
-		# grad = grad + gradient_distance(self(parameters),self.label,self.__derivative__(parameters))
-
-		# return grad
-
 
 	@partial(jit,static_argnums=(0,))
 	def __hessian__(self,parameters):
@@ -1026,6 +1255,45 @@ class Object(object):
 		'''	
 
 		return self.hessian(parameters)
+
+
+	@partial(jit,static_argnums=(0,))
+	def __derivative__(self,parameters):
+		'''
+		Return gradient of parameterized operator expm(parameters*data)
+		Args:
+			parameters (array): Parameters to parameterize operator
+		Returns
+			derivative (array): Gradient of parameterized operator
+		'''
+
+		return self.derivative(parameters)
+
+	@partial(jit,static_argnums=(0,))
+	def __derivative_analytical__(self,parameters):
+		'''
+		Return gradient of parameterized operator expm(parameters*data)
+		Args:
+			parameters (array): Parameters to parameterize operator
+		Returns
+			derivative (array): Gradient of parameterized operator
+		'''
+		return self.derivative(parameters)
+
+
+	@partial(jit,static_argnums=(0,))
+	def __grad_analytical__(self,parameters):
+		''' 
+		Class gradient of objective
+		Args:
+			parameters (array): parameters
+		Returns:
+			grad (array): gradient of objective
+		'''	
+
+		grad = self.metric.__grad__(self(parameters),self.label,self.__derivative_analytical__(parameters))
+
+		return grad
 
 
 	def __callback__(self,parameters):
@@ -1209,6 +1477,21 @@ class Object(object):
 		system = self.system if system is None else system
 
 		self.lattice = Lattice(N,d,L,delta,lattice,system)	
+
+		return
+
+
+	def __metric__(self,metric=None,system=None):
+		'''
+		Set metric attributes
+		Args:
+			metric (str,Metric): Type of metric
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+		'''		
+		metric = self.metric if metric is None else metric
+		system = self.system if system is None else system
+
+		self.metric = Metric(metric,system)	
 
 		return
 
@@ -1400,7 +1683,7 @@ class Object(object):
 		
 		# Dump hyperparameters
 		path = join(self.hyperparameters['sys']['path']['data']['model'],root=self.hyperparameters['sys']['cwd'])
-		hyperparameters = self.hyperparameters	
+		hyperparameters = self.hyperparameters
 		dump(hyperparameters,path)
 
 		return
@@ -1476,13 +1759,14 @@ class Hamiltonian(Object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
+		metric (str,Metric): Type of metric
 		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,metric=metric,system=system)
 		return
 
 
@@ -1651,8 +1935,6 @@ class Hamiltonian(Object):
 
 
 
-
-
 class Unitary(Hamiltonian):
 	'''
 	Unitary class of Operators
@@ -1677,15 +1959,16 @@ class Unitary(Hamiltonian):
 		tau (float): Simulation time scale		
 		p (int): Trotter order		
 		space (str,Space): Type of Hilbert space
-		time (str,Time): Type of Time evolution space						
-		lattice (str,Lattice): Type of lattice		
+		time (str,Time): Type of Time evolution space
+		lattice (str,Lattice): Type of lattice
+		metric (str,Metric): Type of metric		
 		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,metric=metric,system=system)
 		return
 
 	@partial(jit,static_argnums=(0,))
@@ -1702,7 +1985,7 @@ class Unitary(Hamiltonian):
 
 
 	@partial(jit,static_argnums=(0,))
-	def __derivative__(self,parameters):
+	def __derivative_analytical__(self,parameters):
 		'''
 		Return gradient of parameterized operator expm(parameters*data)
 		Args:
@@ -1711,348 +1994,64 @@ class Unitary(Hamiltonian):
 			derivative (array): Gradient of parameterized operator
 		'''
 
-		return self.derivative(parameters)
+		# Get class hyperparameters and attributes
+		hyperparameters = self.hyperparameters
+		attributes = self.attributes
 
-		# # Get class hyperparameters and attributes
-		# hyperparameters = self.hyperparameters
-		# attributes = self.attributes
+		# Get shape and indices of variable parameters for gradient
+		attribute = 'shape'
+		layer = 'variables'
+		shape = attributes[attribute][layer]
 
-		# # Get shape and indices of variable parameters for gradient
-		# attribute = 'shape'
-		# layer = 'variables'
-		# shape = attributes[attribute][layer]
+		# Get trotterized shape
+		p = self.p
+		shape = list(shape[::-1])
 
-		# # Get trotterized shape
-		# p = self.p
-		# shape = list(shape[::-1])
+		shape[-1] *= p
 
-		# shape[-1] *= p
+		ndim = len(shape)
 
-		# ndim = len(shape)
+		attribute = 'slice'
+		layer = 'variables'
+		slices = attributes[attribute][layer]		
 
-		# attribute = 'slice'
-		# layer = 'variables'
-		# slices = attributes[attribute][layer]		
+		attribute = 'index'
+		layer = 'variables'
+		indices = attributes[attribute][layer]		
 
-		# attribute = 'index'
-		# layer = 'variables'
-		# indices = attributes[attribute][layer]		
+		slices = tuple([
+			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
+				for axis in range(0,1)],
+			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
+				for axis in range(1,ndim)]
+		])
 
-		# slices = tuple([
-		# 	*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
-		# 		for axis in range(0,1)],
-		# 	*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
-		# 		for axis in range(1,ndim)]
-		# ])
+		indices = tuple([
+			*[[i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]]
+				for axis in range(0,1)],
+			*[[indices[parameter][group][axis] for parameter in indices for group in indices[parameter]][0]
+				for axis in range(1,ndim)]
+		])
 
-		# indices = tuple([
-		# 	*[[i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]]
-		# 		for axis in range(0,1)],
-		# 	*[[indices[parameter][group][axis] for parameter in indices for group in indices[parameter]][0]
-		# 		for axis in range(1,ndim)]
-		# ])
+		# Calculate parameters and gradient
+		parameters = self.__parameters__(parameters)
 
+		derivative = gradient_expm(-1j*self.coefficients*parameters,self.data,self.identity)
+		derivative *= -1j*self.coefficients*2*pi
 
+		# Reshape gradient
+		axis = 1
 
-		# # Calculate parameters and gradient
-		# parameters = self.__parameters__(parameters)
+		derivative = derivative.reshape((*shape,*derivative.shape[axis:]))
 
-		# grad = gradient_expm(-1j*self.coefficients*parameters,self.data,self.identity)
-		# grad *= -1j*self.coefficients*2*pi
+		derivative = derivative.transpose(axis,0,*[i for i in range(derivative.ndim) if i not in [0,axis]])
 
-		# # Reshape gradient
-		# axis = 1
+		derivative = array(gradient_trotter(derivative,p))
 
-		# grad = grad.reshape((*shape,*grad.shape[axis:]))
+		derivative = derivative[indices]
 
-		# grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
+		derivative = derivative.reshape((-1,*derivative.shape[axis+1:]))
 
-		# grad = array(gradient_trotter(grad,p))
-
-		# grad = grad[indices]
-
-		# grad = grad.reshape((-1,*grad.shape[axis+1:]))
-
-		# derivative = grad
-
-		# return derivative
+		return derivative
 
 
-def bloch(state,path=None):
-	'''
-	Plot state on Bloch Sphere
-	Args:
-		state (array): States of shape (d,) or (n,d) or (n,d,d) for n, d dimensional states
-		path (str,boolean): Path to save plot, or boolean to save
-	Returns:
-		fig (matplotlib.figure): Figure of plots
-		ax (matplotlib.axes): Axes of plots
-	'''
-	
-	import numpy as np
-	import subprocess
-	# import matplotlib
-	# import matplotlib.pyplot as plt
-
-	def coordinates(state):
-		'''
-		Convert state vector to Bloch vector
-		Args:
-			state (array): States of shape (d,) or (n,d) or (n,d,d)  for n, d dimensional states
-		Returns:
-			state (array): States of shape (1,d) or (n,d) or (n,d,d) for n, d dimensional states
-		'''
-
-		transformation = np.array([
-			[[0, 1], [1, 0]],
-			[[0, -1j], [1j, 0]],
-			[[1, 0], [0, -1]]
-			])
-
-		ndim = state.ndim - 1
-
-		if ndim == 0:
-			state = np.tensordot(state.conj(),np.tensordot(transformation,state,([-1],[-1])),([-1],[-1])).reshape(1,-1)
-		elif ndim == 1:
-			state = np.array([np.tensordot(s.conj(),np.tensordot(transformation,s,([-1],[-1])),([-1],[-1])) for s in state])
-		elif ndim == 2:
-			state = np.array([np.tensordot(s.conj(),np.tensordot(transformation,s,([-1],[-1])),([-1],[-1])) for s in state])			
-		else:
-			pass
-		return state
-
-	try:
-		mplstyle = '../src/plot.mplstyle'
-		with matplotlib.style.context(mplstyle):
-			try:
-				try:
-					fig = plt.figure(figsize=(6, 6))
-					ax = fig.add_subplot(111, projection='3d')
-					fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-
-					ax.grid(False)
-					ax.set_axis_off()
-					ax.view_init(30, 45)
-					ax.dist = 7
-
-					x, y, z = np.array([[-1.5,0,0], [0,-1.5,0], [0,0,-1.5]])
-					u, v, w = np.array([[3,0,0], [0,3,0], [0,0,3]])
-					ax.quiver(x, y, z, u, v, w, arrow_length_ratio=0.05, color='black', linewidth=1.2)
-
-					ax.text(0, 0, 1.7, r'$\ket{0}$', color='black', fontsize=16)
-					ax.text(0, 0, -1.9, r'$\ket{1}$', color='black', fontsize=16)
-					ax.text(1.9, 0, 0, r'$\ket{+}$', color='black', fontsize=16)
-					ax.text(-1.7, 0, 0, r'$\ket{-}$', color='black', fontsize=16)
-					ax.text(0, 1.7, 0, r'$\ket{i+}$', color='black', fontsize=16)
-					ax.text(0,-1.9, 0, r'$\ket{i-}$', color='black', fontsize=16)
-
-					state = coordinates(state)
-
-					ax.scatter(state[:,0], state[:,1], state[:, 2], color=getattr(plt.cm,'viridis')(0.5),s=12,alpha=0.6)
-
-					if path:
-						if not isinstance(path,str):
-							path = 'bloch.pdf'
-						fig.savefig(path,bbox_inches='tight')
-
-				except (subprocess.CalledProcessError, RuntimeError):
-					pass
-			except (subprocess.CalledProcessError, RuntimeError):
-				pass
-	except (subprocess.CalledProcessError, RuntimeError):
-		pass
-	return fig,ax
-
-def distance(a,b):
-	'''
-	Calculate distance between arrays
-	Args:
-		a (array): Array to calculate distance
-		b (array): Array to calculate distance
-	Returns:
-		out (array): Distance between arrays
-	'''
-	# return norm(a-b,axis=None,ord=2)/a.shape[0]
-	# return 1-inner_real(a,b)#+inner_imag2(a,b)
-	return 1-inner_abs2(a,b)
-	
-
-
-def gradient_distance(a,b,da):
-	'''
-	Calculate distance between arrays
-	Args:
-		a (array): Array to calculate distance
-		b (array): Array to calculate distance
-		da (array): Gradient of array to calculate distance		
-	Returns:
-		out (array): Distance between arrays
-	'''
-	# return -gradient_inner_real(a,b,da)
-	return -gradient_inner_abs2(a,b,da)
-	
-
-def trotter(a,p):
-	'''
-	Calculate p-order trotter series of iterable
-	Args:
-		a (iterable): Iterable to calculate trotter series
-		p (int): Order of trotter series
-	Returns:
-		out (iterable): Trotter series of iterable
-	'''	
-	# return [v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u]	
-	return [u for i in [1,-1,1,-1][:p] for u in a[::i]]
-
-def gradient_trotter(da,p):
-	'''
-	Calculate gradient of p-order trotter series of iterable
-	Args:
-		da (iterable): Gradient of iterable to calculate trotter series		
-		p (int): Order of trotter series
-	Returns:
-		out (iterable): Gradient of trotter series of iterable
-	'''	
-	n = da.shape[0]//p
-	return sum([da[:n][::i] if i>0 else da[-n:][::i] for i in [1,-1,1,-1][:p]])
-
-
-def invtrotter(a,p):
-	'''
-	Calculate inverse of p-order trotter series of iterable
-	Args:
-		a (iterable): Iterable to calculate inverse trotter series
-		p (int): Order of trotter series
-	Returns:
-		out (iterable): Inverse trotter series of iterable
-	'''	
-	n = a.shape[0]//p
-	return a[:n]
-
-
-def check(hyperparameters,cls=None):
-	'''
-	Check hyperparameters
-	Args:
-		hyperparameters (dict): Hyperparameters
-		cls (object): Class instance to update hyperparameters		
-	'''
-
-	# Update with class attributes
-	if cls is not None:
-		section = 'model'
-		if section not in hyperparameters:
-			hyperparameters[section] = {}
-		hyperparameters[section].update({attr: getattr(cls,attr) for attr in cls.__dict__ 
-			if attr in hyperparameters[section]})
-
-
-	section = 'parameters'
-	updates = {
-		# 'variables':{
-		# 	'value':(lambda parameter,hyperparameters: variables),
-		# 	'default':(lambda parameter,hyperparameters: {}),
-		# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('variables',{}) == {}),
-		# },
-		# 'features':{
-		# 	'value':(lambda parameter,hyperparameters: features),
-		# 	'default':(lambda parameter,hyperparameters: {}),
-		# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('features',{}) == {}),
-		# },		
-		# 'constraints':{
-		# 	'value':(lambda parameter,hyperparameters: constraints),
-		# 	'default': (lambda parameter,hyperparameters: {}),
-		# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('constraints',{}) == {}),
-		# },
-		# 'gradients':{
-		# 	'value':(lambda parameter,hyperparameters: gradients),
-		# 	'default':(lambda parameter,hyperparameters: {}),
-		# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('gradients',{}) == {}),			
-		# },			
-		# 'gradient_constraints':{
-		# 	'value':(lambda parameter,hyperparameters: gradient_constraints),
-		# 	'default': (lambda parameter,hyperparameters: {}),
-		# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('gradient_constraints',{}) == {}),
-		# },
-		'boundaries': {
-			'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
-				for i in hyperparameters[section][parameter]['boundaries'][attr]] 
-				for attr in hyperparameters[section][parameter]['boundaries']}),
-			'default': (lambda parameter,hyperparameters: {}),
-			'conditions': (lambda parameter,hyperparameters: True)				
-		},
-		'constants': {
-			'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
-				for i in hyperparameters[section][parameter]['constants'][attr]] 
-				for attr in hyperparameters[section][parameter]['constants']}),
-			'default': (lambda parameter,hyperparameters: []),
-			'conditions': (lambda parameter,hyperparameters: True)				
-		},		
-		'group': {
-			'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters[section][parameter]['group']]),
-			'default': (lambda parameter,hyperparameters: []),
-			'conditions': (lambda parameter,hyperparameters: True)				
-		},
-		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: hyperparameters['hyperparameters'].get(attr)),
-			'default': (lambda parameter,hyperparameters,attr=attr: None),
-			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
-			} for attr in ['scale','initialization','random','smoothness','interpolation','pad']
-		},
-		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: {
-				**hyperparameters['parameters'][parameter][attr],
-				**{kwarg: hyperparameters[section][kwarg] 
-					for section in ['model'] 
-					for kwarg in hyperparameters[section]
-					if (
-					isinstance(hyperparameters[section][kwarg],scalars) and 
-					not isinstance(hyperparameters[section][kwarg],str)
-					)},
-				**{'min':min(hyperparameters['parameters'][parameter]['parameters']) if hyperparameters['parameters'][parameter].get('parameters') else hyperparameters['parameters'][parameter]['bounds']['parameters'][0], 
-				   'max':max(hyperparameters['parameters'][parameter]['parameters']) if hyperparameters['parameters'][parameter].get('parameters') else hyperparameters['parameters'][parameter]['bounds']['parameters'][1] 
-					}
-				}),
-			'default': (lambda parameter,hyperparameters,attr=attr: {}),
-			'conditions': (lambda parameter,hyperparameters,attr=attr: True)						
-			} for attr in ['kwargs']
-		},		
-		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: None),
-			'default': (lambda parameter,hyperparameters,attr=attr: None),
-			'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
-			} for attr in ['seed']
-		},		
-		'locality': {
-			'value':(lambda parameter,hyperparameters: hyperparameters['hyperparameters']['locality']),
-			'default':(lambda parameter,hyperparameters: None),
-			'conditions': (lambda parameter,hyperparameters: hyperparameters['hyperparameters'].get('locality') is not None)
-		},				
-	}
-	for parameter in hyperparameters[section]:
-		for attr in updates:
-			hyperparameters[section][parameter][attr] = hyperparameters[section][parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
-			if updates[attr]['conditions'](parameter,hyperparameters):
-				if callable(updates[attr]['value'](parameter,hyperparameters)):
-					for group in hyperparameters[section][parameter]['group']:
-							group = tuple(group)
-							hyperparameters[section][parameter][attr][group] = jit(partial(updates[attr]['value'](parameter,hyperparameters),hyperparameters=hyperparameters,parameter=parameter,group=group))
-				else:
-					hyperparameters[section][parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
-
-	return
-
-
-
-def setup(hyperparameters,cls=None):
-	'''
-	Setup hyperparameters
-	Args:
-		hyperparameters (dict): Hyperparameters
-		cls (object): Class instance to update hyperparameters
-	'''
-
-	# Check hyperparameters have correct values
-	check(hyperparameters,cls=cls)
-
-	return

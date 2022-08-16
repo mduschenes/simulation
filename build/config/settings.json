@@ -2,7 +2,7 @@
 "class":"src.quantum.Unitary",
 "sys":{
 	"pwd":".",
-	"cwd":"test",
+	"cwd":"data",
 	"path":{
 		"data":{
 			"model":"model.pkl",
@@ -25,15 +25,15 @@
 		}
 	},
 "boolean":{
-	"train":0,
+	"train":1,
 	"load":0,
-	"dump":0,
+	"dump":1,
 	"plot":0,
 	"plot.obj":0
 	},
 "seed":{
 	"seed":123321,
-	"size":3,
+	"size":1,
 	"reset":123321,
 	"index":null
 	},
@@ -56,6 +56,7 @@
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
+	"metric":"infidelity.abs",
 	"system":{
 		"dtype":"complex",
 		"format":"array",
@@ -97,7 +98,7 @@
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"method":"constrained",
+		"method":"unconstrained",
 		"use":true,		
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
