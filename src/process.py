@@ -49,37 +49,79 @@ def Texify(string,texify={},usetex=True):
 # Transform of data
 def transformation(transform=None):
 	if transform is None:
-		transform = lambda x:x
-		invtransform = lambda x:x
-	if not isinstance(transform,str):
+		transform = lambda data:data
+		invtransform = lambda data:data
+	elif not isinstance(transform,str):
 		transform,invtransform = transform
 	elif callable(transform):
-		transform,invtransform = transform, lambda x:x
+		transform,invtransform = transform, lambda data:data
 	elif transform in ['linear']:
-		transform = lambda x:x
-		invtransform = lambda x:x		
+		transform = lambda data:data
+		invtransform = lambda data:data		
 	elif transform in ['log']:		
-		transform = lambda x: np.log(x)
-		invtransform = lambda x:np.exp(x)
+		transform = lambda data: np.log(data)
+		invtransform = lambda data:np.exp(data)
 	else:
-		transform = lambda x:x		
-		invtransform = lambda x:x		
+		transform = lambda data:data		
+		invtransform = lambda data:data		
 	return transform,invtransform
 
 # Normalization of data
 def norm(data,axis=None,ord=2):
+	if axis is not None and not isinstance(axis,int):
+		axis = tuple(axis)
 	return np.linalg.norm(data,axis=axis,ord=ord)
 
 # Sample average of data
-def mean(data,axis=0,transform=None,dtype=None):
+def mean(data,axis=None,transform=None,dtype=None,**kwargs):
+	if axis is not None and not isinstance(axis,int):
+		axis = tuple(axis)
 	transform,invtransform = transformation(transform)
 	return invtransform(np.nanmean(transform(data),axis=axis).astype(dtype))
 
 # Sample deviation of data
-def std(data,axis=0,transform=None,dtype=None):
+def std(data,axis=None,transform=None,dtype=None,**kwargs):
+	if axis is not None and not isinstance(axis,int):
+		axis = tuple(axis)
 	transform,invtransform = transformation(transform)	
 	n = data.shape[axis]
 	return invtransform((np.nanstd(transform(data),axis=axis,ddof=n>1)).astype(dtype))
+
+
+# Square root of data
+def sqrt(data,axis=None,transform=None,dtype=None,**kwargs):
+	if axis is not None and not isinstance(axis,int):
+		axis = tuple(axis)
+	return np.sqrt(data)
+
+# Size of data
+def size(data,axis=None,transform=None,dtype=None,**kwargs):
+	if axis is not None and not isinstance(axis,int):
+		axis = tuple(axis)
+	if axis is None:
+		size = data.size
+	elif isinstance(axis,int):
+		size = data.shape[axis]		
+	else:
+		size = product([data.shape[ax] for ax in axis])
+	return size
+
+
+# Wrappers of data
+def wrappers(wrapper=None,kwarg=None,stat=None,**kwargs):
+	if wrapper is None:
+		wrapper = lambda data,kwargs=kwargs: data
+	elif wrapper in ['mean']:
+		if stat is None:
+			wrapper = lambda data,kwargs=kwargs: mean(data,**kwargs)
+		elif 'err' in kwarg:
+			wrapper = lambda data,kwargs=kwargs: sqrt(mean(data**2,**kwargs)/size(data,**kwargs))
+		else:
+			wrapper = lambda data,kwargs=kwargs: mean(data,**kwargs)
+	else:
+		wrapper = lambda data,kwargs=kwargs: data
+
+	return wrapper
 
 # Fit data
 def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
@@ -388,11 +430,31 @@ def find(dictionary,properties):
 
 	return keys
 
-def loader(kwargs):
+
+def dumper(kwargs,**options):
+	'''
+	Load data
+	Args:
+		kwargs (dict[str,object]): Data to dump
+		options (dict): Additional dump options
+	'''
+
+	for kwarg in kwargs:
+		path = kwarg
+		data = kwargs[kwarg]
+
+		dump(data,path,**options)
+
+		print('Dumped',path)
+
+	return
+
+def loader(kwargs,**options):
 	'''
 	Load data
 	Args:
 		kwargs (dict[str,object]): Data to load
+		options (dict): Additional load options
 	'''
 
 	returns = {}
@@ -409,11 +471,9 @@ def loader(kwargs):
 			kwargs[kwarg] = {}
 			returns['multiple'] |= len(paths)>1
 			for path in paths:
-				print('Loading:',path)
 				directory,ext = split(path,directory=-1,ext=True)
-				kwargs[kwarg].update(load(path,default=default))
-			# print('Dumping',kwarg,directory,ext)
-			# dump(kwargs[kwarg]['value'],join(directory,kwarg,ext=ext))
+				kwargs[kwarg].update(load(path,default=default,**options))
+				print('Loaded:',path)				
 		else:
 			kwargs[kwarg] = kwargs[kwarg]
 			returns['multiple'] |= False
@@ -469,74 +529,15 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 
 	# Setup kwargs
-	kwargs = ['data','settings','hyperparameters']
-	kwargs = {kwarg: value for kwarg,value in zip(kwargs,[data,settings,hyperparameters])}
+	kwargs = ['settings','hyperparameters']
+	kwargs = {kwarg: value for kwarg,value in zip(kwargs,[settings,hyperparameters])}
 
 	returns = loader(kwargs)
 
 	if returns is None:
 		return fig,ax
 
-	data,settings,hyperparameters = (kwargs[kwarg] for kwarg in kwargs)
-
-
-	# Get dataset names of data
-	names = list(natsorted(set(name for name in data),key=lambda name:name))
-
-	# Get attributes of data
-	attributes = list(set(attr for name in names 
-		for attr in data[name]
-		))
-
-	subattributes = [attr
-		for attr in attributes
-		if ((attr in hyperparameters.get('sort',attributes)))
-	    ]
-
-
-	# Get unique scalar attributes
-	unique = {attr: tuple((*natsorted(set(asscalar(data[name][attr])
-					for name in names 
-					if ((attr in data[name]) and 
-						((asarray(data[name][attr]).size <= 1) and isinstance(asscalar(data[name][attr]),scalars))
-						)
-					)),None))
-			for attr in attributes
-			}
-	unique = {attr: unique[attr] for attr in unique if len(unique[attr])>0}	
-
-	# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
-	sort = {attr: tuple((*natsorted(set(asscalar(data[name][attr])
-					for name in names 
-					if ((attr in data[name]) and 
-						((asarray(data[name][attr]).size == 1) and isinstance(asscalar(data[name][attr]),scalars))
-						)
-					)),None))
-			for attr in subattributes
-			}
-	sort = {attr: sort[attr] for attr in sort if len(sort[attr])>0}
-
-
-	# Get combinations of attributes (including None) to sort on and attributes not to sort on if not existent in plot properties x,y,label
-	allowed = list(natsorted(set((tuple((asscalar(data[name][attr])
-				for attr in subattributes))
-				for name in names
-				))))
-	allowed = [
-				*allowed,
-				*natsorted(set([(*value[:i],None,*value[i+1:]) for value in allowed for i in range(len(value))]),
-						key = lambda x: tuple(((u is not None,u) for u in x)))
-			]
-
-	# Get data as arrays, with at least 1 leading dimension
-	for name in names:
-		for attr in data[name]:
-			data[name][attr] = np.array(data[name][attr])
-			data[name][attr] = data[name][attr].reshape(*[1]*(max(0,1-data[name][attr].ndim)),*data[name][attr].shape)
-	
-	# Get number of dimensions and maximum shape of data attributes
-	ndim = {attr: min(data[name][attr].ndim for name in names) for attr in attributes}
-	shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in names)))) for attr in attributes}
+	settings,hyperparameters = (kwargs[kwarg] for kwarg in kwargs)
 
 	# Get paths
 	path,file,directory,ext,delimiter = {},{},{},{},{}
@@ -549,12 +550,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		if (hyperparameters.get('cwd') is not None):
 			directory[attr] = hyperparameters.get('cwd')
 		path[attr] = join(directory[attr],file[attr],ext=ext[attr])
-
-	# Get plot fig and axes
-	if fig is None:
-		fig = {}
-	if ax is None:
-		ax = {}
 
 	# Get plot variables setting
 	hyperparameters['parameters'] = [*hyperparameters.get('parameters',[])]
@@ -573,13 +568,24 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 		if len(settings[instance]) == 0:
 			settings.pop(instance)
 
+
+	# Get plot fig and axes
+	axes = ['x','y']
+	if fig is None:
+		fig = {}
+	if ax is None:
+		ax = {}
+
+	for instance in settings:
+		if instance not in fig:
+			fig[instance] = None
+		if instance not in ax:
+			ax[instance] = None
+
 	# Get texify
 	texify = lambda string: Texify(string,hyperparameters.get('texify',{}),usetex=hyperparameters.get('usetex',True))
 
-
 	# Get plot properties and statistics from settings
-	axes = ['x','y']
-
 	properties = [*['%s'%(axis) for axis in axes],'label']
 	statistics = [*['%s'%(axis) for axis in axes],*['%serr'%(axis) for axis in axes]]
 	statistics = {
@@ -587,13 +593,13 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			**{kwarg:{
 				'property':kwarg.replace('',''),
 				'statistic':{
-					**{stat: lambda key,data,variables=None,dtype=None,axis=axis,stat=stat: mean(
+					**{stat: lambda key,data,variables=None,dtype=None,axis=axis,stat=stat,**kwargs: mean(
 						data,axis=0,dtype=dtype,
 						# transform=stat[axis]
 						transform='linear',#stat[axis]
 						) for stat in itertools.product(['linear','log'],repeat=len(axes))
 					},
-					('fit','fit'): lambda key,data,variables=None,dtype=None,axis=axis: mean(
+					('fit','fit'): lambda key,data,variables=None,dtype=None,axis=axis,**kwargs: mean(
 						data,axis=0,dtype=dtype,transform=None),
 					}
 				} 
@@ -601,13 +607,13 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			**{kwarg:{
 				'property':kwarg.replace('err',''),
 				'statistic':{			
-					**{stat: lambda key,data,variables=None,dtype=None,axis=axis,stat=stat: std(
+					**{stat: lambda key,data,variables=None,dtype=None,axis=axis,stat=stat,**kwargs: std(
 						data,axis=0,dtype=dtype,
 						transform=stat[axis]						
 						# transform='linear',#stat[axis]
 						) for stat in itertools.product(['linear','log'],repeat=len(axes))
 					},				
-					('fit','fit'): lambda key,data,variables=None,dtype=None,axis=axis: std(
+					('fit','fit'): lambda key,data,variables=None,dtype=None,axis=axis,**kwargs: std(
 						data,axis=0,dtype=dtype,transform=None),
 					}
 				}	 
@@ -621,16 +627,22 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	labels = [{prop: dict(zip(key[prop]['key'],key[prop]['value'])) for prop in key} for key in keys]
 	sublabels = [{prop: dict(zip(key[prop]['key'],key[prop]['value'])) for prop in ['label']} for key in keys]
 
+
+
+
 	# Load data
 	if hyperparameters.get('load'):
 		attr = 'process'
-		kwargs = {
+		options = {
 			'conversion':lambda name: (
 				to_number(name) if '--' not in name else 
 				tuple((to_number(i) for i in name.split('--')[1:])))
 			}
+		variables = {attr: path[attr]}
 
-		variables = load(path[attr],**kwargs)
+		returns = loader(variables,**options)
+
+		variables = variables[attr]
 
 		combinations = {
 			occurrence: [
@@ -653,6 +665,77 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 	else:
 
+		# Setup kwargs
+		kwargs = ['data']
+		kwargs = {kwarg: value for kwarg,value in zip(kwargs,[data])}
+
+		returns = loader(kwargs)
+
+		if returns is None:
+			return fig,ax
+
+		data, = (kwargs[kwarg] for kwarg in kwargs)
+
+
+		# Get dataset names of data
+		names = list(natsorted(set(name for name in data),key=lambda name:name))
+
+		# Get attributes of data
+		attributes = list(set(attr for name in names 
+			for attr in data[name]
+			))
+
+		subattributes = [attr
+			for attr in attributes
+			if ((attr in hyperparameters.get('sort',attributes)))
+		    ]
+
+
+		# Get unique scalar attributes
+		unique = {attr: tuple((*natsorted(set(asscalar(data[name][attr])
+						for name in names 
+						if ((attr in data[name]) and 
+							((asarray(data[name][attr]).size <= 1) and isinstance(asscalar(data[name][attr]),scalars))
+							)
+						)),None))
+				for attr in attributes
+				}
+		unique = {attr: unique[attr] for attr in unique if len(unique[attr])>0}	
+
+		# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
+		sort = {attr: tuple((*natsorted(set(asscalar(data[name][attr])
+						for name in names 
+						if ((attr in data[name]) and 
+							((asarray(data[name][attr]).size == 1) and isinstance(asscalar(data[name][attr]),scalars))
+							)
+						)),None))
+				for attr in subattributes
+				}
+		sort = {attr: sort[attr] for attr in sort if len(sort[attr])>0}
+
+
+		# Get combinations of attributes (including None) to sort on and attributes not to sort on if not existent in plot properties x,y,label
+		allowed = list(natsorted(set((tuple((asscalar(data[name][attr])
+					for attr in subattributes))
+					for name in names
+					))))
+		allowed = [
+					*allowed,
+					*natsorted(set([(*value[:i],None,*value[i+1:]) for value in allowed for i in range(len(value))]),
+							key = lambda x: tuple(((u is not None,u) for u in x)))
+				]
+
+		# Get data as arrays, with at least 1 leading dimension
+		for name in names:
+			for attr in data[name]:
+				data[name][attr] = np.array(data[name][attr])
+				data[name][attr] = data[name][attr].reshape(*[1]*(max(0,1-data[name][attr].ndim)),*data[name][attr].shape)
+		
+		# Get number of dimensions and maximum shape of data attributes
+		ndim = {attr: min(data[name][attr].ndim for name in names) for attr in attributes}
+		shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in names)))) for attr in attributes}
+
+		
 		# Get combinations of key attributes and permutations of shared attributes for combination across data
 
 		variables = {}
@@ -765,15 +848,15 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 
 							if 	(any(
 									(
-									((tuple(parameter['key']) == tuple([key[axis]['key'][-1] for axis in axes])) and
+									((all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key'])) and
 									   (parameter.get('plot') is not None) and
 									   (stat not in [*(tuple(substat) for substat in parameter.get('plot',[[]]))]) or 
-									((tuple(parameter['key']) == tuple([key[axis]['key'][-1] for axis in axes])) and 
+									((all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key'])) and 
 									 (parameter.get('plot') is None) and 
 									 (stat not in [('linear','linear')]))
 									))
 									for parameter in parameters) or
-								all(((tuple(parameter['key']) != tuple([key[axis]['key'][-1] for axis in axes])) and
+								all(((all(parameter['key'][axis] != key[axis]['key'][-1] for axis in parameter['key'])) and
 									 (stat not in [('linear','linear')]))
 									for parameter in parameters)):
 								continue
@@ -811,21 +894,26 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			if len(variables[occurrence]) == 0:
 				variables.pop(occurrence)
 
-	# return fig,ax
+		# Delete data
+		del data
 
-	# Delete data
-	del data
+		# Dump data
+		if hyperparameters.get('dump'):
+			attr = 'process'
+			options = {
+				'conversion':lambda name: (
+					str(name) if not isinstance(name,tuple) else 
+					'--'+'--'.join((str(i) for i in name)))
+			}
 
-	# Dump data
-	if hyperparameters.get('dump'):
-		attr = 'process'
-		kwargs = {
-			'conversion':lambda name: (
-				str(name) if not isinstance(name,tuple) else 
-				'--'+'--'.join((str(i) for i in name)))
-		}
-		dump(variables,path[attr],**kwargs)
+			kwargs = {path[attr]: variables}
+
+			dumper(kwargs,**options)
 	
+
+
+
+
 
 	# Plot data
 	
@@ -905,7 +993,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 	# reshaping of variables data based on 
 	# parameters = {'y':{'x':{'axis':{attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}}}}
 	for instance in list(settings):
-		print(instance)
+		print('Plotting: ',instance)
 		for subinstance in list(settings[instance]):
 			subupdated.clear()
 			for setting in special:
@@ -919,28 +1007,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 							if occurrence not in variables:
 								continue
 
-							subndim = min(variables[occurrence][combination][kwarg][stat].ndim
-								for combination in variables[occurrence]
-								for kwarg in variables[occurrence][combination]
-								for stat in variables[occurrence][combination][kwarg]
-								)
-
-							subaxis = [None,*(
-								parameter.get('axis') for parameter in parameters 
-								if tuple(parameter['key']) == tuple([key[axis]['key'][-1] for axis in axes]))][-1]
-							
-
-							if subaxis is None:
-								subaxis = [[],[],[],[axis for axis in range(subndim)]]
-							else:
-								subaxis = [[axis] if isinstance(axis,int) else axis for axis in subaxis]
-
-							subaxis = [*([a for a in axis] for axis in subaxis[:-1]),
-										[a for a in range(subndim) 
-										 if (a in subaxis[-1] or (a == (subndim-1) and -1 in subaxis[-1])) or 
-										 a not in [a for axis in subaxis[:-1] for a in axis]]]
-
-
 							if occurrence not in updated:
 								
 								updated.append(occurrence)
@@ -948,6 +1014,30 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								for combination in variables[occurrence]:
 									for kwarg in variables[occurrence][combination]:
 										for stat in variables[occurrence][combination][kwarg]:
+
+											wrapper = [None,*(
+												wrappers(**parameter.get('wrapper',{}),kwarg=kwarg,stat=stat) for parameter in parameters 
+												if all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key']))][-1]
+
+											if wrapper is not None:
+												variables[occurrence][combination][kwarg][stat] = wrapper(variables[occurrence][combination][kwarg][stat])
+											
+											subndim = variables[occurrence][combination][kwarg][stat].ndim
+
+											subaxis = [None,*(
+												parameter.get('axis') for parameter in parameters 
+												if all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key']))][-1]
+
+											if subaxis is None:
+												subaxis = [[],[],[],[axis for axis in range(subndim)]]
+											else:
+												subaxis = [[axis] if isinstance(axis,int) else axis for axis in subaxis]
+
+											subaxis = [*([a for a in axis] for axis in subaxis[:-1]),
+														[a for a in range(subndim) 
+														 if (a in subaxis[-1] or (a == (subndim-1) and -1 in subaxis[-1])) or 
+														 a not in [a for axis in subaxis[:-1] for a in axis]]]
+
 											transpose = [a for axis in subaxis for a in axis]											
 											reshape = [
 												max(1,int(product(
@@ -1036,15 +1126,15 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 								for i in range(len(settings[instance][subinstance][setting][attr])):
 									key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 									occurrence = keys.index(key)
-									size = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
+									subsize = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
 												for combination in variables[occurrence]
 												for kwarg in variables[occurrence][combination]
 												for stat in variables[occurrence][combination][kwarg])												
-									for enum,(combination,j) in enumerate(itertools.product(variables[occurrence],range(size))):
-										subsize = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
+									for enum,(combination,j) in enumerate(itertools.product(variables[occurrence],range(subsize))):
+										subsubsize = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
 													for kwarg in variables[occurrence][combination]
 													for stat in variables[occurrence][combination][kwarg])
-										if j >= subsize:
+										if j >= subsubsize:
 											continue
 
 
@@ -1075,11 +1165,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			for subinstance in layouts[samplelayout]:
 				settings[instance].pop(subinstance)
 
-	for instance in settings:
-		if instance not in fig:
-			fig[instance] = None
-		if instance not in ax:
-			ax[instance] = None
+
 
 	# Set plot settings
 
@@ -1218,36 +1304,40 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 							index = index - 1	
 							nrow = (index - index%ncols)//ncols
 							ncol = index%ncols
-							if nrows == 1:
-								nrow = ''
-							elif ncols == 1:
-								ncol = ''
-							nrow = str(nrow)
-							ncol = str(ncol)
 
 							if not multiple:
 
 								if isinstance(value[kwarg],str):
-									string = value[kwarg]
+									new = value[kwarg]
+								elif all(isinstance(v,str) for v in value[kwarg]):
+									new = value[kwarg][index%len(value[kwarg])]
+								elif value[kwarg] is not None:
+									new = value[kwarg][nrow%len(value[kwarg])][ncol%len(value[kwarg][nrow%len(value[kwarg])])]
 								else:
-									string = value[kwarg][index%len(value[kwarg])]
-								new = '{%s}_{%s%s}'%(
-										string.replace('$',''),
-										nrow if len(value[kwarg]) < nrows*ncols else '',
-										ncol if len(value[kwarg]) < nrows*ncols else ''
-										)
+									new = None
+								if new is not None:
+									new = '{%s}_{%s%s}'%(
+											new.replace('$',''),
+											str(nrow) if ((isinstance(value[kwarg],str)) or (len(value[kwarg]) < nrows)) and (nrows > 1) else '',
+											str(ncol) if ((isinstance(value[kwarg],str)) or (len(value[kwarg][nrow%len(value[kwarg])]) < ncols)) and (ncols > 1) else ''
+											)
 								value[kwarg] = new
 							else:
 								for i in range(length):
 									if isinstance(value[i][kwarg],str):
-										string = value[i][kwarg]
+										new = value[i][kwarg]
+									elif all(isinstance(v,str) for v in value[i][kwarg]):
+										new = value[i][kwarg][index%len(value[i][kwarg])]
+									elif value[i][kwarg] is not None:
+										new = value[i][kwarg][nrow%len(value[i][kwarg])][ncol%len(value[i][kwarg][nrow%len(value[i][kwarg])])]
 									else:
-										string = value[i][kwarg][index%len(value[i][kwarg])]
-									new = '{%s}_{%s%s}'%(
-										string.replace('$',''),
-										nrow if len(value[i][kwarg]) < nrows*ncols else '',
-										ncol if len(value[i][kwarg]) < nrows*ncols else ''
-										)
+										new = None
+									if new is not None:
+										new = '{%s}_{%s%s}'%(
+											new.replace('$',''),
+											str(nrow) if ((isinstance(value[i][kwarg],str)) or (len(value[i][kwarg]) < nrows)) and (nrows > 1) else '',
+											str(ncol) if ((isinstance(value[i][kwarg],str)) or (len(value[i][kwarg][ncol%len(value[i][kwarg])]) < ncols)) and (ncols > 1) else ''
+											)
 									value[i][kwarg] = new
 
 						elif setting in ['ax'] and attr in ['errorbar','fill_between'] and kwarg in ['%serr'%(axis) for axis in axes]:

@@ -155,14 +155,16 @@
 			"set_zorder":{"level":100}
 			},			
 		"set_ylabel":{"ylabel":[
-			"$\\abs{({\\alpha}^{(i)}_{} - {\\alpha}^{(0)}_{})/{\\alpha}^{(0)}_{}}$",
-			"$\\abs{({\\phi}^{(i)}_{} - {\\phi}^{(0)}_{})/{\\phi}^{(0)}_{}}$"
+			["$\\abs{({\\alpha}^{(i)}_{} - {\\alpha}^{(0)}_{})/{\\alpha}^{(0)}_{}}$"],
+			["$\\abs{({\\phi}^{(i)}_{} - {\\phi}^{(0)}_{})/{\\phi}^{(0)}_{}}$"]
 			]},
 		"set_xlabel":{"xlabel":"$M$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xlim":{"xmin":0,"xmax":600},		
 		"set_xnbins":{"nbins":7},
 		"set_ylim":{"ymin":1e-5,"ymax":1e-1},
+		"set_ylim":{"ymin":1e-5,"ymax":1e5},
+		"set_ynbins":{"nbins":3},		
 		"set_ynbins":{"nbins":3},		
 		"set_yscale":{"value":"log","base":10},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
@@ -266,7 +268,7 @@
 				},
 			"legend":null,			
 			"set_title":{"label":"$\\varphi$","pad":12},	
-			"set_ylabel":{"ylabel":["$\\alpha$","$\\phi$"]},
+			"set_ylabel":{"ylabel":[["$\\alpha$"],["$\\phi$"]]},
 			"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
 			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 			"set_xnbins":{"nbins":5},
@@ -331,13 +333,14 @@
 				"set_zorder":{"level":100}
 				},			
 			"set_title":{"label":"$\\abs{({\\varphi}^{(i)}_{} - {\\varphi}^{(0)}_{})/{\\varphi}^{(0)}_{}}$","pad":12},				
-			"set_ylabel":{"ylabel":["$\\alpha$","$\\phi$"]},
+			"set_ylabel":{"ylabel":[["$\\alpha$"],["$\\phi$"]]},
 			"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
 			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 			"set_xnbins":{"nbins":5},
 			"set_ynbins":{"nbins":6},
 			"set_yscale":{"value":"linear"},
 			"set_ylim":{"ymin":-0.1,"ymax":1.1},
+			"set_ylim":{"ymin":null,"ymax":null},
 			"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
 			"tick_params":[
 				{"axis":"y","which":"major","length":8,"width":1},

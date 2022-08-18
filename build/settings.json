@@ -33,7 +33,7 @@
 	},
 "seed":{
 	"seed":123321,
-	"size":1,
+	"size":2,
 	"reset":123321,
 	"index":null
 	},
@@ -41,7 +41,8 @@
 	"permutations":{
 		"model.M":[10,20,30,40,50,80,100,200],
 		"model.M":[100,200,300,400],
-		"model.N":[2],
+		"model.M":[100,200,300,400],
+		"model.N":[3],
 		"optimize.iterations":[500],
 		"parameters.xy.method":["unconstrained"],
 		"model.system.architecture":["unconstrained"]
@@ -50,7 +51,7 @@
 	"index":null
 	},
 "model":{
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -106,8 +107,8 @@
 		"category":"variable",
 		"method":"unconstrained",
 		"use":true,		
-		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
+		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -118,11 +119,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
 		},

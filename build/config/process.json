@@ -1,16 +1,29 @@
 {
 	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture"],
-	"load":0,
-	"dump":1,
-	"delimiter":".",
 	"parameters":[
-		{"key":["iteration","infidelity"],"plot":[["linear","linear"]]},
-		{"key":["","parameters"],"axis":[[0,1],[2],[],[-1]]},
-		{"key":["","parameters.relative"],"axis":[[0,1],[2],[],[-1]]},
-		{"key":["M","parameters.relative.mean"],"axis":[[],[],[],[-1]]},
-		{"key":["M","parameters.relative.mean"],"axis":[[1],[2],[],[0]]}
+		{
+			"key":{"x":"iteration","y":"infidelity"},
+			"plot":[["linear","linear"]]
+		},
+		{
+			"key":{"x":"","y":"parameters"},
+			"axis":[[0,1],[2],[],[-1]]
+		},
+		{
+			"key":{"x":"","y":"parameters.relative"},
+			"axis":[[0,1],[2],[],[-1]]
+		},
+		{
+			"key":{"x":"M","y":"parameters.relative.mean"},
+			"axis":[[],[],[],[-1]]
+		},
+		{
+			"key":{"x":"M","y":"parameters.relative.mean"},
+			"axis":[[1],[],[],[0]],
+			"wrapper":{"wrapper":"mean","axis":[-1]}
+		}
 		],	
-	"null":{"iteration.hessian.M":null},
+	"null":{"iteration.hessian.M":null,"None.parameters.iteration.M":null},
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",
 		"None": "\\textrm{None}",
@@ -18,9 +31,12 @@
 		"constrained": "\\textrm{Constrained}",
 		"unconstrained": "\\textrm{Unconstrained}"
 	},
-	"cwd":null,
+	"cwd":"data",
 	"path": {
         "plot": "plot.pdf",
         "process": "process.hdf5"
-    }
+    },
+	"delimiter":".",
+    "load":1,
+	"dump":1
 }
