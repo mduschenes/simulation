@@ -244,8 +244,16 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if attr in attrs and kwarg in attrs[attr]:
 			if isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
 				string = texify(str(string))
+				if len(string.replace('$','')) == 0:
+					string = ''
 			elif isinstance(string,list):
 				string = [texify(substring) for substring in string]
+				string = ['' if len(substring.replace('$','')) == 0 else substring for substring in string]
+		if isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
+			if isinstance(string,str) and len(string.replace('$','')) == 0:
+				string = ''
+		elif isinstance(string,list):
+			string = ['' if isinstance(substring,str) and len(substring.replace('$','')) == 0 else substring for substring in string]
 		return string
 
 

@@ -32,17 +32,17 @@
 	"plot.obj":0
 	},
 "seed":{
-	"seed":123321,
+	"seed":12332,
 	"size":2,
-	"reset":123321,
+	"reset":12332,
 	"index":null
 	},
 "permutations":{
 	"permutations":{
+		"model.M":[100,200,300,400],
+		"model.M":[100,200,300,400],
+		"model.N":[4],
 		"model.M":[10,20,30,40,50,80,100,200],
-		"model.M":[100,200,300,400],
-		"model.M":[100,200,300,400],
-		"model.N":[3],
 		"optimize.iterations":[500],
 		"parameters.xy.method":["unconstrained"],
 		"model.system.architecture":["unconstrained"]
