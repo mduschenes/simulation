@@ -208,17 +208,20 @@ def setup(hyperparameters):
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	values = {'permutations':permutations,'seed':seeds}
 	index = {attr: hyperparameters[attr]['index'] for attr in values}
-	# formatter = lambda instance,value,values: '%d'%(instance)	
-	formatter = lambda instance,value,values: ('.'.join(['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]))
-	keys = {
-		formatter(instance,value,values):[v[1] for v in value]
-		for instance,value in enumerate(itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values)))
+	formatter = lambda instance,value,values: '%d'%(instance)	
+	# formatter = lambda instance,value,values: ('.'.join(['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]))
+	keys = {}
+	for instance,value in enumerate(itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
 		if allowed(
 			{attr: index[attr] for attr in index},
 			{attr: dict(zip(values,value))[attr] for attr in index},
 			{attr: values[attr] for attr in index},
-			)
-	}
+			):
+
+			key = formatter(instance,value,values)
+			value = [v[1] for v in value]
+
+			keys[key] = value
 
 	# Set settings with key and seed instances
 	
@@ -258,26 +261,23 @@ def setup(hyperparameters):
 				'path': {
 					attr: {
 						path: join(
-							key,
-							# split(settings[key]['hyperparameters']['sys']['path'][attr][path],directory=True),
 							split(settings[key]['hyperparameters']['sys']['path'][attr][path],file=True),
 							ext=split(settings[key]['hyperparameters']['sys']['path'][attr][path],ext=True),
-							root=join(cwd))
+							root=join(cwd,key))
 						for path in settings[key]['hyperparameters']['sys']['path'][attr]
 						}
 					for attr in settings[key]['hyperparameters']['sys']['path']
 				 	},
 				},
 			'job':{
-				'device': settings[key]['hyperparameters']['job'].pop('device'),
-				'args': [
-					join(split(settings[key]['hyperparameters']['job'].pop('job'),file_ext=True),abspath=True,root=join(cwd,key)),
-					join(settings[key]['hyperparameters']['job'].pop('cmd'),abspath=True),
-					join(cwd,key),
-					*(join(arg,abspath=True,root=join(cwd,key)) for arg in settings[key]['hyperparameters']['job'].pop('args'))
-					],
-				'path': settings[key]['hyperparameters']['job'].pop('path'),
-				'exe': settings[key]['hyperparameters']['job'].pop('exe'),
+				**settings[key]['hyperparameters']['job'],
+				'pwd': join(pwd,abspath=True,root=settings[key]['hyperparameters']['job'].pop('pwd')),
+				'cwd': join(cwd,abspath=True,root=settings[key]['hyperparameters']['job'].pop('cwd')),
+				'paths':{
+					**settings[key]['hyperparameters']['job'].get('paths',{}),
+					**{settings[key]['hyperparameters']['sys']['path']['config'][path]: settings[key]['hyperparameters'] for path in  ['settings']},
+					**{settings[key]['hyperparameters']['sys']['path']['config'][path]: settings[key]['hyperparameters'].get(path,{}) for path in  ['plot','process']},
+					}
 				}				
 			})
 
@@ -302,40 +302,41 @@ def setup(hyperparameters):
 		# Set job
 		settings[key]['job'] = settings[key]['hyperparameters']['job']
 
-		# Copy files		
-		sources = {}
-		destinations = {}
 
-		func = lambda key,iterable,elements: iterable.get(key,elements[key])
+		# # Copy files		
+		# sources = {}
+		# destinations = {}
 
-		# Set sources and destinations of files
-		attrs = paths
-		for attr in attrs:
-			sources[attr] = {}
-			destinations[attr] = {}
-			for path in paths[attr]:
-				sources[attr][path] = join(split(paths[attr][path],directory=True),split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(pwd))
-				destinations[attr][path] = join(split(paths[attr][path],file=1),ext=split(paths[attr][path],ext=1),root=join(cwd,key))
+		# func = lambda key,iterable,elements: iterable.get(key,elements[key])
 
-		# Dump files
-		attrs = ['config']
-		for attr in attrs:
-			for path in paths[attr]:
-				if path in ['settings']:
-					data = settings[key]['hyperparameters']
-					source = data
-					destination = destinations[attr][path]
-					dump(source,destination)
-				elif path in ['process','plot']:
-					data = load(sources[attr][path])
-					source = deepcopy(settings[key]['hyperparameters'].get(path,{}))
-					destination = destinations[attr][path]
-					updater(source,data,func=func)
-					dump(source,destination)					
-				else:
-					source = sources[attr][path]
-					destination = destinations[attr][path]
-					copy(source,destination)
+		# # Set sources and destinations of files
+		# attrs = paths
+		# for attr in attrs:
+		# 	sources[attr] = {}
+		# 	destinations[attr] = {}
+		# 	for path in paths[attr]:
+		# 		sources[attr][path] = join(split(paths[attr][path],directory=True),split(paths[attr][path],file=True),ext=split(paths[attr][path],ext=True),root=join(pwd))
+		# 		destinations[attr][path] = join(split(paths[attr][path],file=True),ext=split(paths[attr][path],ext=True),root=join(cwd,key))
+
+		# # Dump files
+		# attrs = ['config']
+		# for attr in attrs:
+		# 	for path in paths[attr]:
+		# 		if path in ['settings']:
+		# 			data = settings[key]['hyperparameters']
+		# 			source = data
+		# 			destination = destinations[attr][path]
+		# 			dump(source,destination)
+		# 		elif path in ['process','plot']:
+		# 			data = load(sources[attr][path])
+		# 			source = deepcopy(settings[key]['hyperparameters'].get(path,{}))
+		# 			destination = destinations[attr][path]
+		# 			updater(source,data,func=func)
+		# 			dump(source,destination)					
+		# 		else:
+		# 			source = sources[attr][path]
+		# 			destination = destinations[attr][path]
+		# 			copy(source,destination)
 
 	return settings
 
@@ -350,13 +351,23 @@ def run(hyperparameters):
 
 	settings = setup(hyperparameters)
 
-	for key in settings:		
+	job = {key: settings[key]['job'] for key in settings}
+	for key in job:
+		print(key)
+		print(job[key])
+		print()
+	exit()
 
-		if not any(settings[key]['boolean'].get(attr) for attr in ['load','dump','train','plot.obj']):
-			continue
+	# for key in settings:		
+
+	# 	if not any(settings[key]['boolean'].get(attr) for attr in ['load','dump','train','plot.obj']):
+	# 		continue
 		
-		job = settings[key]['job']
-		settings[key]['object'] = submit(**job)
+	# 	job = {key: settings[key]['job'] for key in settings}
+	# 	print(key)
+	# 	print(job)
+	# 	print()
+	# 	# settings[key]['object'] = submit(**job)
 
 
 	if any(settings[key]['boolean'].get('plot') for key in settings):

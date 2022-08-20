@@ -43,6 +43,7 @@
 		"model.M":[100,200,300,400],
 		"model.N":[4],
 		"model.M":[10,20,30,40,50,80,100,200],
+		"model.M":[10,20],
 		"optimize.iterations":[500],
 		"parameters.xy.method":["unconstrained"],
 		"model.system.architecture":["unconstrained"]
@@ -198,12 +199,15 @@
 },
 "job":{
 	"job":"config/job.slurm",
-	"cmd":"../src/train.py",
-	"args":["settings.json"],
-	"path":".",
+	"args":{"JOB_CMD":"../src/train.py","JOB_ARGS":"settings.json"},
+	"paths":{},
+	"patterns":{"array":"0-0:1%20"},
+	"pwd":null,
+	"cwd":null,
+	"tasks":true,
 	"device":"slurm",
 	"device":"pc",
-	"exe":true
+	"execute":false
 	},
 "process": {},
 "plot": {}

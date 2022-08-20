@@ -17,9 +17,28 @@ logger = logging.getLogger(__name__)
 debug = 0
 
 # Import user modules
+ROOT = os.path.dirname(os.path.abspath(__file__))
+PATHS = ['','..']
+for PATH in PATHS:
+	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
 from src.utils import array,is_array,is_ndarray
 from src.utils import returnargs
 from src.utils import scalars,nan
+
+class cd(object):
+	'''
+	Class to safely change paths and return to previous path
+	Args:
+		path (str): Path to change to
+	'''
+	def __init__(self,path):
+		self.path = path
+	def __enter__(self):
+		self.cwd = os.getcwd()
+		os.chdir(self.path)
+	def __exit__(self,etype, value, traceback):
+		os.chdir(self.cwd)
 
 
 def mkdir(path):
