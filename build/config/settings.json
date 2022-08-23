@@ -1,8 +1,8 @@
 {
 "class":"src.quantum.Unitary",
 "sys":{
-	"pwd":".",
-	"cwd":"data",
+	"pwd":"config",
+	"cwd":null,
 	"path":{
 		"data":{
 			"model":"model.pkl",
@@ -10,17 +10,13 @@
 			"settings":"settings.json",
 			"log":"log.log"
 			},
-		"plot":{
-			"plot":"plot.pdf",
-			"process":"process.hdf5"
-			},
 		"config":{
-			"settings":"config/settings.json",
-			"plot":"config/plot.json",
-			"process":"config/process.json",
-			"mplstyle":"config/plot.mplstyle",
-			"job":"config/job.slurm",
-			"logger":"config/logging.conf"
+			"settings":"settings.json",
+			"plot":"plot.json",
+			"process":"process.json",
+			"mplstyle":"plot.mplstyle",
+			"job":"job.slurm",
+			"logger":"logging.conf"
 			}
 		}
 	},
@@ -28,13 +24,12 @@
 	"train":1,
 	"load":0,
 	"dump":1,
-	"plot":0,
-	"plot.obj":0
+	"plot":0
 	},
 "seed":{
-	"seed":123321,
+	"seed":12332,
 	"size":1,
-	"reset":123321,
+	"reset":12332,
 	"index":null
 	},
 "permutations":{
@@ -44,7 +39,7 @@
 	"index":null
 	},
 "model":{
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -100,7 +95,6 @@
 		"category":"variable",
 		"method":"unconstrained",
 		"use":true,		
-		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
@@ -112,10 +106,8 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
@@ -190,13 +182,21 @@
 	"bounds":[-1,1]	
 },
 "job":{
-	"job":"config/job.slurm",
-	"cmd":"../src/train.py",
-	"args":["settings.json"],
-	"path":".",
+	"jobs":"job.slurm",
+	"args":{
+		"JOB_SRC":"/h/mduschen/code/simulation/src",
+		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
+		"JOB_CMD":"${JOB_SRC}/train.py",
+		"JOB_ARGS":"settings.json"
+		},
+	"paths":{},
+	"patterns":{"array":"0-0:1%20"},
+	"pwd":null,
+	"cwd":"data",
+	"process":"array",
 	"device":"slurm",
 	"device":"pc",
-	"exe":true
+	"execute":false
 	},
 "process": {},
 "plot": {}

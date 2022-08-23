@@ -110,13 +110,21 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	Returns:
 		paths (str): Joined path
 	'''	
-	path = os.path.join(*paths)
-	if ext is not None and not path.endswith('%s%s'%(delimiter,ext)):
-		path = delimiter.join([path,ext])
-	if root is not None:
-		if not os.path.dirname(path).startswith(root):
-			path = os.path.join(root,path)
-	if abspath:
+	paths = [path for path in paths if path not in ['',None]]
+	if len(paths)>0:
+		path = os.path.join(*paths)
+	else:
+		path = ''
+	if path is not None and ext is not None and not path.endswith('%s%s'%(delimiter,ext)):
+		paths = [path,ext]
+		paths = [path for path in paths if path not in ['',None]]		
+		path = delimiter.join(paths)
+	if path is not None and root is not None:
+		if not os.path.abspath(os.path.dirname(path)).startswith(os.path.abspath(root)):
+			paths = [root,path]
+			paths = [path for path in paths if path not in ['',None]]
+			path = os.path.join(*paths)
+	if path is not None and abspath:
 		path = os.path.abspath(path)
 	return path
 

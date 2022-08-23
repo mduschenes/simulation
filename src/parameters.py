@@ -54,6 +54,7 @@ def _variables(parameters,hyperparameters,parameter,group):
 	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
 	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
+	scale = [1,1]
 	index = hyperparameters[parameter]['group'].index(group)
 	if method in ['constrained']:
 		if parameter in ['xy'] and group in [('x',)]:
@@ -241,7 +242,61 @@ def _gradients(parameters,hyperparameters,parameter,group):
 	
 	return grad	
 
-def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=None):
+
+def check(hyperparameters,cls=None):
+	'''
+	Check hyperparameters
+	Args:	
+		hyperparameters (dict): Hyperparameters
+		cls (object): Class instance
+	'''
+
+	# Update with checked values
+	updates = {
+		**{attr: {
+			'value': (lambda parameter,hyperparameters,attr=attr: {kwarg: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
+				for i in hyperparameters[parameter][attr][kwarg]] 
+				for kwarg in hyperparameters[parameter][attr]}),
+			'default': (lambda parameter,hyperparameters: {}),
+			'conditions': (lambda parameter,hyperparameters: True)				
+			} for attr in ['boundaries','constants']
+		},
+		'group': {
+			'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters[parameter]['group']]),
+			'default': (lambda parameter,hyperparameters: []),
+			'conditions': (lambda parameter,hyperparameters: True)				
+		},
+		**{attr: {
+			'value': (lambda parameter,hyperparameters,attr=attr: {
+				**hyperparameters[parameter][attr],
+				**{kwarg: getattr(cls,kwarg) for kwarg in cls.__dict__ 
+					if isinstance(getattr(cls,kwarg),scalars)
+					},
+				**{kwarg: getattr(np,kwarg)(hyperparameters[parameter]['parameters']) if hyperparameters[parameter].get('parameters') 
+						  else getattr(np,kwarg)(hyperparameters[parameter]['bounds']['parameters'])
+					for kwarg in ['min','max']
+					}, 
+				}),
+			'default': (lambda parameter,hyperparameters,attr=attr: {}),
+			'conditions': (lambda parameter,hyperparameters,attr=attr: True)						
+			} for attr in ['kwargs']
+		},		
+	}
+	for parameter in hyperparameters:
+		for attr in updates:
+			hyperparameters[parameter][attr] = hyperparameters[parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
+			if updates[attr]['conditions'](parameter,hyperparameters):
+				if callable(updates[attr]['value'](parameter,hyperparameters)):
+					for group in hyperparameters[parameter]['group']:
+							group = tuple(group)
+							hyperparameters[parameter][attr][group] = jit(partial(updates[attr]['value'](parameter,hyperparameters),hyperparameters=hyperparameters,parameter=parameter,group=group))
+				else:
+					hyperparameters[parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
+
+	return 
+
+
+def parameterize(data,shape,hyperparameters,check=None,initialize=None,cls=None,dtype=None):
 	'''
 	Initialize data of shapes of parameters based on shape of data
 	Args:
@@ -256,6 +311,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 			'constants':dict[str,iterable[dict[str,iterable]]] : dictionary of constant indices and values of each axis of each parameter layer {'layer':[{'slice':[indices_axis],'value':[values_axis]}]}
 		check (callable): Function with signature check(group,index,axis) to check if index of data for axis corresponds to group
 		initialize (callable): Function with signature initialize(parameters,shape,hyperparameters,reset=None,dtype=None) to initialize parameter values
+		cls (object): Class instance to update hyperparameters		
 		dtype (data_type): Data type of values		
 	Returns:
 		attributes (dict): Dictionary of parameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
@@ -366,6 +422,10 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,dtype=Non
 	# plus subtracting shapes corresponding with boundaries and constants
 
 	#time = timer()
+
+
+	# Check hyperparameters
+	check(hyperparameters,cls=cls)
 
 	# Get number of dimensions of data
 	ndim = len(shape)

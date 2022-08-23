@@ -155,7 +155,17 @@ def toffoli(shape,bounds,random,seed,dtype):
 	return data	
 
 
-def operatorize(data,shape,hyperparameters,size=None,dtype=None):
+def check(hyperparameters,cls=None):
+	'''
+	Check hyperparameters
+	Args:	
+		hyperparameters (dict): Hyperparameters
+		cls (object): Class instance
+	'''
+
+	return
+
+def operatorize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
 	'''
 	Initialize operators
 	Args:
@@ -163,10 +173,14 @@ def operatorize(data,shape,hyperparameters,size=None,dtype=None):
 		shape (iterable[int]): Shape of operator
 		hyperparameters (dict): Dictionary of hyperparameters for operator
 		size (int): size to initialize operator
+		cls (object): Class instance to update hyperparameters		
 		dtype (data_type): Data type of operator
 	Returns:
 		data (array): Array of operator
 	'''
+
+	# Check hyperparameters
+	check(hyperparameters,cls=cls)
 
 	# Dimension of data
 	d = min(shape)

@@ -2988,6 +2988,32 @@ def generator(stop=None):
 	return wrap
 
 
+def union(*iterables):
+	'''
+	Get union of elements in iterables
+	Args:
+		iterables (iterable[iterable]): Iterables
+	Returns:
+		union (set): Union of iterables
+	'''
+
+	union = set().union(*iterables)
+	return union
+
+def intersection(*iterables):
+	'''
+	Get intersection of elements in iterables
+	Args:
+		iterables (iterable[iterable]): Iterables
+	Returns:
+		intersection (set): Intersection of iterables
+	'''
+	intersection = union(*iterables)
+
+	for iterable in iterables:
+	    intersection = intersection.intersection(set(iterable))
+
+	return intersection
 
 def copier(key,value,_copy):
 	'''

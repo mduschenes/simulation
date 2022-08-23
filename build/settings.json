@@ -1,8 +1,8 @@
 {
 "class":"src.quantum.Unitary",
 "sys":{
-	"pwd":".",
-	"cwd":"data",
+	"pwd":"config",
+	"cwd":null,
 	"path":{
 		"data":{
 			"model":"model.pkl",
@@ -10,17 +10,13 @@
 			"settings":"settings.json",
 			"log":"log.log"
 			},
-		"plot":{
-			"plot":"plot.pdf",
-			"process":"process.hdf5"
-			},
 		"config":{
-			"settings":"config/settings.json",
-			"plot":"config/plot.json",
-			"process":"config/process.json",
-			"mplstyle":"config/plot.mplstyle",
-			"job":"config/job.slurm",
-			"logger":"config/logging.conf"
+			"settings":"settings.json",
+			"plot":"plot.json",
+			"process":"process.json",
+			"mplstyle":"plot.mplstyle",
+			"job":"job.slurm",
+			"logger":"logging.conf"
 			}
 		}
 	},
@@ -28,8 +24,7 @@
 	"train":1,
 	"load":0,
 	"dump":1,
-	"plot":0,
-	"plot.obj":0
+	"plot":0
 	},
 "seed":{
 	"seed":12332,
@@ -198,13 +193,18 @@
 	"bounds":[-1,1]	
 },
 "job":{
-	"job":"config/job.slurm",
-	"args":{"JOB_CMD":"../src/train.py","JOB_ARGS":"settings.json"},
+	"jobs":"job.slurm",
+	"args":{
+		"JOB_SRC":"/h/mduschen/code/simulation/src",
+		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
+		"JOB_CMD":"train.py",
+		"JOB_ARGS":"settings.json"
+		},
 	"paths":{},
 	"patterns":{"array":"0-0:1%20"},
 	"pwd":null,
-	"cwd":null,
-	"tasks":true,
+	"cwd":"data",
+	"process":"array",
 	"device":"slurm",
 	"device":"pc",
 	"execute":false

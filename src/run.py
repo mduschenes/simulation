@@ -2,13 +2,7 @@
 
 # Import python modules
 import os,sys,itertools,functools,datetime
-from copy import deepcopy as deepcopy
-
-import matplotlib
-import matplotlib.pyplot as plt
-
-# Logging
-import logging
+from copy import deepcopy
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -16,108 +10,11 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import logconfig,PRNGKey,delim,partial
-from src.dictionary import updater,getter,setter,permuter,leaves,grow
+from src.utils import PRNGKey,delim,partial
+from src.dictionary import updater,getter,setter,permuter,clearer,leaves,grow
 from src.io import load,dump,join,split
-from src.call import copy
-from src.call import submit
 from src.process import process
-from src.train import train
-
-def plotter(hyperparameters):
-	'''
-	Plot models
-	Args:
-		hyperparameters (dict): Hyperparameters
-	'''	
-
-	# Get paths and kwargs
-
-	paths = {
-		'data':('sys','path','data','data'),
-		'settings':('sys','path','config','plot'),
-		'hyperparameters':('sys','path','config','process'),
-		}
-	
-	kwargs = {kwarg: [] for kwarg in paths}
-
-	for kwarg in kwargs:
-		for key in hyperparameters:
-			path = hyperparameters[key]
-			for i in paths[kwarg]:
-				path = path[i]
-			kwargs[kwarg].append(path)
-
-	fig,ax = process(**kwargs)
-	return
-
-
-
-def check(hyperparameters):
-	'''
-	Check hyperparameters
-	Args:
-		hyperparameters (dict,str): Hyperparameters
-	'''
-
-	# Check hyperparameters
-	default = {}
-	if hyperparameters is None:
-		hyperparameters = default
-	elif isinstance(hyperparameters,str):
-		hyperparameters = load(hyperparameters,default=default)
-
-	# Check sections for correct attributes
-	section = 'sys'
-	updates = {
-		**{attr: {
-			'value': (lambda hyperparameters,attr=attr: '' if hyperparameters[section].get(attr) is None else hyperparameters[section][attr]),
-			'default': (lambda hyperparameters: ''),
-			'conditions': (lambda hyperparameters: (True))
-			} for attr in ['pwd','cwd']
-		},		
-		'path': {
-			'value': (lambda hyperparameters: 	{
-				attr: {
-					path: join(
-						split(hyperparameters[section]['path'][attr][path],directory=True),
-						'.'.join(split(hyperparameters[section]['path'][attr][path],file=True).split('.')[:]),
-						ext=split(hyperparameters[section]['path'][attr][path],ext=True),
-					)
-					for path in hyperparameters[section]['path'][attr]
-					}
-				for attr in hyperparameters[section]['path']
-				}),
-			'default': (lambda hyperparameters: {}),
-			'conditions': (lambda hyperparameters: (hyperparameters[section].get('path') is not None))
-		},		
-	}			
-	for attr in updates:						
-		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
-	section = 'process'
-	updates = {
-		'path': {
-			'value': (lambda hyperparameters: 	{
-				path: join(
-					split(hyperparameters['sys']['path']['plot'][path],directory=True),
-					'.'.join(split(hyperparameters['sys']['path']['plot'][path],file=True).split('.')[:]),
-					ext=split(hyperparameters['sys']['path']['plot'][path],ext=True)
-				)
-				for path in hyperparameters['sys']['path']['plot']
-				}),
-			'default': (lambda hyperparameters: {}),
-			'conditions': (lambda hyperparameters: (hyperparameters[section].get('path') is not None))
-		},		
-	}			
-	for attr in updates:						
-		hyperparameters[section][attr] = hyperparameters[section].get(attr,updates[attr]['default'](hyperparameters))
-		if updates[attr]['conditions'](hyperparameters):
-			hyperparameters[section][attr] = updates[attr]['value'](hyperparameters)
-
-	return
+from src.call import submit
 
 
 def allowed(index,value,values):
@@ -155,10 +52,9 @@ def setup(hyperparameters):
 	Setup hyperparameters
 	Args:
 		hyperparameters (dict,str): Hyperparameters
+	Returns:
+		jobs (dict): Job submission dictionary
 	'''
-
-	# Get settings
-	settings = {}	
 
 	# Load default hyperparameters
 	default = {}
@@ -171,8 +67,6 @@ def setup(hyperparameters):
 	default = {}
 	func = lambda key,iterable,elements: iterable.get(key,elements[key])
 	updater(hyperparameters,load(path,default=default),func=func)
-
-	check(hyperparameters)
 
 	# Get timestamp
 	timestamp = datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')
@@ -223,29 +117,15 @@ def setup(hyperparameters):
 
 			keys[key] = value
 
-	# Set settings with key and seed instances
-	
+	# Set hyperparameters with key and seed instances
+	old = [attr for attr in hyperparameters]
+	new = {key: deepcopy(hyperparameters) for key in keys}
+	clearer(hyperparameters,new,old)
+
 	for key in keys:
-
-		# Set attributes
-		attrs = ['seed','hyperparameters','boolean','object','job']
-		settings[key] = {}
-		for attr in attrs:
-			settings[key][attr] = {}
-
-		# Get paths
-		pwd = deepcopy(hyperparameters['sys']['pwd'])
-		cwd = deepcopy(hyperparameters['sys']['cwd'])
-		paths = deepcopy(hyperparameters['sys']['path'])
 
 		# Set seed and key values
 		values = dict(zip(values,keys[key]))
-
-		# Set seed
-		settings[key]['seed'] = seed
-
-		# Set hyperparameters updates with key/instance dependent settings
-		settings[key]['hyperparameters'] = deepcopy(hyperparameters)
 
 		updates = {}	
 
@@ -257,28 +137,6 @@ def setup(hyperparameters):
 					'timestamp':timestamp,
 					},
 				},
-			'sys':{
-				'path': {
-					attr: {
-						path: join(
-							split(settings[key]['hyperparameters']['sys']['path'][attr][path],file=True),
-							ext=split(settings[key]['hyperparameters']['sys']['path'][attr][path],ext=True),
-							root=join(cwd,key))
-						for path in settings[key]['hyperparameters']['sys']['path'][attr]
-						}
-					for attr in settings[key]['hyperparameters']['sys']['path']
-				 	},
-				},
-			'job':{
-				**settings[key]['hyperparameters']['job'],
-				'pwd': join(pwd,abspath=True,root=settings[key]['hyperparameters']['job'].pop('pwd')),
-				'cwd': join(cwd,abspath=True,root=settings[key]['hyperparameters']['job'].pop('cwd')),
-				'paths':{
-					**settings[key]['hyperparameters']['job'].get('paths',{}),
-					**{settings[key]['hyperparameters']['sys']['path']['config'][path]: settings[key]['hyperparameters'] for path in  ['settings']},
-					**{settings[key]['hyperparameters']['sys']['path']['config'][path]: settings[key]['hyperparameters'].get(path,{}) for path in  ['plot','process']},
-					}
-				}				
 			})
 
 		for branch,leaf in zip(seedlings,values['seed']):
@@ -286,59 +144,41 @@ def setup(hyperparameters):
 
 		# Update hyperparameters
 		setter(updates,values['permutations'],delimiter=delim,copy=True)
-		updater(settings[key]['hyperparameters'],updates,copy=True)
-		check(settings[key]['hyperparameters'])
-
-		# Set booleans
-		settings[key]['boolean'] = {attr: (
-				(hyperparameters['boolean'].get(attr,False)) 
-				# (attr not in ['train'] or not hyperparameters['boolean'].get('load',False))
-				)
-				for attr in hyperparameters['boolean']}
-
-		# Set object
-		settings[key]['object'] = None
-
-		# Set job
-		settings[key]['job'] = settings[key]['hyperparameters']['job']
+		updater(hyperparameters[key],updates,copy=True)
 
 
-		# # Copy files		
-		# sources = {}
-		# destinations = {}
+	# Set job
+	jobs = {}
+	for key in keys:
+	
+		job = hyperparameters[key]['job']
 
-		# func = lambda key,iterable,elements: iterable.get(key,elements[key])
+		for attr in job:
+			if attr not in jobs:
+				jobs[attr] = {}
+			
+			if attr in ['jobs']:
+				jobs[attr][key] = job[attr]
+			elif attr in ['args']:
+				jobs[attr][key] = job[attr]
+			elif attr in ['paths']:
+				jobs[attr][key] = {
+					**job.get('paths',{}),
+					**{hyperparameters[key]['sys']['path']['config'][path]: None
+						for path in hyperparameters[key]['sys']['path']['config']},
+					**{hyperparameters[key]['sys']['path']['config'][path]: hyperparameters[key] 
+						for path in ['settings']},
+					**{hyperparameters[key]['sys']['path']['config'][path]: hyperparameters[key].get(path,{}) 
+						for path in  ['plot','process']},
+					}
+			elif attr in ['patterns']:
+				jobs[attr][key] = job[attr]
+			elif attr in ['pwd','cwd']:
+				jobs[attr] = join(hyperparameters[key]['sys'][attr],root=job.get(attr))
+			else:
+				jobs[attr] = job[attr]
 
-		# # Set sources and destinations of files
-		# attrs = paths
-		# for attr in attrs:
-		# 	sources[attr] = {}
-		# 	destinations[attr] = {}
-		# 	for path in paths[attr]:
-		# 		sources[attr][path] = join(split(paths[attr][path],directory=True),split(paths[attr][path],file=True),ext=split(paths[attr][path],ext=True),root=join(pwd))
-		# 		destinations[attr][path] = join(split(paths[attr][path],file=True),ext=split(paths[attr][path],ext=True),root=join(cwd,key))
-
-		# # Dump files
-		# attrs = ['config']
-		# for attr in attrs:
-		# 	for path in paths[attr]:
-		# 		if path in ['settings']:
-		# 			data = settings[key]['hyperparameters']
-		# 			source = data
-		# 			destination = destinations[attr][path]
-		# 			dump(source,destination)
-		# 		elif path in ['process','plot']:
-		# 			data = load(sources[attr][path])
-		# 			source = deepcopy(settings[key]['hyperparameters'].get(path,{}))
-		# 			destination = destinations[attr][path]
-		# 			updater(source,data,func=func)
-		# 			dump(source,destination)					
-		# 		else:
-		# 			source = sources[attr][path]
-		# 			destination = destinations[attr][path]
-		# 			copy(source,destination)
-
-	return settings
+	return jobs
 
 
 
@@ -349,29 +189,8 @@ def run(hyperparameters):
 		hyperparameters (dict,str): hyperparameters
 	'''		
 
-	settings = setup(hyperparameters)
+	jobs = setup(hyperparameters)
 
-	job = {key: settings[key]['job'] for key in settings}
-	for key in job:
-		print(key)
-		print(job[key])
-		print()
-	exit()
-
-	# for key in settings:		
-
-	# 	if not any(settings[key]['boolean'].get(attr) for attr in ['load','dump','train','plot.obj']):
-	# 		continue
-		
-	# 	job = {key: settings[key]['job'] for key in settings}
-	# 	print(key)
-	# 	print(job)
-	# 	print()
-	# 	# settings[key]['object'] = submit(**job)
-
-
-	if any(settings[key]['boolean'].get('plot') for key in settings):
-		hyperparameters = {key: settings[key]['hyperparameters'] for key in settings if settings[key]['boolean'].get('plot')}
-		plotter(hyperparameters)		
+	submit(**jobs)
 
 	return

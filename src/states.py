@@ -34,7 +34,7 @@ for PATH in PATHS:
 from src.utils import vmap,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
 from src.utils import slice_slice
-from src.utils import pi,e
+from src.utils import pi,e,scalars
 
 from src.io import load,dump,join,split
 
@@ -71,7 +71,18 @@ def haar(shape,bounds,random,seed,dtype):
 	return data
 
 
-def stateize(data,shape,hyperparameters,size=None,dtype=None):
+def check(hyperparameters,cls=None):
+	'''
+	Check hyperparameters
+	Args:	
+		hyperparameters (dict): Hyperparameters
+		cls (object): Class instance
+	'''
+
+	return
+
+
+def stateize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
 	'''
 	Initialize data of states based on shape
 	Args:
@@ -85,10 +96,13 @@ def stateize(data,shape,hyperparameters,size=None,dtype=None):
 			'seed': int: random seed
 			'bounds': iterable[float]: bounds on states
 		size (int): Size of state
+		cls (object): Class instance to update hyperparameters
 		dtype (data_type): Data type of values		
 	Returns:
 		states (array): Array of states
 	'''
+
+	check(hyperparameters,cls=cls)
 
 	# Shape of data
 	if isinstance(shape,int):

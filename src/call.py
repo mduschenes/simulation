@@ -2,15 +2,8 @@
 
 # Import python modules
 import os,sys,warnings,itertools,inspect,traceback
+from copy import deepcopy
 import subprocess
-import shutil
-import glob as globber
-import importlib
-import json,jsonpickle,h5py,pickle,dill
-import numpy as np
-import pandas as pd
-
-from natsort import natsorted, ns,index_natsorted,order_by_index
 
 # Logging
 import logging
@@ -23,43 +16,82 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+from src.utils import intersection
 from src.io import cd,mkdir,join,split,load,dump
+from src.dictionary import updater
 
+def _submit(job,args,device=None,execute=True,**kwargs):
+	'''
+	Update submit arguments
+	Args:
+		job (str): Submission script
+		args (dict[str,str]): Arguments to pass to command line {arg:value}
+		device (str): Name of device to submit to
+		execute (boolean): Boolean whether to issue commands		
+		kwargs (dict): Additional keyword arguments to update arguments
+	Returns:
+		args (iterable[str]): Updated submit arguments
+	'''
 
-DEVICES = {
-	'pc': {
-		'submit': lambda job,args,cwd='.',key='',size=1,tasks=True: ['.',join(cwd,job) if tasks else join(cwd,key,job),*[join(cwd,key,args[arg]) for arg in args]],
-		'update': lambda pattern,value='.*':'.*#SBATCH --%s=%s'%(pattern,value),
-		'tasks': lambda patterns,cwd='.',key='',size=1,tasks=True: {
-			**{pattern: '%d-%d:%s'%(0,size-1,':'.join(patterns.get(pattern,'').split(':')[1:])) for pattern in ['array']},
-			**{pattern: join(cwd,key,'%x.%A.%a',ext='stdout') for pattern in ['output']},
-			**{pattern: join(cwd,key,'%x.%A.%a',ext='stderr') for pattern in ['error']},
-			},
-		},		
-	'slurm': {
-		'submit': lambda job,args,cwd='.',key='',size=1,tasks=True: ['sbatch','<',join(cwd,job) if tasks else join(cwd,key,job),'%s=%s'%('--export',','.join(['%s=%s'%(arg,join(cwd,'$SLURM_ARRAY_TASK_ID',args[arg])) for arg in args]))],
-		'update': lambda pattern,value='.*':'.*#SBATCH --%s=%s'%(pattern,value),
-		'tasks': lambda patterns,cwd='.',key='',size=1: {
-			**{pattern: '%d-%d:%s'%(0,size-1,':'.join(patterns.get(pattern,'').split(':')[1:])) for pattern in ['array']},
-			**{pattern: join(cwd,'$SLURM_ARRAY_TASK_ID','%x.%A.%a',ext='stdout') for pattern in ['output']},
-			**{pattern: join(cwd,'$SLURM_ARRAY_TASK_ID','%x.%A.%a',ext='stderr') for pattern in ['error']},
-			},		
-		},
-	None: {
-		'submit': lambda job,args: ['.',job,*[args[arg] for arg in args]],
-		'update': lambda pattern,value='.*':'.*#SBATCH --%s=%s'%(pattern,value),
-		'tasks': lambda patterns,cwd='.',key='',size=1: {
-			**{pattern: '%d-%d:%s'%(0,size-1,':'.join(patterns.get(pattern,'').split(':')[1:])) for pattern in ['array']},
-			**{pattern: join(cwd,key,'%x.%A.%a',ext='stdout') for pattern in ['output']},
-			**{pattern: join(cwd,key,'%x.%A.%a',ext='stderr') for pattern in ['error']},
-			},
-		},
-	}
+	if device in ['pc']:
+		exe = ['.',job]
+		flags = []
+		cmd = [args[arg] for arg in args]
+	elif device in ['slurm']:
+		exe = ['sbatch','<',job]
+		flags = []
+		cmd = ['%s=%s'%('--export',','.join(['%s=%s'%(arg,args[arg]) for arg in args]))]
+	else:
+		exe = ['.',job]
+		flags = []
+		cmd = [args[arg] for arg in args]						
 
-attrs = ['submit','update','tasks']
-for device in DEVICES:
-	for attr in attrs:
-		assert attr in DEVICES[device], 'device: %s , attr: "%s" not in allowed %r'%(device,attr,list(DEVICES[device]))
+	args = [*exe,*flags,*cmd]
+
+	return args
+
+def _update(attr,device,**kwargs):
+	'''
+	Update submit settings
+	Args:
+		attr (str): Setting to update
+		device (str): Name of device to submit to
+		kwargs (dict): Additional keyword arguments to update settings
+	Returns:
+		returns (object): Updated setting
+	'''
+
+	if attr in ['update']:
+		pattern = '.*#SBATCH --%s=%s'%(kwargs.get('pattern'),retruns.get('value','.*'))
+
+		returns = pattern
+
+	elif attr in ['patterns']:
+		if kwargs.get('process') in ['serial','pattern']:
+			null = ['array']
+			patterns = {
+				**kwargs.get('patterns',{}),
+				**{pattern: join(kwargs.get('patterns',{}).get(pattern,'.')) for pattern in ['chdir']},
+				**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
+				**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},
+			}
+		elif kwargs.get('process') in ['array']:
+			null = []
+			patterns = {
+				**kwargs.get('patterns',{}),				
+				**{pattern: join(kwargs.get('patterns',{}).get(pattern),'%a') for pattern in ['chdir']},
+				**{pattern: '%d-%d:%s'%(0,kwargs.get('size',1),':'.join(kwargs.get('patterns',{}).get(pattern,'').split(':')[1:])) for pattern in ['array']},
+				**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
+				**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},
+			}
+
+		for pattern in null:
+			patterns.pop(pattern)
+
+		returns = patterns
+
+	return returns
+
 
 
 def call(*args,path='.',wrapper=None,device=None,execute=True,**kwargs):
@@ -142,7 +174,7 @@ def sed(path,patterns,default=None,device=None,execute=True):
 	GNU sed replace patterns in path
 	Args:
 		path (str): Path of file
-		patterns (dict[str,str]): Patt
+		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 	'''
@@ -153,8 +185,8 @@ def sed(path,patterns,default=None,device=None,execute=True):
 	delimiters = [',','#','/','$']
 	replacements = {r"-":r"\-",r" ":r"\ "}
 
-	exe = 'sed'
-	options = ['-i']
+	exe = ['sed']
+	flags = ['-i']
 
 	for pattern in patterns:
 
@@ -180,7 +212,9 @@ def sed(path,patterns,default=None,device=None,execute=True):
 		for replacement in replacements:
 			cmd = cmd.replace(replacement,replacements[replacement])
 
-		args=[exe,*options,cmd,path]
+		cmd = [cmd,path]
+
+		args=[*exe,*flags,*cmd]
 
 		result = call(*args,device=device,execute=execute)
 
@@ -216,54 +250,55 @@ def search(path,pattern,device=None,execute=True):
 
 	args = []
 
-	exe = 'awk'
-	options = []
+	exe = ['awk']
+	flags = []
 	cmd = ["'/%s/ {print FNR}'"%(pattern),path]
-	args.append([exe,*options,*cmd])
+	args.append([*exe,*flags,*cmd])
 
-	exe = 'tail'
-	options = ['--lines=1']
+	exe = ['tail']
+	flags = ['--lines=1']
 	cmd = []
-	args.append([exe,*options,*cmd])
+	args.append([*exe,*flags,*cmd])
 
 	result = call(*args,wrapper=wrapper,device=device,execute=execute)
 
 	return result
 
 	
-def update(path,patterns,device=None,exe=True):
+def update(path,patterns,device=None,execute=True,**kwargs):
 	'''	
 	Update path files with sed
 	Args:
 		path (str): Path of file
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
 		device (str): Name of device to submit to
-		exe (boolean): Boolean whether to issue commands		
+		execute (boolean): Boolean whether to issue commands		
+		kwargs (dict): Additional keyword arguments to update
 	'''
 
-	assert device in DEVICES, 'device: "%s" not in allowed %r'%(device,list(DEVICES))
-	
 	if path is None or patterns is None:
 		return
 
 	patterns = deepcopy(patterns)
 
+	patterns.update(_update(attr='patterns',device=device,patterns=patterns,**kwargs))
+
 	for pattern in patterns:
 		value = str(patterns.pop(pattern))
 
 		pattern,replacement = (
-			DEVICES[device]['update'](pattern=pattern),
-			DEVICES[device]['update'](pattern=pattern,value=value),
+			_update(attr='update',device=device,pattern=pattern,value='.*',**kwargs),
+			_update(attr='update',device=device,pattern=pattern,value=value,**kwargs)
 			)
 
 		patterns[pattern] = replacement
 
-	sed(path,patterns,default=default,device=device,exe=exe)
+	sed(path,patterns,default=default,device=device,execute=execute)
 
 	return
 
 
-def configure(paths,pwd=None,cwd=None,patterns={}):
+def configure(paths,pwd=None,cwd=None,patterns={},device=None,execute=True,**kwargs):
 	'''
 	Configure paths for jobs with copied/updated files
 	Args:
@@ -271,6 +306,10 @@ def configure(paths,pwd=None,cwd=None,patterns={}):
 		pwd (str): Input root path for files
 		cwd (str): Output root path for files
 		patterns (dict[str,dict[str,str]]): Patterns and values to update {path:{pattern: replacement}}
+		device (str): Name of device to submit to
+		execute (boolean): Boolean whether to issue commands
+		kwargs (dict): Additional keyword arguments to configure
+
 	'''
 
 	if paths is None:
@@ -300,71 +339,118 @@ def configure(paths,pwd=None,cwd=None,patterns={}):
 
 		pattern = patterns.get(path)
 
-		update(destination,pattern)
+		update(destination,pattern,**kwargs)
 
 	return
 
 
-def submit(job,args,pwd='.',cwd='.',paths={},patterns={},tasks=True,device=None,execute=True):
+def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process="serial",device=None,execute=True):
 	'''
 	Submit job commands to command line
 	Args:
-		job (str): Submission script
+		jobs (str,dict[str,str]): Submission script, or {key:job}
 		args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
-		pwd (str): Input root path for files
-		cwd (str): Output root path for files
 		paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
 		patterns (dict[str,dict[str,str]],dict[str,dict[str,dict[str,str]]]): Patterns to update files {path:{pattern:replacement}} or {key:{path:{pattern:replacement}}
-		tasks (boolean): Submit multiple keys as array of tasks, otherwise split into separate jobs
+		pwd (str): Input root path for files
+		cwd (str): Output root path for files		
+		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 	Returns:
 		stdouts (str,iterable[str]): Return of commands
 	'''
 
-	if all(isinstance(arg,str) for arg in args):
-		key = ''
-		args = {key:args}
+	keys = [None]
 
-	keys = list(args)
-	size = len(keys)
-	stdouts = []
+	if isinstance(jobs,str):
+		jobs = {key:jobs for key in keys}
 
-	if not all(key in paths for key in keys):
+	keys = intersection(jobs)
+
+	if all(isinstance(arg,str) for arg in args) or not len(args):
+		args = {key:args for key in keys}
+
+	keys = intersection(jobs,args)
+
+	if not all(key in paths for key in keys) or not len(paths):
 		paths = {key:paths for key in keys}
 
-	if not all(key in patterns for key in keys):
+	keys = intersection(jobs,args,paths)
+
+	if not all(key in patterns for key in keys) or not len(patterns):
 		patterns = {key:patterns for key in keys}
 
-	
+	keys = intersection(jobs,args,paths,patterns)
+
+	keys = list(sorted(keys))
+	size = len(keys)
+	cmds = {}
+	stdouts = []
+
+	if not size:
+		return
+
 	for key in keys:
 
-		if not tasks:
-			patterns[key].pop('array')
-		else:
-			pass
+		path = join(cwd,key)
 
-		path=join(cwd,key)
+		configure(pwd=pwd,cwd=path,paths=paths[key],patterns=patterns[key],device=device,size=size,process=process)
 
-		patterns[key].update(
-			DEVICES[device]['tasks'](patterns[key],cwd=cwd,key=key,size=size,tasks=tasks)
-			)
+		cmd = _submit(job=jobs[key],args=args[key],device=device,execute=execute)
+
+		cmds[key] = cmd
 
 
-		configure(pwd=pwd,cwd=path,paths=paths[key],patterns=patterns[key])
+	if process in ['serial']:
+		for key in keys:
 
-		cmd = DEVICES[device]['submit'](job,args[key],cwd=cwd,key=key,size=size,tasks=tasks)
+			key = key
 
-		if not tasks:
-			stdout = call(*cmd,path=path,device=device,execute=execute)
-			stdouts.append(stdout)
-		else:
-			source = join(job,root=(cwd,key))
-			destination = cwd
+			path = join(cwd,key)
+			cmd = cmds[key]
+			job = jobs[key]
+
+			source = join(job,root=pwd)
+			destination = path
 			copy(source,destination)
 
-	if tasks:
+			stdout = call(*cmd,path=path,device=device,execute=execute)
+
+			stdouts.append(stdout)
+
+	elif process in ['parallel']:
+		pass
+	
+	elif process in ['array']:
+
+		key = keys[-1]
+
 		path = cwd
+		cmd = cmds[key]
+		job = jobs[key]
+
+		source = join(job,root=pwd)
+		destination = path
+		copy(source,destination)
+
 		stdouts = call(*cmd,path=path,device=device,execute=execute)
+
+	else:
+		for key in keys:
+	
+			key = key
+
+			path = join(cwd,key)
+			cmd = cmds[key]
+			job = jobs[key]
+
+			source = join(job,root=pwd)
+			destination = path
+			copy(source,destination)
+
+			stdout = call(*cmd,path=path,device=device,execute=execute)
+
+			stdouts.append(stdout)
 
 	return stdouts

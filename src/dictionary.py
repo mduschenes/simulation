@@ -620,6 +620,27 @@ def replacer(iterable,key,replacement,append=False,copy=True,values=False):
 
 
 
+def clearer(dictionary,new,old):
+	'''
+	Clear dictionary and update new elements in-place
+	Args:
+		dictionary(dict): dictionary to update
+		new (dict): New dictionary to update
+		old (iterable): Old keys to clear
+	'''	
+	if new is None:
+		new = {}
+	if old is None:
+		old = []
+
+	dictionary.update(new)
+
+	for key in old:
+		dictionary.pop(key)
+	
+	return
+
+
 def formatstring(key,iterable,elements,*args,**kwargs):
 
 	'''

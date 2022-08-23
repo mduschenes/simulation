@@ -27,6 +27,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.run import run
+from src.train import train
 
 def main(args):
 
@@ -35,6 +36,7 @@ def main(args):
 	hyperparameters = args[0] if nargs>0 else None
 
 	run(hyperparameters)
+	# train(hyperparameters)
 
 	return
 

@@ -823,7 +823,7 @@ class Object(object):
 			interaction = []
 
 		names = [name for name in data 
-			if any(name in group 
+			if any(data[name]['string'] in group 
 				for parameter in hyperparameters['parameters'] 
 				for group in hyperparameters['parameters'][parameter]['group'] 
 				if hyperparameters['parameters'][parameter]['use'])]
@@ -867,106 +867,13 @@ class Object(object):
 			'''
 
 			# Update with class attributes
+			sections = ['model']
 			if cls is not None:
-				section = 'model'
-				if section not in hyperparameters:
-					hyperparameters[section] = {}
-				hyperparameters[section].update({attr: getattr(cls,attr) for attr in cls.__dict__ 
-					if attr in hyperparameters[section] and isinstance(getattr(cls,attr),scalars)})
-
-
-			section = 'parameters'
-			updates = {
-				# 'variables':{
-				# 	'value':(lambda parameter,hyperparameters: variables),
-				# 	'default':(lambda parameter,hyperparameters: {}),
-				# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('variables',{}) == {}),
-				# },
-				# 'features':{
-				# 	'value':(lambda parameter,hyperparameters: features),
-				# 	'default':(lambda parameter,hyperparameters: {}),
-				# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('features',{}) == {}),
-				# },		
-				# 'constraints':{
-				# 	'value':(lambda parameter,hyperparameters: constraints),
-				# 	'default': (lambda parameter,hyperparameters: {}),
-				# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('constraints',{}) == {}),
-				# },
-				# 'gradients':{
-				# 	'value':(lambda parameter,hyperparameters: gradients),
-				# 	'default':(lambda parameter,hyperparameters: {}),
-				# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('gradients',{}) == {}),			
-				# },			
-				# 'gradient_constraints':{
-				# 	'value':(lambda parameter,hyperparameters: gradient_constraints),
-				# 	'default': (lambda parameter,hyperparameters: {}),
-				# 	'conditions': (lambda parameter,hyperparameters: hyperparameters[section][parameter].get('gradient_constraints',{}) == {}),
-				# },
-				'boundaries': {
-					'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
-						for i in hyperparameters[section][parameter]['boundaries'][attr]] 
-						for attr in hyperparameters[section][parameter]['boundaries']}),
-					'default': (lambda parameter,hyperparameters: {}),
-					'conditions': (lambda parameter,hyperparameters: True)				
-				},
-				'constants': {
-					'value': (lambda parameter,hyperparameters: {attr: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
-						for i in hyperparameters[section][parameter]['constants'][attr]] 
-						for attr in hyperparameters[section][parameter]['constants']}),
-					'default': (lambda parameter,hyperparameters: []),
-					'conditions': (lambda parameter,hyperparameters: True)				
-				},		
-				'group': {
-					'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters[section][parameter]['group']]),
-					'default': (lambda parameter,hyperparameters: []),
-					'conditions': (lambda parameter,hyperparameters: True)				
-				},
-				**{attr: {
-					'value': (lambda parameter,hyperparameters,attr=attr: hyperparameters['hyperparameters'].get(attr)),
-					'default': (lambda parameter,hyperparameters,attr=attr: None),
-					'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
-					} for attr in ['scale','initialization','random','smoothness','interpolation','pad']
-				},
-				**{attr: {
-					'value': (lambda parameter,hyperparameters,attr=attr: {
-						**hyperparameters['parameters'][parameter][attr],
-						**{kwarg: hyperparameters[section][kwarg] 
-							for section in ['model'] 
-							for kwarg in hyperparameters[section]
-							if (
-							isinstance(hyperparameters[section][kwarg],scalars) and 
-							not isinstance(hyperparameters[section][kwarg],str)
-							)},
-						**{'min':min(hyperparameters['parameters'][parameter]['parameters']) if hyperparameters['parameters'][parameter].get('parameters') else hyperparameters['parameters'][parameter]['bounds']['parameters'][0], 
-						   'max':max(hyperparameters['parameters'][parameter]['parameters']) if hyperparameters['parameters'][parameter].get('parameters') else hyperparameters['parameters'][parameter]['bounds']['parameters'][1] 
-							}
-						}),
-					'default': (lambda parameter,hyperparameters,attr=attr: {}),
-					'conditions': (lambda parameter,hyperparameters,attr=attr: True)						
-					} for attr in ['kwargs']
-				},		
-				**{attr: {
-					'value': (lambda parameter,hyperparameters,attr=attr: None),
-					'default': (lambda parameter,hyperparameters,attr=attr: None),
-					'conditions': (lambda parameter,hyperparameters,attr=attr: hyperparameters['parameters'][parameter].get(attr) is None)						
-					} for attr in ['seed']
-				},		
-				'locality': {
-					'value':(lambda parameter,hyperparameters: hyperparameters['hyperparameters']['locality']),
-					'default':(lambda parameter,hyperparameters: None),
-					'conditions': (lambda parameter,hyperparameters: hyperparameters['hyperparameters'].get('locality') is not None)
-				},				
-			}
-			for parameter in hyperparameters[section]:
-				for attr in updates:
-					hyperparameters[section][parameter][attr] = hyperparameters[section][parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
-					if updates[attr]['conditions'](parameter,hyperparameters):
-						if callable(updates[attr]['value'](parameter,hyperparameters)):
-							for group in hyperparameters[section][parameter]['group']:
-									group = tuple(group)
-									hyperparameters[section][parameter][attr][group] = jit(partial(updates[attr]['value'](parameter,hyperparameters),hyperparameters=hyperparameters,parameter=parameter,group=group))
-						else:
-							hyperparameters[section][parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
+				for section in sections:
+					if section not in hyperparameters:
+						hyperparameters[section] = {}
+					hyperparameters[section].update({attr: getattr(cls,attr) for attr in cls.__dict__ 
+						if attr in hyperparameters[section] and isinstance(getattr(cls,attr),scalars)})
 
 			return
 
@@ -987,8 +894,12 @@ class Object(object):
 		func = lambda key,iterable,elements: iterable.get(key,elements[key])
 		updater(self.hyperparameters,load(path,default=default),func=func)
 
-		setup(self.hyperparameters,cls=self)
+		print(self.hyperparameters['model'])
 
+		setup(self.hyperparameters,cls=self)
+		print()
+		print(self.hyperparameters['model'])
+		exit()
 		return
 
 
@@ -1545,9 +1456,11 @@ class Object(object):
 		self.logger.log(verbose,msg)
 		return	
 
-	def dump(self):
+	def dump(self,path=None):
 		'''
 		Save class data		
+		Args:
+			path (str): Path to dump class data
 		'''
 
 		# Process attribute values
@@ -1677,60 +1590,95 @@ class Object(object):
 			for attr in list(data[key]):			
 				data[key].update(func(attr,data[key][attr],self))
 
+		# Set path
+		if path is None:
+			path = self.hyperparameters['sys']['cwd']
+		root = split(path,directory=True)
+
 		# Dump data
-		path = join(self.hyperparameters['sys']['path']['data']['data'],root=self.hyperparameters['sys']['cwd'])
+		path = join(self.hyperparameters['sys']['path']['data']['data'],root=root)
 		dump(data,path)
 		
 		# Dump hyperparameters
-		path = join(self.hyperparameters['sys']['path']['data']['model'],root=self.hyperparameters['sys']['cwd'])
+		path = join(self.hyperparameters['sys']['path']['data']['model'],root=root)
 		hyperparameters = self.hyperparameters
 		dump(hyperparameters,path)
 
 		return
 
-	def load(self):
+	def load(self,path=None):
 		'''
 		Load class data		
+		Args:
+			path (str): Path to load class data
 		'''
 		def func(key,iterable,elements): 
 			i = iterable.get(key,elements.get(key))
 			e = elements.get(key,i)
 			return e if not callable(i) else i
-	
-		path = join(self.hyperparameters['sys']['path']['data']['model'],root=self.hyperparameters['sys']['cwd'])
+		
+		# Set path
+		if path is None:
+			path = self.hyperparameters['sys']['cwd']
+		root = split(path,directory=True)
+
+		# Load data
+		path = join(self.hyperparameters['sys']['path']['data']['model'],root=root)
 		default = self.hyperparameters
 		hyperparameters = load(path,default=default)
 		updater(self.hyperparameters,hyperparameters,func=func)
 		return
 
 
-	def plot(self):
+	def plot(self,path=None):
 		'''
 		Plot class
+		Args:
+			path (str,dict): Path to plot class, or dictionary of hyperparameters to plot
+		Returns:
+			fig (dict,matplotlib.figure): Plot figures
+			ax (dict,matplotlib.axes): Plot axes
 		'''
+		# Set path
+		instances = isinstance(path,dict)
+		if path is None:
+			key = None
+			hyperparameters = {key: self.hyperparameters}
+			path = self.hyperparameters['sys']['cwd']
+		elif isinstance(path,str):
+			key = None:
+			hyperparameters = {key: self.hyperparameters}			
+			path = path
+		elif isinstance(path,dict):
+			key = None
+			hyperparameters = {key: path[key] for key in path}
+			path = self.hyperparameters['sys']['cwd']
+
+		root = split(path,directory=True)
 
 		# Get paths and kwargs
-		root = self.hyperparameters['sys']['cwd']
 		paths = {
 			'data':('sys','path','data','data'),
 			'settings':('sys','path','config','plot'),
 			'hyperparameters':('sys','path','config','process'),
 			}
 
-		hyperparameters = self.hyperparameters
-		
 		kwargs = {kwarg: [] for kwarg in paths}
 
+
 		for kwarg in kwargs:
-			path = hyperparameters
-			for i in paths[kwarg]:
-				path = path[i]
-			path = join(path,root=root)
+			for key in hyperparameters:
+				path = hyperparameters[key]
+				for i in paths[kwarg]:
+					path = path[i]
+				kwargs[kwarg].append(path)
 
-			kwargs[kwarg].append(path)
+		fig,ax = process(**kwargs)
 
-		self.fig,self.ax = process(**kwargs)
-		return
+		if not instances:
+			self.fig,self.ax = fig,ax
+
+		return fig,ax
 
 
 class Hamiltonian(Object):
@@ -1819,7 +1767,7 @@ class Hamiltonian(Object):
 			interaction = []									
 
 		names = [name for name in data 
-			if any(name in group 
+			if any(data[name]['string'] in group 
 				for parameter in hyperparameters['parameters'] 
 				for group in hyperparameters['parameters'][parameter]['group'] 
 				if hyperparameters['parameters'][parameter]['use'])]

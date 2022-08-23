@@ -31,6 +31,7 @@
 		"constrained": "\\textrm{Constrained}",
 		"unconstrained": "\\textrm{Unconstrained}"
 	},
+	"pwd":null,
 	"cwd":"data",
 	"path": {
         "plot": "plot.pdf",
