@@ -34,11 +34,17 @@ class cd(object):
 	'''
 	def __init__(self,path):
 		self.path = path
+		return
 	def __enter__(self):
 		self.cwd = os.getcwd()
-		os.chdir(self.path)
+		try:
+			os.chdir(self.path)
+		except:
+			pass
+		return
 	def __exit__(self,etype, value, traceback):
 		os.chdir(self.cwd)
+		return
 
 
 def mkdir(path):
@@ -50,7 +56,7 @@ def mkdir(path):
 
 	directory = split(path,directory=True,abspath=True)
 
-	if directory not in [''] and not os.path.exists(directory):
+	if directory not in ['',None] and not os.path.exists(directory):
 		os.makedirs(directory)
 
 	return
@@ -71,7 +77,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 		paths (iterable): Split path,directory,file,ext depending on booleans
 	'''	
 
-	if not (directory or file or ext or file_ext or directory_file):
+	if path is None or not (directory or file or ext or file_ext or directory_file):
 		return path
 	returns = {'directory':directory,'file':file or directory_file or file_ext,'ext':ext}
 	paths = {}
@@ -492,11 +498,11 @@ def _load(obj,wr,ext,**kwargs):
 	try:
 		assert ext in exts, "Cannot load extension %s"%(ext)
 	except Exception as exception:
-		try:
-			obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
-			data = getattr(importlib.import_module(obj),module)
-		except Exception as exception:
-			raise exception
+		# try:
+		obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
+		data = getattr(importlib.import_module(obj),module)
+		# except Exception as exception:
+		# 	raise exception
 
 	if ext in ['npy']:
 		data = np.load(obj,**{**kwargs})

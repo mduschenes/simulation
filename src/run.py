@@ -88,8 +88,8 @@ def setup(hyperparameters):
 
 	# Find keys of seeds in hyperparameters
 	key = 'seed'
-	exclude = [('seed','seed',),('model','system','seed')]
-	seedlings = [branch[0] for branch in leaves(hyperparameters,key,returns='both') if branch[0] not in exclude and branch[1] is None]
+	exclude = ['seed.seed','model.system.seed']
+	seedlings = [delim.join(branch[0]) for branch in leaves(hyperparameters,key,returns='both') if delim.join(branch[0]) not in exclude and branch[1] is None]
 
 	count = len(seedlings)
 	
@@ -97,13 +97,15 @@ def setup(hyperparameters):
 	size *= count
 
 	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape).tolist()
+	seeds = [dict(zip(seedlings,seed)) for seed in seeds]
 
+	other = [{'model.system.key':None,'model.system.timestamp':timestamp}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
-	values = {'permutations':permutations,'seed':seeds}
-	index = {attr: hyperparameters[attr]['index'] for attr in values}
-	formatter = lambda instance,value,values: '%d'%(instance)	
-	# formatter = lambda instance,value,values: ('.'.join(['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]))
+	values = {'permutations':permutations,'seed':seeds,'other':other}
+	index = {attr: hyperparameters.get(attr,{}).get('index') for attr in values}
+	# formatter = lambda instance,value,values: '%d'%(instance)	
+	formatter = lambda instance,value,values: (delim.join(['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]))
 	keys = {}
 	for instance,value in enumerate(itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
 		if allowed(
@@ -115,43 +117,30 @@ def setup(hyperparameters):
 			key = formatter(instance,value,values)
 			value = [v[1] for v in value]
 
-			keys[key] = value
+			keys[key] = {}
+			for setting in value:
+				for attr in setting:
+
+					keys[key][attr] = setting[attr]
+
+					if attr in ['model.system.key']:
+						keys[key][attr] = key
 
 	# Set hyperparameters with key and seed instances
+
 	old = [attr for attr in hyperparameters]
 	new = {key: deepcopy(hyperparameters) for key in keys}
 	clearer(hyperparameters,new,old)
 
 	for key in keys:
-
-		# Set seed and key values
-		values = dict(zip(values,keys[key]))
-
-		updates = {}	
-
-		updates.update({
-			'model':{
-				'system':{
-					'key':key,
-					'seed':key,
-					'timestamp':timestamp,
-					},
-				},
-			})
-
-		for branch,leaf in zip(seedlings,values['seed']):
-			grow(updates,branch,leaf)
-
-		# Update hyperparameters
-		setter(updates,values['permutations'],delimiter=delim,copy=True)
-		updater(hyperparameters[key],updates,copy=True)
-
+		setter(hyperparameters[key],keys[key],delimiter=delim,copy=True)
 
 	# Set job
 	jobs = {}
 	for key in keys:
 	
 		job = hyperparameters[key]['job']
+		config = hyperparameters[key]['sys']['path']['config']
 
 		for attr in job:
 			if attr not in jobs:
@@ -164,11 +153,11 @@ def setup(hyperparameters):
 			elif attr in ['paths']:
 				jobs[attr][key] = {
 					**job.get('paths',{}),
-					**{hyperparameters[key]['sys']['path']['config'][path]: None
-						for path in hyperparameters[key]['sys']['path']['config']},
-					**{hyperparameters[key]['sys']['path']['config'][path]: hyperparameters[key] 
+					**{config[path]: None
+						for path in config},
+					**{config[path]: hyperparameters[key] 
 						for path in ['settings']},
-					**{hyperparameters[key]['sys']['path']['config'][path]: hyperparameters[key].get(path,{}) 
+					**{config[path]: hyperparameters[key].get(path,{}) 
 						for path in  ['plot','process']},
 					}
 			elif attr in ['patterns']:

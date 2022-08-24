@@ -15,7 +15,6 @@
 			"plot":"plot.json",
 			"process":"process.json",
 			"mplstyle":"plot.mplstyle",
-			"job":"job.slurm",
 			"logger":"logging.conf"
 			}
 		}
@@ -28,7 +27,7 @@
 	},
 "seed":{
 	"seed":12332,
-	"size":2,
+	"size":1,
 	"reset":12332,
 	"index":null
 	},
@@ -36,10 +35,10 @@
 	"permutations":{
 		"model.M":[100,200,300,400],
 		"model.M":[100,200,300,400],
-		"model.N":[4],
+		"model.N":[2],
 		"model.M":[10,20,30,40,50,80,100,200],
-		"model.M":[10,20],
-		"optimize.iterations":[500],
+		"model.M":[10,20,30],
+		"optimize.iterations":[100],
 		"parameters.xy.method":["unconstrained"],
 		"model.system.architecture":["unconstrained"]
 		},
@@ -118,8 +117,8 @@
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
 		},
@@ -201,13 +200,14 @@
 		"JOB_ARGS":"settings.json"
 		},
 	"paths":{},
-	"patterns":{"array":"0-0:1%20"},
+	"patterns":{"array":"0-0:1%100","time":"04:00:00","mem":"12G"},
 	"pwd":null,
 	"cwd":"data",
 	"process":"array",
+	"process":"serial",
 	"device":"slurm",
 	"device":"pc",
-	"execute":false
+	"execute":true
 	},
 "process": {},
 "plot": {}

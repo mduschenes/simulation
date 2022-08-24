@@ -34,7 +34,7 @@ for PATH in PATHS:
 from src.utils import jit,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
 from src.utils import slice_slice
-from src.utils import pi,e
+from src.utils import pi,e,scalars
 
 from src.io import load,dump,join,split
 
@@ -54,7 +54,6 @@ def _variables(parameters,hyperparameters,parameter,group):
 	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
 	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
-	scale = [1,1]
 	index = hyperparameters[parameter]['group'].index(group)
 	if method in ['constrained']:
 		if parameter in ['xy'] and group in [('x',)]:
@@ -74,10 +73,9 @@ def _variables(parameters,hyperparameters,parameter,group):
 				scale[index]*
 				parameters[index]
 			)
-			
 		elif parameter in ['zz'] and group in [('zz',)]:
 			variable = (
-				scale[index]/(8*kwargs['min']*kwargs['delta'])*
+				scale[index]/(8*kwargs['min']*kwargs['tau'])*
 				parameters[index]
 			)
 	elif method in ['unconstrained']:
@@ -88,7 +86,7 @@ def _variables(parameters,hyperparameters,parameter,group):
 			)
 		elif parameter in ['zz'] and group in [('zz',)]:
 			variable = (
-				scale[index]/(8*kwargs['min']*kwargs['delta'])*
+				scale[index]/(8*kwargs['min']*kwargs['tau'])*
 				parameters[index]
 			)
 		else:
@@ -101,7 +99,7 @@ def _variables(parameters,hyperparameters,parameter,group):
 			)
 		if parameter in ['zz'] and group in [('zz',)]:
 			variable = (
-				scale[index]/(8*kwargs['min']*kwargs['delta'])*
+				scale[index]/(8*kwargs['min']*kwargs['tau'])*
 				parameters[index]
 			)
 		else:
@@ -243,9 +241,9 @@ def _gradients(parameters,hyperparameters,parameter,group):
 	return grad	
 
 
-def check(hyperparameters,cls=None):
+def setup(hyperparameters,cls=None):
 	'''
-	Check hyperparameters
+	Setup hyperparameters
 	Args:	
 		hyperparameters (dict): Hyperparameters
 		cls (object): Class instance
@@ -269,11 +267,11 @@ def check(hyperparameters,cls=None):
 		**{attr: {
 			'value': (lambda parameter,hyperparameters,attr=attr: {
 				**hyperparameters[parameter][attr],
-				**{kwarg: getattr(cls,kwarg) for kwarg in cls.__dict__ 
-					if isinstance(getattr(cls,kwarg),scalars)
-					},
-				**{kwarg: getattr(np,kwarg)(hyperparameters[parameter]['parameters']) if hyperparameters[parameter].get('parameters') 
-						  else getattr(np,kwarg)(hyperparameters[parameter]['bounds']['parameters'])
+				**({kwarg: getattr(cls,kwarg) for kwarg in cls.__dict__ 
+					if isinstance(getattr(cls,kwarg),scalars) and not isinstance(getattr(cls,kwarg),str)
+					} if cls is not None else {}),
+				**{kwarg: getattr(np,kwarg)(np.array(hyperparameters[parameter]['parameters'])) if hyperparameters[parameter].get('parameters') 
+						  else getattr(np,kwarg)(np.array(hyperparameters[parameter]['bounds']['parameters']))
 					for kwarg in ['min','max']
 					}, 
 				}),
@@ -424,8 +422,8 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,cls=None,
 	#time = timer()
 
 
-	# Check hyperparameters
-	check(hyperparameters,cls=cls)
+	# Setup hyperparameters
+	setup(hyperparameters,cls=cls)
 
 	# Get number of dimensions of data
 	ndim = len(shape)

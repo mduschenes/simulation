@@ -186,11 +186,11 @@
 	"args":{
 		"JOB_SRC":"/h/mduschen/code/simulation/src",
 		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
-		"JOB_CMD":"${JOB_SRC}/train.py",
+		"JOB_CMD":"train.py",
 		"JOB_ARGS":"settings.json"
 		},
 	"paths":{},
-	"patterns":{"array":"0-0:1%20"},
+	"patterns":{},
 	"pwd":null,
 	"cwd":"data",
 	"process":"array",

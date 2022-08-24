@@ -32,7 +32,7 @@
 		"unconstrained": "\\textrm{Unconstrained}"
 	},
 	"pwd":null,
-	"cwd":"data",
+	"cwd":null,
 	"path": {
         "plot": "plot.pdf",
         "process": "process.hdf5"

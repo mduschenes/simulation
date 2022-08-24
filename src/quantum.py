@@ -894,12 +894,8 @@ class Object(object):
 		func = lambda key,iterable,elements: iterable.get(key,elements[key])
 		updater(self.hyperparameters,load(path,default=default),func=func)
 
-		print(self.hyperparameters['model'])
-
 		setup(self.hyperparameters,cls=self)
-		print()
-		print(self.hyperparameters['model'])
-		exit()
+
 		return
 
 
@@ -986,7 +982,7 @@ class Object(object):
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
 		dtype = self._dtype
 
-		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,dtype=dtype)
+		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,dtype=dtype,cls=self)
 
 
 		# Get reshaped parameters
@@ -1004,7 +1000,7 @@ class Object(object):
 		size = self.N
 		dtype = self.dtype
 
-		label = operatorize(data,shape,hyperparams,size=size,dtype=dtype)
+		label = operatorize(data,shape,hyperparams,size=size,dtype=dtype,cls=self)
 
 		# Get states
 		data = None
@@ -1013,7 +1009,7 @@ class Object(object):
 		size = self.N
 		dtype = self.dtype
 
-		states = stateize(data,shape,hyperparams,size=size,dtype=dtype)
+		states = stateize(data,shape,hyperparams,size=size,dtype=dtype,cls=self)
 
 
 		# Update class attributes
@@ -1646,7 +1642,7 @@ class Object(object):
 			hyperparameters = {key: self.hyperparameters}
 			path = self.hyperparameters['sys']['cwd']
 		elif isinstance(path,str):
-			key = None:
+			key = None
 			hyperparameters = {key: self.hyperparameters}			
 			path = path
 		elif isinstance(path,dict):

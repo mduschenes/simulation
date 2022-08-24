@@ -40,15 +40,20 @@ def train(hyperparameters):
 		hyperparameters (dict,str): hyperparameters
 	'''
 
+
 	# Check hyperparameters
+	default = {}
 	if hyperparameters is None:
-		hyperparameters = {}
+		hyperparameters = default
 	elif isinstance(hyperparameters,str):
-		hyperparameters = load(hyperparameters)
+		hyperparameters = load(hyperparameters,default=default)
 
+	if hyperparameters == default:
+		return
 
-	if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train','plot.obj']):
-		return None
+	if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train','plot']):
+		obj = None
+		return obj
 
 	cls = load(hyperparameters['class'])
 
@@ -72,7 +77,7 @@ def train(hyperparameters):
 	if hyperparameters['boolean'].get('dump'):	
 		obj.dump()
 	
-	if hyperparameters['boolean'].get('plot.obj'):
+	if hyperparameters['boolean'].get('plot'):
 		obj.plot()
 
 	return obj

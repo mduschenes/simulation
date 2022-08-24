@@ -20,12 +20,13 @@ from src.utils import intersection
 from src.io import cd,mkdir,join,split,load,dump
 from src.dictionary import updater
 
-def _submit(job,args,device=None,execute=True,**kwargs):
+def _submit(job,args,process=None,device=None,execute=True,**kwargs):
 	'''
 	Update submit arguments
 	Args:
 		job (str): Submission script
 		args (dict[str,str]): Arguments to pass to command line {arg:value}
+		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands		
 		kwargs (dict): Additional keyword arguments to update arguments
@@ -34,7 +35,7 @@ def _submit(job,args,device=None,execute=True,**kwargs):
 	'''
 
 	if device in ['pc']:
-		exe = ['.',job]
+		exe = ['./%s'%(job)]
 		flags = []
 		cmd = [args[arg] for arg in args]
 	elif device in ['slurm']:
@@ -50,80 +51,142 @@ def _submit(job,args,device=None,execute=True,**kwargs):
 
 	return args
 
-def _update(attr,device,**kwargs):
+def _update(path,patterns,process=None,device=None,execute=True,**kwargs):
 	'''
-	Update submit settings
+	Update submit patterns in-place
 	Args:
-		attr (str): Setting to update
+		path (str): Path of file	
+		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
+		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
-		kwargs (dict): Additional keyword arguments to update settings
+		execute (boolean): Boolean whether to issue commands		
+		kwargs (dict): Additional keyword arguments to update
 	Returns:
-		returns (object): Updated setting
+		default (str): Default pattern
 	'''
 
-	if attr in ['update']:
-		pattern = '.*#SBATCH --%s=%s'%(kwargs.get('pattern'),retruns.get('value','.*'))
 
-		returns = pattern
+	if device in ['pc']:
+		default = '#SBATCH'
+	elif device in ['slurm']:
+		default = '#SBATCH'
+	else:
+		default = '#SBATCH'
 
-	elif attr in ['patterns']:
-		if kwargs.get('process') in ['serial','pattern']:
-			null = ['array']
-			patterns = {
-				**kwargs.get('patterns',{}),
-				**{pattern: join(kwargs.get('patterns',{}).get(pattern,'.')) for pattern in ['chdir']},
-				**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
-				**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},
-			}
-		elif kwargs.get('process') in ['array']:
-			null = []
-			patterns = {
-				**kwargs.get('patterns',{}),				
-				**{pattern: join(kwargs.get('patterns',{}).get(pattern),'%a') for pattern in ['chdir']},
-				**{pattern: '%d-%d:%s'%(0,kwargs.get('size',1),':'.join(kwargs.get('patterns',{}).get(pattern,'').split(':')[1:])) for pattern in ['array']},
-				**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
-				**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},
-			}
+	null = []
 
-		for pattern in null:
-			patterns.pop(pattern)
+	if process in ['serial','parallel']:
+		null.extend(['array'])
+		patterns.update({
+			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir']},
+			**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
+			**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},
+			})
+	elif process in ['array']:
+		null.extend([])
+		patterns.update({
+			**{pattern: join(patterns.get(pattern),'%a') for pattern in ['chdir']},
+			**{pattern: '%d-%d:%s'%(0,kwargs.get('size',1),':'.join(patterns.get(pattern,'').split(':')[1:])) for pattern in ['array']},
+			**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
+			**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},
+		})
 
-		returns = patterns
+	for pattern in null:
+		patterns.pop(pattern)
 
-	return returns
+	null.clear()
+	null.extend(list(patterns))
+
+	patterns.update({
+		'%s%s --%s=%s%s'%('.*',default,pattern,'','.*'): '%s%s --%s=%s%s'%('',default,pattern,patterns[pattern],'')
+		for pattern in patterns
+		})
+
+	for pattern in null:
+		patterns.pop(pattern)
+
+	return default
 
 
+class popen(object):
+	'''
+	Class to safely enter process
+	Args:
+		path (str): Path to change to
+	'''
+	def __init__(self,cls):
+		self.cls = cls
+		return
+	def __enter__(self,*args,**kwargs):
+		try:
+			return self.cls.__enter__(*args,**kwargs)
+		except:
+			return self.cls
+	def __exit__(self,etype, value, traceback):
+		try:
+			return self.cls.__exit__(etype, value, traceback)
+		except:
+			return
 
-def call(*args,path='.',wrapper=None,device=None,execute=True,**kwargs):
+def call(*args,path='.',wrapper=None,process=None,device=None,execute=True,**kwargs):
 	'''
 	Submit call to command line
 	Args:
 		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
 		path (str): Path to call from
 		wrapper (callable): Wrapper for stdout with signature wrapper(stdout,stderr,returncode)		
+		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
+		kwargs (dict): Additional keyword arguments to call		
 	Returns:
 		result (object): Return of commands
 	'''
 
-	def parser(args):
+	def parser(args,device):
 		delimiter = ' '
 		pipe = ' | '
 		if isinstance(args,str):
-			args = [args]
+			if device in ['pc']:
+				args = [args]
+			elif device in ['slurm']:
+				args = [args]				
+			else:
+				args = [args]
 		elif all(isinstance(arg,str) for arg in args):			
-			args = [delimiter.join(args)]
+			if device in ['pc']:
+				args = [arg for arg in args]
+			elif device in ['slurm']:
+				args = [delimiter.join(args)]								
+			else:
+				args = [delimiter.join(args)]				
 		else:
-			args = [pipe.join([delimiter.join(arg) if not isinstance(arg,str) else arg for arg in args])]
+			if device in ['pc']:
+				args = [*[subarg for arg in args[:1] for subarg in arg],*[subarg for arg in args[1:-1] for subarg in [arg,pipe]],*[subarg for arg in args[:1] for subarg in arg]]
+			elif device in ['slurm']:
+				args = [pipe.join([delimiter.join(arg) if not isinstance(arg,str) else arg for arg in args])]				
+			else:
+				args = [pipe.join([delimiter.join(arg) if not isinstance(arg,str) else arg for arg in args])]				
 		return args
 
-	def caller(args):
-		run = lambda args: subprocess.run(args,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)		
-		result = run(args)
-		return result.stdout,result.stderr,result.returncode
+	def caller(args,device):
+		if device in ['pc']:
+			run = lambda args: subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.PIPE, bufsize=1, universal_newlines=True)
+		elif device in ['slurm']:
+			run = lambda args: subprocess.run(args,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)		
+		else:
+			run = lambda args: subprocess.run(args,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)		
 
-	def wrapper(stdout,stderr,returncode,wrapper=wrapper):
+		with popen(run(args)) as result:
+			if device in ['pc']:
+				for line in result.stdout:
+					print(line,end='')
+				stdout,stderr,returncode = ''.join(result.stdout),''.join(result.stderr),result.returncode
+			else:
+				stdout,stderr,returncode = result.stdout,result.stderr,result.returncode
+		return stdout,stderr,returncode
+
+	def wrapper(stdout,stderr,returncode,wrapper=wrapper,device=None):
 		try:
 			stdout = stdout.strip().decode('utf-8')
 			stderr = stderr.strip().decode('utf-8')
@@ -133,48 +196,57 @@ def call(*args,path='.',wrapper=None,device=None,execute=True,**kwargs):
 			result = wrapper(stdout,stderr,returncode)
 		except:
 			result = stdout
+
+		if returncode != 0:
+			print(stderr)
+
 		return result
 
 	mkdir(path)
 
 	with cd(path):
 		if execute:
-			result = wrapper(*caller(parser(args)))
+			result = wrapper(*caller(parser(args,device),device),device=device)
 		else:
 			result = ' '.join(parser(args))
 			print(result)
 	
 	return result
 
-def copy(source,destination,device=None,execute=True,**kwargs):
+def copy(source,destination,process=None,device=None,execute=True,**kwargs):
 	'''
 	Copy objects from source to destination
 	Args:
 		source (str): Path of source object
 		destination (str): Path of destination object
+		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
-		kwargs (dict): Additional copying keyword arguments
+		kwargs (dict): Additional keyword arguments to copy
 	'''
 	assert os.path.exists(source), "source %s does not exist"%(source)
 
 	mkdir(destination)
 
-	args = ['cp','-rf',source,destination]
+	exe = ['cp']
+	flags = ['-rf']
+	cmd = [source,destination]
+	args = [*exe,*flags,*cmd]
 
-	stdout = call(*args,device=device,execute=execute)
+	stdout = call(*args,process=process,device=device,execute=execute)
 
 	# shutil.copy2(source,destination)
 
 	return
 
 
-def sed(path,patterns,default=None,device=None,execute=True):
+def sed(path,patterns,default=None,process=None,device=None,execute=True):
 	'''
 	GNU sed replace patterns in path
 	Args:
 		path (str): Path of file
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
+		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 	'''
@@ -205,6 +277,7 @@ def sed(path,patterns,default=None,device=None,execute=True):
 			for delimiter in delimiters:
 				if all(delimiter not in string for string in (pattern,patterns[pattern])):
 					cmd = '"s%s%s%s%s%sg"'%(delimiter,pattern,delimiter,patterns[pattern],delimiter)
+					break
 
 		if cmd is None:
 			continue
@@ -216,6 +289,7 @@ def sed(path,patterns,default=None,device=None,execute=True):
 
 		args=[*exe,*flags,*cmd]
 
+
 		result = call(*args,device=device,execute=execute)
 
 	return
@@ -223,12 +297,13 @@ def sed(path,patterns,default=None,device=None,execute=True):
 
 
 
-def search(path,pattern,device=None,execute=True):
+def search(path,pattern,process=None,device=None,execute=True):
 	'''
 	Search for pattern in file
 	Args:
 		path (str): Path of file
 		pattern (str): Pattern to search
+		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 	Returns:
@@ -260,45 +335,35 @@ def search(path,pattern,device=None,execute=True):
 	cmd = []
 	args.append([*exe,*flags,*cmd])
 
-	result = call(*args,wrapper=wrapper,device=device,execute=execute)
+	result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute)
 
 	return result
 
 	
-def update(path,patterns,device=None,execute=True,**kwargs):
+def update(path,patterns,process=None,device=None,execute=True,**kwargs):
 	'''	
 	Update path files with sed
 	Args:
 		path (str): Path of file
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
+		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands		
 		kwargs (dict): Additional keyword arguments to update
 	'''
-
 	if path is None or patterns is None:
 		return
 
 	patterns = deepcopy(patterns)
 
-	patterns.update(_update(attr='patterns',device=device,patterns=patterns,**kwargs))
+	default = _update(path,patterns,process=process,device=device,**kwargs)
 
-	for pattern in patterns:
-		value = str(patterns.pop(pattern))
-
-		pattern,replacement = (
-			_update(attr='update',device=device,pattern=pattern,value='.*',**kwargs),
-			_update(attr='update',device=device,pattern=pattern,value=value,**kwargs)
-			)
-
-		patterns[pattern] = replacement
-
-	sed(path,patterns,default=default,device=device,execute=execute)
+	sed(path,patterns,default=default,execute=execute)
 
 	return
 
 
-def configure(paths,pwd=None,cwd=None,patterns={},device=None,execute=True,**kwargs):
+def configure(paths,pwd=None,cwd=None,patterns={},process=None,device=None,execute=True,**kwargs):
 	'''
 	Configure paths for jobs with copied/updated files
 	Args:
@@ -306,6 +371,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},device=None,execute=True,**kwa
 		pwd (str): Input root path for files
 		cwd (str): Output root path for files
 		patterns (dict[str,dict[str,str]]): Patterns and values to update {path:{pattern: replacement}}
+		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		kwargs (dict): Additional keyword arguments to configure
@@ -324,10 +390,8 @@ def configure(paths,pwd=None,cwd=None,patterns={},device=None,execute=True,**kwa
 		data = paths[path] if isinstance(paths,dict) else None
 
 		# Set sources and destinations of files
-		source = join(split(path,directory=True),split(path,file=True),ext=split(path,ext=True),root=pwd)
-		destination = join(split(path,file=True),ext=split(path,ext=True),root=cwd)
-
-		mkdir(destination)
+		source = join(path,root=pwd)
+		destination = join(path,root=cwd)
 
 		# Update and Dump files
 		if isinstance(data,dict):
@@ -335,16 +399,12 @@ def configure(paths,pwd=None,cwd=None,patterns={},device=None,execute=True,**kwa
 			updater(source,data,func=lambda key,iterable,elements: iterable.get(key,elements[key]))
 			dump(source,destination)					
 		else:
-			copy(source,destination)
-
-		pattern = patterns.get(path)
-
-		update(destination,pattern,**kwargs)
+			copy(source,destination,execute=execute)
 
 	return
 
 
-def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process="serial",device=None,execute=True):
+def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device=None,execute=True):
 	'''
 	Submit job commands to command line
 	Args:
@@ -368,7 +428,7 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process="serial",de
 
 	keys = intersection(jobs)
 
-	if all(isinstance(arg,str) for arg in args) or not len(args):
+	if all(isinstance(args[arg],str) for arg in args) or not len(args):
 		args = {key:args for key in keys}
 
 	keys = intersection(jobs,args)
@@ -384,36 +444,45 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process="serial",de
 	keys = intersection(jobs,args,paths,patterns)
 
 	keys = list(sorted(keys))
+
 	size = len(keys)
+	
 	cmds = {}
 	stdouts = []
+	kwargs = {'size':size}
 
 	if not size:
 		return
 
-	for key in keys:
+	for i,key in enumerate(keys):
 
-		path = join(cwd,key)
+		i = str(i)
+		key = key
 
-		configure(pwd=pwd,cwd=path,paths=paths[key],patterns=patterns[key],device=device,size=size,process=process)
+		path = join(cwd,i)
 
-		cmd = _submit(job=jobs[key],args=args[key],device=device,execute=execute)
+		configure(pwd=pwd,cwd=path,paths=paths[key],patterns=patterns[key],process=process,device=device,**kwargs)
+
+		cmd = _submit(job=jobs[key],args=args[key],process=process,device=device)
 
 		cmds[key] = cmd
 
-
 	if process in ['serial']:
-		for key in keys:
+		for i,key in enumerate(keys):
 
+			i = str(i)
 			key = key
 
-			path = join(cwd,key)
+			path = join(cwd,i)
 			cmd = cmds[key]
 			job = jobs[key]
 
+
 			source = join(job,root=pwd)
-			destination = path
+			destination = join(job,root=path)
+
 			copy(source,destination)
+			update(destination,patterns[key],process=process,device=device,**kwargs)
 
 			stdout = call(*cmd,path=path,device=device,execute=execute)
 
@@ -424,30 +493,38 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process="serial",de
 	
 	elif process in ['array']:
 
+		i = None
 		key = keys[-1]
 
-		path = cwd
+		path = join(cwd,i)
 		cmd = cmds[key]
 		job = jobs[key]
 
 		source = join(job,root=pwd)
-		destination = path
-		copy(source,destination)
+		destination = join(job,root=path)
 
-		stdouts = call(*cmd,path=path,device=device,execute=execute)
+		copy(source,destination)
+		update(destination,patterns[key],process=process,device=device,**kwargs)
+
+		stdout = call(*cmd,path=path,device=device,execute=execute)
+
+		stdouts = stdout
 
 	else:
-		for key in keys:
+		for i,key in enumerate(keys):
 	
+			i = str(i)
 			key = key
 
-			path = join(cwd,key)
+			path = join(cwd,i)
 			cmd = cmds[key]
 			job = jobs[key]
 
 			source = join(job,root=pwd)
-			destination = path
+			destination = join(job,root=path)
+
 			copy(source,destination)
+			update(destination,patterns[key],process=process,device=device,**kwargs)
 
 			stdout = call(*cmd,path=path,device=device,execute=execute)
 

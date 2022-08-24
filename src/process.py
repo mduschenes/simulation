@@ -485,13 +485,16 @@ def loader(kwargs,**options):
 	return returns
 
 
-def process(data,settings,hyperparameters,fig=None,ax=None):
+def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	'''
 	Process data
 	Args:
 		data (str,dict,iterable[str,dict]): Path(s) to or dictionary(ies) of data to process
 		settings (str,dict,iterable[str,dict]): Path(s) to or dictionary(ies) of plot settings
 		hyperparameters (str,dict,iterable[str,dict]): Path(s) to or dictionary(ies) of process settings
+		fig (dict): dictionary of subplots of figures of plots {key: figure}
+		ax (dict): dictionary of subplots of axes of plots {key: figure}
+		cwd (str): Root path
 	Returns:
 		fig (dict): dictionary of subplots of figures of plots {key: figure}
 		ax (dict): dictionary of subplots of axes of plots {key: figure}
@@ -549,6 +552,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None):
 			directory=True if (not returns['multiple']) else -1,file=True,ext=True) 
 		if (hyperparameters.get('cwd') is not None):
 			directory[attr] = hyperparameters.get('cwd')
+		else:
+			directory[attr] = cwd
 		path[attr] = join(directory[attr],file[attr],ext=ext[attr])
 
 	# Get plot variables setting

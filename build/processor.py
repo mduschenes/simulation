@@ -33,8 +33,9 @@ def main(args):
 
 	kwargs = {
 		'data':'**/data.hdf5',
-		'settings':'**/plot.json',
-		'hyperparameters':'**/process.json',
+		'settings':'config/plot.json',
+		'hyperparameters':'config/process.json',
+		'cwd':None
 	}
 	nkwargs = len(kwargs)
 	nargs = len(args)
@@ -47,7 +48,7 @@ def main(args):
 
 	args.extend([path]*(nkwargs-nargs))
 
-	kwargs.update({kwarg: join(arg,kwargs[kwarg]) if not (ext or split(arg,ext=True)) else arg 
+	kwargs.update({kwarg: join(arg,kwargs[kwarg]) if kwargs[kwarg] is None or kwargs[kwarg].startswith('*') else kwargs[kwarg] 
 		for arg,kwarg in zip(args,kwargs)})
 
 	process(**kwargs)
