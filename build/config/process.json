@@ -38,6 +38,6 @@
         "process": "process.hdf5"
     },
 	"delimiter":".",
-    "load":1,
+    "load":0,
 	"dump":1
 }

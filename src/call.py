@@ -78,14 +78,14 @@ def _update(path,patterns,process=None,device=None,execute=True,**kwargs):
 	if process in ['serial','parallel']:
 		null.extend(['array'])
 		patterns.update({
-			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir']},
+			# **{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir']},
 			**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
 			**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},
 			})
 	elif process in ['array']:
 		null.extend([])
 		patterns.update({
-			**{pattern: join(patterns.get(pattern),'%a') for pattern in ['chdir']},
+			# **{pattern: join(patterns.get(pattern),r'\${SLURM_ARRAY_TASK_ID}') for pattern in ['chdir']},
 			**{pattern: '%d-%d:%s'%(0,kwargs.get('size',1),':'.join(patterns.get(pattern,'').split(':')[1:])) for pattern in ['array']},
 			**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
 			**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},

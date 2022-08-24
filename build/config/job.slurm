@@ -17,6 +17,8 @@
 
 #SBATCH --parsable
 
+cd ${SLURM_ARRAY_TASK_ID:-.}
+
 module purge &>/dev/null 2>&1
 # module load jax0.2.24-cuda11.0-python3.8_jupyter &>/dev/null 2>&1
 
