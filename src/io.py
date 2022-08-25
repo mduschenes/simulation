@@ -33,10 +33,12 @@ class cd(object):
 		path (str): Path to change to
 	'''
 	def __init__(self,path):
+		mkdir(path)
 		self.path = path
 		return
 	def __enter__(self):
 		self.cwd = os.getcwd()
+
 		try:
 			os.chdir(self.path)
 		except:

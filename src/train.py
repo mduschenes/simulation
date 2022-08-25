@@ -49,7 +49,8 @@ def train(hyperparameters):
 		hyperparameters = load(hyperparameters,default=default)
 
 	if hyperparameters == default:
-		return
+		obj = None
+		return obj
 
 	if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train','plot']):
 		obj = None

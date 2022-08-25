@@ -1,7 +1,6 @@
 {
 "class":"src.quantum.Unitary",
 "sys":{
-	"pwd":"config",
 	"cwd":null,
 	"path":{
 		"data":{
@@ -194,20 +193,21 @@
 "job":{
 	"jobs":"job.slurm",
 	"args":{
-		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
 		"JOB_SRC":"/h/mduschen/code/simulation/src",
+		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
 		"JOB_CMD":"train.py",
 		"JOB_ARGS":"settings.json"
 		},
 	"paths":{},
 	"patterns":{"array":"0-0:1%100","time":"04:00:00","mem":"12G"},
-	"pwd":null,
+	"pwd":"config",
 	"cwd":"data",
-	"process":"serial",
 	"process":"array",
-	"device":"pc",
+	"process":"serial",
 	"device":"slurm",
-	"execute":true
+	"device":"pc",
+	"execute":0,
+	"verbose":"info"
 	},
 "process": {},
 "plot": {}

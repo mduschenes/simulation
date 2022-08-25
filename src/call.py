@@ -7,8 +7,6 @@ import subprocess
 
 # Logging
 import logging
-logger = logging.getLogger(__name__)
-debug = 0
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -17,10 +15,20 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import intersection
+from src.system	 import Logger
 from src.io import cd,mkdir,join,split,load,dump
 from src.dictionary import updater
 
-def _submit(job,args,process=None,device=None,execute=True,**kwargs):
+
+name = __name__
+path = os.path.dirname(os.path.abspath(__file__))
+file = 'logging.conf'
+conf = os.path.join(path,file)
+file = None #'log.log'
+logger = Logger(name,conf,file=file)
+
+
+def _submit(job,args,process=None,device=None,execute=True,verbose=None,**kwargs):
 	'''
 	Update submit arguments
 	Args:
@@ -28,7 +36,8 @@ def _submit(job,args,process=None,device=None,execute=True,**kwargs):
 		args (dict[str,str]): Arguments to pass to command line {arg:value}
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands		
+		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to update arguments
 	Returns:
 		args (iterable[str]): Updated submit arguments
@@ -51,7 +60,7 @@ def _submit(job,args,process=None,device=None,execute=True,**kwargs):
 
 	return args
 
-def _update(path,patterns,process=None,device=None,execute=True,**kwargs):
+def _update(path,patterns,process=None,device=None,execute=True,verbose=None,**kwargs):
 	'''
 	Update submit patterns in-place
 	Args:
@@ -59,7 +68,8 @@ def _update(path,patterns,process=None,device=None,execute=True,**kwargs):
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands		
+		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity		
 		kwargs (dict): Additional keyword arguments to update
 	Returns:
 		default (str): Default pattern
@@ -86,7 +96,7 @@ def _update(path,patterns,process=None,device=None,execute=True,**kwargs):
 		null.extend([])
 		patterns.update({
 			# **{pattern: join(patterns.get(pattern),r'\${SLURM_ARRAY_TASK_ID}') for pattern in ['chdir']},
-			**{pattern: '%d-%d:%s'%(0,kwargs.get('size',1),':'.join(patterns.get(pattern,'').split(':')[1:])) for pattern in ['array']},
+			**{pattern: '%d-%d:%s'%(0,kwargs.get('size',1)-1,':'.join(patterns.get(pattern,'').split(':')[1:])) for pattern in ['array']},
 			**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
 			**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},
 		})
@@ -98,7 +108,7 @@ def _update(path,patterns,process=None,device=None,execute=True,**kwargs):
 	null.extend(list(patterns))
 
 	patterns.update({
-		'%s%s --%s=%s%s'%('.*',default,pattern,'','.*'): '%s%s --%s=%s%s'%('',default,pattern,patterns[pattern],'')
+		'%s%s --%s=%s%s'%(r'.*',default,pattern,'',r'.*'): '%s%s --%s=%s%s'%('',default,pattern,patterns[pattern],'')
 		for pattern in patterns
 		})
 
@@ -128,7 +138,7 @@ class popen(object):
 		except:
 			return
 
-def call(*args,path='.',wrapper=None,process=None,device=None,execute=True,**kwargs):
+def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verbose=None,**kwargs):
 	'''
 	Submit call to command line
 	Args:
@@ -138,82 +148,89 @@ def call(*args,path='.',wrapper=None,process=None,device=None,execute=True,**kwa
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to call		
 	Returns:
 		result (object): Return of commands
 	'''
 
-	def parser(args,device):
-		delimiter = ' '
-		pipe = ' | '
-		if isinstance(args,str):
-			if device in ['pc']:
-				args = [args]
-			elif device in ['slurm']:
-				args = [args]				
-			else:
-				args = [args]
-		elif all(isinstance(arg,str) for arg in args):			
-			if device in ['pc']:
-				args = [arg for arg in args]
-			elif device in ['slurm']:
-				args = [delimiter.join(args)]								
-			else:
-				args = [delimiter.join(args)]				
-		else:
-			if device in ['pc']:
-				args = [*[subarg for arg in args[:1] for subarg in arg],*[subarg for arg in args[1:-1] for subarg in [arg,pipe]],*[subarg for arg in args[:1] for subarg in arg]]
-			elif device in ['slurm']:
-				args = [pipe.join([delimiter.join(arg) if not isinstance(arg,str) else arg for arg in args])]				
-			else:
-				args = [pipe.join([delimiter.join(arg) if not isinstance(arg,str) else arg for arg in args])]				
-		return args
+	def caller(args,device=None,verbose=None):
 
-	def caller(args,device):
-		if device in ['pc']:
-			run = lambda args: subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.PIPE, bufsize=1, universal_newlines=True)
-		elif device in ['slurm']:
-			run = lambda args: subprocess.run(args,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)		
-		else:
-			run = lambda args: subprocess.run(args,shell=True,stdout=subprocess.PIPE,stderr=subprocess.PIPE)		
+		def run(args,stdin=None,stdout=None,stderr=None):
+			result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr)
+			return result
 
-		with popen(run(args)) as result:
-			if device in ['pc']:
-				for line in result.stdout:
-					print(line,end='')
-				stdout,stderr,returncode = ''.join(result.stdout),''.join(result.stderr),result.returncode
-			else:
-				stdout,stderr,returncode = result.stdout,result.stderr,result.returncode
+
+		def wrap(result):
+			stdout = parse(result.stdout.read())
+			stderr = parse(result.stderr.read())
+			returncode = parse(result.returncode)
+			return stdout,stderr,returncode
+
+		def parse(obj):
+			if isinstance(obj,bytes):
+				obj = obj.strip().decode('utf-8')
+			return obj
+
+
+		stdin = None
+		stdout = subprocess.PIPE
+		stderr = subprocess.PIPE
+		returncode = None
+
+		for arg in args:
+			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr)
+			stdin = result.stdout
+
+			# if arg[0] in ['awk','tail']:
+			# 	print('piped',arg,parse(_stdin.read()) if _stdin is not None else '',parse(result.stdout.read()),parse(result.stderr.read()))
+
+		for line in result.stdout:
+			logger.log(verbose,parse(line))
+
+		if returncode is not None:
+			for line in result.stderr:	
+				logger.log(verbose,parse(line))
+
+		stdout,stderr,returncode = wrap(result)
+
 		return stdout,stderr,returncode
 
-	def wrapper(stdout,stderr,returncode,wrapper=wrapper,device=None):
-		try:
-			stdout = stdout.strip().decode('utf-8')
-			stderr = stderr.strip().decode('utf-8')
-		except AttributeError:
-			pass
+	def wrapper(stdout,stderr,returncode,wrapper=wrapper,device=None,verbose=None):
+
 		try:
 			result = wrapper(stdout,stderr,returncode)
 		except:
 			result = stdout
 
-		if returncode != 0:
-			print(stderr)
-
 		return result
 
-	mkdir(path)
+	def parser(args,device=None,verbose=None):
+		
+		pipe = any(not isinstance(arg,str) for arg in args)
 
-	with cd(path):
-		if execute:
-			result = wrapper(*caller(parser(args,device),device),device=device)
+		if pipe:
+			args = [[subarg for subarg in arg] if not isinstance(arg,str) else [arg] for arg in args]
 		else:
-			result = ' '.join(parser(args))
-			print(result)
+			args = [[arg for arg in args]]
 	
+		cmd = '|'.join([' '.join(arg) for arg in args])
+
+		return args,cmd
+
+
+	args,cmd = parser(args,device=device,verbose=verbose)
+	result = None
+
+	logger.log(verbose,'%s : %s'%(path,cmd))
+
+	if execute:
+		with cd(path):
+			result = wrapper(*caller(args,device=device,verbose=verbose),device=device,verbose=verbose)
+
 	return result
 
-def copy(source,destination,process=None,device=None,execute=True,**kwargs):
+def copy(source,destination,process=None,device=None,execute=True,verbose=None,**kwargs):
 	'''
 	Copy objects from source to destination
 	Args:
@@ -222,6 +239,7 @@ def copy(source,destination,process=None,device=None,execute=True,**kwargs):
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to copy
 	'''
 	assert os.path.exists(source), "source %s does not exist"%(source)
@@ -233,14 +251,14 @@ def copy(source,destination,process=None,device=None,execute=True,**kwargs):
 	cmd = [source,destination]
 	args = [*exe,*flags,*cmd]
 
-	stdout = call(*args,process=process,device=device,execute=execute)
+	stdout = call(*args,process=process,device=device,execute=execute,verbose=verbose)
 
 	# shutil.copy2(source,destination)
 
 	return
 
 
-def sed(path,patterns,default=None,process=None,device=None,execute=True):
+def sed(path,patterns,default=None,process=None,device=None,execute=True,verbose=None):
 	'''
 	GNU sed replace patterns in path
 	Args:
@@ -249,13 +267,14 @@ def sed(path,patterns,default=None,process=None,device=None,execute=True):
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity
 	'''
 
 	if path is None or patterns is None:
 		return
 
 	delimiters = [',','#','/','$']
-	replacements = {r"-":r"\-",r" ":r"\ "}
+	replacements = {r"-":r"\-",r" ":r"\ ",r"#":r"\#"}
 
 	exe = ['sed']
 	flags = ['-i']
@@ -290,14 +309,14 @@ def sed(path,patterns,default=None,process=None,device=None,execute=True):
 		args=[*exe,*flags,*cmd]
 
 
-		result = call(*args,device=device,execute=execute)
+		result = call(*args,device=device,execute=execute,verbose=verbose)
 
 	return
 
 
 
 
-def search(path,pattern,process=None,device=None,execute=True):
+def search(path,pattern,process=None,device=None,execute=True,verbose=None):
 	'''
 	Search for pattern in file
 	Args:
@@ -306,9 +325,12 @@ def search(path,pattern,process=None,device=None,execute=True):
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity
 	Returns:
 		result (int): Line number of last pattern occurrence in file,or -1 if does not exist
 	'''
+
+	replacements = {r"-":r"\-",r" ":r"\ ",r"#":r"\#"}
 
 	default = -1
 
@@ -323,11 +345,14 @@ def search(path,pattern,process=None,device=None,execute=True):
 		result = default
 		return result
 
+	for replacement in replacements:
+		pattern = pattern.replace(replacement,replacements[replacement])
+
 	args = []
 
 	exe = ['awk']
 	flags = []
-	cmd = ["'/%s/ {print FNR}'"%(pattern),path]
+	cmd = [' /%s/ {print FNR}'%(pattern),path]
 	args.append([*exe,*flags,*cmd])
 
 	exe = ['tail']
@@ -335,12 +360,13 @@ def search(path,pattern,process=None,device=None,execute=True):
 	cmd = []
 	args.append([*exe,*flags,*cmd])
 
-	result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute)
+	result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute,verbose=verbose)
+	print(args,result)
 
 	return result
 
 	
-def update(path,patterns,process=None,device=None,execute=True,**kwargs):
+def update(path,patterns,process=None,device=None,execute=True,verbose=None,**kwargs):
 	'''	
 	Update path files with sed
 	Args:
@@ -348,7 +374,8 @@ def update(path,patterns,process=None,device=None,execute=True,**kwargs):
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands		
+		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity		
 		kwargs (dict): Additional keyword arguments to update
 	'''
 	if path is None or patterns is None:
@@ -358,12 +385,12 @@ def update(path,patterns,process=None,device=None,execute=True,**kwargs):
 
 	default = _update(path,patterns,process=process,device=device,**kwargs)
 
-	sed(path,patterns,default=default,execute=execute)
+	sed(path,patterns,default=default,execute=execute,verbose=verbose)
 
 	return
 
 
-def configure(paths,pwd=None,cwd=None,patterns={},process=None,device=None,execute=True,**kwargs):
+def configure(paths,pwd=None,cwd=None,patterns={},process=None,device=None,execute=True,verbose=None,**kwargs):
 	'''
 	Configure paths for jobs with copied/updated files
 	Args:
@@ -374,6 +401,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,device=None,execu
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to configure
 
 	'''
@@ -399,12 +427,12 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,device=None,execu
 			updater(source,data,func=lambda key,iterable,elements: iterable.get(key,elements[key]))
 			dump(source,destination)					
 		else:
-			copy(source,destination,execute=execute)
+			copy(source,destination,execute=execute,verbose=verbose)
 
 	return
 
 
-def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device=None,execute=True):
+def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device=None,execute=True,verbose=None):
 	'''
 	Submit job commands to command line
 	Args:
@@ -417,6 +445,7 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity
 	Returns:
 		stdouts (str,iterable[str]): Return of commands
 	'''
@@ -451,9 +480,6 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 	stdouts = []
 	kwargs = {'size':size}
 
-	if not size:
-		return
-
 	for i,key in enumerate(keys):
 
 		i = str(i)
@@ -467,36 +493,30 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 
 		cmds[key] = cmd
 
+	tasks = []
+
+	for i,key in enumerate(keys):
+		tasks.append({'path':str(i),'key':key})
+
 	if process in ['serial']:
-		for i,key in enumerate(keys):
-
-			i = str(i)
-			key = key
-
-			path = join(cwd,i)
-			cmd = cmds[key]
-			job = jobs[key]
-
-
-			source = join(job,root=pwd)
-			destination = join(job,root=path)
-
-			copy(source,destination)
-			update(destination,patterns[key],process=process,device=device,**kwargs)
-
-			stdout = call(*cmd,path=path,device=device,execute=execute)
-
-			stdouts.append(stdout)
-
+		pass		
 	elif process in ['parallel']:
-		pass
-	
+		tasks.clear()
 	elif process in ['array']:
+		tasks.clear()
+		for i,key in enumerate(keys):
+			tasks.clear()
+			tasks.append({'path':None,'key':key})
+	else:
+		pass
 
-		i = None
-		key = keys[-1]
+	for task in tasks:
 
-		path = join(cwd,i)
+		key = task['key']
+		path = task['path']
+
+		path = join(path,root=cwd)
+
 		cmd = cmds[key]
 		job = jobs[key]
 
@@ -506,28 +526,8 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 		copy(source,destination)
 		update(destination,patterns[key],process=process,device=device,**kwargs)
 
-		stdout = call(*cmd,path=path,device=device,execute=execute)
+		stdout = call(*cmd,path=path,device=device,execute=execute,verbose=verbose)
 
-		stdouts = stdout
-
-	else:
-		for i,key in enumerate(keys):
-	
-			i = str(i)
-			key = key
-
-			path = join(cwd,i)
-			cmd = cmds[key]
-			job = jobs[key]
-
-			source = join(job,root=pwd)
-			destination = join(job,root=path)
-
-			copy(source,destination)
-			update(destination,patterns[key],process=process,device=device,**kwargs)
-
-			stdout = call(*cmd,path=path,device=device,execute=execute)
-
-			stdouts.append(stdout)
+		stdouts.append(stdout)
 
 	return stdouts

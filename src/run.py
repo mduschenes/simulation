@@ -163,7 +163,7 @@ def setup(hyperparameters):
 			elif attr in ['patterns']:
 				jobs[attr][key] = job[attr]
 			elif attr in ['pwd','cwd']:
-				jobs[attr] = join(hyperparameters[key]['sys'][attr],root=job.get(attr))
+				jobs[attr] = job[attr]
 			else:
 				jobs[attr] = job[attr]
 

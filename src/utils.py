@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,copy
-import logging.config,configparser
-import functools
+import os,sys,itertools,copy
+
+from functools import partial,wraps
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -43,54 +43,6 @@ delim = '.'
 itg = np.integer
 flt = np.float32
 dbl = np.float64
-
-# Aliases
-partial = functools.partial
-
-
-def logconfig(name,conf=None,**kwargs):
-	'''
-	Configure logging
-	Args:
-		name (str): File name for logger
-		conf (str): Path for logging config
-		kwargs (dict): Additional keywork arguments to overwrite config
-	Returns:
-		logger (logger): Configured logger
-	'''
-
-	logger = logging.getLogger(name)
-	if conf is not None:
-		try:
-			config = configparser.ConfigParser()
-			config.read(conf)
-			key = 'formatter'
-			value = 'file'
-			arg = 'args'
-
-			for section in config:
-				if config[section].get(key) == value:
-
-					kwarg = '.'.join([section,key,value,arg])
-					if kwargs.get(kwarg) is not None:
-						path = kwargs[kwarg]
-					else:
-						path = str(config[section][arg][1:-1].split(',')[0])[1:-1]
-					directory = os.path.abspath(os.path.dirname(os.path.abspath(path)))
-					if not os.path.exists(directory):
-						os.makedirs(directory)
-
-					config[section][arg] = '(%s)'%(','.join(['"%s"'%(path),*config[section][arg][1:-1].split(',')[1:]]))
-
-
-			with open(conf, 'w') as configfile:
-			    config.write(configfile)
-			logging.config.fileConfig(conf,disable_existing_loggers=False) 	
-		except Exception as e:
-			pass	
-		logger = logging.getLogger(name)
-
-	return logger
 
 
 def jit(func,*,static_argnums=None):
@@ -578,7 +530,7 @@ def decorator(*args,**kwargs):
 	Wrap function with args and kwargs
 	'''
 	def wrapper(func):
-		@functools.wraps
+		@wraps
 		def wrapped(*_args,**_kwargs):
 			arg = (*_args,*args)
 			kwarg = {**kwargs,**_kwargs}
@@ -2974,7 +2926,7 @@ def generator(stop=None):
 	def wrap(func):
 		def set(*args,**kwargs):
 			return func(*args,*kwargs)
-		@functools.wraps(func)
+		@wraps(func)
 		def wrapper(*args,stop=stop,**kwargs):
 			generator = set(*args,**kwargs)
 			while stop:
