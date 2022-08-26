@@ -1,0 +1,44 @@
+{
+"class":"src.quantum.Unitary",
+"hyperparameters":"settings.json",
+"seed":{
+	"seed":12332,
+	"size":1,
+	"reset":12332,
+	"index":null
+	},
+"permutations":{
+	"permutations":{
+		"model.M":[100,200,300,400],
+		"model.M":[100,200,300,400],
+		"model.N":[2],
+		"model.N":[4],
+		"model.M":[10,20,30],
+		"model.M":[10,20,30,40,50,80,100,200],
+		"optimize.iterations":[1000],
+		"parameters.xy.method":["unconstrained"],
+		"model.system.architecture":["unconstrained"]
+		},
+	"groups":[["parameters.xy.method","model.system.architecture"]],
+	"index":null
+	},
+"job":{
+	"jobs":"job.slurm",
+	"args":{
+		"JOB_SRC":"/h/mduschen/code/simulation/src",
+		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
+		"JOB_CMD":"train.py",
+		"JOB_ARGS":"settings.json"
+		},
+	"paths":{},
+	"patterns":{"array":"0-0:1%100","time":"04:00:00","mem":"12G"},
+	"pwd":"config",
+	"cwd":"test",
+	"process":"array",
+	"process":"serial",
+	"device":"slurm",
+	"device":"pc",
+	"execute":0,
+	"verbose":"info"
+	}
+}

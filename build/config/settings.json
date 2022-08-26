@@ -1,5 +1,6 @@
 {
 "class":"src.quantum.Unitary",
+"hyperparameters":"settings.json",
 "sys":{
 	"pwd":"config",
 	"cwd":null,
@@ -15,7 +16,6 @@
 			"plot":"plot.json",
 			"process":"process.json",
 			"mplstyle":"plot.mplstyle",
-			"job":"job.slurm",
 			"logger":"logging.conf"
 			}
 		}

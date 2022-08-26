@@ -40,6 +40,8 @@ from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import itg,dbl,flt
 
+from src.io import join,split,copy,rmdir,exists
+
 def logconfig(name,conf=None,**kwargs):
 	'''
 	Configure logging
@@ -53,11 +55,19 @@ def logconfig(name,conf=None,**kwargs):
 
 	logger = logging.getLogger(name)
 
-	if not os.path.exists(conf):
+	existing = exists(conf)
+
+	if not existing:
 		default = 'logging.conf'
-		source = os.path.join(os.path.dirname(os.path.abspath(__file__)),default)
-		destination = os.path.dirname(os.path.abspath(conf))
-		shutil.copy2(source,destination)
+		source = join(split(__file__,directory=True,abspath=True),default)
+		destination = split(conf,directory=True,abspath=True)
+		copy(source,destination)
+
+	source = conf
+	destination = join(conf,ext='tmp')
+	copy(source,destination)
+
+	conf = join(conf,ext='tmp')
 
 	if conf is not None:
 		try:
@@ -108,6 +118,13 @@ def logconfig(name,conf=None,**kwargs):
 			print(exception,traceback.format_exc())
 
 		logger = logging.getLogger(name)
+
+
+	rmdir(conf)
+
+	if not existing:
+		conf = split(conf,file=True)
+		rmdir(conf)
 
 	return logger
 

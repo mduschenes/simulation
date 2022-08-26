@@ -33,10 +33,10 @@ def main(args):
 
 	nargs = len(args)
 
-	hyperparameters = args[0] if nargs>0 else None
+	settings = args[0] if nargs>0 else None
 
-	run(hyperparameters)
-	# train(hyperparameters)
+	run(settings)
+	# train(settings)
 
 	return
 

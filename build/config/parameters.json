@@ -1,0 +1,33 @@
+{
+"class":"src.quantum.Unitary",
+"hyperparameters":"settings.json",
+"seed":{
+	"seed":12332,
+	"size":1,
+	"reset":12332,
+	"index":null
+	},
+"permutations":{
+	"permutations":{
+		},
+	"groups":[],
+	"index":null
+	},
+"job":{
+	"jobs":"job.slurm",
+	"args":{
+		"JOB_SRC":"/h/mduschen/code/simulation/src",
+		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
+		"JOB_CMD":"train.py",
+		"JOB_ARGS":"settings.json"
+		},
+	"paths":{},
+	"patterns":{},
+	"pwd":"config",
+	"cwd":"data",
+	"process":"serial",
+	"device":null,
+	"execute":0,
+	"verbose":"info"
+	}
+}

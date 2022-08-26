@@ -49,6 +49,20 @@ class cd(object):
 		return
 
 
+def exists(path):
+	'''
+	Check if path exists
+	Make path
+	Args:
+		path (str): path
+	Returns:
+		exists (bool): Path exists
+	'''
+
+	exists = os.path.exists(path)
+
+	return exists
+
 def mkdir(path):
 	'''
 	Make path
@@ -58,8 +72,35 @@ def mkdir(path):
 
 	directory = split(path,directory=True,abspath=True)
 
-	if directory not in ['',None] and not os.path.exists(directory):
+	if directory not in ['',None] and not exists(directory):
 		os.makedirs(directory)
+
+	return
+
+def rmdir(path):
+	'''
+	Remove path
+	Args:
+		path (str): path
+	'''
+
+	try:
+		os.remove(path)
+	except:
+		os.rmdir(path)
+
+	return
+
+
+def copy(source,destination):
+	'''
+	Copy paths
+	Args:
+		source (str): Source path
+		destination (str): Destination path
+	'''
+
+	shutil.copy2(source,destination)
 
 	return
 
@@ -404,8 +445,8 @@ def pickleable(obj,path=None,callables=True,verbose=False):
 			ispickleable = True
 		except Exception as exception:
 			pass
-	if os.path.exists(path):
-		os.remove(path)
+	if exists(path):
+		rmdir(path)
 	return ispickleable
 
 
@@ -438,8 +479,8 @@ def jsonable(obj,path=None,callables=False):
 			isjsonable = True
 		except Exception as exception:
 			pass
-	if os.path.exists(path):
-		os.remove(path)
+	if exists(path):
+		rmdir(path)
 	return isjsonable
 
 

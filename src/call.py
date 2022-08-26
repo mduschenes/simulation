@@ -21,14 +21,14 @@ from src.dictionary import updater
 
 
 name = __name__
-path = os.path.dirname(os.getcwd())
+path = os.getcwd()
 file = 'logging.conf'
 conf = os.path.join(path,file)
 file = None #'log.log'
 logger = Logger(name,conf,file=file)
 
 
-def _submit(job,args,process=None,device=None,execute=True,verbose=None,**kwargs):
+def _submit(job,args,process=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Update submit arguments
 	Args:
@@ -60,7 +60,7 @@ def _submit(job,args,process=None,device=None,execute=True,verbose=None,**kwargs
 
 	return args
 
-def _update(path,patterns,process=None,device=None,execute=True,verbose=None,**kwargs):
+def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Update submit patterns in-place
 	Args:
@@ -138,7 +138,7 @@ class popen(object):
 		except:
 			return
 
-def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verbose=None,**kwargs):
+def call(*args,path=None,wrapper=None,process=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Submit call to command line
 	Args:
@@ -261,7 +261,7 @@ def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verb
 
 	return result
 
-def copy(source,destination,process=None,device=None,execute=True,verbose=None,**kwargs):
+def cp(source,destination,process=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Copy objects from source to destination
 	Args:
@@ -284,12 +284,32 @@ def copy(source,destination,process=None,device=None,execute=True,verbose=None,*
 
 	stdout = call(*args,process=process,device=device,execute=execute,verbose=verbose)
 
-	# shutil.copy2(source,destination)
+	return
+
+
+def rm(path,process=None,device=None,execute=False,verbose=None,**kwargs):
+	'''
+	Remove path
+	Args:
+		path (str): Path to remove
+		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		device (str): Name of device to submit to
+		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity
+		kwargs (dict): Additional keyword arguments to copy
+	'''
+
+	exe = ['rm']
+	flags = ['-rf']
+	cmd = [path]
+	args = [*exe,*flags,*cmd]
+
+	stdout = call(*args,process=process,device=device,execute=execute,verbose=verbose)
 
 	return
 
 
-def sed(path,patterns,default=None,process=None,device=None,execute=True,verbose=None):
+def sed(path,patterns,default=None,process=None,device=None,execute=False,verbose=None):
 	'''
 	GNU sed replace patterns in path
 	Args:
@@ -305,7 +325,7 @@ def sed(path,patterns,default=None,process=None,device=None,execute=True,verbose
 		return
 
 	delimiters = [',','#','/','$']
-	replacements = {r"-":r"\-",r" ":r"\ ",r"#":r"\#"}
+	replacements = {}#{r"-":r"\-",r" ":r"\ ",r"#":r"\#"}
 
 	exe = ['sed']
 	flags = ['-i']
@@ -314,19 +334,18 @@ def sed(path,patterns,default=None,process=None,device=None,execute=True,verbose
 
 		cmd = None
 		
-		result = search(path,pattern)
+		result = search(path,pattern,execute=True,verbose=verbose)
 
 		if result == -1:
-			result = search(path,default)
+			result = search(path,default,execute=True,verbose=verbose)
 			if result == -1:					
 				cmd = None
-				# cmd = "$a%s"%(patterns[pattern])
 			else:
 				cmd = "%di %s"%(result+1,patterns[pattern])			
 		else:			
 			for delimiter in delimiters:
 				if all(delimiter not in string for string in (pattern,patterns[pattern])):
-					cmd = '"s%s%s%s%s%sg"'%(delimiter,pattern,delimiter,patterns[pattern],delimiter)
+					cmd = "s%s%s%s%s%sg"%(delimiter,pattern,delimiter,patterns[pattern],delimiter)
 					break
 
 		if cmd is None:
@@ -339,7 +358,6 @@ def sed(path,patterns,default=None,process=None,device=None,execute=True,verbose
 
 		args=[*exe,*flags,*cmd]
 
-
 		result = call(*args,device=device,execute=execute,verbose=verbose)
 
 	return
@@ -347,7 +365,7 @@ def sed(path,patterns,default=None,process=None,device=None,execute=True,verbose
 
 
 
-def search(path,pattern,process=None,device=None,execute=True,verbose=None):
+def search(path,pattern,process=None,device=None,execute=False,verbose=None):
 	'''
 	Search for pattern in file
 	Args:
@@ -398,7 +416,7 @@ def search(path,pattern,process=None,device=None,execute=True,verbose=None):
 	return result
 
 	
-def update(path,patterns,process=None,device=None,execute=True,verbose=None,**kwargs):
+def update(path,patterns,process=None,device=None,execute=False,verbose=None,**kwargs):
 	'''	
 	Update path files with sed
 	Args:
@@ -422,7 +440,7 @@ def update(path,patterns,process=None,device=None,execute=True,verbose=None,**kw
 	return
 
 
-def configure(paths,pwd=None,cwd=None,patterns={},process=None,device=None,execute=True,verbose=None,**kwargs):
+def configure(paths,pwd=None,cwd=None,patterns={},process=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Configure paths for jobs with copied/updated files
 	Args:
@@ -459,12 +477,12 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,device=None,execu
 			updater(source,data,func=lambda key,iterable,elements: iterable.get(key,elements[key]))
 			dump(source,destination)					
 		else:
-			copy(source,destination,execute=execute,verbose=verbose)
+			cp(source,destination,execute=execute,verbose=verbose)
 
 	return
 
 
-def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device=None,execute=True,verbose=None):
+def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands to command line
 	Args:
@@ -519,9 +537,9 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 
 		path = join(cwd,i)
 
-		configure(pwd=pwd,cwd=path,paths=paths[key],patterns=patterns[key],process=process,device=device,**kwargs)
+		configure(pwd=pwd,cwd=path,paths=paths[key],patterns=patterns[key],process=process,device=device,execute=True,**kwargs)
 
-		cmd = _submit(job=jobs[key],args=args[key],process=process,device=device)
+		cmd = _submit(job=jobs[key],args=args[key],process=process,device=device,execute=True)
 
 		cmds[key] = cmd
 
@@ -555,13 +573,11 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 		source = join(job,root=pwd)
 		destination = join(job,root=path)
 
-		copy(source,destination)
-		update(destination,patterns[key],process=process,device=device,**kwargs)
+		cp(source,destination,execute=True)
+		update(destination,patterns[key],process=process,device=device,execute=True,**kwargs)
 
 		stdout = call(*cmd,path=path,device=device,execute=execute,verbose=verbose)
 
 		stdouts.append(stdout)
 
 	return stdouts
-
-

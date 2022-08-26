@@ -791,6 +791,8 @@ class Object(object):
 		conf = join(hyperparameters['sys']['path']['config']['logger'],root=root)
 		file = join(hyperparameters['sys']['path']['data']['log'],root=root)
 
+		print('logger',root,conf)
+
 		self.logger = Logger(name,conf,file=file)
 
 		return

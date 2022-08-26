@@ -47,21 +47,32 @@ def allowed(index,value,values):
 
 	return boolean
 
-def setup(hyperparameters):
+def setup(settings):
 	'''
-	Setup hyperparameters
+	Setup settings
 	Args:
-		hyperparameters (dict,str): Hyperparameters
+		settings (dict,str): settings
 	Returns:
 		jobs (dict): Job submission dictionary
 	'''
 
-	# Load default hyperparameters
+	# Load default settings
 	default = {}
-	if hyperparameters is None:
-		hyperparameters = default
-	elif isinstance(hyperparameters,str):
-		hyperparameters = load(hyperparameters,default=default)
+	if settings is None:
+		settings = default
+	elif isinstance(settings,str):
+		settings = load(settings,default=default)
+
+	path = 'config/parameters.json'
+	default = {}
+	func = lambda key,iterable,elements: iterable.get(key,elements[key])
+	updater(settings,load(path,default=default),func=func)
+
+
+	# Load default hyperparameters
+	path = settings['hyperparameters']
+	default = {}
+	hyperparameters = load(path,default=default)
 
 	path = 'config/settings.json'
 	default = {}
@@ -72,14 +83,14 @@ def setup(hyperparameters):
 	timestamp = datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')
 
 	# Get permutations of hyperparameters
-	permutations = hyperparameters['permutations']['permutations']
-	groups = hyperparameters['permutations']['groups']
+	permutations = settings['permutations']['permutations']
+	groups = settings['permutations']['groups']
 	permutations = permuter(permutations,groups=groups)
 
 	# Get seeds for number of splits/seedings, for all nested hyperparameters leaves that involve a seed
-	seed = hyperparameters['seed']['seed']
-	size = hyperparameters['seed']['size']
-	reset = hyperparameters['seed']['reset']
+	seed = settings['seed']['seed']
+	size = settings['seed']['size']
+	reset = settings['seed']['reset']
 
 	seed = seed if seed is not None else None
 	size = size if size is not None else 1
@@ -139,7 +150,7 @@ def setup(hyperparameters):
 	jobs = {}
 	for key in keys:
 	
-		job = hyperparameters[key]['job']
+		job = settings['job']
 		config = hyperparameters[key]['sys']['path']['config']
 
 		for attr in job:
@@ -171,14 +182,14 @@ def setup(hyperparameters):
 
 
 
-def run(hyperparameters):
+def run(settings):
 	'''
 	Run simulations
 	Args:
-		hyperparameters (dict,str): hyperparameters
+		settings (dict,str): settings
 	'''		
 
-	jobs = setup(hyperparameters)
+	jobs = setup(settings)
 
 	submit(**jobs)
 
