@@ -161,15 +161,14 @@ def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verb
 			return result
 
 
-		def wrap(result):
-			stdout = parse(result.stdout.read())
-			stderr = parse(result.stderr.read())
-			returncode = parse(result.returncode)
+		def wrap(stdout,stderr,returncode):
+			stdout = '\n'.join(stdout)
+			stderr = '\n'.join(stderr)
+			returncode =  returncode
 			return stdout,stderr,returncode
 
 		def parse(obj):
-			if isinstance(obj,bytes):
-				obj = obj.strip().decode('utf-8')
+			obj = obj.strip().decode('utf-8')
 			return obj
 
 
@@ -180,24 +179,26 @@ def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verb
 
 		for arg in args:
 			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr)
+			if stdin is not None:
+				stdin.close()
 			stdin = result.stdout
 
-			# if arg[0] in ['awk','tail']:
-			# 	print('piped',arg,parse(_stdin.read()) if _stdin is not None else '',parse(result.stdout.read()),parse(result.stderr.read()))
-
+		stdout,stderr,returncode = [],[],result.returncode
+		
 		for line in result.stdout:
-			logger.log(verbose,parse(line))
+			stdout.append(parse(line))			
+			logger.log(verbose,stdout[-1])
 
-		if returncode is not None:
-			for line in result.stderr:	
-				logger.log(verbose,parse(line))
+		for line in result.stderr:	
+			stderr.append(parse(line))
+			if returncode is not None:
+				logger.log(verbose,stderr[-1])
 
-		stdout,stderr,returncode = wrap(result)
+		stdout,stderr,returncode = wrap(stdout,stderr,returncode)
 
 		return stdout,stderr,returncode
 
 	def wrapper(stdout,stderr,returncode,wrapper=wrapper,device=None,verbose=None):
-
 		try:
 			result = wrapper(stdout,stderr,returncode)
 		except:
@@ -214,7 +215,7 @@ def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verb
 		else:
 			args = [[arg for arg in args]]
 	
-		cmd = '|'.join([' '.join(arg) for arg in args])
+		cmd = ' | '.join([' '.join(arg) for arg in args])
 
 		return args,cmd
 
@@ -222,7 +223,8 @@ def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verb
 	args,cmd = parser(args,device=device,verbose=verbose)
 	result = None
 
-	logger.log(verbose,'%s : %s'%(path,cmd))
+	msg = '%s : %s'%(path,cmd) if path is not None else cmd
+	logger.log(verbose,msg)
 
 	if execute:
 		with cd(path):
@@ -353,15 +355,16 @@ def search(path,pattern,process=None,device=None,execute=True,verbose=None):
 	exe = ['awk']
 	flags = []
 	cmd = [' /%s/ {print FNR}'%(pattern),path]
-	args.append([*exe,*flags,*cmd])
+	arg = [*exe,*flags,*cmd]
+	args.append(arg)
 
 	exe = ['tail']
 	flags = ['--lines=1']
 	cmd = []
-	args.append([*exe,*flags,*cmd])
+	arg = [*exe,*flags,*cmd]
+	args.append(arg)
 
 	result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute,verbose=verbose)
-	print(args,result)
 
 	return result
 
@@ -531,3 +534,48 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 		stdouts.append(stdout)
 
 	return stdouts
+
+
+if __name__ == '__main__':
+	process = None
+	device = None
+	execute = True
+	verbose = 'info'
+
+	default = -1
+	def wrapper(stdout,stderr,returncode,default=default):
+		try:
+			result = int(stdout)
+		except:
+			result = stdout
+		return result
+
+
+	pattern = '#SBATCH'
+	path = 'job.slurm'
+
+	args = []
+
+	# exe = ['awk']
+	# flags = []
+	# cmd = [' /%s/ {print FNR}'%(pattern),path]
+	# arg = [*exe,*flags,*cmd]
+	# args.append(arg)
+
+	# exe = ['tail']
+	# flags = ['--lines=1']
+	# cmd = []
+	# arg = [*exe,*flags,*cmd]
+	# args.append(arg)
+
+
+	exe = ['cat']
+	flags = ['<']
+	cmd = [path]
+	arg = [*exe,*flags,*cmd]
+	args.append(arg)
+
+
+	result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute,verbose=verbose)
+
+	print('result = ',result)
