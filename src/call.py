@@ -21,7 +21,7 @@ from src.dictionary import updater
 
 
 name = __name__
-path = os.path.dirname(os.path.abspath(__file__))
+path = os.path.dirname(os.getcwd())
 file = 'logging.conf'
 conf = os.path.join(path,file)
 file = None #'log.log'
@@ -154,7 +154,7 @@ def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verb
 		result (object): Return of commands
 	'''
 
-	def caller(args,device=None,verbose=None):
+	def caller(args,inputs=None,device=None,verbose=None):
 
 		def run(args,stdin=None,stdout=None,stderr=None):
 			result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr)
@@ -177,10 +177,17 @@ def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verb
 		stderr = subprocess.PIPE
 		returncode = None
 
-		for arg in args:
+		inputs = [inputs]*len(args) if inputs in [None] else inputs
+
+		for arg,input in zip(args,inputs):
+
+			stdin = open(input,'r') if input is not None else stdin
+
 			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr)
+
 			if stdin is not None:
 				stdin.close()
+
 			stdin = result.stdout
 
 		stdout,stderr,returncode = [],[],result.returncode
@@ -206,21 +213,43 @@ def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verb
 
 		return result
 
-	def parser(args,device=None,verbose=None):
-		
+	def parser(*args,device=None,verbose=None):
+
 		pipe = any(not isinstance(arg,str) for arg in args)
 
 		if pipe:
 			args = [[subarg for subarg in arg] if not isinstance(arg,str) else [arg] for arg in args]
 		else:
 			args = [[arg for arg in args]]
-	
+
 		cmd = ' | '.join([' '.join(arg) for arg in args])
 
-		return args,cmd
+		inputs = []
+		symbols = ['<']
+
+		for arg in args:
+
+			for symbol in symbols:
+				redirect = symbol in arg
+				if redirect:
+					break
+
+			if redirect:
+				index = arg.index(symbol)
+				input = ' '.join(arg[index+1:])
+				subarg = arg[:index]
+			else:
+				index = None
+				input = None
+				subarg = arg[:]
+
+			args[args.index(arg)] = subarg
+			inputs.append(input)
+
+		return inputs,args,cmd
 
 
-	args,cmd = parser(args,device=device,verbose=verbose)
+	inputs,args,cmd = parser(*args,device=device,verbose=verbose)
 	result = None
 
 	msg = '%s : %s'%(path,cmd) if path is not None else cmd
@@ -228,7 +257,7 @@ def call(*args,path=None,wrapper=None,process=None,device=None,execute=True,verb
 
 	if execute:
 		with cd(path):
-			result = wrapper(*caller(args,device=device,verbose=verbose),device=device,verbose=verbose)
+			result = wrapper(*caller(args,inputs=inputs,device=device,verbose=verbose),device=device,verbose=verbose)
 
 	return result
 
@@ -536,46 +565,3 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 	return stdouts
 
 
-if __name__ == '__main__':
-	process = None
-	device = None
-	execute = True
-	verbose = 'info'
-
-	default = -1
-	def wrapper(stdout,stderr,returncode,default=default):
-		try:
-			result = int(stdout)
-		except:
-			result = stdout
-		return result
-
-
-	pattern = '#SBATCH'
-	path = 'job.slurm'
-
-	args = []
-
-	# exe = ['awk']
-	# flags = []
-	# cmd = [' /%s/ {print FNR}'%(pattern),path]
-	# arg = [*exe,*flags,*cmd]
-	# args.append(arg)
-
-	# exe = ['tail']
-	# flags = ['--lines=1']
-	# cmd = []
-	# arg = [*exe,*flags,*cmd]
-	# args.append(arg)
-
-
-	exe = ['cat']
-	flags = ['<']
-	cmd = [path]
-	arg = [*exe,*flags,*cmd]
-	args.append(arg)
-
-
-	result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute,verbose=verbose)
-
-	print('result = ',result)

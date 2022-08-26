@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+usr/bin/env python
 
 # Import python modules
 import pytest
@@ -158,6 +158,63 @@ def test_grad(path,tol):
 
 	return
 
+
+def test_call():
+	return
+	# process = None
+	# device = None
+	# execute = True
+	# verbose = 'info'
+
+	# default = -1
+	# def wrapper(stdout,stderr,returncode,default=default):
+	# 	try:
+	# 		result = int(stdout)
+	# 	except:
+	# 		result = stdout
+	# 	return result
+
+
+	# pattern = '#SBATCH'
+	# path = 'job.slurm'
+
+	# args = []
+
+	# exe = ['awk']
+	# flags = []
+	# cmd = [' /%s/ {print FNR}'%(pattern),path]
+	# arg = [*exe,*flags,*cmd]
+	# args.append(arg)
+
+	# exe = ['tail']
+	# flags = ['--lines=1']
+	# cmd = []
+	# arg = [*exe,*flags,*cmd]
+	# args.append(arg)
+
+
+	# exe = ['cat']
+	# flags = ['<']
+	# cmd = ['test.txt']
+	# arg = [*exe,*flags,*cmd]
+	# args.append(arg)
+
+	# exe = ['grep']
+	# flags = []
+	# cmd = ['job']
+	# arg = [*exe,*flags,*cmd]
+	# args.append(arg)
+
+
+	# exe = ['sbatch']
+	# flags = ['--export=JOB_SRC=../../src,JOB_CMD=train.py,JOB_ARGS=settings.json','<']
+	# cmd = [path]
+
+	# arg = [*exe,*flags,*cmd]
+	# args.append(arg)
+
+
+	# result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute,verbose=verbose)
 
 def test_main(path,tol):
 	# main([path])
