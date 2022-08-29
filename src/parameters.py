@@ -55,7 +55,52 @@ def _variables(parameters,hyperparameters,parameter,group):
 	method = hyperparameters[parameter]['method']
 	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
 	index = hyperparameters[parameter]['group'].index(group)
-	if method in ['constrained']:
+
+	if 'uncorrelated' in method:
+		if parameter in ['xy'] and group in [('x',)]:
+			variable = (
+				scale[0]*parameters[0]
+			)		
+
+		elif parameter in ['xy'] and group in [('y',)]:
+			variable = (
+				scale[0]*parameters[1]
+			)		
+
+		elif parameter in ['z'] and group in [('z',)]:
+			variable = (
+				scale[index]*
+				parameters[index]
+			)
+		elif parameter in ['zz'] and group in [('zz',)]:
+			variable = (
+				scale[index]/(8*kwargs['min']*kwargs['tau'])*
+				parameters[index]
+			)
+	elif 'correlated' in method:
+		if parameter in ['xy'] and group in [('x',)]:
+			variable = (
+				scale[0]*parameters[0]*
+				cos(scale[1]*parameters[1])
+			)		
+
+		elif parameter in ['xy'] and group in [('y',)]:
+			variable = (
+				scale[0]*parameters[0]*
+				sin(scale[1]*parameters[1])
+			)		
+
+		elif parameter in ['z'] and group in [('z',)]:
+			variable = (
+				scale[index]*
+				parameters[index]
+			)
+		elif parameter in ['zz'] and group in [('zz',)]:
+			variable = (
+				scale[index]/(8*kwargs['min']*kwargs['tau'])*
+				parameters[index]
+			)			
+	elif method in ['constrained']:
 		if parameter in ['xy'] and group in [('x',)]:
 			variable = (
 				scale[0]*parameters[0]*
@@ -125,7 +170,11 @@ def _features(parameters,hyperparameters,parameter,group):
 	l = len(hyperparameters[parameter]['group'])
 	shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
 
-	if method in ['constrained']:
+	if 'unbounded' in method:
+		wrapper = nullbound
+	elif 'bounded' in method:
+		wrapper = bound
+	elif method in ['constrained']:
 		wrapper = bound
 	elif method in ['unconstrained']:
 		wrapper = nullbound
@@ -170,7 +219,40 @@ def _constraints(parameters,hyperparameters,parameter,group):
 	scale = hyperparameters[parameter]['kwargs']['lambda']
 	constants = hyperparameters[parameter]['constants']['features'][-1]
 
-	if method in ['constrained']:
+	if 'noboundaries' in method:
+		if parameter in ['xy'] and group in [('x',),('y',)]:
+			constraint = (
+				0
+			)
+		elif parameter in ['z'] and group in [('z',)]:
+			constraint = 0
+		
+		elif parameter in ['zz'] and group in [('zz',)]:
+			constraint = 0
+
+	elif 'boundaries' in method:
+		if parameter in ['xy'] and group in [('x',),('y',)]:
+			constraint = (
+				(scale[0]*(parameters[...,constants['slice']] - constants['value'])**2).sum()
+			)
+		elif parameter in ['z'] and group in [('z',)]:
+			constraint = 0
+		
+		elif parameter in ['zz'] and group in [('zz',)]:
+			constraint = 0
+
+	elif method in ['constrained']:
+		if parameter in ['xy'] and group in [('x',),('y',)]:
+			constraint = (
+				(scale[0]*(parameters[...,constants['slice']] - constants['value'])**2).sum()
+			)
+		elif parameter in ['z'] and group in [('z',)]:
+			constraint = 0
+		
+		elif parameter in ['zz'] and group in [('zz',)]:
+			constraint = 0			
+
+	elif method in ['constrained']:
 		if parameter in ['xy'] and group in [('x',),('y',)]:
 			constraint = (
 				(scale[0]*(parameters[...,constants['slice']] - constants['value'])**2).sum()
