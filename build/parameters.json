@@ -1,5 +1,4 @@
 {
-"class":"src.quantum.Unitary",
 "hyperparameters":"settings.json",
 "seed":{
 	"seed":12332,

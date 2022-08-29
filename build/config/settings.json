@@ -26,18 +26,6 @@
 	"dump":1,
 	"plot":0
 	},
-"seed":{
-	"seed":12332,
-	"size":1,
-	"reset":12332,
-	"index":null
-	},
-"permutations":{
-	"permutations":{
-		},
-	"groups":[],
-	"index":null
-	},
 "model":{
 	"N":2,
 	"D":2,
@@ -62,8 +50,6 @@
 		"device":"cpu",
 		"verbose":"info"
 		}
-	},
-"hyperparameters":{
 	},
 "optimize":{
 	"iterations":200,
@@ -181,23 +167,6 @@
 	"seed":null,
 	"bounds":[-1,1]	
 },
-"job":{
-	"jobs":"job.slurm",
-	"args":{
-		"JOB_SRC":"/h/mduschen/code/simulation/src",
-		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
-		"JOB_CMD":"train.py",
-		"JOB_ARGS":"settings.json"
-		},
-	"paths":{},
-	"patterns":{},
-	"pwd":null,
-	"cwd":"data",
-	"process":"array",
-	"device":"slurm",
-	"device":"pc",
-	"execute":false
-	},
 "process": {},
 "plot": {}
 }

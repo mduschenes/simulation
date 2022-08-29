@@ -68,11 +68,13 @@ def setup(settings):
 	func = lambda key,iterable,elements: iterable.get(key,elements[key])
 	updater(settings,load(path,default=default),func=func)
 
-
 	# Load default hyperparameters
-	path = settings['hyperparameters']
 	default = {}
-	hyperparameters = load(path,default=default)
+	hyperparameters = settings.get('hyperparameters')
+	if hyperparameters is None:
+		hyperparameters = default
+	elif isinstance(hyperparameters,str):
+		hyperparameters = load(hyperparameters,default=default)
 
 	path = 'config/settings.json'
 	default = {}
@@ -100,7 +102,7 @@ def setup(settings):
 	# Find keys of seeds in hyperparameters
 	key = 'seed'
 	exclude = ['seed.seed','model.system.seed']
-	seedlings = [delim.join(branch[0]) for branch in leaves(hyperparameters,key,returns='both') if delim.join(branch[0]) not in exclude and branch[1] is None]
+	seedlings = [delim.join(branch[0]) for branch in leaves(hyperparameters,key,returns='both') if not any(delim.join(branch[0][:len(e.split(delim))]) == e for e in exclude) and branch[1] is None]
 
 	count = len(seedlings)
 	
@@ -137,20 +139,25 @@ def setup(settings):
 					if attr in ['model.system.key']:
 						keys[key][attr] = key
 
-	# Set hyperparameters with key and seed instances
+	# Set settings with key and seed instances
+	old = [attr for attr in settings]
+	new = {key: deepcopy(settings) for key in keys}
+	clearer(settings,new,old)
 
+	# Set hyperparameters with key and seed instances
 	old = [attr for attr in hyperparameters]
 	new = {key: deepcopy(hyperparameters) for key in keys}
-	clearer(hyperparameters,new,old)
+	clearer(hyperparameters,new,old)	
 
 	for key in keys:
+		setter(settings[key],keys[key],delimiter=delim,copy=True)
 		setter(hyperparameters[key],keys[key],delimiter=delim,copy=True)
 
 	# Set job
 	jobs = {}
 	for key in keys:
 	
-		job = settings['job']
+		job = settings[key]['job']
 		config = hyperparameters[key]['sys']['path']['config']
 
 		for attr in job:
@@ -174,7 +181,7 @@ def setup(settings):
 			elif attr in ['patterns']:
 				jobs[attr][key] = job[attr]
 			elif attr in ['pwd','cwd']:
-				jobs[attr] = job[attr]
+				jobs[attr][key] = job[attr]
 			else:
 				jobs[attr] = job[attr]
 

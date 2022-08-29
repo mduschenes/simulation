@@ -102,7 +102,7 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 		})
 
 	for pattern in null:
-		patterns.pop(pattern)
+		patterns.pop(pattern,None)
 
 	null.clear()
 	null.extend(list(patterns))
@@ -484,20 +484,20 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,device=None,execu
 
 def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device=None,execute=False,verbose=None):
 	'''
-	Submit job commands to command line
+	Submit job commands as tasks to command line
 	Args:
 		jobs (str,dict[str,str]): Submission script, or {key:job}
 		args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
 		paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
 		patterns (dict[str,dict[str,str]],dict[str,dict[str,dict[str,str]]]): Patterns to update files {path:{pattern:replacement}} or {key:{path:{pattern:replacement}}
-		pwd (str): Input root path for files
-		cwd (str): Output root path for files		
+		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
+		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
 	Returns:
-		stdouts (str,iterable[str]): Return of commands
+		results (iterable[str]): Return of commands for each task
 	'''
 
 	keys = [None]
@@ -510,34 +510,57 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 	if all(isinstance(args[arg],str) for arg in args) or not len(args):
 		args = {key:args for key in keys}
 
-	keys = intersection(jobs,args)
+	keys = intersection(keys,args)
 
 	if not all(key in paths for key in keys) or not len(paths):
 		paths = {key:paths for key in keys}
 
-	keys = intersection(jobs,args,paths)
+	keys = intersection(keys,paths)
 
 	if not all(key in patterns for key in keys) or not len(patterns):
 		patterns = {key:patterns for key in keys}
 
-	keys = intersection(jobs,args,paths,patterns)
+	keys = intersection(keys,patterns)
+
+	if isinstance(pwd,str):
+		pwd = {key:pwd for key in keys}
+
+	keys = intersection(keys,pwd)
+
+	if isinstance(cwd,str):
+		cwd = {key:cwd for key in keys}
+
+	keys = intersection(keys,cwd)
 
 	keys = list(sorted(keys))
 
-	size = len(keys)
-	
+	unique = {
+		path: {
+			key: [subkey for subkey in keys if cwd[subkey]==cwd[key]].index(key) 
+				for key in keys if cwd[key]==path
+			}
+	 for path in set([cwd[key] for key in cwd])
+	 }
+
+	unique = {attr: unique[attr] for attr in sorted(unique)}
+
 	cmds = {}
-	stdouts = []
-	kwargs = {'size':size}
+	results = []
+	kwargs = {
+		key:{
+			'size': len(unique[cwd[key]])
+			}
+		for key in keys
+		}
 
 	for i,key in enumerate(keys):
 
-		i = str(i)
 		key = key
+		i = str(unique[cwd[key]][key])
 
-		path = join(cwd,i)
+		path = join(cwd[key],i)
 
-		configure(pwd=pwd,cwd=path,paths=paths[key],patterns=patterns[key],process=process,device=device,execute=True,**kwargs)
+		configure(pwd=pwd[key],cwd=path,paths=paths[key],patterns=patterns[key],process=process,device=device,execute=True,**kwargs[key])
 
 		cmd = _submit(job=jobs[key],args=args[key],process=process,device=device,execute=True)
 
@@ -546,7 +569,18 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 	tasks = []
 
 	for i,key in enumerate(keys):
-		tasks.append({'path':str(i),'key':key})
+		
+		key = str(key)		
+		i = str(unique[cwd[key]][key])
+
+		path = join(i)
+
+		task = {'path':path,'key':key}
+
+		boolean = lambda task,tasks: True
+
+		if boolean(task,tasks):		
+			tasks.append(task)
 
 	if process in ['serial']:
 		pass		
@@ -554,9 +588,20 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 		tasks.clear()
 	elif process in ['array']:
 		tasks.clear()
-		for i,key in enumerate(keys):
-			tasks.clear()
-			tasks.append({'path':None,'key':key})
+		for j,path in enumerate(unique):
+			for i,key in enumerate(unique[path]):
+				
+				key = str(key)
+				i = None
+
+				path = join(i)
+
+				task = {'path':path,'key':key}
+
+				boolean = lambda task,tasks: cwd[task['key']] not in [cwd[subtask['key']] for subtask in tasks]
+
+				if boolean(task,tasks):		
+					tasks.append(task)
 	else:
 		pass
 
@@ -565,19 +610,19 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',process=None,device
 		key = task['key']
 		path = task['path']
 
-		path = join(path,root=cwd)
+		path = join(path,root=cwd[key])
 
 		cmd = cmds[key]
 		job = jobs[key]
 
-		source = join(job,root=pwd)
+		source = join(job,root=pwd[key])
 		destination = join(job,root=path)
 
 		cp(source,destination,execute=True)
 		update(destination,patterns[key],process=process,device=device,execute=True,**kwargs)
 
-		stdout = call(*cmd,path=path,device=device,execute=execute,verbose=verbose)
+		result = call(*cmd,path=path,device=device,execute=execute,verbose=verbose)
 
-		stdouts.append(stdout)
+		results.append(result)
 
-	return stdouts
+	return results
