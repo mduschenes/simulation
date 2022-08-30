@@ -109,6 +109,7 @@ def dirname(path,abspath=False,delimiter='.'):
 	elif os.path.isdir(path):
 		directory = path
 	else:
+		print("WARNING DIRNAME of PATH - %s has extension %s not in allowed extensions"%(path,ext))
 		directory = path
 
 	if abspath:
