@@ -16,7 +16,7 @@ for PATH in PATHS:
 
 from src.utils import intersection,scalars
 from src.system	 import Logger
-from src.io import cd,mkdir,join,split,load,dump
+from src.io import cd,mkdir,join,load,dump
 from src.dictionary import updater
 
 name = __name__
@@ -131,8 +131,8 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 
 	patterns.update({
 		string(pattern=pattern,default=default): 
-		string(pattern=pattern,value=patterns.get(pattern),prefix='',default=default)
-		for pattern in patterns
+		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='',default=default)
+		for pattern in list(patterns)
 		if pattern not in null
 		})
 

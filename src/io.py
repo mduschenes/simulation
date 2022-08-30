@@ -91,7 +91,7 @@ def dirname(path,abspath=False,delimiter='.'):
 		'tex','sty','aux','auxlock','bbl','bib','blg','snm','toc','nav','tikz',
 		'docx','xlsx','pptx','doc','xls','ppt',
 		'slurm','lsf',
-		'ini','config'
+		'ini','config',
 		'mplstyle',
 		'conf','log',
 		'stdout','stderr'
