@@ -44,7 +44,6 @@ def main(args):
 		return
 
 	path = args[0]
-	path,ext = split(path,directory_file=True,ext=True)
 
 	args.extend([path]*(nkwargs-nargs))
 

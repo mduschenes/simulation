@@ -63,6 +63,51 @@ def exists(path):
 
 	return exists
 
+
+def dirname(path,abspath=False,delimiter='.'):
+	'''
+	Return directory name of path
+	Make path
+	Args:
+		path (str): path
+		abspath (bool): Return absolute path of directory
+		delimiter (str): Delimiter to separate file name from extension		
+	Returns:
+		directory (bool): Directory name of path
+	'''
+
+	exts = [
+		'py',
+		'cpp','o','out','err','obj',
+		'csv','txt',
+		'npy','pickle','pkl',
+		'json',
+		'hdf5','h5',
+		'pdf','tex',
+		'slurm',
+		'mplstyle',
+		'conf','log',
+		'stdout','stderr'
+		]
+
+	if path is None:
+		directory = path
+		return directory
+
+	file,ext = os.path.splitext(path)
+	ext = delimiter.join(ext.split(delimiter)[1:])
+
+	if os.path.isfile(path) or ext in exts:
+		directory = os.path.dirname(path)
+	else:
+		directory = path
+
+	if abspath:
+		directory = os.path.abspath(directory)
+
+	return directory
+
+
 def mkdir(path):
 	'''
 	Make path
@@ -129,9 +174,9 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 			slices = slice(directory-1,None) if directory > 0 else slice(None,directory) 
 		else:
 			slices = slice(*(directory[0],directory[1],*directory[2:]))
-		paths['directory'] = os.sep.join(os.path.dirname(path).split(os.sep)[slices])
+		paths['directory'] = os.sep.join(dirname(path).split(os.sep)[slices])
 	else:
-		paths['directory'] = os.path.dirname(path)
+		paths['directory'] = dirname(path)
 	if abspath:
 		paths['directory'] = os.path.abspath(paths['directory'])
 
@@ -168,8 +213,9 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 		paths = [path,ext]
 		paths = [path for path in paths if path not in ['',None]]		
 		path = delimiter.join(paths)
+
 	if path is not None and root is not None:
-		if not os.path.abspath(os.path.dirname(path)).startswith(os.path.abspath(root)):
+		if not dirname(path,abspath=True).startswith(dirname(root,abspath=True)):
 			paths = [root,path]
 			paths = [path for path in paths if path not in ['',None]]
 			path = os.path.join(*paths)

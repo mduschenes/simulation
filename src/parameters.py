@@ -56,7 +56,20 @@ def _variables(parameters,hyperparameters,parameter,group):
 	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
 	index = hyperparameters[parameter]['group'].index(group)
 
-	if 'uncorrelated' in method:
+	if method is None:
+		if parameter in ['z'] and group in [('z',)]:
+			variable = (
+				scale[index]*
+				parameters[index]
+			)
+		if parameter in ['zz'] and group in [('zz',)]:
+			variable = (
+				scale[index]/(8*kwargs['min']*kwargs['tau'])*
+				parameters[index]
+			)
+		else:
+			variable = scale[index]*parameters[index]
+	elif 'uncorrelated' in method:
 		if parameter in ['xy'] and group in [('x',)]:
 			variable = (
 				scale[0]*parameters[0]
@@ -170,7 +183,9 @@ def _features(parameters,hyperparameters,parameter,group):
 	l = len(hyperparameters[parameter]['group'])
 	shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
 
-	if 'unbounded' in method:
+	if method is None:
+		wrapper = nullbound
+	elif 'unbounded' in method:
 		wrapper = nullbound
 	elif 'bounded' in method:
 		wrapper = bound
@@ -219,7 +234,9 @@ def _constraints(parameters,hyperparameters,parameter,group):
 	scale = hyperparameters[parameter]['kwargs']['lambda']
 	constants = hyperparameters[parameter]['constants']['features'][-1]
 
-	if 'noboundaries' in method:
+	if method is None:
+		constraint = 0
+	elif 'noboundaries' in method:
 		if parameter in ['xy'] and group in [('x',),('y',)]:
 			constraint = (
 				0

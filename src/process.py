@@ -471,7 +471,6 @@ def loader(kwargs,**options):
 			kwargs[kwarg] = {}
 			returns['multiple'] |= len(paths)>1
 			for path in paths:
-				directory,ext = split(path,directory=-1,ext=True)
 				kwargs[kwarg].update(load(path,default=default,**options))
 				print('Loaded:',path)				
 		else:
