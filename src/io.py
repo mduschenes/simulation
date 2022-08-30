@@ -76,15 +76,22 @@ def dirname(path,abspath=False,delimiter='.'):
 		directory (bool): Directory name of path
 	'''
 
+	# TODO: Include all extensions / find method of determining if path is directory or file
+
 	exts = [
-		'py',
+		'py','ipynb',
 		'cpp','o','out','err','obj',
 		'csv','txt',
 		'npy','pickle','pkl',
 		'json',
 		'hdf5','h5',
-		'pdf','tex',
-		'slurm',
+		'sh',
+		'git',
+		'pdf','mk',
+		'tex','sty','aux','auxlock','bbl','bib','blg','snm','toc','nav','tikz',
+		'docx','xlsx','pptx','doc','xls','ppt',
+		'slurm','lsf',
+		'ini','config'
 		'mplstyle',
 		'conf','log',
 		'stdout','stderr'
@@ -99,6 +106,8 @@ def dirname(path,abspath=False,delimiter='.'):
 
 	if os.path.isfile(path) or ext in exts:
 		directory = os.path.dirname(path)
+	elif os.path.isdir(path):
+		directory = path
 	else:
 		directory = path
 
