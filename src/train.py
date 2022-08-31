@@ -63,10 +63,12 @@ def train(hyperparameters):
 	if hyperparameters['boolean'].get('load'):
 		obj.load()
 
+
 	if hyperparameters['boolean'].get('train'):
 
 		parameters = obj.parameters
-		hyperparams = hyperparameters['optimize']
+		hyperparams = obj.hyperparameters['optimize']
+		hyperparams = obj.hyperparameters['optimize']
 
 		func = obj.__func__
 		callback = obj.__callback__

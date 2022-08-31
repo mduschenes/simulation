@@ -1,6 +1,5 @@
-matplotlib=3.5
-pandas
 jax
+pandas
 h5py
 pyaml
 pytest

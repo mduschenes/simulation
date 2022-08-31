@@ -309,12 +309,14 @@ class Base(object):
 
 		self.size = 0
 		self.iteration = -1
+		self.parameters = None
 		self.attributes = hyperparameters['attributes']
 		self.status = hyperparameters['status']
 		self.eps = hyperparameters['eps']
+		self.reset = hyperparameters['reset']
 		self.verbose = hyperparameters['verbose']
 
-		self.reset(hyperparameters['reset'])
+		self.__reset__()
 
 		return
 
@@ -327,14 +329,21 @@ class Base(object):
 			parameters (object): optimizer parameters
 		'''
 
+		if not self.reset and self.size > 0:
+			parameters = self.parameters
+			self.status = self.callback(parameters)
+
 		state = self.opt_init(parameters)
 		for iteration in self.iterations:
-			state = self.opt_update(iteration,state)
-
+			
 			if not self.status:
 				break
 
+			state = self.opt_update(iteration,state)
+
 		parameters = self.get_params(state)
+
+		self.parameters = parameters
 
 		return parameters
 
@@ -420,12 +429,15 @@ class Base(object):
 
 		return value,grad,parameters
 
-	def reset(self,reset=False):
+	def __reset__(self,reset=None):
 		'''
 		Reset tracking of optimization
 		Args:
 			reset (bool): Boolean of resetting optimization
 		'''
+
+		if reset is None:
+			reset = self.reset
 
 		if reset:
 			self.size = 0
@@ -434,9 +446,21 @@ class Base(object):
 				self.attributes[attr].clear()
 			for attr in self.track:
 				self.track[attr].clear()
+			self.parameters = None
 		else:
-			self.size = min(len(self.track[attr]) for attr in self.track)
-			self.iteration = self.track['iteration'][-1] if self.size > 0 else -1
+			if any(len(self.track[attr])>0 for attr in self.track):
+				self.size = min(len(self.track[attr]) for attr in self.track if len(self.track[attr])>0)
+			else:
+				self.size = 0
+
+			if self.size > 0:
+				self.iteration = self.track['iteration'][-1]
+				self.parameters = self.track['parameters'][-1]
+			else:
+				self.iteration = 0
+				self.parameters = None
+
+			self.iteration -= 1
 
 		self.iterations = range(
 			self.iterations.start+self.iteration+1,

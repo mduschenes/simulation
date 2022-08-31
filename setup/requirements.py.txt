@@ -1,2 +1,8 @@
 python=3.8.11
 intelpython
+mkl
+mkl-devel
+numpy
+scipy
+scikit-learn-intelex
+matplotlib	

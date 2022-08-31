@@ -983,10 +983,14 @@ class Object(object):
 		Args:
 			path (str): Path to load class data
 		'''
+
+		# TODO: Determine which loaded hyperparameters should have precedence over new hyperparameters
+
 		def func(key,iterable,elements): 
+			types = (list,)
 			i = iterable.get(key,elements.get(key))
 			e = elements.get(key,i)
-			return e if not callable(i) else i
+			return e if isinstance(e,types) else i
 		
 		# Set path
 		if path is None:

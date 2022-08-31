@@ -553,6 +553,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 			directory[attr] = hyperparameters.get('cwd')
 		else:
 			directory[attr] = cwd
+
 		path[attr] = join(directory[attr],file[attr],ext=ext[attr])
 
 	# Get plot variables setting

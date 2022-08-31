@@ -1,2 +1,0 @@
-qiskit[visualization]
-matplotlib==3.5

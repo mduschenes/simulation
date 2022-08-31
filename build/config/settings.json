@@ -2,7 +2,6 @@
 "class":"src.quantum.Unitary",
 "hyperparameters":"settings.json",
 "sys":{
-	"pwd":"config",
 	"cwd":null,
 	"path":{
 		"data":{
@@ -25,6 +24,17 @@
 	"load":0,
 	"dump":1,
 	"plot":0
+	},
+"seed":{
+	"seed":12332,
+	"size":1,
+	"reset":12332,
+	"index":null
+	},
+"permutations":{
+	"permutations":{},
+	"groups":[],
+	"index":null
 	},
 "model":{
 	"N":2,
@@ -82,6 +92,7 @@
 		"method":"unconstrained",
 		"use":true,		
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
+		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -93,7 +104,9 @@
 		"pad":"random",
 		"seed":null,	
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
@@ -167,6 +180,25 @@
 	"seed":null,
 	"bounds":[-1,1]	
 },
+"job":{
+	"jobs":"job.slurm",
+	"args":{
+		"JOB_ENV":"jax",
+		"JOB_SRC":"/h/mduschen/code/simulation/src",
+		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
+		"JOB_CMD":"train.py",
+		"JOB_ARGS":"settings.json"
+		},
+	"paths":{},
+	"patterns":{"array":"0-0:1%100","time":"04:00:00","mem":"12G"},
+	"pwd":"config",
+	"cwd":"data",
+	"pause":1,	
+	"process":"serial",
+	"device":"pc",
+	"execute":1,
+	"verbose":"info"
+	},
 "process": {},
 "plot": {}
 }

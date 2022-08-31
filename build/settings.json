@@ -35,11 +35,11 @@
 	"permutations":{
 		"model.M":[100,200,300,400],
 		"model.M":[100,200,300,400],
-		"model.N":[2],
 		"model.N":[4],
-		"model.M":[10,20,30],
+		"model.N":[2],
 		"model.M":[10,20,30,40,50,80,100,200],
-		"optimize.iterations":[1000],
+		"model.M":[10,20,30],
+		"optimize.iterations":[100],
 		"parameters.xy.method":["unconstrained"],
 		"model.system.architecture":["unconstrained"]
 		},
@@ -193,20 +193,21 @@
 "job":{
 	"jobs":"job.slurm",
 	"args":{
-		"JOB_SRC":"/h/mduschen/code/simulation/src",
+		"JOB_ENV":"jax",
 		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
+		"JOB_SRC":"/h/mduschen/code/simulation/src",
 		"JOB_CMD":"train.py",
 		"JOB_ARGS":"settings.json"
 		},
 	"paths":{},
 	"patterns":{"array":"0-0:1%100","time":"04:00:00","mem":"12G"},
 	"pwd":"config",
-	"cwd":"data",
+	"cwd":"test",
 	"pause":1,	
 	"process":"serial",
 	"process":"array",
-	"device":"slurm",
 	"device":"pc",
+	"device":"slurm",
 	"execute":1,
 	"verbose":"info"
 	},

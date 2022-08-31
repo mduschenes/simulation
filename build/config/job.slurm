@@ -21,9 +21,10 @@
 JOB_ID=${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-}}
 JOB_ARRAY=${SLURM_ARRAY_TASK_ID:-"."}
 
-JOB_SRC=${1:-${JOB_SRC}}
-JOB_CMD=${2:-${JOB_CMD}}
-shift 2;
+JOB_ENV=${1:-${JOB_ENV}}
+JOB_SRC=${2:-${JOB_SRC}}
+JOB_CMD=${3:-${JOB_CMD}}
+shift 3;
 JOB_ARGS=${@:-${JOB_ARGS}}
 
 
@@ -33,11 +34,8 @@ cd ${JOB_ARRAY}
 
 # Environment
 module purge &>/dev/null 2>&1
-# module load jax0.2.24-cuda11.0-python3.8_jupyter &>/dev/null 2>&1
-
-env=jax
-source ${HOME}/env/${env}.env &>/dev/null 2>&1
-source activate ${HOME}/env/${env} &>/dev/null 2>&1
+source activate ${HOME}/env/${JOB_ENV} &>/dev/null 2>&1
+# source ${HOME}/env/${JOB_ENV}.env &>/dev/null 2>&1
 
 
 # Command

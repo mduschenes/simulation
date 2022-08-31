@@ -92,7 +92,7 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 		default = ''
 		def string(**kwargs):
 			wrapper(kwargs)
-			string = '%s%s=%s'%(kwargs['prefix'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
+			string = '%s%s=%s%s'%(kwargs['prefix'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
 			return string
 	elif device in ['slurm']:
 		default = '#SBATCH'
@@ -104,7 +104,7 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 		default = ''
 		def string(**kwargs):
 			wrapper(kwargs)
-			string = '%s%s=%s'%(kwargs['prefix'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
+			string = '%s%s=%s%s'%(kwargs['prefix'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
 			return string		
 
 	null = []

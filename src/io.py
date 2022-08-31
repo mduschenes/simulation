@@ -80,6 +80,7 @@ def dirname(path,abspath=False,delimiter='.'):
 
 	exts = [
 		'py','ipynb',
+		'tmp',
 		'cpp','o','out','err','obj',
 		'csv','txt',
 		'npy','pickle','pkl',
@@ -103,20 +104,19 @@ def dirname(path,abspath=False,delimiter='.'):
 
 	file,ext = os.path.splitext(path)
 	ext = delimiter.join(ext.split(delimiter)[1:])
+	directory = os.path.dirname(path)
 
-	if os.path.isfile(path) or ext in exts:
-		directory = os.path.dirname(path)
-	elif os.path.isdir(path):
+	if directory in ['']:
+		if ext not in exts:
+			directory = path
+	elif ext not in exts:
 		directory = path
-	else:
-		print("WARNING DIRNAME of PATH - %s has extension %s not in allowed extensions"%(path,ext))
-		directory = path
-
 	if abspath:
 		directory = os.path.abspath(directory)
 
 	return directory
 
+	
 
 def mkdir(path):
 	'''
@@ -124,7 +124,6 @@ def mkdir(path):
 	Args:
 		path (str): path
 	'''
-
 	directory = split(path,directory=True,abspath=True)
 
 	if directory not in ['',None] and not exists(directory):
@@ -154,7 +153,7 @@ def copy(source,destination):
 		source (str): Source path
 		destination (str): Destination path
 	'''
-
+	mkdir(destination)
 	shutil.copy2(source,destination)
 
 	return

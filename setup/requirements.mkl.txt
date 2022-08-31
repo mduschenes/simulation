@@ -1,3 +1,0 @@
-mkl
-mkl-devel
-libblas=*=*mkl
