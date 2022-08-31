@@ -17,6 +17,7 @@
 
 #SBATCH --parsable
 
+
 # Variables
 JOB_ID=${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-}}
 JOB_ARRAY=${SLURM_ARRAY_TASK_ID:-"."}
@@ -34,10 +35,9 @@ cd ${JOB_ARRAY}
 
 # Environment
 module purge &>/dev/null 2>&1
-source activate ${HOME}/env/${JOB_ENV} &>/dev/null 2>&1
-# source ${HOME}/env/${JOB_ENV}.env &>/dev/null 2>&1
+conda activate ${JOB_ENV} &>/dev/null 2>&1
+# source activate ${JOB_ENV} &>/dev/null 2>&1
 
 
 # Command
-# echo "${PWD} \(${JOB_ID},${JOB_ARRAY}\) : ${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]}"
 ${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]}

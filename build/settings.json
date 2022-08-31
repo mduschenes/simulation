@@ -193,9 +193,9 @@
 "job":{
 	"jobs":"job.slurm",
 	"args":{
-		"JOB_ENV":"jax",
-		"JOB_SRC":"/home/matt/files/uw/research/projects/simulation/code/src",
-		"JOB_SRC":"/h/mduschen/code/simulation/src",
+		"JOB_ENV":"${HOME}/env/jax",
+		"JOB_SRC":"${HOME}/files/uw/research/projects/simulation/code/src",
+		"JOB_SRC":"${HOME}/code/simulation/src",
 		"JOB_CMD":"train.py",
 		"JOB_ARGS":"settings.json"
 		},
