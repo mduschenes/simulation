@@ -1,8 +1,8 @@
 {
 "class":"src.quantum.Unitary",
+"hyperparameters":"settings.json",
 "sys":{
-	"pwd":".",
-	"cwd":"data",
+	"cwd":null,
 	"path":{
 		"data":{
 			"model":"model.pkl",
@@ -10,53 +10,44 @@
 			"settings":"settings.json",
 			"log":"log.log"
 			},
-		"plot":{
-			"plot":"plot.pdf",
-			"process":"process.hdf5"
-			},
 		"config":{
-			"settings":"config/settings.json",
-			"plot":"config/plot.json",
-			"process":"config/process.json",
-			"mplstyle":"config/plot.mplstyle",
-			"job":"config/job.slurm",
-			"logger":"config/logging.conf"
+			"settings":"settings.json",
+			"plot":"plot.json",
+			"process":"process.json",
+			"mplstyle":"plot.mplstyle",
+			"logger":"logging.conf"
 			}
 		}
 	},
 "boolean":{
-	"train":0,
+	"train":1,
 	"load":0,
-	"dump":0,
-	"plot":1,
-	"plot.obj":0
+	"dump":1,
+	"plot":0
 	},
 "seed":{
-	"seed":123321,
+	"seed":12332,
 	"size":1,
-	"reset":123321,
+	"reset":12332,
 	"index":null
 	},
 "permutations":{
 	"permutations":{
-		"model.M":[10],
-		"model.N":[2,3],
-		"optimize.iterations":[5],
-		"parameters.xy.method":["constrained",null],
-		"model.system.architecture":["constrained","unconstrained"],
-		"model.M":[10],
-		"model.N":[3],
-		"optimize.iterations":[500],
-		"parameters.xy.method":[null],
-		"model.system.architecture":[null],
-		"parameters.xy.method":["constrained"],
-		"model.system.architecture":["constrained"]
+		"model.M":[100,200,300,400],
+		"model.M":[100,200,300,400],
+		"model.N":[4],
+		"model.N":[2],
+		"model.M":[10,20,30,40,50,80,100,200],
+		"model.M":[10,20,30],
+		"optimize.iterations":[100],
+		"parameters.xy.method":["unconstrained"],
+		"model.system.architecture":["unconstrained"]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null
 	},
 "model":{
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -68,7 +59,7 @@
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"metric":"norm",
+	"metric":"infidelity.abs",
 	"system":{
 		"dtype":"complex",
 		"format":"array",
@@ -80,12 +71,9 @@
 		"verbose":"info"
 		}
 	},
-"hyperparameters":{
-	},
 "optimize":{
 	"iterations":200,
 	"optimizer":"cg",
-	"metric":"abs2",	
 	"line_search":"line_search",
 	"eps":{"objective":1e-8,"grad":1e-12,"alpha":1e-12,"beta":1e3},
 	"value":{"objective":1,"grad":0,"alpha":0,"beta":0},
@@ -202,34 +190,27 @@
 	"seed":null,
 	"bounds":[-1,1]	
 },
-"process": {
-	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture"],
-	"nullsort": [],
-	"load":0,
-	"dump":1,
-	"delimiter":".",
-	"plotting":{
-		"objective":{"iteration":{"plot":[]}},
-		"parameters":{"":{"axis":[[0,1],[2],[],[-1]]}},
-		"parameters.relative":{"":{"axis":[[0,1],[2],[],[-1]]}},
-		"parameters.relative.mean":{"M":{"axis":[[],[],[],[-1]]}}
-	},	
-	"nullplotting":{"None.parameters.iteration.M":null,"iteration.hessian.M":null},
-	"texify":{
-		"iteration":"\\textrm{Iteration}~i",
-		"None": "\\textrm{None}",
-		"architecture": "\\textrm{Architecture}",
-		"constrained": "\\textrm{Constrained}",
-		"unconstrained": "\\textrm{Unconstrained}"
-	}
-},
-"plot": {},
 "job":{
-	"job":"config/job.slurm",
-	"cmd":"../src/train.py",
-	"args":["settings.json"],
-	"path":".",
+	"jobs":"job.slurm",
+	"args":{
+		"JOB_ENV":"${HOME}/env/jax",
+		"JOB_SRC":"${HOME}/files/uw/research/projects/simulation/code/src",
+		"JOB_SRC":"${HOME}/code/simulation/src",
+		"JOB_CMD":"train.py",
+		"JOB_ARGS":"settings.json"
+		},
+	"paths":{},
+	"patterns":{"array":"0-0:1%100","time":"04:00:00","mem":"12G"},
+	"pwd":"config",
+	"cwd":"test",
+	"pause":1,	
+	"process":"serial",
+	"process":"array",
+	"device":"pc",
 	"device":"slurm",
-	"exe":true
-	}
+	"execute":1,
+	"verbose":"info"
+	},
+"process": {},
+"plot": {}
 }

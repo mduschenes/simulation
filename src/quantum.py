@@ -32,7 +32,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient,hessian,gradient_finite,gradient_fwd
+from src.utils import jit,gradient,hessian,gradient_finite,gradient_shift,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,rank,einsum
 from src.utils import summation,exponentiation

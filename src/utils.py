@@ -119,7 +119,6 @@ def vfunc(funcs,index):
 	return lambda x,func=func,index=index: func(index,x)
 
 
-
 def value_and_gradient(func):
 	'''
 	Compute value and gradient of function
@@ -176,9 +175,47 @@ def value_and_gradient_finite(func,tol=1e-6):
 	'''
 	@jit
 	def value_and_grad(x):
-		return (func(x),vmap(lambda v,x=x,tol=tol: (func(x+tol*v)-func(x-tol*v))/(2*tol))(eye(x.size)))
+		return (func(x),gradient_finite(func,tol))
 	
 	return value_and_grad
+
+
+def gradient_shift(func,n=2):
+	'''
+	Calculate shift-rules derivative of function
+	Args:
+		func (callable): Function to derive, with signature func(x) and output shape
+		n (int): Number of eigenvalues of shifted values
+	Returns:
+		out (array): Array of gradient
+	'''
+
+	shifts = -(n-1)/2 + arange(n)
+
+	@jit
+	def grad(x):
+		vectors = eye(x.size)
+		return vmap(vmap(lambda v,s: s*func(x+pi/4/s*v),in_axes=(0,None)),in_axes=(None,0))(vectors,shifts).sum(0)
+
+	return grad
+
+
+def value_and_gradient_shift(func,n=2):
+	'''
+	Calculate shift-rules derivative of function
+	Args:
+		func (callable): Function to derive, with signature func(x) and output shape
+		n (int): Number of eigenvalues of shifted values
+	Returns:
+		out (array): Array of gradient
+	'''
+
+	@jit
+	def value_and_grad(x):
+		return (func(x),gradient_shift(func,n))
+	
+	return value_and_grad
+
 
 
 def gradient_fwd(func):
@@ -964,6 +1001,43 @@ def eigh(a):
 		v (array): Array of normalized eigenvectors of shape (...,n,n)
 	'''
 	return np.linalg.eigh(a)
+
+
+@jit
+def eig(a):
+	'''
+	Compute eigenvalues and eigenvectors
+	Args:
+		a (array): Array to compute eigenvalues and eigenvectors of shape (...,n,n)
+	Returns:
+		e (array): Vector of eigenvalues of shape (...,n)
+		v (array): Array of normalized eigenvectors of shape (...,n,n)
+	'''
+	return np.linalg.eig(a)
+
+
+@jit
+def eigvalsh(a):
+	'''
+	Compute eigenvalues of a hermitian array
+	Args:
+		a (array): Array to compute eigenvalues of shape (...,n,n)
+	Returns:
+		e (array): Vector of eigenvalues of shape (...,n)
+	'''
+	return np.linalg.eigvalsh(a)
+
+
+@jit
+def eigvals(a):
+	'''
+	Compute eigenvalues
+	Args:
+		a (array): Array to compute eigenvalues of shape (...,n,n)
+	Returns:
+		e (array): Vector of eigenvalues of shape (...,n)
+	'''
+	return np.linalg.eigvals(a)
 
 
 @jit
@@ -1964,6 +2038,19 @@ def expspm(x,A,I):
 	out = zeros(I.shape,dtype=I.dtype)
 	return sp.linalg.expm(forloop(0,k,func,out))
 
+
+
+
+@jit
+def sign(a):
+	'''
+	Calculate sign of array a
+	Args:
+		a (array): Array to compute sign
+	Returns:
+		out (array): Sign of array
+	'''
+	return np.sign(a)
 
 @jit
 def sin(a):

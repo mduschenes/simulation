@@ -1,2 +1,43 @@
 {
+	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture"],
+	"parameters":[
+		{
+			"key":{"x":"iteration","y":"infidelity"},
+			"plot":[["linear","linear"]]
+		},
+		{
+			"key":{"x":"","y":"parameters"},
+			"axis":[[0,1],[2],[],[-1]]
+		},
+		{
+			"key":{"x":"","y":"parameters.relative"},
+			"axis":[[0,1],[2],[],[-1]]
+		},
+		{
+			"key":{"x":"M","y":"parameters.relative.mean"},
+			"axis":[[],[],[],[-1]]
+		},
+		{
+			"key":{"x":"M","y":"parameters.relative.mean"},
+			"axis":[[1],[],[],[0]],
+			"wrapper":{"wrapper":"mean","axis":[-1]}
+		}
+		],	
+	"null":{"iteration.hessian.M":null,"None.parameters.iteration.M":null},
+	"texify":{
+		"iteration":"\\textrm{Iteration}~i",
+		"None": "\\textrm{None}",
+		"architecture": "\\textrm{Architecture}",
+		"constrained": "\\textrm{Constrained}",
+		"unconstrained": "\\textrm{Unconstrained}"
+	},
+	"pwd":null,
+	"cwd":null,
+	"path": {
+        "plot": "plot.pdf",
+        "process": "process.hdf5"
+    },
+	"delimiter":".",
+    "load":0,
+	"dump":1
 }
