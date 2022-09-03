@@ -5,7 +5,7 @@ mkl-devel
 numpy
 scipy
 scikit-learn-intelex
-matplotlib
+matplotlib=3.5
 
 jax
 jaxlib=0.3.7
