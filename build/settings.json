@@ -43,6 +43,11 @@
 		"model.M":[100,200,300,400,500,1000,2000],
 		"optimize.iterations":[1000],
 		"optimize.optimizer":["adam"],
+		"job.cwd":["gobi/test"],
+		"job.device":["slurm"],
+		"job.process":["array"],
+		"job.execute":[1],
+		"job.args.JOB_SRC":["~/code/simulation/src"],
 
 		"job.cwd":["data"],		
 		"job.device":["pc"],
@@ -50,11 +55,6 @@
 		"job.execute":[0],		
 		"job.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
 
-		"job.cwd":["gobi/test"],
-		"job.device":["slurm"],
-		"job.process":["array"],
-		"job.execute":[1],
-		"job.args.JOB_SRC":["~/code/simulation/src"],
 		"parameters.xy.method":["constrained"],
 		"model.system.architecture":["constrained"]
 		},
