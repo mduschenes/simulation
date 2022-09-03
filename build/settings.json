@@ -50,7 +50,7 @@
 		"job.execute":[0],		
 		"job.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
 
-		"job.cwd":["gobi/data_adam_4_constrained"],
+		"job.cwd":["gobi/test"],
 		"job.device":["slurm"],
 		"job.process":["array"],
 		"job.execute":[1],
