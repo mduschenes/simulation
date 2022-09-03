@@ -174,10 +174,15 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 		paths (iterable): Split path,directory,file,ext depending on booleans
 	'''	
 
-	if path is None or not (directory or file or ext or file_ext or directory_file):
-		return path
 	returns = {'directory':directory,'file':file or directory_file or file_ext,'ext':ext}
 	paths = {}
+
+	if path is None or not (directory or file or ext or file_ext or directory_file):
+		paths = tuple((path for k in returns if returns[k]))
+		if len(paths) == 0:
+			paths = (None,)
+		return returnargs(paths)
+
 	if not isinstance(directory,bool):
 		if isinstance(directory,int):
 			slices = slice(directory-1,None) if directory > 0 else slice(None,directory) 
@@ -193,13 +198,17 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 	if paths['ext'].startswith(delimiter):
 		paths['ext'] = delimiter.join(paths['ext'].split(delimiter)[1:])
 	if not directory_file:
-		paths['file'] = os.path.basename(paths['file'])
+		if dirname(path) == paths['file']:
+			paths['file'] = None
+		else:
+			paths['file'] = os.path.basename(paths['file'])
 	if file_ext:
-		paths['file'] = delimiter.join([paths['file'],paths['ext']])
+		if paths['file'] is not None:
+			paths['file'] = delimiter.join([paths['file'],paths['ext']])
 	
-	paths = [paths[k] for k in paths if returns[k]] 
+	paths = tuple((paths[k] for k in paths if returns[k]))
 	
-	return paths if len(paths)>1 else paths[0]
+	return returnargs(paths)
 
 def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	'''

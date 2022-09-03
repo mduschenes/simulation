@@ -43,7 +43,7 @@ from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gr
 from src.utils import eigh,qr
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
-from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size
+from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size,intersection
 from src.utils import pi,e,nan,delim,scalars,nulls
 from src.utils import itg,flt,dbl
 
@@ -248,7 +248,6 @@ class Object(object):
 						if attr in hyperparameters[section] and isinstance(getattr(cls,attr),scalars)})
 
 			return
-
 
 
 		self.hyperparameters.update(hyperparameters)
@@ -831,7 +830,7 @@ class Object(object):
 		'''
 		Save class data		
 		Args:
-			path (str): Path to dump class data
+			path (str,dict[str,str]): Path to dump class data
 		'''
 
 		# Process attribute values
@@ -961,27 +960,35 @@ class Object(object):
 			for attr in list(data[key]):			
 				data[key].update(func(attr,data[key][attr],self))
 
+		# Set data
+		data = {'data':data,'model':self.hyperparameters}
+
 		# Set path
 		if path is None:
-			path = self.hyperparameters['sys']['cwd']
-		root = path
+			paths = {}
+		elif isinstance(path,str):
+			paths = {attr: path for attr in data}
+		else:
+			paths = {attr: path[attr] for attr in path}
+
+		paths.update({attr: self.hyperparameters['sys']['cwd'] for attr in data if attr not in paths})			
+
+		attrs = intersection(data,paths)
 
 		# Dump data
-		path = join(self.hyperparameters['sys']['path']['data']['data'],root=root)
-		dump(data,path)
+		for attr in attrs:
+			root,file = split(paths[attr],directory=True,file_ext=True)
+			file = file if file is not None else self.hyperparameters['sys']['path']['data'][attr]
+			path = join(file,root=root)
+			dump(data[attr],path)
 		
-		# Dump hyperparameters
-		path = join(self.hyperparameters['sys']['path']['data']['model'],root=root)
-		hyperparameters = self.hyperparameters
-		dump(hyperparameters,path)
-
 		return
 
 	def load(self,path=None):
 		'''
 		Load class data		
 		Args:
-			path (str): Path to load class data
+			path (str,dict[str,str]): Path to load class data			
 		'''
 
 		# TODO: Determine which loaded hyperparameters should have precedence over new hyperparameters
@@ -992,16 +999,30 @@ class Object(object):
 			e = elements.get(key,i)
 			return e if isinstance(e,types) else i
 		
+		# Set data
+		data = {'model':self.hyperparameters}
+
 		# Set path
 		if path is None:
-			path = self.hyperparameters['sys']['cwd']
-		root = path
+			paths = {}
+		elif isinstance(path,str):
+			paths = {attr: path for attr in data}
+		else:
+			paths = {attr: path[attr] for attr in path}
+
+		paths.update({attr: self.hyperparameters['sys']['cwd'] for attr in data if attr not in paths})			
+		
+		attrs = intersection(data,paths)
 
 		# Load data
-		path = join(self.hyperparameters['sys']['path']['data']['model'],root=root)
-		default = self.hyperparameters
-		hyperparameters = load(path,default=default)
-		updater(self.hyperparameters,hyperparameters,func=func)
+		for attr in attrs:
+			root,file = split(paths[attr],directory=True,file_ext=True)
+			file = file if file is not None else self.hyperparameters['sys']['path']['data'][attr]
+			path = join(file,root=root)
+			default = data[attr]
+			data[attr] = load(path,default=default)
+			updater(default,data[attr],func=func)
+
 		return
 
 
@@ -1029,7 +1050,7 @@ class Object(object):
 			hyperparameters = {key: path[key] for key in path}
 			path = self.hyperparameters['sys']['cwd']
 
-		root = path
+		root,file = split(path,directory=True,file_ext=True)
 
 		# Get paths and kwargs
 		paths = {
@@ -1046,6 +1067,7 @@ class Object(object):
 				path = hyperparameters[key]
 				for i in paths[kwarg]:
 					path = path[i]
+				path = join(path,root=root)
 				kwargs[kwarg].append(path)
 
 		fig,ax = process(**kwargs)
