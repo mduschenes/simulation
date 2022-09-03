@@ -632,7 +632,6 @@ class Object(object):
 				'U\n%s\nV\n%s\n'%(
 				to_str(abs(self(parameters)).round(4)),
 				to_str(abs(self.label).round(4))),
-
 				])
 
 

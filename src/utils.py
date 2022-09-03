@@ -3434,7 +3434,7 @@ def to_str(a,**kwargs):
 		string (str): String representation of array
 	'''
 
-	string = np.array_str(a,**kwargs)
+	string = np.array_str(a,**kwargs).replace('[[','[').replace(']]',']')
 
 	return string
 

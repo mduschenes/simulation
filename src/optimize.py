@@ -336,10 +336,10 @@ class Base(object):
 		state = self.opt_init(parameters)
 		for iteration in self.iterations:
 			
+			state = self.opt_update(iteration,state)
+
 			if not self.status:
 				break
-
-			state = self.opt_update(iteration,state)
 
 		parameters = self.get_params(state)
 
@@ -676,8 +676,6 @@ class Adam(Base):
 		self._optimizer = getattr(jax.example_libraries.optimizers,self.optimizer)
 
 		self._opt_init,self._opt_update,self._get_params = self._optimizer(self.hyperparameters['alpha'])
-
-
 
 		return
 

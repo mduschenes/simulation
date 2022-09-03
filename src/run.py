@@ -118,7 +118,7 @@ def setup(settings):
 	values = {'permutations':permutations,'seed':seeds,'other':other}
 	index = {attr: hyperparameters.get(attr,{}).get('index') for attr in values}
 	# formatter = lambda instance,value,values: '%d'%(instance)	
-	formatter = lambda instance,value,values: (delim.join(['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]))
+	formatter = lambda instance,value,values: (delim.join(['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1])) if any(len(values[k])>1 for k in values) else None
 	keys = {}
 	for instance,value in enumerate(itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
 		if allowed(

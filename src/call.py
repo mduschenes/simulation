@@ -617,9 +617,9 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',pause=None,process=
 		for key in keys
 		}
 
-	for i,key in enumerate(keys):
+	for key in keys:
 
-		path = str(unique[cwd[key]][key])
+		path = str(unique[cwd[key]][key]) if len(unique[cwd[key]])>1 else None
 
 		path = join(path,root=cwd[key])
 
@@ -642,8 +642,8 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',pause=None,process=
 		tasks.clear()
 	elif process in ['array']:
 		tasks.clear()
-		for j,path in enumerate(unique):
-			for i,key in enumerate(unique[path]):
+		for path in unique:
+			for key in unique[path]:
 				
 				path = None
 
