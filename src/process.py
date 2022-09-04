@@ -23,6 +23,7 @@ for PATH in PATHS:
 
 from src.utils import array,product,expand_dims,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
+from src.utils import rank,diag,is_nan
 from src.utils import e,pi,nan,scalars,nulls
 from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split,glob
@@ -629,10 +630,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 	# Get keys of properties of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
 	keys = find(settings,properties)
-	labels = [{prop: dict(zip(key[prop]['key'],key[prop]['value'])) for prop in key} for key in keys]
-	sublabels = [{prop: dict(zip(key[prop]['key'],key[prop]['value'])) for prop in ['label']} for key in keys]
-
-
 
 
 	# Load data
@@ -741,6 +738,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in names)))) for attr in attributes}
 
 		
+		# Get labels of keys
+		labels = [{prop: {attr:value for attr,value in zip(key[prop]['key'],key[prop]['value']) if attr in attributes} 
+				for prop in key} 
+				for key in keys]
+
 		# Get combinations of key attributes and permutations of shared attributes for combination across data
 
 		variables = {}
@@ -1199,6 +1201,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 
+
+						# TODO: Allow for access of other data/attributes values (statistics of them in parallel with plotted values)
+						# for use in plot labels etc.
+
 						kwargs = ['label']
 						for kwarg in kwargs:
 							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
@@ -1207,6 +1213,21 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if stat not in [('fit','fit')]:
 								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
 								value = ',~'.join([texify(str(combination[k])) for k in value])
+
+								if key['y']['key'][-1] in ['hessian.eigenvalues']:
+									value = '~'.join([value,
+										*['%s%s'%(
+											('%s='%(str(label)) 
+												if label.count('@')==0 else
+												''.join([str(combination.get(v,v)) for v in label.split('@') if len(v)>0])),
+											(str(rank(diag(settings[instance][subinstance][setting][attr][subsubinstance]['y'][
+												~is_nan(settings[instance][subinstance][setting][attr][subsubinstance]['y'])])))),
+											# ('~'.join([str(combination.get(v,v)) for v in val.split('@') if len(v)>0]) 
+											# 	if val is not None else '')
+											)
+											for label,val in zip(key['label']['key'],key['label']['value']) 
+											if label not in combination]
+										])
 							else:
 								value = None
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value

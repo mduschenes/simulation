@@ -223,11 +223,14 @@ def call(*args,path=None,wrapper=None,pause=None,process=None,device=None,execut
 
 			stdin = result.stdout
 
+
 		stdout,stderr,returncode = [],[],result.returncode
 		
 		for line in result.stdout:
 			stdout.append(parse(line))			
 			logger.log(verbose,stdout[-1])
+
+		returncode = result.wait()
 
 		for line in result.stderr:	
 			stderr.append(parse(line))

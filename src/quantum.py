@@ -34,13 +34,13 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient,hessian,gradient_finite,gradient_shift,gradient_fwd
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,rank,einsum
+from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,einsum
 from src.utils import summation,exponentiation
 from src.utils import trotter,gradient_trotter
 from src.utils import gradient_expm,gradient_sigmoid
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import eigh,qr
+from src.utils import eigh,eigvalsh,qr,rank
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
 from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size,intersection
@@ -589,9 +589,20 @@ class Object(object):
 			self.__objective__(parameters)
 			)
 
-		# self.hyperparameters['optimize']['track']['hessian'].append(
-		# 	rank(self.__hessian__(parameters))
-		# 	)	
+
+		status = (
+			(abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['value']['objective']) > 
+				 self.hyperparameters['optimize']['eps']['objective']*self.hyperparameters['optimize']['value']['objective']) and
+			(norm(self.hyperparameters['optimize']['track']['grad'][-1] - self.hyperparameters['optimize']['value']['grad'])/self.hyperparameters['optimize']['track']['grad'][-1].size > 
+				  self.hyperparameters['optimize']['eps']['grad'])
+			)
+
+
+	
+		self.hyperparameters['optimize']['track']['hessian'].append(
+			# 1-self.hyperparameters['optimize']['track']['value'][-1] + self.__constraints__(parameters)
+			self.__hessian__(parameters) if not status or self.hyperparameters['optimize']['track']['iteration'][-1]==self.hyperparameters['optimize']['iterations'] else None
+			)
 
 		# fisher = einsum()
 
@@ -626,7 +637,7 @@ class Object(object):
 				),
 				'\t\t'.join([
 					'%s = %0.4e'%(attr,self.hyperparameters['optimize']['track'][attr][-1])
-					for attr in ['alpha','beta','hessian','fisher']
+					for attr in ['alpha','beta']
 					if attr in self.hyperparameters['optimize']['track'] and len(self.hyperparameters['optimize']['track'][attr])>0
 					]),
 				'U\n%s\nV\n%s\n'%(
@@ -639,13 +650,6 @@ class Object(object):
 
 			# print(self.__layers__(parameters,'variables').round(3))
 
-
-		status = (
-			(abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['value']['objective']) > 
-				 self.hyperparameters['optimize']['eps']['objective']*self.hyperparameters['optimize']['value']['objective']) and
-			(norm(self.hyperparameters['optimize']['track']['grad'][-1] - self.hyperparameters['optimize']['value']['grad'])/self.hyperparameters['optimize']['track']['grad'][-1].size > 
-				  self.hyperparameters['optimize']['eps']['grad'])
-			)
 
 		return status
 
@@ -920,6 +924,26 @@ class Object(object):
 					new = 'infidelity'
 					New = 1 - value
 					returns[new] = New
+
+				elif attr in ['hessian']:
+					if value is not None:
+						new = '%s.eigenvalues'%(attr)						
+						New  = eigvalsh(value)
+						New = sorted(abs(New)/max(New),reverse=True)
+						returns[new] = New
+						
+						new = '%s.rank'%(attr)
+						New  = rank(value)
+						returns[new] = New
+
+					else:
+						new = '%s.eigenvalues'%(attr)
+						New = None
+						returns[new] = New
+
+						new = '%s.rank'%(attr)
+						New = None
+						returns[new] = New
 
 			return returns
 

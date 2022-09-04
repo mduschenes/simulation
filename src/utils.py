@@ -3458,8 +3458,8 @@ def to_key_value(string,delimiter='=',**kwargs):
 			key = delimiter.join(string)
 			value = None
 		else:
-			key = delimiter.join(string[:-1])
-			value = string[-1]
+			key = string[0]
+			value = delimiter.join(string[1:])
 			if is_number(value):
 				value = to_number(value)
 			elif is_none(value):

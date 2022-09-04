@@ -67,7 +67,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
-"iteration.hessian.M":{
+"None.hessian.eigenvalues.M":{
 	"fig":{
 		"set_size_inches":{"w":8,"h":8},
 		"subplots_adjust":{},
@@ -77,9 +77,9 @@
 		},
 	"ax":{
 		"errorbar":{
-			"x":"iteration",
-			"y":"hessian",
-			"label":["N","architecture","M"],
+			"x":"",
+			"y":"hessian.eigenvalues",
+			"label":["N","architecture","M","iteration=@iteration.max@","r=@hessian.rank@"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -87,12 +87,15 @@
 			"color":"viridis",
 			"ecolor":"viridis"
 			},
-		"set_ylabel":{"ylabel":"$\\textrm{Hessian Rank}$"},
-		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
+		"set_ylabel":{"ylabel":"$\\textrm{Hessian}~\\frac{\\lambda}{\\lambda_{\\textrm{max}}}$"},
+		"set_xlabel":{"xlabel":"$\\textrm{Index}$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":6},
-		"set_ylim":{"ymin":0,"ymax":20000},
 		"set_ynbins":{"nbins":4},		
+		"set_yscale":{"value":"log","base":10},
+		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
+		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
+		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
