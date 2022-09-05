@@ -50,7 +50,7 @@ def _submit(job,args,process=None,device=None,execute=False,verbose=None,**kwarg
 		cmd = [subarg for arg in args for subarg in args[arg]]
 	elif device in ['slurm']:
 		exe = ['sbatch']
-		flags = ['%s=%s'%('--export',','.join(['%s="%s"'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args])),'<']
+		flags = ['%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args])),'<']
 		cmd = [job]
 	else:
 		exe = ['.',job]
