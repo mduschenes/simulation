@@ -29,16 +29,27 @@ for PATH in PATHS:
 from src.run import run
 from src.train import train
 
-def main(args):
+def main(*args,**kwargs):
 
-	nargs = len(args)
-
-	settings = args[0] if nargs>0 else None
-
-	run(settings)
-	# train(settings)
+	run(*args,**kwargs)
 
 	return
 
 if __name__ == '__main__':
+
+	arguments = {
+			'--settings':{
+				'help':'Settings',
+				'type':str,
+				'nargs':'?',
+				'default':None,
+			}
+		}
+
+	dependencies = {}
+
+	kwargs = Argparser(arguments,dependencies)
+
+	main(**kwargs)
+
 	main(sys.argv[1:])

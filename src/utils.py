@@ -4,6 +4,7 @@
 import os,sys,itertools,copy
 
 from functools import partial,wraps
+import argparse
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -44,6 +45,109 @@ itg = np.integer
 flt = np.float32
 dbl = np.float64
 
+class mapping(object):
+	def __init__(self,*args,**kwargs):
+		'''
+		Mapping for args and kwargs
+		Args:
+			args (tuple[object]): Positional arguments
+			kwargs (dict[str,object]): Keyword arguments
+		'''
+		self.args = args
+		self.kwargs = kwargs
+		return
+
+	def __iter__(self):
+		for arg in self.args:
+			yield arg
+			
+	def keys(self):
+		return self.kwargs
+
+	def __getitem__(self,item):
+		return self.kwargs[item]
+
+	def __len__(self):
+		return len(self.args)+len(self.kwargs)
+
+class Argparser(argparse.ArgumentParser):
+	def __init__(self,arguments={},dependencies={}):
+		'''
+		Parse command line arguments
+		Args:
+			arguments (dict[str,dict[str,object]]): Command line arguments {argument:{option:value}}
+			dependencies (dict[str,[str,callable]]: Dependencies of arguments, either string for argument name, or callable(kwarg,dependencies,kwargs)
+		'''
+
+		# TODO: Allow for non-string types of values parsed by action (comma-separated values)
+
+		class action(argparse.Action):
+			def __call__(self, parser, namespace, values, option_string=None):
+				_values = []
+				delimiter = ','
+				iterable = isinstance(values,list)
+				if not iterable:
+					values = [values]
+				for value in values:
+					for val in str(value).split(delimiter):
+						_values.append(self.type(val))
+					if iterable:
+						setattr(namespace,self.dest,_values)
+				if not iterable:
+					setattr(namespace,self.dest,_values[-1])
+
+				return
+
+		defaults = {
+			'action':action
+		}
+
+		super().__init__()
+
+		for i,argument in enumerate(arguments):
+
+			name = '%s'%(argument.replace('--',''))
+			options = {option: arguments[argument][option] for option in arguments[argument]}
+			options.update({option: options.get(option,defaults[option]) for option in defaults})
+			options.update({'nargs':'?' if options.get('nargs') not in ['*','+'] or i>0 else '*','default':argparse.SUPPRESS})
+			self.add_argument(name,**options)
+
+			name = '--%s'%(argument.replace('--',''))
+			options = {option: arguments[argument][option] for option in arguments[argument]}
+			options.update({option: options.get(option,defaults[option]) for option in defaults})
+			options.update({'dest':options.get('dest',argument.replace('--',''))})
+			names = [argument,argument.replace('--','')]
+			self.add_argument(name,**options)
+
+		kwargs,args = self.parse_known_args()
+
+		kwargs = {**dict(**vars(kwargs))}
+
+		for kwarg in dependencies:
+			name = kwarg.replace('--','')
+			func = dependencies[kwarg] if callable(dependencies[kwarg]) else lambda kwarg,dependencies,kwargs: kwargs[dependencies[kwarg].replace('--','')]
+			kwargs[name] = func(kwarg,dependencies,kwargs)
+
+		self.args = args
+		self.kwargs = kwargs
+
+		return
+
+	def __iter__(self):
+		for arg in self.args:
+			yield arg
+
+	def __getitem__(self,item):
+		return self.kwargs[item]
+
+	def __len__(self):
+		return len(self.kwargs)
+		
+	def keys(self):
+		return self.kwargs.keys()
+
+	def values(self):
+		return self.kwargs.values()
 
 def jit(func,*,static_argnums=None):
 	'''
@@ -123,7 +227,7 @@ def value_and_gradient(func):
 	'''
 	Compute value and gradient of function
 	Args:
-		func (callable): Function to compile
+		func (callable): Function to differentiate
 	Returns:
 		value_and_grad (callable): Value and Gradient of function
 	'''
@@ -137,7 +241,7 @@ def gradient(func):
 	'''
 	Compute gradient of function
 	Args:
-		func (callable): Function to compile
+		func (callable): Function to differentiate
 	Returns:
 		grad (callable): Gradient of function
 	'''
@@ -222,7 +326,7 @@ def gradient_fwd(func):
 	'''
 	Compute forward gradient of function
 	Args:
-		func (callable): Function to compile
+		func (callable): Function to differentiate
 	Returns:
 		grad (callable): Gradient of function
 	'''
@@ -235,7 +339,7 @@ def gradient_rev(func):
 	'''
 	Compute reverse gradient of function
 	Args:
-		func (callable): Function to compile
+		func (callable): Function to differentiate
 	Returns:
 		grad (callable): Gradient of function
 	'''
@@ -249,7 +353,7 @@ def hessian(func):
 	'''
 	Compute hessian of function
 	Args:
-		func (callable): Function to compile
+		func (callable): Function to differentiate
 	Returns:
 		grad (callable): Hessian of function
 	'''
@@ -259,6 +363,26 @@ def hessian(func):
 	# grad = jit(jax.jacfwd(jax.jacrev(func)))
 	grad = jit(jax.hessian(func))
 	return grad
+
+
+def fisher(func,grad,einsum_path=None):
+	'''
+	Compute fisher information of function
+	Args:
+		func (callable): Function to compute
+		gradient (callable): Gradient to compute
+	Returns:
+		fisher (callable): Fisher information of function
+	'''
+	@jit
+	def fisher(x):
+		f = func(x)
+		g = grad(x)
+		_f = f.conj().T
+		_g = g.conj().T
+		return trace(outer(_g,g)) - (1/sqrt(f.size))*outer(trace(_g,f),trace(_f,g))
+	return fisher
+
 
 
 def nullfunc(obj,*args,**kwargs):
@@ -1449,27 +1573,47 @@ def vntensorprod(a,n):
 	return vmap(lambda a: ntensorprod(a,n))(a)
 
 
-def einsum(subscripts,*shapes):
+def einsum(subscripts,*shapes,optimize=True):
 	'''
 	Get optimal summation of axes in array denoted by subscripts
 	Args:
 		subscripts (str): operations to perform for summation
 		shapes (iterable): Shapes of to compute summation of elements
+		optimize (bool,str,iterable): Contraction type		
 	Returns:
 		einsum (callable): Optimal einsum operator
 	'''
 
-	a = (empty(shape) for shape in shapes)
+	optimize = einsum_path(subscripts,*shapes,optimize=optimize)	
+	print('optimize',optimize)
 
-	optimize = np.einsum_path(subscripts,*a)
-	print(optimize)
-
-	# @jit
-	def _einsum(*a,optimize=optimize):
-		return np.einsum(*a,optimize=optimize)
+	@jit
+	def _einsum(*operands):
+		return np.einsum(subscripts,*operands,optimize=optimize)
 
 	return _einsum
 
+
+def einsum_path(subscripts,*shapes,optimize=True):
+	'''
+	Get optimal summation path of axes of shapes
+	Args:
+		subscripts (str): operations to perform for summation	
+		shapes (iterable): Shapes of to compute summation of elements
+		optimize (bool,str,iterable): Contraction type
+	Returns:
+		optimize (list[tuple[int]]): Optimal einsum path of shapes
+	'''
+
+	optimizers = {True:'optimal',False:'auto',None:'optimal'}
+	optimize = optimizers.get(optimize,optimize)
+
+	operands = (empty(shape) for shape in shapes)
+
+	optimize,string = np.einsum_path(subscripts,*operands,optimize=optimize)
+	print('string\n',string)
+
+	return optimize
 
 
 
@@ -1857,7 +2001,7 @@ def trace(a):
 	return np.trace(a)
 
 @jit
-def rank(a,tol=None):
+def rank(a,tol=None,hermitian=False):
 	'''
 	Calculate rank of array
 	Args:
@@ -1866,7 +2010,7 @@ def rank(a,tol=None):
 		out (array): rank of array
 	'''		
 	try:
-		return np.linalg.matrix_rank(a,tol=tol)
+		return np.linalg.matrix_rank(a,tol=tol,hermitian=hermitian)
 	except:
 		return 0
 
@@ -3027,30 +3171,48 @@ def generator(stop=None):
 	return wrap
 
 
-def union(*iterables):
+def union(*iterables,sort=False):
 	'''
 	Get union of elements in iterables
 	Args:
 		iterables (iterable[iterable]): Iterables
+		sort (bool): Sort elements as per order in iterables
 	Returns:
-		union (set): Union of iterables
+		union (set,list): Union of iterables, set if unsorted else list
 	'''
 
 	union = set().union(*iterables)
+
+	if sort:
+		iterables = tuple((tuple(iterable) for iterable in iterables))
+		n = max(len(iterable) for iterable in iterables)
+		key = lambda i: min(iterable.index(i) if i in iterable else n
+				for iterable in iterables)
+		union = sorted(union,key=key,reverse=False)
+
 	return union
 
-def intersection(*iterables):
+def intersection(*iterables,sort=False):
 	'''
 	Get intersection of elements in iterables
 	Args:
 		iterables (iterable[iterable]): Iterables
+		sort (bool): Sort elements as per order in iterables		
 	Returns:
-		intersection (set): Intersection of iterables
+		intersection (set,list): Intersection of iterables, set if unsorted else list
 	'''
 	intersection = union(*iterables)
 
 	for iterable in iterables:
-	    intersection = intersection.intersection(set(iterable))
+		intersection = intersection.intersection(set(iterable))
+
+
+	if sort:
+		iterables = tuple((tuple(iterable) for iterable in iterables))
+		n = max(len(iterable) for iterable in iterables)
+		key = lambda i: min(iterable.index(i) if i in iterable else n
+				for iterable in iterables)		
+		intersection = sorted(intersection,key=key,reverse=False)
 
 	return intersection
 

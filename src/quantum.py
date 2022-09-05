@@ -36,7 +36,7 @@ from src.utils import jit,gradient,hessian,gradient_finite,gradient_shift,gradie
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,einsum
 from src.utils import summation,exponentiation
-from src.utils import trotter,gradient_trotter
+from src.utils import trotter,gradient_trotter,fisher
 from src.utils import gradient_expm,gradient_sigmoid
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
@@ -161,6 +161,7 @@ class Object(object):
 		self.derivative = jit(gradient_fwd(self))
 		self.hessian = jit(hessian(self.func))
 		# self.einsum = jit(einsum('ia,ic,uab,vbc->uv',*[self.states.shape]*2,*[self.shape[-2:]]*2))
+		self.fisher = jit(fisher(self,self.derivative))
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
 			for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','architecture','shape']]
@@ -469,11 +470,8 @@ class Object(object):
 		Returns:
 			constraints (array): constraints
 		'''		
-
 		layer = 'constraints'
-		constraints = self.__layers__(parameters,layer)
-
-		return constraints
+		return self.__layers__(parameters,layer)
 
 
 	@partial(jit,static_argnums=(0,))
@@ -518,7 +516,6 @@ class Object(object):
 		Returns:
 			grad (array): gradient of objective
 		'''	
-
 		return self.grad(parameters)
 
 
@@ -574,6 +571,19 @@ class Object(object):
 		return grad
 
 
+	@partial(jit,static_argnums=(0,))
+	def __fisher__(self,parameters):
+		''' 
+		Class fisher information of class
+		Args:
+			parameters (array): parameters
+		Returns:
+			fisher (array): fisher information of class
+		'''	
+		return self.fisher(parameters)
+
+
+
 	def __callback__(self,parameters):
 		''' 
 		Setup callback and logging
@@ -585,7 +595,6 @@ class Object(object):
 
 
 		self.hyperparameters['optimize']['track']['objective'].append(
-			# 1-self.hyperparameters['optimize']['track']['value'][-1] + self.__constraints__(parameters)
 			self.__objective__(parameters)
 			)
 
@@ -596,12 +605,11 @@ class Object(object):
 			(norm(self.hyperparameters['optimize']['track']['grad'][-1] - self.hyperparameters['optimize']['value']['grad'])/self.hyperparameters['optimize']['track']['grad'][-1].size > 
 				  self.hyperparameters['optimize']['eps']['grad'])
 			)
-
+		done = self.hyperparameters['optimize']['track']['iteration'][-1]==self.hyperparameters['optimize']['iterations']
 
 	
 		self.hyperparameters['optimize']['track']['hessian'].append(
-			# 1-self.hyperparameters['optimize']['track']['value'][-1] + self.__constraints__(parameters)
-			self.__hessian__(parameters) if not status or self.hyperparameters['optimize']['track']['iteration'][-1]==self.hyperparameters['optimize']['iterations'] else None
+			self.__hessian__(parameters) if not status or done else None
 			)
 
 		# fisher = einsum()
@@ -933,7 +941,7 @@ class Object(object):
 						returns[new] = New
 						
 						new = '%s.rank'%(attr)
-						New  = rank(value)
+						New  = rank(value,tol=1e-12,hermitian=True)
 						returns[new] = New
 
 					else:

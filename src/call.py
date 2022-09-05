@@ -32,7 +32,7 @@ def _submit(job,args,process=None,device=None,execute=False,verbose=None,**kwarg
 	Update submit arguments
 	Args:
 		job (str): Submission script
-		args (dict[str,str]): Arguments to pass to command line {arg:value}
+		args (dict[str,str],dict[str,iterable[str]]): Arguments to pass to command line {arg:value} or {arg:[value]}
 		process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
@@ -42,18 +42,20 @@ def _submit(job,args,process=None,device=None,execute=False,verbose=None,**kwarg
 		args (iterable[str]): Updated submit arguments
 	'''
 
+	args = {arg: [args[arg]] if isinstance(args[arg],str) else args[arg] for arg in args}
+
 	if device in ['pc']:
 		exe = ['./%s'%(job)]
 		flags = []
-		cmd = [args[arg] for arg in args]
+		cmd = [subarg for arg in args for subarg in args[arg]]
 	elif device in ['slurm']:
 		exe = ['sbatch']
-		flags = ['%s=%s'%('--export',','.join(['%s=%s'%(arg,args[arg]) for arg in args])),'<']
+		flags = ['%s=%s'%('--export',','.join(['%s="%s"'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args])),'<']
 		cmd = [job]
 	else:
 		exe = ['.',job]
 		flags = []
-		cmd = [args[arg] for arg in args]						
+		cmd = [subarg for arg in args for subarg in args[arg]]
 
 	args = [*exe,*flags,*cmd]
 
@@ -89,10 +91,10 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 		return
 
 	if device in ['pc']:
-		default = ''
+		default = '#SBATCH'
 		def string(**kwargs):
 			wrapper(kwargs)
-			string = '%s%s=%s%s'%(kwargs['prefix'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
+			string = '%s%s --%s=%s%s'%(kwargs['prefix'],kwargs['default'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
 			return string
 	elif device in ['slurm']:
 		default = '#SBATCH'
@@ -112,9 +114,10 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 	if process in ['serial']:
 		null.extend(['chdir','array'])
 		patterns.update({
-			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir']},
-			**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
-			**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},
+			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir'] if pattern in patterns},
+			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
+			**{pattern: join('%x.%A',ext='stdout') for pattern in ['output'] if pattern in patterns},
+			**{pattern: join('%x.%A',ext='stderr') for pattern in ['error'] if pattern in patterns},
 			})
 	elif process in ['parallel']:
 		null.clear()
@@ -122,10 +125,11 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 	elif process in ['array']:
 		null.extend(['chdir'])
 		patterns.update({
-			**{pattern: join(patterns.get(pattern),r'\${SLURM_ARRAY_TASK_ID}') for pattern in ['chdir']},
-			**{pattern: '%d-%d:%s'%(0,kwargs.get('size',1)-1,':'.join(patterns.get(pattern,'').split(':')[-1:])) for pattern in ['array']},
-			**{pattern: join('%a','%x.%A',ext='stdout') for pattern in ['output']},
-			**{pattern: join('%a','%x.%A',ext='stderr') for pattern in ['error']},
+			**{pattern: join(patterns.get(pattern),r'\${SLURM_ARRAY_TASK_ID}') for pattern in ['chdir'] if pattern in patterns},
+			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
+			**{pattern: '%d-%d:%s'%(0,kwargs.get('size',1)-1,':'.join(patterns.get(pattern,'').split(':')[-1:])) for pattern in ['array'] if pattern in patterns},
+			**{pattern: join('%a','%x.%A',ext='stdout') for pattern in ['output'] if pattern in patterns},
+			**{pattern: join('%a','%x.%A',ext='stderr') for pattern in ['error'] if pattern in patterns},
 		})
 
 
@@ -544,7 +548,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,device=None,execu
 	return
 
 
-def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',pause=None,process=None,device=None,execute=False,verbose=None):
+def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pause=None,process=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands as tasks to command line
 	Args:
@@ -552,6 +556,7 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',pause=None,process=
 		args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
 		paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
 		patterns (dict[str,dict[str,str]],dict[str,dict[str,dict[str,str]]]): Patterns to update files {path:{pattern:replacement}} or {key:{path:{pattern:replacement}}
+		dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 		pause (int,str): Time to sleep after call		
@@ -585,6 +590,12 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',pause=None,process=
 
 	keys = intersection(keys,patterns)
 
+	if not isinstance(dependencies,dict) or not len(dependencies):
+		dependencies = {key:dependencies for key in keys}
+
+	keys = intersection(keys,dependencies)
+
+
 	if isinstance(pwd,str):
 		pwd = {key:pwd for key in keys}
 
@@ -616,6 +627,7 @@ def submit(jobs,args={},paths={},patterns={},pwd='.',cwd='.',pause=None,process=
 			'size': len(unique[cwd[key]]),
 			'results':results,
 			'tasks':tasks,
+			'dependencies':dependencies[key],
 			}
 		for key in keys
 		}

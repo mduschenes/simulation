@@ -21,6 +21,7 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+from src.utils import Argparser
 from src.utils import array,product,expand_dims,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
 from src.utils import rank,diag,is_nan
@@ -529,7 +530,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	  Subplots are plotted from iterating over over the 1...ndim-2 axis of the variables data, and parameters the 0 and ndim-1 axis for each 'label' set
 	  If the 'x' property is None, also iterate over the 0 (# of permutations of sort) axis variables data, and plot the ndim-1 axis for each 'label' 
 	'''
-
 
 	# Setup kwargs
 	kwargs = ['settings','hyperparameters']
@@ -1437,19 +1437,44 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 	return fig,ax
 
-def main(args):
+def main(*args,**kwargs):
 
-	Nargs = 3
-
-	nargs = len(args)
-	
-	assert nargs >= Nargs, 'Incorrect number of arguments passed'
-
-	data,settings,hyperparameters = args[:Nargs]
-	
-	process(data,settings,hyperparameters)
+	process(*args,**kwargs)
 
 	return
 
 if __name__ == '__main__':
-	main(sys.argv[1:])
+	arguments = {
+		'--data':{
+			'help':'Process data files',
+			'type':str,
+			'default':[],
+			'nargs':'*'
+		},
+		'--settings':{
+			'help':'Process plot settings',
+			'type':str,
+			'default':[],
+			'nargs':'*'
+		},
+		'--hyperparameters':{
+			'help':'Process process settings',
+			'type':str,
+			'default':[],
+			'nargs':'*'
+		},
+		'--cwd':{
+			'help':'Process cwd',
+			'type':str,
+			'default':None,
+			'nargs':'?',
+		},						
+	}
+
+	dependencies = {
+		'cwd':lambda arg,dependencies,args: split(args['data'][-1],directory=True).replace('/**','').replace('**','') if args.get(arg) is None else args.get(arg)
+	}
+
+	args = Argparser(arguments,dependencies)
+
+	main(*args,**args)

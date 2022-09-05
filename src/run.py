@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import PRNGKey,delim,partial
+from src.utils import PRNGKey,delim,partial,union
 from src.dictionary import updater,getter,setter,permuter,clearer,leaves,grow
 from src.io import load,dump,join,split
 from src.process import process
@@ -155,35 +155,56 @@ def setup(settings):
 
 	# Set job
 	jobs = {}
-	for key in keys:
-	
-		job = settings[key]['job']
-		config = hyperparameters[key]['sys']['path']['config']
 
-		for attr in job:
-			if attr not in jobs:
-				jobs[attr] = {}
+	names = union(*(settings[key]['jobs'] for key in keys),sort=True)
+
+	for name in names:
+
+		jobs[name] = {}
+
+		for key in keys:
 			
-			if attr in ['jobs']:
-				jobs[attr][key] = job[attr]
-			elif attr in ['args']:
-				jobs[attr][key] = job[attr]
-			elif attr in ['paths']:
-				jobs[attr][key] = {
-					**job.get('paths',{}),
-					**{config[path]: None
-						for path in config},
-					**{config[path]: hyperparameters[key] 
-						for path in ['settings']},
-					**{config[path]: hyperparameters[key].get(path,{}) 
-						for path in  ['plot','process']},
-					}
-			elif attr in ['patterns']:
-				jobs[attr][key] = job[attr]
-			elif attr in ['pwd','cwd']:
-				jobs[attr][key] = job[attr]
-			else:
-				jobs[attr] = job[attr]
+			job = settings[key]['jobs'].get(name)
+
+			if job is None:
+				continue
+
+			config = hyperparameters[key]['sys']['path']['config']
+
+			for attr in job:
+
+				if attr in ['jobs']:
+					value = job[attr]
+				elif attr in ['args']:
+					value = job[attr]
+				elif attr in ['paths']:
+					value = {
+						**job[attr],
+						**{config[path]: None
+							for path in config},
+						**{config[path]: hyperparameters[key] 
+							for path in ['settings']},
+						**{config[path]: hyperparameters[key].get(path,{}) 
+							for path in ['plot','process']},
+						}
+				elif attr in ['patterns']:
+					value = job[attr]
+				elif attr in ['pwd','cwd']:
+					value = job[attr]
+				else:
+					value = job[attr]
+
+				if name in ['job']:
+					if attr not in jobs[name]:
+						jobs[name][attr] = {}
+					if attr in ['jobs','args','paths','patterns','pwd','cwd']:
+						jobs[name][attr][key] = value
+					else:
+						jobs[name][attr] = value
+				elif name in ['preprocess']:
+					pass
+				elif name in ['postprocess']:
+					jobs[name][attr] = value
 
 	return jobs
 
@@ -198,6 +219,20 @@ def run(settings):
 
 	jobs = setup(settings)
 
-	submit(**jobs)
+
+	attr = 'dependencies'
+	results = []
+
+	for name in jobs:
+		if attr in jobs[name]:
+			jobs[name][attr].extend(results)
+
+		if name in ['postprocess']:
+			print(name)
+			print(jobs[name])
+
+		result = submit(**jobs[name])
+
+		results.extend(result)
 
 	return

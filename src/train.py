@@ -30,8 +30,11 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+from utils import Argparser
 from src.io import load
 from src.optimize import Optimizer
+
+
 
 def train(hyperparameters):
 	'''
@@ -89,12 +92,26 @@ def train(hyperparameters):
 	return obj
 
 
-def main(args):
+def main(*args,**kwargs):
 
-	train(*args)
+	train(*args,**kwargs)
 
 	return
 
 
 if __name__ == '__main__':
-	main(sys.argv[1:])
+
+	arguments = {
+			'--hyperparameters':{
+				'help':'Hyperparameters',
+				'type':str,
+				'nargs':'?',
+				'default':None,
+			}
+		}
+
+	dependencies = {}
+
+	args = Argparser(arguments,dependencies)
+
+	main(*args,**args)
