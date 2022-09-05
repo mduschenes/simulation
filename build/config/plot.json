@@ -87,7 +87,7 @@
 			"color":"viridis",
 			"ecolor":"viridis"
 			},
-		"set_ylabel":{"ylabel":"$\\textrm{Hessian}~\\frac{\\lambda}{\\lambda_{\\textrm{max}}}$"},
+		"set_ylabel":{"ylabel":"$\\frac{\\lambda}{\\lambda_{\\textrm{max}}}$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Index}$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":6},

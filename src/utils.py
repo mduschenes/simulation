@@ -70,13 +70,13 @@ class mapping(object):
 	def __len__(self):
 		return len(self.args)+len(self.kwargs)
 
-class Argparser(argparse.ArgumentParser):
-	def __init__(self,arguments={},dependencies={}):
+class argparser(argparse.ArgumentParser):
+	def __init__(self,arguments={},wrappers={}):
 		'''
 		Parse command line arguments
 		Args:
 			arguments (dict[str,dict[str,object]]): Command line arguments {argument:{option:value}}
-			dependencies (dict[str,[str,callable]]: Dependencies of arguments, either string for argument name, or callable(kwarg,dependencies,kwargs)
+			wrappers (dict[str,[str,callable]]: Wrappers of arguments, either string for argument name, or callable(kwarg,wrappers,kwargs)
 		'''
 
 		# TODO: Allow for non-string types of values parsed by action (comma-separated values)
@@ -123,10 +123,10 @@ class Argparser(argparse.ArgumentParser):
 
 		kwargs = {**dict(**vars(kwargs))}
 
-		for kwarg in dependencies:
+		for kwarg in wrappers:
 			name = kwarg.replace('--','')
-			func = dependencies[kwarg] if callable(dependencies[kwarg]) else lambda kwarg,dependencies,kwargs: kwargs[dependencies[kwarg].replace('--','')]
-			kwargs[name] = func(kwarg,dependencies,kwargs)
+			func = wrappers[kwarg] if callable(wrappers[kwarg]) else lambda kwarg,wrappers,kwargs: kwargs[wrappers[kwarg].replace('--','')]
+			kwargs[name] = func(kwarg,wrappers,kwargs)
 
 		self.args = args
 		self.kwargs = kwargs
@@ -134,8 +134,7 @@ class Argparser(argparse.ArgumentParser):
 		return
 
 	def __iter__(self):
-		for arg in self.args:
-			yield arg
+		return self.args.__iter__()
 
 	def __getitem__(self,item):
 		return self.kwargs[item]

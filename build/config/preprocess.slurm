@@ -45,4 +45,4 @@ CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
 
 CMD=($(echo ${CMD[@]/#\~/${HOME}} | envsubst))
 
-# ${CMD[@]}
+${CMD[@]}

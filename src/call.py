@@ -575,7 +575,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	keys = intersection(jobs)
 
-	if all(isinstance(args[arg],str) for arg in args) or not len(args):
+	if all(isinstance(args[arg],str) for arg in args) or not all(key in args for key in keys) or not len(args):
 		args = {key:args for key in keys}
 
 	keys = intersection(keys,args)
@@ -595,7 +595,6 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	keys = intersection(keys,dependencies)
 
-
 	if isinstance(pwd,str):
 		pwd = {key:pwd for key in keys}
 
@@ -604,9 +603,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	if isinstance(cwd,str):
 		cwd = {key:cwd for key in keys}
 
-	keys = intersection(keys,cwd)
-
-	keys = list(sorted(keys))
+	keys = intersection(keys,cwd,sort=True)
 
 	unique = {
 		path: {
@@ -692,5 +689,48 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		result = call(*cmd,path=path,pause=pause,device=device,execute=execute,verbose=verbose)
 
 		results.append(result)
+
+	return results
+
+
+def launch(jobs={},wrapper=None):
+	'''
+	Submit jobs as job commands as tasks to command line through submit(job,args,paths,patterns,dependencies,...)
+	Args:
+		jobs (dict[str,dict[str,object]]): Submission jobs script as {name:job} with job dictionaries {attr:value} with attr keys:
+			args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
+			paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
+			patterns (dict[str,dict[str,str]],dict[str,dict[str,dict[str,str]]]): Patterns to update files {path:{pattern:replacement}} or {key:{path:{pattern:replacement}}
+			dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
+			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
+			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
+			pause (int,str): Time to sleep after call		
+			process (str): Type of processing, either submission in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
+			device (str): Name of device to submit to
+			execute (boolean): Boolean whether to issue commands
+			verbose (int,str,bool): Verbosity
+		wrapper (callable): Wrapper for results for subsequent jobs with signature wrapper(name,jobs,results). Defaults to updating dependencies with results.
+	Returns:
+		results (iterable[str]): Return of commands for each job
+	'''
+
+	if wrapper is None:
+		def wrapper(name,jobs,results):
+			attr = 'dependencies'
+			if attr in jobs[name]:
+				jobs[name][attr].extend([result for name in results for result in results[name]])
+			return
+
+	results = {}
+
+	for name in jobs:
+
+		wrapper(name,jobs,results)
+
+		result = submit(**jobs[name])
+
+		results[name] = result
+
+	results = [result for name in results for result in results[name]]
 
 	return results

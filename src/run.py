@@ -14,7 +14,7 @@ from src.utils import PRNGKey,delim,partial,union
 from src.dictionary import updater,getter,setter,permuter,clearer,leaves,grow
 from src.io import load,dump,join,split
 from src.process import process
-from src.call import submit
+from src.call import launch
 
 
 def allowed(index,value,values):
@@ -215,24 +215,12 @@ def run(settings):
 	Run simulations
 	Args:
 		settings (dict,str): settings
+	Returns:
+		results (iterable[str]): Return of commands for each job		
 	'''		
 
 	jobs = setup(settings)
 
+	results = launch(jobs)
 
-	attr = 'dependencies'
-	results = []
-
-	for name in jobs:
-		if attr in jobs[name]:
-			jobs[name][attr].extend(results)
-
-		if name in ['postprocess']:
-			print(name)
-			print(jobs[name])
-
-		result = submit(**jobs[name])
-
-		results.extend(result)
-
-	return
+	return results

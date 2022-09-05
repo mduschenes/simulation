@@ -21,7 +21,7 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import Argparser
+from src.utils import argparser
 from src.utils import array,product,expand_dims,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
 from src.utils import rank,diag,is_nan
@@ -109,8 +109,8 @@ def size(data,axis=None,transform=None,dtype=None,**kwargs):
 	return size
 
 
-# Wrappers of data
-def wrappers(wrapper=None,kwarg=None,stat=None,**kwargs):
+# Wrapper of data
+def wrapping(wrapper=None,kwarg=None,stat=None,**kwargs):
 	if wrapper is None:
 		wrapper = lambda data,kwargs=kwargs: data
 	elif wrapper in ['mean']:
@@ -1023,7 +1023,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 										for stat in variables[occurrence][combination][kwarg]:
 
 											wrapper = [None,*(
-												wrappers(**parameter.get('wrapper',{}),kwarg=kwarg,stat=stat) for parameter in parameters 
+												wrapping(**parameter.get('wrapper',{}),kwarg=kwarg,stat=stat) for parameter in parameters 
 												if all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key']))][-1]
 
 											if wrapper is not None:
@@ -1471,10 +1471,10 @@ if __name__ == '__main__':
 		},						
 	}
 
-	dependencies = {
-		'cwd':lambda arg,dependencies,args: split(args['data'][-1],directory=True).replace('/**','').replace('**','') if args.get(arg) is None else args.get(arg)
+	wrappers = {
+		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1],directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg)
 	}
 
-	args = Argparser(arguments,dependencies)
+	args = argparser(arguments,wrappers)
 
 	main(*args,**args)

@@ -30,7 +30,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from utils import Argparser
+from utils import argparser
 from src.io import load
 from src.optimize import Optimizer
 
@@ -112,6 +112,6 @@ if __name__ == '__main__':
 
 	dependencies = {}
 
-	args = Argparser(arguments,dependencies)
+	args = argparser(arguments,dependencies)
 
 	main(*args,**args)

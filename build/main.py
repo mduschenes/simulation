@@ -26,8 +26,8 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+from src.utils import argparser
 from src.run import run
-from src.train import train
 
 def main(*args,**kwargs):
 
@@ -46,10 +46,8 @@ if __name__ == '__main__':
 			}
 		}
 
-	dependencies = {}
+	wrappers = {}
 
-	kwargs = Argparser(arguments,dependencies)
+	args = argparser(arguments,wrappers)
 
-	main(**kwargs)
-
-	main(sys.argv[1:])
+	main(*args,**args)
