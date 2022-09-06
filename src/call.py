@@ -116,8 +116,8 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 		patterns.update({
 			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir'] if pattern in patterns},
 			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
-			**{pattern: join('%x.%A',ext='stdout') for pattern in ['output'] if pattern in patterns},
-			**{pattern: join('%x.%A',ext='stderr') for pattern in ['error'] if pattern in patterns},
+			**{pattern: join('%x.%A',ext='stdout') for pattern in ['output']},
+			**{pattern: join('%x.%A',ext='stderr') for pattern in ['error']},
 			})
 	elif process in ['parallel']:
 		null.clear()
@@ -128,8 +128,8 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 			**{pattern: join(patterns.get(pattern),r'\${SLURM_ARRAY_TASK_ID}') for pattern in ['chdir'] if pattern in patterns},
 			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
 			**{pattern: '%d-%d:%s'%(0,kwargs.get('size',1)-1,':'.join(patterns.get(pattern,'').split(':')[-1:])) for pattern in ['array'] if pattern in patterns},
-			**{pattern: join('%a','%x.%A',ext='stdout') for pattern in ['output'] if pattern in patterns},
-			**{pattern: join('%a','%x.%A',ext='stderr') for pattern in ['error'] if pattern in patterns},
+			**{pattern: join('%a','%x.%A',ext='stdout') for pattern in ['output']},
+			**{pattern: join('%a','%x.%A',ext='stderr') for pattern in ['error']},
 		})
 
 
