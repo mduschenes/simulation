@@ -420,8 +420,8 @@ def fisher(func,grad,shapes,optimize=None):
 			for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 		]
 	einsummations = [
-		lambda f,g,_f,_g: einsummations[0](_g,g),
-		lambda f,g,_f,_g: einsummations[1](_g,f,g,_f)
+		lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_g,g),
+		lambda f,g,_f,_g,einsummations=einsummations: einsummations[1](_g,f,g,_f)
 		]
 
 	@jit
@@ -433,6 +433,7 @@ def fisher(func,grad,shapes,optimize=None):
 		out = 0
 		for einsummation in einsummations:
 			out = out + einsummation(f,g,_f,_g)
+		out = out.real
 		return out
 	return fisher
 
@@ -1349,7 +1350,7 @@ def gradient_normed(a,b,da):
 	'''
 	@jit
 	def func(da):
-		return (((a-b).conj()*da).sum())/sqrt(a.shape[0]*b.shape[0])
+		return (((a-b).conj()*da).sum()).real/sqrt(a.shape[0]*b.shape[0])
 	out = vmap(func)(da)
 	return out
 	# return gradient(normed)(a,b)
@@ -1376,7 +1377,7 @@ def normed_einsum(*shapes,optimize=True):
 
 	@jit
 	def einsummation(*operands):
-		out = operands[0]-operands[1].conj()
+		out = operands[0].conj()-operands[1]
 		out = abs2(out)
 		return _einsummation(out)
 
@@ -1399,7 +1400,7 @@ def gradient_normed_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return 2*out/operands[0].shape[0]/2
+		return 2*out.real/operands[0].shape[0]/2
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1525,7 +1526,7 @@ def gradient_inner_abs2(a,b,da):
 	def func(da):
 		return (
 			2*(trace(tensordot(da,b.T,1))*
-			trace(tensordot(a,b.T,1)))).real/(a.shape[0]*b.shape[0])
+			trace(tensordot(a,b.T,1)).conj())).real/(a.shape[0]*b.shape[0])
 	
 	out = vmap(func)(da)
 	return out
@@ -1589,7 +1590,7 @@ def gradient_inner_abs2_einsum(*shapes,optimize=True):
 
 	@jit
 	def einsummation(*operands):
-		return 2*(_einsummation_value(operands[0],operands[1])*_einsummation_grad(operands[1],operands[2])).real
+		return 2*(_einsummation_value(operands[0],operands[1]).conj()*_einsummation_grad(operands[1],operands[2])).real
 
 	return einsummation
 

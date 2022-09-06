@@ -1214,14 +1214,16 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
 								value = ',~'.join([texify(str(combination[k])) for k in value])
 
-								if key['y']['key'][-1] in ['hessian.eigenvalues']:
+								if key['y']['key'][-1] in ['hessian.eigenvalues','fisher.eigenvalues']:
+									y = settings[instance][subinstance][setting][attr][subsubinstance]['y']
+									y = y[~is_nan(y)]
+									tol = hyperparameters['kwargs']['tol']
 									value = '~'.join([value,
 										*['%s%s'%(
 											('%s='%(str(label)) 
 												if label.count('@')==0 else
 												''.join([str(combination.get(v,v)) for v in label.split('@') if len(v)>0])),
-											(str(rank(diag(settings[instance][subinstance][setting][attr][subsubinstance]['y'][
-												~is_nan(settings[instance][subinstance][setting][attr][subsubinstance]['y'])])))),
+												str((y**2>tol).sum()),
 											# ('~'.join([str(combination.get(v,v)) for v in val.split('@') if len(v)>0]) 
 											# 	if val is not None else '')
 											)

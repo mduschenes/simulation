@@ -615,9 +615,9 @@ class Object(object):
 			self.__hessian__(parameters) if not status or done else None
 			)
 
-		# self.hyperparameters['optimize']['track']['fisher'].append(
-		# 	self.__fisher__(parameters) if not status or done else None
-		# 	)
+		self.hyperparameters['optimize']['track']['fisher'].append(
+			self.__fisher__(parameters) if not status or done else None
+			)
 
 		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['modulo']['log'] == 0:			
 
@@ -932,7 +932,7 @@ class Object(object):
 					New = 1 - value
 					returns[new] = New
 
-				elif attr in ['hessian']:
+				elif attr in ['hessian','fisher']:
 					if value is not None:
 						new = '%s.eigenvalues'%(attr)						
 						New  = eigvalsh(value)
@@ -940,7 +940,7 @@ class Object(object):
 						returns[new] = New
 						
 						new = '%s.rank'%(attr)
-						New  = rank(value,tol=1e-12,hermitian=True)
+						New  = rank(value,hermitian=True)
 						returns[new] = New
 
 					else:

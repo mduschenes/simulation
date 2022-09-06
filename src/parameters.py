@@ -341,7 +341,7 @@ def setup(hyperparameters,cls=None):
 	# Update with checked values
 	updates = {
 		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: {kwarg: [{prop: array(i.get(prop,[])) for prop in ['slice','value']}
+			'value': (lambda parameter,hyperparameters,attr=attr: {kwarg: [{prop: array(i.get(prop,[]),dtype={'slice':int,'value':None}[prop]) for prop in ['slice','value']}
 				for i in hyperparameters[parameter][attr][kwarg]] 
 				for kwarg in hyperparameters[parameter][attr]}),
 			'default': (lambda parameter,hyperparameters: {}),

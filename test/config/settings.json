@@ -116,8 +116,8 @@
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
 		},

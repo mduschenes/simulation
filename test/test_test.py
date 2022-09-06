@@ -1,4 +1,4 @@
-usr/bin/env python
+#!/usr/bin/env python
 
 # Import python modules
 import pytest
@@ -41,9 +41,14 @@ from src.quantum import Unitary,Hamiltonian,Object
 from src.main import main
 
 # Logging
-from src.utils import logconfig
-conf = 'config/logging.conf'
-logger = logconfig(__name__,conf=conf)
+from src.system import Logger
+
+name = __name__
+path = os.getcwd()
+file = 'logging.conf'
+conf = os.path.join(path,file)
+file = None #'log.log'
+logger = Logger(name,conf,file=file)
 
 
 def test_unitary(path,tol):

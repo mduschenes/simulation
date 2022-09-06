@@ -37,20 +37,9 @@
 		"model.M":[10,20,30],
 		"model.N":[2],
 		"model.M":[10,20,30,40,50,80,100,200],		
-		"model.M":[10,20,30],		
-		"optimize.iterations":[3],
+		"model.M":[100,200,300],		
+		"optimize.iterations":[100],
 		"optimize.optimizer":["cg"],
-
-		"jobs.job.cwd":["test"],		
-		"jobs.job.device":["pc"],
-		"jobs.job.process":["serial"],
-		"jobs.job.execute":[1],		
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
-		"jobs.postprocess.cwd":["test"],		
-		"jobs.postprocess.device":["pc"],
-		"jobs.postprocess.process":["serial"],
-		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
 
 		"jobs.job.cwd":["gobi/test"],
 		"jobs.job.device":["slurm"],
@@ -63,11 +52,23 @@
 		"jobs.postprocess.execute":[1],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],		
 
-		"parameters.xy.method":["constrained"],
-		"model.system.architecture":["constrained"],
+		"jobs.job.cwd":["test"],		
+		"jobs.job.device":["pc"],
+		"jobs.job.process":["serial"],
+		"jobs.job.execute":[1],		
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
+		"jobs.postprocess.cwd":["test"],		
+		"jobs.postprocess.device":["pc"],
+		"jobs.postprocess.process":["serial"],
+		"jobs.postprocess.execute":[1],	
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
 
 		"parameters.xy.method":["unconstrained"],
-		"model.system.architecture":["unconstrained"]
+		"model.system.architecture":["unconstrained"],
+
+		"parameters.xy.method":["constrained"],
+		"model.system.architecture":["constrained"]
+
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null

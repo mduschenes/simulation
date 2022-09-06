@@ -25,7 +25,11 @@
 		{
 			"key":{"x":"","y":"hessian.eigenvalues"},
 			"axis":[[0],[],[],[-1]]
-		}		
+		},
+		{
+			"key":{"x":"","y":"fisher.eigenvalues"},
+			"axis":[[0],[],[],[-1]]
+		}				
 		],	
 	"null":{"None.parameters.iteration.M":null},
 	"texify":{
@@ -35,6 +39,9 @@
 		"constrained": "\\textrm{Constrained}",
 		"unconstrained": "\\textrm{Unconstrained}"
 	},
+	"kwargs":{
+		"tol":1e-8
+		},
 	"pwd":null,
 	"cwd":null,
 	"path": {
