@@ -59,7 +59,7 @@
 		"jobs.job.cwd":["gobi/test"],
 		"jobs.job.device":["slurm"],
 		"jobs.job.process":["array"],
-		"jobs.job.execute":[0],
+		"jobs.job.execute":[1],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.cwd":["gobi/test"],
 		"jobs.postprocess.device":["slurm"],
