@@ -374,6 +374,8 @@ class Object(object):
 
 		label = operatorize(data,shape,hyperparams,size=size,dtype=dtype,cls=self)
 
+		label = label.conj()
+
 		# Get states
 		data = None
 		shape = [-1,*self.shape[2:]]
@@ -382,7 +384,6 @@ class Object(object):
 		dtype = self.dtype
 
 		states = stateize(data,shape,hyperparams,size=size,dtype=dtype,cls=self)
-
 
 		# Update class attributes
 		self.parameters = parameters
@@ -770,17 +771,19 @@ class Object(object):
 		return
 
 
-	def __metric__(self,metric=None,system=None):
+	def __metric__(self,metric=None,shapes=None,system=None):
 		'''
 		Set metric attributes
 		Args:
 			metric (str,Metric): Type of metric
+			shapes (iterable[tuple[int]]): Shapes of objects
 			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
 		'''		
 		metric = self.metric if metric is None else metric
+		shapes = self.shape[2:] if shapes is None else shapes
 		system = self.system if system is None else system
 
-		self.metric = Metric(metric,system)	
+		self.metric = Metric(metric,shapes,system)	
 
 		return
 

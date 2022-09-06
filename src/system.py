@@ -35,7 +35,7 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient
 from src.utils import array,dictionary,arange,eye
-from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod
+from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import itg,dbl,flt
@@ -652,12 +652,14 @@ class Metric(object):
 	Metric class for distance between Operators
 	Args:
 		metric (str,Metric): Type of metric
+		shapes (iterable[tuple[int]]): Shapes of Operators
 		system (dict,System): System attributes
 	'''
-	def __init__(self,metric,system=None):
+	def __init__(self,metric,shapes,system=None):
 
 		self.system = System(system)
 		self.metric = metric
+		self.shapes = shapes
 		self.default = 'normed'
 
 		self.__setup__()
@@ -684,7 +686,7 @@ class Metric(object):
 		return
 
 	def __size__(self):
-		self.size = None
+		self.size = sum(int(product(shape)**(1/len(shape))) for shape in shapes)//len(shapes)
 		return 
 
 	@partial(jit,static_argnums=(0,))

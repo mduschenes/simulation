@@ -53,22 +53,34 @@ class mapping(object):
 			args (tuple[object]): Positional arguments
 			kwargs (dict[str,object]): Keyword arguments
 		'''
-		self.args = args
-		self.kwargs = kwargs
+		self.args = list(args)
+		self.kwargs = dict(kwargs)
 		return
 
 	def __iter__(self):
-		for arg in self.args:
-			yield arg
-			
-	def keys(self):
-		return self.kwargs
+		return self.args.__iter__()
 
 	def __getitem__(self,item):
 		return self.kwargs[item]
 
+	def __setitem__(self,item,value):
+		if isinstance(item,int):
+			self.args[item] = value
+		else:
+			self.kwargs[item] = value
+		return
+
 	def __len__(self):
 		return len(self.args)+len(self.kwargs)
+
+	def __str__(self):
+		return str(self.args) + ' , ' + str(self.kwargs)
+
+	def keys(self):
+		return self.kwargs.keys()
+
+	def values(self):
+		return self.kwargs.values()
 
 class argparser(argparse.ArgumentParser):
 	def __init__(self,arguments={},wrappers={}):
@@ -140,8 +152,8 @@ class argparser(argparse.ArgumentParser):
 		return self.kwargs[item]
 
 	def __len__(self):
-		return len(self.kwargs)
-		
+		return len(self.args)+len(self.kwargs)
+
 	def keys(self):
 		return self.kwargs.keys()
 
@@ -231,8 +243,8 @@ def value_and_gradient(func):
 		value_and_grad (callable): Value and Gradient of function
 	'''
 	# @jit
-	# def _value_and_gradient(x):
-	# 	return jax.value_and_grad(func)(x)
+	# def _value_and_gradient(*args,**kwargs):
+	# 	return jax.value_and_grad(func)(*args,**kwargs)
 	value_and_grad = jit(jax.value_and_grad(func))
 	return value_and_grad
 
@@ -245,8 +257,8 @@ def gradient(func):
 		grad (callable): Gradient of function
 	'''
 	# @jit
-	# def grad(x):
-	# 	return jax.grad(func)(x)
+	# def grad(*args,**kwargs):
+	# 	return jax.grad(func)(*args,**kwargs)
 	grad = jit(jax.grad(func))
 	return grad
 
@@ -255,14 +267,19 @@ def gradient_finite(func,tol=1e-6):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
-		func (callable): Function to derive, with signature func(x) and output shape
+		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		tol (float): Finite difference tolerance
 	Returns:
-		out (array): Array of gradient
+		grad (callable): Gradient of function
 	'''
 	@jit
-	def grad(x):
-		return vmap(lambda v,x=x,tol=tol: (func(x+tol*v)-func(x-tol*v))/(2*tol))(eye(x.size))
+	def grad(*args,**kwargs):
+		x,args = args[0],args[1:]
+		size,shape = x.size,x.shape
+		vectors = eye(size).reshape((size,*shape))
+		out = vmap(lambda v,tol=tol: (func(x+tol*v,*args,**kwargs)-func(x-tol*v,*args,**kwargs))/(2*tol))(vectors)
+		out = out.reshape((*shape,*out.shape[1:]))
+		return out
 
 	return grad
 
@@ -271,14 +288,16 @@ def value_and_gradient_finite(func,tol=1e-6):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
-		func (callable): Function to derive, with signature func(x) and output shape
+		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		tol (float): Finite difference tolerance		
 	Returns:
 		out (array): Array of gradient
 	'''
+	grad = gradient_finite(func,tol)
+
 	@jit
-	def value_and_grad(x):
-		return (func(x),gradient_finite(func,tol))
+	def value_and_grad(*args,**kwargs):
+		return (func(*args,**kwargs),grad(*args,**kwargs))
 	
 	return value_and_grad
 
@@ -287,18 +306,22 @@ def gradient_shift(func,n=2):
 	'''
 	Calculate shift-rules derivative of function
 	Args:
-		func (callable): Function to derive, with signature func(x) and output shape
+		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		n (int): Number of eigenvalues of shifted values
 	Returns:
-		out (array): Array of gradient
+		grad (callable): Gradient of function
 	'''
 
 	shifts = -(n-1)/2 + arange(n)
 
 	@jit
-	def grad(x):
-		vectors = eye(x.size)
-		return vmap(vmap(lambda v,s: s*func(x+pi/4/s*v),in_axes=(0,None)),in_axes=(None,0))(vectors,shifts).sum(0)
+	def grad(*args,**kwargs):
+		x,args = args[0],args[1:]
+		size,shape = x.size,x.shape
+		vectors = eye(size).reshape((size,*shape))
+		out = vmap(vmap(lambda v,s: s*func(x+pi/4/s*v),in_axes=(0,None)),in_axes=(None,0))(vectors,shifts).sum(0)
+		out = out.reshape((*shape,*out.shape[1:]))
+		return 
 
 	return grad
 
@@ -307,15 +330,17 @@ def value_and_gradient_shift(func,n=2):
 	'''
 	Calculate shift-rules derivative of function
 	Args:
-		func (callable): Function to derive, with signature func(x) and output shape
+		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		n (int): Number of eigenvalues of shifted values
 	Returns:
 		out (array): Array of gradient
 	'''
 
+	grad = gradient_shift(func,n)
+
 	@jit
-	def value_and_grad(x):
-		return (func(x),gradient_shift(func,n))
+	def value_and_grad(*args,**kwargs):
+		return (func(*args,**kwargs),grad(*args,**kwargs))
 	
 	return value_and_grad
 
@@ -329,9 +354,14 @@ def gradient_fwd(func):
 	Returns:
 		grad (callable): Gradient of function
 	'''
+
+	_grad = jit(jax.jacfwd(func))
+
 	@jit
-	def grad(x):
-		return moveaxis(jax.jacfwd(func)(x),-1,0)
+	def grad(*args,**kwargs):
+		x,args = args[0],args[1:]
+		ndim = x.ndim
+		return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
 	return grad
 
 def gradient_rev(func):
@@ -342,9 +372,14 @@ def gradient_rev(func):
 	Returns:
 		grad (callable): Gradient of function
 	'''
+
+	_grad = jit(jax.jacrev(func))
+
 	@jit
-	def grad(x):
-		return moveaxis(jax.jacrev(func)(x),-1,0)
+	def grad(*args,**kwargs):
+		x,args = args[0],args[1:]
+		ndim = x.ndim
+		return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))		
 	return grad
 
 
@@ -357,29 +392,57 @@ def hessian(func):
 		grad (callable): Hessian of function
 	'''
 	# @jit
-	# def grad(x):
-	# 	return gradient_fwd(gradient_rev(func))(x)
+	# def grad(*args,**kwargs):
+	# 	return gradient_fwd(gradient_rev(func))(*args,**kwargs)
 	# grad = jit(jax.jacfwd(jax.jacrev(func)))
 	grad = jit(jax.hessian(func))
 	return grad
 
 
-def fisher(func,grad,einsum_path=None):
+def fisher(func,grad,shapes=None,optimize=None):
 	'''
 	Compute fisher information of function
 	Args:
 		func (callable): Function to compute
 		gradient (callable): Gradient to compute
+		shapes (iterable): Shapes of func and grad arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type		
 	Returns:
 		fisher (callable): Fisher information of function
 	'''
+
+	subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
+	coefficients = [lambda f,g,_f,_g:1,lambda f,g,_f,_g:(-1/sqrt(f.size))]
+
+	if shapes is None:
+		einsummations = [
+			lambda f,g,_f,_g: einsum(subscripts[0],_g,g,optimize=optimize),
+			lambda f,g,_f,_g: einsum(subscripts[1],_g,f,g,_f,optimize=optimize)
+			]
+	else:
+		einsummations = {
+			subscripts[0]:(shapes[1],shapes[1]),
+			subscripts[1]:(shapes[1],shapes[0],shapes[1],shapes[0])
+			}
+		einsummations = [
+			einsum(subscripts,*einsummations[subscripts],optimize=optimize) 
+				for subscripts in einsummations
+			]
+		einsummations = [
+			lambda f,g,_f,_g: einsummations[0](_g,g),
+			lambda f,g,_f,_g: einsummations[1](_g,f,g,_f)
+			]
+
 	@jit
-	def fisher(x):
-		f = func(x)
-		g = grad(x)
-		_f = f.conj().T
-		_g = g.conj().T
-		return trace(outer(_g,g)) - (1/sqrt(f.size))*outer(trace(_g,f),trace(_f,g))
+	def fisher(*args,**kwargs):
+		f = func(*args,**kwargs)
+		g = grad(*args,**kwargs)
+		_f = f.conj()
+		_g = g.conj()
+		out = 0
+		for coefficient,einsummation in zip(coefficients,einsummations):
+			out = out + coefficient(f,g,_f,_g)*einsummation(f,g,_f,_g)
+		return out
 	return fisher
 
 
@@ -1191,24 +1254,23 @@ def norm(a,axis=None,ord=2):
 	return out
 
 
+
 @jit
 def normed(a,b):
 	'''
-	Calculate normed distance between arrays a and b
+	Calculate norm squared of arrays a and b
 	Args:
 		a (array): Array to calculate distance
 		b (array): Array to calculate distance
 	Returns:
 		out (array): Distance
 	'''	
-	out = a-b
-	# return (1/2)*(norm(a-b,axis=None,ord=2)**2)/sqrt(a.shape[0]*b.shape[0])
-	return (1/2)*(out.conj()*out).real.sum()/sqrt(a.shape[0]*b.shape[0])
+	return abs2(a-b).sum()/sqrt(a.shape[0]*b.shape[0])/2
 
 @jit
 def gradient_normed(a,b,da):
 	'''
-	Calculate gradient of norm of arrays a and b with respect to a
+	Calculate gradient of norm squared of arrays a and b with respect to a
 	Args:
 		a (array): Array to calculate norm
 		b (array): Array to calculate norm
@@ -1216,12 +1278,68 @@ def gradient_normed(a,b,da):
 	Returns:
 		out (array): Gradient of norm
 	'''
-	def func(i):
-		return (((a-b).conj()*da[i]).real.sum())/sqrt(a.shape[0]*b.shape[0])
-	return vmap(func)(arange(da.shape[0]))
+	@jit
+	def func(da):
+		return (((a-b).conj()*da).sum())/sqrt(a.shape[0]*b.shape[0])
+	out = vmap(func)(da)
+	return out
 	# return gradient(normed)(a,b)
 
 
+def normed_einsum(*shapes,optimize=True):
+	'''
+	Calculate norm squared of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Norm squared einsum
+	'''	
+
+	subscripts = 'ij->'
+	shapes = (shapes[0],)
+
+	@jit
+	def wrapper(out,*operands):
+		return out/operands[0].shape[0]/2
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		out = operands[0]-operands[1].conj()
+		out = abs2(out)
+		return _einsummation(out)
+
+	return einsummation
+
+
+
+def gradient_normed_einsum(*shapes,optimize=True):
+	'''
+	Calculate norm squared of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Gradient of norm squared einsum
+	'''	
+
+	subscripts = 'ij,uij->u'
+	shapes = (shapes[0],shapes[2])
+
+	@jit
+	def wrapper(out,*operands):
+		return 2*out/operands[0].shape[0]/2
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		out = (operands[0].conj()-operands[1])
+		return _einsummation(out,operands[2])
+
+	return einsummation
 
 
 @jit
@@ -1234,7 +1352,7 @@ def inner(a,b):
 	Returns:
 		out (array): Inner product
 	'''	
-	return trace(tensordot(a,b.conj().T,1))/sqrt(a.shape[0]*b.shape[0])
+	return trace(tensordot(a,b.T,1).real)/sqrt(a.shape[0]*b.shape[0])
 
 
 @jit
@@ -1248,9 +1366,66 @@ def gradient_inner(a,b,da):
 	Returns:
 		out (array): Gradient of inner product
 	'''
-	def func(i):
-		return trace(tensordot(da[i],b.conj().T,1))/sqrt(a.shape[0]*b.shape[0])
-	return vmap(func)(arange(da.shape[0]))
+	@jit
+	def func(da):
+		return trace(tensordot(da,b.T,1).real)/sqrt(a.shape[0]*b.shape[0])
+	
+	out = vmap(func)(da)
+	return out
+	# return inner(normed)(a,b)
+
+
+
+def inner_einsum(*shapes,optimize=True):
+	'''
+	Calculate inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Inner product einsum
+	'''	
+
+	subscripts = 'ij,ij->'
+
+	@jit
+	def wrapper(out,*operands):
+		return out.real/sqrt(operands[0].shape[0]*operands[1].shape[0])
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(*operands)
+
+	return einsummation
+
+
+
+def gradient_inner_einsum(*shapes,optimize=True):
+	'''
+	Calculate gradient of inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Gradient of inner product einsum
+	'''	
+
+	subscripts = 'ij,uij->u'
+	shapes = (shapes[0],shapes[2])
+
+	@jit
+	def wrapper(out,*operands):
+		return out.real/sqrt(operands[0].shape[0]*operands[0].shape[1])
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(operands[1],operands[2])
+
+	return einsummation
 
 
 @jit
@@ -1263,7 +1438,7 @@ def inner_abs2(a,b):
 	Returns:
 		out (array): Absolute square of inner product
 	'''	
-	return abs2(trace(tensordot(a,b.conj().T,1)))/(a.shape[0]*b.shape[0])
+	return abs2(trace(tensordot(a,b.T,1)))/(a.shape[0]*b.shape[0])
 
 
 @jit
@@ -1277,61 +1452,180 @@ def gradient_inner_abs2(a,b,da):
 	Returns:
 		out (array): Gradient of inner product
 	'''
-	def func(i):
-		return ((
-			trace(tensordot(da[i],b.conj().T,1))*
-			trace(tensordot(a.conj(),b.T,1))) + 
-			trace(tensordot(a,b.conj().T,1))*
-			trace(tensordot(da[i].conj(),b.T,1))).real/(a.shape[0]*b.shape[0])
-	return vmap(func)(arange(da.shape[0]))
+	@jit
+	def func(da):
+		return (
+			2*(trace(tensordot(da,b.T,1))*
+			trace(tensordot(a,b.T,1)))).real/(a.shape[0]*b.shape[0])
+	
+	out = vmap(func)(da)
+	return out
+	# return gradient(inner_abs2)(a,b)
+
+def inner_abs2_einsum(*shapes,optimize=True):
+	'''
+	Calculate absolute square inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Absolute square inner product einsum
+	'''	
+
+	subscripts = 'ij,ij->'
+
+	@jit
+	def wrapper(out,*operands):
+		return abs2(out)/(operands[0].shape[0]*operands[1].shape[0])
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(*operands)
+
+	return einsummation
+
+
+
+
+def gradient_inner_abs2_einsum(*shapes,optimize=True):
+	'''
+	Calculate gradient of absolute square of inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Gradient of absolute square inner product einsum
+	'''	
+
+	subscripts_value = 'ij,ij->'
+	shapes_value = (shapes[0],shapes[1])
+
+	@jit
+	def wrapper_value(out,*operands):
+		return out
+
+	_einsummation_value = einsum(subscripts_value,*shapes_value,optimize=optimize,wrapper=wrapper_value)
+
+
+	subscripts_grad = 'ij,uij->u'
+	shapes_grad = (shapes[0],shapes[2])
+
+	@jit
+	def wrapper_grad(out,*operands):
+		return out/(operands[0].shape[0]*operands[0].shape[1])
+
+	_einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper_grad)
+
+	@jit
+	def einsummation(*operands):
+		return 2*(_einsummation_value(operands[0],operands[1])*_einsummation_grad(operands[1],operands[2])).real
+
+	return einsummation
 
 
 @jit
 def inner_real(a,b):
 	'''
-	Calculate real square of inner product of arrays a and b
+	Calculate real inner product of arrays a and b
 	Args:
 		a (array): Array to calculate inner product
 		b (array): Array to calculate inner product
 	Returns:
-		out (array): Real square of inner product
+		out (array): Real inner product
 	'''	
-	return (trace(tensordot(a,b.conj().T,1))).real/sqrt(a.shape[0]*b.shape[0])
+	return (trace(tensordot(a,b.T,1))).real/sqrt(a.shape[0]*b.shape[0])
 
 
 @jit
 def gradient_inner_real(a,b,da):
 	'''
-	Calculate gradient of real square inner product of arrays a and b with respect to a
+	Calculate gradient of real inner product of arrays a and b with respect to a
 	Args:
 		a (array): Array to calculate inner product
 		b (array): Array to calculate inner product
 		da (array): Gradient of array to calculate inner product
 	Returns:
-		out (array): Gradient of inner product
+		out (array): Gradient of real inner product
 	'''
-	def func(i):
-		return (trace(tensordot(da[i],b.conj().T,1)).real)/sqrt(a.shape[0]*b.shape[0])
-	return vmap(func)(arange(da.shape[0]))
+	@jit
+	def func(da):
+		return (trace(tensordot(da,b.T,1)).real)/sqrt(a.shape[0]*b.shape[0])
+	out = vmap(func)(da)
+	return out
+	# return gradient(inner_real)(a,b)
+
+
+def inner_real_einsum(*shapes,optimize=True):
+	'''
+	Calculate real inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Real inner product einsum
+	'''	
+
+	subscripts = 'ij,ij->'
+
+	@jit
+	def wrapper(out,*operands):
+		return out.real/sqrt(operands[0].shape[0]*operands[1].shape[0])
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(*operands)
+
+	return einsummation
+
+
+
+def gradient_inner_real_einsum(*shapes,optimize=True):
+	'''
+	Calculate gradient of real inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Gradient of real inner product einsum
+	'''	
+
+	subscripts = 'ij,uij->u'
+	shapes = (shapes[0],shapes[2])
+
+	@jit
+	def wrapper(out,*operands):
+		return out.real/sqrt(operands[0].shape[0]*operands[0].shape[1])
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(operands[1],operands[2])
+
+	return einsummation
 
 
 @jit
 def inner_imag(a,b):
 	'''
-	Calculate imaginary square of inner product of arrays a and b
+	Calculate imaginary inner product of arrays a and b
 	Args:
 		a (array): Array to calculate inner product
 		b (array): Array to calculate inner product
 	Returns:
-		out (array): Imaginary square of inner product
+		out (array): Imaginary inner product
 	'''	
-	return (trace(tensordot(a,b.conj().T,1))).imag/sqrt(a.shape[0]*b.shape[0])
+	return (trace(tensordot(a,b.T,1))).imag/sqrt(a.shape[0]*b.shape[0])
 
 
 @jit
 def gradient_inner_imag(a,b,da):
 	'''
-	Calculate gradient of imaginary square inner product of arrays a and b with respect to a
+	Calculate gradient of imaginary inner product of arrays a and b with respect to a
 	Args:
 		a (array): Array to calculate inner product
 		b (array): Array to calculate inner product
@@ -1339,11 +1633,63 @@ def gradient_inner_imag(a,b,da):
 	Returns:
 		out (array): Gradient of inner product
 	'''
-	def func(i):
-		return (trace(tensordot(da[i],b.conj().T,1)).imag)/sqrt(a.shape[0]*b.shape[0])
-	return vmap(func)(arange(da.shape[0]))
+	@jit
+	def func(da):
+		return (trace(tensordot(da,b.T,1)).imag)/sqrt(a.shape[0]*b.shape[0])
+	out = vmap(func)(da)
+	return out
+	# return gradient(inner_imag)(a,b)	
+
+def inner_imag_einsum(*shapes,optimize=True):
+	'''
+	Calculate imaginary inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Imaginary inner product einsum
+	'''	
+
+	subscripts = 'ij,ij->'
+
+	@jit
+	def wrapper(out,*operands):
+		return out.imag/sqrt(operands[0].shape[0]*operands[1].shape[0])
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(*operands)
+
+	return einsummation
 
 
+
+def gradient_inner_imag_einsum(*shapes,optimize=True):
+	'''
+	Calculate gradient of imaginary inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Gradient of imaginary inner product einsum
+	'''	
+
+	subscripts = 'ij,uij->u'
+	shapes = (shapes[0],shapes[2])
+
+	@jit
+	def wrapper(out,*operands):
+		return out.imag/sqrt(operands[0].shape[0]*operands[0].shape[1])
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(operands[1],operands[2])
+
+	return einsummation
 
 
 @jit
@@ -1357,7 +1703,6 @@ def outer(a,b):
 		out (array): Outer product
 	'''	
 	return np.outer(a,b)
-	# return trace(tensordot(a,b.conj().T,1))/sqrt(a.shape[0]*b.shape[0])
 
 
 @jit
@@ -1572,25 +1917,41 @@ def vntensorprod(a,n):
 	return vmap(lambda a: ntensorprod(a,n))(a)
 
 
-def einsum(subscripts,*shapes,optimize=True):
+def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	'''
 	Get optimal summation of axes in array denoted by subscripts
 	Args:
 		subscripts (str): operations to perform for summation
-		shapes (iterable): Shapes of to compute summation of elements
-		optimize (bool,str,iterable): Contraction type		
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)	
 	Returns:
-		einsum (callable): Optimal einsum operator
+		einsummation (callable,array): Optimal einsum operator or array of optimal einsum
 	'''
+	arrays = all(isinstance(operand,array) for operand in operands)
+
+	if wrapper is None:
+		@jit
+		def wrapper(out,*operands):
+			return out
+	else:
+		wrapper = jit(wrapper)
+
+	if arrays:
+		shapes = [tuple(operand.shape) for operand in operands]
+	else:
+		shapes = [tuple(operand) for operand in operands]
 
 	optimize = einsum_path(subscripts,*shapes,optimize=optimize)	
-	print('optimize',optimize)
 
 	@jit
-	def _einsum(*operands):
-		return np.einsum(subscripts,*operands,optimize=optimize)
+	def einsummation(*operands):
+		return wrapper(np.einsum(subscripts,*operands,optimize=optimize),*operands)
 
-	return _einsum
+	if arrays:
+		return einsummation(*operands)
+	else:
+		return einsummation
 
 
 def einsum_path(subscripts,*shapes,optimize=True):
@@ -1598,7 +1959,7 @@ def einsum_path(subscripts,*shapes,optimize=True):
 	Get optimal summation path of axes of shapes
 	Args:
 		subscripts (str): operations to perform for summation	
-		shapes (iterable): Shapes of to compute summation of elements
+		shapes (iterable): Shapes of arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type
 	Returns:
 		optimize (list[tuple[int]]): Optimal einsum path of shapes
@@ -1610,7 +1971,6 @@ def einsum_path(subscripts,*shapes,optimize=True):
 	operands = (empty(shape) for shape in shapes)
 
 	optimize,string = np.einsum_path(subscripts,*operands,optimize=optimize)
-	print('string\n',string)
 
 	return optimize
 
@@ -2194,6 +2554,19 @@ def sign(a):
 		out (array): Sign of array
 	'''
 	return np.sign(a)
+
+
+@jit
+def expmat(a):
+	'''
+	Calculate matrix exponential of array a
+	Args:
+		a (array): Array to compute matrix exponential
+	Returns:
+		out (array): Matrix exponential of array
+	'''
+	return sp.linalg.expm(a)
+
 
 @jit
 def sin(a):
