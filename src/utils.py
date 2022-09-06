@@ -83,11 +83,11 @@ class mapping(object):
 		return self.kwargs.values()
 
 class argparser(argparse.ArgumentParser):
-	def __init__(self,arguments={},wrappers={}):
+	def __init__(self,arguments=None,wrappers=None):
 		'''
 		Parse command line arguments
 		Args:
-			arguments (dict[str,dict[str,object]]): Command line arguments {argument:{option:value}}
+			arguments (str,dict[str,dict[str,object]]): Command line arguments {argument:{option:value}}
 			wrappers (dict[str,[str,callable]]: Wrappers of arguments, either string for argument name, or callable(kwarg,wrappers,kwargs)
 		'''
 
@@ -113,6 +113,22 @@ class argparser(argparse.ArgumentParser):
 		defaults = {
 			'action':action
 		}
+
+		if arguments is None:
+			arguments = '--args'
+		if isinstance(arguments,str):
+			arguments = arguments.replace('--','')
+			arguments = {
+				'--%s'%(arguments):{
+					'help':arguments.capitalize(),
+					'type':str,
+					'nargs':'?',
+					'default':None,
+				}
+			}
+
+		if wrappers is None:
+			wrappers = {}
 
 		super().__init__()
 

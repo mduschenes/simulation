@@ -101,17 +101,7 @@ def main(*args,**kwargs):
 
 if __name__ == '__main__':
 
-	arguments = {
-			'--hyperparameters':{
-				'help':'Hyperparameters',
-				'type':str,
-				'nargs':'?',
-				'default':None,
-			}
-		}
-
-	dependencies = {}
-
-	args = argparser(arguments,dependencies)
+	arguments = 'hyperparameters'
+	args = argparser(arguments)
 
 	main(*args,**args)

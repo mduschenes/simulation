@@ -37,17 +37,8 @@ def main(*args,**kwargs):
 
 if __name__ == '__main__':
 
-	arguments = {
-			'--settings':{
-				'help':'Settings',
-				'type':str,
-				'nargs':'?',
-				'default':None,
-			}
-		}
+	arguments = 'settings'
 
-	wrappers = {}
-
-	args = argparser(arguments,wrappers)
+	args = argparser(arguments)
 
 	main(*args,**args)

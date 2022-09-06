@@ -14,3 +14,4 @@
 **/backup
 build/constrained.py
 build/unconstrained.py
+examples/nmr_decomposition
