@@ -399,39 +399,30 @@ def hessian(func):
 	return grad
 
 
-def fisher(func,grad,shapes=None,optimize=None):
+def fisher(func,grad,shapes,optimize=None):
 	'''
 	Compute fisher information of function
 	Args:
 		func (callable): Function to compute
 		gradient (callable): Gradient to compute
-		shapes (iterable): Shapes of func and grad arrays to compute summation of elements
+		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type		
 	Returns:
 		fisher (callable): Fisher information of function
 	'''
 
 	subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-	coefficients = [lambda f,g,_f,_g:1,lambda f,g,_f,_g:(-1/sqrt(f.size))]
+	shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
+	wrappers = [lambda out,*operands: out,lambda out,*operands: -1/sqrt(operands[0].size)*out]
 
-	if shapes is None:
-		einsummations = [
-			lambda f,g,_f,_g: einsum(subscripts[0],_g,g,optimize=optimize),
-			lambda f,g,_f,_g: einsum(subscripts[1],_g,f,g,_f,optimize=optimize)
-			]
-	else:
-		einsummations = {
-			subscripts[0]:(shapes[1],shapes[1]),
-			subscripts[1]:(shapes[1],shapes[0],shapes[1],shapes[0])
-			}
-		einsummations = [
-			einsum(subscripts,*einsummations[subscripts],optimize=optimize) 
-				for subscripts in einsummations
-			]
-		einsummations = [
-			lambda f,g,_f,_g: einsummations[0](_g,g),
-			lambda f,g,_f,_g: einsummations[1](_g,f,g,_f)
-			]
+	einsummations = [
+		einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
+			for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+		]
+	einsummations = [
+		lambda f,g,_f,_g: einsummations[0](_g,g),
+		lambda f,g,_f,_g: einsummations[1](_g,f,g,_f)
+		]
 
 	@jit
 	def fisher(*args,**kwargs):
@@ -440,10 +431,88 @@ def fisher(func,grad,shapes=None,optimize=None):
 		_f = f.conj()
 		_g = g.conj()
 		out = 0
-		for coefficient,einsummation in zip(coefficients,einsummations):
-			out = out + coefficient(f,g,_f,_g)*einsummation(f,g,_f,_g)
+		for einsummation in einsummations:
+			out = out + einsummation(f,g,_f,_g)
 		return out
 	return fisher
+
+
+def fisher_operator(func,grad,shapes,optimize=None):
+	'''
+	Compute fisher information of operator function
+	Args:
+		func (callable): Function to compute
+		gradient (callable): Gradient to compute
+		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type		
+	Returns:
+		fisher (callable): Fisher information of function
+	'''
+
+	subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
+	shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
+	wrappers = [lambda out,*operands: out,lambda out,*operands: -1/sqrt(operands[0].size)*out]
+
+	einsummations = [
+		einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
+			for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+		]
+	einsummations = [
+		lambda f,g,_f,_g: einsummations[0](_g,g),
+		lambda f,g,_f,_g: einsummations[1](_g,f,g,_f)
+		]
+
+	@jit
+	def fisher(*args,**kwargs):
+		f = func(*args,**kwargs)
+		g = grad(*args,**kwargs)
+		_f = f.conj()
+		_g = g.conj()
+		out = 0
+		for einsummation in einsummations:
+			out = out + einsummation(f,g,_f,_g)
+		return out
+	return fisher
+
+
+
+def fisher_state(func,grad,shapes,optimize=None):
+	'''
+	Compute fisher information of state function
+	Args:
+		func (callable): Function to compute
+		gradient (callable): Gradient to compute
+		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type		
+	Returns:
+		fisher (callable): Fisher information of function
+	'''
+
+	subscripts = ['uai,vai->uv','uai,ai,vaj,aj->uv']
+	shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
+	wrappers = [lambda out,*operands: out/operands[0].shape[1],lambda out,*operands: -out/operands[0].shape[1]]
+
+	einsummations = [
+		einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
+			for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+		]
+	einsummations = [
+		lambda f,g,_f,_g: einsummations[0](_g,g),
+		lambda f,g,_f,_g: einsummations[1](_g,f,g,_f)
+		]
+
+	@jit
+	def fisher(*args,**kwargs):
+		f = func(*args,**kwargs)
+		g = grad(*args,**kwargs)
+		_f = f.conj()
+		_g = g.conj()
+		out = 0
+		for einsummation in einsummations:
+			out = out + einsummation(f,g,_f,_g)
+		return out
+	return fisher
+
 
 
 

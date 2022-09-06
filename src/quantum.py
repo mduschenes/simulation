@@ -117,7 +117,7 @@ class Object(object):
 		self.string = []
 		self.interaction = []
 		self.indices = []		
-		self.shape = (*self.data.shape[:1],self.M,*self.data.shape[1:])
+		self.shape = (len(self.data),self.M)
 
 		self.key = None
 
@@ -132,6 +132,9 @@ class Object(object):
 		self.transform = []
 		self.transformH = []
 		self.index = arange(len(self.data))
+		self.dims = []
+		self.dim = int(product(self.dims))
+		self.ndim = len(self.dims)
 
 		self.hyperparameters = hyperparameters
 		self.parameters = None
@@ -160,8 +163,7 @@ class Object(object):
 		self.grad = jit(gradient(self.func))
 		self.derivative = jit(gradient_fwd(self))
 		self.hessian = jit(hessian(self.func))
-		# self.einsum = jit(einsum('ia,ic,uab,vbc->uv',*[self.states.shape]*2,*[self.shape[-2:]]*2))
-		self.fisher = jit(fisher(self,self.derivative))
+		self.fisher = jit(fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)]))
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
 			for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','architecture','shape']]
@@ -326,7 +328,7 @@ class Object(object):
 		self.string.insert(index,string)
 		self.interaction.insert(index,interaction)
 
-		self.shape = (*self.data.shape[:1],self.M,*self.data.shape[1:])
+		self.shape = (len(self.data),self.M,*self.dims)
 		self.index = arange(len(self.data))
 
 		self.hyperparameters.update(hyperparameters)
@@ -367,7 +369,7 @@ class Object(object):
 
 		# Get label
 		data = None
-		shape = self.shape[2:]
+		shape = self.dims
 		hyperparams = hyperparameters['label']
 		size = self.N
 		dtype = self.dtype
@@ -378,7 +380,7 @@ class Object(object):
 
 		# Get states
 		data = None
-		shape = [-1,*self.shape[2:]]
+		shape = [-1,*self.dims]
 		hyperparams = hyperparameters['state']
 		size = self.N
 		dtype = self.dtype
@@ -613,20 +615,8 @@ class Object(object):
 			self.__hessian__(parameters) if not status or done else None
 			)
 
-		# fisher = einsum()
-
-		# fisher = 0
-		# G = self.derivative(parameters)
-
-		# for state in self.states:
-		# 	fisher += ((G.dot(state).conj()).dot((G.dot(state)).T) - 
-		# 				outer((G.dot(state).conj()).dot(state),
-		# 				  (G.dot(state).conj()).dot(state).conj())
-		# 			)
-		# fisher = fisher.real
-
 		# self.hyperparameters['optimize']['track']['fisher'].append(
-		# 	rank(fisher)
+		# 	self.__fisher__(parameters) if not status or done else None
 		# 	)
 
 		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['modulo']['log'] == 0:			
@@ -705,13 +695,17 @@ class Object(object):
 		space = self.space if space is None else space
 		system = self.system if system is None else system
 
-		self.space = Space(N,D,d,L,delta,space,system)
+		self.space = Space(N,D,d,L,delta,space,system=system)
 		self.N = self.space.N
 		self.D = self.space.D
 		self.d = self.space.d
 		self.L = self.space.L
 		self.delta = self.space.delta
 		self.n = self.space.n
+		self.dims = (self.n,self.n)
+		self.dim = int(product(self.dims))
+		self.ndim = len(self.dims)
+		self.shape = (len(self.data),self.M,*self.dims)
 		self.identity = identity(self.n,dtype=self.dtype)
 
 		return
@@ -735,7 +729,7 @@ class Object(object):
 		#time = self.time if time is None else time
 		system = self.system if system is None else system
 
-		self.time = Time(M,T,tau,p,time,system)		
+		self.time = Time(M,T,tau,p,time,system=system)		
 		self.M = self.time.M
 		self.T = self.time.T
 		self.p = self.time.p
@@ -766,24 +760,26 @@ class Object(object):
 		lattice = self.lattice if lattice is None else lattice
 		system = self.system if system is None else system
 
-		self.lattice = Lattice(N,d,L,delta,lattice,system)	
+		self.lattice = Lattice(N,d,L,delta,lattice,system=system)	
 
 		return
 
 
-	def __metric__(self,metric=None,shapes=None,system=None):
+	def __metric__(self,metric=None,shapes=None,optimize=None,system=None):
 		'''
 		Set metric attributes
 		Args:
 			metric (str,Metric): Type of metric
 			shapes (iterable[tuple[int]]): Shapes of objects
+			optimize (bool,str,iterable): Contraction type
 			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
 		'''		
 		metric = self.metric if metric is None else metric
-		shapes = self.shape[2:] if shapes is None else shapes
+		shapes = [self.dims,self.dims] if shapes is None else shapes
+		optimize = None if optimize is None else None
 		system = self.system if system is None else system
 
-		self.metric = Metric(metric,shapes,system)	
+		self.metric = Metric(metric,shapes,optimize,system=system)	
 
 		return
 
