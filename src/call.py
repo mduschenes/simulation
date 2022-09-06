@@ -16,7 +16,7 @@ for PATH in PATHS:
 
 from src.utils import intersection,scalars
 from src.system	 import Logger
-from src.io import cd,mkdir,join,load,dump
+from src.io import cd,mkdir,join,split,load,dump
 from src.dictionary import updater
 
 name = __name__
@@ -116,11 +116,11 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 		patterns.update({
 			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir'] if pattern in patterns},
 			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),file_directory=True) if patterns.get(pattern) is not None else '%x.%A',
+			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
 							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stdout',
 							root=None)
 							for pattern in ['output'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),file_directory=True) if patterns.get(pattern) is not None else '%x.%A',
+			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
 							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stderr',
 							root=None)
 							for pattern in ['error'] if pattern in patterns},			
@@ -134,11 +134,11 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 			**{pattern: join(patterns.get(pattern),r'\${SLURM_ARRAY_TASK_ID}') for pattern in ['chdir'] if pattern in patterns},
 			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
 			**{pattern: '%d-%d:%s'%(0,kwargs.get('size',1)-1,':'.join(patterns.get(pattern,'').split(':')[-1:])) for pattern in ['array'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),file_directory=True) if patterns.get(pattern) is not None else '%x.%A',
+			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
 							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stdout',
 							root='%a')
 							for pattern in ['output'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),file_directory=True) if patterns.get(pattern) is not None else '%x.%A',
+			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
 							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stderr',
 							root='%a')
 							for pattern in ['error'] if pattern in patterns},			
