@@ -87,7 +87,7 @@ class argparser(argparse.ArgumentParser):
 		'''
 		Parse command line arguments
 		Args:
-			arguments (str,dict[str,dict[str,object]]): Command line arguments {argument:{option:value}}
+			arguments (str,iterable[str],dict[str,dict[str,object]]): Command line arguments {argument:{option:value}}
 			wrappers (dict[str,[str,callable]]: Wrappers of arguments, either string for argument name, or callable(kwarg,wrappers,kwargs)
 		'''
 
@@ -117,14 +117,16 @@ class argparser(argparse.ArgumentParser):
 		if arguments is None:
 			arguments = '--args'
 		if isinstance(arguments,str):
-			arguments = arguments.replace('--','')
+			arguments = [arguments]
+		if not isinstance(arguments,dict):
 			arguments = {
-				'--%s'%(arguments):{
-					'help':arguments.capitalize(),
+				'--%s'%(argument.replace('--','')):{
+					'help':argument.replace('--','').capitalize(),
 					'type':str,
 					'nargs':'?',
 					'default':None,
 				}
+				for argument in arguments
 			}
 
 		if wrappers is None:
