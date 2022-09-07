@@ -7,8 +7,8 @@ scipy
 scikit-learn-intelex
 matplotlib=3.5
 
-jax
-jaxlib=0.3.7
+jax=0.2.25
+jaxlib=0.1.75
 pandas
 h5py
 pyaml

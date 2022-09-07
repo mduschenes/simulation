@@ -112,7 +112,8 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 	null = []
 
 	if process in ['serial']:
-		null.extend(['chdir','array'])
+		nulls = ['chdir','array']
+		null.extend(nulls)
 		patterns.update({
 			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir'] if pattern in patterns},
 			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
@@ -129,7 +130,8 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 		null.clear()
 		patterns.clear()
 	elif process in ['array']:
-		null.extend(['chdir'])
+		nulls = ['chdir']
+		null.extend(nulls)
 		patterns.update({
 			**{pattern: join(patterns.get(pattern),r'\${SLURM_ARRAY_TASK_ID}') for pattern in ['chdir'] if pattern in patterns},
 			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
@@ -144,6 +146,14 @@ def _update(path,patterns,process=None,device=None,execute=False,verbose=None,**
 							for pattern in ['error'] if pattern in patterns},			
 		})
 
+	if device in ['pc']:
+		nulls = ['dependency']
+		for pattern in nulls:
+			patterns.pop(pattern,None)
+	else:
+		nulls = []		
+		for pattern in nulls:
+			patterns.pop(pattern,None)
 
 	patterns.update({
 		string(pattern=pattern,default=default): 

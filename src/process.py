@@ -24,7 +24,7 @@ for PATH in PATHS:
 from src.utils import argparser
 from src.utils import array,product,expand_dims,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
-from src.utils import rank,diag,is_nan
+from src.utils import rank,diag,argmax,difference,is_nan
 from src.utils import e,pi,nan,scalars,nulls
 from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split,glob
@@ -1218,12 +1218,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									y = settings[instance][subinstance][setting][attr][subsubinstance]['y']
 									y = y[~is_nan(y)]
 									tol = hyperparameters['kwargs']['tol']
+									# rank = (y>tol).sum()
+									rank = argmax(abs(difference(y)/y[:-1]))+1
 									value = '~'.join([value,
 										*['%s%s'%(
 											('%s='%(str(label)) 
 												if label.count('@')==0 else
 												''.join([str(combination.get(v,v)) for v in label.split('@') if len(v)>0])),
-												str((y**2>tol).sum()),
+												str(rank),
 											# ('~'.join([str(combination.get(v,v)) for v in val.split('@') if len(v)>0]) 
 											# 	if val is not None else '')
 											)

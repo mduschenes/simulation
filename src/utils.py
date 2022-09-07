@@ -531,7 +531,9 @@ def fisher_state(func,grad,shapes,optimize=None):
 	return fisher
 
 
-
+@jit
+def difference(a,n=1,axis=-1):
+	return np.diff(a,n=n,axis=axis)
 
 def nullfunc(obj,*args,**kwargs):
 	'''
@@ -2822,6 +2824,29 @@ def floor(a):
 	'''
 	return np.floor(a)
 
+@jit
+def argmax(a):
+	'''
+	Calculate index of maximum of array a
+	Args:
+		a (array): Array to compute maximum
+	Returns:
+		out (int): Index of maximum of array a
+	'''
+	return np.argmax(a)
+
+
+@jit
+def argmin(a):
+	'''
+	Calculate index of minimum of array a
+	Args:
+		a (array): Array to compute minimum
+	Returns:
+		out (int): Index of minimum of array a
+	'''
+	return np.argmin(a)
+
 
 @jit
 def maximum(a,b):
@@ -2835,6 +2860,8 @@ def maximum(a,b):
 	'''
 	return np.maximum(a,b)
 
+
+
 @jit
 def maximum(a,b):
 	'''
@@ -2846,6 +2873,7 @@ def maximum(a,b):
 		out (array): Maximum of array a and b
 	'''
 	return np.maximum(a,b)
+
 
 @jit
 def minimum(a,b):
@@ -3642,7 +3670,8 @@ def union(*iterables,sort=False):
 	union = set().union(*iterables)
 
 	if sort:
-		iterables = tuple((tuple(iterable) for iterable in iterables))
+		iterables = tuple((tuple(iterable) if not isinstance(iterable,set) else tuple(sorted(iterable)) 
+				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
 				for iterable in iterables)
@@ -3666,7 +3695,8 @@ def intersection(*iterables,sort=False):
 
 
 	if sort:
-		iterables = tuple((tuple(iterable) for iterable in iterables))
+		iterables = tuple((tuple(iterable) if not isinstance(iterable,set) else tuple(sorted(iterable)) 
+				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
 				for iterable in iterables)		
@@ -4104,7 +4134,7 @@ def scinotation(number,decimals=2,base=10,order=2,zero=True,scilimits=[-1,1],use
 		String with scientific notation format for number
 
 	'''
-	if not isnumber(number):
+	if not is_number(number):
 		return str(number)
 	try:
 		number = int(number) if int(number) == float(number) else float(number)

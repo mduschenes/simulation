@@ -9,7 +9,9 @@ env=${1:-jax}
 install=${2:-"reinstall"}
 
 pkgs=/pkgs/anaconda3
+pkgs=${HOME}/miniconda3
 envs=${HOME}/env
+envs=${HOME}/miniconda/envs
 channels=(intel conda-forge)
 requirements=requirements.txt
 
@@ -54,19 +56,16 @@ then
 	conda config --remove envs_dirs ${envs} &>/dev/null 2>&1
 	conda config --append envs_dirs ${envs} &>/dev/null 2>&1
 
-	conda remove --yes --name ${env} --all
+	conda remove --name ${env} --all
 
-	conda create --yes --prefix ${envs}/${env}
+	conda create --prefix ${envs}/${env}
 
 elif [ "${install}" == "uninstall" ]
 then
 	conda deactivate
 
-	conda remove --yes --name ${env} --all
-	exit 0
+	conda remove --name ${env} --all
 fi
-
-exit 0
 
 # Activate environment
 # conda activate ${env}
@@ -90,7 +89,7 @@ done
 # Install packages
 for file in ${requirements[@]}
 do
-	conda install --yes --file ${file} ${options[@]}
+	conda install --file ${file} ${options[@]}
 done
 
 rm ${requirements[@]} 

@@ -41,7 +41,7 @@ from src.utils import gradient_expm,gradient_sigmoid
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import eigh,eigvalsh,qr,rank
-from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
+from src.utils import maximum,minimum,argmax,argmin,difference,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
 from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size,intersection
 from src.utils import pi,e,nan,delim,scalars,nulls
@@ -612,11 +612,11 @@ class Object(object):
 
 	
 		self.hyperparameters['optimize']['track']['hessian'].append(
-			self.__hessian__(parameters) if not status or done else None
+			self.__hessian__(parameters) if not status or done else nan
 			)
 
 		self.hyperparameters['optimize']['track']['fisher'].append(
-			self.__fisher__(parameters) if not status or done else None
+			self.__fisher__(parameters) if not status or done else nan
 			)
 
 		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['modulo']['log'] == 0:			
@@ -933,14 +933,14 @@ class Object(object):
 					returns[new] = New
 
 				elif attr in ['hessian','fisher']:
-					if value is not None:
+					if isinstance(value,array):
 						new = '%s.eigenvalues'%(attr)						
 						New  = eigvalsh(value)
-						New = sorted(abs(New)/max(New),reverse=True)
+						New = array(sorted(abs(New)/max(New),reverse=True))
 						returns[new] = New
 						
 						new = '%s.rank'%(attr)
-						New  = rank(value,hermitian=True)
+						New = argmax(abs(difference(New)/New[:-1]))+1
 						returns[new] = New
 
 					else:

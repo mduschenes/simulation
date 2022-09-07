@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import PRNGKey,delim,partial,union
+from src.utils import PRNGKey,delim,partial,union,is_equal
 from src.dictionary import updater,getter,setter,permuter,clearer,leaves,grow
 from src.io import load,dump,join,split
 from src.process import process
@@ -27,7 +27,13 @@ def allowed(index,value,values):
 	Returns:
 		boolean (bool) : Boolean if value is allowed
 	'''
+
+	# TODO: Allow certain permutations of values, and retain index for folders
+
 	boolean = True
+
+	return boolean
+
 	for attr in index:
 		if index[attr] is None:
 			index[attr] = [index[attr]]
@@ -41,7 +47,7 @@ def allowed(index,value,values):
 			if subindex is None:
 				boolean &= True
 			elif isinstance(subindex,int):
-				boolean &= is_equal(values[attr].index(value[attr]),subindex)
+				boolean &= is_equal(value[attr][key],value[attr])
 			elif isinstance(subindex,dict):
 				boolean &= all(is_equal(value[attr][key],subindex[key]) for key in subindex)
 
@@ -123,7 +129,7 @@ def setup(settings):
 	for instance,value in enumerate(itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
 		if allowed(
 			{attr: index[attr] for attr in index},
-			{attr: dict(zip(values,value))[attr] for attr in index},
+			{attr: {k:v[1] for k,v in zip(values,value)}[attr] for attr in index},
 			{attr: values[attr] for attr in index},
 			):
 
