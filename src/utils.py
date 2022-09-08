@@ -1229,7 +1229,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 	return out
 
 
-def svd(A,k=None):
+def _svd(A,k=None):
 	'''
 	Perform SVD on array, possibly reduced rank k
 	Args:
@@ -1265,56 +1265,44 @@ def svd(A,k=None):
 
 	return U,S,V
 
-
-@jit
-def eigh(a):
-	'''
-	Compute eigenvalues and eigenvectors of a hermitian array
-	Args:
-		a (array): Array to compute eigenvalues and eigenvectors of shape (...,n,n)
-	Returns:
-		e (array): Vector of eigenvalues of shape (...,n)
-		v (array): Array of normalized eigenvectors of shape (...,n,n)
-	'''
-	return np.linalg.eigh(a)
-
-
-@jit
-def eig(a):
+def eig(a,compute_v=False,hermitian=False):
 	'''
 	Compute eigenvalues and eigenvectors
 	Args:
 		a (array): Array to compute eigenvalues and eigenvectors of shape (...,n,n)
+		compute_v (bool): Compute V eigenvectors in addition to eigenvalues
+		hermitian (bool): Whether array is Hermitian
 	Returns:
-		e (array): Vector of eigenvalues of shape (...,n)
-		v (array): Array of normalized eigenvectors of shape (...,n,n)
+		eigenvalues (array): Array of eigenvalues of shape (...,n)
+		eigenvectors (array): Array of normalized eigenvectors of shape (...,n,n)
 	'''
-	return np.linalg.eig(a)
+	if compute_v:
+		if hermitian:
+			_eig = np.linalg.eigh
+		else:
+			_eig = np.linalg.eig
+	else:
+		if hermitian:
+			_eig = np.linalg.eigvalsh
+		else:
+			_eig = np.linalg.eigvals
+	return _eig(a)
 
-
-@jit
-def eigvalsh(a):
+def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 	'''
-	Compute eigenvalues of a hermitian array
+	Compute singular values of an array
 	Args:
 		a (array): Array to compute eigenvalues of shape (...,n,n)
+		full_matrices (bool): Compute full matrices of right,left singular values
+		compute_uv (bool): Compute U,V in addition to singular values
+		hermitian (bool): Whether array is Hermitian				
 	Returns:
-		e (array): Vector of eigenvalues of shape (...,n)
+		singular (array): Array of singular values of shape (...,n)
+		rightvectors (array): Array of right singular vectors of shape (...,n,n)
+		leftvectors (array): Array of left singular vectors of shape (...,n,n)
 	'''
-	return np.linalg.eigvalsh(a)
-
-
-@jit
-def eigvals(a):
-	'''
-	Compute eigenvalues
-	Args:
-		a (array): Array to compute eigenvalues of shape (...,n,n)
-	Returns:
-		e (array): Vector of eigenvalues of shape (...,n)
-	'''
-	return np.linalg.eigvals(a)
-
+	# TODO: Fix svd kwargs error
+	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
 @jit
 def qr(a):
@@ -2455,6 +2443,8 @@ def rank(a,tol=None,hermitian=False):
 	Calculate rank of array
 	Args:
 		a (array): Array to calculate rank
+		tol (float): Tolerance of rank computation
+		hermitian (bool): Whether array is hermitian
 	Returns:
 		out (array): rank of array
 	'''		
@@ -2483,7 +2473,7 @@ def abs2(a):
 	Returns:
 		out (array): Absolute value squared of array
 	'''	
-	return np.abs(a)**2
+	return abs(a)**2
 
 @jit
 def real(a):
@@ -2851,7 +2841,30 @@ def argmin(a):
 
 
 @jit
-def maximum(a,b):
+def maximum(a):
+	'''
+	Calculate maximum of array a
+	Args:
+		a (array): Array to compute maximum
+	Returns:
+		out (array): Maximum of array a
+	'''
+	return np.max(a)
+
+@jit
+def minimum(a):
+	'''
+	Calculate maximum of array a
+	Args:
+		a (array): Array to compute maximum
+	Returns:
+		out (array): Maximum of array a
+	'''
+	return np.min(a)
+
+
+@jit
+def maximums(a,b):
 	'''
 	Calculate maximum of array a and b
 	Args:
@@ -2863,22 +2876,8 @@ def maximum(a,b):
 	return np.maximum(a,b)
 
 
-
 @jit
-def maximum(a,b):
-	'''
-	Calculate maximum of array a and b
-	Args:
-		a (array): Array to compute maximum
-		b (array): Array to compute maximum
-	Returns:
-		out (array): Maximum of array a and b
-	'''
-	return np.maximum(a,b)
-
-
-@jit
-def minimum(a,b):
+def minimums(a,b):
 	'''
 	Calculate minimum of array a and b
 	Args:
@@ -2891,7 +2890,7 @@ def minimum(a,b):
 
 
 @partial(jit,static_argnums=(1,))
-def sort(a,axis):
+def sort(a,axis=0):
 	'''
 	Sort array along axis
 	Args:
@@ -3045,7 +3044,7 @@ def take(a,indices,axes):
 			index = array(range(index))
 		else:
 			index = array(_iter_(index))
-		index = minimum(shape[axis]-1,index)[:shape[axis]]
+		index = minimums(shape[axis]-1,index)[:shape[axis]]
 		a = np.take(a,index,axis)
 	return a
 
@@ -4253,7 +4252,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
 						parameters = parameters.at[indices].set(value)
 
-			parameters = minimum(bounds[1],maximum(bounds[0],parameters))
+			parameters = minimums(bounds[1],maximums(bounds[0],parameters))
 
 		elif initialization in ['uniform']:
 			parameters = ((bounds[0]+bounds[1])/2)*ones(shape)

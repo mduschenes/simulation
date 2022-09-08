@@ -320,15 +320,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				handles,labels = getattr(obj,'get_legend_handles_labels')()
 				handles,labels = (
 					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
-					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)]
+					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
 					)
 
+				kwargs.update(dict(zip(['handles','labels'],[handles,labels])))
 
 				kwargs.update({k: attr_share(attr_texify(v,attr,k,**{**kwargs,**_kwargs}),attr,k,**{**kwargs,**_kwargs})  
 						for k,v in zip(['handles','labels'],[handles,labels])
 						})
 
-				# kwargs.update(dict(zip(['handles','labels'],[handles,labels])))
 
 				_kwds.update({
 					'set_zorder':kwargs.pop('set_zorder',{'level':100}),

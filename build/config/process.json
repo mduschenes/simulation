@@ -49,6 +49,7 @@
         "process": "process.hdf5"
     },
 	"delimiter":".",
+	"process":["src.postprocess.process"],
     "load":0,
 	"dump":1
 }

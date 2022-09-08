@@ -242,16 +242,40 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	return path
 
 
-def glob(path,**kwargs):
+def glob(path,include=None,recursive=False,**kwargs):
 	'''
 	Expand path
 	Args:
 		path (str): Path to expand
+		include (str): Type of paths to expand, allowed ['directory','file']
+		recursive (bool,str): Recursively find all included paths below path, or expander strings ['*','**']
 		kwargs (dict): Additional glob keyword arguments
 	Returns:
-		path (str): Expanded, absolute path
+		paths (list[str]): Expanded, absolute path
 	'''
-	return globber.glob(os.path.abspath(os.path.expanduser(path)),recursive=True,**kwargs)
+
+	if include is None:
+		include = lambda path:True
+	elif include in ['file']:
+		include = os.path.isfile
+	elif include in ['directory']:
+		include = os.path.isdir
+	else:
+		include = lambda path:True
+
+	if not isinstance(recursive,str):
+		if recursive:
+			recursive = '**'
+		else:
+			recursive = None
+
+	path = join(path,recursive)
+
+	paths = globber.glob(os.path.abspath(os.path.expanduser(path)),recursive=True,**kwargs)
+
+	paths = list(sorted(filter(include,paths)))
+
+	return paths
 
 def edit(path,directory=None,file=None,ext=None,delimiter='.'):
 	'''

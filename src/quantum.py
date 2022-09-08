@@ -40,7 +40,7 @@ from src.utils import trotter,gradient_trotter,fisher
 from src.utils import gradient_expm,gradient_sigmoid
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import eigh,eigvalsh,qr,rank
+from src.utils import svd,rank
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
 from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size,intersection
@@ -935,12 +935,14 @@ class Object(object):
 				elif attr in ['hessian','fisher']:
 					if isinstance(value,array):
 						new = '%s.eigenvalues'%(attr)						
-						New  = eigvalsh(value)
-						New = array(sorted(abs(New)/max(New),reverse=True))
+						New  = sort(abs(eig(value,compute_v=False,hermitian=True)))[::-1]
+						New = New/maximum(New)
+						# _New = int((argmax(abs(difference(New)/New[:-1]))+1)*1.5)
+						# New = New[:_New]
 						returns[new] = New
 						
 						new = '%s.rank'%(attr)
-						New = argmax(abs(difference(New)/New[:-1]))+1
+						_New = argmax(abs(difference(New)/New[:-1]))+1						
 						returns[new] = New
 
 					else:
@@ -1052,6 +1054,11 @@ class Object(object):
 			default = data[attr]
 			data[attr] = load(path,default=default)
 			updater(default,data[attr],func=func)
+
+		try:
+			self.parameters = self.hyperparameters['optimize']['track']['parameters'][-1]
+		except:
+			pass
 
 		return
 

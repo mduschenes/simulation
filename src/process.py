@@ -24,7 +24,7 @@ for PATH in PATHS:
 from src.utils import argparser
 from src.utils import array,product,expand_dims,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
-from src.utils import rank,diag,argmax,difference,is_nan
+from src.utils import argmax,difference,is_nan
 from src.utils import e,pi,nan,scalars,nulls
 from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split,glob
@@ -1104,7 +1104,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							kwarg: 1 for kwarg in kwargslayout[:dim+1]
 							})
 
-
 					indx = samplelayouts['index']-1	
 					nrow = (indx - indx%samplelayouts['ncols'])//samplelayouts['ncols']
 					ncol = indx%samplelayouts['ncols']
@@ -1176,9 +1175,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 	# Set plot settings
 
-	for instance in settings:
-		for subinstance in settings[instance]:
-			for setting in settings[instance][subinstance]:
+	for instance in list(settings):
+		for subinstance in list(settings[instance]):
+			for setting in list(settings[instance][subinstance]):
 				
 				for attr in special.get(setting,{}):
 
@@ -1192,6 +1191,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						key = keys[occurrence]
 						combination = dict(zip(key['label']['key'],combination))
 
+
+						# TODO: Allow for access of other data/attributes values (statistics of them in parallel with plotted values)
+						# for use in plot labels etc.
+
+						# Add data-dependent plots
+						if key['y']['key'][-1] in []:
+							pass
+
 						kwargs = ['color','ecolor']
 						for kwarg in kwargs:
 							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
@@ -1202,9 +1209,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 
 
-						# TODO: Allow for access of other data/attributes values (statistics of them in parallel with plotted values)
-						# for use in plot labels etc.
-
 						kwargs = ['label']
 						for kwarg in kwargs:
 							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
@@ -1214,24 +1218,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
 								value = ',~'.join([texify(str(combination[k])) for k in value])
 
-								if key['y']['key'][-1] in ['hessian.eigenvalues','fisher.eigenvalues']:
-									y = settings[instance][subinstance][setting][attr][subsubinstance]['y']
-									y = y[~is_nan(y)]
-									tol = hyperparameters['kwargs']['tol']
-									# rank = (y>tol).sum()
-									rank = argmax(abs(difference(y)/y[:-1]))+1
-									value = '~'.join([value,
-										*['%s%s'%(
-											('%s='%(str(label)) 
-												if label.count('@')==0 else
-												''.join([str(combination.get(v,v)) for v in label.split('@') if len(v)>0])),
-												str(rank),
-											# ('~'.join([str(combination.get(v,v)) for v in val.split('@') if len(v)>0]) 
-											# 	if val is not None else '')
-											)
-											for label,val in zip(key['label']['key'],key['label']['value']) 
-											if label not in combination]
-										])
 							else:
 								value = None
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
@@ -1415,29 +1401,17 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 										value[i][kwarg] = new
 
 
-	verbose = 0
-
-	for instance in settings:
-
-		if verbose:
-			for subinstance in settings[instance]:
-				print(subinstance)
-				for setting in settings[instance][subinstance]:
-					print(setting)
-					for kwarg in settings[instance][subinstance][setting]:
-						print(kwarg)
-						if isinstance(settings[instance][subinstance][setting][kwarg],list):
-							for value in settings[instance][subinstance][setting][kwarg]:
-								print(value)
-						else:
-							value = settings[instance][subinstance][setting][kwarg]
-							print(value)
-						print()
-					print()
-				print()
 
 
 		fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
+
+
+
+	# Perform farmed out processes
+	for process in hyperparameters.get('process',[]):
+		process = load(process)
+		path = cwd
+		process(path)
 
 	return fig,ax
 
