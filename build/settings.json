@@ -42,8 +42,8 @@
 		"model.N":[3],		
 		"model.N":[2],		
 		"model.M":[50,100,200,300,400],		
-		"model.M":[10],
-		"optimize.iterations":[10],
+		"model.M":[200],
+		"optimize.iterations":[100],
 		"optimize.optimizer":["cg"],
 
 

@@ -157,8 +157,11 @@ def process(path):
 							x = arange(y.size)
 
 							attrs = {
-								'rank': argmax(abs(difference(y)/y[:-1]))+1
+								'rank': argmax(abs(difference(y)/y[:-1]))+1 if y[argmax(abs(difference(y)/y[:-1]))+1]<1e-4 else y.size
 								}
+
+							y = y[:U.g*2]
+							x = x[:U.g*2]
 
 							options = {
 								'fig':{
