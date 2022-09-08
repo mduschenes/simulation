@@ -40,7 +40,7 @@ from src.utils import trotter,gradient_trotter,fisher
 from src.utils import gradient_expm,gradient_sigmoid
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import svd,rank
+from src.utils import eig
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
 from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size,intersection
@@ -702,6 +702,7 @@ class Object(object):
 		self.L = self.space.L
 		self.delta = self.space.delta
 		self.n = self.space.n
+		self.g = self.space.g
 		self.dims = (self.n,self.n)
 		self.dim = int(product(self.dims))
 		self.ndim = len(self.dims)

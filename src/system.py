@@ -278,6 +278,7 @@ class Space(object):
 		self.delta = self.get_delta()
 		self.L = self.get_L(self.delta)
 		self.n = self.get_n()
+		self.g = self.get_g()
 		self.size = self.n
 		return 
 
@@ -322,7 +323,14 @@ class Space(object):
 			return self.D**self.N
 		else:
 			return self.D**self.N
-		return	
+		return
+
+	def get_g(self):
+		if self.space in ['spin']:
+			return self.get_n()**2-1
+		else:
+			return self.get_n()**2-1
+		return			
 
 	def get_delta(self):
 		if self.delta is None:
