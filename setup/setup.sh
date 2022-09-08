@@ -8,6 +8,9 @@ env=${1:-jax}
 # Install Type ["install","reinstall","uninstall"]
 install=${2:-"reinstall"}
 
+# Silent yes to all commands ["yes","no"]
+yes=${3}
+
 pkgs=/pkgs/anaconda3
 pkgs=${HOME}/miniconda3
 envs=${HOME}/env
@@ -85,6 +88,11 @@ do
 	conda config --append channels ${channel} &>/dev/null 2>&1
 	options+=("--channel" ${channel})
 done
+
+if [ ${yes} == "yes" ]
+then
+	options+=("--yes")
+fi
 
 # Install packages
 for file in ${requirements[@]}
