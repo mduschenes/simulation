@@ -1302,7 +1302,8 @@ def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 		leftvectors (array): Array of left singular vectors of shape (...,n,n)
 	'''
 	# TODO: Fix svd kwargs error
-	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
+	return np.linalg.svd(a,full_matrices=True,compute_uv=False,hermitian=True)
+	# return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
 @jit
 def qr(a):

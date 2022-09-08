@@ -182,7 +182,7 @@ def process(path):
 										'y':y,
 										'label': r'$%s, r = %d$'%('*' if p==0 else r'%d'%(p),attrs['rank']),
 										'alpha':0.8 if p==0 else 0.8,
-										'marker': 'o' if p==0 else '',
+										'marker': 'o' if p==0 else 'o',
 										'markersize':7 if p==0 else 5,
 										'linestyle': '-' if p==0 else '--',
 										'linewidth': 5 if p==0 else 4,
