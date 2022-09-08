@@ -18,6 +18,7 @@ envs=${HOME}/miniconda/envs
 channels=(intel conda-forge)
 requirements=requirements.txt
 
+
 # Setup paths
 mkdir -p ${envs}
 
@@ -89,7 +90,7 @@ do
 	options+=("--channel" ${channel})
 done
 
-if [ ${yes} == "yes" ]
+if [ ! -z ${yes} ] && [ ${yes} == "yes" ]
 then
 	options+=("--yes")
 fi
