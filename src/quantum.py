@@ -381,7 +381,7 @@ class Object(object):
 		states = stateize(data,shape,hyperparams,size=size,dtype=dtype,cls=self)
 
 		# Get coefficients
-		self.coefficients = -1j*2*pi/2*self.tau/self.p		
+		coefficients = -1j*2*pi/2*self.tau/self.p		
 
 		# Update class attributes
 		self.parameters = parameters
@@ -421,7 +421,7 @@ class Object(object):
 		return parameters
 
 
-	@partial(jit,static_argnums=(0,2))
+	# @partial(jit,static_argnums=(0,2))
 	def __layers__(self,parameters,layer='variables'):
 		''' 
 		Setup layer
@@ -443,6 +443,7 @@ class Object(object):
 		attribute = 'values'
 		values = attributes[attribute][layer]
 
+
 		# Get values
 		attribute = 'slice'
 		for parameter in attributes[attribute][layer]:
@@ -451,6 +452,16 @@ class Object(object):
 				func = attributes[layer][layer][parameter][group]
 				
 				values = func(parameters,values)
+		# try:
+		# 	values = values.at[:2*self.N].set(parameters)
+		# except:
+		# 	attribute = 'slice'
+		# 	for parameter in attributes[attribute][layer]:
+		# 		for group in attributes[attribute][layer][parameter]:
+
+		# 			func = attributes[layer][layer][parameter][group]
+					
+		# 			values = func(parameters,values)
 
 		return values
 
@@ -465,7 +476,6 @@ class Object(object):
 		'''		
 		layer = 'constraints'
 		return self.__layers__(parameters,layer)
-
 
 	@partial(jit,static_argnums=(0,))
 	def __objective__(self,parameters):
@@ -638,7 +648,7 @@ class Object(object):
 
 			self.log(msg)
 
-			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
+			print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
 
 
 		return status
