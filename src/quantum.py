@@ -111,30 +111,23 @@ class Object(object):
 		self.metric = metric
 		self.system = system
 
-		self.data = array([])
+		self.data = []
 		self.operator = []
 		self.site = []
 		self.string = []
 		self.interaction = []
 		self.indices = []		
 		self.shape = (len(self.data),self.M)
+		self.ndim = len(self.shape)
 
 		self.key = None
 
 		self.timestamp = None
 		self.architecture = None
 		self.delimiter = ' '
-		self.basis = None
-		self.diagonal = []
-		self._data = []
-		self.funcs = lambda parameters: None
-		self.expms = lambda parameters: None
-		self.transform = []
-		self.transformH = []
-		self.index = arange(len(self.data))
 		self.dims = []
 		self.dim = int(product(self.dims))
-		self.ndim = len(self.dims)
+		self.ndims = len(self.dims)
 
 		self.hyperparameters = hyperparameters
 		self.parameters = None
@@ -160,10 +153,10 @@ class Object(object):
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
 		self.func = self.__func__
-		self.grad = jit(gradient(self.func))
-		self.derivative = jit(gradient_fwd(self))
-		self.hessian = jit(hessian(self.func))
-		self.fisher = jit(fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)]))
+		self.grad = gradient(self.func)
+		self.derivative = gradient_fwd(self)
+		self.hessian = hessian(self.func)
+		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
 			for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','architecture','shape']]
@@ -322,14 +315,14 @@ class Object(object):
 		if index == -1:
 			index = len(self.data)
 
-		self.data = array([*self.data[:index],data,*self.data[index:]],dtype=self.dtype)
+		self.data.insert(index,data)
 		self.operator.insert(index,operator)
 		self.site.insert(index,site)
 		self.string.insert(index,string)
 		self.interaction.insert(index,interaction)
 
 		self.shape = (len(self.data),self.M,*self.dims)
-		self.index = arange(len(self.data))
+		self.ndim = len(self.shape)		
 
 		self.hyperparameters.update(hyperparameters)
 
@@ -451,16 +444,9 @@ class Object(object):
 		for parameter in attributes[attribute][layer]:
 			for group in attributes[attribute][layer][parameter]:
 
-				attr = layer
-				func = attributes[attr][layer][parameter][group]
+				func = attributes[layer][layer][parameter][group]
 				
-				attr = 'slice'
-				slices = attributes[attr][layer][parameter][group]
-				
-				attr = 'index'
-				indices = attributes[attr][layer][parameter][group]
-
-				values = func(parameters,values,slices,indices)
+				values = func(parameters,values)
 
 		return values
 
@@ -624,9 +610,9 @@ class Object(object):
 			self.hyperparameters['optimize']['track']['parameters'].append(parameters)		
 
 			msg = '\n'.join([
-				'%d f(x) = %0.10f'%(
+				'%d f(x) = %0.4e'%(
 					self.hyperparameters['optimize']['track']['iteration'][-1],
-					self.hyperparameters['optimize']['track']['objective'][-1],
+					self.hyperparameters['optimize']['track']['value'][-1],
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
 					norm(self.hyperparameters['optimize']['track']['parameters'][-1])/
@@ -639,6 +625,7 @@ class Object(object):
 					for attr in ['alpha','beta']
 					if attr in self.hyperparameters['optimize']['track'] and len(self.hyperparameters['optimize']['track'][attr])>0
 					]),
+				# 'x\n%s'%(to_str(parameters.round(4))),
 				'U\n%s\nV\n%s\n'%(
 				to_str(abs(self(parameters)).round(4)),
 				to_str(abs(self.label).round(4))),
@@ -647,7 +634,7 @@ class Object(object):
 
 			self.log(msg)
 
-			# print(self.__layers__(parameters,'variables').round(3))
+			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
 
 
 		return status
@@ -705,8 +692,9 @@ class Object(object):
 		self.g = self.space.g
 		self.dims = (self.n,self.n)
 		self.dim = int(product(self.dims))
-		self.ndim = len(self.dims)
+		self.ndims = len(self.dims)
 		self.shape = (len(self.data),self.M,*self.dims)
+		self.ndim = len(self.shape)
 		self.identity = identity(self.n,dtype=self.dtype)
 
 		return
@@ -735,8 +723,9 @@ class Object(object):
 		self.T = self.time.T
 		self.p = self.time.p
 		self.tau = self.time.tau
-		self.coefficients = self.tau/self.p		
+		self.coefficients = -1j*2*pi/2*self.tau/self.p		
 		self.shape = (*self.shape[:1],self.M,*self.shape[2:])	
+		self.ndim = len(self.shape)
 
 		return
 
@@ -863,10 +852,7 @@ class Object(object):
 
 			if attr in obj.hyperparameters['optimize']['track']:
 				new = attr
-				# New = array(value)
 				New = value			
-				# if New.ndim > 1:
-				# 	New = New.transpose(*range(1,New.ndim),0)
 				returns[new] = New
 			else:
 				new = attr
@@ -1264,14 +1250,14 @@ class Hamiltonian(Object):
 
 
 		# Form (size,n,n) shape operator from local strings for each data term
-		data = array([tensorprod([basis[j] for j in i]) for i in operator])
+		data = [tensorprod([basis[j] for j in i]) for i in operator]
 
 		# Assert all data satisfies data**2 = identity for matrix exponentials
 		assert all(allclose(d.dot(d),self.identity) for d in data), 'data is not involutory and data**2 != identity'
 
 		# Get Trotterized order of p copies of data for products of data
 		p = self.p
-		data = array(trotter(data,p))
+		data = trotter(data,p)
 		operator = trotter(operator,p)
 		site = trotter(site,p)
 		string = trotter(string,p)
@@ -1279,7 +1265,7 @@ class Hamiltonian(Object):
 
 		# Check for case of size
 		if not size:
-			data = array([self.identity]*self.p)
+			data = [self.identity]*self.p
 			operator = [['I']*self.N]*self.p
 			site = [list(range(self.N))]*self.p
 			string = ['I']*self.p
@@ -1292,6 +1278,7 @@ class Hamiltonian(Object):
 		self.__initialize__(parameters)
 
 		parameters = self.parameters
+		self.data = array(self.data,dtype=self.dtype)
 
 		return
 
@@ -1366,7 +1353,7 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
-		return exponentiation(-1j*self.coefficients*parameters,self.data,self.identity)
+		return exponentiation(self.coefficients*parameters,self.data,self.identity)
 
 
 	@partial(jit,static_argnums=(0,))
@@ -1421,8 +1408,8 @@ class Unitary(Hamiltonian):
 		# Calculate parameters and gradient
 		parameters = self.__parameters__(parameters)
 
-		derivative = gradient_expm(-1j*self.coefficients*parameters,self.data,self.identity)
-		derivative *= -1j*self.coefficients*2*pi
+		derivative = gradient_expm(self.coefficients*parameters,self.data,self.identity)
+		derivative *= self.coefficients
 
 		# Reshape gradient
 		axis = 1

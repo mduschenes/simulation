@@ -187,7 +187,6 @@ def jit(func,*,static_argnums=None):
 	Returns:
 		func (callable): Compiled function
 	'''
-	# return func
 	return jax.jit(func,static_argnums=static_argnums)
 
 def jitpartial(func,*,static_argnums=None,**kwargs):
@@ -417,12 +416,12 @@ def hessian(func):
 	return grad
 
 
-def fisher(func,grad,shapes,optimize=None):
+def fisher(func,grad=None,shapes=None,optimize=None,**kwargs):
 	'''
 	Compute fisher information of function
 	Args:
 		func (callable): Function to compute
-		gradient (callable): Gradient to compute
+		grad (callable): Gradient to compute
 		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type		
 	Returns:
@@ -430,16 +429,26 @@ def fisher(func,grad,shapes,optimize=None):
 	'''
 
 	subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-	shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
 	wrappers = [lambda out,*operands: out,lambda out,*operands: -1/sqrt(operands[0].size)*out]
 
-	einsummations = [
-		einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
-			for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
-		]
-	einsummations = [
-		lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_g,g),
-		lambda f,g,_f,_g,einsummations=einsummations: einsummations[1](_g,f,g,_f)
+	if grad is None:
+		grad = gradient_fwd(func)
+
+	if shapes is not None:
+		shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
+
+		einsummations = [
+			einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
+				for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+			]
+		einsummations = [
+			lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_g,g),
+			lambda f,g,_f,_g,einsummations=einsummations: einsummations[1](_g,f,g,_f)
+			]
+	else:
+		einsummations = [
+			lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_g,g,optimize=optimize,wrapper=wrapper),
+			lambda f,g,_f,_g,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,_g,f,g,_f,optimize=optimize,wrapper=wrapper)
 		]
 
 	@jit
@@ -1301,9 +1310,7 @@ def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 		rightvectors (array): Array of right singular vectors of shape (...,n,n)
 		leftvectors (array): Array of left singular vectors of shape (...,n,n)
 	'''
-	# TODO: Fix svd kwargs error
-	return np.linalg.svd(a,full_matrices=True,compute_uv=False,hermitian=True)
-	# return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
+	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
 @jit
 def qr(a):

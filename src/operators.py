@@ -36,7 +36,7 @@ from src.utils import pi,e
 
 from src.io import load,dump,join,split
 
-def haar(shape,bounds,random,seed,dtype):
+def haar(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
 	Initialize haar random unitary operator
 	Args:
@@ -48,6 +48,13 @@ def haar(shape,bounds,random,seed,dtype):
 	Returns:
 		data (array): Array of operator
 	'''
+
+	if bounds is None:
+		bounds = [-1,1]
+
+	if random is None:
+		random = 'gaussian'
+
 	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
 	data /= sqrt(2)
 
@@ -62,7 +69,7 @@ def haar(shape,bounds,random,seed,dtype):
 	return data
 
 
-def id(shape,bounds,random,seed,dtype):
+def id(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
 	Initialize identity unitary operator
 	Args:
@@ -81,7 +88,7 @@ def id(shape,bounds,random,seed,dtype):
 
 	return data
 
-def cnot(shape,bounds,random,seed,dtype):
+def cnot(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
 	Initialize cnot unitary operator
 	Args:
@@ -105,7 +112,7 @@ def cnot(shape,bounds,random,seed,dtype):
 	return data
 
 
-def hadamard(shape,bounds,random,seed,dtype):
+def hadamard(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
 	Initialize hadamard unitary operator
 	Args:
@@ -127,7 +134,7 @@ def hadamard(shape,bounds,random,seed,dtype):
 	return data	
 
 
-def toffoli(shape,bounds,random,seed,dtype):
+def toffoli(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
 	Initialize toffoli unitary operator
 	Args:
@@ -200,7 +207,7 @@ def operatorize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
 
 
 	if data is None:
-		string = hyperparameters['string']
+		string = hyperparameters.get('string')
 	elif isinstance(data,str):
 		string = data
 	elif isinstance(data,array):
@@ -223,9 +230,9 @@ def operatorize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
 		if string is not None:
 			data = tensorprod([
 				props[string]['func'](shape,
-					bounds=hyperparameters['bounds'],
-					random=hyperparameters['random'],
-					seed=hyperparameters['seed'],
+					bounds=hyperparameters.get('bounds'),
+					random=hyperparameters.get('random'),
+					seed=hyperparameters.get('seed'),
 					dtype=dtype
 					)
 				for string in strings
@@ -237,6 +244,7 @@ def operatorize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
 	# Assert data is unitary
 	assert allclose(eye(d),data.conj().T.dot(data))
 	assert allclose(eye(d),data.dot(data.conj().T))
+
 
 	# Set dtype of data
 	data = data.astype(dtype=dtype)

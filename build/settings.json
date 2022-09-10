@@ -76,12 +76,12 @@
 	"index":-1
 	},
 "model":{
-	"N":2,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":10,
+	"M":30,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -128,7 +128,7 @@
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"method":"unconstrained",
+		"method":"constrained",
 		"use":true,		
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},

@@ -74,7 +74,6 @@ def train(hyperparameters):
 
 		parameters = obj.parameters
 		hyperparams = obj.hyperparameters['optimize']
-		hyperparams = obj.hyperparameters['optimize']
 
 		func = obj.__func__
 		callback = obj.__callback__

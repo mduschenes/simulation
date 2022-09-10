@@ -201,6 +201,8 @@ class Logger(object):
 		else:
 			self.logger = name
 
+		self.name = name
+		self.conf = conf
 
 		self.verbosity = {
 			'notset':0,'debug':10,'info':20,'warning':30,'error':40,'critical':50,
@@ -210,8 +212,7 @@ class Logger(object):
 			2:20,3:30,4:40,5:50,
 			True:20,False:0,None:0,
 			}
-		self.verbose = verbose
-
+		self.verbose = self.verbosity.get(verbose,verbose)
 
 		return
 	
@@ -223,7 +224,7 @@ class Logger(object):
 			msg (str): Message to log
 		'''
 
-		verbose = self.verbosity.get(verbose,verbose)
+		verbose = self.verbosity.get(verbose,self.verbose)
 
 		self.logger.log(verbose,msg)
 		return

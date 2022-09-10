@@ -1,105 +1,240 @@
 #!/usr/bin/env python
 
-import os,sys,subprocess
+import os,sys,traceback
+from functools import partial
+import jax
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,array,zeros,tensorprod,trotter
-from src.utils import allclose,cosh,sinh,real,abs,rand,pi
-from src.utils import gradient,hessian,gradient_fwd,gradient_shift
+from src.utils import jit,array,zeros,tensorprod,trotter,forloop
+from src.utils import allclose,cosh,sinh,real,abs,rand,pi,to_str
+from src.utils import gradient,hessian,gradient_fwd,gradient_shift,fisher
+from src.utils import inner_abs2,inner_real
+from src.system import Logger
+from src.utils import scalars,pi
+from src.io import load,dump
 from src.operators import haar
-from functools import partial
+from src.optimize import Optimizer
 
 from jax import config
 configs = {'jax_disable_jit':False}
 for name in configs:
-    config.update(name,configs[name])
-
-N = 2
-p = 1
-M = 5
-seed = None
-bounds = [-1,1]
-random = 'gaussian'
-dtype = 'complex'
+	config.update(name,configs[name])
 
 
-n = 2**N
+name = __name__
+path = os.getcwd()
+file = 'logging.conf'
+conf = os.path.join(path,file)
+file = None #'log.log'
+logger = Logger(name,conf,file=file)
 
-I = array([[1,0],[0,1]],dtype=dtype)
-X = array([[0,1],[1,0]],dtype=dtype)
-Y = array([[0,-1j],[1j,0]],dtype=dtype)
-Z = array([[1,0],[0,-1]],dtype=dtype)
-data = [
-    *[tensorprod(array([X if k in [i] else I for k in range(N)])) for i in range(N)],
-    *[tensorprod(array([Y if k in [i] else I for k in range(N)])) for i in range(N)],
-    *[tensorprod(array([Z if k in [i] else I for k in range(N)])) for i in range(N)],
-    *[tensorprod(array([Z if k in [i,j] else I for k in range(N)])) for i in range(N) for j in range(N) if i<j],
-    ]
+def setup(kwargs):
 
-K = len(data)
+	if not isinstance(kwargs,dict):
+		return
 
-data = array(trotter(data,p))
-identity = tensorprod(array([I]*N))
+	N = kwargs['N']
+	M = kwargs['M']
+	p = kwargs['p']
+	k = kwargs['k']
+	seed = kwargs['seed']
+	verbose = kwargs['verbose']
 
-V = haar(shape=(n,n),bounds=bounds,random=random,seed=seed,dtype=dtype)
+	bounds = [-1,1]
+	random = 'gaussian'
+	dtype = 'complex'
 
-k = 2*N
-slices = (slice(M),slice(None,k))
+	n = 2**N
 
-k = (N*(N-1))//2
-slices = (slice(M),slice(-k,None))
-          
-k = K
-slices = (slice(M),slice(k))
-          
-shape = (M,K)
-subshape = (M,k)
+	I = array([[1,0],[0,1]],dtype=dtype)
+	X = array([[0,1],[1,0]],dtype=dtype)
+	Y = array([[0,-1j],[1j,0]],dtype=dtype)
+	Z = array([[1,0],[0,-1]],dtype=dtype)
+	data = [
+		*[tensorprod(array([X if k in [i] else I for k in range(N)])) for i in range(N)],
+		*[tensorprod(array([Y if k in [i] else I for k in range(N)])) for i in range(N)],
+		*[tensorprod(array([Z if k in [i] else I for k in range(N)])) for i in range(N)],
+		*[tensorprod(array([Z if k in [i,j] else I for k in range(N)])) for i in range(N) for j in range(N) if i<j],
+		]
 
-
-X = rand(shape=shape,bounds=bounds,key=seed,random=random)
-X = X.ravel()
-
-x = rand(shape=subshape,bounds=bounds,key=seed,random=random)
-x = x.ravel()
+	K = len(data)
+	dim = K
+	dims = (n,n)
 
 
-def model(x,X,data,identity,M,K,k,n,p):
-    def _func(x,data,identity):
-        return cosh(x)*identity + sinh(x)*data
+	data = array(trotter(data,p))
+	identity = tensorprod(array([I]*N))
 
-    D = M*K
-    d = M*k
-    
-    X = X.reshape((M,K))
-    x = x.reshape((M,k))
-    
-    X = X.at[slices].set(x)
+	V = haar(shape=dims,seed=123,dtype=dtype)
 
-    X = X.ravel()
-    
-    coefficient = -1j/p
-    
-    out = identity
-    for i in range(D):
-        out = out.dot(_func(coefficient*X[i],data[i%K],identity))
-    return out
+	if k is None:
+		k = 2*N
+	slices = (slice(M),slice(None,k))
+	_slices= (slice(M),slice(k,None))
+	_X = [[-0.1,0,0.1,0.05,-0.2][:N],[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006][:K-k-N]]
 
-model = jit(partial(model,X=X,data=data,identity=identity,M=M,K=K,k=k,n=n,p=p))
 
-def func(x,V,n):
-    U = model(x)
-#     out = (abs((V.conj().T.dot(U)).trace())/n)**2
-    out = (real((V.conj().T.dot(U)).trace())/n)
-    return out 
+	shape = (M,K)
+	subshape = (M,k)
 
-func = jit(partial(func,V=V,n=n))
-_grad = jit(gradient_shift(func)) # For p=1,unconstrained features
+	parameters = rand(shape=subshape,bounds=bounds,key=seed,random=random)
+	X = rand(shape=shape,bounds=bounds,key=seed,random=random)
 
-grad = gradient(func)
-hess = hessian(func)
+	X = X.at[slices].set(parameters)
+	X = X.at[:,k:k+len(_X[0])].set(_X[0])
+	X = X.at[:,k+N:k+N+len(_X[1])].set(_X[1])
 
-print(allclose(grad(x),_grad(x)))
+
+	X = X.ravel()
+	parameters = parameters.ravel()
+
+	kwargs.update({
+		'N':N,'M':M,'K':K,'k':k,'n':n,'p':p,
+		'shapes':[dims,(dim,*dims)],
+		'slices':slices,
+		'X':X,'data':data,'identity':identity,
+		'V':V,
+	})
+
+	for kwarg in kwargs:
+		if isinstance(kwargs[kwarg],scalars):
+			msg = '%s : %s'%(kwarg,kwargs[kwarg])
+		else:
+			msg = '%s :\n%s\n'%(kwarg,kwargs[kwarg])
+		if kwarg == 'X':
+			msg = '%s :\n%s\n'%(kwarg,kwargs[kwarg].reshape(M,K))
+		logger.log(verbose,msg)
+
+	return parameters
+
+def model(parameters,**kwargs):
+
+	D = kwargs['M']*kwargs['K']
+	d = kwargs['M']*kwargs['k']
+
+	parameters = parameters.reshape((kwargs['M'],kwargs['k']))
+	
+	x = kwargs['X'].reshape((kwargs['M'],kwargs['K']))
+	
+	x = x.at[kwargs['slices']].set(parameters)
+
+	x = x.ravel()
+	
+	coefficient = -1j*pi/kwargs['p']
+
+	@jit
+	def _func(parameters,data,identity):
+		return cosh(parameters)*identity + sinh(parameters)*data
+
+	@jit
+	def func(i,out):
+		return out.dot(_func(coefficient*x[i],kwargs['data'][i%kwargs['K']],kwargs['identity']))
+
+	out = kwargs['identity']		
+	out = forloop(0,D,func,out)
+	return out
+
+def func(parameters,model,**kwargs):
+	V = kwargs['V']
+	n = kwargs['n']
+	U = model(parameters)
+
+	out = 1 - inner_abs2(U,V)
+	# out = 1-(abs((V.conj().T.dot(U)).trace())/n)**2
+	# out = 1-(real((V.conj().T.dot(U)).trace())/n)
+	return out 
+
+def callback(parameters,funcs,**kwargs):
+	values = kwargs['optimize']['track']
+	verbose = kwargs['verbose']
+
+	# for func in funcs:
+	# 	values[func].append(funcs[func](parameters))
+
+	msg = ' '.join(['%d'%(value) if isinstance(value,int) else '%0.5e'%(value) for value in [values['iteration'][-1],values['value'][-1],values['alpha'][-1]]])
+	logger.log(verbose,msg)
+
+	status = True
+
+	return status
+
+
+def train(parameters,model,func,callback,**kwargs):
+
+	model = jit(partial(model,**kwargs))
+	func = jit(partial(func,model=model,**kwargs))
+	grad = gradient(func)
+	derivative = gradient_fwd(model)
+	hess = hessian(func)
+	fish = fisher(model)
+
+	funcs = {
+		'model':model,
+		'value':func,'grad':grad,'derivative':derivative,'hessian':hess,
+		'fisher':fish
+		}
+	hyperparameters = kwargs['optimize']
+
+	callback = partial(callback,funcs=funcs,**kwargs)
+
+	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters)
+
+	parameters = optimizer(parameters)
+
+	# g = grad(parameters).block_until_ready()
+	# h = hess(parameters).block_until_ready()
+	# f = fish(parameters).block_until_ready()
+
+	msg = 'U\n%s\nV\n%s\n'%(
+				to_str(abs(model(parameters)).round(4)),
+				to_str(abs(kwargs['V']).round(4)))
+	print(msg)
+	# logger.log(kwargs['verbose'],msg)
+
+	return
+
+
+def main(path='config.json'):
+	
+	kwargs = load(path)
+	
+	parameters = setup(kwargs)
+
+	train(parameters,model=model,func=func,callback=callback,**kwargs)
+
+	return
+
+
+def test(path='test.json'):
+
+	from src.quantum import Unitary
+	from src.io import load,dump
+
+	hyperparameters = load(path)
+
+	# with jax.checking_leaks():
+	# 	try:
+	# 		train(parameters,model=model,func=func,callback=callback,**kwargs)
+	# 	except Exception as exception:
+	# 		print(traceback.format_exc())
+
+
+	U = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	parameters = U.parameters
+
+	func = U.__func__
+	grad = U.__grad__
+	hess = U.__hessian__
+	fisher = U.__fisher__
+
+	h = hess(parameters)
+	f = fisher(parameters)
+
+	print(h.round(3))
+	print(f.round(3))
+
+	return

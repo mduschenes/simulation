@@ -34,162 +34,73 @@ for PATH in PATHS:
 from src.utils import jit,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
 from src.utils import slice_slice
-from src.utils import pi,e,scalars
+from src.utils import pi,scalars
 
 from src.io import load,dump,join,split
 
 
-def _variables(parameters,hyperparameters,parameter,group):
+def _variables(hyperparameters,parameter,group):
 	'''
 	Get variables from parameters
 	Args:
-		parameters (array): Array of parameters to compute variables
 		hyperparameters (dict): Hyperparameters for parameters
 		parameter (str): Parameter name for variables
 		group (str): Parameter group for variables
 	Returns:
-		variable (array): variables
+		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
 	'''
 
 	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
-	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
+	scale = [hyperparameters[parameter]['scale'],2*pi]
 	index = hyperparameters[parameter]['group'].index(group)
 
-	# if method is None:
-	# 	if parameter in ['z'] and group in [('z',)]:
-	# 		variable = (
-	# 			scale[index]*
-	# 			parameters[index]
-	# 		)
-	# 	if parameter in ['zz'] and group in [('zz',)]:
-	# 		variable = (
-	# 			scale[index]/(8*kwargs['min']*kwargs['tau'])*
-	# 			parameters[index]
-	# 		)
-	# 	else:
-	# 		variable = scale[index]*parameters[index]
-	# elif 'uncorrelated' in method:
-	# 	if parameter in ['xy'] and group in [('x',)]:
-	# 		variable = (
-	# 			scale[0]*parameters[0]
-	# 		)		
-
-	# 	elif parameter in ['xy'] and group in [('y',)]:
-	# 		variable = (
-	# 			scale[0]*parameters[1]
-	# 		)		
-
-	# 	elif parameter in ['z'] and group in [('z',)]:
-	# 		variable = (
-	# 			scale[index]*
-	# 			parameters[index]
-	# 		)
-	# 	elif parameter in ['zz'] and group in [('zz',)]:
-	# 		variable = (
-	# 			scale[index]/(8*kwargs['min']*kwargs['tau'])*
-	# 			parameters[index]
-	# 		)
-	# elif 'correlated' in method:
-	# 	if parameter in ['xy'] and group in [('x',)]:
-	# 		variable = (
-	# 			scale[0]*parameters[0]*
-	# 			cos(scale[1]*parameters[1])
-	# 		)		
-
-	# 	elif parameter in ['xy'] and group in [('y',)]:
-	# 		variable = (
-	# 			scale[0]*parameters[0]*
-	# 			sin(scale[1]*parameters[1])
-	# 		)		
-
-	# 	elif parameter in ['z'] and group in [('z',)]:
-	# 		variable = (
-	# 			scale[index]*
-	# 			parameters[index]
-	# 		)
-	# 	elif parameter in ['zz'] and group in [('zz',)]:
-	# 		variable = (
-	# 			scale[index]/(8*kwargs['min']*kwargs['tau'])*
-	# 			parameters[index]
-	# 		)			
+	if parameter in ['zz'] and group in [('zz',)]:
+		scale[index] /= 4*kwargs['min']*kwargs['tau']
 
 	if method in ['constrained']:
 		if parameter in ['xy'] and group in [('x',)]:
-			variable = (
-				scale[0]*parameters[0]*
-				cos(scale[1]*parameters[1])
-			)		
-
+			def func(parameters):
+				return scale[0]*parameters[0]*cos(scale[1]*parameters[1])
+		
 		elif parameter in ['xy'] and group in [('y',)]:
-			variable = (
-				scale[0]*parameters[0]*
-				sin(scale[1]*parameters[1])
-			)		
-
+			def func(parameters):
+				return scale[0]*parameters[0]*sin(scale[1]*parameters[1])
+		
 		elif parameter in ['z'] and group in [('z',)]:
-			variable = (
-				scale[index]*
-				parameters[index]
-			)
+			def func(parameters):
+				return scale[index]*parameters[index]
+		
 		elif parameter in ['zz'] and group in [('zz',)]:
-			variable = (
-				scale[index]/(8*kwargs['min']*kwargs['tau'])*
-				parameters[index]
-			)
+			def func(parameters):
+				return scale[index]*parameters[index]
+
 	elif method in ['unconstrained']:
-		if parameter in ['z'] and group in [('z',)]:
-			variable = (
-				scale[index]*
-				parameters[index]
-			)
-		elif parameter in ['zz'] and group in [('zz',)]:
-			variable = (
-				scale[index]/(8*kwargs['min']*kwargs['tau'])*
-				parameters[index]
-			)
-		else:
-			variable = scale[index]*parameters[index]	
+		def func(parameters):
+			return scale[index]*parameters[index]	
+
 	else:
-		if parameter in ['z'] and group in [('z',)]:
-			variable = (
-				scale[index]*
-				parameters[index]
-			)
-		if parameter in ['zz'] and group in [('zz',)]:
-			variable = (
-				scale[index]/(8*kwargs['min']*kwargs['tau'])*
-				parameters[index]
-			)
-		else:
-			variable = scale[index]*parameters[index]
+		def func(parameters):
+			return scale[index]*parameters[index]		
 
-	return variable
+	return func
 
 
-def _features(parameters,hyperparameters,parameter,group):
+def _features(hyperparameters,parameter,group):
 	'''
 	Get features from parameters
 	Args:
-		parameters (array): Array of parameters to compute features
 		hyperparameters (dict): Hyperparameters for parameters
 		parameter (str): Parameter name for features
 		group (str): Parameter group for features
 	Returns:
-		feature (array): features
+		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
 	'''
 
 	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
-	l = len(hyperparameters[parameter]['group'])
-	shape = (l,parameters.shape[0]//l,*parameters.shape[1:])
+	size = len(hyperparameters[parameter]['group'])
 
-	# if method is None:
-	# 	wrapper = nullbound
-	# elif 'unbounded' in method:
-	# 	wrapper = nullbound
-	# elif 'bounded' in method:
-	# 	wrapper = bound
 	if method in ['constrained']:
 		wrapper = bound
 	elif method in ['unconstrained']:
@@ -197,96 +108,77 @@ def _features(parameters,hyperparameters,parameter,group):
 	else:
 		wrapper = nullbound
 
+	def func(parameters):
+		shape = (size,parameters.shape[0]//size,*parameters.shape[1:])
+		return wrapper(parameters,kwargs).reshape(shape)
+	
+	return func
 
-	feature = wrapper(parameters,kwargs).reshape(shape) 
 
-	return feature
-
-
-def _parameters(parameters,hyperparameters,parameter,group):
+def _parameters(hyperparameters,parameter,group):
 	'''
 	Get parameters from parameters
 	Args:
-		parameters (array): Array of parameters to compute parameters
 		hyperparameters (dict): Hyperparameters for parameters
 		parameter (str): Parameter name for parameters
 		group (str): Parameter group for parameters
 	Returns:
-		parameters (array): parameters
+		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
 	'''
+	
+	def func(parameters):
+		return parameters
 
-	return parameters
+	return func
 
 
-def _constraints(parameters,hyperparameters,parameter,group):
+def _constraints(hyperparameters,parameter,group):
 	'''
 	Get constraints from parameters
 	Args:
-		parameters (array): Array of parameters to compute constraints
 		hyperparameters (dict): Hyperparameters for parameters
 		parameter (str): Parameter name for constraints
 		group (str): Parameter group for constraints
 	Returns:
-		constraints (array): constraints
+		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
 	'''
-
 	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
-	scale = hyperparameters[parameter]['kwargs']['lambda']
+	scale = hyperparameters[parameter]['kwargs'].get('lambda',1)
 	constants = hyperparameters[parameter]['constants']['features'][-1]
-
-	# if method is None:
-	# 	constraint = 0
-	# elif 'noboundaries' in method:
-	# 	if parameter in ['xy'] and group in [('x',),('y',)]:
-	# 		constraint = (
-	# 			0
-	# 		)
-	# 	elif parameter in ['z'] and group in [('z',)]:
-	# 		constraint = 0
-		
-	# 	elif parameter in ['zz'] and group in [('zz',)]:
-	# 		constraint = 0
-
-	# elif 'boundaries' in method:
-	# 	if parameter in ['xy'] and group in [('x',),('y',)]:
-	# 		constraint = (
-	# 			(scale[0]*(parameters[...,constants['slice']] - constants['value'])**2).sum()
-	# 		)
-	# 	elif parameter in ['z'] and group in [('z',)]:
-	# 		constraint = 0
-		
-	# 	elif parameter in ['zz'] and group in [('zz',)]:
-	# 		constraint = 0
 
 	if method in ['constrained']:
 		if parameter in ['xy'] and group in [('x',),('y',)]:
-			constraint = (
-				(scale[0]*(parameters[...,constants['slice']] - constants['value'])**2).sum()
-			)
+			def func(parameters):
+				return scale[0]*((parameters[...,constants['slice']] - constants['value'])**2).sum()
+
 		elif parameter in ['z'] and group in [('z',)]:
-			constraint = 0
-		
+			def func(parameters):
+				return 0
+
 		elif parameter in ['zz'] and group in [('zz',)]:
-			constraint = 0
+			def func(parameters):
+				return 0			
+
 	elif method in ['unconstrained']:
-		constraint = 0
+		def func(parameters):
+			return 0
 	else:
-		constraint = 0
+		def func(parameters):
+			return 0
 
-	return constraint
+	return func
 
 
-def _gradient_constraints(parameters,hyperparameters,parameter,group):
+def _gradient_constraints(hyperparameters,parameter,group):
 	'''
 	Get gradients of constraints from parameters
 	Args:
-		parameters (array): Array of parameters to compute constraints
 		hyperparameters (dict): Hyperparameters for parameters
 		parameter (str): Parameter name for constraints
 		group (str): Parameter group for constraints
 	Returns:
-		grad (array): gradient of constraints
+		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
 	'''
 
 	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
@@ -294,40 +186,40 @@ def _gradient_constraints(parameters,hyperparameters,parameter,group):
 
 	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
-	scale = hyperparameters[parameter]['kwargs']['lambda']
+	scale = hyperparameters[parameter]['kwargs'].get('lambda',1)
 
-	shape = parameters.shape
+	def func(parameters):
+		shape = parameters.shape
+		grad = zeros(shape)
+		grad = grad.ravel()
+		return grad
 
-	grad = zeros(shape)
-
-	grad = grad.ravel()
-
-	return grad	
+	return func
 
 
-def _gradients(parameters,hyperparameters,parameter,group):
+def _gradients(hyperparameters,parameter,group):
 	'''
 	Get gradient of variables from parameters
 	Args:
-		parameters (array): Array of parameters to compute variables
 		hyperparameters (dict): Hyperparameters for parameters
 		parameter (str): Parameter name for variables
 		group (str): Parameter group for variables
 	Returns:
-		grad (array): gradient of variables
+		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
 	'''	
 
 	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
 	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
 
 	method = hyperparameters[parameter]['method']
-	scale = [hyperparameters[parameter]['scale']*2*pi,2*pi]
+	scale = [hyperparameters[parameter]['scale'],2*pi]
 
-	shape = parameters.shape
-	
-	grad = zeros(shape)
-	
-	return grad	
+	def func(parameters):
+		shape = parameters.shape
+		grad = zeros(shape)
+		return grad
+
+	return func
 
 
 def setup(hyperparameters,cls=None):
@@ -376,7 +268,10 @@ def setup(hyperparameters,cls=None):
 				if callable(updates[attr]['value'](parameter,hyperparameters)):
 					for group in hyperparameters[parameter]['group']:
 							group = tuple(group)
-							hyperparameters[parameter][attr][group] = jit(partial(updates[attr]['value'](parameter,hyperparameters),hyperparameters=hyperparameters,parameter=parameter,group=group))
+							hyperparameters[parameter][attr][group] = jit(
+								updates[attr]['value'](parameter,hyperparameters)(
+									hyperparameters=hyperparameters,parameter=parameter,group=group)
+								)
 				else:
 					hyperparameters[parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
 
@@ -557,15 +452,15 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,cls=None,
 			for group in hyperparameters[parameter]['group']:
 				if not callable(hyperparameters[parameter][prop].get(group)):
 					hyperparameters[parameter][prop][group] = funcs[prop]
-				try:
-					hyperparameters[parameter][prop][group] = jit(partial(
-						hyperparameters[parameter][prop][group],
-						hyperparameters=hyperparameters,
-						parameter=parameter,
-						group=group)
-					)
-				except:
-					hyperparameters[parameter][prop][group] = jit(hyperparameters[parameter][prop][group])
+				# try:
+				hyperparameters[parameter][prop][group] = jit(
+					hyperparameters[parameter][prop][group](
+					hyperparameters=hyperparameters,
+					parameter=parameter,
+					group=group)
+				)
+				# except:
+				# 	hyperparameters[parameter][prop][group] = jit(hyperparameters[parameter][prop][group])
 
 	# Get attributes
 	attributes = ['ndim','locality','size','indices','boundaries','constants','shape','slice','parameters','features','variables','values','constraints']
@@ -1843,7 +1738,10 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,cls=None,
 			layer = 'parameters'
 			funcs = []			
 
-			func = lambda parameters,values,slices,indices,funcs=funcs: parameters
+			def func(parameters,values,slices,indices,funcs=funcs):
+				return parameters
+			func = jit(partial(func,slices=slices,indices=indices,funcs=funcs))
+			# func = lambda parameters,values,slices,indices,funcs=funcs: parameters
 
 			layer = 'parameters'
 			attr = 'slice'
@@ -1921,9 +1819,12 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,cls=None,
 			layer = 'features'
 			funcs = [data[attr][category][parameter][group][layer] for attr in ['features']]
 
-			func = lambda parameters,values,slices,indices,funcs=funcs: values.at[indices].set(funcs[0](parameters[slices]))
+			def func(parameters,values,slices,indices,funcs=funcs):
+				return values.at[indices].set(funcs[0](parameters[slices]))
+			func = jit(partial(func,slices=slices,indices=indices,funcs=funcs))
+			# func = lambda parameters,values,slices,indices,funcs=funcs: values.at[indices].set(funcs[0](parameters[slices]))
 
-			values = func(parameters,values,slices,indices)
+			values = func(parameters,values)
 
 			layer = 'features'
 			attr = 'slice'
@@ -2002,9 +1903,13 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,cls=None,
 			layer = 'variables'
 			funcs = [data[attr][category][parameter][group][layer] for attr in ['features','variables']]
 
-			func = lambda parameters,values,slices,indices,funcs=funcs: values.at[indices].set(funcs[1](funcs[0](parameters[slices])))
 
-			values = func(parameters,values,slices,indices)
+			def func(parameters,values,slices,indices,funcs=funcs):
+				return values.at[indices].set(funcs[1](funcs[0](parameters[slices])))
+			func = jit(partial(func,slices=slices,indices=indices,funcs=funcs))				
+			# func = lambda parameters,values,slices,indices,funcs=funcs: values.at[indices].set(funcs[1](funcs[0](parameters[slices])))
+
+			values = func(parameters,values)
 
 			layer = 'variables'
 			attr = 'slice'
@@ -2083,9 +1988,12 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,cls=None,
 			layer = 'variables'
 			funcs = [data[attr][category][parameter][group][layer] for attr in ['features','constraints']]
 
-			func = lambda parameters,values,slices,indices,funcs=funcs: values + (funcs[1](funcs[0](parameters[slices])))
+			def func(parameters,values,slices,indices,funcs=funcs):
+				return values + (funcs[1](funcs[0](parameters[slices])))
+			func = jit(partial(func,slices=slices,indices=indices,funcs=funcs))
+			# func = lambda parameters,values,slices,indices,funcs=funcs: values + (funcs[1](funcs[0](parameters[slices])))
 
-			values = func(parameters,values,slices,indices)
+			values = func(parameters,values)
 
 			layer = 'constraints'
 			attr = 'slice'

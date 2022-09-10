@@ -47,12 +47,12 @@
 	"index":null
 	},
 "model":{
-	"N":3,
+	"N":4,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":30,
+	"M":400,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
