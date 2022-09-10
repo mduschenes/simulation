@@ -268,10 +268,15 @@ def setup(hyperparameters,cls=None):
 				if callable(updates[attr]['value'](parameter,hyperparameters)):
 					for group in hyperparameters[parameter]['group']:
 							group = tuple(group)
-							hyperparameters[parameter][attr][group] = jit(
-								updates[attr]['value'](parameter,hyperparameters)(
-									hyperparameters=hyperparameters,parameter=parameter,group=group)
-								)
+							try:
+								hyperparameters[parameter][attr][group] = jit(
+									updates[attr]['value'](parameter,hyperparameters)(
+										hyperparameters=hyperparameters,parameter=parameter,group=group)
+									)
+							except:
+								hyperparameters[parameter][attr][group] = jit(
+									updates[attr]['value'](parameter,hyperparameters)
+									)
 				else:
 					hyperparameters[parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
 
@@ -452,15 +457,15 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,cls=None,
 			for group in hyperparameters[parameter]['group']:
 				if not callable(hyperparameters[parameter][prop].get(group)):
 					hyperparameters[parameter][prop][group] = funcs[prop]
-				# try:
-				hyperparameters[parameter][prop][group] = jit(
-					hyperparameters[parameter][prop][group](
-					hyperparameters=hyperparameters,
-					parameter=parameter,
-					group=group)
-				)
-				# except:
-				# 	hyperparameters[parameter][prop][group] = jit(hyperparameters[parameter][prop][group])
+				try:
+					hyperparameters[parameter][prop][group] = jit(
+						hyperparameters[parameter][prop][group](
+						hyperparameters=hyperparameters,
+						parameter=parameter,
+						group=group)
+					)
+				except:
+					hyperparameters[parameter][prop][group] = jit(hyperparameters[parameter][prop][group])
 
 	# Get attributes
 	attributes = ['ndim','locality','size','indices','boundaries','constants','shape','slice','parameters','features','variables','values','constraints']

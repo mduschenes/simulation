@@ -1,8 +1,9 @@
 {
-	"N":4,
-	"M":100,
+	"N":3,
+	"M":30,
 	"p":2,
 	"k":null,
+	"tau":1,
 	"seed":123,
 	"verbose":true,
 	"optimize":{

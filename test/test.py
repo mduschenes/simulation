@@ -9,8 +9,8 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,array,zeros,tensorprod,trotter,forloop
-from src.utils import allclose,cosh,sinh,real,abs,rand,pi,to_str
+from src.utils import jit,array,zeros,rand,tensorprod,trotter,forloop
+from src.utils import allclose,cosh,sinh,real,abs,minimum,to_str
 from src.utils import gradient,hessian,gradient_fwd,gradient_shift,fisher
 from src.utils import inner_abs2,inner_real
 from src.system import Logger
@@ -41,6 +41,7 @@ def setup(kwargs):
 	M = kwargs['M']
 	p = kwargs['p']
 	k = kwargs['k']
+	tau = kwargs['tau']
 	seed = kwargs['seed']
 	verbose = kwargs['verbose']
 
@@ -87,7 +88,7 @@ def setup(kwargs):
 	X = X.at[slices].set(parameters)
 	X = X.at[:,k:k+len(_X[0])].set(_X[0])
 	X = X.at[:,k+N:k+N+len(_X[1])].set(_X[1])
-
+	X = X.at[:,k+N:k+N+len(_X[1])].set(X[:,k+N:k+N+len(_X[1])]/(4*tau*minimum(abs(X[:,k+N:k+N+len(_X[1])]))))
 
 	X = X.ravel()
 	parameters = parameters.ravel()
@@ -124,7 +125,7 @@ def model(parameters,**kwargs):
 
 	x = x.ravel()
 	
-	coefficient = -1j*pi/kwargs['p']
+	coefficient = -1j*2*pi/2*kwargs['tau']/kwargs['p']
 
 	@jit
 	def _func(parameters,data,identity):

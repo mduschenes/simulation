@@ -380,10 +380,14 @@ class Object(object):
 
 		states = stateize(data,shape,hyperparams,size=size,dtype=dtype,cls=self)
 
+		# Get coefficients
+		self.coefficients = -1j*2*pi/2*self.tau/self.p		
+
 		# Update class attributes
 		self.parameters = parameters
 		self.label = label
 		self.states = states
+		self.coefficients = coefficients
 		self.hyperparameters = hyperparameters
 		self.attributes = attributes
 		self.size = parameters.shape
@@ -723,7 +727,6 @@ class Object(object):
 		self.T = self.time.T
 		self.p = self.time.p
 		self.tau = self.time.tau
-		self.coefficients = -1j*2*pi/2*self.tau/self.p		
 		self.shape = (*self.shape[:1],self.M,*self.shape[2:])	
 		self.ndim = len(self.shape)
 
