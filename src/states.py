@@ -32,8 +32,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import vmap,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
-from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
-from src.utils import slice_slice
+from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,einsum,eig,average
+from src.utils import slice_slice,datatype
 from src.utils import pi,e,scalars
 
 from src.io import load,dump,join,split
@@ -52,21 +52,49 @@ def haar(shape,bounds,random,seed,dtype):
 		data (array): Array of state
 	'''
 
+	# ndim to initialize state matrices versus vectors
+	n = 4
+
+	ndim = len(shape)
+	_dtype = datatype(dtype)
+
 	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
 	data /= sqrt(2)
 
-	if data.ndim == 2:
-		data = data.reshape(1,*data.shape)
+	data = data.reshape(*data.shape[:1],*(1,)*(n-ndim),*data.shape[1:])
 
 	for i in range(data.shape[0]):
+		for j in range(data.shape[1]):
 
-		Q,R = qr(data[i])
-		R = diag(R)
-		R = diag(R/abs(R))
-		
-		data = data.at[i].set(Q.dot(R))
+			Q,R = qr(data[i,j])
+			R = diag(R)
+			R = diag(R/abs(R))
+			
+			data = data.at[i,j].set(Q.dot(R))
 
-	data = data.reshape(shape).astype(dtype)[:,:,0]
+	data = data.reshape(shape).astype(dtype)
+
+	data = data[...,0]
+
+	# Create random matrices versus vectors
+	if ndim == n:
+
+		data = einsum('...i,...j->...ij',data,data.conj())
+
+		axis = 1
+		size = shape[axis]
+		weights = rand(size,bounds=[0,1],key=seed,dtype=_dtype)
+
+		data = average(data,axis,weights)
+
+		axis = 0
+		shape = data.shape
+		if shape[axis] <= 1:
+			shape = shape[axis+1:]
+			data = data.reshape(shape)
+
+	else:
+		pass
 
 	return data
 
@@ -105,15 +133,10 @@ def stateize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
 	# Setup hyperparameters
 	setup(hyperparameters,cls=cls)
 
-	# Shape of data
-	if isinstance(shape,int):
-		shape = [-1,shape,shape]
-	elif len(shape) < 3:
-		shape = [shape[0],shape[1],shape[1]]
-	if isinstance(hyperparameters['shape'],int):
-		hyperparameters['shape'] = [hyperparameters['shape'],-1,-1]
-	shape = [(hyperparameters['shape'][0] if hyperparameters['shape'][0] != -1 else 1) if shape[0] == -1 else shape[0],
-			*[(s if t==-1 else t) for s,t in zip(shape[1:],hyperparameters['shape'][1:])]]
+	# Shape of data (either (k,*shape) or (k,l,*shape)) depending on hyperparameters['shape']
+	shape,dims = hyperparameters['shape'],shape
+	ndim = len(dims)
+	shape[-ndim:] = dims
 
 	# Delimiter for string
 	delimiter = '_'

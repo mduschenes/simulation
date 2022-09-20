@@ -237,20 +237,14 @@ class Space(object):
 	Args:
 		N (int): Number of qudits
 		D (int): Dimension of qudits
-		d (int): Spatial dimension
-		L (int,float): Scale in system
-		delta (float): Length scale in system		
 		space (str,Space): Type of Hilbert space
 		system (dict,System): System attributes
 	'''
-	def __init__(self,N,D,d,L,delta,space,system):
+	def __init__(self,N,D,space,system):
 
 		self.system = System(system)
 		self.N = N if N is not None else 1
 		self.D = D if D is not None else 2
-		self.d = d if d is not None else 1
-		self.L = L if L is not None or delta is not None else 1
-		self.delta = delta if delta is not None else None
 		self.space = space		
 		self.default = 'spin'
 
@@ -275,9 +269,6 @@ class Space(object):
 		return
 
 	def __size__(self):
-		assert self.L is not None or self.delta is not None, 'Either L or delta must not be None'		
-		self.delta = self.get_delta()
-		self.L = self.get_L(self.delta)
 		self.n = self.get_n()
 		self.g = self.get_g()
 		self.size = self.n
@@ -288,16 +279,6 @@ class Space(object):
 
 	def __repr__(self):
 		return str(self.string)
-
-	def get_L(self,delta):
-		if self.L is None:
-			if self.space in ['spin']:
-				return delta*self.N
-			else:
-				return delta*self.N
-		else:
-			return self.L
-		return
 
 	def get_N(self):
 		if self.space in ['spin']:
@@ -332,17 +313,6 @@ class Space(object):
 		else:
 			return self.get_n()**2-1
 		return			
-
-	def get_delta(self):
-		if self.delta is None:
-			if self.space in ['spin']:
-				return self.L/self.N
-			else:
-				return self.L/self.N
-		else:
-			return self.delta
-		return				
-
 
 class Time(object):
 	'''
@@ -443,7 +413,7 @@ class Lattice(object):
 		lattice (str,Lattice): Type of lattice, allowed strings in ['square','square-nearest']
 		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
 	'''	
-	def __init__(self,N,d,L=1,delta=1,lattice='square',system=None):
+	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None):
 		
 
 		# Define lattice
@@ -456,8 +426,8 @@ class Lattice(object):
 		self.lattice = lattice
 		self.N = N
 		self.d = d
-		self.L = L
-		self.delta = delta
+		self.L = L if L is not None else self.N
+		self.delta = delta if delta is not None else self.N//self.L
 
 		# Define system
 		self.system = System(system)
@@ -529,7 +499,7 @@ class Lattice(object):
 				if self.z > self.N:
 					sites = []
 				elif self.z > 0:
-					sites = [list(i) for i in unique(
+					sites = [i for i in unique(
 						sort(
 							vstack([
 								repeat(arange(self.N),self.z,0),
@@ -546,6 +516,7 @@ class Lattice(object):
 			k = 2
 			conditions = None
 			sites = self.iterable(k,conditions)
+		sites = [list(map(int,i)) for i in sites]
 		return sites
 
 

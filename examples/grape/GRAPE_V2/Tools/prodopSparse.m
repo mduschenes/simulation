@@ -19,7 +19,7 @@ end
 D = prod(2*spins+1);
 
 Ix = zeros(D,D,N); Iy = Ix;
-Iz = zeros(D,N); 
+Iz = zeDirectoryros(D,N); 
 
 id = eye(N,N);
 for k=1:N

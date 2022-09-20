@@ -11,13 +11,13 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient,gradient_finite,gradient_fwd
+from src.utils import jit,gradient
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
 from src.utils import summation,exponentiation
 from src.utils import inner_abs2,inner_real,inner_imag
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import eigh,qr
+from src.utils import eig,qr
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,is_array,is_ndarray,isclose,is_naninf
 from src.utils import parse,to_str,to_number,scinotation,datatype,slice_size
@@ -29,6 +29,7 @@ from src.dictionary import updater,getter,setter,permuter,equalizer
 
 from src.parameters import parameterize
 from src.operators import operatorize
+from src.states import stateize
 
 from src.io import load,dump,join,split
 
@@ -121,6 +122,28 @@ def test_data(path,tol):
 
 	return
 
+
+def test_state(path,tol):
+
+	hyperparameters = load(path)
+
+	data = None
+	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
+	hyperparams = hyperparameters['state']
+	size = hyperparameters['model']['N']
+	dtype = hyperparameters['model']['system']['dtype']
+	cls = None
+
+	data = stateize(data,shape,hyperparams,size=size,dtype=dtype,cls=cls)
+
+	try:
+		eigs = eig(data,hermitian=True)
+		assert (abs(eigs)>=tol).all()
+	except TypeError:
+		raise
+
+	return
+
 def test_derivative(path,tol):
 
 	hyperparameters = load(path)
@@ -133,7 +156,7 @@ def test_derivative(path,tol):
 
 	# Derivative of unitary
 	derivative_jax = obj.__derivative__
-	derivative_finite = gradient_finite(obj,tol=tol)
+	derivative_finite = gradient(obj,mode='finite',tol=tol)
 	derivative_analytical = obj.__derivative_analytical__
 
 	assert allclose(derivative_jax(parameters),derivative_finite(parameters)), "JAX derivative != Finite derivative"
@@ -154,7 +177,7 @@ def test_grad(path,tol):
 
 	# Grad of objective
 	grad_jax = obj.__grad__
-	grad_finite = gradient_finite(func,tol=tol)
+	grad_finite = gradient(func,mode='finite',tol=tol)
 	grad_analytical = obj.__grad_analytical__
 
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"

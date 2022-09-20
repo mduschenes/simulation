@@ -265,27 +265,42 @@ def value_and_gradient(func):
 	value_and_grad = jit(jax.value_and_grad(func))
 	return value_and_grad
 
-def gradient(func):
+def gradient(func,mode=None,**kwargs):
 	'''
 	Compute gradient of function
 	Args:
 		func (callable): Function to differentiate
+		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+		kwargs : Additional keyword arguments for gradient mode:
+			'finite': tol (float): Finite difference tolerance
+			'shift': shifts (int): Number of eigenvalues of shifted values
+			'fwd': move (bool): Move differentiated axes to beginning of dimensions
+			'rev': move (bool): Move differentiated axes to beginning of dimensions
 	Returns:
 		grad (callable): Gradient of function
 	'''
-	# @jit
-	# def grad(*args,**kwargs):
-	# 	return jax.grad(func)(*args,**kwargs)
-	grad = jit(jax.grad(func))
+
+	if mode in ['finite']:
+		grad = gradient_finite(func,**kwargs)
+	elif mode in ['shift']:
+		grad = gradient_shift(func,**kwargs)
+	elif mode in ['fwd']:
+		grad = gradient_fwd(func,**kwargs)
+	elif mode in ['rev']:
+		grad = gradient_rev(func,**kwargs)
+	else:
+		grad = jit(jax.grad(func))
+
 	return grad
 
 
-def gradient_finite(func,tol=1e-6):
+def gradient_finite(func,tol=1e-6,**kwargs):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
 		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		tol (float): Finite difference tolerance
+		kwargs : Additional keyword arguments	
 	Returns:
 		grad (callable): Gradient of function
 	'''
@@ -301,35 +316,18 @@ def gradient_finite(func,tol=1e-6):
 	return grad
 
 
-def value_and_gradient_finite(func,tol=1e-6):
-	'''
-	Calculate finite difference second order derivative of function
-	Args:
-		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
-		tol (float): Finite difference tolerance		
-	Returns:
-		out (array): Array of gradient
-	'''
-	grad = gradient_finite(func,tol)
-
-	@jit
-	def value_and_grad(*args,**kwargs):
-		return (func(*args,**kwargs),grad(*args,**kwargs))
-	
-	return value_and_grad
-
-
-def gradient_shift(func,n=2):
+def gradient_shift(func,shifts=2,**kwargs):
 	'''
 	Calculate shift-rules derivative of function
 	Args:
 		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
-		n (int): Number of eigenvalues of shifted values
+		shifts (int): Number of eigenvalues of shifted values
+		kwargs : Additional keyword arguments
 	Returns:
 		grad (callable): Gradient of function
 	'''
 
-	shifts = -(n-1)/2 + arange(n)
+	shifts = -(shifts-1)/2 + arange(shifts)
 
 	@jit
 	def grad(*args,**kwargs):
@@ -343,60 +341,52 @@ def gradient_shift(func,n=2):
 	return grad
 
 
-def value_and_gradient_shift(func,n=2):
-	'''
-	Calculate shift-rules derivative of function
-	Args:
-		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
-		n (int): Number of eigenvalues of shifted values
-	Returns:
-		out (array): Array of gradient
-	'''
-
-	grad = gradient_shift(func,n)
-
-	@jit
-	def value_and_grad(*args,**kwargs):
-		return (func(*args,**kwargs),grad(*args,**kwargs))
-	
-	return value_and_grad
-
-
-
-def gradient_fwd(func):
+def gradient_fwd(func,move=None,**kwargs):
 	'''
 	Compute forward gradient of function
 	Args:
 		func (callable): Function to differentiate
+		move (bool): Move differentiated axes to beginning of dimensions
+		kwargs : Additional keyword arguments
 	Returns:
 		grad (callable): Gradient of function
 	'''
 
 	_grad = jit(jax.jacfwd(func))
 
-	@jit
-	def grad(*args,**kwargs):
-		x,args = args[0],args[1:]
-		ndim = x.ndim
-		return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
+	if move:
+		@jit
+		def grad(*args,**kwargs):
+			x,args = args[0],args[1:]
+			ndim = x.ndim
+			return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
+	else:
+		grad = _grad
+
 	return grad
 
-def gradient_rev(func):
+def gradient_rev(func,move=None,**kwargs):
 	'''
 	Compute reverse gradient of function
 	Args:
 		func (callable): Function to differentiate
+		move (bool): Move differentiated axes to beginning of dimensions
+		kwargs : Additional keyword arguments		
 	Returns:
 		grad (callable): Gradient of function
 	'''
 
 	_grad = jit(jax.jacrev(func))
 
-	@jit
-	def grad(*args,**kwargs):
-		x,args = args[0],args[1:]
-		ndim = x.ndim
-		return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))		
+	if move:
+		@jit
+		def grad(*args,**kwargs):
+			x,args = args[0],args[1:]
+			ndim = x.ndim
+			return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))		
+	else:
+		grad = _grad
+
 	return grad
 
 
@@ -408,35 +398,38 @@ def hessian(func):
 	Returns:
 		grad (callable): Hessian of function
 	'''
-	# @jit
-	# def grad(*args,**kwargs):
-	# 	return gradient_fwd(gradient_rev(func))(*args,**kwargs)
-	# grad = jit(jax.jacfwd(jax.jacrev(func)))
 	grad = jit(jax.hessian(func))
 	return grad
 
 
-def fisher(func,grad=None,shapes=None,optimize=None,**kwargs):
+def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	'''
 	Compute fisher information of function
 	Args:
 		func (callable): Function to compute
 		grad (callable): Gradient to compute
 		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type		
+		optimize (bool,str,iterable): Contraction type
+		mode (str): Type of fisher information, allowed ['operator','state']
 	Returns:
 		fisher (callable): Fisher information of function
 	'''
 
-	subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-	wrappers = [lambda out,*operands: out,lambda out,*operands: -1/sqrt(operands[0].size)*out]
+	if mode in ['operator']:
+		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
+		wrappers = [lambda out,*operands: out,lambda out,*operands: -1/operands[0].shape[0]*out]
+	elif mode in ['state']:
+		subscripts = ['uai,vai->uv','uai,ai,vaj,aj->uv']
+		wrappers = [lambda out,*operands: out/operands[0].shape[1],lambda out,*operands: -out/operands[0].shape[1]]
+	else:
+		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
+		wrappers = [lambda out,*operands: out,lambda out,*operands: -1/operands[0].shape[0]*out]
 
 	if grad is None:
-		grad = gradient_fwd(func)
+		grad = gradient(func,mode='fwd',move=True)
 
 	if shapes is not None:
 		shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
-
 		einsummations = [
 			einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
 				for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
@@ -446,6 +439,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,**kwargs):
 			lambda f,g,_f,_g,einsummations=einsummations: einsummations[1](_g,f,g,_f)
 			]
 	else:
+		shapes = None
 		einsummations = [
 			lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_g,g,optimize=optimize,wrapper=wrapper),
 			lambda f,g,_f,_g,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,_g,f,g,_f,optimize=optimize,wrapper=wrapper)
@@ -461,83 +455,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,**kwargs):
 		for einsummation in einsummations:
 			out = out + einsummation(f,g,_f,_g)
 		out = out.real
-		return out
-	return fisher
-
-
-def fisher_operator(func,grad,shapes,optimize=None):
-	'''
-	Compute fisher information of operator function
-	Args:
-		func (callable): Function to compute
-		gradient (callable): Gradient to compute
-		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type		
-	Returns:
-		fisher (callable): Fisher information of function
-	'''
-
-	subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-	shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
-	wrappers = [lambda out,*operands: out,lambda out,*operands: -1/sqrt(operands[0].size)*out]
-
-	einsummations = [
-		einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
-			for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
-		]
-	einsummations = [
-		lambda f,g,_f,_g: einsummations[0](_g,g),
-		lambda f,g,_f,_g: einsummations[1](_g,f,g,_f)
-		]
-
-	@jit
-	def fisher(*args,**kwargs):
-		f = func(*args,**kwargs)
-		g = grad(*args,**kwargs)
-		_f = f.conj()
-		_g = g.conj()
-		out = 0
-		for einsummation in einsummations:
-			out = out + einsummation(f,g,_f,_g)
-		return out
-	return fisher
-
-
-
-def fisher_state(func,grad,shapes,optimize=None):
-	'''
-	Compute fisher information of state function
-	Args:
-		func (callable): Function to compute
-		gradient (callable): Gradient to compute
-		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type		
-	Returns:
-		fisher (callable): Fisher information of function
-	'''
-
-	subscripts = ['uai,vai->uv','uai,ai,vaj,aj->uv']
-	shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
-	wrappers = [lambda out,*operands: out/operands[0].shape[1],lambda out,*operands: -out/operands[0].shape[1]]
-
-	einsummations = [
-		einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
-			for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
-		]
-	einsummations = [
-		lambda f,g,_f,_g: einsummations[0](_g,g),
-		lambda f,g,_f,_g: einsummations[1](_g,f,g,_f)
-		]
-
-	@jit
-	def fisher(*args,**kwargs):
-		f = func(*args,**kwargs)
-		g = grad(*args,**kwargs)
-		_f = f.conj()
-		_g = g.conj()
-		out = 0
-		for einsummation in einsummations:
-			out = out + einsummation(f,g,_f,_g)
 		return out
 	return fisher
 
@@ -816,35 +733,46 @@ class Parameters(dict):
 			}
 		return cls(parameters)
 
-@partial(jit,static_argnums=(2,))
-def tree_func(a,b,func):
+def tree_func(func):
 	'''
 	Perform binary function on trees a and b
 	Args:
-		a (pytree): Pytree object to perform binary function
-		b (pytree): Pytree object to perform binary function
-		func (callable): Callable binary function with signature func(a,b)
+		func (callable): Callable function with signature func(*args,**kwargs)
 	Returns:
-		tree_map (pytree): Return pytree of function call
+		tree_func (callable): Function that returns tree_map pytree of function call with signature tree_func(*args,**kwargs)
 	'''
-	return tree_map(func,a,b)
+	@jit
+	def tree_func(*args,**kwargs):
+		return tree_map(func,*args,**kwargs)
+	return tree_func
 
 
+
+@tree_func
 @jit
 def tree_dot(a,b):
 	'''
 	Perform dot product function on trees a and b
 	Args:
-		a (pytree): Pytree object to perform dot product function
-		b (pytree): Pytree object to perform dot product function
+		a (pytree): Pytree object to perform function
+		b (pytree): Pytree object to perform function
+	Returns:
+		tree_map (pytree): Return pytree of function call
+	'''	
+	return dot(a.ravel(),b.ravel())
+
+@tree_func
+@jit
+def tree_add(a,b):
+	'''
+	Perform add function on trees a and b
+	Args:
+		a (pytree): Pytree object to perform function
+		b (pytree): Pytree object to perform function
 	Returns:
 		tree_map (pytree): Return pytree of function call
 	'''
-	@jit
-	def func(a,b):
-		return a.ravel().dot(b.ravel())
-	return tree_func(a,b,func)
-
+	return add(a,b)
 
 
 def decorator(*args,**kwargs):
@@ -1194,8 +1122,8 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 	'''	
 	if shape is None:
 		shape = 1
-	elif isinstance(shape,int):
-		shape = shape
+	if isinstance(shape,int):
+		shape = (shape,)
 
 	key = PRNGKey(key)
 
@@ -1458,8 +1386,6 @@ def gradient_inner(a,b,da):
 	
 	out = vmap(func)(da)
 	return out
-	# return inner(normed)(a,b)
-
 
 
 def inner_einsum(*shapes,optimize=True):
@@ -1779,6 +1705,19 @@ def gradient_inner_imag_einsum(*shapes,optimize=True):
 
 
 @jit
+def dot(a,b):
+	'''
+	Calculate dot product of arrays a and b
+	Args:
+		a (array): Array to calculate dot product
+		b (array): Array to calculate dot product
+	Returns:
+		out (array): Dot product
+	'''	
+	return np.dot(a,b)
+
+
+@jit
 def outer(a,b):
 	'''
 	Calculate outer product of arrays a and b
@@ -1825,9 +1764,21 @@ def multiply(a):
 	
 	return out
 
+@jit
+def add(a,b):
+	'''
+	Add arrays elementwise
+	Args:
+		a (array): Array to add
+		b (array): Array to add
+	Returns:
+		out (ndarray): Elementwise addition of arrays
+	'''
+	return np.add(a,b)
+
 
 @jit
-def _add(a,b):
+def _addition(a,b):
 	'''
 	Add arrays elementwise
 	Args:
@@ -1839,7 +1790,7 @@ def _add(a,b):
 	return np.add(a,b)
 
 @jit
-def add(a):
+def addition(a):
 	'''
 	Add list of arrays elementwise
 	Args:
@@ -1905,6 +1856,22 @@ def prod(a,axes=0):
 		out (array): Reduced array of product of elements along axes
 	'''
 	return np.prod(a,axes)
+
+
+@partial(jit,static_argnums=(1,))
+def average(a,axes=0,weights=None):
+	'''
+	Get average of elements in array along axes
+	Args:
+		a (array): Array to compute product of elements
+		axes (int): axes to perform product
+		weights (array): Weights to compute average with respect to
+	Returns:
+		out (array): Reduced array of average of elements along axes
+	'''
+	return np.average(a,axes,weights)
+
+
 
 @partial(jit,static_argnums=(2,))
 def vtensordot(a,b,axes=0):
@@ -2087,7 +2054,7 @@ def summation(parameters,data,identity):
 	Returns:
 		out (array): Matrix sum of data of shape (n,n)
 	'''	
-	return add(parameters*data)
+	return addition(parameters*data)
 
 @jit
 def multiplication(parameters,data,identity):
@@ -2582,7 +2549,7 @@ def expm(x,A,I):
 	l = A.shape[0]
 
 	def func(i,out):
-		return out.dot(_expm(x[i],A[i%l],I))
+		return dot(out,_expm(x[i],A[i%l],I))
 
 	return forloop(0,k,func,I)
 
@@ -2601,10 +2568,10 @@ def gradient_expm(x,A,I):
 	l = A.shape[0]
 
 	def func(i,out):
-		return out.dot(_expm(x[i],A[i%l],I))
+		return dot(out,_expm(x[i],A[i%l],I))
 
 	def grad(i):
-		return forloop(i+1,k,func,forloop(0,i+1,func,I).dot(A[i%l]))
+		return forloop(i+1,k,func,dot(forloop(0,i+1,func,I,A[i%l])))
 
 	return jax.vmap(grad)(arange(k))
 
@@ -4126,6 +4093,7 @@ def to_key_value(string,delimiter='=',**kwargs):
 			else:
 				value = value
 	return key,value
+
 
 def scinotation(number,decimals=2,base=10,order=2,zero=True,scilimits=[-1,1],usetex=False):
 	'''

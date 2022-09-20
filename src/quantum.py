@@ -6,6 +6,8 @@ from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
 
+from typing import List,Tuple
+
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -15,6 +17,7 @@ import jax
 import jax.numpy as np
 import jax.scipy as sp
 import jax.example_libraries.optimizers
+import equinox as nn
 import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 jax.config.update('jax_platform_name','cpu')
@@ -32,12 +35,11 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient,hessian,gradient_finite,gradient_shift,gradient_fwd
+from src.utils import jit,gradient,hessian,fisher
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,einsum
 from src.utils import summation,exponentiation
-from src.utils import trotter,gradient_trotter,fisher
-from src.utils import gradient_expm,gradient_sigmoid
+from src.utils import trotter,gradient_trotter,gradient_expm,gradient_sigmoid
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import eig
@@ -64,16 +66,27 @@ from src.plot import plot
 
 from src.optimize import Optimizer,Objective
 
+dtype = 'complex'
+basis = {
+	'I': array([[1,0],[0,1]],dtype=dtype),
+	'X': array([[0,1],[1,0]],dtype=dtype),
+	'Y': array([[0,-1j],[1j,0]],dtype=dtype),
+	'Z': array([[1,0],[0,-1]],dtype=dtype),
+}
+
+class module(nn.Module):
+	pass
+
 class Object(object):
 	'''
 	Class for object
 	Args:
 		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		hyperparameters (dict) : class hyperparameters				
@@ -154,7 +167,7 @@ class Object(object):
 
 		self.func = self.__func__
 		self.grad = gradient(self.func)
-		self.derivative = gradient_fwd(self)
+		self.derivative = gradient(self,mode='fwd',move=True)
 		self.hessian = hessian(self.func)
 		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
 
@@ -170,11 +183,11 @@ class Object(object):
 		Args:
 			data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 				operator (iterable[str]): string names of operators
-				site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 				string (iterable[str]): string labels of operators
 				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (str,dict): Class hyperparameters, or path to load hyperparameters
@@ -288,7 +301,7 @@ class Object(object):
 		Args:
 			data (iterable[array]): data of operator
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (dict) : class hyperparameters
@@ -366,19 +379,21 @@ class Object(object):
 		hyperparams = hyperparameters['label']
 		size = self.N
 		dtype = self.dtype
+		cls = self
 
-		label = operatorize(data,shape,hyperparams,size=size,dtype=dtype,cls=self)
+		label = operatorize(data,shape,hyperparams,size=size,dtype=dtype,cls=cls)
 
 		label = label.conj()
 
 		# Get states
 		data = None
-		shape = [-1,*self.dims]
+		shape = self.dims
 		hyperparams = hyperparameters['state']
 		size = self.N
 		dtype = self.dtype
+		cls = self
 
-		states = stateize(data,shape,hyperparams,size=size,dtype=dtype,cls=self)
+		states = stateize(data,shape,hyperparams,size=size,dtype=dtype,cls=cls)
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
@@ -664,6 +679,7 @@ class Object(object):
 		system = self.system if system is None else system
 		
 		self.system = System(system)		
+
 		self.dtype = self.system.dtype
 		self._dtype = datatype(self.dtype)
 		self.format = self.system.format
@@ -676,32 +692,24 @@ class Object(object):
 		return
 
 
-	def __space__(self,N=None,D=None,d=None,L=None,delta=None,space=None,system=None):
+	def __space__(self,N=None,D=None,space=None,system=None):
 		'''
 		Set space attributes
 		Args:
 			N (int): Number of qudits
 			D (int): Dimension of qudits
-			d (int): Spatial dimension
-			L (int,float): Scale in system
-			delta (float): Length scale in system
 			space (str,Space): Type of Hilbert space
 			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
 		'''
 		N = self.N if N is None else N
 		D = self.D if D is None else D
-		d = self.d if d is None else d
-		L = self.L if L is None else L
-		delta = self.delta if delta is None else delta
 		space = self.space if space is None else space
 		system = self.system if system is None else system
 
-		self.space = Space(N,D,d,L,delta,space,system=system)
+		self.space = Space(N,D,space,system=system)
+
 		self.N = self.space.N
-		self.D = self.space.D
-		self.d = self.space.d
-		self.L = self.space.L
-		self.delta = self.space.delta
+		self.D = self.space.D		
 		self.n = self.space.n
 		self.g = self.space.g
 		self.dims = (self.n,self.n)
@@ -729,10 +737,11 @@ class Object(object):
 		T = self.T if T is None else T
 		tau = self.tau if tau is None else tau
 		p = self.p if p is None else p
-		#time = self.time if time is None else time
+		time = self.time if time is None else time
 		system = self.system if system is None else system
 
-		self.time = Time(M,T,tau,p,time,system=system)		
+		self.time = Time(M,T,tau,p,time,system=system)	
+
 		self.M = self.time.M
 		self.T = self.time.T
 		self.p = self.time.p
@@ -764,6 +773,11 @@ class Object(object):
 		system = self.system if system is None else system
 
 		self.lattice = Lattice(N,d,L,delta,lattice,system=system)	
+
+		self.N = self.lattice.N
+		self.d = self.lattice.d
+		self.L = self.lattice.L
+		self.delta = self.lattice.delta
 
 		return
 
@@ -1121,11 +1135,11 @@ class Hamiltonian(Object):
 	Args:
 		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		operator (iterable[str]): string names of operators
-		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		hyperparameters (dict) : class hyperparameters
@@ -1171,11 +1185,11 @@ class Hamiltonian(Object):
 		Args:
 			data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 				operator (iterable[str]): string names of operators
-				site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 				string (iterable[str]): string labels of operators
 				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (dict) : class hyperparameters
@@ -1218,7 +1232,7 @@ class Hamiltonian(Object):
 
 		# Lattice sites
 		sites = {site: self.lattice(site) for site in ['i','i<j','<ij>','i...j']}	# sites types on lattice
-		indices = ['i','j'] # allowed symbolic indices and maximum number of body site interactions
+		indices = {'i': ['i'],'<ij>':['i','j'],'i<j':['i','j'],'i...j':['i','j']} # allowed symbolic indices and maximum number of body site interactions
 
 		# Basis single-site operators
 		dtype = self.dtype
@@ -1239,25 +1253,30 @@ class Hamiltonian(Object):
 			_site = site.pop(0);
 			_string = string.pop(0);
 			_interaction = interaction.pop(0);
-			if any(j in indices for j in _site):
+
+			if isinstance(_site,str):
+				_site = indices[_site]
+
+			if any(j in indices[_interaction] for j in _site):
 				for s in sites[_interaction]:
-					_site_ = deepcopy([dict(zip(indices,s if not isinstance(s,int) else [s])).get(j,parse(j,int)) for j in _site])
+					_site_ = deepcopy([dict(zip(indices[_interaction],s if not isinstance(s,int) else [s])).get(j,parse(j,int)) for j in _site])
 					_operator_ = deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
 					_string_ = deepcopy(_string)
 					_interaction_ = deepcopy(_interaction)
 					
-					operator.append(_operator_)
-					site.append(_site_)
-					string.append(_string_)
-					interaction.append(_interaction_)
+					if _operator_ not in operator: 
+						site.append(_site_)
+						operator.append(_operator_)
+						string.append(_string_)
+						interaction.append(_interaction_)
 			else:
 				_site_ = deepcopy(_site)
 				_operator_ = deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
 				_string_ = deepcopy(_string)
 				_interaction_ = deepcopy(_interaction)
 
-				operator.append(_operator_)
 				site.append(_site_)
+				operator.append(_operator_)
 				string.append(_string_)
 				interaction.append(_interaction_)
 
@@ -1326,11 +1345,11 @@ class Unitary(Hamiltonian):
 	Args:
 		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		operator (iterable[str]): string names of operators
-		site (iterable[iterable[int,str]]): site of local operators, allowed strings in [['i'],['i','j']]
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		hyperparameters (dict) : class hyperparameters
@@ -1440,3 +1459,282 @@ class Unitary(Hamiltonian):
 		return derivative
 
 
+
+
+
+class Operator(module):
+	'''
+	Class for Operator
+	Args:
+		data (dict,str,array): dictionary of operator attributes, or string or array for operator. Allowed strings in ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI'], allowed dictionary keys in
+			operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']
+			site (iterable[int]): site of local operators
+			string (str): string label of operator
+			interaction (str): interaction type of operator
+		operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']
+		site (iterable[int]): site of local operators
+		string (str): string label of operator
+		interaction (str): interaction type of operator
+		hyperparameters (dict) : class hyperparameters
+		N (int): Number of qudits
+		D (int): Dimension of qudits
+		d (int): Spatial dimension
+		L (int,float): Scale in system
+		delta (float): Simulation length scale		
+		M (int): Number of time steps
+		T (int): Simulation Time
+		tau (float): Simulation time scale		
+		p (int): Trotter order		
+		space (str,Space): Type of Hilbert space
+		time (str,Time): Type of Time evolution space						
+		lattice (str,Lattice): Type of lattice		
+		metric (str,Metric): Type of metric
+		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
+	'''
+
+	data : None
+	operator : str
+	site : List[int]
+	string : str
+	interaction : str
+	hyperparameters : dict
+	N : int
+	D : int
+	space : str
+	system : dict
+
+	n : int
+	shape : Tuple[int]
+	size : int
+	ndim : int
+	locality : int
+
+	identity : array
+
+	dtype: str
+	_dtype : str
+	format : str
+	seed : int
+	key : List[int]
+	timestamp : str
+	architecture : str
+	verbose : int
+
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters={},
+					N=None,D=None,space=None,system=None):
+
+		self.N = N
+		self.D = D
+		self.space = space
+		self.system = system
+
+		self.__system__()
+		self.__space__()
+		self.__setup__(data,operator,site,string,interaction,hyperparameters)
+		
+		return
+	
+	def __system__(self,system=None):
+		'''
+		Set system attributes
+		Args:
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+		'''
+		system = self.system if system is None else system
+
+		system = System(system)		
+
+		self.dtype = system.dtype
+		self._dtype = datatype(self.dtype)
+		self.format = system.format
+		self.seed = system.seed
+		self.key = system.key
+		self.timestamp = system.timestamp
+		self.architecture = system.architecture
+		self.verbose = system.verbose
+
+		return
+	
+	def __space__(self,N=None,D=None,space=None,system=None):
+		'''
+		Set space attributes
+		Args:
+			N (int): Number of qudits
+			D (int): Dimension of qudits
+			space (str,Space): Type of Hilbert space
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+		'''
+		N = self.N if N is None else N
+		D = self.D if D is None else D
+		space = self.space if space is None else space
+		system = self.system if system is None else system
+
+		space = Space(N,D,space,system=system)
+
+		self.N = space.N
+		self.D = space.D		
+		self.n = space.n
+		self.shape = (self.n,self.n)
+		self.size = 1
+		self.ndim = len(self.shape)
+		self.identity = identity(self.n,dtype=self.dtype)
+
+		return
+	
+	def __str__(self):
+		return self.string
+	def __repr__(self):
+		return self.__str__()
+	def __len__(self):
+		return len(self.data)
+	
+	@nn.filter_jit
+	def __call__(self,parameters,state=None):
+		'''
+		Return parameterized operator 
+		Args:
+			parameters (array): Parameters to parameterize operator			
+			state (array): State to apply operator
+		Returns
+			operator (array): Parameterized operator
+		'''		
+		parameters = self.__parameters__(parameters)
+
+		if state is None:
+			operator = parameters*self.data
+		else:
+			operator = (parameters*self.data).dot(state)
+		return operator
+
+	@nn.filter_jit
+	def __parameters__(self,parameters):
+		''' 
+		Setup parameters
+		Args:
+			parameters (array): parameters
+		Returns:
+			parameters (array): parameters
+		'''
+		return parameters
+
+	@nn.filter_jit
+	def __apply__(self,parameters,state=None):
+		'''
+		Return parameterized operator 
+		Args:
+			parameters (array): Parameters to parameterize operator			
+			state (array): State to apply operator
+		Returns
+			operator (array): Parameterized operator
+		'''
+		
+		parameters = self.__parameters__(parameters)
+
+		if state is None:
+			operator = parameters*self.data
+		else:
+
+			for site in self.site:
+				state = self.__swap__(state,site)
+				operator = (parameters*self.data).dot(state)
+				operator = operator.reshape(self.dims)
+				state = self.__reshape__(state,site)
+
+		return operator
+
+	@nn.filter_jit
+	def __swap__(self,state,site):
+		'''
+		Swap axes of state at site
+		Args:
+			state (array): State to apply operator of shape (n,)
+			site (iterable[int]): Axes to apply operator of size locality
+		Returns
+			state (array): State to apply operator of shape (*(D)*locality,n/D**locality)
+		'''
+		# TODO
+		assert False, "TODO: Implement SWAP"
+		locality = len(site)
+		axes = range(locality)
+		shape = (*(self.D)*locality,-1)
+
+		state = moveaxis(state,site,axes).reshape(shape)
+
+		return state
+
+	@nn.filter_jit
+	def __reshape__(self,state,site):
+		'''
+		Reshape state to shape (n,)
+		Args:
+			state (array): State to apply operator of shape (n,)
+			site (iterable[int]): Axes to apply operator
+		Returns
+			state (array): State to apply operator of shape (D,D,n/D**2)
+		'''
+
+		assert False, "TODO: Implement RESHAPE"
+
+		locality = len(site)
+		axes = range(locality)
+		shape = (self.n,)
+
+		state = moveaxis(state.reshape(shape),site,axes)
+
+		return state
+
+
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters={}):
+		'''
+		Setup class
+		Args:
+			data (dict,str,array): dictionary of operator attributes, or string or array for operator. Allowed strings in ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI'], allowed dictionary keys in
+						operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']
+						site (iterable[int]): site of local operators
+						string (str): string label of operator
+						interaction (str): interaction type of operator
+					operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']
+					site (iterable[int]): site of local operators
+					string (str): string label of operator
+					interaction (str): interaction type of operator
+					hyperparameters (dict) : class hyperparameters
+		'''
+
+		if isinstance(data,str):
+			operator = data
+		elif isinstance(data,array):
+			operator = data
+				
+		if operator is None:
+			operator = ''
+		if site is None:
+			site = list(range(len(operator)))
+		if string is None:
+			string = '%s_%s'%(operator,''.join(['%d'%(i) for i in site]))
+		else:
+			string = '%s_%s'%(string,''.join(['%d'%(i) for i in site]))
+		if interaction is None:
+			interaction = ''
+		if hyperparameters is None:
+			hyperparameters = {}
+
+		self.data = data
+		self.operator = operator
+		self.site = site
+		self.string = string
+		self.interaction = interaction
+		
+		self.hyperparameters = hyperparameters
+		
+		if isinstance(self.data,dict):
+			for attr in self.data:
+				setattr(self,attr,self.data[attr])
+
+		self.data = self.operator
+		if not isinstance(self.data,array):
+			self.data = [basis[operator] for operator in self.data]
+			self.data = tensorprod(self.data)
+
+		self.data = self.data.astype(self.dtype)
+
+		return

@@ -11,7 +11,7 @@ for PATH in PATHS:
 
 from src.utils import jit,array,zeros,rand,tensorprod,trotter,forloop
 from src.utils import allclose,cosh,sinh,real,abs,minimum,to_str
-from src.utils import gradient,hessian,gradient_fwd,gradient_shift,fisher
+from src.utils import gradient,hessian,fisher
 from src.utils import inner_abs2,inner_real
 from src.system import Logger
 from src.utils import scalars,pi
@@ -169,7 +169,7 @@ def train(parameters,model,func,callback,**kwargs):
 	model = jit(partial(model,**kwargs))
 	func = jit(partial(func,model=model,**kwargs))
 	grad = gradient(func)
-	derivative = gradient_fwd(model)
+	derivative = gradient(model,mode='fwd',move=True)
 	hess = hessian(func)
 	fish = fisher(model)
 
