@@ -145,11 +145,11 @@ def stateize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 	if mapping in maps:
 		n = 4
 		ndim = len(shape)
-		shape = (*shape[:1],*(1,)*(n-ndim),*shape[1:])
+		shape = (*shape[:1],*(1,)*(n-ndim),*shape[min(ndim-1,1):])
 	else:
-		n = 3
+		n = 4-1
 		ndim = len(shape)
-		shape = (*shape[:1],*(1,)*(n-ndim),*shape[min(ndim-2,1):])
+		shape = (*shape[:1],*(1,)*(n-ndim),*shape[min(ndim-1-1,1):])
 
 
 	# Delimiter for string

@@ -27,7 +27,7 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient,hessian,fisher
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,einsum
+from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,dot,einsum
 from src.utils import summation,exponentiation
 from src.utils import trotter,gradient_trotter,gradient_expm,gradient_sigmoid
 from src.utils import normed,inner_abs2,inner_real,inner_imag
@@ -360,7 +360,6 @@ class Object(object):
 
 		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,mapping=mapping,cls=cls,dtype=dtype)
 
-
 		# Get reshaped parameters
 		attribute = 'values'
 		layer = 'parameters'
@@ -380,8 +379,6 @@ class Object(object):
 
 		label = operatorize(data,shape,hyperparams,size=size,mapping=mapping,cls=cls,dtype=dtype)
 
-		label = label.conj()
-
 		# Get states
 		data = None
 		shape = self.dims
@@ -392,7 +389,6 @@ class Object(object):
 		cls = self
 
 		state = stateize(data,shape,hyperparams,size=size,mapping=mapping,cls=cls,dtype=dtype)
-
 
 		# Get noise
 		data = None
@@ -407,6 +403,14 @@ class Object(object):
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
+
+
+		# Update label, based on state and noise
+		maps = ['matrix']
+		if self.mapping in maps:
+			label = dot(label,dot(state,label.conj()))
+		else:
+			label = label.conj()
 
 		# Update class attributes
 		self.parameters = parameters

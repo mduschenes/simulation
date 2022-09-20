@@ -2134,8 +2134,7 @@ def swap(i,j,N,D):
 
 
 
-@partial(jit,static_argnums=(1,2,))	
-def slices(a,start,size):
+def slicing(a,start,size):
 	'''
 	Get slice of array
 	Args:
@@ -2632,7 +2631,7 @@ def expmv(x,A,I,v):
 
 
 @jit
-def expmvc(x,A,I,v,C):
+def expmvc(x,A,I,v,B):
 	'''
 	Calculate matrix exponential of parameters times data, multiplied with constant matrix and vector
 	Args:
@@ -2640,23 +2639,23 @@ def expmvc(x,A,I,v,C):
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,) or (n,n)
-		C (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
 	d = A.shape[0]
-	k = C.shape[0]
+	k = B.shape[0]
 
 
 	def func(i,out):
-		return dot(_expm(x[i],A[i%d],I),dot(C[i%k],out))
+		return dot(_expm(x[i],A[i%d],I),dot(B[i%k],out))
 
 	return forloop(0,m,func,v)
 
 
 @jit
-def expmvcc(x,A,I,v,C):
+def expmvcc(x,A,I,v,B):
 	'''
 	Calculate matrix exponential of parameters times data, multiplied with constant matrix and vector
 	Args:
@@ -2664,24 +2663,22 @@ def expmvcc(x,A,I,v,C):
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,) or (n,n)
-		C (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
 	d = A.shape[0]
-	k = C.shape[0]
+	k = B.shape[0]
 	shape = A.shape[1:]
 
 	subscripts = 'aij,jk,kl,ml,anm->in'
 	shapes = ((k,*shape),(*shape,),(*shape,),(*shape,),(k,*shape))
 	einsummation = einsum #(subscripts,shapes)
-
 	def func(i,out):
-		def _func(j,out):
-			return dot(_expm(x[i*d+j],A[j%d],I),out)
-		U = forloop(0,d,_func,I)
-		return einsummation(subscripts,C,U,out,U.conj(),C.conj())
+		y = slicing(x,i*d,d)
+		C = expm(y,A,I)
+		return einsummation(subscripts,B,C,out,C.conj(),B.conj())
 
 	return forloop(0,m//d,func,v)
 
@@ -3959,13 +3956,13 @@ def binary(a,n,function):
 # 	'''
 # 	m = len(U)
 # 	if p == 1:
-# 		U = array([matmul(array([*U[:i],A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
+# 		U = array([matmul(array([*U[:i],A[i]/p,*slicing(U,i,k-i)])) for i in range(k)])
 # 	elif p == 2:
-# 		U = array([matmul(array([*slices(U,0,i)[::1],A[i]/p,*slices(U,i,k-i)[::1],*U[::-1]])) + 
-# 				matmul(array([*U[::1],*slices(U,i,k-i)[::-1],A[i]/p,*slices(U,0,i)[::-1]]))
+# 		U = array([matmul(array([*slicing(U,0,i)[::1],A[i]/p,*slicing(U,i,k-i)[::1],*U[::-1]])) + 
+# 				matmul(array([*U[::1],*slicing(U,i,k-i)[::-1],A[i]/p,*slicing(U,0,i)[::-1]]))
 # 				for i in range(k)])
 # 	else:
-# 		U = array([matmul(array([*slices(U,0,i),A[i]/p,*slices(U,i,k-i)])) for i in range(k)])
+# 		U = array([matmul(array([*slicing(U,0,i),A[i]/p,*slicing(U,i,k-i)])) for i in range(k)])
 # 	return U
 
 def trotter(a,p):
