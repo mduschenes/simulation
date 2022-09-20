@@ -283,7 +283,7 @@ def setup(hyperparameters,cls=None):
 	return 
 
 
-def parameterize(data,shape,hyperparameters,check=None,initialize=None,cls=None,dtype=None):
+def parameterize(data,shape,hyperparameters,check=None,initialize=None,mapping=None,cls=None,dtype=None):
 	'''
 	Initialize data of shapes of parameters based on shape of data
 	Args:
@@ -298,6 +298,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,cls=None,
 			'constants':dict[str,iterable[dict[str,iterable]]] : dictionary of constant indices and values of each axis of each parameter layer {'layer':[{'slice':[indices_axis],'value':[values_axis]}]}
 		check (callable): Function with signature check(group,index,axis) to check if index of data for axis corresponds to group
 		initialize (callable): Function with signature initialize(parameters,shape,hyperparameters,reset=None,dtype=None) to initialize parameter values
+		mapping(str): Type of mapping, allowed strings in ['vector','matrix','tensor']
 		cls (object): Class instance to update hyperparameters		
 		dtype (data_type): Data type of values		
 	Returns:

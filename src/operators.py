@@ -172,7 +172,7 @@ def setup(hyperparameters,cls=None):
 
 	return
 
-def operatorize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
+def operatorize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=None):
 	'''
 	Initialize operators
 	Args:
@@ -180,6 +180,7 @@ def operatorize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
 		shape (iterable[int]): Shape of operator
 		hyperparameters (dict): Dictionary of hyperparameters for operator
 		size (int): size to initialize operator
+		mapping(str): Type of mapping, allowed strings in ['vector','matrix','tensor']
 		cls (object): Class instance to update hyperparameters		
 		dtype (data_type): Data type of operator
 	Returns:

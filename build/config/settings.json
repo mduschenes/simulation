@@ -46,6 +46,7 @@
 	"T":null,
 	"tau":10e-1,
 	"p":2,
+	"mapping":null,	
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
@@ -178,6 +179,16 @@
 	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,
+	"bounds":[-1,1]	
+},
+"noise": {
+	"string":null,
+	"category":"constant",
+	"scale":null,	
+	"shape":[-1,-1],
+	"initialization":"random",
+	"random":"gaussian",
+	"seed":111,
 	"bounds":[-1,1]	
 },
 "jobs":{

@@ -1,22 +1,13 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,datetime
-from copy import deepcopy as deepcopy
-from time import time as timer
+import os,sys
+from copy import deepcopy
 from functools import partial
 
 from typing import List,Tuple
 
-import matplotlib
-import matplotlib.pyplot as plt
-
-import numpy as onp
-import scipy as osp
 import jax
-import jax.numpy as np
-import jax.scipy as sp
-import jax.example_libraries.optimizers
 import equinox as nn
 import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
@@ -24,7 +15,6 @@ jax.config.update('jax_platform_name','cpu')
 jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
 # os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
-np.set_printoptions(linewidth=1000)#,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 # Logging
 import logging
@@ -55,6 +45,7 @@ from src.dictionary import leaves,counts,plant,grow
 from src.parameters import parameterize
 from src.operators import operatorize
 from src.states import stateize
+from src.noise import noiseize
 
 from src.io import load,dump,join,split
 
@@ -64,7 +55,7 @@ from src.process import process
 
 from src.plot import plot
 
-from src.optimize import Optimizer,Objective
+from src.optimize import Optimizer
 
 dtype = 'complex'
 basis = {
@@ -99,6 +90,7 @@ class Object(object):
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
 		p (int): Trotter order		
+		mapping (str): Type of mapping, allowed strings in ['vector','matrix','tensor']
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
@@ -107,7 +99,7 @@ class Object(object):
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
+		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,mapping=None,space=None,time=None,lattice=None,metric=None,system=None):
 
 		self.N = N
 		self.D = D
@@ -118,6 +110,7 @@ class Object(object):
 		self.T = T
 		self.tau = tau
 		self.p = p
+		self.mapping = mapping
 		self.space = space
 		self.time = time
 		self.lattice = lattice
@@ -145,7 +138,8 @@ class Object(object):
 		self.hyperparameters = hyperparameters
 		self.parameters = None
 		self.label = None
-		self.states = None
+		self.state = None
+		self.noise = None
 		self.attributes = {}
 		self.constants = None
 		self.coefficients = 1
@@ -360,9 +354,11 @@ class Object(object):
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
+		mapping = self.mapping
+		cls = self
 		dtype = self._dtype
 
-		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,dtype=dtype,cls=self)
+		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,mapping=mapping,cls=cls,dtype=dtype)
 
 
 		# Get reshaped parameters
@@ -378,10 +374,11 @@ class Object(object):
 		shape = self.dims
 		hyperparams = hyperparameters['label']
 		size = self.N
+		mapping = self.mapping		
 		dtype = self.dtype
 		cls = self
 
-		label = operatorize(data,shape,hyperparams,size=size,dtype=dtype,cls=cls)
+		label = operatorize(data,shape,hyperparams,size=size,mapping=mapping,cls=cls,dtype=dtype)
 
 		label = label.conj()
 
@@ -390,10 +387,23 @@ class Object(object):
 		shape = self.dims
 		hyperparams = hyperparameters['state']
 		size = self.N
+		mapping = self.mapping
 		dtype = self.dtype
 		cls = self
 
-		states = stateize(data,shape,hyperparams,size=size,dtype=dtype,cls=cls)
+		state = stateize(data,shape,hyperparams,size=size,mapping=mapping,cls=cls,dtype=dtype)
+
+
+		# Get noise
+		data = None
+		shape = self.dims
+		hyperparams = hyperparameters['noise']
+		size = self.N
+		mapping = self.mapping		
+		dtype = self.dtype
+		cls = self
+
+		noise = noiseize(data,shape,hyperparams,size=size,mapping=mapping,cls=cls,dtype=dtype)
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
@@ -401,7 +411,8 @@ class Object(object):
 		# Update class attributes
 		self.parameters = parameters
 		self.label = label
-		self.states = states
+		self.state = state
+		self.noise = noise
 		self.coefficients = coefficients
 		self.hyperparameters = hyperparameters
 		self.attributes = attributes
@@ -420,7 +431,7 @@ class Object(object):
 		'''		
 		parameters = self.__parameters__(parameters)
 
-		return summation(parameters,self.data,self.identity)
+		return summation(parameters,self.data,self.identity,state=self.state,noise=self.noise)
 
 
 	@partial(jit,static_argnums=(0,))
@@ -663,7 +674,7 @@ class Object(object):
 
 			self.log(msg)
 
-			print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
+			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
 
 
 		return status
@@ -1152,6 +1163,7 @@ class Hamiltonian(Object):
 		T (int): Simulation time
 		tau (float): Simulation time scale
 		p (int): Trotter order		
+		mapping (str): Type of mapping, allowed strings in ['vector','matrix','tensor']
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
@@ -1160,9 +1172,9 @@ class Hamiltonian(Object):
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,mapping=None,space=None,time=None,lattice=None,metric=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,metric=metric,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,mapping=mapping,space=space,time=time,lattice=lattice,metric=metric,system=system)
 		return
 
 
@@ -1194,8 +1206,6 @@ class Hamiltonian(Object):
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (dict) : class hyperparameters
 		'''
-
-		#time = timer()
 
 		# Get parameters
 		parameters = None		
@@ -1236,12 +1246,10 @@ class Hamiltonian(Object):
 
 		# Basis single-site operators
 		dtype = self.dtype
-		basis = {
-			'I': array([[1,0],[0,1]],dtype=dtype),
-			'X': array([[0,1],[1,0]],dtype=dtype),
-			'Y': array([[0,-1j],[1j,0]],dtype=dtype),
-			'Z': array([[1,0],[0,-1]],dtype=dtype),
-		}
+		operators = {
+			attr: basis[attr].astype(dtype)
+			for attr in basis
+			}
 
 		# Get identity operator I, to be maintained with same shape of data for Euler identities
 		# with minimal redundant copying of data
@@ -1282,7 +1290,7 @@ class Hamiltonian(Object):
 
 
 		# Form (size,n,n) shape operator from local strings for each data term
-		data = [tensorprod([basis[j] for j in i]) for i in operator]
+		data = [tensorprod([operators[j] for j in i]) for i in operator]
 
 		# Assert all data satisfies data**2 = identity for matrix exponentials
 		assert all(allclose(d.dot(d),self.identity) for d in data), 'data is not involutory and data**2 != identity'
@@ -1333,8 +1341,9 @@ class Hamiltonian(Object):
 		parameters = array(trotter(parameters,p))
 
 		# Get reshaped parameters (transpose for shape (K,M) to (M,K) and reshape to (MK,) with periodicity of data)
+		shape = parameters.T.shape
 		parameters = parameters.T.ravel()
-		
+
 		return parameters
 
 
@@ -1362,6 +1371,7 @@ class Unitary(Hamiltonian):
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
 		p (int): Trotter order		
+		mapping (str): Type of mapping, allowed strings in ['vector','matrix','tensor']		
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space
 		lattice (str,Lattice): Type of lattice
@@ -1370,9 +1380,9 @@ class Unitary(Hamiltonian):
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,mapping=None,space=None,time=None,lattice=None,metric=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,metric=metric,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,mapping=mapping,space=space,time=time,lattice=lattice,metric=metric,system=system)
 		return
 
 	@partial(jit,static_argnums=(0,))
@@ -1385,8 +1395,7 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
-		return exponentiation(self.coefficients*parameters,self.data,self.identity)
-
+		return exponentiation(self.coefficients*parameters,self.data,self.identity,state=self.state,noise=self.noise)
 
 	@partial(jit,static_argnums=(0,))
 	def __derivative_analytical__(self,parameters):
@@ -1478,17 +1487,8 @@ class Operator(module):
 		hyperparameters (dict) : class hyperparameters
 		N (int): Number of qudits
 		D (int): Dimension of qudits
-		d (int): Spatial dimension
-		L (int,float): Scale in system
-		delta (float): Simulation length scale		
-		M (int): Number of time steps
-		T (int): Simulation Time
-		tau (float): Simulation time scale		
-		p (int): Trotter order		
+		mapping (str): Type of mapping, allowed strings in ['vector','matrix','tensor']	
 		space (str,Space): Type of Hilbert space
-		time (str,Time): Type of Time evolution space						
-		lattice (str,Lattice): Type of lattice		
-		metric (str,Metric): Type of metric
 		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
 	'''
 
@@ -1521,10 +1521,11 @@ class Operator(module):
 	verbose : int
 
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters={},
-					N=None,D=None,space=None,system=None):
+					N=None,D=None,mapping=None,space=None,system=None):
 
 		self.N = N
 		self.D = D
+		self.mapping = mapping
 		self.space = space
 		self.system = system
 

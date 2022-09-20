@@ -110,7 +110,7 @@ def setup(hyperparameters,cls=None):
 	return
 
 
-def stateize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
+def stateize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=None):
 	'''
 	Initialize data of states based on shape
 	Args:
@@ -124,6 +124,7 @@ def stateize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
 			'seed': int: random seed
 			'bounds': iterable[float]: bounds on states
 		size (int): Size of state
+		mapping (str): Type of mapping, allowed strings in ['vector','matrix','tensor']		
 		cls (object): Class instance to update hyperparameters
 		dtype (data_type): Data type of values		
 	Returns:
@@ -137,6 +138,19 @@ def stateize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
 	shape,dims = hyperparameters['shape'],shape
 	ndim = len(dims)
 	shape[-ndim:] = dims
+
+
+	# Mappings of states
+	maps = ['matrix']
+	if mapping in maps:
+		n = 4
+		ndim = len(shape)
+		shape = (*shape[:1],*(1,)*(n-ndim),*shape[1:])
+	else:
+		n = 3
+		ndim = len(shape)
+		shape = (*shape[:1],*(1,)*(n-ndim),*shape[min(ndim-2,1):])
+
 
 	# Delimiter for string
 	delimiter = '_'
@@ -194,5 +208,9 @@ def stateize(data,shape,hyperparameters,size=None,cls=None,dtype=None):
 
 	# Set dtype of data
 	data = data.astype(dtype=dtype)
+
+
+	if mapping not in maps:
+		data = None
 
 	return data		
