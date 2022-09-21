@@ -175,9 +175,11 @@ def noiseize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 	if isinstance(string,str):
 		scale = hyperparameters['scale']
 		if string in ['phase']:
+			data = [sqrt(1-scale)*basis['I'],
+					sqrt(scale)*basis['Z']]
 			data = array([
-				tensorprod([sqrt(1-scale)*basis['I']]*size),
-				tensorprod([sqrt(scale)*basis['Z']]*size),
+				tensorprod(i)
+				for i in itertools.product(data,repeat=size)
 				])
 
 	if mapping not in maps:

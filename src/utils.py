@@ -1708,6 +1708,70 @@ def gradient_inner_imag_einsum(*shapes,optimize=True):
 	return einsummation
 
 
+
+def inner_vectorabs2_einsum(*shapes,optimize=True):
+	'''
+	Calculate absolute square inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Absolute square inner product einsum
+	'''	
+
+	subscripts = 'ij,ij->'
+
+	@jit
+	def wrapper(out,*operands):
+		return abs2(out)/(operands[0].shape[0]*operands[1].shape[0])
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(*operands)
+
+	return einsummation
+
+
+
+
+def gradient_inner_vectorabs2_einsum(*shapes,optimize=True):
+	'''
+	Calculate gradient of absolute square of inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Gradient of absolute square inner product einsum
+	'''	
+
+	subscripts_value = 'ij,ij->'
+	shapes_value = (shapes[0],shapes[1])
+
+	@jit
+	def wrapper_value(out,*operands):
+		return out
+
+	_einsummation_value = einsum(subscripts_value,*shapes_value,optimize=optimize,wrapper=wrapper_value)
+
+
+	subscripts_grad = 'ij,uij->u'
+	shapes_grad = (shapes[0],shapes[2])
+
+	@jit
+	def wrapper_grad(out,*operands):
+		return out/(operands[0].shape[0]*operands[0].shape[1])
+
+	_einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper_grad)
+
+	@jit
+	def einsummation(*operands):
+		return 2*(_einsummation_value(operands[0],operands[1]).conj()*_einsummation_grad(operands[1],operands[2])).real
+
+	return einsummation
+
+
 @jit
 def dot(a,b):
 	'''

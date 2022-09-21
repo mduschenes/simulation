@@ -404,11 +404,11 @@ class Object(object):
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
 
-
 		# Update label, based on state and noise
 		maps = ['matrix']
-		if self.mapping in maps:
-			label = dot(label,dot(state,label.conj()))
+		mapping = self.mapping
+		if mapping in maps:
+			label = dot(label,dot(state,label.conj().T))
 		else:
 			label = label.conj()
 

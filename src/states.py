@@ -142,14 +142,13 @@ def stateize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 
 	# Mappings of states
 	maps = ['matrix']
+	n = 4
 	if mapping in maps:
-		n = 4
-		ndim = len(shape)
-		shape = (*shape[:1],*(1,)*(n-ndim),*shape[min(ndim-1,1):])
+		m = 0
 	else:
-		n = 4-1
-		ndim = len(shape)
-		shape = (*shape[:1],*(1,)*(n-ndim),*shape[min(ndim-1-1,1):])
+		m = 1
+	ndim = len(shape)
+	shape = (*shape[:1],*(1,)*(n-ndim-m),*shape[min(ndim-1-m,1):])
 
 
 	# Delimiter for string
