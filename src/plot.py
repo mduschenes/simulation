@@ -294,7 +294,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					else:
 						return None     
 			else:
-				_position_ = _positions(kwargs['layout'])[share]
+				_position_ = _positions(kwargs['layout']).get(share,share)
 				position = _position(kwargs['layout'])
 				if all([((_position_[i] is None) or (position[i]==_position_[i])) for i in range(DIM)]):
 					return value

@@ -220,10 +220,10 @@
 			]},
 		"set_xlabel":{"xlabel":"$M$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xlim":{"xmin":0,"xmax":210},		
-		"set_xnbins":{"nbins":7},
+		"set_xlim":{"xmin":0,"xmax":1000},		
+		"set_xnbins":{"nbins":6},
 		"set_ylim":{"ymin":1e-5,"ymax":1e-1},
-		"set_ylim":{"ymin":1e-2,"ymax":1e1},
+		"set_ylim":{"ymin":1e-4,"ymax":1e1},
 		"set_ynbins":{"nbins":3},		
 		"set_ynbins":{"nbins":3},		
 		"set_yscale":{"value":"log","base":10},
@@ -308,7 +308,7 @@
 "None.parameters.iteration.M":{
 	"None.parameters.all.iteration.M":{
 		"fig":{
-			"set_size_inches":{"w":14,"h":12},
+			"set_size_inches":{"w":20,"h":12},
 			"subplots_adjust":{"hspace":0.5},
 			"tight_layout":{},
 			"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
@@ -353,7 +353,7 @@
 			"layout":{"nrows":1,"ncols":2,"index":1,"left":null,"right":null,"top":null,"bottom":null,"hspace":0.5,"wspace":0.5,"pad":0.1},
 			"share": {
 				"ax":{
-					"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},
+					"legend":{"set_title":"bottom_right","handles":"bottom_right","labels":"bottom_right"},
 					"set_xlabel":{"xlabel":null},
 					"set_ylabel":{"ylabel":"left"},
 					"set_title":{"label":"top"}
@@ -415,10 +415,10 @@
 			"texify":null,
 			"mplstyle":"plot.mplstyle",	
 			"rcParams":{"font.size":25},
-			"layout":{"nrows":1,"ncols":2,"index":2,"left":null,"right":null,"top":null,"bottom":null,"hspace":0.5,"wspace":0.5,"pad":0.1},
+			"layout":{"nrows":1,"ncols":2,"index":2,"left":null,"right":null,"top":null,"bottom":null,"hspace":0.5,"wspace":3,"pad":0.1},
 			"share": {
 				"ax":{
-					"legend":{"set_title":"bottom","handles":"bottom","labels":"bottom"},
+					"legend":{"set_title":"bottom_right","handles":"bottom_right","labels":"bottom_right"},
 					"set_xlabel":{"xlabel":null},
 					"set_ylabel":{"ylabel":"left"},
 					"set_title":{"label":"top"}

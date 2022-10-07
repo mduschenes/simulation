@@ -27,7 +27,7 @@
 	},
 "seed":{
 	"seed":12332,
-	"size":3,
+	"size":1,
 	"reset":12332,
 	"index":null
 	},
@@ -41,18 +41,13 @@
 		"model.N":[4],		
 		"model.M":[50,100,200,300,400,500,1000],		
 		"optimize.iterations":[1000],
-		"optimize.optimizer":["cg"],
 
-		"jobs.job.cwd":["data"],		
-		"jobs.job.device":["pc"],
-		"jobs.job.process":["serial"],
-		"jobs.job.execute":[1],		
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
-		"jobs.postprocess.cwd":["data"],		
-		"jobs.postprocess.device":["pc"],
-		"jobs.postprocess.process":["serial"],
-		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
+		"model.N":[3],		
+		"model.M":[10,20,30,50,100],				
+		"model.M":[60,120,180,300,600],				
+		"optimize.iterations":[100],
+
+		"optimize.optimizer":["cg"],
 
 		"jobs.job.cwd":["gobi/data_4_eigenvalues_constrained"],
 		"jobs.job.device":["slurm"],
@@ -64,6 +59,17 @@
 		"jobs.postprocess.process":["serial"],
 		"jobs.postprocess.execute":[1],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],	
+
+		"jobs.job.cwd":["data.constrained"],		
+		"jobs.job.device":["pc"],
+		"jobs.job.process":["serial"],
+		"jobs.job.execute":[1],		
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
+		"jobs.postprocess.cwd":["data.constrained"],		
+		"jobs.postprocess.device":["pc"],
+		"jobs.postprocess.process":["serial"],
+		"jobs.postprocess.execute":[1],	
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
 
 		"parameters.xy.method":["unconstrained"],
 		"model.system.architecture":["unconstrained"],
@@ -90,7 +96,6 @@
 	"time":"linear",
 	"lattice":"square",
 	"metric":"infidelity.abs",
-	"noise":null,	
 	"system":{
 		"dtype":"complex",
 		"format":"array",
@@ -150,7 +155,7 @@
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
-		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
+		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
 	"z": {
 		"string":"z",
@@ -209,7 +214,7 @@
 	"scale":1,
 	"initialization":"random",
 	"random":"gaussian",
-	"seed":123,
+	"seed":null,
 	"bounds":[-1,1]
 	},
 "state": {
@@ -228,7 +233,7 @@
 	"shape":[-1,-1],
 	"initialization":"random",
 	"random":"gaussian",
-	"seed":111,
+	"seed":null,
 	"bounds":[-1,1]	
 },
 "jobs":{
