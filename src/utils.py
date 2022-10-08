@@ -4468,8 +4468,6 @@ def bloch(state,path=None):
 
 		ndim = state.ndim
 
-		print(state.shape)
-
 		if ndim == 1:
 			state = einsum('i,aij,j->a',state.conj(),basis,state)
 		elif ndim == 2:
@@ -4481,12 +4479,13 @@ def bloch(state,path=None):
 		state = state.real
 		return state
 
-	# try:
-	mplstyle = '../src/plot.mplstyle'
+	root = os.path.dirname(os.path.abspath(__file__))
+	mplstyle = 'plot.mplstyle'
+	mplstyle = os.path.join(root,mplstyle)
+
 	with matplotlib.style.context(mplstyle):
-			# try:
-				# try:
-		fig = plt.figure(figsize=(12, 12))
+
+		fig = plt.figure(figsize=(10, 10))
 		ax = fig.add_subplot(111, projection='3d')
 		fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
 
@@ -4495,16 +4494,16 @@ def bloch(state,path=None):
 		ax.view_init(30, 45)
 		ax.dist = 7
 
-		# x, y, z = array([[-1.5,0,0], [0,-1.5,0], [0,0,-1.5]])
-		# u, v, w = array([[3,0,0], [0,3,0], [0,0,3]])
-		# ax.quiver(x, y, z, u, v, w, arrow_length_ratio=0.05, color='black', linewidth=1.2)
+		x, y, z = array([[-1.5,0,0], [0,-1.5,0], [0,0,-1.5]],dtype=float)
+		u, v, w = array([[3,0,0], [0,3,0], [0,0,3]],dtype=float)
+		ax.quiver(x, y, z, u, v, w, arrow_length_ratio=0.05, color='black', linewidth=1.2)
 
-		ax.text(0, 0, 1.7, r'$\ket{0}$', color='black', fontsize=16)
-		ax.text(0, 0, -1.9, r'$\ket{1}$', color='black', fontsize=16)
-		ax.text(1.9, 0, 0, r'$\ket{+}$', color='black', fontsize=16)
-		ax.text(-1.7, 0, 0, r'$\ket{-}$', color='black', fontsize=16)
-		ax.text(0, 1.7, 0, r'$\ket{i+}$', color='black', fontsize=16)
-		ax.text(0,-1.9, 0, r'$\ket{i-}$', color='black', fontsize=16)
+		ax.text(0, 0, 1.7, r'$\ket{0}$', color='black', fontsize=18)
+		ax.text(0, 0, -1.9, r'$\ket{1}$', color='black', fontsize=18)
+		ax.text(1.9, 0, 0, r'$\ket{+i}$', color='black', fontsize=18)
+		ax.text(-1.7, 0, 0, r'$\ket{-i}$', color='black', fontsize=18)
+		ax.text(0, 1.7, 0, r'$\ket{+}$', color='black', fontsize=18)
+		ax.text(0,-1.9, 0, r'$\ket{-}$', color='black', fontsize=18)
 
 		state = coordinates(state)
 
@@ -4513,16 +4512,9 @@ def bloch(state,path=None):
 		if path:
 			if not isinstance(path,str):
 				path = 'bloch.pdf'
-			fig.savefig(path,bbox_inches='tight')
+			fig.savefig(path,pad_inches=0.2)
+			# fig.savefig(path)
+			# fig.savefig(path,bbox_inches="tight",pad_inches=0.2)
 
-			# 	except Exception as e:
-			# 		print(e)
-			# 		pass
-			# except Exception as e:
-			# 	print(e)
-			# 	pass
-	# except Exception as e:
-	# 	print(e)
-	# 	pass
 	return fig,ax
 
