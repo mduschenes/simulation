@@ -48,12 +48,6 @@ def haar(shape,bounds=None,random=None,seed=None,dtype=None,):
 	Returns:
 		data (array): Array of operator
 	'''
-
-	if bounds is None:
-		bounds = [-1,1]
-
-	if random is None:
-		random = 'haar'
 	
 	bounds = [-1,1]
 	random = 'haar'

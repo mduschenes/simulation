@@ -70,14 +70,16 @@ def haar(shape,bounds,random,seed,dtype):
 		data = einsum('...i,...j->...ij',data,data.conj())
 
 		axis = 1
-		size = shape[axis]
+		size = shape[:axis+1]
 		bounds = [0,1]
 		key = seed
 		dtype = datatype(dtype)
 
 		weights = rand(size,bounds=bounds,key=key,dtype=dtype)
 
-		data = average(data,axis,weights)
+		weights /= weights.sum(axis)
+
+		data = einsum('ui,ui...->u...',data,weights)
 
 		axis = 0
 		shape = data.shape
