@@ -31,8 +31,8 @@
 			"axis":[[0],[],[],[-1]]
 		}				
 		],	
-	"null":{"None.parameters.iteration.M":null},
 	"null":{},
+	"null":{"None.parameters.iteration.M":null},
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",
 		"None": "\\textrm{None}",
@@ -52,6 +52,6 @@
 	"delimiter":".",
 	"process":["src.postprocess.process"],
 	"process":[],
-    "load":1,
+    "load":0,
 	"dump":1
 }

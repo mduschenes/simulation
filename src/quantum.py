@@ -379,6 +379,7 @@ class Object(object):
 
 		label = operatorize(data,shape,hyperparams,size=size,mapping=mapping,cls=cls,dtype=dtype)
 
+
 		# Get states
 		data = None
 		shape = self.dims
@@ -404,7 +405,7 @@ class Object(object):
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
 
-		# Update label, based on state and noise
+		# Update parameters,label,state,noise, based on type of mapping of model
 		maps = ['matrix']
 		mapping = self.mapping
 		if mapping in maps:
@@ -1658,7 +1659,8 @@ class Operator(module):
 			state (array): State to apply operator of shape (*(D)*locality,n/D**locality)
 		'''
 		# TODO
-		assert False, "TODO: Implement SWAP"
+		raise NotImplementedError
+
 		locality = len(site)
 		axes = range(locality)
 		shape = (*(self.D)*locality,-1)
@@ -1678,7 +1680,8 @@ class Operator(module):
 			state (array): State to apply operator of shape (D,D,n/D**2)
 		'''
 
-		assert False, "TODO: Implement RESHAPE"
+		# TODO
+		raise NotImplementedError
 
 		locality = len(site)
 		axes = range(locality)

@@ -53,18 +53,12 @@ def haar(shape,bounds=None,random=None,seed=None,dtype=None,):
 		bounds = [-1,1]
 
 	if random is None:
-		random = 'gaussian'
+		random = 'haar'
+	
+	bounds = [-1,1]
+	random = 'haar'
 
 	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
-	data /= sqrt(2)
-
-	Q,R = qr(data)
-	R = diag(R)
-	R = diag(R/abs(R))
-	
-	data = Q.dot(R)
-
-	data = data.astype(dtype)
 
 	return data
 

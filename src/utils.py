@@ -6,6 +6,20 @@ import os,sys,itertools,copy
 from functools import partial,wraps
 import argparse
 
+
+import traceback
+import warnings
+import sys
+
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+
+    log = file if hasattr(file,'write') else sys.stderr
+    traceback.print_stack(file=log)
+    log.write(warnings.formatwarning(message, category, filename, lineno, line))
+
+warnings.showwarning = warn_with_traceback
+
+
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -95,7 +109,7 @@ class argparser(argparse.ArgumentParser):
 			wrappers (dict[str,[str,callable]]: Wrappers of arguments, either string for argument name, or callable(kwarg,wrappers,kwargs)
 		'''
 
-		# TODO: Allow for non-string types of values parsed by action (comma-separated values)
+		# TODO: Allow for non-string types of iterable of values parsed by action (comma-separated values)
 
 		class action(argparse.Action):
 			def __call__(self, parser, namespace, values, option_string=None):
@@ -1124,6 +1138,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 	Returns:
 		out (array): Random array
 	'''	
+
 	if shape is None:
 		shape = 1
 	if isinstance(shape,int):
@@ -1146,25 +1161,59 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 			else:
 				bounds[i] = float(bounds)
 
-	if is_complexdtype(dtype):
+	subrandoms = ['haar']
+	complex = is_complexdtype(dtype) and random not in subrandoms
+	_dtype = dtype
+	dtype = datatype(dtype)
+
+	if complex:
 		shape = (2,*shape)
 
 	if random in ['uniform','rand']:
-		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
+		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
 	elif random in ['randint']:
-		out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1])		
+		out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
 	elif random in ['gaussian','normal']:
-		out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape)				
-	elif random in ['zeros']:
-		out = zeros(shape)
-	elif random in ['ones']:
-		out = ones(shape)		
-	else:
-		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1])
+		out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
+	elif random in ['haar']:
 
-	if is_complexdtype(dtype):
+		bounds = [-1,1]
+		subrandom = 'gaussian'
+		subdtype = 'complex'
+		ndim = len(shape)
+		n = 4
+
+		out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)
+
+		if n == 2:
+			new = (1,1,*out.shape)
+			out = out.reshape(new)
+		else:
+			new = (*out.shape[:1],*(1,)*(n-ndim),*out.shape[1:])
+			out = out.reshape(new)
+
+		for i in range(out.shape[0]):
+			for j in range(out.shape[1]):
+
+				Q,R = qr(out[i,j])
+				R = diag(R)
+				R = diag(R/abs(R))
+				
+				out = out.at[i,j].set(Q.dot(R))
+
+		out = out.reshape(shape)
+
+	elif random in ['zeros']:
+		out = zeros(shape,dtype=dtype)
+	elif random in ['ones']:
+		out = ones(shape,dtype=dtype)		
+	else:
+		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+
+	if complex:
 		out = out[0] + 1j*out[1]
 
+	dtype = _dtype
 	out = out.astype(dtype)
 
 	return out
@@ -2477,16 +2526,17 @@ def anticommutes(a,b):
 	return bool(~(anticommutator(a,b).any()))
 
 
-@jit
-def trace(a):
+@partial(jit,static_argnums=(1,))
+def trace(a,axes=(0,1)):
 	'''
 	Calculate trace of array
 	Args:
 		a (array): Array to calculate trace
+		axes (iterable): Axes to compute trace with respect to
 	Returns:
 		out (array): Trace of array
 	'''	
-	return np.trace(a)
+	return np.trace(a,axis1=axes[0],axis2=axes[1])
 
 @jit
 def rank(a,tol=None,hermitian=False):
@@ -4401,76 +4451,78 @@ def bloch(state,path=None):
 		ax (matplotlib.axes): Axes of plots
 	'''
 	
-	import numpy as np
-	import matplotlib
-	import matplotlib.pyplot as plt
-
 	def coordinates(state):
 		'''
 		Convert state vector to Bloch vector
 		Args:
 			state (array): States of shape (d,) or (n,d) or (n,d,d)  for n, d dimensional states
 		Returns:
-			state (array): States of shape (1,d) or (n,d) or (n,d,d) for n, d dimensional states
+			state (array): States of shape (1,d^2-1) or (n,d^2-1) or (n,d^2-1) for n, d dimensional states
 		'''
 
-		transformation = np.array([
+		basis = array([
 			[[0, 1], [1, 0]],
 			[[0, -1j], [1j, 0]],
 			[[1, 0], [0, -1]]
 			])
 
-		ndim = state.ndim - 1
+		ndim = state.ndim
 
-		if ndim == 0:
-			state = np.tensordot(state.conj(),np.tensordot(transformation,state,([-1],[-1])),([-1],[-1])).reshape(1,-1)
-		elif ndim == 1:
-			state = np.array([np.tensordot(s.conj(),np.tensordot(transformation,s,([-1],[-1])),([-1],[-1])) for s in state])
+		print(state.shape)
+
+		if ndim == 1:
+			state = einsum('i,aij,j->a',state.conj(),basis,state)
 		elif ndim == 2:
-			state = np.array([np.tensordot(s.conj(),np.tensordot(transformation,s,([-1],[-1])),([-1],[-1])) for s in state])			
+			state = einsum('ui,aij,uj->ua',state.conj(),basis,state)
+		elif ndim == 3:
+			state = einsum('uij,aij->ua',state,basis.conj())
 		else:
 			pass
+		state = state.real
 		return state
 
-	try:
-		mplstyle = '../src/plot.mplstyle'
-		with matplotlib.style.context(mplstyle):
-			try:
-				try:
-					fig = plt.figure(figsize=(6, 6))
-					ax = fig.add_subplot(111, projection='3d')
-					fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
+	# try:
+	mplstyle = '../src/plot.mplstyle'
+	with matplotlib.style.context(mplstyle):
+			# try:
+				# try:
+		fig = plt.figure(figsize=(12, 12))
+		ax = fig.add_subplot(111, projection='3d')
+		fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
 
-					ax.grid(False)
-					ax.set_axis_off()
-					ax.view_init(30, 45)
-					ax.dist = 7
+		ax.grid(False)
+		ax.set_axis_off()
+		ax.view_init(30, 45)
+		ax.dist = 7
 
-					x, y, z = np.array([[-1.5,0,0], [0,-1.5,0], [0,0,-1.5]])
-					u, v, w = np.array([[3,0,0], [0,3,0], [0,0,3]])
-					ax.quiver(x, y, z, u, v, w, arrow_length_ratio=0.05, color='black', linewidth=1.2)
+		# x, y, z = array([[-1.5,0,0], [0,-1.5,0], [0,0,-1.5]])
+		# u, v, w = array([[3,0,0], [0,3,0], [0,0,3]])
+		# ax.quiver(x, y, z, u, v, w, arrow_length_ratio=0.05, color='black', linewidth=1.2)
 
-					ax.text(0, 0, 1.7, r'$\ket{0}$', color='black', fontsize=16)
-					ax.text(0, 0, -1.9, r'$\ket{1}$', color='black', fontsize=16)
-					ax.text(1.9, 0, 0, r'$\ket{+}$', color='black', fontsize=16)
-					ax.text(-1.7, 0, 0, r'$\ket{-}$', color='black', fontsize=16)
-					ax.text(0, 1.7, 0, r'$\ket{i+}$', color='black', fontsize=16)
-					ax.text(0,-1.9, 0, r'$\ket{i-}$', color='black', fontsize=16)
+		ax.text(0, 0, 1.7, r'$\ket{0}$', color='black', fontsize=16)
+		ax.text(0, 0, -1.9, r'$\ket{1}$', color='black', fontsize=16)
+		ax.text(1.9, 0, 0, r'$\ket{+}$', color='black', fontsize=16)
+		ax.text(-1.7, 0, 0, r'$\ket{-}$', color='black', fontsize=16)
+		ax.text(0, 1.7, 0, r'$\ket{i+}$', color='black', fontsize=16)
+		ax.text(0,-1.9, 0, r'$\ket{i-}$', color='black', fontsize=16)
 
-					state = coordinates(state)
+		state = coordinates(state)
 
-					ax.scatter(state[:,0], state[:,1], state[:, 2], color=getattr(plt.cm,'viridis')(0.5),s=12,alpha=0.6)
+		ax.scatter(state[:,0], state[:,1], state[:, 2], color=getattr(plt.cm,'viridis')(0.5),s=12,alpha=0.6)
 
-					if path:
-						if not isinstance(path,str):
-							path = 'bloch.pdf'
-						fig.savefig(path,bbox_inches='tight')
+		if path:
+			if not isinstance(path,str):
+				path = 'bloch.pdf'
+			fig.savefig(path,bbox_inches='tight')
 
-				except Exception:
-					pass
-			except Exception:
-				pass
-	except Exception:
-		pass
+			# 	except Exception as e:
+			# 		print(e)
+			# 		pass
+			# except Exception as e:
+			# 	print(e)
+			# 	pass
+	# except Exception as e:
+	# 	print(e)
+	# 	pass
 	return fig,ax
 

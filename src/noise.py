@@ -69,7 +69,6 @@ def haar(shape,bounds,random,seed,dtype):
 	_dtype = datatype(dtype)
 
 	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
-	data /= sqrt(2)
 
 	data = data.reshape(*data.shape[:1],*(1,)*(n-ndim),*data.shape[1:])
 
@@ -144,19 +143,6 @@ def noiseize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 	# Setup hyperparameters
 	setup(hyperparameters,cls=cls)
 
-	# Shape of data (either (k,*shape) or (k,l,*shape)) depending on hyperparameters['shape']
-	shape,dims = hyperparameters['shape'],shape
-	ndim = len(dims)
-	shape[-ndim:] = dims
-
-
-	# Mappings of states
-	maps = ['matrix']
-	if mapping in maps:
-		pass
-	else:
-		pass
-	
 	# Basis
 	operators = {
 		attr: basis[attr].astype(dtype)
@@ -175,8 +161,17 @@ def noiseize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 	if isinstance(string,str):
 		scale = hyperparameters['scale']
 		if string in ['phase']:
+			data = ['I','Z']
+
+			print(size)
+			for i in data:
+				print(i)
+			for i in itertools.product(data,repeat=size):
+				print(i)
+
 			data = [sqrt(1-scale)*basis['I'],
 					sqrt(scale)*basis['Z']]
+
 			data = array([
 				tensorprod(i)
 				for i in itertools.product(data,repeat=size)
@@ -184,5 +179,8 @@ def noiseize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 
 	if mapping not in maps:
 		data = None
+
+
+	exit()
 
 	return data

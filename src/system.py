@@ -761,6 +761,21 @@ class Metric(object):
 			@jit
 			def grad(a,b,da):
 				return -_grad(a,b,da)	
+		elif self.metric in ['infidelity.abs.sum']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func = inner_abs2
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = gradient_inner_abs2
+
+			@jit
+			def func(a,b):
+				return 1-_func(a,b)
+			@jit
+			def grad(a,b,da):
+				return -_grad(a,b,da)					
 		elif self.metric in ['infidelity.real']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize

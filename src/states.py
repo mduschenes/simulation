@@ -56,23 +56,11 @@ def haar(shape,bounds,random,seed,dtype):
 	n = 4
 
 	ndim = len(shape)
-	_dtype = datatype(dtype)
+
+	bounds = [-1,1]
+	random = 'haar'
 
 	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
-	data /= sqrt(2)
-
-	data = data.reshape(*data.shape[:1],*(1,)*(n-ndim),*data.shape[1:])
-
-	for i in range(data.shape[0]):
-		for j in range(data.shape[1]):
-
-			Q,R = qr(data[i,j])
-			R = diag(R)
-			R = diag(R/abs(R))
-			
-			data = data.at[i,j].set(Q.dot(R))
-
-	data = data.reshape(shape).astype(dtype)
 
 	data = data[...,0]
 
@@ -83,7 +71,11 @@ def haar(shape,bounds,random,seed,dtype):
 
 		axis = 1
 		size = shape[axis]
-		weights = rand(size,bounds=[0,1],key=seed,dtype=_dtype)
+		bounds = [0,1]
+		key = seed
+		dtype = datatype(dtype)
+
+		weights = rand(size,bounds=bounds,key=key,dtype=dtype)
 
 		data = average(data,axis,weights)
 
@@ -134,22 +126,8 @@ def stateize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 	# Setup hyperparameters
 	setup(hyperparameters,cls=cls)
 
-	# Shape of data (either (k,*shape) or (k,l,*shape)) depending on hyperparameters['shape']
-	shape,dims = hyperparameters['shape'],shape
-	ndim = len(dims)
-	shape[-ndim:] = dims
-
-
-	# Mappings of states
-	maps = ['matrix']
-	n = 4
-	if mapping in maps:
-		m = 0
-	else:
-		m = 1
-	ndim = len(shape)
-	shape = (*shape[:1],*(1,)*(n-ndim-m),*shape[min(ndim-1-m,1):])
-
+	# Shape of data (either (k,*shape) or (k,d,*shape)) depending on hyperparameters['shape'] (k,d)
+	shape = [*hyperparameters['shape'][:-len(shape)],*shape]
 
 	# Delimiter for string
 	delimiter = '_'
@@ -186,9 +164,6 @@ def stateize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 		assert (size == locality), 'Only locality = size states'
 
 		if string is not None:
-			# def func(i,shape=shape,string=string,locality=locality,hyperparameters=hyperparameters,dtype=dtype):
-			# 	return state
-			# data = vmap(func)(arange(n))
 			data = state = tensorprod([
 					props[string]['func'](shape,
 						bounds=hyperparameters['bounds'],
@@ -203,13 +178,10 @@ def stateize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 			data = array(load(data))
 	
 	# Assert data is normalized
-	# assert allclose(ones(n),data.conj().T.dot(data))
+	# assert allclose(ones(data.shape[0]),data.conj().T.dot(data))
 
 	# Set dtype of data
 	data = data.astype(dtype=dtype)
 
-
-	if mapping not in maps:
-		data = None
 
 	return data		
