@@ -52,7 +52,7 @@ def _variables(hyperparameters,parameter,group):
 
 	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
-	scale = [hyperparameters[parameter]['scale'],2*pi]
+	scale = [hyperparameters[parameter]['scale'],1]
 	index = hyperparameters[parameter]['group'].index(group)
 
 	if parameter in ['zz'] and group in [('zz',)]:

@@ -17,7 +17,7 @@ from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis
 from src.utils import summation,exponentiation
 from src.utils import inner_abs2,inner_real,inner_imag
 from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import eig,qr
+from src.utils import eig,qr,einsum
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,is_array,is_ndarray,isclose,is_naninf
 from src.utils import parse,to_str,to_number,scinotation,datatype,slice_size
@@ -127,20 +127,38 @@ def test_state(path,tol):
 
 	hyperparameters = load(path)
 
+
 	data = None
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 	hyperparams = hyperparameters['state']
+	hyperparams['shape'] = [2,1,-1,-1]
 	size = hyperparameters['model']['N']
+	samples = True
 	dtype = hyperparameters['model']['system']['dtype']
 	cls = None
 
-	data = stateize(data,shape,hyperparams,size=size,dtype=dtype,cls=cls)
+	tol = 1e-20
+
+	state,weights = stateize(data,shape,hyperparams,size=size,samples=samples,dtype=dtype,cls=cls)
+
+	ndim = state.ndim
+
+	if ndim == 1:
+		norm = einsum('i,i->',state.conj(),state).real
+	elif ndim == 2 and state.shape[0] == state.shape[1]:
+		norm = einsum('ii->',state).real
+	elif ndim == 2 and state.shape[0] != state.shape[1]:
+		norm = einsum('ui,ui,u->',state.conj(),state,weights).real
+	elif ndim == 3:
+		norm = einsum('uii,u->',state,weights).real
 
 	try:
-		eigs = eig(data,hermitian=True)
+		eigs = eig(state,hermitian=True)
 		assert (abs(eigs)>=tol).all()
 	except TypeError:
 		raise
+
+	assert allclose(norm,1.0)
 
 	return
 

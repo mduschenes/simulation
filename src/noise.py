@@ -187,8 +187,6 @@ def noiseize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=No
 				for i in itertools.product(data,repeat=size)
 				])
 
-	exit()
-
 
 	# Set samples
 	if samples is not None and isinstance(samples,bool):

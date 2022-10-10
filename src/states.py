@@ -55,13 +55,9 @@ def haar(shape,bounds,random,seed,dtype):
 	bounds = [-1,1]
 	random = 'haar'
 
-	print('initial state',shape)
-
 	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
 
 	ndim = data.ndim
-
-	print('inter state',data.shape)
 
 	# Create random matrices versus vectors
 	if ndim == 1:
@@ -89,8 +85,6 @@ def haar(shape,bounds,random,seed,dtype):
 
 	else:
 		pass
-
-	print('final state',data.shape)
 
 	return data
 
@@ -134,7 +128,14 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=No
 	# Set data
 	if shape is None or hyperparameters.get('shape') is None:
 		data = None
-		return data
+		samples = samples if samples is not None else None
+		returns = ()
+		returns += (data,)
+
+		if samples is not None:
+			returns += (samples,)
+
+		return returnargs(returns)
 
 	# Ensure shape is iterable
 	if isinstance(shape,int):

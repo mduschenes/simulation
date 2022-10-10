@@ -1330,17 +1330,18 @@ def qr(a):
 	return np.linalg.qr(a)
 
 
-@partial(jit,static_argnums=(1,2,))
-def norm(a,axis=None,ord=2):
+@partial(jit,static_argnums=(1,2,3,))
+def norm(a,axis=None,ord=2,keepdims=False):
 	'''
 	Norm of array
 	Args:
 		a (array): array to be normalized
 		axis (int): axis to normalize over. Flattens array if None.
 		ord (int,str): order of normalization
+		keepdims (bool): Keep axis of size 1 along normalization
 	'''
 
-	out = np.linalg.norm(a,axis=axis,ord=ord)
+	out = np.linalg.norm(a,axis=axis,ord=ord,keepdims=keepdims)
 
 	return out
 
@@ -1356,7 +1357,7 @@ def normed(a,b):
 	Returns:
 		out (array): Distance
 	'''	
-	return abs2(a-b).sum()/sqrt(a.shape[0]*b.shape[0])/2
+	return norm(a-b,ord=2)
 
 @jit
 def gradient_normed(a,b,da):
@@ -1371,7 +1372,7 @@ def gradient_normed(a,b,da):
 	'''
 	@jit
 	def func(da):
-		return (((a-b).conj()*da).sum()).real/sqrt(a.shape[0]*b.shape[0])
+		return (((a-b).conj()*da).sum()).real
 	out = vmap(func)(da)
 	return out
 	# return gradient(normed)(a,b)
@@ -1392,7 +1393,7 @@ def normed_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return out/operands[0].shape[0]/2
+		return out
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1421,7 +1422,7 @@ def gradient_normed_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return 2*out.real/operands[0].shape[0]/2
+		return 2*out.real
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1443,7 +1444,7 @@ def inner(a,b):
 	Returns:
 		out (array): Inner product
 	'''	
-	return trace(tensordot(a,b.T,1).real)/sqrt(a.shape[0]*b.shape[0])
+	return trace(tensordot(a,b.T,1).real)
 
 
 @jit
@@ -1459,7 +1460,7 @@ def gradient_inner(a,b,da):
 	'''
 	@jit
 	def func(da):
-		return trace(tensordot(da,b.T,1).real)/sqrt(a.shape[0]*b.shape[0])
+		return trace(tensordot(da,b.T,1).real)
 	
 	out = vmap(func)(da)
 	return out
@@ -1479,7 +1480,8 @@ def inner_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return out.real/sqrt(operands[0].shape[0]*operands[1].shape[0])
+		return out.real
+		# return out.real/sqrt(operands[0].shape[0]*operands[1].shape[0])
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1506,7 +1508,8 @@ def gradient_inner_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return out.real/sqrt(operands[0].shape[0]*operands[0].shape[1])
+		return out.real
+		# return out.real/sqrt(operands[0].shape[0]*operands[0].shape[1])
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1527,7 +1530,7 @@ def inner_abs2(a,b):
 	Returns:
 		out (array): Absolute square of inner product
 	'''	
-	return abs2(trace(tensordot(a,b.T,1)))/(a.shape[0]*b.shape[0])
+	return abs2(trace(tensordot(a,b.T,1)))
 
 
 @jit
@@ -1545,7 +1548,7 @@ def gradient_inner_abs2(a,b,da):
 	def func(da):
 		return (
 			2*(trace(tensordot(da,b.T,1))*
-			trace(tensordot(a,b.T,1)).conj())).real/(a.shape[0]*b.shape[0])
+			trace(tensordot(a,b.T,1)).conj())).real
 	
 	out = vmap(func)(da)
 	return out
@@ -1565,7 +1568,7 @@ def inner_abs2_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return abs2(out)/(operands[0].shape[0]*operands[1].shape[0])
+		return abs2(out)
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1603,7 +1606,7 @@ def gradient_inner_abs2_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper_grad(out,*operands):
-		return out/(operands[0].shape[0]*operands[0].shape[1])
+		return out
 
 	_einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper_grad)
 
@@ -1624,7 +1627,7 @@ def inner_real(a,b):
 	Returns:
 		out (array): Real inner product
 	'''	
-	return (trace(tensordot(a,b.T,1))).real/sqrt(a.shape[0]*b.shape[0])
+	return (trace(tensordot(a,b.T,1))).real
 
 
 @jit
@@ -1640,7 +1643,7 @@ def gradient_inner_real(a,b,da):
 	'''
 	@jit
 	def func(da):
-		return (trace(tensordot(da,b.T,1)).real)/sqrt(a.shape[0]*b.shape[0])
+		return (trace(tensordot(da,b.T,1)).real)
 	out = vmap(func)(da)
 	return out
 	# return gradient(inner_real)(a,b)
@@ -1660,7 +1663,7 @@ def inner_real_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return out.real/sqrt(operands[0].shape[0]*operands[1].shape[0])
+		return out.real
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1687,7 +1690,7 @@ def gradient_inner_real_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return out.real/sqrt(operands[0].shape[0]*operands[0].shape[1])
+		return out.real
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1708,7 +1711,7 @@ def inner_imag(a,b):
 	Returns:
 		out (array): Imaginary inner product
 	'''	
-	return (trace(tensordot(a,b.T,1))).imag/sqrt(a.shape[0]*b.shape[0])
+	return (trace(tensordot(a,b.T,1))).imag
 
 
 @jit
@@ -1724,7 +1727,7 @@ def gradient_inner_imag(a,b,da):
 	'''
 	@jit
 	def func(da):
-		return (trace(tensordot(da,b.T,1)).imag)/sqrt(a.shape[0]*b.shape[0])
+		return (trace(tensordot(da,b.T,1)).imag)
 	out = vmap(func)(da)
 	return out
 	# return gradient(inner_imag)(a,b)	
@@ -1743,7 +1746,7 @@ def inner_imag_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return out.imag/sqrt(operands[0].shape[0]*operands[1].shape[0])
+		return out.imag
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1770,7 +1773,7 @@ def gradient_inner_imag_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return out.imag/sqrt(operands[0].shape[0]*operands[0].shape[1])
+		return out.imag
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1796,7 +1799,7 @@ def inner_vectorabs2_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper(out,*operands):
-		return abs2(out)/(operands[0].shape[0]*operands[1].shape[0])
+		return abs2(out)
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -1834,7 +1837,7 @@ def gradient_inner_vectorabs2_einsum(*shapes,optimize=True):
 
 	@jit
 	def wrapper_grad(out,*operands):
-		return out/(operands[0].shape[0]*operands[0].shape[1])
+		return out
 
 	_einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper_grad)
 
@@ -2810,8 +2813,9 @@ def gradient_expm(x,A,I):
 	def func(i,out):
 		return dot(_expm(x[i],A[i%d],I),out)
 
-	def grad(i,out):
-		return forloop(i+1,m,func,dot(forloop(0,i+1,func,I,A[i%d]),out))
+	def grad(i):
+		out = I
+		return forloop(i+1,m,func,dot(forloop(0,i+1,func,out),A[i%d]))
 
 	return jax.vmap(grad)(arange(m))
 

@@ -16,7 +16,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient
+from src.utils import jit,value_and_gradient,gradient,hessian
 from src.utils import is_naninf
 from src.line_search import line_search,armijo
 
@@ -218,17 +218,52 @@ class Null_Search(LineSearchBase):
 
 
 class Objective(object):		
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,func,grad=None,hess=None,callback=None,hyperparameters={}):
 		'''	
 		Objective class for function
 		Args:
-			func (callable): Objective function with signature func(parameters)
-			grad (callable): Gradient of function  with signature grad(parameters)
-			callback (callable): Gradient of function  with signature callback(parameters,func,grad,hyperparameters)
+			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
+			grad (callable,iterable[callable]): Gradient of function  with signature grad(parameters)
+			hess (callable,iterable[callable]): Hessian of function, with signature hess(parameters)
+			callback (callable): Gradient of function  with signature callback(parameters,func,grad,hess,funcs,grads,hesss,hyperparameters)
 			hyperparameters (dict): Objective hyperparameters
 		'''
 
+		if not callable(func):
+			funcs = func
+			func = partial((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=funcs)
+		else:
+			funcs = [func]
+			func = func
+
+		if grad is None:
+			grads = [None for func in funcs]
+			grad = None
+		elif not callable(grad):
+			grads = grad
+			grad = partial((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=grads)
+		else:
+			grads = [None for func in funcs]
+			grad = grad
+
+		if hess is None:
+			hesss = [None for func in funcs]
+			hess = None
+		elif not callable(hess):
+			hesss = hess
+			hess = partial((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=hesss)
+		else:
+			hesss = [None for func in funcs]
+			hess = hess
+
+		values_and_grads = [value_and_grad(func,grad) for func,grad in zip(funcs,grads)]
+		self.values_and_grads,self.funcs,self.grads = [[val_and_grad[i] for val_and_grad in values_and_grads] 
+				for i in range(min(len(val_and_grad) for val_and_grad in values_and_grads))]
+		self.hesss = [hessian(func) if hess is None else hess for func,hess in zip(funcs,hesss)]
+
 		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
+		self.hess = hessian(func) if hess is None else hess
+
 		self.hyperparameters = hyperparameters
 
 		if callback is None:
@@ -236,7 +271,9 @@ class Objective(object):
 				status = False
 				return False
 
-		self.callback = jit(partial(callback,func=self.func,grad=self.grad,hyperparameters=self.hyperparameters))
+		self.callback = jit(partial(callback,func=self.func,grad=self.grad,
+				funcs=self.funcs,grads=self.grads,hess=self.hess,
+				hyperparameters=self.hyperparameters))
 
 		return
 
@@ -258,9 +295,20 @@ class Objective(object):
 		Args:
 			parameters (array): parameters
 		Returns:
-			out (object): Return of objective function
+			out (object): Return of gradient function
 		'''
-		return self.grad(parameters)		
+		return self.grad(parameters)	
+
+	@partial(jit,static_argnums=(0,))
+	def __hessian__(self,parameters):
+		''' 
+		Hessian call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of hessian function
+		'''	
+		return self.hess(parameters)	
 
 	@partial(jit,static_argnums=(0,))
 	def __callback__(self,parameters):
