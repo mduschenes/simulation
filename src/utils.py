@@ -1161,7 +1161,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 			else:
 				bounds[i] = float(bounds)
 
-	subrandoms = ['haar','hermitian']
+	subrandoms = ['haar','hermitian','symmetric']
 	complex = is_complexdtype(dtype) and random not in subrandoms
 	_dtype = dtype
 	dtype = datatype(dtype)
@@ -1210,7 +1210,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 
 		if is1d:
 			out = out[...,0]
-	elif random in ['hermitian']:
+	elif random in ['hermitian','symmetric']:
 		
 		bounds = [-1,1]
 		subrandom = 'gaussian'

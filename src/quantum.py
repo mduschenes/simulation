@@ -1422,7 +1422,7 @@ class Unitary(Hamiltonian):
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=pspace=space,time=time,lattice=lattice,metric=metric,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,metric=metric,system=system)
 
 		return
 
@@ -1765,6 +1765,7 @@ class Operator(module):
 		self.site = site
 		self.string = string
 		self.interaction = interaction
+		self.locality = len(site)
 		
 		self.hyperparameters = hyperparameters
 		
