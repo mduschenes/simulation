@@ -2791,7 +2791,8 @@ def expm(x,A,I):
 
 	def func(i,out):
 		U = _expm(x[i],A[i%d],I)
-		return einsummation(subscripts,U,out)
+		return einsummation(subscripts,out,U)
+		# return einsummation(subscripts,U,out)
 		# return dot(U,out)
 
 	return forloop(0,m,func,I)
@@ -2811,11 +2812,13 @@ def gradient_expm(x,A,I):
 	d,shape = A.shape[0],A.shape[1:]
 
 	def func(i,out):
-		return dot(_expm(x[i],A[i%d],I),out)
+		return dot(out,_expm(x[i],A[i%d],I))
+		# return dot(_expm(x[i],A[i%d],I),out)
 
 	def grad(i):
 		out = I
 		return forloop(i+1,m,func,dot(forloop(0,i+1,func,out),A[i%d]))
+		# return forloop(i+1,m,func,dot(forloop(0,i+1,func,out),A[i%d]))
 
 	return jax.vmap(grad)(arange(m))
 

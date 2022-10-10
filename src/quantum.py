@@ -140,9 +140,13 @@ class Object(object):
 		self.state = None
 		self.noise = None
 		self.attributes = {}
+		self.identity = None
 		self.constants = None
 		self.coefficients = 1
-		self.size = None		
+		self.size = None	
+
+		self.summation = None
+		self.exponentiation = None 
 
 		self.fig = {}
 		self.ax = {}
@@ -164,23 +168,21 @@ class Object(object):
 		self.hessian = hessian(self.func)
 		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
 
-
 		if self.state is None and self.noise is None:
-			self.summation = jit(lambda parameters,data,identity,state,noise: summation(parameters,data,identity))
-			self.exponentiation = jit(lambda parameters,data,identity,state,noise: exponentiation(parameters,data,identity))
+			self.summation = jit(partial(summation,data=self.data,identity=self.identity))
+			self.exponentiation = jit(partial(exponentiation,data=self.data,identity=self.identity))
 		elif self.state is not None and self.noise is None:
-			self.summation = jit(lambda parameters,data,identity,state,noise: summationv(parameters,data,identity,state))
-			self.exponentiation = jit(lambda parameters,data,identity,state,noise: exponentiationv(parameters,data,identity,state))
+			self.summation = jit(partial(summationv,data=self.data,identity=self.identity,state=self.state))
+			self.exponentiation = jit(partial(exponentiationv,data=self.data,identity=self.identity,state=self.state))
 		elif self.state is None and self.noise is not None:
-			self.summation = jit(lambda parameters,data,identity,state,noise: summationv(parameters,data,identity,noise))
-			self.exponentiation = jit(lambda parameters,data,identity,state,noise: exponentiationc(parameters,data,identity,noise))
+			self.summation = jit(partial(summationc,data=self.data,identity=self.identity,constants=self.noise))
+			self.exponentiation = jit(partial(exponentiationc,data=self.data,identity=self.identity,constants=self.noise))
 		elif self.state is not None and self.noise is not None:
-			self.summation = jit(lambda parameters,data,identity,state,noise: summationm(parameters,data,identity,state,noise))
-			self.exponentiation = jit(lambda parameters,data,identity,state,noise: exponentiationm(parameters,data,identity,state,noise))
+			self.summation = jit(partial(summationm,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
+			self.exponentiation = jit(partial(exponentiationm,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
 		else:
-			self.summation = jit(lambda parameters,data,identity,state,noise: summation(parameters,data,identity))
-			self.exponentiation = jit(lambda parameters,data,identity,state,noise: exponentiation(parameters,data,identity))
-			
+			self.summation = jit(partial(summation,data=self.data,identity=self.identity))
+			self.exponentiation = jit(partial(exponentiation,data=self.data,identity=self.identity))
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
 			for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','backend','architecture','shape']]
@@ -473,7 +475,7 @@ class Object(object):
 		'''		
 		parameters = self.__parameters__(parameters)
 
-		return self.summation(parameters,self.data,self.identity,state=self.state,noise=self.noise)
+		return self.summation(parameters)
 
 
 	@partial(jit,static_argnums=(0,))
@@ -1230,7 +1232,7 @@ class Hamiltonian(Object):
 		'''		
 		parameters = self.__parameters__(parameters)
 
-		return self.summation(parameters,self.data,self.identity,state=self.state,noise=self.noise)
+		return self.summation(parameters)
 
 	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={}):
 		'''
@@ -1436,7 +1438,7 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
-		return self.exponentiation(self.coefficients*parameters,self.data,self.identity,state=self.state,noise=self.noise)
+		return self.exponentiation(self.coefficients*parameters)
 
 	@partial(jit,static_argnums=(0,))
 	def __derivative_analytical__(self,parameters):

@@ -52,8 +52,12 @@ def _variables(hyperparameters,parameter,group):
 
 	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
-	scale = [hyperparameters[parameter]['scale'],2*pi] if method in ['constrained'] else [hyperparameters[parameter]['scale']]*len(hyperparameters[parameter]['group'])
 	index = hyperparameters[parameter]['group'].index(group)
+
+	if method in ['constrained']:
+		scale = [hyperparameters[parameter]['scale'],2*pi]
+	else:
+		scale = [hyperparameters[parameter]['scale']]*len(hyperparameters[parameter]['group'])
 
 	if parameter in ['zz'] and group in [('zz',)]:
 		scale[index] /= 4*kwargs['min']*kwargs['tau']
