@@ -1161,7 +1161,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 			else:
 				bounds[i] = float(bounds)
 
-	subrandoms = ['haar']
+	subrandoms = ['haar','hermitian']
 	complex = is_complexdtype(dtype) and random not in subrandoms
 	_dtype = dtype
 	dtype = datatype(dtype)
@@ -1181,15 +1181,20 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 		subrandom = 'gaussian'
 		subdtype = 'complex'
 		ndim = len(shape)
-		n = 4
+
+		is1d = ndim == 1 
+
+		if ndim < 2:
+			shape = [*shape]*2
+			ndim = 2
 
 		out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)
 
-		if n == 2:
-			new = (1,1,*out.shape)
+		if ndim < 3:
+			new = (*(1,)*(4-ndim),*out.shape)
 			out = out.reshape(new)
 		else:
-			new = (*out.shape[:1],*(1,)*(n-ndim),*out.shape[1:])
+			new = (*out.shape[:1],*(1,)*(4-ndim),*out.shape[1:])
 			out = out.reshape(new)
 
 		for i in range(out.shape[0]):
@@ -1202,6 +1207,25 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 				out = out.at[i,j].set(Q.dot(R))
 
 		out = out.reshape(shape)
+
+		if is1d:
+			out = out[...,0]
+	elif random in ['hermitian']:
+		
+		bounds = [-1,1]
+		subrandom = 'gaussian'
+		subdtype = 'complex'
+		ndim = len(shape)
+
+		is1d = ndim == 1 
+
+		if ndim < 2:
+			shape = [*shape]*2
+			ndim = 2
+
+		out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)	
+
+		out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
 
 	elif random in ['zeros']:
 		out = zeros(shape,dtype=dtype)
@@ -2161,19 +2185,6 @@ def contraction(parameters,data,identity):
 
 
 @jit
-def summation(parameters,data,identity):
-	'''
-	Calculate matrix sum of parameters times data
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		data (array): Array of data to matrix sum of shape (d,n,n)
-		identity (array): Array of data identity
-	Returns:
-		out (array): Matrix sum of data of shape (n,n)
-	'''	
-	return addition(parameters*data)
-
-@jit
 def multiplication(parameters,data,identity):
 	'''
 	Calculate tensor product of parameters times data
@@ -2188,27 +2199,123 @@ def multiplication(parameters,data,identity):
 
 
 @jit
-def exponentiation(parameters,data,identity,state=None,noise=None):
+def summation(parameters,data,identity):
+	'''
+	Calculate matrix sum of parameters times data
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return addition(parameters*data)
+
+
+@jit
+def exponentiation(parameters,data,identity):
 	'''
 	Calculate matrix exponential of parameters times data
 	Args:
 		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
 		data (array): Array of data to matrix exponentiate of shape (d,n,n)
 		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,) or (n,n) or (k,n) or (k,n,n)
 	Returns:
 		out (array): Matrix exponential of data of shape (n,n)
 	'''		
-	if state is None and noise is None:
-		out = expm(parameters,data,identity)
-	elif state is not None and noise is None:
-		out = expmv(parameters,data,identity,state)
-	else:
-		out = expmvcc(parameters,data,identity,state,noise)
-
+	out = expm(parameters,data,identity)
 	return out
 
 
+@jit
+def summationv(parameters,data,identity,state):
+	'''
+	Calculate matrix sum of parameters times data, acting on vector
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return dot(addition(parameters*data),state)
+
+@jit
+def exponentiationv(parameters,data,identity,state):
+	'''
+	Calculate matrix exponential of parameters times data, acting on vector
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
+		data (array): Array of data to matrix exponentiate of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,) or (p,n)
+	Returns:
+		out (array): Matrix exponential of data of shape (n,n)
+	'''		
+	out = expmv(parameters,data,identity,state)
+	return out
+
+@jit
+def summationm(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix sum of parameters times data, acting on matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return dot(addition(parameters*data),state)
+
+@jit
+def exponentiationm(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix exponential of parameters times data, acting on matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
+		data (array): Array of data to matrix exponentiate of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix exponential of data of shape (n,n)
+	'''		
+	out = expm(parameters,data,identity)
+	return out
+
+
+@jit
+def summationc(parameters,data,identity,constants):
+	'''
+	Calculate matrix sum of parameters times data, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return dot(constants,addition(parameters*data))
+
+@jit
+def exponentiationc(parameters,data,identity,constants):
+	'''
+	Calculate matrix exponential of parameters times data, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
+		data (array): Array of data to matrix exponentiate of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+	Returns:
+		out (array): Matrix exponential of data of shape (n,n)
+	'''		
+	out = expmc(parameters,data,identity,constants)
+	return out
 
 @jit
 def distance(a,b):
@@ -2647,13 +2754,14 @@ def exp(a):
 	return np.exp(a)
 
 @jit
-def _expm(x,A,I):
+def _expm(x,A,I,n=2):
 	'''
 	Calculate matrix exponential of parameters times data
 	Args:
 		x (array): parameters of shape (1,) or (n,) or (n,n)
 		A (array): Array of data to matrix exponentiate of shape (n,n)
 		I (array): Array of data identity
+		n (int): Number of eigenvalues of matrix
 	Returns:
 		out (array): Matrix exponential of A of shape (n,n)
 	'''	
@@ -2672,10 +2780,16 @@ def expm(x,A,I):
 		out (array): Matrix exponential of A of shape (n,n)
 	'''		
 	m = x.shape[0]
-	d = A.shape[0]
+	d,shape = A.shape[0],A.shape[1:]
+
+	subscripts = 'ij,jk->ik'
+	shapes = (shape,shape)
+	einsummation = einsum #(subscripts,shapes)
 
 	def func(i,out):
-		return dot(_expm(x[i],A[i%d],I),out)
+		U = _expm(x[i],A[i%d],I)
+		return einsummation(subscripts,U,out)
+		# return dot(U,out)
 
 	return forloop(0,m,func,I)
 
@@ -2691,7 +2805,7 @@ def gradient_expm(x,A,I):
 		out (array): Gradient of matrix exponential of A of shape (m,n,n)
 	'''			
 	m = x.shape[0]
-	d = A.shape[0]
+	d,shape = A.shape[0],A.shape[1:]
 
 	def func(i,out):
 		return dot(_expm(x[i],A[i%d],I),out)
@@ -2714,13 +2828,40 @@ def expspm(x,A,I):
 		out (array): Matrix exponential of A of shape (n,n)
 	'''		
 	m = x.shape[0]
-	d = A.shape[0]
+	d,shape = A.shape[0],A.shape[1:]
 
 	def func(i,out):
 		return out + x[i]*A[i%d]
 
 	out = zeros(I.shape,dtype=I.dtype)
 	return sp.linalg.expm(forloop(0,m,func,out))
+
+
+@jit
+def expmc(x,A,I,B):
+	'''
+	Calculate matrix exponential of parameters times data, multiplied with constant matrix
+	Args:
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		A (array): Array of data to matrix exponentiate of shape (d,n,n)
+		I (array): Array of data identity
+		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
+	Returns:
+		out (array): Matrix exponential of A of shape times vector of shape (n,)
+	'''		
+	m = x.shape[0]
+	d,shape = A.shape[0],A.shape[1:]
+
+	subscripts = 'ij,jk,kl->il'
+	shapes = (shape,shape,shape)
+	einsummation = einsum #(subscripts,shapes)
+
+	def func(i,out):
+		U = _expm(x[i],A[i%d],I)
+		return einsummation(subscripts,B,U,out)
+		# return dot(B,dot(U,out))
+
+	return forloop(0,m,func,I)
 
 
 @jit
@@ -2731,15 +2872,50 @@ def expmv(x,A,I,v):
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity
-		v (array): Array of data to multiply with matrix exponentiate of shape (n,) or (n,n)
+		v (array): Array of data to multiply with matrix exponentiate of shape (n,)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
-	d = A.shape[0]
+	d,shape = A.shape[0],A.shape[1:]
+	n = v.shape[0]
+
+	subscripts = 'ij,j->i'
+	shapes = (shape,(n,))
+	einsummation = einsum #(subscripts,shapes)
 
 	def func(i,out):
-		return dot(_expm(x[i],A[i%d],I),out)
+		U = _expm(x[i],A[i%d],I)
+		return einsummation(subscripts,U,out)
+		# return dot(U,out)
+
+	return forloop(0,m,func,v)
+
+
+@jit
+def expmm(x,A,I,v):
+	'''
+	Calculate matrix exponential of parameters times data, multiplied with matrix
+	Args:
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		A (array): Array of data to matrix exponentiate of shape (d,n,n)
+		I (array): Array of data identity
+		v (array): Array of data to multiply with matrix exponentiate of shape (n,n)
+	Returns:
+		out (array): Matrix exponential of A of shape times vector of shape (n,)
+	'''		
+	m = x.shape[0]
+	d,shape = A.shape[0],A.shape[1:]
+	n = v.shape[0]
+
+	subscripts = 'ij,jk,lk->il'
+	shapes = (shape,(n,n),shape[::-1])
+	einsummation = einsum #(subscripts,shapes)
+
+	def func(i,out):
+		U = _expm(x[i],A[i%d],I)
+		return einsummation(subscripts,U,out,U.conj())
+		# return dot(dot(U,out),U.conj())
 
 	return forloop(0,m,func,v)
 
@@ -2747,52 +2923,58 @@ def expmv(x,A,I,v):
 @jit
 def expmvc(x,A,I,v,B):
 	'''
-	Calculate matrix exponential of parameters times data, multiplied with constant matrix and vector
+	Calculate matrix exponential of parameters times data, multiplied with vector, and constant matrix
 	Args:
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity
-		v (array): Array of data to multiply with matrix exponentiate of shape (n,) or (n,n)
-		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
+		v (array): Array of data to multiply with matrix exponentiate of shape (n,)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
-	d = A.shape[0]
-	k = B.shape[0]
+	d,shape = A.shape[0],A.shape[1:]
+	n = v.shape[0]
 
+	subscripts = 'ij,jk,k->i'
+	shapes = (shape,shape,(n,))
+	einsummation = einsum #(subscripts,shapes)
 
 	def func(i,out):
-		return dot(_expm(x[i],A[i%d],I),dot(B[i%k],out))
+		U = _expm(x[i],A[i%d],I)
+		return einsummation(subscripts,B,U,out)
+		# return dot(B,dot(U,out))
 
 	return forloop(0,m,func,v)
 
 
 @jit
-def expmvcc(x,A,I,v,B):
+def expmmc(x,A,I,v,B):
 	'''
-	Calculate matrix exponential of parameters times data, multiplied with constant matrix and vector
+	Calculate matrix exponential of parameters times data, multiplied with matrix, and constant matrix
 	Args:
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity
-		v (array): Array of data to multiply with matrix exponentiate of shape (n,) or (n,n)
+		v (array): Array of data to multiply with matrix exponentiate of shape (n,n)
 		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
-	d = A.shape[0]
+	d,shape = A.shape[0],A.shape[1:]
+	n = v.shape[0]
 	k = B.shape[0]
-	shape = A.shape[1:]
 
 	subscripts = 'aij,jk,kl,ml,anm->in'
-	shapes = ((k,*shape),(*shape,),(*shape,),(*shape,),(k,*shape))
+	shapes = ((k,*shape),(*shape,),(n,n,),(*shape,),(k,*shape))
 	einsummation = einsum #(subscripts,shapes)
+
 	def func(i,out):
 		y = slicing(x,i*d,d)
-		C = expm(y,A,I)
-		return einsummation(subscripts,B,C,out,C.conj(),B.conj())
+		U = expm(y,A,I)
+		return einsummation(subscripts,B,U,out,U.conj(),B.conj())
 
 	return forloop(0,m//d,func,v)
 
@@ -4512,7 +4694,7 @@ def bloch(state,path=None):
 		if path:
 			if not isinstance(path,str):
 				path = 'bloch.pdf'
-			fig.savefig(path,pad_inches=0.2)
+			fig.savefig(path,pad_inches=0.5)
 			# fig.savefig(path)
 			# fig.savefig(path,bbox_inches="tight",pad_inches=0.2)
 

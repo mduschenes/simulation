@@ -28,7 +28,7 @@ for PATH in PATHS:
 from src.utils import jit,gradient,hessian,fisher
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,dot,einsum
-from src.utils import summation,exponentiation
+from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationc,exponentiationc
 from src.utils import trotter,gradient_trotter,gradient_expm,gradient_sigmoid
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
@@ -90,16 +90,15 @@ class Object(object):
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
 		p (int): Trotter order		
-		mapping (str): Type of mapping, allowed strings in ['vector','matrix','tensor']
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
 		metric (str,Metric): Type of metric
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
+		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,mapping=None,space=None,time=None,lattice=None,metric=None,system=None):
+		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
 
 		self.N = N
 		self.D = D
@@ -110,7 +109,6 @@ class Object(object):
 		self.T = T
 		self.tau = tau
 		self.p = p
-		self.mapping = mapping
 		self.space = space
 		self.time = time
 		self.lattice = lattice
@@ -129,6 +127,7 @@ class Object(object):
 		self.key = None
 
 		self.timestamp = None
+		self.backend = None
 		self.architecture = None
 		self.delimiter = ' '
 		self.dims = []
@@ -165,8 +164,26 @@ class Object(object):
 		self.hessian = hessian(self.func)
 		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
 
+
+		if self.state is None and self.noise is None:
+			self.summation = jit(lambda parameters,data,identity,state,noise: summation(parameters,data,identity))
+			self.exponentiation = jit(lambda parameters,data,identity,state,noise: exponentiation(parameters,data,identity))
+		elif self.state is not None and self.noise is None:
+			self.summation = jit(lambda parameters,data,identity,state,noise: summationv(parameters,data,identity,state))
+			self.exponentiation = jit(lambda parameters,data,identity,state,noise: exponentiationv(parameters,data,identity,state))
+		elif self.state is None and self.noise is not None:
+			self.summation = jit(lambda parameters,data,identity,state,noise: summationv(parameters,data,identity,noise))
+			self.exponentiation = jit(lambda parameters,data,identity,state,noise: exponentiationc(parameters,data,identity,noise))
+		elif self.state is not None and self.noise is not None:
+			self.summation = jit(lambda parameters,data,identity,state,noise: summationm(parameters,data,identity,state,noise))
+			self.exponentiation = jit(lambda parameters,data,identity,state,noise: exponentiationm(parameters,data,identity,state,noise))
+		else:
+			self.summation = jit(lambda parameters,data,identity,state,noise: summation(parameters,data,identity))
+			self.exponentiation = jit(lambda parameters,data,identity,state,noise: exponentiation(parameters,data,identity))
+			
+
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
-			for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','architecture','shape']]
+			for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','backend','architecture','shape']]
 			)))
 
 		return	
@@ -354,11 +371,12 @@ class Object(object):
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
-		mapping = self.mapping
+		size = product(shape)
+		samples = None
 		cls = self
-		dtype = self._dtype
+		dtype = self.dtype
 
-		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,mapping=mapping,cls=cls,dtype=dtype)
+		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,size=size,samples=samples,cls=cls,dtype=dtype)
 
 		# Get reshaped parameters
 		attribute = 'values'
@@ -373,11 +391,11 @@ class Object(object):
 		shape = self.dims
 		hyperparams = hyperparameters['label']
 		size = self.N
-		mapping = self.mapping		
-		dtype = self.dtype
+		samples = None
 		cls = self
+		dtype = self.dtype
 
-		label = operatorize(data,shape,hyperparams,size=size,mapping=mapping,cls=cls,dtype=dtype)
+		label = operatorize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
 
 
 		# Get states
@@ -385,33 +403,52 @@ class Object(object):
 		shape = self.dims
 		hyperparams = hyperparameters['state']
 		size = self.N
-		mapping = self.mapping
+		samples = True
 		dtype = self.dtype
 		cls = self
 
-		state = stateize(data,shape,hyperparams,size=size,mapping=mapping,cls=cls,dtype=dtype)
+		state,weights = stateize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
 
 		# Get noise
 		data = None
 		shape = self.dims
 		hyperparams = hyperparameters['noise']
 		size = self.N
-		mapping = self.mapping		
-		dtype = self.dtype
+		samples = None
 		cls = self
+		dtype = self.dtype
 
-		noise = noiseize(data,shape,hyperparams,size=size,mapping=mapping,cls=cls,dtype=dtype)
+		noise = noiseize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
 
-		# Update parameters,label,state,noise, based on type of mapping of model
-		maps = ['matrix']
-		mapping = self.mapping
-		if mapping in maps:
-			label = dot(label,dot(state,label.conj().T))
-		else:
+		# Update label,state,noise based on state
+		# state.ndim = 3 : Density matrix evolution (multiple states)
+		# state.ndim = 2 and state.shape[0] == state.shape[1] : Density matrix evolution (single state)
+		# state.ndim = 2 and state.shape[0] != state.shape[1] : Pure state matrix evolution (multiple states)
+		# state.ndim = 1 : Pure state evolution (single state)
+
+		if state is None:
 			label = label.conj()
+			state = None
+			noise = None
+		elif state.ndim == 3:
+			label = einsum('ij,ujk,lk,u->il',label,state,label.conj(),weights)
+			state = einsum('ujk,u->jk',state,weights)
+			noise = noise
+		elif state.ndim == 2 and state.shape[0] == state.shape[1]:
+			label = einsum('ij,jk,lk->il',label,state,label.conj())
+			state = state
+			noise = noise
+		elif state.ndim == 2 and state.shape[0] != state.shape[1]:
+			label = einsum('ij,uj,u->i',label,state,weights)
+			state = einsum('uj,u->u',state,weights)
+			noise = noise
+		elif state.ndim == 1:
+			label = einsum('ij,j->i',label,state)
+			state = state
+			noise = noise
 
 		# Update class attributes
 		self.parameters = parameters
@@ -436,7 +473,7 @@ class Object(object):
 		'''		
 		parameters = self.__parameters__(parameters)
 
-		return summation(parameters,self.data,self.identity,state=self.state,noise=self.noise)
+		return self.summation(parameters,self.data,self.identity,state=self.state,noise=self.noise)
 
 
 	@partial(jit,static_argnums=(0,))
@@ -690,18 +727,18 @@ class Object(object):
 		'''
 		Set system attributes
 		Args:
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
 		'''
 		system = self.system if system is None else system
 		
 		self.system = System(system)		
 
 		self.dtype = self.system.dtype
-		self._dtype = datatype(self.dtype)
 		self.format = self.system.format
 		self.seed = self.system.seed
 		self.key = self.system.key
 		self.timestamp = self.system.timestamp
+		self.backend = self.system.backend
 		self.architecture = self.system.architecture
 		self.verbose = self.system.verbose
 
@@ -715,7 +752,7 @@ class Object(object):
 			N (int): Number of qudits
 			D (int): Dimension of qudits
 			space (str,Space): Type of Hilbert space
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
 		'''
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -747,7 +784,7 @@ class Object(object):
 			tau (float): Simulation time scale
 			p (int): Trotter order		
 			time (str,Time): Type of Time evolution space						
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
 		'''
 		M = self.M if M is None else M
 		T = self.T if T is None else T
@@ -778,7 +815,7 @@ class Object(object):
 			L (int,float): Scale in system
 			delta (float): Length scale in system			
 			lattice (str,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
 		'''		
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -805,7 +842,7 @@ class Object(object):
 			metric (str,Metric): Type of metric
 			shapes (iterable[tuple[int]]): Shapes of objects
 			optimize (bool,str,iterable): Contraction type
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
 		'''		
 		metric = self.metric if metric is None else metric
 		shapes = [self.dims,self.dims] if shapes is None else shapes
@@ -1168,18 +1205,17 @@ class Hamiltonian(Object):
 		T (int): Simulation time
 		tau (float): Simulation time scale
 		p (int): Trotter order		
-		mapping (str): Type of mapping, allowed strings in ['vector','matrix','tensor']
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
 		metric (str,Metric): Type of metric
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
+		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,mapping=None,space=None,time=None,lattice=None,metric=None,system=None):
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,mapping=mapping,space=space,time=time,lattice=lattice,metric=metric,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,metric=metric,system=system)
 		return
 
 
@@ -1194,7 +1230,7 @@ class Hamiltonian(Object):
 		'''		
 		parameters = self.__parameters__(parameters)
 
-		return summation(parameters,self.data,self.identity)
+		return self.summation(parameters,self.data,self.identity,state=self.state,noise=self.noise)
 
 	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={}):
 		'''
@@ -1376,18 +1412,18 @@ class Unitary(Hamiltonian):
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
 		p (int): Trotter order		
-		mapping (str): Type of mapping, allowed strings in ['vector','matrix','tensor']		
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space
 		lattice (str,Lattice): Type of lattice
 		metric (str,Metric): Type of metric		
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
+		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,mapping=None,space=None,time=None,lattice=None,metric=None,system=None):
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,mapping=mapping,space=space,time=time,lattice=lattice,metric=metric,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=pspace=space,time=time,lattice=lattice,metric=metric,system=system)
+
 		return
 
 	@partial(jit,static_argnums=(0,))
@@ -1400,7 +1436,7 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
-		return exponentiation(self.coefficients*parameters,self.data,self.identity,state=self.state,noise=self.noise)
+		return self.exponentiation(self.coefficients*parameters,self.data,self.identity,state=self.state,noise=self.noise)
 
 	@partial(jit,static_argnums=(0,))
 	def __derivative_analytical__(self,parameters):
@@ -1492,9 +1528,8 @@ class Operator(module):
 		hyperparameters (dict) : class hyperparameters
 		N (int): Number of qudits
 		D (int): Dimension of qudits
-		mapping (str): Type of mapping, allowed strings in ['vector','matrix','tensor']	
 		space (str,Space): Type of Hilbert space
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)
+		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
 	'''
 
 	data : None
@@ -1517,20 +1552,19 @@ class Operator(module):
 	identity : array
 
 	dtype: str
-	_dtype : str
 	format : str
 	seed : int
 	key : List[int]
 	timestamp : str
+	backend : str
 	architecture : str
 	verbose : int
 
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters={},
-					N=None,D=None,mapping=None,space=None,system=None):
+					N=None,D=None,space=None,system=None):
 
 		self.N = N
 		self.D = D
-		self.mapping = mapping
 		self.space = space
 		self.system = system
 
@@ -1544,18 +1578,18 @@ class Operator(module):
 		'''
 		Set system attributes
 		Args:
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
 		'''
 		system = self.system if system is None else system
 
 		system = System(system)		
 
 		self.dtype = system.dtype
-		self._dtype = datatype(self.dtype)
 		self.format = system.format
 		self.seed = system.seed
 		self.key = system.key
 		self.timestamp = system.timestamp
+		self.backend = system.backend
 		self.architecture = system.architecture
 		self.verbose = system.verbose
 
@@ -1568,7 +1602,7 @@ class Operator(module):
 			N (int): Number of qudits
 			D (int): Dimension of qudits
 			space (str,Space): Type of Hilbert space
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
 		'''
 		N = self.N if N is None else N
 		D = self.D if D is None else D

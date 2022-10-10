@@ -32,8 +32,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import vmap,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
-from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,einsum,eig,average
-from src.utils import slice_slice,datatype
+from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,einsum,eig,average,norm
+from src.utils import slice_slice,datatype,returnargs
 from src.utils import pi,e,scalars
 
 from src.io import load,dump,join,split
@@ -52,42 +52,45 @@ def haar(shape,bounds,random,seed,dtype):
 		data (array): Array of state
 	'''
 
-	# ndim to initialize state matrices versus vectors
-	n = 4
-
-	ndim = len(shape)
-
 	bounds = [-1,1]
 	random = 'haar'
 
+	print('initial state',shape)
+
 	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
 
-	data = data[...,0]
+	ndim = data.ndim
+
+	print('inter state',data.shape)
 
 	# Create random matrices versus vectors
-	if ndim == n:
+	if ndim == 1:
+		pass
+	elif ndim == 2:
+		data = data[...,0]
+	elif ndim == 3:
+		data = data[...,0]
+	elif ndim == 4:
+
+		data = data[...,0]
 
 		data = einsum('...i,...j->...ij',data,data.conj())
 
 		axis = 1
-		size = (*shape[:axis+1],*[1]*(ndim-axis-1))
+		size = shape[:axis+1]
 		bounds = [0,1]
 		key = seed
 		dtype = datatype(dtype)
 
 		weights = rand(size,bounds=bounds,key=key,dtype=dtype)
-		weights /= weights.sum(axis)[:,None]
+		weights /= weights.sum(axis,keepdims=True)
 
-		data = einsum('ui...,ui...->u...',data,weights)
-
-		axis = 0
-		shape = data.shape
-		if shape[axis] <= 1:
-			shape = shape[axis+1:]
-			data = data.reshape(shape)
+		data = einsum('ui...,ui->u...',data,weights)
 
 	else:
 		pass
+
+	print('final state',data.shape)
 
 	return data
 
@@ -103,7 +106,7 @@ def setup(hyperparameters,cls=None):
 	return
 
 
-def stateize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=None):
+def stateize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=None):
 	'''
 	Initialize data of states based on shape
 	Args:
@@ -116,19 +119,32 @@ def stateize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 			'random':str : type of random initialization
 			'seed': int: random seed
 			'bounds': iterable[float]: bounds on states
-		size (int): Size of state
-		mapping (str): Type of mapping, allowed strings in ['vector','matrix','tensor']		
+		size (int): Size of states
+		samples (bool,array): Weight samples (create random weights, or use samples weights)
 		cls (object): Class instance to update hyperparameters
 		dtype (data_type): Data type of values		
 	Returns:
-		states (array): Array of states
+		data (array): Array of states
+		samples (array): Weights of samples
 	'''
 
 	# Setup hyperparameters
 	setup(hyperparameters,cls=cls)
 
+	# Set data
+	if shape is None or hyperparameters.get('shape') is None:
+		data = None
+		return data
+
+	# Ensure shape is iterable
+	if isinstance(shape,int):
+		shape = (shape,)
+
 	# Shape of data (either (k,*shape) or (k,d,*shape)) depending on hyperparameters['shape'] (k,d)
-	shape = [*hyperparameters['shape'][:-len(shape)],*shape]
+	shape = (*hyperparameters['shape'][:-max(2,len(shape))],*shape)
+
+	# Get seed
+	seed = hyperparameters.get('seed')
 
 	# Delimiter for string
 	delimiter = '_'
@@ -181,8 +197,25 @@ def stateize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 	# Assert data is normalized
 	# assert allclose(ones(data.shape[0]),data.conj().T.dot(data))
 
+
 	# Set dtype of data
 	data = data.astype(dtype=dtype)
 
 
-	return data		
+	# Set samples
+	if samples is not None and isinstance(samples,bool):
+		samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
+		samples /= samples.sum()
+	elif isinstance(samples,array):
+		pass
+	else:
+		samples = None
+	
+	# Set returns
+	returns = ()
+	returns += (data,)
+
+	if samples is not None:
+		returns += (samples,)
+
+	return returnargs(returns)

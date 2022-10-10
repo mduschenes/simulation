@@ -33,7 +33,7 @@ for PATH in PATHS:
 
 from src.utils import jit,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
-from src.utils import slice_slice
+from src.utils import slice_slice,datatype,returnargs
 from src.utils import pi,scalars
 
 from src.io import load,dump,join,split
@@ -283,7 +283,7 @@ def setup(hyperparameters,cls=None):
 	return 
 
 
-def parameterize(data,shape,hyperparameters,check=None,initialize=None,mapping=None,cls=None,dtype=None):
+def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None,samples=None,cls=None,dtype=None):
 	'''
 	Initialize data of shapes of parameters based on shape of data
 	Args:
@@ -298,11 +298,12 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,mapping=N
 			'constants':dict[str,iterable[dict[str,iterable]]] : dictionary of constant indices and values of each axis of each parameter layer {'layer':[{'slice':[indices_axis],'value':[values_axis]}]}
 		check (callable): Function with signature check(group,index,axis) to check if index of data for axis corresponds to group
 		initialize (callable): Function with signature initialize(parameters,shape,hyperparameters,reset=None,dtype=None) to initialize parameter values
-		mapping(str): Type of mapping, allowed strings in ['vector','matrix','tensor']
+		size (int): size of parameters
+		samples (bool,array): Weight samples (create random weights, or use samples weights)
 		cls (object): Class instance to update hyperparameters		
 		dtype (data_type): Data type of values		
 	Returns:
-		attributes (dict): Dictionary of parameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
+		data (dict): Dictionary of parameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
 			for parameter,group keys and for layers ['parameters',features','variables','constraints']
 			Attributes are used to yield layer outputs, given input variable parameters, with layer functions acting on slices of parameters, yielding values at indices
 			
@@ -318,6 +319,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,mapping=N
 			'values': (array): array of values for that layer with variable + boundary/constant values
 			'index' (tuple[slice]): slices along each axis of the output values of that layer for that parameter,group key
 			layer (callable): Callable function with signature func(parameters,values,slices,indices) for input parameters[slices] that yields values[indices] for that layer
+		samples (array): Weights of samples
 	'''
 	
 	# Implicit parameterizations that interact with the data to produce the output are called variables x
@@ -415,8 +417,23 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,mapping=N
 	# Setup hyperparameters
 	setup(hyperparameters,cls=cls)
 
+	# Set data
+	if shape is None or any(hyperparameters[parameter].get('shape') is None for parameter in hyperparameters):
+		data = None
+		return data
+
+	# Ensure shape is iterable
+	if isinstance(shape,int):
+		shape = (shape,)
+
 	# Get number of dimensions of data
 	ndim = len(shape)
+
+	# Get datatype of data
+	dtype = datatype(dtype)
+
+	# Get seed
+	seed = [hyperparameters[parameter].get('seed',None) for parameter in hyperparameters][0]
 
 	# Get properties of hyperparameters
 	properties = ['category','group','shape','locality','boundaries','constants','use','parameters']
@@ -2021,6 +2038,27 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,mapping=N
 	attributes['values'][layer] = values
 
 
+	# Set data
+	data = attributes
+
+
+	# Set samples
+	if samples is not None and isinstance(samples,bool):
+		samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
+		samples /= samples.sum()
+	elif isinstance(samples,array):
+		pass
+	else:
+		samples = None
+	
+	# Set returns
+	returns = ()
+	returns += (data,)
+
+	if samples is not None:
+		returns += (samples,)
+
+
 	# # Print
 	# attribute = 'values'
 	# for layer in attributes[attribute]:
@@ -2091,4 +2129,4 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,mapping=N
 
 	# #print('---- Testing Complete ----')
 
-	return attributes
+	return returnargs(returns)

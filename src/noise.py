@@ -33,7 +33,7 @@ for PATH in PATHS:
 
 from src.utils import vmap,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,einsum,eig,average
-from src.utils import slice_slice,datatype
+from src.utils import slice_slice,datatype,returnargs
 from src.utils import pi,e,scalars
 
 from src.io import load,dump,join,split
@@ -53,7 +53,7 @@ def haar(shape,bounds,random,seed,dtype):
 	'''
 	Initialize haar random state from 0 state
 	Args:
-		shape (iterable[int]): Shape of state
+		shape (int,iterable[int]): Shape of state
 		bounds (iterable): Bounds on state value
 		random (str): Type of random value
 		seed (int,key): Seed for random number generator
@@ -62,15 +62,16 @@ def haar(shape,bounds,random,seed,dtype):
 		data (array): Array of state
 	'''
 
-	# ndim to initialize state matrices versus vectors
-	n = 4
+	# Ensure shape is iterable
+	if isinstance(shape,int):
+		shape = (shape,)
 
 	ndim = len(shape)
 	_dtype = datatype(dtype)
 
 	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
 
-	data = data.reshape(*data.shape[:1],*(1,)*(n-ndim),*data.shape[1:])
+	data = data.reshape(*data.shape[:1],*(1,)*(4-ndim),*data.shape[1:])
 
 	for i in range(data.shape[0]):
 		for j in range(data.shape[1]):
@@ -86,7 +87,7 @@ def haar(shape,bounds,random,seed,dtype):
 	data = data[...,0]
 
 	# Create random matrices versus vectors
-	if ndim == n:
+	if ndim == 4:
 
 		data = einsum('...i,...j->...ij',data,data.conj())
 
@@ -95,12 +96,6 @@ def haar(shape,bounds,random,seed,dtype):
 		weights = rand(size,bounds=[0,1],key=seed,dtype=_dtype)
 
 		data = average(data,axis,weights)
-
-		axis = 0
-		shape = data.shape
-		if shape[axis] <= 1:
-			shape = shape[axis+1:]
-			data = data.reshape(shape)
 
 	else:
 		pass
@@ -119,12 +114,12 @@ def setup(hyperparameters,cls=None):
 	return
 
 
-def noiseize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=None):
+def noiseize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=None):
 	'''
 	Initialize data of noise based on shape
 	Args:
 		data (object): Data corresponding to parameters
-		shape (iterable[int]): Shape of data
+		shape (int,iterable[int]): Shape of data
 		hyperparameters (dict): Dictionary of parameter groupings, with dictionary values with properties:
 			'category':str : category of parameter
 			'shape':iterable[int] : shape of noise
@@ -132,16 +127,29 @@ def noiseize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 			'random':str : type of random initialization
 			'seed': int: random seed
 			'bounds': iterable[float]: bounds on noise
-		size (int): Size of state
-		mapping(str): Type of mapping, allowed strings in ['vector','matrix','tensor']
+		size (int): Size of noise
+		samples (bool,array): Weight samples (create random weights, or use samples weights)
 		cls (object): Class instance to update hyperparameters
 		dtype (data_type): Data type of values		
 	Returns:
-		states (array): Array of noise
+		data (array): Array of noise
+		samples (array): Weights of samples
 	'''
 
 	# Setup hyperparameters
 	setup(hyperparameters,cls=cls)
+
+	# Set data
+	if shape is None or hyperparameters.get('shape') is None:
+		data = None
+		return data
+
+	# Ensure shape is iterable
+	if isinstance(shape,int):
+		shape = (shape,)
+
+	# Get seed
+	seed = hyperparameters.get('seed')
 
 	# Basis
 	operators = {
@@ -156,6 +164,8 @@ def noiseize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 	elif isinstance(data,array):
 		string = None
 
+
+	# Set data
 	data = None
 
 	if isinstance(string,str):
@@ -177,10 +187,24 @@ def noiseize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=No
 				for i in itertools.product(data,repeat=size)
 				])
 
-	if mapping not in maps:
-		data = None
-
-
 	exit()
 
-	return data
+
+	# Set samples
+	if samples is not None and isinstance(samples,bool):
+		samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
+		samples /= samples.sum()
+	elif isinstance(samples,array):
+		pass		
+	else:
+		samples = None
+	
+	# Set returns
+	returns = ()
+	returns += (data,)
+
+	if samples is not None:
+		returns += (samples,)
+
+
+	return returnargs(returns)

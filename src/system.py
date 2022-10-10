@@ -142,6 +142,7 @@ class System(dictionary):
 		seed (array,int): Seed for random number generation
 		key (object): key for class
 		timestamp (str): timestamp for class
+		backend (str): backend for class
 		architecture (str): architecture for class
 		verbose (bool,str): Verbosity of class	
 		args (dict,System): Additional system attributes
@@ -159,6 +160,7 @@ class System(dictionary):
 			'seed':None,
 			'key':None,
 			'timestamp':None,
+			'backend':None,
 			'architecture':None,
 			'verbose':False,
 			'logger':None,
@@ -182,7 +184,7 @@ class Logger(object):
 	'''
 	Logger class
 	Args:
-		name (str,logger): Name of logger or Pythong logging logger
+		name (str,logger): Name of logger or Python logging logger
 		conf (str): Path to configuration
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional arguments
@@ -411,7 +413,7 @@ class Lattice(object):
 		L (int,float): Scale in system
 		delta (float): Length scale in system	
 		lattice (str,Lattice): Type of lattice, allowed strings in ['square','square-nearest']
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,architecture,verbose)		
+		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
 	'''	
 	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None):
 		

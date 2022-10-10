@@ -31,7 +31,7 @@ for PATH in PATHS:
 
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,allclose
-from src.utils import slice_slice
+from src.utils import slice_slice,datatype,returnargs
 from src.utils import pi,e
 
 from src.io import load,dump,join,split
@@ -40,7 +40,7 @@ def haar(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
 	Initialize haar random unitary operator
 	Args:
-		shape (iterable[int]): Shape of operator
+		shape (int,iterable[int]): Shape of operator
 		bounds (iterable): Bounds on operator value
 		random (str): Type of random value
 		seed (int,key): Seed for random number generator
@@ -61,7 +61,7 @@ def id(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
 	Initialize identity unitary operator
 	Args:
-		shape (iterable[int]): Shape of operator
+		shape (int,iterable[int]): Shape of operator
 		bounds (iterable): Bounds on operator value
 		random (str): Type of random value
 		seed (int,key): Seed for random number generator
@@ -80,7 +80,7 @@ def cnot(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
 	Initialize cnot unitary operator
 	Args:
-		shape (iterable[int]): Shape of operator
+		shape (int,iterable[int]): Shape of operator
 		bounds (iterable): Bounds on operator value
 		random (str): Type of random value
 		seed (int,key): Seed for random number generator
@@ -104,7 +104,7 @@ def hadamard(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
 	Initialize hadamard unitary operator
 	Args:
-		shape (iterable[int]): Shape of operator
+		shape (int,iterable[int]): Shape of operator
 		bounds (iterable): Bounds on operator value
 		random (str): Type of random value
 		seed (int,key): Seed for random number generator
@@ -126,7 +126,7 @@ def toffoli(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
 	Initialize toffoli unitary operator
 	Args:
-		shape (iterable[int]): Shape of operator
+		shape (int,iterable[int]): Shape of operator
 		bounds (iterable): Bounds on operator value
 		random (str): Type of random value
 		seed (int,key): Seed for random number generator
@@ -160,15 +160,15 @@ def setup(hyperparameters,cls=None):
 
 	return
 
-def operatorize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype=None):
+def operatorize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=None):
 	'''
 	Initialize operators
 	Args:
 		data (dict,str,array): Label or path or array of operator
-		shape (iterable[int]): Shape of operator
+		shape (int,iterable[int]): Shape of operator
 		hyperparameters (dict): Dictionary of hyperparameters for operator
-		size (int): size to initialize operator
-		mapping(str): Type of mapping, allowed strings in ['vector','matrix','tensor']
+		size (int): size of operators
+		samples (bool,array): Weight samples (create random weights, or use samples weights)
 		cls (object): Class instance to update hyperparameters		
 		dtype (data_type): Data type of operator
 	Returns:
@@ -178,11 +178,23 @@ def operatorize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype
 	# Setup hyperparameters
 	setup(hyperparameters,cls=cls)
 
+	# Set data
+	if shape is None or hyperparameters.get('shape') is None:
+		data = None
+		return data
+
+	# Ensure shape is iterable
+	if isinstance(shape,int):
+		shape = (shape,)
+
 	# Dimension of data
 	d = min(shape)
 
 	# Delimiter for string
 	delimiter = '_'
+
+	# Get seed
+	seed = hyperparameters.get('seed')
 
 	# Properties for strings
 	props = {
@@ -238,4 +250,22 @@ def operatorize(data,shape,hyperparameters,size=None,mapping=None,cls=None,dtype
 	# Set dtype of data
 	data = data.astype(dtype=dtype)
 
-	return data
+
+	# Set samples
+	if samples is not None and isinstance(samples,bool):
+		samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
+		samples /= samples.sum()
+	elif isinstance(samples,array):
+		pass
+	else:
+		samples = None
+	
+	# Set returns
+	returns = ()
+	returns += (data,)
+
+	if samples is not None:
+		returns += (samples,)
+
+
+	return returnargs(returns)
