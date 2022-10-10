@@ -52,7 +52,7 @@ def _variables(hyperparameters,parameter,group):
 
 	kwargs = hyperparameters[parameter]['kwargs']
 	method = hyperparameters[parameter]['method']
-	scale = [hyperparameters[parameter]['scale'],1]
+	scale = [hyperparameters[parameter]['scale'],2*pi] if method in ['constrained'] else [hyperparameters[parameter]['scale']]*len(hyperparameters[parameter]['group'])
 	index = hyperparameters[parameter]['group'].index(group)
 
 	if parameter in ['zz'] and group in [('zz',)]:
@@ -212,7 +212,7 @@ def _gradients(hyperparameters,parameter,group):
 	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
 
 	method = hyperparameters[parameter]['method']
-	scale = [hyperparameters[parameter]['scale'],2*pi]
+	scale = [hyperparameters[parameter]['scale'],2*pi] if method in ['constrained'] else [hyperparameters[parameter]['scale']]*len(hyperparameters[parameter]['group'])
 
 	def func(parameters):
 		shape = parameters.shape
