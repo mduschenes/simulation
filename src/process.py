@@ -859,6 +859,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						# Insert data into variables (with nan padding)
 						for stat in statistics[kwarg]['statistic']:
 
+
 							if 	(any(
 									(
 									((all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key'])) and
@@ -871,9 +872,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									for parameter in parameters) or
 								all(((all(parameter['key'][axis] != key[axis]['key'][-1] for axis in parameter['key'])) and
 									 (stat not in [('linear','linear')]))
-									for parameter in parameters)):
+									for parameter in parameters) or
+								(all(~all(key[axis]['key'][-1] == parameter['key'][axis] for parameter in parameters if axis in parameter) for axis in key) and 
+									stat not in [('linear','linear')])
+								):
 								continue
-
 
 							variables[occurrence][combination][permutation][kwarg][stat] = np.nan*np.ones(newshape)
 
@@ -1180,7 +1183,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 
 	# Set plot settings
-
 	for instance in list(settings):
 		for subinstance in list(settings[instance]):
 			for setting in list(settings[instance][subinstance]):
@@ -1190,7 +1192,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					if attr not in settings[instance][subinstance][setting]:
 						continue 
 
-					subcombinations,subj,suboccurences,substats = zip(*settings[instance][subinstance][setting][attr])
+					subcombinations,subj,suboccurrences,substats = zip(*settings[instance][subinstance][setting][attr])
 					for i,subsubinstance in enumerate(settings[instance][subinstance][setting][attr]):
 
 						combination,j,occurrence,stat = subsubinstance
@@ -1226,6 +1228,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							else:
 								value = None
+
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 						
 						kwargs = ['linestyle']
@@ -1460,7 +1463,5 @@ if __name__ == '__main__':
 	}
 
 	args = argparser(arguments,wrappers)
-
-	print(list(args),dict(args))
 
 	main(*args,**args)

@@ -23,6 +23,10 @@
 			"wrapper":{"wrapper":"mean","axis":[-1]}
 		},
 		{
+			"key":{"x":"M","y":"iteration.max"},
+			"plot":[["linear","linear"]]
+		},		
+		{
 			"key":{"x":"","y":"hessian.eigenvalues"},
 			"axis":[[0],[],[],[-1]]
 		},
