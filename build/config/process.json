@@ -58,6 +58,6 @@
 	"delimiter":".",
 	"process":["src.postprocess.process"],
 	"process":[],
-    "load":0,
+    "load":1,
 	"dump":1
 }

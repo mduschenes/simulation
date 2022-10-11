@@ -6,7 +6,7 @@ import numpy as np
 import scipy as sp
 import scipy.special
 import pandas as pd
-from natsort import natsorted
+from natsort import natsorted,realsorted
 import matplotlib.pyplot as plt
 warnings.filterwarnings('ignore')
 
@@ -697,7 +697,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 
 		# Get unique scalar attributes
-		unique = {attr: tuple((*natsorted(set(asscalar(data[name][attr])
+		unique = {attr: tuple((*realsorted(set(asscalar(data[name][attr])
 						for name in names 
 						if ((attr in data[name]) and 
 							((asarray(data[name][attr]).size <= 1) and isinstance(asscalar(data[name][attr]),scalars))
@@ -708,7 +708,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		unique = {attr: unique[attr] for attr in unique if len(unique[attr])>0}	
 
 		# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
-		sort = {attr: tuple((*natsorted(set(asscalar(data[name][attr])
+		sort = {attr: tuple((*realsorted(set(asscalar(data[name][attr])
 						for name in names 
 						if ((attr in data[name]) and 
 							((asarray(data[name][attr]).size == 1) and isinstance(asscalar(data[name][attr]),scalars))
@@ -719,13 +719,13 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		sort = {attr: sort[attr] for attr in sort if len(sort[attr])>0}
 
 		# Get combinations of attributes (including None) to sort on and attributes not to sort on if not existent in plot properties x,y,label
-		allowed = list(natsorted(set((tuple((asscalar(data[name][attr])
+		allowed = list(realsorted(set((tuple((asscalar(data[name][attr])
 					for attr in subattributes))
 					for name in names
 					))))
 		allowed = [
 					*allowed,
-					*natsorted(set([(*value[:i],None,*value[i+1:]) for value in allowed for i in range(len(value))]),
+					*realsorted(set([(*value[:i],None,*value[i+1:]) for value in allowed for i in range(len(value))]),
 							key = lambda x: tuple(((u is not None,u) for u in x)))
 				]
 
@@ -1145,7 +1145,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 												for combination in variables[occurrence]
 												for kwarg in variables[occurrence][combination]
 												for stat in variables[occurrence][combination][kwarg])												
-									for enum,(combination,j) in enumerate(itertools.product(variables[occurrence],range(subsize))):
+									for enum,(combination,j) in enumerate(realsorted(itertools.product(variables[occurrence],range(subsize)))):
 										subsubsize = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
 													for kwarg in variables[occurrence][combination]
 													for stat in variables[occurrence][combination][kwarg])
@@ -1167,6 +1167,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 													j%variables[occurrence][combination][kwarg][stat].shape[dim-1+1]))
 
 												value = variables[occurrence][combination][kwarg][stat][pos]
+
+												if len(value) > 200:
+													value = value[::50]
 
 												if kwarg in ['%serr'%(axis) for axis in axes] and norm(value) == 0:
 													value = None
@@ -1212,7 +1215,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
 								continue
 							value = getattr(plt.cm,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])(
-								(subcombinations.index(tuple((combination[k] for k in combination))))/len(subcombinations))
+								([subcombination[::-1] for subcombination in subcombinations][::-1].index(tuple((combination[k] for k in combination))[::-1]))/len(subcombinations))
 
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 
@@ -1224,7 +1227,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							if stat not in [('fit','fit')]:
 								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
-								value = ',~'.join([texify(scinotation(combination[k],decimals=0,)) for k in value])
+								value = ',~'.join([texify(scinotation(combination[k],decimals=0,scilimits=[0,3])) for k in value])
 
 							else:
 								value = None
@@ -1239,11 +1242,32 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if stat is None:
 								value = '-'
 							elif stat not in [('fit','fit')]:
-								value = '-'
+								value = list(set([subcombination[-1] for subcombination in subcombinations]))
+								value = value.index(tuple((combination[k] for k in combination))[-1]) if any(len(subcombination)>0 for subcombination in subcombinations) else 0
+								value = ['solid','dotted','dashed','dashdot',(0,(5,10)),(0,(1,1))][value%6]
+								# value = '-'
 							else:
 								value = None
 
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
+
+
+						kwargs = ['alpha']
+						for kwarg in kwargs:
+							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
+								continue
+							if stat is None:
+								value = None
+							elif stat not in [('fit','fit')]:
+								value = list(set([subcombination[-1] for subcombination in subcombinations]))
+								# value = abs(0.5-(value.index(tuple((combination[k] for k in combination))[-1])+1)/(len(value)+1)) if any(len(subcombination)>0 for subcombination in subcombinations) else None
+								value = (value.index(tuple((combination[k] for k in combination))[-1])+1)/(len(value)+1) if any(len(subcombination)>0 for subcombination in subcombinations) else None
+								# value = settings[instance][subinstance][setting][attr][subsubinstance][kwarg]
+							else:
+								value = None
+
+							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
+
 
 
 						subattr = 'legend'

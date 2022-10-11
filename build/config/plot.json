@@ -1,7 +1,7 @@
 {
 "iteration.infidelity.M":{
 	"fig":{
-		"set_size_inches":{"w":8,"h":8},
+		"set_size_inches":{"w":16,"h":8},
 		"subplots_adjust":{},
 		"tight_layout":{},
 		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
@@ -16,6 +16,7 @@
 			"marker":"o",
 			"markersize":12,
 			"linestyle":"--",
+			"linewidth":4,
 			"elinewidth":2,
 			"capsize":3,
 			"color":"viridis",
@@ -54,8 +55,8 @@
 			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": "lower right",
-			"ncol": 1,
+			"loc": [1.1,0.05],
+			"ncol": 2,
 			"set_zorder":{"level":100}
 			}			
 		},

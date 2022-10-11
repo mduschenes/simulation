@@ -4507,7 +4507,7 @@ def to_key_value(string,delimiter='=',**kwargs):
 	return key,value
 
 
-def scinotation(number,decimals=2,base=10,order=2,zero=True,scilimits=[-1,1],usetex=False):
+def scinotation(number,decimals=2,base=10,order=20,zero=True,scilimits=[-1,1],usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:

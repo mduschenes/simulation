@@ -27,7 +27,7 @@
 	},
 "seed":{
 	"seed":12332,
-	"size":1,
+	"size":10,
 	"reset":12332,
 	"index":null
 	},
@@ -47,24 +47,13 @@
 		"optimize.iterations":[100],
 
 		"model.N":[3],
-		"model.M":[50,100],
+		"model.M":[10,20,50,100,200,1000],
 
-		"optimize.iterations":[10],
+		"optimize.iterations":[500],
 
 		"optimize.optimizer":["cg"],
 
-		"noise.scale":[0,1e-3],
-
-		"jobs.job.cwd":["gobi/data_4_eigenvalues_constrained"],
-		"jobs.job.device":["slurm"],
-		"jobs.job.process":["array"],
-		"jobs.job.execute":[1],
-		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.postprocess.cwd":["gobi/data_4_eigenvalues_constrained"],
-		"jobs.postprocess.device":["slurm"],
-		"jobs.postprocess.process":["serial"],
-		"jobs.postprocess.execute":[1],
-		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],	
+		"noise.scale":[0,1e-6,1e-3,1e-1,5e-1,1],
 
 		"jobs.job.cwd":["data.noise.unconstrained"],		
 		"jobs.job.device":["pc"],
@@ -76,6 +65,19 @@
 		"jobs.postprocess.process":["serial"],
 		"jobs.postprocess.execute":[1],	
 		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
+
+
+		"jobs.job.cwd":["gobi/data.noise.3.unconstrained"],
+		"jobs.job.device":["slurm"],
+		"jobs.job.process":["array"],
+		"jobs.job.execute":[1],
+		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
+		"jobs.postprocess.cwd":["gobi/data.noise.3.unconstrained"],
+		"jobs.postprocess.device":["slurm"],
+		"jobs.postprocess.process":["serial"],
+		"jobs.postprocess.execute":[1],
+		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],	
+
 
 		"parameters.xy.method":["constrained"],
 		"model.system.architecture":["constrained"],
