@@ -387,6 +387,17 @@ class Object(object):
 
 		parameters = parameters.ravel()
 
+		# Get states
+		data = None
+		shape = self.dims
+		hyperparams = hyperparameters['state']
+		size = self.N
+		samples = True
+		dtype = self.dtype
+		cls = self
+
+		state,weights = stateize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
+
 
 		# Get label
 		data = None
@@ -399,17 +410,6 @@ class Object(object):
 
 		label = operatorize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
 
-
-		# Get states
-		data = None
-		shape = self.dims
-		hyperparams = hyperparameters['state']
-		size = self.N
-		samples = True
-		dtype = self.dtype
-		cls = self
-
-		state,weights = stateize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
 
 		# Get noise
 		data = None
@@ -425,27 +425,27 @@ class Object(object):
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
 
-		# Update label,state,noise based on state
+		# Update state,label,noise based on state
 		# state.ndim = 3 : Density matrix evolution (multiple states)
 		# state.ndim = 2 and state.shape[0] == state.shape[1] : Density matrix evolution (single state)
 		# state.ndim = 2 and state.shape[0] != state.shape[1] : Pure state matrix evolution (multiple states)
 		# state.ndim = 1 : Pure state evolution (single state)
 
 		if state is None:
-			label = label.conj()
 			state = None
+			label = label.conj()
 			noise = None
 		elif state.ndim == 3:
-			label = einsum('ij,ujk,lk,u->il',label,state,label.conj(),weights)
 			state = einsum('ujk,u->jk',state,weights)
+			label = einsum('ij,jk,lk->il',label,state,label.conj())
 			noise = noise
 		elif state.ndim == 2 and state.shape[0] == state.shape[1]:
-			label = einsum('ij,jk,lk->il',label,state,label.conj())
 			state = state
+			label = einsum('ij,jk,lk->il',label,state,label.conj())
 			noise = noise
 		elif state.ndim == 2 and state.shape[0] != state.shape[1]:
-			label = einsum('ij,uj,u->i',label,state,weights)
 			state = einsum('uj,u->u',state,weights)
+			label = einsum('ij,j->i',label,state)
 			noise = noise
 		elif state.ndim == 1:
 			label = einsum('ij,j->i',label,state)
@@ -713,6 +713,10 @@ class Object(object):
 				'U\n%s\nV\n%s\n'%(
 				to_str(abs(self(parameters)).round(4)),
 				to_str(abs(self.label).round(4))),
+				# 'U: %0.4e\tV: %0.4e\n'%(
+				# 	trace(self(parameters)).real,
+				# 	trace(self.label).real
+				# 	),				
 				])
 
 

@@ -41,7 +41,6 @@ def main(args):
 	kwargs.update({kwarg: join(arg,kwargs[kwarg]) if (kwargs[kwarg] is None or kwargs[kwarg].startswith('*')) and not arg.startswith("*") else arg 
 		for arg,kwarg in zip(args,kwargs)})
 
-
 	process(**kwargs)
 
 	return

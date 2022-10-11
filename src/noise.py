@@ -46,6 +46,10 @@ basis = {
 	'X': array([[0,1],[1,0]],dtype=dtype),
 	'Y': array([[0,-1j],[1j,0]],dtype=dtype),
 	'Z': array([[1,0],[0,-1]],dtype=dtype),
+	'00':array([[1,0],[0,0]],dtype=dtype),
+	'01':array([[0,1],[0,0]],dtype=dtype),
+	'10':array([[0,0],[1,0]],dtype=dtype),
+	'11':array([[0,0],[0,1]],dtype=dtype),
 }
 
 
@@ -171,23 +175,22 @@ def noiseize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=No
 	if isinstance(string,str):
 		scale = hyperparameters['scale']
 		if string in ['phase']:
-			data = ['I','Z']
-
-			print(size)
-			for i in data:
-				print(i)
-			for i in itertools.product(data,repeat=size):
-				print(i)
-
 			data = [sqrt(1-scale)*basis['I'],
 					sqrt(scale)*basis['Z']]
+		elif string in ['amplitude']:
+			data = [basis['00'] + sqrt(1-scale)*basis['11'],
+					sqrt(scale)*basis['01']]
+		elif string in ['depolarize']:
+			data = [sqrt(1-scale)*basis['I'],
+					sqrt(scale/3)*basis['X'],
+					sqrt(scale/3)*basis['Y'],
+					sqrt(scale/3)*basis['Z']]
 
-			data = array([
-				tensorprod(i)
-				for i in itertools.product(data,repeat=size)
-				])
-
-
+		data = array([
+			tensorprod(i)
+			for i in itertools.product(data,repeat=size)
+			])
+		
 	# Set samples
 	if samples is not None and isinstance(samples,bool):
 		samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)

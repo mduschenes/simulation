@@ -65,7 +65,6 @@ def train(hyperparameters):
 
 	obj = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
-
 	if hyperparameters['boolean'].get('load'):
 		obj.load()
 

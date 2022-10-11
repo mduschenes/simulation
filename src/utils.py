@@ -2288,7 +2288,7 @@ def exponentiationm(parameters,data,identity,state,constants):
 	Returns:
 		out (array): Matrix exponential of data of shape (n,n)
 	'''		
-	out = expm(parameters,data,identity)
+	out = expmmc(parameters,data,identity,state,constants)
 	return out
 
 
