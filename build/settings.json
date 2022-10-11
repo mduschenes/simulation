@@ -49,7 +49,7 @@
 		"model.N":[3],
 		"model.M":[50,100],
 
-		"optimize.iterations":[100],
+		"optimize.iterations":[10],
 
 		"optimize.optimizer":["cg"],
 
@@ -131,9 +131,7 @@
 		"iteration":[],"objective":[],
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[],		
-		"parameters":[],
-		"fisher":[],
-		"hessian":[]
+		"parameters":[]
 		}
 	},
 "parameters":{

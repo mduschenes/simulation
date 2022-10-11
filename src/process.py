@@ -777,6 +777,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					labels[occurrence][prop],
 					combination if prop in ['label'] else [labels[occurrence][prop][attr] for attr in labels[occurrence][prop]])) 
 				for prop in labels[occurrence]}
+
+				if any(len(label[attr])==0 for attr in label):
+					variables[occurrence].pop(combination);
+					continue
 				
 				# permutations[occurrence][combination] = combinations[occurrence][combination]
 				# permutations[occurrence][combination] = [
@@ -1456,5 +1460,7 @@ if __name__ == '__main__':
 	}
 
 	args = argparser(arguments,wrappers)
+
+	print(list(args),dict(args))
 
 	main(*args,**args)

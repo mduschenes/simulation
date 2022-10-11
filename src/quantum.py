@@ -680,14 +680,11 @@ class Object(object):
 			)
 		done = self.hyperparameters['optimize']['track']['iteration'][-1]==self.hyperparameters['optimize']['iterations']
 
-	
-		self.hyperparameters['optimize']['track']['hessian'].append(
-			self.__hessian__(parameters) if not status or done else nan
-			)
-
-		self.hyperparameters['optimize']['track']['fisher'].append(
-			self.__fisher__(parameters) if not status or done else nan
-			)
+		for attr in ['hessian','fisher']:
+			if attr in self.hyperparameters['optimize']['track']:
+				self.hyperparameters['optimize']['track'][attr].append(
+					getattr(self,'__%s__'%(attr))(parameters) if not status or done else nan
+					)
 
 		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['modulo']['log'] == 0:			
 
