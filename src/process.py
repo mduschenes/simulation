@@ -1168,8 +1168,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 												value = variables[occurrence][combination][kwarg][stat][pos]
 
-												if len(value) > 200:
-													value = value[::50]
+												if hyperparameters['kwargs'].get('step') and len(value) > hyperparameters['kwargs']['step'][0]:
+													value = value[::hyperparameters['kwargs']['step'][1]]
 
 												if kwarg in ['%serr'%(axis) for axis in axes] and norm(value) == 0:
 													value = None

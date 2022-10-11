@@ -47,7 +47,8 @@
 		"noise.scale":"\\gamma"
 	},
 	"kwargs":{
-		"tol":1e-8
+		"tol":1e-8,
+		"step":[200,50]
 		},
 	"pwd":null,
 	"cwd":null,
