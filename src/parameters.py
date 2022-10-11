@@ -60,7 +60,7 @@ def _variables(hyperparameters,parameter,group):
 		scale = [hyperparameters[parameter]['scale']]*len(hyperparameters[parameter]['group'])
 
 	if parameter in ['zz'] and group in [('zz',)]:
-		scale[index] /= 4*kwargs['min']*kwargs['tau']
+		scale[index] /= 1 #4*kwargs['min']*kwargs['tau']
 
 	if method in ['constrained']:
 		if parameter in ['xy'] and group in [('x',)]:
