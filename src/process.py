@@ -1227,7 +1227,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							if stat not in [('fit','fit')]:
 								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
-								value = ',~'.join([texify(scinotation(combination[k],decimals=0,scilimits=[0,3])) for k in value])
+								value = ',~'.join([texify(scinotation(combination[k],decimals=1,scilimits=[0,3])) for k in value])
 
 							else:
 								value = None
