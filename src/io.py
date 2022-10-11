@@ -14,7 +14,7 @@ from natsort import natsorted, ns,index_natsorted,order_by_index
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-debug = 0
+debug = 100
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))

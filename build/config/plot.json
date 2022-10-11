@@ -11,7 +11,7 @@
 		"errorbar":{
 			"x":"iteration",
 			"y":"infidelity",
-			"label":["N","architecture","M"],
+			"label":["N","architecture","M","noise.scale"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -24,7 +24,7 @@
 		"fill_between":{
 			"x":"iteration",
 			"y":"infidelity",
-			"label":["N","architecture","M"],
+			"label":["N","architecture","M","noise.scale"],
 			"alpha":0.5,			
 			"color":"viridis"
 			},			
@@ -193,7 +193,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"parameters.relative.mean",
-			"label":["N","architecture","iteration=@iteration.max@"],
+			"label":["N","architecture","noise.scale","iteration=@iteration.max@"],
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -259,7 +259,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"iteration.max",
-			"label":["N","architecture","iteration=@iteration.max@"],			
+			"label":["N","architecture","noise.scale","iteration=@iteration.max@"],			
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,

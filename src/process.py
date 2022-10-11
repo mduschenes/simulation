@@ -25,7 +25,7 @@ from src.utils import argparser
 from src.utils import array,product,expand_dims,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
 from src.utils import argmax,difference,is_nan
-from src.utils import e,pi,nan,scalars,nulls
+from src.utils import e,pi,nan,scalars,nulls,scinotation
 from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split,glob
 from src.plot import plot
@@ -40,7 +40,10 @@ def Texify(string,texify={},usetex=True):
 
 	default = '\n'.join(['$%s$'%(strings.get(substring,substring).replace('$','')) for substring in string.split('\n')])
 
-	string = strings.get(string,default)
+	if string in strings:
+		string = '$%s$'%(strings.get(string).replace('$',''))
+	else:
+		string = default
 
 	if not usetex or len(string) == 0:
 		string = string.replace('$','')
@@ -690,7 +693,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		subattributes = [attr
 			for attr in attributes
 			if ((attr in hyperparameters.get('sort',attributes)))
-		    ]
+			]
 
 
 		# Get unique scalar attributes
@@ -714,7 +717,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				for attr in subattributes
 				}
 		sort = {attr: sort[attr] for attr in sort if len(sort[attr])>0}
-
 
 		# Get combinations of attributes (including None) to sort on and attributes not to sort on if not existent in plot properties x,y,label
 		allowed = list(natsorted(set((tuple((asscalar(data[name][attr])
@@ -1216,7 +1218,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							if stat not in [('fit','fit')]:
 								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
-								value = ',~'.join([texify(str(combination[k])) for k in value])
+								value = ',~'.join([texify(scinotation(combination[k],decimals=0,)) for k in value])
 
 							else:
 								value = None
@@ -1246,9 +1248,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								# [(k,combination[k]) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) == 1],
 								[(k,) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1],
 								]
-							value = ['~,'.join([': '.join([texify(l) for l in k]) for k in v]) for v in value]
+							value = ['~,~'.join([': '.join([texify(l) for l in k]) for k in v]) for v in value]
 							value = [v for v in value if len(v)>0]
-							value = '\n'.join(value)
+							value = '\n'.join(['$%s$'%(v.replace('$','')) for v in value])
 
 							settings[instance][subinstance][setting][subattr][kwarg] = value
 

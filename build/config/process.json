@@ -1,5 +1,5 @@
 {
-	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture"],
+	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture","noise.scale"],
 	"parameters":[
 		{
 			"key":{"x":"iteration","y":"infidelity"},
@@ -33,12 +33,14 @@
 		],	
 	"null":{},
 	"null":{"None.parameters.iteration.M":null},
+	"labels":["noise.scale"],
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",
 		"None": "\\textrm{None}",
 		"architecture": "\\textrm{Architecture}",
 		"constrained": "\\textrm{Constrained}",
-		"unconstrained": "\\textrm{Unconstrained}"
+		"unconstrained": "\\textrm{Unconstrained}",
+		"noise.scale":"\\gamma"
 	},
 	"kwargs":{
 		"tol":1e-8

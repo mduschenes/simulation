@@ -323,6 +323,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
 					)
 
+
 				kwargs.update(dict(zip(['handles','labels'],[handles,labels])))
 
 				kwargs.update({k: attr_share(attr_texify(v,attr,k,**{**kwargs,**_kwargs}),attr,k,**{**kwargs,**_kwargs})  

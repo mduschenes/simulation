@@ -1040,6 +1040,8 @@ class Object(object):
 			for key in keys
 			}
 
+
+
 		data = {
 			delim.join([*label,str(key),str(iteration)]): {
 				**{attr: self.hyperparameters['optimize']['track'][attr][iteration]
@@ -1052,7 +1054,10 @@ class Object(object):
 						(not callable(getattr(self,attr))) and
 						(getattr(self,attr) is None or isinstance(getattr(self,attr),scalars))
 						)
-					}
+					},
+				**{attr: getter(self.hyperparameters,attr.split(delim)) 
+					for attr in self.hyperparameters.get('process',{}).get('labels',[])
+					},
 				}
 			for key in keys
 			for iteration in iterations[key]
