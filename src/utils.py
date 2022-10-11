@@ -4554,7 +4554,7 @@ def scinotation(number,decimals=2,base=10,order=2,zero=True,scilimits=[-1,1],use
 		flt = string[0]
 		exp = str(int(string[1])*basechange)
 		if int(exp) in range(*scilimits):
-			flt = '%0.*f'%(decimals,float(flt)/(base**(-int(exp))))
+			flt = '%d'%(flt) if is_int(flt) else '%0.*f'%(decimals,float(flt)/(base**(-int(exp))))
 			string = r'%s'%(flt)
 		else:
 			string = r'%s%s%s'%(flt if decimals > 0 else '',r'\cdot' if decimals > 0 else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
