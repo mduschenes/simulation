@@ -175,9 +175,9 @@ def test_derivative(path,tol):
 	derivative_finite = gradient(obj,mode='finite',tol=tol)
 	derivative_analytical = obj.__derivative_analytical__
 
-	print(derivative_jax(parameters).round(3)[0])
-	print()
-	print(derivative_analytical(parameters).round(3)[0])
+	# print(derivative_jax(parameters).round(3)[0])
+	# print()
+	# print(derivative_analytical(parameters).round(3)[0])
 
 	assert allclose(derivative_jax(parameters),derivative_finite(parameters)), "JAX derivative != Finite derivative"
 	assert allclose(derivative_finite(parameters),derivative_analytical(parameters)), "Finite derivative != Analytical derivative"

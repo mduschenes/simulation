@@ -12,11 +12,10 @@ import warnings
 import sys
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
-
-    log = file if hasattr(file,'write') else sys.stderr
-    traceback.print_stack(file=log)
-    log.write(warnings.formatwarning(message, category, filename, lineno, line))
-
+	# log = file if hasattr(file,'write') else sys.stderr
+	# traceback.print_stack(file=log)
+	# log.write(warnings.formatwarning(message, category, filename, lineno, line))
+	return
 warnings.showwarning = warn_with_traceback
 
 
@@ -2791,10 +2790,7 @@ def expm(x,A,I):
 
 	def func(i,out):
 		U = _expm(x[i],A[i%d],I)
-		return einsummation(subscripts,out,U)
-		# return einsummation(subscripts,U,out)
-		# return dot(U,out)
-
+		return einsummation(subscripts,U,out)
 	return forloop(0,m,func,I)
 
 @jit
@@ -2808,18 +2804,36 @@ def gradient_expm(x,A,I):
 	Returns:
 		out (array): Gradient of matrix exponential of A of shape (m,n,n)
 	'''			
+
+	# TODO: Check rolling of A for cleaner gradient in terms of expm()
+
 	m = x.shape[0]
 	d,shape = A.shape[0],A.shape[1:]
 
+	subscripts = 'ij,jk->ik'
+	shapes = (shape,shape)
+	einsummation = einsum #(subscripts,shapes)
+
 	def func(i,out):
-		return dot(out,_expm(x[i],A[i%d],I))
-		# return dot(_expm(x[i],A[i%d],I),out)
+		U = _expm(x[i],A[i%d],I)
+		return einsummation(subscripts,U,out)
 
 	def grad(i):
-		out = I
-		return forloop(i+1,m,func,dot(forloop(0,i+1,func,out),A[i%d]))
-		# return forloop(i+1,m,func,dot(forloop(0,i+1,func,out),A[i%d]))
+		return forloop(i+1,m,func,dot(A[i%d],forloop(0,i+1,func,I)))		
+		# if i == (0):
+		# 	U = I
+		# 	V = expm(x,A,I)
+		# elif i == (m-1):
+		# 	U = expm(x,A,I)
+		# 	V = I
+		# else:
+		# 	y = slicing(x,0,i+1)
+		# 	z = slicing(x,i+1,m)
+		# 	U = expm(y,A,I)
+		# 	V = expm(z,roll(A,-((i)%d),axis=0),I)
+		# return einsummation(subscripts,V,A[i%d],U)		
 
+	# return array([grad(i) for i in range(m)])
 	return jax.vmap(grad)(arange(m))
 
 
@@ -2949,11 +2963,12 @@ def expmvc(x,A,I,v,B):
 	einsummation = einsum #(subscripts,shapes)
 
 	def func(i,out):
-		U = _expm(x[i],A[i%d],I)
-		return einsummation(subscripts,B,U,out)
+		y = slicing(x,i*d,d)
+		U = expm(y,A,I)
+		return einsummation(subscripts,B,U,out)		
 		# return dot(B,dot(U,out))
 
-	return forloop(0,m,func,v)
+	return forloop(0,m//d,func,v)
 
 
 @jit
@@ -3298,6 +3313,18 @@ def vstack(a):
 		out (iterable): Concatenation row-wise
 	'''
 	return np.vstack(a)
+
+def roll(a,shift,axis=None):
+	'''
+	Shift array along axis (periodically)
+	Args:
+		a (array): Array to shift
+		shift (int,iterable[int]): Shift along axis
+		axis (int,iterable[int]): Axis to shift along
+	Returns:
+		out (array): Shifted array
+	'''
+	return np.roll(a,shift,axis=axis)
 
 
 @jit

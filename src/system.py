@@ -35,7 +35,7 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient
 from src.utils import array,dictionary,arange,eye
-from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product
+from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import normed_einsum,inner_abs2_einsum,inner_real_einsum,inner_imag_einsum
@@ -695,6 +695,7 @@ class Metric(object):
 		if callable(self.metric):
 			func = jit(self.metric)
 			grad = jit(gradient(self.metric))
+
 		elif self.metric is None:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
@@ -711,7 +712,8 @@ class Metric(object):
 				return _func(a,b)/2/sqrt(a.shape[0]*b.shape[0])
 			@jit
 			def grad(a,b,da):
-				return _grad(a,b,da)/2/sqrt(a.shape[0]*b.shape[0])		
+				return _grad(a,b,da)/2/sqrt(a.shape[0]*b.shape[0])	
+
 		elif self.metric in ['norm','normed']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
@@ -729,6 +731,7 @@ class Metric(object):
 			@jit
 			def grad(a,b,da):
 				return _grad(a,b,da)/2/sqrt(a.shape[0]*b.shape[0])
+
 		elif self.metric in ['infidelity']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
@@ -746,6 +749,7 @@ class Metric(object):
 			@jit
 			def grad(a,b,da):
 				return -_grad(a,b,da)/(a.shape[0]*b.shape[0])
+
 		elif self.metric in ['infidelity.abs']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
@@ -763,6 +767,7 @@ class Metric(object):
 			@jit
 			def grad(a,b,da):
 				return -_grad(a,b,da)/(a.shape[0]*b.shape[0])
+
 		elif self.metric in ['infidelity.norm']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
@@ -780,6 +785,7 @@ class Metric(object):
 			@jit
 			def grad(a,b,da):
 				return -_grad(a,b,da)					
+
 		elif self.metric in ['infidelity.real']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
@@ -797,6 +803,7 @@ class Metric(object):
 			@jit
 			def grad(a,b,da):
 				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])
+
 		elif self.metric in ['infidelity.imag']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
@@ -813,7 +820,8 @@ class Metric(object):
 				return 1-_func(a,b)/sqrt(a.shape[0]*b.shape[0])
 			@jit
 			def grad(a,b,da):
-				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])				
+				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])	
+
 		elif self.metric in ['infidelity.real.imag']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
@@ -840,7 +848,8 @@ class Metric(object):
 				return 1-(_func_real(a,b)+_func_imag(a,b))/2/sqrt(a.shape[0]*b.shape[0])
 			@jit
 			def grad(a,b,da):
-				return -(_grad_real(a,b)+_grad_imag(a,b))/2/sqrt(a.shape[0]*b.shape[0])
+				return -(_grad_real(a,b,da)+_grad_imag(a,b,da))/2/sqrt(a.shape[0]*b.shape[0])
+
 		elif self.metric in ['infidelity.vector']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
@@ -857,7 +866,8 @@ class Metric(object):
 				return 1-_func(a,b)/sqrt(a.shape[0]*b.shape[0])
 			@jit
 			def grad(a,b,da):
-				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])					
+				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])			
+						
 		else:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
