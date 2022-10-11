@@ -54,7 +54,7 @@ def _variables(hyperparameters,parameter,group):
 	method = hyperparameters[parameter]['method']
 	index = hyperparameters[parameter]['group'].index(group)
 
-	if method in ['constrained']:
+	if method in ['constrained'] and parameter in ['xy']:
 		scale = [hyperparameters[parameter]['scale'],2*pi]
 	else:
 		scale = [hyperparameters[parameter]['scale']]*len(hyperparameters[parameter]['group'])

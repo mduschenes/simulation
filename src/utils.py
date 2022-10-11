@@ -247,6 +247,8 @@ def forloop(start,end,func,out):
 	Returns:
 		out (array): Return of loop
 	'''
+	if (end-start) <= 0:
+		return out
 	return jax.lax.fori_loop(start,end,func,out)
 
 
@@ -2805,36 +2807,32 @@ def gradient_expm(x,A,I):
 		out (array): Gradient of matrix exponential of A of shape (m,n,n)
 	'''			
 
-	# TODO: Check rolling of A for cleaner gradient in terms of expm()
+	# TODO: Check jittable vmap of index dependent slices of x for faster gradient in terms of expm()
 
 	m = x.shape[0]
 	d,shape = A.shape[0],A.shape[1:]
 
-	subscripts = 'ij,jk->ik'
-	shapes = (shape,shape)
+	# subscripts = 'ij,jk->ik'
+	# shapes = (shape,shape)
+	# einsummation = einsum #(subscripts,shapes)
+
+	# def func(i,out):
+	# 	U = _expm(x[i],A[i%d],I)
+	# 	return einsummation(subscripts,U,out)
+
+	subscripts = 'ij,jk,kl->il'
+	shapes = (shape,shape,shape)
 	einsummation = einsum #(subscripts,shapes)
 
-	def func(i,out):
-		U = _expm(x[i],A[i%d],I)
-		return einsummation(subscripts,U,out)
-
 	def grad(i):
-		return forloop(i+1,m,func,dot(A[i%d],forloop(0,i+1,func,I)))		
-		# if i == (0):
-		# 	U = I
-		# 	V = expm(x,A,I)
-		# elif i == (m-1):
-		# 	U = expm(x,A,I)
-		# 	V = I
-		# else:
-		# 	y = slicing(x,0,i+1)
-		# 	z = slicing(x,i+1,m)
-		# 	U = expm(y,A,I)
-		# 	V = expm(z,roll(A,-((i)%d),axis=0),I)
-		# return einsummation(subscripts,V,A[i%d],U)		
+		y = slicing(x,0,i)
+		z = slicing(x,i,m-i)
+		U = expm(y,A,I)
+		V = expm(z,roll(A,-(i%d),axis=0),I)
+		return einsummation(subscripts,V,A[i%d],U)		
 
-	# return array([grad(i) for i in range(m)])
-	return jax.vmap(grad)(arange(m))
+	return array([grad(i) for i in range(m)])
+	# return jax.vmap(grad)(arange(m))
 
 
 @jit

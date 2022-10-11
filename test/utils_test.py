@@ -3,7 +3,7 @@
 # Import python modules
 import pytest
 import os,sys
-import itertools,functools,copy
+import itertools,functools,copy,warnings
 
 import jax
 import jax.numpy as np
@@ -23,6 +23,14 @@ from src.utils import expm,expmv,expmm,expmc,expmvc,expmmc,_expm
 from src.utils import gradient_expm
 
 from src.system import Metric
+
+
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+	# log = file if hasattr(file,'write') else sys.stderr
+	# traceback.print_stack(file=log)
+	# log.write(warnings.formatwarning(message, category, filename, lineno, line))
+	return
+warnings.showwarning = warn_with_traceback
 
 def _setup(args,kwargs):
 	
@@ -78,12 +86,12 @@ def test_expm():
 	kwargs = {}
 
 	kwargs.update({
-	    'n': 2**3,
-	    'm': 50,
-	    'd': 17,
-	    'k': 4,
-	    'metric': 'infidelity.abs',
-	    'time': True,
+		'n': 2**3,
+		'm': 50,
+		'd': 17,
+		'k': 4,
+		'metric': 'infidelity.abs',
+		'time': True,
 	})
 
 	_setup(args,kwargs)
@@ -120,12 +128,12 @@ def test_expmv():
 	kwargs = {}
 
 	kwargs.update({
-	    'n': 2**3,
-	    'm': 50,
-	    'd': 17,
-	    'k': 4,
-	    'metric': 'infidelity.abs',
-	    'time': True,
+		'n': 2**3,
+		'm': 50,
+		'd': 17,
+		'k': 4,
+		'metric': 'infidelity.abs',
+		'time': True,
 	})
 
 	_setup(args,kwargs)
@@ -158,12 +166,12 @@ def test_expmm():
 	kwargs = {}
 
 	kwargs.update({
-	    'n': 2**3,
-	    'm': 50,
-	    'd': 17,
-	    'k': 4,
-	    'metric': 'infidelity.abs',
-	    'time': True,
+		'n': 2**3,
+		'm': 50,
+		'd': 17,
+		'k': 4,
+		'metric': 'infidelity.abs',
+		'time': True,
 	})
 
 	_setup(args,kwargs)
@@ -174,3 +182,92 @@ def test_expmm():
 	assert allclose(out,_out)
 
 	return
+
+
+def test_expmmc(*args,**kwargs):
+
+	def func(*args,**kwargs):
+		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
+		out = expmmc(x,A,I,v,B)
+		return out
+
+	def _func(*args,**kwargs):
+		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
+		m,d,k = kwargs['m'],kwargs['d'],kwargs['k']
+		
+		out = v
+		for i in range(m//d):
+			U = I
+			for j in range(d):
+				y = x[i*d + j]
+				V = _expm(y,A[j%d],I)
+				U = V.dot(U)
+			out = sum(B[l].dot(U).dot(out).dot(U.conj().T).dot(B[l].conj().T) for l in range(k))
+
+		return out
+
+	args = ()
+	kwargs = {}
+
+	kwargs.update({
+		'n': 2**3,
+		'm': 5,
+		'd': 7,
+		'k': 4,
+		'metric': 'infidelity.abs',
+		'time': True,
+	})
+
+	_setup(args,kwargs)
+
+	out = func(*args,**kwargs)
+	_out = _func(*args,**kwargs)
+
+	assert allclose(out,_out)
+
+	return
+
+
+def test_gradient_expm():
+
+	def func(*args,**kwargs):
+		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
+		out = gradient_expm(x,A,I)
+		return out
+
+	def _func(*args,**kwargs):
+		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
+		m,d = kwargs['m'],kwargs['d']
+		
+		out = array([I]*m)
+			
+		for i in range(m):
+			for j in range(m):
+				U = _expm(x[j],A[j%d],I)
+				out = out.at[i].set(U.dot(out[i]))
+				if j == i:
+					out = out.at[i].set(A[j%d].dot(out[i]))
+
+		return out
+
+	args = ()
+	kwargs = {}
+
+	kwargs.update({
+		'n': 2**3,
+		'm': 5,
+		'd': 7,
+		'k': 4,
+		'metric': 'infidelity.abs',
+		'time': True,
+	})
+
+	_setup(args,kwargs)
+
+	out = func(*args,**kwargs)
+	_out = _func(*args,**kwargs)
+
+	assert allclose(out,_out)
+
+	return
+
