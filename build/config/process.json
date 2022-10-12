@@ -3,6 +3,7 @@
 	"parameters":[
 		{
 			"key":{"x":"iteration","y":"infidelity"},
+			"slice":null,
 			"plot":[["linear","linear"]]
 		},
 		{
@@ -46,10 +47,7 @@
 		"unconstrained": "\\textrm{Unconstrained}",
 		"noise.scale":"\\gamma"
 	},
-	"kwargs":{
-		"tol":1e-8,
-		"step":[200,50]
-		},
+	"kwargs":{},
 	"pwd":null,
 	"cwd":null,
 	"path": {

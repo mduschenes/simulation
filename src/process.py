@@ -561,8 +561,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		path[attr] = join(directory[attr],file[attr],ext=ext[attr])
 
 	# Get plot variables setting
-	hyperparameters['parameters'] = [*hyperparameters.get('parameters',[])]
-	parameters = hyperparameters['parameters']
+	parameters = hyperparameters.get('parameters',[])
 	null = hyperparameters.get('null',{})
 	for instance in list(null):
 		if instance not in settings:
@@ -753,8 +752,13 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 		# Get variables data and statistics from keys
 		for occurrence,key in enumerate(keys):
+
 			if occurrence  < 0:
 				continue
+
+			parameter = [None,*[parameter for parameter in parameters 
+				if all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key'])]][-1]
+			
 			variables[occurrence] = {}
 
 			# combinations[occurrence] = permute(key['label']['key'],key['label']['value'],list(sort),data)
@@ -763,8 +767,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				if check(attr,labels[occurrence]['label'][attr],val,labels[occurrence],unique,data)]
 				for attr in labels[occurrence]['label']
 				]
-
-
 
 			permutations[occurrence] = {}
 
@@ -860,21 +862,12 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						for stat in statistics[kwarg]['statistic']:
 
 
-							if 	(any(
-									(
-									((all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key'])) and
-									   (parameter.get('plot') is not None) and
-									   (stat not in [*(tuple(substat) for substat in parameter.get('plot',[[]]))]) or 
-									((all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key'])) and 
-									 (parameter.get('plot') is None) and 
-									 (stat not in [('linear','linear')]))
-									))
-									for parameter in parameters) or
-								all(((all(parameter['key'][axis] != key[axis]['key'][-1] for axis in parameter['key'])) and
-									 (stat not in [('linear','linear')]))
-									for parameter in parameters) or
-								(all(~all(key[axis]['key'][-1] == parameter['key'][axis] for parameter in parameters if axis in parameter) for axis in key) and 
-									stat not in [('linear','linear')])
+							if 	(
+								((parameter is None) and (stat not in [('linear','linear')])) or 
+								((parameter is not None) and (parameter.get('plot') is None)) or
+								((parameter is not None) and (stat not in (tuple(substat) 
+										for substat in parameter.get('plot',[[]])))) or
+								((parameter is not None) and (False))
 								):
 								continue
 
@@ -969,6 +962,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						for i in range(len(settings[instance][subinstance][setting][attr])-1,-1,-1):							
 							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 							occurrence = keys.index(key)
+							parameter = [None,*[parameter for parameter in parameters 
+											if all(parameter['key'][axis] == key[axis]['key'][-1] 
+											for axis in parameter['key'])]][-1]
 
 							if occurrence not in variables:
 								settings[instance][subinstance][setting][attr].pop(i)
@@ -1019,6 +1015,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						for i in range(len(settings[instance][subinstance][setting][attr])):							
 							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 							occurrence = keys.index(key)
+							parameter = [None,*[parameter for parameter in parameters 
+											if all(parameter['key'][axis] == key[axis]['key'][-1] 
+											for axis in parameter['key'])]][-1]
 
 							if occurrence not in variables:
 								continue
@@ -1031,18 +1030,13 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									for kwarg in variables[occurrence][combination]:
 										for stat in variables[occurrence][combination][kwarg]:
 
-											wrapper = [None,*(
-												wrapping(**parameter.get('wrapper',{}),kwarg=kwarg,stat=stat) for parameter in parameters 
-												if all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key']))][-1]
-
+											wrapper = wrapping(**parameter.get('wrapper',{}),kwarg=kwarg,stat=stat) if parameter is not None else None 
 											if wrapper is not None:
 												variables[occurrence][combination][kwarg][stat] = wrapper(variables[occurrence][combination][kwarg][stat])
 											
 											subndim = variables[occurrence][combination][kwarg][stat].ndim
 
-											subaxis = [None,*(
-												parameter.get('axis') for parameter in parameters 
-												if all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key']))][-1]
+											subaxis = parameter.get('axis',None) if parameter is not None else None
 
 											if subaxis is None:
 												subaxis = [[],[],[],[axis for axis in range(subndim)]]
@@ -1141,6 +1135,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								for i in range(len(settings[instance][subinstance][setting][attr])):
 									key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 									occurrence = keys.index(key)
+									parameter = [None,*[parameter for parameter in parameters 
+													if all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key'])]][-1]
+
 									subsize = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
 												for combination in variables[occurrence]
 												for kwarg in variables[occurrence][combination]
@@ -1168,8 +1165,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 												value = variables[occurrence][combination][kwarg][stat][pos]
 
-												if hyperparameters['kwargs'].get('step') and len(value) > hyperparameters['kwargs']['step'][0]:
-													value = value[::hyperparameters['kwargs']['step'][1]]
+												slices = slice(*parameter.get('slice') if parameter.get('slice') is not None else (None,)) if parameter is not None else slice(None)
+
+												value = value[slices]
 
 												if kwarg in ['%serr'%(axis) for axis in axes] and norm(value) == 0:
 													value = None
