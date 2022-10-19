@@ -986,11 +986,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
 										key[axis]['key'] for axis in parameter['key']))]][-1]
 
-							if occurrence not in variables:
-								for _occurrence in variables:
-									_key = _occurrences(_occurrence,keys)
-									if all(key[axis]['key'] == _key[axis]['key'] for axis in key):
-										occurrence = _occurrence
+							# if occurrence not in variables:
+							# 	for _occurrence in variables:
+							# 		_key = _occurrences(_occurrence,keys)
+							# 		if all(key[axis]['key'] == _key[axis]['key'] for axis in key):
+							# 			occurrence = _occurrence
 
 							if occurrence not in variables:
 								settings[instance][subinstance][setting][attr].pop(i)
@@ -1047,11 +1047,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
 									key[axis]['key'] for axis in parameter['key']))]][-1]
 
-							if occurrence not in variables:
-								for _occurrence in variables:
-									_key = _occurrences(_occurrence,keys)
-									if all(key[axis]['key'] == _key[axis]['key'] for axis in key):
-										occurrence = _occurrence
+							# if occurrence not in variables:
+							# 	for _occurrence in variables:
+							# 		_key = _occurrences(_occurrence,keys)
+							# 		if all(key[axis]['key'] == _key[axis]['key'] for axis in key):
+							# 			occurrence = _occurrence
 
 							if occurrence not in variables:
 								continue
