@@ -646,7 +646,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	if hyperparameters.get('load'):
 		attr = 'process'
 		convert = lambda obj: (
-				to_number(obj) if '--' not in obj else tuple((convert(i) for i in obj.split('--')[1:])))
+				to_number(obj) if '--' not in obj else tuple((convert(i) for i in obj.split('--')[1:] if len(i)>0)))
 		options = {
 			'conversion':lambda name: convert(name)
 			}
