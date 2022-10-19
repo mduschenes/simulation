@@ -733,7 +733,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 			for attr in data[name]:
 				data[name][attr] = np.array(data[name][attr])
 				data[name][attr] = data[name][attr].reshape(*[1]*(max(0,1-data[name][attr].ndim)),*data[name][attr].shape)
-		
+
+
 		# Get number of dimensions and maximum shape of data attributes
 		ndim = {attr: min(data[name][attr].ndim for name in names) for attr in attributes}
 		shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in names)))) for attr in attributes}
@@ -857,8 +858,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							dtype = int
 						else:
 							prop = prop
+							name = included[-1]
 							dtype = data[name][key[prop]['key'][-1]].dtype
-					
+
 						newshape = (len(included),*shape[key['y']['key'][-1]])
 						newndim = range(0,ndim[key['y']['key'][-1]]-ndim[key[prop]['key'][-1]])
 

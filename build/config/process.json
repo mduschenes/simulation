@@ -3,9 +3,14 @@
 	"parameters":[
 		{
 			"key":{"x":"iteration","y":"infidelity","label":["N","architecture","M","noise.scale"]},
-			"slice":[0,6,2],
+			"slice":null,
 			"stat":[["linear","linear"]]
 		},
+		{
+			"key":{"x":"noise.scale","y":"infidelity"},
+			"slice":[0,null,null],
+			"stat":[["linear","linear"]]
+		},		
 		{
 			"key":{"x":"","y":"parameters"},
 			"axis":[[0,1],[2],[],[-1]]
@@ -53,6 +58,6 @@
 	"delimiter":".",
 	"process":["src.postprocess.process"],
 	"process":[],
-    "load":0,
+    "load":1,
 	"dump":1
 }
