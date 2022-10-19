@@ -2,7 +2,7 @@
 	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture","noise.scale"],
 	"parameters":[
 		{
-			"key":{"x":"iteration","y":"infidelity","label":["N","architecture","M","noise.scale"]},
+			"key":{"x":"iteration","y":"infidelity"},
 			"slice":null,
 			"stat":[["linear","linear"]]
 		},

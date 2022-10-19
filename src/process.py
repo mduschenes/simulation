@@ -630,6 +630,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		for kwarg in statistics 			 	 			 	 
 		}
 
+
+	# Get occurrence of keys
+	# occurrences = lambda key,keys: tuple((tuple((axis,tuple(((k,v) for k,v in zip(key[axis]['key'],key[axis]['value']))))) for axis in key))
+	# _occurrences = lambda occurrence,keys: {axis: {'key': tuple((v[0] for v in value)), 'value': tuple((v[1] for v in value))} for axis,value in occurrence}
+	occurrences = lambda key,keys: keys.index(key)#tuple((tuple((axis,tuple(((k,v) for k,v in zip(key[axis]['key'],key[axis]['value']))))) for axis in key))
+	_occurrences = lambda occurrence,keys: keys[occurrence]#{axis: {'key': tuple((v[0] for v in value)), 'value': tuple((v[1] for v in value))} for axis,value in occurrence}
+
+
 	# Get keys of properties of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
 	keys = find(settings,properties)
 
@@ -637,10 +645,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	# Load data
 	if hyperparameters.get('load'):
 		attr = 'process'
+		convert = lambda obj: (
+				to_number(obj) if '--' not in obj else tuple((convert(i) for i in obj.split('--')[1:])))
 		options = {
-			'conversion':lambda name: (
-				to_number(name) if '--' not in name else 
-				tuple((to_number(i) for i in name.split('--')[1:])))
+			'conversion':lambda name: convert(name)
 			}
 		variables = {attr: path[attr]}
 
@@ -691,7 +699,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 		subattributes = [attr
 			for attr in attributes
-			if ((attr in hyperparameters.get('sort',attributes)))
+			# if ((attr in hyperparameters.get('sort',attributes)))
+			if ((attr in set((attr for key in keys for attr in key['label']['key']))))
 			]
 
 
@@ -741,9 +750,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 		
 		# Get labels of keys
-		labels = [{prop: {attr:value for attr,value in zip(key[prop]['key'],key[prop]['value']) if attr in attributes} 
-				for prop in key} 
-				for key in keys]
+		labels = {occurrences(key,keys):{
+					prop: {attr:value for attr,value in zip(key[prop]['key'],key[prop]['value']) if attr in attributes} 
+					for prop in key} 
+				for key in keys}
 
 		# Get combinations of key attributes and permutations of shared attributes for combination across data
 
@@ -752,10 +762,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		permutations = {}
 
 		# Get variables data and statistics from keys
-		for occurrence,key in enumerate(keys):
-
-			if occurrence  < 0:
-				continue
+		# for occurrence,key in enumerate(keys):
+		for key in keys:
+			occurrence = occurrences(key,keys)
 
 			parameter = [None,*[parameter for parameter in parameters 
 				if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
@@ -917,10 +926,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		# Dump data
 		if hyperparameters.get('dump'):
 			attr = 'process'
+			convert = lambda obj: str(obj) if not isinstance(obj,tuple) else '--'+'--'.join((convert(i) for i in obj))
 			options = {
-				'conversion':lambda name: (
-					str(name) if not isinstance(name,tuple) else 
-					'--'+'--'.join((str(i) for i in name)))
+				'conversion':lambda name: convert(name)
+					# str(name) if not isinstance(name,tuple) else 
+					# '--'+'--'.join((str(i) for i in name)))
 			}
 
 			kwargs = {path[attr]: variables}
@@ -969,10 +979,18 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 						for i in range(len(settings[instance][subinstance][setting][attr])-1,-1,-1):							
 							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
-							occurrence = keys.index(key)
+							# occurrence = keys.index(key)
+							occurrence = occurrences(key,keys)
+							
 							parameter = [None,*[parameter for parameter in parameters 
 									if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
 										key[axis]['key'] for axis in parameter['key']))]][-1]
+
+							if occurrence not in variables:
+								for _occurrence in variables:
+									_key = _occurrences(_occurrence,keys)
+									if all(key[axis]['key'] == _key[axis]['key'] for axis in key):
+										occurrence = _occurrence
 
 							if occurrence not in variables:
 								settings[instance][subinstance][setting][attr].pop(i)
@@ -1022,10 +1040,18 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 						for i in range(len(settings[instance][subinstance][setting][attr])):							
 							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
-							occurrence = keys.index(key)
+							# occurrence = keys.index(key)
+							occurrence = occurrences(key,keys)
+
 							parameter = [None,*[parameter for parameter in parameters 
 								if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
 									key[axis]['key'] for axis in parameter['key']))]][-1]
+
+							if occurrence not in variables:
+								for _occurrence in variables:
+									_key = _occurrences(_occurrence,keys)
+									if all(key[axis]['key'] == _key[axis]['key'] for axis in key):
+										occurrence = _occurrence
 
 							if occurrence not in variables:
 								continue
@@ -1056,7 +1082,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 														 if (a in subaxis[-1] or (a == (subndim-1) and -1 in subaxis[-1])) or 
 														 a not in [a for axis in subaxis[:-1] for a in axis]]]
 
-											transpose = [a for axis in subaxis for a in axis]											
+											transpose = [a for axis in subaxis for a in axis]
+
 											reshape = [
 												max(1,int(product(
 													[variables[occurrence][combination][kwarg][stat].shape[a]
@@ -1142,7 +1169,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 								for i in range(len(settings[instance][subinstance][setting][attr])):
 									key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
-									occurrence = keys.index(key)
+									
+									occurrence = occurrences(key,keys)
+									
+									# occurrence = keys.index(key)
+									
 									parameter = [None,*[parameter for parameter in parameters 
 										if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
 											key[axis]['key'] for axis in parameter['key']))]][-1]									
@@ -1206,7 +1237,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					for i,subsubinstance in enumerate(settings[instance][subinstance][setting][attr]):
 
 						combination,j,occurrence,stat = subsubinstance
-						key = keys[occurrence]
+						
+						# key = keys[occurrence]
+						key = _occurrences(occurrence,keys)
+
 						combination = dict(zip(key['label']['key'],combination))
 
 
@@ -1239,7 +1273,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							if stat not in [('fit','fit')]:
 								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
-								value = ',~'.join([texify(scinotation(combination[k],decimals=1,scilimits=[0,3])) for k in value])
+								value = ',~'.join([texify(scinotation(combination[k],decimals=0,scilimits=[0,3])) for k in value])
 
 							else:
 								value = None

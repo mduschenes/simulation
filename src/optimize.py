@@ -362,13 +362,7 @@ class Base(object):
 		hyperparameters.update({attr: updates.get(attr,{}).get(hyperparameters[attr],hyperparameters[attr]) 
 			if attr in updates else hyperparameters[attr] for attr in hyperparameters})
 
-
-		self.optimizer = hyperparameters['optimizer']		
-		self.iterations = range(int(hyperparameters['iterations']))
-		self.track = hyperparameters['track']
-		self.modulo = hyperparameters['modulo']
 		self.hyperparameters = hyperparameters
-
 
 		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
 
@@ -379,6 +373,10 @@ class Base(object):
 		self.size = 0
 		self.iteration = -1
 		self.parameters = None
+		self.optimizer = hyperparameters['optimizer']		
+		self.iterations = range(int(hyperparameters['iterations']))
+		self.track = hyperparameters['track']
+		self.modulo = hyperparameters['modulo']
 		self.attributes = hyperparameters['attributes']
 		self.status = hyperparameters['status']
 		self.eps = hyperparameters['eps']

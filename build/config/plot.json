@@ -11,6 +11,7 @@
 		"errorbar":{
 			"x":"iteration",
 			"y":"infidelity",
+			"label":["N","architecture","M=$20,50$","noise.scale"],
 			"label":["N","architecture","M","noise.scale"],
 			"alpha":0.8,
 			"marker":"o",
@@ -25,6 +26,7 @@
 		"fill_between":{
 			"x":"iteration",
 			"y":"infidelity",
+			"label":["N","architecture","M=$20,50$","noise.scale"],
 			"label":["N","architecture","M","noise.scale"],
 			"alpha":0.5,			
 			"color":"viridis"
