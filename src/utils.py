@@ -3671,15 +3671,16 @@ def is_equal(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
 	except ValueError:
 		return allclose(a,b,rtol=rtol,atol=atol,equal_nan=equal_nan)
 
-def is_iterable(obj):
+def is_iterable(obj,exceptions=()):
 	'''
 	Check if object is iterable
 	Args:
 		obj (object): object to be tested
+		exceptions (iterable[type]): exceptions to iterables
 	Returns:
 		out (bool): whether object is iterable
 	'''
-	return hasattr(obj,'__iter__')
+	return hasattr(obj,'__iter__') and not isinstance(obj,exceptions)
 
 
 @jit

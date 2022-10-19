@@ -2,9 +2,9 @@
 	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture","noise.scale"],
 	"parameters":[
 		{
-			"key":{"x":"iteration","y":"infidelity"},
-			"slice":null,
-			"plot":[["linear","linear"]]
+			"key":{"x":"iteration","y":"infidelity","label":["N","architecture","M","noise.scale"]},
+			"slice":[0,6,2],
+			"stat":[["linear","linear"]]
 		},
 		{
 			"key":{"x":"","y":"parameters"},
@@ -16,16 +16,12 @@
 		},
 		{
 			"key":{"x":"M","y":"parameters.relative.mean"},
-			"axis":[[],[],[],[-1]]
-		},
-		{
-			"key":{"x":"M","y":"parameters.relative.mean"},
 			"axis":[[1],[],[],[0]],
 			"wrapper":{"wrapper":"mean","axis":[-1]}
 		},
 		{
 			"key":{"x":"M","y":"iteration.max"},
-			"plot":[["linear","linear"]]
+			"stat":[["linear","linear"]]
 		},		
 		{
 			"key":{"x":"","y":"hessian.eigenvalues"},
@@ -57,6 +53,6 @@
 	"delimiter":".",
 	"process":["src.postprocess.process"],
 	"process":[],
-    "load":1,
+    "load":0,
 	"dump":1
 }

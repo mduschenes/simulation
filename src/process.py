@@ -22,7 +22,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import array,product,expand_dims,is_number,to_number,to_key_value
+from src.utils import array,product,expand_dims,is_iterable,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
 from src.utils import argmax,difference,is_nan
 from src.utils import e,pi,nan,scalars,nulls,scinotation
@@ -757,8 +757,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				continue
 
 			parameter = [None,*[parameter for parameter in parameters 
-				if all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key'])]][-1]
+				if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
+					key[axis]['key'] for axis in parameter['key']))]][-1]
 			
+			# print(key)
+			# print(parameter)
+			# print()
+			# continue
+
 			variables[occurrence] = {}
 
 			# combinations[occurrence] = permute(key['label']['key'],key['label']['value'],list(sort),data)
@@ -861,12 +867,12 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						# Insert data into variables (with nan padding)
 						for stat in statistics[kwarg]['statistic']:
 
-
 							if 	(
 								((parameter is None) and (stat not in [('linear','linear')])) or 
-								((parameter is not None) and (parameter.get('plot') is None)) or
-								((parameter is not None) and (stat not in (tuple(substat) 
-										for substat in parameter.get('plot',[[]])))) or
+								((parameter is not None) and (parameter.get('stat') is None) and (stat not in [('linear','linear')])) or
+								((parameter is not None) and ((parameter.get('stat') is not None) and (
+										stat not in (tuple(substat) 
+										for substat in parameter.get('stat',[[]]))))) or
 								((parameter is not None) and (False))
 								):
 								continue
@@ -940,7 +946,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	}
 	
 	# Special settings to set variables depending on variables data shape, with additional settings to custom set form settings string
-	special = {'ax':['plot','errorbar','fill_between']}
+	special = {'ax':['plot','fill_between','errorbar',]}
 
 	# Track updated keys
 	updated = []
@@ -963,8 +969,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 							occurrence = keys.index(key)
 							parameter = [None,*[parameter for parameter in parameters 
-											if all(parameter['key'][axis] == key[axis]['key'][-1] 
-											for axis in parameter['key'])]][-1]
+									if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
+										key[axis]['key'] for axis in parameter['key']))]][-1]
 
 							if occurrence not in variables:
 								settings[instance][subinstance][setting][attr].pop(i)
@@ -1016,8 +1022,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 							occurrence = keys.index(key)
 							parameter = [None,*[parameter for parameter in parameters 
-											if all(parameter['key'][axis] == key[axis]['key'][-1] 
-											for axis in parameter['key'])]][-1]
+								if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
+									key[axis]['key'] for axis in parameter['key']))]][-1]
 
 							if occurrence not in variables:
 								continue
@@ -1136,7 +1142,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 									occurrence = keys.index(key)
 									parameter = [None,*[parameter for parameter in parameters 
-													if all(parameter['key'][axis] == key[axis]['key'][-1] for axis in parameter['key'])]][-1]
+										if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
+											key[axis]['key'] for axis in parameter['key']))]][-1]									
 
 									subsize = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
 												for combination in variables[occurrence]
@@ -1188,7 +1195,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		for subinstance in list(settings[instance]):
 			for setting in list(settings[instance][subinstance]):
 				
-				for attr in special.get(setting,{}):
+				for a,attr in enumerate(special.get(setting,[])):
 
 					if attr not in settings[instance][subinstance][setting]:
 						continue 
@@ -1210,8 +1217,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 						kwargs = ['color','ecolor']
 						for kwarg in kwargs:
-							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
+							if settings[instance][subinstance][setting][attr][subsubinstance].get(kwarg) is None:
 								continue
+								settings[instance][subinstance][setting][attr][subsubinstance][kwarg]
 							value = getattr(plt.cm,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])(
 								([subcombination[::-1] for subcombination in subcombinations][::-1].index(tuple((combination[k] for k in combination))[::-1]))/len(subcombinations))
 
@@ -1220,7 +1228,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 						kwargs = ['label']
 						for kwarg in kwargs:
-							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
+							if settings[instance][subinstance][setting][attr][subsubinstance].get(kwarg) is None:
+								continue
+
+							if attr != [attr for attr in special.get(setting,[]) if attr in settings[instance][subinstance][setting]][-1]:
+								settings[instance][subinstance][setting][attr][subsubinstance].pop(kwarg)
 								continue
 
 							if stat not in [('fit','fit')]:
@@ -1234,7 +1246,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						
 						kwargs = ['linestyle']
 						for kwarg in kwargs:
-							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
+							if settings[instance][subinstance][setting][attr][subsubinstance].get(kwarg) is None:
 								continue
 
 							if stat is None:
@@ -1252,7 +1264,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 						kwargs = ['alpha']
 						for kwarg in kwargs:
-							if kwarg not in settings[instance][subinstance][setting][attr][subsubinstance]:
+							if settings[instance][subinstance][setting][attr][subsubinstance].get(kwarg) is None:
 								continue
 							if stat is None:
 								value = None

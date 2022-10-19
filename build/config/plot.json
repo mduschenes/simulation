@@ -9,7 +9,7 @@
 		},
 	"ax":{
 		"errorbar":{
-			"x":"iteration",
+			"x":"iteration=2",
 			"y":"infidelity",
 			"label":["N","architecture","M","noise.scale"],
 			"alpha":0.8,
@@ -21,7 +21,7 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			},
+			},			
 		"fill_between":{
 			"x":"iteration",
 			"y":"infidelity",
