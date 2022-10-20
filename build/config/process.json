@@ -8,7 +8,7 @@
 		},
 		{
 			"key":{"x":"noise.scale","y":"infidelity"},
-			"slice":[0,null,null],
+			"slice":[1,null,null],
 			"stat":[["linear","linear"]]
 		},		
 		{
@@ -39,7 +39,6 @@
 		],	
 	"null":{},
 	"null":{"None.parameters.iteration.M":null},
-	"labels":["noise.scale"],
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",
 		"None": "\\textrm{None}",
@@ -58,6 +57,6 @@
 	"delimiter":".",
 	"process":["src.postprocess.process"],
 	"process":[],
-    "load":0,
+	"load":0,
 	"dump":1
 }

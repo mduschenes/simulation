@@ -25,7 +25,7 @@
 		"fill_between":{
 			"x":"iteration",
 			"y":"infidelity",
-			"label":["N","architecture","M=$20,50$","noise.scale"],
+			"label":["N","architecture","M","noise.scale"],
 			"alpha":0.5,			
 			"color":"viridis"
 			},			
@@ -96,9 +96,9 @@
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"log","base":10},
 		"set_xscale":{"value":"symlog","base":10,"linthresh":1e-20},
-		"set_xlim":{"xmin":1e-20,"xmax":1e0},
+		"set_xlim":{"xmin":1e-16,"xmax":1e0},
 		"set_xnbins":{"nbins":6},
-		"set_xticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},		
+		"set_xticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0]},		
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim":{"ymin":1e-11,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
@@ -250,7 +250,7 @@
 	},		
 "M.parameters.relative.mean.N.iteration":{
 	"fig":{
-		"set_size_inches":{"w":8,"h":8},
+		"set_size_inches":{"w":8,"h":16},
 		"subplots_adjust":{"hspace":0.5},
 		"tight_layout":{},
 		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
@@ -287,10 +287,10 @@
 			]},
 		"set_xlabel":{"xlabel":"$M$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xlim":{"xmin":0,"xmax":1000},		
+		"set_xlim":{"xmin":0,"xmax":120},		
 		"set_xnbins":{"nbins":6},
 		"set_ylim":{"ymin":1e-5,"ymax":1e-1},
-		"set_ylim":{"ymin":1e-4,"ymax":1e1},
+		"set_ylim":{"ymin":1e-2,"ymax":1e2},
 		"set_ynbins":{"nbins":3},		
 		"set_ynbins":{"nbins":3},		
 		"set_yscale":{"value":"log","base":10},
