@@ -991,13 +991,11 @@ class Object(object):
 					new = '%s.max'%(attr)
 					New = hyperparameters['optimize']['track'][attr][-1]
 					returns[new] = New
-					print(new,New)
 
 					new = '%s.min'%(attr)
 					New = hyperparameters['optimize']['track'][attr][argmin(array(hyperparameters['optimize']['track']['value']))]
 					returns[new] = New
-					print(new,New)
-					print()
+
 					new = 'status'
 					New = value/hyperparameters['optimize']['track'][attr][-1]
 
@@ -1094,7 +1092,6 @@ class Object(object):
 			file = file if file is not None else self.hyperparameters['sys']['path']['data'][attr]
 			path = join(file,root=root)
 			dump(data[attr],path)
-		exit()
 		
 		return
 
