@@ -162,27 +162,7 @@ class Object(object):
 
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
-		self.func = self.__func__
-		self.grad = gradient(self.func)
-		self.derivative = gradient(self,mode='fwd',move=True)
-		self.hessian = hessian(self.func)
-		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
-
-		if self.state is None and self.noise is None:
-			self.summation = jit(partial(summation,data=self.data,identity=self.identity))
-			self.exponentiation = jit(partial(exponentiation,data=self.data,identity=self.identity))
-		elif self.state is not None and self.noise is None:
-			self.summation = jit(partial(summationv,data=self.data,identity=self.identity,state=self.state))
-			self.exponentiation = jit(partial(exponentiationv,data=self.data,identity=self.identity,state=self.state))
-		elif self.state is None and self.noise is not None:
-			self.summation = jit(partial(summationc,data=self.data,identity=self.identity,constants=self.noise))
-			self.exponentiation = jit(partial(exponentiationc,data=self.data,identity=self.identity,constants=self.noise))
-		elif self.state is not None and self.noise is not None:
-			self.summation = jit(partial(summationm,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
-			self.exponentiation = jit(partial(exponentiationm,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
-		else:
-			self.summation = jit(partial(summation,data=self.data,identity=self.identity))
-			self.exponentiation = jit(partial(exponentiation,data=self.data,identity=self.identity))
+		self.__functions__()
 
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
 			for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','backend','architecture','shape']]
@@ -461,6 +441,35 @@ class Object(object):
 		self.hyperparameters = hyperparameters
 		self.attributes = attributes
 		self.size = parameters.shape
+
+		return
+
+	def __functions__(self):
+		''' 
+		Setup class functions
+		'''
+
+		self.func = self.__func__
+		self.grad = gradient(self.func)
+		self.derivative = gradient(self,mode='fwd',move=True)
+		self.hessian = hessian(self.func)
+		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
+
+		if self.state is None and self.noise is None:
+			self.summation = jit(partial(summation,data=self.data,identity=self.identity))
+			self.exponentiation = jit(partial(exponentiation,data=self.data,identity=self.identity))
+		elif self.state is not None and self.noise is None:
+			self.summation = jit(partial(summationv,data=self.data,identity=self.identity,state=self.state))
+			self.exponentiation = jit(partial(exponentiationv,data=self.data,identity=self.identity,state=self.state))
+		elif self.state is None and self.noise is not None:
+			self.summation = jit(partial(summationc,data=self.data,identity=self.identity,constants=self.noise))
+			self.exponentiation = jit(partial(exponentiationc,data=self.data,identity=self.identity,constants=self.noise))
+		elif self.state is not None and self.noise is not None:
+			self.summation = jit(partial(summationm,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
+			self.exponentiation = jit(partial(exponentiationm,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
+		else:
+			self.summation = jit(partial(summation,data=self.data,identity=self.identity))
+			self.exponentiation = jit(partial(exponentiation,data=self.data,identity=self.identity))
 
 		return
 
@@ -986,6 +995,24 @@ class Object(object):
 					New = obj.__layers__(value,layer)[indices]
 
 					returns[new] = New
+
+					
+					subattrs = {}
+					for subattr in ['noise']:
+						subattrs[subattr] = getattr(obj,subattr)
+						setattr(obj,subattr,None)
+					obj.__functions__()
+
+					new = 'value.ideal'
+					New = obj.__func__(value)
+
+					for subattr in subattrs:
+						setattr(obj,subattr,subattrs[subattr])
+					obj.__functions__()
+
+					returns[new] = New
+					
+
 
 				elif attr in ['iteration']:
 					new = '%s.max'%(attr)
