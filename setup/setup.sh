@@ -108,11 +108,11 @@ rm ${requirements[@]}
 # conda update --all
 
 # Install rmate (from https://stackoverflow.com/questions/37458814/how-to-open-remote-files-in-sublime-text-3)
-path=${HOME}/.local/bin/rmate
-url=\https://raw.github.com/aurora/rmate/master/rmate
+# path=${HOME}/.local/bin/rmate
+# url=\https://raw.github.com/aurora/rmate/master/rmate
 
-wget -O ${path} ${url}
-chmod a+x ${path}
+# wget -O ${path} ${url}
+# chmod a+x ${path}
 
 # Install latex packages (from http://physino.xyz/learning/2021/12/22/use-LaTeX-on-a-Linux-HPC-cluster/)
 # if [ "${install}" == "reinstall" ]
@@ -143,7 +143,7 @@ chmod a+x ${path}
 
 
 # Copy .bashrc
-source=.bashrc
-destination=${HOME}
+# source=.bashrc
+# destination=${HOME}
 
-cp ${source} ${destination}
+# cp ${source} ${destination}
