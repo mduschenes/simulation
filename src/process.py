@@ -1031,7 +1031,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	# reshaping of variables data based on 
 	# parameters = {'y':{'x':{'axis':{attr:[[axis for ncols],[axis for nrows],[axis for labels][axis for plot]]}}}}
 	for instance in list(settings):
-		print('Plotting: ',instance)
 		for subinstance in list(settings[instance]):
 			subupdated.clear()
 			for setting in special:
@@ -1482,6 +1481,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 
 		if hyperparameters.get('plot'):
+			print('Plotting: ',instance,list(settings[instance][list(settings[instance])[0]]['ax']))
 			fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
 
 

@@ -8,10 +8,11 @@
 		"close":{}
 		},
 	"ax":{
-		"errorbar":{
+		"errorbar":[
+			{
 			"x":"iteration",
 			"y":"infidelity",
-			"label":["N","architecture","M=$20,50$","noise.scale"],
+			"label":["N","architecture","M","noise.scale"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -21,7 +22,22 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			},			
+			},		
+			{
+			"x":"iteration",
+			"y":"infidelity.ideal",
+			"label":["N","architecture","M","noise.scale"],
+			"alpha":0.8,
+			"marker":"o",
+			"markersize":12,
+			"linestyle":"--",
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
+			"color":"viridis",
+			"ecolor":"viridis"
+			}		
+			],	
 		"fill_between":{
 			"x":"iteration",
 			"y":"infidelity",
