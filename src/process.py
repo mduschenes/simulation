@@ -943,7 +943,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 
 	# Plot data
-	
+
 	# Default setting objects for each settings instance
 	defaults = {}
 
@@ -1481,8 +1481,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 
 
-
-		fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
+		if hyperparameters.get('plot'):
+			fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
 
 
 
