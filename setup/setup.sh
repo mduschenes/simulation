@@ -105,3 +105,31 @@ rm ${requirements[@]}
 
 # conda update --all
 
+
+
+# Install latex packages (from http://physino.xyz/learning/2021/12/22/use-LaTeX-on-a-Linux-HPC-cluster/)
+if [ "${install}" == "reinstall" ]
+do
+	var=TEXMFHOME
+	default=${HOME}/texmf
+	pkgs=(physics)
+
+	path=$(kpsewhich --var-value ${var})
+	path=${path:-${default}}
+
+	mkdir -p ${path}
+
+	export ${var}=${path}
+
+	pwd=${PWD}
+
+	cd ${path}
+
+	texhash . # or mktexlsr .
+
+	tlmgr --init-usertree
+
+	tlmgr --usermode ${pkgs[@]}
+
+	cd ${pwd}
+done
