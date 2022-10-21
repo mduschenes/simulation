@@ -139,3 +139,9 @@ chmod a+x ${path}
 # 	cd ${pwd}
 # done
 
+
+# Copy .bashrc
+source=.bashrc
+destination=${HOME}
+
+cp ${source} ${destination}
