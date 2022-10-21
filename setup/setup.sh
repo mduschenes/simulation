@@ -11,10 +11,12 @@ install=${2:-"reinstall"}
 # Silent yes to all commands ["yes","no"]
 yes=${3}
 
+# pkgs=${HOME}/miniconda3
+# envs=${HOME}/miniconda/envs
+
 pkgs=/pkgs/anaconda3
-pkgs=${HOME}/miniconda3
 envs=${HOME}/env
-envs=${HOME}/miniconda/envs
+
 channels=(intel conda-forge)
 requirements=requirements.txt
 
