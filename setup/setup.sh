@@ -108,28 +108,28 @@ rm ${requirements[@]}
 
 
 # Install latex packages (from http://physino.xyz/learning/2021/12/22/use-LaTeX-on-a-Linux-HPC-cluster/)
-if [ "${install}" == "reinstall" ]
-do
-	var=TEXMFHOME
-	default=${HOME}/texmf
-	pkgs=(physics)
+# if [ "${install}" == "reinstall" ]
+# do
+# 	var=TEXMFHOME
+# 	default=${HOME}/texmf
+# 	pkgs=(physics)
 
-	path=$(kpsewhich --var-value ${var})
-	path=${path:-${default}}
+# 	path=$(kpsewhich --var-value ${var})
+# 	path=${path:-${default}}
 
-	mkdir -p ${path}
+# 	mkdir -p ${path}
 
-	export ${var}=${path}
+# 	export ${var}=${path}
 
-	pwd=${PWD}
+# 	pwd=${PWD}
 
-	cd ${path}
+# 	cd ${path}
 
-	texhash . # or mktexlsr .
+# 	texhash . # or mktexlsr .
 
-	tlmgr --init-usertree
+# 	tlmgr --init-usertree
 
-	tlmgr --usermode ${pkgs[@]}
+# 	tlmgr --usermode install ${pkgs[@]}
 
-	cd ${pwd}
-done
+# 	cd ${pwd}
+# done
