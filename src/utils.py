@@ -33,7 +33,7 @@ from jax.tree_util import register_pytree_node_class as tree_register
 from jax.tree_util import tree_map as tree_map
 
 configs = {
-	'jax_disable_jit':False,
+	'jax_disable_jit':True,
 	'jax_platform_name':'cpu',
 	'jax_enable_x64': True
 	}
@@ -2261,7 +2261,7 @@ def exponentiationv(parameters,data,identity,state):
 	return out
 
 @jit
-def summationm(parameters,data,identity,state,constants):
+def summationm(parameters,data,identity,state):
 	'''
 	Calculate matrix sum of parameters times data, acting on matrix
 	Args:
@@ -2269,14 +2269,13 @@ def summationm(parameters,data,identity,state,constants):
 		data (array): Array of data to matrix sum of shape (d,n,n)
 		identity (array): Array of data identity
 		state (array): Array of state to act on of shape (n,n) or (p,n,n)
-		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
 	Returns:
 		out (array): Matrix sum of data of shape (n,n)
 	'''	
 	return dot(addition(parameters*data),state)
 
 @jit
-def exponentiationm(parameters,data,identity,state,constants):
+def exponentiationm(parameters,data,identity,state):
 	'''
 	Calculate matrix exponential of parameters times data, acting on matrix
 	Args:
@@ -2284,11 +2283,10 @@ def exponentiationm(parameters,data,identity,state,constants):
 		data (array): Array of data to matrix exponentiate of shape (d,n,n)
 		identity (array): Array of data identity
 		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
-		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
 	Returns:
 		out (array): Matrix exponential of data of shape (n,n)
 	'''		
-	out = expmmc(parameters,data,identity,state,constants)
+	out = expmm(parameters,data,identity,state)
 	return out
 
 
@@ -2320,6 +2318,39 @@ def exponentiationc(parameters,data,identity,constants):
 	'''		
 	out = expmc(parameters,data,identity,constants)
 	return out
+
+
+@jit
+def summationmc(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix sum of parameters times data, acting on matrix, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return dot(addition(parameters*data),state)
+
+@jit
+def exponentiationmc(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
+		data (array): Array of data to matrix exponentiate of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix exponential of data of shape (n,n)
+	'''		
+	out = expmmc(parameters,data,identity,state,constants)
+	return out
+
 
 @jit
 def distance(a,b):

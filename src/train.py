@@ -65,6 +65,18 @@ def train(hyperparameters):
 
 	obj = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
+	print(obj(obj.parameters))
+
+	subattrs = {}
+	for subattr in ['noise']:
+		subattrs[subattr] = getattr(obj,subattr)
+		setattr(obj,subattr,None)
+		obj.__functions__()
+
+	print(obj(obj.parameters))
+	exit()
+
+
 	if hyperparameters['boolean'].get('load'):
 		obj.load()
 

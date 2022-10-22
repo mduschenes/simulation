@@ -35,18 +35,21 @@ def Texify(string,texify={},usetex=True):
 	strings = {
 		**texify,
 	}
-	if not isinstance(string,str):
+	if not isinstance(string,str) and string is not None:
 		string = str(string)
 
-	default = '\n'.join(['$%s$'%(strings.get(substring,substring).replace('$','')) for substring in string.split('\n')])
+	try:
+		default = '\n'.join(['$%s$'%(strings.get(substring,substring).replace('$','')) for substring in string.split('\n')])
 
-	if string in strings:
-		string = '$%s$'%(strings.get(string).replace('$',''))
-	else:
-		string = default
+		if string in strings:
+			string = '$%s$'%(strings.get(string).replace('$',''))
+		else:
+			string = default
 
-	if not usetex or len(string) == 0:
-		string = string.replace('$','')
+		if not usetex or len(string) == 0:
+			string = string.replace('$','')
+	except AttributeError:
+		string = None
 
 	return string
 
@@ -1237,10 +1240,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 						combination,j,occurrence,stat = subsubinstance
 						
-						# key = keys[occurrence]
 						key = _occurrences(occurrence,keys)
 
-						combination = dict(zip(key['label']['key'],combination))
+						combination = dict(zip([k for k in key['label']['key'] if k in hyperparameters.get('sort')],combination))
 
 
 						# TODO: Allow for access of other data/attributes values (statistics of them in parallel with plotted values)
@@ -1260,7 +1262,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 
-
 						kwargs = ['label']
 						for kwarg in kwargs:
 							if settings[instance][subinstance][setting][attr][subsubinstance].get(kwarg) is None:
@@ -1272,7 +1273,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							if stat not in [('fit','fit')]:
 								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
-								value = ',~'.join([texify(scinotation(combination[k],decimals=0,scilimits=[0,3])) for k in value])
+								value = [texify(scinotation(combination[k],decimals=0,scilimits=[0,3])) for k in value]
+								value = [*value,*[v if v is not None else k for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]]
+								value = [v for v in value if v is not None]
+								value = ',~'.join(value)
 
 							else:
 								value = None
@@ -1324,9 +1328,21 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								# [(k,combination[k]) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) == 1],
 								[(k,) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1],
 								]
-							value = ['~,~'.join([': '.join([texify(l) for l in k]) for k in v]) for v in value]
+							value = [
+								[[texify(l) for l in k] if not isinstance(k,str) else texify(k) 
+								for k in [*v,[k if v is not None else None for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]]]
+								for i,v in enumerate(value)]
+							value = ['~,~'.join([': '.join([j for j in k if j is not None]) if not isinstance(k,str) else k for k in v if k is not None and len(k)>0 and all(j is not None for j in k)]) 
+									for v in value if v is not None and len(v)>0]
 							value = [v for v in value if len(v)>0]
 							value = '\n'.join(['$%s$'%(v.replace('$','')) for v in value])
+
+							value = value if (
+								(settings[instance][subinstance][setting][subattr].get(kwarg) is None) or 
+								any(len(k)>len(v) for k,v in zip(
+									[v.split('~,~') for v in value.split('\n')],
+									[v.split('~,~') for v in settings[instance][subinstance][setting][subattr].get(kwarg).split('\n')]))
+									) else settings[instance][subinstance][setting][subattr].get(kwarg)
 
 							settings[instance][subinstance][setting][subattr][kwarg] = value
 
@@ -1481,7 +1497,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 
 		if hyperparameters.get('plot'):
-			print('Plotting: ',instance,list(settings[instance][list(settings[instance])[0]]['ax']))
+			print('Plotting: ',instance)
 			fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
 
 

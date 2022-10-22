@@ -119,7 +119,6 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=No
 		dtype (data_type): Data type of values		
 	Returns:
 		data (array): Array of states
-		samples (array): Weights of samples
 	'''
 
 	# Setup hyperparameters
@@ -128,14 +127,7 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=No
 	# Set data
 	if shape is None or hyperparameters.get('shape') is None:
 		data = None
-		samples = samples if samples is not None else None
-		returns = ()
-		returns += (data,)
-
-		if samples is not None:
-			returns += (samples,)
-
-		return returnargs(returns)
+		return data
 
 	# Ensure shape is iterable
 	if isinstance(shape,int):
@@ -211,12 +203,18 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=No
 		pass
 	else:
 		samples = None
-	
-	# Set returns
-	returns = ()
-	returns += (data,)
 
 	if samples is not None:
-		returns += (samples,)
+		if data is None:
+			data = None
+		elif data.ndim == 3:
+			data = einsum('ujk,u->jk',data,samples)
+		elif data.ndim == 2 and data.shape[0] == data.shape[1]:
+			data = data
+		elif data.ndim == 2 and data.shape[0] != data.shape[1]:
+			data = einsum('uj,u->u',data,samples)
+		elif data.ndim == 1:
+			data = data
 
-	return returnargs(returns)
+	
+	return data

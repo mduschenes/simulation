@@ -28,7 +28,7 @@ for PATH in PATHS:
 from src.utils import jit,gradient,hessian,fisher
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,dot,einsum
-from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationc,exponentiationc
+from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationc,exponentiationc,summationmc,exponentiationmc
 from src.utils import trotter,gradient_trotter,gradient_expm,gradient_sigmoid
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
@@ -130,12 +130,13 @@ class Object(object):
 		self.backend = None
 		self.architecture = None
 		self.delimiter = ' '
-		self.dims = []
+		self.dims = ()
 		self.dim = int(product(self.dims))
 		self.ndims = len(self.dims)
 
 		self.hyperparameters = hyperparameters
 		self.parameters = None
+		self.labels = None
 		self.label = None
 		self.state = None
 		self.noise = None
@@ -376,7 +377,7 @@ class Object(object):
 		dtype = self.dtype
 		cls = self
 
-		state,weights = stateize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
+		state = stateize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
 
 
 		# Get label
@@ -405,32 +406,18 @@ class Object(object):
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
 
-		# Update state,label,noise based on state
-		# state.ndim = 3 : Density matrix evolution (multiple states)
-		# state.ndim = 2 and state.shape[0] == state.shape[1] : Density matrix evolution (single state)
-		# state.ndim = 2 and state.shape[0] != state.shape[1] : Pure state matrix evolution (multiple states)
-		# state.ndim = 1 : Pure state evolution (single state)
+		# Update state
+		# state.ndim = 2 : Density matrix evolution 
+		# state.ndim = 1 : Pure state evolution
 
 		if state is None:
-			state = None
-			label = label.conj()
-			noise = None
-		elif state.ndim == 3:
-			state = einsum('ujk,u->jk',state,weights)
+			label = None
+		elif state.ndim == 2:
 			label = einsum('ij,jk,lk->il',label,state,label.conj())
-			noise = noise
-		elif state.ndim == 2 and state.shape[0] == state.shape[1]:
-			state = state
-			label = einsum('ij,jk,lk->il',label,state,label.conj())
-			noise = noise
-		elif state.ndim == 2 and state.shape[0] != state.shape[1]:
-			state = einsum('uj,u->u',state,weights)
-			label = einsum('ij,j->i',label,state)
-			noise = noise
 		elif state.ndim == 1:
 			label = einsum('ij,j->i',label,state)
-			state = state
-			noise = noise
+		else:
+			label = label
 
 		# Update class attributes
 		self.parameters = parameters
@@ -449,24 +436,31 @@ class Object(object):
 		Setup class functions
 		'''
 
+		# Metric functions
 		self.func = self.__func__
 		self.grad = gradient(self.func)
 		self.derivative = gradient(self,mode='fwd',move=True)
 		self.hessian = hessian(self.func)
 		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
 
+
+		# Operator functions
 		if self.state is None and self.noise is None:
 			self.summation = jit(partial(summation,data=self.data,identity=self.identity))
 			self.exponentiation = jit(partial(exponentiation,data=self.data,identity=self.identity))
 		elif self.state is not None and self.noise is None:
-			self.summation = jit(partial(summationv,data=self.data,identity=self.identity,state=self.state))
-			self.exponentiation = jit(partial(exponentiationv,data=self.data,identity=self.identity,state=self.state))
+			if self.state.ndim == 1:
+				self.summation = jit(partial(summationv,data=self.data,identity=self.identity,state=self.state))
+				self.exponentiation = jit(partial(exponentiationv,data=self.data,identity=self.identity,state=self.state))
+			elif self.state.ndim == 2:
+				self.summation = jit(partial(summationm,data=self.data,identity=self.identity,state=self.state))
+				self.exponentiation = jit(partial(exponentiationm,data=self.data,identity=self.identity,state=self.state))
 		elif self.state is None and self.noise is not None:
 			self.summation = jit(partial(summationc,data=self.data,identity=self.identity,constants=self.noise))
 			self.exponentiation = jit(partial(exponentiationc,data=self.data,identity=self.identity,constants=self.noise))
 		elif self.state is not None and self.noise is not None:
-			self.summation = jit(partial(summationm,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
-			self.exponentiation = jit(partial(exponentiationm,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
+			self.summation = jit(partial(summationmc,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
+			self.exponentiation = jit(partial(exponentiationmc,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
 		else:
 			self.summation = jit(partial(summation,data=self.data,identity=self.identity))
 			self.exponentiation = jit(partial(exponentiation,data=self.data,identity=self.identity))
@@ -581,11 +575,11 @@ class Object(object):
 	@partial(jit,static_argnums=(0,))
 	def __func__(self,parameters):
 		''' 
-		Class objective
+		Class function
 		Args:
 			parameters (array): parameters
 		Returns:
-			objective (array): objective
+			function (array): function
 		'''	
 		return self.__loss__(parameters) + self.__constraints__(parameters)
 
@@ -1003,8 +997,8 @@ class Object(object):
 						setattr(obj,subattr,None)
 					obj.__functions__()
 
-					new = 'value.ideal'
-					New = obj.__func__(value)
+					new = 'infidelity.ideal'
+					New = 1-obj.__objective__(value)
 
 					for subattr in subattrs:
 						setattr(obj,subattr,subattrs[subattr])
@@ -1012,7 +1006,6 @@ class Object(object):
 
 					returns[new] = New
 					
-
 
 				elif attr in ['iteration']:
 					new = '%s.max'%(attr)
@@ -1058,7 +1051,7 @@ class Object(object):
 			return returns
 
 		# Get data
-		label = [str(self.timestamp)]
+		label = [self.timestamp]
 		keys = [self.key]
 		iterations = {
 			key: range(min(len(self.hyperparameters['optimize']['track'][attr]) 
@@ -1071,7 +1064,7 @@ class Object(object):
 
 
 		data = {
-			delim.join([*label,str(key),str(iteration)]): {
+			delim.join([*(str(l) for l in label),str(key),str(iteration)]): {
 				**{attr: self.hyperparameters['optimize']['track'][attr][iteration]
 					for attr in self.hyperparameters['optimize']['track']
 					if len(self.hyperparameters['optimize']['track'][attr]) > 0
@@ -1403,7 +1396,7 @@ class Hamiltonian(Object):
 		return
 
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __parameters__(self,parameters):
 		''' 
 		Setup parameters
@@ -1465,7 +1458,7 @@ class Unitary(Hamiltonian):
 
 		return
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __call__(self,parameters):
 		'''
 		Return parameterized operator expm(parameters*data)
