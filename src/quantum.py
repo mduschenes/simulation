@@ -384,8 +384,7 @@ class Object(object):
 		dtype = self.dtype
 		cls = self
 
-		state = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-
+		state,samples = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 		# Get label
 		data = None
@@ -503,7 +502,7 @@ class Object(object):
 		return parameters
 
 
-	# @partial(jit,static_argnums=(0,2))
+	@partial(jit,static_argnums=(0,2))
 	def __layers__(self,parameters,layer='variables'):
 		''' 
 		Setup layer
@@ -1409,7 +1408,7 @@ class Hamiltonian(Object):
 		return
 
 
-	# @partial(jit,static_argnums=(0,))
+	@partial(jit,static_argnums=(0,))
 	def __parameters__(self,parameters):
 		''' 
 		Setup parameters
@@ -1471,7 +1470,7 @@ class Unitary(Hamiltonian):
 
 		return
 
-	# @partial(jit,static_argnums=(0,))
+	@partial(jit,static_argnums=(0,))
 	def __call__(self,parameters):
 		'''
 		Return parameterized operator expm(parameters*data)

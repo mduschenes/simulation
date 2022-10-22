@@ -207,6 +207,38 @@ def test_grad(path,tol):
 	return
 
 
+
+def test_obj(path,tol):
+
+	hyperparameters = load(path)
+
+	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+
+	func = jit(obj.__call__)
+
+	parameters = obj.parameters
+
+	U = func(parameters)
+
+	subattrs = {}
+	for subattr in ['noise']:
+		subattrs[subattr] = getattr(obj,subattr)
+		setattr(obj,subattr,None)
+		obj.__functions__()
+
+	V = func(parameters)
+
+	for subattr in subattrs:
+		setattr(obj,subattr,subattrs[subattr])
+	obj.__functions__()
+
+	W = func(parameters)
+
+	assert allclose(U,V),"Incorrect identity noise"
+	assert allclose(U,W),"Incorrect restored noise"
+
+	return
+
 def test_call():
 	return
 	# process = None

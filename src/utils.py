@@ -33,7 +33,7 @@ from jax.tree_util import register_pytree_node_class as tree_register
 from jax.tree_util import tree_map as tree_map
 
 configs = {
-	'jax_disable_jit':True,
+	'jax_disable_jit':False,
 	'jax_platform_name':'cpu',
 	'jax_enable_x64': True
 	}

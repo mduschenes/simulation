@@ -156,6 +156,9 @@ def noiseize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 	# Get seed
 	seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
 
+	# Get scale
+	scale = hyperparameters['scale']	
+
 	# Basis
 	operators = {
 		attr: basis[attr].astype(dtype)
@@ -173,8 +176,10 @@ def noiseize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 	# Set data
 	data = None
 
-	if isinstance(string,str):
-		scale = hyperparameters['scale']
+	if scale is None:
+		data = None
+	elif isinstance(string,str):
+
 		if string in ['phase']:
 			data = [sqrt(1-scale)*basis['I'],
 					sqrt(scale)*basis['Z']]

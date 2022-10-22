@@ -30,7 +30,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,allclose
+from src.utils import argparser,allclose,jit
 from src.io import load
 from src.optimize import Optimizer
 
@@ -62,29 +62,10 @@ def train(hyperparameters):
 
 	cls = load(hyperparameters['class'])
 
-
 	obj = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
-
-	U = obj(obj.parameters)
-
-	subattrs = {}
-	for subattr in ['noise']:
-		subattrs[subattr] = getattr(obj,subattr)
-		setattr(obj,subattr,None)
-		obj.__functions__()
-
-	V = obj(obj.parameters)
-	print(allclose(U,V))
-
-	print(U)
-	print()
-	print(V)
-	exit()
-
 
 	if hyperparameters['boolean'].get('load'):
 		obj.load()
-
 
 	if hyperparameters['boolean'].get('train'):
 

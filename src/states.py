@@ -120,6 +120,7 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 		dtype (data_type): Data type of values		
 	Returns:
 		data (array): Array of states
+		samples (array): Weights of samples		
 	'''
 
 	# Setup hyperparameters
@@ -217,5 +218,11 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 		elif data.ndim == 1:
 			data = data
 
-	
-	return data
+	# Set returns
+	returns = ()
+	returns += (data,)
+
+	if samples is not None:
+		returns += (samples,)
+
+	return returnargs(returns)
