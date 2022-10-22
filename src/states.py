@@ -100,7 +100,7 @@ def setup(hyperparameters,cls=None):
 	return
 
 
-def stateize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=None):
+def stateize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=None,dtype=None):
 	'''
 	Initialize data of states based on shape
 	Args:
@@ -115,6 +115,7 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=No
 			'bounds': iterable[float]: bounds on states
 		size (int): Size of states
 		samples (bool,array): Weight samples (create random weights, or use samples weights)
+		seed (key,int): PRNG key or seed		
 		cls (object): Class instance to update hyperparameters
 		dtype (data_type): Data type of values		
 	Returns:
@@ -137,7 +138,7 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=No
 	shape = (*hyperparameters['shape'][:-max(2,len(shape))],*shape)
 
 	# Get seed
-	seed = hyperparameters.get('seed')
+	seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
 
 	# Delimiter for string
 	delimiter = '_'

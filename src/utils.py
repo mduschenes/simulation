@@ -2959,7 +2959,7 @@ def expmm(x,A,I,v):
 	n = v.shape[0]
 
 	subscripts = 'ij,jk,lk->il'
-	shapes = (shape,(n,n),shape[::-1])
+	shapes = (shape,(n,n),shape)
 	einsummation = einsum #(subscripts,shapes)
 
 	def func(i,out):

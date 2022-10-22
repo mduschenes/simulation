@@ -163,8 +163,6 @@ class Object(object):
 
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
-		self.__functions__()
-
 		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
 			for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','backend','architecture','shape']]
 			)))
@@ -219,6 +217,9 @@ class Object(object):
 		
 		# Initialize parameters
 		self.__initialize__(parameters)
+
+		# Setup functions
+		self.__functions__()
 
 		return
 
@@ -322,6 +323,8 @@ class Object(object):
 		if index == -1:
 			index = len(self.data)
 
+		self.data = [value for value in self.data]
+
 		self.data.insert(index,data)
 		self.operator.insert(index,operator)
 		self.site.insert(index,site)
@@ -330,6 +333,8 @@ class Object(object):
 
 		self.shape = (len(self.data),self.M,*self.dims)
 		self.ndim = len(self.shape)		
+
+		self.data = array(self.data,dtype=self.dtype)
 
 		self.hyperparameters.update(hyperparameters)
 
@@ -356,10 +361,11 @@ class Object(object):
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
 		size = product(shape)
 		samples = None
+		seed = self.seed
 		cls = self
 		dtype = self.dtype
 
-		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,size=size,samples=samples,cls=cls,dtype=dtype)
+		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 		# Get reshaped parameters
 		attribute = 'values'
@@ -374,10 +380,11 @@ class Object(object):
 		hyperparams = hyperparameters['state']
 		size = self.N
 		samples = True
+		seed = self.seed		
 		dtype = self.dtype
 		cls = self
 
-		state = stateize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
+		state = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 
 		# Get label
@@ -386,10 +393,11 @@ class Object(object):
 		hyperparams = hyperparameters['label']
 		size = self.N
 		samples = None
+		seed = self.seed
 		cls = self
 		dtype = self.dtype
 
-		label = operatorize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
+		label = operatorize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 
 		# Get noise
@@ -398,10 +406,11 @@ class Object(object):
 		hyperparams = hyperparameters['noise']
 		size = self.N
 		samples = None
+		seed = self.seed		
 		cls = self
 		dtype = self.dtype
 
-		noise = noiseize(data,shape,hyperparams,size=size,samples=samples,cls=cls,dtype=dtype)
+		noise = noiseize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
@@ -991,8 +1000,8 @@ class Object(object):
 					returns[new] = New
 
 					
-					subattrs = {}
-					for subattr in ['noise']:
+					subattrs = {subattr:None for subattr in ['noise']}
+					for subattr in subattrs:
 						subattrs[subattr] = getattr(obj,subattr)
 						setattr(obj,subattr,None)
 					obj.__functions__()
@@ -1384,14 +1393,18 @@ class Hamiltonian(Object):
 			string = ['I']*self.p
 			interaction = ['i...j']*self.p
 		
+		
+
 		# Update class attributes
 		self.__extend__(data,operator,site,string,interaction,hyperparameters)
 
 		# Initialize parameters
 		self.__initialize__(parameters)
 
-		parameters = self.parameters
-		self.data = array(self.data,dtype=self.dtype)
+		# Setup functions
+		self.__functions__()
+
+		
 
 		return
 

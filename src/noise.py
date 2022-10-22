@@ -118,7 +118,7 @@ def setup(hyperparameters,cls=None):
 	return
 
 
-def noiseize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=None):
+def noiseize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=None,dtype=None):
 	'''
 	Initialize data of noise based on shape
 	Args:
@@ -133,6 +133,7 @@ def noiseize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=No
 			'bounds': iterable[float]: bounds on noise
 		size (int): Size of noise
 		samples (bool,array): Weight samples (create random weights, or use samples weights)
+		seed (key,int): PRNG key or seed		
 		cls (object): Class instance to update hyperparameters
 		dtype (data_type): Data type of values		
 	Returns:
@@ -153,7 +154,7 @@ def noiseize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=No
 		shape = (shape,)
 
 	# Get seed
-	seed = hyperparameters.get('seed')
+	seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
 
 	# Basis
 	operators = {

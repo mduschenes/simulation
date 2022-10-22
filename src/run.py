@@ -118,7 +118,7 @@ def setup(settings):
 	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape).tolist()
 	seeds = [dict(zip(seedlings,seed)) for seed in seeds]
 
-	other = [{'model.system.key':None,'model.system.timestamp':timestamp}]
+	other = [{'model.system.key':None,'model.system.timestamp':timestamp,'model.system.seed':seed}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	values = {'permutations':permutations,'seed':seeds,'other':other}

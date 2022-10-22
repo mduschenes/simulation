@@ -27,15 +27,16 @@
 	},
 "seed":{
 	"seed":919191,
-	"size":2,
+	"size":1,
 	"reset":919191,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
-		"model.N":[4],
+		"model.N":[2],
 		"model.M":[35],
 		"noise.scale":[1e-8,1e-3,1e-1],
+		"noise.scale":[1e-8],
 		"optimize.iterations":[200],
 		"optimize.optimizer":["cg"],
 
@@ -73,12 +74,12 @@
 	"index":-1
 	},
 "model":{
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":30,
+	"M":5,
 	"T":null,
 	"tau":10e-1,
 	"p":2,
@@ -90,7 +91,7 @@
 		"dtype":"complex",
 		"format":"array",
 		"key":null,
-		"seed":null,
+		"seed":1234,
 		"timestamp":null,
 		"architecture":null,
 		"device":"cpu",

@@ -42,7 +42,7 @@ def _setup(args,kwargs):
 	key = 123
 	dtype = 'complex'
 	
-	x = rand((m,),key=key,dtype=datatype(dtype))
+	x = rand((m*d,),key=key,dtype=datatype(dtype))
 	A = rand((d,*shape),random='hermitian',key=key,dtype=dtype)
 	I = identity(shape,dtype=dtype)
 	v = rand(shape,key=key,dtype=dtype)
@@ -77,7 +77,7 @@ def test_expm():
 		m,d = kwargs['m'],kwargs['d']
 		
 		out = I
-		for i in range(m):
+		for i in range(m*d):
 			out = _expm(x[i],A[i%d],I).dot(out)
 
 		return out
@@ -86,10 +86,10 @@ def test_expm():
 	kwargs = {}
 
 	kwargs.update({
-		'n': 2**3,
-		'm': 50,
-		'd': 17,
-		'k': 4,
+		'n': 2**2,
+		'm': 13,
+		'd': 11,
+		'k': 6,
 		'metric': 'infidelity.abs',
 		'time': True,
 	})
@@ -119,7 +119,7 @@ def test_expmv():
 		m,d = kwargs['m'],kwargs['d']
 		
 		out = v
-		for i in range(m):
+		for i in range(m*d):
 			out = _expm(x[i],A[i%d],I).dot(out)
 
 		return out
@@ -128,10 +128,10 @@ def test_expmv():
 	kwargs = {}
 
 	kwargs.update({
-		'n': 2**3,
-		'm': 50,
-		'd': 17,
-		'k': 4,
+		'n': 2**2,
+		'm': 13,
+		'd': 11,
+		'k': 6,
 		'metric': 'infidelity.abs',
 		'time': True,
 	})
@@ -157,8 +157,9 @@ def test_expmm():
 		m,d = kwargs['m'],kwargs['d']
 		
 		out = v
-		for i in range(m):
-			out = _expm(x[i],A[i%d],I).dot(out).dot(_expm(x[i],A[i%d],I).conj().T)
+		for i in range(m*d):
+			U = _expm(x[i],A[i%d],I)
+			out = U.dot(out).dot(U.conj().T)
 
 		return out
 
@@ -166,10 +167,10 @@ def test_expmm():
 	kwargs = {}
 
 	kwargs.update({
-		'n': 2**3,
-		'm': 50,
-		'd': 17,
-		'k': 4,
+		'n': 2**2,
+		'm': 13,
+		'd': 11,
+		'k': 6,
 		'metric': 'infidelity.abs',
 		'time': True,
 	})
@@ -196,7 +197,7 @@ def test_expmmc(*args,**kwargs):
 		m,d,k = kwargs['m'],kwargs['d'],kwargs['k']
 		
 		out = v
-		for i in range(m//d):
+		for i in range(m):
 			U = I
 			for j in range(d):
 				y = x[i*d + j]
@@ -210,10 +211,10 @@ def test_expmmc(*args,**kwargs):
 	kwargs = {}
 
 	kwargs.update({
-		'n': 2**3,
-		'm': 5,
-		'd': 7,
-		'k': 4,
+		'n': 2**2,
+		'm': 13,
+		'd': 11,
+		'k': 6,
 		'metric': 'infidelity.abs',
 		'time': True,
 	})
@@ -239,10 +240,10 @@ def test_gradient_expm():
 		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
 		m,d = kwargs['m'],kwargs['d']
 		
-		out = array([I]*m)
+		out = array([I]*(m*d))
 			
-		for i in range(m):
-			for j in range(m):
+		for i in range(m*d):
+			for j in range(m*d):
 				U = _expm(x[j],A[j%d],I)
 				out = out.at[i].set(U.dot(out[i]))
 				if j == i:
@@ -254,10 +255,10 @@ def test_gradient_expm():
 	kwargs = {}
 
 	kwargs.update({
-		'n': 2**3,
-		'm': 5,
-		'd': 7,
-		'k': 4,
+		'n': 2**2,
+		'm': 3,
+		'd': 2,
+		'k': 6,
 		'metric': 'infidelity.abs',
 		'time': True,
 	})
@@ -271,3 +272,42 @@ def test_gradient_expm():
 
 	return
 
+
+def test_expmi():
+
+	def func(*args,**kwargs):
+		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
+
+		B = array([I,*[0*I]*(B.shape[0]-1)])
+
+		out = expmmc(x,A,I,v,B)
+
+		return out
+
+	def _func(*args,**kwargs):
+		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
+		
+		out = expmm(x,A,I,v)
+
+		return out
+
+	args = ()
+	kwargs = {}
+
+	kwargs.update({
+		'n': 2**2,
+		'm': 13,
+		'd': 11,
+		'k': 6,
+		'metric': 'infidelity.abs',
+		'time': True,
+	})
+
+	_setup(args,kwargs)
+
+	out = func(*args,**kwargs)
+	_out = _func(*args,**kwargs)
+
+	assert allclose(out,_out)
+
+	return

@@ -287,7 +287,7 @@ def setup(hyperparameters,cls=None):
 	return 
 
 
-def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None,samples=None,cls=None,dtype=None):
+def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None,samples=None,seed=None,cls=None,dtype=None):
 	'''
 	Initialize data of shapes of parameters based on shape of data
 	Args:
@@ -304,6 +304,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 		initialize (callable): Function with signature initialize(parameters,shape,hyperparameters,reset=None,dtype=None) to initialize parameter values
 		size (int): size of parameters
 		samples (bool,array): Weight samples (create random weights, or use samples weights)
+		seed (key,int): PRNG key or seed		
 		cls (object): Class instance to update hyperparameters		
 		dtype (data_type): Data type of values		
 	Returns:
@@ -437,7 +438,9 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 	dtype = datatype(dtype)
 
 	# Get seed
-	seed = [hyperparameters[parameter].get('seed',None) for parameter in hyperparameters][0]
+	seed = [hyperparameters[parameter].get('seed',seed) if hyperparameters[parameter].get('seed',seed) is not None else seed 
+			for parameter in hyperparameters][0]
+	
 
 	# Get properties of hyperparameters
 	properties = ['category','group','shape','locality','boundaries','constants','use','parameters']

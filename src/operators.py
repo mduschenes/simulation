@@ -160,7 +160,7 @@ def setup(hyperparameters,cls=None):
 
 	return
 
-def operatorize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype=None):
+def operatorize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=None,dtype=None):
 	'''
 	Initialize operators
 	Args:
@@ -169,6 +169,7 @@ def operatorize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype
 		hyperparameters (dict): Dictionary of hyperparameters for operator
 		size (int): size of operators
 		samples (bool,array): Weight samples (create random weights, or use samples weights)
+		seed (key,int): PRNG key or seed
 		cls (object): Class instance to update hyperparameters		
 		dtype (data_type): Data type of operator
 	Returns:
@@ -194,7 +195,7 @@ def operatorize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype
 	delimiter = '_'
 
 	# Get seed
-	seed = hyperparameters.get('seed')
+	seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
 
 	# Properties for strings
 	props = {
@@ -233,7 +234,7 @@ def operatorize(data,shape,hyperparameters,size=None,samples=None,cls=None,dtype
 				props[string]['func'](shape,
 					bounds=hyperparameters.get('bounds'),
 					random=hyperparameters.get('random'),
-					seed=hyperparameters.get('seed'),
+					seed=hyperparameters.get('seed',seed),
 					dtype=dtype
 					)
 				for string in strings
