@@ -1290,12 +1290,18 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								continue
 
 							if stat is None:
-								value = '-'
+								value = None
 							elif stat not in [('fit','fit')]:
-								value = list(set([subcombination[-1] for subcombination in subcombinations]))
-								value = value.index(tuple((combination[k] for k in combination))[-1]) if any(len(subcombination)>0 for subcombination in subcombinations) else 0
+								# value = list(sorted(list(set([(subcombination[-1]) 
+								# 	for subcombination in subcombinations 
+								# 	]))))
+								# value = (value.index((tuple((combination[k] for k in combination))[-1])) 
+								# 			if any(len(subcombination)>0 for subcombination in subcombinations) else 0)
+								value = list(sorted(list(set([(suboccurrence)
+									for suboccurrence in suboccurrences 
+									]))))
+								value = (value.index(occurrence) if len(suboccurrences)>0 else 0)
 								value = ['solid','dotted','dashed','dashdot',(0,(5,10)),(0,(1,1))][value%6]
-								# value = '-'
 							else:
 								value = None
 

@@ -34,9 +34,9 @@
 "permutations":{
 	"permutations":{	
 		"model.N":[4],
-		"model.M":[35],
-		"noise.scale":[1e-8,1e-3,1e-1],
-		"optimize.iterations":[200],
+		"model.M":[20,35,40,50],
+		"noise.scale":[1e-10,1e-8,1e-5,1e-3,1e-1],
+		"optimize.iterations":[300],
 		"optimize.optimizer":["cg"],
 
 		"jobs.job.cwd":["gobi/data.noise.3.unconstrained.adam"],
@@ -217,7 +217,7 @@
 "noise": {
 	"string":"depolarize",
 	"category":"constant",
-	"scale":null,	
+	"scale":1e-3,	
 	"shape":[2,-1,-1],
 	"initialization":"random",
 	"random":"gaussian",

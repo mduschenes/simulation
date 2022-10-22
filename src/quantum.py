@@ -323,8 +323,6 @@ class Object(object):
 		if index == -1:
 			index = len(self.data)
 
-		self.data = [value for value in self.data]
-
 		self.data.insert(index,data)
 		self.operator.insert(index,operator)
 		self.site.insert(index,site)
@@ -333,8 +331,6 @@ class Object(object):
 
 		self.shape = (len(self.data),self.M,*self.dims)
 		self.ndim = len(self.shape)		
-
-		self.data = array(self.data,dtype=self.dtype)
 
 		self.hyperparameters.update(hyperparameters)
 
@@ -451,31 +447,36 @@ class Object(object):
 		self.hessian = hessian(self.func)
 		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
 
+		# Function arguments
+		data = array(self.data,dtype=self.dtype)
+		identity = self.identity
+		state = self.state
+		noise = self.noise
 
 		# Operator functions
-		if self.state is None and self.noise is None:
-			self.summation = jit(partial(summation,data=self.data,identity=self.identity))
-			self.exponentiation = jit(partial(exponentiation,data=self.data,identity=self.identity))
-		elif self.state is not None and self.noise is None:
-			if self.state.ndim == 1:
-				self.summation = jit(partial(summationv,data=self.data,identity=self.identity,state=self.state))
-				self.exponentiation = jit(partial(exponentiationv,data=self.data,identity=self.identity,state=self.state))
-			elif self.state.ndim == 2:
-				self.summation = jit(partial(summationm,data=self.data,identity=self.identity,state=self.state))
-				self.exponentiation = jit(partial(exponentiationm,data=self.data,identity=self.identity,state=self.state))
-		elif self.state is None and self.noise is not None:
-			self.summation = jit(partial(summationc,data=self.data,identity=self.identity,constants=self.noise))
-			self.exponentiation = jit(partial(exponentiationc,data=self.data,identity=self.identity,constants=self.noise))
-		elif self.state is not None and self.noise is not None:
-			self.summation = jit(partial(summationmc,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
-			self.exponentiation = jit(partial(exponentiationmc,data=self.data,identity=self.identity,state=self.state,constants=self.noise))
+		if state is None and noise is None:
+			self.summation = jit(partial(summation,data=data,identity=identity))
+			self.exponentiation = jit(partial(exponentiation,data=data,identity=identity))
+		elif state is not None and noise is None:
+			if state.ndim == 1:
+				self.summation = jit(partial(summationv,data=data,identity=identity,state=state))
+				self.exponentiation = jit(partial(exponentiationv,data=data,identity=identity,state=state))
+			elif state.ndim == 2:
+				self.summation = jit(partial(summationm,data=data,identity=identity,state=state))
+				self.exponentiation = jit(partial(exponentiationm,data=data,identity=identity,state=state))
+		elif state is None and noise is not None:
+			self.summation = jit(partial(summationc,data=data,identity=identity,constants=noise))
+			self.exponentiation = jit(partial(exponentiationc,data=data,identity=identity,constants=noise))
+		elif state is not None and noise is not None:
+			self.summation = jit(partial(summationmc,data=data,identity=identity,state=state,constants=noise))
+			self.exponentiation = jit(partial(exponentiationmc,data=data,identity=identity,state=state,constants=noise))
 		else:
-			self.summation = jit(partial(summation,data=self.data,identity=self.identity))
-			self.exponentiation = jit(partial(exponentiation,data=self.data,identity=self.identity))
+			self.summation = jit(partial(summation,data=data,identity=identity))
+			self.exponentiation = jit(partial(exponentiation,data=data,identity=identity))
 
 		return
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __call__(self,parameters):
 		'''
 		Return parameterized operator sum(parameters*data)
@@ -558,7 +559,7 @@ class Object(object):
 		layer = 'constraints'
 		return self.__layers__(parameters,layer)
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __objective__(self,parameters):
 		''' 
 		Setup objective
@@ -569,7 +570,7 @@ class Object(object):
 		'''	
 		return 1-self.metric(self(parameters),self.label)
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __loss__(self,parameters):
 		''' 
 		Setup loss
@@ -580,7 +581,7 @@ class Object(object):
 		'''	
 		return self.metric(self(parameters),self.label)
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __func__(self,parameters):
 		''' 
 		Class function
@@ -591,7 +592,7 @@ class Object(object):
 		'''	
 		return self.__loss__(parameters) + self.__constraints__(parameters)
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
 		''' 
 		Class gradient of objective
@@ -603,7 +604,7 @@ class Object(object):
 		return self.grad(parameters)
 
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __hessian__(self,parameters):
 		''' 
 		Class hessian of objective
@@ -616,7 +617,7 @@ class Object(object):
 		return self.hessian(parameters)
 
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __derivative__(self,parameters):
 		'''
 		Return gradient of parameterized operator expm(parameters*data)
@@ -628,7 +629,7 @@ class Object(object):
 
 		return self.derivative(parameters)
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __derivative_analytical__(self,parameters):
 		'''
 		Return gradient of parameterized operator expm(parameters*data)
@@ -640,7 +641,7 @@ class Object(object):
 		return self.derivative(parameters)
 
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __grad_analytical__(self,parameters):
 		''' 
 		Class gradient of objective
@@ -655,7 +656,7 @@ class Object(object):
 		return grad
 
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __fisher__(self,parameters):
 		''' 
 		Class fisher information of class
@@ -998,7 +999,6 @@ class Object(object):
 
 					returns[new] = New
 
-					
 					subattrs = {subattr:None for subattr in ['noise']}
 					for subattr in subattrs:
 						subattrs[subattr] = getattr(obj,subattr)
@@ -1259,7 +1259,7 @@ class Hamiltonian(Object):
 		return
 
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __call__(self,parameters):
 		'''
 		Return parameterized operator sum(parameters*data)
@@ -1470,7 +1470,7 @@ class Unitary(Hamiltonian):
 
 		return
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __call__(self,parameters):
 		'''
 		Return parameterized operator expm(parameters*data)
@@ -1482,7 +1482,7 @@ class Unitary(Hamiltonian):
 		parameters = self.__parameters__(parameters)
 		return self.exponentiation(self.coefficients*parameters)
 
-	@partial(jit,static_argnums=(0,))
+	#@partial(jit,static_argnums=(0,))
 	def __derivative_analytical__(self,parameters):
 		'''
 		Return gradient of parameterized operator expm(parameters*data)

@@ -226,11 +226,15 @@ def test_obj(path,tol):
 		setattr(obj,subattr,None)
 		obj.__functions__()
 
+	func = jit(obj.__call__)
+
 	V = func(parameters)
 
 	for subattr in subattrs:
 		setattr(obj,subattr,subattrs[subattr])
 	obj.__functions__()
+
+	func = jit(obj.__call__)
 
 	W = func(parameters)
 

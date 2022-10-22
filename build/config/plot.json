@@ -93,10 +93,11 @@
 		"close":{}
 		},
 	"ax":{
-		"errorbar":{
+		"errorbar":[
+			{
 			"x":"noise.scale",
 			"y":"infidelity",
-			"label":["N","architecture","M","iteration=@iteration.min@"],
+			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy}"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -106,7 +107,22 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			},			
+			},
+			{
+			"x":"noise.scale",
+			"y":"infidelity.ideal",
+			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless}"],
+			"alpha":0.8,
+			"marker":"o",
+			"markersize":12,
+			"linestyle":"--",
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
+			"color":"viridis",
+			"ecolor":"viridis"
+			}
+		],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\gamma$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											

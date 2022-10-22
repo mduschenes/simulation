@@ -13,9 +13,14 @@
 		},		
 		{
 			"key":{"x":"noise.scale","y":"infidelity"},
-			"slice":[1,null,null],
+			"slice":[0,null,null],
 			"stat":[["linear","linear"]]
 		},		
+		{
+			"key":{"x":"noise.scale","y":"infidelity.ideal"},
+			"slice":[0,null,null],
+			"stat":[["linear","linear"]]
+		},				
 		{
 			"key":{"x":"","y":"parameters"},
 			"axis":[[0,1],[2],[],[-1]]
