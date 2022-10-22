@@ -12,7 +12,7 @@
 			{
 			"x":"iteration",
 			"y":"infidelity",
-			"label":["N","architecture","M","noise.scale","key","\\textrm{Noisy}"],
+			"label":["N","architecture","M","noise.scale","\\textrm{Noisy}"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,

@@ -33,11 +33,10 @@
 	},
 "permutations":{
 	"permutations":{	
-		"model.N":[3],
-		"model.M":[10],
-		"noise.scale":[1e-8,1e-3],
-		"noise.scale":[0],
-		"optimize.iterations":[100],
+		"model.N":[4],
+		"model.M":[35],
+		"noise.scale":[1e-8,1e-3,1e-1],
+		"optimize.iterations":[200],
 		"optimize.optimizer":["cg"],
 
 		"jobs.job.cwd":["gobi/data.noise.3.unconstrained.adam"],

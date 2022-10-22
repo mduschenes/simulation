@@ -635,6 +635,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 
 	# Get occurrence of keys
+	# TODO: Allow for hdf5 loading/dumping of occurrence tuples, to process intersections of keys only once (including keys that are not attributes for plot labelling)
 	# occurrences = lambda key,keys: tuple((tuple((axis,tuple(((k,v) for k,v in zip(key[axis]['key'],key[axis]['value']))))) for axis in key))
 	# _occurrences = lambda occurrence,keys: {axis: {'key': tuple((v[0] for v in value)), 'value': tuple((v[1] for v in value))} for axis,value in occurrence}
 	occurrences = lambda key,keys: keys.index(key)#tuple((tuple((axis,tuple(((k,v) for k,v in zip(key[axis]['key'],key[axis]['value']))))) for axis in key))

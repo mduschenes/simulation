@@ -128,8 +128,9 @@ def setup(settings):
 		*([default] if default is not None else []),
 		*['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]])) 
 		if any(len(values[k])>1 for k in values) else default)
+
 	keys = {}
-	for instance,value in enumerate(itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
+	for instance,value in enumerate(value for value in itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
 		if allowed(
 			{attr: index[attr] for attr in index},
 			{attr: {k:v[1] for k,v in zip(values,value)}[attr] for attr in index},
