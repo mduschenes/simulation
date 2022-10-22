@@ -31,11 +31,11 @@ export JOB_ARGS=${@:-${JOB_ARGS}}
 
 
 # Directory
-export JOB_CWD=$(echo ${JOB_CWD/#\~/${HOME}} | envsubst)
+export JOB_CWD=$(echo ${JOB_CWD/\~/"${HOME}"} | envsubst)
 cd ${JOB_CWD}
 
 # Environment
-export JOB_SRC=$(echo ${JOB_SRC/#\~/${HOME}} | envsubst)
+export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 module purge &>/dev/null 2>&1
 conda activate ${JOB_ENV} &>/dev/null 2>&1
 # source activate ${JOB_ENV} &>/dev/null 2>&1
@@ -43,6 +43,6 @@ conda activate ${JOB_ENV} &>/dev/null 2>&1
 # Command
 CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
 
-CMD=($(echo ${CMD[@]/#\~/${HOME}} | envsubst))
+CMD=($(echo ${CMD[@]/\~/"${HOME}"} | envsubst))
 
 ${CMD[@]}
