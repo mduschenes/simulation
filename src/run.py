@@ -140,6 +140,7 @@ def setup(settings):
 			key = formatter(instance,value,values,getter(hyperparameters,'model.system.key',delimiter=delim))
 			value = [v[1] for v in value]
 
+
 			keys[key] = {}
 			for setting in value:
 				for attr in setting:

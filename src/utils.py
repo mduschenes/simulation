@@ -4,6 +4,7 @@
 import os,sys,itertools,copy
 
 from functools import partial,wraps
+from natsort import natsorted,realsorted
 import argparse
 
 
@@ -4090,12 +4091,12 @@ def union(*iterables,sort=False):
 	union = set().union(*iterables)
 
 	if sort:
-		iterables = tuple((tuple(iterable) if not isinstance(iterable,set) else tuple(sorted(iterable)) 
+		iterables = tuple((tuple(iterable) if not isinstance(iterable,set) else tuple(natsorted(iterable)) 
 				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
 				for iterable in iterables)
-		union = sorted(union,key=key,reverse=False)
+		union = natsorted(union,key=key,reverse=False)
 
 	return union
 
@@ -4115,12 +4116,12 @@ def intersection(*iterables,sort=False):
 
 
 	if sort:
-		iterables = tuple((tuple(iterable) if not isinstance(iterable,set) else tuple(sorted(iterable)) 
+		iterables = tuple((tuple(iterable) if not isinstance(iterable,set) else tuple(natsorted(iterable)) 
 				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
 				for iterable in iterables)		
-		intersection = sorted(intersection,key=key,reverse=False)
+		intersection = natsorted(intersection,key=key,reverse=False)
 
 	return intersection
 

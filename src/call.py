@@ -624,7 +624,6 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	if isinstance(cwd,str):
 		cwd = {key:cwd for key in keys}
-
 	keys = intersection(keys,cwd,sort=True)
 
 	unique = {
