@@ -410,19 +410,6 @@ class Object(object):
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
 
-		# Update state
-		# state.ndim = 2 : Density matrix evolution 
-		# state.ndim = 1 : Pure state evolution
-
-		if state is None:
-			label = None
-		elif state.ndim == 2:
-			label = einsum('ij,jk,lk->il',label,state,label.conj())
-		elif state.ndim == 1:
-			label = einsum('ij,j->i',label,state)
-		else:
-			label = label
-
 		# Update class attributes
 		self.parameters = parameters
 		self.label = label
@@ -435,10 +422,21 @@ class Object(object):
 
 		return
 
-	def __functions__(self):
+	def __functions__(self,state=None,noise=None,label=None):
 		''' 
 		Setup class functions
+		Args:
+			state (bool,array): State to act on with class of shape self.dims, if boolean choose self.state or None
+			noise (bool,array): Noise to act on with class of shape (-1,self.dims), if boolean choose self.noise or None
+			label (bool,array): Label of class of shape self.dims, if boolean choose self.label or None
 		'''
+
+		# Function arguments
+		data = array(self.data,dtype=self.dtype)
+		identity = self.identity
+		state = self.state if (state is None or state) else state if state else None
+		noise = self.noise if (noise is None or noise) else noise if noise else None
+		label = self.label if (label is None or label) else label if label else None
 
 		# Metric functions
 		self.func = self.__func__
@@ -447,11 +445,15 @@ class Object(object):
 		self.hessian = hessian(self.func)
 		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
 
-		# Function arguments
-		data = array(self.data,dtype=self.dtype)
-		identity = self.identity
-		state = self.state
-		noise = self.noise
+		# Labels
+		if state is None:
+			self.labels = None
+		elif state.ndim == 2:
+			self.labels = einsum('ij,jk,lk->il',label,state,label.conj())
+		elif state.ndim == 1:
+			self.labels = einsum('ij,j->i',label,state)
+		else:
+			self.labels = label
 
 		# Operator functions
 		if state is None and noise is None:
@@ -568,7 +570,7 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		return 1-self.metric(self(parameters),self.label)
+		return 1-self.metric(self(parameters),self.labels)
 
 	#@partial(jit,static_argnums=(0,))
 	def __loss__(self,parameters):
@@ -579,7 +581,7 @@ class Object(object):
 		Returns:
 			loss (array): loss
 		'''	
-		return self.metric(self(parameters),self.label)
+		return self.metric(self(parameters),self.labels)
 
 	#@partial(jit,static_argnums=(0,))
 	def __func__(self,parameters):
@@ -651,7 +653,7 @@ class Object(object):
 			grad (array): gradient of objective
 		'''	
 
-		grad = self.metric.__grad__(self(parameters),self.label,self.__derivative_analytical__(parameters))
+		grad = self.metric.__grad__(self(parameters),self.labels,self.__derivative_analytical__(parameters))
 
 		return grad
 
@@ -686,7 +688,10 @@ class Object(object):
 
 		status = (
 			(abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['value']['objective']) > 
-				 self.hyperparameters['optimize']['eps']['objective']*self.hyperparameters['optimize']['value']['objective']) and
+				self.hyperparameters['optimize']['eps']['objective']*self.hyperparameters['optimize']['value']['objective']) and
+			((len(self.hyperparameters['optimize']['track']['objective'])==1) or
+			((len(self.hyperparameters['optimize']['track']['objective'])>1) and (abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['track']['objective'][-2]) > 
+				self.hyperparameters['optimize']['eps']['difference']*self.hyperparameters['optimize']['value']['objective']))) and
 			(norm(self.hyperparameters['optimize']['track']['grad'][-1] - self.hyperparameters['optimize']['value']['grad'])/self.hyperparameters['optimize']['track']['grad'][-1].size > 
 				  self.hyperparameters['optimize']['eps']['grad'])
 			)
@@ -695,7 +700,7 @@ class Object(object):
 		for attr in ['hessian','fisher']:
 			if attr in self.hyperparameters['optimize']['track']:
 				self.hyperparameters['optimize']['track'][attr].append(
-					getattr(self,'__%s__'%(attr))(parameters) if not status or done else nan
+					getattr(self,'__%s__'%(attr))(parameters) if ((not status) or done) else nan
 					)
 
 		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['modulo']['log'] == 0:			
@@ -721,10 +726,10 @@ class Object(object):
 				# 'x\n%s'%(to_str(parameters.round(4))),
 				'U\n%s\nV\n%s\n'%(
 				to_str(abs(self(parameters)).round(4)),
-				to_str(abs(self.label).round(4))),
+				to_str(abs(self.labels).round(4))),
 				# 'U: %0.4e\tV: %0.4e\n'%(
 				# 	trace(self(parameters)).real,
-				# 	trace(self.label).real
+				# 	trace(self.labels).real
 				# 	),				
 				])
 
@@ -999,18 +1004,12 @@ class Object(object):
 
 					returns[new] = New
 
-					subattrs = {subattr:None for subattr in ['noise']}
-					for subattr in subattrs:
-						subattrs[subattr] = getattr(obj,subattr)
-						setattr(obj,subattr,None)
-					obj.__functions__()
+					obj.__functions__(noise=False)
 
 					new = 'infidelity.ideal'
 					New = 1-obj.__objective__(value)
 
-					for subattr in subattrs:
-						setattr(obj,subattr,subattrs[subattr])
-					obj.__functions__()
+					obj.__functions__(noise=True)
 
 					returns[new] = New
 					
