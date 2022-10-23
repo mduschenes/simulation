@@ -933,6 +933,8 @@ class Object(object):
 			path (str,dict[str,str]): Path to dump class data
 		'''
 
+		# TODO: Transfer model dumping/loading (checkpointing) to Optimizer/Objective class
+
 		# Process attribute values
 		def func(attr,value,obj):
 			'''

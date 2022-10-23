@@ -70,7 +70,7 @@
 
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
-	"index":-1
+	"index":null
 	},
 "model":{
 	"N":2,
@@ -209,16 +209,17 @@
 	"string":"random",
 	"category":"constant",
 	"shape":[1,1,-1,-1],
+	"scale":1,
 	"initialization":"random",
 	"random":"haar",
 	"seed":null,
 	"bounds":[-1,1]	
 },
 "noise": {
-	"string":"depolarize",
+	"string":"phase",
 	"category":"constant",
-	"scale":1e-3,	
 	"shape":[2,-1,-1],
+	"scale":null,
 	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,
