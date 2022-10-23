@@ -434,9 +434,9 @@ class Object(object):
 		# Function arguments
 		data = array(self.data,dtype=self.dtype)
 		identity = self.identity
-		state = self.state if (state is None or state) else state if state else None
-		noise = self.noise if (noise is None or noise) else noise if noise else None
-		label = self.label if (label is None or label) else label if label else None
+		state = self.state if (state is None or state is True) else state if state else None
+		noise = self.noise if (noise is None or noise is True) else noise if noise else None
+		label = self.label if (label is None or label is True) else label if label else None
 
 		# Metric functions
 		self.func = self.__func__
