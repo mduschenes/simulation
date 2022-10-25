@@ -2,22 +2,22 @@
 	"sort": ["key","N","D","d","L","delta","M","T","tau","iteration","architecture","noise.scale"],
 	"parameters":[
 		{
-			"key":{"x":"iteration","y":"infidelity"},
+			"key":{"x":"iteration","y":"objective"},
 			"slice":null,
 			"stat":[["linear","linear"]]
 		},
 		{
-			"key":{"x":"iteration","y":"infidelity.ideal"},
+			"key":{"x":"iteration","y":"objective.ideal"},
 			"slice":null,
 			"stat":[["linear","linear"]]
 		},		
 		{
-			"key":{"x":"noise.scale","y":"infidelity"},
+			"key":{"x":"noise.scale","y":"objective"},
 			"slice":[0,null,null],
 			"stat":[["linear","linear"]]
 		},		
 		{
-			"key":{"x":"noise.scale","y":"infidelity.ideal"},
+			"key":{"x":"noise.scale","y":"objective.ideal"},
 			"slice":[0,null,null],
 			"stat":[["linear","linear"]]
 		},				

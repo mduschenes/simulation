@@ -645,7 +645,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	# Get keys of properties of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
 	keys = find(settings,properties)
 
-
 	# Load data
 	if hyperparameters.get('load'):
 		attr = 'process'
@@ -700,6 +699,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		attributes = list(set(attr for name in names 
 			for attr in data[name]
 			))
+
 
 		subattributes = [attr
 			for attr in attributes
@@ -774,11 +774,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
 					key[axis]['key'] for axis in parameter['key']))]][-1]
 			
-			# print(key)
-			# print(parameter)
-			# print()
-			# continue
-
 			variables[occurrence] = {}
 
 			# combinations[occurrence] = permute(key['label']['key'],key['label']['value'],list(sort),data)
@@ -1259,8 +1254,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								continue
 								settings[instance][subinstance][setting][attr][subsubinstance][kwarg]
 							value = getattr(plt.cm,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])(
-								([subcombination[::-1] for subcombination in subcombinations][::-1].index(tuple((combination[k] for k in combination))[::-1]))/len(subcombinations))
-
+								(1*([subcombination[::-1] for subcombination in subcombinations][::-1].index(tuple((combination[k] for k in combination))[::-1])-1)
+									)/(1*len(subcombinations)))
+							value = None
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 
 						kwargs = ['label']

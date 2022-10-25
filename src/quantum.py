@@ -570,7 +570,7 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		return 1-self.metric(self(parameters),self.labels)
+		return self.metric(self(parameters),self.labels)
 
 	#@partial(jit,static_argnums=(0,))
 	def __loss__(self,parameters):
@@ -690,7 +690,8 @@ class Object(object):
 			(abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['value']['objective']) > 
 				self.hyperparameters['optimize']['eps']['objective']*self.hyperparameters['optimize']['value']['objective']) and
 			((len(self.hyperparameters['optimize']['track']['objective'])==1) or
-			((len(self.hyperparameters['optimize']['track']['objective'])>1) and (abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['track']['objective'][-2]) > 
+			((len(self.hyperparameters['optimize']['track']['objective'])>1) and 
+			 (abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['track']['objective'][-2]) > 
 				self.hyperparameters['optimize']['eps']['difference']*self.hyperparameters['optimize']['value']['objective']))) and
 			(norm(self.hyperparameters['optimize']['track']['grad'][-1] - self.hyperparameters['optimize']['value']['grad'])/self.hyperparameters['optimize']['track']['grad'][-1].size > 
 				  self.hyperparameters['optimize']['eps']['grad'])
@@ -710,7 +711,7 @@ class Object(object):
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
 					self.hyperparameters['optimize']['track']['iteration'][-1],
-					self.hyperparameters['optimize']['track']['value'][-1],
+					self.hyperparameters['optimize']['track']['objective'][-1],
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
 					norm(self.hyperparameters['optimize']['track']['parameters'][-1])/
@@ -954,11 +955,11 @@ class Object(object):
 
 			if attr in obj.hyperparameters['optimize']['track']:
 				new = attr
-				New = value			
+				New = value[attr]			
 				returns[new] = New
 			else:
 				new = attr
-				New = value
+				New = value[attr]
 				returns[new] = New
 
 
@@ -992,7 +993,7 @@ class Object(object):
 						])
 
 					new = '%s.relative'%(attr)
-					New = abs((obj.__layers__(value,layer)[indices] - 
+					New = abs((obj.__layers__(value[attr],layer)[indices] - 
 						obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices] + 1e-20)/(
 						obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices] + 1e-20))
 					returns[new] = New
@@ -1002,19 +1003,22 @@ class Object(object):
 					returns[new] = New				
 
 					new = attr
-					New = obj.__layers__(value,layer)[indices]
+					New = obj.__layers__(value[attr],layer)[indices]
 
 					returns[new] = New
 
 					obj.__functions__(noise=False)
 
-					new = 'infidelity.ideal'
-					New = 1-obj.__objective__(value)
+					new = 'objective.ideal'
+					New = obj.__objective__(value[attr])
+					returns[new] = New
+
+					new = 'objective.diff'
+					New = abs(value['objective'] - New)
+					returns[new] = New
 
 					obj.__functions__(noise=True)
 
-					returns[new] = New
-					
 
 				elif attr in ['iteration']:
 					new = '%s.max'%(attr)
@@ -1022,23 +1026,21 @@ class Object(object):
 					returns[new] = New
 
 					new = '%s.min'%(attr)
-					New = hyperparameters['optimize']['track'][attr][argmin(array(hyperparameters['optimize']['track']['value']))]
+					New = hyperparameters['optimize']['track'][attr][argmax(array(hyperparameters['optimize']['track']['objective']))]
 					returns[new] = New
 
 					new = 'status'
-					New = value/hyperparameters['optimize']['track'][attr][-1]
+					New = value[attr]/hyperparameters['optimize']['track'][attr][-1]
 
 					returns[new] = New
 
 				elif attr in ['objective']:
-					new = 'infidelity'
-					New = 1 - value
-					returns[new] = New
+					pass
 
 				elif attr in ['hessian','fisher']:
-					if isinstance(value,array):
+					if isinstance(value[attr],array):
 						new = '%s.eigenvalues'%(attr)						
-						New  = sort(abs(eig(value,compute_v=False,hermitian=True)))[::-1]
+						New  = sort(abs(eig(value[attr],compute_v=False,hermitian=True)))[::-1]
 						New = New/maximum(New)
 						# _New = int((argmax(abs(difference(New)/New[:-1]))+1)*1.5)
 						# New = New[:_New]
@@ -1098,7 +1100,7 @@ class Object(object):
 		# and must be transposed with func such that optimization tracked data has iterations as -1 axis
 		for key in list(data):
 			for attr in list(data[key]):			
-				data[key].update(func(attr,data[key][attr],self))
+				data[key].update(func(attr,data[key],self))
 
 		# Set data
 		data = {'data':data,'model':self.hyperparameters}
