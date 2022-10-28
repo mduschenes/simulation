@@ -1026,7 +1026,7 @@ class Object(object):
 					returns[new] = New
 
 					new = '%s.min'%(attr)
-					New = hyperparameters['optimize']['track'][attr][argmax(array(hyperparameters['optimize']['track']['objective']))]
+					New = hyperparameters['optimize']['track'][attr][argmin(array(hyperparameters['optimize']['track']['objective']))]
 					returns[new] = New
 
 					new = 'status'

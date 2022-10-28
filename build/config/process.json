@@ -35,7 +35,7 @@
 			"wrapper":{"wrapper":"mean","axis":[-1]}
 		},
 		{
-			"key":{"x":"M","y":"iteration.min"},
+			"key":{"x":"M","y":"iteration.max"},
 			"stat":[["linear","linear"]]
 		},		
 		{
@@ -68,7 +68,7 @@
 	"delimiter":".",
 	"process":["src.postprocess.process"],
 	"process":[],
-	"load":0,
+	"load":1,
 	"dump":1,
 	"plot":1
 }

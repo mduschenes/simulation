@@ -1254,8 +1254,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								continue
 								settings[instance][subinstance][setting][attr][subsubinstance][kwarg]
 							value = getattr(plt.cm,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])(
-								(4*([subcombination[::-1] for subcombination in subcombinations][::-1].index(tuple((combination[k] for k in combination))[::-1])-1)
-									)/(2*len(subcombinations)))
+								(([subcombination[::-1] for subcombination in sorted(set(subcombinations))][::-1].index(tuple((combination[k] for k in combination))[::-1]))
+									)/(len(set(subcombinations))))
+							# print(instance,subinstance,len(set(subcombinations)))
 							# value = None
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 

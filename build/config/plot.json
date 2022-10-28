@@ -106,7 +106,7 @@
 			{
 			"x":"noise.scale",
 			"y":"objective",
-			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy}"],
+			"label":["N","architecture","M","iteration=@iteration.max@","\\textrm{Noisy}"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -120,7 +120,7 @@
 			{
 			"x":"noise.scale",
 			"y":"objective.ideal",
-			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless}"],
+			"label":["N","architecture","M","iteration=@iteration.max@","\\textrm{Noiseless}"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -188,7 +188,7 @@
 			{
 			"x":"noise.scale",
 			"y":"objective.diff",
-			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy}"],
+			"label":["N","architecture","M","iteration=@iteration.max@","\\textrm{Noisy}"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -255,7 +255,7 @@
 		"errorbar":{
 			"x":"",
 			"y":"hessian.eigenvalues",
-			"label":["N","architecture","M","iteration=@iteration.min@","r=@hessian.rank@"],
+			"label":["N","architecture","M","iteration=@iteration.max@","r=@hessian.rank@"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -312,7 +312,7 @@
 		"errorbar":{
 			"x":"",
 			"y":"fisher.eigenvalues",
-			"label":["N","architecture","M","iteration=@iteration.min@","r=@fisher.rank@"],
+			"label":["N","architecture","M","iteration=@iteration.max@","r=@fisher.rank@"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -369,7 +369,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"parameters.relative.mean",
-			"label":["N","architecture","noise.scale","iteration=@iteration.min@"],
+			"label":["N","architecture","noise.scale","iteration=@iteration.max@"],
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -423,7 +423,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
-"M.iteration.min.N":{
+"M.iteration.max.N":{
 	"fig":{
 		"set_size_inches":{"w":8,"h":8},
 		"subplots_adjust":{"hspace":0.5},
@@ -434,8 +434,8 @@
 	"ax":{
 		"errorbar":{
 			"x":"M",
-			"y":"iteration.min",
-			"label":["N","architecture","noise.scale","iteration=@iteration.min@"],			
+			"y":"iteration.max",
+			"label":["N","architecture","noise.scale","iteration=@iteration.max@"],			
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
