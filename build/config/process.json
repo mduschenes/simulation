@@ -35,7 +35,7 @@
 			"wrapper":{"wrapper":"mean","axis":[-1]}
 		},
 		{
-			"key":{"x":"M","y":"iteration.max"},
+			"key":{"x":"M","y":"iteration.min"},
 			"stat":[["linear","linear"]]
 		},		
 		{
