@@ -1,5 +1,23 @@
 #!/bin/bash
 
+function RUN(){
+	TASK=${1}
+	shift
+	CMD=${@}
+
+	CWD=$(pwd)
+
+	mkdir -p ${TASK}
+	cp ${ARGS[@]} ${TASK}/
+
+	cd ${TASK}
+
+	${CMD[@]}
+
+	cd ${CWD}
+
+}
+
 # Variables
 SRC=${1}
 EXE=${2}
@@ -19,19 +37,16 @@ CMD=($(echo ${CMD[@]/\~/"${HOME}"} | envsubst))
 PROCESSES=()
 for TASK in ${TASKS[@]}
 do
-	mkdir -p ${TASK}
-	cp ${ARGS[@]} ${TASK}/
-
-	cd ${TASK}
+	
 
 	if [[ "${INTERFACE}" == "parallel" ]]
 	then
-		${CMD[@]} &
+		RUN ${TASK} ${CMD[@]} &
 	elif [[ "${INTERFACE}" == "serial" ]]
 	then
-		${CMD[@]}
+		RUN ${TASK} ${CMD[@]}
 	else
-		${CMD[@]}
+		RUN ${TASK} ${CMD[@]}
 	fi
 
 	PROCESSES+=($!)
