@@ -145,7 +145,7 @@ def noiseize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 	setup(hyperparameters,cls=cls)
 
 	# Set data
-	if shape is None or hyperparameters.get('shape') is None:
+	if shape is None or hyperparameters.get('shape') is None or hyperparameters.get('scale') is None:
 		data = None
 		return data
 
@@ -157,7 +157,7 @@ def noiseize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 	seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
 
 	# Get scale
-	scale = hyperparameters['scale']	
+	scale = hyperparameters.get('scale')
 
 	# Basis
 	operators = {

@@ -447,7 +447,7 @@ class Object(object):
 
 		# Labels
 		if state is None:
-			self.labels = None
+			self.labels = label
 		elif state.ndim == 2:
 			self.labels = einsum('ij,jk,lk->il',label,state,label.conj())
 		elif state.ndim == 1:
@@ -1045,7 +1045,7 @@ class Object(object):
 						# _New = int((argmax(abs(difference(New)/New[:-1]))+1)*1.5)
 						# New = New[:_New]
 						returns[new] = New
-						
+
 						new = '%s.rank'%(attr)
 						_New = argmax(abs(difference(New)/New[:-1]))+1						
 						returns[new] = New

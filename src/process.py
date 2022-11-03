@@ -785,7 +785,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 			permutations[occurrence] = {}
 
-			print('key',key,combinations[occurrence])
+			print('key',key,combinations[occurrence],parameter)
 
 			# for combination in combinations[occurrence]:
 			for combination in itertools.product(*combinations[occurrence]):
@@ -795,7 +795,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					combination if prop in ['label'] else [labels[occurrence][prop][attr] for attr in labels[occurrence][prop]])) 
 				for prop in labels[occurrence]}
 
-				if any(len(label[attr])==0 for attr in label):
+				if any((len(label[attr])==0) and all(len(val)>0 for val in key[attr]['key']) for attr in label):
+					print('popping',combination,label)
 					variables[occurrence].pop(combination);
 					continue
 				

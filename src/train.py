@@ -64,35 +64,6 @@ def train(hyperparameters):
 
 	obj = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
-	# func = obj.__call__
-	# parameters = obj.parameters
-
-	# U = func(parameters)
-
-	# subattrs = {}
-	# for subattr in ['noise']:
-	#     subattrs[subattr] = getattr(obj,subattr)
-	#     setattr(obj,subattr,None)
-	#     obj.__functions__()
-
-
-	# func = obj.__call__
-
-	# V = func(parameters)
-
-	# for subattr in subattrs:
-	#     setattr(obj,subattr,subattrs[subattr])
-	# obj.__functions__()
-
-	# func = obj.__call__
-
-	# W = func(parameters)
-
-	# assert allclose(U,V),"Incorrect identity noise"
-	# assert allclose(U,W),"Incorrect restored noise"
-
-	# exit()
-
 	if hyperparameters['boolean'].get('load'):
 		obj.load()
 

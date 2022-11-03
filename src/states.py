@@ -127,9 +127,17 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 	setup(hyperparameters,cls=cls)
 
 	# Set data
-	if shape is None or hyperparameters.get('shape') is None:
+	if shape is None or hyperparameters.get('shape') is None or hyperparameters.get('scale') is None:
 		data = None
-		return data
+		
+		# Set returns
+		returns = ()
+		returns += (data,)
+
+		if samples is not None:
+			returns += (samples,)
+
+		return returnargs(returns)
 
 	# Ensure shape is iterable
 	if isinstance(shape,int):
@@ -141,6 +149,9 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 	# Get seed
 	seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
 
+	# Get scale
+	scale = hyperparameters.get('scale')
+
 	# Delimiter for string
 	delimiter = '_'
 
@@ -150,7 +161,8 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 		None: {'func':haar,'locality':size},
 		}
 
-
+	if scale is None:
+		string = None
 	if data is None:
 		string = hyperparameters['string']
 	elif isinstance(data,str):
@@ -186,7 +198,7 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 					for string in strings
 					]*(size//locality)
 					)
-		else:
+		elif isinstance(data,str):
 			data = array(load(data))
 	
 	# Assert data is normalized

@@ -66,9 +66,9 @@
         "process": "process.hdf5"
     },
 	"delimiter":".",
-	"process":["src.postprocess.process"],
 	"process":[],
-	"load":1,
+	"process":["src.postprocess.process"],
+	"load":0,
 	"dump":1,
 	"plot":1
 }
