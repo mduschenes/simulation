@@ -1198,7 +1198,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 												for combination in variables[occurrence]
 												for kwarg in variables[occurrence][combination]
 												for stat in variables[occurrence][combination][kwarg])												
-									for enum,(combination,j) in enumerate(realsorted(itertools.product(variables[occurrence],range(subsize)))):
+									for enum,(combination,j) in enumerate(realsorted(
+											itertools.product(variables[occurrence],range(subsize)),
+											key=lambda x: tuple((x[0][-1] for k in x[0])))):
 										subsubsize = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
 													for kwarg in variables[occurrence][combination]
 													for stat in variables[occurrence][combination][kwarg])
