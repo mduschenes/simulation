@@ -35,7 +35,7 @@ from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gr
 from src.utils import eig
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
-from src.utils import initialize,parse,to_str,to_number,scinotation,datatype,slice_size,intersection
+from src.utils import initialize,parse,to_string,to_number,scinotation,datatype,slice_size,intersection
 from src.utils import pi,e,nan,delim,scalars,nulls
 from src.utils import itg,flt,dbl
 
@@ -724,10 +724,10 @@ class Object(object):
 					for attr in ['alpha','beta']
 					if attr in self.hyperparameters['optimize']['track'] and len(self.hyperparameters['optimize']['track'][attr])>0
 					]),
-				# 'x\n%s'%(to_str(parameters.round(4))),
+				# 'x\n%s'%(to_string(parameters.round(4))),
 				'U\n%s\nV\n%s\n'%(
-				to_str(abs(self(parameters)).round(4)),
-				to_str(abs(self.labels).round(4))),
+				to_string(abs(self(parameters)).round(4)),
+				to_string(abs(self.labels).round(4))),
 				# 'U: %0.4e\tV: %0.4e\n'%(
 				# 	trace(self(parameters)).real,
 				# 	trace(self.labels).real
@@ -1047,7 +1047,7 @@ class Object(object):
 						returns[new] = New
 
 						new = '%s.rank'%(attr)
-						_New = argmax(abs(difference(New)/New[:-1]))+1						
+						New = argmax(abs(difference(New)/New[:-1]))+1						
 						returns[new] = New
 
 					else:

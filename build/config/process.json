@@ -51,6 +51,7 @@
 	"null":{"None.parameters.iteration.M":null},
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",
+		"rank": "r",
 		"None": "\\textrm{None}",
 		"key":null,
 		"architecture": "\\textrm{Architecture}",
@@ -66,9 +67,9 @@
         "process": "process.hdf5"
     },
 	"delimiter":".",
-	"process":[],
 	"process":["src.postprocess.process"],
-	"load":0,
+	"process":[],
+	"load":1,
 	"dump":1,
 	"plot":1
 }

@@ -255,7 +255,7 @@
 		"errorbar":{
 			"x":"",
 			"y":"hessian.eigenvalues",
-			"label":["N","architecture","M","iteration=@iteration.min@","r=@hessian.rank@"],
+			"label":["N","architecture","M","iteration=@iteration.min@","rank=@hessian.rank@"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -312,7 +312,7 @@
 		"errorbar":{
 			"x":"",
 			"y":"fisher.eigenvalues",
-			"label":["N","architecture","M","iteration=@iteration.min@","r=@fisher.rank@"],
+			"label":["N","architecture","M","iteration=@iteration.min@","rank=@fisher.rank@"],
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,

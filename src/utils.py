@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,copy
+import os,sys,itertools,copy,ast
 
 from functools import partial,wraps
 from natsort import natsorted,realsorted
@@ -4448,6 +4448,28 @@ def gradient_sigmoid(a,scale=1):
 	return scale*sigmoid(a,scale)*sigmoid(-a,scale)
 
 
+
+def to_eval(a,**kwargs):
+	'''
+	Convert string to python object
+	Args:
+		a (str): Object to convert to python object
+	Returns:
+		object (object): Python object representation of string
+	'''
+	return ast.literal_eval(a)
+
+def to_repr(a,**kwargs):
+	'''
+	Convert python object to string representation
+	Args:
+		a (object): Object to convert to string representation
+	Returns:
+		string (str): String representation of Python object
+	'''
+	return repr(a)
+
+
 def to_list(a,dtype=None,**kwargs):
 	'''
 	Convert iterable to list
@@ -4495,7 +4517,7 @@ def to_number(a,dtype=None,**kwargs):
 			number = dtype(coefficient*a)
 	return number
 
-def to_str(a,**kwargs):
+def to_string(a,**kwargs):
 	'''
 	Convert array to string representation
 	Args:

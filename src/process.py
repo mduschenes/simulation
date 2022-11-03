@@ -22,7 +22,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import array,product,expand_dims,is_iterable,is_number,to_number,to_key_value
+from src.utils import array,product,expand_dims,to_eval,to_repr,is_iterable,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
 from src.utils import argmax,difference,is_nan
 from src.utils import e,pi,nan,scalars,nulls,scinotation
@@ -648,10 +648,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	# Load data
 	if hyperparameters.get('load'):
 		attr = 'process'
-		convert = lambda obj: (
-				to_number(obj) if '--' not in obj else tuple((convert(i) for i in obj.split('--')[1:] if len(i)>0)))
 		options = {
-			'conversion':lambda name: convert(name)
+			'conversion': to_eval
 			}
 		variables = {attr: path[attr]}
 
@@ -806,12 +804,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				# 	if (((attr not in label['label']) and (val is not None)) or ((attr in label['label']) and (val == label['label'][attr])))]
 				# 	for attr in sort
 					# ]
-				permutations[occurrence][combination] = [
-					permutation for permutation in allowed if all(
-						(((attr not in label['label']) and (val is not None)) or ((attr in label['label']) and (val == label['label'][attr])))
-						for attr,val in zip(subattributes,permutation)
-						)
-					]
 
 				# included = [name for name in names 
 				# 	if all(data[name][attr] == values[attr]
@@ -821,10 +813,29 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				allincluded = [name for name in names 
 					if include(name,{'label':labels[occurrence]['label']},label['label'],sort,data)]
 
+				value = variables[occurrence].pop(combination)
+
 				if len(allincluded) == 0:
-					variables[occurrence].pop(combination);
 					# print('continue --',combination)
 					continue
+
+
+
+				name = allincluded[-1]
+				combination = tuple((
+					(attr,asscalar(data[name][attr]))
+					for attr in data[name] if (
+						data[name][attr].size == 1)
+					))
+
+				variables[occurrence][combination] = value
+
+				permutations[occurrence][combination] = [
+					permutation for permutation in allowed if all(
+						(((attr not in label['label']) and (val is not None)) or ((attr in label['label']) and (val == label['label'][attr])))
+						for attr,val in zip(subattributes,permutation)
+						)
+					]
 
 				print('combination',label,combination)
 				print({attr: labels[occurrence][prop][attr] 
@@ -836,6 +847,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 				for permutation in permutations[occurrence][combination]:
 				# for permutation in itertools.product(*permutations[occurrence][combination]):
+
 					variables[occurrence][combination][permutation] = {}
 					values = dict(zip(subattributes,permutation))
 
@@ -845,18 +857,20 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					included = [name for name in allincluded 
 						if include(name,labels[occurrence],values,sort,data)
 						]
+
 					
 					if len(included) == 0:
 						variables[occurrence][combination].pop(permutation);
-						# print('continue',permutation)
 						continue
 
-					print('permutation',label,values)
+					print('permutation',label,values,permutation)
 					print(included)					
+					print()
 					print()
 					# continue
 
 					for kwarg in statistics:
+
 
 						variables[occurrence][combination][permutation][kwarg] = {}
 
@@ -932,11 +946,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		# Dump data
 		if hyperparameters.get('dump'):
 			attr = 'process'
-			convert = lambda obj: str(obj) if not isinstance(obj,tuple) else '--'+'--'.join((convert(i) for i in obj))
 			options = {
-				'conversion':lambda name: convert(name)
-					# str(name) if not isinstance(name,tuple) else 
-					# '--'+'--'.join((str(i) for i in name)))
+				'conversion': to_repr
 			}
 
 			kwargs = {path[attr]: variables}
@@ -1239,17 +1250,15 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						continue 
 
 					subcombinations,subj,suboccurrences,substats = zip(*settings[instance][subinstance][setting][attr])
+					subcombinations = tuple((dict(subcombination) for subcombination in subcombinations))
 					for i,subsubinstance in enumerate(settings[instance][subinstance][setting][attr]):
 
 						combination,j,occurrence,stat = subsubinstance
-						
+
+
 						key = _occurrences(occurrence,keys)
 
-						combination = dict(zip([k for k in key['label']['key'] if k in hyperparameters.get('sort')],combination))
-
-
-						# TODO: Allow for access of other data/attributes values (statistics of them in parallel with plotted values)
-						# for use in plot labels etc.
+						combination = dict(combination)
 
 						# Add data-dependent plots
 						if key['y']['key'][-1] in []:
@@ -1261,8 +1270,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								continue
 								settings[instance][subinstance][setting][attr][subsubinstance][kwarg]
 							value = getattr(plt.cm,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])(
-								(([subcombination[::-1] for subcombination in sorted(set(subcombinations))][::-1].index(tuple((combination[k] for k in combination))[::-1]))
-									)/(len(set(subcombinations))))
+								([subcombination for subcombination in set([tuple((subcombination[k] for k in combination))[::-1] for subcombination in subcombinations])
+										].index(tuple((combination[k] for k in combination))[::-1]
+									)/(len(set([tuple((subcombination[k] for k in combination))[::-1] for subcombination in subcombinations])))
+								))
 							# value = None
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 
@@ -1276,10 +1287,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								continue
 
 							if stat not in [('fit','fit')]:
-								value = [k for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1]
-								value = [texify(scinotation(combination[k],decimals=0,scilimits=[0,3])) for k in value]
-								value = [*value,*[v if v is not None else k for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]]
-								value = [v for v in value if v is not None]
+								value = [combination[k] for i,k in enumerate(combination) if k in key['label']['key'] and len(set([subcombination[k] for subcombination in subcombinations]))>1]
+								value = [texify(scinotation(k,decimals=0,scilimits=[0,3])) for k in value]
+								value = [*value,*[str(combination.get(v.replace('@',''),v)) if v is not None else k for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]]
+								value = [v for v in value if v is not None and len(v)>0]
 								value = ',~'.join(value)
 
 							else:
@@ -1295,11 +1306,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if stat is None:
 								value = None
 							elif stat not in [('fit','fit')]:
-								# value = list(sorted(list(set([(subcombination[-1]) 
-								# 	for subcombination in subcombinations 
-								# 	]))))
-								# value = (value.index((tuple((combination[k] for k in combination))[-1])) 
-								# 			if any(len(subcombination)>0 for subcombination in subcombinations) else 0)
 								value = list(sorted(list(set([(suboccurrence)
 									for suboccurrence in suboccurrences 
 									]))))
@@ -1318,7 +1324,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if stat is None:
 								value = None
 							elif stat not in [('fit','fit')]:
-								value = list(set([subcombination[-1] for subcombination in subcombinations]))
+								value = list(set([[subcombination[k] for k in combination][-1] for subcombination in subcombinations]))
 								# value = abs(0.5-(value.index(tuple((combination[k] for k in combination))[-1])+1)/(len(value)+1)) if any(len(subcombination)>0 for subcombination in subcombinations) else None
 								value = (value.index(tuple((combination[k] for k in combination))[-1])+1)/(len(value)+1) if any(len(subcombination)>0 for subcombination in subcombinations) else None
 								# value = settings[instance][subinstance][setting][attr][subsubinstance][kwarg]
@@ -1336,14 +1342,17 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						for kwarg in kwargs:
 							value = [
 								# [(k,combination[k]) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) == 1],
-								[(k,) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) > 1],
+								[(k,) for i,k in enumerate(combination) if k in key['label']['key'] and len(set([subcombination[k] for subcombination in subcombinations]))>1],
 								]
 							value = [
-								[[texify(l) for l in k] if not isinstance(k,str) else texify(k) 
-								for k in [*v,[k if v is not None else None for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]]]
-								for i,v in enumerate(value)]
-							value = ['~,~'.join([': '.join([j for j in k if j is not None]) if not isinstance(k,str) else k for k in v if k is not None and len(k)>0 and all(j is not None for j in k)]) 
+								[[texify(l) for l in k if l is not None and len(l)>0] if not isinstance(k,str) else texify(k) 
+								for k in [*v,[k if v is not None else None for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]
+								] if len(k)>0]
+								for i,v in enumerate(value) if len(v)>0]
+
+							value = ['~,~'.join([': '.join([j for j in k if j is not None and len(j)>0]) if not isinstance(k,str) else k for k in v if k is not None and len(k)>0 and all(j is not None and len(j) for j in k)]) 
 									for v in value if v is not None and len(v)>0]
+
 							value = [v for v in value if len(v)>0]
 							value = '\n'.join(['$%s$'%(v.replace('$','')) for v in value])
 
