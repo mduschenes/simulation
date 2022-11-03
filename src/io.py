@@ -9,7 +9,7 @@ import json,jsonpickle,h5py,pickle,dill
 import numpy as np
 import pandas as pd
 
-from natsort import natsorted, ns,index_natsorted,order_by_index
+from natsort import natsorted,realsorted
 
 # Logging
 import logging
@@ -273,7 +273,7 @@ def glob(path,include=None,recursive=False,**kwargs):
 
 	paths = globber.glob(os.path.abspath(os.path.expanduser(path)),recursive=True,**kwargs)
 
-	paths = list(sorted(filter(include,paths)))
+	paths = list(realsorted(filter(include,paths)))
 
 	return paths
 
