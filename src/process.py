@@ -897,10 +897,16 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								else:
 									value = data[name][key[prop]['key'][-1]]
 
+								if value is None or value.dtype.type is np.str_:
+									dtype = variables[occurrence][combination][permutation][kwarg][stat].dtype
+									continue
+
+								# try:
 								value = expand_dims(value,newndim)
 								slices = (index,*(slice(data[name][key['y']['key'][-1]].shape[axis]) for axis in range(data[name][key['y']['key'][-1]].ndim)))
 								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
-
+								# except:
+									# raise
 							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
 								key,variables[occurrence][combination][permutation][kwarg][stat],
 								variables=variables[occurrence][combination][permutation],dtype=dtype)
@@ -1257,7 +1263,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							value = getattr(plt.cm,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])(
 								(([subcombination[::-1] for subcombination in sorted(set(subcombinations))][::-1].index(tuple((combination[k] for k in combination))[::-1]))
 									)/(len(set(subcombinations))))
-							# print(instance,subinstance,len(set(subcombinations)))
 							# value = None
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 
