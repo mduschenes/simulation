@@ -21,7 +21,7 @@ function RUN(){
 # Variables
 SRC=${1}
 EXE=${2}
-ARGS=${3}
+ARGS=(${3})
 INTERFACE=${4:-parallel}
 shift 4
 TASKS=${@}
