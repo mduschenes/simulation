@@ -353,7 +353,7 @@ class Base(object):
 			'status':1,
 			'reset':0,
 			'verbose':False,
-			'modulo':{'log':1,'history':10,'callback':1,'restart':1e10},
+			'modulo':{'log':1,'history':10,'callback':1,'restart':1e10,'dump':1e10},
 			'attributes':{'value':[],'grad':[],'search':[],'alpha':[]},			
 			'track':{'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}

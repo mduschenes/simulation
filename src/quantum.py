@@ -738,7 +738,8 @@ class Object(object):
 			self.log(msg)
 
 			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
-
+		if (self.hyperparameters['optimize']['track']['iteration'][-1]-1)%self.hyperparameters['optimize']['modulo']['dump'] == 0:
+			self.dump()
 
 		return status
 
