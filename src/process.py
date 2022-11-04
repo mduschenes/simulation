@@ -798,35 +798,23 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					variables[occurrence].pop(combination);
 					continue
 				
-				# permutations[occurrence][combination] = combinations[occurrence][combination]
-				# permutations[occurrence][combination] = [
-				# 	[val for val in sort[attr] 
-				# 	if (((attr not in label['label']) and (val is not None)) or ((attr in label['label']) and (val == label['label'][attr])))]
-				# 	for attr in sort
-					# ]
-
-				# included = [name for name in names 
-				# 	if all(data[name][attr] == values[attr]
-				# 	for attr in values)]
-				# print('Trying',label)
-				
 				allincluded = [name for name in names 
 					if include(name,{'label':labels[occurrence]['label']},label['label'],sort,data)]
 
 				value = variables[occurrence].pop(combination)
 
 				if len(allincluded) == 0:
-					# print('continue --',combination)
 					continue
 
 
 
 				name = allincluded[-1]
-				combination = tuple((
+				combination = tuple(sorted(tuple((
 					(attr,asscalar(data[name][attr]))
 					for attr in data[name] if (
 						data[name][attr].size == 1)
-					))
+					)),
+					key = lambda x: key['label']['key'].index(x[0]) if x[0] in key['label']['key'] else -1))
 
 				variables[occurrence][combination] = value
 
@@ -842,8 +830,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								for prop in labels[occurrence] 
 								for attr in labels[occurrence][prop]})
 				print()
-				# print(allincluded)
-				# print()
 
 				for permutation in permutations[occurrence][combination]:
 				# for permutation in itertools.product(*permutations[occurrence][combination]):
@@ -867,7 +853,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					print(included)					
 					print()
 					print()
-					# continue
 
 					for kwarg in statistics:
 
@@ -925,8 +910,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								key,variables[occurrence][combination][permutation][kwarg][stat],
 								variables=variables[occurrence][combination][permutation],dtype=dtype)
 
-				# continue
-				# print('merging')
 				variables[occurrence][combination] = {
 					kwarg:{
 						stat: np.array([variables[occurrence][combination][permutation][kwarg][stat] 
@@ -1188,8 +1171,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									
 									occurrence = occurrences(key,keys)
 									
-									# occurrence = keys.index(key)
-									
 									parameter = [None,*[parameter for parameter in parameters 
 										if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
 											key[axis]['key'] for axis in parameter['key']))]][-1]									
@@ -1199,11 +1180,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 												for kwarg in variables[occurrence][combination]
 												for stat in variables[occurrence][combination][kwarg])												
 									for enum,(combination,j) in enumerate(realsorted(
-											itertools.product(variables[occurrence],range(subsize)),
-											key=lambda x: tuple((x[0][-1] for k in x[0])))):
+											itertools.product(variables[occurrence],range(subsize))  	,
+											key=lambda x: tuple((dict(x[0]).get(k) for k in key['label']['key']))
+											)):
+
 										subsubsize = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
 													for kwarg in variables[occurrence][combination]
 													for stat in variables[occurrence][combination][kwarg])
+
 										if j >= subsubsize:
 											continue
 
@@ -1257,10 +1241,20 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 						combination,j,occurrence,stat = subsubinstance
 
-
 						key = _occurrences(occurrence,keys)
 
 						combination = dict(combination)
+
+						sorting = realsorted(set([
+							tuple((subcombination[k] for k in key['label']['key'] 
+								if k in hyperparameters.get('sort'))) 
+							for subcombination in subcombinations]))
+						elements = tuple((combination[k] for k in key['label']['key'] 
+								if k in hyperparameters.get('sort')))
+						multiple = any(len(subcombination)>0 for subcombination in subcombinations)
+						index = sorting.index(elements)
+						number = len(sorting)
+						proportion = index/number
 
 						# Add data-dependent plots
 						if key['y']['key'][-1] in []:
@@ -1271,12 +1265,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if settings[instance][subinstance][setting][attr][subsubinstance].get(kwarg) is None:
 								continue
 								settings[instance][subinstance][setting][attr][subsubinstance][kwarg]
-							value = getattr(plt.cm,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])(
-								([subcombination for subcombination in set([tuple((subcombination[k] for k in combination))[::-1] for subcombination in subcombinations])
-										].index(tuple((combination[k] for k in combination))[::-1]
-									)/(len(set([tuple((subcombination[k] for k in combination))[::-1] for subcombination in subcombinations])))
-								))
-							# value = None
+
+							value = getattr(plt.cm,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])(proportion)
+
 							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = value
 
 						kwargs = ['label']
@@ -1326,10 +1317,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if stat is None:
 								value = None
 							elif stat not in [('fit','fit')]:
-								value = list(set([[subcombination[k] for k in combination][-1] for subcombination in subcombinations]))
-								# value = abs(0.5-(value.index(tuple((combination[k] for k in combination))[-1])+1)/(len(value)+1)) if any(len(subcombination)>0 for subcombination in subcombinations) else None
-								value = (value.index(tuple((combination[k] for k in combination))[-1])+1)/(len(value)+1) if any(len(subcombination)>0 for subcombination in subcombinations) else None
-								# value = settings[instance][subinstance][setting][attr][subsubinstance][kwarg]
+								value = (index+1)/(number+1) if multiple else None
 							else:
 								value = None
 
@@ -1343,7 +1331,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							continue
 						for kwarg in kwargs:
 							value = [
-								# [(k,combination[k]) for i,k in enumerate(combination) if len(set(combinations[occurrence][i])) == 1],
 								[(k,) for i,k in enumerate(combination) if k in key['label']['key'] and len(set([subcombination[k] for subcombination in subcombinations]))>1],
 								]
 							value = [

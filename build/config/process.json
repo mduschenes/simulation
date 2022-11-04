@@ -4,13 +4,21 @@
 		{
 			"key":{"x":"iteration","y":"objective"},
 			"slice":null,
+			"slice":[0,null,20],			
 			"stat":[["linear","linear"]]
 		},
 		{
-			"key":{"x":"iteration","y":"objective.ideal"},
-			"slice":null,
+			"key":{"x":"iteration","y":"objective.ideal.state"},
+			"slice":null,			
+			"slice":[0,null,20],
 			"stat":[["linear","linear"]]
 		},		
+		{
+			"key":{"x":"iteration","y":"objective.ideal.operator"},
+			"slice":null,
+			"slice":[0,null,20],			
+			"stat":[["linear","linear"]]
+		},						
 		{
 			"key":{"x":"noise.scale","y":"objective"},
 			"slice":[0,null,null],
@@ -67,9 +75,9 @@
         "process": "process.hdf5"
     },
 	"delimiter":".",
-	"process":[],
 	"process":["src.postprocess.process"],
-	"load":1,
+	"process":[],
+	"load":0,
 	"dump":1,
 	"plot":1
 }

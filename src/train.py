@@ -59,7 +59,6 @@ def train(hyperparameters):
 		obj = None
 		return obj
 
-
 	cls = load(hyperparameters['class'])
 
 	obj = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)

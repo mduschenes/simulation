@@ -25,8 +25,8 @@
 			},		
 			{
 			"x":"iteration",
-			"y":"objective.ideal",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless}"],
+			"y":"objective.ideal.state",
+			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless State}"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -36,7 +36,21 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			}		
+			},
+			{
+			"x":"iteration",
+			"y":"objective.ideal.operator",
+			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless Operator}"],
+			"alpha":0.8,
+			"marker":"o",
+			"markersize":12,
+			"linestyle":"--",
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
+			"color":"viridis",
+			"ecolor":"viridis"
+			}					
 			],	
 		"fill_between":[
 			{
@@ -48,11 +62,18 @@
 			},			
 			{
 			"x":"iteration",
-			"y":"objective.ideal",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless}"],
+			"y":"objective.ideal.state",
+			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless State}"],
 			"alpha":0.5,			
 			"color":"viridis"
-			}
+			},
+			{
+			"x":"iteration",
+			"y":"objective.ideal.operator",
+			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless Operator}"],
+			"alpha":0.5,			
+			"color":"viridis"
+			}			
 			],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
@@ -60,8 +81,10 @@
 		"set_xnbins":{"nbins":6},
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim":{"ymin":1e-11,"ymax":1e1},
+		"set_ylim":{"ymin":1e-2,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
 		"set_yticks":{"ticks":[1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-2,1e-1,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -81,7 +104,7 @@
 			"handlelength": 3,
 			"framealpha": 0.8,
 			"loc": [1.1,0.05],
-			"ncol": 2,
+			"ncol": 3,
 			"set_zorder":{"level":100}
 			}			
 		},
@@ -95,7 +118,7 @@
 	},
 "noise.scale.objective.M":{
 	"fig":{
-		"set_size_inches":{"w":16,"h":8},
+		"set_size_inches":{"w":32,"h":8},
 		"subplots_adjust":{},
 		"tight_layout":{},
 		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
@@ -119,8 +142,8 @@
 			},
 			{
 			"x":"noise.scale",
-			"y":"objective.ideal",
-			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless}"],
+			"y":"objective.ideal.state",
+			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless State}"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -130,7 +153,21 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			}
+			},
+			{
+			"x":"noise.scale",
+			"y":"objective.ideal.operator",
+			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless Operator}"],
+			"alpha":0.8,
+			"marker":"o",
+			"markersize":12,
+			"linestyle":"---",
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
+			"color":"viridis",
+			"ecolor":"viridis"
+			}			
 		],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\gamma$"},
@@ -163,7 +200,7 @@
 			"handlelength": 3,
 			"framealpha": 0.8,
 			"loc": [1.1,0.05],
-			"ncol": 2,
+			"ncol": 3,
 			"set_zorder":{"level":100}
 			}			
 		},
@@ -187,8 +224,8 @@
 		"errorbar":[
 			{
 			"x":"noise.scale",
-			"y":"objective.diff",
-			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy}"],
+			"y":"objective.diff.state",
+			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless State}"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -198,7 +235,21 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			}
+			},
+			{
+			"x":"noise.scale",
+			"y":"objective.diff.operator",
+			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless Operator}"],
+			"alpha":0.8,
+			"marker":"o",
+			"markersize":12,
+			"linestyle":"--",
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
+			"color":"viridis",
+			"ecolor":"viridis"
+			}			
 		],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\gamma$"},

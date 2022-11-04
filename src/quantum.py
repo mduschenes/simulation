@@ -49,13 +49,13 @@ from src.noise import noiseize
 
 from src.io import load,dump,join,split
 
-from src.system import System,Logger,Space,Time,Lattice,Metric
+from src.system import System,Logger,Space,Time,Lattice
 
 from src.process import process
 
 from src.plot import plot
 
-from src.optimize import Optimizer
+from src.optimize import Optimizer,Metric
 
 dtype = 'complex'
 basis = {
@@ -136,6 +136,7 @@ class Object(object):
 
 		self.hyperparameters = hyperparameters
 		self.parameters = None
+		self.metrics = None
 		self.labels = None
 		self.label = None
 		self.state = None
@@ -156,7 +157,6 @@ class Object(object):
 		self.__space__()
 		self.__time__()
 		self.__lattice__()
-		self.__metric__()
 		self.__logger__()
 
 		self.__check__()
@@ -441,7 +441,7 @@ class Object(object):
 		metric = self.metric if (metric is None or metric is True) else metric if metric else None
 
 		# Metric functions
-		self.__metric__(metric=metric)
+		self.metrics = Metric(metric,shapes=[self.dims,self.dims],optimize=None)	
 		self.func = self.__func__
 		self.grad = gradient(self.func)
 		self.derivative = gradient(self,mode='fwd',move=True)
@@ -451,10 +451,10 @@ class Object(object):
 		# Labels
 		if state is None:
 			self.labels = label
+		elif state.ndim == 1:
+			self.labels = einsum('ij,j->i',label,state)			
 		elif state.ndim == 2:
 			self.labels = einsum('ij,jk,lk->il',label,state,label.conj())
-		elif state.ndim == 1:
-			self.labels = einsum('ij,j->i',label,state)
 		else:
 			self.labels = label
 
@@ -469,6 +469,9 @@ class Object(object):
 			elif state.ndim == 2:
 				self.summation = jit(partial(summationm,data=data,identity=identity,state=state))
 				self.exponentiation = jit(partial(exponentiationm,data=data,identity=identity,state=state))
+			else:
+				self.summation = jit(partial(summation,data=data,identity=identity))
+				self.exponentiation = jit(partial(exponentiation,data=data,identity=identity))
 		elif state is None and noise is not None:
 			self.summation = jit(partial(summationc,data=data,identity=identity,constants=noise))
 			self.exponentiation = jit(partial(exponentiationc,data=data,identity=identity,constants=noise))
@@ -478,6 +481,7 @@ class Object(object):
 		else:
 			self.summation = jit(partial(summation,data=data,identity=identity))
 			self.exponentiation = jit(partial(exponentiation,data=data,identity=identity))
+
 
 		return
 
@@ -573,7 +577,7 @@ class Object(object):
 		Returns:
 			objective (array): objective
 		'''	
-		return self.metric(self(parameters),self.labels)
+		return self.metrics(self(parameters),self.labels)
 
 	#@partial(jit,static_argnums=(0,))
 	def __loss__(self,parameters):
@@ -584,7 +588,7 @@ class Object(object):
 		Returns:
 			loss (array): loss
 		'''	
-		return self.metric(self(parameters),self.labels)
+		return self.metrics(self(parameters),self.labels)
 
 	#@partial(jit,static_argnums=(0,))
 	def __func__(self,parameters):
@@ -656,7 +660,7 @@ class Object(object):
 			grad (array): gradient of objective
 		'''	
 
-		grad = self.metric.__grad__(self(parameters),self.labels,self.__derivative_analytical__(parameters))
+		grad = self.metrics.__grad__(self(parameters),self.labels,self.__derivative_analytical__(parameters))
 
 		return grad
 
@@ -683,49 +687,51 @@ class Object(object):
 			status (int): status of class
 		'''	
 
+		optimize = self.hyperparameters['optimize']
 
-		self.hyperparameters['optimize']['track']['objective'].append(
+
+		optimize['track']['objective'].append(
 			self.__objective__(parameters)
 			)
 
 
 		status = (
-			(abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['value']['objective']) > 
-				self.hyperparameters['optimize']['eps']['objective']*self.hyperparameters['optimize']['value']['objective']) and
-			((len(self.hyperparameters['optimize']['track']['objective'])==1) or
-			((len(self.hyperparameters['optimize']['track']['objective'])>1) and 
-			 (abs(self.hyperparameters['optimize']['track']['objective'][-1] - self.hyperparameters['optimize']['track']['objective'][-2]) > 
-				self.hyperparameters['optimize']['eps']['difference']*self.hyperparameters['optimize']['value']['objective']))) and
-			(norm(self.hyperparameters['optimize']['track']['grad'][-1] - self.hyperparameters['optimize']['value']['grad'])/self.hyperparameters['optimize']['track']['grad'][-1].size > 
-				  self.hyperparameters['optimize']['eps']['grad'])
+			(abs(optimize['track']['objective'][-1] - optimize['value']['objective']) > 
+				optimize['eps']['objective']*optimize['value']['objective']) and
+			((len(optimize['track']['objective'])==1) or
+			((len(optimize['track']['objective'])>1) and 
+			 (abs(optimize['track']['objective'][-1] - optimize['track']['objective'][-2]) > 
+				optimize['eps']['difference']*optimize['value']['objective']))) and
+			(norm(optimize['track']['grad'][-1] - optimize['value']['grad'])/optimize['track']['grad'][-1].size > 
+				  optimize['eps']['grad'])
 			)
-		done = self.hyperparameters['optimize']['track']['iteration'][-1]==self.hyperparameters['optimize']['iterations']
+		done = optimize['track']['iteration'][-1]==optimize['iterations']
 
 		for attr in ['hessian','fisher']:
-			if attr in self.hyperparameters['optimize']['track']:
-				self.hyperparameters['optimize']['track'][attr].append(
+			if attr in optimize['track']:
+				optimize['track'][attr].append(
 					getattr(self,'__%s__'%(attr))(parameters) if ((not status) or done) else nan
 					)
 
-		if self.hyperparameters['optimize']['track']['iteration'][-1]%self.hyperparameters['optimize']['modulo']['log'] == 0:			
+		if optimize['track']['iteration'][-1]%optimize['modulo']['log'] == 0:			
 
-			self.hyperparameters['optimize']['track']['parameters'].append(parameters)		
+			optimize['track']['parameters'].append(parameters)		
 
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
-					self.hyperparameters['optimize']['track']['iteration'][-1],
-					self.hyperparameters['optimize']['track']['objective'][-1],
+					optimize['track']['iteration'][-1],
+					optimize['track']['objective'][-1],
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
-					norm(self.hyperparameters['optimize']['track']['parameters'][-1])/
-						 self.hyperparameters['optimize']['track']['parameters'][-1].size,
-					norm(self.hyperparameters['optimize']['track']['grad'][-1])/
-						 self.hyperparameters['optimize']['track']['grad'][-1].size,
+					norm(optimize['track']['parameters'][-1])/
+						 optimize['track']['parameters'][-1].size,
+					norm(optimize['track']['grad'][-1])/
+						 optimize['track']['grad'][-1].size,
 				),
 				'\t\t'.join([
-					'%s = %0.4e'%(attr,self.hyperparameters['optimize']['track'][attr][-1])
+					'%s = %0.4e'%(attr,optimize['track'][attr][-1])
 					for attr in ['alpha','beta']
-					if attr in self.hyperparameters['optimize']['track'] and len(self.hyperparameters['optimize']['track'][attr])>0
+					if attr in optimize['track'] and len(optimize['track'][attr])>0
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				'U\n%s\nV\n%s\n'%(
@@ -741,7 +747,7 @@ class Object(object):
 			self.log(msg)
 
 			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
-		if (self.hyperparameters['optimize']['track']['iteration'][-1]-1)%self.hyperparameters['optimize']['modulo']['dump'] == 0:
+		if (optimize['track']['iteration'][-1])%optimize['modulo']['dump'] == 0:
 			self.dump()
 
 		return status
@@ -860,25 +866,6 @@ class Object(object):
 		return
 
 
-	def __metric__(self,metric=None,shapes=None,optimize=None,system=None):
-		'''
-		Set metric attributes
-		Args:
-			metric (str,Metric): Type of metric
-			shapes (iterable[tuple[int]]): Shapes of objects
-			optimize (bool,str,iterable): Contraction type
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
-		'''		
-		metric = self.metric if metric is None else metric
-		shapes = [self.dims,self.dims] if shapes is None else shapes
-		optimize = None if optimize is None else None
-		system = self.system if system is None else system
-
-		self.metric = Metric(metric,shapes,optimize,system=system)	
-
-		return
-
-
 	def __logger__(self,hyperparameters=None):
 		'''
 		Setup logger
@@ -954,10 +941,11 @@ class Object(object):
 
 			hyperparameters = obj.hyperparameters
 			attributes = obj.attributes
+			optimize = obj.hyperparameters['optimize']
 
 			returns = {}
 
-			if attr in obj.hyperparameters['optimize']['track']:
+			if attr in optimize['track']:
 				new = attr
 				New = value[attr]			
 				returns[new] = New
@@ -967,7 +955,7 @@ class Object(object):
 				returns[new] = New
 
 
-			if attr in obj.hyperparameters['optimize']['track']:
+			if attr in optimize['track']:
 
 				if attr in ['parameters']:
 					
@@ -998,8 +986,8 @@ class Object(object):
 
 					new = '%s.relative'%(attr)
 					New = abs((obj.__layers__(value[attr],layer)[indices] - 
-						obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices] + 1e-20)/(
-						obj.__layers__(hyperparameters['optimize']['track'][attr][0],layer)[indices] + 1e-20))
+						obj.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)/(
+						obj.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20))
 					returns[new] = New
 
 					new = '%s.relative.mean'%(attr)
@@ -1011,24 +999,24 @@ class Object(object):
 
 					returns[new] = New
 
-					obj.__functions__(noise=False)
+					obj.__functions__(noise=False,state=True,label=True,metric='infidelity.norm')
 
-					new = 'objective.ideal'
+					new = 'objective.ideal.state'
 					New = obj.__objective__(value[attr])
 					returns[new] = New
 
-					new = 'objective.diff'
+					new = 'objective.diff.state'
 					New = abs(value['objective'] - New)
 					returns[new] = New
 
-					new = 'objective.rel'
+					new = 'objective.rel.state'
 					New = abs((value['objective'] - New)/New)
 					returns[new] = New					
 
-					obj.__functions__(noise=True)
+					obj.__functions__(noise=True,state=True,label=True,metric=True)
 
 
-					obj.__functions__(noise=False,state=False)
+					obj.__functions__(noise=False,state=False,label=True,metric='infidelity.abs')
 
 					new = 'objective.ideal.operator'
 					New = obj.__objective__(value[attr])
@@ -1042,20 +1030,20 @@ class Object(object):
 					New = abs((value['objective'] - New)/New)
 					returns[new] = New					
 
-					obj.__functions__(noise=True,state=True)
+					obj.__functions__(noise=True,state=True,label=True,metric=True)
 
 
 				elif attr in ['iteration']:
 					new = '%s.max'%(attr)
-					New = hyperparameters['optimize']['track'][attr][-1]
+					New = optimize['track'][attr][-1]
 					returns[new] = New
 
 					new = '%s.min'%(attr)
-					New = hyperparameters['optimize']['track'][attr][argmin(array(hyperparameters['optimize']['track']['objective']))]
+					New = optimize['track'][attr][argmin(array(optimize['track']['objective']))]
 					returns[new] = New
 
 					new = 'status'
-					New = value[attr]/hyperparameters['optimize']['track'][attr][-1]
+					New = value[attr]/max(1,optimize['track'][attr][-1])
 
 					returns[new] = New
 
@@ -1087,12 +1075,13 @@ class Object(object):
 			return returns
 
 		# Get data
+		optimize = self.hyperparameters['optimize']
 		label = [self.timestamp]
 		keys = [self.key]
 		iterations = {
-			key: range(min(len(self.hyperparameters['optimize']['track'][attr]) 
-			for attr in self.hyperparameters['optimize']['track']
-			if len(self.hyperparameters['optimize']['track'][attr]) > 0
+			key: range(min(len(optimize['track'][attr]) 
+			for attr in optimize['track']
+			if len(optimize['track'][attr]) > 0
 			))
 			for key in keys
 			}
@@ -1101,9 +1090,9 @@ class Object(object):
 
 		data = {
 			delim.join([*(str(l) for l in label),str(key),str(iteration)]): {
-				**{attr: self.hyperparameters['optimize']['track'][attr][iteration]
-					for attr in self.hyperparameters['optimize']['track']
-					if len(self.hyperparameters['optimize']['track'][attr]) > 0
+				**{attr: optimize['track'][attr][iteration]
+					for attr in optimize['track']
+					if len(optimize['track'][attr]) > 0
 				},	
 				**{attr: getattr(self,attr)
 					for attr in self.__dict__
@@ -1191,7 +1180,7 @@ class Object(object):
 			updater(default,data[attr],func=func)
 
 		try:
-			self.parameters = self.hyperparameters['optimize']['track']['parameters'][-1]
+			self.parameters = optimize['track']['parameters'][-1]
 		except:
 			pass
 

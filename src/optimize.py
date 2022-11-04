@@ -17,8 +17,19 @@ logger = logging.getLogger(__name__)
 
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient,hessian
-from src.utils import is_naninf
+from src.utils import is_naninf,product,sqrt
+
+from src.utils import normed,inner_abs2,inner_real,inner_imag
+from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
+from src.utils import normed_einsum,inner_abs2_einsum,inner_real_einsum,inner_imag_einsum
+from src.utils import gradient_normed_einsum,gradient_inner_abs2_einsum,gradient_inner_real_einsum,gradient_inner_imag_einsum
+
+from src.utils import itg,dbl,flt
+
 from src.line_search import line_search,armijo
+
+from src.io import join,split,copy,rmdir,exists
+
 
 
 def value_and_grad(func,grad=None):
@@ -320,6 +331,266 @@ class Objective(object):
 			out (object): Return of objective function
 		'''
 		return self.callback(parameters)		
+
+
+class Metric(object):
+	'''
+	Metric class for distance between Operators
+	Args:
+		metric (str,Metric): Type of metric
+		shapes (iterable[tuple[int]]): Shapes of Operators
+		optimize (bool,str,iterable): Contraction type		
+	'''
+	def __init__(self,metric,shapes,optimize=None):
+
+		self.metric = metric
+		self.shapes = shapes
+		self.optimize = optimize
+		self.default = None
+
+		self.__setup__()
+		
+		return
+
+	def __setup__(self):
+		'''
+		Setup metric attributes metric,string
+		'''
+		if isinstance(self.metric,Metric):
+			self.metric = self.metric.metric
+		if self.metric is None:
+			self.metric = self.default
+		self.__string__()
+		self.__size__()
+
+		self.get_metric()
+
+		return
+
+	def __string__(self):
+		self.string = str(self.metric)
+		return
+
+	def __size__(self):
+		self.size = sum(int(product(shape)**(1/len(shape))) for shape in self.shapes)//len(self.shapes)
+		return 
+
+	@partial(jit,static_argnums=(0,))
+	def __call__(self,a,b):
+		return self.func(a,b)
+
+	@partial(jit,static_argnums=(0,))
+	def __grad__(self,a,b,da):
+		return self.grad(a,b,da)		
+
+	def __str__(self):
+		return str(self.string)
+
+	def __repr__(self):
+		return str(self.string)
+
+	def get_metric(self):
+
+		if callable(self.metric):
+			func = jit(self.metric)
+			grad = jit(gradient(self.metric))
+
+		elif self.metric is None:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func = jit(normed_einsum(*shapes,optimize=optimize))
+			# _func = normed
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_normed_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_normed
+
+			@jit
+			def func(a,b):
+				return _func(a,b)/2/sqrt(a.shape[0]*b.shape[0])
+			@jit
+			def grad(a,b,da):
+				return _grad(a,b,da)/2/sqrt(a.shape[0]*b.shape[0])	
+
+		elif self.metric in ['norm','normed']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func = jit(normed_einsum(*shapes,optimize=optimize))
+			# _func = normed
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_normed_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_normed
+
+			@jit
+			def func(a,b):
+				return _func(a,b)/2/sqrt(a.shape[0]*b.shape[0])
+			@jit
+			def grad(a,b,da):
+				return _grad(a,b,da)/2/sqrt(a.shape[0]*b.shape[0])
+
+		elif self.metric in ['infidelity']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
+			# _func = inner_abs2
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_inner_abs2_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_inner_abs2
+
+			@jit
+			def func(a,b):
+				return 1-_func(a,b)/(a.shape[0]*b.shape[0])
+			@jit
+			def grad(a,b,da):
+				return -_grad(a,b,da)/(a.shape[0]*b.shape[0])
+
+		elif self.metric in ['infidelity.abs']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
+			# _func = inner_abs2
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_inner_abs2_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_inner_abs2
+
+			@jit
+			def func(a,b):
+				return 1-_func(a,b)/(a.shape[0]*b.shape[0])
+			@jit
+			def grad(a,b,da):
+				return -_grad(a,b,da)/(a.shape[0]*b.shape[0])
+
+		elif self.metric in ['infidelity.norm']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
+			# _func = inner_abs2
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_inner_abs2_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_inner_abs2
+
+			@jit
+			def func(a,b):
+				return 1-_func(a,b)
+			@jit
+			def grad(a,b,da):
+				return -_grad(a,b,da)					
+
+		elif self.metric in ['infidelity.real']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func = jit(inner_real_einsum(*shapes,optimize=optimize))
+			# _func = inner_real
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_inner_real_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_inner_real
+
+			@jit
+			def func(a,b):
+				return 1-_func(a,b)/sqrt(a.shape[0]*b.shape[0])
+			@jit
+			def grad(a,b,da):
+				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])
+
+		elif self.metric in ['infidelity.imag']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func = jit(inner_imag_einsum(*shapes,optimize=optimize))
+			# _func = inner_imag
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_inner_imag_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_inner_imag
+
+			@jit
+			def func(a,b):
+				return 1-_func(a,b)/sqrt(a.shape[0]*b.shape[0])
+			@jit
+			def grad(a,b,da):
+				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])	
+
+		elif self.metric in ['infidelity.real.imag']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func_real = jit(inner_real_einsum(*shapes,optimize=optimize))
+			# _func_real = inner_real
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad_real = jit(gradient_inner_real_einsum(*shapes,optimize=optimize))
+			# _grad_real = gradient_inner_real
+
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func_imag = jit(inner_imag_einsum(*shapes,optimize=optimize))
+			# _func_imag = inner_imag
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad_imag = jit(gradient_inner_imag_einsum(*shapes,optimize=optimize))
+			# _grad_imag = gradient_inner_imag
+
+			@jit
+			def func(a,b):
+				return 1-(_func_real(a,b)+_func_imag(a,b))/2/sqrt(a.shape[0]*b.shape[0])
+			@jit
+			def grad(a,b,da):
+				return -(_grad_real(a,b,da)+_grad_imag(a,b,da))/2/sqrt(a.shape[0]*b.shape[0])
+
+		elif self.metric in ['infidelity.vector']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func = jit(inner_vectorabs2_einsum(*shapes,optimize=optimize))
+			# _func = inner_abs2
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_inner_vectorabs2_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_inner_abs2
+
+			@jit
+			def func(a,b):
+				return 1-_func(a,b)/sqrt(a.shape[0]*b.shape[0])
+			@jit
+			def grad(a,b,da):
+				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])			
+						
+		else:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			_func = jit(normed_einsum(*shapes,optimize=optimize))
+			# _func = normed
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_normed_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_normed
+
+			@jit
+			def func(a,b):
+				return _func(a,b)/2/sqrt(a.shape[0]*b.shape[0])
+			@jit
+			def grad(a,b,da):
+				return _grad(a,b,da)/2/sqrt(a.shape[0]*b.shape[0])
+
+		self.func = func
+
+		self.grad = grad
+
+		return
+
 
 
 class Base(object):

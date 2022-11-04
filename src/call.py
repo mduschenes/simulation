@@ -657,6 +657,8 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	keys = intersection(keys,cwd,sort=True)
 
+	processes = 1 if processes is None else processes
+
 	unique = {
 		path: {
 			key: (
@@ -668,8 +670,6 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	 }
 
 	unique = {attr: unique[attr] for attr in sorted(unique)}
-
-	processes = 1 if processes is None else processes
 
 	cmds = {}
 	results = []
