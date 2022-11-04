@@ -422,13 +422,14 @@ class Object(object):
 
 		return
 
-	def __functions__(self,state=None,noise=None,label=None):
+	def __functions__(self,state=None,noise=None,label=None,metric=None):
 		''' 
 		Setup class functions
 		Args:
 			state (bool,array): State to act on with class of shape self.dims, if boolean choose self.state or None
 			noise (bool,array): Noise to act on with class of shape (-1,self.dims), if boolean choose self.noise or None
 			label (bool,array): Label of class of shape self.dims, if boolean choose self.label or None
+			metric (bool,callable): Metric for class and label, if boolean choose self.metric or None
 		'''
 
 		# Function arguments
@@ -437,8 +438,10 @@ class Object(object):
 		state = self.state if (state is None or state is True) else state if state else None
 		noise = self.noise if (noise is None or noise is True) else noise if noise else None
 		label = self.label if (label is None or label is True) else label if label else None
+		metric = self.metric if (metric is None or metric is True) else metric if metric else None
 
 		# Metric functions
+		self.__metric__(metric=metric)
 		self.func = self.__func__
 		self.grad = gradient(self.func)
 		self.derivative = gradient(self,mode='fwd',move=True)
@@ -1018,7 +1021,28 @@ class Object(object):
 					New = abs(value['objective'] - New)
 					returns[new] = New
 
+					new = 'objective.rel'
+					New = abs((value['objective'] - New)/New)
+					returns[new] = New					
+
 					obj.__functions__(noise=True)
+
+
+					obj.__functions__(noise=False,state=False)
+
+					new = 'objective.ideal.operator'
+					New = obj.__objective__(value[attr])
+					returns[new] = New
+
+					new = 'objective.diff.operator'
+					New = abs(value['objective'] - New)
+					returns[new] = New
+
+					new = 'objective.rel.operator'
+					New = abs((value['objective'] - New)/New)
+					returns[new] = New					
+
+					obj.__functions__(noise=True,state=True)
 
 
 				elif attr in ['iteration']:
@@ -1406,8 +1430,6 @@ class Hamiltonian(Object):
 
 		# Setup functions
 		self.__functions__()
-
-		
 
 		return
 
