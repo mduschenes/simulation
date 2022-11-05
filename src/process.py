@@ -1317,7 +1317,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if stat is None:
 								value = None
 							elif stat not in [('fit','fit')]:
-								value = (index+1)/(number+1) if multiple else None
+								# value = (index+1)/(number+1) if multiple else None
+								value = None
 							else:
 								value = None
 

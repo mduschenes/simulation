@@ -230,7 +230,11 @@ def call(*args,path=None,wrapper=None,pause=None,process=None,processes=None,par
 	def caller(args,inputs=None,device=None,verbose=None):
 
 		def run(args,stdin=None,stdout=None,stderr=None):
-			result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr)
+			try:
+				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr)
+			except OSError as exception:
+				logger.log(verbose,exception)
+				logger.log(verbose,args)
 			return result
 
 
