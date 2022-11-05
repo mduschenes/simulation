@@ -699,7 +699,9 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		size = kwargs[key]['size']
 		step = kwargs[key]['step']
 
-		path = (index if processes > 1 else index[:1]) if size > 1 else [None]
+		# TODO: Sort out parallel / passed in JOB_CWD paths 
+		# especially in edge case of 1 task, so no sub-directories created, should pass JOB_CWD=1 instead of SLURM_TASK_ID
+		path = (index if processes > 1 else index[:1]) if size > 1 or process in ['array'] else [None]
 
 		path = join(*path)
 

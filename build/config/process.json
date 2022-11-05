@@ -4,19 +4,25 @@
 		{
 			"key":{"x":"iteration","y":"objective"},
 			"slice":null,
-			"slice":[0,null,20],			
+			"slice":[0,null,1],			
 			"stat":[["linear","linear"]]
 		},
 		{
+			"key":{"x":"iteration","y":"objective.ideal.noise"},
+			"slice":null,			
+			"slice":[0,null,1],
+			"stat":[["linear","linear"]]
+		},		
+		{
 			"key":{"x":"iteration","y":"objective.ideal.state"},
 			"slice":null,			
-			"slice":[0,null,20],
+			"slice":[0,null,1],
 			"stat":[["linear","linear"]]
 		},		
 		{
 			"key":{"x":"iteration","y":"objective.ideal.operator"},
 			"slice":null,
-			"slice":[0,null,20],			
+			"slice":[0,null,1],			
 			"stat":[["linear","linear"]]
 		},						
 		{
@@ -24,6 +30,11 @@
 			"slice":[0,null,null],
 			"stat":[["linear","linear"]]
 		},		
+		{
+			"key":{"x":"noise.scale","y":"objective.ideal.noise"},
+			"slice":[0,null,null],
+			"stat":[["linear","linear"]]
+		},	
 		{
 			"key":{"x":"noise.scale","y":"objective.ideal.state"},
 			"slice":[0,null,null],
@@ -84,7 +95,7 @@
 	"delimiter":".",
 	"process":["src.postprocess.process"],
 	"process":[],
-	"load":0,
+	"load":1,
 	"dump":1,
 	"plot":1
 }

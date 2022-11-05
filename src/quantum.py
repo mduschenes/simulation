@@ -407,6 +407,7 @@ class Object(object):
 
 		noise = noiseize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
+
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
 
@@ -435,10 +436,10 @@ class Object(object):
 		# Function arguments
 		data = array(self.data,dtype=self.dtype)
 		identity = self.identity
-		state = self.state if (state is None or state is True) else state if state else None
-		noise = self.noise if (noise is None or noise is True) else noise if noise else None
-		label = self.label if (label is None or label is True) else label if label else None
-		metric = self.metric if (metric is None or metric is True) else metric if metric else None
+		state = self.state if (state is None or state is True) else state if state is not False else None
+		noise = self.noise if (noise is None or noise is True) else noise if noise is not False else None
+		label = self.label if (label is None or label is True) else label if label is not False else None
+		metric = self.metric if (metric is None or metric is True) else metric if metric is not False else None
 
 		# Metric functions
 		self.metrics = Metric(metric,shapes=[self.dims,self.dims],optimize=None)	
@@ -474,8 +475,8 @@ class Object(object):
 				self.summation = jit(partial(summation,data=data,identity=identity))
 				self.exponentiation = jit(partial(exponentiation,data=data,identity=identity))
 		elif state is None and noise is not None:
-			self.summation = jit(partial(summationc,data=data,identity=identity,constants=noise))
-			self.exponentiation = jit(partial(exponentiationc,data=data,identity=identity,constants=noise))
+			self.summation = jit(partial(summation,data=data,identity=identity))
+			self.exponentiation = jit(partial(exponentiation,data=data,identity=identity))
 		elif state is not None and noise is not None:
 			self.summation = jit(partial(summationmc,data=data,identity=identity,state=state,constants=noise))
 			self.exponentiation = jit(partial(exponentiationmc,data=data,identity=identity,state=state,constants=noise))
@@ -1005,7 +1006,8 @@ class Object(object):
 
 						data = None
 						shape = obj.dims
-						hyperparams = obj.hyperparameters['state']
+						hyperparams = deepcopy(obj.hyperparameters['state'])
+						hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
 						size = obj.N
 						samples = True
 						seed = obj.seed		
@@ -1017,17 +1019,36 @@ class Object(object):
 					else:
 						state = obj.state
 
-					obj.__functions__(state=state,noise=True,label=True,metric='infidelity.norm')
+					if obj.noise is None:
 
-					new = 'objective.ideal.state'
+						data = None
+						shape = obj.dims
+						hyperparams = deepcopy(obj.hyperparameters['noise'])
+						hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
+						size = obj.N
+						samples = None
+						seed = obj.seed		
+						cls = obj
+						dtype = obj.dtype
+
+						noise = noiseize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+
+					else:
+						noise = obj.noise
+
+
+
+					obj.__functions__(state=state,noise=noise,label=True,metric='infidelity.norm')
+
+					new = 'objective.ideal.noise'
 					New = obj.__objective__(value[attr])
 					returns[new] = New
 
-					new = 'objective.diff.state'
+					new = 'objective.diff.noise'
 					New = abs(value['objective'] - New)
 					returns[new] = New
 
-					new = 'objective.rel.state'
+					new = 'objective.rel.noise'
 					New = abs((value['objective'] - New)/max(1,New))
 					returns[new] = New	
 

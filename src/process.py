@@ -812,7 +812,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				combination = tuple(sorted(tuple((
 					(attr,asscalar(data[name][attr]))
 					for attr in data[name] if (
-						data[name][attr].size == 1)
+						(data[name][attr].size == 1) and
+						not any(attr in key[prop]['key'] for prop in key if prop not in ['label'])
+						)
 					)),
 					key = lambda x: key['label']['key'].index(x[0]) if x[0] in key['label']['key'] else -1))
 
@@ -1179,10 +1181,12 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 												for combination in variables[occurrence]
 												for kwarg in variables[occurrence][combination]
 												for stat in variables[occurrence][combination][kwarg])												
+
 									for enum,(combination,j) in enumerate(realsorted(
 											itertools.product(variables[occurrence],range(subsize))  	,
 											key=lambda x: tuple((dict(x[0]).get(k) for k in key['label']['key']))
 											)):
+
 
 										subsubsize = max(variables[occurrence][combination][kwarg][stat].shape[dim-1+1]
 													for kwarg in variables[occurrence][combination]
@@ -1294,7 +1298,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if stat not in [('fit','fit')]:
 								value = [elements[k] for k in elements if lengths[k]>1]
 								value = [texify(scinotation(k,decimals=0,scilimits=[0,3])) for k in value]
-								value = [*value,*[str(combination.get(v.replace('@',''),v)) if v is not None else k for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]]
+								value = [*value,*[texify(str(combination.get(v.replace('@',''),v)) if v is not None else k) for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]]
 								value = [v for v in value if v is not None and len(v)>0]
 								value = ',~'.join(value)
 
@@ -1315,7 +1319,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									for suboccurrence in suboccurrences 
 									]))))
 								value = (value.index(occurrence) if len(suboccurrences)>0 else 0)
-								value = ['solid','dotted','dashed','dashdot',(0,(5,10)),(0,(1,1))][value%6]
+								value = ['solid','dotted','dashed',(0,(5,10)),(0,(1,1))][value%6]
 							else:
 								value = None
 

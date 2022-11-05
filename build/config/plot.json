@@ -50,7 +50,21 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			}					
+			},
+			{
+			"x":"iteration",
+			"y":"objective.ideal.noise",
+			"label":["N","architecture","M","noise.scale","\\textrm{Noisy State}"],
+			"alpha":0.8,
+			"marker":"o",
+			"markersize":12,
+			"linestyle":"--",
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
+			"color":"viridis",
+			"ecolor":"viridis"
+			}								
 			],	
 		"fill_between":[
 			{
@@ -73,7 +87,14 @@
 			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless Operator}"],
 			"alpha":0.5,			
 			"color":"viridis"
-			}			
+			},
+			{
+			"x":"iteration",
+			"y":"objective.ideal.noise",
+			"label":["N","architecture","M","noise.scale","\\textrm{Noisy State}"],
+			"alpha":0.5,			
+			"color":"viridis"
+			}								
 			],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
@@ -104,7 +125,7 @@
 			"handlelength": 3,
 			"framealpha": 0.8,
 			"loc": [1.1,0.05],
-			"ncol": 3,
+			"ncol": 4,
 			"set_zorder":{"level":100}
 			}			
 		},
@@ -167,7 +188,21 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			}			
+			},
+			{
+			"x":"noise.scale",
+			"y":"objective.ideal.noise",
+			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy State}"],
+			"alpha":0.8,
+			"marker":"o",
+			"markersize":12,
+			"linestyle":"---",
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
+			"color":"viridis",
+			"ecolor":"viridis"
+			}						
 		],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\gamma$"},
@@ -200,7 +235,7 @@
 			"handlelength": 3,
 			"framealpha": 0.8,
 			"loc": [1.1,0.05],
-			"ncol": 3,
+			"ncol": 4,
 			"set_zorder":{"level":100}
 			}			
 		},
@@ -447,7 +482,7 @@
 			]},
 		"set_xlabel":{"xlabel":"$M$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xlim":{"xmin":0,"xmax":120},		
+		"set_xlim":{"xmin":0,"xmax":2100},		
 		"set_xnbins":{"nbins":6},
 		"set_ylim":{"ymin":1e-5,"ymax":1e-1},
 		"set_ylim":{"ymin":1e-4,"ymax":1e2},
