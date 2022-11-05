@@ -896,7 +896,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								else:
 									value = data[name][key[prop]['key'][-1]]
 
-								if value is None or value.dtype.type is np.str_:
+								if value is None or value.dtype.type is np.str_ or variables[occurrence][combination][permutation][kwarg][stat].dtype.type is np.str_:
 									dtype = variables[occurrence][combination][permutation][kwarg][stat].dtype
 									continue
 
@@ -1329,8 +1329,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if stat is None:
 								value = None
 							elif stat not in [('fit','fit')]:
-								# value = (index+1)/(number+1) if multiple else None
-								value = None
+								value = settings[instance][subinstance][setting][attr][subsubinstance].get(kwarg,(index+1)/(number+1) if multiple else None)
 							else:
 								value = None
 

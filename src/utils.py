@@ -1239,7 +1239,8 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 	if complex:
 		out = out[0] + 1j*out[1]
 
-	dtype = _dtype
+	dtype = _dtype if _dtype is not None else out.dtype
+
 	out = out.astype(dtype)
 
 	return out

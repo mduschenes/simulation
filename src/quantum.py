@@ -450,13 +450,13 @@ class Object(object):
 
 		# Labels
 		if state is None:
-			self.labels = label
+			self.labels = label.conj()
 		elif state.ndim == 1:
-			self.labels = einsum('ij,j->i',label,state)			
+			self.labels = einsum('ij,j->i',label,state).conj()
 		elif state.ndim == 2:
 			self.labels = einsum('ij,jk,lk->il',label,state,label.conj())
 		else:
-			self.labels = label
+			self.labels = label.conj()
 
 		# Operator functions
 		if state is None and noise is None:
@@ -724,9 +724,9 @@ class Object(object):
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
 					norm(optimize['track']['parameters'][-1])/
-						 optimize['track']['parameters'][-1].size,
+						 max(1,optimize['track']['parameters'][-1].size),
 					norm(optimize['track']['grad'][-1])/
-						 optimize['track']['grad'][-1].size,
+						 max(1,optimize['track']['grad'][-1].size),
 				),
 				'\t\t'.join([
 					'%s = %0.4e'%(attr,optimize['track'][attr][-1])
@@ -999,38 +999,40 @@ class Object(object):
 
 					returns[new] = New
 
-					obj.__functions__(noise=False,state=True,label=True,metric='infidelity.norm')
 
-					new = 'objective.ideal.state'
-					New = obj.__objective__(value[attr])
-					returns[new] = New
+					if obj.noise is not None:
+						obj.__functions__(noise=False,state=True,label=True,metric='infidelity.norm')
 
-					new = 'objective.diff.state'
-					New = abs(value['objective'] - New)
-					returns[new] = New
+						new = 'objective.ideal.state'
+						New = obj.__objective__(value[attr])
+						returns[new] = New
 
-					new = 'objective.rel.state'
-					New = abs((value['objective'] - New)/New)
-					returns[new] = New					
+						new = 'objective.diff.state'
+						New = abs(value['objective'] - New)
+						returns[new] = New
 
-					obj.__functions__(noise=True,state=True,label=True,metric=True)
+						new = 'objective.rel.state'
+						New = abs((value['objective'] - New)/max(1,New))
+						returns[new] = New					
+
+						obj.__functions__(noise=True,state=True,label=True,metric=True)
 
 
-					obj.__functions__(noise=False,state=False,label=True,metric='infidelity.abs')
+						obj.__functions__(noise=False,state=False,label=True,metric='infidelity.abs')
 
-					new = 'objective.ideal.operator'
-					New = obj.__objective__(value[attr])
-					returns[new] = New
+						new = 'objective.ideal.operator'
+						New = obj.__objective__(value[attr])
+						returns[new] = New
 
-					new = 'objective.diff.operator'
-					New = abs(value['objective'] - New)
-					returns[new] = New
+						new = 'objective.diff.operator'
+						New = abs(value['objective'] - New)
+						returns[new] = New
 
-					new = 'objective.rel.operator'
-					New = abs((value['objective'] - New)/New)
-					returns[new] = New					
+						new = 'objective.rel.operator'
+						New = abs((value['objective'] - New)/max(1,New))
+						returns[new] = New					
 
-					obj.__functions__(noise=True,state=True,label=True,metric=True)
+						obj.__functions__(noise=True,state=True,label=True,metric=True)
 
 
 				elif attr in ['iteration']:
@@ -1054,7 +1056,7 @@ class Object(object):
 					if isinstance(value[attr],array):
 						new = '%s.eigenvalues'%(attr)						
 						New  = sort(abs(eig(value[attr],compute_v=False,hermitian=True)))[::-1]
-						New = New/maximum(New)
+						New = New/max(1,maximum(New))
 						# _New = int((argmax(abs(difference(New)/New[:-1]))+1)*1.5)
 						# New = New[:_New]
 						returns[new] = New
