@@ -147,3 +147,7 @@ rm ${requirements[@]}
 # destination=${HOME}
 
 # cp ${source} ${destination}
+
+# Allow larger linux stack space for cli arguments
+# cache=16384
+# ulimit -s ${cache}
