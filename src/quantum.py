@@ -380,7 +380,7 @@ class Object(object):
 		dtype = self.dtype
 		cls = self
 
-		state,samples = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		state = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 		# Get label
 		data = None
@@ -457,6 +457,7 @@ class Object(object):
 			self.labels = einsum('ij,jk,lk->il',label,state,label.conj())
 		else:
 			self.labels = label.conj()
+
 
 		# Operator functions
 		if state is None and noise is None:
@@ -1000,39 +1001,69 @@ class Object(object):
 					returns[new] = New
 
 
-					if obj.noise is not None:
-						obj.__functions__(noise=False,state=True,label=True,metric='infidelity.norm')
+					if obj.state is None:
 
-						new = 'objective.ideal.state'
-						New = obj.__objective__(value[attr])
-						returns[new] = New
+						data = None
+						shape = obj.dims
+						hyperparams = obj.hyperparameters['state']
+						size = obj.N
+						samples = True
+						seed = obj.seed		
+						dtype = obj.dtype
+						cls = obj
 
-						new = 'objective.diff.state'
-						New = abs(value['objective'] - New)
-						returns[new] = New
+						state = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
-						new = 'objective.rel.state'
-						New = abs((value['objective'] - New)/max(1,New))
-						returns[new] = New					
+					else:
+						state = obj.state
 
-						obj.__functions__(noise=True,state=True,label=True,metric=True)
+					obj.__functions__(state=state,noise=True,label=True,metric='infidelity.norm')
+
+					new = 'objective.ideal.state'
+					New = obj.__objective__(value[attr])
+					returns[new] = New
+
+					new = 'objective.diff.state'
+					New = abs(value['objective'] - New)
+					returns[new] = New
+
+					new = 'objective.rel.state'
+					New = abs((value['objective'] - New)/max(1,New))
+					returns[new] = New	
 
 
-						obj.__functions__(noise=False,state=False,label=True,metric='infidelity.abs')
+					obj.__functions__(state=state,noise=False,label=True,metric='infidelity.norm')
 
-						new = 'objective.ideal.operator'
-						New = obj.__objective__(value[attr])
-						returns[new] = New
+					new = 'objective.ideal.state'
+					New = obj.__objective__(value[attr])
+					returns[new] = New
 
-						new = 'objective.diff.operator'
-						New = abs(value['objective'] - New)
-						returns[new] = New
+					new = 'objective.diff.state'
+					New = abs(value['objective'] - New)
+					returns[new] = New
 
-						new = 'objective.rel.operator'
-						New = abs((value['objective'] - New)/max(1,New))
-						returns[new] = New					
+					new = 'objective.rel.state'
+					New = abs((value['objective'] - New)/max(1,New))
+					returns[new] = New					
 
-						obj.__functions__(noise=True,state=True,label=True,metric=True)
+
+					obj.__functions__(state=False,noise=False,label=True,metric='infidelity.abs')
+
+					new = 'objective.ideal.operator'
+					New = obj.__objective__(value[attr])
+					returns[new] = New
+
+					new = 'objective.diff.operator'
+					New = abs(value['objective'] - New)
+					returns[new] = New
+
+					new = 'objective.rel.operator'
+					New = abs((value['objective'] - New)/max(1,New))
+					returns[new] = New					
+
+
+
+					obj.__functions__(state=True,noise=True,label=True,metric=True)
 
 
 				elif attr in ['iteration']:
