@@ -25,10 +25,15 @@
 			"stat":[["linear","linear"]]
 		},		
 		{
-			"key":{"x":"noise.scale","y":"objective.ideal"},
+			"key":{"x":"noise.scale","y":"objective.ideal.state"},
 			"slice":[0,null,null],
 			"stat":[["linear","linear"]]
 		},				
+		{
+			"key":{"x":"noise.scale","y":"objective.ideal.operator"},
+			"slice":[0,null,null],
+			"stat":[["linear","linear"]]
+		},						
 		{
 			"key":{"x":"","y":"parameters"},
 			"axis":[[0,1],[2],[],[-1]]
@@ -48,10 +53,12 @@
 		},		
 		{
 			"key":{"x":"","y":"hessian.eigenvalues"},
+			"slice":[0,100,null],			
 			"axis":[[0],[],[],[-1]]
 		},
 		{
 			"key":{"x":"","y":"fisher.eigenvalues"},
+			"slice":[0,100,null],						
 			"axis":[[0],[],[],[-1]]
 		}				
 		],	

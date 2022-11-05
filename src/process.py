@@ -1246,15 +1246,27 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						combination = dict(combination)
 
 						sorting = realsorted(set([
-							tuple((subcombination[k] for k in key['label']['key'] 
-								if k in hyperparameters.get('sort'))) 
+							tuple((subcombination[k] for k,v in zip(key['label']['key'],key['label']['value'])
+								if ((k in hyperparameters.get('sort')) and 
+									(not isinstance(v,str) or 
+									((not v.startswith('@')) and (not v.endswith('@')))))))
 							for subcombination in subcombinations]))
-						elements = tuple((combination[k] for k in key['label']['key'] 
-								if k in hyperparameters.get('sort')))
+						sorteds = dict(((k,combination[k]) for k,v in zip(key['label']['key'],key['label']['value'])
+								if ((k in hyperparameters.get('sort')) and (
+									(not isinstance(v,str) or 
+									((not v.startswith('@')) and (not v.endswith('@'))))))))
+						elements = dict(((k,combination.get(k,v)) for k,v in zip(key['label']['key'],key['label']['value'])
+								if ((k not in hyperparameters.get('sort')) or (
+									(not isinstance(v,str) or 
+									((not v.startswith('@')) and (not v.endswith('@'))))))))								
+						lengths = {k: len(set([subcombination.get(k,v) for subcombination in subcombinations])) 
+								for k,v in zip(key['label']['key'],key['label']['value'])}
+						
 						multiple = any(len(subcombination)>0 for subcombination in subcombinations)
-						index = sorting.index(elements)
+						index = sorting.index(tuple((sorteds[k] for k in sorteds)))
 						number = len(sorting)
 						proportion = index/number
+
 
 						# Add data-dependent plots
 						if key['y']['key'][-1] in []:
@@ -1280,7 +1292,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								continue
 
 							if stat not in [('fit','fit')]:
-								value = [combination[k] for i,k in enumerate(combination) if k in key['label']['key'] and len(set([subcombination[k] for subcombination in subcombinations]))>1]
+								value = [elements[k] for k in elements if lengths[k]>1]
 								value = [texify(scinotation(k,decimals=0,scilimits=[0,3])) for k in value]
 								value = [*value,*[str(combination.get(v.replace('@',''),v)) if v is not None else k for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]]
 								value = [v for v in value if v is not None and len(v)>0]
@@ -1332,7 +1344,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							continue
 						for kwarg in kwargs:
 							value = [
-								[(k,) for i,k in enumerate(combination) if k in key['label']['key'] and len(set([subcombination[k] for subcombination in subcombinations]))>1],
+								[(k,) for k in sorteds if lengths[k]>1],
 								]
 							value = [
 								[[texify(l) for l in k if l is not None and len(l)>0] if not isinstance(k,str) else texify(k) 
