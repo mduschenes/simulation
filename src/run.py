@@ -69,7 +69,7 @@ def setup(settings):
 	elif isinstance(settings,str):
 		settings = load(settings,default=default)
 
-	path = 'config/parameters.json'
+	path = 'config/settings.json'
 	default = {}
 	func = lambda key,iterable,elements: iterable.get(key,elements[key])
 	updater(settings,load(path,default=default),func=func)
