@@ -196,28 +196,17 @@ class argparser(argparse.ArgumentParser):
 	def values(self):
 		return self.kwargs.values()
 
-def jit(func,*,static_argnums=None):
+def jit(func,*,static_argnums=None,**kwargs):
 	'''
 	Just-in-time compile function
 	Args:
 		func (callable): Function to compile
 		static_argnums (dict): Arguments to statically compile
-	Returns:
-		func (callable): Compiled function
-	'''	
-	return jax.jit(func,static_argnums=static_argnums)
-
-def jitpartial(func,*,static_argnums=None,**kwargs):
-	'''
-	Just-in-time compile function
-	Args:
-		func (callable): Function to compile
-		static_argnums (dict): Arguments to statically compile
+		kwargs (dict): Additional (non-jittable) arguments to keep constant when jitting
 	Returns:
 		func (callable): Compiled function
 	'''
-	return jax.jit(partial(func,**kwargs),static_argnums=static_argnums)
-
+	return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
 
 
 # @partial(jit,static_argnums=(2,))	

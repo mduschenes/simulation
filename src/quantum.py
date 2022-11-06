@@ -163,10 +163,18 @@ class Object(object):
 
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
-		self.log('%s\n'%('\n'.join(['%s: %s'%(attr,getattr(self,attr)) 
-			for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','backend','architecture','shape']]
+		self.log('%s\n'%('\n'.join([
+			*['%s: %s'%(attr,getattr(self,attr)) 
+				for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','backend','architecture','shape']
+			],
+			*['%s: %s'%(attr,getattr(self,attr) is not None) 
+				for attr in ['state','noise']
+			],
+			*['%s: %s'%(attr,getattr(self,attr).__name__) 
+				for attr in ['exponentiation']
+			],			
+			]
 			)))
-
 		return	
 
 	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={}):
@@ -462,28 +470,27 @@ class Object(object):
 
 		# Operator functions
 		if state is None and noise is None:
-			self.summation = jit(partial(summation,data=data,identity=identity))
-			self.exponentiation = jit(partial(exponentiation,data=data,identity=identity))
+			self.summation = jit(summation,data=data,identity=identity)
+			self.exponentiation = jit(exponentiation,data=data,identity=identity)
 		elif state is not None and noise is None:
 			if state.ndim == 1:
-				self.summation = jit(partial(summationv,data=data,identity=identity,state=state))
-				self.exponentiation = jit(partial(exponentiationv,data=data,identity=identity,state=state))
+				self.summation = jit(summationv,data=data,identity=identity,state=state)
+				self.exponentiation = jit(exponentiationv,data=data,identity=identity,state=state)
 			elif state.ndim == 2:
-				self.summation = jit(partial(summationm,data=data,identity=identity,state=state))
-				self.exponentiation = jit(partial(exponentiationm,data=data,identity=identity,state=state))
+				self.summation = jit(summationm,data=data,identity=identity,state=state)
+				self.exponentiation = jit(exponentiationm,data=data,identity=identity,state=state)
 			else:
-				self.summation = jit(partial(summation,data=data,identity=identity))
-				self.exponentiation = jit(partial(exponentiation,data=data,identity=identity))
+				self.summation = jit(summation,data=data,identity=identity)
+				self.exponentiation = jit(exponentiation,data=data,identity=identity)
 		elif state is None and noise is not None:
-			self.summation = jit(partial(summation,data=data,identity=identity))
-			self.exponentiation = jit(partial(exponentiation,data=data,identity=identity))
+			self.summation = jit(summation,data=data,identity=identity)
+			self.exponentiation = jit(exponentiation,data=data,identity=identity)
 		elif state is not None and noise is not None:
-			self.summation = jit(partial(summationmc,data=data,identity=identity,state=state,constants=noise))
-			self.exponentiation = jit(partial(exponentiationmc,data=data,identity=identity,state=state,constants=noise))
+			self.summation = jit(summationmc,data=data,identity=identity,state=state,constants=noise)
+			self.exponentiation = jit(exponentiationmc,data=data,identity=identity,state=state,constants=noise)
 		else:
-			self.summation = jit(partial(summation,data=data,identity=identity))
-			self.exponentiation = jit(partial(exponentiation,data=data,identity=identity))
-
+			self.summation = jit(summation,data=data,identity=identity)
+			self.exponentiation = jit(exponentiation,data=data,identity=identity)
 
 		return
 
