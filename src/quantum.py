@@ -756,7 +756,7 @@ class Object(object):
 			self.log(msg)
 
 			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
-		if (optimize['track']['iteration'][-1])%optimize['modulo']['dump'] == 0:
+		if ((not status) or done) or ((optimize['track']['iteration'][-1])%optimize['modulo']['dump'] == 0):
 			self.dump()
 
 		return status

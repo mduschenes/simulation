@@ -233,6 +233,7 @@ def call(*args,path=None,wrapper=None,pause=None,process=None,processes=None,par
 			try:
 				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr)
 			except OSError as exception:
+				result = subprocess.Popen([],stdin=stdin,stdout=stdout,stderr=stderr)
 				logger.log(verbose,exception)
 				logger.log(verbose,args)
 			return result
@@ -388,6 +389,32 @@ def rm(path,process=None,processes=None,parallelism=None,device=None,execute=Fal
 	exe = ['rm']
 	flags = ['-rf']
 	cmd = [path]
+	args = [*exe,*flags,*cmd]
+
+	stdout = call(*args,process=process,processes=processes,parallelism=parallelism,device=device,execute=execute,verbose=verbose)
+
+	return
+
+
+
+def echo(*args,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None,**kwargs):
+	'''
+	Echo arguments to command line
+	Args:
+		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
+		destination (str): Path of destination object
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
+		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		device (str): Name of device to submit to
+		execute (boolean): Boolean whether to issue commands
+		verbose (int,str,bool): Verbosity
+		kwargs (dict): Additional keyword arguments to copy
+	'''
+
+	exe = ['echo']
+	flags = []
+	cmd = args
 	args = [*exe,*flags,*cmd]
 
 	stdout = call(*args,process=process,processes=processes,parallelism=parallelism,device=device,execute=execute,verbose=verbose)

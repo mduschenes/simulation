@@ -24,7 +24,7 @@ for PATH in PATHS:
 from src.utils import argparser
 from src.utils import array,product,expand_dims,to_eval,to_repr,is_iterable,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
-from src.utils import argmax,difference,is_nan
+from src.utils import argmax,difference,is_nan,abs
 from src.utils import e,pi,nan,scalars,nulls,scinotation
 from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split,glob
@@ -126,6 +126,8 @@ def wrapping(wrapper=None,kwarg=None,stat=None,**kwargs):
 			wrapper = lambda data,kwargs=kwargs: sqrt(mean(data**2,**kwargs)/size(data,**kwargs))
 		else:
 			wrapper = lambda data,kwargs=kwargs: mean(data,**kwargs)
+	elif wrapper in ['abs']:
+		wrapper = lambda data,kwargs=kwargs: abs(data)
 	else:
 		wrapper = lambda data,kwargs=kwargs: data
 
@@ -940,10 +942,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 			dumper(kwargs,**options)
 	
 
-
-
-
-
 	# Plot data
 
 	# Default setting objects for each settings instance
@@ -1065,9 +1063,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									for kwarg in variables[occurrence][combination]:
 										for stat in variables[occurrence][combination][kwarg]:
 
-											wrapper = wrapping(**parameter.get('wrapper',{}),kwarg=kwarg,stat=stat) if parameter is not None else None 
-											if wrapper is not None:
-												variables[occurrence][combination][kwarg][stat] = wrapper(variables[occurrence][combination][kwarg][stat])
+											if parameter is not None:
+												for wrapper in parameter.get('wrapper',[]):
+													wrapper = wrapping(**wrapper,kwarg=kwarg,stat=stat)
+													if wrapper is not None:
+														variables[occurrence][combination][kwarg][stat] = wrapper(variables[occurrence][combination][kwarg][stat])
 											
 											subndim = variables[occurrence][combination][kwarg][stat].ndim
 
