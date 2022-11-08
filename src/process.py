@@ -1090,6 +1090,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 													[variables[occurrence][combination][kwarg][stat].shape[a]
 												for a in axis])))
 												for axis in subaxis]
+
 											variables[occurrence][combination][kwarg][stat] = (
 												variables[occurrence][combination][kwarg][stat].transpose(
 												transpose).reshape(reshape)
@@ -1251,16 +1252,16 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 						sorting = realsorted(set([
 							tuple((subcombination[k] for k,v in zip(key['label']['key'],key['label']['value'])
-								if ((k in hyperparameters.get('sort')) and 
+								if ((k in hyperparameters.get('sort',[])) and 
 									(not isinstance(v,str) or 
 									((not v.startswith('@')) and (not v.endswith('@')))))))
 							for subcombination in subcombinations]))
 						sorteds = dict(((k,combination[k]) for k,v in zip(key['label']['key'],key['label']['value'])
-								if ((k in hyperparameters.get('sort')) and (
+								if ((k in hyperparameters.get('sort',[])) and (
 									(not isinstance(v,str) or 
 									((not v.startswith('@')) and (not v.endswith('@'))))))))
 						elements = dict(((k,combination.get(k,v)) for k,v in zip(key['label']['key'],key['label']['value'])
-								if ((k not in hyperparameters.get('sort')) or (
+								if ((k not in hyperparameters.get('sort',[])) or (
 									(not isinstance(v,str) or 
 									((not v.startswith('@')) and (not v.endswith('@'))))))))								
 						lengths = {k: len(set([subcombination.get(k,v) for subcombination in subcombinations])) 
@@ -1298,7 +1299,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							if stat not in [('fit','fit')]:
 								value = [elements[k] for k in elements if lengths[k]>1]
 								value = [texify(scinotation(k,decimals=0,scilimits=[0,3])) for k in value]
-								value = [*value,*[texify(str(combination.get(v.replace('@',''),v)) if v is not None else k) for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]]
+								value = [*value,*[texify(str(combination.get(v.replace('@',''),v)) if v is not None else k) for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort',[])]]
 								value = [v for v in value if v is not None and len(v)>0]
 								value = ',~'.join(value)
 
@@ -1351,7 +1352,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								]
 							value = [
 								[[texify(l) for l in k if l is not None and len(l)>0] if not isinstance(k,str) else texify(k) 
-								for k in [*v,[k if v is not None else None for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort')]
+								for k in [*v,[k if v is not None else None for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort',[])]
 								] if len(k)>0]
 								for i,v in enumerate(value) if len(v)>0]
 
@@ -1425,7 +1426,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									value[i][kwarg] = new
 
 						elif setting in ['ax'] and attr in ['set_ylabel'] and kwarg in ['ylabel']:
-
 							index = settings[instance][subinstance]['style']['layout']['index']
 							nrows = settings[instance][subinstance]['style']['layout']['nrows']
 							ncols = settings[instance][subinstance]['style']['layout']['ncols']
@@ -1433,6 +1433,13 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							do = not (((nrows is None) or (nrows == 1)) and ((ncols is None) or (ncols == 1)))
 
 							if not do:
+								if not multiple:
+									if value[kwarg] is None or not isinstance(value[kwarg],str):
+										value[kwarg] = None
+								else:
+									for i in range(length):
+										if value[kwarg][i] is None or not isinstance(value[kwarg][i],str):
+											value[kwarg][i] = None	
 								continue
 
 							index = index - 1	
