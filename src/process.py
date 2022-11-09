@@ -708,6 +708,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 			for attr in data[name]
 			))
 
+		attributes = [attr for attr in attributes if all(attr in data[name] for name in names)]
 
 		subattributes = [attr
 			for attr in attributes
@@ -748,6 +749,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					*realsorted(set([(*value[:i],None,*value[i+1:]) for value in allowed for i in range(len(value))]),
 							key = lambda x: tuple(((u is not None,u) for u in x)))
 				]
+
+		print(attributes)
+		print('noise' in attributes)
 
 		# Get data as arrays, with at least 1 leading dimension
 		for name in names:
