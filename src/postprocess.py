@@ -30,7 +30,7 @@ for PATH in PATHS:
 from src.utils import argparser
 from src.utils import arange,sort,eig,argmax,maximum,difference,rand,scinotation
 from src.dictionary import updater
-from src.io import load,dump,join,split,glob,cd,exists
+from src.io import load,dump,join,split,glob,cd,exists,dirname
 
 from src.plot import plot
 
@@ -104,21 +104,20 @@ defaults = {
 
 def process(path):
 
-	file = 'settings.json'
+	files = {'hyperparameters':'settings.json','data':'data.hdf5','model':'model.pkl'}
 	plots = ['plot.None.eigenvalues.pdf']
-
+	paths = glob(path,include='directory',recursive='**')
+	paths = [subpath for subpath in paths if all(exists(join(subpath,files[file])) for file in files)]
 
 	for name in plots:
 
 		if name in ['plot.None.eigenvalues.pdf']:
 
-			for path in glob(path,include='directory',recursive='**'):
-				if not exists(join(path,file)):
-					continue
+			for path in paths:
 				with cd(path):
 				
-					print('Loading: ',path,file)
-					hyperparameters = load(file)
+					print('Loading: ',path,files)
+					hyperparameters = load(files['hyperparameters'])
 
 
 					hyperparameters['sys']['path']['data']['log'] = None
@@ -136,9 +135,9 @@ def process(path):
 					seed = 123321
 					random = 'uniform'
 
+					funcs = [fisher]
 					n = 5
-					m = 2
-					funcs = [hess,fisher]
+					m = len(funcs)
 					params = [parameters,*rand(shape=(n,*shape),bounds=bounds,key=seed,random=random)]
 
 					fig,ax = None,None
@@ -190,7 +189,7 @@ def process(path):
 										'zorder':3 if p==0 else 4,
 										}],
 									'set_xlabel': {
-										'xlabel': r'$\textrm{%s Index}$'%(['Hessian','Fisher'][i]),
+										'xlabel': r'$\textrm{%s Index}$'%(['Fisher','Hessian'][i]),
 										},
 									"set_ylim":{"ymax":1e1},
 									"set_ynbins":{"nbins":6},

@@ -63,10 +63,12 @@ def setup(settings):
 	'''
 
 	# Load default settings
+	defaults = 'config/settings.json'
 	default = {}
 	if settings is None:
 		settings = default
 	elif isinstance(settings,str):
+		defaults = settings
 		settings = load(settings,default=default)
 
 	path = 'config/settings.json'
@@ -76,7 +78,7 @@ def setup(settings):
 
 	# Load default hyperparameters
 	default = {}
-	hyperparameters = settings.get('hyperparameters')
+	hyperparameters = settings.get('hyperparameters',defaults)
 	if hyperparameters is None:
 		hyperparameters = default
 	elif isinstance(hyperparameters,str):

@@ -646,11 +646,17 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 	# Get occurrence of keys
 	# TODO: Allow for hdf5 loading/dumping of occurrence tuples, to process intersections of keys only once (including keys that are not attributes for plot labelling)
-	# occurrences = lambda key,keys: tuple((tuple((axis,tuple(((k,v) for k,v in zip(key[axis]['key'],key[axis]['value']))))) for axis in key))
-	# _occurrences = lambda occurrence,keys: {axis: {'key': tuple((v[0] for v in value)), 'value': tuple((v[1] for v in value))} for axis,value in occurrence}
-	occurrences = lambda key,keys: keys.index(key)#tuple((tuple((axis,tuple(((k,v) for k,v in zip(key[axis]['key'],key[axis]['value']))))) for axis in key))
-	_occurrences = lambda occurrence,keys: keys[occurrence]#{axis: {'key': tuple((v[0] for v in value)), 'value': tuple((v[1] for v in value))} for axis,value in occurrence}
 
+	def occurrences(key,keys):
+		# occurrence = tuple(((axis,tuple(((k,v) for k,v in zip(key[axis]['key'],key[axis]['label']) 
+		# 		if k in hyperparameters.get('sort',[])))) 
+		# 		for axis in key))
+		occurrence = keys.index(key)
+		return occurrence
+	def _occurrences(occurrence,keys):
+		# key = {axis: dict(attrs) for axis,attrs in occurrence}
+		key = keys[occurrence]
+		return key
 
 	# Get keys of properties of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
 	keys = find(settings,properties)
@@ -780,6 +786,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		# Get variables data and statistics from keys
 		# for occurrence,key in enumerate(keys):
 		for key in keys:
+			
 			occurrence = occurrences(key,keys)
 
 			parameter = [None,*[parameter for parameter in parameters 
@@ -985,7 +992,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 						for i in range(len(settings[instance][subinstance][setting][attr])-1,-1,-1):							
 							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
-							# occurrence = keys.index(key)
+
 							occurrence = occurrences(key,keys)
 							
 							parameter = [None,*[parameter for parameter in parameters 
@@ -1045,7 +1052,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 						for i in range(len(settings[instance][subinstance][setting][attr])):							
 							key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
-							# occurrence = keys.index(key)
+
 							occurrence = occurrences(key,keys)
 
 							parameter = [None,*[parameter for parameter in parameters 
@@ -1177,7 +1184,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									key = find(settings[instance][subinstance][setting][attr][i],properties)[0]
 									
 									occurrence = occurrences(key,keys)
-									
+
+
 									parameter = [None,*[parameter for parameter in parameters 
 										if (all(tuple((parameter['key'][axis],) if not is_iterable(parameter['key'][axis],exceptions=(str,)) else parameter['key'][axis]) == 
 											key[axis]['key'] for axis in parameter['key']))]][-1]									
@@ -1200,6 +1208,12 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 										if j >= subsubsize:
 											continue
 
+										sublabel = parameter.get('label',{}) if parameter is not None else {}
+
+										if not all(dict(combination).get(attr) in sublabel[attr] or dict(combination).get(attr) is None
+												for attr in sublabel):
+
+											continue
 
 										substatistics = set(stat 
 											for kwarg in variables[occurrence][combination] 

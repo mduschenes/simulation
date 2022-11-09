@@ -792,8 +792,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 		return settings,fig,ax
 
-
-	mplstyles = [mplstyle,PATHS['mplstyle'],matplotlib.matplotlib_fname()]
+	attr = 'style'
+	mplstyles = [*[settings[key].get(attr,{}).get('mplstyle') for key in settings],
+				mplstyle,PATHS['mplstyle'],matplotlib.matplotlib_fname()]
 
 	_mplstyles = [mplstyle,PATHS['mplstyle.notex'],matplotlib.matplotlib_fname()]
 
@@ -808,7 +809,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 	for settings in settingss:
 		if ((settings is not None) or (isinstance(settings,str) and os.path.isfile(settings))):
 			break
-
 
 	try:
 		fig,ax = context(x,y,z,settings,fig,ax,mplstyle,texify)

@@ -105,7 +105,8 @@
 	"cwd":null,
 	"path": {
         "plot": "plot.pdf",
-        "process": "process.hdf5"
+        "process": "process.hdf5",
+        "settings": "plot.settings.json"
     },
 	"delimiter":".",
 	"process":["src.postprocess.process"],
