@@ -30,6 +30,10 @@ from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split,glob
 from src.plot import plot
 
+AXES = ['x','y']
+STATS = ['','err']
+PROPS = ['%s%s'%(ax,stat) for ax in AXES for stat in STATS]
+
 # Texify strings
 def Texify(string,texify={},usetex=True):
 	strings = {
@@ -116,22 +120,27 @@ def size(data,axis=None,transform=None,dtype=None,**kwargs):
 
 
 # Wrapper of data
-def wrapping(wrapper=None,kwarg=None,stat=None,**kwargs):
-	if wrapper is None:
-		wrapper = lambda data,kwargs=kwargs: data
-	elif wrapper in ['mean']:
-		if stat is None:
-			wrapper = lambda data,kwargs=kwargs: mean(data,**kwargs)
-		elif 'err' in kwarg:
-			wrapper = lambda data,kwargs=kwargs: sqrt(mean(data**2,**kwargs)/size(data,**kwargs))
-		else:
-			wrapper = lambda data,kwargs=kwargs: mean(data,**kwargs)
-	elif wrapper in ['abs']:
-		wrapper = lambda data,kwargs=kwargs: abs(data)
+def wrapping(wrappers=None,kwarg=None,stat=None):
+	props = PROPS
+	func = lambda data,kwargs=None: data
+	if wrappers is None:
+		pass
 	else:
-		wrapper = lambda data,kwargs=kwargs: data
+		if not any(prop in wrappers for prop in props):
+			wrappers = {prop:wrappers for prop in props}
+		for name in wrappers.get(kwarg,{}):
+			kwargs = wrappers[kwarg][name]
+			if name in ['mean']:
+				if stat is None:
+					func = lambda data,kwargs=kwargs: mean(data,**kwargs)
+				elif 'err' in kwarg:
+					func = lambda data,kwargs=kwargs: sqrt(mean(data**2,**kwargs)/size(data,**kwargs))
+				else:
+					func = lambda data,kwargs=kwargs: mean(data,**kwargs)
+			elif name in ['abs']:
+				func = lambda data,kwargs=kwargs: abs(data)
 
-	return wrapper
+	return func
 
 # Fit data
 def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
@@ -287,9 +296,7 @@ def include(name,keys,values,sort,data):
 						value = [parser(value)]
 				else:
 					value = [values[key]]
-
 				boolean = data[name][key] in value
-
 		return boolean
 
 
@@ -297,7 +304,7 @@ def include(name,keys,values,sort,data):
 												exception(name,key,keys,values,data))
 
 	boolean = all(rules(name,key,keys,values,data) for key in values)
-
+	
 	return boolean
 
 def permute(key,value,keys,values):
@@ -481,8 +488,9 @@ def loader(kwargs,**options):
 			kwargs[kwarg] = {}
 			returns['multiple'] |= len(paths)>1
 			for path in paths:
-				kwargs[kwarg].update(load(path,default=default,**options))
-				print('Loaded:',path)				
+				value = load(path,default=default,**options)
+				kwargs[kwarg].update(value)
+				print('Loaded:',path,len(value))				
 		else:
 			kwargs[kwarg] = kwargs[kwarg]
 			returns['multiple'] |= False
@@ -583,7 +591,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 
 	# Get plot fig and axes
-	axes = ['x','y']
+	axes = AXES
 	if fig is None:
 		fig = {}
 	if ax is None:
@@ -703,8 +711,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 		subattributes = [attr
 			for attr in attributes
-			# if ((attr in hyperparameters.get('sort',attributes)))
-			if ((attr in set((attr for key in keys for attr in key['label']['key']))))
+			if ((attr in hyperparameters.get('sort',attributes)))
+			# if ((attr in set((attr for key in keys for attr in key['label']['key']))))
 			]
 
 
@@ -717,7 +725,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						)),None))
 				for attr in attributes
 				}
-		unique = {attr: unique[attr] for attr in unique if len(unique[attr])>0}	
+		unique = {attr: unique[attr] for attr in unique if len(unique[attr])>0}
 
 		# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
 		sort = {attr: tuple((*realsorted(set(asscalar(data[name][attr])
@@ -796,7 +804,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				for prop in labels[occurrence]}
 
 				if any((len(label[attr])==0) and all(len(val)>0 for val in key[attr]['key']) for attr in label):
-					print('popping',combination,label)
 					variables[occurrence].pop(combination);
 					continue
 				
@@ -841,9 +848,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					variables[occurrence][combination][permutation] = {}
 					values = dict(zip(subattributes,permutation))
 
-					# included = [name for name in names 
-					# 	if all(data[name][attr] == values[attr]
-					# 	for attr in values)]
 					included = [name for name in allincluded 
 						if include(name,labels[occurrence],values,sort,data)
 						]
@@ -855,7 +859,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 					print('permutation',label,values,permutation)
 					print(included)					
-					print()
 					print()
 
 					for kwarg in statistics:
@@ -904,12 +907,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									dtype = variables[occurrence][combination][permutation][kwarg][stat].dtype
 									continue
 
-								# try:
 								value = expand_dims(value,newndim)
 								slices = (index,*(slice(data[name][key['y']['key'][-1]].shape[axis]) for axis in range(data[name][key['y']['key'][-1]].ndim)))
 								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
-								# except:
-									# raise
+
 							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
 								key,variables[occurrence][combination][permutation][kwarg][stat],
 								variables=variables[occurrence][combination][permutation],dtype=dtype)
@@ -923,6 +924,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							for permutation in variables[occurrence][combination])
 						}
 					for kwarg in statistics}
+
 
 			if len(variables[occurrence]) == 0:
 				variables.pop(occurrence)
@@ -1051,7 +1053,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							# 		_key = _occurrences(_occurrence,keys)
 							# 		if all(key[axis]['key'] == _key[axis]['key'] for axis in key):
 							# 			occurrence = _occurrence
-
 							if occurrence not in variables:
 								continue
 
@@ -1064,10 +1065,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 										for stat in variables[occurrence][combination][kwarg]:
 
 											if parameter is not None:
-												for wrapper in parameter.get('wrapper',[]):
-													wrapper = wrapping(**wrapper,kwarg=kwarg,stat=stat)
-													if wrapper is not None:
-														variables[occurrence][combination][kwarg][stat] = wrapper(variables[occurrence][combination][kwarg][stat])
+												wrapper = wrapping(parameter.get('wrapper'),kwarg=kwarg,stat=stat)
+												variables[occurrence][combination][kwarg][stat] = wrapper(variables[occurrence][combination][kwarg][stat])
 											
 											subndim = variables[occurrence][combination][kwarg][stat].ndim
 
@@ -1095,6 +1094,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 												variables[occurrence][combination][kwarg][stat].transpose(
 												transpose).reshape(reshape)
 												)
+
 							if occurrence not in subupdated:
 								subupdated.append(occurrence)
 
@@ -1298,7 +1298,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							if stat not in [('fit','fit')]:
 								value = [elements[k] for k in elements if lengths[k]>1]
-								value = [texify(scinotation(k,decimals=0,scilimits=[0,3])) for k in value]
+								value = [texify(scinotation(k,decimals=1,scilimits=[0,3])) for k in value]
 								value = [*value,*[texify(str(combination.get(v.replace('@',''),v)) if v is not None else k) for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort',[])]]
 								value = [v for v in value if v is not None and len(v)>0]
 								value = ',~'.join(value)

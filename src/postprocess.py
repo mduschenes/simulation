@@ -166,7 +166,7 @@ def process(path):
 							options = {
 								'fig':{
 									'suptitle':{
-										't': r'$M = %d~~~~\epsilon = %s$'%(U.M,scinotation(U.hyperparameters['optimize']['track']['value'][-1],0)),
+										't': r'$M = %d~~~~\epsilon = %s$'%(U.M,scinotation(U.hyperparameters['optimize']['track']['value'][-1],decimals=1)),
 										},
 									'savefig':{
 										**defaults['fig']['savefig'],
