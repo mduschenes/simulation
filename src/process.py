@@ -1298,7 +1298,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							if stat not in [('fit','fit')]:
 								value = [elements[k] for k in elements if lengths[k]>1]
-								value = [texify(scinotation(k,decimals=1,scilimits=[0,3])) for k in value]
+								value = [texify(scinotation(k,decimals=1,scilimits=[0,3],one=True)) for k in value]
 								value = [*value,*[texify(str(combination.get(v.replace('@',''),v)) if v is not None else k) for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort',[])]]
 								value = [v for v in value if v is not None and len(v)>0]
 								value = ',~'.join(value)
@@ -1531,6 +1531,16 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 			print('Plotting: ',instance)
 			fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
 
+
+	# Dump settings
+	if hyperparameters.get('dump'):
+		attr = 'settings'
+		options = {
+		}
+
+		kwargs = {path[attr]: settings}
+
+		dumper(kwargs,**options)
 
 
 	# Perform farmed out processes

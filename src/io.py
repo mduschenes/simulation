@@ -346,7 +346,7 @@ def encode_json(obj):
 	'''
 	dictionary = {}
 	if not isinstance(obj,dict):
-		dictionary = deepcopy(obj)
+		dictionary = deepcopy(dump_json(obj))
 	else:
 		for key in obj:
 			dictionary[to_repr(key)] = encode_json(obj[key])
@@ -389,7 +389,7 @@ def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 		if callable(obj) and not inspect.isclass(obj):            
 			obj = funcclass(obj)
 		obj = jsonpickle.encode(obj)
-	elif isinstance(obj,array):
+	elif isinstance(obj,array) or is_array(obj) or is_ndarray(obj):
 		obj = obj.tolist()
 	return obj
 
