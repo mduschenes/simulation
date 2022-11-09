@@ -3,6 +3,7 @@
 # Import python modules
 import os,sys,warnings,itertools,inspect,traceback
 import shutil
+from copy import deepcopy
 import glob as globber
 import importlib
 import json,jsonpickle,h5py,pickle,dill
@@ -23,6 +24,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,is_array,is_ndarray
+from src.utils import to_repr,to_eval
 from src.utils import returnargs
 from src.utils import scalars,nan
 
@@ -112,7 +114,7 @@ def dirname(path,abspath=False,delimiter='.'):
 	elif ext not in exts:
 		directory = path
 	if abspath:
-		directory = os.path.abspath(directory)
+		directory = os.path.abspath(os.path.expanduser(directory))
 
 	return directory
 
@@ -192,7 +194,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 	else:
 		paths['directory'] = dirname(path)
 	if abspath:
-		paths['directory'] = os.path.abspath(paths['directory'])
+		paths['directory'] = os.path.abspath(os.path.expanduser(paths['directory']))
 
 	paths['file'],paths['ext'] = os.path.splitext(path)
 	if paths['ext'].startswith(delimiter):
@@ -238,7 +240,7 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 			paths = [path for path in paths if path not in ['',None]]
 			path = os.path.join(*paths)
 	if path is not None and abspath:
-		path = os.path.abspath(path)
+		path = os.path.abspath(os.path.expanduser(path))
 	return path
 
 
@@ -334,6 +336,43 @@ class funcclass(object):
 	def __call__(self,*args,**kwargs):
 		return self.func(*args,**kwargs)
 
+def encode_json(obj):
+	'''
+	Encode object into jsonable
+	Args:
+		obj(object): Object to convert
+	Returns:
+		dictionary (dictionary): Jsonable dictionary of object
+	'''
+	dictionary = {}
+	if not isinstance(obj,dict):
+		dictionary = deepcopy(obj)
+	else:
+		for key in obj:
+			dictionary[to_repr(key)] = encode_json(obj[key])
+	return dictionary
+
+def decode_json(dictionary):
+	'''
+	Convert jsonable into dictionary
+	Args:
+		dictionary(object): Object to convert
+	Returns:
+		obj (dictionary): Dictionary to convert to obj
+	'''
+	obj = {}
+	if not isinstance(dictionary,dict):
+		obj = dictionary
+	else:
+		for key in dictionary:
+			try:
+				obj[to_eval(key)] = decode_json(dictionary[key])
+			except (ValueError,SyntaxError):
+				obj[to_eval(to_repr(key))] = decode_json(dictionary[key])
+	return obj
+
+
+
 def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 	'''
 	Serialize objects into json
@@ -350,7 +389,7 @@ def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 		if callable(obj) and not inspect.isclass(obj):            
 			obj = funcclass(obj)
 		obj = jsonpickle.encode(obj)
-	elif isinstance(obj,np.ndarray):
+	elif isinstance(obj,array):
 		obj = obj.tolist()
 	return obj
 
@@ -567,7 +606,8 @@ def jsonable(obj,path=None,callables=False):
 		path  = '__tmp__.__tmp__.%d'%(np.random.randint(1,int(1e8)))
 	with open(path,'w') as fobj:
 		try:
-			json.dump(obj,fobj,**{'default':dump_json,'ensure_ascii':False,'indent':4})
+			# json.dump(obj,fobj,**{'default':dump_json,'ensure_ascii':False,'indent':4})
+			json.dump(encode_json(data),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
 			isjsonable = True
 		except Exception as exception:
 			pass
@@ -596,6 +636,7 @@ def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):
 	if not isinstance(path,str):
 		return default
 	
+	path = os.path.abspath(os.path.expanduser(path))
 	ext = split(path,ext=True,delimiter=delimiter)
 
 	for wr in wrs:
@@ -635,6 +676,7 @@ def _load(obj,wr,ext,**kwargs):
 	except Exception as exception:
 		# try:
 		obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
+		obj = os.path.basename(obj)
 		data = getattr(importlib.import_module(obj),module)
 		# except Exception as exception:
 		# 	raise exception
@@ -649,7 +691,8 @@ def _load(obj,wr,ext,**kwargs):
 		# TODO: Load specific types as wrapped types (i.e) onp.array -> np.array for JAX)
 		data = pickle.load(obj,**kwargs)
 	elif ext in ['json']:
-		data = json.load(obj,**{'object_hook':load_json,**kwargs})
+		# data = json.load(obj,**{'object_hook':load_json,**kwargs})
+		data = decode_json(json.load(obj,**{'object_hook':load_json,**kwargs}))
 	elif ext in ['hdf5','h5']:
 		data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 
@@ -674,8 +717,8 @@ def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
 	if not isinstance(path,str):
 		return
 
+	path = os.path.abspath(os.path.expanduser(path))
 	ext = split(path,ext=True,delimiter=delimiter)
-
 	mkdir(path)
 
 	for wr in wrs:	
@@ -720,7 +763,8 @@ def _dump(data,obj,wr,ext,**kwargs):
 		pickle.dump(data,obj,protocol=pickle.HIGHEST_PROTOCOL,**kwargs)
 	elif ext in ['json']:
 		# jsonable(data,callables=kwargs.pop('callables',False))	
-		json.dump(data,obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+		# json.dump(data,obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+		json.dump(encode_json(data),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
 	elif ext in ['tex']:
 		obj.write(data,**kwargs)
 	elif ext in ['hdf5','h5']:

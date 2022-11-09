@@ -4552,7 +4552,7 @@ def to_key_value(string,delimiter='=',**kwargs):
 	return key,value
 
 
-def scinotation(number,decimals=1,base=10,order=20,zero=True,scilimits=[-1,1],usetex=False):
+def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
@@ -4561,6 +4561,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,scilimits=[-1,1],us
 		base (int): Base of scientific notation
 		order (int): Max power of number allowed for rounding
 		zero (bool): Make numbers that equal 0 be the int representation
+		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
 		scilimits (list): Limits on where not to represent with scientific notation
 		usetex (bool): Render string with Latex
 	
@@ -4599,10 +4600,10 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,scilimits=[-1,1],us
 		flt = string[0]
 		exp = str(int(string[1])*basechange)
 		if int(exp) in range(*scilimits):
-			flt = '%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))) if (float(flt) != 1.0) else ''
+			flt = '%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))) if (one or (float(flt) != 1.0)) else ''
 			string = r'%s'%(flt)
 		else:
-			string = r'%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (float(flt) != 1.0) else '',r'\cdot' if (float(flt) != 1.0) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
+			string = r'%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',r'\cdot' if (one or (float(flt) != 1.0)) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
 	if usetex:
 		string = r'%s'%(string.replace('$',''))
 	else:
