@@ -56,7 +56,8 @@
 		{
 			"key":{"x":"M","y":"objective"},
 			"slice":[0,null,null],
-			"stat":[["linear","linear"]]
+			"stat":[["linear","linear"]],
+			"label":{"noise.scale":[1e-8,1e-6,1e-5,5e-5,1e-4,5e-4,1e-3,1e-1]}
 		},		
 		{
 			"key":{"x":"","y":"parameters"},
@@ -106,12 +107,12 @@
 	"path": {
         "plot": "plot.pdf",
         "process": "process.hdf5",
-        "settings": "plot.settings.json"
+        "settings":"plot.settings.json"             
     },
 	"delimiter":".",
 	"process":["src.postprocess.process"],
 	"process":[],
-	"load":0,
+	"load":1,
 	"dump":1,
 	"plot":1
 }
