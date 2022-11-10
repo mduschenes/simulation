@@ -254,6 +254,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				string = ''
 		elif isinstance(string,list):
 			string = ['' if isinstance(substring,str) and len(substring.replace('$','')) == 0 else substring for substring in string]
+		if attr in ['errorbar'] and kwarg in ['label']:
+			print(string)
 		return string
 
 
@@ -516,6 +518,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				
 			if not call:	
 				return
+
+			if attr in ['errorbar']:
+				print('PLOTTING:',kwargs.get('label'))
 
 			_obj = obj
 			for a in attr.split('.'):

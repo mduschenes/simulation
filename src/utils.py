@@ -4611,6 +4611,63 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 	return string
 
 
+def padder(strings,padding=' ',delimiter=None,justification='left'):
+	'''
+	Pad strings to all be length of largest string (or substring within string)
+	Args:
+		strings (iterable[str]): Strings to pad
+		padding (str): Padding of string
+		delimiter (str): Delimiter to split each string and ensure each substring is equal length
+		justification (str): Type of justification of string, where to pad, allowed strings in ['left','right','center']
+	Returns:
+		padded (iterable[str]): Padded strings
+	'''
+	
+	def justifier(string,padding,length,justification):
+		padded = '%s%s%s'
+		if justification in ['left']:
+			padding = padding*length
+			padded = padded%('',string,padding)
+		elif justification in ['right']:
+			padding = padding*length
+			padded = padded%(padding,string,'')
+		elif justification in ['center']:
+			padding = [padding*(length//2),padding*(length - padding//2)]
+			padded = padded%(padding[0],string,padding[1])
+		else:
+			padded = string
+		return padded
+	
+	# Default padded
+	padded = strings
+	
+	# Check if string in strings
+	if len(strings) == 0 or all(string is None for string in strings):
+		return padded
+
+	# Get delimited substrings of string in strings
+	if delimiter is None:
+		delimiter = ''
+		strings = [[string] if string is not None else None for string in strings]
+	else:
+		strings = [string.split(delimiter) if string is not None else None for string in strings]
+	
+	# Get size: Min number of delimited substrings per string in strings
+	# Get length: Max length of delimited substring per string in strings
+	size = min(len(string) for string in strings if string is not None)
+	length = [max(len(string[i]) for string in strings if string is not None)
+			for i in range(size)]
+	
+	# Get justified delimited substrings based on length difference to length
+	strings = [[justifier(string[i],padding,length[i] - len(string[i]),justification) for i in range(size)] if string is not None else None
+				for string in strings]
+	
+	# Join delimited substrings per string in strings
+	padded = [delimiter.join(string) if string is not None else None for string in strings]
+	
+	return padded
+
+
 def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=None,shapes=None,dtype=None):
 	'''
 	Initialize parameters

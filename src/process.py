@@ -25,7 +25,7 @@ from src.utils import argparser
 from src.utils import array,product,expand_dims,to_eval,to_repr,is_iterable,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
 from src.utils import argmax,difference,is_nan,abs
-from src.utils import e,pi,nan,scalars,nulls,scinotation
+from src.utils import e,pi,nan,scalars,nulls,scinotation,padder
 from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split,glob
 from src.plot import plot
@@ -1210,7 +1210,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 										if not all(dict(combination).get(attr) in sublabel[attr]
 												for attr in sublabel):
-											print('continuing',key)
 											continue
 
 										substatistics = set(stat 
@@ -1240,27 +1239,12 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 											settings[instance][(subinstance,*position)][setting][attr][
 												(combination,j,occurrence,stat)] = subsettings
 
-								if len(settings[instance][(subinstance,*position)][setting][attr]) == 0:
-									print('popping attr',attr)
-									settings[instance][(subinstance,*position)][setting].pop(attr);
-							print(instance,(subinstance,*position),len(settings[instance][subinstance][setting]))
-						if len(settings[instance][(subinstance,*position)][setting]) == 0:
-							print('popping setting',setting)
-							settings[instance][(subinstance,*position)].pop(setting);
-					if len(settings[instance][(subinstance,*position)]) == 0:
-						print('popping',(subinstance,*position))
-						settings[instance].pop((subinstance,*position));
-
-
-
-
 		for samplelayout in layouts:
 			for subinstance in layouts[samplelayout]:
 				settings[instance].pop(subinstance)
 
 
-		if len(settings[instance]) == 0:
-			settings.pop(instance);
+
 
 
 	# Set plot settings
@@ -1270,8 +1254,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				
 				for a,attr in enumerate(special.get(setting,[])):
 
+					if len(settings[instance][subinstance][setting].get(attr,[])) == 0:
+						settings[instance][subinstance][setting].pop(attr,None);
+						continue
+
 					if attr not in settings[instance][subinstance][setting] or len(settings[instance][subinstance][setting][attr]) == 0:
 						continue 
+
+
 
 					subcombinations,subj,suboccurrences,substats = zip(*settings[instance][subinstance][setting][attr])
 					subcombinations = tuple((dict(subcombination) for subcombination in subcombinations))
@@ -1334,7 +1324,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								value = [texify(scinotation(k,decimals=1,scilimits=[0,3],one=True)) for k in value]
 								value = [*value,*[texify(str(combination.get(v.replace('@',''),v)) if v is not None else k) for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort',[])]]
 								value = [v for v in value if v is not None and len(v)>0]
-								value = ',~'.join(value)
+								value = ',~'.join(value) if len(value)>0 else None
 
 							else:
 								value = None
@@ -1418,6 +1408,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				'ax':{'set_ylabel':['ylabel'],'errorbar':['%serr'%(axis) for axis in axes],'fill_between':['%serr'%(axis) for axis in axes]},
 				}
 			for setting in attrs:
+
 				if setting not in settings[instance][subinstance]:
 					settings[instance][subinstance][setting] = {}
 				for attr in attrs[setting]:
@@ -1558,6 +1549,17 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 										# 	]
 										value[i][kwarg] = new
 
+	
+				if len(settings[instance][subinstance].get(setting,[])) == 0:
+					settings[instance][subinstance].pop(setting);
+					continue
+
+
+			if len(settings[instance].get(subinstance,[])) == 0:
+				settings[instance].pop(subinstance);
+				continue
+
+	# Modify settings based on global values
 	for instance in list(settings):
 		for subinstance in list(settings[instance]):
 			for setting in list(settings[instance][subinstance]):
@@ -1567,35 +1569,29 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					if attr not in settings[instance][subinstance][setting] or len(settings[instance][subinstance][setting][attr]) == 0:
 						continue 
 
-					print(instance,subinstance,attr)
-					subcombinations,subj,suboccurrences,substats = zip(*settings[instance][subinstance][setting][attr])
-					subcombinations = tuple((dict(subcombination) for subcombination in subcombinations))
-					for i,subsubinstance in enumerate(settings[instance][subinstance][setting][attr]):
+					if not hyperparameters.get('kwargs',{}).get('padding'):
+						continue
+					
 
-						combination,j,occurrence,stat = subsubinstance
 
-						key = _occurrences(occurrence,keys)
+					kwargs = ['label']
 
-						combination = dict(combination)	
+					for kwarg in kwargs:
+						values = [subsubinstance.get(kwarg) for subsubinstance in settings[instance][subinstance][setting][attr]]
+						kwds = {**{'padding':r'~','delimiter':',~'},
+								**({} if not isinstance(hyperparameters.get('kwargs',{}).get('padding'),dict) 
+								else hyperparameters.get('kwargs',{}).get('padding'))
+								}
+						values = padder(values,**kwds)
 
-						kwargs = ['label']
-						for kwarg in kwargs:
+						for i,subsubinstance in enumerate(settings[instance][subinstance][setting][attr]):
 
-							if settings[instance][subinstance][setting][attr][subsubinstance].get(kwarg) is None:
+							if settings[instance][subinstance][setting][attr][i].get(kwarg) is None:
 								continue
 
-							if attr != [attr for attr in special.get(setting,[]) if attr in settings[instance][subinstance][setting]][-1]:
-								settings[instance][subinstance][setting][attr][subsubinstance].pop(kwarg)
-								continue
+							settings[instance][subinstance][setting][attr][i][kwarg] = values[i]
 
-							if not isinstance(settings[instance][subinstance][setting][attr][subsubinstance][kwarg],str):
-								continue
 
-							value = max(len(settings[instance][subinstance][setting][attr][subsubinstance][kwarg])
-								for subsubinstance in settings[instance][subinstance][setting][attr])
-							value = len(settings[instance][subinstance][setting][attr][subsubinstance][kwarg])-value
-							settings[instance][subinstance][setting][attr][subsubinstance][kwarg] = '%s%s'%(' '*value,settings[instance][subinstance][setting][attr][subsubinstance][kwarg])
-						
 
 		if hyperparameters.get('plot'):
 			print('Plotting: ',instance)
