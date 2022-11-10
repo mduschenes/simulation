@@ -1569,27 +1569,24 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					if attr not in settings[instance][subinstance][setting] or len(settings[instance][subinstance][setting][attr]) == 0:
 						continue 
 
-					if not hyperparameters.get('kwargs',{}).get('padding'):
-						continue
-					
-
-
 					kwargs = ['label']
 
-					for kwarg in kwargs:
-						values = [subsubinstance.get(kwarg) for subsubinstance in settings[instance][subinstance][setting][attr]]
-						kwds = {**{'padding':r'~','delimiter':',~'},
-								**({} if not isinstance(hyperparameters.get('kwargs',{}).get('padding'),dict) 
-								else hyperparameters.get('kwargs',{}).get('padding'))
-								}
-						values = padder(values,**kwds)
+					if hyperparameters.get('kwargs',{}).get('padding'):
 
-						for i,subsubinstance in enumerate(settings[instance][subinstance][setting][attr]):
+						for kwarg in kwargs:
+							values = [subsubinstance.get(kwarg) for subsubinstance in settings[instance][subinstance][setting][attr]]
+							kwds = {**{'padding':r'~','delimiter':',~'},
+									**({} if not isinstance(hyperparameters.get('kwargs',{}).get('padding'),dict) 
+									else hyperparameters.get('kwargs',{}).get('padding'))
+									}
+							values = padder(values,**kwds)
 
-							if settings[instance][subinstance][setting][attr][i].get(kwarg) is None:
-								continue
+							for i,subsubinstance in enumerate(settings[instance][subinstance][setting][attr]):
 
-							settings[instance][subinstance][setting][attr][i][kwarg] = values[i]
+								if settings[instance][subinstance][setting][attr][i].get(kwarg) is None:
+									continue
+
+								settings[instance][subinstance][setting][attr][i][kwarg] = values[i]
 
 
 
