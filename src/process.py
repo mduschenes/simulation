@@ -1321,7 +1321,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							if stat not in [('fit','fit')]:
 								value = [elements[k] for k in elements if lengths[k]>1]
-								value = [texify(scinotation(k,decimals=1,scilimits=[0,3],one=True)) for k in value]
+								value = [texify(scinotation(k,decimals=0,scilimits=[0,3],one=False)) for k in value]
 								value = [*value,*[texify(str(combination.get(v.replace('@',''),v)) if v is not None else k) for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort',[])]]
 								value = [v for v in value if v is not None and len(v)>0]
 								value = ',~'.join(value) if len(value)>0 else None
@@ -1591,6 +1591,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 
 		if hyperparameters.get('plot'):
+			if instance not in hyperparameters.get('show',settings):
+				continue
 			print('Plotting: ',instance)
 			fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
 

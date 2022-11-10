@@ -324,13 +324,29 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
 					)
 
+				if len(handles)>0 and len(labels)>0:
+					handles,labels = zip(
+						*((handle,attr_share(attr_texify(label,attr,handle,**{**kwargs,**_kwargs}),attr,handle,**{**kwargs,**_kwargs})) 
+							for handle,label in zip(handles,labels))
+						)
 
-				kwargs.update(dict(zip(['handles','labels'],[handles,labels])))
 
-				kwargs.update({k: attr_share(attr_texify(v,attr,k,**{**kwargs,**_kwargs}),attr,k,**{**kwargs,**_kwargs})  
-						for k,v in zip(['handles','labels'],[handles,labels])
-						})
+				if kwargs.get('join') is not None:
+					n = min(len(handles),len(labels))
+					k = kwargs.pop('join',1)
+					handles = list(zip(*(handles[i*n//k:(i+1)*n//k] for i in range(k))))
+					labels = labels[:n//k]
+					handler_map = {tuple: matplotlib.legend_handler.HandlerTuple(None,pad=0.5)}
+				else:
+					handler_map = None
 
+				if kwargs.get('flip') is True:
+					flip = kwargs.pop('flip',None)
+					ncol = kwargs.get('ncol',1)
+					flip = lambda items,n: list(itertools.chain(*[items[i::n] for i in range(n)]))
+					handles,labels = flip(handles,ncol),flip(labels,ncol)
+
+				kwargs.update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map	])))
 
 				_kwds.update({
 					'set_zorder':kwargs.pop('set_zorder',{'level':100}),
