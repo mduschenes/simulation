@@ -618,15 +618,14 @@ class Base(object):
 		defaults = {
 			'optimizer':None,
 			'line_search':'line_search',
-			'eps':{'objective':1e-4,'grad':1e-12,'alpha':1e-12,'beta':1e3},
+			'eps':{'value':1e-4,'grad':1e-12,'alpha':1e-12,'beta':1e3},
 			'alpha':0,
 			'iterations':0,
 			'status':1,
 			'reset':0,
 			'verbose':False,
-			'modulo':{'log':1,'history':10,'callback':1,'restart':1e10,'dump':1e10},
-			'attributes':{'value':[],'grad':[],'search':[],'alpha':[]},			
-			'track':{'iteration':[],'value':[],'grad':[],'search':[],'alpha':[]},			
+			'modulo':{'log':1,'attributes':1e10,'callback':1,'restart':1e10,'dump':1e10},
+			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
 
 		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
@@ -646,7 +645,6 @@ class Base(object):
 		self.parameters = None
 		self.optimizer = hyperparameters['optimizer']		
 		self.iterations = range(int(hyperparameters['iterations']))
-		self.track = hyperparameters['track']
 		self.modulo = hyperparameters['modulo']
 		self.attributes = hyperparameters['attributes']
 		self.status = hyperparameters['status']
@@ -716,9 +714,6 @@ class Base(object):
 		self.attributes['alpha'].append(alpha)
 		self.attributes['search'].append(search)
 
-		self.track['alpha'].append(self.attributes['alpha'][-1])
-		self.track['search'].append(self.attributes['search'][-1])
-
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
 		
@@ -751,17 +746,16 @@ class Base(object):
 		parameters = self.get_params(state)
 		value,grad = self.value_and_grad(parameters)
 
-		if self.size >= self.modulo['history']:
+		if self.size >= self.modulo['attributes']:
 			for attr in self.attributes:
 				self.attributes[attr].pop(0)
 
 		self.iteration = iteration
+		
+		self.attributes['parameters'].append(parameters)
+		self.attributes['iteration'].append(iteration)
 		self.attributes['value'].append(value)
 		self.attributes['grad'].append(grad)
-
-		self.track['iteration'].append(iteration)
-		self.track['value'].append(value)
-		self.track['grad'].append(grad)			
 
 		self.size += 1
 
@@ -782,18 +776,16 @@ class Base(object):
 			self.iteration = -1
 			for attr in self.attributes:
 				self.attributes[attr].clear()
-			for attr in self.track:
-				self.track[attr].clear()
 			self.parameters = None
 		else:
-			if any(len(self.track[attr])>0 for attr in self.track):
-				self.size = min(len(self.track[attr]) for attr in self.track if len(self.track[attr])>0)
+			if any(len(self.attributes[attr])>0 for attr in self.attributes):
+				self.size = min(len(self.attributes[attr]) for attr in self.attributes if len(self.attributes[attr])>0)
 			else:
 				self.size = 0
 
 			if self.size > 0:
-				self.iteration = self.track['iteration'][-1]
-				self.parameters = self.track['parameters'][-1]
+				self.iteration = self.attributes['iteration'][-1]
+				self.parameters = self.attributes['parameters'][-1]
 			else:
 				self.iteration = 0
 				self.parameters = None
@@ -865,9 +857,6 @@ class GradientDescent(Base):
 		self.attributes['alpha'].append(alpha)
 		self.attributes['search'].append(search)
 
-		self.track['alpha'].append(self.attributes['alpha'][-1])
-		self.track['search'].append(self.attributes['search'][-1])
-
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
 		
@@ -892,21 +881,16 @@ class ConjugateGradient(Base):
 		defaults = {
 			'beta':0,
 			'attributes':{'beta':[]},
-			'track':{'beta':[]},
 			}
 		self.hyperparameters.update({attr: self.hyperparameters.get(attr,defaults[attr]) for attr in defaults})
-		self.track.update({attr: self.track.get(attr,defaults['track'][attr]) for attr in defaults['track']})
 		self.attributes.update({attr: self.attributes.get(attr,defaults['attributes'][attr]) for attr in defaults['attributes']})
 
 		null = {
 			'attributes':{},
-			'track':{}
 			}
 		for attr in null:
-			if attr not in ['attributes','track']:
+			if attr not in ['attributes']:
 				self.hyperparameters.pop(attr,None)
-		for attr in null['track']:
-			self.track.pop(attr,None)
 		for attr in null['attributes']:
 			self.attributes.pop(attr,None)
 
@@ -929,10 +913,6 @@ class ConjugateGradient(Base):
 			self.attributes['beta'].append(self.hyperparameters['beta'])
 			self.attributes['search'].append(-grad)
 
-			self.track['alpha'].append(self.attributes['alpha'][-1])			
-			self.track['beta'].append(self.attributes['beta'][-1])			
-			self.track['search'].append(self.attributes['search'][-1])			
-
 			state = self.opt_init(parameters)
 			parameters = self.get_params(state)
 			self.status = self.callback(parameters)
@@ -941,14 +921,14 @@ class ConjugateGradient(Base):
 
 		returns = self.line_search(
 			parameters,
-			self.track['alpha'],
-			self.track['value'],
-			self.track['grad'],
-			self.track['search'])
+			self.attributes['alpha'],
+			self.attributes['value'],
+			self.attributes['grad'],
+			self.attributes['search'])
 
 		alpha = returns['alpha']
-		search = self.track['search'][-1]
-		grad = self.track['grad'][-1]
+		search = self.attributes['search'][-1]
+		grad = self.attributes['grad'][-1]
 
 		parameters = parameters + alpha*search
 
@@ -971,10 +951,6 @@ class ConjugateGradient(Base):
 		self.attributes['alpha'].append(alpha)
 		self.attributes['beta'].append(beta)
 		self.attributes['search'].append(search)
-		
-		self.track['alpha'].append(self.attributes['alpha'][-1])			
-		self.track['beta'].append(self.attributes['beta'][-1])			
-		self.track['search'].append(self.attributes['search'][-1])	
 		
 		state = self.opt_init(parameters)
 
@@ -1001,13 +977,10 @@ class Adam(Base):
 		null = {
 			'beta':{},
 			'attributes':{'beta':None},
-			'track':{'beta':None}
 			}
 		for attr in null:
-			if attr not in ['attributes','track']:
+			if attr not in ['attributes']:
 				self.hyperparameters.pop(attr,None)
-		for attr in null['track']:
-			self.track.pop(attr,None)
 		for attr in null['attributes']:
 			self.attributes.pop(attr,None)
 
@@ -1049,9 +1022,6 @@ class Adam(Base):
 
 		self.attributes['alpha'].append(alpha)
 		self.attributes['search'].append(search)
-
-		self.track['alpha'].append(self.attributes['alpha'][-1])			
-		self.track['search'].append(self.attributes['search'][-1])			
 
 		parameters = self.get_params(state)
 		

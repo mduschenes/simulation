@@ -71,8 +71,9 @@
 	"reset":0,
 	"c1":0.0001,"c2":0.9,"maxiter":200,"restart":1e6,
 	"alpha":1e-4,"beta":1e-1,
-	"modulo":{"log":1,"history":10,"callback":1,"restart":1e10},
+	"modulo":{"log":1,"track":1,"attributes":10,"callback":1,"restart":1e10,"dump":1e10},
 	"attributes":{
+		"iteration":[],		
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},

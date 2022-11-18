@@ -699,48 +699,68 @@ class Object(object):
 		optimize = self.hyperparameters['optimize']
 
 
-		optimize['track']['objective'].append(
-			self.__objective__(parameters)
-			)
-
-
+		start = len(optimize['attributes']['iteration'])==0  
+		
+		done = len(optimize['attributes']['iteration'])>0 and optimize['attributes']['iteration'][-1]==optimize['iterations']
+		
 		status = (
-			(abs(optimize['track']['objective'][-1] - optimize['value']['objective']) > 
-				optimize['eps']['objective']*optimize['value']['objective']) and
-			((len(optimize['track']['objective'])==1) or
-			((len(optimize['track']['objective'])>1) and 
-			 (abs(optimize['track']['objective'][-1] - optimize['track']['objective'][-2]) > 
-				optimize['eps']['difference']*optimize['value']['objective']))) and
-			(norm(optimize['track']['grad'][-1] - optimize['value']['grad'])/optimize['track']['grad'][-1].size > 
+			(abs(optimize['attributes']['value'][-1]) > 
+				optimize['eps']['value']*optimize['value']['value']) and
+			((len(optimize['attributes']['value'])==1) or
+			((len(optimize['attributes']['value'])>1) and 
+			 (abs(optimize['attributes']['value'][-1] - optimize['attributes']['value'][-2]) > 
+				optimize['eps']['difference']*optimize['value']['value']))) and
+			(norm(optimize['attributes']['grad'][-1] - optimize['value']['grad'])/optimize['attributes']['grad'][-1].size > 
 				  optimize['eps']['grad'])
 			)
-		done = optimize['track']['iteration'][-1]==optimize['iterations']
+		
 
-		for attr in ['hessian','fisher']:
-			if attr in optimize['track']:
-				optimize['track'][attr].append(
-					getattr(self,'__%s__'%(attr))(parameters) if ((not status) or done) else nan
-					)
+		default = nan
 
-		if optimize['track']['iteration'][-1]%optimize['modulo']['log'] == 0:			
+		if len(optimize['attributes']['iteration']) == 0 or optimize['attributes']['iteration'][-1]%optimize['modulo']['track'] == 0:	
 
-			optimize['track']['parameters'].append(parameters)		
+			for attr in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
+
+				if attr in optimize['track']:
+
+					if len(optimize['track'][attr]) >= optimize['modulo']['track']:
+						optimize['track'][attr].pop(0)
+
+					if attr in optimize['attributes']:
+						optimize['track'][attr].append(optimize['attributes'][attr][-1])
+
+					if attr in ['parameters'] and ((not status) or done or start):
+						optimize['track'][attr].append(parameters)
+
+					elif attr in ['objective']:
+						optimize['track'][attr].append(
+							getattr(self,'__%s__'%(attr))(parameters)
+							)
+					elif attr in ['hessian','fisher'] and ((not status) or done):
+						optimize['track'][attr].append(
+							getattr(self,'__%s__'%(attr))(parameters)
+							)
+					else:
+						optimize['track'][attr].append(default)
+
+
+		if len(optimize['attributes']['iteration']) == 0 or optimize['attributes']['iteration'][-1]%optimize['modulo']['log'] == 0:			
 
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
-					optimize['track']['iteration'][-1],
+					optimize['attributes']['iteration'][-1],
 					optimize['track']['objective'][-1],
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
-					norm(optimize['track']['parameters'][-1])/
-						 max(1,optimize['track']['parameters'][-1].size),
-					norm(optimize['track']['grad'][-1])/
-						 max(1,optimize['track']['grad'][-1].size),
+					norm(optimize['attributes']['parameters'][-1])/
+						 max(1,optimize['attributes']['parameters'][-1].size),
+					norm(optimize['attributes']['grad'][-1])/
+						 max(1,optimize['attributes']['grad'][-1].size),
 				),
 				'\t\t'.join([
-					'%s = %0.4e'%(attr,optimize['track'][attr][-1])
+					'%s = %0.4e'%(attr,optimize['attributes'][attr][-1])
 					for attr in ['alpha','beta']
-					if attr in optimize['track'] and len(optimize['track'][attr])>0
+					if attr in optimize['attributes'] and len(optimize['attributes'][attr])>0
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				'U\n%s\nV\n%s\n'%(
@@ -755,8 +775,9 @@ class Object(object):
 
 			self.log(msg)
 
+
 			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
-		if ((not status) or done) or ((optimize['track']['iteration'][-1])%optimize['modulo']['dump'] == 0):
+		if ((not status) or done) or ((optimize['attributes']['iteration'][-1])%optimize['modulo']['dump'] == 0):
 			self.dump()
 
 		return status
@@ -993,105 +1014,104 @@ class Object(object):
 											for group in attributes['index'][layer][parameter]))
 						])
 
-					new = '%s.relative'%(attr)
-					New = abs((obj.__layers__(value[attr],layer)[indices] - 
-						obj.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)/(
-						obj.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20))
-					returns[new] = New
+					if isinstance(value[attr],array):
 
-					new = '%s.relative.mean'%(attr)
-					New = New.mean(-1)
-					returns[new] = New				
+						new = '%s.relative'%(attr)
+						New = abs((obj.__layers__(value[attr],layer)[indices] - 
+							obj.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)/(
+							obj.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20))
+						returns[new] = New
 
-					new = attr
-					New = obj.__layers__(value[attr],layer)[indices]
+						new = '%s.relative.mean'%(attr)
+						New = New.mean(-1)
+						returns[new] = New				
 
-					returns[new] = New
+						new = attr
+						New = obj.__layers__(value[attr],layer)[indices]
 
-
-					if obj.state is None:
-
-						data = None
-						shape = obj.dims
-						hyperparams = deepcopy(obj.hyperparameters['state'])
-						hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
-						size = obj.N
-						samples = True
-						seed = obj.seed		
-						dtype = obj.dtype
-						cls = obj
-
-						state = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-
-					else:
-						state = obj.state
-
-					if obj.noise is None:
-
-						data = None
-						shape = obj.dims
-						hyperparams = deepcopy(obj.hyperparameters['noise'])
-						hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
-						size = obj.N
-						samples = None
-						seed = obj.seed		
-						cls = obj
-						dtype = obj.dtype
-
-						noise = noiseize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-
-					else:
-						noise = obj.noise
+						returns[new] = New
 
 
+						if obj.state is None:
 
-					obj.__functions__(state=state,noise=noise,label=True,metric='infidelity.norm')
+							data = None
+							shape = obj.dims
+							hyperparams = deepcopy(obj.hyperparameters['state'])
+							hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
+							size = obj.N
+							samples = True
+							seed = obj.seed		
+							dtype = obj.dtype
+							cls = obj
 
-					new = 'objective.ideal.noise'
-					New = obj.__objective__(value[attr])
-					returns[new] = New
+							state = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
-					new = 'objective.diff.noise'
-					New = abs(value['objective'] - New)
-					returns[new] = New
+						else:
+							state = obj.state
 
-					new = 'objective.rel.noise'
-					New = abs((value['objective'] - New)/max(1,New))
-					returns[new] = New	
+						if obj.noise is None:
 
+							data = None
+							shape = obj.dims
+							hyperparams = deepcopy(obj.hyperparameters['noise'])
+							hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
+							size = obj.N
+							samples = None
+							seed = obj.seed		
+							cls = obj
+							dtype = obj.dtype
 
-					obj.__functions__(state=state,noise=False,label=True,metric='infidelity.norm')
+							noise = noiseize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
-					new = 'objective.ideal.state'
-					New = obj.__objective__(value[attr])
-					returns[new] = New
+						else:
+							noise = obj.noise
 
-					new = 'objective.diff.state'
-					New = abs(value['objective'] - New)
-					returns[new] = New
+						obj.__functions__(state=state,noise=noise,label=True,metric='infidelity.norm')
 
-					new = 'objective.rel.state'
-					New = abs((value['objective'] - New)/max(1,New))
-					returns[new] = New					
+						new = 'objective.ideal.noise'
+						New = obj.__objective__(value[attr])
+						returns[new] = New
 
+						new = 'objective.diff.noise'
+						New = abs(value['objective'] - New)
+						returns[new] = New
 
-					obj.__functions__(state=False,noise=False,label=True,metric='infidelity.abs')
-
-					new = 'objective.ideal.operator'
-					New = obj.__objective__(value[attr])
-					returns[new] = New
-
-					new = 'objective.diff.operator'
-					New = abs(value['objective'] - New)
-					returns[new] = New
-
-					new = 'objective.rel.operator'
-					New = abs((value['objective'] - New)/max(1,New))
-					returns[new] = New					
+						new = 'objective.rel.noise'
+						New = abs((value['objective'] - New)/max(1,New))
+						returns[new] = New	
 
 
+						obj.__functions__(state=state,noise=False,label=True,metric='infidelity.norm')
 
-					obj.__functions__(state=True,noise=True,label=True,metric=True)
+						new = 'objective.ideal.state'
+						New = obj.__objective__(value[attr])
+						returns[new] = New
+
+						new = 'objective.diff.state'
+						New = abs(value['objective'] - New)
+						returns[new] = New
+
+						new = 'objective.rel.state'
+						New = abs((value['objective'] - New)/max(1,New))
+						returns[new] = New					
+
+
+						obj.__functions__(state=False,noise=False,label=True,metric='infidelity.abs')
+
+						new = 'objective.ideal.operator'
+						New = obj.__objective__(value[attr])
+						returns[new] = New
+
+						new = 'objective.diff.operator'
+						New = abs(value['objective'] - New)
+						returns[new] = New
+
+						new = 'objective.rel.operator'
+						New = abs((value['objective'] - New)/max(1,New))
+						returns[new] = New					
+
+
+						obj.__functions__(state=True,noise=True,label=True,metric=True)
 
 
 				elif attr in ['iteration']:
@@ -1124,14 +1144,6 @@ class Object(object):
 						New = argmax(abs(difference(New)/New[:-1]))+1						
 						returns[new] = New
 
-					else:
-						new = '%s.eigenvalues'%(attr)
-						New = None
-						returns[new] = New
-
-						new = '%s.rank'%(attr)
-						New = None
-						returns[new] = New
 
 			return returns
 
@@ -1176,6 +1188,16 @@ class Object(object):
 		for key in list(data):
 			for attr in list(data[key]):			
 				data[key].update(func(attr,data[key],self))
+		
+		# Ensure all keys have all attribute
+		attrs = list(set((attr for key in data for attr in data[key])))
+		print(iterations)
+		print(attrs)
+		for key in data:
+			for attr in attrs:
+				if attr not in data[key]:
+					print('adding',key,attr)
+					data[key][attr] = None
 
 		# Set data
 		data = {'data':data,'model':self.hyperparameters}
