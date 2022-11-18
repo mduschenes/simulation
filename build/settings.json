@@ -130,9 +130,9 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":5,
+	"M":200,
 	"T":null,
-	"tau":1,
+	"tau":5e1,
 	"p":2,
 	"space":"spin",
 	"time":"linear",
@@ -150,28 +150,26 @@
 		}
 	},
 "optimize":{
-	"iterations":200,
+	"iterations":50,
 	"optimizer":"cg",
 	"line_search":"line_search",
-	"eps":{"objective":1e-20,"grad":1e-20,"difference":1e-8,"alpha":1e-20,"beta":1e3},
-	"value":{"objective":1,"grad":1,"difference":1,"alpha":0,"beta":0},
+	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-8,"alpha":1e-20,"beta":1e3},
+	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
 	"status":1,
 	"reset":0,
 	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":1,"track":1,"attributes":10,"callback":1,"restart":1e10,"dump":1e10},
+	"modulo":{"log":1,"track":10,"attributes":1,"callback":1,"restart":1e10,"dump":1e10},
 	"attributes":{
-		"iteration":[],
+		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},
 	"track":{
-		"iteration":[],"objective":[],
-		"value":[],"grad":[],"search":[],
-		"alpha":[],"beta":[],		
+		"iteration":[],"objective":[],"parameters":[],
 		"parameters":[],
-		"hessian":[],
-		"fisher":[]
+		"value":[],
+		"alpha":[],"beta":[]
 		}
 	},
 "parameters":{
@@ -274,7 +272,7 @@
 	"string":"phase",
 	"category":"constant",
 	"shape":[2,-1,-1],
-	"scale":null,
+	"scale":1e-6,
 	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,

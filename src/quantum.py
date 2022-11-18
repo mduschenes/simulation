@@ -687,37 +687,37 @@ class Object(object):
 
 
 
-	def __callback__(self,parameters):
+	def __callback__(self,parameters,attributes):
 		''' 
 		Setup callback and logging
 		Args:
 			parameters (array): parameters
+			attributes (dict): callback attributes
 		Returns:
 			status (int): status of class
 		'''	
 
 		optimize = self.hyperparameters['optimize']
 
-
-		start = len(optimize['attributes']['iteration'])==0  
+		start = (len(attributes['iteration'])==1) and (attributes['iteration'][-1]<optimize['iterations'])
 		
-		done = len(optimize['attributes']['iteration'])>0 and optimize['attributes']['iteration'][-1]==optimize['iterations']
+		done = (len(attributes['iteration'])>0) and (attributes['iteration'][-1]==optimize['iterations'])
 		
 		status = (
-			(abs(optimize['attributes']['value'][-1]) > 
+			(abs(attributes['value'][-1]) > 
 				optimize['eps']['value']*optimize['value']['value']) and
-			((len(optimize['attributes']['value'])==1) or
-			((len(optimize['attributes']['value'])>1) and 
-			 (abs(optimize['attributes']['value'][-1] - optimize['attributes']['value'][-2]) > 
+			((len(attributes['value'])==1) or
+			((len(attributes['value'])>1) and 
+			 (abs(attributes['value'][-1] - attributes['value'][-2]) > 
 				optimize['eps']['difference']*optimize['value']['value']))) and
-			(norm(optimize['attributes']['grad'][-1] - optimize['value']['grad'])/optimize['attributes']['grad'][-1].size > 
+			(norm(attributes['grad'][-1] - optimize['value']['grad'])/attributes['grad'][-1].size > 
 				  optimize['eps']['grad'])
 			)
 		
 
 		default = nan
 
-		if len(optimize['attributes']['iteration']) == 0 or optimize['attributes']['iteration'][-1]%optimize['modulo']['track'] == 0:	
+		if len(attributes['iteration']) == 1e-20 or attributes['iteration'][-1]%optimize['modulo']['track'] == 0:	
 
 			for attr in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
 
@@ -726,10 +726,11 @@ class Object(object):
 					if len(optimize['track'][attr]) >= optimize['modulo']['track']:
 						optimize['track'][attr].pop(0)
 
-					if attr in optimize['attributes']:
-						optimize['track'][attr].append(optimize['attributes'][attr][-1])
+					if attr in attributes:
+						optimize['track'][attr].append(attributes[attr][-1])
 
 					if attr in ['parameters'] and ((not status) or done or start):
+						print(attributes['iteration'],'adding params',status,done,start)
 						optimize['track'][attr].append(parameters)
 
 					elif attr in ['objective']:
@@ -744,23 +745,23 @@ class Object(object):
 						optimize['track'][attr].append(default)
 
 
-		if len(optimize['attributes']['iteration']) == 0 or optimize['attributes']['iteration'][-1]%optimize['modulo']['log'] == 0:			
+		if len(attributes['iteration']) == 0 or attributes['iteration'][-1]%optimize['modulo']['log'] == 0:			
 
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
-					optimize['attributes']['iteration'][-1],
+					attributes['iteration'][-1],
 					optimize['track']['objective'][-1],
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
-					norm(optimize['attributes']['parameters'][-1])/
-						 max(1,optimize['attributes']['parameters'][-1].size),
-					norm(optimize['attributes']['grad'][-1])/
-						 max(1,optimize['attributes']['grad'][-1].size),
+					norm(attributes['parameters'][-1])/
+						 max(1,attributes['parameters'][-1].size),
+					norm(attributes['grad'][-1])/
+						 max(1,attributes['grad'][-1].size),
 				),
 				'\t\t'.join([
-					'%s = %0.4e'%(attr,optimize['attributes'][attr][-1])
+					'%s = %0.4e'%(attr,attributes[attr][-1])
 					for attr in ['alpha','beta']
-					if attr in optimize['attributes'] and len(optimize['attributes'][attr])>0
+					if attr in attributes and len(attributes[attr])>0
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				'U\n%s\nV\n%s\n'%(
@@ -777,7 +778,7 @@ class Object(object):
 
 
 			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
-		if ((not status) or done) or ((optimize['attributes']['iteration'][-1])%optimize['modulo']['dump'] == 0):
+		if ((not status) or done) or ((attributes['iteration'][-1])%optimize['modulo']['dump'] == 0):
 			self.dump()
 
 		return status
@@ -1015,7 +1016,6 @@ class Object(object):
 						])
 
 					if isinstance(value[attr],array):
-
 						new = '%s.relative'%(attr)
 						New = abs((obj.__layers__(value[attr],layer)[indices] - 
 							obj.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)/(

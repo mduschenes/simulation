@@ -236,7 +236,7 @@ class Objective(object):
 			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function  with signature grad(parameters)
 			hess (callable,iterable[callable]): Hessian of function, with signature hess(parameters)
-			callback (callable): Gradient of function  with signature callback(parameters,func,grad,hess,funcs,grads,hesss,hyperparameters)
+			callback (callable): Gradient of function  with signature callback(parameters,attributes,func,grad,hess,funcs,grads,hesss,hyperparameters)
 			hyperparameters (dict): Objective hyperparameters
 		'''
 
@@ -278,7 +278,7 @@ class Objective(object):
 		self.hyperparameters = hyperparameters
 
 		if callback is None:
-			def callback(parameters,func,grad,hyperparameters):
+			def callback(parameters,attributes,func,grad,hyperparameters):
 				status = False
 				return False
 
@@ -322,15 +322,16 @@ class Objective(object):
 		return self.hess(parameters)	
 
 	@partial(jit,static_argnums=(0,))
-	def __callback__(self,parameters):
+	def __callback__(self,parameters,attributes):
 		'''
 		Callback call
 		Args:
 			parameters (array): parameters
+			attributes (dict): callback attributes			
 		Returns:
 			out (object): Return of objective function
 		'''
-		return self.callback(parameters)		
+		return self.callback(parameters,attributes)		
 
 
 class Metric(object):
@@ -599,7 +600,7 @@ class Base(object):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,attributes) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
@@ -667,7 +668,8 @@ class Base(object):
 
 		if not self.reset and self.size > 0:
 			parameters = self.parameters
-			self.status = self.callback(parameters)
+			attributes = self.attributes
+			self.status = self.callback(parameters,attributes)
 
 		state = self.opt_init(parameters)
 		for iteration in self.iterations:
@@ -716,8 +718,8 @@ class Base(object):
 
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
-		
-		self.status = self.callback(parameters)
+		attributes = self.attributes
+		self.status = self.callback(parameters,attributes)
 
 		return state
 
@@ -805,7 +807,7 @@ class Optimizer(Base):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,attributes) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __new__(cls,func,grad=None,callback=None,hyperparameters={}):
@@ -828,7 +830,7 @@ class GradientDescent(Base):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,attributes) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
@@ -859,8 +861,8 @@ class GradientDescent(Base):
 
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
-		
-		self.status = self.callback(parameters)
+		attributes = self.attributes
+		self.status = self.callback(parameters,attributes)
 
 		return state
 
@@ -871,7 +873,7 @@ class ConjugateGradient(Base):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,attributes) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
@@ -915,7 +917,8 @@ class ConjugateGradient(Base):
 
 			state = self.opt_init(parameters)
 			parameters = self.get_params(state)
-			self.status = self.callback(parameters)
+			attributes = self.attributes
+			self.status = self.callback(parameters,attributes)
 
 		parameters = self.get_params(state)
 
@@ -955,8 +958,8 @@ class ConjugateGradient(Base):
 		state = self.opt_init(parameters)
 
 		parameters = self.get_params(state)
-		
-		self.status = self.callback(parameters)
+		attributes = self.attributes
+		self.status = self.callback(parameters,attributes)
 
 		return state
 
@@ -967,7 +970,7 @@ class Adam(Base):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,attributes) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
@@ -1024,8 +1027,8 @@ class Adam(Base):
 		self.attributes['search'].append(search)
 
 		parameters = self.get_params(state)
-		
-		self.status = self.callback(parameters)
+		attributes = self.attributes
+		self.status = self.callback(parameters,attributes)
 
 		return state
 
