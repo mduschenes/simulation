@@ -645,9 +645,10 @@ class Base(object):
 		self.iteration = -1
 		self.parameters = None
 		self.optimizer = hyperparameters['optimizer']		
-		self.iterations = range(int(hyperparameters['iterations']))
 		self.modulo = hyperparameters['modulo']
 		self.attributes = hyperparameters['attributes']
+		self.iterations = range(int(hyperparameters['iterations']))
+		self.sizes = self.modulo['attributes']
 		self.status = hyperparameters['status']
 		self.eps = hyperparameters['eps']
 		self.reset = hyperparameters['reset']
@@ -748,7 +749,7 @@ class Base(object):
 		parameters = self.get_params(state)
 		value,grad = self.value_and_grad(parameters)
 
-		if self.size >= self.modulo['attributes']:
+		if self.size >= self.sizes:
 			for attr in self.attributes:
 				self.attributes[attr].pop(0)
 
@@ -909,6 +910,7 @@ class ConjugateGradient(Base):
 		'''
 
 		if self.size == 0:
+
 			value,grad,parameters = self.opt_step(iteration,state)
 
 			self.attributes['alpha'].append(self.hyperparameters['alpha'])

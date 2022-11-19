@@ -55,12 +55,12 @@
 		"jobs.job.device":["pc"],
 		"jobs.job.process":["serial"],
 		"jobs.job.execute":[1],		
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 		"jobs.postprocess.cwd":["data.4.cg.long.phase.range"],		
 		"jobs.postprocess.device":["pc"],
 		"jobs.postprocess.process":["serial"],
 		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 
 
 		"model.N":[3],
@@ -76,21 +76,13 @@
 		"jobs.job.device":["pc"],
 		"jobs.job.process":["serial"],
 		"jobs.job.execute":[1],		
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 		"jobs.postprocess.cwd":["test"],		
 		"jobs.postprocess.device":["pc"],
 		"jobs.postprocess.process":["serial"],
 		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 
-
-		"model.N":[3],
-		"model.M":[30,50,100],
-		"noise.scale":[1e-8,1e-4,1e-1],
-		"state.scale":[1],
-		"model.metric":["infidelity.norm"],
-		"optimize.iterations":[100],
-		"optimize.optimizer":["cg"],
 
 		"model.N":[2],
 		"model.M":[4,8,16,64],
@@ -100,18 +92,16 @@
 		"optimize.iterations":[100],
 		"optimize.optimizer":["cg"],
 
-
-
-		"jobs.job.cwd":["test.test"],		
+		"jobs.job.cwd":["test"],		
 		"jobs.job.device":["pc"],
 		"jobs.job.process":["serial"],
-		"jobs.job.execute":[1],		
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
-		"jobs.postprocess.cwd":["test.test"],		
+		"jobs.job.execute":[1],	
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.postprocess.cwd":["test"],		
 		"jobs.postprocess.device":["pc"],
 		"jobs.postprocess.process":["serial"],
 		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/projects/simulation/code/src"],
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 
 
 		"parameters.xy.method":["constrained"],
@@ -142,7 +132,7 @@
 		"dtype":"complex",
 		"format":"array",
 		"key":null,
-		"seed":null,
+		"seed":1234321,
 		"timestamp":null,
 		"architecture":null,
 		"device":"cpu",
@@ -159,7 +149,7 @@
 	"reset":0,
 	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":1,"track":10,"attributes":1,"callback":1,"restart":1e10,"dump":1e10},
+	"modulo":{"log":1,"track":1,"attributes":10,"callback":1,"restart":1e10,"dump":1e10},
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
@@ -285,7 +275,7 @@
 		"args":{
 			"JOB_CWD":"${SLURM_ARRAY_TASK_ID}",					
 			"JOB_ENV":"~/env/jax",
-			"JOB_SRC":"~/files/uw/research/projects/simulation/code/src",
+			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
 			"JOB_PARALLELISM":"serial",
 			"JOB_ARGS":"settings.json"
@@ -314,7 +304,7 @@
 		"args":{
 			"JOB_CWD":"${SLURM_ARRAY_TASK_ID}",
 			"JOB_ENV":"~/env/jax",
-			"JOB_SRC":"~/files/uw/research/projects/simulation/code/src",
+			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PARALLELISM":"serial",			
 			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.json","--hyperparameters=**/process.json","--cwd=."]

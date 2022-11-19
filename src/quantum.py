@@ -698,7 +698,7 @@ class Object(object):
 		'''	
 
 		optimize = self.hyperparameters['optimize']
-
+		
 		start = (len(attributes['iteration'])==1) and (attributes['iteration'][-1]<optimize['iterations'])
 		
 		done = (len(attributes['iteration'])>0) and (attributes['iteration'][-1]==optimize['iterations'])
@@ -717,30 +717,31 @@ class Object(object):
 
 		default = nan
 
-		if len(attributes['iteration']) == 1e-20 or attributes['iteration'][-1]%optimize['modulo']['track'] == 0:	
+		if ((not status) or done or start) or (len(attributes['iteration']) == 0) or (attributes['iteration'][-1]%optimize['modulo']['track'] == 0):	
 
 			for attr in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
 
 				if attr in optimize['track']:
 
-					if len(optimize['track'][attr]) >= optimize['modulo']['track']:
+					if len(optimize['track'][attr]) >= (optimize['iterations']//optimize['modulo']['track'] + 1):
 						optimize['track'][attr].pop(0)
 
-					if attr in attributes:
+					if attr in ['iteration','value','grad','search','alpha','beta']:
 						optimize['track'][attr].append(attributes[attr][-1])
 
-					if attr in ['parameters'] and ((not status) or done or start):
-						print(attributes['iteration'],'adding params',status,done,start)
+					elif attr in ['parameters'] and ((not status) or done or start):
 						optimize['track'][attr].append(parameters)
-
+					
 					elif attr in ['objective']:
 						optimize['track'][attr].append(
 							getattr(self,'__%s__'%(attr))(parameters)
 							)
+					
 					elif attr in ['hessian','fisher'] and ((not status) or done):
 						optimize['track'][attr].append(
 							getattr(self,'__%s__'%(attr))(parameters)
 							)
+					
 					else:
 						optimize['track'][attr].append(default)
 
@@ -1016,6 +1017,7 @@ class Object(object):
 						])
 
 					if isinstance(value[attr],array):
+
 						new = '%s.relative'%(attr)
 						New = abs((obj.__layers__(value[attr],layer)[indices] - 
 							obj.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)/(
@@ -1159,8 +1161,6 @@ class Object(object):
 			for key in keys
 			}
 
-
-
 		data = {
 			delim.join([*(str(l) for l in label),str(key),str(iteration)]): {
 				**{attr: optimize['track'][attr][iteration]
@@ -1171,7 +1171,8 @@ class Object(object):
 					for attr in self.__dict__
 					if (
 						(not callable(getattr(self,attr))) and
-						(getattr(self,attr) is None or isinstance(getattr(self,attr),scalars))
+						(getattr(self,attr) is None or isinstance(getattr(self,attr),scalars)) and
+						attr not in optimize['track']
 						)
 					},
 				**{attr: getter(self.hyperparameters,attr.split(delim)) 
@@ -1191,12 +1192,9 @@ class Object(object):
 		
 		# Ensure all keys have all attribute
 		attrs = list(set((attr for key in data for attr in data[key])))
-		print(iterations)
-		print(attrs)
 		for key in data:
 			for attr in attrs:
 				if attr not in data[key]:
-					print('adding',key,attr)
 					data[key][attr] = None
 
 		# Set data
