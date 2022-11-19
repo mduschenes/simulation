@@ -47,11 +47,6 @@ function gims(){
 
 	git status;
 
-	if [[ "${msg}" == "" ]]
-	then
-		return 0
-	fi
-
 	git pull
 	git checkout ${branch}
 	git pull
