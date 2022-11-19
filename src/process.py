@@ -24,7 +24,7 @@ for PATH in PATHS:
 from src.utils import argparser
 from src.utils import array,product,expand_dims,to_eval,to_repr,is_iterable,is_number,to_number,to_key_value
 from src.utils import asarray,asscalar
-from src.utils import argmax,difference,is_nan,abs
+from src.utils import argmax,difference,is_nan,is_numeric,abs
 from src.utils import e,pi,nan,scalars,nulls,scinotation,padder
 from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split,glob
@@ -764,10 +764,28 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				data[name][attr] = data[name][attr].reshape(*[1]*(max(0,1-data[name][attr].ndim)),*data[name][attr].shape)
 
 
-		# Get number of dimensions and maximum shape of data attributes
-		ndim = {attr: min(data[name][attr].ndim for name in names) for attr in attributes}
-		shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in names)))) for attr in attributes}
+		# for name in names:
+		# 	print(name)
+		# 	for attr in data[name]:
+		# 		print(attr,data[name][attr].shape, (data[name][attr].size == 1 and is_nan(asscalar(data[name][attr]))))
+		# 	attr = 'parameters'
+		# 	print('----',attr,data[name][attr].shape, (data[name][attr].size == 1 and is_nan(asscalar(data[name][attr]))))
+		# 	print(data[name][attr])
+		# 	try:
+		# 		print(np.isnan(asscalar(data[name][attr])))
+		# 	except:
+		# 		print(None)
+		# 	print()
 
+		# Get number of dimensions and maximum shape of data attributes
+		ndim = {attr: min((data[name][attr].ndim for name in names 
+					if not (data[name][attr].size == 1 and asscalar(data[name][attr]) in ['None'])),default=1)
+			for attr in attributes}
+		shape = {attr: tuple(map(max,zip(*(data[name][attr].shape for name in names 
+					if not (data[name][attr].size == 1 and asscalar(data[name][attr]) in ['None']))))) 
+			for attr in attributes}
+
+		attr = 'parameters.relative.mean'
 		
 		# Get labels of keys
 		labels = {occurrences(key,keys):{
@@ -917,7 +935,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									continue
 
 								value = expand_dims(value,newndim)
+
 								slices = (index,*(slice(data[name][key['y']['key'][-1]].shape[axis]) for axis in range(data[name][key['y']['key'][-1]].ndim)))
+
 								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 
 							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](

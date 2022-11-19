@@ -3844,6 +3844,18 @@ def is_number(a,*args,**kwargs):
 	'''
 	return is_int(a,*args,**kwargs) or is_float(a,*args,**kwargs)
 
+
+def is_numeric(a,*args,**kwargs):
+	'''
+	Check if object is numeric type
+	Args:
+		a (object): Object to be checked as numeric
+	Returns:
+		out (boolean): If object is a numeric
+	'''
+	dtype = getattr(a,'dtype',type(a))
+	return np.issubdtype(dtype, np.number)
+
 def is_none(a,*args,**kwargs):
 	'''
 	Check if object is None
@@ -3883,7 +3895,7 @@ def is_inf(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is inf
 	'''
-	return np.isinf(a)
+	return is_numeric(a) and np.isinf(a)
 
 def is_nan(a,*args,**kwargs):
 	'''
@@ -3895,7 +3907,7 @@ def is_nan(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is nan
 	'''
-	return np.isnan(a)
+	return is_numeric(a) and np.isnan(a)
 
 
 def is_realdtype(dtype,*args,**kwargs):
