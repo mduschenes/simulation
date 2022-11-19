@@ -330,6 +330,7 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 	Args:
 		path (str): Path of file
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
+		default (str): Default pattern value to sed
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -342,10 +343,6 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 
 	delimiters = [',','#','/','$']
 	replacements = {}#{r"-":r"\-",r" ":r"\ ",r"#":r"\#"}
-
-	exe = ['sed']
-	flags = ['-i']
-	options = []
 
 	for pattern in patterns:
 
@@ -371,7 +368,11 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 		for replacement in replacements:
 			cmd = cmd.replace(replacement,replacements[replacement])
 
+
+		exe = ['sed']
+		flags = ['-i']
 		cmd = [cmd,path]
+		options = []
 		args = []
 
 		args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
@@ -741,14 +742,14 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		path = join(path,root=cwd[key])
 
-		configure(pwd=pwd[key],cwd=path,paths=paths[key],patterns=patterns[key],process=process,processes=None,device=device,execute=True,**kwargs[key])
+		configure(pwd=pwd[key],cwd=path,paths=paths[key],patterns=patterns[key],process=process,processes=processes,device=device,execute=execute,**kwargs[key])
 
 		exe = jobs[key]
 		flags = []
 		cmd = []
 		options = []
 
-		cmd = command(args[key],exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=None,device=device,execute=True,verbose=verbose)
+		cmd = command(args[key],exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 		cmds[key] = cmd
 
@@ -798,10 +799,10 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		if not exists(source):
 			source = job
-		cp(source,destination,execute=True)
+		cp(source,destination,execute=execute)
 
 
-		update(destination,patterns[key],process=process,processes=None,device=device,execute=True,**kwargs[key])
+		update(destination,patterns[key],process=process,processes=None,device=device,execute=execute,**kwargs[key])
 
 		result = call(*cmd,path=path,pause=pause,process=process,processes=None,device=device,execute=execute,verbose=verbose)
 
