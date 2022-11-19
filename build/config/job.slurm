@@ -61,7 +61,7 @@ export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
 # Environment
 # module purge &>/dev/null 2>&1
-# conda activate ${JOB_ENV} &>/dev/null 2>&1
+conda activate ${JOB_ENV} &>/dev/null 2>&1
 # source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
