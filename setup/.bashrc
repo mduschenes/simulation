@@ -2,7 +2,16 @@
 
 
 # Path
-export PATH="$PATH:~/.local/bin"
+add_to_path() {
+  for ARG in "$@"
+  do
+    if [ -d "$ARG" ] && [[ ":$PATH:" != *":$ARG:"* ]]; then
+        PATH="${PATH:+"$PATH:"}$ARG"
+    fi
+  done
+  export PATH="${PATH}"
+}
+add_to_path ~/.local/bin
 
 
 # Aliases
@@ -24,7 +33,6 @@ alias scr="/scratch/gobi3/${USER}"
 
 # Functions
 
-# Git Add, Commit, Push Changes
 function gips(){
 	msg="${@}";
 
@@ -37,23 +45,6 @@ function gips(){
 
 	git commit -a -m "${msg}";
 	git push;
-	return 0
-}
-
-# Git Pull, Checkout, Merge, Push Changes
-function gims(){
-	branch=${1:-master}
-	current=$(git name-rev --name-only HEAD)
-
-	git status;
-
-	git pull
-	git checkout ${branch}
-	git pull
-	git checkout ${current}
-	git merge ${branch}
-	git push
-
 	return 0
 }
 
@@ -73,10 +64,33 @@ function bkill(){
 }
 
 function bint(){
-	t=${1:-06:00:00}
-	m=${2:-15G}
-	srun --nodes=1 --ntasks-per-node=1 --time=${t} --mem=${m} --pty bash -i
+	time=${1:-01:00:00}
+	mem=${2:-15G}
+	partition=${3:-cpu}
+	srun --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --pty bash -i
 	return 0
+}
+
+
+function balloc(){
+	time=${1:-01:00:00}
+	mem=${2:-15G}
+	partition=${3:-cpu}
+	salloc --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --partition=${partition}
+	return 0
+}
+
+
+function catls(){
+	files=(${@})
+	files=($(ls ${files[@]} | sort -V))
+	for file in ${files[@]}
+	do
+		echo ${file}
+		cat ${file}
+		echo
+	done
+
 }
 
 
@@ -120,26 +134,26 @@ export HISTCONTROL=ignoreboth:erasedups
 
 # Color Setup
 
-# set a fancy prompt (non-color, unless we know we "want" color)
-case "$TERM" in
-    xterm-color|*-256color) color_prompt=yes;;
-esac
+# # set a fancy prompt (non-color, unless we know we "want" color)
+# case "$TERM" in
+#     xterm-color|*-256color) color_prompt=yes;;
+# esac
 
-# uncomment for a colored prompt, if the terminal has the capability; turned
-# off by default to not distract the user: the focus in a terminal window
-# should be on the output of commands, not on the prompt
-#force_color_prompt=yes
+# # uncomment for a colored prompt, if the terminal has the capability; turned
+# # off by default to not distract the user: the focus in a terminal window
+# # should be on the output of commands, not on the prompt
+# #force_color_prompt=yes
 
-if [ -n "$force_color_prompt" ]; then
-    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-	# We have color support; assume it's compliant with Ecma-48
-	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-	# a case would tend to support setf rather than setaf.)
-	color_prompt=yes
-    else
-	color_prompt=
-    fi
-fi
+# if [ -n "$force_color_prompt" ]; then
+#     if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+# 	# We have color support; assume it's compliant with Ecma-48
+# 	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+# 	# a case would tend to support setf rather than setaf.)
+# 	color_prompt=yes
+#     else
+# 	color_prompt=
+#     fi
+# fi
 
 # if [ "$color_prompt" = yes ]; then
 #     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
@@ -159,7 +173,12 @@ fi
 #     ;;
 # esac
 
-PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+# # Prompt
+PS1='${debian_chroot:+($debian_chroot)}[\t]\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\W\[\033[00m\]\$ '
+# #PROMPT_COMMAND="echo -ne \"\033]0;${PWD}\007\"; $PROMPT_COMMAND" ###*/
+unset PROMPT_COMMAND
+PROMPT_COMMAND='echo -ne """\033]0;${USER/"${HOME}"/\~}@${HOSTNAME%%.*}:${PWD}\007"""'
+
 
 
 # enable color support of ls and also add handy aliases

@@ -65,23 +65,22 @@
 	"iterations":200,
 	"optimizer":"cg",
 	"line_search":"line_search",
-	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-8,"alpha":1e-20,"beta":1e3},
-	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
+	"eps":{"objective":1e-20,"grad":1e-20,"difference":1e-10,"alpha":1e-20,"beta":1e3},
+	"value":{"objective":1,"grad":1,"difference":1,"alpha":0,"beta":0},
 	"status":1,
 	"reset":0,
-	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
-	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":1,"track":1,"attributes":10,"callback":1,"restart":1e10,"dump":1e10},
+	"c1":0.0001,"c2":0.9,"maxiter":200,"restart":1e6,
+	"alpha":1e-4,"beta":1e-1,
+	"modulo":{"log":1,"history":10,"callback":1,"restart":1e10},
 	"attributes":{
-		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},
 	"track":{
-		"iteration":[],"objective":[],"parameters":[],
-		"parameters":[],
-		"value":[],
-		"alpha":[],"beta":[]
+		"iteration":[],"objective":[],
+		"value":[],"grad":[],"search":[],
+		"alpha":[],"beta":[],		
+		"parameters":[]
 		}
 	},
 "parameters":{

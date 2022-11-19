@@ -11,11 +11,12 @@ install=${2:-"reinstall"}
 # Silent yes to all commands ["yes","no"]
 yes=${3}
 
-pkgs=${HOME}/miniconda3
-envs=${HOME}/miniconda/envs
+# pkgs=${HOME}/miniconda3
+# envs=${HOME}/miniconda/envs
 
-# pkgs=/pkgs/anaconda3
-# envs=${HOME}/env
+pkgs=/pkgs/anaconda3
+envs=${HOME}/.conda/envs
+env_vars=env_vars.sh
 
 channels=(intel conda-forge)
 requirements=requirements.txt
@@ -72,6 +73,16 @@ then
 
 	conda remove --name ${env} --all
 fi
+
+
+# Setup activation scripts
+source=${env_vars}
+destination=${envs}/${env}/etc/conda/activate.d
+
+mkdir ${destination} -p
+
+cp ${source} ${destination}/
+
 
 # Activate environment
 # conda activate ${env}
@@ -147,7 +158,3 @@ rm ${requirements[@]}
 # destination=${HOME}
 
 # cp ${source} ${destination}
-
-# Allow larger linux stack space for cli arguments
-# cache=16384
-# ulimit -s ${cache}

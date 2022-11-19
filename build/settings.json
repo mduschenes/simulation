@@ -27,82 +27,30 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":10,
-	"size":1,
+	"size":25,
 	"reset":5576,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
+
 		"model.N":[4],
 		"model.M":[20,35,50,100],
-		"noise.scale":[1e-14,1e-12,1e-10,1e-8,1e-5,1e-3,1e-1],
-		"optimize.iterations":[300],
+		"noise.scale":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-5,1e-3,1e-2,1e-1],
+		"optimize.iterations":[350],
 		"optimize.optimizer":["cg"],
 
-		"jobs.job.cwd":["gobi/data.noise.3.unconstrained.adam"],
+
+		"jobs.job.cwd":["gobi/data.noise.4.unconstrained.cg.amplitude.poster"],
 		"jobs.job.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.job.execute":[1],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.postprocess.cwd":["gobi/data.noise.3.unconstrained.adam"],
+		"jobs.postprocess.cwd":["gobi/data.noise.4.unconstrained.cg.amplitude.poster"],		
 		"jobs.postprocess.device":["slurm"],
 		"jobs.postprocess.process":["serial"],
 		"jobs.postprocess.execute":[1],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],	
-
-		"jobs.job.cwd":["data.4.cg.long.phase.range"],		
-		"jobs.job.device":["pc"],
-		"jobs.job.process":["serial"],
-		"jobs.job.execute":[1],		
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.postprocess.cwd":["data.4.cg.long.phase.range"],		
-		"jobs.postprocess.device":["pc"],
-		"jobs.postprocess.process":["serial"],
-		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-
-
-		"model.N":[3],
-		"model.M":[30,50],
-		"noise.scale":[null],
-		"state.scale":[null],
-		"model.metric":["infidelity.abs"],
-		"optimize.iterations":[10],
-		"optimize.optimizer":["cg"],
-
-
-		"jobs.job.cwd":["test"],		
-		"jobs.job.device":["pc"],
-		"jobs.job.process":["serial"],
-		"jobs.job.execute":[1],		
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.postprocess.cwd":["test"],		
-		"jobs.postprocess.device":["pc"],
-		"jobs.postprocess.process":["serial"],
-		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-
-
-		"model.N":[2],
-		"model.M":[4,8,16,64],
-		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
-		"state.scale":[1],
-		"model.metric":["infidelity.norm"],
-		"optimize.iterations":[100],
-		"optimize.optimizer":["cg"],
-
-		"jobs.job.cwd":["test"],		
-		"jobs.job.device":["pc"],
-		"jobs.job.process":["serial"],
-		"jobs.job.execute":[1],	
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.postprocess.cwd":["test"],		
-		"jobs.postprocess.device":["pc"],
-		"jobs.postprocess.process":["serial"],
-		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-
 
 		"parameters.xy.method":["constrained"],
 		"model.system.architecture":["constrained"],
@@ -112,17 +60,17 @@
 
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
-	"index":null
+	"index":-1
 	},
 "model":{
-	"N":2,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":200,
+	"M":30,
 	"T":null,
-	"tau":5e1,
+	"tau":10e-1,
 	"p":2,
 	"space":"spin",
 	"time":"linear",
@@ -132,7 +80,7 @@
 		"dtype":"complex",
 		"format":"array",
 		"key":null,
-		"seed":1234321,
+		"seed":null,
 		"timestamp":null,
 		"architecture":null,
 		"device":"cpu",
@@ -140,26 +88,25 @@
 		}
 	},
 "optimize":{
-	"iterations":50,
+	"iterations":200,
 	"optimizer":"cg",
 	"line_search":"line_search",
-	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-8,"alpha":1e-20,"beta":1e3},
-	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
+	"eps":{"objective":1e-20,"grad":1e-20,"difference":1e-8,"alpha":1e-20,"beta":1e3},
+	"value":{"objective":1,"grad":1,"difference":1,"alpha":0,"beta":0},
 	"status":1,
 	"reset":0,
 	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":1,"track":1,"attributes":10,"callback":1,"restart":1e10,"dump":1e10},
+	"modulo":{"log":1,"history":10,"callback":1,"restart":1e10},
 	"attributes":{
-		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},
 	"track":{
-		"iteration":[],"objective":[],"parameters":[],
-		"parameters":[],
-		"value":[],
-		"alpha":[],"beta":[]
+		"iteration":[],"objective":[],
+		"value":[],"grad":[],"search":[],
+		"alpha":[],"beta":[],		
+		"parameters":[]
 		}
 	},
 "parameters":{
@@ -194,7 +141,7 @@
 		"method":null,		
 		"use":true,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
-		"parameters":[-0.01,0,0.01,0.005,-0.02],
+		"parameters":[-0.1,0,0.1,0.05,-0.2],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["z"]],
 		"scale":1,
@@ -214,7 +161,7 @@
 		"method":null,		
 		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[0.000724,-0.000130,0.005,0.008,0.0002,0.002,-0.0003,0.0060,0.0009,-0.0006],
+		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
@@ -252,17 +199,16 @@
 	"string":"random",
 	"category":"constant",
 	"shape":[1,1,-1,-1],
-	"scale":1,
 	"initialization":"random",
 	"random":"haar",
 	"seed":null,
 	"bounds":[-1,1]	
 },
 "noise": {
-	"string":"phase",
+	"string":"amplitude",
 	"category":"constant",
+	"scale":1e-3,	
 	"shape":[2,-1,-1],
-	"scale":1e-6,
 	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,
@@ -273,11 +219,10 @@
 	"job":{
 		"jobs":"job.slurm",
 		"args":{
-			"JOB_CWD":"${SLURM_ARRAY_TASK_ID}",					
-			"JOB_ENV":"~/env/jax",
-			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
+			"JOB_ENV":"jax",
+			"JOB_SRC":"~/files/uw/research/projects/simulation/code/src",
+			"JOB_SRC":"~/code/simulation/src",
 			"JOB_CMD":"train.py",
-			"JOB_PARALLELISM":"serial",
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{},
@@ -292,8 +237,6 @@
 		"pause":1,	
 		"process":"serial",
 		"process":"array",
-		"processes":null,
-		"parallelism":null,
 		"device":"pc",
 		"device":"slurm",
 		"execute":0,
@@ -302,11 +245,10 @@
 	"postprocess":{
 		"jobs":"postprocess.slurm",
 		"args":{
-			"JOB_CWD":"${SLURM_ARRAY_TASK_ID}",
-			"JOB_ENV":"~/env/jax",
-			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
+			"JOB_ENV":"jax",
+			"JOB_SRC":"~/files/uw/research/projects/simulation/code/src",
+			"JOB_SRC":"~/code/simulation/src",
 			"JOB_CMD":"process.py",
-			"JOB_PARALLELISM":"serial",			
 			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.json","--hyperparameters=**/process.json","--cwd=."]
 			},
 		"patterns":{
@@ -319,8 +261,6 @@
 		"cwd":"test",
 		"pause":1,	
 		"process":"serial",
-		"processes":null,
-		"parallelism":null,		
 		"device":"slurm",
 		"device":"pc",
 		"execute":0,

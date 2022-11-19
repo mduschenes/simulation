@@ -1,64 +1,26 @@
 {
-	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture","noise.scale"],
+	"sort": ["key","N","D","d","L","delta","M","T","tau","iteration","architecture","noise.scale"],
 	"parameters":[
 		{
 			"key":{"x":"iteration","y":"objective"},
 			"slice":null,
-			"slice":[0,null,1],			
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}
+			"stat":[["linear","linear"]]
 		},
 		{
-			"key":{"x":"iteration","y":"objective.ideal.noise"},
-			"slice":null,			
-			"slice":[0,null,1],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},		
-		{
-			"key":{"x":"iteration","y":"objective.ideal.state"},
-			"slice":null,			
-			"slice":[0,null,1],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},		
-		{
-			"key":{"x":"iteration","y":"objective.ideal.operator"},
+			"key":{"x":"iteration","y":"objective.ideal"},
 			"slice":null,
-			"slice":[0,null,1],			
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},						
+			"stat":[["linear","linear"]]
+		},		
 		{
 			"key":{"x":"noise.scale","y":"objective"},
 			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
+			"stat":[["linear","linear"]]
 		},		
 		{
-			"key":{"x":"noise.scale","y":"objective.ideal.noise"},
+			"key":{"x":"noise.scale","y":"objective.ideal"},
 			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},	
-		{
-			"key":{"x":"noise.scale","y":"objective.ideal.state"},
-			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
+			"stat":[["linear","linear"]]
 		},				
-		{
-			"key":{"x":"noise.scale","y":"objective.ideal.operator"},
-			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},						
-		{
-			"key":{"x":"M","y":"objective"},
-			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"label":{"noise.scale":[1e-8,1e-6,1e-5,5e-5,1e-4,5e-4,1e-3,1e-1]}
-		},		
 		{
 			"key":{"x":"","y":"parameters"},
 			"axis":[[0,1],[2],[],[-1]]
@@ -69,10 +31,8 @@
 		},
 		{
 			"key":{"x":"M","y":"parameters.relative.mean"},
-			"wrapper":{"mean":{"axis":[-1]}},			
 			"axis":[[1],[],[],[0]],
-			"wrapper":{"mean":{"axis":[-2,-1]}},
-			"axis":[[],[],[],[0]]
+			"wrapper":{"wrapper":"mean","axis":[-1]}
 		},
 		{
 			"key":{"x":"M","y":"iteration.min"},
@@ -80,12 +40,10 @@
 		},		
 		{
 			"key":{"x":"","y":"hessian.eigenvalues"},
-			"slice":[0,100,null],			
 			"axis":[[0],[],[],[-1]]
 		},
 		{
 			"key":{"x":"","y":"fisher.eigenvalues"},
-			"slice":[0,100,null],						
 			"axis":[[0],[],[],[-1]]
 		}				
 		],	
@@ -106,12 +64,11 @@
 	"cwd":null,
 	"path": {
         "plot": "plot.pdf",
-        "process": "process.hdf5",
-        "settings":"plot.settings.json"             
+        "process": "process.hdf5"
     },
 	"delimiter":".",
-	"process":["src.postprocess.process"],
 	"process":[],
+	"process":["src.postprocess.process"],
 	"load":0,
 	"dump":1,
 	"plot":1
