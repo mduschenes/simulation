@@ -330,6 +330,7 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 	Args:
 		path (str): Path of file
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
+		default (str): Default pattern value to sed
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -342,10 +343,6 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 
 	delimiters = [',','#','/','$']
 	replacements = {}#{r"-":r"\-",r" ":r"\ ",r"#":r"\#"}
-
-	exe = ['sed']
-	flags = ['-i']
-	options = []
 
 	for pattern in patterns:
 
@@ -371,7 +368,11 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 		for replacement in replacements:
 			cmd = cmd.replace(replacement,replacements[replacement])
 
+
+		exe = ['sed']
+		flags = ['-i']
 		cmd = [cmd,path]
+		options = []
 		args = []
 
 		args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
