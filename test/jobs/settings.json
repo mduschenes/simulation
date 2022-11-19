@@ -1,0 +1,27 @@
+{
+"jobs":"job.slurm",
+"args":{
+	"JOB_CWD":"${SLURM_ARRAY_TASK_ID}",					
+	"JOB_ENV":"~/env/jax",
+	"JOB_SRC":".",
+	"JOB_CMD":"main.sh",
+	"JOB_PARALLELISM":"serial",
+	"JOB_ARGS":["settings.json","plot.json"]
+	},
+"paths":["./main.sh","./settings.json"],
+"patterns":{
+	"output":"%x.%A.stdout","error":"%x.%A.stderr",
+	"time":"01:00:00","mem":"64G",
+	"array":"0-0:1%100"
+	},
+"dependencies":[],
+"pwd":"config",
+"cwd":"data",
+"pause":1,	
+"process":"serial",
+"processes":null,
+"njobs":null,
+"device":"pc",
+"execute":1,
+"verbose":"info"
+}

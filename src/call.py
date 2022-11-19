@@ -16,7 +16,7 @@ for PATH in PATHS:
 
 from src.utils import intersection,scalars
 from src.system	 import Logger
-from src.io import cd,mkdir,join,split,load,dump
+from src.io import cd,mkdir,join,split,load,dump,exists
 from src.dictionary import updater
 
 name = __name__
@@ -27,165 +27,62 @@ file = None #'log.log'
 logger = Logger(name,conf,file=file)
 
 
-def _submit(job,args,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None,**kwargs):
+def command(args,exe=None,flags=None,cmd=None,options=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
-	Update submit arguments
+	Command
 	Args:
-		job (str): Submission script
-		args (dict[str,str],dict[str,iterable[str],iterable[iterable[str]]]): Arguments to pass to command line {arg:value} or {arg:[value]}
+		args (dict[str,str],dict[str,iterable[str],iterable[iterable[str]]],iterable[str]): Arguments to pass to command line {arg:value} or {arg:[value]} or [value]
+		exe (str,iterable[str]): Executable for args
+		flags (str,iterable[str]): Flags for args
+		cmd (str,iterable[str]): Command for args
+		options (str,iterable[str]): Options for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to update arguments
 	Returns:
-		args (iterable[str]): Updated submit arguments
+		args (iterable[str]): Command
 	'''
 
-	args = {arg: [args[arg]] if isinstance(args[arg],str) else [subarg if isinstance(subarg,str) else ' '.join(subarg) for subarg in args[arg]] 
-				for arg in args}
+	if isinstance(args,dict):
+		args = {arg: [args[arg]] if isinstance(args[arg],str) else [subarg if isinstance(subarg,str) else ' '.join(subarg) for subarg in args[arg]] 
+					for arg in args}
+	else:
+		args = {None:args}
+
+	exe = [] if exe is None else [exe] if isinstance(exe,str) else [*exe]
+	flags = [] if flags is None else [flags] if isinstance(flags,str) else [*flags]
+	cmd = [] if cmd is None else [cmd] if isinstance(cmd,str) else [*cmd]
+	options = [] if options is None else [options] if isinstance(options,str) else [*options]
 
 	if device in ['pc']:
-		exe = ['./%s'%(job)]
-		flags = []
-		cmd = [subarg for arg in args for subarg in args[arg]]
-		options = []		
+		exe = [*['./%s'%(e) for e in exe[:1]],*exe[1:]]
+		flags = [*flags]
+		cmd = [*cmd,*[subarg for arg in args for subarg in args[arg]]]
+		options = [*options]		
 	elif device in ['slurm']:
-		exe = ['sbatch']
+		exe,cmd = ['sbatch'],[*exe,*cmd]
 		flags = ['%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args])),'<']
-		cmd = [job]
 		options = []		
 	else:
-		exe = ['.',job]
-		flags = []
-		cmd = [subarg for arg in args for subarg in args[arg]]
-		options = []
+		exe = [*exe]
+		flags = [*flags]
+		cmd = [*cmd,*[subarg for arg in args for subarg in args[arg]]]
+		options = [*options]
 
-	if parallelism in ['parallel']:
-		options.extend(['&'])
-	elif parallelism in ['serial']:
-		options.extend([])		
-	else:
-		options.extend([])		
+	if process in ['serial']:
+		pass
+	elif process in ['parallel']:
+		processes = -1 if processes is None else processes
+		exe,flags,cmd,options = ['parallel'],['--jobs',processes,*exe,*flags,r'{}',*options,':::'],cmd,[]
+	elif process in ['array']:
+		pass
 
 	args = [*exe,*flags,*cmd,*options]
 
 	return args
-
-def _update(path,patterns,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None,**kwargs):
-	'''
-	Update submit patterns in-place
-	Args:
-		path (str): Path of file	
-		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
-		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
-		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
-		verbose (int,str,bool): Verbosity		
-		kwargs (dict): Additional keyword arguments to update
-	Returns:
-		default (str): Default pattern
-	'''
-
-	def wrapper(kwargs,string='.*'):
-		_wrapper = lambda pattern,string=string: str(pattern) if pattern is not None else string
-		_defaults = {
-			'pattern':'.*',
-			'value':'.*',
-			'prefix':'.*',
-			'postfix':'',
-			'default':''
-		}
-		kwargs.update({kwarg: kwargs.get(kwarg,_defaults[kwarg]) for kwarg in _defaults})
-		for kwarg in kwargs:
-			kwargs[kwarg] = _wrapper(kwargs[kwarg])
-		return
-
-	if device in ['pc']:
-		default = '#SBATCH'
-		def string(**kwargs):
-			wrapper(kwargs)
-			string = '%s%s --%s=%s%s'%(kwargs['prefix'],kwargs['default'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
-			return string
-	elif device in ['slurm']:
-		default = '#SBATCH'
-		def string(**kwargs):
-			wrapper(kwargs)
-			string = '%s%s --%s=%s%s'%(kwargs['prefix'],kwargs['default'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
-			return string		
-	else:
-		default = ''
-		def string(**kwargs):
-			wrapper(kwargs)
-			string = '%s%s=%s%s'%(kwargs['prefix'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
-			return string		
-
-	null = []
-
-	if process in ['serial']:
-		nulls = ['chdir','array']
-		null.extend(nulls)
-		patterns.update({
-			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir'] if pattern in patterns},
-			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
-							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stdout',
-							root=None)
-							for pattern in ['output'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
-							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stderr',
-							root=None)
-							for pattern in ['error'] if pattern in patterns},			
-			})
-	elif process in ['parallel']:
-		null.clear()
-		patterns.clear()
-	elif process in ['array']:
-		nulls = ['chdir']
-		null.extend(nulls)
-		patterns.update({
-			**{pattern: join(patterns.get(pattern),'.') for pattern in ['chdir'] if pattern in patterns},
-			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
-			**{pattern: '%s-%s:%s%%%s'%(
-				patterns.get(pattern,'').split('-')[0].split(':')[0].split('%')[0],
-				(str(int(patterns.get(pattern,'').split('-')[0].split(':')[0].split('%')[0])+kwargs.get('size',1)-1) if kwargs.get('size') is not None else patterns.get(pattern,'').split('-')[1].split(':')[0].split('%')[0]),
-				(str(kwargs.get('step')) if kwargs.get('step') is not None else patterns.get(pattern,'').split(':')[-1].split('%')[0]),
-				patterns.get(pattern,'').split('%')[-1]
-				) 
-				for pattern in ['array'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
-							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stdout',
-							root='%a')
-							for pattern in ['output'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
-							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stderr',
-							root='%a')
-							for pattern in ['error'] if pattern in patterns},			
-		})
-
-	patterns.update({
-		string(pattern=pattern,default=default): 
-		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='',default=default)
-		for pattern in list(patterns)
-		if pattern not in null
-		})
-
-	patterns.update({
-		string(pattern=pattern,default=default): 
-		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='#',default=default)
-		for pattern in list(null)
-		if search(path,string(pattern=pattern,default=default),execute=True,verbose=verbose) >= 0
-		})
-
-
-	for pattern in null:
-		patterns.pop(pattern,None)
-
-	return default
 
 
 class popen(object):
@@ -208,7 +105,7 @@ class popen(object):
 		except:
 			return
 
-def call(*args,path=None,wrapper=None,pause=None,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None,**kwargs):
+def call(*args,path=None,wrapper=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Submit call to command line
 	Args:
@@ -217,8 +114,7 @@ def call(*args,path=None,wrapper=None,pause=None,process=None,processes=None,par
 		wrapper (callable): Wrapper for stdout with signature wrapper(stdout,stderr,returncode)		
 		pause (int,str): Time to sleep after call
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
@@ -344,42 +240,43 @@ def call(*args,path=None,wrapper=None,pause=None,process=None,processes=None,par
 
 	return result
 
-def cp(source,destination,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None,**kwargs):
+def cp(source,destination,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Copy objects from source to destination
 	Args:
 		source (str): Path of source object
 		destination (str): Path of destination object
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to copy
 	'''
-	assert os.path.exists(source), "source %s does not exist"%(source)
+	assert exists(source), "source %s does not exist"%(source)
 
 	mkdir(destination)
 
 	exe = ['cp']
 	flags = ['-rf']
 	cmd = [source,destination]
-	args = [*exe,*flags,*cmd]
+	options = []
+	args = []
 
-	stdout = call(*args,process=process,processes=processes,parallelism=parallelism,device=device,execute=execute,verbose=verbose)
+	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	stdout = call(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
 
-def rm(path,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None,**kwargs):
+def rm(path,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Remove path
 	Args:
 		path (str): Path to remove
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
@@ -389,23 +286,25 @@ def rm(path,process=None,processes=None,parallelism=None,device=None,execute=Fal
 	exe = ['rm']
 	flags = ['-rf']
 	cmd = [path]
-	args = [*exe,*flags,*cmd]
+	options = []
+	args = []
 
-	stdout = call(*args,process=process,processes=processes,parallelism=parallelism,device=device,execute=execute,verbose=verbose)
+	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	stdout = call(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
 
 
-def echo(*args,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None,**kwargs):
+def echo(*args,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Echo arguments to command line
 	Args:
 		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
 		destination (str): Path of destination object
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
@@ -415,22 +314,24 @@ def echo(*args,process=None,processes=None,parallelism=None,device=None,execute=
 	exe = ['echo']
 	flags = []
 	cmd = args
-	args = [*exe,*flags,*cmd]
+	options = []
+	args = []
 
-	stdout = call(*args,process=process,processes=processes,parallelism=parallelism,device=device,execute=execute,verbose=verbose)
+	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	stdout = call(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
 
-def sed(path,patterns,default=None,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None):
+def sed(path,patterns,default=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	GNU sed replace patterns in path
 	Args:
 		path (str): Path of file
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
@@ -444,6 +345,7 @@ def sed(path,patterns,default=None,process=None,processes=None,parallelism=None,
 
 	exe = ['sed']
 	flags = ['-i']
+	options = []
 
 	for pattern in patterns:
 
@@ -470,22 +372,23 @@ def sed(path,patterns,default=None,process=None,processes=None,parallelism=None,
 			cmd = cmd.replace(replacement,replacements[replacement])
 
 		cmd = [cmd,path]
+		args = []
 
-		args=[*exe,*flags,*cmd]
+		args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-		result = call(*args,device=device,execute=execute,verbose=verbose)
+		stdout = call(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
 
 	return
 
 
-def sleep(pause=None,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None,**kwargs):
+def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Sleep for pause
 	Args:
 		pause (int): Time to sleep
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
@@ -498,28 +401,30 @@ def sleep(pause=None,process=None,processes=None,parallelism=None,device=None,ex
 	exe = ['sleep']
 	flags = []
 	cmd = [pause]
-	args = [*exe,*flags,*cmd]
+	options = []
+	args = []
 
-	stdout = call(*args,process=process,processes=processes,parallelism=parallelism,device=device,execute=execute,verbose=verbose)
+	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	stdout = call(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
 
 
-def search(path,pattern,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None):
+def search(path,pattern,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Search for pattern in file
 	Args:
 		path (str): Path of file
 		pattern (str): Pattern to search
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
 	Returns:
-		result (int): Line number of last pattern occurrence in file,or -1 if does not exist
+		stdout (int): Line number of last pattern occurrence in file,or -1 if does not exist
 	'''
 
 	replacements = {r"-":r"\-",r" ":r"\ ",r"#":r"\#"}
@@ -545,47 +450,149 @@ def search(path,pattern,process=None,processes=None,parallelism=None,device=None
 	exe = ['awk']
 	flags = []
 	cmd = [' /%s/ {print FNR}'%(pattern),path]
-	arg = [*exe,*flags,*cmd]
+	options = []
+	arg = [*exe,*flags,*cmd,*options]
 	args.append(arg)
 
 	exe = ['tail']
 	flags = ['--lines=1']
 	cmd = []
-	arg = [*exe,*flags,*cmd]
+	options = []
+	arg = [*exe,*flags,*cmd,*options]
 	args.append(arg)
+	
+	exe = []
+	flags = []
+	cmd = []
+	options = []
 
-	result = call(*args,wrapper=wrapper,process=process,processes=processes,parallelism=parallelism,device=device,execute=execute,verbose=verbose)
+	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-	return result
+	stdout = call(*args,wrapper=wrapper,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return stdout
 
 	
-def update(path,patterns,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None,**kwargs):
+def update(path,patterns,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''	
 	Update path files with sed
 	Args:
 		path (str): Path of file
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity		
 		kwargs (dict): Additional keyword arguments to update
 	'''
+
+	def wrapper(kwargs,string='.*'):
+		_wrapper = lambda pattern,string=string: str(pattern) if pattern is not None else string
+		_defaults = {
+			'pattern':'.*',
+			'value':'.*',
+			'prefix':'.*',
+			'postfix':'',
+			'default':''
+		}
+		kwargs.update({kwarg: kwargs.get(kwarg,_defaults[kwarg]) for kwarg in _defaults})
+		for kwarg in kwargs:
+			kwargs[kwarg] = _wrapper(kwargs[kwarg])
+		return
+
 	if path is None or patterns is None:
 		return
 
 	patterns = deepcopy(patterns)
 
-	default = _update(path,patterns,process=process,processes=processes,parallelism=parallelism,device=device,**kwargs)
+	if device in ['pc']:
+		default = '#SBATCH'
+		def string(**kwargs):
+			wrapper(kwargs)
+			string = '%s%s --%s=%s%s'%(kwargs['prefix'],kwargs['default'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
+			return string
+	elif device in ['slurm']:
+		default = '#SBATCH'
+		def string(**kwargs):
+			wrapper(kwargs)
+			string = '%s%s --%s=%s%s'%(kwargs['prefix'],kwargs['default'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
+			return string		
+	else:
+		default = ''
+		def string(**kwargs):
+			wrapper(kwargs)
+			string = '%s%s=%s%s'%(kwargs['prefix'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
+			return string		
+
+	null = []
+
+	if process in ['serial']:
+		nulls = ['chdir','array']
+		null.extend(nulls)
+		patterns.update({
+			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir'] if pattern in patterns},
+			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
+			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
+							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stdout',
+							root=None)
+							for pattern in ['output'] if pattern in patterns},
+			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
+							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stderr',
+							root=None)
+							for pattern in ['error'] if pattern in patterns},			
+			})
+	elif process in ['parallel']:
+		null.clear()
+		patterns.clear()
+	elif process in ['array']:
+		nulls = ['chdir']
+		null.extend(nulls)
+		patterns.update({
+			**{pattern: join(patterns.get(pattern),'.') for pattern in ['chdir'] if pattern in patterns},
+			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
+			**{pattern: '%s-%s:%s%%%s'%(
+				patterns.get(pattern,'').split('-')[0].split(':')[0].split('%')[0],
+				(str(int(patterns.get(pattern,'').split('-')[0].split(':')[0].split('%')[0])+kwargs.get('size',1)-1) if kwargs.get('size') is not None else patterns.get(pattern,'').split('-')[1].split(':')[0].split('%')[0]),
+				(str(kwargs.get('step')) if kwargs.get('step') is not None else patterns.get(pattern,'').split(':')[-1].split('%')[0]),
+				patterns.get(pattern,'').split('%')[-1]
+				) 
+				for pattern in ['array'] if pattern in patterns},
+			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
+							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stdout',
+							root='%a')
+							for pattern in ['output'] if pattern in patterns},
+			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
+							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stderr',
+							root='%a')
+							for pattern in ['error'] if pattern in patterns},			
+		})
+
+	patterns.update({
+		string(pattern=pattern,default=default): 
+		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='',default=default)
+		for pattern in list(patterns)
+		if pattern not in null
+		})
+
+	patterns.update({
+		string(pattern=pattern,default=default): 
+		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='#',default=default)
+		for pattern in list(null)
+		if search(path,string(pattern=pattern,default=default),execute=True,verbose=verbose) >= 0
+		})
+
+
+	for pattern in null:
+		patterns.pop(pattern,None)
+
 
 	sed(path,patterns,default=default,execute=execute,verbose=verbose)
 
 	return
 
 
-def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None,**kwargs):
+def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Configure paths for jobs with copied/updated files
 	Args:
@@ -594,8 +601,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,pa
 		cwd (str): Output root path for files
 		patterns (dict[str,dict[str,str]]): Patterns and values to update {path:{pattern: replacement}}
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
@@ -624,12 +630,14 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,pa
 			updater(source,data,func=lambda key,iterable,elements: iterable.get(key,elements[key]))
 			dump(source,destination)					
 		else:
+			if not exists(source):
+				source = path
 			cp(source,destination,execute=execute,verbose=verbose)
 
 	return
 
 
-def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pause=None,process=None,processes=None,parallelism=None,device=None,execute=False,verbose=None):
+def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',farming=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands as tasks to command line
 	Args:
@@ -640,10 +648,10 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
+		farming (int): Number of subtasks per task (parallelized with processes number of parallel processes)
 		pause (int,str): Time to sleep after call		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
-		processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance		
-		parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
 		execute (boolean): Boolean whether to issue commands
 		verbose (int,str,bool): Verbosity
@@ -706,7 +714,6 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	results = []
 	tasks = []
 
-	paths,pwd,cwd,patterns,process,processes,parallelism,device,execute,verbose
 	kwargs = {
 		key:{
 			'index': [str(i) for i in unique[cwd[key]][key]],
@@ -734,9 +741,14 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		path = join(path,root=cwd[key])
 
-		configure(pwd=pwd[key],cwd=path,paths=paths[key],patterns=patterns[key],process=process,processes=None,parallelism=None,device=device,execute=True,**kwargs[key])
+		configure(pwd=pwd[key],cwd=path,paths=paths[key],patterns=patterns[key],process=process,processes=None,device=device,execute=True,**kwargs[key])
 
-		cmd = _submit(job=jobs[key],args=args[key],process=process,processes=None,parallelism=None,device=device,execute=True)
+		exe = jobs[key]
+		flags = []
+		cmd = []
+		options = []
+
+		cmd = command(args[key],exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=None,device=device,execute=True,verbose=verbose)
 
 		cmds[key] = cmd
 
@@ -784,11 +796,14 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		source = join(job,root=pwd[key])
 		destination = join(job,root=path)
 
+		if not exists(source):
+			source = job
 		cp(source,destination,execute=True)
 
-		update(destination,patterns[key],process=process,processes=None,parallelism=None,device=device,execute=True,**kwargs[key])
 
-		result = call(*cmd,path=path,pause=pause,process=process,processes=None,parallelism=None,device=device,execute=execute,verbose=verbose)
+		update(destination,patterns[key],process=process,processes=None,device=device,execute=True,**kwargs[key])
+
+		result = call(*cmd,path=path,pause=pause,process=process,processes=None,device=device,execute=execute,verbose=verbose)
 
 		results.append(result)
 
@@ -806,10 +821,10 @@ def launch(jobs={},wrapper=None):
 			dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
+			farming (int): Number of subtasks per task (parallelized with processes number of parallel processes)
 			pause (int,str): Time to sleep after call		
 			process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
-			processes (int,iterable[int]): Number of processes or iterable of number of nested processes for process instance			
-			parallelism (str): Type of parallelism, allowed strings in ['serial','parallel']
+			processes (int): Number of processes per command			
 			device (str): Name of device to submit to
 			execute (boolean): Boolean whether to issue commands
 			verbose (int,str,bool): Verbosity
