@@ -10,10 +10,9 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import PRNGKey,delim,partial,union,is_equal
-from src.dictionary import updater,getter,setter,permuter,clearer,leaves,grow
+from src.utils import PRNGKey,delim,union,is_equal
+from src.dictionary import updater,getter,setter,permuter,clearer,leaves
 from src.io import load,dump,join,split
-from src.process import process
 from src.call import launch
 
 
