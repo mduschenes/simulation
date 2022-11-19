@@ -73,6 +73,14 @@ then
 	conda remove --name ${env} --all
 fi
 
+
+# Setup activation scripts
+source=conda
+destination=${envs}/env/etc/conda/activate.d
+
+cp ${scripts}/* ${destination}/
+
+
 # Activate environment
 # conda activate ${env}
 source activate ${envs}/${env}
