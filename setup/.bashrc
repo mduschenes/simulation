@@ -33,6 +33,7 @@ alias scr="/scratch/gobi3/${USER}"
 
 # Functions
 
+# Git Add, Commit, Push Changes
 function gips(){
 	msg="${@}";
 
@@ -45,6 +46,23 @@ function gips(){
 
 	git commit -a -m "${msg}";
 	git push;
+	return 0
+}
+
+# Git Pull, Checkout, Merge, Push Changes
+function gims(){
+	branch=${1:-master}
+	current=$(git name-rev --name-only HEAD)
+
+	git status;
+
+	git pull
+	git checkout ${branch}
+	git pull
+	git checkout ${current}
+	git merge ${branch}
+	git push
+
 	return 0
 }
 
