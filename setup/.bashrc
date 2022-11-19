@@ -9,11 +9,11 @@ export PATH="$PATH:~/.local/bin"
 alias breset="source ~/.bashrc"
 alias lsh="ls -lht"
 alias subl="rmate"
+alias mlab="matlab -nodisplay -nojvm -batch"
 alias gis="git status"
 alias bjob="squeue | grep ${USER}"
 alias ijob='bjob | awk "{ print \$1 }" '
 alias njob="bjob | wc -l"
-alias scr="/scratch/gobi3/${USER}"
 
 # SSH
 {
@@ -24,7 +24,6 @@ alias scr="/scratch/gobi3/${USER}"
 
 # Functions
 
-# Git Add, Commit, Push Changes
 function gips(){
 	msg="${@}";
 
@@ -37,23 +36,6 @@ function gips(){
 
 	git commit -a -m "${msg}";
 	git push;
-	return 0
-}
-
-# Git Pull, Checkout, Merge, Push Changes
-function gims(){
-	branch=${1:-master}
-	current=$(git name-rev --name-only HEAD)
-
-	git status;
-
-	git pull
-	git checkout ${branch}
-	git pull
-	git checkout ${current}
-	git merge ${branch}
-	git push
-
 	return 0
 }
 
@@ -86,30 +68,30 @@ function bint(){
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/pkgs/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "/pkgs/anaconda3/etc/profile.d/conda.sh" ]; then
-        . "/pkgs/anaconda3/etc/profile.d/conda.sh"
-    else
-        export PATH="/pkgs/anaconda3/bin:$PATH"
-    fi
-fi
-unset __conda_setup
+# __conda_setup="$('/pkgs/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+# if [ $? -eq 0 ]; then
+#     eval "$__conda_setup"
+# else
+#     if [ -f "/pkgs/anaconda3/etc/profile.d/conda.sh" ]; then
+#         . "/pkgs/anaconda3/etc/profile.d/conda.sh"
+#     else
+#         export PATH="/pkgs/anaconda3/bin:$PATH"
+#     fi
+# fi
+# unset __conda_setup
 
-# <<< conda initialize <<<
+# # <<< conda initialize <<<
 
-export -f conda
-export -f __conda_activate
-export -f __conda_reactivate
-export -f __conda_hashr	
-export -f __add_sys_prefix_to_path
+# export -f conda
+# export -f __conda_activate
+# export -f __conda_reactivate
+# export -f __conda_hashr	
+# export -f __add_sys_prefix_to_path
 
 
 # Activate environment
-env=jax
-conda activate ${env}
+# env=jax
+# conda activate ${env}
 # source activate ${HOME}/env/${env}
 # source ${HOME}/env/${env}.env
 
@@ -140,26 +122,26 @@ if [ -n "$force_color_prompt" ]; then
 	color_prompt=
     fi
 fi
+if [ "$color_prompt" = yes ]; then
+    PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+else    
+    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+fi
+unset color_prompt force_color_prompt
 
-# if [ "$color_prompt" = yes ]; then
-#     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
-# else    
-#     PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
-# fi
-# unset color_prompt force_color_prompt
+# If this is an xterm set the title to user@host:dir
+case "$TERM" in
+xterm*|rxvt*)
+    # PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]\$ "
+    # PROMPT_COMMAND='echo -ne "${USER}@${HOSTNAME}:${PWD/#$HOME/~}"'
+    ;;
+*)
+   # PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+    ;;
+esac
 
-# # If this is an xterm set the title to user@host:dir
-# case "$TERM" in
-# xterm*|rxvt*)
-#     PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-#     PROMPT_COMMAND='echo -ne "${USER}@${HOSTNAME}:${PWD/#$HOME/~}"'
-#     ;;
-# *)
-# #    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-#     ;;
-# esac
-
-PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+PS1="[\t]\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\W\[\033[00m\]\$ "
+PROMPT_COMMAND='echo -ne "\033]0;${USER}@${HOSTNAME}: ${PWD/$HOME/~}\007"'
 
 
 # enable color support of ls and also add handy aliases
@@ -176,3 +158,7 @@ fi
 
 # colored GCC warnings and errors
 #export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+# Source global definitions
+# if [ -f /etc/bashrc ]; then
+# 	. /etc/bashrc
+# fi

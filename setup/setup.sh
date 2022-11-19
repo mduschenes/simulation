@@ -11,11 +11,11 @@ install=${2:-"reinstall"}
 # Silent yes to all commands ["yes","no"]
 yes=${3}
 
-pkgs=${HOME}/miniconda3
-envs=${HOME}/miniconda/envs
+# pkgs=${HOME}/miniconda3
+# envs=${HOME}/miniconda/envs
 
 # pkgs=/pkgs/anaconda3
-# envs=${HOME}/env
+envs=${HOME}/env
 
 channels=(intel conda-forge)
 requirements=requirements.txt
@@ -26,12 +26,12 @@ mkdir -p ${envs}
 
 if [[ -z $(grep ${pkgs}/bin <<< ${PATH}) ]] && ( [[ -f ${pkgs}/bin ]] || [[ -d ${pkgs}/bin ]] )
 then
-	export PATH=${pkgs}/bin:${PATH}
+	export PATH=${PATH}
 fi
 
 if [[ -z $(grep ${pkgs}/lib <<< ${PATH}) ]] && ( [[ -f ${pkgs}/lib ]] || [[ -d ${pkgs}/lib ]] )
 then
-	export LD_LIBRARY_PATH=${pkgs}/lib:${LD_LIBRARY_PATH}
+	export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
 fi
 
 if [[ -z $(grep ${envs}/${env} <<< ${PYTHONPATH}) ]] && ( [[ -f ${envs}/${env} ]] || [[ -d ${envs}/${env} ]] )
@@ -40,42 +40,25 @@ then
 fi
 
 
-# Setup conda
-__conda_setup="$('${pkgs}/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
-if [ $? -eq 0 ]; then
-    eval "$__conda_setup"
-else
-    if [ -f "${pkgs}/etc/profile.d/conda.sh" ]; then
-        . "${pkgs}/etc/profile.d/conda.sh"
-    else
-        export PATH="${pkgs}/bin:$PATH"
-    fi
-fi
-unset __conda_setup
-
-
 # Setup environment
 if [ "${install}" == "reinstall" ]
 then
-	conda deactivate
+	deactivate
 	
-	conda config --remove envs_dirs ${envs} &>/dev/null 2>&1
-	conda config --append envs_dirs ${envs} &>/dev/null 2>&1
-
-	conda remove --name ${env} --all
-
-	conda create --prefix ${envs}/${env}
+	virtualenv --no-download ${envs}/${env}
 
 elif [ "${install}" == "uninstall" ]
 then
-	conda deactivate
+	deactivate
 
-	conda remove --name ${env} --all
+	rm -rf ${envs}/env
 fi
 
 # Activate environment
 # conda activate ${env}
-source activate ${envs}/${env}
+source ${envs}/${env}/bin/activate
+module load python/3.8
+source ${envs}/${env}/bin/activate
 
 # Install packages
 
@@ -85,22 +68,12 @@ requirements=(${requirements}.tmp.*)
 
 # Get installation options
 options=()
-for channel in ${channels[@]}
-do 
-	conda config --remove channels ${channel} &>/dev/null 2>&1
-	conda config --append channels ${channel} &>/dev/null 2>&1
-	options+=("--channel" ${channel})
-done
-
-if [ ! -z ${yes} ] && [ ${yes} == "yes" ]
-then
-	options+=("--yes")
-fi
+options+=(--no-index)
 
 # Install packages
 for file in ${requirements[@]}
 do
-	conda install --file ${file} ${options[@]}
+	pip install -r ${file} ${options[@]}
 done
 
 rm ${requirements[@]} 
@@ -147,7 +120,3 @@ rm ${requirements[@]}
 # destination=${HOME}
 
 # cp ${source} ${destination}
-
-# Allow larger linux stack space for cli arguments
-# cache=16384
-# ulimit -s ${cache}
