@@ -149,7 +149,8 @@
 	"reset":0,
 	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":1,"track":1,"attributes":10,"callback":1,"restart":1e10,"dump":1e10},
+	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":null},
+	"length":{"log":null,"attributes":10,"track":null,"callback":null,"restart":null,"dump":null},
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],

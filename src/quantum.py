@@ -717,13 +717,17 @@ class Object(object):
 
 		default = nan
 
-		if ((not status) or done or start) or (len(attributes['iteration']) == 0) or (attributes['iteration'][-1]%optimize['modulo']['track'] == 0):	
+		if (((not status) or done or start) or 
+			(len(attributes['iteration']) == 0) or 
+			(optimize['modulo']['track'] is None) or 
+			(attributes['iteration'][-1]%optimize['modulo']['track'] == 0)
+			):	
 
 			for attr in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
 
 				if attr in optimize['track']:
 
-					if len(optimize['track'][attr]) >= (optimize['iterations']//optimize['modulo']['track'] + 1):
+					if len(optimize['track'][attr]) >= (optimize['length']['track'] + 1):
 						optimize['track'][attr].pop(0)
 
 					if attr in ['iteration','value','grad','search','alpha','beta'] and attr in attributes:
@@ -747,7 +751,11 @@ class Object(object):
 						optimize['track'][attr].append(default)
 
 
-		if len(attributes['iteration']) == 0 or attributes['iteration'][-1]%optimize['modulo']['log'] == 0:			
+
+		if ((len(attributes['iteration']) == 0) or 
+			(optimize['modulo']['log'] is None) or 
+			(attributes['iteration'][-1]%optimize['modulo']['log'] == 0)
+			):
 
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
@@ -780,7 +788,11 @@ class Object(object):
 
 
 			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
-		if ((not status) or done) or ((attributes['iteration'][-1])%optimize['modulo']['dump'] == 0):
+		if (((not status) or done or start) or
+			(len(attributes['iteration']) == 0) or 
+			(optimize['modulo']['dump'] is None) or 
+			(attributes['iteration'][-1]%optimize['modulo']['dump'] == 0)
+			):
 			self.dump()
 
 		return status

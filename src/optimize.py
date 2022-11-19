@@ -625,7 +625,8 @@ class Base(object):
 			'status':1,
 			'reset':0,
 			'verbose':False,
-			'modulo':{'log':1,'attributes':1e10,'callback':1,'restart':1e10,'dump':1e10},
+			'modulo':{'log':None,'attributes':None,'callback':None,'restart':None,'dump':None},
+			'length':{'log':None,'attributes':10,'callback':None,'restart':None,'dump':None},
 			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
 
@@ -646,9 +647,10 @@ class Base(object):
 		self.parameters = None
 		self.optimizer = hyperparameters['optimizer']		
 		self.modulo = hyperparameters['modulo']
+		self.length = hyperparameters['length']
 		self.attributes = hyperparameters['attributes']
 		self.iterations = range(int(hyperparameters['iterations']))
-		self.sizes = self.modulo['attributes']
+		self.sizes = hyperparameters['length']['attributes']
 		self.status = hyperparameters['status']
 		self.eps = hyperparameters['eps']
 		self.reset = hyperparameters['reset']
@@ -948,7 +950,7 @@ class ConjugateGradient(Base):
 		beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
-		restart = (iteration%self.modulo['restart']) == 0
+		restart = ((self.modulo.get('restart') is None) or ((iteration%self.modulo['restart']) == 0))
 		beta = 0 if (restart or is_naninf(beta) or beta>self.eps['beta']) else beta
 		search = -_grad + beta*search
 
