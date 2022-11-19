@@ -742,14 +742,14 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		path = join(path,root=cwd[key])
 
-		configure(pwd=pwd[key],cwd=path,paths=paths[key],patterns=patterns[key],process=process,processes=None,device=device,execute=True,**kwargs[key])
+		configure(pwd=pwd[key],cwd=path,paths=paths[key],patterns=patterns[key],process=process,processes=processes,device=device,execute=execute,**kwargs[key])
 
 		exe = jobs[key]
 		flags = []
 		cmd = []
 		options = []
 
-		cmd = command(args[key],exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=None,device=device,execute=True,verbose=verbose)
+		cmd = command(args[key],exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 		cmds[key] = cmd
 
@@ -799,10 +799,10 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		if not exists(source):
 			source = job
-		cp(source,destination,execute=True)
+		cp(source,destination,execute=execute)
 
 
-		update(destination,patterns[key],process=process,processes=None,device=device,execute=True,**kwargs[key])
+		update(destination,patterns[key],process=process,processes=None,device=device,execute=execute,**kwargs[key])
 
 		result = call(*cmd,path=path,pause=pause,process=process,processes=None,device=device,execute=execute,verbose=verbose)
 

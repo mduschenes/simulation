@@ -28,6 +28,7 @@ function RUN(){
 
 	echo $(pwd) $(date '+%Y-%m-%d %H:%M:%S')
 
+	mkdir -p ${TASK}
 	cd ${TASK}
 
 	${CMDS[@]}
@@ -38,8 +39,7 @@ function RUN(){
 	cd ${CWD}
 
 }
-
-# export SLURM_ARRAY_TASK_ID=0
+export -f RUN
 
 # Job
 export JOB_ID=${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
@@ -50,7 +50,7 @@ export JOB_CWD=${1:-${JOB_CWD:-${JOB_TASK:-"."}}}
 export JOB_ENV=${2:-${JOB_ENV}}
 export JOB_SRC=${3:-${JOB_SRC}}
 export JOB_CMD=${4:-${JOB_CMD}}
-export JOB_PARALLELISM=${5:-"serial"}
+export JOB_PROCESSES=${5:-1}
 shift 5;
 export JOB_ARGS=${@:-${JOB_ARGS}}
 
@@ -68,28 +68,9 @@ export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
 CMD=($(echo ${CMD[@]/\~/"${HOME}"} | envsubst))
 
-echo job_cwd ${JOB_CWD[@]}
-
 # Processes
-PROCESSES=()
-CWD=${JOB_PWD}
 TASKS=(${JOB_CWD[@]})
-PARALLELISM=${JOB_PARALLELISM}
-for TASK in ${TASKS[@]}
-do
-	if [[ "${PARALLELISM}" == "parallel" ]]
-	then
-		RUN ${TASK} ${CMD[@]} &
-	elif [[ "${PARALLELISM}" == "serial" ]]
-	then
-		RUN ${TASK} ${CMD[@]}
-	else
-		RUN ${TASK} ${CMD[@]}
-	fi
+JOBS=${JOB_PROCESSES}
 
-	PROCESSES+=($!)
-	
-done
-
-wait ${PROCESSES[@]}
-
+echo parallel --jobs ${JOBS} --env _ RUN {} ${CMD[@]} ::: ${TASKS[@]}
+parallel --jobs ${JOBS} --env _ RUN {} ${CMD[@]} ::: ${TASKS[@]}
