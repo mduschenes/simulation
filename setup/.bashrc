@@ -59,8 +59,6 @@ function gims(){
 	git merge ${branch}
 	git push
 
-	git commit -a -m "${msg}";
-	git push;
 	return 0
 }
 
