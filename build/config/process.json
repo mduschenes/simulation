@@ -57,7 +57,7 @@
 			"key":{"x":"M","y":"objective"},
 			"slice":[0,null,null],
 			"stat":[["linear","linear"]],
-			"label":{"noise.scale":[1e-8,1e-6,1e-5,5e-5,1e-4,5e-4,1e-3,1e-1]}
+			"label":{"noise.scale":null}
 		},		
 		{
 			"key":{"x":"","y":"parameters"},

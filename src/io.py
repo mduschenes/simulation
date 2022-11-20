@@ -28,6 +28,7 @@ from src.utils import to_repr,to_eval
 from src.utils import returnargs
 from src.utils import scalars,nan
 
+
 class cd(object):
 	'''
 	Class to safely change paths and return to previous path
@@ -49,6 +50,17 @@ class cd(object):
 	def __exit__(self,etype, value, traceback):
 		os.chdir(self.cwd)
 		return
+
+
+def environ():
+	'''
+	Get environmental variables
+	Returns:
+		environ (dict): Environmental variables
+	'''
+
+	return os.environ
+
 
 
 def exists(path):
@@ -860,3 +872,23 @@ def setup(args,defaults=[]):
 		returns += (value,)
 
 	return returnargs(returns)
+
+class popen(object):
+	'''
+	Class to safely enter process
+	Args:
+		path (str): Path to change to
+	'''
+	def __init__(self,cls):
+		self.cls = cls
+		return
+	def __enter__(self,*args,**kwargs):
+		try:
+			return self.cls.__enter__(*args,**kwargs)
+		except:
+			return self.cls
+	def __exit__(self,etype, value, traceback):
+		try:
+			return self.cls.__exit__(etype, value, traceback)
+		except:
+			return

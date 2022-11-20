@@ -1226,10 +1226,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 										if j >= subsubsize:
 											continue
 
-										sublabel = parameter.get('label',{}) if parameter is not None else {}
+										sublabel = parameter.get('label',{}) if parameter is not None and parameter.get('label') is not None else {}
 
 										if not all(dict(combination).get(attr) in sublabel[attr]
-												for attr in sublabel):
+												for attr in sublabel if sublabel.get(attr) is not None):
 											continue
 
 										substatistics = set(stat 

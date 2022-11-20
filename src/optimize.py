@@ -650,7 +650,7 @@ class Base(object):
 		self.length = hyperparameters['length']
 		self.attributes = hyperparameters['attributes']
 		self.iterations = range(int(hyperparameters['iterations']))
-		self.sizes = hyperparameters['length']['attributes']
+		self.sizes = hyperparameters['length'].get('attributes')
 		self.status = hyperparameters['status']
 		self.eps = hyperparameters['eps']
 		self.reset = hyperparameters['reset']
@@ -751,7 +751,7 @@ class Base(object):
 		parameters = self.get_params(state)
 		value,grad = self.value_and_grad(parameters)
 
-		if self.size >= self.sizes:
+		if (self.sizes is not None) and (self.size >= self.sizes):
 			for attr in self.attributes:
 				self.attributes[attr].pop(0)
 

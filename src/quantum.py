@@ -727,7 +727,9 @@ class Object(object):
 
 				if attr in optimize['track']:
 
-					if len(optimize['track'][attr]) >= (optimize['length']['track'] + 1):
+					if ((optimize['length']['track'] is not None) and 
+						(len(optimize['track'][attr]) >= (optimize['length']['track'] + 1))
+						):
 						optimize['track'][attr].pop(0)
 
 					if attr in ['iteration','value','grad','search','alpha','beta'] and attr in attributes:
@@ -742,12 +744,10 @@ class Object(object):
 							)
 					
 					elif attr in ['hessian','fisher'] and ((not status) or done):
-						print('DOIng fisher')
 						optimize['track'][attr].append(
 							getattr(self,'__%s__'%(attr))(parameters)
 							)
 					else:
-						print('Not doing',attr,not status,done)
 						optimize['track'][attr].append(default)
 
 
@@ -1148,7 +1148,6 @@ class Object(object):
 
 				elif attr in ['hessian','fisher']:
 					if isinstance(value[attr],array):
-						print('processing fisher',value['iteration'])
 						new = '%s.eigenvalues'%(attr)						
 						New  = sort(abs(eig(value[attr],compute_v=False,hermitian=True)))[::-1]
 						New = New/max(1,maximum(New))

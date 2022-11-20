@@ -196,43 +196,57 @@
 	"job":{
 		"jobs":"job.slurm",
 		"args":{
-			"JOB_ENV":"~/env/jax",
-			"JOB_SRC":"~/files/uw/research/projects/simulation/code/src",
-			"JOB_SRC":"~/code/simulation/src",
+			"JOB_CWD":null,					
+			"JOB_ENV":"mkl",
+			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
+			"JOB_PROCESSES":2,
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{},
-		"patterns":{"array":"0-0:1%100","time":"04:00:00","mem":"12G"},
+		"patterns":{
+			"output":"%x.%A.stdout","error":"%x.%A.stderr",
+			"time":"01:00:00","mem":"64G",
+			"ntasks-per-node":"1",
+			"cpus-per-task":"${SLURM_CPUS_PER_TASK}",
+			"cpus-per-task":"1",
+			"mem-per-cpu":"64G",			
+			"array":"0-0:1%100"
+			},
 		"dependencies":[],
 		"pwd":"config",
 		"cwd":"test",
+		"pool":2,
 		"pause":1,	
 		"process":"serial",
-		"process":"array",
+		"processes":null,
 		"device":"pc",
-		"device":"slurm",
 		"execute":1,
 		"verbose":"info"
 		},
 	"postprocess":{
 		"jobs":"postprocess.slurm",
 		"args":{
-			"JOB_ENV":"~/env/jax",
-			"JOB_SRC":"~/files/uw/research/projects/simulation/code/src",
-			"JOB_SRC":"~/code/simulation/src",
+			"JOB_CWD":null,
+			"JOB_ENV":"mkl",
+			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
-			"JOB_ARGS":[]
+			"JOB_PROCESSES":1,			
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.json","--hyperparameters=**/process.json","--cwd=."]
 			},
-		"paths":{},
-		"patterns":{"array":"0-0:1%100","time":"04:00:00","mem":"12G","dependency":"afterany:"},
+		"patterns":{
+			"output":"%x.%A.stdout","error":"%x.%A.stderr",
+			"time":"01:00:00","mem":"64G",
+			"dependency":"afterany:"
+			},
 		"dependencies":[],	
 		"pwd":"config",
 		"cwd":"test",
+		"pool":null,		
 		"pause":1,	
 		"process":"serial",
+		"processes":null,
 		"device":"pc",
-		"device":"slurm",
 		"execute":1,
 		"verbose":"info"
 		}
