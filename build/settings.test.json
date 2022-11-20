@@ -1,6 +1,6 @@
 {
 "class":"src.quantum.Unitary",
-"hyperparameters":"settings.test.json",
+"hyperparameters":"settings.json",
 "sys":{
 	"cwd":null,
 	"path":{
@@ -12,8 +12,8 @@
 			},
 		"config":{
 			"settings":"settings.json",
-			"plot":"plot.test.json",
-			"process":"process.test.json",
+			"plot":"plot.json",
+			"process":"process.json",
 			"mplstyle":"plot.mplstyle",
 			"logger":"logging.conf"
 			}
@@ -26,36 +26,42 @@
 	"plot":0
 	},
 "seed":{
-	"seed":787945,
+	"seed":5576,
+	"size":10,
 	"size":1,
-	"reset":787945,
+	"reset":5576,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
 		"model.N":[2],
-		"model.M":[10,20,50],
-		"model.tau":[100e0],
-		"noise.scale":[null],	
-		"state.scale":[null],
-		"model.metric":["infidelity.abs"],
-		"optimize.iterations":[200],
+		"model.M":[4,8,16,64],
+		"model.M":[4,8,16,64],
+		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
+		"noise.scale":[1e-5,1e-2],
+		"state.scale":[1],
+		"model.metric":["infidelity.norm"],
+		"optimize.iterations":[10],
+		"optimize.optimizer":["cg"],
+		"parameters.xy.method":["unconstrained"],
+		"model.system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["test"],
-		"jobs.postprocess.cwd":["test"],
-		
-		"parameters.xy.method":["constrained"],
-		"model.system.architecture":["constrained"],
-
+		"jobs.job.cwd":["test"],	
+		"jobs.postprocess.cwd":["test"],					
 		"jobs.job.device":["slurm"],
-		"jobs.job.process":["array"],
-		"jobs.job.execute":[1],
-		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.device":["slurm"],
-		"jobs.postprocess.process":["serial"],
-		"jobs.postprocess.execute":[1],
-		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"]
+		"jobs.job.process":["array"],
+		"jobs.postprocess.process":[null],
+		"jobs.job.pool":[1],
+		"jobs.postprocess.pool":[1],
+		"jobs.job.execute":[1],	
+		"jobs.postprocess.execute":[1],	
+		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
+		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
+		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.postprocess.args.JOB_PROCESSES":[1],		
+
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null
@@ -66,19 +72,19 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":5,
+	"M":200,
 	"T":null,
-	"tau":1,
+	"tau":5e1,
 	"p":2,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"metric":"infidelity.abs",
+	"metric":"infidelity.norm",
 	"system":{
 		"dtype":"complex",
 		"format":"array",
 		"key":null,
-		"seed":null,
+		"seed":1234321,
 		"timestamp":null,
 		"architecture":null,
 		"device":"cpu",
@@ -86,7 +92,7 @@
 		}
 	},
 "optimize":{
-	"iterations":200,
+	"iterations":50,
 	"optimizer":"cg",
 	"line_search":"line_search",
 	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-8,"alpha":1e-20,"beta":1e3},
@@ -95,7 +101,8 @@
 	"reset":0,
 	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":1,"track":1,"attributes":10,"callback":1,"restart":1e10,"dump":1e10},
+	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":100},
+	"length":{"log":null,"attributes":10,"track":null,"callback":null,"restart":null,"dump":null},
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
@@ -105,8 +112,7 @@
 		"iteration":[],"objective":[],"parameters":[],
 		"parameters":[],
 		"value":[],
-		"alpha":[],"beta":[],
-		"fisher":[]
+		"alpha":[],"beta":[]
 		}
 	},
 "parameters":{
@@ -115,8 +121,8 @@
 		"category":"variable",
 		"method":"constrained",
 		"use":true,		
-		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
+		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -127,11 +133,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -161,7 +167,7 @@
 		"method":null,		
 		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[0.000724,-0.000130,0.00005,0.0008,0.00002,0.0002,-0.0003,0.000060,0.00009,-0.000006],
+		"parameters":[0.000724,-0.000130,0.005,0.008,0.0002,0.002,-0.0003,0.0060,0.0009,-0.0006],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
@@ -199,7 +205,7 @@
 	"string":"random",
 	"category":"constant",
 	"shape":[1,1,-1,-1],
-	"scale":null,
+	"scale":1,
 	"initialization":"random",
 	"random":"haar",
 	"seed":null,
@@ -209,7 +215,7 @@
 	"string":"phase",
 	"category":"constant",
 	"shape":[2,-1,-1],
-	"scale":null,
+	"scale":1e-6,
 	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,
@@ -220,57 +226,58 @@
 	"job":{
 		"jobs":"job.slurm",
 		"args":{
-			"JOB_CWD":"${SLURM_ARRAY_TASK_ID}",					
-			"JOB_ENV":"~/env/jax",
-			"JOB_SRC":"~/code/simulation/src",
+			"JOB_CWD":null,					
+			"JOB_ENV":"mkl",
+			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
-			"JOB_PARALLELISM":"serial",
+			"JOB_PROCESSES":1,
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{},
 		"patterns":{
 			"output":"%x.%A.stdout","error":"%x.%A.stderr",
-			"time":"06:00:00","mem":"128G",
+			"time":"01:00:00","mem":"64G",
+			"ntasks-per-node":"1",
+			"cpus-per-task":"${SLURM_CPUS_PER_TASK}",
+			"cpus-per-task":"1",
+			"mem-per-cpu":"64G",			
 			"array":"0-0:1%100"
 			},
 		"dependencies":[],
 		"pwd":"config",
 		"cwd":"test",
+		"pool":null,
 		"pause":1,	
 		"process":"serial",
-		"process":"array",
 		"processes":null,
-		"parallelism":null,
 		"device":"pc",
-		"device":"slurm",
-		"execute":0,
+		"execute":1,
 		"verbose":"info"
 		},
 	"postprocess":{
 		"jobs":"postprocess.slurm",
 		"args":{
-			"JOB_CWD":"${SLURM_ARRAY_TASK_ID}",
-			"JOB_ENV":"~/env/jax",
-			"JOB_SRC":"~/code/simulation/src",
+			"JOB_CWD":".",
+			"JOB_ENV":"mkl",
+			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
-			"JOB_PARALLELISM":"serial",			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.constrained.json","--hyperparameters=**/process.constrained.json","--cwd=."]
+			"JOB_PROCESSES":1,			
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.json","--hyperparameters=**/process.json","--cwd=."]
 			},
 		"patterns":{
 			"output":"%x.%A.stdout","error":"%x.%A.stderr",
-			"time":"06:00:00","mem":"128G",
+			"time":"01:00:00","mem":"64G",
 			"dependency":"afterany:"
 			},
 		"dependencies":[],	
 		"pwd":"config",
 		"cwd":"test",
+		"pool":null,		
 		"pause":1,	
-		"process":"serial",
+		"process":null,
 		"processes":null,
-		"parallelism":null,		
-		"device":"slurm",
 		"device":"pc",
-		"execute":0,
+		"execute":1,
 		"verbose":"info"
 		}
 	},
