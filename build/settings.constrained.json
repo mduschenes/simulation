@@ -1,6 +1,6 @@
 {
 "class":"src.quantum.Unitary",
-"hyperparameters":"settings.eig.json",
+"hyperparameters":"settings.constrained.json",
 "sys":{
 	"cwd":null,
 	"path":{
@@ -12,8 +12,8 @@
 			},
 		"config":{
 			"settings":"settings.json",
-			"plot":"plot.eig.json",
-			"process":"process.eig.json",
+			"plot":"plot.constrained.json",
+			"process":"process.constrained.json",
 			"mplstyle":"plot.mplstyle",
 			"logger":"logging.conf"
 			}
@@ -83,7 +83,7 @@
 		"dtype":"complex",
 		"format":"array",
 		"key":null,
-		"seed":1234321,
+		"seed":null,
 		"timestamp":null,
 		"architecture":null,
 		"device":"cpu",
@@ -239,7 +239,6 @@
 			"ntasks-per-node":"1",
 			"cpus-per-task":"${SLURM_CPUS_PER_TASK}",
 			"cpus-per-task":"1",
-			"mem-per-cpu":"64G",			
 			"array":"0-0:1%100"
 			},
 		"dependencies":[],

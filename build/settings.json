@@ -27,7 +27,6 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":10,
 	"size":1,
 	"reset":5576,
 	"index":null
@@ -37,9 +36,7 @@
 	
 		"model.N":[2],
 		"model.M":[4,8,16,64],
-		"model.M":[4,8,16,64],
 		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
-		"noise.scale":[1e-5,1e-2],
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[10],
@@ -84,7 +81,7 @@
 		"dtype":"complex",
 		"format":"array",
 		"key":null,
-		"seed":1234321,
+		"seed":null,
 		"timestamp":null,
 		"architecture":null,
 		"device":"cpu",
@@ -240,7 +237,6 @@
 			"ntasks-per-node":"1",
 			"cpus-per-task":"${SLURM_CPUS_PER_TASK}",
 			"cpus-per-task":"1",
-			"mem-per-cpu":"64G",			
 			"array":"0-0:1%100"
 			},
 		"dependencies":[],
