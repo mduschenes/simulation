@@ -70,7 +70,7 @@ export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
 # Environment
 # module purge &>/dev/null 2>&1
-# conda activate ${JOB_ENV} &>/dev/null 2>&1
+conda activate ${JOB_ENV} &>/dev/null 2>&1
 # source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
@@ -84,7 +84,8 @@ JOBS=${JOB_PROCESSES}
 # Executable
 EXE=()
 EXE+=(parallel)
-EXE+=(--jobs ${JOBS} --env _ --resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
+EXE+=(--jobs ${JOBS} --env _ --linebuffer)
+# EXE+=(--resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
 EXE+=(RUN {} ${CMD[@]} :::)
 
 echo ${EXE[@]} ${TASKS[@]}
