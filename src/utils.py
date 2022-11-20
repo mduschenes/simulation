@@ -4093,7 +4093,7 @@ def union(*iterables,sort=False):
 	union = set().union(*iterables)
 
 	if sort:
-		iterables = tuple((tuple(iterable) if not isinstance(iterable,set) else tuple(natsorted(iterable)) 
+		iterables = tuple((tuple(natsorted(tuple(iterable)))
 				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
@@ -4116,13 +4116,12 @@ def intersection(*iterables,sort=False):
 	for iterable in iterables:
 		intersection = intersection.intersection(set(iterable))
 
-
 	if sort:
-		iterables = tuple((tuple(iterable) if not isinstance(iterable,set) else tuple(natsorted(iterable)) 
+		iterables = tuple((tuple(natsorted(tuple(iterable)))
 				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
-				for iterable in iterables)		
+				for iterable in iterables)
 		intersection = natsorted(intersection,key=key,reverse=False)
 
 	return intersection

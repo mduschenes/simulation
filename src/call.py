@@ -27,7 +27,7 @@ file = None #'log.log'
 logger = Logger(name,conf,file=file)
 
 
-def command(args,exe=None,flags=None,cmd=None,options=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
+def command(args,exe=None,flags=None,cmd=None,options=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Command of the form $> exe flags cmd args options
 	Args:
@@ -41,7 +41,6 @@ def command(args,exe=None,flags=None,cmd=None,options=None,process=None,processe
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
-		kwargs (dict): Additional keyword arguments to update arguments
 	Returns:
 		args (iterable[str]): Command
 	'''
@@ -105,7 +104,7 @@ class popen(object):
 		except:
 			return
 
-def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
+def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit call to command line of the form $> exe flags cmd args options
 	Args:
@@ -122,7 +121,6 @@ def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
-		kwargs (dict): Additional keyword arguments to call		
 	Returns:
 		result (object): Return of commands
 	'''
@@ -246,7 +244,7 @@ def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,
 
 	return result
 
-def cp(source,destination,default=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
+def cp(source,destination,default=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Copy objects from source to destination
 	Args:
@@ -258,7 +256,6 @@ def cp(source,destination,default=None,process=None,processes=None,device=None,e
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
-		kwargs (dict): Additional keyword arguments to copy
 	'''
 	if not exists(source):
 		source = default
@@ -278,7 +275,7 @@ def cp(source,destination,default=None,process=None,processes=None,device=None,e
 	return
 
 
-def rm(path,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
+def rm(path,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Remove path
 	Args:
@@ -288,7 +285,6 @@ def rm(path,process=None,processes=None,device=None,execute=False,verbose=None,*
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
-		kwargs (dict): Additional keyword arguments to copy
 	'''
 
 	exe = ['rm']
@@ -303,7 +299,7 @@ def rm(path,process=None,processes=None,device=None,execute=False,verbose=None,*
 
 
 
-def echo(*args,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
+def echo(*args,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Echo arguments to command line
 	Args:
@@ -314,7 +310,6 @@ def echo(*args,process=None,processes=None,device=None,execute=False,verbose=Non
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
-		kwargs (dict): Additional keyword arguments to copy
 	'''
 
 	exe = ['echo']
@@ -384,7 +379,7 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 	return
 
 
-def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
+def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Sleep for pause
 	Args:
@@ -394,7 +389,6 @@ def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbo
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
-		kwargs (dict): Additional keyword arguments to sleep
 	'''
 
 	if pause is None:
@@ -471,18 +465,18 @@ def search(path,pattern,process=None,processes=None,device=None,execute=False,ve
 	return stdout
 
 	
-def update(path,patterns,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
+def update(path,patterns,kwargs=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''	
 	Update path files with sed
 	Args:
 		path (str): Path of file
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
+		kwargs (dict): Additional keyword arguments to update
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity		
-		kwargs (dict): Additional keyword arguments to update
 	'''
 
 	def wrapper(kwargs,string='.*'):
@@ -503,6 +497,7 @@ def update(path,patterns,process=None,processes=None,device=None,execute=False,v
 		return
 
 	patterns = {str(pattern): str(patterns[pattern]) for pattern in patterns}
+	kwargs = {} if not isinstance(kwargs,dict) else kwargs
 
 	if device in ['pc']:
 		default = '#SBATCH'
@@ -523,33 +518,8 @@ def update(path,patterns,process=None,processes=None,device=None,execute=False,v
 			string = '%s%s=%s%s'%(kwargs['prefix'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
 			return string		
 
-	null = []
-
-	if process in ['serial']:
-		nulls = ['chdir','array']
-		null.extend(nulls)
-		patterns.update({
+	patterns.update({
 			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir'] if pattern in patterns},
-			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
-							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stdout',
-							root=None)
-							for pattern in ['output'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
-							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stderr',
-							root=None)
-							for pattern in ['error'] if pattern in patterns},			
-			})
-
-	elif process in ['parallel']:
-		null.clear()
-		patterns.clear()
-
-	elif process in ['array']:
-		nulls = ['chdir']
-		null.extend(nulls)
-		patterns.update({
-			**{pattern: join(patterns.get(pattern),'.') for pattern in ['chdir'] if pattern in patterns},
 			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
 			**{pattern: '%s-%s:%s%%%s'%(
 				patterns.get(pattern,'').split('-')[0].split(':')[0].split('%')[0],
@@ -568,22 +538,32 @@ def update(path,patterns,process=None,processes=None,device=None,execute=False,v
 							for pattern in ['error'] if pattern in patterns},			
 		})
 
+	if process in ['serial']:
+		nulls = ['chdir','array']
+		patterns.update({})
+	elif process in ['parallel']:
+		nulls = []
+		patterns.clear()
+	elif process in ['array']:
+		nulls = ['chdir']
+		patterns.update({})		
+
 	patterns.update({
 		string(pattern=pattern,default=default): 
 		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='',default=default)
 		for pattern in list(patterns)
-		if pattern not in null
+		if pattern not in nulls
 		})
 
 	patterns.update({
 		string(pattern=pattern,default=default): 
 		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='#',default=default)
-		for pattern in list(null)
+		for pattern in list(nulls)
 		if search(path,string(pattern=pattern,default=default),execute=True,verbose=verbose) >= 0
 		})
 
 
-	for pattern in null:
+	for pattern in nulls:
 		patterns.pop(pattern,None)
 
 	sed(path,patterns,default=default,execute=execute,verbose=verbose)
@@ -591,7 +571,7 @@ def update(path,patterns,process=None,processes=None,device=None,execute=False,v
 	return
 
 
-def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
+def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Configure paths for jobs with copied/updated files
 	Args:
@@ -604,8 +584,6 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,de
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
-		kwargs (dict): Additional keyword arguments to configure
-
 	'''
 
 	if paths is None:
@@ -693,106 +671,96 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	keys = intersection(keys,cwd,sort=True)
 
-
-	unique = {
+	indices = {
 		path: {
 			key: [subkey for subkey in keys if cwd[subkey]==cwd[key]].index(key)
 				for key in keys if cwd[key]==path
 			}
-	 for path in set([cwd[key] for key in cwd])
-	 }
+	 for path in sorted(set([cwd[key] for key in cwd]))
+	}
 
-	unique = {attr: unique[attr] for attr in sorted(unique)}
-
-	results = []
-	tasks = []
 	pool = 1 if pool is None else pool
 	execution = True if execute == -1 else execute
 	execute = False if execute == -1 else execute
-
-	kwargs = {
-		key:{
-			'index': unique[cwd[key]][key],
-			'size': len(unique[cwd[key]]),
-			'step': processes,
-			'results':results,
-			'tasks':tasks,
-			'dependencies':dependencies[key],
-			}
-		for key in keys
-		}
-
-
+	tasks = []
+	results = []
+	keys = {key:{} for key in keys}
 	for key in keys:
 
-		index = kwargs[key]['index']
-		size = kwargs[key]['size']
-		step = kwargs[key]['step']
-
-		# TODO: Sort out parallel / passed in JOB_CWD paths 
-		# especially in edge case of 1 task, so no sub-directories created, should pass JOB_CWD=1 instead of SLURM_TASK_ID
-		path = index if (size > 1) else None
-
+		path = indices[cwd[key]][key] if len(indices[cwd[key]]) > 1 else None
 		path = join(path,root=cwd[key])
-
-		configure(pwd=pwd[key],cwd=path,paths=paths[key],patterns=patterns[key],process=process,processes=processes,device=device,execute=execution,verbose=False,**kwargs[key])
 
 		exe = jobs[key]
 		flags = []
 		cmd = []
 		options = []
 
-		job = jobs[key]
 		cmd = command(args[key],exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
-		task = {'key':key,'path':path,'job':job,'cmd':cmd}
+		configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],process=None,processes=None,device=None,execute=execution,verbose=False)
 
-		boolean = lambda task,tasks: task not in tasks
+		keys[key].update({
+			'key':key,
+			'path':path,
+			'pwd':pwd[key],
+			'cwd':cwd[key],
+			'job':jobs[key],
+			'cmd':cmd,
+			'index': indices[cwd[key]][key],
+			'size': len(indices[cwd[key]]),
+			'step': 1,
+			'results':results,
+			'paths':paths[key],
+			'patterns':patterns[key],
+			'dependencies':dependencies[key],
+			})
 
-		if boolean(task,tasks):		
-			tasks.append(task)
 
 	if process in ['serial']:
-		pass
+		def boolean(task,tasks):
+			return True
+		def updates(task,tasks):
+			return
 	elif process in ['parallel']:
-		tasks.clear()
+		def boolean(task,tasks):
+			return False
+			return task['cwd'] not in [subtask['cwd'] for subtask in tasks]
+		def updates(task,tasks):
+			task['path'] = None
+			return
 	elif process in ['array']:
-		tasks.clear()
-		for path in unique:
-			for key in unique[path]:
-				
-				path = None
+		def boolean(task,tasks):
+			# return False
+			return task['cwd'] not in [subtask['cwd'] for subtask in tasks]
+		def updates(task,tasks):
+			task['path'] = None
+			return
 
-				path = join(path)
-
-				task = {'path':path,'key':key}
-
-				boolean = lambda task,tasks: cwd[task['key']] not in [cwd[subtask['key']] for subtask in tasks]
-
-				if boolean(task,tasks):		
-					tasks.append(task)
-	else:
-		pass
-
-
+	for key in keys:
+		task = keys[key]
+		if boolean(task,tasks):
+			updates(task,tasks)
+			tasks.append(task)
 
 	for task in tasks:
 
-		key = task['key']
 		path = task['path']
 		job = task['job']
 		cmd = task['cmd']
+		cwd = task['cwd']
+		pwd = task['pwd']
+		patterns = task['patterns']
+		kwargs = task
 
-		path = join(path,root=cwd[key])
-
-		source = join(job,root=pwd[key])
+		path = join(path,root=cwd)
+		source = join(job,root=pwd)
 		destination = join(job,root=path)
 
 		cp(source,destination,default=job,execute=execution)
 
-		update(destination,patterns[key],process=process,processes=processes,device=device,execute=execution,verbose=False,**kwargs[key])
+		update(destination,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
-		result = call(*cmd,path=path,pause=pause,process=process,processes=None,device=device,execute=execute,verbose=verbose)
+		result = call(*cmd,path=path,pause=pause,process=None,processes=None,device=None,execute=execute,verbose=verbose)
 
 		results.append(result)
 
