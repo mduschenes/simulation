@@ -151,3 +151,17 @@ rm ${requirements[@]}
 # Allow larger linux stack space for cli arguments
 # cache=16384
 # ulimit -s ${cache}
+
+
+
+# Multiple Cpus on Single Task
+##SBATCH --nodes=1
+##SBATCH --ntasks-per-node=1
+##SBATCH --cpus-per-task=8
+#parallel --jobs ${SLURM_CPUS_PER_TASK}
+
+# Single Cpu on Multiple Tasks
+##SBATCH --nodes=1
+##SBATCH --ntasks-per-node=8
+##SBATCH --cpus-per-task=1
+#parallel --jobs ${SLURM_NTASKS} srun --nodes 1 --ntasks 1 ${CMD} ::: ${ARGS}

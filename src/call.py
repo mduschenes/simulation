@@ -29,7 +29,7 @@ logger = Logger(name,conf,file=file)
 
 def command(args,exe=None,flags=None,cmd=None,options=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
-	Command
+	Command of the form $> exe flags cmd args options
 	Args:
 		args (dict[str,str],dict[str,iterable[str],iterable[iterable[str]]],iterable[str]): Arguments to pass to command line {arg:value} or {arg:[value]} or [value]
 		exe (str,iterable[str]): Executable for args
@@ -39,7 +39,7 @@ def command(args,exe=None,flags=None,cmd=None,options=None,process=None,processe
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to update arguments
 	Returns:
@@ -47,7 +47,7 @@ def command(args,exe=None,flags=None,cmd=None,options=None,process=None,processe
 	'''
 
 	if isinstance(args,dict):
-		args = {arg: [args[arg]] if isinstance(args[arg],str) else [subarg if isinstance(subarg,str) else ' '.join(subarg) for subarg in args[arg]] 
+		args = {arg: [str(args[arg])] if isinstance(args[arg],scalars) else [str(subarg) if isinstance(subarg,scalars) else ' '.join(subarg) for subarg in args[arg]] 
 					for arg in args}
 	else:
 		args = {None:args}
@@ -105,18 +105,22 @@ class popen(object):
 		except:
 			return
 
-def call(*args,path=None,wrapper=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
+def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
-	Submit call to command line
+	Submit call to command line of the form $> exe flags cmd args options
 	Args:
-		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
+		args (dict[str,str],dict[str,iterable[str],iterable[iterable[str]]],iterable[str]): Arguments to pass to command line {arg:value} or {arg:[value]} or [value], nested iterables are piped		
 		path (str): Path to call from
+		exe (str,iterable[str]): Executable for args
+		flags (str,iterable[str]): Flags for args
+		cmd (str,iterable[str]): Command for args
+		options (str,iterable[str]): Options for args	
 		wrapper (callable): Wrapper for stdout with signature wrapper(stdout,stderr,returncode)		
 		pause (int,str): Time to sleep after call
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to call		
 	Returns:
@@ -180,7 +184,7 @@ def call(*args,path=None,wrapper=None,pause=None,process=None,processes=None,dev
 
 		stdout,stderr,returncode = wrap(stdout,stderr,returncode)
 
-		sleep(pause,device=device,execute=execute)
+		sleep(pause,execute=execute)
 
 		return stdout,stderr,returncode
 
@@ -228,31 +232,37 @@ def call(*args,path=None,wrapper=None,pause=None,process=None,processes=None,dev
 		return inputs,args,cmd
 
 
+	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
 	inputs,args,cmd = parser(*args,device=device,verbose=verbose)
 	result = None
 
 	msg = '%s : %s'%(path,cmd) if path is not None else cmd
 	logger.log(verbose,msg)
 
-	if execute:
+	if execute > 0:
 		with cd(path):
 			result = wrapper(*caller(args,inputs=inputs,device=device,verbose=verbose),device=device,verbose=verbose)
 
 	return result
 
-def cp(source,destination,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
+def cp(source,destination,default=None,process=None,processes=None,device=None,execute=False,verbose=None,**kwargs):
 	'''
 	Copy objects from source to destination
 	Args:
 		source (str): Path of source object
 		destination (str): Path of destination object
+		default (str): Default path of source object
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to copy
 	'''
+	if not exists(source):
+		source = default
+	
 	assert exists(source), "source %s does not exist"%(source)
 
 	mkdir(destination)
@@ -263,9 +273,7 @@ def cp(source,destination,process=None,processes=None,device=None,execute=False,
 	options = []
 	args = []
 
-	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-
-	stdout = call(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -278,7 +286,7 @@ def rm(path,process=None,processes=None,device=None,execute=False,verbose=None,*
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to copy
 	'''
@@ -289,9 +297,7 @@ def rm(path,process=None,processes=None,device=None,execute=False,verbose=None,*
 	options = []
 	args = []
 
-	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-
-	stdout = call(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -306,7 +312,7 @@ def echo(*args,process=None,processes=None,device=None,execute=False,verbose=Non
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to copy
 	'''
@@ -317,9 +323,7 @@ def echo(*args,process=None,processes=None,device=None,execute=False,verbose=Non
 	options = []
 	args = []
 
-	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-
-	stdout = call(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -334,7 +338,7 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 	'''
 
@@ -375,10 +379,7 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 		options = []
 		args = []
 
-		args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-
-		stdout = call(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-
+		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -391,7 +392,7 @@ def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbo
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to sleep
 	'''
@@ -405,9 +406,7 @@ def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbo
 	options = []
 	args = []
 
-	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-
-	stdout = call(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -422,7 +421,7 @@ def search(path,pattern,process=None,processes=None,device=None,execute=False,ve
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 	Returns:
 		stdout (int): Line number of last pattern occurrence in file,or -1 if does not exist
@@ -467,9 +466,7 @@ def search(path,pattern,process=None,processes=None,device=None,execute=False,ve
 	cmd = []
 	options = []
 
-	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-
-	stdout = call(*args,wrapper=wrapper,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,wrapper=wrapper,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return stdout
 
@@ -483,7 +480,7 @@ def update(path,patterns,process=None,processes=None,device=None,execute=False,v
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity		
 		kwargs (dict): Additional keyword arguments to update
 	'''
@@ -505,7 +502,7 @@ def update(path,patterns,process=None,processes=None,device=None,execute=False,v
 	if path is None or patterns is None:
 		return
 
-	patterns = deepcopy(patterns)
+	patterns = {str(pattern): str(patterns[pattern]) for pattern in patterns}
 
 	if device in ['pc']:
 		default = '#SBATCH'
@@ -543,9 +540,11 @@ def update(path,patterns,process=None,processes=None,device=None,execute=False,v
 							root=None)
 							for pattern in ['error'] if pattern in patterns},			
 			})
+
 	elif process in ['parallel']:
 		null.clear()
 		patterns.clear()
+
 	elif process in ['array']:
 		nulls = ['chdir']
 		null.extend(nulls)
@@ -587,7 +586,6 @@ def update(path,patterns,process=None,processes=None,device=None,execute=False,v
 	for pattern in null:
 		patterns.pop(pattern,None)
 
-
 	sed(path,patterns,default=default,execute=execute,verbose=verbose)
 
 	return
@@ -604,7 +602,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,de
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 		kwargs (dict): Additional keyword arguments to configure
 
@@ -631,14 +629,12 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,de
 			updater(source,data,func=lambda key,iterable,elements: iterable.get(key,elements[key]))
 			dump(source,destination)					
 		else:
-			if not exists(source):
-				source = path
-			cp(source,destination,execute=execute,verbose=verbose)
+			cp(source,destination,default=path,execute=execute,verbose=verbose)
 
 	return
 
 
-def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',farming=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands as tasks to command line
 	Args:
@@ -649,12 +645,12 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
-		farming (int): Number of subtasks per task (parallelized with processes number of parallel processes)
+		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
 		pause (int,str): Time to sleep after call		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
-		execute (boolean): Boolean whether to issue commands
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 	Returns:
 		results (iterable[str]): Return of commands for each task
@@ -697,13 +693,10 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	keys = intersection(keys,cwd,sort=True)
 
-	processes = 1 if processes is None else processes
 
 	unique = {
 		path: {
-			key: (
-				[subkey for subkey in keys if cwd[subkey]==cwd[key]].index(key)//processes,
-				[subkey for subkey in keys if cwd[subkey]==cwd[key]].index(key)%processes)
+			key: [subkey for subkey in keys if cwd[subkey]==cwd[key]].index(key)
 				for key in keys if cwd[key]==path
 			}
 	 for path in set([cwd[key] for key in cwd])
@@ -711,13 +704,15 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	unique = {attr: unique[attr] for attr in sorted(unique)}
 
-	cmds = {}
 	results = []
 	tasks = []
+	pool = 1 if pool is None else pool
+	execution = True if execute == -1 else execute
+	execute = False if execute == -1 else execute
 
 	kwargs = {
 		key:{
-			'index': [str(i) for i in unique[cwd[key]][key]],
+			'index': unique[cwd[key]][key],
 			'size': len(unique[cwd[key]]),
 			'step': processes,
 			'results':results,
@@ -736,24 +731,21 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		# TODO: Sort out parallel / passed in JOB_CWD paths 
 		# especially in edge case of 1 task, so no sub-directories created, should pass JOB_CWD=1 instead of SLURM_TASK_ID
-		path = (index if processes > 1 else index[:1]) if size > 1 or process in ['array'] else [None]
-
-		path = join(*path)
+		path = index if (size > 1) else None
 
 		path = join(path,root=cwd[key])
 
-		configure(pwd=pwd[key],cwd=path,paths=paths[key],patterns=patterns[key],process=process,processes=processes,device=device,execute=execute,**kwargs[key])
+		configure(pwd=pwd[key],cwd=path,paths=paths[key],patterns=patterns[key],process=process,processes=processes,device=device,execute=execution,verbose=False,**kwargs[key])
 
 		exe = jobs[key]
 		flags = []
 		cmd = []
 		options = []
 
-		cmd = command(args[key],exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+		job = jobs[key]
+		cmd = command(args[key],exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
-		cmds[key] = cmd
-
-		task = {'path':path,'key':key}
+		task = {'key':key,'path':path,'job':job,'cmd':cmd}
 
 		boolean = lambda task,tasks: task not in tasks
 
@@ -788,21 +780,17 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		key = task['key']
 		path = task['path']
+		job = task['job']
+		cmd = task['cmd']
 
 		path = join(path,root=cwd[key])
-
-		cmd = cmds[key]
-		job = jobs[key]
 
 		source = join(job,root=pwd[key])
 		destination = join(job,root=path)
 
-		if not exists(source):
-			source = job
-		cp(source,destination,execute=execute)
+		cp(source,destination,default=job,execute=execution)
 
-
-		update(destination,patterns[key],process=process,processes=None,device=device,execute=execute,**kwargs[key])
+		update(destination,patterns[key],process=process,processes=processes,device=device,execute=execution,verbose=False,**kwargs[key])
 
 		result = call(*cmd,path=path,pause=pause,process=process,processes=None,device=device,execute=execute,verbose=verbose)
 
@@ -813,7 +801,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 def launch(jobs={},wrapper=None):
 	'''
-	Submit jobs as job commands as tasks to command line through submit(job,args,paths,patterns,dependencies,...)
+	Submit jobs as job commands as tasks to command line through submit(**job) for each job in jobs
 	Args:
 		jobs (dict[str,dict[str,object]]): Submission jobs script as {name:job} with job dictionaries {attr:value} with attr keys:
 			args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
@@ -822,12 +810,12 @@ def launch(jobs={},wrapper=None):
 			dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
-			farming (int): Number of subtasks per task (parallelized with processes number of parallel processes)
+			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
 			pause (int,str): Time to sleep after call		
 			process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
 			processes (int): Number of processes per command			
 			device (str): Name of device to submit to
-			execute (boolean): Boolean whether to issue commands
+			execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 			verbose (int,str,bool): Verbosity
 		wrapper (callable): Wrapper for results for subsequent jobs with signature wrapper(name,jobs,results). Defaults to updating dependencies with results.
 	Returns:
