@@ -559,13 +559,13 @@ def update(path,patterns,kwargs=None,process=None,processes=None,device=None,exe
 				patterns.get(pattern,'').split('%')[-1]
 				) 
 				for pattern in ['array'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
+			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A.%a',
 							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stdout',
-							root='%a')
+							root=None)
 							for pattern in ['output'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A',
+			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A.%a',
 							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stderr',
-							root='%a')
+							root=None)
 							for pattern in ['error'] if pattern in patterns},			
 		})
 
