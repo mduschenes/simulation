@@ -34,56 +34,7 @@
 	},
 "permutations":{
 	"permutations":{	
-		"model.N":[4],
-		"model.M":[20,35,50,100],
-		"noise.scale":[1e-14,1e-12,1e-10,1e-8,1e-5,1e-3,1e-1],
-		"optimize.iterations":[300],
-		"optimize.optimizer":["cg"],
-
-		"jobs.job.cwd":["gobi/data.noise.3.unconstrained.adam"],
-		"jobs.job.device":["slurm"],
-		"jobs.job.process":["array"],
-		"jobs.job.execute":[1],
-		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.postprocess.cwd":["gobi/data.noise.3.unconstrained.adam"],
-		"jobs.postprocess.device":["slurm"],
-		"jobs.postprocess.process":["serial"],
-		"jobs.postprocess.execute":[1],
-		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],	
-
-		"jobs.job.cwd":["data.4.cg.long.phase.range"],		
-		"jobs.job.device":["pc"],
-		"jobs.job.process":["serial"],
-		"jobs.job.execute":[1],		
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.postprocess.cwd":["data.4.cg.long.phase.range"],		
-		"jobs.postprocess.device":["pc"],
-		"jobs.postprocess.process":["serial"],
-		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-
-
-		"model.N":[3],
-		"model.M":[30,50],
-		"noise.scale":[null],
-		"state.scale":[null],
-		"model.metric":["infidelity.abs"],
-		"optimize.iterations":[10],
-		"optimize.optimizer":["cg"],
-
-
-		"jobs.job.cwd":["test"],		
-		"jobs.job.device":["pc"],
-		"jobs.job.process":["serial"],
-		"jobs.job.execute":[1],		
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.postprocess.cwd":["test"],		
-		"jobs.postprocess.device":["pc"],
-		"jobs.postprocess.process":["serial"],
-		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-
-
+	
 		"model.N":[2],
 		"model.M":[4,8,16,64],
 		"model.M":[4,8,16,64],
@@ -93,26 +44,23 @@
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[10],
 		"optimize.optimizer":["cg"],
-
-		"jobs.job.cwd":["test"],		
-		"jobs.job.device":["pc"],
-		"jobs.job.process":[null],
-		"jobs.job.pool":[4],
-		"jobs.job.execute":[1],	
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.job.args.JOB_PROCESSES":[4],		
-		"jobs.postprocess.cwd":["test"],		
-		"jobs.postprocess.device":["pc"],
-		"jobs.postprocess.process":[null],
-		"jobs.postprocess.execute":[1],	
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-
-
 		"parameters.xy.method":["constrained"],
 		"model.system.architecture":["constrained"],
 
-		"parameters.xy.method":["unconstrained"],
-		"model.system.architecture":["unconstrained"]
+		"jobs.job.cwd":["test"],	
+		"jobs.postprocess.cwd":["test"],					
+		"jobs.job.device":["pc"],
+		"jobs.postprocess.device":["pc"],
+		"jobs.job.process":[null],
+		"jobs.postprocess.process":[null],
+		"jobs.job.pool":[4],
+		"jobs.postprocess.pool":[4],
+		"jobs.job.execute":[1],	
+		"jobs.postprocess.execute":[1],	
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.job.args.JOB_PROCESSES":[4],		
+		"jobs.postprocess.args.JOB_PROCESSES":[4],		
 
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
