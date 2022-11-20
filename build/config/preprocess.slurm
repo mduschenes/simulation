@@ -88,4 +88,5 @@ EXE+=(--jobs ${JOBS} --env _ --linebuffer)
 # EXE+=(--resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
 EXE+=(RUN {} ${CMD[@]} :::)
 
+# Run
 ${EXE[@]} ${TASKS[@]}
