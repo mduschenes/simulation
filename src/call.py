@@ -16,7 +16,7 @@ for PATH in PATHS:
 
 from src.utils import intersection,scalars
 from src.system	 import Logger
-from src.io import cd,mkdir,join,split,load,dump,exists
+from src.io import cd,mkdir,join,split,load,dump,exists,environ
 from src.dictionary import updater
 
 name = __name__
@@ -27,93 +27,117 @@ file = None #'log.log'
 logger = Logger(name,conf,file=file)
 
 
-def command(args,exe=None,flags=None,cmd=None,options=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Command of the form $> exe flags cmd args options
 	Args:
 		args (dict[str,str],dict[str,iterable[str],iterable[iterable[str]]],iterable[str]): Arguments to pass to command line {arg:value} or {arg:[value]} or [value]
+		kwargs (dict): Keyword arguments for args
 		exe (str,iterable[str]): Executable for args
 		flags (str,iterable[str]): Flags for args
 		cmd (str,iterable[str]): Command for args
 		options (str,iterable[str]): Options for args
+		env (dict[str,str]): Environmental variables for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 	Returns:
-		args (iterable[str]): Command
+		args (iterable[str]): Command arguments
+		env (dict[str,str]): Environment for command
 	'''
 
 	if isinstance(args,dict):
-		args = {arg: [str(args[arg])] if isinstance(args[arg],scalars) else [str(subarg) if isinstance(subarg,scalars) else ' '.join(subarg) for subarg in args[arg]] 
-					for arg in args}
+		args = {arg: 
+				([(str(args[arg]) if args[arg] is not None else '')] if isinstance(args[arg],scalars) else 
+				 [((str(subarg) if subarg is not None else '') if isinstance(subarg,scalars) else 
+				  ' '.join([(str(subsubarg) if subsubarg is not None else '') for subsubarg in subarg])) for subarg in args[arg]]) 
+				for arg in args}
 	else:
-		args = {None:args}
+		args = {None:[((str(arg) if arg is not None else '') if isinstance(arg,scalars) else 
+					  [(str(subarg) if subarg is not None else '') for subarg in arg]) for arg in args]}
+
 
 	exe = [] if exe is None else [exe] if isinstance(exe,str) else [*exe]
 	flags = [] if flags is None else [flags] if isinstance(flags,str) else [*flags]
 	cmd = [] if cmd is None else [cmd] if isinstance(cmd,str) else [*cmd]
 	options = [] if options is None else [options] if isinstance(options,str) else [*options]
+	env = {} if env is None else {} if not isinstance(env,dict) else env
+	kwargs = {} if kwargs is None else {} if not isinstance(kwargs,dict) else kwargs
+
+	processes = -1 if processes is None else processes
 
 	if device in ['pc']:
 		exe = [*['./%s'%(e) for e in exe[:1]],*exe[1:]]
 		flags = [*flags]
-		cmd = [*cmd,*[subarg for arg in args for subarg in args[arg]]]
-		options = [*options]		
+		cmd = [*cmd]
+		options = [*[' '.join([subarg for subarg in args[arg]]) for arg in args],*options]		
+		env = {
+			**{
+				'SLURM_JOB_NAME':kwargs.get('key'),
+				'SLURM_JOB_ID':kwargs.get('key'),
+				'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
+				'SLURM_ARRAY_TASK_ID':kwargs.get('index'),
+				'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
+			},
+			**env			
+		}
+
 	elif device in ['slurm']:
-		exe,cmd = ['sbatch'],[*exe,*cmd]
-		flags = ['%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args])),'<']
-		options = []		
+		exe,flags,cmd,options,env = (
+				['sbatch'],
+				[*flags,'%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))],
+				['<'],
+				[*exe,*cmd,*options],
+				{}
+				)
+
 	else:
 		exe = [*exe]
 		flags = [*flags]
-		cmd = [*cmd,*[subarg for arg in args for subarg in args[arg]]]
-		options = [*options]
+		cmd = [*cmd]
+		options = [*[subarg for arg in args for subarg in args[arg]],*options]
+		env = {
+			**{
+				'SLURM_JOB_NAME':kwargs.get('key'),				
+				'SLURM_JOB_ID':kwargs.get('key'),
+				'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
+				'SLURM_ARRAY_TASK_ID':kwargs.get('index'),
+				'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
+			},
+			**env,			
+		}
 
 	if process in ['serial']:
 		pass
 	elif process in ['parallel']:
-		processes = -1 if processes is None else processes
-		exe,flags,cmd,options = ['parallel'],['--jobs',processes,*exe,*flags,r'{}',*options,':::'],cmd,[]
+		exe,flags,cmd,options,env = ['parallel'],['--jobs',processes,*exe,*flags,*cmd,r'{}',':::'],[],[*options],{**env}
 	elif process in ['array']:
 		pass
+	else:
+		pass
+
 
 	args = [*exe,*flags,*cmd,*options]
 
-	return args
+	env = {str(var): str(env[var]) if env[var] is not None else '' for var in env}
+
+	return args,env
 
 
-class popen(object):
-	'''
-	Class to safely enter process
-	Args:
-		path (str): Path to change to
-	'''
-	def __init__(self,cls):
-		self.cls = cls
-		return
-	def __enter__(self,*args,**kwargs):
-		try:
-			return self.cls.__enter__(*args,**kwargs)
-		except:
-			return self.cls
-	def __exit__(self,etype, value, traceback):
-		try:
-			return self.cls.__exit__(etype, value, traceback)
-		except:
-			return
-
-def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,wrapper=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit call to command line of the form $> exe flags cmd args options
 	Args:
 		args (dict[str,str],dict[str,iterable[str],iterable[iterable[str]]],iterable[str]): Arguments to pass to command line {arg:value} or {arg:[value]} or [value], nested iterables are piped		
 		path (str): Path to call from
+		kwargs (dict): Keyword arguments for args		
 		exe (str,iterable[str]): Executable for args
 		flags (str,iterable[str]): Flags for args
 		cmd (str,iterable[str]): Command for args
 		options (str,iterable[str]): Options for args	
+		env (dict[str,str]): Environmental variables for args		
 		wrapper (callable): Wrapper for stdout with signature wrapper(stdout,stderr,returncode)		
 		pause (int,str): Time to sleep after call
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
@@ -125,13 +149,14 @@ def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,
 		result (object): Return of commands
 	'''
 
-	def caller(args,inputs=None,device=None,verbose=None):
+	def caller(args,inputs=None,env=None,device=None,verbose=None):
 
-		def run(args,stdin=None,stdout=None,stderr=None):
+		def run(args,stdin=None,stdout=None,stderr=None,env=None):
+			env = {**environ(),**env} if env is not None else None
 			try:
-				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr)
-			except OSError as exception:
-				result = subprocess.Popen([],stdin=stdin,stdout=stdout,stderr=stderr)
+				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env)
+			except (OSError,FileNotFoundError) as exception:
+				result = subprocess.Popen((),stdin=stdin,stdout=stdout,stderr=stderr,env=env)
 				logger.log(verbose,exception)
 				logger.log(verbose,args)
 			return result
@@ -159,7 +184,7 @@ def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,
 
 			stdin = open(input,'r') if input is not None else stdin
 
-			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr)
+			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr,env=env)
 
 			if stdin is not None:
 				stdin.close()
@@ -186,7 +211,7 @@ def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,
 
 		return stdout,stderr,returncode
 
-	def wrapper(stdout,stderr,returncode,wrapper=wrapper,device=None,verbose=None):
+	def wrapper(stdout,stderr,returncode,wrapper=wrapper,env=None,device=None,verbose=None):
 		try:
 			result = wrapper(stdout,stderr,returncode)
 		except:
@@ -194,7 +219,7 @@ def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,
 
 		return result
 
-	def parser(*args,device=None,verbose=None):
+	def parser(*args,env=None,device=None,verbose=None):
 
 		pipe = any(not isinstance(arg,scalars) for arg in args)
 
@@ -227,12 +252,12 @@ def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,
 			args[args.index(arg)] = subarg
 			inputs.append(input)
 
-		return inputs,args,cmd
+		return inputs,args,cmd,env
 
 
-	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	args,env = command(args,kwargs,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-	inputs,args,cmd = parser(*args,device=device,verbose=verbose)
+	inputs,args,cmd,env = parser(*args,env=env,device=device,verbose=verbose)
 	result = None
 
 	msg = '%s : %s'%(path,cmd) if path is not None else cmd
@@ -240,7 +265,7 @@ def call(*args,path=None,exe=None,flags=None,cmd=None,options=None,wrapper=None,
 
 	if execute > 0:
 		with cd(path):
-			result = wrapper(*caller(args,inputs=inputs,device=device,verbose=verbose),device=device,verbose=verbose)
+			result = wrapper(*caller(args,inputs=inputs,env=env,device=device,verbose=verbose),env=env,device=device,verbose=verbose)
 
 	return result
 
@@ -260,7 +285,7 @@ def cp(source,destination,default=None,process=None,processes=None,device=None,e
 	if not exists(source):
 		source = default
 	
-	assert exists(source), "source %s does not exist"%(source)
+	assert exists(source), 'source %s does not exist'%(source)
 
 	mkdir(destination)
 
@@ -268,9 +293,10 @@ def cp(source,destination,default=None,process=None,processes=None,device=None,e
 	flags = ['-rf']
 	cmd = [source,destination]
 	options = []
+	env = []
 	args = []
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -291,9 +317,10 @@ def rm(path,process=None,processes=None,device=None,execute=False,verbose=None):
 	flags = ['-rf']
 	cmd = [path]
 	options = []
+	env = []	
 	args = []
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -316,9 +343,10 @@ def echo(*args,process=None,processes=None,device=None,execute=False,verbose=Non
 	flags = []
 	cmd = args
 	options = []
+	env = []	
 	args = []
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -341,7 +369,7 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 		return
 
 	delimiters = [',','#','/','$']
-	replacements = {}#{r"-":r"\-",r" ":r"\ ",r"#":r"\#"}
+	replacements = {}#{r'-':r'\-',r' ':r'\ ',r'#':r'\#'}
 
 	for pattern in patterns:
 
@@ -354,11 +382,11 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 			if result == -1:					
 				cmd = None
 			else:
-				cmd = "%di %s"%(result+1,patterns[pattern])			
+				cmd = '%di %s'%(result+1,patterns[pattern])			
 		else:			
 			for delimiter in delimiters:
 				if all(delimiter not in string for string in (pattern,patterns[pattern])):
-					cmd = "s%s%s%s%s%sg"%(delimiter,pattern,delimiter,patterns[pattern],delimiter)
+					cmd = 's%s%s%s%s%sg'%(delimiter,pattern,delimiter,patterns[pattern],delimiter)
 					break
 
 		if cmd is None:
@@ -370,11 +398,12 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 
 		exe = ['sed']
 		flags = ['-i']
-		cmd = [cmd,path]
-		options = []
+		cmd = [cmd]
+		options = [path]
+		env = []
 		args = []
 
-		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -398,9 +427,10 @@ def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbo
 	flags = []
 	cmd = [pause]
 	options = []
+	env = []	
 	args = []
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -421,7 +451,7 @@ def search(path,pattern,process=None,processes=None,device=None,execute=False,ve
 		stdout (int): Line number of last pattern occurrence in file,or -1 if does not exist
 	'''
 
-	replacements = {r"-":r"\-",r" ":r"\ ",r"#":r"\#"}
+	replacements = {r'-':r'\-',r' ':r'\ ',r'#':r'\#'}
 
 	default = -1
 
@@ -459,8 +489,9 @@ def search(path,pattern,process=None,processes=None,device=None,execute=False,ve
 	flags = []
 	cmd = []
 	options = []
+	env = []
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,wrapper=wrapper,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,wrapper=wrapper,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return stdout
 
@@ -547,6 +578,9 @@ def update(path,patterns,kwargs=None,process=None,processes=None,device=None,exe
 	elif process in ['array']:
 		nulls = ['chdir']
 		patterns.update({})		
+	else:
+		nulls = []
+		patterns.update({})
 
 	patterns.update({
 		string(pattern=pattern,default=default): 
@@ -566,6 +600,7 @@ def update(path,patterns,kwargs=None,process=None,processes=None,device=None,exe
 	for pattern in nulls:
 		patterns.pop(pattern,None)
 
+
 	sed(path,patterns,default=default,execute=execute,verbose=verbose)
 
 	return
@@ -576,6 +611,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,de
 	Configure paths for jobs with copied/updated files
 	Args:
 		paths (iterable[str],dict[str,object]): Relative paths of files to pwd/cwd, or dictionary {path:data} with data to update paths
+		
 		pwd (str): Input root path for files
 		cwd (str): Output root path for files
 		patterns (dict[str,dict[str,str]]): Patterns and values to update {path:{pattern: replacement}}
@@ -671,13 +707,10 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	keys = intersection(keys,cwd,sort=True)
 
-	indices = {
-		path: {
-			key: [subkey for subkey in keys if cwd[subkey]==cwd[key]].index(key)
-				for key in keys if cwd[key]==path
-			}
-	 for path in sorted(set([cwd[key] for key in cwd]))
-	}
+	pools = {
+		path: [key for key in keys if cwd[key] == path]
+			for path in sorted(set([cwd[key] for key in cwd]))
+		}
 
 	pool = 1 if pool is None else pool
 	execution = True if execute == -1 else execute
@@ -685,55 +718,89 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	tasks = []
 	results = []
 	keys = {key:{} for key in keys}
+
 	for key in keys:
 
-		path = indices[cwd[key]][key] if len(indices[cwd[key]]) > 1 else None
+		index = pools[cwd[key]].index(key) if process in ['serial'] else 0
+		size = len(pools[cwd[key]])
+		step = pool if process in ['array'] else 1 if process in ['serial'] else size
+		
+		path = pools[cwd[key]].index(key) if size>1 else None
 		path = join(path,root=cwd[key])
 
 		exe = jobs[key]
 		flags = []
 		cmd = []
 		options = []
+		env = []
 
-		cmd = command(args[key],exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execution,verbose=False)
-
-		configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],process=None,processes=None,device=None,execute=execution,verbose=False)
-
-		keys[key].update({
+		kwargs = {
 			'key':key,
 			'path':path,
 			'pwd':pwd[key],
 			'cwd':cwd[key],
 			'job':jobs[key],
-			'cmd':cmd,
-			'index': indices[cwd[key]][key],
-			'size': len(indices[cwd[key]]),
-			'step': 1,
+			'cmd':None,
+			'env':None,
+			'index': index,
+			'size': size,
+			'step': step,
+			'pool':pool,
 			'results':results,
 			'paths':paths[key],
 			'patterns':patterns[key],
 			'dependencies':dependencies[key],
-			})
+			}
+
+
+		cmd,env = command(args[key],kwargs,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=False)
+
+		configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],process=None,processes=None,device=None,execute=execution,verbose=False)
+
+		kwargs['cmd'] = cmd
+		kwargs['env'] = env
+
+		keys[key] = kwargs
 
 
 	if process in ['serial']:
 		def boolean(task,tasks):
-			return True
+			value = True
+			return value
 		def updates(task,tasks):
+			attr = 'path'
+			value = task['cwd']
+			task[attr] = value
 			return
+
 	elif process in ['parallel']:
 		def boolean(task,tasks):
-			return False
-			return task['cwd'] not in [subtask['cwd'] for subtask in tasks]
+			value = task['cwd'] not in [subtask['cwd'] for subtask in tasks]
+			return value
 		def updates(task,tasks):
-			task['path'] = None
+			attr = 'path'
+			value = task['cwd']
+			task[attr] = value
 			return
+
 	elif process in ['array']:
 		def boolean(task,tasks):
-			# return False
-			return task['cwd'] not in [subtask['cwd'] for subtask in tasks]
+			value = task['cwd'] not in [subtask['cwd'] for subtask in tasks]
+			return value
 		def updates(task,tasks):
-			task['path'] = None
+			attr = 'path'			
+			value = task['cwd']
+			task[attr] = value
+			return
+
+	else:
+		def boolean(task,tasks):
+			value = task['cwd'] not in [subtask['cwd'] for subtask in tasks]			
+			return value
+		def updates(task,tasks):
+			attr = 'path'
+			value = task['cwd']
+			task[attr] = value
 			return
 
 	for key in keys:
@@ -744,15 +811,15 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	for task in tasks:
 
-		path = task['path']
 		job = task['job']
 		cmd = task['cmd']
+		env = task['env']
+		path = task['path']
 		cwd = task['cwd']
 		pwd = task['pwd']
 		patterns = task['patterns']
 		kwargs = task
 
-		path = join(path,root=cwd)
 		source = join(job,root=pwd)
 		destination = join(job,root=path)
 
@@ -760,7 +827,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		update(destination,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
-		result = call(*cmd,path=path,pause=pause,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+		result = call(*cmd,env=env,path=path,pause=pause,process=None,processes=None,device=None,execute=execute,verbose=verbose)
 
 		results.append(result)
 
