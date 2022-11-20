@@ -24,22 +24,20 @@
 # Function
 function RUN(){
 
-	# echo ${1}
-
 	TASK=$(realpath ${1:-"."})
 	shift 1;
 	CMDS=${@}
 	CWD=$(pwd)
 
-	echo $(pwd) $(date '+%Y-%m-%d %H:%M:%S')
+	echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
 
 	cd ${TASK}
 
 	${CMDS[@]}
 
-	echo $(pwd) $(date '+%Y-%m-%d %H:%M:%S')
-
 	cd ${CWD}
+
+	echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
 
 }
 export -f RUN
@@ -89,4 +87,5 @@ EXE+=(--jobs ${JOBS} --env _ --linebuffer)
 EXE+=(RUN {} ${CMD[@]} :::)
 
 # Run
+echo ${EXE[@]} ${TASKS[@]}
 ${EXE[@]} ${TASKS[@]}

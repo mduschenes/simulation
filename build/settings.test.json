@@ -37,6 +37,7 @@
 		"model.N":[2],
 		"model.M":[4,8,16,64],
 		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
+		"noise.scale":[1e-10],
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[10],
@@ -50,13 +51,13 @@
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[1],
+		"jobs.job.pool":[4],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.job.args.JOB_PROCESSES":[2],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1]	
 
 		},
@@ -224,7 +225,7 @@
 		"jobs":"job.slurm",
 		"args":{
 			"JOB_CWD":null,					
-			"JOB_ENV":"mkl",
+			"JOB_ENV":"jax",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
 			"JOB_PROCESSES":1,
@@ -254,7 +255,7 @@
 		"jobs":"postprocess.slurm",
 		"args":{
 			"JOB_CWD":".",
-			"JOB_ENV":"mkl",
+			"JOB_ENV":"jax",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
