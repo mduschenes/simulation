@@ -212,6 +212,7 @@ class Logger(object):
 			'NOTSET':0,'DEBUG':10,'INFO':20,'WARNING':30,'ERROR':40,'CRITICAL':50,
 			10:10,20:20,30:30,40:40,50:50,
 			2:20,3:30,4:40,5:50,
+			-1:50,
 			True:20,False:0,None:0,
 			}
 		self.verbose = self.verbosity.get(verbose,verbose)

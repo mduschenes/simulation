@@ -176,6 +176,8 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 		paths (iterable): Split path,directory,file,ext depending on booleans
 	'''	
 
+	path = str(path) if path is not None else None
+
 	returns = {'directory':directory,'file':file or directory_file or file_ext,'ext':ext}
 	paths = {}
 
@@ -224,7 +226,7 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	Returns:
 		paths (str): Joined path
 	'''	
-	paths = [path for path in paths if path not in ['',None]]
+	paths = [str(path) for path in paths if path not in ['',None]]
 	if len(paths)>0:
 		path = os.path.join(*paths)
 	else:
