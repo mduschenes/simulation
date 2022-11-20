@@ -22,12 +22,11 @@
 "boolean":{
 	"train":1,
 	"load":0,
-	"dump":1,
+	"dump":0,
 	"plot":0
 	},
 "seed":{
 	"seed":5576,
-	"size":10,
 	"size":1,
 	"reset":5576,
 	"index":null
@@ -37,30 +36,29 @@
 	
 		"model.N":[2],
 		"model.M":[4,8,16,64],
-		"model.M":[4,8,16,64],
 		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
-		"noise.scale":[1e-5,1e-2],
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[10],
 		"optimize.optimizer":["cg"],
-		"parameters.xy.method":["constrained"],
-		"model.system.architecture":["constrained"],
+		"parameters.xy.method":["unconstrained"],
+		"model.system.architecture":["unconstrained"],
 
 		"jobs.job.cwd":["test"],	
-		"jobs.postprocess.cwd":["test"],					
+		"jobs.postprocess.cwd":["test"],		
+					
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
 		"jobs.job.process":[null],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[4],
-		"jobs.postprocess.pool":[4],
+		"jobs.job.pool":[1],
+		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.job.args.JOB_PROCESSES":[4],		
-		"jobs.postprocess.args.JOB_PROCESSES":[4],		
+		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.postprocess.args.JOB_PROCESSES":[1],		
 
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
