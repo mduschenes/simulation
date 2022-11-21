@@ -15,6 +15,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,zeros,ones
+from src.utils import is_naninf
 from src.utils import exp,log,abs,sqrt,norm,nanmean,nanstd,nansqrt,lstsq,curve_fit,product
 
 def transformation(transform=None):
@@ -156,7 +157,7 @@ def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
 	'''	
 
 
-	x[is_nan(x) | is_inf(x)] = 0
+	x = x.at[is_naninf(x)].set(0)
 
 	if wrapper is None:
 		wrapper = lambda x,y,*coef: y
@@ -182,7 +183,7 @@ def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
 		if _x is None:
 			_x = x
 		try:
-			coef = curve_fit(func,x,y,p0=coef0)[0] + 0.0
+			coef = curve_fit(func,x,y,p0=coef0)
 			_y = func(_x,*coef)
 		except:
 			coef = coef0

@@ -355,7 +355,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							'prop':{'size':kwargs.get('prop',{}).get('size')},
 							} 
 									if 'set_title' in kwargs or 'title' in kwargs else {'title':None})},
-					'get_title':{**kwargs.pop('get_title',{})},
+					**{subattr: {**kwargs.pop(subattr,{})} for subattr in ['get_title','get_texts']},
 					})
 
 
@@ -364,7 +364,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					(min(len(kwargs['handles']),len(kwargs['labels']))==1) or 
 					all([kwargs[k] is None for k in kwargs])
 					# and all([kwargs.get(k) is None for k in ['handles','labels']]):
-					)
+					) or (kwargs.pop('set_label',None) is not None)
 
 			
 			elif attr in ['plot','axvline','axhline']:
@@ -554,6 +554,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for a in k.split('.')[:-1]:
 					try:
 						_attr_ = getattr(_attr_,a)()
+						print(_attr_)
 					except:
 						_attr_ = getattr(_attr_,a)
 				a = k.split('.')[-1]
@@ -567,7 +568,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						try:
 							plt.setp(getattr(_attr_,a),**_kwds[k])
 						except:
-							pass
+							try:
+								for _subattr_ in getattr(_attr_,a)():
+									for l in _kwds[k]:
+										getattr(_subattr_,l)(**_kwds[k][l])
+							except:
+								pass
 				
 
 			# except:

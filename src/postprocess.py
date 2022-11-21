@@ -16,8 +16,9 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import array,zeros,ones,arange,sort,eig,argmax,argmin,maximum,difference,rand,scinotation
+from src.utils import array,zeros,ones,arange,linspace,rand,sort,eig,argmax,argmin,maximum,difference,rand,scinotation,log
 from src.dictionary import updater,getter
+from src.fit import fit
 from src.io import load,dump,join,split,glob,cd,exists,dirname
 
 from src.plot import plot
@@ -91,35 +92,36 @@ defaults = {
 		}
 
 	},
-'plot.noise.scale.M.pdf': {
+'plot.noise.scale.M.min.pdf': {
 	"fig":{
-		"set_size_inches":{"w":20,"h":10},
+		"set_size_inches":{"w":9,"h":9},
 		"subplots_adjust":{},
 		"tight_layout":{},
-		"savefig":{"fname":"plot.None.eigenvalues.pdf","bbox_inches":"tight","pad_inches":0.2},
+		"savefig":{"fname":"plot.noise.scale.M.min.pdf","bbox_inches":"tight","pad_inches":0.2},
 		"close":{}
 		},
 	"ax":{
-		"plot":{
-			"x":"",
-			"y":"fisher.eigenvalues",
-			"label":["N","architecture","M","iteration=@iteration.max@","r=@fisher.rank@"],
+		"errorbar":{
+			"x":"noise.scale",
+			"y":"M",
+			"label":None,
 			"marker":"o",
-			"markersize":4,
+			"markersize":10,
 			"linestyle":"--",
 			"linewidth":4,
 			"color":"viridis",
 			},
-		"set_ylabel":{"ylabel":r'$\left|{\frac{\lambda}{\lambda_{\textrm{max}}}}\right|$'},
-		"set_ylabel":{"ylabel":r"$\abs{\frac{\lambda}{\lambda_{\textrm{max}}}}$"},
-		"set_xlabel":{"xlabel":r"$\textrm{Index}$"},
+		"set_ylabel":{"ylabel":r'$M_{\gamma}$'},
+		"set_xlabel":{"xlabel":r"$\gamma$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
+		"set_xscale":{"value":"log","base":10},
 		"set_xnbins":{"nbins":6},
-		"set_ynbins":{"nbins":4},		
-		"set_yscale":{"value":"log","base":10},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
+		"set_xticks":{"ticks":[1e-7,1e-6,1e-5,1e-4,1e-3]},
+		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
+		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
+		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
+		"set_yscale":{"value":"linear"},
+		"set_ynbins":{"nbins":6},
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
@@ -129,21 +131,22 @@ defaults = {
 		"set_aspect":{"aspect":"auto"},
 		"grid":{"visible":True,"which":"both","axis":"both","zorder":0},
 		"legend":{
-			"title":r'$\textrm{Sample, Rank}$',
 			"title_fontsize": 20,
-			"get_title":{"ha":"center"},	
+			"get_title":{"ha":"center"},
+			"get_texts":{"va":"center","ha":"center","position":[0,15]},
 			"prop": {"size": 20},
-			"markerscale": 2,
+			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": "lower right",
+			"loc": [0.02,0.02],
 			"ncol": 1,
-			"set_zorder":{"level":100}
-			}			
+			"set_zorder":{"level":100},
+			"set_label":True,
+			}
 		},
 	"style":{
 		"texify":None,
-		"mplstyle":"plot.mplstyle",	
+		"mplstyle":"config/plot.mplstyle",	
 		"rcParams":{"font.size":35},
 		"layout":{"nrows":1,"ncols":1,"index":1},
 		"share": {
@@ -160,14 +163,15 @@ defaults = {
 def process(path):
 
 	plots = [
-		'plot.noise.scale.M.pdf',
+		'plot.noise.scale.M.min.pdf',
 		# 'plot.None.eigenvalues.pdf',
 		]
 	
 
 	for name in plots:
+		print('Plotting :',name)		
 
-		if name in ['plot.noise.scale.M.pdf']:
+		if name in ['plot.noise.scale.M.min.pdf']:
 
 			file = 'plot.settings.json'
 			path = join(path,file)
@@ -188,11 +192,62 @@ def process(path):
 					except:
 						pass
 
-			print(data['x'])
-			print(data['y'])
-			print(data['noise.scale'])
+			shape = data['y'].shape
+			ndim = data['y'].ndim
+			axis = 1
 
-			
+			indices = argmin(data['y'],axis=axis)
+			indices = tuple((indices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
+
+			x = data['noise.scale']
+			y = data['x'][indices]
+			xerr = None
+			yerr = None
+
+			def func(x,*coef):
+				y = coef[1]*log(x) + coef[0]
+				return y
+
+			_x = linspace(x.min(),x.max(),100)
+			coef0 = [-100,900]
+
+			_y,coef = fit(x,y,_x=_x,func=func,coef0=coef0)
+
+			fig,ax = None,None
+
+			settings = deepcopy(defaults[name])
+
+			options = {
+				'ax':{
+					'errorbar':[
+						{
+						**settings['ax']['errorbar'],
+						'x':x,
+						'y':y,
+						'xerr':xerr,
+						'yerr':yerr,
+						'label':None,
+						'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.5),	
+						'marker':'o',
+						'linestyle':'',
+						},
+						{
+						**settings['ax']['errorbar'],						
+						'x':_x,
+						'y':_y,
+						'label':r'$\quad~~ M_{\gamma} = \alpha\log{\gamma} + \beta$'+'\n'+r'$\alpha = %s~,~\beta = %s$'%(
+								tuple((scinotation(c,decimals=2) for c in coef))),						
+						'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
+						'marker':None,						
+						'linestyle':'--',
+						},						
+						]
+					},
+				}
+
+			updater(settings,options)
+
+			fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
 
 
@@ -293,7 +348,6 @@ def process(path):
 
 						updater(settings[i],options)
 
-					print('Plotting :',name)
 					fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
 	return
