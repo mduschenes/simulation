@@ -273,7 +273,7 @@ class Object(object):
 
 		# Set defaults
 		path = 'config/settings.json'
-		default = {}
+		default = {}		
 		func = lambda key,iterable,elements: iterable.get(key,elements[key])
 		updater(self.hyperparameters,load(path,default=default),func=func)
 

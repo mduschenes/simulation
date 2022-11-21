@@ -6,16 +6,17 @@
 #SBATCH --error=%x.%A.stderr
 
 #SBATCH --partition=cpu
-#SBATCH --time=06:00:00
-#SBATCH --mem=16G
+#SBATCH --time=01:00:00
+#SBATCH --mem=64G
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 
-##SBATCH --array=0-99:1%100
+#SBATCH --array=0-1:4%100
 
 ##SBATCH --dependency=afterany:
 
 #SBATCH --parsable
+#SBATCH --cpus-per-task=1
 
 
 # Run Parallel tasks
@@ -24,22 +25,20 @@
 # Function
 function RUN(){
 
-	# echo ${1}
-
 	TASK=$(realpath ${1:-"."})
 	shift 1;
 	CMDS=${@}
 	CWD=$(pwd)
 
-	echo $(pwd) $(date '+%Y-%m-%d %H:%M:%S')
+	echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
 
 	cd ${TASK}
 
 	${CMDS[@]}
 
-	echo $(pwd) $(date '+%Y-%m-%d %H:%M:%S')
-
 	cd ${CWD}
+
+	echo $(pwd) ${TASK} $(date '+%Y-%m-%d %H:%M:%S')
 
 }
 export -f RUN
@@ -48,6 +47,13 @@ export -f RUN
 export JOB_NAME=${SLURM_JOB_NAME}
 export JOB_ID=${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
 export JOB_TASK=${SLURM_ARRAY_TASK_ID}
+export JOB_STEP=${SLURM_ARRAY_TASK_STEP}
+export JOB_MIN=${SLURM_ARRAY_TASK_MIN}
+export JOB_MAX=${SLURM_ARRAY_TASK_MAX}
+export JOB_MAX=${SLURM_ARRAY_TASK_MAX}
+export JOB_SLICE=${SLURM_ARRAY_TASK_SLICE}
+export JOB_SIZE=${SLURM_ARRAY_TASK_SIZE}
+
 
 # Variables
 export JOB_CWD=${1:-${JOB_CWD}}
@@ -59,9 +65,13 @@ shift 5;
 export JOB_ARGS=${@:-${JOB_ARGS}}
 
 # Directory
-if [[ -z ${JOB_CWD} ]]
+if [[ -z ${JOB_CWD} ]] || [[ ! -z ${JOB_TASK} ]]
 then
-	export JOB_CWD=($(seq ${SLURM_ARRAY_TASK_ID} $(( ${SLURM_ARRAY_TASK_ID} + ${SLURM_ARRAY_TASK_STEP} - 1 )) ))
+	START=$(( ${JOB_TASK}*${JOB_SLICE} ))
+	END=$(( (${JOB_TASK}+1)*${JOB_SLICE} ))
+	if [ ${START} -lt 0 ];then START=0;fi; START=$(( ${START} ));
+	if [ ${END} -gt ${JOB_SIZE} ];then END=${JOB_SIZE};fi; END=$(( ${END} - 1 ));
+	export JOB_CWD=($(seq ${START} ${END}))
 else
 	export JOB_CWD=($(echo ${JOB_CWD[@]/\~/"${HOME}"} | envsubst))
 	export JOB_CWD=(${JOB_CWD[@]:-"."})
@@ -89,4 +99,5 @@ EXE+=(--jobs ${JOBS} --env _ --linebuffer)
 EXE+=(RUN {} ${CMD[@]} :::)
 
 # Run
+# echo $(pwd) ${EXE[@]} ${TASKS[@]}
 ${EXE[@]} ${TASKS[@]}

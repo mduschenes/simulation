@@ -431,7 +431,7 @@ def updater(iterable,elements,delimiter=False,copy=False,clear=False,func=None):
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
-		func(callable,None): Callable function that accepts key,iterable,elements arguments to modify value to be updated based on the given dictionaries
+		func(callable,None): Callable function with signature func(key,iterable,elements) to modify value to be updated based on the given dictionaries
 	'''		
 
 	if delimiter:

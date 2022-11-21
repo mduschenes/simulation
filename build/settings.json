@@ -35,8 +35,8 @@
 	"permutations":{	
 	
 		"model.N":[2],
-		"model.M":[4,8,16,64],
-		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
+		"model.M":[4],
+		"noise.scale":[1e-10],
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[10],
@@ -58,7 +58,7 @@
 		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.postprocess.args.JOB_PROCESSES":[1],		
+		"jobs.postprocess.args.JOB_PROCESSES":[1]
 
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
@@ -224,7 +224,7 @@
 	"job":{
 		"jobs":"job.slurm",
 		"args":{
-			"JOB_CWD":null,					
+			"JOB_CWD":".",					
 			"JOB_ENV":"mkl",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
@@ -246,7 +246,7 @@
 		"cwd":"test",
 		"pool":null,
 		"pause":1,	
-		"process":"serial",
+		"process":null,
 		"processes":null,
 		"device":"pc",
 		"execute":1,

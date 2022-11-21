@@ -61,29 +61,30 @@ def setup(settings):
 		jobs (dict): Job submission dictionary
 	'''
 
+	# Default settings
+	path = 'config/settings.json'
+
 	# Load default settings
-	defaults = 'config/settings.json'
 	default = {}
 	if settings is None:
+		defaults = path
 		settings = default
 	elif isinstance(settings,str):
 		defaults = settings
 		settings = load(settings,default=default)
 
-	path = 'config/settings.json'
-	default = {}
 	func = lambda key,iterable,elements: iterable.get(key,elements[key])
 	updater(settings,load(path,default=default),func=func)
 
 	# Load default hyperparameters
 	default = {}
 	hyperparameters = settings.get('hyperparameters',defaults)
+
 	if hyperparameters is None:
 		hyperparameters = default
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters,default=default)
 
-	path = 'config/settings.json'
 	default = {}
 	func = lambda key,iterable,elements: iterable.get(key,elements[key])
 	updater(hyperparameters,load(path,default=default),func=func)
