@@ -1211,7 +1211,10 @@ class Object(object):
 					data[key][attr] = None
 
 		# Set data
-		data = {'data':data,'model':self.hyperparameters}
+		data = {
+			'data':data,
+			# 'model':self.hyperparameters
+			}
 
 		# Set path
 		if path is None:
@@ -1250,7 +1253,9 @@ class Object(object):
 			return e if isinstance(e,types) else i
 		
 		# Set data
-		data = {'model':self.hyperparameters}
+		data = {
+			# 'model':self.hyperparameters
+			}
 
 		# Set path
 		if path is None:
