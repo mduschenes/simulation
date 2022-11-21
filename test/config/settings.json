@@ -210,7 +210,6 @@
 			"ntasks-per-node":"1",
 			"cpus-per-task":"${SLURM_CPUS_PER_TASK}",
 			"cpus-per-task":"1",
-			"mem-per-cpu":"64G",			
 			"array":"0-0:1%100"
 			},
 		"dependencies":[],
