@@ -58,8 +58,7 @@
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.postprocess.args.JOB_PROCESSES":[1],		
-
+		"jobs.postprocess.args.JOB_PROCESSES":[1]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null
@@ -224,7 +223,7 @@
 	"job":{
 		"jobs":"job.slurm",
 		"args":{
-			"JOB_CWD":null,					
+			"JOB_CWD":".",					
 			"JOB_ENV":"jax",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
