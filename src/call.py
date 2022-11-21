@@ -573,10 +573,10 @@ def update(path,patterns,kwargs=None,process=None,processes=None,device=None,exe
 			value = join(value)
 		
 		elif pattern in ['dependency']:
-			if kwargs.get('dependencies') is not None and value.count(':') > 0:
-				value = '%s:%s'%(':'.join(value.split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]))
-			else:
-				value = None
+			value = '%s:%s'%(
+				':'.join(value.split(':')[:-1]) if isinstance(value,str) and value.count(':') > 0 else '',
+				','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]) if kwargs.get('dependencies') is not None else ''
+				)
 		
 		elif pattern in ['array']:
 			# pattern = int(value.split('-')[:].split(':')[0].split('%')[0])
@@ -584,10 +584,7 @@ def update(path,patterns,kwargs=None,process=None,processes=None,device=None,exe
 			step = kwargs.get('step') if kwargs.get('step') is not None else 1
 			min = kwargs.get('min') if kwargs.get('min') is not None else 0
 			max = kwargs.get('max') if kwargs.get('max') is not None else min + count - 1
-			if kwargs.get('simultaneous') is not None or value.count('%')>0:
-				simultaneous = kwargs.get('simultaneous') if kwargs.get('simultaneous') is not None else int(value.split('-')[:].split(':')[-1].split('%')[-1])
-			else:
-				simultaneous = 100
+			simultaneous = kwargs.get('simultaneous') if kwargs.get('simultaneous') is not None else int(value.split('%')[-1]) if isinstance(value,str) and value.count('%') > 0 else 100
 			value = '%d-%d:%d%%%d'%(min,max,step,simultaneous)
 		
 		elif pattern in ['output','error']:
