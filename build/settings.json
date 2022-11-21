@@ -46,7 +46,7 @@
 
 		"jobs.job.cwd":["test"],	
 		"jobs.postprocess.cwd":["test"],
-					
+
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
 		"jobs.job.process":[null],
