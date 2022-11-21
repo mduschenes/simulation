@@ -27,7 +27,7 @@
 	},
 "seed":{
 	"seed":16453,
-	"size":12,
+	"size":16,
 	"reset":16453,
 	"index":null
 	},
@@ -52,7 +52,7 @@
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[100],
+		"jobs.job.pool":[80],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -60,7 +60,12 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[4],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.args.patterns.cpus-per-task":[4]
+		"jobs.job.args.patterns.time":["16:00:00"],
+		"jobs.postprocess.patterns.time":["06:00:00"],
+		"jobs.job.args.patterns.mem":["72GB"],
+		"jobs.postprocess.patterns.mem":["64GB"],
+		"jobs.job.args.patterns.cpus-per-task":[4],
+		"jobs.postprocess.patterns.cpus-per-task":[1]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null
