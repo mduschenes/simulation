@@ -950,7 +950,7 @@ class ConjugateGradient(Base):
 		beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
-		restart = ((self.modulo.get('restart') is None) or ((iteration%self.modulo['restart']) == 0))
+		restart = ((self.modulo.get('restart') is not None) and ((iteration%self.modulo['restart']) == 0))
 		beta = 0 if (restart or is_naninf(beta) or beta>self.eps['beta']) else beta
 		search = -_grad + beta*search
 
