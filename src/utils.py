@@ -274,12 +274,14 @@ def value_and_gradient(func):
 	value_and_grad = jit(jax.value_and_grad(func))
 	return value_and_grad
 
-def gradient(func,mode=None,**kwargs):
+def gradient(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute gradient of function
 	Args:
 		func (callable): Function to differentiate
 		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic
 		kwargs : Additional keyword arguments for gradient mode:
 			'finite': tol (float): Finite difference tolerance
 			'shift': shifts (int): Number of eigenvalues of shifted values
@@ -290,25 +292,29 @@ def gradient(func,mode=None,**kwargs):
 	'''
 
 	if mode in ['finite']:
-		grad = gradient_finite(func,**kwargs)
+		grad = gradient_finite(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	elif mode in ['shift']:
-		grad = gradient_shift(func,**kwargs)
+		grad = gradient_shift(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	elif mode in ['fwd']:
-		grad = gradient_fwd(func,**kwargs)
+		grad = gradient_fwd(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	elif mode in ['rev']:
-		grad = gradient_rev(func,**kwargs)
+		grad = gradient_rev(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
+	elif mode in ['grad']:
+		grad = gradient_grad(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	else:
-		grad = jit(jax.grad(func))
+		grad = gradient_grad(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 
 	return grad
 
 
-def gradient_finite(func,tol=1e-6,**kwargs):
+def gradient_finite(func,tol=1e-6,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
 		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		tol (float): Finite difference tolerance
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic		
 		kwargs : Additional keyword arguments	
 	Returns:
 		grad (callable): Gradient of function
@@ -325,12 +331,14 @@ def gradient_finite(func,tol=1e-6,**kwargs):
 	return grad
 
 
-def gradient_shift(func,shifts=2,**kwargs):
+def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Calculate shift-rules derivative of function
 	Args:
 		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		shifts (int): Number of eigenvalues of shifted values
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic				
 		kwargs : Additional keyword arguments
 	Returns:
 		grad (callable): Gradient of function
@@ -350,18 +358,41 @@ def gradient_shift(func,shifts=2,**kwargs):
 	return grad
 
 
-def gradient_fwd(func,move=None,**kwargs):
+def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
+	'''
+	Compute gradient of function
+	Args:
+		func (callable): Function to differentiate
+		move (bool): Move differentiated axes to beginning of dimensions
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic	
+		kwargs : Additional keyword arguments
+	Returns:
+		grad (callable): Gradient of function
+	'''
+	_grad = jit(jax.grad(func,argnums=argnums,holomorphic=holomorphic))
+
+	if move:
+		grad = _grad
+	else:
+		grad = _grad
+
+	return grad
+
+def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute forward gradient of function
 	Args:
 		func (callable): Function to differentiate
 		move (bool): Move differentiated axes to beginning of dimensions
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic	
 		kwargs : Additional keyword arguments
 	Returns:
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.jacfwd(func))
+	_grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
 
 	if move:
 		@jit
@@ -374,18 +405,20 @@ def gradient_fwd(func,move=None,**kwargs):
 
 	return grad
 
-def gradient_rev(func,move=None,**kwargs):
+def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute reverse gradient of function
 	Args:
 		func (callable): Function to differentiate
 		move (bool): Move differentiated axes to beginning of dimensions
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic		
 		kwargs : Additional keyword arguments		
 	Returns:
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.jacrev(func))
+	_grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
 
 	if move:
 		@jit
@@ -1345,9 +1378,9 @@ def curve_fit(func,x,y,p0=None):
 		y (array): Array of output data
 		p0 (array): Initial estimate of parameters
 	Returns:
-		out (array): Curve fit
+		out (array): Curve fit returns
 	'''
-	return osp.optimize.curve_fit(func,x,y,p0=p0)[0] + 0.0
+	return osp.optimize.curve_fit(func,x,y,p0=p0)
 
 
 @partial(jit,static_argnums=(1,))

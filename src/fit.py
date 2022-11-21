@@ -14,6 +14,7 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+from src.utils import gradient,einsum
 from src.utils import array,zeros,ones
 from src.utils import is_naninf
 from src.utils import exp,log,abs,sqrt,norm,nanmean,nanstd,nansqrt,lstsq,curve_fit,product
@@ -140,7 +141,7 @@ def size(data,axis=None,transform=None,dtype=None,**kwargs):
 	return out
 
 
-def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
+def fit(x,y,_x=None,func=None,grad=None,wrapper=None,coef0=None,intercept=True,uncertainty=False):
 	'''
 	Fit of data
 	Args:
@@ -148,19 +149,25 @@ def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
 		y (array): Output data
 		_x (array): Output points to evaluate fit
 		func (callable): Function to fit to data with signature func(x,*coef)
+		grad (callable): Gradient of function to fit to data with signature grad(x,*coef)
 		wrapper (callable): Function to wrap fit data with signature wrapper(x,y,*coef)
 		coef0 (array): Initial estimate of fit coefficients
 		intercept (bool): Include intercept in fit
+		uncertainty (bool): Calculate uncertainty
 	Returns:
 		_y (array): Fit data at _x
 		coef (array): Fit model parameters
+		_y (array): Fit data at _x
+		coef (array): Fit model parameters
 	'''	
-
 
 	x = x.at[is_naninf(x)].set(0)
 
 	if wrapper is None:
 		wrapper = lambda x,y,*coef: y
+
+	if grad is None:
+		grad = gradient(func,argnums=(1,2),mode='fwd')
 
 	if func is None:
 		if intercept:
@@ -176,22 +183,41 @@ def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
 		try:
 			coef = lstsq(x,y)[0] + 0.0
 			_y = _x.dot(coef)
+			coefferr = zeros((*coef.shape,*coef.shape))
+			_yerr = zeros(_y.shape)
 		except:
-			_y = y
 			coef = zeros(_x.shape[1])
-	else:
+			_y = y
+			coefferr = zeros((*coef.shape,*coef.shape))
+			_yerr = zeros(_y.shape)
+
+	if func is not None:
 		if _x is None:
 			_x = x
-		try:
-			coef = curve_fit(func,x,y,p0=coef0)
-			_y = func(_x,*coef)
-		except:
-			coef = coef0
-			_y = zeros(_x.shape[0])
+		# try:
+		coef,coefferr = curve_fit(func,x,y,p0=coef0)
+		coef = array(coef)
+		coefferr = array(coefferr)
+
+		_y = func(_x,*coef)
+		_grad = grad(_x,*coef)
+		_grad = array(_grad).T
+		_yerr = einsum('ui,ij,uj->u',_grad,coefferr,_grad)
+
+		# except:
+		# 	coef = coef0
+		# 	_y = zeros(_x.shape[0])
+		# 	coefferr = zeros((*coef.shape,*coef.shape))
+		# 	_yerr = zeros(_y.shape)
 
 	if coef is not None:
 		_y = wrapper(_x,_y,*coef)
+	elif coef0 is not None:
+		coef = zeros(coef0.shape)
 	else:
-		coef = zeros(3)
+		coef = None
 
-	return _y,coef
+	if uncertainty:
+		return _y,coef,_yerr,coefferr
+	else:
+		return _y,coef

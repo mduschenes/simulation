@@ -111,6 +111,13 @@ defaults = {
 			"linewidth":4,
 			"color":"viridis",
 			},
+		"fill_between":{
+			"x":"noise.scale",
+			"y1":"M",
+			"y2":"M",
+			"alpha":0.5,
+			"color":'viridis',
+			},
 		"set_ylabel":{"ylabel":r'$M_{\gamma}$'},
 		"set_xlabel":{"xlabel":r"$\gamma$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
@@ -204,14 +211,15 @@ def process(path):
 			xerr = None
 			yerr = None
 
-			def func(x,*coef):
-				y = coef[1]*log(x) + coef[0]
+			# def func(x,*coef):
+			def func(x,a,b):
+				y = a*log(x) + b
 				return y
 
 			_x = linspace(x.min(),x.max(),100)
-			coef0 = [-100,900]
+			coef0 = [-900,-100]
 
-			_y,coef = fit(x,y,_x=_x,func=func,coef0=coef0)
+			_y,coef,_yerr,coefferr = fit(x,y,_x=_x,func=func,coef0=coef0,uncertainty=True)
 
 			fig,ax = None,None
 
@@ -235,13 +243,21 @@ def process(path):
 						**settings['ax']['errorbar'],						
 						'x':_x,
 						'y':_y,
+						# 'yerr':_yerr,
 						'label':r'$\quad~~ M_{\gamma} = \alpha\log{\gamma} + \beta$'+'\n'+r'$\alpha = %s~,~\beta = %s$'%(
 								tuple((scinotation(c,decimals=2) for c in coef))),						
 						'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
-						'marker':None,						
+						'marker':None,
 						'linestyle':'--',
-						},						
-						]
+						},												
+						],
+					'fill_between':{
+						**settings['ax']['fill_between'],	
+						'x':_x,
+						'y1':_y - _yerr,
+						'y2':_y + _yerr,
+						'color': getattr(plt.cm,defaults[name]['ax']['fill_between']['color'])(0.25),	
+						}
 					},
 				}
 
