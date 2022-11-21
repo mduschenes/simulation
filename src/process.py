@@ -28,6 +28,7 @@ from src.utils import argmax,difference,is_nan,is_numeric,abs
 from src.utils import e,pi,nan,scalars,nulls,scinotation,padder
 from src.dictionary import leaves,branches
 from src.io import setup,load,dump,join,split,glob
+from src.fit import fit,mean,std,normalize,sqrt,size
 from src.plot import plot
 
 AXES = ['x','y']
@@ -58,67 +59,6 @@ def Texify(string,texify={},usetex=True):
 	return string
 
 
-# Transform of data
-def transformation(transform=None):
-	if transform is None:
-		transform = lambda data:data
-		invtransform = lambda data:data
-	elif not isinstance(transform,str):
-		transform,invtransform = transform
-	elif callable(transform):
-		transform,invtransform = transform, lambda data:data
-	elif transform in ['linear']:
-		transform = lambda data:data
-		invtransform = lambda data:data		
-	elif transform in ['log']:		
-		transform = lambda data: np.log(data)
-		invtransform = lambda data:np.exp(data)
-	else:
-		transform = lambda data:data		
-		invtransform = lambda data:data		
-	return transform,invtransform
-
-# Normalization of data
-def norm(data,axis=None,ord=2):
-	if axis is not None and not isinstance(axis,int):
-		axis = tuple(axis)
-	return np.linalg.norm(data,axis=axis,ord=ord)
-
-# Sample average of data
-def mean(data,axis=None,transform=None,dtype=None,**kwargs):
-	if axis is not None and not isinstance(axis,int):
-		axis = tuple(axis)
-	transform,invtransform = transformation(transform)
-	return invtransform(np.nanmean(transform(data),axis=axis).astype(dtype))
-
-# Sample deviation of data
-def std(data,axis=None,transform=None,dtype=None,**kwargs):
-	if axis is not None and not isinstance(axis,int):
-		axis = tuple(axis)
-	transform,invtransform = transformation(transform)	
-	n = data.shape[axis]
-	return invtransform((np.nanstd(transform(data),axis=axis,ddof=n>1)).astype(dtype))
-
-
-# Square root of data
-def sqrt(data,axis=None,transform=None,dtype=None,**kwargs):
-	if axis is not None and not isinstance(axis,int):
-		axis = tuple(axis)
-	return np.sqrt(data)
-
-# Size of data
-def size(data,axis=None,transform=None,dtype=None,**kwargs):
-	if axis is not None and not isinstance(axis,int):
-		axis = tuple(axis)
-	if axis is None:
-		size = data.size
-	elif isinstance(axis,int):
-		size = data.shape[axis]		
-	else:
-		size = product([data.shape[ax] for ax in axis])
-	return size
-
-
 # Wrapper of data
 def wrapping(wrappers=None,kwarg=None,stat=None):
 	props = PROPS
@@ -142,46 +82,6 @@ def wrapping(wrappers=None,kwarg=None,stat=None):
 
 	return func
 
-# Fit data
-def fit(x,y,_x=None,func=None,wrapper=None,coef0=None,intercept=True):
-
-	x[np.isnan(x) | np.isinf(x)] = 0
-
-	if wrapper is None:
-		wrapper = lambda x,y,*coef: y
-
-	if func is None:
-		if intercept:
-			x = np.array([x,np.ones(x.size)]).T
-		else:
-			x = np.array([x]).T
-		if _x is None:
-			_x = x
-		elif intercept:
-			_x = np.array([_x,np.ones(_x.size)]).T
-		else:
-			_x = np.array([_x]).T
-		try:
-			coef = np.linalg.lstsq(x,y)[0] + 0.0
-			_y = _x.dot(coef)
-		except:
-			_y = y
-			coef = np.zeros(_x.shape[1])
-	else:
-		if _x is None:
-			_x = x
-		try:
-			coef = sp.optimize.curve_fit(func,x,y,p0=coef0)[0] + 0.0
-			_y = func(_x,*coef)
-		except:
-			coef = coef0
-			_y = np.zeros(_x.shape[0])
-
-	if coef is not None:
-		_y = wrapper(_x,_y,*coef)
-	else:
-		coef = np.zeros(3)
-	return _y,coef
 
 def check(key,value,datum,keys,values,data):
 	'''
@@ -621,7 +521,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						) for stat in itertools.product(['linear','log'],repeat=len(axes))
 					},
 					('fit','fit'): lambda key,data,variables=None,dtype=None,axis=axis,**kwargs: mean(
-						data,axis=0,dtype=dtype,transform=None),
+						data,axis=0,dtype=dtype,transform=fit),
 					}
 				} 
 				for axis,kwarg in enumerate(['%s'%(axis) for axis in axes])},
@@ -635,7 +535,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						) for stat in itertools.product(['linear','log'],repeat=len(axes))
 					},				
 					('fit','fit'): lambda key,data,variables=None,dtype=None,axis=axis,**kwargs: std(
-						data,axis=0,dtype=dtype,transform=None),
+						data,axis=0,dtype=dtype,transform=fit),
 					}
 				}	 
 				for axis,kwarg in enumerate(['%serr'%(axis) for axis in axes])},
@@ -1251,7 +1151,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 												value = value[slices]
 
-												if kwarg in ['%serr'%(axis) for axis in axes] and norm(value) == 0:
+												if kwarg in ['%serr'%(axis) for axis in axes] and normalize(value) == 0:
 													value = None
 
 												subsettings[kwarg] = value

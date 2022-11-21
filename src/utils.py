@@ -1322,6 +1322,72 @@ def qr(a):
 	return np.linalg.qr(a)
 
 
+@jit
+def lstsq(x,y):
+	'''
+	Compute least squares fit between x and y
+	Args:
+		x (array): Array of input data
+		y (array): Array of output data
+	Returns:
+		out (array): Least squares fit
+	'''
+	return np.linalg.lstsq(x,y)
+
+
+@jit
+def curve_fit(x,y,p0=None):
+	'''
+	Compute curve_fit fit between x and y
+	Args:
+		func (callable): Function to fit
+		x (array): Array of input data
+		y (array): Array of output data
+		p0 (array): Initial estimate of parameters
+	Returns:
+		out (array): Curve fit
+	'''
+	return osp.optimize.curve_fit(func,x,y,p0=coef0)[0] + 0.0
+
+
+@partial(jit,static_argnums=(1,))
+def nanmean(a,axis=None):
+	'''
+	Compute nanmean of array along axis
+	Args:
+		a (array): array to compute nanmean
+		axis (int): axis to compute over. Flattens array if None.
+	Returns:
+		out (array): nanmean of array
+	'''
+	return np.nanmean(a,axis=axis)
+
+@partial(jit,static_argnums=(1,2,))
+def nanstd(a,axis=None,ddof=None):
+	'''
+	Compute nanstd of array along axis
+	Args:
+		a (array): array to compute nanstd
+		axis (int): axis to compute over. Flattens array if None.
+		ddof (int): Number of degrees of freedom
+	Returns:
+		out (array): nanstd of array
+	'''
+	return np.nanstd(a,axis=axis,ddof=ddof)
+
+
+@jit
+def nansqrt(a):
+	'''
+	Compute nansqrt
+	Args:
+		a (array): array to compute nansqrt
+	Returns:
+		out (array): nansqrt of array
+	'''
+	return np.sqrt(a)
+
+
 @partial(jit,static_argnums=(1,2,3,))
 def norm(a,axis=None,ord=2,keepdims=False):
 	'''
@@ -1331,6 +1397,8 @@ def norm(a,axis=None,ord=2,keepdims=False):
 		axis (int): axis to normalize over. Flattens array if None.
 		ord (int,str): order of normalization
 		keepdims (bool): Keep axis of size 1 along normalization
+	Returns:
+		out (array): Norm of array
 	'''
 
 	out = np.linalg.norm(a,axis=axis,ord=ord,keepdims=keepdims)
