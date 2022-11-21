@@ -60,7 +60,7 @@ export JOB_CWD=${1:-${JOB_CWD}}
 export JOB_ENV=${2:-${JOB_ENV}}
 export JOB_SRC=${3:-${JOB_SRC}}
 export JOB_CMD=${4:-${JOB_CMD}}
-export JOB_PROCESSES=${5:-1}
+export JOB_PROCESSES=${5:-${JOB_PROCESSES}}
 shift 5;
 export JOB_ARGS=${@:-${JOB_ARGS}}
 
@@ -89,7 +89,7 @@ CMD=($(echo ${CMD[@]/\~/"${HOME}"} | envsubst))
 
 # Processes
 TASKS=(${JOB_CWD[@]})
-JOBS=${JOB_PROCESSES}
+JOBS=${JOB_PROCESSES:-1}
 
 # Executable
 EXE=()
@@ -99,5 +99,5 @@ EXE+=(--jobs ${JOBS} --env _ --linebuffer)
 EXE+=(RUN {} ${CMD[@]} :::)
 
 # Run
-# echo $(pwd) ${EXE[@]} ${TASKS[@]}
+echo $(pwd) ${EXE[@]} ${TASKS[@]}
 ${EXE[@]} ${TASKS[@]}
