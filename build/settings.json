@@ -45,7 +45,7 @@
 		"model.system.architecture":["unconstrained"],
 
 		"jobs.job.cwd":["test"],	
-		"jobs.postprocess.cwd":["test"],		
+		"jobs.postprocess.cwd":["test"],
 					
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
