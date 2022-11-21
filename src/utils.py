@@ -1322,6 +1322,72 @@ def qr(a):
 	return np.linalg.qr(a)
 
 
+@jit
+def lstsq(x,y):
+	'''
+	Compute least squares fit between x and y
+	Args:
+		x (array): Array of input data
+		y (array): Array of output data
+	Returns:
+		out (array): Least squares fit
+	'''
+	return np.linalg.lstsq(x,y)
+
+
+# @partial(jit,static_argnums=(0,))
+def curve_fit(func,x,y,p0=None):
+	'''
+	Compute curve_fit fit between x and y
+	Args:
+		func (callable): Function to fit
+		x (array): Array of input data
+		y (array): Array of output data
+		p0 (array): Initial estimate of parameters
+	Returns:
+		out (array): Curve fit
+	'''
+	return osp.optimize.curve_fit(func,x,y,p0=p0)[0] + 0.0
+
+
+@partial(jit,static_argnums=(1,))
+def nanmean(a,axis=None):
+	'''
+	Compute nanmean of array along axis
+	Args:
+		a (array): array to compute nanmean
+		axis (int): axis to compute over. Flattens array if None.
+	Returns:
+		out (array): nanmean of array
+	'''
+	return np.nanmean(a,axis=axis)
+
+@partial(jit,static_argnums=(1,2,))
+def nanstd(a,axis=None,ddof=None):
+	'''
+	Compute nanstd of array along axis
+	Args:
+		a (array): array to compute nanstd
+		axis (int): axis to compute over. Flattens array if None.
+		ddof (int): Number of degrees of freedom
+	Returns:
+		out (array): nanstd of array
+	'''
+	return np.nanstd(a,axis=axis,ddof=ddof)
+
+
+@jit
+def nansqrt(a):
+	'''
+	Compute nansqrt
+	Args:
+		a (array): array to compute nansqrt
+	Returns:
+		out (array): nansqrt of array
+	'''
+	return np.sqrt(a)
+
+
 @partial(jit,static_argnums=(1,2,3,))
 def norm(a,axis=None,ord=2,keepdims=False):
 	'''
@@ -1331,6 +1397,8 @@ def norm(a,axis=None,ord=2,keepdims=False):
 		axis (int): axis to normalize over. Flattens array if None.
 		ord (int,str): order of normalization
 		keepdims (bool): Keep axis of size 1 along normalization
+	Returns:
+		out (array): Norm of array
 	'''
 
 	out = np.linalg.norm(a,axis=axis,ord=ord,keepdims=keepdims)
@@ -3213,28 +3281,30 @@ def floor(a):
 	'''
 	return np.floor(a)
 
-@jit
-def argmax(a):
+@partial(jit,static_argnums=(1,))
+def argmax(a,axis=None):
 	'''
 	Calculate index of maximum of array a
 	Args:
 		a (array): Array to compute maximum
+		axis (int): Axis to compute maximum		
 	Returns:
 		out (int): Index of maximum of array a
 	'''
 	return np.argmax(a)
 
 
-@jit
-def argmin(a):
+@partial(jit,static_argnums=(1,))
+def argmin(a,axis=None):
 	'''
 	Calculate index of minimum of array a
 	Args:
 		a (array): Array to compute minimum
+		axis (int): Axis to compute minimum
 	Returns:
 		out (int): Index of minimum of array a
 	'''
-	return np.argmin(a)
+	return np.argmin(a,axis=axis)
 
 
 @jit
@@ -3883,7 +3953,7 @@ def is_naninf(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is nan or inf
 	'''
-	return is_nan(a,*args,**kwargs) or is_inf(a,*args,**kwargs)
+	return is_nan(a,*args,**kwargs) | is_inf(a,*args,**kwargs)
 
 def is_inf(a,*args,**kwargs):
 	'''
