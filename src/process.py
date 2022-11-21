@@ -1314,6 +1314,14 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							settings[instance][subinstance][setting][subattr][kwarg] = value
 
+					for subsubinstance in settings[instance][subinstance][setting][attr]:
+						combination,j,occurrence,stat = subsubinstance
+						key = _occurrences(occurrence,keys)
+						combination = dict(combination)
+						subsetting = '__property__'
+						if subsetting not in settings[instance][subinstance]:
+							settings[instance][subinstance][subsetting] = []
+						settings[instance][subinstance][subsetting].append(combination)
 
 					settings[instance][subinstance][setting][attr] = [
 						settings[instance][subinstance][setting][attr][subsubinstance]

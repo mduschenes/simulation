@@ -783,9 +783,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			for attr in settings[key]:
 				if attr in _settings:
 					_settings[attr].update(settings[key][attr])
-				for kwarg in list(_settings[attr]):
-					if kwarg not in settings[key][attr]:
-						_settings[attr].pop(kwarg)
+				if attr in _settings:
+					for kwarg in list(_settings[attr]):
+						if kwarg not in settings[key][attr]:
+							_settings[attr].pop(kwarg)
 
 			_setup(settings[key],_settings)	
 
