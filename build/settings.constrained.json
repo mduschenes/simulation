@@ -48,17 +48,20 @@
 		"jobs.job.cwd":["gobi/poster.unconstrained"],
 		"jobs.postprocess.cwd":["gobi/poster.unconstrained"],
 
+		"jobs.job.cwd":["test"],
+		"jobs.postprocess.cwd":["test"],
+
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[1],
+		"jobs.job.pool":[10],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.job.args.JOB_PROCESSES":[4],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],

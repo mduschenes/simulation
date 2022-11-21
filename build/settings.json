@@ -27,7 +27,7 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":2,
+	"size":1,
 	"reset":5576,
 	"index":null
 	},
@@ -37,8 +37,6 @@
 		"model.N":[2],
 		"model.M":[4,8,16,64],
 		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
-		"model.M":[4,8],
-		"noise.scale":[1e-10,1e-4],		
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[10],
