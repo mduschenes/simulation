@@ -664,19 +664,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				data[name][attr] = data[name][attr].reshape(*[1]*(max(0,1-data[name][attr].ndim)),*data[name][attr].shape)
 
 
-		# for name in names:
-		# 	print(name)
-		# 	for attr in data[name]:
-		# 		print(attr,data[name][attr].shape, (data[name][attr].size == 1 and is_nan(asscalar(data[name][attr]))))
-		# 	attr = 'parameters'
-		# 	print('----',attr,data[name][attr].shape, (data[name][attr].size == 1 and is_nan(asscalar(data[name][attr]))))
-		# 	print(data[name][attr])
-		# 	try:
-		# 		print(np.isnan(asscalar(data[name][attr])))
-		# 	except:
-		# 		print(None)
-		# 	print()
-
 		# Get number of dimensions and maximum shape of data attributes
 		ndim = {attr: min((data[name][attr].ndim for name in names 
 					if not (data[name][attr].size == 1 and asscalar(data[name][attr]) in ['None'])),default=1)
