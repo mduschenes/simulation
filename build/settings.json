@@ -27,7 +27,7 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":1,
+	"size":2,
 	"reset":5576,
 	"index":null
 	},
@@ -37,6 +37,8 @@
 		"model.N":[2],
 		"model.M":[4,8,16,64],
 		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
+		"model.M":[4,8],
+		"noise.scale":[1e-10,1e-4],		
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[10],
@@ -51,7 +53,7 @@
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[1],
+		"jobs.job.pool":[2],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -232,7 +234,7 @@
 			},
 		"paths":{},
 		"patterns":{
-			"output":"%x.%A.stdout","error":"%x.%A.stderr",
+			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
 			"time":"01:00:00","mem":"64G",
 			"ntasks-per-node":"1",
 			"cpus-per-task":"${SLURM_CPUS_PER_TASK}",
@@ -261,7 +263,7 @@
 			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.json","--hyperparameters=**/process.json","--cwd=."]
 			},
 		"patterns":{
-			"output":"%x.%A.stdout","error":"%x.%A.stderr",
+			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
 			"time":"01:00:00","mem":"64G",
 			"dependency":"afterany:"
 			},
