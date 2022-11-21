@@ -78,20 +78,31 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 				'SLURM_JOB_NAME':kwargs.get('key'),
 				'SLURM_JOB_ID':kwargs.get('key'),
 				'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
-				'SLURM_ARRAY_TASK_ID':kwargs.get('index'),
+				'SLURM_ARRAY_TASK_ID':kwargs.get('id'),
+				'SLURM_ARRAY_TASK_MIN':kwargs.get('min'),
+				'SLURM_ARRAY_TASK_MAX':kwargs.get('max'),
 				'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
+				'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
+				'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
+				'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
 			},
 			**env			
 		}
 
 	elif device in ['slurm']:
 		exe,flags,cmd,options,env = (
-				['sbatch'],
-				[*flags,'%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))],
-				['<'],
-				[*exe,*cmd,*options],
-				{}
-				)
+			['sbatch'],
+			[*flags,'%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))],
+			['<'],
+			[*exe,*cmd,*options],
+			{
+			**{
+				'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
+				'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),
+				},
+			**env
+			}
+			)
 
 	else:
 		exe = [*exe]
@@ -100,11 +111,16 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 		options = [*[subarg for arg in args for subarg in args[arg]],*options]
 		env = {
 			**{
-				'SLURM_JOB_NAME':kwargs.get('key'),				
+				'SLURM_JOB_NAME':kwargs.get('key'),
 				'SLURM_JOB_ID':kwargs.get('key'),
 				'SLURM_ARRAY_JOB_ID':kwargs.get('key'),
-				'SLURM_ARRAY_TASK_ID':kwargs.get('index'),
+				'SLURM_ARRAY_TASK_ID':kwargs.get('id'),
+				'SLURM_ARRAY_TASK_MIN':kwargs.get('min'),
+				'SLURM_ARRAY_TASK_MAX':kwargs.get('max'),
 				'SLURM_ARRAY_TASK_STEP':kwargs.get('step'),
+				'SLURM_ARRAY_TASK_COUNT':kwargs.get('count'),
+				'SLURM_ARRAY_TASK_SLICE':kwargs.get('slice'),
+				'SLURM_ARRAY_TASK_SIZE':kwargs.get('size'),				
 			},
 			**env,			
 		}
@@ -549,25 +565,34 @@ def update(path,patterns,kwargs=None,process=None,processes=None,device=None,exe
 			string = '%s%s=%s%s'%(kwargs['prefix'],kwargs['pattern'],kwargs['value'],kwargs['postfix'])
 			return string		
 
-	patterns.update({
-			**{pattern: join(patterns.get(pattern,'.')) for pattern in ['chdir'] if pattern in patterns},
-			**{pattern: '%s:%s'%(':'.join(patterns.get(pattern,'').split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None])) for pattern in ['dependency'] if pattern in patterns},
-			**{pattern: '%s-%s:%s%%%s'%(
-				patterns.get(pattern,'').split('-')[0].split(':')[0].split('%')[0],
-				(str(int(patterns.get(pattern,'').split('-')[0].split(':')[0].split('%')[0])+kwargs.get('size',1)-1) if kwargs.get('size') is not None else patterns.get(pattern,'').split('-')[1].split(':')[0].split('%')[0]),
-				(str(kwargs.get('step')) if kwargs.get('step') is not None else patterns.get(pattern,'').split(':')[-1].split('%')[0]),
-				patterns.get(pattern,'').split('%')[-1]
-				) 
-				for pattern in ['array'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A.%a',
-							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stdout',
-							root=None)
-							for pattern in ['output'] if pattern in patterns},
-			**{pattern: join(split(patterns.get(pattern),directory_file=True) if patterns.get(pattern) is not None else '%x.%A.%a',
-							ext=split(patterns.get(pattern),ext=True) if patterns.get(pattern) is not None else 'stderr',
-							root=None)
-							for pattern in ['error'] if pattern in patterns},			
-		})
+	for pattern in patterns:
+
+		value = patterns[pattern]
+
+		if pattern in ['chdir']:
+			value = join(value)
+		
+		elif pattern in ['dependency']:
+			value = '%s:%s'%(':'.join(value.split(':')[:-1]),','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]))
+		
+		elif pattern in ['array']:
+			# pattern = int(value.split('-')[:].split(':')[0].split('%')[0])
+			count = kwargs.get('count') if kwargs.get('count') is not None else 1
+			step = kwargs.get('step') if kwargs.get('step') is not None else 1
+			min = kwargs.get('min') if kwargs.get('min') is not None else 0
+			max = kwargs.get('max') if kwargs.get('max') is not None else min + count - 1
+			simultaneous = kwargs.get('simultaneous') if kwargs.get('simultaneous') is not None else 10	
+			value = '%d-%d:%d%%%d'%(min,max,step,simultaneous)
+		
+		elif pattern in ['output','error']:
+			value = join(split(value,directory_file=True) if value is not None else '%x.%A.%a',
+					ext=(split(value,ext=True) if value is not None else 
+						{'output':'stdout','error':'stderr'}.get(pattern,'log')),
+					root=None)
+		else:
+			value = value
+
+		patterns[pattern] = value
 
 	if process in ['serial']:
 		nulls = ['chdir','array']
@@ -579,7 +604,7 @@ def update(path,patterns,kwargs=None,process=None,processes=None,device=None,exe
 		nulls = ['chdir']
 		patterns.update({})		
 	else:
-		nulls = []
+		nulls = ['chdir','array']
 		patterns.update({})
 
 	patterns.update({
@@ -720,12 +745,36 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	keys = {key:{} for key in keys}
 
 	for key in keys:
-
-		index = pools[cwd[key]].index(key) if process in ['serial'] else 0
-		size = len(pools[cwd[key]])
-		step = pool if process in ['array'] else 1 if process in ['serial'] else size
 		
-		path = pools[cwd[key]].index(key) if size>1 else None
+		indices = pools[cwd[key]]
+		size = len(indices)
+
+		if size > 1 and process not in ['serial']:
+			index = indices.index(key)
+			mod = index%pool			
+			slice = pool
+			
+			id = index//pool
+			min = 0
+			max = size//pool + (size%pool>0) - 1
+			step = 1
+			count = (max - min + 1)//step
+			
+		else:
+			index = None
+			mod = None
+			slice = None
+
+			id = None
+			min = None
+			max = None
+			step = None
+			count = None
+
+		if size > 1:
+			path = indices.index(key)
+		else:
+			path = None
 		path = join(path,root=cwd[key])
 
 		exe = jobs[key]
@@ -742,16 +791,21 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 			'job':jobs[key],
 			'cmd':None,
 			'env':None,
-			'index': index,
-			'size': size,
-			'step': step,
 			'pool':pool,
+			'size':size,
+			'index': index,
+			'mod':mod,
+			'slice':slice,
+			'id': id,
+			'min':min,
+			'max':max,
+			'step': step,			
+			'count': count,
 			'results':results,
 			'paths':paths[key],
 			'patterns':patterns[key],
 			'dependencies':dependencies[key],
 			}
-
 
 		cmd,env = command(args[key],kwargs,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
@@ -765,17 +819,17 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	if process in ['serial']:
 		def boolean(task,tasks):
-			value = True
+			value = task['mod'] in [0,None]
 			return value
 		def updates(task,tasks):
 			attr = 'path'
-			value = task['cwd']
+			value = task['path']
 			task[attr] = value
 			return
 
 	elif process in ['parallel']:
 		def boolean(task,tasks):
-			value = task['cwd'] not in [subtask['cwd'] for subtask in tasks]
+			value = task['mod'] in [0,None]
 			return value
 		def updates(task,tasks):
 			attr = 'path'
@@ -785,7 +839,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	elif process in ['array']:
 		def boolean(task,tasks):
-			value = task['cwd'] not in [subtask['cwd'] for subtask in tasks]
+			value = task['index'] in [0,None]			
 			return value
 		def updates(task,tasks):
 			attr = 'path'			
@@ -795,7 +849,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	else:
 		def boolean(task,tasks):
-			value = task['cwd'] not in [subtask['cwd'] for subtask in tasks]			
+			value = task['mod'] in [0,None]			
 			return value
 		def updates(task,tasks):
 			attr = 'path'

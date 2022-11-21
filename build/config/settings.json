@@ -22,18 +22,18 @@
 "boolean":{
 	"train":1,
 	"load":0,
-	"dump":0,
+	"dump":1,
 	"plot":0
 	},
 "seed":{
-	"seed":5576,
+	"seed":12332,
 	"size":1,
-	"reset":5576,
+	"reset":12332,
 	"index":null
 	},
 "permutations":{
-	"permutations":null,
-	"groups":null,
+	"permutations":{},
+	"groups":[],
 	"index":null
 	},
 "model":{
@@ -42,14 +42,14 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":200,
+	"M":10,
 	"T":null,
-	"tau":5e1,
+	"tau":10e-1,
 	"p":2,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"metric":"infidelity.norm",
+	"metric":"infidelity.abs",
 	"system":{
 		"dtype":"complex",
 		"format":"array",
@@ -62,7 +62,7 @@
 		}
 	},
 "optimize":{
-	"iterations":50,
+	"iterations":200,
 	"optimizer":"cg",
 	"line_search":"line_search",
 	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-8,"alpha":1e-20,"beta":1e3},
@@ -71,7 +71,7 @@
 	"reset":0,
 	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":100},
+	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":null},
 	"length":{"log":null,"attributes":10,"track":null,"callback":null,"restart":null,"dump":null},
 	"attributes":{
 		"iteration":[],"parameters":[],
@@ -89,7 +89,7 @@
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"method":"constrained",
+		"method":"unconstrained",
 		"use":true,		
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
@@ -106,10 +106,10 @@
 		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
-		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
+		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
 		},
 	"z": {
 		"string":"z",
@@ -117,7 +117,7 @@
 		"method":null,		
 		"use":true,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
-		"parameters":[-0.01,0,0.01,0.005,-0.02],
+		"parameters":[-0.1,0,0.1,0.05,-0.2],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["z"]],
 		"scale":1,
@@ -137,7 +137,7 @@
 		"method":null,		
 		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[0.000724,-0.000130,0.005,0.008,0.0002,0.002,-0.0003,0.0060,0.0009,-0.0006],
+		"parameters":[0.00724,-0.0130,0.005,0.008,0.002,0.02,-0.003,0.060,0.009,-0.006],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
@@ -185,7 +185,7 @@
 	"string":"phase",
 	"category":"constant",
 	"shape":[2,-1,-1],
-	"scale":1e-6,
+	"scale":null,
 	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,
@@ -197,10 +197,10 @@
 		"jobs":"job.slurm",
 		"args":{
 			"JOB_CWD":".",					
-			"JOB_ENV":"jax",
+			"JOB_ENV":"mkl",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
-			"JOB_PROCESSES":1,
+			"JOB_PROCESSES":2,
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{},
@@ -210,14 +210,15 @@
 			"ntasks-per-node":"1",
 			"cpus-per-task":"${SLURM_CPUS_PER_TASK}",
 			"cpus-per-task":"1",
+			"mem-per-cpu":"64G",			
 			"array":"0-0:1%100"
 			},
 		"dependencies":[],
 		"pwd":"config",
 		"cwd":"test",
-		"pool":null,
+		"pool":2,
 		"pause":1,	
-		"process":"serial",
+		"process":null,
 		"processes":null,
 		"device":"pc",
 		"execute":1,
@@ -227,7 +228,7 @@
 		"jobs":"postprocess.slurm",
 		"args":{
 			"JOB_CWD":".",
-			"JOB_ENV":"jax",
+			"JOB_ENV":"mkl",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
@@ -250,6 +251,6 @@
 		"verbose":"info"
 		}
 	},
-"process": {"labels":["noise.scale"]},
+"process": {},
 "plot": {}
 }
