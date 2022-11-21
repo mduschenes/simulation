@@ -205,7 +205,7 @@
 			},
 		"paths":{},
 		"patterns":{
-			"output":"%x.%A.stdout","error":"%x.%A.stderr",
+			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
 			"time":"01:00:00","mem":"64G",
 			"ntasks-per-node":"1",
 			"cpus-per-task":"${SLURM_CPUS_PER_TASK}",
@@ -234,7 +234,7 @@
 			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.json","--hyperparameters=**/process.json","--cwd=."]
 			},
 		"patterns":{
-			"output":"%x.%A.stdout","error":"%x.%A.stderr",
+			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
 			"time":"01:00:00","mem":"64G",
 			"dependency":"afterany:"
 			},
