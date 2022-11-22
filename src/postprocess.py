@@ -187,6 +187,10 @@ def process(path):
 			file = 'metadata.json'
 			path = join(path,file)
 			hyperparameters = load(path)
+				
+			if hyperparameters is None:
+				continue
+
 			data = {}
 			
 			key = ['M.objective.noise.scale',-1]
@@ -280,13 +284,14 @@ def process(path):
 			paths = glob(path,include='directory',recursive='**')
 			paths = [subpath for subpath in paths if all(exists(join(subpath,files[file])) for file in files)]
 
-
 			for path in paths:
 				with cd(path):
 				
 					print('Loading: ',path,files)
 					hyperparameters = load(files['hyperparameters'])
 
+					if hyperparameters is None:
+						continue
 
 					hyperparameters['sys']['path']['data']['log'] = None
 					U = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
