@@ -4705,19 +4705,16 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		if int(number) == number:
 			number = int(number)
 		string = str(number)
+
+	if error is not None and is_naninf(error):
+		error = r'$\infty$'
 	
 	if zero and number == 0:
 		string = r'%d%%s%%s'%(number)
 
-		if error is not None:
-			error = str(error)
-	
 	elif is_int(number):
 		string = r'%s%%s%%s'%(str(number))
 
-		if error is not None:
-			error = str(error)
-	
 	elif isinstance(number,(float,np.float64)):		
 		string = '%0.*e'%(decimals-1,number)
 		string = string.split('e')
@@ -4732,7 +4729,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		else:
 			string = r'%s%%s%%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',r'\cdot' if (one or (float(flt) != 1.0)) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
 	
-		if error is not None:
+		if error is not None and not isinstance(error,str):
 			if int(exp) in range(*scilimits):
 				error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
 			else:
@@ -4742,7 +4739,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		error = ''
 		separator = ''
 	else:
-		error = error
+		error = str(error)
 		separator = r'~\pm~'
 	
 	string = string%(separator,error)
