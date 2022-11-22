@@ -106,7 +106,7 @@
 	"path": {
         "plot": "plot.pdf",
         "process": "process.hdf5",
-        "settings":"metadata.json"     
+        "metadata": "metadata.json"     
     },
 	"delimiter":".",
 	"process":["src.postprocess.process"],

@@ -26,7 +26,7 @@ from src.utils import array,product,expand_dims,to_eval,to_repr,is_iterable,is_n
 from src.utils import asarray,asscalar
 from src.utils import argmax,difference,is_nan,is_numeric,abs
 from src.utils import e,pi,nan,scalars,nulls,scinotation,padder
-from src.dictionary import leaves,branches
+from src.dictionary import branches
 from src.io import setup,load,dump,join,split,glob
 from src.fit import fit,mean,std,normalize,sqrt,size
 from src.plot import plot
@@ -318,13 +318,6 @@ def find(dictionary,properties):
 	Returns:
 		keys (list[dict]): Formatted keys based on found properties in dictionary
 	'''
-
-	# keys = (leaves(dictionary,prop,types=(dict,list),returns='value') for prop in properties)
-	# keys = map(lambda key: dict(zip(
-	# 	properties,(*key[:2],tuple((dict(zip(['key','value'],to_key_value(key[2],delimiter='='))),))
-	# 	if key[2] is None or isinstance(key[2],str) 
-	# 	else tuple(dict(zip(['key','value'],to_key_value(j,delimiter='='))) for j in key[2])))),
-	# 	zip(*keys))
 
 	keys = branches(dictionary,properties,types=(dict,list),returns='value')
 
@@ -1143,15 +1136,57 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 												subsettings[kwarg] = value
 
+
+
 											settings[instance][(subinstance,*position)][setting][attr][
 												(combination,j,occurrence,stat)] = subsettings
+
 
 		for samplelayout in layouts:
 			for subinstance in layouts[samplelayout]:
 				settings[instance].pop(subinstance)
 
 
+	# Get metadata
+	metadata = {}
+	for instance in settings:
+		if instance not in metadata:
+			metadata[instance] = []
+		for subinstance in settings[instance]:
+			value = []
+			for setting in settings[instance][subinstance]:
+				for attr in settings[instance][subinstance][setting]:
+					if not ((setting in ['ax']) and (attr in ['errorbar'])):
+						continue
+					for subsubinstance in settings[instance][subinstance][setting][attr]:
 
+						combination,j,occurrence,stat = subsubinstance
+						key = _occurrences(occurrence,keys)
+
+						if stat not in [('linear','linear')]:
+							continue
+
+						subvalue = {}
+
+						subvalue.update(dict(combination))
+
+						for kwarg in variables[occurrence][combination]:
+							subsubkwarg = key[kwarg]['key'][-1] if kwarg in key else '%serr'%(key[kwarg.replace('err','')]['key'][-1])
+							subsubvalue = settings[instance][subinstance][setting][attr][subsubinstance][kwarg]
+							subvalue.update({subsubkwarg: subsubvalue.tolist() if subsubvalue is not None else subsubvalue})
+
+						value.append(subvalue)
+
+			metadata[instance].append(value)
+
+	# Dump metadata
+	if hyperparameters.get('dump'):
+		attr = 'metadata'
+		options = {}
+
+		kwargs = {path[attr]: metadata}
+
+		dumper(kwargs,**options)
 
 
 	# Set plot settings
@@ -1301,14 +1336,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 							settings[instance][subinstance][setting][subattr][kwarg] = value
 
-					for subsubinstance in settings[instance][subinstance][setting][attr]:
-						combination,j,occurrence,stat = subsubinstance
-						key = _occurrences(occurrence,keys)
-						combination = dict(combination)
-						subsetting = '__property__'
-						if subsetting not in settings[instance][subinstance]:
-							settings[instance][subinstance][subsetting] = []
-						settings[instance][subinstance][subsetting].append(combination)
 
 					settings[instance][subinstance][setting][attr] = [
 						settings[instance][subinstance][setting][attr][subsubinstance]
@@ -1510,18 +1537,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				continue
 			print('Plotting: ',instance)
 			fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
-
-
-	# Dump settings
-	if hyperparameters.get('dump'):
-		attr = 'settings'
-		options = {
-			'represent':True,
-		}
-
-		kwargs = {path[attr]: settings}
-
-		dumper(kwargs,**options)
 
 
 	# Perform farmed out processes
