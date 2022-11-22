@@ -26,9 +26,9 @@
 	"plot":0
 	},
 "seed":{
-	"seed":193737,
-	"size":1,
-	"reset":193737,
+	"seed":78476,
+	"size":10,
+	"reset":6754,
 	"index":null
 	},
 "permutations":{
@@ -36,9 +36,9 @@
 	
 		"model.N":[4],
 		"model.M":[10,20,50,75,100,125,150,175,200,250,300,400],		
-		"model.M":[2,4,8,10,20,50,100,200],		
-		"model.tau":[10e0],
-		"noise.scale":[1e-8,1e-7],
+		"model.M":[2,4,8,10,20,50,100,200,300,1000],		
+		"model.tau":[100e0],
+		"noise.scale":[1e-10,1e-9,1e-8,1e-7,1e-6,5e-6,1e-5,5e-5,1e-4,5e-4,1e-3,1e-2],
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[200],
@@ -46,14 +46,14 @@
 		"parameters.xy.method":["unconstrained"],
 		"model.system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["test"],
-		"jobs.postprocess.cwd":["test"],
+		"jobs.job.cwd":["gobi/noise.test"],
+		"jobs.postprocess.cwd":["gobi/noise.test"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[1],
+		"jobs.job.pool":[64],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -61,11 +61,11 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["06:00:00"],
+		"jobs.job.patterns.time":["25:00:00"],
 		"jobs.postprocess.patterns.time":["06:00:00"],
 		"jobs.job.patterns.mem":["72GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[1],
+		"jobs.job.patterns.cpus-per-task":[4],
 		"jobs.postprocess.patterns.cpus-per-task":[1]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
@@ -100,12 +100,12 @@
 	"iterations":50,
 	"optimizer":"cg",
 	"line_search":"line_search",
-	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-10,"alpha":1e-20,"beta":1e3},
+	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-12,"alpha":1e-20,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
 	"status":1,
 	"reset":0,
-	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
-	"alpha":1e-4,"beta":1e-2,
+	"c1":0.0001,"c2":0.9,"maxiter":800,"restart":1e6,
+	"alpha":1e-3,"beta":1e-3,
 	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":100},
 	"length":{"log":null,"attributes":10,"track":null,"callback":null,"restart":null,"dump":null},
 	"attributes":{

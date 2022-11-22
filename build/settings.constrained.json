@@ -45,9 +45,6 @@
 		"parameters.xy.method":["constrained"],
 		"model.system.architecture":["constrained"],
 
-		"jobs.job.cwd":["gobi/poster.unconstrained"],
-		"jobs.postprocess.cwd":["gobi/poster.unconstrained"],
-
 		"jobs.job.cwd":["test"],
 		"jobs.postprocess.cwd":["test"],
 
@@ -168,7 +165,7 @@
 		"method":null,		
 		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[0.000724,-0.000130,0.005,0.008,0.0002,0.002,-0.0003,0.0060,0.0009,-0.0006],
+		"parameters":[0.000724,-0.000130,0.005,0.008,0.0002,0.002,-0.0003,0.00060,0.00009,-0.000006],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
