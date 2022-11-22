@@ -124,15 +124,20 @@ defaults = {
 		"set_xscale":{"value":"log","base":10},
 		"set_xnbins":{"nbins":6},
 		"set_xticks":{"ticks":[1e-7,1e-6,1e-5,1e-4,1e-3]},
+		"set_xticks":{"ticks":[1e-7,1e-6,1e-5]},
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
 		"set_yscale":{"value":"linear"},
 		"set_ynbins":{"nbins":7},
 		"set_ylim": {
-                "ymin": 0,
-                "ymax": 350
-            },
+				"ymin": 0,
+				"ymax": 350
+			},
+		"set_ylim": {
+				"ymin": 0,
+				"ymax": 50
+			},
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
@@ -194,7 +199,7 @@ def process(path):
 			data = {}
 			
 			key = ['M.objective.noise.scale',-1]
-			label = {'x':'noise.scale','y':'objective','label':'M'}
+			label = {'x':'noise.scale','y':'M','label':'objective'}
 			values = getter(hyperparameters,key)
 
 			attrs = set((attr for value in values for attr in value))

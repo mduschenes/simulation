@@ -728,7 +728,7 @@ class Object(object):
 				if attr in optimize['track']:
 
 					if ((optimize['length']['track'] is not None) and 
-						(len(optimize['track'][attr]) >= (optimize['length']['track'] + 1))
+						(len(optimize['track'][attr]) > optimize['length']['track'])
 						):
 						optimize['track'][attr].pop(0)
 
