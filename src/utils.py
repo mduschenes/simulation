@@ -4563,7 +4563,7 @@ def to_eval(a,represent=True):
 	'''
 	return ast.literal_eval(a) if represent else a
 
-def to_repr(a,**kwargs):
+def to_repr(a,represent=True):
 	'''
 	Convert python object to string representation
 	Args:
