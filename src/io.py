@@ -350,11 +350,13 @@ class funcclass(object):
 	def __call__(self,*args,**kwargs):
 		return self.func(*args,**kwargs)
 
-def encode_json(obj):
+def encode_json(obj,represent=False,**kwargs):
 	'''
 	Encode object into jsonable
 	Args:
 		obj(object): Object to convert
+		represent (bool): Representation of objects
+		kwargs (dict): Additional keyword arguments
 	Returns:
 		dictionary (dictionary): Jsonable dictionary of object
 	'''
@@ -363,14 +365,17 @@ def encode_json(obj):
 		dictionary = deepcopy(dump_json(obj))
 	else:
 		for key in obj:
-			dictionary[to_repr(key)] = encode_json(obj[key])
+			if represent:
+			dictionary[to_repr(key,represent=represent)] = encode_json(obj[key],represent=represent,**kwargs)
 	return dictionary
 
-def decode_json(dictionary):
+def decode_json(dictionary,represent=False,**kwargs):
 	'''
 	Convert jsonable into dictionary
 	Args:
 		dictionary(object): Object to convert
+		represent (bool): Representation of objects
+		kwargs (dict): Additional keyword arguments
 	Returns:
 		obj (dictionary): Dictionary to convert to obj
 	'''
@@ -380,9 +385,9 @@ def decode_json(dictionary):
 	else:
 		for key in dictionary:
 			try:
-				obj[to_eval(key)] = decode_json(dictionary[key])
+				obj[to_eval(key,represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
 			except (ValueError,SyntaxError):
-				obj[to_eval(to_repr(key))] = decode_json(dictionary[key])
+				obj[to_eval(to_repr(key,represent=represent),represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
 	return obj
 
 
@@ -595,13 +600,14 @@ def pickleable(obj,path=None,callables=True,verbose=False):
 	return ispickleable
 
 
-def jsonable(obj,path=None,callables=False):
+def jsonable(obj,path=None,callables=False,**kwargs):
 	'''
 	Check if object can be written to json
 	Args:
 		obj (object): Object to json
 		path (str): Path to check if object can be written to
 		callables (bool): Allow functions to be written to json
+		kwargs (dict): Additional keyword arguments		
 	Returns:
 		isjsonable (bool): Whether object can be written to json
 	'''	
@@ -621,7 +627,7 @@ def jsonable(obj,path=None,callables=False):
 	with open(path,'w') as fobj:
 		try:
 			# json.dump(obj,fobj,**{'default':dump_json,'ensure_ascii':False,'indent':4})
-			json.dump(encode_json(data),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+			json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
 			isjsonable = True
 		except Exception as exception:
 			pass
@@ -706,7 +712,7 @@ def _load(obj,wr,ext,**kwargs):
 		data = pickle.load(obj,**kwargs)
 	elif ext in ['json']:
 		# data = json.load(obj,**{'object_hook':load_json,**kwargs})
-		data = decode_json(json.load(obj,**{'object_hook':load_json,**kwargs}))
+		data = decode_json(json.load(obj,**{'object_hook':load_json,**kwargs}),**kwargs)
 	elif ext in ['hdf5','h5']:
 		data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 
@@ -778,7 +784,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 	elif ext in ['json']:
 		# jsonable(data,callables=kwargs.pop('callables',False))	
 		# json.dump(data,obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
-		json.dump(encode_json(data),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+		json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
 	elif ext in ['tex']:
 		obj.write(data,**kwargs)
 	elif ext in ['hdf5','h5']:

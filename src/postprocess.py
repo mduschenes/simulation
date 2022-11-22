@@ -16,7 +16,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import array,zeros,ones,arange,linspace,rand,sort,eig,argmax,argmin,maximum,difference,rand,scinotation,log
+from src.utils import array,zeros,ones,arange,linspace,rand,sort,eig,argmax,argmin,maximum,difference,rand,scinotation,log,sqrt
 from src.dictionary import updater,getter
 from src.fit import fit
 from src.io import load,dump,join,split,glob,cd,exists,dirname
@@ -94,7 +94,7 @@ defaults = {
 	},
 'plot.noise.scale.M.min.pdf': {
 	"fig":{
-		"set_size_inches":{"w":9,"h":9},
+		"set_size_inches":{"w":9.5,"h":9.5},
 		"subplots_adjust":{},
 		"tight_layout":{},
 		"savefig":{"fname":"plot.noise.scale.M.min.pdf","bbox_inches":"tight","pad_inches":0.2},
@@ -111,6 +111,13 @@ defaults = {
 			"linewidth":4,
 			"color":"viridis",
 			},
+		"fill_between":{
+			"x":"noise.scale",
+			"y1":"M",
+			"y2":"M",
+			"alpha":0.5,
+			"color":'viridis',
+			},
 		"set_ylabel":{"ylabel":r'$M_{\gamma}$'},
 		"set_xlabel":{"xlabel":r"$\gamma$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
@@ -121,7 +128,11 @@ defaults = {
 		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
 		"set_yscale":{"value":"linear"},
-		"set_ynbins":{"nbins":6},
+		"set_ynbins":{"nbins":7},
+		"set_ylim": {
+                "ymin": 0,
+                "ymax": 350
+            },
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
@@ -138,7 +149,7 @@ defaults = {
 			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": [0.02,0.02],
+			"loc": [0.02,0.01],
 			"ncol": 1,
 			"set_zorder":{"level":100},
 			"set_label":True,
@@ -204,14 +215,15 @@ def process(path):
 			xerr = None
 			yerr = None
 
-			def func(x,*coef):
-				y = coef[1]*log(x) + coef[0]
+			# def func(x,*coef):
+			def func(x,a,b):
+				y = a*log(x) + b
 				return y
 
-			_x = linspace(x.min(),x.max(),100)
-			coef0 = [-100,900]
+			_x = linspace(0.75*x.min(),1.5*x.max(),x.size*20)
+			coef0 = None
 
-			_y,coef = fit(x,y,_x=_x,func=func,coef0=coef0)
+			_y,coef,_yerr,coefferr = fit(x,y,_x=_x,func=func,coef0=coef0,uncertainty=True)
 
 			fig,ax = None,None
 
@@ -230,18 +242,28 @@ def process(path):
 						'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.5),	
 						'marker':'o',
 						'linestyle':'',
+						'alpha':0.7,
 						},
 						{
 						**settings['ax']['errorbar'],						
 						'x':_x,
 						'y':_y,
+						# 'yerr':_yerr,
 						'label':r'$\quad~~ M_{\gamma} = \alpha\log{\gamma} + \beta$'+'\n'+r'$\alpha = %s~,~\beta = %s$'%(
-								tuple((scinotation(c,decimals=2) for c in coef))),						
+								tuple((scinotation(coef[i],decimals=2,scilimits=[-1,3],error=sqrt(coefferr[i][i])) for i in range(len(coef))))),						
 						'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
-						'marker':None,						
+						'marker':None,
 						'linestyle':'--',
-						},						
-						]
+						'zorder':-1,
+						},												
+						],
+					'fill_between':{
+						**settings['ax']['fill_between'],	
+						'x':_x,
+						'y1':_y - _yerr,
+						'y2':_y + _yerr,
+						'color': getattr(plt.cm,defaults[name]['ax']['fill_between']['color'])(0.25),	
+						}
 					},
 				}
 

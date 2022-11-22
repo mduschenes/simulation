@@ -1516,6 +1516,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	if hyperparameters.get('dump'):
 		attr = 'settings'
 		options = {
+			'represent':True,
 		}
 
 		kwargs = {path[attr]: settings}

@@ -274,12 +274,14 @@ def value_and_gradient(func):
 	value_and_grad = jit(jax.value_and_grad(func))
 	return value_and_grad
 
-def gradient(func,mode=None,**kwargs):
+def gradient(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute gradient of function
 	Args:
 		func (callable): Function to differentiate
 		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic
 		kwargs : Additional keyword arguments for gradient mode:
 			'finite': tol (float): Finite difference tolerance
 			'shift': shifts (int): Number of eigenvalues of shifted values
@@ -290,25 +292,29 @@ def gradient(func,mode=None,**kwargs):
 	'''
 
 	if mode in ['finite']:
-		grad = gradient_finite(func,**kwargs)
+		grad = gradient_finite(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	elif mode in ['shift']:
-		grad = gradient_shift(func,**kwargs)
+		grad = gradient_shift(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	elif mode in ['fwd']:
-		grad = gradient_fwd(func,**kwargs)
+		grad = gradient_fwd(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	elif mode in ['rev']:
-		grad = gradient_rev(func,**kwargs)
+		grad = gradient_rev(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
+	elif mode in ['grad']:
+		grad = gradient_grad(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	else:
-		grad = jit(jax.grad(func))
+		grad = gradient_grad(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 
 	return grad
 
 
-def gradient_finite(func,tol=1e-6,**kwargs):
+def gradient_finite(func,tol=1e-6,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
 		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		tol (float): Finite difference tolerance
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic		
 		kwargs : Additional keyword arguments	
 	Returns:
 		grad (callable): Gradient of function
@@ -325,12 +331,14 @@ def gradient_finite(func,tol=1e-6,**kwargs):
 	return grad
 
 
-def gradient_shift(func,shifts=2,**kwargs):
+def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Calculate shift-rules derivative of function
 	Args:
 		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		shifts (int): Number of eigenvalues of shifted values
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic				
 		kwargs : Additional keyword arguments
 	Returns:
 		grad (callable): Gradient of function
@@ -350,18 +358,41 @@ def gradient_shift(func,shifts=2,**kwargs):
 	return grad
 
 
-def gradient_fwd(func,move=None,**kwargs):
+def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
+	'''
+	Compute gradient of function
+	Args:
+		func (callable): Function to differentiate
+		move (bool): Move differentiated axes to beginning of dimensions
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic	
+		kwargs : Additional keyword arguments
+	Returns:
+		grad (callable): Gradient of function
+	'''
+	_grad = jit(jax.grad(func,argnums=argnums,holomorphic=holomorphic))
+
+	if move:
+		grad = _grad
+	else:
+		grad = _grad
+
+	return grad
+
+def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute forward gradient of function
 	Args:
 		func (callable): Function to differentiate
 		move (bool): Move differentiated axes to beginning of dimensions
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic	
 		kwargs : Additional keyword arguments
 	Returns:
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.jacfwd(func))
+	_grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
 
 	if move:
 		@jit
@@ -374,18 +405,20 @@ def gradient_fwd(func,move=None,**kwargs):
 
 	return grad
 
-def gradient_rev(func,move=None,**kwargs):
+def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute reverse gradient of function
 	Args:
 		func (callable): Function to differentiate
 		move (bool): Move differentiated axes to beginning of dimensions
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic		
 		kwargs : Additional keyword arguments		
 	Returns:
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.jacrev(func))
+	_grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
 
 	if move:
 		@jit
@@ -1345,9 +1378,9 @@ def curve_fit(func,x,y,p0=None):
 		y (array): Array of output data
 		p0 (array): Initial estimate of parameters
 	Returns:
-		out (array): Curve fit
+		out (array): Curve fit returns
 	'''
-	return osp.optimize.curve_fit(func,x,y,p0=p0)[0] + 0.0
+	return osp.optimize.curve_fit(func,x,y,p0=p0)
 
 
 @partial(jit,static_argnums=(1,))
@@ -3885,8 +3918,7 @@ def is_int(a,*args,**kwargs):
 		out (boolean): If object is an int
 	'''
 	try:
-		a = int(a)
-		return True
+		return float(a) == int(a)
 	except:
 		return False
 
@@ -4520,25 +4552,27 @@ def gradient_sigmoid(a,scale=1):
 
 
 
-def to_eval(a,**kwargs):
+def to_eval(a,represent=True):
 	'''
 	Convert string to python object
 	Args:
 		a (str): Object to convert to python object
+		represent (bool): Representation of objects		
 	Returns:
 		object (object): Python object representation of string
 	'''
-	return ast.literal_eval(a)
+	return ast.literal_eval(a) if represent else a
 
 def to_repr(a,**kwargs):
 	'''
 	Convert python object to string representation
 	Args:
 		a (object): Object to convert to string representation
+		represent (bool): Representation of objects				
 	Returns:
 		string (str): String representation of Python object
 	'''
-	return repr(a)
+	return repr(a) if represent else a
 
 
 def to_list(a,dtype=None,**kwargs):
@@ -4633,7 +4667,7 @@ def to_key_value(string,delimiter='=',**kwargs):
 	return key,value
 
 
-def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],usetex=False):
+def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
@@ -4644,6 +4678,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		zero (bool): Make numbers that equal 0 be the int representation
 		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
 		scilimits (list): Limits on where not to represent with scientific notation
+		error (str,int,float): Error of number to be processed
 		usetex (bool): Render string with Latex
 	
 	Returns:
@@ -4652,10 +4687,17 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 	'''
 	if not is_number(number):
 		return str(number)
+
 	try:
-		number = int(number) if int(number) == float(number) else float(number)
+		number = int(number) if is_int(number) else float(number)
 	except:
 		string = number
+		return string
+
+	try:
+		error = int(error) if is_int(error) else float(error)
+	except:
+		error = None
 		return string
 
 	maxnumber = base**order
@@ -4666,12 +4708,16 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		string = str(number)
 	
 	if zero and number == 0:
-		string = '%d'%(number)
+		string = r'%d%%s%%s'%(number)
+
+		if error is not None:
+			error = str(error)
 	
-	elif isinstance(number,(int,np.integer)):
-		string = str(number)
-		# if usetex:
-		# 	string = r'\textrm{%s}'%(string)
+	elif is_int(number):
+		string = r'%s%%s%%s'%(str(number))
+
+		if error is not None:
+			error = str(error)
 	
 	elif isinstance(number,(float,np.float64)):		
 		string = '%0.*e'%(decimals-1,number)
@@ -4680,11 +4726,28 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		basechange = int(basechange) if int(basechange) == basechange else basechange
 		flt = string[0]
 		exp = str(int(string[1])*basechange)
+
 		if int(exp) in range(*scilimits):
 			flt = '%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))) if (one or (float(flt) != 1.0)) else ''
-			string = r'%s'%(flt)
+			string = r'%s%%s%%s'%(flt)
 		else:
-			string = r'%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',r'\cdot' if (one or (float(flt) != 1.0)) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
+			string = r'%s%%s%%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',r'\cdot' if (one or (float(flt) != 1.0)) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
+	
+		if error is not None:
+			if int(exp) in range(*scilimits):
+				error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
+			else:
+				error = r'%s'%('%0.*f'%(decimals-1,float(error)/(base**(int(exp)))))
+
+	if error is None:
+		error = ''
+		separator = ''
+	else:
+		error = error
+		separator = r'~\pm~'
+	
+	string = string%(separator,error)
+
 	if usetex:
 		string = r'%s'%(string.replace('$',''))
 	else:
