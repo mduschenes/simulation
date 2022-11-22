@@ -4707,6 +4707,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		string = str(number)
 
 	if error is not None and is_naninf(error):
+		# error = r'$\infty$'
 		error = None
 	
 	if zero and number == 0:
