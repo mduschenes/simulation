@@ -111,7 +111,7 @@
 	"delimiter":".",
 	"process":[],
 	"process":["src.postprocess.process"],
-	"load":1,
+	"load":0,
 	"dump":1,
 	"plot":1
 }

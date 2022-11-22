@@ -22,20 +22,6 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			},		
-			{
-			"x":"iteration",
-			"y":"objective.ideal.state",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless}"],
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
 			}						
 			],	
 		"fill_between":[
@@ -45,14 +31,7 @@
 			"label":["N","architecture","M","noise.scale","\\textrm{Noisy}"],
 			"alpha":0.5,			
 			"color":"viridis"
-			},			
-			{
-			"x":"iteration",
-			"y":"objective.ideal.state",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless}"],
-			"alpha":0.5,			
-			"color":"viridis"
-			}							
+			}						
 			],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
