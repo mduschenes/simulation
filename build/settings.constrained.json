@@ -26,9 +26,9 @@
 	"plot":0
 	},
 "seed":{
-	"seed":787945,
-	"size":25,
-	"reset":787945,
+	"seed":3663426,
+	"size":1,
+	"reset":3663426,
 	"index":null
 	},
 "permutations":{
@@ -55,13 +55,13 @@
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[10],
+		"jobs.job.pool":[1],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[4],		
+		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
