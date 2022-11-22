@@ -365,7 +365,6 @@ def encode_json(obj,represent=False,**kwargs):
 		dictionary = deepcopy(dump_json(obj))
 	else:
 		for key in obj:
-			if represent:
 			dictionary[to_repr(key,represent=represent)] = encode_json(obj[key],represent=represent,**kwargs)
 	return dictionary
 
