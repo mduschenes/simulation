@@ -109,9 +109,9 @@
         "settings":"plot.settings.json"             
     },
 	"delimiter":".",
-	"process":["src.postprocess.process"],
 	"process":[],
-	"load":0,
+	"process":["src.postprocess.process"],
+	"load":1,
 	"dump":1,
 	"plot":1
 }
