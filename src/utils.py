@@ -4698,7 +4698,6 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		error = int(error) if is_int(error) else float(error)
 	except:
 		error = None
-		return string
 
 	maxnumber = base**order
 	if number > maxnumber:
