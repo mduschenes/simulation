@@ -3918,8 +3918,7 @@ def is_int(a,*args,**kwargs):
 		out (boolean): If object is an int
 	'''
 	try:
-		a = int(a)
-		return True
+		return float(a) == int(a)
 	except:
 		return False
 
@@ -4553,25 +4552,27 @@ def gradient_sigmoid(a,scale=1):
 
 
 
-def to_eval(a,**kwargs):
+def to_eval(a,represent=True):
 	'''
 	Convert string to python object
 	Args:
 		a (str): Object to convert to python object
+		represent (bool): Representation of objects		
 	Returns:
 		object (object): Python object representation of string
 	'''
-	return ast.literal_eval(a)
+	return ast.literal_eval(a) if represent else a
 
 def to_repr(a,**kwargs):
 	'''
 	Convert python object to string representation
 	Args:
 		a (object): Object to convert to string representation
+		represent (bool): Representation of objects				
 	Returns:
 		string (str): String representation of Python object
 	'''
-	return repr(a)
+	return repr(a) if represent else a
 
 
 def to_list(a,dtype=None,**kwargs):
@@ -4666,7 +4667,7 @@ def to_key_value(string,delimiter='=',**kwargs):
 	return key,value
 
 
-def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],usetex=False):
+def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
@@ -4677,6 +4678,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		zero (bool): Make numbers that equal 0 be the int representation
 		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
 		scilimits (list): Limits on where not to represent with scientific notation
+		error (str,int,float): Error of number to be processed
 		usetex (bool): Render string with Latex
 	
 	Returns:
@@ -4685,10 +4687,17 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 	'''
 	if not is_number(number):
 		return str(number)
+
 	try:
-		number = int(number) if int(number) == float(number) else float(number)
+		number = int(number) if is_int(number) else float(number)
 	except:
 		string = number
+		return string
+
+	try:
+		error = int(error) if is_int(error) else float(error)
+	except:
+		error = None
 		return string
 
 	maxnumber = base**order
@@ -4699,12 +4708,16 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		string = str(number)
 	
 	if zero and number == 0:
-		string = '%d'%(number)
+		string = r'%d%%s%%s'%(number)
+
+		if error is not None:
+			error = str(error)
 	
-	elif isinstance(number,(int,np.integer)):
-		string = str(number)
-		# if usetex:
-		# 	string = r'\textrm{%s}'%(string)
+	elif is_int(number):
+		string = r'%s%%s%%s'%(str(number))
+
+		if error is not None:
+			error = str(error)
 	
 	elif isinstance(number,(float,np.float64)):		
 		string = '%0.*e'%(decimals-1,number)
@@ -4713,11 +4726,28 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		basechange = int(basechange) if int(basechange) == basechange else basechange
 		flt = string[0]
 		exp = str(int(string[1])*basechange)
+
 		if int(exp) in range(*scilimits):
 			flt = '%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))) if (one or (float(flt) != 1.0)) else ''
-			string = r'%s'%(flt)
+			string = r'%s%%s%%s'%(flt)
 		else:
-			string = r'%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',r'\cdot' if (one or (float(flt) != 1.0)) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
+			string = r'%s%%s%%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',r'\cdot' if (one or (float(flt) != 1.0)) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
+	
+		if error is not None:
+			if int(exp) in range(*scilimits):
+				error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
+			else:
+				error = r'%s'%('%0.*f'%(decimals-1,float(error)/(base**(int(exp)))))
+
+	if error is None:
+		error = ''
+		separator = ''
+	else:
+		error = error
+		separator = r'~\pm~'
+	
+	string = string%(separator,error)
+
 	if usetex:
 		string = r'%s'%(string.replace('$',''))
 	else:
