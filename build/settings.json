@@ -1,4 +1,4 @@
-{
+	{
 "class":"src.quantum.Unitary",
 "hyperparameters":"settings.json",
 "sys":{
@@ -36,7 +36,7 @@
 	
 		"model.N":[2],
 		"model.M":[4],
-		"noise.scale":[1e-10],
+		"noise.scale":[1e-10,1e-5,1e-6],
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[10],

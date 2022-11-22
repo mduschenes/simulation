@@ -184,34 +184,33 @@ def process(path):
 
 		if name in ['plot.noise.scale.M.min.pdf']:
 
-			file = 'plot.settings.json'
+			file = 'metadata.json'
 			path = join(path,file)
 			hyperparameters = load(path)
 			data = {}
 			
-			keys = [
-				['M.objective.noise.scale',(None,0,0),'ax','errorbar'],
-				['M.objective.noise.scale',(None,0,0),'__property__']
-				]
-			for key in keys:
-				values = getter(hyperparameters,key)
-				attrs = set((attr for value in values for attr in value))
-				for attr in attrs:
-					data[attr] = [value[attr] for value in values]
-					try:
-						data[attr] = array(data[attr])
-					except:
-						pass
+			key = ['M.objective.noise.scale',-1]
+			label = {'x':'noise.scale','y':'objective','label':'M'}
+			values = getter(hyperparameters,key)
 
-			shape = data['y'].shape
-			ndim = data['y'].ndim
+			attrs = set((attr for value in values for attr in value))
+			for attr in attrs:
+				data[attr] = [value[attr] for value in values]
+				try:
+					data[attr] = array(data[attr])
+				except:
+					pass
+
+
+			shape = data[label['y']].shape
+			ndim = data[label['y']].ndim
 			axis = 1
 
-			indices = argmin(data['y'],axis=axis)
+			indices = argmin(data[label['label']],axis=axis)
 			indices = tuple((indices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
 
-			x = data['noise.scale']
-			y = data['x'][indices]
+			x = data[label['x']]
+			y = data[label['y']][indices]
 			xerr = None
 			yerr = None
 
