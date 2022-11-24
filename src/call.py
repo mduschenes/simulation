@@ -297,7 +297,8 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 
 	if file:
 		with cd(path):
-			touch(file,cmd,chmod=True,env=env,execute=True,verbose=False)
+			touch(file,cmd,mod=True,env=env,execute=True,verbose=False)
+
 	if execute > 0:
 		with cd(path):
 			result = wrapper(*caller(args,inputs=inputs,outputs=outputs,errors=errors,env=env,device=device,verbose=verbose),env=env,device=device,verbose=verbose)
@@ -388,13 +389,13 @@ def echo(*args,process=None,processes=None,device=None,execute=False,verbose=Non
 
 
 
-def touch(path,*args,chmod=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Create file with command and environmental variables
 	Args:
 		path (str): Path of file
 		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
-		chmod (str,bool): Chmod file, or boolean to make executable
+		mod (str,bool): Chmod file, or boolean to make executable
 		destination (str): Path of destination object
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
@@ -412,21 +413,42 @@ def touch(path,*args,chmod=None,env=None,process=None,processes=None,device=None
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,stdout=path,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-	if chmod is not None:
-		if isinstance(chmod,bool):
-			chmod = '+x'
-			
-		exe = ['chmod']
-		flags = [chmod]
-		cmd = [path]
-		options = []
-		env = []	
-		args = []
-
-		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,stdout=path,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-
+	chmod(path,mod=mod,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
+
+
+def chmod(path,mod=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Chmod file with command and environmental variables
+	Args:
+		path (str): Path of file
+		mod (str,bool): Chmod file, or boolean to make executable
+		destination (str): Path of destination object
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	'''
+
+	if mod is None:
+		return
+
+	if isinstance(mod,bool):
+		mod = '+x'
+
+	exe = ['chmod']
+	flags = [mod]
+	cmd = [path]
+	options = []
+	env = []	
+	args = []
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return
+
 
 def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
