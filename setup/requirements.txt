@@ -18,4 +18,5 @@ dill
 jsonpickle
 natsort
 equinox
+progress
 parallel
