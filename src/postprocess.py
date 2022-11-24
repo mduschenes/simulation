@@ -226,7 +226,7 @@ def process(path):
 					return y
 
 				_x = linspace(0.75*x.min(),1.5*x.max(),x.size*20)
-				coef0 = None
+				coef0 = zeros(2)
 
 				_y,coef,_yerr,coefferr = fit(x,y,_x=_x,func=func,coef0=coef0,uncertainty=True)
 

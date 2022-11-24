@@ -207,8 +207,11 @@ def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,coef0=N
 	if func is not None:
 		if _x is None:
 			_x = x
-		# try:
-		coef,coefferr = curve_fit(func,x,y,p0=p0)
+		try:
+			coef,coefferr = curve_fit(func,x,y,p0=p0)
+		except TypeError:
+			coef,coefferr = zeros(len(coef0)),zeros((len(coef0),len(coef0)))
+
 		coef = array(coef)
 		coefferr = array(coefferr)
 
