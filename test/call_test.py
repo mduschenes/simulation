@@ -11,7 +11,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.call import submit,command,call,cp,rm,echo,sed,sleep
+from src.call import submit,command,call,cp,rm,echo,sed,sleep,touch
 from src.io import load,dump
 
 def test_cp(path=None):
@@ -83,6 +83,16 @@ def test_sleep(path=None):
 	kwargs = {}
 
 	sleep(pause,process=process,processes=processes,device=device,execute=execute,verbose=verbose,**kwargs)
+	return
+
+def test_touch(path=None):
+
+	path = 'test.sh'
+	args = ['./job.slurm . mkl ~/files/uw/research/code/simulation/code/src train.py 1 settings.json']
+	env = {'SLURM_VAR':10,"SLURM_FOO":"HIIII"}
+
+	touch(path,*args,env=env,execute=True,verbose=False)
+
 	return
 
 def test_command(path=None):
