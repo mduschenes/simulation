@@ -26,18 +26,18 @@
 	"plot":0
 	},
 "seed":{
-	"seed":78476,
-	"size":10,
-	"reset":6754,
+	"seed":19272,
+	"size":1,
+	"reset":2419,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
 		"model.N":[4],
-		"model.M":[10,20,50,75,100,125,150,175,200,250,300,400],		
 		"model.M":[2,4,8,10,20,50,100,200,300,1000],		
-		"model.tau":[100e0],
+		"model.M":[10,20,50,75,100,125,150,175,200,250,300,400],
+		"model.tau":[10e0],
 		"noise.scale":[1e-10,1e-9,1e-8,1e-7,1e-6,5e-6,1e-5,5e-5,1e-4,5e-4,1e-3,1e-2],
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
@@ -46,14 +46,14 @@
 		"parameters.xy.method":["unconstrained"],
 		"model.system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["gobi/noise.test"],
-		"jobs.postprocess.cwd":["gobi/noise.test"],
+		"jobs.job.cwd":["test"],
+		"jobs.postprocess.cwd":["test"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[64],
+		"jobs.job.pool":[4],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -152,7 +152,7 @@
 		"method":null,		
 		"use":true,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
-		"parameters":[-0.01,0,0.01,0.005,-0.02],
+		"parameters":[-1e-2,0,1e-3,5e-3,2e-3],		
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["z"]],
 		"scale":1,
@@ -172,7 +172,7 @@
 		"method":null,		
 		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[0.000724,-0.000130,0.005,0.008,0.0002,0.002,-0.0003,0.00060,0.00009,-0.000006],
+		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],										
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
