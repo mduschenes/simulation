@@ -180,6 +180,8 @@ def noiseize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 		data = None
 	elif isinstance(string,str):
 
+		assert (scale >= 0) and (scale <= 1), "Noise scale %r not in [0,1]"%(scale)
+
 		if string in ['phase']:
 			data = [sqrt(1-scale)*basis['I'],
 					sqrt(scale)*basis['Z']]
