@@ -134,10 +134,6 @@ defaults = {
 				"ymin": 0,
 				"ymax": 350
 			},
-		"set_ylim": {
-				"ymin": 0,
-				"ymax": 50
-			},
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
@@ -189,95 +185,96 @@ def process(path):
 
 		if name in ['plot.noise.scale.M.min.pdf']:
 
-			file = 'metadata.json'
-			path = join(path,file)
-			hyperparameters = load(path)
+			with cd(path):
+
+				file = 'metadata.json'
+				hyperparameters = load(file)
+					
+				if hyperparameters is None:
+					continue
+
+				data = {}
 				
-			if hyperparameters is None:
-				continue
+				key = ['M.objective.noise.scale',-1]
+				label = {'x':'noise.scale','y':'M','label':'objective'}
+				values = getter(hyperparameters,key)
 
-			data = {}
-			
-			key = ['M.objective.noise.scale',-1]
-			label = {'x':'noise.scale','y':'M','label':'objective'}
-			values = getter(hyperparameters,key)
-
-			attrs = set((attr for value in values for attr in value))
-			for attr in attrs:
-				data[attr] = [value[attr] for value in values]
-				try:
-					data[attr] = array(data[attr])
-				except:
-					pass
+				attrs = set((attr for value in values for attr in value))
+				for attr in attrs:
+					data[attr] = [value[attr] for value in values]
+					try:
+						data[attr] = array(data[attr])
+					except:
+						pass
 
 
-			shape = data[label['y']].shape
-			ndim = data[label['y']].ndim
-			axis = 1
+				shape = data[label['y']].shape
+				ndim = data[label['y']].ndim
+				axis = 1
 
-			indices = argmin(data[label['label']],axis=axis)
-			indices = tuple((indices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
+				indices = argmin(data[label['label']],axis=axis)
+				indices = tuple((indices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
 
-			x = data[label['x']]
-			y = data[label['y']][indices]
-			xerr = None
-			yerr = None
+				x = data[label['x']]
+				y = data[label['y']][indices]
+				xerr = None
+				yerr = None
 
-			# def func(x,*coef):
-			def func(x,a,b):
-				y = a*log(x) + b
-				return y
+				# def func(x,*coef):
+				def func(x,a,b):
+					y = a*log(x) + b
+					return y
 
-			_x = linspace(0.75*x.min(),1.5*x.max(),x.size*20)
-			coef0 = None
+				_x = linspace(0.75*x.min(),1.5*x.max(),x.size*20)
+				coef0 = None
 
-			_y,coef,_yerr,coefferr = fit(x,y,_x=_x,func=func,coef0=coef0,uncertainty=True)
+				_y,coef,_yerr,coefferr = fit(x,y,_x=_x,func=func,coef0=coef0,uncertainty=True)
 
-			fig,ax = None,None
+				fig,ax = None,None
 
-			settings = deepcopy(defaults[name])
+				settings = deepcopy(defaults[name])
 
-			options = {
-				'ax':{
-					'errorbar':[
-						{
-						**settings['ax']['errorbar'],
-						'x':x,
-						'y':y,
-						'xerr':xerr,
-						'yerr':yerr,
-						'label':None,
-						'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.5),	
-						'marker':'o',
-						'linestyle':'',
-						'alpha':0.7,
+				options = {
+					'ax':{
+						'errorbar':[
+							{
+							**settings['ax']['errorbar'],
+							'x':x,
+							'y':y,
+							'xerr':xerr,
+							'yerr':yerr,
+							'label':None,
+							'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.5),	
+							'marker':'o',
+							'linestyle':'',
+							'alpha':0.7,
+							},
+							{
+							**settings['ax']['errorbar'],						
+							'x':_x,
+							'y':_y,
+							# 'yerr':_yerr,
+							'label':r'$\quad~~ M_{\gamma} = \alpha\log{\gamma} + \beta$'+'\n'+r'$\alpha = %s~,~\beta = %s$'%(
+									tuple((scinotation(coef[i],decimals=2,scilimits=[-1,3],error=sqrt(coefferr[i][i])) for i in range(len(coef))))),						
+							'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
+							'marker':None,
+							'linestyle':'--',
+							'zorder':-1,
+							},												
+							],
+						'fill_between':{
+							**settings['ax']['fill_between'],	
+							'x':_x,
+							'y1':_y - _yerr,
+							'y2':_y + _yerr,
+							'color': getattr(plt.cm,defaults[name]['ax']['fill_between']['color'])(0.25),	
+							}
 						},
-						{
-						**settings['ax']['errorbar'],						
-						'x':_x,
-						'y':_y,
-						# 'yerr':_yerr,
-						'label':r'$\quad~~ M_{\gamma} = \alpha\log{\gamma} + \beta$'+'\n'+r'$\alpha = %s~,~\beta = %s$'%(
-								tuple((scinotation(coef[i],decimals=2,scilimits=[-1,3],error=sqrt(coefferr[i][i])) for i in range(len(coef))))),						
-						'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
-						'marker':None,
-						'linestyle':'--',
-						'zorder':-1,
-						},												
-						],
-					'fill_between':{
-						**settings['ax']['fill_between'],	
-						'x':_x,
-						'y1':_y - _yerr,
-						'y2':_y + _yerr,
-						'color': getattr(plt.cm,defaults[name]['ax']['fill_between']['color'])(0.25),	
-						}
-					},
-				}
+					}
 
-			updater(settings,options)
+				updater(settings,options)
 
-			fig,ax = plot(settings=settings,fig=fig,ax=ax)
+				fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
 
 

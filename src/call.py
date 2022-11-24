@@ -142,7 +142,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 	return args,env
 
 
-def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,wrapper=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,wrapper=None,pause=None,file=None,stdin=None,stdout=None,stderr=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit call to command line of the form $> exe flags cmd args options
 	Args:
@@ -156,6 +156,10 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		env (dict[str,str]): Environmental variables for args		
 		wrapper (callable): Wrapper for stdout with signature wrapper(stdout,stderr,returncode)		
 		pause (int,str): Time to sleep after call
+		file (str): Write command to file
+		stdin (file): Stdinput stream to command
+		stdout (file): Stdoutput to command
+		stderr (file): Stderro to command
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command
 		device (str): Name of device to submit to
@@ -165,7 +169,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		result (object): Return of commands
 	'''
 
-	def caller(args,inputs=None,env=None,device=None,verbose=None):
+	def caller(args,inputs=None,outputs=None,errors=None,env=None,device=None,verbose=None):
 
 		def run(args,stdin=None,stdout=None,stderr=None,env=None):
 			env = {**environ(),**env} if env is not None else None
@@ -188,38 +192,46 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 			obj = obj.strip().decode('utf-8')
 			return obj
 
-
-		stdin = None
-		stdout = subprocess.PIPE
-		stderr = subprocess.PIPE
+		stdin = None if inputs is None else inputs if isinstance(inputs,str) else inputs.pop(0) if len(inputs)>len(args) else None
+		stdout = subprocess.PIPE if outputs is None else subprocess.PIPE
+		stderr = subprocess.PIPE if errors is None else subprocess.PIPE
 		returncode = None
 
-		inputs = [inputs]*len(args) if inputs in [None] else inputs
+		inputs = [inputs]*len(args) if inputs is None or isinstance(inputs,str) else inputs
+		outputs = [outputs]*len(args) if outputs is None or isinstance(outputs,str) else outputs
+		errors = [errors]*len(args) if errors is None or isinstance(errors,str) else errors
 
-		for arg,input in zip(args,inputs):
+		for arg,input,output,error in zip(args,inputs,outputs,errors):
 
-			stdin = open(input,'r') if input is not None else stdin
+			stdin = open(input,'r') if isinstance(input,str) else input if input is not None else stdin
+			stdout = open(output,'w') if isinstance(output,str) else output if output is not None else stdout
+			stderr = open(error,'w') if isinstance(error,str) else error if error is not None else stderr
 
 			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr,env=env)
 
 			if stdin is not None:
 				stdin.close()
+			if isinstance(output,str):
+				stdout.close()
+			if isinstance(error,str):
+				stderr.close()
 
 			stdin = result.stdout
 
 
 		stdout,stderr,returncode = [],[],result.returncode
 		
-		for line in result.stdout:
-			stdout.append(parse(line))			
-			logger.log(verbose,stdout[-1])
-
+		if result.stdout is not None:
+			for line in result.stdout:
+				stdout.append(parse(line))			
+				logger.log(verbose,stdout[-1])
 		returncode = result.wait()
 
-		for line in result.stderr:	
-			stderr.append(parse(line))
-			if returncode is not None:
-				logger.log(verbose,stderr[-1])
+		if result.stderr is not None:
+			for line in result.stderr:	
+				stderr.append(parse(line))
+				if returncode is not None:
+					logger.log(verbose,stderr[-1])
 
 		stdout,stderr,returncode = wrap(stdout,stderr,returncode)
 
@@ -276,12 +288,19 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 	inputs,args,cmd,env = parser(*args,env=env,device=device,verbose=verbose)
 	result = None
 
+	inputs = [stdin,*inputs]
+	outputs = stdout
+	errors = stderr
+
 	msg = '%s : %s'%(path,cmd) if path is not None else cmd
 	logger.log(verbose,msg)
 
+	if file:
+		with cd(path):
+			touch(file,cmd,chmod=True,env=env,execute=True,verbose=False)
 	if execute > 0:
 		with cd(path):
-			result = wrapper(*caller(args,inputs=inputs,env=env,device=device,verbose=verbose),env=env,device=device,verbose=verbose)
+			result = wrapper(*caller(args,inputs=inputs,outputs=outputs,errors=errors,env=env,device=device,verbose=verbose),env=env,device=device,verbose=verbose)
 
 	return result
 
@@ -367,6 +386,75 @@ def echo(*args,process=None,processes=None,device=None,execute=False,verbose=Non
 	return
 
 
+
+
+def touch(path,*args,chmod=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Create file with command and environmental variables
+	Args:
+		path (str): Path of file
+		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
+		chmod (str,bool): Chmod file, or boolean to make executable
+		destination (str): Path of destination object
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	'''
+
+	exe = ['echo']
+	flags = []
+	cmd = ''.join([*[arg for var in env for arg in ['export %s=%s\n'%(var,env[var])]],*args])
+	options = []
+	env = []	
+	args = []
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,stdout=path,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	if chmod is not None:
+		if isinstance(chmod,bool):
+			chmod = '+x'
+			
+		exe = ['chmod']
+		flags = [chmod]
+		cmd = [path]
+		options = []
+		env = []	
+		args = []
+
+		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,stdout=path,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+
+	return
+
+def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Sleep for pause
+	Args:
+		pause (int): Time to sleep
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	'''
+
+	if pause is None:
+		return
+
+	exe = ['sleep']
+	flags = []
+	cmd = [pause]
+	options = []
+	env = []	
+	args = []
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return
+
+
 def sed(path,patterns,default=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	GNU sed replace patterns in path
@@ -422,35 +510,6 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
-
-
-def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
-	'''
-	Sleep for pause
-	Args:
-		pause (int): Time to sleep
-		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
-		processes (int): Number of processes per command		
-		device (str): Name of device to submit to
-		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
-		verbose (int,str,bool): Verbosity
-	'''
-
-	if pause is None:
-		return
-
-	exe = ['sleep']
-	flags = []
-	cmd = [pause]
-	options = []
-	env = []	
-	args = []
-
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-
-	return
-
-
 
 def search(path,pattern,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
@@ -676,7 +735,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,de
 	return
 
 
-def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,pause=None,file=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands as tasks to command line
 	Args:
@@ -689,6 +748,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
 		pause (int,str): Time to sleep after call		
+		file (str): Write command to file		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -884,7 +944,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		update(destination,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
-		result = call(*cmd,env=env,path=path,pause=pause,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+		result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,execute=execute,verbose=verbose)
 
 		results.append(result)
 
@@ -904,6 +964,7 @@ def launch(jobs={},wrapper=None):
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
 			pause (int,str): Time to sleep after call		
+			file (str): Write command to file			
 			process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
 			processes (int): Number of processes per command			
 			device (str): Name of device to submit to
