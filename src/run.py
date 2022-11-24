@@ -133,6 +133,7 @@ def setup(settings):
 
 	keys = {}
 	for instance,value in enumerate(value for value in itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
+
 		if allowed(
 			{attr: index[attr] for attr in index},
 			{attr: {k:v[1] for k,v in zip(values,value)}[attr] for attr in index},
@@ -141,7 +142,6 @@ def setup(settings):
 
 			key = formatter(instance,value,values,getter(hyperparameters,'model.system.key',delimiter=delim))
 			value = [v[1] for v in value]
-
 
 			keys[key] = {}
 			for setting in value:

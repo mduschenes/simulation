@@ -830,6 +830,8 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	keys = {key:{} for key in keys}
 
 	for key in keys:
+
+		logger.log(verbose,'Job %s'%(key))
 		
 		indices = pools[cwd[key]]
 		size = len(indices)
