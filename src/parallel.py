@@ -9,26 +9,64 @@ import numpy as np
 import joblib
 import multiprocessing as multiprocessing
 import multiprocessing.dummy as multithreading
-from progress.bar import Bar
 
 # warnings.simplefilter("ignore", (UserWarning,DeprecationWarning,FutureWarning))
 # warnings.simplefilter("ignore", (sp.sparse.SparseEfficiencyWarning))
 # warnings.filterwarnings('error',category=sp.sparse.SparseEfficiencyWarning)
 
+def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
+	# log = file if hasattr(file,'write') else sys.stderr
+	# traceback.print_stack(file=log)
+	# log.write(warnings.formatwarning(message, category, filename, lineno, line))
+	return
+warnings.showwarning = warn_with_traceback
+
+
 DELIMITER='__'
 MAX_PROCESSES = 8
 
-# Python Modules
-from src.utils import mapping
-
 # Logging
-from src.system	 import Logger
-name = __name__
-path = os.getcwd()
-file = 'logging.conf'
-conf = os.path.join(path,file)
-file = None #'log.log'
-logger = Logger(name,conf,file=file)
+import logging
+logger = logging.getLogger(__name__)
+
+
+class mapping(dict):
+	def __init__(self,*args,**kwargs):
+		'''
+		Mapping for args and kwargs
+		Args:
+			args (tuple[object]): Positional arguments
+			kwargs (dict[str,object]): Keyword arguments
+		'''
+		self.args = list(args)
+		self.kwargs = dict(kwargs)
+		return
+
+	def __iter__(self):
+		return self.args.__iter__()
+
+	def __getitem__(self,item):
+		return self.kwargs[item]
+
+	def __setitem__(self,item,value):
+		if isinstance(item,int):
+			self.args[item] = value
+		else:
+			self.kwargs[item] = value
+		return
+
+	def __len__(self):
+		return len(self.args)+len(self.kwargs)
+
+	def __str__(self):
+		return str(self.args) + ' , ' + str(self.kwargs)
+
+	def keys(self):
+		return self.kwargs.keys()
+
+	def values(self):
+		return self.kwargs.values()
+
 
 
 def timing(verbose):
