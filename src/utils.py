@@ -63,7 +63,7 @@ itg = np.integer
 flt = np.float32
 dbl = np.float64
 
-class mapping(object):
+class mapping(dict):
 	def __init__(self,*args,**kwargs):
 		'''
 		Mapping for args and kwargs
