@@ -27,6 +27,7 @@ from src.utils import asarray,asscalar
 from src.utils import argmax,difference,is_nan,is_numeric,abs
 from src.utils import e,pi,nan,scalars,nulls,scinotation,padder
 from src.dictionary import branches
+from src.parallel import Parallelize
 from src.io import setup,load,dump,join,split,glob
 from src.fit import fit,mean,std,normalize,sqrt,size
 from src.plot import plot
@@ -380,10 +381,21 @@ def loader(kwargs,**options):
 			default = {}
 			kwargs[kwarg] = {}
 			returns['multiple'] |= len(paths)>1
-			for path in paths:
-				value = load(path,default=default,**options)
+
+			def func(path):
+				value = load(path,default=default,**options)				
+				msg = 'Loaded: %s %d'%(path,len(value))
+				print(msg)
+				logger.log(verbose,msg)			
+				return value	
+			iterable = paths
+			values = []
+			processes = -1
+			verbose = True
+			parallelize = Parallelize(processes)
+			parallelize(func=func,iterable=iterable,values=values)
+			for path,value in zip(paths,values):
 				kwargs[kwarg].update(value)
-				print('Loaded:',path,len(value))				
 		else:
 			kwargs[kwarg] = kwargs[kwarg]
 			returns['multiple'] |= False

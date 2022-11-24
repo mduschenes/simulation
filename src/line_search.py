@@ -1,8 +1,8 @@
 """
 Jax Numpy API version of https://github.com/scipy/scipy/blob/v1.8.1/scipy/optimize/_linesearch.py
 """
+import os
 from warnings import warn
-
 
 
 import numpy as onp
@@ -20,6 +20,19 @@ __all__ = ['LineSearchWarning', 'line_search_wolfe1', 'line_search_wolfe2',
 class LineSearchWarning(RuntimeWarning):
     pass
 
+configs = {
+    'jax_disable_jit':False,
+    'jax_platforms':'cpu',
+    'jax_enable_x64': True
+    }
+for name in configs:
+    jax.config.update(name,configs[name])
+
+envs = {
+    'TF_CPP_MIN_LOG_LEVEL':3
+}
+for var in envs:
+    os.environ[var] = str(envs[var])
 
 #------------------------------------------------------------------------------
 # Minpack's Wolfe line and scalar searches
