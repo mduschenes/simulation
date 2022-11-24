@@ -308,13 +308,14 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 
 	return result
 
-def cp(source,destination,default=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def cp(source,destination,default=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Copy objects from source to destination
 	Args:
 		source (str): Path of source object
 		destination (str): Path of destination object
 		default (str): Default path of source object
+		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -332,7 +333,7 @@ def cp(source,destination,default=None,process=None,processes=None,device=None,e
 	flags = ['-rf']
 	cmd = [source,destination]
 	options = []
-	env = []
+	env = [] if env is None else env
 	args = []
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
@@ -340,11 +341,12 @@ def cp(source,destination,default=None,process=None,processes=None,device=None,e
 	return
 
 
-def rm(path,process=None,processes=None,device=None,execute=False,verbose=None):
+def rm(path,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Remove path
 	Args:
 		path (str): Path to remove
+		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -356,7 +358,7 @@ def rm(path,process=None,processes=None,device=None,execute=False,verbose=None):
 	flags = ['-rf']
 	cmd = [path]
 	options = []
-	env = []	
+	env = [] if env is None else env
 	args = []
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
@@ -365,12 +367,12 @@ def rm(path,process=None,processes=None,device=None,execute=False,verbose=None):
 
 
 
-def echo(*args,process=None,processes=None,device=None,execute=False,verbose=None):
+def echo(*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Echo arguments to command line
 	Args:
 		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
-		destination (str): Path of destination object
+		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -382,7 +384,7 @@ def echo(*args,process=None,processes=None,device=None,execute=False,verbose=Non
 	flags = []
 	cmd = args
 	options = []
-	env = []	
+	env = [] if env is None else env
 	args = []
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
@@ -390,6 +392,31 @@ def echo(*args,process=None,processes=None,device=None,execute=False,verbose=Non
 	return
 
 
+def run(file,path,*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Run path with arguments and environmental variables
+	Args:
+		file (str): File
+		path (str): Path of file
+		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
+		env (dict[str,str]): Environmental variables for args
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	'''
+
+	exe = ['./%s'%(file)]
+	flags = []
+	cmd = []
+	options = []
+	env = [] if env is None else env	
+	args = [*args]
+
+	stdout = call(*args,path=path,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return
 
 
 def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
@@ -399,7 +426,7 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 		path (str): Path of file
 		args (str,iterable[str],iterable[iterable[str]]): Arguments to pass to command line, nested iterables are piped
 		mod (str,bool): Chmod file, or boolean to make executable
-		destination (str): Path of destination object
+		env (dict[str,str]): Environmental variables for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -409,9 +436,9 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 
 	exe = ['echo']
 	flags = []
-	cmd = ''.join([*[arg for var in env for arg in ['export %s=%s\n'%(var,env[var])]],*args])
+	cmd = ''.join([*['#!/bin/bash\n'],*[arg for var in env for arg in ['export %s=%s\n'%(var,env[var])]],*args])
 	options = []
-	env = []	
+	env = [] if env is None else env
 	args = []
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,stdout=path,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
@@ -427,7 +454,7 @@ def chmod(path,mod=None,env=None,process=None,processes=None,device=None,execute
 	Args:
 		path (str): Path of file
 		mod (str,bool): Chmod file, or boolean to make executable
-		destination (str): Path of destination object
+		env (dict[str,str]): Environmental variables for args
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -445,7 +472,7 @@ def chmod(path,mod=None,env=None,process=None,processes=None,device=None,execute
 	flags = [mod]
 	cmd = [path]
 	options = []
-	env = []	
+	env = [] if env is None else env
 	args = []
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
@@ -453,11 +480,12 @@ def chmod(path,mod=None,env=None,process=None,processes=None,device=None,execute
 	return
 
 
-def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def sleep(pause=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Sleep for pause
 	Args:
 		pause (int): Time to sleep
+		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -472,7 +500,7 @@ def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbo
 	flags = []
 	cmd = [pause]
 	options = []
-	env = []	
+	env = [] if env is None else env	
 	args = []
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
@@ -480,13 +508,14 @@ def sleep(pause=None,process=None,processes=None,device=None,execute=False,verbo
 	return
 
 
-def sed(path,patterns,default=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def sed(path,patterns,default=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	GNU sed replace patterns in path
 	Args:
 		path (str): Path of file
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
 		default (str): Default pattern value to sed
+		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -529,19 +558,20 @@ def sed(path,patterns,default=None,process=None,processes=None,device=None,execu
 		flags = ['-i']
 		cmd = [cmd]
 		options = [path]
-		env = []
+		env = [] if env is None else env
 		args = []
 
 		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
-def search(path,pattern,process=None,processes=None,device=None,execute=False,verbose=None):
+def search(path,pattern,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Search for pattern in file
 	Args:
 		path (str): Path of file
 		pattern (str): Pattern to search
+		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -596,13 +626,14 @@ def search(path,pattern,process=None,processes=None,device=None,execute=False,ve
 	return stdout
 
 	
-def update(path,patterns,kwargs=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''	
 	Update path files with sed
 	Args:
 		path (str): Path of file
 		patterns (dict[str,str]): Patterns and values to update {pattern: replacement}
 		kwargs (dict): Additional keyword arguments to update
+		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -713,20 +744,20 @@ def update(path,patterns,kwargs=None,process=None,processes=None,device=None,exe
 		patterns.pop(pattern,None)
 
 
-	sed(path,patterns,default=default,execute=execute,verbose=verbose)
+	sed(path,patterns,default=default,env=env,execute=execute,verbose=verbose)
 
 	return
 
 
-def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,device=None,execute=False,verbose=None):
+def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Configure paths for jobs with copied/updated files
 	Args:
 		paths (iterable[str],dict[str,object]): Relative paths of files to pwd/cwd, or dictionary {path:data} with data to update paths
-		
 		pwd (str): Input root path for files
 		cwd (str): Output root path for files
 		patterns (dict[str,dict[str,str]]): Patterns and values to update {path:{pattern: replacement}}
+		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -760,7 +791,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},process=None,processes=None,de
 	return
 
 
-def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,pause=None,file=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands as tasks to command line
 	Args:
@@ -774,6 +805,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
 		pause (int,str): Time to sleep after call		
 		file (str): Write command to file		
+		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
 		processes (int): Number of processes per command		
 		device (str): Name of device to submit to
@@ -818,7 +850,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	if isinstance(cwd,str):
 		cwd = {key:cwd for key in keys}
 
-	keys = intersection(keys,cwd,sort=True)
+	keys = intersection(keys,cwd,sort=None)
 
 	execution = True if execute == -1 else execute
 	execute = False if execute == -1 else execute
@@ -827,14 +859,18 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	results = []
 	keys = {key:{} for key in keys}
 
+	directories = set((cwd[key] for key in cwd))
+	for directory in directories:
+		if exists(join(directory,file)):
+			result = run(file,path=directory,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+			results.append(result)
+			return results
+
 	def func(key,
 		keys=keys,
 		jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
 		pwd=pwd,cwd=cwd,pool=pool,pause=pause,file=file,
-		process=process,processes=processes,device=device,execute=execute,verbose=None):
-		# keys={},jobs={},args={},paths={},patterns={},dependencies=[],
-		# pwd='.',cwd='.',pool=None,pause=None,file=None,
-		# process=None,processes=None,device=None,execute=False,verbose=None):
+		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose):
 		'''
 		Process job commands as tasks to command line
 		Args:
@@ -860,9 +896,8 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 			task (dict[str,str]): Task for job
 		'''
 
-		logger.log(verbose,'Job %s'%(key))
-
 		pool = 1 if pool is None else pool
+		verbose = False
 		execution = True if execute == -1 else execute
 		execute = False if execute == -1 else execute
 
@@ -903,6 +938,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		options = []
 		env = []
 
+
 		task = {
 			'key':key,
 			'path':path,
@@ -926,16 +962,18 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 			'dependencies':dependencies[key],
 			}
 
-		cmd,env = command(args[key],task,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=False)
+		cmd,env = command(args[key],task,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
-		configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],process=None,processes=None,device=None,execute=execution,verbose=False)
+		configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
 		task['cmd'] = cmd
 		task['env'] = env
 
+		logger.log(verbose,'Job %s'%(key))
+
 		return task
 
-	parallelize = Parallelize(n_jobs=-1)
+	parallelize = Parallelize(processes)
 	iterable = keys
 	values = []
 	parallelize(func=func,iterable=iterable,values=values)
@@ -1026,6 +1064,7 @@ def launch(jobs={},wrapper=None):
 			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file			
+			env (dict[str,str]): Environmental variables for args		
 			process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
 			processes (int): Number of processes per command			
 			device (str): Name of device to submit to

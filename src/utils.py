@@ -19,7 +19,6 @@ def warn_with_traceback(message, category, filename, lineno, file=None, line=Non
 	return
 warnings.showwarning = warn_with_traceback
 
-
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -35,7 +34,7 @@ from jax.tree_util import tree_map as tree_map
 
 configs = {
 	'jax_disable_jit':False,
-	'jax_platform_name':'cpu',
+	'jax_platforms':'cpu',
 	'jax_enable_x64': True
 	}
 for name in configs:
@@ -4187,20 +4186,22 @@ def union(*iterables,sort=False):
 	Get union of elements in iterables
 	Args:
 		iterables (iterable[iterable]): Iterables
-		sort (bool): Sort elements as per order in iterables
+		sort (bool): Sort elements as per order in iterables, or naturalsort if None
 	Returns:
 		union (set,list): Union of iterables, set if unsorted else list
 	'''
 
 	union = set().union(*iterables)
 
-	if sort:
+	if sort is None:
 		iterables = tuple((tuple(natsorted(tuple(iterable)))
 				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
 				for iterable in iterables)
 		union = natsorted(union,key=key,reverse=False)
+	elif sort is True:
+		union = sorted(union,key=lambda i: tuple(list(iterable).index(i) for iterable in iterables))
 
 	return union
 
@@ -4209,7 +4210,7 @@ def intersection(*iterables,sort=False):
 	Get intersection of elements in iterables
 	Args:
 		iterables (iterable[iterable]): Iterables
-		sort (bool): Sort elements as per order in iterables		
+		sort (bool): Sort elements as per order in iterables, or naturalsort if None
 	Returns:
 		intersection (set,list): Intersection of iterables, set if unsorted else list
 	'''
@@ -4218,13 +4219,15 @@ def intersection(*iterables,sort=False):
 	for iterable in iterables:
 		intersection = intersection.intersection(set(iterable))
 
-	if sort:
+	if sort is None:
 		iterables = tuple((tuple(natsorted(tuple(iterable)))
 				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
 				for iterable in iterables)
 		intersection = natsorted(intersection,key=key,reverse=False)
+	elif sort is True:
+		intersection = sorted(intersection,key=lambda i: tuple(list(iterable).index(i) for iterable in iterables))
 
 	return intersection
 

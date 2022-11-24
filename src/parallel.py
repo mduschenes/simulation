@@ -14,13 +14,6 @@ import multiprocessing.dummy as multithreading
 # warnings.simplefilter("ignore", (sp.sparse.SparseEfficiencyWarning))
 # warnings.filterwarnings('error',category=sp.sparse.SparseEfficiencyWarning)
 
-def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
-	# log = file if hasattr(file,'write') else sys.stderr
-	# traceback.print_stack(file=log)
-	# log.write(warnings.formatwarning(message, category, filename, lineno, line))
-	return
-warnings.showwarning = warn_with_traceback
-
 
 DELIMITER='__'
 MAX_PROCESSES = 8
@@ -262,14 +255,17 @@ class Pooler(object):
 			context=self.get_context()) as pool:
 
 			self.set_iterable(iterable)
-			jobs = (getattr(pool,module)(
-					func=Wrapper(func,*args,**{**kwds,**i}),
-					**(dict(callback=Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i}),
-					error_callback=Wrapper(error_callback,*i,*callback_args,**{**callback_kwds,**i}))
-					if 'async' in module else dict()))
-					for i in self.get_iterable())
-						
-
+			
+			try:
+				jobs = (getattr(pool,module)(
+						func=Wrapper(func,*args,**{**kwds,**i}),
+						**(dict(callback=Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i}),
+						error_callback=Wrapper(error_callback,*i,*callback_args,**{**callback_kwds,**i}))
+						if 'async' in module else dict()))
+						for i in self.get_iterable())			
+			except Exception as exception:
+				logger.log(self.get_verbose(),exception)
+				
 			start = timeit.default_timer()	
 			pool.close()
 			pool.join()
@@ -581,15 +577,17 @@ class Parallelize(object):
 			kwds (dict[str,object]): Keyword arguments to pass to func
 		'''		
 		with self.get_parallel()(n_jobs=self.get_n_jobs(),backend=self.get_backend(),prefer=self.get_prefer()) as parallel:           
-
 			self.set_iterable(iterable)
 
-			jobs = (self.get_delayed()(func)(*i,*args,**{**kwds,**i}) 
-					for i in self.get_iterable())
+			try:
+				jobs = (self.get_delayed()(func)(*i,*args,**{**kwds,**i}) 
+						for i in self.get_iterable())
 
-			start = timeit.default_timer()	
-			values.extend(parallel(jobs))
-			end = timeit.default_timer()
+				start = timeit.default_timer()	
+				values.extend(parallel(jobs))
+				end = timeit.default_timer()
+			except Exception as exception:
+				logger.log(self.get_verbose(),exception)
 
 			if not self.get_null():
 				logger.log(self.get_verbose(),"n_jobs: %d, time: %0.3e"%(self.get_n_jobs(),end-start))
@@ -733,6 +731,7 @@ class Parallelize(object):
 
 # Parallel class using joblib
 class Parallel(joblib.Parallel):
+	
 	pass
 
 
@@ -803,13 +802,16 @@ class Futures(object):
 			context=self.get_context()) as pool:
 
 			self.set_iterable(iterable)
-			jobs = (getattr(pool,module)(
-					func=Wrapper(func,*args,**{**kwds,**i}),
-					**(dict(callback=Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i}),
-					error_callback=Wrapper(error_callback,*i,*callback_args,**{**callback_kwds,**i}))
-					if 'async' in module else dict()))
-					for i in self.get_iterable())
-						
+			
+			try:
+				jobs = (getattr(pool,module)(
+						func=Wrapper(func,*args,**{**kwds,**i}),
+						**(dict(callback=Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i}),
+						error_callback=Wrapper(error_callback,*i,*callback_args,**{**callback_kwds,**i}))
+						if 'async' in module else dict()))
+						for i in self.get_iterable())
+			except Exception as exception:
+				logger.log(self.get_verbose(),exception)
 
 			start = timeit.default_timer()	
 			pool.close()
