@@ -6,10 +6,19 @@ from functools import partial
 
 import jax
 
-jax.config.update('jax_platform_name','cpu')
-jax.config.update('jax_enable_x64', True)
-# jax.set_cpu_device_count(8)
-# os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
+configs = {
+	'jax_disable_jit':False,
+	'jax_platforms':'cpu',
+	'jax_enable_x64': True
+	}
+for name in configs:
+	jax.config.update(name,configs[name])
+
+envs = {
+	'TF_CPP_MIN_LOG_LEVEL':3
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
 
 # Logging
 import logging
