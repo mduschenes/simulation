@@ -2,8 +2,10 @@
 
 # Import python modules
 import os,sys,warnings,itertools,inspect,traceback
+from functools import partial
 from copy import deepcopy
 import subprocess
+from natsort import natsorted
 
 # Logging
 import logging
@@ -15,10 +17,11 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import intersection,scalars
-from src.system	 import Logger
 from src.io import cd,mkdir,join,split,load,dump,exists,environ
 from src.dictionary import updater
+from src.parallel import Parallelize
 
+from src.system	 import Logger
 name = __name__
 path = os.getcwd()
 file = 'logging.conf'
@@ -817,23 +820,53 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	keys = intersection(keys,cwd,sort=True)
 
-	pools = {
-		path: [key for key in keys if cwd[key] == path]
-			for path in sorted(set([cwd[key] for key in cwd]))
-		}
-
-	pool = 1 if pool is None else pool
 	execution = True if execute == -1 else execute
 	execute = False if execute == -1 else execute
+	
 	tasks = []
 	results = []
 	keys = {key:{} for key in keys}
 
-	for key in keys:
+	def func(key,
+		keys=keys,
+		jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
+		pwd=pwd,cwd=cwd,pool=pool,pause=pause,file=file,
+		process=process,processes=processes,device=device,execute=execute,verbose=None):
+		# keys={},jobs={},args={},paths={},patterns={},dependencies=[],
+		# pwd='.',cwd='.',pool=None,pause=None,file=None,
+		# process=None,processes=None,device=None,execute=False,verbose=None):
+		'''
+		Process job commands as tasks to command line
+		Args:
+			task (dict[str,str]): Job task
+			key (str): Name of job
+			keys (dict[str,dict[str]]): Jobs with task names and arguments
+			jobs (str,dict[str,str]): Submission script, or {key:job}
+			args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
+			paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
+			patterns (dict[str,dict[str,str]],dict[str,dict[str,dict[str,str]]]): Patterns to update files {path:{pattern:replacement}} or {key:{path:{pattern:replacement}}
+			dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
+			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
+			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
+			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+			pause (int,str): Time to sleep after call		
+			file (str): Write command to file		
+			process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
+			processes (int): Number of processes per command		
+			device (str): Name of device to submit to
+			execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+			verbose (int,str,bool): Verbosity
+		Returns:
+			task (dict[str,str]): Task for job
+		'''
 
 		logger.log(verbose,'Job %s'%(key))
-		
-		indices = pools[cwd[key]]
+
+		pool = 1 if pool is None else pool
+		execution = True if execute == -1 else execute
+		execute = False if execute == -1 else execute
+
+		indices = [subkey for subkey in keys if cwd[subkey] == cwd[key]]
 		size = len(indices)
 
 		if size > 1 and process not in ['serial']:
@@ -870,7 +903,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		options = []
 		env = []
 
-		kwargs = {
+		task = {
 			'key':key,
 			'path':path,
 			'pwd':pwd[key],
@@ -888,21 +921,25 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 			'max':max,
 			'step': step,			
 			'count': count,
-			'results':results,
 			'paths':paths[key],
 			'patterns':patterns[key],
 			'dependencies':dependencies[key],
 			}
 
-		cmd,env = command(args[key],kwargs,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=False)
+		cmd,env = command(args[key],task,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
 		configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],process=None,processes=None,device=None,execute=execution,verbose=False)
 
-		kwargs['cmd'] = cmd
-		kwargs['env'] = env
+		task['cmd'] = cmd
+		task['env'] = env
 
-		keys[key] = kwargs
+		return task
 
+	parallelize = Parallelize(processes=-1)
+	iterable = keys
+	values = []
+	parallelize(func=func,iterable=iterable,values=values)
+	keys = dict(zip(keys,values))
 
 	if process in ['serial']:
 		def boolean(task,tasks):
