@@ -935,7 +935,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		return task
 
-	parallelize = Parallelize(processes=-1)
+	parallelize = Parallelize(n_jobs=-1)
 	iterable = keys
 	values = []
 	parallelize(func=func,iterable=iterable,values=values)
