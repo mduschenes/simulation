@@ -8,6 +8,26 @@ from time import time as timer
 
 import jax.numpy as np
 
+import absl.logging
+absl.logging.set_verbosity(absl.logging.INFO)
+# jax.set_cpu_device_count(8)
+
+configs = {
+	'jax_disable_jit':False,
+	'jax_platforms':'cpu',
+	'jax_enable_x64': True
+	}
+for name in configs:
+	jax.config.update(name,configs[name])
+
+envs = {
+	'TF_CPP_MIN_LOG_LEVEL':4,
+	# 'XLA_FLAGS':'--xla_force_host_platform_device_count=8'
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
+
+
 # Logging
 import logging
 logger = logging.getLogger(__name__)
