@@ -6,6 +6,9 @@ from functools import partial
 
 import jax
 
+import absl.logging
+absl.logging.set_verbosity(absl.logging.INFO)
+
 configs = {
 	'jax_disable_jit':False,
 	'jax_platforms':'cpu',

@@ -259,7 +259,10 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		else:
 			args = [[str(arg) for arg in args]]
 
-		cmd = ' | '.join([' '.join(arg) for arg in args])
+		cmd = ' | '.join([
+			' '.join([subarg if ' ' not in subarg else '"%s"'%(subarg) for subarg in arg])
+			for arg in args])
+		print(cmd)
 
 		inputs = []
 		symbols = ['<']

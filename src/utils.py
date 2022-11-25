@@ -7,7 +7,6 @@ from functools import partial,wraps
 from natsort import natsorted,realsorted
 import argparse
 
-
 import traceback
 import warnings
 import sys
@@ -18,6 +17,8 @@ def warn_with_traceback(message, category, filename, lineno, file=None, line=Non
 	# log.write(warnings.formatwarning(message, category, filename, lineno, line))
 	return
 warnings.showwarning = warn_with_traceback
+
+
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -31,6 +32,9 @@ import jax.example_libraries.optimizers
 from jax._src import prng as jaxprng
 from jax.tree_util import register_pytree_node_class as tree_register
 from jax.tree_util import tree_map as tree_map
+
+import absl.logging
+absl.logging.set_verbosity(absl.logging.INFO)
 
 configs = {
 	'jax_disable_jit':False,
