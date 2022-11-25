@@ -16,8 +16,8 @@ for PATH in PATHS:
 
 from src.utils import gradient,einsum
 from src.utils import array,zeros,ones
-from src.utils import is_naninf
-from src.utils import exp,log,abs,sqrt,norm,nanmean,nanstd,nansqrt,lstsq,curve_fit,product
+from src.utils import lstsq,curve_fit,interp
+from src.utils import exp,log,abs,sqrt,norm,nanmean,nanstd,nansqrt,product,is_naninf
 
 def transformation(transform=None):
 	'''
@@ -141,20 +141,23 @@ def size(data,axis=None,transform=None,dtype=None,**kwargs):
 	return out
 
 
-def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,coef0=None,intercept=True,uncertainty=False):
+def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef0=None,intercept=True,uncertainty=False,**kwargs):
 	'''
 	Fit of data
 	Args:
 		x (array): Input data
 		y (array): Output data
 		_x (array): Output points to evaluate fit
-		func (callable): Function to fit to data with signature func(x,*coef)
+		func (callable,str): Function to fit to data with signature func(x,*coef), or string for spline fit, ['linear','cubic']
 		grad (callable): Gradient of function to fit to data with signature grad(x,*coef)
 		preprocess (callable): Function to preprocess data with signature x,y = preprocess(x,y,*coef)
 		postprocess (callable): Function to postprocess data with signature x,y = preprocess(x,y,*coef)
+		xerr (array): Input error
+		yerr (array): Output error
 		coef0 (array): Initial estimate of fit coefficients
 		intercept (bool): Include intercept in fit
 		uncertainty (bool): Calculate uncertainty
+		kwargs (dict[str,object]): Additional keyword arguments for fitting
 	Returns:
 		_y (array): Fit data at _x
 		coef (array): Fit model parameters
@@ -162,21 +165,25 @@ def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,coef0=N
 		coef (array): Fit model parameters
 	'''	
 
+
+
+
+
 	if coef0 is None:
-		p0 = coef0 
+		ncoef = 1
+		kwargs['p0'] = coef0
 		coef0 = (None,)
 	else:
-		p0 = coef0
+		ncoef = len(coef0)
+		kwargs['p0'] = coef0
 		coef0 = coef0
+
 
 	if preprocess is None:
 		preprocess = lambda x,y,*coef: (x,y)
 	
 	if postprocess is None:
 		postprocess = lambda x,y,*coef: (x,y)
-
-	if grad is None:
-		grad = gradient(func,argnums=(1,2),mode='fwd')
 
 	x,y = preprocess(x,y,*coef0)
 
@@ -207,25 +214,45 @@ def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,coef0=N
 	if func is not None:
 		if _x is None:
 			_x = x
-		try:
-			coef,coefferr = curve_fit(func,x,y,p0=p0)
-		except TypeError:
-			coef,coefferr = zeros(len(coef0)),zeros((len(coef0),len(coef0)))
+		if callable(func):
+			try:
+				coef,coefferr = curve_fit(func,x,y,**kwargs)
+			except Exception as e:
+				print(e)
+				coef,coefferr = zeros(ncoef),zeros((ncoef,ncoef))
+			
+			if grad is None:
+				grad = gradient(func,argnums=tuple(range(1,ncoef+1)),mode='fwd')
+			
+			coef = array(coef)
+			coefferr = array(coefferr)	
+			
+			_y = func(_x,*coef)
+			_grad = grad(_x,*coef)		
+			_grad = array(_grad).T
+			_yerr = sqrt(einsum('ui,ij,uj->u',_grad,coefferr,_grad))
 
-		coef = array(coef)
-		coefferr = array(coefferr)
+		elif isinstance(func,str):
+			kind = func
+			_func = interp(x,y,kind)
+			func = lambda x,*coef,_func=_func: _func(x)
+			coef,coefferr = zeros(ncoef),zeros((ncoef,ncoef))
 
-		_y = func(_x,*coef)
-		_grad = grad(_x,*coef)
-		_grad = array(_grad).T
-		_yerr = sqrt(einsum('ui,ij,uj->u',_grad,coefferr,_grad))
+			_y = func(_x,*coef)
+
+			if yerr is not None:
+				_yerr = 0
+				_funcerr = interp(x,y+yerr,kind)
+				funcerr = lambda x,*coef,_func=_funcerr: _func(x)
+				_yerr += abs(funcerr(_x,*coef) - _y)
+
+				_funcerr = interp(x,y-yerr,kind)
+				funcerr = lambda x,*coef,_func=_funcerr: _func(x)
+				_yerr += abs(funcerr(_x,*coef) - _y)
+
+				_yerr /= 2
+
 		
-
-		# except:
-		# 	coef = coef0
-		# 	_y = zeros(_x.shape[0])
-		# 	coefferr = zeros((*coef.shape,*coef.shape))
-		# 	_yerr = zeros(_y.shape)
 
 	if coef is not None:
 		_x,_y = postprocess(_x,_y,*coef)

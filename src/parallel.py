@@ -587,6 +587,7 @@ class Parallelize(object):
 				values.extend(parallel(jobs))
 				end = timeit.default_timer()
 			except Exception as exception:
+				print(exception)
 				logger.log(self.get_verbose(),exception)
 
 			if not self.get_null():
