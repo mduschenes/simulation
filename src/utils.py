@@ -1373,18 +1373,18 @@ def lstsq(x,y):
 
 
 # @partial(jit,static_argnums=(0,))
-def curve_fit(func,x,y,p0=None):
+def curve_fit(func,x,y,**kwargs):
 	'''
 	Compute curve_fit fit between x and y
 	Args:
 		func (callable): Function to fit
 		x (array): Array of input data
 		y (array): Array of output data
-		p0 (array): Initial estimate of parameters
+		kwargs (dict[str,object]): Additional keyword arguments for fitting		
 	Returns:
 		out (array): Curve fit returns
 	'''
-	return osp.optimize.curve_fit(func,x,y,p0=p0)
+	return osp.optimize.curve_fit(func,x,y,**kwargs)
 
 
 @partial(jit,static_argnums=(1,))
@@ -4475,6 +4475,22 @@ def invtrotter(a,p):
 	return a[:n]
 
 
+def interp(x,y,kind):
+	'''
+	Interpolate array at new points
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		kind (int): Order of interpolation
+	Returns:
+		func (callable): Interpolation function
+	'''		
+	def _interpolate(x,y,kind):
+		return osp.interpolate.interp1d(x,y,kind)
+
+	return _interpolate(x,y,kind)
+
+
 def interpolate(x,y,x_new,kind):
 	'''
 	Interpolate array at new points
@@ -4486,13 +4502,13 @@ def interpolate(x,y,x_new,kind):
 	Returns:
 		out (array): Interpolated values at new points
 	'''		
-	def _interpolate(x,y,x_new,kind):
-		return osp.interpolate.interp1d(x,y,kind)(x_new)
 
 	if y.ndim>1:
-		return array([_interpolate(x,y[i],x_new,kind) for i in range(y.shape[0])])
+		return array([interp(x,u,kind)(x_new) for u in y])
 	else:
-		return array(_interpolate(x,y,x_new,kind))
+		return array(interp(x,y,kind)(x_new))
+
+
 
 
 
