@@ -40,10 +40,6 @@ def func(path,default={},options={}):
 def callback(value,key,values):
 	return
 
-def error(value,key,values):
-	print(value)
-	return
-
 def test_parallelize(path=None):
 
 	paths = [path]
@@ -52,7 +48,6 @@ def test_parallelize(path=None):
 	iterable = paths
 	values = {}
 	processes = -1
-	module = 'apply_async'
 	args = ()
 	kwds = {}
 	callback_args = ()
@@ -62,7 +57,7 @@ def test_parallelize(path=None):
 
 	parallelize(
 		iterable,func,
-		callback=callback,error_callback=error,module=module,
+		callback=callback,
 		args=args,kwds=kwds,callback_args=callback_args,callback_kwds=callback_kwds,
 		)
 
@@ -77,7 +72,6 @@ def test_pooler(path=None):
 	iterable = paths
 	values = {}
 	processes = -1
-	module = 'apply_async'
 	args = ()
 	kwds = {}
 	callback_args = ()
@@ -87,7 +81,7 @@ def test_pooler(path=None):
 
 	pooler(
 		iterable,func,
-		callback=callback,error_callback=error,module=module,
+		callback=callback,
 		args=args,kwds=kwds,callback_args=callback_args,callback_kwds=callback_kwds,
 		)
 

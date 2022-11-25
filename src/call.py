@@ -791,86 +791,11 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 	return
 
 
-def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
-	'''
-	Submit job commands as tasks to command line
-	Args:
-		jobs (str,dict[str,str]): Submission script, or {key:job}
-		args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
-		paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
-		patterns (dict[str,dict[str,str]],dict[str,dict[str,dict[str,str]]]): Patterns to update files {path:{pattern:replacement}} or {key:{path:{pattern:replacement}}
-		dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
-		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
-		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
-		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
-		pause (int,str): Time to sleep after call		
-		file (str): Write command to file		
-		env (dict[str,str]): Environmental variables for args		
-		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
-		processes (int): Number of processes per command		
-		device (str): Name of device to submit to
-		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
-		verbose (int,str,bool): Verbosity
-	Returns:
-		results (iterable[str]): Return of commands for each task
-	'''
-
-	keys = [None]
-
-	if isinstance(jobs,str):
-		jobs = {key:jobs for key in keys}
-
-	keys = intersection(jobs)
-
-	if all(isinstance(args[arg],str) for arg in args) or not all(key in args for key in keys) or not len(args):
-		args = {key:args for key in keys}
-
-	keys = intersection(keys,args)
-
-	if not all(key in paths for key in keys) or not len(paths):
-		paths = {key:paths for key in keys}
-
-	keys = intersection(keys,paths)
-
-	if not all(key in patterns for key in keys) or not len(patterns):
-		patterns = {key:patterns for key in keys}
-
-	keys = intersection(keys,patterns)
-
-	if not isinstance(dependencies,dict) or not len(dependencies):
-		dependencies = {key:dependencies for key in keys}
-
-	keys = intersection(keys,dependencies)
-
-	if isinstance(pwd,str):
-		pwd = {key:pwd for key in keys}
-
-	keys = intersection(keys,pwd)
-
-	if isinstance(cwd,str):
-		cwd = {key:cwd for key in keys}
-
-	keys = intersection(keys,cwd,sort=None)
-
-	execution = True if execute == -1 else execute
-	execute = False if execute == -1 else execute
-	
-	tasks = []
-	results = []
-	keys = {key:{} for key in keys}
-
-	directories = set((cwd[key] for key in cwd))
-	for directory in directories:
-		if exists(join(directory,file)):
-			result = run(file,path=directory,process=None,processes=None,device=None,execute=execute,verbose=verbose)
-			results.append(result)
-			return results
-
-	def func(key,
-		keys=keys,
-		jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
-		pwd=pwd,cwd=cwd,pool=pool,pause=pause,file=file,
-		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose):
+def init(key,
+		keys=None,
+		jobs=None,args=None,paths=None,patterns=None,dependencies=None,
+		pwd=None,cwd=None,pool=None,pause=None,file=None,
+		env=None,process=None,processes=None,device=None,execute=None,verbose=None):
 		'''
 		Process job commands as tasks to command line
 		Args:
@@ -973,18 +898,107 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		return task
 
-	def callback(value,key,values):
-		values[key] = value
-		return
+def callback(value,key,values):
+	'''
+	Callback for task processing
+	Args:
+		value (dict): Task arguments
+		key (str): Task name
+		values (dict): Tasks
+	'''
+	values[key] = value
+	return
 
-	iterable = keys
-	values = keys
+def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Submit job commands as tasks to command line
+	Args:
+		jobs (str,dict[str,str]): Submission script, or {key:job}
+		args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
+		paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
+		patterns (dict[str,dict[str,str]],dict[str,dict[str,dict[str,str]]]): Patterns to update files {path:{pattern:replacement}} or {key:{path:{pattern:replacement}}
+		dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
+		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
+		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
+		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+		pause (int,str): Time to sleep after call		
+		file (str): Write command to file		
+		env (dict[str,str]): Environmental variables for args		
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	Returns:
+		results (iterable[str]): Return of commands for each task
+	'''
+
+	keys = [None]
+
+	if isinstance(jobs,str):
+		jobs = {key:jobs for key in keys}
+
+	keys = intersection(jobs)
+
+	if all(isinstance(args[arg],str) for arg in args) or not all(key in args for key in keys) or not len(args):
+		args = {key:args for key in keys}
+
+	keys = intersection(keys,args)
+
+	if not all(key in paths for key in keys) or not len(paths):
+		paths = {key:paths for key in keys}
+
+	keys = intersection(keys,paths)
+
+	if not all(key in patterns for key in keys) or not len(patterns):
+		patterns = {key:patterns for key in keys}
+
+	keys = intersection(keys,patterns)
+
+	if not isinstance(dependencies,dict) or not len(dependencies):
+		dependencies = {key:dependencies for key in keys}
+
+	keys = intersection(keys,dependencies)
+
+	if isinstance(pwd,str):
+		pwd = {key:pwd for key in keys}
+
+	keys = intersection(keys,pwd)
+
+	if isinstance(cwd,str):
+		cwd = {key:cwd for key in keys}
+
+	keys = intersection(keys,cwd,sort=None)
+
+	execution = True if execute == -1 else execute
+	execute = False if execute == -1 else execute
+	
+	tasks = []
+	results = []
+	keys = {key:{} for key in keys}
+
+	directories = set((cwd[key] for key in cwd))
+	for directory in directories:
+		if exists(join(directory,file)):
+			result = run(file,path=directory,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+			results.append(result)
+			return results
+
+	iterable = [key for key in keys]
+	kwds = dict(
+		keys=keys,
+		jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
+		pwd=pwd,cwd=cwd,pool=pool,pause=pause,file=file,
+		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose
+	)
+	callback_kwds = {'values':keys}
 
 	parallelize = Pooler(processes)
 
 	parallelize(
-		iterable,func,
-		callback=callback,callback_kwds={'values':values}
+		iterable,init,
+		callback=callback,
+		kwds=kwds,callback_kwds=callback_kwds
 		)
 
 	if process in ['serial']:

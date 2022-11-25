@@ -341,6 +341,36 @@ def find(dictionary,properties):
 
 	return keys
 
+def loading(path,default={},options={},verbose=False):
+	'''
+	Load path
+	Args:
+		path (str): Path to load
+		default (object): Default value
+		options (dict): Load options
+		verbose (bool): Verbosity of load
+	Returns:
+		value (object): Loaded value
+	'''
+	value = load(path,default=default,**options)				
+	msg = 'Loaded: %s %d'%(path,len(value))
+	print(msg)
+	logger.log(verbose,msg)			
+	return value
+
+def callback(value,key,values,default={},options={},verbose=False):
+	'''
+	Callback for loaded path
+	Args:
+		value (object): Loaded value
+		key (str): Path to load
+		values (dict): Loaded values
+		default (object): Default value
+		options (dict): Load options
+		verbose (bool): Verbosity of load
+	'''	
+	values.update(value)
+	return
 
 def dumper(kwargs,**options):
 	'''
@@ -382,28 +412,20 @@ def loader(kwargs,**options):
 			kwargs[kwarg] = {}
 			returns['multiple'] |= len(paths)>1
 
-			def func(path):
-				value = load(path,default=default,**options)				
-				msg = 'Loaded: %s %d'%(path,len(value))
-				print(msg)
-				logger.log(verbose,msg)			
-				return value
-			def callback(value,values):
-				values.update(value)
-				return
-
 			iterable = paths
-			values = kwargs[key]
+			values = kwargs[kwarg]
 			processes = -1
+			kwds = {'default':default,'options':options,'verbose':True}
+			callback_kwds = {'values':values,'default':default,'options':options,'verbose':True}
 
 			parallelize = Pooler(processes)
 
 			parallelize(
-				iterable,func,
-				callback=callback,callback_kwds={'values':values}
+				iterable,loading,
+				callback=callback,kwds=kwds,callback_kwds=callback_kwds
 				)
 
-			kwargs[key] = {path: kwargs[key][path] in natsorted(kwargs[key])}
+			kwargs[kwarg] = {path: kwargs[kwarg][path] for path in natsorted(kwargs[kwarg])}
 
 		else:
 			kwargs[kwarg] = kwargs[kwarg]

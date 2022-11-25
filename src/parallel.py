@@ -163,6 +163,10 @@ def nullfunc(*args,**kwargs):
 class nullclass(object):
 	pass
 
+def logfunc(arg,*args,**kwargs):
+	print(arg)
+	return
+
 
 # Call function with proper signature
 def call(cls,func,*args,**kwargs):
@@ -232,7 +236,7 @@ class Pooler(object):
 		return
 
 	@timing(False)	
-	def __call__(self,iterable,func,callback=nullfunc,error_callback=nullfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='apply_async'):
+	def __call__(self,iterable,func,callback=nullfunc,error_callback=logfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='apply_async'):
 		'''
 		Call function in parallel
 		Args:
@@ -266,7 +270,7 @@ class Pooler(object):
 						callback=Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i}),
 						error_callback=Wrapper(error_callback,*i,*callback_args,**{**callback_kwds,**i}))
 						if 'async' in module else dict()))
-						for i in self.get_iterable()]			
+						for i in self.get_iterable()]	
 			except Exception as exception:
 				print(exception)
 				logger.log(self.get_verbose(),exception)
@@ -448,7 +452,7 @@ class nullPool(object):
 		return func(*args,**kwds)
 
 	@timing(False)
-	def apply_async(self,func,args=(),kwds={},callback=nullfunc,error_callback=nullfunc):
+	def apply_async(self,func,args=(),kwds={},callback=nullfunc,error_callback=logfunc):
 		callback(func(*args,**kwds))
 		# try:
 		# 	callback(func(*args,**kwds))
@@ -459,7 +463,7 @@ class nullPool(object):
 	def map(self,func,iterable,chunksize=None):
 		return list(map(func,iterable))
 	@timing(False)		
-	def map_async(self,func,iterable,chunksize=None,callback=nullfunc,error_callback=nullfunc):
+	def map_async(self,func,iterable,chunksize=None,callback=nullfunc,error_callback=logfunc):
 		try:
 			map(callback,list(map(func,iterable)))
 		except:
@@ -475,7 +479,7 @@ class nullPool(object):
 	def starmap(self,func,iterable,chunksize=None):
 		return list(map(func,iterable))
 	@timing(False)	
-	def starmap_async(self,func,iterable,chunksize=None,callback=nullfunc,error_callback=nullfunc):
+	def starmap_async(self,func,iterable,chunksize=None,callback=nullfunc,error_callback=logfunc):
 		try:
 			map(callback,list(map(func,iterable)))
 		except:
@@ -572,7 +576,7 @@ class Parallelize(object):
 	@timing(False)
 	
 
-	def __call__(self,iterable,func,callback=nullfunc,error_callback=nullfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='parallel'):
+	def __call__(self,iterable,func,callback=nullfunc,error_callback=logfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='parallel'):
 		'''
 		Call function in parallel
 		Args:
@@ -798,7 +802,7 @@ class Futures(object):
 		self.set_verbose(verbose)
 		return
 	@timing(False)	
-	def __call__(self,iterable,func,callback=nullfunc,error_callback=nullfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='apply_async'):
+	def __call__(self,iterable,func,callback=nullfunc,error_callback=logfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='apply_async'):
 		'''
 		Call function in parallel
 		Args:
