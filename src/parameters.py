@@ -6,6 +6,13 @@ from functools import partial
 import time
 from time import time as timer
 
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5,
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
+
 import jax
 import jax.numpy as np
 
@@ -20,13 +27,6 @@ configs = {
 	}
 for name in configs:
 	jax.config.update(name,configs[name])
-
-envs = {
-	'TF_CPP_MIN_LOG_LEVEL':5,
-	# 'XLA_FLAGS':'--xla_force_host_platform_device_count=8'
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
 
 
 # Logging

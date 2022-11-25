@@ -10,6 +10,15 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
+
+
+
 from src.utils import PRNGKey,delim,union,is_equal
 from src.dictionary import updater,getter,setter,permuter,clearer,leaves
 from src.io import load,dump,join,split
@@ -28,13 +37,6 @@ configs = {
 	}
 for name in configs:
 	jax.config.update(name,configs[name])
-
-envs = {
-	'TF_CPP_MIN_LOG_LEVEL':5,
-	# 'XLA_FLAGS':'--xla_force_host_platform_device_count=8'
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
 
 
 def allowed(index,value,values):

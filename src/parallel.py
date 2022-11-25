@@ -11,8 +11,16 @@ import joblib
 import multiprocessing as multiprocessing
 import multiprocessing.dummy as multithreading
 
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5,
+	# 'XLA_FLAGS':'--xla_force_host_platform_device_count=8'
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
+
+
 import jax
-import equinox as nn
 import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 # jax.set_cpu_device_count(8)
@@ -24,13 +32,6 @@ configs = {
 	}
 for name in configs:
 	jax.config.update(name,configs[name])
-
-envs = {
-	'TF_CPP_MIN_LOG_LEVEL':5,
-	# 'XLA_FLAGS':'--xla_force_host_platform_device_count=8'
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
 
 
 # warnings.simplefilter("ignore", (UserWarning,DeprecationWarning,FutureWarning))

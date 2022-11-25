@@ -4,8 +4,15 @@
 import os,sys,itertools,functools,copy
 from functools import partial
 
-import jax
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5,
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
 
+
+import jax
 import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 
@@ -16,12 +23,6 @@ configs = {
 	}
 for name in configs:
 	jax.config.update(name,configs[name])
-
-envs = {
-	'TF_CPP_MIN_LOG_LEVEL':5,
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
 
 # Logging
 import logging
