@@ -422,7 +422,7 @@ def loader(kwargs,**options):
 
 			iterable = paths
 			values = kwargs[kwarg]
-			processes = -1
+			processes = 1
 			kwds = {'default':default,'options':options,'verbose':True}
 			callback_kwds = {'values':values,'default':default,'options':options,'verbose':True}
 
