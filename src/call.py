@@ -16,11 +16,6 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import intersection,scalars
-from src.io import cd,mkdir,join,split,load,dump,exists,environ
-from src.dictionary import updater
-from src.parallel import Parallelize,Pooler
-
 from src.system	 import Logger
 name = __name__
 path = os.getcwd()
@@ -29,6 +24,10 @@ conf = os.path.join(path,file)
 file = None #'log.log'
 logger = Logger(name,conf,file=file)
 
+from src.utils import intersection,scalars
+from src.io import cd,mkdir,join,split,load,dump,exists,environ
+from src.dictionary import updater
+from src.parallel import Parallelize,Pooler
 
 def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
