@@ -651,6 +651,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		data, = (kwargs[kwarg] for kwarg in kwargs)
 
 
+		print('Sorting Attributes')
+
 		# Get dataset names of data
 		names = list(natsorted(set(name for name in data),key=lambda name:name))
 
@@ -701,6 +703,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							key = lambda x: tuple(((u is not None,u) for u in x)))
 				]
 
+		print('Converting Data')
+
 		# Get data as arrays, with at least 1 leading dimension
 		for name in names:
 			for attr in data[name]:
@@ -725,6 +729,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				for key in keys}
 
 		# Get combinations of key attributes and permutations of shared attributes for combination across data
+
+		print('Processing keys',keys)
 
 		variables = {}
 		combinations = {}	
