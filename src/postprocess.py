@@ -292,7 +292,7 @@ def process(path):
 				_X,_Y,_Z = [],[],[]
 				_Xerr,_Yerr,_Zerr = [],[],[]
 
-				indices = arange(len(X))[X>=1e-7]
+				indices = arange(len(X))[X>=1e-8]
 				slices = slice(0,30,None)
 
 				interpolate = 1
@@ -303,8 +303,8 @@ def process(path):
 
 						y_ = y_[slices]
 						z_ = z_[slices]
-						yerr_ = yerr_ if yerr_ not in [None,nan] and not is_naninf(yerr_).all() else None
-						zerr_ = zerr_[slices] if zerr_ not in [None,nan] and not is_naninf(zerr_).all() else None
+						yerr_ = yerr_ if yerr_ is not None and not is_naninf(yerr_).all() else None
+						zerr_ = zerr_[slices] if zerr_ is not None and not is_naninf(zerr_).all() else None
 
 						_y = linspace(y_.min(),y_.max(),y_.size*20)
 						_yerr = zeros(_y.shape)
@@ -387,7 +387,8 @@ def process(path):
 
 					fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
-				except:
+				except Exception as exception:
+					print(exception)
 					_x = X
 					_y = Y
 					_z = Z
