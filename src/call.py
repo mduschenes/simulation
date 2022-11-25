@@ -19,7 +19,7 @@ for PATH in PATHS:
 from src.utils import intersection,scalars
 from src.io import cd,mkdir,join,split,load,dump,exists,environ
 from src.dictionary import updater
-from src.parallel import Parallelize
+from src.parallel import Parallelize,Pooler
 
 from src.system	 import Logger
 name = __name__
@@ -973,11 +973,19 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		return task
 
-	parallelize = Parallelize(processes)
+	def callback(value,key,values):
+		values[key] = value
+		return
+
 	iterable = keys
-	values = []
-	parallelize(func=func,iterable=iterable,values=values)
-	keys = dict(zip(keys,values))
+	values = keys
+
+	parallelize = Pooler(processes)
+
+	parallelize(
+		iterable,func,
+		callback=callback,callback_kwds={'values':values}
+		)
 
 	if process in ['serial']:
 		def boolean(task,tasks):

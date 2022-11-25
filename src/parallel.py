@@ -3,6 +3,7 @@
 # Import python modules
 import os,sys,copy,warnings,functools,itertools,inspect,timeit
 import numpy as np
+from functools import partial
 
 # import multiprocess as mp
 # import multithreading as mt
@@ -231,21 +232,21 @@ class Pooler(object):
 		return
 
 	@timing(False)	
-	def __call__(self,module,func,iterable,args=(),kwds={},callback_args=(),callback_kwds={},callback=nullfunc,error_callback=nullfunc):
+	def __call__(self,iterable,func,callback=nullfunc,error_callback=nullfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='apply_async'):
 		'''
 		Call function in parallel
 		Args:
-			module (str): Type of parallelization to call i.e) apply_async
-			func (callable): Function to call in parallel, with signature func(*args,**kwargs)
 			iterable (int,iterable[object],dict[str,iterable[object]]): Iterable of arguments to iterate in parallel, 
 				either integer to call range(iterable) -> func(i), or iterable of objects [i] -> func(i), 
 				or dictionary of combinations of arguments to iterate over in all combinations
+			func (callable): Function to call in parallel, with signature func(*args,**kwargs)
+			callback (callable): Callback function to collect parallel outputs, with signature callback(value,*callback_args,**callback_kwds)
+			error_callback (callable): Error callback function if errors occur, with signature callback(value,*callback_args,**callback_kwds)
 			args (iterable[object]): Positional arguments to pass to func
 			kwds (dict[str,object]): Keyword arguments to pass to func
 			callback_args (iterable[object]): Positional arguments to pass to callback
 			callback_kwds (dict[str,object]): Keyword arguments to pass to callback
-			callback (callable): Callback function to collect parallel outputs, with signature callback(value,*callback_args,**callback_kwds)
-			error_callback (callable): Error callback function if errors occur, with signature callback(value,*callback_args,**callback_kwds)
+			module (str): Type of parallelization to call i.e) apply_async
 		'''				
 		with self.get_pool()(
 			processes=self.get_processes(),
@@ -254,21 +255,25 @@ class Pooler(object):
 			maxtasksperchild=self.get_maxtasksperchild(),
 			context=self.get_context()) as pool:
 
+			start = timeit.default_timer()	
+
 			self.set_iterable(iterable)
-			
+
 			try:
-				jobs = (getattr(pool,module)(
-						func=Wrapper(func,*args,**{**kwds,**i}),
-						**(dict(callback=Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i}),
+				jobs = [getattr(pool,module)(
+						func=Wrapper(func,*i,*args,**{**kwds,**i}),
+						**(dict(
+						callback=Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i}),
 						error_callback=Wrapper(error_callback,*i,*callback_args,**{**callback_kwds,**i}))
 						if 'async' in module else dict()))
-						for i in self.get_iterable())			
+						for i in self.get_iterable()]			
 			except Exception as exception:
+				print(exception)
 				logger.log(self.get_verbose(),exception)
-				
-			start = timeit.default_timer()	
+
 			pool.close()
 			pool.join()
+
 			end = timeit.default_timer()
 
 			if not self.get_null():
@@ -302,7 +307,7 @@ class Pooler(object):
 		attr = 'processes'
 		default = MAX_PROCESSES
 		processes = default if processes is None else processes
-		processes = min(processes,MAX_PROCESSES-1)
+		processes = min(processes if processes>=0 else MAX_PROCESSES,MAX_PROCESSES-1)
 		setattr(self,attr,processes)
 		self.set_null()
 		return
@@ -411,7 +416,7 @@ class Pooler(object):
 		value = getattr(self,attr) 
 		return value	
 
-# nullPool class, similar to multiprocessing.Pool
+# Pool class, similar to multiprocessing.Pool
 class Pool(multiprocessing.pool.Pool):
 	pass
 
@@ -444,10 +449,11 @@ class nullPool(object):
 
 	@timing(False)
 	def apply_async(self,func,args=(),kwds={},callback=nullfunc,error_callback=nullfunc):
-		try:
-			callback(func(*args,**kwds))
-		except:
-			error_callback(func(*args,**kwds))
+		callback(func(*args,**kwds))
+		# try:
+		# 	callback(func(*args,**kwds))
+		# except:
+		# 	error_callback(func(*args,**kwds))
 		return
 	@timing(False)	
 	def map(self,func,iterable,chunksize=None):
@@ -564,31 +570,45 @@ class Parallelize(object):
 		self.set_verbose(verbose)
 		return
 	@timing(False)
-	def __call__(self,func,iterable,values,args=(),kwds={}):
+	
+
+	def __call__(self,iterable,func,callback=nullfunc,error_callback=nullfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='parallel'):
 		'''
 		Call function in parallel
 		Args:
-			func (callable): Function to call in parallel, with signature func(*args,**kwargs)
 			iterable (int,iterable[object],dict[str,iterable[object]]): Iterable of arguments to iterate in parallel, 
 				either integer to call range(iterable) -> func(i), or iterable of objects [i] -> func(i), 
 				or dictionary of combinations of arguments to iterate over in all combinations
-			values (list): List to append in place parallel outputs to (in order of arguments passed in iterable)
+			func (callable): Function to call in parallel, with signature func(*args,**kwargs)
+			callback (callable): Callback function to collect parallel outputs, with signature callback(value,*callback_args,**callback_kwds)
+			error_callback (callable): Error callback function if errors occur, with signature callback(value,*callback_args,**callback_kwds)
 			args (iterable[object]): Positional arguments to pass to func
 			kwds (dict[str,object]): Keyword arguments to pass to func
-		'''		
+			callback_args (iterable[object]): Positional arguments to pass to callback
+			callback_kwds (dict[str,object]): Keyword arguments to pass to callback
+			module (str): Type of parallelization to call i.e) apply_async
+		'''	
 		with self.get_parallel()(n_jobs=self.get_n_jobs(),backend=self.get_backend(),prefer=self.get_prefer()) as parallel:           
+			
 			self.set_iterable(iterable)
 
+			start = timeit.default_timer()
+
 			try:
+
 				jobs = (self.get_delayed()(func)(*i,*args,**{**kwds,**i}) 
 						for i in self.get_iterable())
+				
+				self.set_iterable(iterable)
+				
+				for i,value in zip(self.get_iterable(),parallel(jobs)):
+					Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i})(value)
 
-				start = timeit.default_timer()	
-				values.extend(parallel(jobs))
-				end = timeit.default_timer()
 			except Exception as exception:
-				print(exception)
 				logger.log(self.get_verbose(),exception)
+
+			end = timeit.default_timer()
+
 
 			if not self.get_null():
 				logger.log(self.get_verbose(),"n_jobs: %d, time: %0.3e"%(self.get_n_jobs(),end-start))
@@ -778,22 +798,22 @@ class Futures(object):
 		self.set_verbose(verbose)
 		return
 	@timing(False)	
-	def __call__(self,module,func,iterable,args=(),kwds={},callback_args=(),callback_kwds={},callback=nullfunc,error_callback=nullfunc):
+	def __call__(self,iterable,func,callback=nullfunc,error_callback=nullfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='apply_async'):
 		'''
 		Call function in parallel
 		Args:
-			module (str): Type of parallelization to call i.e) apply_async
-			func (callable): Function to call in parallel, with signature func(*args,**kwargs)
 			iterable (int,iterable[object],dict[str,iterable[object]]): Iterable of arguments to iterate in parallel, 
 				either integer to call range(iterable) -> func(i), or iterable of objects [i] -> func(i), 
 				or dictionary of combinations of arguments to iterate over in all combinations
+			func (callable): Function to call in parallel, with signature func(*args,**kwargs)
+			callback (callable): Callback function to collect parallel outputs, with signature callback(value,*callback_args,**callback_kwds)
+			error_callback (callable): Error callback function if errors occur, with signature callback(value,*callback_args,**callback_kwds)
 			args (iterable[object]): Positional arguments to pass to func
 			kwds (dict[str,object]): Keyword arguments to pass to func
 			callback_args (iterable[object]): Positional arguments to pass to callback
 			callback_kwds (dict[str,object]): Keyword arguments to pass to callback
-			callback (callable): Callback function to collect parallel outputs, with signature callback(value,*callback_args,**callback_kwds)
-			error_callback (callable): Error callback function if errors occur, with signature callback(value,*callback_args,**callback_kwds)
-		'''				
+			module (str): Type of parallelization to call i.e) apply_async
+		'''			
 
 		with self.get_pool()(
 			processes=self.get_processes(),
@@ -802,21 +822,23 @@ class Futures(object):
 			maxtasksperchild=self.get_maxtasksperchild(),
 			context=self.get_context()) as pool:
 
+			start = timeit.default_timer()	
+
 			self.set_iterable(iterable)
-			
+
 			try:
-				jobs = (getattr(pool,module)(
-						func=Wrapper(func,*args,**{**kwds,**i}),
+				jobs = [getattr(pool,module)(
+						func=Wrapper(func,*i,*args,**{**kwds,**i}),
 						**(dict(callback=Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i}),
 						error_callback=Wrapper(error_callback,*i,*callback_args,**{**callback_kwds,**i}))
 						if 'async' in module else dict()))
-						for i in self.get_iterable())
+						for i in self.get_iterable()]
 			except Exception as exception:
 				logger.log(self.get_verbose(),exception)
 
-			start = timeit.default_timer()	
 			pool.close()
 			pool.join()
+
 			end = timeit.default_timer()
 
 			logger.log(self.get_verbose(),"processes: %d, time: %0.3e"%(self.get_processes(),end-start))							
@@ -849,7 +871,7 @@ class Futures(object):
 		attr = 'processes'
 		default = 1
 		processes = default if processes is None else processes
-		processes = min(processes,MAX_PROCESSES-1)
+		processes = min(processes if processes>=0 else MAX_PROCESSES,MAX_PROCESSES-1)
 		setattr(self,attr,processes)
 		self.set_null()
 		return
