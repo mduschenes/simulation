@@ -18,7 +18,7 @@ for name in configs:
 	jax.config.update(name,configs[name])
 
 envs = {
-	'TF_CPP_MIN_LOG_LEVEL':4,
+	'TF_CPP_MIN_LOG_LEVEL':5,
 }
 for var in envs:
 	os.environ[var] = str(envs[var])

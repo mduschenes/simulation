@@ -16,6 +16,27 @@ from src.io import load,dump,join,split
 from src.call import launch
 
 
+import jax
+import absl.logging
+absl.logging.set_verbosity(absl.logging.INFO)
+# jax.set_cpu_device_count(8)
+
+configs = {
+	'jax_disable_jit':False,
+	'jax_platforms':'cpu',
+	'jax_enable_x64': True
+	}
+for name in configs:
+	jax.config.update(name,configs[name])
+
+envs = {
+	'TF_CPP_MIN_LOG_LEVEL':5,
+	# 'XLA_FLAGS':'--xla_force_host_platform_device_count=8'
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
+
+
 def allowed(index,value,values):
 	'''
 	Check if value is allowed as per index

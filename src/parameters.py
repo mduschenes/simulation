@@ -22,7 +22,7 @@ for name in configs:
 	jax.config.update(name,configs[name])
 
 envs = {
-	'TF_CPP_MIN_LOG_LEVEL':4,
+	'TF_CPP_MIN_LOG_LEVEL':5,
 	# 'XLA_FLAGS':'--xla_force_host_platform_device_count=8'
 }
 for var in envs:
