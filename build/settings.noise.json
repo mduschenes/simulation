@@ -28,7 +28,6 @@
 "seed":{
 	"seed":1927376,
 	"size":40,
-	"size":4,
 	"reset":1927376,
 	"index":null
 	},
@@ -38,10 +37,8 @@
 		"model.N":[4],
 		"model.N":[2],
 		"model.M":[10,20,50,75,100,150,200,250,300,400,500,600,800,1000,2000,5000],
-		"model.M":[10,100],
 		"model.tau":[10e0],
 		"noise.scale":[1e-12,1e-8,1e-7,1e-6,1e-5,5e-5,1e-4,5e-4,1e-3,1e-1],
-		"noise.scale":[1e-12,1e-6],
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[200],
@@ -59,7 +56,6 @@
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
 		"jobs.job.pool":[160],
-		"jobs.job.pool":[1],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
