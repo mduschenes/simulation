@@ -6,6 +6,7 @@ from functools import partial
 import time
 from time import time as timer
 
+import jax
 import jax.numpy as np
 
 import absl.logging
