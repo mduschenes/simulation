@@ -894,7 +894,9 @@ def init(key,
 		task['cmd'] = cmd
 		task['env'] = env
 
-		logger.log(verbose,'Job %s'%(key))
+		msg = 'Job %s'%(key)
+		logger.log(verbose,msg)
+		print(msg)
 
 		return task
 
