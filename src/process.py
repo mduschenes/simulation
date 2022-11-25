@@ -10,6 +10,14 @@ from natsort import natsorted,realsorted
 import matplotlib.pyplot as plt
 warnings.filterwarnings('ignore')
 
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
+
+
 # Logging
 import logging
 logger = logging.getLogger(__name__)
