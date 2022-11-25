@@ -218,7 +218,6 @@ def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=No
 			try:
 				coef,coefferr = curve_fit(func,x,y,**kwargs)
 			except Exception as e:
-				print(e)
 				coef,coefferr = zeros(ncoef),zeros((ncoef,ncoef))
 			
 			if grad is None:

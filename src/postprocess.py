@@ -17,6 +17,8 @@ for PATH in PATHS:
 
 from src.utils import argparser
 from src.utils import array,zeros,ones,arange,linspace,rand,sort,eig,argmax,argmin,maximum,difference,rand,scinotation,log,sqrt
+from src.utils import is_naninf
+from src.utils import nan
 from src.dictionary import updater,getter
 from src.fit import fit
 from src.io import load,dump,join,split,glob,cd,exists,dirname
@@ -295,15 +297,14 @@ def process(path):
 
 				interpolate = 1
 
-				if interpolate:
+				try:
 					x,y = [],[]
 					for i,(x_,y_,z_,yerr_,zerr_) in enumerate(zip(X,Y,Z,Yerr,Zerr)):
 
-
 						y_ = y_[slices]
 						z_ = z_[slices]
-						yerr_ = yerr_ if yerr_ is not None else None
-						zerr_ = zerr_[slices] if zerr_ is not None else zerr_
+						yerr_ = yerr_ if yerr_ not in [None,nan] and not is_naninf(yerr_).all() else None
+						zerr_ = zerr_[slices] if zerr_ not in [None,nan] and not is_naninf(zerr_).all() else None
 
 						_y = linspace(y_.min(),y_.max(),y_.size*20)
 						_yerr = zeros(_y.shape)
@@ -386,7 +387,7 @@ def process(path):
 
 					fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
-				else:
+				except:
 					_x = X
 					_y = Y
 					_z = Z
