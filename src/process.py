@@ -406,6 +406,8 @@ def loader(kwargs,**options):
 		options (dict): Additional load options
 	'''
 
+	print('Start Loading')
+
 	returns = {}
 
 	returns['multiple'] = False
@@ -427,14 +429,12 @@ def loader(kwargs,**options):
 			callback_kwds = {'values':values,'default':default,'options':options,'verbose':True}
 
 			parallelize = Pooler(processes)
-
 			parallelize(
 				iterable,loading,
 				callback=callback,kwds=kwds,callback_kwds=callback_kwds
 				)
 
 			kwargs[kwarg] = {path: kwargs[kwarg][path] for path in natsorted(kwargs[kwarg])}
-
 		else:
 			kwargs[kwarg] = kwargs[kwarg]
 			returns['multiple'] |= False
@@ -442,6 +442,8 @@ def loader(kwargs,**options):
 
 	if all(len(kwargs[kwarg]) < 1 for kwarg in kwargs):
 		returns = None
+
+	print('Done Loading')
 
 	return returns
 
