@@ -1220,7 +1220,7 @@ class Object(object):
 		for key in data:
 			for attr in attrs:
 				if attr not in data[key]:
-					data[key][attr] = None
+					data[key][attr] = nan
 
 		# Set data
 		data = {

@@ -683,6 +683,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				}
 		unique = {attr: unique[attr] for attr in unique if len(unique[attr])>0}
 
+		print('Unique Attributes')
+
 		# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
 		sort = {attr: tuple((*realsorted(set(asscalar(data[name][attr])
 						for name in names 
