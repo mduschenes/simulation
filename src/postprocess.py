@@ -292,6 +292,7 @@ def process(path):
 				_X,_Y,_Z = [],[],[]
 				_Xerr,_Yerr,_Zerr = [],[],[]
 
+				print(X)
 				indices = arange(len(X))[X>=1e-8]
 				slices = slice(0,30,None)
 
