@@ -6,23 +6,6 @@ from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
 
-import matplotlib
-import matplotlib.pyplot as plt
-
-import numpy as onp
-import scipy as osp
-import jax
-import jax.numpy as np
-import jax.scipy as sp
-import jax.example_libraries.optimizers
-import absl.logging
-absl.logging.set_verbosity(absl.logging.INFO)
-jax.config.update('jax_platform_name','cpu')
-jax.config.update('jax_enable_x64', True)
-# jax.set_cpu_device_count(8)
-# os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
-np.set_printoptions(linewidth=1000)#,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
-
 # Logging
 import logging
 import logging.config,configparser
@@ -212,6 +195,7 @@ class Logger(object):
 			'NOTSET':0,'DEBUG':10,'INFO':20,'WARNING':30,'ERROR':40,'CRITICAL':50,
 			10:10,20:20,30:30,40:40,50:50,
 			2:20,3:30,4:40,5:50,
+			-1:50,
 			True:20,False:0,None:0,
 			}
 		self.verbose = self.verbosity.get(verbose,verbose)

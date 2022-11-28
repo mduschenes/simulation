@@ -355,16 +355,21 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							'prop':{'size':kwargs.get('prop',{}).get('size')},
 							} 
 									if 'set_title' in kwargs or 'title' in kwargs else {'title':None})},
-					'get_title':{**kwargs.pop('get_title',{})},
+					**{subattr: {**kwargs.pop(subattr,{})} for subattr in ['get_title','get_texts']},
 					})
 
 
-				call = not (
+				call = (not (					
 					(kwargs['handles'] == [] or kwargs['labels'] == []) or 
 					(min(len(kwargs['handles']),len(kwargs['labels']))==1) or 
-					all([kwargs[k] is None for k in kwargs])
-					# and all([kwargs.get(k) is None for k in ['handles','labels']]):
+					all([kwargs[k] is None for k in kwargs]))
+					or
+					('set_label' in kwargs) and (kwargs.pop('set_label',None) is True)
 					)
+
+				nullkwargs = ['set_title','title','prop','get_title','get_texts','set_label']				
+				for kwarg in nullkwargs:
+					kwargs.pop(kwarg,None)
 
 			
 			elif attr in ['plot','axvline','axhline']:
@@ -447,7 +452,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					# except:
 					# 	kwargs.pop(field)
 					# 	pass
-				if kwargs.get('yerr') is None:
+				if kwargs.get('y1') is not None and kwargs.get('y2') is not None:
+					call = True
+					args.extend([kwargs.get('x'),kwargs.get('y1'),kwargs.get('y2')])					
+				elif kwargs.get('yerr') is None:
 					call = False
 					args.extend([kwargs.get('x'),kwargs.get('y'),kwargs.get('y')])
 				else:
@@ -457,7 +465,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					else:
 						args.extend([kwargs.get('x'),kwargs.get('y')-kwargs.get('yerr'),kwargs.get('y')+kwargs.get('yerr')])
 
-				nullkwargs = ['x','y','z','xerr','yerr','label']
+				nullkwargs = ['x','y','z','xerr','yerr','y1','y2','label']
 				for kwarg in nullkwargs:
 					kwargs.pop(kwarg,None)
 
@@ -554,6 +562,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for a in k.split('.')[:-1]:
 					try:
 						_attr_ = getattr(_attr_,a)()
+						print(_attr_)
 					except:
 						_attr_ = getattr(_attr_,a)
 				a = k.split('.')[-1]
@@ -567,7 +576,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						try:
 							plt.setp(getattr(_attr_,a),**_kwds[k])
 						except:
-							pass
+							try:
+								for _subattr_ in getattr(_attr_,a)():
+									for l in _kwds[k]:
+										getattr(_subattr_,l)(**_kwds[k][l])
+							except:
+								pass
 				
 
 			# except:
@@ -611,19 +625,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				prop: {
 					'settings':{'set_%sscale'%(AXIS[-1]):{'value':'log'}},
 					'kwargs':{kwarg: (lambda settings,prop=prop,kwarg=kwarg,obj=obj: (np.log10(settings[prop][kwarg]))) 
-														for kwarg in ['z']},
+														for kwarg in ['z'] if settings.get(prop,{}).get(kwarg) is not None},
 					'pop':False,
 					}
-				for prop in ['plot_surface']
+				for prop in ['plot_surface'] if settings.get(prop) is not None
 				},
 			**{
 				prop: {
 					'settings':{'set_%sscale'%(AXIS[-2]):{'value':'log'}},
 					'kwargs':{kwarg: (lambda settings,prop=prop,kwarg=kwarg,obj=obj: ((settings[prop][kwarg]))) 
-														for kwarg in ['yerr']},
+														for kwarg in ['yerr'] if settings.get(prop,{}).get(kwarg) is not None},
 					'pop':False,
 					}
-				for prop in ['errorbar']
+				for prop in ['errorbar'] if settings.get(prop) is not None
 				},				
 			**{
 				prop: {
@@ -633,10 +647,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 														'set_%sticks'%(AXIS[-1]) in settings) else (
 														getattr(obj,('set_%sticks'%(AXIS[-1])).replace('set','get'))() if (
 														hasattr(obj,'set_%sticks'%(AXIS[-1]).replace('set','get'))) else [0]))])) 
-														for kwarg in ['labels']},
+														for kwarg in ['labels'] if settings.get(prop,{}).get(kwarg) is not None},
 					'pop':False,
 					}
-				for prop in ['set_%sticklabels'%(AXIS[-1])]
+				for prop in ['set_%sticklabels'%(AXIS[-1])] if settings.get(prop) is not None
 				},				
 			**{
 				prop: {
@@ -644,7 +658,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					'kwargs':{},
 					'pop':True,
 					}
-				for prop in ['set_%sscale'%(AXIS[-1])]
+				for prop in ['set_%sscale'%(AXIS[-1])] if settings.get(prop) is not None
 				},	
 
 			}
@@ -783,9 +797,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			for attr in settings[key]:
 				if attr in _settings:
 					_settings[attr].update(settings[key][attr])
-				for kwarg in list(_settings[attr]):
-					if kwarg not in settings[key][attr]:
-						_settings[attr].pop(kwarg)
+				if attr in _settings:
+					for kwarg in list(_settings[attr]):
+						if kwarg not in settings[key][attr]:
+							_settings[attr].pop(kwarg)
 
 			_setup(settings[key],_settings)	
 

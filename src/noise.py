@@ -6,21 +6,6 @@ from functools import partial
 import time
 from time import time as timer
 
-import matplotlib
-import matplotlib.pyplot as plt
-
-import numpy as onp
-import scipy as osp
-import jax
-import jax.numpy as np
-import jax.scipy as sp
-import jax.example_libraries.optimizers
-jax.config.update('jax_platform_name','cpu',)
-jax.config.update('jax_enable_x64', True)
-# jax.set_cpu_device_count(8)
-# os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
-# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e',)) for dtype in ['float','float64',np.float64,np.float32]}})
-
 # Logging
 import logging
 logger = logging.getLogger(__name__)
@@ -179,6 +164,8 @@ def noiseize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 	if scale is None:
 		data = None
 	elif isinstance(string,str):
+
+		assert (scale >= 0) and (scale <= 1), "Noise scale %r not in [0,1]"%(scale)
 
 		if string in ['phase']:
 			data = [sqrt(1-scale)*basis['I'],

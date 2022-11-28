@@ -4,12 +4,25 @@
 import os,sys,itertools,functools,copy
 from functools import partial
 
-import jax
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5,
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
 
-jax.config.update('jax_platform_name','cpu')
-jax.config.update('jax_enable_x64', True)
-# jax.set_cpu_device_count(8)
-# os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
+
+import jax
+import absl.logging
+absl.logging.set_verbosity(absl.logging.INFO)
+
+configs = {
+	'jax_disable_jit':False,
+	'jax_platforms':'cpu',
+	'jax_enable_x64': True
+	}
+for name in configs:
+	jax.config.update(name,configs[name])
 
 # Logging
 import logging
@@ -625,7 +638,8 @@ class Base(object):
 			'status':1,
 			'reset':0,
 			'verbose':False,
-			'modulo':{'log':1,'attributes':1e10,'callback':1,'restart':1e10,'dump':1e10},
+			'modulo':{'log':None,'attributes':None,'callback':None,'restart':None,'dump':None},
+			'length':{'log':None,'attributes':10,'callback':None,'restart':None,'dump':None},
 			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},			
 		}
 
@@ -646,9 +660,10 @@ class Base(object):
 		self.parameters = None
 		self.optimizer = hyperparameters['optimizer']		
 		self.modulo = hyperparameters['modulo']
+		self.length = hyperparameters['length']
 		self.attributes = hyperparameters['attributes']
 		self.iterations = range(int(hyperparameters['iterations']))
-		self.sizes = self.modulo['attributes']
+		self.sizes = hyperparameters['length'].get('attributes')
 		self.status = hyperparameters['status']
 		self.eps = hyperparameters['eps']
 		self.reset = hyperparameters['reset']
@@ -749,7 +764,7 @@ class Base(object):
 		parameters = self.get_params(state)
 		value,grad = self.value_and_grad(parameters)
 
-		if self.size >= self.sizes:
+		if (self.sizes is not None) and (self.size >= self.sizes):
 			for attr in self.attributes:
 				self.attributes[attr].pop(0)
 
@@ -948,7 +963,7 @@ class ConjugateGradient(Base):
 		beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
 		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		
-		restart = (iteration%self.modulo['restart']) == 0
+		restart = ((self.modulo.get('restart') is not None) and ((iteration%self.modulo['restart']) == 0))
 		beta = 0 if (restart or is_naninf(beta) or beta>self.eps['beta']) else beta
 		search = -_grad + beta*search
 

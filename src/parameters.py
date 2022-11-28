@@ -6,20 +6,28 @@ from functools import partial
 import time
 from time import time as timer
 
-import matplotlib
-import matplotlib.pyplot as plt
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5,
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
 
-import numpy as onp
-import scipy as osp
 import jax
 import jax.numpy as np
-import jax.scipy as sp
-import jax.example_libraries.optimizers
-jax.config.update('jax_platform_name','cpu',)
-jax.config.update('jax_enable_x64', True)
+
+import absl.logging
+absl.logging.set_verbosity(absl.logging.INFO)
 # jax.set_cpu_device_count(8)
-# os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
-# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e',)) for dtype in ['float','float64',np.float64,np.float32]}})
+
+configs = {
+	'jax_disable_jit':False,
+	'jax_platforms':'cpu',
+	'jax_enable_x64': True
+	}
+for name in configs:
+	jax.config.update(name,configs[name])
+
 
 # Logging
 import logging
