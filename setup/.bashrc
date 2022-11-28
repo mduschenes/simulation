@@ -73,11 +73,37 @@ function bkill(){
 }
 
 function bint(){
-	t=${1:-06:00:00}
-	m=${2:-15G}
-	srun --nodes=1 --ntasks-per-node=1 --time=${t} --mem=${m} --pty bash -i
+	time=${1:-02:00:00}
+	mem=${2:-15G}
+	partition=${3:-cpu}
+	account=${4:-def-carrasqu}
+	srun --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --account=${account} --pty bash -i
 	return 0
 }
+
+
+function balloc(){
+	time=${1:-01:00:00}
+	mem=${2:-15G}
+	partition=${3:-cpu}
+	account=${4:-def-carrasqu}	
+	salloc --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --partition=${partition} --account=${account}
+	return 0
+}
+
+
+function catls(){
+	files=(${@})
+	files=($(ls ${files[@]} | sort -V))
+	for file in ${files[@]}
+	do
+		echo ${file}
+		cat ${file}
+		echo
+	done
+
+}
+
 
 
 

@@ -16,10 +16,13 @@ yes=${3}
 
 # pkgs=/pkgs/anaconda3
 envs=${HOME}/env
+version=3.8
 
 channels=(intel conda-forge)
 requirements=requirements.txt
 
+# Load python
+module load python/${version}
 
 # Setup paths
 mkdir -p ${envs}
@@ -43,22 +46,25 @@ fi
 # Setup environment
 if [ "${install}" == "reinstall" ]
 then
-	deactivate
+	deactivate &>/dev/null 2>&1
 	
+	rm -rf ${envs}
+
 	virtualenv --no-download ${envs}/${env}
 
 elif [ "${install}" == "uninstall" ]
 then
-	deactivate
+	deactivate &>/dev/null 2>&1
 
 	rm -rf ${envs}/env
 fi
 
 # Activate environment
 # conda activate ${env}
+module load python/${version}
 source ${envs}/${env}/bin/activate
-module load python/3.8
-source ${envs}/${env}/bin/activate
+
+pip -V
 
 # Install packages
 
@@ -74,6 +80,8 @@ options+=(--no-index)
 for file in ${requirements[@]}
 do
 	pip install -r ${file} ${options[@]}
+	options=()
+
 done
 
 rm ${requirements[@]} 
