@@ -18,7 +18,7 @@ pkgs=/pkgs/anaconda3
 envs=${HOME}/.conda/envs
 env_vars=env_vars.sh
 
-channels=(intel conda-forge)
+channels=(intel conda-forge nvidia)
 requirements=requirements.txt
 
 
