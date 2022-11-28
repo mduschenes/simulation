@@ -56,8 +56,7 @@
 		{
 			"key":{"x":"M","y":"objective"},
 			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"label":{"noise.scale":null}
+			"stat":[["linear","linear"]]
 		},		
 		{
 			"key":{"x":"","y":"parameters"},
@@ -107,7 +106,7 @@
 	"path": {
         "plot": "plot.pdf",
         "process": "process.hdf5",
-        "metadata":"metadata.json"             
+        "metadata": "metadata.json"             
     },
 	"delimiter":".",
 	"process":[],

@@ -1,6 +1,6 @@
 {
 "class":"src.quantum.Unitary",
-"hyperparameters":"settings.json",
+"hyperparameters":"settings.eig.json",
 "sys":{
 	"cwd":null,
 	"path":{
@@ -12,8 +12,8 @@
 			},
 		"config":{
 			"settings":"settings.json",
-			"plot":"plot.json",
-			"process":"process.json",
+			"plot":"plot.eig.json",
+			"process":"process.eig.json",
 			"mplstyle":"plot.mplstyle",
 			"logger":"logging.conf"
 			}
@@ -26,32 +26,32 @@
 	"plot":0
 	},
 "seed":{
-	"seed":5576,
+	"seed":787945,
 	"size":1,
-	"reset":5576,
+	"reset":787945,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[2],
-		"model.M":[4,8,16,64],
-		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
-		"state.scale":[1],
-		"model.metric":["infidelity.norm"],
-		"optimize.iterations":[10],
+		"model.N":[4],
+		"model.M":[10,20,50,75,100,200,300,500],
+		"model.tau":[100e0],
+		"noise.scale":[null],	
+		"state.scale":[null],
+		"model.metric":["infidelity.abs"],
+		"optimize.iterations":[200],
 		"optimize.optimizer":["cg"],
-		"parameters.xy.method":["unconstrained"],
-		"model.system.architecture":["unconstrained"],
+		"parameters.xy.method":["constrained"],
+		"model.system.architecture":["constrained"],
 
-		"jobs.job.cwd":["test"],	
-		"jobs.postprocess.cwd":["test"],
-
+		"jobs.job.cwd":["gobi/poster.eig.long"],
+		"jobs.postprocess.cwd":["gobi/poster.eig.long"],
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[2],
+		"jobs.job.pool":[1],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -118,8 +118,8 @@
 		"category":"variable",
 		"method":"constrained",
 		"use":true,		
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
+		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
 		"group":[["x"],["y"]],
@@ -130,11 +130,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -144,7 +144,7 @@
 		"method":null,		
 		"use":true,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
-		"parameters":[-1e-2,0,1e-3,5e-3,2e-3],		
+		"parameters":[-1e-2,0,1e-3,5e-3,2e-3],				
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["z"]],
 		"scale":1,
@@ -164,7 +164,7 @@
 		"method":null,		
 		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],						
+		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],		
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
@@ -245,7 +245,7 @@
 		"pool":null,
 		"pause":1,	
 		"file":"job.sh",
-		"process":"array",
+		"process":"serial",
 		"processes":null,
 		"device":"pc",
 		"execute":1,
@@ -259,7 +259,7 @@
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.json","--hyperparameters=**/process.json","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.eig.json","--hyperparameters=**/process.eig.json","--cwd=."]
 			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
