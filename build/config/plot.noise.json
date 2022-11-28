@@ -22,20 +22,6 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			},		
-			{
-			"x":"iteration",
-			"y":"objective.ideal.state",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless}"],
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
 			}						
 			],	
 		"fill_between":[
@@ -45,14 +31,7 @@
 			"label":["N","architecture","M","noise.scale","\\textrm{Noisy}"],
 			"alpha":0.5,			
 			"color":"viridis"
-			},			
-			{
-			"x":"iteration",
-			"y":"objective.ideal.state",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless}"],
-			"alpha":0.5,			
-			"color":"viridis"
-			}							
+			}						
 			],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
@@ -97,7 +76,7 @@
 	},
 "noise.scale.objective.M":{
 	"fig":{
-		"set_size_inches":{"w":28,"h":18},
+		"set_size_inches":{"w":18,"h":12},
 		"subplots_adjust":{},
 		"tight_layout":{},
 		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
@@ -111,11 +90,11 @@
 			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy}"],
 			"alpha":0.8,
 			"marker":"o",
-			"markersize":20,
+			"markersize":12,
 			"linestyle":"--",
-			"linewidth":10,
-			"elinewidth":7,
-			"capsize":10,
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
 			},
@@ -125,23 +104,23 @@
 			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless}"],
 			"alpha":0.8,
 			"marker":"o",
-			"markersize":20,
+			"markersize":12,
 			"linestyle":"--",
-			"linewidth":10,
-			"elinewidth":7,
-			"capsize":10,
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			}			
+			}					
 		],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\gamma$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"log","base":10},
 		"set_xscale":{"value":"symlog","base":10,"linthresh":1e-20},
-		"set_xlim":{"xmin":1e-11,"xmax":1e2},
-		"set_xnbins":{"nbins":3},
-		"set_xticks":{"ticks":[1e-8,1e-4,1e0]},		
+		"set_xlim":{"xmin":1e-16,"xmax":1e0},
+		"set_xnbins":{"nbins":6},
+		"set_xticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0]},		
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim":{"ymin":1e-6,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
@@ -158,17 +137,16 @@
 		"set_aspect":{"aspect":"auto"},
 		"grid":{"visible":true,"which":"both","axis":"both"},
 		"legend":{
-			"title_fontsize": 40,
-			"fontsize":40,
+			"title_fontsize": 20,
 			"get_title":{"ha":"center"},
-			"prop": {"size": 40},
+			"prop": {"size": 20},
 			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": [0.74,0.02],
-			"ncol": 1,
+			"loc": [0.5,0.05],
+			"ncol": 2,
 			"set_zorder":{"level":100}
-			}
+			}			
 		},
 	"style":{
 		"texify":null,
@@ -180,7 +158,7 @@
 	},
 "noise.scale.objective.diff.M":{
 	"fig":{
-		"set_size_inches":{"w":18,"h":18},
+		"set_size_inches":{"w":8,"h":8},
 		"subplots_adjust":{},
 		"tight_layout":{},
 		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
@@ -191,30 +169,30 @@
 			{
 			"x":"noise.scale",
 			"y":"objective.diff.state",
-			"label":["N","architecture","M","iteration=@iteration.min@"],
+			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless}"],
 			"alpha":0.8,
 			"marker":"o",
-			"markersize":20,
+			"markersize":12,
 			"linestyle":"--",
-			"linewidth":10,
-			"elinewidth":7,
-			"capsize":10,
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			}	
-		],
+			}		
+		],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity Difference}$"},
 		"set_xlabel":{"xlabel":"$\\gamma$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"log","base":10},
 		"set_xscale":{"value":"symlog","base":10,"linthresh":1e-20},
-		"set_xlim":{"xmin":5e-12,"xmax":1e0},
+		"set_xlim":{"xmin":1e-16,"xmax":1e0},
 		"set_xnbins":{"nbins":6},
-		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},		
+		"set_xticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0]},		
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":5e-11,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -227,17 +205,16 @@
 		"set_aspect":{"aspect":"auto"},
 		"grid":{"visible":true,"which":"both","axis":"both"},
 		"legend":{
-			"title_fontsize": 40,
-			"fontsize":40,
+			"title_fontsize": 20,
 			"get_title":{"ha":"center"},
-			"prop": {"size": 40},
+			"prop": {"size": 20},
 			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": [0.72,0.02],
+			"loc": [0.5,0.05],
 			"ncol": 1,
 			"set_zorder":{"level":100}
-			}	
+			}
 		},
 	"style":{
 		"texify":null,
@@ -249,7 +226,7 @@
 	},
 "M.objective.noise.scale":{
 	"fig":{
-		"set_size_inches":{"w":18,"h":18},
+		"set_size_inches":{"w":18,"h":12},
 		"subplots_adjust":{},
 		"tight_layout":{},
 		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
@@ -263,11 +240,11 @@
 			"label":["N","architecture","noise.scale","iteration=@iteration.min@"],
 			"alpha":0.8,
 			"marker":"o",
-			"markersize":20,
+			"markersize":12,
 			"linestyle":"--",
-			"linewidth":10,
-			"elinewidth":7,
-			"capsize":10,
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
 			}				
@@ -280,7 +257,7 @@
 		"set_xnbins":{"nbins":6},
 		"set_xticks":{"ticks":[0,200,400,600,800,1000]},		
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":5e-7,"ymax":5e0},
+		"set_ylim":{"ymin":1e-6,"ymax":5e0},
 		"set_ynbins":{"nbins":6},		
 		"set_yticks":{"ticks":[1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
@@ -295,15 +272,14 @@
 		"set_aspect":{"aspect":"auto"},
 		"grid":{"visible":true,"which":"both","axis":"both"},
 		"legend":{
-			"title_fontsize": 40,
-			"fontsize":40,
+			"title_fontsize": 20,
 			"get_title":{"ha":"center"},
-			"prop": {"size": 40},
+			"prop": {"size": 20},
 			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": [0.02,0.02],
-			"ncol": 1,
+			"loc": [0.5,0.05],
+			"ncol": 2,
 			"set_zorder":{"level":100}
 			}			
 		},

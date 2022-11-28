@@ -57,7 +57,7 @@
 			"key":{"x":"M","y":"objective"},
 			"slice":[0,null,null],
 			"stat":[["linear","linear"]],
-			"label":{"noise.scale":null}
+			"label":{"noise.scale":[1e-8,1e-6,1e-5,5e-5,1e-4,5e-4,1e-3,1e-1]}
 		},		
 		{
 			"key":{"x":"","y":"parameters"},
@@ -85,7 +85,7 @@
 		},
 		{
 			"key":{"x":"","y":"fisher.eigenvalues"},
-			"slice":[0,100,null],						
+			"slice":[0,null,null],						
 			"axis":[[0],[],[],[-1]]
 		}				
 		],	
@@ -93,7 +93,7 @@
 	"null":{"None.parameters.iteration.M":null},
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",
-		"rank": "r",
+		"rank": "\\textrm{rank}",
 		"None": "\\textrm{None}",
 		"key":null,
 		"architecture": "\\textrm{Architecture}",
@@ -101,18 +101,20 @@
 		"unconstrained": "\\textrm{Unconstrained}",
 		"noise.scale":"\\gamma"
 	},
-	"kwargs":{},
+	"kwargs":{
+		"padding":true
+	},
 	"pwd":null,
 	"cwd":null,
 	"path": {
         "plot": "plot.pdf",
         "process": "process.hdf5",
-        "metadata":"metadata.json"             
+        "metadata": "metadata.json"             
     },
 	"delimiter":".",
-	"process":[],
 	"process":["src.postprocess.process"],
-	"load":0,
+	"process":[],
+	"load":1,
 	"dump":1,
 	"plot":1
 }

@@ -1,6 +1,6 @@
 {
 "class":"src.quantum.Unitary",
-"hyperparameters":"settings.json",
+"hyperparameters":"settings.test.json",
 "sys":{
 	"cwd":null,
 	"path":{
@@ -12,8 +12,8 @@
 			},
 		"config":{
 			"settings":"settings.json",
-			"plot":"plot.json",
-			"process":"process.json",
+			"plot":"plot.test.json",
+			"process":"process.test.json",
 			"mplstyle":"plot.mplstyle",
 			"logger":"logging.conf"
 			}
@@ -27,7 +27,7 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":1,
+	"size":10,
 	"reset":5576,
 	"index":null
 	},
@@ -45,19 +45,18 @@
 		"model.system.architecture":["unconstrained"],
 
 		"jobs.job.cwd":["test"],	
-		"jobs.postprocess.cwd":["test"],
-
+		"jobs.postprocess.cwd":["test"],					
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[2],
+		"jobs.job.pool":[4],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.job.args.JOB_PROCESSES":[2],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
@@ -164,7 +163,7 @@
 		"method":null,		
 		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],						
+		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
@@ -243,9 +242,9 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,
-		"pause":1,	
-		"file":"job.sh",
-		"process":"array",
+		"pause":1,
+		"file":"job.sh",	
+		"process":"serial",
 		"processes":null,
 		"device":"pc",
 		"execute":1,
@@ -259,7 +258,7 @@
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.json","--hyperparameters=**/process.json","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.test.json","--hyperparameters=**/process.test.json","--cwd=."]
 			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
@@ -270,8 +269,8 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,		
-		"pause":1,	
-		"file":"postprocess.sh",
+		"pause":1,
+		"file":"postprocess.sh",	
 		"process":null,
 		"processes":null,
 		"device":"pc",
@@ -281,4 +280,4 @@
 	},
 "process": {"labels":["noise.scale"]},
 "plot": {}
-}
+}		
