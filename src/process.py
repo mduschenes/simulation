@@ -784,7 +784,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					continue
 
 
-
 				name = allincluded[-1]
 				combination = tuple(sorted(tuple((
 					(attr,asscalar(data[name][attr]))
@@ -878,6 +877,9 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								value = expand_dims(value,newndim)
 
 								slices = (index,*(slice(data[name][key['y']['key'][-1]].shape[axis]) for axis in range(data[name][key['y']['key'][-1]].ndim)))
+
+								print(value)
+								print(data[name]['parameters.relative.mean'])
 
 								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 

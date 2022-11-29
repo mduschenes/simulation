@@ -46,7 +46,7 @@ from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import eig
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
-from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_naninf,to_key_value 
+from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_array,is_naninf,to_key_value 
 from src.utils import initialize,parse,to_string,to_number,datatype,slice_size,intersection
 from src.utils import pi,e,nan,delim,scalars,nulls
 from src.utils import itg,flt,dbl
@@ -1041,7 +1041,7 @@ class Object(object):
 											for group in attributes['index'][layer][parameter]))
 						])
 
-					if isinstance(value[attr],array):
+					if is_array(value[attr]):
 
 						new = '%s.relative'%(attr)
 						New = abs((obj.__layers__(value[attr],layer)[indices] - 
@@ -1159,7 +1159,7 @@ class Object(object):
 					pass
 
 				elif attr in ['hessian','fisher']:
-					if isinstance(value[attr],array):
+					if is_array(value[attr]):
 						new = '%s.eigenvalues'%(attr)						
 						New  = sort(abs(eig(value[attr],compute_v=False,hermitian=True)))[::-1]
 						New = New/max(1,maximum(New))
@@ -1861,7 +1861,7 @@ class Operator(module):
 
 		if isinstance(data,str):
 			operator = data
-		elif isinstance(data,array):
+		elif is_array(data):
 			operator = data
 				
 		if operator is None:
@@ -1891,7 +1891,7 @@ class Operator(module):
 				setattr(self,attr,self.data[attr])
 
 		self.data = self.operator
-		if not isinstance(self.data,array):
+		if not is_array(self.data):
 			self.data = [basis[operator] for operator in self.data]
 			self.data = tensorprod(self.data)
 
