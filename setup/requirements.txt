@@ -7,11 +7,6 @@ scipy
 scikit-learn-intelex
 matplotlib=3.5
 
-jax=0.3.14
-jaxlib=0.3.7
-cuda-nvcc
-libgcc
-
 pandas
 h5py
 pyaml
@@ -19,5 +14,10 @@ pytest
 dill
 jsonpickle
 natsort
-equinox
+absl-py
 parallel
+
+jax[cuda11_cudnn82]
+jaxlib
+equinox
+

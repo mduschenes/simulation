@@ -85,7 +85,7 @@ function bint(){
 	time=${1:-01:00:00}
 	mem=${2:-15G}
 	partition=${3:-cpu}
-	srun --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --pty bash -i
+	srun --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --partition=${partition} --pty bash -i
 	return 0
 }
 
@@ -213,3 +213,4 @@ fi
 
 # colored GCC warnings and errors
 #export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+parallel --record-env

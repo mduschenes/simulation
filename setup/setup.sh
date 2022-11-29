@@ -18,7 +18,7 @@ pkgs=/pkgs/anaconda3
 envs=${HOME}/.conda/envs
 env_vars=env_vars.sh
 
-channels=(intel conda-forge nvidia)
+channels=(conda-forge conda-forge https://storage.googleapis.com/jax-releases/jax_cuda_releases.html)
 requirements=requirements.txt
 
 
@@ -39,6 +39,9 @@ if [[ -z $(grep ${envs}/${env} <<< ${PYTHONPATH}) ]] && ( [[ -f ${envs}/${env} ]
 then
 	export PYTHONPATH=${envs}/${env}:$PYTHONPATH
 fi
+
+source ${env_vars}
+
 
 
 # Setup conda
@@ -88,6 +91,8 @@ cp ${source} ${destination}/
 # conda activate ${env}
 source activate ${envs}/${env}
 
+
+echo Installing Packages
 # Install packages
 
 # Get line-break separated groups of requirements to install individually
@@ -98,9 +103,12 @@ requirements=(${requirements}.tmp.*)
 options=()
 for channel in ${channels[@]}
 do 
+	if [[ ${channel} =~ http.* ]]
+	then
+		continue
+	fi
 	conda config --remove channels ${channel} &>/dev/null 2>&1
 	conda config --append channels ${channel} &>/dev/null 2>&1
-	options+=("--channel" ${channel})
 done
 
 if [ ! -z ${yes} ] && [ ${yes} == "yes" ]
@@ -109,12 +117,22 @@ then
 fi
 
 # Install packages
-for file in ${requirements[@]}
+for i in ${!requirements[@]}
 do
-	conda install --file ${file} ${options[@]}
+	file=${requirements[$i]}
+	channel=${channels[$i]}
+
+	if [[ ${channel} =~ http.* ]]
+	then
+		python -m pip install -r ${file} -f ${channel}
+	else
+		conda install --file ${file} --channel ${channel} ${options[@]}
+	fi
 done
 
 rm ${requirements[@]} 
+
+# pip install "jax[cuda11_cudnn82]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
 # conda update --all
 
@@ -158,3 +176,6 @@ rm ${requirements[@]}
 # destination=${HOME}
 
 # cp ${source} ${destination}
+
+# Git
+# git config --global merge.ours.driver true
