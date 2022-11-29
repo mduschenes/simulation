@@ -849,7 +849,7 @@ class array(np.ndarray):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.array(*args,**kwargs))
+		return np.array(*args,**kwargs)
 
 
 class nparray(onp.ndarray):
@@ -927,7 +927,7 @@ class ones(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.ones(*args,**kwargs))
+		return np.ones(*args,**kwargs)
 
 
 class zeros(array):
@@ -940,7 +940,7 @@ class zeros(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.zeros(*args,**kwargs))
+		return np.zeros(*args,**kwargs)
 
 class empty(array):
 	'''
@@ -952,7 +952,7 @@ class empty(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.empty(*args,**kwargs))
+		return np.empty(*args,**kwargs)
 
 class eye(array):
 	'''
@@ -964,7 +964,7 @@ class eye(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.eye(*args,**kwargs))
+		return np.eye(*args,**kwargs)
 
 class arange(array):
 	'''
@@ -976,7 +976,7 @@ class arange(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.arange(*args,**kwargs))
+		return np.arange(*args,**kwargs)
 
 class linspace(array):
 	'''
@@ -988,7 +988,7 @@ class linspace(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.linspace(*args,**kwargs))
+		return np.linspace(*args,**kwargs)
 
 class logspace(array):
 	'''
@@ -1000,7 +1000,7 @@ class logspace(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.logspace(*args,**kwargs))
+		return np.logspace(*args,**kwargs)
 
 
 class identity(array):
@@ -1013,7 +1013,7 @@ class identity(array):
 		out (array): array
 	'''
 	def __new__(self,n,*args,**kwargs):
-		return jax.device_put(np.eye(*((n,) if isinstance(n,int) else n),*args,**kwargs))
+		return np.eye(*((n,) if isinstance(n,int) else n),*args,**kwargs)
 
 
 class hadamard(array):
