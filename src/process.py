@@ -795,6 +795,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					)),
 					key = lambda x: key['label']['key'].index(x[0]) if x[0] in key['label']['key'] else -1))
 
+				print(combination)
 				variables[occurrence][combination] = value
 
 				permutations[occurrence][combination] = [
