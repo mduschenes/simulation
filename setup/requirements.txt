@@ -2,15 +2,15 @@ mkl
 numpy
 scipy
 scikit-learn
-matplotlib==3.5.2
-jax==0.3.15
-jaxlib==0.3.15
+matplotlib>=3.5
+jax
+jaxlib
 pandas
-h5py
 pyaml
-pytest
 dill
 jsonpickle
 natsort
 
+h5py
 equinox
+pytest
