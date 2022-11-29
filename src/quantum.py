@@ -7,14 +7,26 @@ from functools import partial
 
 from typing import List,Tuple
 
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
+
 import jax
 import equinox as nn
 import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
-jax.config.update('jax_platform_name','cpu')
-jax.config.update('jax_enable_x64', True)
 # jax.set_cpu_device_count(8)
-# os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
+
+configs = {
+	'jax_disable_jit':False,
+	'jax_platforms':'cpu',
+	'jax_enable_x64': True
+	}
+for name in configs:
+	jax.config.update(name,configs[name])
 
 # Logging
 import logging
@@ -273,7 +285,7 @@ class Object(object):
 
 		# Set defaults
 		path = 'config/settings.json'
-		default = {}
+		default = {}		
 		func = lambda key,iterable,elements: iterable.get(key,elements[key])
 		updater(self.hyperparameters,load(path,default=default),func=func)
 
@@ -717,16 +729,22 @@ class Object(object):
 
 		default = nan
 
-		if ((not status) or done or start) or (len(attributes['iteration']) == 0) or (attributes['iteration'][-1]%optimize['modulo']['track'] == 0):	
+		if (((not status) or done or start) or 
+			(len(attributes['iteration']) == 0) or 
+			(optimize['modulo']['track'] is None) or 
+			(attributes['iteration'][-1]%optimize['modulo']['track'] == 0)
+			):	
 
 			for attr in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
 
 				if attr in optimize['track']:
 
-					if len(optimize['track'][attr]) >= (optimize['iterations']//optimize['modulo']['track'] + 1):
+					if ((optimize['length']['track'] is not None) and 
+						(len(optimize['track'][attr]) > optimize['length']['track'])
+						):
 						optimize['track'][attr].pop(0)
 
-					if attr in ['iteration','value','grad','search','alpha','beta']:
+					if attr in ['iteration','value','grad','search','alpha','beta'] and attr in attributes:
 						optimize['track'][attr].append(attributes[attr][-1])
 
 					elif attr in ['parameters'] and ((not status) or done or start):
@@ -741,12 +759,15 @@ class Object(object):
 						optimize['track'][attr].append(
 							getattr(self,'__%s__'%(attr))(parameters)
 							)
-					
 					else:
 						optimize['track'][attr].append(default)
 
 
-		if len(attributes['iteration']) == 0 or attributes['iteration'][-1]%optimize['modulo']['log'] == 0:			
+
+		if ((len(attributes['iteration']) == 0) or 
+			(optimize['modulo']['log'] is None) or 
+			(attributes['iteration'][-1]%optimize['modulo']['log'] == 0)
+			):
 
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
@@ -779,8 +800,12 @@ class Object(object):
 
 
 			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
-		if ((not status) or done) or ((attributes['iteration'][-1])%optimize['modulo']['dump'] == 0):
-			self.dump()
+		if (((not status) or done or start) or
+			(len(attributes['iteration']) == 0) or 
+			(optimize['modulo']['dump'] is None) or 
+			(attributes['iteration'][-1]%optimize['modulo']['dump'] == 0)
+			):
+			self.dump({'data':True,'model':False})
 
 		return status
 
@@ -954,7 +979,7 @@ class Object(object):
 		'''
 		Save class data		
 		Args:
-			path (str,dict[str,str]): Path to dump class data
+			path (str,dict[str,(str,bool)]): Path to dump class data, either path or boolean to dump			
 		'''
 
 		# TODO: Transfer model dumping/loading (checkpointing) to Optimizer/Objective class
@@ -1195,25 +1220,27 @@ class Object(object):
 		for key in data:
 			for attr in attrs:
 				if attr not in data[key]:
-					data[key][attr] = None
+					data[key][attr] = nan
 
 		# Set data
-		data = {'data':data,'model':self.hyperparameters}
+		data = {
+			'data':data,
+			'model':self.hyperparameters
+			}
 
 		# Set path
+		paths = {}
 		if path is None:
-			paths = {}
-		elif isinstance(path,str):
-			paths = {attr: path for attr in data}
+			paths.update({attr: True for attr in data})			
+		elif not isinstance(path,dict):
+			paths.update({attr: path for attr in data if path})
 		else:
-			paths = {attr: path[attr] for attr in path}
+			paths.update({attr: path[attr] for attr in path if path[attr]})
 
-		paths.update({attr: self.hyperparameters['sys']['cwd'] for attr in data if attr not in paths})			
-
-		attrs = intersection(data,paths)
+		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.hyperparameters['sys']['cwd'] for attr in data if paths.get(attr)})			
 
 		# Dump data
-		for attr in attrs:
+		for attr in paths:
 			root,file = split(paths[attr],directory=True,file_ext=True)
 			file = file if file is not None else self.hyperparameters['sys']['path']['data'][attr]
 			path = join(file,root=root)
@@ -1225,7 +1252,7 @@ class Object(object):
 		'''
 		Load class data		
 		Args:
-			path (str,dict[str,str]): Path to load class data			
+			path (str,dict[str,(str,bool)]): Path to load class data, either path or boolean to load
 		'''
 
 		# TODO: Determine which loaded hyperparameters should have precedence over new hyperparameters
@@ -1237,22 +1264,23 @@ class Object(object):
 			return e if isinstance(e,types) else i
 		
 		# Set data
-		data = {'model':self.hyperparameters}
+		data = {
+			'model':self.hyperparameters
+			}
 
 		# Set path
+		paths = {}
 		if path is None:
-			paths = {}
-		elif isinstance(path,str):
-			paths = {attr: path for attr in data}
+			paths.update({attr: True for attr in data})			
+		elif not isinstance(path,dict):
+			paths.update({attr: path for attr in data if path})
 		else:
-			paths = {attr: path[attr] for attr in path}
+			paths.update({attr: path[attr] for attr in path if path[attr]})
 
-		paths.update({attr: self.hyperparameters['sys']['cwd'] for attr in data if attr not in paths})			
-		
-		attrs = intersection(data,paths)
+		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.hyperparameters['sys']['cwd'] for attr in data if paths.get(attr)})			
 
 		# Load data
-		for attr in attrs:
+		for attr in paths:
 			root,file = split(paths[attr],directory=True,file_ext=True)
 			file = file if file is not None else self.hyperparameters['sys']['path']['data'][attr]
 			path = join(file,root=root)
@@ -1267,57 +1295,6 @@ class Object(object):
 
 		return
 
-
-	def plot(self,path=None):
-		'''
-		Plot class
-		Args:
-			path (str,dict): Path to plot class, or dictionary of hyperparameters to plot
-		Returns:
-			fig (dict,matplotlib.figure): Plot figures
-			ax (dict,matplotlib.axes): Plot axes
-		'''
-		# Set path
-		instances = isinstance(path,dict)
-		if path is None:
-			key = None
-			hyperparameters = {key: self.hyperparameters}
-			path = self.hyperparameters['sys']['cwd']
-		elif isinstance(path,str):
-			key = None
-			hyperparameters = {key: self.hyperparameters}			
-			path = path
-		elif isinstance(path,dict):
-			key = None
-			hyperparameters = {key: path[key] for key in path}
-			path = self.hyperparameters['sys']['cwd']
-
-		root,file = split(path,directory=True,file_ext=True)
-
-		# Get paths and kwargs
-		paths = {
-			'data':('sys','path','data','data'),
-			'settings':('sys','path','config','plot'),
-			'hyperparameters':('sys','path','config','process'),
-			}
-
-		kwargs = {kwarg: [] for kwarg in paths}
-
-
-		for kwarg in kwargs:
-			for key in hyperparameters:
-				path = hyperparameters[key]
-				for i in paths[kwarg]:
-					path = path[i]
-				path = join(path,root=root)
-				kwargs[kwarg].append(path)
-
-		fig,ax = process(**kwargs)
-
-		if not instances:
-			self.fig,self.ax = fig,ax
-
-		return fig,ax
 
 
 class Hamiltonian(Object):

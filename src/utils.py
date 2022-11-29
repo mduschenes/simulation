@@ -7,7 +7,6 @@ from functools import partial,wraps
 from natsort import natsorted,realsorted
 import argparse
 
-
 import traceback
 import warnings
 import sys
@@ -18,6 +17,13 @@ def warn_with_traceback(message, category, filename, lineno, file=None, line=Non
 	# log.write(warnings.formatwarning(message, category, filename, lineno, line))
 	return
 warnings.showwarning = warn_with_traceback
+
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
 
 
 import matplotlib
@@ -33,15 +39,17 @@ from jax._src import prng as jaxprng
 from jax.tree_util import register_pytree_node_class as tree_register
 from jax.tree_util import tree_map as tree_map
 
+import absl.logging
+absl.logging.set_verbosity(absl.logging.INFO)
+
 configs = {
 	'jax_disable_jit':False,
-	'jax_platform_name':'cpu',
+	'jax_platforms':'cpu',
 	'jax_enable_x64': True
 	}
 for name in configs:
 	jax.config.update(name,configs[name])
-# jax.set_cpu_device_count(8)
-# os.env['XLA_FLAGS'] ='--xla_force_host_platform_device_count=8'
+
 # np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 
@@ -63,7 +71,7 @@ itg = np.integer
 flt = np.float32
 dbl = np.float64
 
-class mapping(object):
+class mapping(dict):
 	def __init__(self,*args,**kwargs):
 		'''
 		Mapping for args and kwargs
@@ -274,12 +282,14 @@ def value_and_gradient(func):
 	value_and_grad = jit(jax.value_and_grad(func))
 	return value_and_grad
 
-def gradient(func,mode=None,**kwargs):
+def gradient(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute gradient of function
 	Args:
 		func (callable): Function to differentiate
 		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic
 		kwargs : Additional keyword arguments for gradient mode:
 			'finite': tol (float): Finite difference tolerance
 			'shift': shifts (int): Number of eigenvalues of shifted values
@@ -290,25 +300,29 @@ def gradient(func,mode=None,**kwargs):
 	'''
 
 	if mode in ['finite']:
-		grad = gradient_finite(func,**kwargs)
+		grad = gradient_finite(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	elif mode in ['shift']:
-		grad = gradient_shift(func,**kwargs)
+		grad = gradient_shift(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	elif mode in ['fwd']:
-		grad = gradient_fwd(func,**kwargs)
+		grad = gradient_fwd(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	elif mode in ['rev']:
-		grad = gradient_rev(func,**kwargs)
+		grad = gradient_rev(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
+	elif mode in ['grad']:
+		grad = gradient_grad(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 	else:
-		grad = jit(jax.grad(func))
+		grad = gradient_grad(func,argnums=argnums,holomorphic=holomorphic,**kwargs)
 
 	return grad
 
 
-def gradient_finite(func,tol=1e-6,**kwargs):
+def gradient_finite(func,tol=1e-6,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Calculate finite difference second order derivative of function
 	Args:
 		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		tol (float): Finite difference tolerance
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic		
 		kwargs : Additional keyword arguments	
 	Returns:
 		grad (callable): Gradient of function
@@ -325,12 +339,14 @@ def gradient_finite(func,tol=1e-6,**kwargs):
 	return grad
 
 
-def gradient_shift(func,shifts=2,**kwargs):
+def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Calculate shift-rules derivative of function
 	Args:
 		func (callable): Function to derive, with signature func(*args,**kwargs) and output shape
 		shifts (int): Number of eigenvalues of shifted values
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic				
 		kwargs : Additional keyword arguments
 	Returns:
 		grad (callable): Gradient of function
@@ -350,18 +366,41 @@ def gradient_shift(func,shifts=2,**kwargs):
 	return grad
 
 
-def gradient_fwd(func,move=None,**kwargs):
+def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
+	'''
+	Compute gradient of function
+	Args:
+		func (callable): Function to differentiate
+		move (bool): Move differentiated axes to beginning of dimensions
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic	
+		kwargs : Additional keyword arguments
+	Returns:
+		grad (callable): Gradient of function
+	'''
+	_grad = jit(jax.grad(func,argnums=argnums,holomorphic=holomorphic))
+
+	if move:
+		grad = _grad
+	else:
+		grad = _grad
+
+	return grad
+
+def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute forward gradient of function
 	Args:
 		func (callable): Function to differentiate
 		move (bool): Move differentiated axes to beginning of dimensions
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic	
 		kwargs : Additional keyword arguments
 	Returns:
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.jacfwd(func))
+	_grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
 
 	if move:
 		@jit
@@ -374,18 +413,20 @@ def gradient_fwd(func,move=None,**kwargs):
 
 	return grad
 
-def gradient_rev(func,move=None,**kwargs):
+def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute reverse gradient of function
 	Args:
 		func (callable): Function to differentiate
 		move (bool): Move differentiated axes to beginning of dimensions
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic		
 		kwargs : Additional keyword arguments		
 	Returns:
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.jacrev(func))
+	_grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
 
 	if move:
 		@jit
@@ -808,7 +849,7 @@ class array(np.ndarray):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.array(*args,**kwargs))
+		return np.array(*args,**kwargs)
 
 
 class nparray(onp.ndarray):
@@ -886,7 +927,7 @@ class ones(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.ones(*args,**kwargs))
+		return np.ones(*args,**kwargs)
 
 
 class zeros(array):
@@ -899,7 +940,7 @@ class zeros(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.zeros(*args,**kwargs))
+		return np.zeros(*args,**kwargs)
 
 class empty(array):
 	'''
@@ -911,7 +952,7 @@ class empty(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.empty(*args,**kwargs))
+		return np.empty(*args,**kwargs)
 
 class eye(array):
 	'''
@@ -923,7 +964,7 @@ class eye(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.eye(*args,**kwargs))
+		return np.eye(*args,**kwargs)
 
 class arange(array):
 	'''
@@ -935,7 +976,7 @@ class arange(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.arange(*args,**kwargs))
+		return np.arange(*args,**kwargs)
 
 class linspace(array):
 	'''
@@ -947,7 +988,7 @@ class linspace(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.linspace(*args,**kwargs))
+		return np.linspace(*args,**kwargs)
 
 class logspace(array):
 	'''
@@ -959,7 +1000,7 @@ class logspace(array):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return jax.device_put(np.logspace(*args,**kwargs))
+		return np.logspace(*args,**kwargs)
 
 
 class identity(array):
@@ -972,7 +1013,7 @@ class identity(array):
 		out (array): array
 	'''
 	def __new__(self,n,*args,**kwargs):
-		return jax.device_put(np.eye(*((n,) if isinstance(n,int) else n),*args,**kwargs))
+		return np.eye(*((n,) if isinstance(n,int) else n),*args,**kwargs)
 
 
 class hadamard(array):
@@ -1322,6 +1363,72 @@ def qr(a):
 	return np.linalg.qr(a)
 
 
+@jit
+def lstsq(x,y):
+	'''
+	Compute least squares fit between x and y
+	Args:
+		x (array): Array of input data
+		y (array): Array of output data
+	Returns:
+		out (array): Least squares fit
+	'''
+	return np.linalg.lstsq(x,y)
+
+
+# @partial(jit,static_argnums=(0,))
+def curve_fit(func,x,y,**kwargs):
+	'''
+	Compute curve_fit fit between x and y
+	Args:
+		func (callable): Function to fit
+		x (array): Array of input data
+		y (array): Array of output data
+		kwargs (dict[str,object]): Additional keyword arguments for fitting		
+	Returns:
+		out (array): Curve fit returns
+	'''
+	return osp.optimize.curve_fit(func,x,y,**kwargs)
+
+
+@partial(jit,static_argnums=(1,))
+def nanmean(a,axis=None):
+	'''
+	Compute nanmean of array along axis
+	Args:
+		a (array): array to compute nanmean
+		axis (int): axis to compute over. Flattens array if None.
+	Returns:
+		out (array): nanmean of array
+	'''
+	return np.nanmean(a,axis=axis)
+
+@partial(jit,static_argnums=(1,2,))
+def nanstd(a,axis=None,ddof=None):
+	'''
+	Compute nanstd of array along axis
+	Args:
+		a (array): array to compute nanstd
+		axis (int): axis to compute over. Flattens array if None.
+		ddof (int): Number of degrees of freedom
+	Returns:
+		out (array): nanstd of array
+	'''
+	return np.nanstd(a,axis=axis,ddof=ddof)
+
+
+@jit
+def nansqrt(a):
+	'''
+	Compute nansqrt
+	Args:
+		a (array): array to compute nansqrt
+	Returns:
+		out (array): nansqrt of array
+	'''
+	return np.sqrt(a)
+
+
 @partial(jit,static_argnums=(1,2,3,))
 def norm(a,axis=None,ord=2,keepdims=False):
 	'''
@@ -1331,6 +1438,8 @@ def norm(a,axis=None,ord=2,keepdims=False):
 		axis (int): axis to normalize over. Flattens array if None.
 		ord (int,str): order of normalization
 		keepdims (bool): Keep axis of size 1 along normalization
+	Returns:
+		out (array): Norm of array
 	'''
 
 	out = np.linalg.norm(a,axis=axis,ord=ord,keepdims=keepdims)
@@ -3213,28 +3322,30 @@ def floor(a):
 	'''
 	return np.floor(a)
 
-@jit
-def argmax(a):
+@partial(jit,static_argnums=(1,))
+def argmax(a,axis=None):
 	'''
 	Calculate index of maximum of array a
 	Args:
 		a (array): Array to compute maximum
+		axis (int): Axis to compute maximum		
 	Returns:
 		out (int): Index of maximum of array a
 	'''
 	return np.argmax(a)
 
 
-@jit
-def argmin(a):
+@partial(jit,static_argnums=(1,))
+def argmin(a,axis=None):
 	'''
 	Calculate index of minimum of array a
 	Args:
 		a (array): Array to compute minimum
+		axis (int): Axis to compute minimum
 	Returns:
 		out (int): Index of minimum of array a
 	'''
-	return np.argmin(a)
+	return np.argmin(a,axis=axis)
 
 
 @jit
@@ -3815,8 +3926,7 @@ def is_int(a,*args,**kwargs):
 		out (boolean): If object is an int
 	'''
 	try:
-		a = int(a)
-		return True
+		return float(a) == int(a)
 	except:
 		return False
 
@@ -3883,7 +3993,7 @@ def is_naninf(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is nan or inf
 	'''
-	return is_nan(a,*args,**kwargs) or is_inf(a,*args,**kwargs)
+	return is_nan(a,*args,**kwargs) | is_inf(a,*args,**kwargs)
 
 def is_inf(a,*args,**kwargs):
 	'''
@@ -4085,20 +4195,22 @@ def union(*iterables,sort=False):
 	Get union of elements in iterables
 	Args:
 		iterables (iterable[iterable]): Iterables
-		sort (bool): Sort elements as per order in iterables
+		sort (bool): Sort elements as per order in iterables, or naturalsort if None
 	Returns:
 		union (set,list): Union of iterables, set if unsorted else list
 	'''
 
 	union = set().union(*iterables)
 
-	if sort:
-		iterables = tuple((tuple(iterable) if not isinstance(iterable,set) else tuple(natsorted(iterable)) 
+	if sort is None:
+		iterables = tuple((tuple(natsorted(tuple(iterable)))
 				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
 				for iterable in iterables)
 		union = natsorted(union,key=key,reverse=False)
+	elif sort is True:
+		union = sorted(union,key=lambda i: tuple(list(iterable).index(i) for iterable in iterables))
 
 	return union
 
@@ -4107,7 +4219,7 @@ def intersection(*iterables,sort=False):
 	Get intersection of elements in iterables
 	Args:
 		iterables (iterable[iterable]): Iterables
-		sort (bool): Sort elements as per order in iterables		
+		sort (bool): Sort elements as per order in iterables, or naturalsort if None
 	Returns:
 		intersection (set,list): Intersection of iterables, set if unsorted else list
 	'''
@@ -4116,14 +4228,15 @@ def intersection(*iterables,sort=False):
 	for iterable in iterables:
 		intersection = intersection.intersection(set(iterable))
 
-
-	if sort:
-		iterables = tuple((tuple(iterable) if not isinstance(iterable,set) else tuple(natsorted(iterable)) 
+	if sort is None:
+		iterables = tuple((tuple(natsorted(tuple(iterable)))
 				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
-				for iterable in iterables)		
+				for iterable in iterables)
 		intersection = natsorted(intersection,key=key,reverse=False)
+	elif sort is True:
+		intersection = sorted(intersection,key=lambda i: tuple(list(iterable).index(i) for iterable in iterables))
 
 	return intersection
 
@@ -4366,6 +4479,22 @@ def invtrotter(a,p):
 	return a[:n]
 
 
+def interp(x,y,kind):
+	'''
+	Interpolate array at new points
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		kind (int): Order of interpolation
+	Returns:
+		func (callable): Interpolation function
+	'''		
+	def _interpolate(x,y,kind):
+		return osp.interpolate.interp1d(x,y,kind)
+
+	return _interpolate(x,y,kind)
+
+
 def interpolate(x,y,x_new,kind):
 	'''
 	Interpolate array at new points
@@ -4377,13 +4506,13 @@ def interpolate(x,y,x_new,kind):
 	Returns:
 		out (array): Interpolated values at new points
 	'''		
-	def _interpolate(x,y,x_new,kind):
-		return osp.interpolate.interp1d(x,y,kind)(x_new)
 
 	if y.ndim>1:
-		return array([_interpolate(x,y[i],x_new,kind) for i in range(y.shape[0])])
+		return array([interp(x,u,kind)(x_new) for u in y])
 	else:
-		return array(_interpolate(x,y,x_new,kind))
+		return array(interp(x,y,kind)(x_new))
+
+
 
 
 
@@ -4451,25 +4580,27 @@ def gradient_sigmoid(a,scale=1):
 
 
 
-def to_eval(a,**kwargs):
+def to_eval(a,represent=True):
 	'''
 	Convert string to python object
 	Args:
 		a (str): Object to convert to python object
+		represent (bool): Representation of objects		
 	Returns:
 		object (object): Python object representation of string
 	'''
-	return ast.literal_eval(a)
+	return ast.literal_eval(a) if represent else a
 
-def to_repr(a,**kwargs):
+def to_repr(a,represent=True):
 	'''
 	Convert python object to string representation
 	Args:
 		a (object): Object to convert to string representation
+		represent (bool): Representation of objects				
 	Returns:
 		string (str): String representation of Python object
 	'''
-	return repr(a)
+	return repr(a) if represent else a
 
 
 def to_list(a,dtype=None,**kwargs):
@@ -4564,7 +4695,7 @@ def to_key_value(string,delimiter='=',**kwargs):
 	return key,value
 
 
-def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],usetex=False):
+def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
@@ -4575,6 +4706,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		zero (bool): Make numbers that equal 0 be the int representation
 		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
 		scilimits (list): Limits on where not to represent with scientific notation
+		error (str,int,float): Error of number to be processed
 		usetex (bool): Render string with Latex
 	
 	Returns:
@@ -4583,11 +4715,17 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 	'''
 	if not is_number(number):
 		return str(number)
+
 	try:
-		number = int(number) if int(number) == float(number) else float(number)
+		number = int(number) if is_int(number) else float(number)
 	except:
 		string = number
 		return string
+
+	try:
+		error = int(error) if is_int(error) else float(error)
+	except:
+		error = None
 
 	maxnumber = base**order
 	if number > maxnumber:
@@ -4595,15 +4733,17 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		if int(number) == number:
 			number = int(number)
 		string = str(number)
+
+	if error is not None and is_naninf(error):
+		# error = r'$\infty$'
+		error = None
 	
 	if zero and number == 0:
-		string = '%d'%(number)
-	
-	elif isinstance(number,(int,np.integer)):
-		string = str(number)
-		# if usetex:
-		# 	string = r'\textrm{%s}'%(string)
-	
+		string = r'%d%%s%%s'%(number)
+
+	elif is_int(number):
+		string = r'%s%%s%%s'%(str(number))
+
 	elif isinstance(number,(float,np.float64)):		
 		string = '%0.*e'%(decimals-1,number)
 		string = string.split('e')
@@ -4611,11 +4751,28 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		basechange = int(basechange) if int(basechange) == basechange else basechange
 		flt = string[0]
 		exp = str(int(string[1])*basechange)
+
 		if int(exp) in range(*scilimits):
 			flt = '%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))) if (one or (float(flt) != 1.0)) else ''
-			string = r'%s'%(flt)
+			string = r'%s%%s%%s'%(flt)
 		else:
-			string = r'%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',r'\cdot' if (one or (float(flt) != 1.0)) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
+			string = r'%s%%s%%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',r'\cdot' if (one or (float(flt) != 1.0)) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
+	
+		if error is not None and not isinstance(error,str):
+			if int(exp) in range(*scilimits):
+				error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
+			else:
+				error = r'%s'%('%0.*f'%(decimals-1,float(error)/(base**(int(exp)))))
+
+	if error is None:
+		error = ''
+		separator = ''
+	else:
+		error = str(error)
+		separator = r'~\pm~'
+	
+	string = string%(separator,error)
+
 	if usetex:
 		string = r'%s'%(string.replace('$',''))
 	else:

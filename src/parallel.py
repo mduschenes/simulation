@@ -3,6 +3,7 @@
 # Import python modules
 import os,sys,copy,warnings,functools,itertools,inspect,timeit
 import numpy as np
+from functools import partial
 
 # import multiprocess as mp
 # import multithreading as mt
@@ -10,19 +11,79 @@ import joblib
 import multiprocessing as multiprocessing
 import multiprocessing.dummy as multithreading
 
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5,
+	# 'XLA_FLAGS':'--xla_force_host_platform_device_count=8'
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
+
+
+import jax
+import absl.logging
+absl.logging.set_verbosity(absl.logging.INFO)
+# jax.set_cpu_device_count(8)
+
+configs = {
+	'jax_disable_jit':False,
+	'jax_platforms':'cpu',
+	'jax_enable_x64': True
+	}
+for name in configs:
+	jax.config.update(name,configs[name])
+
+
 # warnings.simplefilter("ignore", (UserWarning,DeprecationWarning,FutureWarning))
 # warnings.simplefilter("ignore", (sp.sparse.SparseEfficiencyWarning))
 # warnings.filterwarnings('error',category=sp.sparse.SparseEfficiencyWarning)
+
 
 DELIMITER='__'
 MAX_PROCESSES = 8
 
 # Logging
 import logging
-log = 'info'
 logger = logging.getLogger(__name__)
-#logger.setLevel(getattr(logging,log.upper()))		
-from progress.bar import Bar
+
+
+class mapping(dict):
+	def __init__(self,*args,**kwargs):
+		'''
+		Mapping for args and kwargs
+		Args:
+			args (tuple[object]): Positional arguments
+			kwargs (dict[str,object]): Keyword arguments
+		'''
+		self.args = list(args)
+		self.kwargs = dict(kwargs)
+		return
+
+	def __iter__(self):
+		return self.args.__iter__()
+
+	def __getitem__(self,item):
+		return self.kwargs[item]
+
+	def __setitem__(self,item,value):
+		if isinstance(item,int):
+			self.args[item] = value
+		else:
+			self.kwargs[item] = value
+		return
+
+	def __len__(self):
+		return len(self.args)+len(self.kwargs)
+
+	def __str__(self):
+		return str(self.args) + ' , ' + str(self.kwargs)
+
+	def keys(self):
+		return self.kwargs.keys()
+
+	def values(self):
+		return self.kwargs.values()
+
 
 
 def timing(verbose):
@@ -48,7 +109,7 @@ def timing(verbose):
 # Wrapper class for function, with
 # class args and kwargs assigned after
 # classed args and kwrags
-class wrapper(object):
+class Wrapper(object):
 	def __init__(self,_func,*args,**kwargs):
 		self.func = _func
 		self.args = args
@@ -125,6 +186,10 @@ def nullfunc(*args,**kwargs):
 class nullclass(object):
 	pass
 
+def logfunc(arg,*args,**kwargs):
+	print(arg)
+	return
+
 
 # Call function with proper signature
 def call(cls,func,*args,**kwargs):
@@ -172,36 +237,70 @@ def empty(obj,*attrs):
 
 # Pool class, similar to multiprocessing.Pool
 class Pooler(object):
-	def __init__(self,processes,pool=None,initializer=None,initargs=(),maxtasksperchild=None,context=None):
+	def __init__(self,processes,pool=None,initializer=None,initargs=(),maxtasksperchild=None,context=None,verbose=None):
+		'''
+		Parallelize function
+		Args:
+			processes (int): Number of processes,default MAX_PROCESSES
+			pool (str): Parallelization backend, Pool
+			initializer (callable): Initializer of arguments
+			initargs (iterable[object]): Initial arguments
+			maxtasksperchild (int): Maximum tasks per child process
+			context (context): Context manager class
+			verbose (str,int,bool): Verbosity of parallelization 
+		'''				
 		self.set_processes(processes)
 		self.set_pool(pool)
 		self.set_initializer(initializer)
 		self.set_initargs(initargs)
 		self.set_maxtasksperchild(maxtasksperchild)
 		self.set_context(context)
+		self.set_verbose(verbose)
 		return
 
 	@timing(False)	
-	def __call__(self,module,func,iterable,args=(),kwds={},callback_args=(),callback_kwds={},callback=nullfunc,error_callback=nullfunc):
-		with self.get_pool(
+	def __call__(self,iterable,func,callback=nullfunc,error_callback=logfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='apply_async'):
+		'''
+		Call function in parallel
+		Args:
+			iterable (int,iterable[object],dict[str,iterable[object]]): Iterable of arguments to iterate in parallel, 
+				either integer to call range(iterable) -> func(i), or iterable of objects [i] -> func(i), 
+				or dictionary of combinations of arguments to iterate over in all combinations
+			func (callable): Function to call in parallel, with signature func(*args,**kwargs)
+			callback (callable): Callback function to collect parallel outputs, with signature callback(value,*callback_args,**callback_kwds)
+			error_callback (callable): Error callback function if errors occur, with signature callback(value,*callback_args,**callback_kwds)
+			args (iterable[object]): Positional arguments to pass to func
+			kwds (dict[str,object]): Keyword arguments to pass to func
+			callback_args (iterable[object]): Positional arguments to pass to callback
+			callback_kwds (dict[str,object]): Keyword arguments to pass to callback
+			module (str): Type of parallelization to call i.e) apply_async
+		'''				
+		with self.get_pool()(
 			processes=self.get_processes(),
 			initializer=self.get_initializer(),
 			initargs=self.get_initargs(),
 			maxtasksperchild=self.get_maxtasksperchild(),
 			context=self.get_context()) as pool:
 
-			self.set_iterable(iterable)
-			jobs = (getattr(pool,module)(
-					func=wrapper(func,*args,**{**kwds,**i}),
-					**(dict(callback=wrapper(callback,*callback_args,**{**callback_kwds,**i}),
-					error_callback=wrapper(error_callback,*callback_args,**{**callback_kwds,**i}))
-					if 'async' in module else dict()))
-					for i in self.get_iterable())
-						
-
 			start = timeit.default_timer()	
+
+			self.set_iterable(iterable)
+
+			try:
+				jobs = [getattr(pool,module)(
+						func=Wrapper(func,*i,*args,**{**kwds,**i}),
+						**(dict(
+						callback=Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i}),
+						error_callback=Wrapper(error_callback,*i,*callback_args,**{**callback_kwds,**i}))
+						if 'async' in module else dict()))
+						for i in self.get_iterable()]	
+			except Exception as exception:
+				print(exception)
+				logger.log(self.get_verbose(),exception)
+
 			pool.close()
 			pool.join()
+
 			end = timeit.default_timer()
 
 			if not self.get_null():
@@ -233,9 +332,9 @@ class Pooler(object):
 
 	def set_processes(self,processes):
 		attr = 'processes'
-		default = 1
+		default = MAX_PROCESSES
 		processes = default if processes is None else processes
-		processes = min(processes,MAX_PROCESSES-1)
+		processes = min(processes if processes>=0 else MAX_PROCESSES,MAX_PROCESSES-1)
 		setattr(self,attr,processes)
 		self.set_null()
 		return
@@ -312,15 +411,16 @@ class Pooler(object):
 
 	def set_iterable(self,iterable):
 		attr = 'iterable'
-		if isinstance(iterable,dict):
-			keys = list(iterable)
-			value = (dict(zip(keys,values)) 
+		if isinstance(iterable,dict) and all(isinstance(i,list) for i in iterable):
+			value = (mapping(**dict(zip(iterable,values)))
 							for values in itertools.product(*[iterable[key] 
-															for key in keys]))
+															for key in iterable]))
+		elif all(isinstance(i,dict) for i in iterable):
+			value = (mapping(**i) for i in iterable)
 		elif isinstance(iterable,int):
-			value = ({'i':i} for i in range(iterable))
+			value = (mapping(i) for i in range(iterable))
 		else:
-			value = iterable
+			value = (mapping(i) for i in iterable)
 		setattr(self,attr,value)
 		return
 	def get_iterable(self,default=None):
@@ -343,29 +443,50 @@ class Pooler(object):
 		value = getattr(self,attr) 
 		return value	
 
-# nullPool class, similar to multiprocessing.Pool
+# Pool class, similar to multiprocessing.Pool
 class Pool(multiprocessing.pool.Pool):
 	pass
 
 # nullPool class, similar to multiprocessing.Pool
 class nullPool(object):
-	def __init__(self,processes=None,initializer=None,initargs=(),maxtasksperchild=None,context=None):
+	def __init__(self,processes=None,initializer=None,initargs=(),maxtasksperchild=None,context=None,verbose=None):
+		'''
+		Parallelize function
+		Args:
+			processes (int): Number of processes,default MAX_PROCESSES
+			pool (str): Parallelization backend, Pool
+			initializer (callable): Initializer of arguments
+			initargs (iterable[object]): Initial arguments
+			maxtasksperchild (int): Maximum tasks per child process
+			context (context): Context manager class
+			verbose (str,int,bool): Verbosity of parallelization 
+		'''		
+		self.set_processes(processes)
+		self.set_verbose(verbose)		
 		return
+
+	def __enter__(self,*args,**kwargs):
+		return self
+	def __exit__(self, type, value, traceback):
+		return 
+
 	@timing(False)	
 	def apply(self,func,args=(),kwds={}):
 		return func(*args,**kwds)
+
 	@timing(False)
-	def apply_async(self,func,args=(),kwds={},callback=nullfunc,error_callback=nullfunc):
-		try:
-			callback(func(*args,**kwds))
-		except:
-			error_callback(func(*args,**kwds))
+	def apply_async(self,func,args=(),kwds={},callback=nullfunc,error_callback=logfunc):
+		callback(func(*args,**kwds))
+		# try:
+		# 	callback(func(*args,**kwds))
+		# except:
+		# 	error_callback(func(*args,**kwds))
 		return
 	@timing(False)	
 	def map(self,func,iterable,chunksize=None):
 		return list(map(func,iterable))
 	@timing(False)		
-	def map_async(self,func,iterable,chunksize=None,callback=nullfunc,error_callback=nullfunc):
+	def map_async(self,func,iterable,chunksize=None,callback=nullfunc,error_callback=logfunc):
 		try:
 			map(callback,list(map(func,iterable)))
 		except:
@@ -381,7 +502,7 @@ class nullPool(object):
 	def starmap(self,func,iterable,chunksize=None):
 		return list(map(func,iterable))
 	@timing(False)	
-	def starmap_async(self,func,iterable,chunksize=None,callback=nullfunc,error_callback=nullfunc):
+	def starmap_async(self,func,iterable,chunksize=None,callback=nullfunc,error_callback=logfunc):
 		try:
 			map(callback,list(map(func,iterable)))
 		except:
@@ -391,7 +512,7 @@ class nullPool(object):
 		pass
 	def join(self):
 		pass
-	
+
 	def set_processes(self,processes):
 		attr = 'processes'
 		default = 1
@@ -423,15 +544,16 @@ class nullPool(object):
 
 	def set_iterable(self,iterable):
 		attr = 'iterable'
-		if isinstance(iterable,dict):
-			keys = list(iterable)
-			value = (dict(zip(keys,values)) 
+		if isinstance(iterable,dict) and all(isinstance(i,list) for i in iterable):
+			value = (mapping(**dict(zip(iterable,values)))
 							for values in itertools.product(*[iterable[key] 
-															for key in keys]))
+															for key in iterable]))
+		elif all(isinstance(i,dict) for i in iterable):
+			value = (mapping(**i) for i in iterable)
 		elif isinstance(iterable,int):
-			value = ({'i':i} for i in range(iterable))
+			value = (mapping(i) for i in range(iterable))
 		else:
-			value = iterable
+			value = (mapping(i) for i in iterable)
 		setattr(self,attr,value)
 		return
 	def get_iterable(self,default=None):
@@ -458,6 +580,15 @@ class nullPool(object):
 # Parallelize iterations, similar to joblib
 class Parallelize(object):
 	def __init__(self,n_jobs,backend=None,parallel=None,delayed=None,prefer=None,verbose=False):
+		'''
+		Parallelize function
+		Args:
+			n_jobs (int): Number of processes,default MAX_PROCESSES
+			backend (str): Parallelization backend, default 'loky'
+			delayed (callable): Function for delayed execution, with signature delayed(func)
+			prefer (str): Type of parallelization preference, default 'threads'
+			verbose (str,int,bool): Verbosity of parallelization 
+		'''
 		self.set_n_jobs(n_jobs)
 		self.set_backend(backend)
 		self.set_parallel(parallel)
@@ -466,17 +597,45 @@ class Parallelize(object):
 		self.set_verbose(verbose)
 		return
 	@timing(False)
-	def __call__(self,func,iterable,values,*args,**kwargs):
-		with self.get_parallel()(n_jobs=self.get_n_jobs(),backend=self.get_backend(),prefer=self.get_prefer()) as parallel:           
+	
 
+	def __call__(self,iterable,func,callback=nullfunc,error_callback=logfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='parallel'):
+		'''
+		Call function in parallel
+		Args:
+			iterable (int,iterable[object],dict[str,iterable[object]]): Iterable of arguments to iterate in parallel, 
+				either integer to call range(iterable) -> func(i), or iterable of objects [i] -> func(i), 
+				or dictionary of combinations of arguments to iterate over in all combinations
+			func (callable): Function to call in parallel, with signature func(*args,**kwargs)
+			callback (callable): Callback function to collect parallel outputs, with signature callback(value,*callback_args,**callback_kwds)
+			error_callback (callable): Error callback function if errors occur, with signature callback(value,*callback_args,**callback_kwds)
+			args (iterable[object]): Positional arguments to pass to func
+			kwds (dict[str,object]): Keyword arguments to pass to func
+			callback_args (iterable[object]): Positional arguments to pass to callback
+			callback_kwds (dict[str,object]): Keyword arguments to pass to callback
+			module (str): Type of parallelization to call i.e) apply_async
+		'''	
+		with self.get_parallel()(n_jobs=self.get_n_jobs(),backend=self.get_backend(),prefer=self.get_prefer()) as parallel:           
+			
 			self.set_iterable(iterable)
 
-			jobs = (self.get_delayed()(func)(*args,**{**kwargs,**i}) 
-					for i in self.get_iterable())
+			start = timeit.default_timer()
 
-			start = timeit.default_timer()	
-			values.extend(parallel(jobs))
+			try:
+
+				jobs = (self.get_delayed()(func)(*i,*args,**{**kwds,**i}) 
+						for i in self.get_iterable())
+				
+				self.set_iterable(iterable)
+				
+				for i,value in zip(self.get_iterable(),parallel(jobs)):
+					Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i})(value)
+
+			except Exception as exception:
+				logger.log(self.get_verbose(),exception)
+
 			end = timeit.default_timer()
+
 
 			if not self.get_null():
 				logger.log(self.get_verbose(),"n_jobs: %d, time: %0.3e"%(self.get_n_jobs(),end-start))
@@ -490,7 +649,7 @@ class Parallelize(object):
 		attr = 'n_jobs'
 		if n_jobs is None:
 			n_jobs = 1  
-		value = max(1,min(joblib.effective_n_jobs(n_jobs),MAX_PROCESSES-1))
+		value = max(1,joblib.effective_n_jobs(n_jobs))
 		setattr(self,attr,value)
 		self.set_null()		
 		return 
@@ -585,15 +744,16 @@ class Parallelize(object):
 
 	def set_iterable(self,iterable):
 		attr = 'iterable'
-		if isinstance(iterable,dict):
-			keys = list(iterable)
-			value = (dict(zip(keys,values)) 
+		if isinstance(iterable,dict) and all(isinstance(i,list) for i in iterable):
+			value = (mapping(**dict(zip(iterable,values)))
 							for values in itertools.product(*[iterable[key] 
-															for key in keys]))
+															for key in iterable]))
+		elif all(isinstance(i,dict) for i in iterable):
+			value = (mapping(**i) for i in iterable)
 		elif isinstance(iterable,int):
-			value = ({'i':i} for i in range(iterable))
+			value = (mapping(i) for i in range(iterable))
 		else:
-			value = iterable
+			value = (mapping(i) for i in iterable)
 		setattr(self,attr,value)
 		return
 	def get_iterable(self,default=None):
@@ -619,6 +779,7 @@ class Parallelize(object):
 
 # Parallel class using joblib
 class Parallel(joblib.Parallel):
+	
 	pass
 
 
@@ -643,35 +804,68 @@ class Delayed(object):
 # (can be also similar to structure of __call__ and get_exucator_pool in place of get_pool, with a Future() and nullFuture() class as the context)
 # Futures class, similar to concurrent.futures
 class Futures(object):
-	def __init__(self,processes,pool=None,initializer=None,initargs=(),maxtasksperchild=None,context=None):
+	def __init__(self,processes,pool=None,initializer=None,initargs=(),maxtasksperchild=None,context=None,verbose=None):
+		'''
+		Parallelize function
+		Args:
+			processes (int): Number of processes,default MAX_PROCESSES
+			pool (str): Parallelization backend, Pool
+			initializer (callable): Initializer of arguments
+			initargs (iterable[object]): Initial arguments
+			maxtasksperchild (int): Maximum tasks per child process
+			context (context): Context manager class
+			verbose (str,int,bool): Verbosity of parallelization 
+		'''		
 		self.set_processes(processes)
 		self.set_pool(pool)
 		self.set_initializer(initializer)
 		self.set_initargs(initargs)
 		self.set_maxtasksperchild(maxtasksperchild)
 		self.set_context(context)
+		self.set_verbose(verbose)
 		return
 	@timing(False)	
-	def __call__(self,module,func,iterable,args=(),kwds={},callback_args=(),callback_kwds={},callback=nullfunc,error_callback=nullfunc):
-		with self.get_pool(
+	def __call__(self,iterable,func,callback=nullfunc,error_callback=logfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='apply_async'):
+		'''
+		Call function in parallel
+		Args:
+			iterable (int,iterable[object],dict[str,iterable[object]]): Iterable of arguments to iterate in parallel, 
+				either integer to call range(iterable) -> func(i), or iterable of objects [i] -> func(i), 
+				or dictionary of combinations of arguments to iterate over in all combinations
+			func (callable): Function to call in parallel, with signature func(*args,**kwargs)
+			callback (callable): Callback function to collect parallel outputs, with signature callback(value,*callback_args,**callback_kwds)
+			error_callback (callable): Error callback function if errors occur, with signature callback(value,*callback_args,**callback_kwds)
+			args (iterable[object]): Positional arguments to pass to func
+			kwds (dict[str,object]): Keyword arguments to pass to func
+			callback_args (iterable[object]): Positional arguments to pass to callback
+			callback_kwds (dict[str,object]): Keyword arguments to pass to callback
+			module (str): Type of parallelization to call i.e) apply_async
+		'''			
+
+		with self.get_pool()(
 			processes=self.get_processes(),
 			initializer=self.get_initializer(),
 			initargs=self.get_initargs(),
 			maxtasksperchild=self.get_maxtasksperchild(),
 			context=self.get_context()) as pool:
 
-			self.set_iterable(iterable)
-			jobs = (getattr(pool,module)(
-					func=wrapper(func,*args,**{**kwds,**i}),
-					**(dict(callback=wrapper(callback,*callback_args,**{**callback_kwds,**i}),
-					error_callback=wrapper(error_callback,*callback_args,**{**callback_kwds,**i}))
-					if 'async' in module else dict()))
-					for i in self.get_iterable())
-						
-
 			start = timeit.default_timer()	
+
+			self.set_iterable(iterable)
+
+			try:
+				jobs = [getattr(pool,module)(
+						func=Wrapper(func,*i,*args,**{**kwds,**i}),
+						**(dict(callback=Wrapper(callback,*i,*callback_args,**{**callback_kwds,**i}),
+						error_callback=Wrapper(error_callback,*i,*callback_args,**{**callback_kwds,**i}))
+						if 'async' in module else dict()))
+						for i in self.get_iterable()]
+			except Exception as exception:
+				logger.log(self.get_verbose(),exception)
+
 			pool.close()
 			pool.join()
+
 			end = timeit.default_timer()
 
 			logger.log(self.get_verbose(),"processes: %d, time: %0.3e"%(self.get_processes(),end-start))							
@@ -704,7 +898,7 @@ class Futures(object):
 		attr = 'processes'
 		default = 1
 		processes = default if processes is None else processes
-		processes = min(processes,MAX_PROCESSES-1)
+		processes = min(processes if processes>=0 else MAX_PROCESSES,MAX_PROCESSES-1)
 		setattr(self,attr,processes)
 		self.set_null()
 		return
@@ -780,15 +974,16 @@ class Futures(object):
 
 	def set_iterable(self,iterable):
 		attr = 'iterable'
-		if isinstance(iterable,dict):
-			keys = list(iterable)
-			value = (dict(zip(keys,values)) 
+		if isinstance(iterable,dict) and all(isinstance(i,list) for i in iterable):
+			value = (mapping(**dict(zip(iterable,values)))
 							for values in itertools.product(*[iterable[key] 
-															for key in keys]))
+															for key in iterable]))
+		elif all(isinstance(i,dict) for i in iterable):
+			value = (mapping(**i) for i in iterable)
 		elif isinstance(iterable,int):
-			value = ({'i':i} for i in range(iterable))
+			value = (mapping(i) for i in range(iterable))
 		else:
-			value = iterable
+			value = (mapping(i) for i in iterable)
 		setattr(self,attr,value)
 		return
 	def get_iterable(self,default=None):

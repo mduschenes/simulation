@@ -10,11 +10,33 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import PRNGKey,delim,partial,union,is_equal
-from src.dictionary import updater,getter,setter,permuter,clearer,leaves,grow
+envs = {
+	'JAX_PLATFORM_NAME':'cpu',
+	'TF_CPP_MIN_LOG_LEVEL':5
+}
+for var in envs:
+	os.environ[var] = str(envs[var])
+
+
+
+from src.utils import PRNGKey,delim,union,is_equal
+from src.dictionary import updater,getter,setter,permuter,clearer,leaves
 from src.io import load,dump,join,split
-from src.process import process
 from src.call import launch
+
+
+import jax
+import absl.logging
+absl.logging.set_verbosity(absl.logging.INFO)
+# jax.set_cpu_device_count(8)
+
+configs = {
+	'jax_disable_jit':False,
+	'jax_platforms':'cpu',
+	'jax_enable_x64': True
+	}
+for name in configs:
+	jax.config.update(name,configs[name])
 
 
 def allowed(index,value,values):
@@ -62,29 +84,30 @@ def setup(settings):
 		jobs (dict): Job submission dictionary
 	'''
 
+	# Default settings
+	path = 'config/settings.json'
+
 	# Load default settings
-	defaults = 'config/settings.json'
 	default = {}
 	if settings is None:
+		defaults = path
 		settings = default
 	elif isinstance(settings,str):
 		defaults = settings
 		settings = load(settings,default=default)
 
-	path = 'config/settings.json'
-	default = {}
 	func = lambda key,iterable,elements: iterable.get(key,elements[key])
 	updater(settings,load(path,default=default),func=func)
 
 	# Load default hyperparameters
 	default = {}
 	hyperparameters = settings.get('hyperparameters',defaults)
+
 	if hyperparameters is None:
 		hyperparameters = default
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters,default=default)
 
-	path = 'config/settings.json'
 	default = {}
 	func = lambda key,iterable,elements: iterable.get(key,elements[key])
 	updater(hyperparameters,load(path,default=default),func=func)
@@ -133,6 +156,7 @@ def setup(settings):
 
 	keys = {}
 	for instance,value in enumerate(value for value in itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
+
 		if allowed(
 			{attr: index[attr] for attr in index},
 			{attr: {k:v[1] for k,v in zip(values,value)}[attr] for attr in index},
@@ -141,7 +165,6 @@ def setup(settings):
 
 			key = formatter(instance,value,values,getter(hyperparameters,'model.system.key',delimiter=delim))
 			value = [v[1] for v in value]
-
 
 			keys[key] = {}
 			for setting in value:

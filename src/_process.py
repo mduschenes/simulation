@@ -43,6 +43,9 @@ from src.plot import plot
 AXES = ['x','y']
 STATS = ['','err']
 PROPS = ['%s%s'%(ax,stat) for ax in AXES for stat in STATS]
+# class NONE(object):
+# 	pass
+NONE = None
 
 # Texify strings
 def Texify(string,texify={},usetex=True):
@@ -122,7 +125,7 @@ def check(key,value,datum,keys,values,data):
 			# parser = lambda value: (str(value) if len(value)>0 else 0)
 			# value = value.replace('@','').split(',')
 			# value = [parser(v) for v in value]
-			value = [None]#,*[u for v in value for u in values[v]]]
+			value = [NONE]#,*[u for v in value for u in values[v]]]
 		elif value.startswith('#') and value.endswith('#'):
 			parser = lambda value: (int(value) if len(value)>0 else 0)
 			indices = value.replace('#','').split(',')
@@ -312,10 +315,6 @@ def permute(key,value,keys,values):
 
 
 
-
-
-
-
 def find(dictionary,properties):
 	'''
 	Find formatted keys of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
@@ -492,6 +491,35 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	  Subplots are plotted from iterating over over the 1...ndim-2 axis of the variables data, and parameters the 0 and ndim-1 axis for each 'label' set
 	  If the 'x' property is None, also iterate over the 0 (# of permutations of sort) axis variables data, and plot the ndim-1 axis for each 'label' 
 	'''
+
+	# Setup kwargs
+	kwargs = ['settings','hyperparameters']
+	kwargs = {kwarg: value for kwarg,value in zip(kwargs,[settings,hyperparameters])}
+
+	returns = loader(kwargs)
+
+	settings,hyperparameters = (kwargs[kwarg] for kwarg in kwargs)
+
+	# Get properties and keys to process
+	# key of the form {'property':(values)}
+	axes = AXES	
+	properties = [*['%s'%(axis) for axis in axes],'label']
+	statistics = [*['%s'%(axis) for axis in axes],*['%serr'%(axis) for axis in axes]]
+	keys = find(settings,properties)
+
+
+	# Process keys
+	for key in keys:
+		print(key)	
+	exit()
+
+
+
+
+
+
+
+
 
 	# Setup kwargs
 	kwargs = ['settings','hyperparameters']
@@ -682,8 +710,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 				for attr in attributes
 				}
 		unique = {attr: unique[attr] for attr in unique if len(unique[attr])>0}
-
-		print('Unique Attributes')
 
 		# Get attributes to sort on and attributes not to sort on if not existent in plot properties x,y,label
 		sort = {attr: tuple((*realsorted(set(asscalar(data[name][attr])
