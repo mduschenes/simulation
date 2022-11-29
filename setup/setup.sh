@@ -128,3 +128,7 @@ rm ${requirements[@]}
 # destination=${HOME}
 
 # cp ${source} ${destination}
+
+
+# Git
+git config --global merge.ours.driver true
