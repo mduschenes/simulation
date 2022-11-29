@@ -2226,7 +2226,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	Returns:
 		einsummation (callable,array): Optimal einsum operator or array of optimal einsum
 	'''
-	arrays = all(isinstance(operand,array) for operand in operands)
+	arrays = all(is_array(operand) for operand in operands)
 
 	if wrapper is None:
 		@jit
@@ -3902,7 +3902,7 @@ def is_array(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is array
 	'''
-	return isinstance(a,array) #isndarray(a) or is_sparse(a)
+	return isinstance(a,np.ndarray) #isndarray(a) or is_sparse(a)
 
 def is_scalar(a,*args,**kwargs):
 	'''
