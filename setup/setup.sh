@@ -159,3 +159,6 @@ rm ${requirements[@]}
 # Allow larger linux stack space for cli arguments
 # cache=16384
 # ulimit -s ${cache}
+
+# Git
+# git config --global merge.ours.driver true
