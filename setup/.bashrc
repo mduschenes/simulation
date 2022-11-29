@@ -134,11 +134,11 @@ function catls(){
 
 
 # Activate environment
-# env=jax
+env=jax
 # conda activate ${env}
 # source activate ${HOME}/env/${env}
 # source ${HOME}/env/${env}.env
-
+source ${HOME}/env/${env}/bin/activate
 
 # History Setup
 export HISTCONTROL=ignoreboth:erasedups
