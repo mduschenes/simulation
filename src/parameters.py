@@ -41,7 +41,7 @@ for PATH in PATHS:
 
 from src.utils import jit,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
-from src.utils import slice_slice,datatype,returnargs
+from src.utils import slice_slice,datatype,returnargs,is_array
 from src.utils import pi,scalars
 
 from src.io import load,dump,join,split
@@ -2061,7 +2061,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 	if samples is not None and isinstance(samples,bool):
 		samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
 		samples /= samples.sum()
-	elif isinstance(samples,array):
+	elif is_array(samples):
 		pass
 	else:
 		samples = None

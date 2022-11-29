@@ -16,7 +16,7 @@ for PATH in PATHS:
 
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,allclose
-from src.utils import slice_slice,datatype,returnargs
+from src.utils import slice_slice,datatype,returnargs,is_array
 from src.utils import pi,e
 
 from src.io import load,dump,join,split
@@ -197,7 +197,7 @@ def operatorize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=
 		string = hyperparameters.get('string')
 	elif isinstance(data,str):
 		string = data
-	elif isinstance(data,array):
+	elif is_array(data):
 		string = None
 
 	if string is None or isinstance(string,str):
@@ -241,7 +241,7 @@ def operatorize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=
 	if samples is not None and isinstance(samples,bool):
 		samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
 		samples /= samples.sum()
-	elif isinstance(samples,array):
+	elif is_array(samples):
 		pass
 	else:
 		samples = None
