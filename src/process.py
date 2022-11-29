@@ -879,6 +879,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								slices = (index,*(slice(data[name][key['y']['key'][-1]].shape[axis]) for axis in range(data[name][key['y']['key'][-1]].ndim)))
 
 								print(value)
+								print(data[name]['parameters.relative.mean'])
+
 								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 
 							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
