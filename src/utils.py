@@ -886,10 +886,10 @@ class asscalar(onp.ndarray):
 		out (array): array
 	'''
 	def __new__(self,a,*args,**kwargs):
-		# try:
-		return onp.asscalar(a,*args,**kwargs)
-		# except AttributeError:
-		# 	return a
+		try:
+			return a.item()#onp.asscalar(a,*args,**kwargs)
+		except AttributeError:
+			return a
 
 
 class objs(onp.ndarray):
