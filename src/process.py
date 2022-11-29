@@ -784,7 +784,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					continue
 
 
-
 				name = allincluded[-1]
 				combination = tuple(sorted(tuple((
 					(attr,asscalar(data[name][attr]))
@@ -795,7 +794,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 					)),
 					key = lambda x: key['label']['key'].index(x[0]) if x[0] in key['label']['key'] else -1))
 
-				print(combination)
 				variables[occurrence][combination] = value
 
 				permutations[occurrence][combination] = [
@@ -880,6 +878,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 								slices = (index,*(slice(data[name][key['y']['key'][-1]].shape[axis]) for axis in range(data[name][key['y']['key'][-1]].ndim)))
 
+								print(value)
 								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 
 							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
