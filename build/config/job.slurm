@@ -1,11 +1,11 @@
 #!/bin/bash
 
-##SBATCH --account=mduschenes
+#SBATCH --account=def-carrasqu
 #SBATCH --job-name=output
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
-#SBATCH --partition=cpu
+##SBATCH --partition=cpu
 #SBATCH --time=01:00:00
 #SBATCH --mem=64G
 #SBATCH --nodes=1
@@ -20,7 +20,7 @@
 
 
 # Run Parallel tasks
-
+parallel --record-env &>/dev/null 2>&1
 
 # Function
 function RUN(){
@@ -80,8 +80,10 @@ export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
 # Environment
 module purge &>/dev/null 2>&1
-conda activate ${JOB_ENV} &>/dev/null 2>&1
-# source activate ${JOB_ENV} &>/dev/null 2>&1
+module load python/3.8
+source ${HOME}/env/${JOB_ENV}/bin/activate
+#conda activate ${JOB_ENV} &>/dev/null 2>&1
+#source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
 CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
