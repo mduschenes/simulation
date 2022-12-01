@@ -147,12 +147,12 @@ defaults = {
 		"legend":{
 			"title_fontsize": 12,
 			"get_title":{"ha":"center"},
-			"get_texts":{"va":"center","ha":"center","position":[0,15]},
+			"get_texts":{"va":"center","ha":"center","position":[0,30]},
 			"prop": {"size": 12},
 			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": [0.52,0.87],
+			"loc": [0.52,0.80],
 			"ncol": 1,
 			"set_zorder":{"level":100},
 			"set_label":True,
@@ -443,14 +443,14 @@ def process(path):
 					# y = coef[0]*((x)**(-coef[2])) + coef[1]
 					y = ((exp(-(log(x))*coef[0])))
 					# y = ((x-coef[1])**(-coef[0]))
-					# y = coef[0]*((x - coef[1])**(-0.5))
+					y = coef[1]*((x)**(-coef[0]))
 					return y
 
 				_x = logspace(int(log10(x.min()))-2,int(log10(x.max()))+1,x.size*100)
 				# _x = x
-				p = 1
+				p = 2
 				# coef0 = array([-50,0,1],dtype=float)[:p]
-				coef0 = array([0.5,1e-7],dtype=float)[:p]
+				coef0 = array([0.5,1],dtype=float)[:p]
 				kwargs = {
 					'maxfev':20000,
 					# 'bounds':array([[-100,-100,1][:p],[-20,-20,2][:p]],dtype=float)
@@ -489,7 +489,8 @@ def process(path):
 							# 'label':r'$\quad~~ M_{\gamma} = \alpha{\gamma}^{-\chi} + \beta$'+'\n'+r'$%s$'%(',~'.join([
 							# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 							# 'label':r'$\quad~~ M_{\gamma} = {(\gamma-\beta)}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
-							'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
+							# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
+							'label':r'$\quad~~ M_{\gamma} = \beta{\gamma}^{-\alpha}$'+'\n'+r'$%s$'%('\n'.join([
 								'%s = %s'%(z,scinotation(coef[i],decimals=4,scilimits=[-1,3],error=sqrt(coefferr[i][i]))) 
 									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(coef)])])),
 							'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
