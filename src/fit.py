@@ -225,7 +225,7 @@ def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=No
 			
 			coef = array(coef)
 			coefferr = array(coefferr)	
-			
+
 			_y = func(_x,*coef)
 			_grad = grad(_x,*coef)		
 			_grad = array(_grad).T
