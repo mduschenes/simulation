@@ -319,7 +319,7 @@ def process(path):
 						coef0 = None
 						kwargs = {}
 
-						_z,coef,_zerr,coefferr = fit(y_,z_,_x=_y,func=func,yerr=zerr_,coef0=coef0,uncertainty=True,**kwargs)	
+						_z,coef,_zerr,coefferr,_r = fit(y_,z_,_x=_y,func=func,yerr=zerr_,coef0=coef0,uncertainty=True,**kwargs)	
 
 						_Y.append(_y)
 						_Yerr.append(_yerr)
@@ -456,10 +456,12 @@ def process(path):
 					# 'bounds':array([[-100,-100,1][:p],[-20,-20,2][:p]],dtype=float)
 				}
 
-				_y,coef,_yerr,coefferr = fit(x[indices],y[indices],_x=_x,func=func,coef0=coef0,
+				_y,coef,_yerr,coefferr,r = fit(x[indices],y[indices],_x=_x,_y=y[indices],
+					func=func,coef0=coef0,
 					yerr=yerr[indices] if yerr is not None else yerr,
 					xerr=xerr[indices] if xerr is not None else xerr,
 					uncertainty=True,**kwargs)
+				
 
 				fig,ax = None,None
 
@@ -490,9 +492,13 @@ def process(path):
 							# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 							# 'label':r'$\quad~~ M_{\gamma} = {(\gamma-\beta)}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 							# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
-							'label':r'$\quad~~ M_{\gamma} = \beta{\gamma}^{-\alpha}$'+'\n'+r'$%s$'%('\n'.join([
+							'label':(
+								r'$\quad~~ M_{\gamma} = \beta{\gamma}^{-\alpha}$' + '\n' + 
+								r'$%s$'%('\n'.join([
 								'%s = %s'%(z,scinotation(coef[i],decimals=4,scilimits=[-1,3],error=sqrt(coefferr[i][i]))) 
-									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(coef)])])),
+									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(coef)])])) + '\n' +
+								r'$%s$'%('r^2 = %s'%(scinotation(r,decimals=4,scilimits=[-1,3])))
+								),
 							'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
 							'marker':None,
 							'linestyle':'--',
