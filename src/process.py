@@ -878,15 +878,17 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 								slices = (index,*(slice(data[name][key['y']['key'][-1]].shape[axis]) for axis in range(data[name][key['y']['key'][-1]].ndim)))
 
-								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
+								try:
+									variables[occurrence][combination][permutation][kwarg][stat][slices] = value
+								except Exception as exception:
+									print(exception)
+									variables[occurrence][combination][permutation][kwarg].pop(stat,None);
+									continue
 
-							try:
-								variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
-									key,variables[occurrence][combination][permutation][kwarg][stat],
-									variables=variables[occurrence][combination][permutation],dtype=dtype)
-							except Exception as exception:
-								print(exception)
-								variables[occurrence][combination][permutation][kwarg].pop(stat,None);
+							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
+								key,variables[occurrence][combination][permutation][kwarg][stat],
+								variables=variables[occurrence][combination][permutation],dtype=dtype)
+							
 
 
 				variables[occurrence][combination] = {
