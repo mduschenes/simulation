@@ -882,8 +882,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 									variables[occurrence][combination][permutation][kwarg][stat][slices] = value
 								except Exception as exception:
 									print(exception)
-									variables[occurrence][combination][permutation][kwarg].pop(stat,None);
-									continue
+									# variables[occurrence][combination][permutation][kwarg].pop(stat,None);
+									# continue
 
 							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
 								key,variables[occurrence][combination][permutation][kwarg][stat],
