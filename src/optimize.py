@@ -114,9 +114,11 @@ class LineSearchBase(object):
 
 		if returns['alpha'] is None:
 			if len(alpha) > 1:
-				returns['alpha'] = alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2])
+				returns['alpha'] = abs(alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2]))
 			else:
-				returns['alpha'] = alpha[-1]
+				returns['alpha'] = abs(alpha[-1])
+		else:
+			returns['alpha'] = abs(returns['alpha'])
 		return returns
 
 class LineSearch(LineSearchBase):
