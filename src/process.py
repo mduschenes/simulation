@@ -878,14 +878,18 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 								slices = (index,*(slice(data[name][key['y']['key'][-1]].shape[axis]) for axis in range(data[name][key['y']['key'][-1]].ndim)))
 
-								print(value)
-								print(data[name]['parameters.relative.mean'])
-
-								variables[occurrence][combination][permutation][kwarg][stat][slices] = value
+								try:
+									variables[occurrence][combination][permutation][kwarg][stat][slices] = value
+								except Exception as exception:
+									print(exception)
+									# variables[occurrence][combination][permutation][kwarg].pop(stat,None);
+									# continue
 
 							variables[occurrence][combination][permutation][kwarg][stat] = statistics[kwarg]['statistic'][stat](
 								key,variables[occurrence][combination][permutation][kwarg][stat],
 								variables=variables[occurrence][combination][permutation],dtype=dtype)
+							
+
 
 				variables[occurrence][combination] = {
 					kwarg:{
@@ -1194,8 +1198,19 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 
 												value = value[slices]
 
-												if kwarg in ['%serr'%(axis) for axis in axes] and normalize(value) == 0:
+												if ((kwarg in ['%serr'%(axis) for axis in axes]) and normalize(value) == 0):
 													value = None
+
+												if value is not None and parameter is not None:
+													clips = parameter.get('clip',{}).get(kwarg,[])
+													for clip in clips:
+														if len(clip) == 2:
+															vals,val = clip
+															if vals in ['nan',None]:
+																value = value.at[is_nan(value)].set(val)
+														elif len(clip) == 3:
+															lower,upper,val = clip
+															value = value.at[(value>=lower) & (value<=upper)].set(val)
 
 												subsettings[kwarg] = value
 

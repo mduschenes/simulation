@@ -50,7 +50,7 @@ configs = {
 for name in configs:
 	jax.config.update(name,configs[name])
 
-# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
+# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',dbl,np.float32]}})
 
 
 # Logging
@@ -2865,6 +2865,17 @@ def sqrt(a):
 	'''
 	return np.sqrt(a)
 
+@jit
+def log10(a):
+	'''
+	Calculate log base 10 of array a
+	Args:
+		a (array): Array to compute log
+	Returns:
+		out (array): Base 10 log of array
+	'''
+	return np.log10(a)
+
 
 @jit
 def log(a):
@@ -4579,6 +4590,37 @@ def gradient_sigmoid(a,scale=1):
 	return scale*sigmoid(a,scale)*sigmoid(-a,scale)
 
 
+def replace(iterable,elements):
+	'''
+	Find and replace old elements in iterable with new elements
+
+	Args:
+		iterable (iterable): Iterable to be searched
+		elements (dict): New and old elements
+	Returns:
+		iterable (iterable): Updated iterable
+	'''	
+
+	# Recursively find where nested iterable elements exist, and replace or append in-place with replacement elements
+	oldtype = type(iterable)
+	newtype = list
+	iterable = to_iterable(iterable,newtype)
+	for old in elements:
+		new = elements[old]
+		try:
+			for i,value in enumerate(iterable):
+				if value == old:
+					iterable[i] = new
+				else:
+					iterable[i] = replace(value,elements)
+		except Exception as e:
+			if iterable == old:
+				iterable = new
+
+	iterable = to_iterable(iterable,oldtype)
+
+	return iterable
+
 
 def to_eval(a,represent=True):
 	'''
@@ -4589,7 +4631,19 @@ def to_eval(a,represent=True):
 	Returns:
 		object (object): Python object representation of string
 	'''
-	return ast.literal_eval(a) if represent else a
+	try:
+		replacements = {'nan':"'nan'"}
+		for replacement in replacements:
+			a = a.replace(replacement,replacements[replacement])
+		a = ast.literal_eval(a) if represent else a
+		try:
+			replacements = {'nan':nan}
+			a = replace(a,replacements)
+		except:
+			pass
+	except Exception as e:
+		pass
+	return a
 
 def to_repr(a,represent=True):
 	'''
@@ -4602,6 +4656,35 @@ def to_repr(a,represent=True):
 	'''
 	return repr(a) if represent else a
 
+
+def to_iterable(a,dtype=None,exceptions=(str,),**kwargs):
+	'''
+	Convert iterable to iterable type
+	Args:
+		a (iterable): Iterable to convert to iterable
+		dtype (data_type): Type of iterable
+		exceptions (tuple[data_type]): Exception types not to update
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (iterable): Iterable representation of iterable
+	'''
+	if exceptions is not None and isinstance(a,exceptions):
+		return a
+
+	try:
+		a = list(a)
+	except Exception as e:
+		pass
+	try:
+		for i,value in enumerate(a):
+			a[i] = to_iterable(value,dtype=dtype,exceptions=exceptions,**kwargs)
+	except Exception as e:
+		pass
+	try:
+		a = dtype(a)
+	except Exception as e:
+		pass
+	return a
 
 def to_list(a,dtype=None,**kwargs):
 	'''
@@ -4739,39 +4822,51 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		error = None
 	
 	if zero and number == 0:
-		string = r'%d%%s%%s'%(number)
+		string = r'%d%%s%%s%%s'%(number)
 
 	elif is_int(number):
-		string = r'%s%%s%%s'%(str(number))
+		string = r'%s%%s%%s%%s'%(str(number))
 
-	elif isinstance(number,(float,np.float64)):		
+	elif is_naninf(number):
+		string = r'%s%%s%%s%%s'%(str(0))
+
+	elif isinstance(number,(float,dbl)):		
 		string = '%0.*e'%(decimals-1,number)
 		string = string.split('e')
-		basechange = np.log(10)/np.log(base)
+		basechange = log(10)/log(base)
 		basechange = int(basechange) if int(basechange) == basechange else basechange
 		flt = string[0]
 		exp = str(int(string[1])*basechange)
 
 		if int(exp) in range(*scilimits):
 			flt = '%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))) if (one or (float(flt) != 1.0)) else ''
-			string = r'%s%%s%%s'%(flt)
+			string = r'%s%%s%%s%%s'%(flt)
 		else:
-			string = r'%s%%s%%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',r'\cdot' if (one or (float(flt) != 1.0)) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
+			string = r'%s%s%s%%s%%s%%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',
+				r'\cdot' if (one or (float(flt) != 1.0)) else '',
+				'%d^{%s}'%(base,exp) if exp!= '0' else ''
+				)
 	
 		if error is not None and not isinstance(error,str):
 			if int(exp) in range(*scilimits):
 				error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
 			else:
-				error = r'%s'%('%0.*f'%(decimals-1,float(error)/(base**(int(exp)))))
+				error = r'%s%s%s'%(
+					'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
+					r'\cdot' if (one or (float(flt) != 1.0)) else '',
+					'%d^{%s}'%(base,exp) if exp!= '0' else ''
+					)
 
 	if error is None:
 		error = ''
-		separator = ''
+		prefix = ''
+		postfix = ''
 	else:
 		error = str(error)
-		separator = r'~\pm~'
-	
-	string = string%(separator,error)
+		prefix = r'~\pm~'
+		postfix = ''
+
+	string = string%(prefix,error,postfix)
 
 	if usetex:
 		string = r'%s'%(string.replace('$',''))
