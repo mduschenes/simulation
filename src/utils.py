@@ -2865,6 +2865,17 @@ def sqrt(a):
 	'''
 	return np.sqrt(a)
 
+@jit
+def log10(a):
+	'''
+	Calculate log base 10 of array a
+	Args:
+		a (array): Array to compute log
+	Returns:
+		out (array): Base 10 log of array
+	'''
+	return np.log10(a)
+
 
 @jit
 def log(a):
@@ -4739,10 +4750,10 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		error = None
 	
 	if zero and number == 0:
-		string = r'%d%%s%%s'%(number)
+		string = r'%d%%s%%s%%s'%(number)
 
 	elif is_int(number):
-		string = r'%s%%s%%s'%(str(number))
+		string = r'%s%%s%%s%%s'%(str(number))
 
 	elif isinstance(number,(float,np.float64)):		
 		string = '%0.*e'%(decimals-1,number)
@@ -4754,24 +4765,33 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 
 		if int(exp) in range(*scilimits):
 			flt = '%d'%(ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))) if (one or (float(flt) != 1.0)) else ''
-			string = r'%s%%s%%s'%(flt)
+			string = r'%s%%s%%s%%s'%(flt)
 		else:
-			string = r'%s%%s%%s%s%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',r'\cdot' if (one or (float(flt) != 1.0)) else '','%d^{%s}'%(base,exp) if exp!= '0' else '')
+			string = r'%s%s%s%%s%%s%%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',
+				r'\cdot' if (one or (float(flt) != 1.0)) else '',
+				'%d^{%s}'%(base,exp) if exp!= '0' else ''
+				)
 	
 		if error is not None and not isinstance(error,str):
 			if int(exp) in range(*scilimits):
 				error = '%d'%(ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
 			else:
-				error = r'%s'%('%0.*f'%(decimals-1,float(error)/(base**(int(exp)))))
+				error = r'%s%s%s'%(
+					'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
+					r'\cdot' if (one or (float(flt) != 1.0)) else '',
+					'%d^{%s}'%(base,exp) if exp!= '0' else ''
+					)
 
 	if error is None:
 		error = ''
-		separator = ''
+		prefix = ''
+		postfix = ''
 	else:
 		error = str(error)
-		separator = r'~\pm~'
-	
-	string = string%(separator,error)
+		prefix = r'~\pm~'
+		postfix = ''
+
+	string = string%(prefix,error,postfix)
 
 	if usetex:
 		string = r'%s'%(string.replace('$',''))
