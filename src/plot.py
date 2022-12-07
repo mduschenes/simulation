@@ -82,6 +82,121 @@ def is_number(obj):
 		except:
 			return False
 
+def is_int(a,*args,**kwargs):
+	'''
+	Check if object is an integer number
+	Args:
+		a (object): Object to be checked as int
+	Returns:
+		out (boolean): If object is an int
+	'''
+	try:
+		return float(a) == int(a)
+	except:
+		return False
+
+# Check if obj is nan
+def is_nan(obj):
+	try:
+		return np.isnan(obj).all()
+	except:
+		return False
+
+def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
+	'''
+	Put number into scientific notation string
+	Args:
+		number (str,int,float): Number to be processed
+		decimals (int): Number of decimals in base part of number (including leading digit)
+		base (int): Base of scientific notation
+		order (int): Max power of number allowed for rounding
+		zero (bool): Make numbers that equal 0 be the int representation
+		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
+		scilimits (list): Limits on where not to represent with scientific notation
+		error (str,int,float): Error of number to be processed
+		usetex (bool): Render string with Latex
+	
+	Returns:
+		String with scientific notation format for number
+
+	'''
+	if not is_number(number):
+		return str(number)
+
+	try:
+		number = int(number) if is_int(number) else float(number)
+	except:
+		string = number
+		return string
+
+	try:
+		error = int(error) if is_int(error) else float(error)
+	except:
+		error = None
+
+	maxnumber = base**order
+	if number > maxnumber:
+		number = number/maxnumber
+		if int(number) == number:
+			number = int(number)
+		string = str(number)
+
+	if error is not None and (np.isnan(error) or np.isinf(error)):
+		# error = r'$\infty$'
+		error = None
+	
+	if zero and number == 0:
+		string = r'%d%%s%%s%%s'%(number)
+
+	elif is_int(number):
+		string = r'%s%%s%%s%%s'%(str(number))
+
+	elif isinstance(number,(float,np.float64)):		
+		string = '%0.*e'%(decimals-1,number)
+		string = string.split('e')
+		basechange = np.log(10)/np.log(base)
+		basechange = int(basechange) if int(basechange) == basechange else basechange
+		flt = string[0]
+		exp = str(int(string[1])*basechange)
+
+		if int(exp) in range(*scilimits):
+			flt = '%d'%(np.ceil(int(flt)*base**(int(exp)))) if is_int(flt) else '%0.*f'%(decimals-1,float(flt)/(base**(-int(exp)))) if (one or (float(flt) != 1.0)) else ''
+			string = r'%s%%s%%s%%s'%(flt)
+		else:
+			string = r'%s%s%s%%s%%s%%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',
+				r'\cdot' if (one or (float(flt) != 1.0)) else '',
+				'%d^{%s}'%(base,exp) if exp!= '0' else ''
+				)
+	
+		if error is not None and not isinstance(error,str):
+			if int(exp) in range(*scilimits):
+				error = '%d'%(np.ceil(int(error))) if is_int(error) else '%0.*f'%(decimals-1,float(error))
+			else:
+				error = r'%s%s%s'%(
+					'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
+					r'\cdot' if (one or (float(flt) != 1.0)) else '',
+					'%d^{%s}'%(base,exp) if exp!= '0' else ''
+					)
+
+	if error is None:
+		error = ''
+		prefix = ''
+		postfix = ''
+	else:
+		error = str(error)
+		prefix = r'~\pm~'
+		postfix = ''
+
+	string = string%(prefix,error,postfix)
+
+	if usetex:
+		string = r'$%s$'%(string.replace('$',''))
+	else:
+		string = string.replace('$','')
+	return string
+
+
+
 def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=None):
 	'''
 	Plot x,y,z with settings
@@ -205,6 +320,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 	def attr_texify(string,attr,kwarg,texify,**kwargs):
 		def _texify(string):
+
+			string = str(string)
+				
 			substring = '\n'.join(['%s'%(substring.replace('$','')) for substring in string.split('\n')])
 
 			if not any([t in substring for t in [r'\textrm','_','^','\\']]):
@@ -242,8 +360,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			pass
 
 		if attr in attrs and kwarg in attrs[attr]:
-			if isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
-				string = texify(str(string))
+			if attr in ['set_%sticklabels'%(axis) for axis in AXIS]:
+				string = [scinotation(substring,decimals=1,usetex=True) for substring in string]
+			elif isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
+				string = texify(string)
 				if len(string.replace('$','')) == 0:
 					string = ''
 			elif isinstance(string,list):
@@ -400,7 +520,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for kwarg in nullkwargs:
 					kwargs.pop(kwarg,None)
 
-				call = True
+				call = len(args)>0			
+
 
 			elif attr in ['errorbar']:
 				fields = ['color']
@@ -423,13 +544,16 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					# except:
 					# 	kwargs.pop(field)
 					# 	pass
-				args.extend([kwargs.get(k) for k in ['x','y','yerr','xerr'] if k in kwargs and kwargs.get(k) is not None ])
+
+				args.extend([kwargs.get(k) for k in ['x','y','yerr','xerr'] if (
+					(k in kwargs) and (kwargs.get(k) is not None) and True #(not all(is_nan(kwargs.get(k)) for k in ['x','y','yerr','xerr']))
+					)])
 
 				nullkwargs = ['x','y','z','xerr','yerr']								
 				for kwarg in nullkwargs:
 					kwargs.pop(kwarg,None)
 
-				call = True			
+				call = len(args)>0			
 
 			elif attr in ['fill_between']:
 				fields = ['color']
@@ -493,6 +617,26 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							getattr(getattr(matplotlib,k),a)(**kwargs[k][a]))					
 				call = False
 
+
+			elif attr in ['set_%sbreak'%(axis) for axis in AXIS]:
+
+				fields = ['transform']
+				for field in fields:
+					if field in ['transform']:
+						kwargs[field] = getattr(obj,kwargs.pop(field))
+
+				args.extend([kwargs.get(k) for k in ['x','y'] if (
+				(k in kwargs) and (kwargs.get(k) is not None) and True #(not all(is_nan(kwargs.get(k)) for k in ['x','y','yerr','xerr']))
+				)])
+
+				nullkwargs = ['x','y','z','xerr','yerr']								
+				for kwarg in nullkwargs:
+					kwargs.pop(kwarg,None)
+
+				attr = 'plot'
+
+				call = len(args)>0		
+
 			elif attr in ['set_%snbins'%(axis) for axis in AXIS]:
 				axis = attr.replace('set_','').replace('nbins','')
 				which = 'major'
@@ -555,14 +699,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				else:
 					_attr = _obj(**kwargs)
 			except Exception as e:
-				print(e,attr,kwargs)
+				if not isinstance(e,AttributeError):
+					print(e,attr,_obj,args,kwargs,[a.dtype if isinstance(a,np.ndarray) else [type(i) for i in a] for a in args])
 
 			for k in _kwds:
 				_attr_ = _attr
 				for a in k.split('.')[:-1]:
 					try:
 						_attr_ = getattr(_attr_,a)()
-						print(_attr_)
 					except:
 						_attr_ = getattr(_attr_,a)
 				a = k.split('.')[-1]

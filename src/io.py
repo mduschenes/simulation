@@ -461,7 +461,10 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 	def convert(name,conversion=None,**kwargs):
 		if conversion is None:
 			conversion = lambda name: str(name)
-		key = conversion(name)
+		try:
+			key = conversion(name)
+		except:
+			key = name
 		return key
 
 	null = {'None':'None'}
@@ -495,7 +498,8 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 
 		names = list(set((name for name in obj.attrs)))
 		for name in names:
-			key = name #convert(name,**kwargs)
+			# key = name #convert(name,**kwargs)
+			key = convert(name,**kwargs)
 			data[key] = obj.attrs[name]
 			if obj.attrs[name] in null:
 				data[key] = null[obj.attrs[name]]

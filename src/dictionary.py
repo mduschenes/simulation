@@ -624,7 +624,6 @@ def replacer(iterable,key,replacement,append=False,copy=True,values=False):
 	return
 
 
-
 def clearer(dictionary,new,old):
 	'''
 	Clear dictionary and update new elements in-place

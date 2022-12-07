@@ -282,6 +282,9 @@ def process(path):
 					except:
 						data[attr] = [value[attr] for value in values]
 
+
+					data[attr] = [value if value not in ['None',None,nan] else 1e-20 for value in data[attr]]
+
 					try:
 						data[attr] = array(data[attr])
 					except:
