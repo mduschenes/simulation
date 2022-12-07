@@ -12,7 +12,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noisy}"],
+			"label":["N","architecture","M","noise.scale"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -28,7 +28,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noisy}"],
+			"label":["N","architecture","M","noise.scale"],
 			"alpha":0.5,			
 			"color":"viridis"
 			}						
@@ -87,7 +87,7 @@
 			{
 			"x":"noise.scale",
 			"y":"objective",
-			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy}"],
+			"label":["N","architecture","M","iteration=@iteration.min@"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -101,7 +101,7 @@
 			{
 			"x":"noise.scale",
 			"y":"objective.ideal.state",
-			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless}"],
+			"label":["N","architecture","M","iteration=@iteration.min@"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -169,7 +169,7 @@
 			{
 			"x":"noise.scale",
 			"y":"objective.diff.state",
-			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless}"],
+			"label":["N","architecture","M","iteration=@iteration.min@"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,

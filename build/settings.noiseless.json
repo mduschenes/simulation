@@ -27,8 +27,7 @@
 	},
 "seed":{
 	"seed":1927376,
-	"size":40,
-	"size":1,
+	"size":2,
 	"reset":1927376,
 	"index":null
 	},
@@ -37,13 +36,12 @@
 	
 		"model.N":[4],
 		"model.M":[10,20,50,75,100,150,200,250,300,400,500,600,800,1000,2000,5000],
-		"model.M":[20,50,100],
+		"model.M":[10,20,50,75,100,150,200,250,300,400,500],
 		"model.tau":[10e0],
 		"noise.scale":[0],
 		"state.scale":[1],
 		"model.metric":["infidelity.norm"],
 		"optimize.iterations":[200],
-		"optimize.iterations":[10],
 		"optimize.optimizer":["cg"],
 		"parameters.xy.method":["unconstrained"],
 		"model.system.architecture":["unconstrained"],
