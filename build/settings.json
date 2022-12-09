@@ -38,7 +38,13 @@
 		"model.M":[4,20,100],
 		"noise.scale":[1e-10,1e-5,1e-3],
 		"state.scale":[1],
-		"model.metric":["infidelity.norm"],
+
+		"model.M":[10],		
+		"noise.scale":[null],
+		"state.scale":[1],
+		"state.shape":[[1,-1,-1]],
+
+		"model.metric":["infidelity.vec"],
 		"optimize.iterations":[20],
 		"optimize.optimizer":["cg"],
 		"parameters.xy.method":["unconstrained"],
