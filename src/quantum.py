@@ -1046,7 +1046,7 @@ class Object(object):
 											for group in attributes['index'][layer][parameter]))
 						])
 
-					if is_array(value[attr]) and all(len(shape)>1 for shape in self.shapes):
+					if is_array(value[attr]) and (self.noise is not None) and all(len(shape)>1 for shape in self.shapes):
 
 						new = '%s.relative'%(attr)
 						New = abs((obj.__layers__(value[attr],layer)[indices] - 

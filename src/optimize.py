@@ -486,7 +486,6 @@ class Metric(object):
 		elif self.metric in ['infidelity.norm']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
-			print(shapes)
 			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
 			# _func = inner_abs2
 
