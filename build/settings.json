@@ -27,7 +27,7 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":1,
+	"size":5,
 	"reset":5576,
 	"index":null
 	},
@@ -39,13 +39,14 @@
 		"noise.scale":[1e-10,1e-5,1e-3],
 		"state.scale":[1],
 
-		"model.M":[10],		
+		"model.M":[10,20,50,100,1000],		
 		"noise.scale":[null],
-		"state.scale":[1],
-		"state.shape":[[1,-1,-1]],
+		"state.scale":[null],
+		"state.shape":[[1,1,-1,-1]],
 
 		"model.metric":["infidelity.vec"],
-		"optimize.iterations":[20],
+		"model.metric":["infidelity.abs"],
+		"optimize.iterations":[1000],
 		"optimize.optimizer":["cg"],
 		"parameters.xy.method":["unconstrained"],
 		"model.system.architecture":["unconstrained"],
@@ -99,7 +100,7 @@
 	"iterations":50,
 	"optimizer":"cg",
 	"line_search":"line_search",
-	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-8,"alpha":1e-20,"beta":1e3},
+	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-20,"alpha":1e-20,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
 	"status":1,
 	"reset":0,
