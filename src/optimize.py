@@ -34,8 +34,8 @@ from src.utils import is_naninf,product,sqrt
 
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import normed_einsum,inner_abs2_einsum,inner_real_einsum,inner_imag_einsum
-from src.utils import gradient_normed_einsum,gradient_inner_abs2_einsum,gradient_inner_real_einsum,gradient_inner_imag_einsum
+from src.utils import normed_einsum,inner_abs2_einsum,inner_abs2vec_einsum,inner_real_einsum,inner_imag_einsum
+from src.utils import gradient_normed_einsum,gradient_inner_abs2_einsum,gradient_inner_abs2vec_einsum,gradient_inner_real_einsum,gradient_inner_imag_einsum
 
 from src.utils import itg,dbl,flt
 
@@ -486,6 +486,7 @@ class Metric(object):
 		elif self.metric in ['infidelity.norm']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
+			print(shapes)
 			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
 			# _func = inner_abs2
 
@@ -499,7 +500,45 @@ class Metric(object):
 				return 1-_func(a,b)
 			@jit
 			def grad(a,b,da):
-				return -_grad(a,b,da)					
+				return -_grad(a,b,da)
+
+		elif self.metric in ['infidelity.mat']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			print(shapes)
+			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
+			# _func = inner_abs2
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_inner_abs2_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_inner_abs2
+
+			@jit
+			def func(a,b):
+				return 1-_func(a,b)
+			@jit
+			def grad(a,b,da):
+				return -_grad(a,b,da)				
+
+		elif self.metric in ['infidelity.vec']:
+			shapes = (*self.shapes,)
+			optimize = self.optimize
+			print(shapes)
+			_func = jit(inner_abs2vec_einsum(*shapes,optimize=optimize))
+			# _func = inner_abs2
+
+			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
+			optimize = self.optimize
+			_grad = jit(gradient_inner_abs2vec_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_inner_abs2
+
+			@jit
+			def func(a,b):
+				return 1-_func(a,b)
+			@jit
+			def grad(a,b,da):
+				return -_grad(a,b,da)									
 
 		elif self.metric in ['infidelity.real']:
 			shapes = (*self.shapes,)
@@ -655,7 +694,11 @@ class Base(object):
 
 		self.line_search = LineSearch(self.func,self.grad,self.hyperparameters)
 
-		self.callback = callback if callback is not None else (lambda parameters: None)
+		if callback is None:
+			def callback(parameters,attributes):
+				status = True
+				return status
+		self.callback = callback
 
 		self.size = 0
 		self.iteration = -1

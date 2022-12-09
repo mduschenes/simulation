@@ -1719,6 +1719,103 @@ def gradient_inner_abs2_einsum(*shapes,optimize=True):
 
 
 @jit
+def inner_abs2vec(a,b):
+	'''
+	Calculate absolute square of inner product of arrays a and b
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+	Returns:
+		out (array): Absolute square of inner product
+	'''	
+	return abs2(trace(tensordot(a,b.T,1)))
+
+
+@jit
+def gradient_inner_abs2vec(a,b,da):
+	'''
+	Calculate gradient of absolute square inner product of arrays a and b with respect to a
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+		da (array): Gradient of array to calculate inner product
+	Returns:
+		out (array): Gradient of inner product
+	'''
+	@jit
+	def func(da):
+		return (
+			2*(trace(tensordot(da,b.T,1))*
+			trace(tensordot(a,b.T,1)).conj())).real
+	
+	out = vmap(func)(da)
+	return out
+	# return gradient(inner_abs2)(a,b)
+
+def inner_abs2vec_einsum(*shapes,optimize=True):
+	'''
+	Calculate absolute square inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Absolute square inner product einsum
+	'''	
+
+	subscripts = 'i,i->'
+
+	@jit
+	def wrapper(out,*operands):
+		return abs2(out)
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(*operands)
+
+	return einsummation
+
+
+
+
+def gradient_inner_abs2vec_einsum(*shapes,optimize=True):
+	'''
+	Calculate gradient of absolute square of inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Gradient of absolute square inner product einsum
+	'''	
+
+	subscripts_value = 'i,i->'
+	shapes_value = (shapes[0],shapes[1])
+
+	@jit
+	def wrapper_value(out,*operands):
+		return out
+
+	_einsummation_value = einsum(subscripts_value,*shapes_value,optimize=optimize,wrapper=wrapper_value)
+
+
+	subscripts_grad = 'i,ui->u'
+	shapes_grad = (shapes[0],shapes[2])
+
+	@jit
+	def wrapper_grad(out,*operands):
+		return out
+
+	_einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper_grad)
+
+	@jit
+	def einsummation(*operands):
+		return 2*(_einsummation_value(operands[0],operands[1]).conj()*_einsummation_grad(operands[1],operands[2])).real
+
+	return einsummation
+
+
+@jit
 def inner_real(a,b):
 	'''
 	Calculate real inner product of arrays a and b

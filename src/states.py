@@ -207,7 +207,7 @@ def stateize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=Non
 		elif data.ndim == 2 and data.shape[0] == data.shape[1]:
 			data = data
 		elif data.ndim == 2 and data.shape[0] != data.shape[1]:
-			data = einsum('uj,u->u',data,samples)
+			data = einsum('uj,u->j',data,samples)
 		elif data.ndim == 1:
 			data = data
 

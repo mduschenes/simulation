@@ -145,6 +145,7 @@ class Object(object):
 		self.dims = ()
 		self.dim = int(product(self.dims))
 		self.ndims = len(self.dims)
+		self.shapes = (self.dims,self.dims)
 
 		self.hyperparameters = hyperparameters
 		self.parameters = None
@@ -461,23 +462,27 @@ class Object(object):
 		label = self.label if (label is None or label is True) else label if label is not False else None
 		metric = self.metric if (metric is None or metric is True) else metric if metric is not False else None
 
-		# Metric functions
-		self.metrics = Metric(metric,shapes=[self.dims,self.dims],optimize=None)	
+		# Labels and Shapes of Labels
+		if state is None:
+			self.labels = label.conj()
+			self.shapes = (self.dims,self.dims)
+		elif state.ndim == 1:
+			self.labels = einsum('ij,j->i',label,state).conj()
+			self.shapes = ((self.n,),(self.n,))			
+		elif state.ndim == 2:
+			self.labels = einsum('ij,jk,lk->il',label,state,label.conj())
+			self.shapes = (self.dims,self.dims)			
+		else:
+			self.labels = label.conj()
+			self.shapes = (self.dims,self.dims)			
+
+		# Functions
+		self.metrics = Metric(metric,shapes=self.shapes,optimize=None)		
 		self.func = self.__func__
 		self.grad = gradient(self.func)
 		self.derivative = gradient(self,mode='fwd',move=True)
 		self.hessian = hessian(self.func)
 		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
-
-		# Labels
-		if state is None:
-			self.labels = label.conj()
-		elif state.ndim == 1:
-			self.labels = einsum('ij,j->i',label,state).conj()
-		elif state.ndim == 2:
-			self.labels = einsum('ij,jk,lk->il',label,state,label.conj())
-		else:
-			self.labels = label.conj()
 
 
 		# Operator functions
@@ -1041,7 +1046,7 @@ class Object(object):
 											for group in attributes['index'][layer][parameter]))
 						])
 
-					if is_array(value[attr]):
+					if is_array(value[attr]) and all(len(shape)>1 for shape in self.shapes):
 
 						new = '%s.relative'%(attr)
 						New = abs((obj.__layers__(value[attr],layer)[indices] - 
