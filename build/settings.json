@@ -40,6 +40,7 @@
 		"state.scale":[1],
 
 		"model.M":[10,20,50,100,1000],		
+		"model.tau":[100e0],		
 		"noise.scale":[null],
 		"state.scale":[null],
 		"state.shape":[[1,1,-1,-1]],

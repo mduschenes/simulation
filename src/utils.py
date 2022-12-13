@@ -1982,22 +1982,54 @@ def gradient_inner_imag_einsum(*shapes,optimize=True):
 	return einsummation
 
 
-
-def inner_vectorabs2_einsum(*shapes,optimize=True):
+&&&&&&&&&&&&&&&&&&&&&&&&&&
+@jit
+def inner_realvec(a,b):
 	'''
-	Calculate absolute square inner product of arrays a and b with einsum
+	Calculate real inner product of arrays a and b
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+	Returns:
+		out (array): Real inner product
+	'''	
+	return (trace(tensordot(a,b.T))).real
+
+
+@jit
+def gradient_inner_realvec(a,b,da):
+	'''
+	Calculate gradient of real inner product of arrays a and b with respect to a
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+		da (array): Gradient of array to calculate inner product
+	Returns:
+		out (array): Gradient of real inner product
+	'''
+	@jit
+	def func(da):
+		return (trace(tensordot(da,b.T)).real)
+	out = vmap(func)(da)
+	return out
+	# return gradient(inner_real)(a,b)
+
+
+def inner_realvec_einsum(*shapes,optimize=True):
+	'''
+	Calculate real inner product of arrays a and b with einsum
 	Args:
 		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
 	Returns:
-		einsummation (callable): Absolute square inner product einsum
+		einsummation (callable): Real inner product einsum
 	'''	
 
-	subscripts = 'ij,ij->'
+	subscripts = 'i,i->'
 
 	@jit
 	def wrapper(out,*operands):
-		return abs2(out)
+		return out.real
 
 	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
@@ -2009,41 +2041,114 @@ def inner_vectorabs2_einsum(*shapes,optimize=True):
 
 
 
-
-def gradient_inner_vectorabs2_einsum(*shapes,optimize=True):
+def gradient_inner_realvec_einsum(*shapes,optimize=True):
 	'''
-	Calculate gradient of absolute square of inner product of arrays a and b with einsum
+	Calculate gradient of real inner product of arrays a and b with einsum
 	Args:
 		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
 	Returns:
-		einsummation (callable): Gradient of absolute square inner product einsum
+		einsummation (callable): Gradient of real inner product einsum
 	'''	
 
-	subscripts_value = 'ij,ij->'
-	shapes_value = (shapes[0],shapes[1])
+	subscripts = 'i,ui->u'
+	shapes = (shapes[0],shapes[2])
 
 	@jit
-	def wrapper_value(out,*operands):
-		return out
+	def wrapper(out,*operands):
+		return out.real
 
-	_einsummation_value = einsum(subscripts_value,*shapes_value,optimize=optimize,wrapper=wrapper_value)
-
-
-	subscripts_grad = 'ij,uij->u'
-	shapes_grad = (shapes[0],shapes[2])
-
-	@jit
-	def wrapper_grad(out,*operands):
-		return out
-
-	_einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper_grad)
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
 	@jit
 	def einsummation(*operands):
-		return 2*(_einsummation_value(operands[0],operands[1]).conj()*_einsummation_grad(operands[1],operands[2])).real
+		return _einsummation(operands[1],operands[2])
 
 	return einsummation
+
+
+@jit
+def inner_imagvec(a,b):
+	'''
+	Calculate imaginary inner product of arrays a and b
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+	Returns:
+		out (array): Imaginary inner product
+	'''	
+	return (trace(tensordot(a,b.T))).imag
+
+
+@jit
+def gradient_inner_imagvec(a,b,da):
+	'''
+	Calculate gradient of imaginary inner product of arrays a and b with respect to a
+	Args:
+		a (array): Array to calculate inner product
+		b (array): Array to calculate inner product
+		da (array): Gradient of array to calculate inner product
+	Returns:
+		out (array): Gradient of inner product
+	'''
+	@jit
+	def func(da):
+		return (trace(tensordot(da,b.T)).imag)
+	out = vmap(func)(da)
+	return out
+	# return gradient(inner_imag)(a,b)	
+
+def inner_imagvec_einsum(*shapes,optimize=True):
+	'''
+	Calculate imaginary inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Imaginary inner product einsum
+	'''	
+
+	subscripts = 'i,i->'
+
+	@jit
+	def wrapper(out,*operands):
+		return out.imag
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(*operands)
+
+	return einsummation
+
+
+
+def gradient_inner_imagvec_einsum(*shapes,optimize=True):
+	'''
+	Calculate gradient of imaginary inner product of arrays a and b with einsum
+	Args:
+		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+	Returns:
+		einsummation (callable): Gradient of imaginary inner product einsum
+	'''	
+
+	subscripts = 'i,ui->u'
+	shapes = (shapes[0],shapes[2])
+
+	@jit
+	def wrapper(out,*operands):
+		return out.imag
+
+	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	@jit
+	def einsummation(*operands):
+		return _einsummation(operands[1],operands[2])
+
+	return einsummation
+
 
 
 @jit
