@@ -969,11 +969,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		return settings,fig,ax
 
 	attr = 'style'
-	mplstyles = [*[settings[key].get(attr,{}).get('mplstyle') for key in settings],
-				mplstyle,PATHS['mplstyle'],matplotlib.matplotlib_fname()]
+	prop = 'mplstyle'
+	mplstyles = [*[settings[key].get(attr,{}).get(prop) for key in settings],
+				settings.get(attr,{}).get(prop),
+				mplstyle,PATHS[prop],matplotlib.matplotlib_fname()]
 
 	_mplstyles = [mplstyle,PATHS['mplstyle.notex'],matplotlib.matplotlib_fname()]
-
 	for mplstyle in mplstyles:
 		if mplstyle is not None and os.path.isfile(mplstyle):
 			break
