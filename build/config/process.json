@@ -1,5 +1,5 @@
 {
-	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture","noise.scale"],
+	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture","noise.scale","optimize.c1","optimize.c2"],
 	"parameters":[
 		{
 			"key":{"x":"iteration","y":"objective"},
@@ -99,9 +99,13 @@
 		"architecture": "\\textrm{Architecture}",
 		"constrained": "\\textrm{Constrained}",
 		"unconstrained": "\\textrm{Unconstrained}",
-		"noise.scale":"\\gamma"
+		"noise.scale":"\\gamma",
+		"optimize.c1":"c_{1}",
+		"optimize.c2":"c_{2}"
 	},
-	"kwargs":{},
+	"kwargs":{
+		"labels":true
+	},
 	"pwd":null,
 	"cwd":null,
 	"path": {

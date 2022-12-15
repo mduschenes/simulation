@@ -34,8 +34,8 @@ from src.utils import is_naninf,product,sqrt
 
 from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import normed_einsum,inner_abs2_einsum,inner_abs2vec_einsum,inner_real_einsum,inner_imag_einsum
-from src.utils import gradient_normed_einsum,gradient_inner_abs2_einsum,gradient_inner_abs2vec_einsum,gradient_inner_real_einsum,gradient_inner_imag_einsum
+from src.utils import normed_einsum,inner_abs2_einsum,inner_real_einsum,inner_imag_einsum
+from src.utils import gradient_normed_einsum,gradient_inner_abs2_einsum,gradient_inner_real_einsum,gradient_inner_imag_einsum
 
 from src.utils import itg,dbl,flt
 
@@ -69,11 +69,13 @@ class LineSearchBase(object):
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
 		'''
+		defaults = {}
 		returns = ['alpha']
 
 		self.func = func
 		self.grad = grad
 		self.hyperparameters = hyperparameters
+		self.defaults = defaults
 		self.returns = returns
 
 		return
@@ -112,13 +114,13 @@ class LineSearchBase(object):
 		
 		returns = dict(zip(self.returns,returns))
 
-		if returns['alpha'] is None:
+		attr = 'alpha'
+		if returns[attr] is None or (returns[attr] < self.hyperparameters['eps'][attr]):
 			if len(alpha) > 1:
-				returns['alpha'] = abs(alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2]))
+				returns[attr] = alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2])
 			else:
-				returns['alpha'] = abs(alpha[-1])
-		else:
-			returns['alpha'] = abs(returns['alpha'])
+				returns[attr] = alpha[-1]
+		
 		return returns
 
 class LineSearch(LineSearchBase):
@@ -132,7 +134,8 @@ class LineSearch(LineSearchBase):
 	def __new__(cls,func,grad,hyperparameters={}):
 	
 		defaults = {'line_search':None}
-		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
+		hyperparameters.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		line_searches = {'line_search':Line_Search,'armijo':Armijo,None:Null_Search}
 
@@ -154,10 +157,12 @@ class Line_Search(LineSearchBase):
 		'''
 		defaults = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':None}
 		returns = ['alpha','nfunc','ngrad','value','_value','slope']
-		hyperparameters = {attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults}
+		hyperparameters.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		super().__init__(func,grad,hyperparameters)
 
+		self.defaults = defaults
 		self.returns = returns
 
 		return
@@ -174,12 +179,11 @@ class Line_Search(LineSearchBase):
 		Returns:
 			returns (dict): Dictionary of returned values of line search
 		'''
-		self.hyperparameters['old_old_fval'] = value[-2] if len(value)>1 else None
+		self.defaults['old_old_fval'] = value[-2] if len(value)>1 else None
 		
-		# returns = osp.optimize.line_search(self.func,self.grad,
 		returns = line_search(self.func,self.grad,
 			parameters,search[-1],gradient[-1],value[-1],
-			**self.hyperparameters)
+			**self.defaults)
 		
 		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
 
@@ -196,12 +200,14 @@ class Armijo(LineSearchBase):
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
 		'''
-		defaults = {'c1':0.0001}
+		defaults = {'c1':0.0001,'alpha0':1e-4}
 		returns = ['alpha','nfunc','value']
-		hyperparameters = {attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults}
+		hyperparameters.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		super().__init__(func,grad,hyperparameters)
 
+		self.defaults = defaults
 		self.returns = returns
 
 		return
@@ -218,10 +224,10 @@ class Armijo(LineSearchBase):
 		Returns:
 			returns (dict): Dictionary of returned values of line search
 		'''
-		# returns = osp.optimize.linesearch.line_search_armijo(self.func,self.grad,
+
 		returns = armijo(self.func,self.grad,
 			parameters,search[-1],gradient[-1],value[-1],
-			**self.hyperparameters)
+			**self.defaults)
 
 		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
 		
@@ -450,13 +456,13 @@ class Metric(object):
 		elif self.metric in ['infidelity']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
-			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
-			# _func = inner_abs2
+			_func = jit(inner_real_einsum(*shapes,optimize=optimize))
+			# _func = inner_real
 
 			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 			optimize = self.optimize
-			_grad = jit(gradient_inner_abs2_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_abs2
+			_grad = jit(gradient_inner_real_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_inner_real
 
 			@jit
 			def func(a,b):
@@ -486,13 +492,13 @@ class Metric(object):
 		elif self.metric in ['infidelity.norm']:
 			shapes = (*self.shapes,)
 			optimize = self.optimize
-			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
-			# _func = inner_abs2
+			_func = jit(inner_real_einsum(*shapes,optimize=optimize))
+			# _func = inner_real
 
 			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 			optimize = self.optimize
-			_grad = jit(gradient_inner_abs2_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_abs2
+			_grad = jit(gradient_inner_real_einsum(*shapes,optimize=optimize))
+			# _grad = gradient_inner_real
 
 			@jit
 			def func(a,b):
@@ -500,44 +506,6 @@ class Metric(object):
 			@jit
 			def grad(a,b,da):
 				return -_grad(a,b,da)
-
-		elif self.metric in ['infidelity.mat']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			print(shapes)
-			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
-			# _func = inner_abs2
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_inner_abs2_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_abs2
-
-			@jit
-			def func(a,b):
-				return 1-_func(a,b)
-			@jit
-			def grad(a,b,da):
-				return -_grad(a,b,da)				
-
-		elif self.metric in ['infidelity.vec']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			print(shapes)
-			_func = jit(inner_abs2vec_einsum(*shapes,optimize=optimize))
-			# _func = inner_abs2
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_inner_abs2vec_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_abs2
-
-			@jit
-			def func(a,b):
-				return 1-_func(a,b)
-			@jit
-			def grad(a,b,da):
-				return -_grad(a,b,da)									
 
 		elif self.metric in ['infidelity.real']:
 			shapes = (*self.shapes,)
@@ -603,24 +571,6 @@ class Metric(object):
 			def grad(a,b,da):
 				return -(_grad_real(a,b,da)+_grad_imag(a,b,da))/2/sqrt(a.shape[0]*b.shape[0])
 
-		elif self.metric in ['infidelity.vector']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func = jit(inner_vectorabs2_einsum(*shapes,optimize=optimize))
-			# _func = inner_abs2
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_inner_vectorabs2_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_abs2
-
-			@jit
-			def func(a,b):
-				return 1-_func(a,b)/sqrt(a.shape[0]*b.shape[0])
-			@jit
-			def grad(a,b,da):
-				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])			
-						
 		else:
 			shapes = (*self.shapes,)
 			optimize = self.optimize

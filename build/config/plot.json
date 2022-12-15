@@ -12,21 +12,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noisy}"],
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			},		
-			{
-			"x":"iteration",
-			"y":"objective.ideal.state",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless}"],
+			"label":["N","architecture","M","noise.scale","optimize.c1","optimize.c2"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -42,17 +28,10 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noisy}"],
+			"label":["N","architecture","M","noise.scale","optimize.c1","optimize.c2"],
 			"alpha":0.5,			
 			"color":"viridis"
-			},			
-			{
-			"x":"iteration",
-			"y":"objective.ideal.state",
-			"label":["N","architecture","M","noise.scale","\\textrm{Noiseless}"],
-			"alpha":0.5,			
-			"color":"viridis"
-			}							
+			}						
 			],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
@@ -84,6 +63,7 @@
 			"framealpha": 0.8,
 			"loc": [1.1,0.05],
 			"ncol": 4,
+			"set_label":true,
 			"set_zorder":{"level":100}
 			}			
 		},

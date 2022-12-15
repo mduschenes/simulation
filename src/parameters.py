@@ -40,7 +40,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos
-from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
+from src.utils import tensorprod,trace,asscalar,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
 from src.utils import slice_slice,datatype,returnargs,is_array
 from src.utils import pi,scalars
 
@@ -263,8 +263,8 @@ def setup(hyperparameters,cls=None):
 				**({kwarg: getattr(cls,kwarg) for kwarg in cls.__dict__ 
 					if isinstance(getattr(cls,kwarg),scalars) and not isinstance(getattr(cls,kwarg),str)
 					} if cls is not None else {}),
-				**{kwarg: getattr(np,kwarg)(np.array(hyperparameters[parameter]['parameters'])) if hyperparameters[parameter].get('parameters') 
-						  else getattr(np,kwarg)(np.array(hyperparameters[parameter]['bounds']['parameters']))
+				**{kwarg: getattr(np,kwarg)(array(hyperparameters[parameter]['parameters'])) if hyperparameters[parameter].get('parameters') 
+						  else getattr(np,kwarg)(array(hyperparameters[parameter]['bounds']['parameters']))
 					for kwarg in ['min','max']
 					}, 
 				}),
@@ -291,6 +291,7 @@ def setup(hyperparameters,cls=None):
 									)
 				else:
 					hyperparameters[parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
+
 
 	return 
 
@@ -606,7 +607,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 					data['boundaries'][category][parameter][group][layer] = [
 						{
 						'slice': array([((i if i>=0 else len(data['indices'][category][parameter][group][layer][axis])+i)
-							if isinstance(i,(int,np.integer)) else
+							if isinstance(asscalar(i),(int,np.integer)) else
 							(int(len(data['indices'][category][parameter][group][layer][axis])*i)))
 							for i in hyperparameters[parameter]['boundaries'][layer][axis].get('slice',[])]),
 						'value': array(hyperparameters[parameter]['boundaries'][layer][axis].get('value',[]))
@@ -617,7 +618,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 					data['constants'][category][parameter][group][layer] = [
 						{
 						'slice': array([((i if i>=0 else len(data['indices'][category][parameter][group][layer][axis])+i)
-							if isinstance(i,(int,np.integer)) else
+							if isinstance(asscalar(i),(int,np.integer)) else
 							(int(len(data['indices'][category][parameter][group][layer][axis])*i)))						
 							for i in hyperparameters[parameter]['constants'][layer][axis].get('slice',[])]),
 						'value': array(hyperparameters[parameter]['constants'][layer][axis].get('value',[]))
@@ -770,7 +771,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 									*to_list(data['constants'][category][parameter][group][layer][ax]['slice'])])) > 0
 								for ax in range(0,data['ndim'][category][parameter][group][layer])))) else								
 							[((i if i>=0 else data['shape'][category][parameter][group][layer][refindex][axis]+i)
-							if isinstance(i,(int,np.integer)) else
+							if isinstance(asscalar(i),(int,np.integer)) else
 							(int(data['shape'][category][parameter][group][layer][refindex][axis]*float(i)))) for i in set([
 								*to_list(data['boundaries'][category][parameter][group][layer][axis]['slice']),
 								*to_list(data['constants'][category][parameter][group][layer][axis]['slice'])])])
@@ -806,7 +807,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 									*to_list(data['constants'][category][parameter][group][layer][ax]['slice'])])) > 0
 								for ax in range(0,data['ndim'][category][parameter][group][layer])))) else							
 							([((i if i>=0 else data['shape'][category][parameter][group][layer][refindex][axis]+i)
-								if isinstance(i,(int,np.integer)) else
+								if isinstance(asscalar(i),(int,np.integer)) else
 								(int(data['shape'][category][parameter][group][layer][refindex][axis]*float(i))))
 								for i in range(*data['slice'][category][parameter][group][layer][refindex][axis].indices(
 								data['shape'][category][parameter][group][layer][refindex][axis])) 
@@ -816,7 +817,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 									])]								
 							if isinstance(data['slice'][category][parameter][group][layer][refindex][axis],slice) else
 							[((i if i>=0 else data['shape'][category][parameter][group][layer][refindex][axis]+i)
-								if isinstance(i,(int,np.integer)) else
+								if isinstance(asscalar(i),(int,np.integer)) else
 								(int(data['shape'][category][parameter][group][layer][refindex][axis]*float(i)))) 
 								for i in data['slice'][category][parameter][group][layer][refindex][axis] 
 								if i in set([
@@ -1051,7 +1052,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 									*to_list(data['constants'][category][parameter][group][layer][ax]['slice'])])) > 0
 								for ax in range(0,data['ndim'][category][parameter][group][layer])))) else								
 							[((i if i>=0 else data['shape'][category][parameter][group][layer][refindex][axis]+i)
-							if isinstance(i,(int,np.integer)) else
+							if isinstance(asscalar(i),(int,np.integer)) else
 							(int(data['shape'][category][parameter][group][layer][refindex][axis]*float(i)))) for i in set([
 								*to_list(data['boundaries'][category][parameter][group][layer][axis]['slice']),
 								*to_list(data['constants'][category][parameter][group][layer][axis]['slice'])])])
@@ -1087,7 +1088,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 									*to_list(data['constants'][category][parameter][group][layer][ax]['slice'])])) > 0
 								for ax in range(0,data['ndim'][category][parameter][group][layer])))) else							
 							([((i if i>=0 else data['shape'][category][parameter][group][layer][refindex][axis]+i)
-								if isinstance(i,(int,np.integer)) else
+								if isinstance(asscalar(i),(int,np.integer)) else
 								(int(data['shape'][category][parameter][group][layer][refindex][axis]*float(i))))
 								for i in range(*data['slice'][category][parameter][group][layer][refindex][axis].indices(
 								data['shape'][category][parameter][group][layer][refindex][axis])) 
@@ -1097,7 +1098,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 									])]								
 							if isinstance(data['slice'][category][parameter][group][layer][refindex][axis],slice) else
 							[((i if i>=0 else data['shape'][category][parameter][group][layer][refindex][axis]+i)
-								if isinstance(i,(int,np.integer)) else
+								if isinstance(asscalar(i),(int,np.integer)) else
 								(int(data['shape'][category][parameter][group][layer][refindex][axis]*float(i)))) 
 								for i in data['slice'][category][parameter][group][layer][refindex][axis] 
 								if i in set([
@@ -1354,7 +1355,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 									*to_list(data['constants'][category][parameter][group][layer][ax]['slice'])])) > 0
 								for ax in range(0,data['ndim'][category][parameter][group][layer])))) else								
 							[((i if i>=0 else data['shape'][category][parameter][group][layer][refindex][axis]+i)
-							if isinstance(i,(int,np.integer)) else
+							if isinstance(asscalar(i),(int,np.integer)) else
 							(int(data['shape'][category][parameter][group][layer][refindex][axis]*float(i)))) for i in set([
 								*to_list(data['boundaries'][category][parameter][group][layer][axis]['slice']),
 								*to_list(data['constants'][category][parameter][group][layer][axis]['slice'])])])
@@ -1390,7 +1391,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 									*to_list(data['constants'][category][parameter][group][layer][ax]['slice'])])) > 0
 								for ax in range(0,data['ndim'][category][parameter][group][layer])))) else							
 							([((i if i>=0 else data['shape'][category][parameter][group][layer][refindex][axis]+i)
-								if isinstance(i,(int,np.integer)) else
+								if isinstance(asscalar(i),(int,np.integer)) else
 								(int(data['shape'][category][parameter][group][layer][refindex][axis]*float(i))))
 								for i in range(*data['slice'][category][parameter][group][layer][refindex][axis].indices(
 								data['shape'][category][parameter][group][layer][refindex][axis])) 
@@ -1400,7 +1401,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 									])]								
 							if isinstance(data['slice'][category][parameter][group][layer][refindex][axis],slice) else
 							[((i if i>=0 else data['shape'][category][parameter][group][layer][refindex][axis]+i)
-								if isinstance(i,(int,np.integer)) else
+								if isinstance(asscalar(i),(int,np.integer)) else
 								(int(data['shape'][category][parameter][group][layer][refindex][axis]*float(i)))) 
 								for i in data['slice'][category][parameter][group][layer][refindex][axis] 
 								if i in set([

@@ -935,7 +935,6 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	Returns:
 		results (iterable[str]): Return of commands for each task
 	'''
-
 	keys = [None]
 
 	if isinstance(jobs,str):

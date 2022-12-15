@@ -1294,12 +1294,12 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 						combination = dict(combination)
 
 						sorting = realsorted(set([
-							tuple((subcombination[k] for k,v in zip(key['label']['key'],key['label']['value'])
+							tuple((subcombination.get(k) for k,v in zip(key['label']['key'],key['label']['value'])
 								if ((k in hyperparameters.get('sort',[])) and 
 									(not isinstance(v,str) or 
 									((not v.startswith('@')) and (not v.endswith('@')))))))
 							for subcombination in subcombinations]))
-						sorteds = dict(((k,combination[k]) for k,v in zip(key['label']['key'],key['label']['value'])
+						sorteds = dict(((k,combination.get(k)) for k,v in zip(key['label']['key'],key['label']['value'])
 								if ((k in hyperparameters.get('sort',[])) and (
 									(not isinstance(v,str) or 
 									((not v.startswith('@')) and (not v.endswith('@'))))))))
@@ -1340,12 +1340,11 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 								continue
 
 							if stat not in [('fit','fit')]:
-								value = [elements[k] for k in elements if lengths[k]>1]
+								value = [elements[k] for k in elements if lengths[k]>1 or hyperparameters.get('kwargs',{}).get('labels')]
 								value = [texify(scinotation(k,decimals=0,scilimits=[0,3],one=False)) for k in value]
 								value = [*value,*[texify(str(combination.get(v.replace('@',''),v)) if v is not None else k) for k,v in zip(key['label']['key'],key['label']['value']) if k not in hyperparameters.get('sort',[])]]
 								value = [v for v in value if v is not None and len(v)>0]
 								value = ',~'.join(value) if len(value)>0 else None
-
 							else:
 								value = None
 
@@ -1391,7 +1390,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 							continue
 						for kwarg in kwargs:
 							value = [
-								[(k,) for k in sorteds if lengths[k]>1],
+								[(k,) for k in sorteds if lengths[k]>1 or hyperparameters.get('kwargs',{}).get('labels')],
 								]
 							value = [
 								[[texify(l) for l in k if l is not None and len(l)>0] if not isinstance(k,str) else texify(k) 
