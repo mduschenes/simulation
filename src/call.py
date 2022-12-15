@@ -897,6 +897,7 @@ def init(key,
 
 		msg = 'Job %s'%(key)
 		logger.log(verbose,msg)
+		print(msg)
 
 		return task
 

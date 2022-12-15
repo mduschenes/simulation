@@ -804,7 +804,10 @@ class Object(object):
 			self.log(msg)
 
 
-			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1).round(3))
+			# print(parameters.reshape(-1,self.M))
+			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1))
+
+
 		if (((not status) or done or start) or
 			(len(attributes['iteration']) == 0) or 
 			(optimize['modulo']['dump'] is None) or 

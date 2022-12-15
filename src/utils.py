@@ -50,7 +50,7 @@ configs = {
 for name in configs:
 	jax.config.update(name,configs[name])
 
-np.set_printoptions(linewidth=1000)#,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',dbl,np.float32]}})
+np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 
 # Logging
