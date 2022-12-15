@@ -112,13 +112,13 @@ class LineSearchBase(object):
 		
 		returns = dict(zip(self.returns,returns))
 
-		if returns['alpha'] is None:
+		attr = 'alpha'
+		if returns[attr] is None or (returns[attr] < self.hyperparameters['eps'][attr]):
 			if len(alpha) > 1:
-				returns['alpha'] = abs(alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2]))
+				returns[attr] = alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2])
 			else:
-				returns['alpha'] = abs(alpha[-1])
-		else:
-			returns['alpha'] = abs(returns['alpha'])
+				returns[attr] = alpha[-1]
+		
 		return returns
 
 class LineSearch(LineSearchBase):

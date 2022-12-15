@@ -27,25 +27,21 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":5,
+	"size":1,
 	"reset":5576,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[2],
-		"model.M":[4,20,100],
-		"noise.scale":[1e-10,1e-5,1e-3],
-		"state.scale":[1],
-
-		"model.M":[10,20,50,100,1000],		
-		"model.tau":[100e0],		
+		"model.N":[4],		
+		"model.M":[300],		
+		"model.tau":[50e0],		
 		"noise.scale":[null],
 		"state.scale":[null],
 		"state.shape":[[1,1,-1,-1]],
 
-		"model.metric":["infidelity.vec"],
+		"model.metric":["infidelity.norm"],
 		"model.metric":["infidelity.abs"],
 		"optimize.iterations":[1000],
 		"optimize.optimizer":["cg"],
@@ -101,7 +97,7 @@
 	"iterations":50,
 	"optimizer":"cg",
 	"line_search":"line_search",
-	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-20,"alpha":1e-20,"beta":1e3},
+	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-20,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
 	"status":1,
 	"reset":0,

@@ -897,7 +897,6 @@ def init(key,
 
 		msg = 'Job %s'%(key)
 		logger.log(verbose,msg)
-		print(msg)
 
 		return task
 
@@ -935,7 +934,6 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	Returns:
 		results (iterable[str]): Return of commands for each task
 	'''
-
 	keys = [None]
 
 	if isinstance(jobs,str):

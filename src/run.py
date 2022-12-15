@@ -155,6 +155,7 @@ def setup(settings):
 		if any(len(values[k])>1 for k in values) else default)
 
 	keys = {}
+
 	for instance,value in enumerate(value for value in itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
 
 		if allowed(
@@ -165,7 +166,6 @@ def setup(settings):
 
 			key = formatter(instance,value,values,getter(hyperparameters,'model.system.key',delimiter=delim))
 			value = [v[1] for v in value]
-
 			keys[key] = {}
 			for setting in value:
 				for attr in setting:
@@ -242,6 +242,7 @@ def setup(settings):
 				elif name in ['postprocess']:
 					jobs[name][attr] = value
 
+	
 	return jobs
 
 
