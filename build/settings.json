@@ -35,7 +35,7 @@
 	"permutations":{	
 	
 		"model.N":[4],		
-		"model.M":[1000],		
+		"model.M":[500],		
 		"model.tau":[20e0],		
 		"noise.scale":[null],
 		"state.scale":[1],
@@ -97,13 +97,13 @@
 	"iterations":50,
 	"optimizer":"cg",
 	"line_search":"line_search",
-	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-20,"alpha":1e-7,"beta":1e3},
+	"eps":{"value":1e-20,"grad":1e-12,"difference":1e-20,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
 	"status":1,
 	"reset":0,
-	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
+	"c1":0.0001,"c2":0.9,"maxiter":1500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":100},
+	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":10},
 	"length":{"log":null,"attributes":10,"track":null,"callback":null,"restart":null,"dump":null},
 	"attributes":{
 		"iteration":[],"parameters":[],
@@ -284,6 +284,6 @@
 		"verbose":"info"
 		}
 	},
-"process": {"labels":["noise.scale"]},
+"process": {"labels":["noise.scale","optimize.c1","optimize.c2"]},
 "plot": {}
 }

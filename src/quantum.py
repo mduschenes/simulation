@@ -722,15 +722,16 @@ class Object(object):
 		
 		status = (
 			(abs(attributes['value'][-1]) > 
-				optimize['eps']['value']*optimize['value']['value']) and
-			((len(attributes['value'])==1) or
-			((len(attributes['value'])>1) and 
+				(optimize['eps']['value']*optimize['value']['value'])) and
+			((len(attributes['value'])==1) or 
+			 ((len(attributes['value'])>1) and 
 			 (abs(attributes['value'][-1] - attributes['value'][-2]) > 
-				optimize['eps']['difference']*optimize['value']['value']))) and
-			(norm(attributes['grad'][-1] - optimize['value']['grad'])/attributes['grad'][-1].size > 
-				  optimize['eps']['grad'])
+				(optimize['eps']['difference']*attributes['value'][-2])))) and
+			((len(attributes['value'])==1) or 			
+			 ((len(attributes['grad'])>1) and
+			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
+				  (optimize['eps']['grad']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))))
 			)
-		
 
 		default = nan
 
