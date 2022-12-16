@@ -19,3 +19,5 @@ examples/nmr_decomposition
 tmp
 **/build/test
 examples/**
+build/new
+build/plots
