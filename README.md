@@ -6,7 +6,7 @@ Pre-processing, hyperparameter searches, and inter-dependent, parallelized job s
 # Install
 After cloning the repository, under `setup`, please run 
 ```sh
-	. setup.sh <env>
+. setup.sh <env>
 ```
 which installs a Python environment with name `env` with all necessary packages, including JAX.
 
@@ -23,14 +23,14 @@ To configure jobs scripts, plot and processing settings, that follow the matplot
 # Run
 Under `build`, please run 
 ```sh
-	python main.py settings.json 
+python main.py settings.json 
 ```
 to run all model configurations, either in serial, (GNU) parallel, or with interdependent job arrays on an HPC cluster.
 
 # Plot
 Plotting and post-processing can be performed, with plot and processing files, and with saving figures to an output directory. Under `build`, please run
 ```sh
-	python processor.py <path/to/data> <path/to/plot.json> <path/to/process.json> <path/to/plots>
+python processor.py <path/to/data> <path/to/plot.json> <path/to/process.json> <path/to/plots>
 ```
 An example plot for optimization convergence is
 <!-- <object data="https://github.com/mduschenes/simulation/blob/master/plot.pdf" type="application/pdf" width="700px" height="700px">
