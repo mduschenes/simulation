@@ -11,7 +11,14 @@ After cloning the repository, under `setup`, please run
 which installs a Python environment with name `env` with all necessary packages, including JAX.
 
 # Setup
-Under `build`, please modify the `settings.json` file, with all model parameters, hyperparameter combinations, job settings, and plot settings. To configure plot and processing settings, for example `plot.json` (which follows the matplotlib API) and `process.json` (processing settings), please modify the files under `config`.
+Under `build`, please modify the `settings.json` file, with all model parameters, hyperparameter combinations, job settings, and plot settings. 
+
+To configure jobs scripts, plot and processing settings, that follow the matplotlib API, please modify the files under `config`. 
+- `job.slurm` : job script
+- `logging.conf` : logger configuration
+- `process.json` : data analysis settings 
+- `plot.json` : plots axes and figures 
+- `plot.mplstyle` : matplotlib style
 
 # Run
 Under `build`, please run 
