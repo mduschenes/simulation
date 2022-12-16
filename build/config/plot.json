@@ -12,7 +12,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":["N","architecture","M","noise.scale","optimize.c1","optimize.c2"],
+			"label":["N","architecture","M","tau","noise.scale","optimize.c1","optimize.c2"],
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -28,7 +28,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":["N","architecture","M","noise.scale","optimize.c1","optimize.c2"],
+			"label":["N","architecture","M","tau","noise.scale","optimize.c1","optimize.c2"],
 			"alpha":0.5,			
 			"color":"viridis"
 			}						

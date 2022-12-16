@@ -1,10 +1,4 @@
 #!/bin/bash
-
-a=$1
-b=$2
-c=$3
-
-echo $#
-echo $a
-echo $b
-echo $c
+export SLURM_VAR=10
+export SLURM_FOO=HIIII
+./job.slurm . mkl ~/files/uw/research/code/simulation/code/src train.py 1 settings.json
