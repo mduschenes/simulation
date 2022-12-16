@@ -18,3 +18,4 @@ examples/nmr_decomposition
 **/gobi
 tmp
 **/build/test
+examples/**

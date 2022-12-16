@@ -9,7 +9,7 @@ After cloning the repository, under `setup`, please run
 which installs a Python environment with name `env` with all necessary packages, including JAX.
 
 # Setup
-Under `build`, please modify the `settings.json` file, with all model parameters, hyperparameter combinations, job settings, and plot settings.
+Under `build`, please modify the `settings.json` file, with all model parameters, hyperparameter combinations, job settings, and plot settings. To configure plot and processing settings, for example `plot.json` (which follows the matplotlib API) and `process.json` (processing settings), please modify the files under `config`.
 
 # Run
 Under `build`, please run 
@@ -17,3 +17,15 @@ Under `build`, please run
 	python main.py settings.json 
 ```
 to run all model configurations, either in serial, (GNU) parallel, or with interdependent job arrays on an HPC cluster.
+
+# Plot
+Plotting and post-processing can be performed, with plot and processing files, and with saving figures to an output directory. Under `build`, please run
+```sh
+	python processor.py <path/to/data> <path/to/plot.json> <path/to/process.json> <path/to/plots>
+```
+An example plot for optimization convergence is
+<object data="https://github.com/mduschenes/simulation/blob/master/plot.pdf" type="application/pdf" width="700px" height="700px">
+    <embed src="https://github.com/mduschenes/simulation/blob/master/plot.pdf">
+        <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://github.com/mduschenes/simulation/blob/master/plot.pdf">Download PDF</a>.</p>
+    </embed>
+</object>
