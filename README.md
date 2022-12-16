@@ -26,8 +26,9 @@ Plotting and post-processing can be performed, with plot and processing files, a
 	python processor.py <path/to/data> <path/to/plot.json> <path/to/process.json> <path/to/plots>
 ```
 An example plot for optimization convergence is
-<object data="https://github.com/mduschenes/simulation/blob/master/plot.pdf" type="application/pdf" width="700px" height="700px">
+<!-- <object data="https://github.com/mduschenes/simulation/blob/master/plot.pdf" type="application/pdf" width="700px" height="700px">
     <embed src="https://github.com/mduschenes/simulation/blob/master/plot.pdf">
         <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://github.com/mduschenes/simulation/blob/master/plot.pdf">Download PDF</a>.</p>
     </embed>
-</object>
+</object> -->
+![alt text](https://github.com/mduschenes/simulation/blob/master/plot.jpg?raw=true))
