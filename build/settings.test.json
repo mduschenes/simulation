@@ -27,37 +27,53 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":10,
+	"size":5,
 	"reset":5576,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[2],
-		"model.M":[4,8,16,64],
-		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
-		"state.scale":[1],
-		"model.metric":["infidelity.norm"],
-		"optimize.iterations":[10],
-		"optimize.optimizer":["cg"],
-		"parameters.xy.method":["unconstrained"],
-		"model.system.architecture":["unconstrained"],
 
+		"model.N":[4],		
+		"model.M":[100,500,1000],		
+		"model.tau":[10e0,20e0,100e0],		
+		"noise.scale":[null,1e-10,1e-8,1e-6,1e-4,1e-1],		
+		"state.scale":[1],
+		"state.shape":[[1,1,-1,-1]],
+
+		"model.metric":["infidelity.abs"],
+		"model.metric":["infidelity.norm"],
+		"optimize.iterations":[500],
+		"optimize.optimizer":["cg"],
+		"optimize.c1":[1e-8,1e-4,1e-3],
+		"optimize.c2":[1e-1,5e-1,9e-1],
+		"parameters.xy.method":["constrained"],
+		"model.system.architecture":["constrained"],
 		"jobs.job.cwd":["test"],	
-		"jobs.postprocess.cwd":["test"],					
+		"jobs.postprocess.cwd":["test"],	
+
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[4],
+		"jobs.job.processes":[1],
+		"jobs.postprocess.processes":[1],
+		"jobs.job.pool":[64],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
+		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[2],		
-		"jobs.postprocess.args.JOB_PROCESSES":[1]
+		"jobs.job.args.JOB_PROCESSES":[8],		
+		"jobs.postprocess.args.JOB_PROCESSES":[1],
+		"jobs.job.patterns.time":["30:00:00"],
+		"jobs.postprocess.patterns.time":["30:00:00"],
+		"jobs.job.patterns.mem":["72GB"],
+		"jobs.postprocess.patterns.mem":["64GB"],
+		"jobs.job.patterns.cpus-per-task":[8],
+		"jobs.postprocess.patterns.cpus-per-task":[2]
 		},
 	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null
@@ -91,7 +107,7 @@
 	"iterations":50,
 	"optimizer":"cg",
 	"line_search":"line_search",
-	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-8,"alpha":1e-20,"beta":1e3},
+	"eps":{"value":1e-20,"grad":1e-12,"difference":1e-20,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
 	"status":1,
 	"reset":0,
@@ -129,11 +145,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-40,40],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-40,-40]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -278,6 +294,6 @@
 		"verbose":"info"
 		}
 	},
-"process": {"labels":["noise.scale"]},
+"process": {"labels":["noise.scale","optimize.c1","optimize.c2"]},
 "plot": {}
 }		
