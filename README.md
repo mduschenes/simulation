@@ -31,4 +31,4 @@ An example plot for optimization convergence is
         <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://github.com/mduschenes/simulation/blob/master/plot.pdf">Download PDF</a>.</p>
     </embed>
 </object> -->
-![alt text](https://github.com/mduschenes/simulation/blob/master/build/config/plot.jpg?raw=true))
+![alt text](https://github.com/mduschenes/simulation/blob/master/build/config/plot.jpg?raw=true)
