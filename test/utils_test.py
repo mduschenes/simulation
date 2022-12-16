@@ -22,7 +22,7 @@ from src.utils import norm,trace,inner_abs2
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmc,_expm
 from src.utils import gradient_expm
 
-from src.system import Metric
+from src.optimize import Metric
 
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):

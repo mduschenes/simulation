@@ -20,7 +20,7 @@ from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradien
 from src.utils import eig,qr,einsum
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,is_array,is_ndarray,isclose,is_naninf
-from src.utils import parse,to_str,to_number,scinotation,datatype,slice_size
+from src.utils import parse,to_string,to_number,scinotation,datatype,slice_size
 from src.utils import trotter
 from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
@@ -38,8 +38,6 @@ from src.plot import plot
 from src.optimize import Optimizer,Objective
 
 from src.quantum import Unitary,Hamiltonian,Object
-
-from src.main import main
 
 # Logging
 from src.system import Logger
@@ -299,10 +297,6 @@ def test_call():
 
 
 	# result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute,verbose=verbose)
-
-def test_main(path,tol):
-	# main([path])
-	return
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
