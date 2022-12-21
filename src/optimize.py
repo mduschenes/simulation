@@ -1099,7 +1099,7 @@ class ConjugateGradient(OptimizerBase):
 
 		state = self.opt_init(parameters)
 
-		_value,_grad,parameters = self.opt_step(iteration+1,state)
+		_value,_grad,parameters = self.opt_step(iteration,state)
 
 		# beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
 		# beta = max(0,(_grad.dot(_grad-grad))/grad.dot(grad)) # Polak-Ribiere
