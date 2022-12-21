@@ -741,32 +741,285 @@ class Object(object):
 			(attributes['iteration'][-1]%optimize['modulo']['track'] == 0)
 			):	
 
+			for attr in self.__dict__
+				if ((not callable(getattr(self,attr))) and
+					(getattr(self,attr) is None or isinstance(getattr(self,attr),scalars))):
+					_attr = attr
+					_value = getattr(self,attr)
+					optimize['track'][_attr].append(_value)
+
+			for attr in optimize['track']:
+				if attr not in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
+					_attr = attr
+					_value = getter(self.hyperparameters,attr.split(delim)) 
+					optimize['track'][_attr].append(_value)
+
+
+			# TODO: Ensure all attributes are assigned value, either _value or default for all iterations
 			for attr in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
 
-				if attr in optimize['track']:
+				if ((optimize['length']['track'] is not None) and 
+					(len(optimize['track'][attr]) > optimize['length']['track'])
+					):
+					_value = optimize['track'][attr].pop(0)
 
-					if ((optimize['length']['track'] is not None) and 
-						(len(optimize['track'][attr]) > optimize['length']['track'])
-						):
-						optimize['track'][attr].pop(0)
+				if attr in ['iteration','value','grad','search','alpha','beta'] and attr in attributes:
+					_attr = attr
+					if _attr in optimize['track']:
+						_value = attributes[attr][-1]
+						optimize['track'][_attr].append(_value)
 
-					if attr in ['iteration','value','grad','search','alpha','beta'] and attr in attributes:
-						optimize['track'][attr].append(attributes[attr][-1])
+				value = optimize['track'][attr][-1]
 
-					elif attr in ['parameters'] and ((not status) or done or start):
-						optimize['track'][attr].append(parameters)
-					
-					elif attr in ['objective']:
-						optimize['track'][attr].append(
-							getattr(self,'__%s__'%(attr))(parameters)
-							)
-					
-					elif attr in ['hessian','fisher'] and ((not status) or done):
-						optimize['track'][attr].append(
-							getattr(self,'__%s__'%(attr))(parameters)
-							)
+				if attr in ['iteration']:
+
+					if ((not status) or done):
+						_attr = '%s.max'%(attr)
+						if _attr in optimize['track']:
+							_value = value
+							optimize['track'][_attr].append(_value)
+
+						_attr = '%s.min'%(attr)
+						if _attr in optimize['track']:
+							_value = optimize['track'][attr][argmin(array(optimize['track']['objective']))]
+							optimize['track'][_attr].append(_value)
 					else:
-						optimize['track'][attr].append(default)
+
+				elif attr in ['parameters'] and ((not status) or done or start):
+		
+					_attr = attr
+					if _attr in optimize['track']:
+						_value = value
+						optimize['track'][_attr].append(_value)
+
+					_attr = 'features'
+					if _attr in optimize['track']:
+
+						layer = 'features'
+						attrs = self.attributes
+						indices = tuple([(
+							slice(
+							min(attrs['index'][layer][parameter][group][axis].start
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]),
+							max(attrs['index'][layer][parameter][group][axis].stop
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]),
+							min(attrs['index'][layer][parameter][group][axis].step
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]))
+							if all(isinstance(attrs['index'][layer][parameter][group][axis],slice)
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]) else
+							list(set(i 
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter] 
+								for i in attrs['index'][layer][parameter][group][axis]))
+							)
+								for axis in range(min(len(attrs['index'][layer][parameter][group]) 
+												for parameter in attrs['index'][layer] 
+												for group in attrs['index'][layer][parameter]))
+							])
+
+						_value = self.__layers__(value,layer)[indices]
+						optimize['track'][_attr].append(_value)
+
+
+					_attr = '%s.relative'%(attr)
+					if _attr in optimize['track']:
+
+						layer = 'features'
+						attrs = self.attributes
+						indices = tuple([(
+							slice(
+							min(attrs['index'][layer][parameter][group][axis].start
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]),
+							max(attrs['index'][layer][parameter][group][axis].stop
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]),
+							min(attrs['index'][layer][parameter][group][axis].step
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]))
+							if all(isinstance(attrs['index'][layer][parameter][group][axis],slice)
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]) else
+							list(set(i 
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter] 
+								for i in attrs['index'][layer][parameter][group][axis]))
+							)
+								for axis in range(min(len(attrs['index'][layer][parameter][group]) 
+												for parameter in attrs['index'][layer] 
+												for group in attrs['index'][layer][parameter]))
+							])
+
+						_value = abs((self.__layers__(parameters,layer)[indices] - 
+							self.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)/(
+							self.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20))
+
+						optimize['track'][_attr].append(_value)
+
+					_attr = '%s.relative.mean'%(attr)
+					if _attr in optimize['track']:
+
+						layer = 'features'
+						attrs = self.attributes
+						indices = tuple([(
+							slice(
+							min(attrs['index'][layer][parameter][group][axis].start
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]),
+							max(attrs['index'][layer][parameter][group][axis].stop
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]),
+							min(attrs['index'][layer][parameter][group][axis].step
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]))
+							if all(isinstance(attrs['index'][layer][parameter][group][axis],slice)
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter]) else
+							list(set(i 
+								for parameter in attrs['index'][layer] 
+								for group in attrs['index'][layer][parameter] 
+								for i in attrs['index'][layer][parameter][group][axis]))
+							)
+								for axis in range(min(len(attrs['index'][layer][parameter][group]) 
+												for parameter in attrs['index'][layer] 
+												for group in attrs['index'][layer][parameter]))
+							])
+
+						_value = abs((self.__layers__(parameters,layer)[indices] - 
+							self.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)/(
+							self.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)).mean(-1)
+
+						optimize['track'][_attr].append(_value)
+
+
+
+				elif attr in ['objective']:
+
+					_attr = attr
+					if _attr in optimize['track']:
+						_value = getattr(self,'__%s__'%(attr))(parameters)
+						optimize['track'][_attr].append(_value)
+
+					if self.state is None:
+
+						data = None
+						shape = self.dims
+						hyperparams = deepcopy(self.hyperparameters['state'])
+						hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
+						size = self.N
+						samples = True
+						seed = self.seed		
+						dtype = self.dtype
+						cls = self
+
+						state = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+
+					else:
+						state = self.state
+
+					if self.noise is None:
+
+						data = None
+						shape = self.dims
+						hyperparams = deepcopy(self.hyperparameters['noise'])
+						hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
+						size = self.N
+						samples = None
+						seed = self.seed		
+						cls = self
+						dtype = self.dtype
+
+						noise = noiseize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+
+					else:
+						noise = self.noise
+
+					self.__functions__(state=state,noise=noise,label=True,metric='infidelity.norm')
+
+					_attr = 'objective.ideal.noise'
+					if _attr in optimize['track']:
+						_value = self.__objective__(value)
+						optimize['track'][_attr].append(_value)
+
+					_attr = 'objective.diff.noise'
+					if _attr in optimize['track']:
+						_value = abs(optimize['track']['objective'][-1] - self.__objective__(value))
+						optimize['track'][_attr].append(_value)
+
+					_attr = 'objective.rel.noise'
+					if _attr in optimize['track']:
+						_value = abs((optimize['track']['objective'][-1] - self.__objective__(value))/optimize['track']['objective'][-1])
+						optimize['track'][_attr].append(_value)
+
+
+					self.__functions__(state=state,noise=False,label=True,metric='infidelity.norm')
+
+					_attr = 'objective.ideal.state'
+					if _attr in optimize['track']:
+						_value = self.__objective__(value)
+						optimize['track'][_attr].append(_value)
+
+					_attr = 'objective.diff.state'
+					if _attr in optimize['track']:
+						_value = abs(optimize['track']['objective'][-1] - self.__objective__(value))
+						optimize['track'][_attr].append(_value)
+
+					_attr = 'objective.rel.state'
+					if _attr in optimize['track']:
+						_value = abs((optimize['track']['objective'][-1] - self.__objective__(value))/optimize['track']['objective'][-1])
+						optimize['track'][_attr].append(_value)
+
+
+					self.__functions__(state=False,noise=False,label=True,metric='infidelity.abs')
+
+					_attr = 'objective.ideal.operator'
+					if _attr in optimize['track']:
+						_value = self.__objective__(value)
+						optimize['track'][_attr].append(_value)
+
+					_attr = 'objective.diff.operator'
+					if _attr in optimize['track']:
+						_value = abs(optimize['track']['objective'][-1] - self.__objective__(value))
+						optimize['track'][_attr].append(_value)
+
+					_attr = 'objective.rel.operator'
+					if _attr in optimize['track']:
+						_value = abs((optimize['track']['objective'][-1] - self.__objective__(value))/optimize['track']['objective'][-1])
+						optimize['track'][_attr].append(_value)
+				
+	
+				
+				elif attr in ['hessian','fisher'] and ((not status) or done):
+
+					_attr = attr
+					if _attr in optimize['track']:
+						_value = getattr(self,'__%s__'%(attr))(parameters)
+						_value = abs((optimize['track']['objective'][-1] - self.__objective__(value))/optimize['track']['objective'][-1])
+						optimize['track'][_attr].append(_value)
+
+
+					optimize['track'][attr].append(
+						getattr(self,'__%s__'%(attr))(parameters)
+						)
+
+					new = '%s.eigenvalues'%(attr)						
+					New  = sort(abs(eig(parameters,compute_v=False,hermitian=True)))[::-1]
+					New = New/max(1,maximum(New))
+					# _New = int((argmax(abs(difference(New)/New[:-1]))+1)*1.5)
+					# New = New[:_New]
+					returns[new] = New
+
+					new = '%s.rank'%(attr)
+					New = argmax(abs(difference(New)/New[:-1]))+1						
+					returns[new] = New
+
+
+				else:
+					optimize['track'][attr].append(default)
 
 
 
@@ -993,199 +1246,9 @@ class Object(object):
 
 		# TODO: Transfer model dumping/loading (checkpointing) to Optimizer/Objective class
 
-		# Process attribute values
-		def func(attr,value,obj):
-			'''
-			Process attribute values
-			Args:
-				attr (str): Attribute to process
-				value (object): Values to process
-				obj (object): Class instance to process
-			Returns:
-				returns (dict): Processed values
-			'''
-
-			hyperparameters = obj.hyperparameters
-			attributes = obj.attributes
-			optimize = obj.hyperparameters['optimize']
-
-			returns = {}
-
-			if attr in optimize['track']:
-				new = attr
-				New = value[attr]			
-				returns[new] = New
-			else:
-				new = attr
-				New = value[attr]
-				returns[new] = New
-
-
-			if attr in optimize['track']:
-
-				if attr in ['parameters']:
-					
-					layer = 'features'
-					indices = tuple([(
-						slice(
-						min(attributes['index'][layer][parameter][group][axis].start
-							for parameter in attributes['index'][layer] 
-							for group in attributes['index'][layer][parameter]),
-						max(attributes['index'][layer][parameter][group][axis].stop
-							for parameter in attributes['index'][layer] 
-							for group in attributes['index'][layer][parameter]),
-						min(attributes['index'][layer][parameter][group][axis].step
-							for parameter in attributes['index'][layer] 
-							for group in attributes['index'][layer][parameter]))
-						if all(isinstance(attributes['index'][layer][parameter][group][axis],slice)
-							for parameter in attributes['index'][layer] 
-							for group in attributes['index'][layer][parameter]) else
-						list(set(i 
-							for parameter in attributes['index'][layer] 
-							for group in attributes['index'][layer][parameter] 
-							for i in attributes['index'][layer][parameter][group][axis]))
-						)
-						for axis in range(min(len(attributes['index'][layer][parameter][group]) 
-											for parameter in attributes['index'][layer] 
-											for group in attributes['index'][layer][parameter]))
-						])
-
-					if is_array(value[attr]) and (self.noise is not None) and all(len(shape)>1 for shape in self.shapes):
-
-						new = '%s.relative'%(attr)
-						New = abs((obj.__layers__(value[attr],layer)[indices] - 
-							obj.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)/(
-							obj.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20))
-						returns[new] = New
-
-						new = '%s.relative.mean'%(attr)
-						New = New.mean(-1)
-						returns[new] = New				
-
-						new = attr
-						New = obj.__layers__(value[attr],layer)[indices]
-
-						returns[new] = New
-
-
-						if obj.state is None:
-
-							data = None
-							shape = obj.dims
-							hyperparams = deepcopy(obj.hyperparameters['state'])
-							hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
-							size = obj.N
-							samples = True
-							seed = obj.seed		
-							dtype = obj.dtype
-							cls = obj
-
-							state = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-
-						else:
-							state = obj.state
-
-						if obj.noise is None:
-
-							data = None
-							shape = obj.dims
-							hyperparams = deepcopy(obj.hyperparameters['noise'])
-							hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
-							size = obj.N
-							samples = None
-							seed = obj.seed		
-							cls = obj
-							dtype = obj.dtype
-
-							noise = noiseize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-
-						else:
-							noise = obj.noise
-
-						obj.__functions__(state=state,noise=noise,label=True,metric='infidelity.norm')
-
-						new = 'objective.ideal.noise'
-						New = obj.__objective__(value[attr])
-						returns[new] = New
-
-						new = 'objective.diff.noise'
-						New = abs(value['objective'] - New)
-						returns[new] = New
-
-						new = 'objective.rel.noise'
-						New = abs((value['objective'] - New)/max(1,New))
-						returns[new] = New	
-
-
-						obj.__functions__(state=state,noise=False,label=True,metric='infidelity.norm')
-
-						new = 'objective.ideal.state'
-						New = obj.__objective__(value[attr])
-						returns[new] = New
-
-						new = 'objective.diff.state'
-						New = abs(value['objective'] - New)
-						returns[new] = New
-
-						new = 'objective.rel.state'
-						New = abs((value['objective'] - New)/max(1,New))
-						returns[new] = New					
-
-
-						obj.__functions__(state=False,noise=False,label=True,metric='infidelity.abs')
-
-						new = 'objective.ideal.operator'
-						New = obj.__objective__(value[attr])
-						returns[new] = New
-
-						new = 'objective.diff.operator'
-						New = abs(value['objective'] - New)
-						returns[new] = New
-
-						new = 'objective.rel.operator'
-						New = abs((value['objective'] - New)/max(1,New))
-						returns[new] = New					
-
-
-						obj.__functions__(state=True,noise=True,label=True,metric=True)
-
-
-				elif attr in ['iteration']:
-					new = '%s.max'%(attr)
-					New = optimize['track'][attr][-1]
-					returns[new] = New
-
-					new = '%s.min'%(attr)
-					New = optimize['track'][attr][argmin(array(optimize['track']['objective']))]
-					returns[new] = New
-
-					new = 'status'
-					New = value[attr]/max(1,optimize['track'][attr][-1])
-
-					returns[new] = New
-
-				elif attr in ['objective']:
-					pass
-
-				elif attr in ['hessian','fisher']:
-					if is_array(value[attr]):
-						new = '%s.eigenvalues'%(attr)						
-						New  = sort(abs(eig(value[attr],compute_v=False,hermitian=True)))[::-1]
-						New = New/max(1,maximum(New))
-						# _New = int((argmax(abs(difference(New)/New[:-1]))+1)*1.5)
-						# New = New[:_New]
-						returns[new] = New
-
-						new = '%s.rank'%(attr)
-						New = argmax(abs(difference(New)/New[:-1]))+1						
-						returns[new] = New
-
-
-			return returns
-
 		# Get data
 		optimize = self.hyperparameters['optimize']
-		label = [self.timestamp]
+		labels = [self.timestamp]
 		keys = [self.key]
 		iterations = {
 			key: range(min(len(optimize['track'][attr]) 
@@ -1195,41 +1258,15 @@ class Object(object):
 			for key in keys
 			}
 
-		data = {
-			delim.join([*(str(l) for l in label),str(key),str(iteration)]): {
-				**{attr: optimize['track'][attr][iteration]
-					for attr in optimize['track']
-					if len(optimize['track'][attr]) > 0
-				},	
-				**{attr: getattr(self,attr)
-					for attr in self.__dict__
-					if (
-						(not callable(getattr(self,attr))) and
-						(getattr(self,attr) is None or isinstance(getattr(self,attr),scalars)) and
-						attr not in optimize['track']
-						)
-					},
-				**{attr: getter(self.hyperparameters,attr.split(delim)) 
-					for attr in self.hyperparameters.get('process',{}).get('labels',[])
-					},
-				}
-			for key in keys
-			for iteration in iterations[key]
-		}
-
-		# Process data
-		# data have axis of ('sample,model',*'value-shape','iterations') 
-		# and must be transposed with func such that optimization tracked data has iterations as -1 axis
-		for key in list(data):
-			for attr in list(data[key]):			
-				data[key].update(func(attr,data[key],self))
-		
-		# Ensure all keys have all attribute
-		attrs = list(set((attr for key in data for attr in data[key])))
-		for key in data:
-			for attr in attrs:
-				if attr not in data[key]:
-					data[key][attr] = nan
+		data = {}
+		for key in keys:
+			for iteration in iterations[key]:
+				
+				label = delim.join([*(str(l) for l in labels),str(key),str(iteration)])
+				
+				value = {attr: optimize['track'][attr][iteration] for attr in optimize['track']}
+				
+				data[label] = value
 
 		# Set data
 		data = {
