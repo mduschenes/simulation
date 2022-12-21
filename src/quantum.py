@@ -1010,7 +1010,6 @@ class Object(object):
 				else:
 					track[attr].append(default)
 
-
 		if ((len(attributes['iteration']) == 0) or 
 			(hyperparameters['modulo']['log'] is None) or 
 			(attributes['iteration'][-1]%hyperparameters['modulo']['log'] == 0)
