@@ -22,8 +22,7 @@
 "boolean":{
 	"train":1,
 	"load":0,
-	"dump":0,
-	"plot":0
+	"dump":0
 	},
 "seed":{
 	"seed":5576,

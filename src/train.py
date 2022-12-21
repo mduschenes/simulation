@@ -17,17 +17,18 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,allclose
 from src.io import load
+from src.dictionary import resetter
 from src.optimize import Optimizer
 
 
-
-def train(hyperparameters):
+def setup(hyperparameters)
 	'''
-	Train object
+	Setup hyperparameters
 	Args:
 		hyperparameters (dict,str): hyperparameters
+	Returns:
+		hyperparameters (dict): hyperparameters
 	'''
-
 
 	# Check hyperparameters
 	default = {}
@@ -36,11 +37,28 @@ def train(hyperparameters):
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters,default=default)
 
-	if hyperparameters == default:
+	updates = {
+		'optimize.path': 'sys.path.data.data',
+	}
+
+	resetter(hyperparameters,updates)
+
+	return hyperparameters
+
+def train(hyperparameters):
+	'''
+	Train object
+	Args:
+		hyperparameters (dict,str): hyperparameters
+	'''
+
+	hyperparameters = setup(hyperparameters)
+
+	if not hyperparameters:
 		obj = None
 		return obj
 
-	if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train','plot']):
+	if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train']):
 		obj = None
 		return obj
 
@@ -54,7 +72,7 @@ def train(hyperparameters):
 	if hyperparameters['boolean'].get('train'):
 
 		parameters = obj.parameters
-		hyperparams = obj.hyperparameters['optimize']
+		hyperparams = hyperparameters['optimize']
 
 		func = obj.__func__
 		callback = obj.__callback__
@@ -66,9 +84,6 @@ def train(hyperparameters):
 	if hyperparameters['boolean'].get('dump'):	
 		obj.dump()
 	
-	if hyperparameters['boolean'].get('plot'):
-		obj.plot()
-
 	return obj
 
 

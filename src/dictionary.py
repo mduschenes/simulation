@@ -121,6 +121,72 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=True):
 
 	return
 
+
+def resetter(iterable,elements,delimiter=False,copy=False,reset=True):
+	'''
+	Set nested value in iterable with nested elements keys
+
+	Args:
+		iterable (dict): dictionary to be set in-place with value
+		elements (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values of strings in iterable
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
+	'''
+
+	assert isinstance(iterable,dict), "Error - iterable is not dictionary"
+	assert isinstance(elements,dict), "Error - elements is not dictionary"
+
+	for element in elements:
+	
+
+		# Get iterable, and index of tuple of nested element key
+		i = iterable
+		e = 0
+
+		# Convert string instance of elements to list, splitting string based on delimiter delimiter
+		# Get copy of value in elements		
+		if isinstance(element,str) and delimiter:
+			value = copier(element,getter(iterable,elements[element],delimiter=delimiter),copy)
+			element = tuple(element.split(delimiter))
+		elif not isinstance(element,str):
+			value = copier(element,getter(iterable,elements[element],delimiter=delimiter),copy)
+			element = tuple(element)
+		else:
+			value = copier(element,elements[element],copy)
+			element = element
+
+
+		# Boolean whether element is a tuple, otherwise is object that is explicit key in dictionary
+		istuple = isinstance(element,tuple)
+
+		# Update iterable with elements 
+		if not istuple:
+			# elements is object and iterable is to be updated at first level of nesting
+			isdict = not reset and isinstance(i.get(element),dict) and isinstance(value,dict)
+			if isdict:
+				i[element].update(value)
+			else:
+				i[element] = value
+		else:
+			# elements is list of nested keys and the nested values are to be extracted from iterable and set with value
+			try:
+				while e<len(element)-1:
+					if i.get(element[e]) is None:
+						i[element[e]] = {}
+					i = i[element[e]]
+					e+=1
+				isdict = not reset and isinstance(i.get(element[e]),dict) and isinstance(value,dict)
+				if isdict:
+					i[element[e]].update(value)
+				else:
+					i[element[e]] = value
+			except:
+				pass
+
+	return
+
+
 def getter(iterable,elements,default=None,delimiter=False,copy=False):
 	'''
 	Get nested value in iterable with nested elements keys

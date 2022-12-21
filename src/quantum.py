@@ -63,11 +63,7 @@ from src.io import load,dump,join,split
 
 from src.system import System,Logger,Space,Time,Lattice
 
-from src.process import process
-
-from src.plot import plot
-
-from src.optimize import Optimizer,Metric
+from src.optimize import Metric
 
 dtype = 'complex'
 basis = {
@@ -704,41 +700,40 @@ class Object(object):
 
 
 
-	def __callback__(self,parameters,attributes):
+	def __callback__(self,parameters,track,attributes,hyperparameters):
 		''' 
 		Setup callback and logging
 		Args:
 			parameters (array): parameters
+			track (dict): callback tracking
 			attributes (dict): callback attributes
 		Returns:
 			status (int): status of class
 		'''	
 
-		optimize = self.hyperparameters['optimize']
+		start = (len(attributes['iteration'])==1) and (attributes['iteration'][-1]<hyperparameters['iterations'])
 		
-		start = (len(attributes['iteration'])==1) and (attributes['iteration'][-1]<optimize['iterations'])
-		
-		done = (len(attributes['iteration'])>0) and (attributes['iteration'][-1]==optimize['iterations'])
+		done = (len(attributes['iteration'])>0) and (attributes['iteration'][-1]==hyperparameters['iterations'])
 		
 		status = (
 			(abs(attributes['value'][-1]) > 
-				(optimize['eps']['value']*optimize['value']['value'])) and
+				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
 			((len(attributes['value'])==1) or 
 			 ((len(attributes['value'])>1) and 
 			 (abs(attributes['value'][-1] - attributes['value'][-2]) > 
-				(optimize['eps']['difference']*attributes['value'][-2])))) and
+				(hyperparameters['eps']['difference']*attributes['value'][-2])))) and
 			((len(attributes['value'])==1) or 			
 			 ((len(attributes['grad'])>1) and
 			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
-				  (optimize['eps']['grad']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))))
+				  (hyperparameters['eps']['grad']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))))
 			)
 
 		default = nan
 
 		if (((not status) or done or start) or 
 			(len(attributes['iteration']) == 0) or 
-			(optimize['modulo']['track'] is None) or 
-			(attributes['iteration'][-1]%optimize['modulo']['track'] == 0)
+			(hyperparameters['modulo']['track'] is None) or 
+			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0)
 			):	
 
 			for attr in self.__dict__
@@ -746,54 +741,54 @@ class Object(object):
 					(getattr(self,attr) is None or isinstance(getattr(self,attr),scalars))):
 					_attr = attr
 					_value = getattr(self,attr)
-					optimize['track'][_attr].append(_value)
+					track[_attr].append(_value)
 
-			for attr in optimize['track']:
+			for attr in track:
 				if attr not in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
 					_attr = attr
 					_value = getter(self.hyperparameters,attr.split(delim)) 
-					optimize['track'][_attr].append(_value)
+					track[_attr].append(_value)
 
 
 			# TODO: Ensure all attributes are assigned value, either _value or default for all iterations
 			for attr in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
 
-				if ((optimize['length']['track'] is not None) and 
-					(len(optimize['track'][attr]) > optimize['length']['track'])
+				if ((hyperparameters['length']['track'] is not None) and 
+					(len(track[attr]) > hyperparameters['length']['track'])
 					):
-					_value = optimize['track'][attr].pop(0)
+					_value = track[attr].pop(0)
 
 				if attr in ['iteration','value','grad','search','alpha','beta'] and attr in attributes:
 					_attr = attr
-					if _attr in optimize['track']:
+					if _attr in track:
 						_value = attributes[attr][-1]
-						optimize['track'][_attr].append(_value)
+						track[_attr].append(_value)
 
-				value = optimize['track'][attr][-1]
+				value = track[attr][-1]
 
 				if attr in ['iteration']:
 
 					if ((not status) or done):
 						_attr = '%s.max'%(attr)
-						if _attr in optimize['track']:
+						if _attr in track:
 							_value = value
-							optimize['track'][_attr].append(_value)
+							track[_attr].append(_value)
 
 						_attr = '%s.min'%(attr)
-						if _attr in optimize['track']:
-							_value = optimize['track'][attr][argmin(array(optimize['track']['objective']))]
-							optimize['track'][_attr].append(_value)
+						if _attr in track:
+							_value = track[attr][argmin(array(track['objective']))]
+							track[_attr].append(_value)
 					else:
 
 				elif attr in ['parameters'] and ((not status) or done or start):
 		
 					_attr = attr
-					if _attr in optimize['track']:
+					if _attr in track:
 						_value = value
-						optimize['track'][_attr].append(_value)
+						track[_attr].append(_value)
 
 					_attr = 'features'
-					if _attr in optimize['track']:
+					if _attr in track:
 
 						layer = 'features'
 						attrs = self.attributes
@@ -822,11 +817,11 @@ class Object(object):
 							])
 
 						_value = self.__layers__(value,layer)[indices]
-						optimize['track'][_attr].append(_value)
+						track[_attr].append(_value)
 
 
 					_attr = '%s.relative'%(attr)
-					if _attr in optimize['track']:
+					if _attr in track:
 
 						layer = 'features'
 						attrs = self.attributes
@@ -855,13 +850,13 @@ class Object(object):
 							])
 
 						_value = abs((self.__layers__(parameters,layer)[indices] - 
-							self.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)/(
-							self.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20))
+							self.__layers__(track[attr][0],layer)[indices] + 1e-20)/(
+							self.__layers__(track[attr][0],layer)[indices] + 1e-20))
 
-						optimize['track'][_attr].append(_value)
+						track[_attr].append(_value)
 
 					_attr = '%s.relative.mean'%(attr)
-					if _attr in optimize['track']:
+					if _attr in track:
 
 						layer = 'features'
 						attrs = self.attributes
@@ -890,19 +885,19 @@ class Object(object):
 							])
 
 						_value = abs((self.__layers__(parameters,layer)[indices] - 
-							self.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)/(
-							self.__layers__(optimize['track'][attr][0],layer)[indices] + 1e-20)).mean(-1)
+							self.__layers__(track[attr][0],layer)[indices] + 1e-20)/(
+							self.__layers__(track[attr][0],layer)[indices] + 1e-20)).mean(-1)
 
-						optimize['track'][_attr].append(_value)
+						track[_attr].append(_value)
 
 
 
 				elif attr in ['objective']:
 
 					_attr = attr
-					if _attr in optimize['track']:
+					if _attr in track:
 						_value = getattr(self,'__%s__'%(attr))(parameters)
-						optimize['track'][_attr].append(_value)
+						track[_attr].append(_value)
 
 					if self.state is None:
 
@@ -940,98 +935,91 @@ class Object(object):
 
 					self.__functions__(state=state,noise=noise,label=True,metric='infidelity.norm')
 
-					_attr = 'objective.ideal.noise'
-					if _attr in optimize['track']:
-						_value = self.__objective__(value)
-						optimize['track'][_attr].append(_value)
+					_attr = '%s.ideal.noise'%(attr)
+					if _attr in track:
+						_value = self.__objective__(parameters)
+						track[_attr].append(_value)
 
-					_attr = 'objective.diff.noise'
-					if _attr in optimize['track']:
-						_value = abs(optimize['track']['objective'][-1] - self.__objective__(value))
-						optimize['track'][_attr].append(_value)
+					_attr = '%s.diff.noise'%(attr)
+					if _attr in track:
+						_value = abs(track[attr][-1] - self.__objective__(parameters))
+						track[_attr].append(_value)
 
-					_attr = 'objective.rel.noise'
-					if _attr in optimize['track']:
-						_value = abs((optimize['track']['objective'][-1] - self.__objective__(value))/optimize['track']['objective'][-1])
-						optimize['track'][_attr].append(_value)
+					_attr = '%s.rel.noise'%(attr)
+					if _attr in track:
+						_value = abs((track[attr][-1] - self.__objective__(parameters))/track[attr][-1])
+						track[_attr].append(_value)
 
 
 					self.__functions__(state=state,noise=False,label=True,metric='infidelity.norm')
 
-					_attr = 'objective.ideal.state'
-					if _attr in optimize['track']:
-						_value = self.__objective__(value)
-						optimize['track'][_attr].append(_value)
+					_attr = '%s.ideal.state'%(attr)
+					if _attr in track:
+						_value = self.__objective__(parameters)
+						track[_attr].append(_value)
 
-					_attr = 'objective.diff.state'
-					if _attr in optimize['track']:
-						_value = abs(optimize['track']['objective'][-1] - self.__objective__(value))
-						optimize['track'][_attr].append(_value)
+					_attr = '%s.diff.state'%(attr)
+					if _attr in track:
+						_value = abs(track[attr][-1] - self.__objective__(parameters))
+						track[_attr].append(_value)
 
-					_attr = 'objective.rel.state'
-					if _attr in optimize['track']:
-						_value = abs((optimize['track']['objective'][-1] - self.__objective__(value))/optimize['track']['objective'][-1])
-						optimize['track'][_attr].append(_value)
+					_attr = '%s.rel.state'%(attr)
+					if _attr in track:
+						_value = abs((track[attr][-1] - self.__objective__(parameters))/track[attr][-1])
+						track[_attr].append(_value)
 
 
 					self.__functions__(state=False,noise=False,label=True,metric='infidelity.abs')
 
-					_attr = 'objective.ideal.operator'
-					if _attr in optimize['track']:
-						_value = self.__objective__(value)
-						optimize['track'][_attr].append(_value)
+					_attr = '%s.ideal.operator'%(attr)
+					if _attr in track:
+						_value = self.__objective__(parameters)
+						track[_attr].append(_value)
 
-					_attr = 'objective.diff.operator'
-					if _attr in optimize['track']:
-						_value = abs(optimize['track']['objective'][-1] - self.__objective__(value))
-						optimize['track'][_attr].append(_value)
+					_attr = '%s.diff.operator'%(attr)
+					if _attr in track:
+						_value = abs(track[attr][-1] - self.__objective__(parameters))
+						track[_attr].append(_value)
 
-					_attr = 'objective.rel.operator'
-					if _attr in optimize['track']:
-						_value = abs((optimize['track']['objective'][-1] - self.__objective__(value))/optimize['track']['objective'][-1])
-						optimize['track'][_attr].append(_value)
+					_attr = '%s.rel.operator'%(attr)
+					if _attr in track:
+						_value = abs((track[attr][-1] - self.__objective__(parameters))/track[attr][-1])
+						track[_attr].append(_value)
 				
-	
 				
 				elif attr in ['hessian','fisher'] and ((not status) or done):
 
 					_attr = attr
-					if _attr in optimize['track']:
+					if _attr in track:
 						_value = getattr(self,'__%s__'%(attr))(parameters)
-						_value = abs((optimize['track']['objective'][-1] - self.__objective__(value))/optimize['track']['objective'][-1])
-						optimize['track'][_attr].append(_value)
+						track[_attr].append(_value)
 
 
-					optimize['track'][attr].append(
-						getattr(self,'__%s__'%(attr))(parameters)
-						)
+					_attr = '%s.eigenvalues'%(attr)
+					if _attr in track:
+						_value = sort(abs(eig(getattr(self,'__%s__'%(attr))(parameters),compute_v=False,hermitian=True)))[::-1]
+						_value = _value/max(1,maximum(_value))
+						track[_attr].append(_value)
 
-					new = '%s.eigenvalues'%(attr)						
-					New  = sort(abs(eig(parameters,compute_v=False,hermitian=True)))[::-1]
-					New = New/max(1,maximum(New))
-					# _New = int((argmax(abs(difference(New)/New[:-1]))+1)*1.5)
-					# New = New[:_New]
-					returns[new] = New
-
-					new = '%s.rank'%(attr)
-					New = argmax(abs(difference(New)/New[:-1]))+1						
-					returns[new] = New
-
+					_attr = '%s.rank'%(attr)
+					if _attr in track:
+						_value = sort(abs(eig(getattr(self,'__%s__'%(attr))(parameters),compute_v=False,hermitian=True)))[::-1]
+						_value = argmax(abs(difference(_value)/_value[:-1]))+1						
+						track[_attr].append(_value)
 
 				else:
-					optimize['track'][attr].append(default)
-
+					track[attr].append(default)
 
 
 		if ((len(attributes['iteration']) == 0) or 
-			(optimize['modulo']['log'] is None) or 
-			(attributes['iteration'][-1]%optimize['modulo']['log'] == 0)
+			(hyperparameters['modulo']['log'] is None) or 
+			(attributes['iteration'][-1]%hyperparameters['modulo']['log'] == 0)
 			):
 
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
 					attributes['iteration'][-1],
-					optimize['track']['objective'][-1],
+					track['objective'][-1],
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
 					norm(attributes['parameters'][-1])/
@@ -1062,12 +1050,6 @@ class Object(object):
 			# print(self.__layers__(parameters,'variables').T.reshape(self.M,-1))
 
 
-		if (((not status) or done or start) or
-			(len(attributes['iteration']) == 0) or 
-			(optimize['modulo']['dump'] is None) or 
-			(attributes['iteration'][-1]%optimize['modulo']['dump'] == 0)
-			):
-			self.dump({'data':True,'model':False})
 
 		return status
 
@@ -1244,33 +1226,8 @@ class Object(object):
 			path (str,dict[str,(str,bool)]): Path to dump class data, either path or boolean to dump			
 		'''
 
-		# TODO: Transfer model dumping/loading (checkpointing) to Optimizer/Objective class
-
-		# Get data
-		optimize = self.hyperparameters['optimize']
-		labels = [self.timestamp]
-		keys = [self.key]
-		iterations = {
-			key: range(min(len(optimize['track'][attr]) 
-			for attr in optimize['track']
-			if len(optimize['track'][attr]) > 0
-			))
-			for key in keys
-			}
-
-		data = {}
-		for key in keys:
-			for iteration in iterations[key]:
-				
-				label = delim.join([*(str(l) for l in labels),str(key),str(iteration)])
-				
-				value = {attr: optimize['track'][attr][iteration] for attr in optimize['track']}
-				
-				data[label] = value
-
 		# Set data
 		data = {
-			'data':data,
 			'model':self.hyperparameters
 			}
 
@@ -1301,7 +1258,7 @@ class Object(object):
 			path (str,dict[str,(str,bool)]): Path to load class data, either path or boolean to load
 		'''
 
-		# TODO: Determine which loaded hyperparameters should have precedence over new hyperparameters
+		# TODO: Determine dump/load model (.pkl?)
 
 		def func(key,iterable,elements): 
 			types = (list,)
@@ -1333,11 +1290,6 @@ class Object(object):
 			default = data[attr]
 			data[attr] = load(path,default=default)
 			updater(default,data[attr],func=func)
-
-		try:
-			self.parameters = optimize['track']['parameters'][-1]
-		except:
-			pass
 
 		return
 
@@ -1855,7 +1807,7 @@ class Operator(module):
 		Returns
 			state (array): State to apply operator of shape (*(D)*locality,n/D**locality)
 		'''
-		# TODO
+		# TODO Implement SWAP
 		raise NotImplementedError
 
 		locality = len(site)
@@ -1877,7 +1829,7 @@ class Operator(module):
 			state (array): State to apply operator of shape (D,D,n/D**2)
 		'''
 
-		# TODO
+		# TODO Implement RESHAPE
 		raise NotImplementedError
 
 		locality = len(site)
