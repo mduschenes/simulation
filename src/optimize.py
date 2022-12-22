@@ -29,7 +29,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,hessian
+from src.utils import jit,value_and_gradient,gradient
 from src.utils import is_naninf,product,sqrt
 
 from src.utils import normed,inner_abs2,inner_real,inner_imag
@@ -250,15 +250,14 @@ class Null_Search(LineSearchBase):
 
 
 class Objective(object):		
-	def __init__(self,func,grad=None,hess=None,callback=None,model=None,hyperparameters={}):
+	def __init__(self,model,func,grad=None,callback=None,hyperparameters={}):
 		'''	
 		Objective class for function
 		Args:
+			model (object): Model instance
 			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function  with signature grad(parameters), or iterable of functions to sum
-			hess (callable,iterable[callable]): Hessian of function, with signature hess(parameters), or iterable of functions to sum
-			callback (callable): Gradient of function  with signature callback(parameters,track,attributes,func,grad,hess,funcs,grads,hesss,model,hyperparameters)
-			model (object): Model instance
+			callback (callable): Callback of function  with signature callback(parameters,track,attributes,model,func,grad,funcs,grads,hyperparameters)
 			hyperparameters (dict): Objective hyperparameters
 		'''
 
@@ -279,37 +278,32 @@ class Objective(object):
 			grads = [None for func in funcs]
 			grad = grad
 
-		if hess is None:
-			hesss = [None for func in funcs]
-			hess = None
-		elif not callable(hess):
-			hesss = hess
-			hess = partial((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=hesss)
-		else:
-			hesss = [None for func in funcs]
-			hess = hess
-
 		values_and_grads = [value_and_grad(func,grad) for func,grad in zip(funcs,grads)]
 		self.values_and_grads,self.funcs,self.grads = [[val_and_grad[i] for val_and_grad in values_and_grads] 
 				for i in range(min(len(val_and_grad) for val_and_grad in values_and_grads))]
-		self.hesss = [hessian(func) if hess is None else hess for func,hess in zip(funcs,hesss)]
 
 		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
-		self.hess = hessian(func) if hess is None else hess
 
 		self.hyperparameters = hyperparameters
 
 		if callback is None:
-			def callback(parameters,track,attributes,func,grad,hyperparameters):
-				status = False
-				return False
+			try:
+				from src.callback import Callback
+			except:
+				pass
+			callback = Callback(model,func,grad,funcs,grads,hyperparameters)
+		else:
+			try:
+				callback = partial(callback,
+						model=model,
+						func=self.func,grad=self.grad,
+						funcs=self.funcs,grads=self.grads,
+						hyperparameters=self.hyperparameters
+						)
+			except:
+				callback = Callback
 
-		self.callback = partial(callback,
-				func=self.func,grad=self.grad,
-				funcs=self.funcs,grads=self.grads,hess=self.hess,
-				model=model,
-				hyperparameters=self.hyperparameters
-				)
+		self.callback = callback
 
 		return
 
@@ -333,18 +327,7 @@ class Objective(object):
 		Returns:
 			out (object): Return of gradient function
 		'''
-		return self.grad(parameters)	
-
-	# @partial(jit,static_argnums=(0,))
-	def __hessian__(self,parameters):
-		''' 
-		Hessian call
-		Args:
-			parameters (array): parameters
-		Returns:
-			out (object): Return of hessian function
-		'''	
-		return self.hess(parameters)	
+		return self.grad(parameters)		
 
 	# @partial(jit,static_argnums=(0,))
 	def __callback__(self,parameters,track,attributes,hyperparameters):
@@ -359,6 +342,55 @@ class Objective(object):
 			out (object): Return of objective function
 		'''
 		return self.callback(parameters,track,attributes,hyperparameters)		
+
+
+
+class Callback(object):
+	def __init__(self,model,func,grad=None,funcs=None,grads=None,hyperparameters):
+		''' 
+		Setup callback and logging
+		Args:
+			model (object): Model instance			
+			func (callable): Objective function with signature func(parameters)
+			grad (callable): Objective gradient with signature func(parameters)
+			funcs (iterable[callable]): Iterable of functions to sum
+			grads (iterable[callable]): Iterable of gradients to sum
+			hyperparameters(dict): Callback hyperparameters
+		'''	
+		if funcs is None:
+			funcs = [func]
+		if grad is None:
+			grad = gradient(func)
+		if grads is None:
+			grads = [grad]
+
+
+		self.model = model
+
+		self.func = func
+		self.grad = grad
+		self.funcs = funcs
+		self.grads = grads
+
+		self.hyperparameters = hyperparameters
+
+		return
+
+	def __call__(self,parameters,track,attributes,hyperparameters):
+		''' 
+		Callback
+		Args:
+			parameters (array): parameters
+			track (dict): callback tracking
+			attributes (dict): Callback attributes
+			hyperparameters(dict): Callback hyperparameters
+		Returns:
+			status (int): status of callback
+		'''
+
+		status = True
+
+		return status
 
 
 class Metric(object):
