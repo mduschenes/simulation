@@ -8,7 +8,7 @@ from time import time as timer
 
 envs = {
 	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5,
+	'TF_CPP_MIN_LOG_LEVEL':5
 }
 for var in envs:
 	os.environ[var] = str(envs[var])

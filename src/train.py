@@ -74,7 +74,7 @@ def train(hyperparameters):
 
 		parameters = obj.parameters
 		hyperparams = hyperparameters['optimize']
-		funcs = [obj.__objective__,obj.__constraints__]
+		func = [obj.__objective__,obj.__constraints__]
 		model = obj
 
 		objective = Objective(model=model,func=funcs)

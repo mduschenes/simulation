@@ -13,7 +13,7 @@ import multiprocessing.dummy as multithreading
 
 envs = {
 	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5,
+	'TF_CPP_MIN_LOG_LEVEL':5
 	# 'XLA_FLAGS':'--xla_force_host_platform_device_count=8'
 }
 for var in envs:

@@ -13,7 +13,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,abs,argmin,argmax,min,max,eig,norm,gradient
+from src.utils import array,abs,argmin,argmax,min,max,eig,norm,gradient,nan,inf
 from src.io import load
 from src.dictionary import getter
 

@@ -62,6 +62,7 @@ logger = logging.getLogger(__name__)
 pi = np.pi
 e = np.exp(1)
 nan = np.nan
+inf = np.inf
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
@@ -992,7 +993,7 @@ class linspace(array):
 
 class logspace(array):
 	'''
-	array class of linspace
+	array class of logspace
 	Args:
 		args (iterable): Array arguments
 		kwargs (dict): Array keyword arguments
@@ -1109,7 +1110,6 @@ class toffoli(array):
 			return array([[out,out],[out,-out]],*args,**kwargs)
 
 
-
 def PRNGKey(seed=None,size=False,reset=None):
 	'''
 	Generate PRNG key
@@ -1158,7 +1158,7 @@ def PRNGKey(seed=None,size=False,reset=None):
 	return key
 
 
-def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
+def rand(shape=None,bounds=[0,1],key=None,random='uniform',mesh=None,dtype=None):
 	'''
 	Get random array
 	Args:
@@ -1166,6 +1166,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 		key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
+		mesh (int): Get meshgrid of array for mesh dimensions
 		dtype (data_type): Datatype of array		
 	Returns:
 		out (array): Random array
@@ -1202,69 +1203,104 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 		shape = (2,*shape)
 
 	if random in ['uniform','rand']:
-		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+		def func(key,shape,bounds,dtype):
+			out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+			return out
 	elif random in ['randint']:
-		out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+		def func(key,shape,bounds,dtype):		
+			out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+			return out
 	elif random in ['gaussian','normal']:
-		out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
+		def func(key,shape,bounds,dtype):
+			out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
+			return out
 	elif random in ['haar']:
+		def func(key,shape,bounds,dtype):
 
-		bounds = [-1,1]
-		subrandom = 'gaussian'
-		subdtype = 'complex'
-		ndim = len(shape)
+			bounds = [-1,1]
+			subrandom = 'gaussian'
+			subdtype = 'complex'
+			ndim = len(shape)
 
-		is1d = ndim == 1 
+			is1d = ndim == 1 
 
-		if ndim < 2:
-			shape = [*shape]*2
-			ndim = 2
+			if ndim < 2:
+				shape = [*shape]*2
+				ndim = 2
 
-		out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)
+			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)
 
-		if ndim < 3:
-			new = (*(1,)*(4-ndim),*out.shape)
-			out = out.reshape(new)
-		else:
-			new = (*out.shape[:1],*(1,)*(4-ndim),*out.shape[1:])
-			out = out.reshape(new)
+			if ndim < 3:
+				new = (*(1,)*(4-ndim),*out.shape)
+				out = out.reshape(new)
+			else:
+				new = (*out.shape[:1],*(1,)*(4-ndim),*out.shape[1:])
+				out = out.reshape(new)
 
-		for i in range(out.shape[0]):
-			for j in range(out.shape[1]):
+			for i in range(out.shape[0]):
+				for j in range(out.shape[1]):
 
-				Q,R = qr(out[i,j])
-				R = diag(R)
-				R = diag(R/abs(R))
-				
-				out = out.at[i,j].set(Q.dot(R))
+					Q,R = qr(out[i,j])
+					R = diag(R)
+					R = diag(R/abs(R))
+					
+					out = out.at[i,j].set(Q.dot(R))
 
-		out = out.reshape(shape)
+			out = out.reshape(shape)
 
-		if is1d:
-			out = out[...,0]
+			if is1d:
+				out = out[...,0]
+
+			return out
+
 	elif random in ['hermitian','symmetric']:
+		def func(key,shape,bounds,dtype):
 		
-		bounds = [-1,1]
-		subrandom = 'gaussian'
-		subdtype = 'complex'
-		ndim = len(shape)
+			bounds = [-1,1]
+			subrandom = 'gaussian'
+			subdtype = 'complex'
+			ndim = len(shape)
 
-		is1d = ndim == 1 
+			is1d = ndim == 1 
 
-		if ndim < 2:
-			shape = [*shape]*2
-			ndim = 2
+			if ndim < 2:
+				shape = [*shape]*2
+				ndim = 2
 
-		out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)	
+			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)	
 
-		out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
+			out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
+
+			return out
 
 	elif random in ['zeros']:
-		out = zeros(shape,dtype=dtype)
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape,dtype=dtype)
+			return out
 	elif random in ['ones']:
-		out = ones(shape,dtype=dtype)		
+		def func(key,shape,bounds,dtype):
+			out = ones(shape,dtype=dtype)
+			return out	
+	elif random in ['linspace']:
+		def func(key,shape,bounds,dtype):
+			num = shape[0] if not isinstance(shape,int) else shape
+			out = linspace(*bounds,num,dtype=dtype)
+			return out					
+	elif random in ['logspace']:
+		def func(key,shape,bounds,dtype):
+			num = shape[0] if not isinstance(shape,int) else shape
+			out = logspace(*bounds,num,dtype=dtype)
+			return out								
 	else:
-		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+		def func(key,shape,bounds,dtype):
+			out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+			return out
+
+	if mesh is not None:
+		out = array([out.reshape(-1) for out in np.meshgrid(*[func(key,shape,bounds,dtype) for i in range(mesh)])])
+	else:
+		out = func(key,shape,bounds,dtype)
+
 
 	if complex:
 		out = out[0] + 1j*out[1]
