@@ -142,7 +142,7 @@ class System(dictionary):
 			'device':'cpu',
 			'seed':None,
 			'key':None,
-			'timestamp':None,
+			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
 			'backend':None,
 			'architecture':None,
 			'verbose':False,

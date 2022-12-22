@@ -1259,13 +1259,15 @@ class Unitary(Hamiltonian):
 
 
 class Callback(object):
-	def __init__(self):
+	def __init__(self,*args,**kwargs):
 		'''	
 		Class for callback
+		Args:
+			args (tuple): Class arguments
+			kwargs (dict): Class keyword arguments
 		'''
 		return
 
-	# @partial(jit,static_argnums=(0,))
 	def __call__(self,parameters,track,attributes,model,func,grad,hyperparameters):
 		''' 
 		Callback

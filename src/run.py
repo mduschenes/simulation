@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,datetime
+import os,sys,itertools
 from copy import deepcopy
 
 # Import User modules
@@ -18,12 +18,10 @@ for var in envs:
 	os.environ[var] = str(envs[var])
 
 
-
 from src.utils import PRNGKey,delim,union,is_equal
 from src.dictionary import updater,getter,setter,permuter,clearer,leaves
 from src.io import load,dump,join,split
 from src.call import launch
-
 
 import jax
 import absl.logging
@@ -112,9 +110,6 @@ def setup(settings):
 	func = lambda key,iterable,elements: iterable.get(key,elements[key])
 	updater(hyperparameters,load(path,default=default),func=func)
 
-	# Get timestamp
-	timestamp = datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')
-
 	# Get permutations of hyperparameters
 	permutations = settings['permutations']['permutations']
 	groups = settings['permutations']['groups']
@@ -143,7 +138,7 @@ def setup(settings):
 	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape).tolist()
 	seeds = [dict(zip(seedlings,seed)) for seed in seeds]
 
-	other = [{'model.system.key':None,'model.system.timestamp':timestamp,'model.system.seed':seed}]
+	other = [{'model.system.key':None,'model.system.seed':seed}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	values = {'permutations':permutations,'seed':seeds,'other':other}
