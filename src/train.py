@@ -18,8 +18,7 @@ for PATH in PATHS:
 from src.utils import argparser,jit,allclose
 from src.io import load
 from src.dictionary import resetter
-from src.optimize import Optimizer,Objective
-from src.callback import Callback
+from src.optimize import Optimizer,Objective,Callback
 
 
 def setup(hyperparameters)
@@ -40,6 +39,7 @@ def setup(hyperparameters)
 
 	updates = {
 		'optimize.path': 'sys.path.data.data',
+		'optimize.metric': 'model.metric',
 	}
 
 	resetter(hyperparameters,updates)
@@ -63,9 +63,9 @@ def train(hyperparameters):
 		obj = None
 		return obj
 
-	cls = load(hyperparameters['class'])
+	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
-	obj = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	obj = cls['model'](**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	if hyperparameters['boolean'].get('load'):
 		obj.load()
@@ -75,12 +75,11 @@ def train(hyperparameters):
 		parameters = obj.parameters
 		hyperparams = hyperparameters['optimize']
 		func = [obj.__objective__,obj.__constraints__]
+		callback = cls['callback']()
 		model = obj
 
-		objective = Objective(model=model,func=funcs)
-
-		func = objective.__call__
-		callback = objective.__callback__
+		func = Objective(model,func,callback=callback,hyperparameters=hyperparams)
+		callback = Callback(model,func,callback=callback,hyperparameters=hyperparams)
 
 		optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams)
 

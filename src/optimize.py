@@ -254,18 +254,20 @@ class Null_Search(LineSearchBase):
 		return
 
 
-class Objective(object):		
-	def __init__(self,model,func,grad=None,callback=None,hyperparameters={}):
+class FuncBase(object):
+
+	def __init__(self,model,func,grad=None,callback=None,metric=None,hyperparameters={}):
 		'''	
-		Objective class for function
+		Class for function
 		Args:
 			model (object): Model instance
-			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
-			grad (callable,iterable[callable]): Gradient of function  with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function  with signature callback(parameters,track,attributes,model,func,grad,funcs,grads,hyperparameters)
-			hyperparameters (dict): Objective hyperparameters
+			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
+			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
+			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,func,grad,hyperparameters)
+			metric (str,callable): Function metric
+			hyperparameters (dict): Function hyperparameters
 		'''
-
+	
 		if not callable(func):
 			funcs = func
 			func = partial((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=funcs)
@@ -293,23 +295,13 @@ class Objective(object):
 		self.hyperparameters = hyperparameters
 
 		if callback is None:
-			try:
-				from src.callback import Callback
-			except:
-				pass
-			callback = Callback(model,func,grad,funcs,grads,hyperparameters)
-		else:
-			try:
-				callback = partial(callback,
-						model=self.model,
-						func=self.func,grad=self.grad,
-						funcs=self.funcs,grads=self.grads,
-						hyperparameters=self.hyperparameters
-						)
-			except:
-				callback = callback
+			def callback(parameters,track,attributes,model,func,grad,hyperparameters):
+				status = True
+				return status
 
 		self.callback = callback
+
+		self.metric = Metric(metric,optimize=None)		
 
 		return
 
@@ -345,42 +337,64 @@ class Objective(object):
 			attributes (dict): callback attributes			
 			hyperparameters (dict): callback hyperparameters			
 		Returns:
-			out (object): Return of objective function
+			status (int): status of callback
 		'''
-		return self.callback(parameters,track,attributes,hyperparameters)		
+		status = self.callback(parameters,track,attributes,hyperparameters=hyperparameters,model=self.model,func=self.func,grad=self.grad)
+		return status
 
 
-
-class Callback(object):
-	def __init__(self,model,func,grad=None,funcs=None,grads=None,hyperparameters={}):
-		''' 
-		Setup callback and logging
-		Args:
-			model (object): Model instance			
-			func (callable): Objective function with signature func(parameters)
-			grad (callable): Objective gradient with signature func(parameters)
-			funcs (iterable[callable]): Iterable of functions to sum
-			grads (iterable[callable]): Iterable of gradients to sum
-			hyperparameters (dict): Callback hyperparameters
+class Objective(FuncBase):		
+	def __init__(self,model,func,grad=None,callback=None,metric=None,label=None,hyperparameters={}):
 		'''	
-		if funcs is None:
-			funcs = [func]
-		if grad is None:
-			grad = gradient(func)
-		if grads is None:
-			grads = [grad]
+		Objective class for function
+		Args:
+			model (object): Model instance
+			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
+			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
+			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,func,grad,hyperparameters)			
+			metric (str,callable): Objective metric
+			label (str,callable): Objective label
+			hyperparameters (dict): Objective hyperparameters
+		'''
 
-		self.model = model
+		super().__init__(model,func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
 
-		self.func = func
-		self.grad = grad
-		self.funcs = funcs
-		self.grads = grads
-
-		self.hyperparameters = hyperparameters
+		self.label = label
 
 		return
 
+	# @partial(jit,static_argnums=(0,))
+	def __call__(self,parameters):
+		'''
+		Function call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of objective function
+		'''
+		return self.metric(self.func(parameters),self.label)
+
+
+
+class Callback(FuncBase):
+
+	def __init__(self,model,func,grad=None,callback=None,metric=None,hyperparameters={}):
+		'''	
+		Class for function
+		Args:
+			model (object): Model instance
+			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
+			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
+			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,func,grad,hyperparameters)
+			metric (str,callable): Function metric
+			hyperparameters (dict): Function hyperparameters
+		'''
+		
+		super().__init__(model,func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
+
+		return
+
+	# @partial(jit,static_argnums=(0,))
 	def __call__(self,parameters,track,attributes,hyperparameters):
 		''' 
 		Callback
@@ -392,9 +406,7 @@ class Callback(object):
 		Returns:
 			status (int): status of callback
 		'''
-
-		status = True
-
+		status = self.callback(parameters,track,attributes,hyperparameters=hyperparameters,model=self.model,func=self.func,grad=self.grad)
 		return status
 
 

@@ -1,5 +1,8 @@
-	{
-"class":"src.quantum.Unitary",
+{
+"class":{
+	"model":"src.quantum.Unitary",
+	"callback":"src.quantum.Callback",
+	},
 "hyperparameters":"settings.json",
 "sys":{
 	"cwd":null,
