@@ -254,15 +254,16 @@ class Null_Search(LineSearchBase):
 
 class FuncBase(object):
 
-	def __init__(self,model,func,grad=None,callback=None,metric=None,hyperparameters={}):
+	def __init__(self,model,func,grad=None,callback=None,metric=None,label=label,hyperparameters={}):
 		'''	
 		Class for function
 		Args:
 			model (object): Model instance
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,func,grad,hyperparameters)
+			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,label,func,grad,hyperparameters)
 			metric (str,callable): Function metric
+			label (str,callable): Function label			
 			hyperparameters (dict): Function hyperparameters
 		'''
 	
@@ -283,6 +284,11 @@ class FuncBase(object):
 			grads = [None for func in funcs]
 			grad = grad
 
+		if callback is None:
+			def callback(parameters,track,attributes,model,func,grad,hyperparameters):
+				status = True
+				return status
+
 		values_and_grads = [value_and_grad(func,grad) for func,grad in zip(funcs,grads)]
 		self.values_and_grads,self.funcs,self.grads = [[val_and_grad[i] for val_and_grad in values_and_grads] 
 				for i in range(min(len(val_and_grad) for val_and_grad in values_and_grads))]
@@ -290,16 +296,10 @@ class FuncBase(object):
 		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
 
 		self.model = model
-		self.hyperparameters = hyperparameters
-
-		if callback is None:
-			def callback(parameters,track,attributes,model,func,grad,hyperparameters):
-				status = True
-				return status
-
 		self.callback = callback
-
-		self.metric = Metric(metric,optimize=None)		
+		self.metric = metric
+		self.label = label
+		self.hyperparameters = hyperparameters
 
 		return
 
@@ -337,7 +337,11 @@ class FuncBase(object):
 		Returns:
 			status (int): status of callback
 		'''
-		status = self.callback(parameters,track,attributes,hyperparameters=hyperparameters,model=self.model,func=self.func,grad=self.grad)
+		status = self.callback(parameters,track,attributes,
+			hyperparameters=hyperparameters,
+			model=self.model,
+			metric=self.metric,label=self.label,
+			func=self.func,grad=self.grad)
 		return status
 
 
@@ -349,15 +353,13 @@ class Objective(FuncBase):
 			model (object): Model instance
 			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,func,grad,hyperparameters)			
+			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,label,func,grad,hyperparameters)			
 			metric (str,callable): Objective metric
 			label (str,callable): Objective label
 			hyperparameters (dict): Objective hyperparameters
 		'''
 
-		super().__init__(model,func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
-
-		self.label = label
+		super().__init__(model,func,grad=grad,callback=callback,metric=metric,label=label,hyperparameters=hyperparameters)
 
 		return
 
@@ -370,25 +372,26 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of objective function
 		'''
-		return self.metric(self.func(parameters),self.label)
+		return self.metric(self.model(parameters),self.label) + self.func(parameters)
 
 
 
 class Callback(FuncBase):
 
-	def __init__(self,model,func,grad=None,callback=None,metric=None,hyperparameters={}):
+	def __init__(self,model,func,grad=None,callback=None,metric=None,label=None,hyperparameters={}):
 		'''	
 		Class for function
 		Args:
 			model (object): Model instance
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,func,grad,hyperparameters)
-			metric (str,callable): Function metric
-			hyperparameters (dict): Function hyperparameters
+			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,label,func,grad,hyperparameters)
+			metric (str,callable): Callback metric
+			label (str,callable): Callback label			
+			hyperparameters (dict): Callback hyperparameters
 		'''
 		
-		super().__init__(model,func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
+		super().__init__(model,func,grad=grad,callback=callback,metric=metric,label=label,hyperparameters=hyperparameters)
 
 		return
 
@@ -404,7 +407,7 @@ class Callback(FuncBase):
 		Returns:
 			status (int): status of callback
 		'''
-		status = self.callback(parameters,track,attributes,hyperparameters=hyperparameters,model=self.model,func=self.func,grad=self.grad)
+		status = self.__callback__(parameters,track,attributes,hyperparameters)
 		return status
 
 
@@ -414,14 +417,18 @@ class Metric(object):
 	Args:
 		metric (str,Metric): Type of metric
 		shapes (iterable[tuple[int]]): Shapes of Operators
-		optimize (bool,str,iterable): Contraction type		
+		optimize (bool,str,iterable): Contraction type	
+		hyperparameters (dict): Metric hyperparameters	
 	'''
-	def __init__(self,metric,shapes=None,optimize=None):
+	def __init__(self,metric=None,shapes=None,optimize=None,hyperparameters={}):
 
-		self.metric = metric
+		defaults = {'metric':metric}
+		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
+
+		self.metric = hyperparameters['metric'] if metric is None else metric
 		self.shapes = shapes
 		self.optimize = optimize
-		self.default = None
+		self.hyperparameters = {}
 
 		self.__setup__()
 		
@@ -434,7 +441,7 @@ class Metric(object):
 		if isinstance(self.metric,Metric):
 			self.metric = self.metric.metric
 		if self.metric is None:
-			self.metric = self.default
+			self.metric = None
 		if self.shapes is None:
 			self.shapes = ()
 

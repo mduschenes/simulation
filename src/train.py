@@ -18,7 +18,7 @@ for PATH in PATHS:
 from src.utils import argparser,jit,allclose
 from src.io import load
 from src.dictionary import resetter
-from src.optimize import Optimizer,Objective,Callback
+from src.optimize import Optimizer,Objective,Metric,Callback
 
 
 def setup(hyperparameters)
@@ -73,13 +73,16 @@ def train(hyperparameters):
 	if hyperparameters['boolean'].get('train'):
 
 		parameters = obj.parameters
+		shapes = obj.shapes
+		label = obj.labels
 		hyperparams = hyperparameters['optimize']
-		func = [obj.__objective__,obj.__constraints__]
+		func = [obj.__constraints__]
 		callback = cls['callback']()
 		model = obj
 
-		func = Objective(model,func,callback=callback,hyperparameters=hyperparams)
-		callback = Callback(model,func,callback=callback,hyperparameters=hyperparams)
+		metric = Metric(shapes=shapes,optimize=None,hyperparameters=hyperparams)
+		func = Objective(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
+		callback = Callback(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
 
 		optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams)
 

@@ -63,7 +63,7 @@ from src.io import load,dump,join,split
 
 from src.system import System,Logger,Space,Time,Lattice
 
-from src.optimize import Metric
+from src.optimize import Objective,Metric
 
 dtype = 'complex'
 basis = {
@@ -101,12 +101,11 @@ class Object(object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		metric (str,Metric): Type of metric
 		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
+		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 
 		self.N = N
 		self.D = D
@@ -120,7 +119,6 @@ class Object(object):
 		self.space = space
 		self.time = time
 		self.lattice = lattice
-		self.metric = metric
 		self.system = system
 
 		self.data = []
@@ -145,7 +143,6 @@ class Object(object):
 
 		self.hyperparameters = hyperparameters
 		self.parameters = None
-		self.metrics = None
 		self.labels = None
 		self.label = None
 		self.state = None
@@ -174,7 +171,7 @@ class Object(object):
 
 		self.log('%s\n'%('\n'.join([
 			*['%s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','metric','backend','architecture','shape']
+				for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','backend','architecture','shape']
 			],
 			*['%s: %s'%(attr,getattr(self,attr) is not None) 
 				for attr in ['state','noise']
@@ -440,14 +437,13 @@ class Object(object):
 
 		return
 
-	def __functions__(self,state=None,noise=None,label=None,metric=None):
+	def __functions__(self,state=None,noise=None,label=None):
 		''' 
 		Setup class functions
 		Args:
 			state (bool,array): State to act on with class of shape self.dims, if boolean choose self.state or None
 			noise (bool,array): Noise to act on with class of shape (-1,self.dims), if boolean choose self.noise or None
 			label (bool,array): Label of class of shape self.dims, if boolean choose self.label or None
-			metric (bool,callable): Metric for class and label, if boolean choose self.metric or None
 		'''
 
 		# Function arguments
@@ -456,7 +452,6 @@ class Object(object):
 		state = self.state if (state is None or state is True) else state if state is not False else None
 		noise = self.noise if (noise is None or noise is True) else noise if noise is not False else None
 		label = self.label if (label is None or label is True) else label if label is not False else None
-		metric = self.metric if (metric is None or metric is True) else metric if metric is not False else None
 
 		# Labels and Shapes of Labels
 		if state is None:
@@ -471,14 +466,6 @@ class Object(object):
 		else:
 			self.labels = label.conj()
 			self.shapes = (self.dims,self.dims)			
-
-		# Functions
-		self.metrics = Metric(metric,shapes=self.shapes,optimize=None)		
-		self.func = self.__func__
-		self.grad = gradient(self.func)
-		self.derivative = gradient(self,mode='fwd',move=True)
-		self.hessian = hessian(self.func)
-		self.fisher = fisher(self,self.derivative,shapes=[self.dims,(self.dim,*self.dims)])
 
 
 		# Operator functions
@@ -504,6 +491,10 @@ class Object(object):
 		else:
 			self.summation = jit(summation,data=data,identity=identity)
 			self.exponentiation = jit(exponentiation,data=data,identity=identity)
+
+
+		# Functions
+		self.grad = gradient(self,mode='fwd',move=True)
 
 		return
 
@@ -591,28 +582,6 @@ class Object(object):
 		return self.__layers__(parameters,layer)
 
 	#@partial(jit,static_argnums=(0,))
-	def __objective__(self,parameters):
-		''' 
-		Setup objective
-		Args:
-			parameters (array): parameters
-		Returns:
-			objective (array): objective
-		'''	
-		return self.metrics(self(parameters),self.labels)
-
-	#@partial(jit,static_argnums=(0,))
-	def __func__(self,parameters):
-		''' 
-		Class function
-		Args:
-			parameters (array): parameters
-		Returns:
-			function (array): function
-		'''	
-		return self.__objective__(parameters) + self.__constraints__(parameters)
-
-	#@partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
 		''' 
 		Class gradient of objective
@@ -622,71 +591,6 @@ class Object(object):
 			grad (array): gradient of objective
 		'''	
 		return self.grad(parameters)
-
-
-	#@partial(jit,static_argnums=(0,))
-	def __hessian__(self,parameters):
-		''' 
-		Class hessian of objective
-		Args:
-			parameters (array): parameters
-		Returns:
-			grad (array): hessian of objective
-		'''	
-
-		return self.hessian(parameters)
-
-
-	#@partial(jit,static_argnums=(0,))
-	def __derivative__(self,parameters):
-		'''
-		Return gradient of parameterized operator expm(parameters*data)
-		Args:
-			parameters (array): Parameters to parameterize operator
-		Returns
-			derivative (array): Gradient of parameterized operator
-		'''
-
-		return self.derivative(parameters)
-
-	#@partial(jit,static_argnums=(0,))
-	def __derivative_analytical__(self,parameters):
-		'''
-		Return gradient of parameterized operator expm(parameters*data)
-		Args:
-			parameters (array): Parameters to parameterize operator
-		Returns
-			derivative (array): Gradient of parameterized operator
-		'''
-		return self.derivative(parameters)
-
-
-	#@partial(jit,static_argnums=(0,))
-	def __grad_analytical__(self,parameters):
-		''' 
-		Class gradient of objective
-		Args:
-			parameters (array): parameters
-		Returns:
-			grad (array): gradient of objective
-		'''	
-
-		grad = self.metrics.__grad__(self(parameters),self.labels,self.__derivative_analytical__(parameters))
-
-		return grad
-
-
-	#@partial(jit,static_argnums=(0,))
-	def __fisher__(self,parameters):
-		''' 
-		Class fisher information of class
-		Args:
-			parameters (array): parameters
-		Returns:
-			fisher (array): fisher information of class
-		'''	
-		return self.fisher(parameters)
-
 
 	def __system__(self,system=None):
 		'''
@@ -959,7 +863,7 @@ class Hamiltonian(Object):
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,metric=metric,system=system)
 		return
@@ -1163,12 +1067,11 @@ class Unitary(Hamiltonian):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space
 		lattice (str,Lattice): Type of lattice
-		metric (str,Metric): Type of metric		
 		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,metric=None,system=None):
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,metric=metric,system=system)
 
@@ -1268,7 +1171,7 @@ class Callback(object):
 		'''
 		return
 
-	def __call__(self,parameters,track,attributes,model,func,grad,hyperparameters):
+	def __call__(self,parameters,track,attributes,model,metric,label,func,grad,hyperparameters):
 		''' 
 		Callback
 		Args:
@@ -1276,6 +1179,8 @@ class Callback(object):
 			track (dict): callback tracking
 			attributes (dict): Callback attributes
 			model (object): Model instance
+			metric (str,callable): Callback metric
+			label (str,callable): Callback label
 			func (callable): Objective function with signature func(parameters)
 			grad (callable): Objective gradient with signature grad(parameters)
 			hyperparameters(dict): Callback hyperparameters
@@ -1465,10 +1370,11 @@ class Callback(object):
 
 
 				elif attr in ['objective']:
-
+					if attr in ['objective']:
+						func = metric
 					_attr = attr
 					if _attr in track:
-						_value = getattr(model,'__%s__'%(attr))(parameters)
+						_value = func( parameters)
 						track[_attr].append(_value)
 
 					if model.state is None:
@@ -1505,77 +1411,122 @@ class Callback(object):
 					else:
 						noise = model.noise
 
-					model.__functions__(state=state,noise=noise,label=True,metric='infidelity.norm')
+					model.__functions__(state=state,noise=noise,label=True)
+
+					_model = model
+					_func = func
+					_callback = None
+					_label = _model.labels
+					_metric = 'norm'
+					_shapes = model.shapes
+					_optimize = None
+					_hyperparameters = hyperparameters
+
+					_metric = Metric(_metric,shapes=_shapes,optimize=_optimize,hyperparameters=_hyperparameters)
+					_func = Objective(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
+					_callback = Callback(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
 
 					_attr = '%s.ideal.noise'%(attr)
 					if _attr in track:
-						_value = model.__objective__(parameters)
+						_value = _metric(parameters)
 						track[_attr].append(_value)
 
 					_attr = '%s.diff.noise'%(attr)
 					if _attr in track:
-						_value = abs(track[attr][-1] - model.__objective__(parameters))
+						_value = abs(track[attr][-1] - _metric(parameters))
 						track[_attr].append(_value)
 
 					_attr = '%s.rel.noise'%(attr)
 					if _attr in track:
-						_value = abs((track[attr][-1] - model.__objective__(parameters))/track[attr][-1])
+						_value = abs((track[attr][-1] - _metric(parameters))/track[attr][-1])
 						track[_attr].append(_value)
 
 
-					model.__functions__(state=state,noise=False,label=True,metric='infidelity.norm')
+					model.__functions__(state=state,noise=False,label=True)
+
+					_model = model
+					_func = func
+					_callback = None
+					_label = _model.labels
+					_metric = 'norm'
+					_shapes = model.shapes
+					_optimize = None
+					_hyperparameters = hyperparameters
+
+					_metric = Metric(_metric,shapes=_shapes,optimize=_optimize,hyperparameters=_hyperparameters)
+					_func = Objective(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
+					_callback = Callback(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
+
 
 					_attr = '%s.ideal.state'%(attr)
 					if _attr in track:
-						_value = model.__objective__(parameters)
+						_value = _metric(parameters)
 						track[_attr].append(_value)
 
 					_attr = '%s.diff.state'%(attr)
 					if _attr in track:
-						_value = abs(track[attr][-1] - model.__objective__(parameters))
+						_value = abs(track[attr][-1] - _metric(parameters))
 						track[_attr].append(_value)
 
 					_attr = '%s.rel.state'%(attr)
 					if _attr in track:
-						_value = abs((track[attr][-1] - model.__objective__(parameters))/track[attr][-1])
+						_value = abs((track[attr][-1] - _metric(parameters))/track[attr][-1])
 						track[_attr].append(_value)
 
 
-					model.__functions__(state=False,noise=False,label=True,metric='infidelity.abs')
+					model.__functions__(state=False,noise=False,label=True,metric='abs2')
+
+					_model = model
+					_func = func
+					_callback = None
+					_label = _model.labels
+					_metric = 'abs2'
+					_shapes = model.shapes
+					_optimize = None
+					_hyperparameters = hyperparameters
+
+					_metric = Metric(_metric,shapes=_shapes,optimize=_optimize,hyperparameters=_hyperparameters)
+					_func = Objective(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
+					_callback = Callback(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
 
 					_attr = '%s.ideal.operator'%(attr)
 					if _attr in track:
-						_value = model.__objective__(parameters)
+						_value = _metric(parameters)
 						track[_attr].append(_value)
 
 					_attr = '%s.diff.operator'%(attr)
 					if _attr in track:
-						_value = abs(track[attr][-1] - model.__objective__(parameters))
+						_value = abs(track[attr][-1] - _metric(parameters))
 						track[_attr].append(_value)
 
 					_attr = '%s.rel.operator'%(attr)
 					if _attr in track:
-						_value = abs((track[attr][-1] - model.__objective__(parameters))/track[attr][-1])
+						_value = abs((track[attr][-1] - _metric(parameters))/track[attr][-1])
 						track[_attr].append(_value)
 				
 				
 				elif attr in ['hessian','fisher'] and ((not status) or done):
+					
+					if attr in ['hessian']:
+						func = hessian(metric)
+					elif attr in ['fisher']:
+						func = fisher(model,model.grad,shapes=(model.dims,(model.dim,*model.dims)))
 
 					_attr = attr
 					if _attr in track:
-						_value = getattr(model,'__%s__'%(attr))(parameters)
+						_value = func(parameters)
 						track[_attr].append(_value)
 
 
 					_attr = '%s.eigenvalues'%(attr)
 					if _attr in track:
-						_value = sort(abs(eig(getattr(model,'__%s__'%(attr))(parameters),compute_v=False,hermitian=True)))[::-1]
+						_value = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
 						_value = _value/max(1,maximum(_value))
 						track[_attr].append(_value)
 
 					_attr = '%s.rank'%(attr)
 					if _attr in track:
-						_value = sort(abs(eig(getattr(model,'__%s__'%(attr))(parameters),compute_v=False,hermitian=True)))[::-1]
+						_value = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
 						_value = argmax(abs(difference(_value)/_value[:-1]))+1						
 						track[_attr].append(_value)
 
