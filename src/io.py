@@ -467,44 +467,28 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 			key = name
 		return key
 
-	null = {'None':'None'}
+	null = {'None':None}
 
 	data = {}
 	
 	if isinstance(obj, h5py._hl.group.Group):
-		names = natsorted(obj)
+		names = obj
 		for name in names:
-			key = convert(name,**kwargs)
+			key = name
 			if isinstance(obj[name], h5py._hl.group.Group):	
 				data[key] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
 			else:
 				data[key] = obj[name][...]
-				continue		
-				# assert isinstance(obj[name],h5py._hl.dataset.Dataset)
-				if any(attr in name for attr in ('.real','.imag')):
-					name = name.replace('.real','').replace('.imag','')
-					try:
-						name_real = "%s.%s"%(name,'real')
-						data_real = obj[name_real][...]
-
-						name_imag = "%s.%s"%(name,'imag')
-						data_imag = obj[name_imag][...]
-
-						data[key] = data_real + 1j*data_imag
-					except:
-						data[key] = obj[name][...]
-				else:
-					data[key] = obj[name][...]
-
-		names = list(set((name for name in obj.attrs)))
+		
+		names = obj.attrs
 		for name in names:
-			# key = name #convert(name,**kwargs)
-			key = convert(name,**kwargs)
+			key = name
 			data[key] = obj.attrs[name]
 			if obj.attrs[name] in null:
 				data[key] = null[obj.attrs[name]]
 	else:
 		data = obj.value
+	
 	return data
 
 def dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
@@ -548,10 +532,11 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 	if isinstance(obj,dict):
 		names = obj
 		for name in names:
-			key = convert(name,**kwargs)
+			key = name
 			if isinstance(obj[name],dict):
 				path.create_group(key)
 				_dump_hdf5(obj[name],path[key],wr=wr,ext=ext,**kwargs)
+			
 			elif isinstance(obj[name],scalars):
 				try:
 					path.attrs[key] = obj[name]
