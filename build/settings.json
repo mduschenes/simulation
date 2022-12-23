@@ -43,8 +43,8 @@
 		"state.scale":[1],
 		"state.shape":[[1,1,-1,-1]],
 
-		"model.metric":["infidelity.abs"],
-		"model.metric":["infidelity.norm"],
+		"model.metric":["abs2"],
+		"model.metric":["norm"],
 		"optimize.iterations":[300],
 		"optimize.optimizer":["cg"],
 		"parameters.xy.method":["constrained"],
@@ -83,7 +83,7 @@
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"metric":"infidelity.norm",
+	"metric":"norm",
 	"system":{
 		"dtype":"complex",
 		"format":"array",

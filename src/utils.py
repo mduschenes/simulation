@@ -1263,13 +1263,19 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',mesh=None,dtype=None)
 
 			is1d = ndim == 1 
 
-			if ndim < 2:
+			if is1d:
 				shape = [*shape]*2
-				ndim = 2
+				ndim = len(shape)
 
 			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)	
 
 			out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
+
+
+			if is1d:
+				print("HERITIAN 1D",out.shape)
+				out = diag(out)
+				# exit()
 
 			return out
 
@@ -1495,7 +1501,7 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 	'''	
 
 	arrays = all(is_array(operand) for operand in operands)
-	wrapping = wrapper if wrapper is not None else nullfunc
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1542,7 +1548,7 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapping = wrapper if wrapper is not None else nullfunc
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1589,7 +1595,7 @@ def inner(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapping = wrapper if wrapper is not None else nullfunc
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1635,7 +1641,7 @@ def gradient_inner(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapping = wrapper if wrapper is not None else nullfunc
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1682,7 +1688,7 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapping = wrapper if wrapper is not None else nullfunc
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1730,7 +1736,7 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapping = wrapper if wrapper is not None else nullfunc
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1793,7 +1799,7 @@ def inner_real(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapping = wrapper if wrapper is not None else nullfunc
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1840,7 +1846,7 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapping = wrapper if wrapper is not None else nullfunc
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1887,7 +1893,7 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapping = wrapper if wrapper is not None else nullfunc
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1934,7 +1940,7 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapping = wrapper if wrapper is not None else nullfunc
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
