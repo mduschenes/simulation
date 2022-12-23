@@ -43,8 +43,8 @@
 		"state.scale":[1],
 		"state.shape":[[1,1,-1,-1]],
 
-		"model.metric":["abs2"],
-		"model.metric":["norm"],
+		"optimize.metric":["abs2"],
+		"optimize.metric":["norm"],
 		"optimize.iterations":[300],
 		"optimize.optimizer":["cg"],
 		"parameters.xy.method":["constrained"],
@@ -83,7 +83,6 @@
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"metric":"norm",
 	"system":{
 		"dtype":"complex",
 		"format":"array",
@@ -98,11 +97,14 @@
 "optimize":{
 	"iterations":50,
 	"optimizer":"cg",
-	"method":{"alpha":"line_search","beta":"dai_yuan"},
+	"metric":"norm",	
+	"search":{"alpha":"line_search","beta":"dai_yuan"},
 	"eps":{"value":1e-20,"grad":1e-12,"difference":1e-20,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[-1e7,1e7],"beta":[-1e20,1e3]},	
 	"status":1,
+	"cwd":".",
+	"path":"data.hdf5",
 	"c1":0.0001,"c2":0.9,"maxiter":1500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
 	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":10},
@@ -113,10 +115,29 @@
 		"alpha":[],"beta":[]
 		},
 	"track":{
-		"iteration":[],"objective":[],"parameters":[],
-		"parameters":[],
-		"value":[],
-		"alpha":[],"beta":[]
+			"iteration":[],
+			"parameters":false,
+			"grad":false,
+			"search":false,
+			"value":false,
+			"objective":[],
+			"alpha":false,
+			"beta":false,
+
+			"iteration.max":[],
+			"iteration.min":[],
+			"features":false,"features.mean":false,"features.relative":false,
+			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
+			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
+			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
+			"hessian":false,"fisher":false,
+			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
+			"hessian.rank":false,"fisher.rank":false,
+
+			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"p":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],
+
+			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
 		}
 	},
 "parameters":{
@@ -286,6 +307,6 @@
 		"verbose":"info"
 		}
 	},
-"process": {"labels":["noise.scale","optimize.c1","optimize.c2"]},
+"process": {},
 "plot": {}
 }

@@ -193,7 +193,7 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 
 	Args:
 		iterable (dict): dictionary of values
-		elements (str,list): DELIMITER separated string or list to nested keys of location to get value
+		elements (str,list): delimiter separated string or list to nested keys of location to get value
 		default (object): default data to return if elements not in nested iterable
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
@@ -234,7 +234,7 @@ def popper(iterable,elements,default=None,delimiter=False,copy=False):
 
 	Args:
 		iterable (dict): dictionary to be popped in-place
-		elements (str,list): DELIMITER separated string or list to nested keys of location to pop value
+		elements (str,list): delimiter separated string or list to nested keys of location to pop value
 		default (object): default data to return if elements not in nested iterable
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
@@ -273,7 +273,7 @@ def hasser(iterable,elements,delimiter=False):
 
 	Args:
 		iterable (dict): dictionary to be searched
-		elements (str,list): DELIMITER separated string or list to nested keys of location to set value
+		elements (str,list): delimiter separated string or list to nested keys of location to set value
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
 
 	Returns:
@@ -497,7 +497,7 @@ def updater(iterable,elements,delimiter=False,copy=False,clear=False,func=None):
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
-		func(callable,None): Callable function with signature func(key,iterable,elements) to modify value to be updated based on the given dictionaries
+		func(callable,None,bool,iterable): Callable function with signature func(key,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
 	'''		
 
 	if delimiter:
@@ -505,8 +505,18 @@ def updater(iterable,elements,delimiter=False,copy=False,clear=False,func=None):
 		return
 
 	# Setup func as callable
-	if not callable(func):
+	if func is None:
 		func = lambda key,iterable,elements: elements[key]
+	elif func is True:
+		func = lambda key,iterable,elements: elements[key]
+	elif func is False:
+		func = lambda key,iterable,elements: iterable.get(key,elements[key])
+	elif not callable(func):
+		types = tuple(func)
+		def func(key,iterable,elements,types=types): 
+			i = iterable.get(key,elements.get(key))
+			e = elements.get(key,i)
+			return e if isinstance(e,types) else i
 
 	# Clear iterable if clear and elements is empty dictionary
 	if clear and elements == {}:

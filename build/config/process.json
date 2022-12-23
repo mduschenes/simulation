@@ -64,11 +64,11 @@
 			"axis":[[0,1],[2],[],[-1]]
 		},
 		{
-			"key":{"x":"","y":"parameters.relative"},
+			"key":{"x":"","y":"features.relative"},
 			"axis":[[0,1],[2],[],[-1]]
 		},
 		{
-			"key":{"x":"M","y":"parameters.relative.mean"},
+			"key":{"x":"M","y":"features.relative.mean"},
 			"wrapper":{"mean":{"axis":[-1]}},			
 			"axis":[[1],[],[],[0]],
 			"wrapper":{"mean":{"axis":[-2,-1]}},

@@ -4,7 +4,7 @@
 import os,sys,itertools,copy,ast
 
 from functools import partial,wraps
-from natsort import natsorted,realsorted
+from natsort import natsorted
 import argparse
 
 import traceback
@@ -66,6 +66,8 @@ inf = np.inf
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
+
+class null(object): pass
 
 # Types
 itg = np.integer
@@ -204,6 +206,7 @@ class argparser(argparse.ArgumentParser):
 
 	def values(self):
 		return self.kwargs.values()
+
 
 def jit(func,*,static_argnums=None,**kwargs):
 	'''
@@ -4227,6 +4230,27 @@ def generator(stop=None):
 					yield next(generator)
 		return wrapper
 	return wrap
+
+
+def relsort(iterable,relative):
+	'''
+	Sort iterable relative to other iterable
+	Args:
+		iterable (iterable): iterable to sort
+		relative (iterable): relative iterable
+	Returns:
+		sort (iterable): sorted iterable
+	'''
+
+	key = lambda item: list(relative).index(item) if item in relative else len(relative) + list(iterable).index(item)
+	sort = natsorted(iterable,key=key)
+
+	if isinstance(iterable,dict):
+		sort = {item: iterable[item] for item in sort}
+	else:
+		sort = type(iterable)(sort)
+
+	return sort
 
 
 def union(*iterables,sort=False):

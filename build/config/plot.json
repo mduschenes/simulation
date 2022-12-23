@@ -409,7 +409,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},		
-"M.parameters.relative.mean.N.iteration":{
+"M.features.relative.mean.N.iteration":{
 	"fig":{
 		"set_size_inches":{"w":8,"h":16},
 		"subplots_adjust":{"hspace":0.5},
@@ -420,7 +420,7 @@
 	"ax":{
 		"errorbar":{
 			"x":"M",
-			"y":"parameters.relative.mean",
+			"y":"features.relative.mean",
 			"label":["N","architecture","noise.scale","iteration=@iteration.min@"],
 			"marker":"o",
 			"markersize":8,
@@ -592,7 +592,7 @@
 				}
 			}
 		},
-	"None.parameters.relative.iteration.M":{
+	"None.features.relative.iteration.M":{
 		"fig":{
 			"set_size_inches":{"w":14,"h":12},
 			"subplots_adjust":{"hspace":0.5},
@@ -603,7 +603,7 @@
 		"ax":{
 			"errorbar":{
 				"x":"",
-				"y":"parameters.relative",
+				"y":"features.relative",
 				"label":["N","architecture","M","iteration=%50%"],
 				"marker":"",
 				"linestyle":"--",

@@ -94,8 +94,7 @@ def setup(settings):
 		defaults = settings
 		settings = load(settings,default=default)
 
-	func = lambda key,iterable,elements: iterable.get(key,elements[key])
-	updater(settings,load(path,default=default),func=func)
+	updater(settings,load(path,default=default),func=False)
 
 	# Load default hyperparameters
 	default = {}
@@ -107,8 +106,7 @@ def setup(settings):
 		hyperparameters = load(hyperparameters,default=default)
 
 	default = {}
-	func = lambda key,iterable,elements: iterable.get(key,elements[key])
-	updater(hyperparameters,load(path,default=default),func=func)
+	updater(hyperparameters,load(path,default=default),func=False)
 
 	# Get permutations of hyperparameters
 	permutations = settings['permutations']['permutations']

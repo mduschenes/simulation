@@ -5,8 +5,6 @@ import os,sys
 from copy import deepcopy
 from functools import partial
 
-from typing import List,Tuple
-
 envs = {
 	'JAX_PLATFORM_NAME':'cpu',
 	'TF_CPP_MIN_LOG_LEVEL':5
@@ -15,7 +13,6 @@ for var in envs:
 	os.environ[var] = str(envs[var])
 
 import jax
-import equinox as nn
 import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 # jax.set_cpu_device_count(8)
@@ -46,9 +43,9 @@ from src.utils import normed,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import eig
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
-from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,isclose,is_array,is_naninf,to_key_value 
+from src.utils import concatenate,vstack,hstack,sort,relsort,norm,interpolate,unique,allclose,isclose,is_array,is_naninf,to_key_value 
 from src.utils import initialize,parse,to_string,to_number,datatype,slice_size,intersection
-from src.utils import pi,e,nan,delim,scalars,nulls
+from src.utils import pi,e,nan,null,delim,scalars,nulls
 from src.utils import itg,flt,dbl
 
 from src.dictionary import updater,getter,setter,permuter
@@ -72,9 +69,6 @@ basis = {
 	'Y': array([[0,-1j],[1j,0]],dtype=dtype),
 	'Z': array([[1,0],[0,-1]],dtype=dtype),
 }
-
-class module(nn.Module):
-	pass
 
 class Object(object):
 	'''
@@ -280,8 +274,7 @@ class Object(object):
 		# Set defaults
 		path = 'config/settings.json'
 		default = {}		
-		func = lambda key,iterable,elements: iterable.get(key,elements[key])
-		updater(self.hyperparameters,load(path,default=default),func=func)
+		updater(self.hyperparameters,load(path,default=default),func=False)
 
 		setup(self.hyperparameters,cls=self)
 
@@ -797,12 +790,6 @@ class Object(object):
 
 		# TODO: Determine dump/load model (.pkl?)
 
-		def func(key,iterable,elements): 
-			types = (list,)
-			i = iterable.get(key,elements.get(key))
-			e = elements.get(key,i)
-			return e if isinstance(e,types) else i
-		
 		# Set data
 		data = {
 			'model':self.hyperparameters
@@ -824,6 +811,7 @@ class Object(object):
 			root,file = split(paths[attr],directory=True,file_ext=True)
 			file = file if file is not None else self.hyperparameters['sys']['path']['data'][attr]
 			path = join(file,root=root)
+			func = (list,)
 			default = data[attr]
 			data[attr] = load(path,default=default)
 			updater(default,data[attr],func=func)
@@ -1169,6 +1157,27 @@ class Callback(object):
 			args (tuple): Class arguments
 			kwargs (dict): Class keyword arguments
 		'''
+		self.defaults = {
+			"iteration":[],
+			"parameters":[],"grad":[],"search":[],
+			"value":[],"objective":[],
+			"alpha":[],"beta":[],
+
+			"iteration.max":[],"iteration.min":[],
+			"features":[],"features.mean":[],"features.relative":[],
+			"objective.ideal.noise":[],"objective.diff.noise":[],"objective.rel.noise":[],
+			"objective.ideal.state":[],"objective.diff.state":[],"objective.rel.state":[],
+			"objective.ideal.operator":[],"objective.diff.operator":[],"objective.rel.operator":[],
+			"hessian":[],"fisher":[],
+			"hessian.eigenvalues":[],"fisher.eigenvalues":[],
+			"hessian.rank":[],"fisher.rank":[],
+
+			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"p":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],
+
+			"noise.scale":[],"optimize.c1":[],"optimize.c2":[],
+
+		}		
 		return
 
 	def __call__(self,parameters,track,attributes,model,metric,label,func,grad,hyperparameters):
@@ -1205,177 +1214,106 @@ class Callback(object):
 				  (hyperparameters['eps']['grad']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))))
 			)
 
-		default = nan
-
-		if (((not status) or done or start) or 
-			(len(attributes['iteration']) == 0) or 
+		other = (len(attributes['iteration']) == 0) or 
 			(hyperparameters['modulo']['track'] is None) or 
 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0)
-			):	
 
-			for attr in model.__dict__
-				if ((not callable(getattr(model,attr))) and
-					(getattr(model,attr) is None or isinstance(getattr(model,attr),scalars))):
-					_attr = attr
-					_value = getattr(model,attr)
-					track[_attr].append(_value)
+		default = nan
 
-			for attr in track:
-				if attr not in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
-					_attr = attr
-					_value = getter(model.hyperparameters,attr.split(delim)) 
-					track[_attr].append(_value)
-
+		if ((not status) or done or start or other)
 
 			# TODO: Ensure all attributes are assigned value, either _value or default for all iterations
-			for attr in ['iteration','parameters','value','grad','search','alpha','beta','objective','hessian','fisher']:
+
+			attrs = relsort(track,attributes)
+			size = max(len(track[attr]) for attr in track)
+
+			for attr in attrs:
 
 				if ((hyperparameters['length']['track'] is not None) and 
 					(len(track[attr]) > hyperparameters['length']['track'])
 					):
 					_value = track[attr].pop(0)
+				
+				value = default
 
-				if attr in ['iteration','value','grad','search','alpha','beta'] and attr in attributes:
-					_attr = attr
-					if _attr in track:
-						_value = attributes[attr][-1]
-						track[_attr].append(_value)
+				if attr in attributes:
+					value = attributes[attr][-1]
+				
+				track[attr].append(value)
 
-				value = track[attr][-1]
+				if attr in ['iteration.max']:
+					value = track['iteration'][-1]
 
-				if attr in ['iteration']:
+				elif attr in ['iteration.min']:
+					value = track['iteration'][argmin(array(track['objective']))]
 
-					if ((not status) or done):
-						_attr = '%s.max'%(attr)
-						if _attr in track:
-							_value = value
-							track[_attr].append(_value)
+				elif attr in ['parameters','grad','search'] and not ((not status) or done or start):
+					value = default
 
-						_attr = '%s.min'%(attr)
-						if _attr in track:
-							_value = track[attr][argmin(array(track['objective']))]
-							track[_attr].append(_value)
-					else:
+				elif attr in ['parameters','grad','search'] and ((not status) or done or start):
+					value = attributes[attr][-1]
 
-				elif attr in ['parameters'] and ((not status) or done or start):
-		
-					_attr = attr
-					if _attr in track:
-						_value = value
-						track[_attr].append(_value)
+				elif attr in ['features','features.mean','features.relative']and not ((not status) or done or start):
+					value = default
 
-					_attr = 'features'
-					if _attr in track:
+				elif attr in ['features','features.mean','features.relative'] and ((not status) or done or start):
 
-						layer = 'features'
-						attrs = model.attributes
-						indices = tuple([(
-							slice(
-							min(attrs['index'][layer][parameter][group][axis].start
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]),
-							max(attrs['index'][layer][parameter][group][axis].stop
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]),
-							min(attrs['index'][layer][parameter][group][axis].step
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]))
-							if all(isinstance(attrs['index'][layer][parameter][group][axis],slice)
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]) else
-							list(set(i 
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter] 
-								for i in attrs['index'][layer][parameter][group][axis]))
-							)
-								for axis in range(min(len(attrs['index'][layer][parameter][group]) 
-												for parameter in attrs['index'][layer] 
-												for group in attrs['index'][layer][parameter]))
-							])
+					layer = 'features'
+					prop = 'index'
+					indices = model.attributes[prop][layer]
+					indices = tuple([(
+						slice(
+						min(indices[parameter][group][axis].start
+							for parameter in indices 
+							for group in indices[parameter]),
+						max(indices[parameter][group][axis].stop
+							for parameter in indices 
+							for group in indices[parameter]),
+						min(indices[parameter][group][axis].step
+							for parameter in indices 
+							for group in indices[parameter]))
+						if all(isinstance(indices[parameter][group][axis],slice)
+							for parameter in indices 
+							for group in indices[parameter]) else
+						list(set(i 
+							for parameter in indices 
+							for group in indices[parameter] 
+							for i in indices[parameter][group][axis]))
+						)
+							for axis in range(min(len(indices[parameter][group]) 
+											for parameter in indices 
+											for group in indices[parameter]))
+						])
 
-						_value = model.__layers__(value,layer)[indices]
-						track[_attr].append(_value)
-
-
-					_attr = '%s.relative'%(attr)
-					if _attr in track:
-
-						layer = 'features'
-						attrs = model.attributes
-						indices = tuple([(
-							slice(
-							min(attrs['index'][layer][parameter][group][axis].start
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]),
-							max(attrs['index'][layer][parameter][group][axis].stop
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]),
-							min(attrs['index'][layer][parameter][group][axis].step
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]))
-							if all(isinstance(attrs['index'][layer][parameter][group][axis],slice)
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]) else
-							list(set(i 
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter] 
-								for i in attrs['index'][layer][parameter][group][axis]))
-							)
-								for axis in range(min(len(attrs['index'][layer][parameter][group]) 
-												for parameter in attrs['index'][layer] 
-												for group in attrs['index'][layer][parameter]))
-							])
-
-						_value = abs((model.__layers__(parameters,layer)[indices] - 
-							model.__layers__(track[attr][0],layer)[indices] + 1e-20)/(
-							model.__layers__(track[attr][0],layer)[indices] + 1e-20))
-
-						track[_attr].append(_value)
-
-					_attr = '%s.relative.mean'%(attr)
-					if _attr in track:
-
-						layer = 'features'
-						attrs = model.attributes
-						indices = tuple([(
-							slice(
-							min(attrs['index'][layer][parameter][group][axis].start
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]),
-							max(attrs['index'][layer][parameter][group][axis].stop
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]),
-							min(attrs['index'][layer][parameter][group][axis].step
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]))
-							if all(isinstance(attrs['index'][layer][parameter][group][axis],slice)
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter]) else
-							list(set(i 
-								for parameter in attrs['index'][layer] 
-								for group in attrs['index'][layer][parameter] 
-								for i in attrs['index'][layer][parameter][group][axis]))
-							)
-								for axis in range(min(len(attrs['index'][layer][parameter][group]) 
-												for parameter in attrs['index'][layer] 
-												for group in attrs['index'][layer][parameter]))
-							])
-
-						_value = abs((model.__layers__(parameters,layer)[indices] - 
-							model.__layers__(track[attr][0],layer)[indices] + 1e-20)/(
-							model.__layers__(track[attr][0],layer)[indices] + 1e-20)).mean(-1)
-
-						track[_attr].append(_value)
-
+					if attr in ['features']:
+						value = model.__layers__(parameters,layer)[indices]
+					
+					elif attr in ['features.relative']:
+						eps = 1e-20
+						value = model.__layers__(parameters,layer)[indices]
+						value = abs((value - track['features'][0] + eps)/(track['features'][0] + eps))
+					
+					elif attr in ['features.relative']
+						eps = 1e-20
+						value = model.__layers__(parameters,layer)[indices]
+						value = abs((value - track['features'][0] + eps)/(track['features'][0] + eps)).mean(-1)
 
 
 				elif attr in ['objective']:
 					if attr in ['objective']:
 						func = metric
-					_attr = attr
-					if _attr in track:
-						_value = func( parameters)
-						track[_attr].append(_value)
+					value = func(parameters)
+
+				elif attr in [
+					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
+					'objective.ideal.state','objective.diff.state','objective.rel.state',
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and not ((not status) or done or start):
+					value = default
+
+				elif attr in [
+					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
+					'objective.ideal.state','objective.diff.state','objective.rel.state',
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or start):
 
 					if model.state is None:
 
@@ -1426,20 +1364,12 @@ class Callback(object):
 					_func = Objective(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
 					_callback = Callback(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
 
-					_attr = '%s.ideal.noise'%(attr)
-					if _attr in track:
-						_value = _metric(parameters)
-						track[_attr].append(_value)
-
-					_attr = '%s.diff.noise'%(attr)
-					if _attr in track:
-						_value = abs(track[attr][-1] - _metric(parameters))
-						track[_attr].append(_value)
-
-					_attr = '%s.rel.noise'%(attr)
-					if _attr in track:
-						_value = abs((track[attr][-1] - _metric(parameters))/track[attr][-1])
-						track[_attr].append(_value)
+					if attr in ['objective.ideal.noise']:
+						value = _metric(parameters)
+					elif attr in ['objective.diff.noise']:
+						value = abs((track['objective'][-1] - _metric(parameters)))
+					elif attr in ['objective.rel.noise']:
+						value = abs((track['objective'][-1] - _metric(parameters))/(track['objective'][-1]))
 
 
 					model.__functions__(state=state,noise=False,label=True)
@@ -1457,21 +1387,12 @@ class Callback(object):
 					_func = Objective(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
 					_callback = Callback(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
 
-
-					_attr = '%s.ideal.state'%(attr)
-					if _attr in track:
-						_value = _metric(parameters)
-						track[_attr].append(_value)
-
-					_attr = '%s.diff.state'%(attr)
-					if _attr in track:
-						_value = abs(track[attr][-1] - _metric(parameters))
-						track[_attr].append(_value)
-
-					_attr = '%s.rel.state'%(attr)
-					if _attr in track:
-						_value = abs((track[attr][-1] - _metric(parameters))/track[attr][-1])
-						track[_attr].append(_value)
+					if attr in ['objective.ideal.noise']:
+						value = _metric(parameters)
+					elif attr in ['objective.diff.noise']:
+						value = abs((track['objective'][-1] - _metric(parameters)))
+					elif attr in ['objective.rel.noise']:
+						value = abs((track['objective'][-1] - _metric(parameters))/(track['objective'][-1]))
 
 
 					model.__functions__(state=False,noise=False,label=True,metric='abs2')
@@ -1489,54 +1410,50 @@ class Callback(object):
 					_func = Objective(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
 					_callback = Callback(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
 
-					_attr = '%s.ideal.operator'%(attr)
-					if _attr in track:
-						_value = _metric(parameters)
-						track[_attr].append(_value)
+					if attr in ['objective.ideal.noise']:
+						value = _metric(parameters)
+					elif attr in ['objective.diff.noise']:
+						value = abs((track['objective'][-1] - _metric(parameters)))
+					elif attr in ['objective.rel.noise']:
+						value = abs((track['objective'][-1] - _metric(parameters))/(track['objective'][-1]))
 
-					_attr = '%s.diff.operator'%(attr)
-					if _attr in track:
-						_value = abs(track[attr][-1] - _metric(parameters))
-						track[_attr].append(_value)
+				
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and not ((not status) or done):
+					value = default
 
-					_attr = '%s.rel.operator'%(attr)
-					if _attr in track:
-						_value = abs((track[attr][-1] - _metric(parameters))/track[attr][-1])
-						track[_attr].append(_value)
-				
-				
-				elif attr in ['hessian','fisher'] and ((not status) or done):
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and ((not status) or done):
 					
-					if attr in ['hessian']:
+					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						func = hessian(metric)
-					elif attr in ['fisher']:
+					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
 						func = fisher(model,model.grad,shapes=(model.dims,(model.dim,*model.dims)))
 
-					_attr = attr
-					if _attr in track:
-						_value = func(parameters)
-						track[_attr].append(_value)
+					if attr in ['hessian','fisher']:
+						value = func(parameters)
+
+					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
+						value = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
+						value = value/max(1,maximum(value))
+					elif attr in ['hessian.rank','fisher.rank']:
+						value = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
+						value = argmax(abs(difference(value)/value[:-1]))+1						
+
+				elif attr in model.__dict__ and attr not in attributes:
+					value = getattr(model,attr)
+
+				elif getter(model.hyperparameters,attr,delimiter=delim,default=null) is not null:
+					value = getter(model.hyperparameters,attr,delimiter=delim,default=null)
 
 
-					_attr = '%s.eigenvalues'%(attr)
-					if _attr in track:
-						_value = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
-						_value = _value/max(1,maximum(_value))
-						track[_attr].append(_value)
+			track[attr][-1] = value
 
-					_attr = '%s.rank'%(attr)
-					if _attr in track:
-						_value = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
-						_value = argmax(abs(difference(_value)/_value[:-1]))+1						
-						track[_attr].append(_value)
 
-				else:
-					track[attr].append(default)
-
-		if ((len(attributes['iteration']) == 0) or 
+		log = ((len(attributes['iteration']) == 0) or 
 			(hyperparameters['modulo']['log'] is None) or 
 			(attributes['iteration'][-1]%hyperparameters['modulo']['log'] == 0)
-			):
+			)
+
+		if log:
 
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
@@ -1578,6 +1495,11 @@ class Callback(object):
 
 
 
+from typing import List,Tuple
+import equinox as nn
+
+class module(nn.Module):
+	pass
 
 class Operator(module):
 	'''

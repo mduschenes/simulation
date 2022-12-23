@@ -38,8 +38,8 @@ def setup(hyperparameters)
 		hyperparameters = load(hyperparameters,default=default)
 
 	updates = {
+		'optimize.cwd': 'sys.cwd',
 		'optimize.path': 'sys.path.data.data',
-		'optimize.metric': 'model.metric',
 	}
 
 	resetter(hyperparameters,updates)

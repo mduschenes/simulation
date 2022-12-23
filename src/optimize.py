@@ -37,6 +37,8 @@ from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_rea
 
 from src.utils import itg,dbl,flt,delim,nan
 
+from src.dictionary import updater
+
 from src.line_search import line_search,armijo
 
 from src.io import dump,load,join,split,copy,rmdir,exists
@@ -67,8 +69,9 @@ class LineSearchBase(object):
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
 		'''
-		defaults = {}
+		defaults = {}		
 		returns = ['alpha']
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
 
 		self.func = func
 		self.grad = grad
@@ -134,13 +137,13 @@ class LineSearch(LineSearchBase):
 	'''
 	def __new__(cls,func,grad,hyperparameters={}):
 	
-		defaults = {'method':{'alpha':None}}
-		hyperparameters.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+		defaults = {'search':{'alpha':None}}
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		line_searches = {'line_search':Line_Search,'armijo':Armijo,None:Null_Search}
 
-		line_search = hyperparameters.get('method',{}).get('alpha',defaults['method']['alpha'])
+		line_search = hyperparameters.get('search',{}).get('alpha',defaults['search']['alpha'])
 		
 		self = line_searches.get(line_search,line_searches[None])(func,grad,hyperparameters)
 
@@ -158,7 +161,7 @@ class Line_Search(LineSearchBase):
 		'''
 		defaults = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':None}
 		returns = ['alpha','nfunc','ngrad','value','_value','slope']
-		hyperparameters.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		super().__init__(func,grad,hyperparameters)
@@ -205,7 +208,7 @@ class Armijo(LineSearchBase):
 		'''
 		defaults = {'c1':0.0001,'alpha0':1e-4}
 		returns = ['alpha','nfunc','value']
-		hyperparameters.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		super().__init__(func,grad,hyperparameters)
@@ -254,7 +257,7 @@ class Null_Search(LineSearchBase):
 
 class FuncBase(object):
 
-	def __init__(self,model,func,grad=None,callback=None,metric=None,label=label,hyperparameters={}):
+	def __init__(self,model,func,grad=None,callback=None,metric=None,label=None,hyperparameters={}):
 		'''	
 		Class for function
 		Args:
@@ -359,7 +362,7 @@ class Objective(FuncBase):
 			hyperparameters (dict): Objective hyperparameters
 		'''
 
-		super().__init__(model,func,grad=grad,callback=callback,metric=metric,label=label,hyperparameters=hyperparameters)
+		super().__init__(model,func,grad=grad,callback=callback,metric=metric,label=None,hyperparameters=hyperparameters)
 
 		return
 
@@ -423,7 +426,7 @@ class Metric(object):
 	def __init__(self,metric=None,shapes=None,optimize=None,hyperparameters={}):
 
 		defaults = {'metric':metric}
-		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
 
 		self.metric = hyperparameters['metric'] if metric is None else metric
 		self.shapes = shapes
@@ -684,20 +687,21 @@ class OptimizerBase(object):
 
 		defaults = {
 			'optimizer':None,
-			'method':{'alpha':'line_search','beta':None},
+			'search':{'alpha':'line_search','beta':None},
 			'eps':{'value':1e-4,'grad':1e-12,'alpha':1e-12,'beta':1e3},
 			'alpha':0,
 			'status':1,
 			'timestamp':None,
+			'cwd':None,
 			'path':None,
 			'verbose':False,
 			'modulo':{'log':None,'attributes':None,'callback':None,'restart':None,'dump':None},
 			'length':{'log':None,'attributes':10,'callback':None,'restart':None,'dump':None},
 			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},	
-			'track':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},		
+			'track':{},		
 		}
 
-		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
 		hyperparameters.update({attr: updates.get(attr,{}).get(hyperparameters[attr],hyperparameters[attr]) 
 			if attr in updates else hyperparameters[attr] for attr in hyperparameters})
 
@@ -713,7 +717,6 @@ class OptimizerBase(object):
 				return status
 		self.callback = callback
 
-
 		self.size = 0
 		self.iteration = -1
 		self.parameters = None
@@ -725,11 +728,25 @@ class OptimizerBase(object):
 		self.iterations = range(int(hyperparameters['iterations']))
 		self.sizes = hyperparameters['length'].get('attributes')
 		self.status = hyperparameters['status']
-		self.method = hyperparameters['method']
+		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
 		self.timestamp = hyperparameters['timestamp']
-		self.path = hyperparameters['path']
+		self.path = join(hyperparameters['path'],root=hyperparameters['cwd'])
 		self.verbose = hyperparameters['verbose']
+
+		for attr in list(self.attributes):
+			value = self.attributes[attr]
+			if ((not isinstance(value,list)) and (not value)):
+				self.attributes.pop(attr)
+			elif ((isinstance(value,list)) and (value)):
+				self.attributes[value] = []
+
+		for attr in list(self.track):
+			value = self.track[attr]
+			if ((not isinstance(value,list)) and (not value)):
+				self.track.pop(attr)
+			elif ((isinstance(value,list)) and (value)):
+				self.track[value] = []				
 
 		self.load()
 
@@ -975,7 +992,7 @@ class Optimizer(OptimizerBase):
 	def __new__(cls,func,grad=None,callback=None,hyperparameters={}):
 	
 		defaults = {'optimizer':None}
-		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
 
 		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,None:GradientDescent}
 
@@ -997,25 +1014,13 @@ class GradientDescent(OptimizerBase):
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
+		defaults = {'attributes':{'beta':False}}		
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
+
 		super().__init__(func,grad,callback,hyperparameters)
 
 		defaults = {}
-		for attr in defaults:
-			self.hyperparameters[attr] = self.hyperparameters.get(attr,defaults[attr])
-		
-		defaults = {}
-		for attr in defaults:
-			self.attributes[attr] = self.attributes.get(attr,defaults[attr])		
-
-		null = []
-		for attr in null:
-			self.hyperparameters.pop(attr,None)
-
-		null = []
-		for attr in null:
-			self.attributes.pop(attr,None)
-
-
+		updater(self.hyperparameters,defaults,delimiter=delim,func=False)
 
 		return
 
@@ -1070,26 +1075,15 @@ class ConjugateGradient(OptimizerBase):
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
+		defaults = {'beta':0,'search':{'alpha':'line_search','beta':None},'attributes':{'beta':[]}}
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
+
 		super().__init__(func,grad,callback,hyperparameters)
 
-		defaults = {'beta':0,'method':None}
-		for attr in defaults:
-			self.hyperparameters[attr] = self.hyperparameters.get(attr,defaults[attr])
-		
-		defaults = {'beta':[]}
-		for attr in defaults:
-			self.attributes[attr] = self.attributes.get(attr,defaults[attr])		
+		defaults = {}
+		updater(self.hyperparameters,defaults,delimiter=delim,func=False)
 
-		null = []
-		for attr in null:
-			self.hyperparameters.pop(attr,None)
-
-		null = []
-		for attr in null:
-			self.attributes.pop(attr,None)
-
-
-		beta = self.method.get('beta')
+		beta = self.search.get('beta')
 		if beta is None:
 			def beta(_grad,grad,search):
 				beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
@@ -1205,23 +1199,13 @@ class Adam(OptimizerBase):
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
+		defaults = {'attributes':{'beta':False}}		
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
+
 		super().__init__(func,grad,callback,hyperparameters)
 
 		defaults = {}
-		for attr in defaults:
-			self.hyperparameters[attr] = self.hyperparameters.get(attr,defaults[attr])
-		
-		defaults = {}
-		for attr in defaults:
-			self.attributes[attr] = self.attributes.get(attr,defaults[attr])		
-
-		null = []
-		for attr in null:
-			self.hyperparameters.pop(attr,None)
-
-		null = []
-		for attr in null:
-			self.attributes.pop(attr,None)
+		updater(self.hyperparameters,defaults,delimiter=delim,func=False)
 
 		self._optimizer = getattr(jax.example_libraries.optimizers,self.optimizer)
 
