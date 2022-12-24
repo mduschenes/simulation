@@ -29,6 +29,23 @@ from src.io import cd,mkdir,join,split,load,dump,exists,environ
 from src.dictionary import updater
 from src.parallel import Parallelize,Pooler
 
+
+class Popen(object):
+	'''
+	Null Popen class
+	'''
+	def __init__(self,*args,stdin=None,stdout=None,stderr=None,env=None,**kwargs):
+		self.args = args
+		self.env = env
+		self.stdout = stdout
+		self.stderr = stderr
+		self.returncode = None
+		return
+
+	def wait(self,*args,**kwargs):
+		returncode = self.returncode
+		return returncode
+
 def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Command of the form $> exe flags cmd args options
@@ -178,7 +195,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 			try:
 				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env)
 			except (OSError,FileNotFoundError) as exception:
-				result = subprocess.Popen((),stdin=stdin,stdout=stdout,stderr=stderr,env=env)
+				result = Popen((),stdin=stdin,stdout=stdout,stderr=stderr,env=env)
 				logger.log(verbose,exception)
 				logger.log(verbose,args)
 			return result
@@ -227,6 +244,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 			for line in result.stdout:
 				stdout.append(parse(line))			
 				logger.log(verbose,stdout[-1])
+		
 		returncode = result.wait()
 
 		if result.stderr is not None:

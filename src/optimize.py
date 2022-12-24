@@ -801,8 +801,11 @@ class OptimizerBase(object):
 			state (object): optimizer state
 		'''
 
-		def update(parameters,alpha,search):
-			return parameters + alpha*search
+		def update(parameters,value,grad,search,optimizer):
+			parameters = parameters + alpha*search
+			alpha = optimizer.hyperparameters['alpha']
+			search = -grad
+			return parameters,search,alpha
 
 		steps = self.size == 0
 
@@ -812,14 +815,15 @@ class OptimizerBase(object):
 
 			value,grad,parameters = self.opt_step(iteration-init,state)
 
-			alpha = self.hyperparameters['alpha']
-			search = -grad
-
 			if not init:
-				parameters = update(parameters,alpha,search)
+				parameters,search,alpha = update(parameters,value,grad,search,self)
+			else:
+				parameters = parameters
+				alpha = self.hyperparameters['alpha']
+				search = -grad
 
-			self.attributes['alpha'].append(alpha)
 			self.attributes['search'].append(search)
+			self.attributes['alpha'].append(alpha)
 
 			state = self.opt_init(parameters)
 			parameters = self.get_params(state)
@@ -1034,8 +1038,11 @@ class GradientDescent(OptimizerBase):
 			state (object): optimizer state
 		'''
 
-		def update(parameters,alpha,search):
-			return parameters + alpha*search
+		def update(parameters,value,grad,search,optimizer):
+			parameters = parameters + alpha*search
+			alpha = optimizer.hyperparameters['alpha']
+			search = -grad
+			return parameters,search,alpha
 
 		steps = self.size == 0
 
@@ -1045,14 +1052,15 @@ class GradientDescent(OptimizerBase):
 
 			value,grad,parameters = self.opt_step(iteration-init,state)
 
-			alpha = self.hyperparameters['alpha']
-			search = -grad
-
 			if not init:
-				parameters = update(parameters,alpha,search)
+				parameters,search,alpha = update(parameters,value,grad,search,self)
+			else:
+				parameters = parameters
+				alpha = self.hyperparameters['alpha']
+				search = -grad
 
-			self.attributes['alpha'].append(alpha)
 			self.attributes['search'].append(search)
+			self.attributes['alpha'].append(alpha)
 
 			state = self.opt_init(parameters)
 			parameters = self.get_params(state)
@@ -1133,50 +1141,51 @@ class ConjugateGradient(OptimizerBase):
 			state (object): optimizer state
 		'''
 
-		if self.size == 0:
+		def update(parameters,value,grad,search,optimizer):
+			alpha = optimizer.alpha(
+				parameters,
+				optimizer.attributes['alpha'],
+				optimizer.attributes['value'],
+				optimizer.attributes['grad'],
+				optimizer.attributes['search'])
 
-			value,grad,parameters = self.opt_step(iteration-1,state)
+			parameters = parameters + alpha*search
 
-			alpha = self.hyperparameters['alpha']
-			beta = self.hyperparameters['beta']
-			search = -grad
+			state = optimizer.opt_init(parameters)
 
-			self.attributes['alpha'].append(alpha)
-			self.attributes['beta'].append(beta)
-			self.attributes['search'].append(search)
+			_value,_grad,parameters = optimizer.opt_step(iteration,state)
+			
+			beta = optimizer.beta(_grad,grad,search)
+			
+			search = -_grad + beta*search
 
-			state = self.opt_init(parameters)
-			parameters = self.get_params(state)
-			track = self.track		
-			attributes = self.attributes
-			hyperparameters = self.hyperparameters
-			self.status = self.callback(parameters,track,attributes,hyperparameters)
+			return parameters,search,alpha,beta
 
-		parameters = self.get_params(state)
 
-		alpha = self.alpha(
-			parameters,
-			self.attributes['alpha'],
-			self.attributes['value'],
-			self.attributes['grad'],
-			self.attributes['search'])
+		steps = self.size == 0
 
-		search = self.attributes['search'][-1]
-		grad = self.attributes['grad'][-1]
+		for step in range(steps+1):
 
-		parameters = parameters + alpha*search
+			init = self.size == 0
 
-		state = self.opt_init(parameters)
+			if not init:
+				value = self.attributes['value'][-1]
+				grad = self.attributes['grad'][-1]
+				parameters = self.get_params(state)
+				search = self.attributes['search'][-1]
 
-		_value,_grad,parameters = self.opt_step(iteration,state)
-		
-		beta = self.beta(_grad,grad,search)
-		
-		search = -_grad + beta*search
+				parameters,search,alpha,beta = update(parameters,value,grad,search,self)
 
+			else:
+				value,grad,parameters = self.opt_step(iteration-init,state)
+
+				alpha = self.hyperparameters['alpha']
+				beta = self.hyperparameters['beta']
+				search = -grad
+
+		self.attributes['search'].append(search)
 		self.attributes['alpha'].append(alpha)
 		self.attributes['beta'].append(beta)
-		self.attributes['search'].append(search)
 		
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)

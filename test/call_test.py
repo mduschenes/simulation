@@ -95,29 +95,6 @@ def test_sleep(path=None):
 	return
 
 
-def test_command(path=None):
-
-	process = 'serial'
-	process = 'parallel'
-	processes = 4
-	device = None
-	execute = 1
-	verbose = True
-
-	exe = ['date']
-	flags = []
-	cmd = ["+%Y-%m-%d %H:%M:%S"]*10
-	options = [';','sleep',1]
-	args = []
-
-	print(args)
-	args = command(args,exe=exe,flags=flags,cmd=cmd,options=options,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
-	print(args)
-
-	call(*args,execute=execute,verbose=verbose)
-
-	return
-
 def test_submit(path=None):
 	default = {}
 	settings = load(path,default=default)

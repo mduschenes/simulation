@@ -135,26 +135,13 @@ def test_state(path,tol):
 
 	tol = 1e-20
 
-	state,weights = stateize(data,shape,hyperparams,size=size,samples=samples,dtype=dtype,cls=cls)
-
-	ndim = state.ndim
-
-	if ndim == 1:
-		norm = einsum('i,i->',state.conj(),state).real
-	elif ndim == 2 and state.shape[0] == state.shape[1]:
-		norm = einsum('ii->',state).real
-	elif ndim == 2 and state.shape[0] != state.shape[1]:
-		norm = einsum('ui,ui,u->',state.conj(),state,weights).real
-	elif ndim == 3:
-		norm = einsum('uii,u->',state,weights).real
+	state = stateize(data,shape,hyperparams,size=size,samples=samples,dtype=dtype,cls=cls)
 
 	try:
 		eigs = eig(state,hermitian=True)
 		assert (abs(eigs)>=tol).all()
 	except TypeError:
 		raise
-
-	assert allclose(norm,1.0)
 
 	return
 
@@ -173,9 +160,11 @@ def test_grad(path,tol):
 	grad_finite = gradient(model,mode='finite',tol=tol)
 	grad_analytical = model.__grad_analytical__
 
-	# print(grad_jax(parameters).round(3)[0])
-	# print()
-	# print(grad_analytical(parameters).round(3)[0])
+	print(grad_jax(parameters).round(3).shape)
+	print()
+	print(grad_finite(parameters).round(3).shape)
+	print()
+	print(grad_analytical(parameters).round(3).shape)
 
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
@@ -191,12 +180,15 @@ def test_grad_func(path,tol):
 
 	func = model
 	shapes = model.shapes
+	label = model.labels
 	callback = None
 	hyperparams = hyperparameters['optimize']
 
 	metric = Metric(shapes=shapes,optimize=None,hyperparameters=hyperparams)
 	func = Objective(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
 	callback = Callback(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
+
+
 
 	parameters = model.parameters
 
