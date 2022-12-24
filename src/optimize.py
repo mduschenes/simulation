@@ -272,7 +272,7 @@ class FuncBase(object):
 	
 		if not callable(func):
 			funcs = func
-			func = partial((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=funcs)
+			func = jit((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=funcs)
 		else:
 			funcs = [func]
 			func = func
@@ -282,7 +282,7 @@ class FuncBase(object):
 			grad = None
 		elif not callable(grad):
 			grads = grad
-			grad = partial((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=grads)
+			grad = jit((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=grads)
 		else:
 			grads = [None for func in funcs]
 			grad = grad
@@ -292,11 +292,9 @@ class FuncBase(object):
 				status = True
 				return status
 
-		values_and_grads = [value_and_grad(func,grad) for func,grad in zip(funcs,grads)]
-		self.values_and_grads,self.funcs,self.grads = [[val_and_grad[i] for val_and_grad in values_and_grads] 
-				for i in range(min(len(val_and_grad) for val_and_grad in values_and_grads))]
+		self.values_and_grads,self.funcs,self.grads = zip((value_and_grad(func,grad) for func,grad in zip(funcs,grads)))
 
-		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
+		self.value_and_gradient,self.function,self.gradient = value_and_grad(func,grad)
 
 		self.model = model
 		self.callback = callback
@@ -313,9 +311,9 @@ class FuncBase(object):
 		Args:
 			parameters (array): parameters
 		Returns:
-			out (object): Return of objective function
+			out (object): Return of function
 		'''
-		return self.func(parameters)
+		return self.function(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
@@ -324,9 +322,20 @@ class FuncBase(object):
 		Args:
 			parameters (array): parameters
 		Returns:
-			out (object): Return of gradient function
+			out (object): Return of function
 		'''
-		return self.grad(parameters)		
+		return self.gradient(parameters)
+
+	# @partial(jit,static_argnums=(0,))
+	def __value_and_grad__(self,parameters):
+		'''
+		Function and gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.value_and_gradient(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def __callback__(self,parameters,track,attributes,hyperparameters):
@@ -347,11 +356,45 @@ class FuncBase(object):
 			func=self.func,grad=self.grad)
 		return status
 
+	# @partial(jit,static_argnums=(0,))
+	def func(self,parameters):
+		'''
+		Function call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__call__(parameters)
+
+	# @partial(jit,static_argnums=(0,))
+	def grad(self,parameters):
+		'''
+		Gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__grad__(parameters)
+
+	# @partial(jit,static_argnums=(0,))
+	def value_and_grad(self,parameters):
+		'''
+		Function and gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__value_and_gradient__(parameters)
+	
+
 
 class Objective(FuncBase):		
 	def __init__(self,model,func,grad=None,callback=None,metric=None,label=None,hyperparameters={}):
 		'''	
-		Objective class for function
+		Objective class for metric + function
 		Args:
 			model (object): Model instance
 			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
@@ -362,7 +405,12 @@ class Objective(FuncBase):
 			hyperparameters (dict): Objective hyperparameters
 		'''
 
-		super().__init__(model,func,grad=grad,callback=callback,metric=metric,label=None,hyperparameters=hyperparameters)
+		super().__init__(model,func,grad=grad,callback=callback,metric=metric,label=label,hyperparameters=hyperparameters)
+
+		self.functions = self.function
+		self.gradients = self.gradient
+		self.function = self.__call__
+		self.gradient = gradient(self.function)
 
 		return
 
@@ -373,10 +421,33 @@ class Objective(FuncBase):
 		Args:
 			parameters (array): parameters
 		Returns:
-			out (object): Return of objective function
+			out (object): Return of function
 		'''
-		return self.metric(self.model(parameters),self.label) + self.func(parameters)
+		return self.metric(self.model(parameters),self.label) + self.function(parameters)
 
+
+	# @partial(jit,static_argnums=(0,))
+	def __grad__(self,parameters):
+		'''
+		Gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.gradient(parameters)
+
+	# @partial(jit,static_argnums=(0,))
+	def __grad_analytical__(self,parameters):
+		'''
+		Gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.metric.grad(self.model(parameters),self.label,self.model.grad(parameters)) + self.gradient(parameters)	
+		# return self.metric.grad_analytical(self.model(parameters),self.label,self.model.grad_analytical(parameters)) + self.gradient(parameters)	
 
 
 class Callback(FuncBase):
@@ -467,12 +538,16 @@ class Metric(object):
 		return 
 
 	@partial(jit,static_argnums=(0,))
-	def __call__(self,a,b):
-		return self.func(a,b)
+	def __call__(self,*operands):
+		return self.func(*operands)
 
 	@partial(jit,static_argnums=(0,))
-	def __grad__(self,a,b,da):
-		return self.grad(a,b,da)		
+	def __grad__(self,*operands):
+		return self.grad(*operands)	
+
+	@partial(jit,static_argnums=(0,))
+	def __grad_analytical__(self,*operands):
+		return self.grad_analytical(*operands)		
 
 	def __str__(self):
 		return str(self.string)
@@ -486,6 +561,7 @@ class Metric(object):
 			metric = self.metric
 			func = jit(metric)
 			grad = jit(gradient(metric))
+			grad_analytical = jit(gradient(metric))
 
 		elif self.metric is None:
 
@@ -508,11 +584,11 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+				grad_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
+				grad_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
 
 		elif self.metric in ['norm']:
 
@@ -535,11 +611,11 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+				grad_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
+				grad_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
 
 
 		elif self.metric in ['abs2']:
@@ -563,11 +639,11 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad = gradient_inner_abs2(*shapes,optimize=optimize,wrapper=wrapper)
+				grad_analytical = gradient_inner_abs2(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad = partial(gradient_inner_abs2,optimize=optimize,wrapper=wrapper)
+				grad_analytical = partial(gradient_inner_abs2,optimize=optimize,wrapper=wrapper)
 
 
 		elif self.metric in ['real']:
@@ -591,11 +667,11 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad = gradient_inner_real(*shapes,optimize=optimize,wrapper=wrapper)
+				grad_analytical = gradient_inner_real(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad = partial(gradient_inner_real,optimize=optimize,wrapper=wrapper)
+				grad_analytical = partial(gradient_inner_real,optimize=optimize,wrapper=wrapper)
 
 
 		elif self.metric in ['imag']:
@@ -619,11 +695,11 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad = gradient_inner_imag(*shapes,optimize=optimize,wrapper=wrapper)
+				grad_analytical = gradient_inner_imag(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad = partial(gradient_inner_imag,optimize=optimize,wrapper=wrapper)
+				grad_analytical = partial(gradient_inner_imag,optimize=optimize,wrapper=wrapper)
 
 		else:
 
@@ -646,18 +722,19 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+				grad_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
+				grad_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
 
 		func = jit(func)
-		grad = jit(grad)
+		grad = jit(gradient(func))
+		grad_analytical = jit(grad_analytical)
 
 		self.func = func
-
 		self.grad = grad
+		self.grad_analytical = grad_analytical
 
 		return
 
@@ -1169,9 +1246,9 @@ class ConjugateGradient(OptimizerBase):
 			init = self.size == 0
 
 			if not init:
+				parameters = self.get_params(state)
 				value = self.attributes['value'][-1]
 				grad = self.attributes['grad'][-1]
-				parameters = self.get_params(state)
 				search = self.attributes['search'][-1]
 
 				parameters,search,alpha,beta = update(parameters,value,grad,search,self)

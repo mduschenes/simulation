@@ -121,8 +121,9 @@ class Object(object):
 		self.string = []
 		self.interaction = []
 		self.indices = []		
-		self.shape = (len(self.data),self.M)
-		self.ndim = len(self.shape)
+		self.dims = (len(self.data),self.M)
+		self.length = int(product(self.dims))
+		self.ndims = len(self.dims)
 
 		self.key = None
 
@@ -130,22 +131,25 @@ class Object(object):
 		self.backend = None
 		self.architecture = None
 		self.delimiter = ' '
-		self.dims = ()
-		self.dim = int(product(self.dims))
-		self.ndims = len(self.dims)
-		self.shapes = (self.dims,self.dims)
+		self.shape = ()
+		self.size = int(product(self.shape))
+		self.ndim = len(self.shape)
+		self.shapes = (self.shape,self.shape)
 
 		self.hyperparameters = hyperparameters
 		self.parameters = None
 		self.labels = None
 		self.label = None
+		self.states = None
+		self.states
 		self.state = None
+		self.noises = None
 		self.noise = None
 		self.attributes = {}
 		self.identity = None
 		self.constants = None
 		self.coefficients = 1
-		self.size = None	
+		self.nparams = None	
 
 		self.summation = None
 		self.exponentiation = None 
@@ -336,8 +340,8 @@ class Object(object):
 		self.string.insert(index,string)
 		self.interaction.insert(index,interaction)
 
-		self.shape = (len(self.data),self.M,*self.dims)
-		self.ndim = len(self.shape)		
+		self.dims = (len(self.data),self.M,*self.shape)
+		self.ndims = len(self.dims)		
 
 		self.hyperparameters.update(hyperparameters)
 
@@ -352,13 +356,10 @@ class Object(object):
 			parameters (array): parameters
 		'''
 
-		# Get class attributes
-		hyperparameters = self.hyperparameters
-
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
 		data = None
 		shape = (len(self.data)//self.p,self.M)
-		hyperparams = hyperparameters['parameters']
+		hyperparameters = self.hyperparameters['parameters']
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
@@ -368,7 +369,7 @@ class Object(object):
 		cls = self
 		dtype = self.dtype
 
-		attributes = parameterize(data,shape,hyperparams,check=check,initialize=initialize,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		attributes = parameterize(data,shape,hyperparameters,check=check,initialize=initialize,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 		# Get reshaped parameters
 		attribute = 'values'
@@ -379,40 +380,40 @@ class Object(object):
 
 		# Get states
 		data = None
-		shape = self.dims
-		hyperparams = hyperparameters['state']
+		shape = self.shape
+		hyperparameters = self.hyperparameters['state']
 		size = self.N
 		samples = True
 		seed = self.seed		
 		dtype = self.dtype
 		cls = self
 
-		state = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		state = stateize(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 		# Get label
 		data = None
-		shape = self.dims
-		hyperparams = hyperparameters['label']
+		shape = self.shape
+		hyperparameters = self.hyperparameters['label']
 		size = self.N
 		samples = None
 		seed = self.seed
 		cls = self
 		dtype = self.dtype
 
-		label = operatorize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		label = operatorize(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 
 		# Get noise
 		data = None
-		shape = self.dims
-		hyperparams = hyperparameters['noise']
+		shape = self.shape
+		hyperparameters = self.hyperparameters['noise']
 		size = self.N
 		samples = None
 		seed = self.seed		
 		cls = self
 		dtype = self.dtype
 
-		noise = noiseize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		noise = noiseize(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 
 		# Get coefficients
@@ -420,13 +421,12 @@ class Object(object):
 
 		# Update class attributes
 		self.parameters = parameters
-		self.label = label
-		self.state = state
-		self.noise = noise
+		self.labels = label
+		self.states = state
+		self.noises = noise
 		self.coefficients = coefficients
-		self.hyperparameters = hyperparameters
 		self.attributes = attributes
-		self.size = parameters.shape
+		self.nparams = parameters.shape
 
 		return
 
@@ -434,31 +434,39 @@ class Object(object):
 		''' 
 		Setup class functions
 		Args:
-			state (bool,array): State to act on with class of shape self.dims, if boolean choose self.state or None
-			noise (bool,array): Noise to act on with class of shape (-1,self.dims), if boolean choose self.noise or None
-			label (bool,array): Label of class of shape self.dims, if boolean choose self.label or None
+			state (bool,array): State to act on with class of shape self.shape, if boolean choose self.states or None
+			noise (bool,array): Noise to act on with class of shape (-1,self.shape), if boolean choose self.noises or None
+			label (bool,array): Label of class of shape self.shape, if boolean choose self.labels or None
 		'''
 
 		# Function arguments
 		data = array(self.data,dtype=self.dtype)
 		identity = self.identity
-		state = self.state if (state is None or state is True) else state if state is not False else None
-		noise = self.noise if (noise is None or noise is True) else noise if noise is not False else None
-		label = self.label if (label is None or label is True) else label if label is not False else None
+		state = self.states if (state is None or state is True) else state if state is not False else None
+		noise = self.noises if (noise is None or noise is True) else noise if noise is not False else None
+		label = self.labels if (label is None or label is True) else label if label is not False else None
 
 		# Labels and Shapes of Labels
 		if state is None:
-			self.labels = label.conj()
-			self.shapes = (self.dims,self.dims)
+			self.state = state
+			self.noise = noise
+			self.label = label.conj()
+			self.shapes = (self.shape,self.shape)
 		elif state.ndim == 1:
-			self.labels = einsum('ij,j->i',label,state).conj()
+			self.state = state
+			self.noise = noise
+			self.label = einsum('ij,j->i',label,state).conj()
 			self.shapes = ((self.n,),(self.n,))			
 		elif state.ndim == 2:
-			self.labels = einsum('ij,jk,lk->il',label,state,label.conj())
-			self.shapes = (self.dims,self.dims)			
+			self.state = state
+			self.noise = noise
+			self.label = einsum('ij,jk,lk->il',label,state,label.conj())
+			self.shapes = (self.shape,self.shape)			
 		else:
-			self.labels = label.conj()
-			self.shapes = (self.dims,self.dims)			
+			self.state = state
+			self.noise = noise
+			self.label = label.conj()
+			self.shapes = (self.shape,self.shape)			
 
 
 		# Operator functions
@@ -487,22 +495,79 @@ class Object(object):
 
 
 		# Functions
-		self.grad = gradient(self,mode='fwd',move=True)
+		self.gradient = gradient(self,mode='fwd',move=True)
 
 		return
 
 	#@partial(jit,static_argnums=(0,))
 	def __call__(self,parameters):
 		'''
-		Return parameterized operator sum(parameters*data)
+		Class function
 		Args:
-			parameters (array): Parameters to parameterize operator			
+			parameters (array): parameters		
 		Returns
-			operator (array): Parameterized operator
+			out (array): Return of function
 		'''		
 		parameters = self.__parameters__(parameters)
 
 		return self.summation(parameters)
+
+	#@partial(jit,static_argnums=(0,))
+	def __grad__(self,parameters):
+		''' 
+		Class gradient
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (array): Return of function
+		'''	
+		return self.gradient(parameters)
+
+
+	# @partial(jit,static_argnums=(0,))
+	def __value_and_grad__(self,parameters):
+		'''
+		Class function and gradient
+		Args:
+			parameters (array): parameters		
+		Returns
+			out (array): Return of function and gradient
+		'''	
+		return self.value_and_gradient(parameters)
+
+
+	#@partial(jit,static_argnums=(0,))
+	def func(self,parameters):
+		'''
+		Class function
+		Args:
+			parameters (array): parameters		
+		Returns
+			out (array): Return of function
+		'''
+		return self.__call__(parameters)
+
+	#@partial(jit,static_argnums=(0,))
+	def grad(self,parameters):
+		''' 
+		Class gradient
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (array): Return of function
+		'''		
+		return self.__gradient__(parameters)
+
+	# @partial(jit,static_argnums=(0,))
+	def value_and_grad(self,parameters):
+		'''
+		Class function and gradient
+		Args:
+			parameters (array): parameters		
+		Returns
+			out (array): Return of function and gradient
+		'''	
+		return self.__value_and_gradient__(parameters)
 
 
 	@partial(jit,static_argnums=(0,))
@@ -574,16 +639,6 @@ class Object(object):
 		layer = 'constraints'
 		return self.__layers__(parameters,layer)
 
-	#@partial(jit,static_argnums=(0,))
-	def __grad__(self,parameters):
-		''' 
-		Class gradient of objective
-		Args:
-			parameters (array): parameters
-		Returns:
-			grad (array): gradient of objective
-		'''	
-		return self.grad(parameters)
 
 	def __system__(self,system=None):
 		'''
@@ -627,11 +682,12 @@ class Object(object):
 		self.D = self.space.D		
 		self.n = self.space.n
 		self.g = self.space.g
-		self.dims = (self.n,self.n)
-		self.dim = int(product(self.dims))
-		self.ndims = len(self.dims)
-		self.shape = (len(self.data),self.M,*self.dims)
+		self.shape = (self.n,self.n)
+		self.size = int(product(self.shape))
 		self.ndim = len(self.shape)
+		self.dims = (len(self.data),self.M,*self.shape)
+		self.length = int(product(self.dims))
+		self.ndims = len(self.dims)
 		self.identity = identity(self.n,dtype=self.dtype)
 
 		return
@@ -661,8 +717,8 @@ class Object(object):
 		self.T = self.time.T
 		self.p = self.time.p
 		self.tau = self.time.tau
-		self.shape = (*self.shape[:1],self.M,*self.shape[2:])	
-		self.ndim = len(self.shape)
+		self.dims = (*self.dims[:1],self.M,*self.dims[2:])	
+		self.ndims = len(self.dims)
 
 		return
 
@@ -851,8 +907,10 @@ class Hamiltonian(Object):
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
+		
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
+		
 		return
 
 
@@ -1059,6 +1117,7 @@ class Unitary(Hamiltonian):
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
+		
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 
@@ -1079,12 +1138,12 @@ class Unitary(Hamiltonian):
 	#@partial(jit,static_argnums=(0,))
 	def __grad_analytical__(self,parameters):
 		'''
-		Return gradient of parameterized operator expm(parameters*data)
+		Class gradient
 		Args:
-			parameters (array): Parameters to parameterize operator
+			parameters (array): parameters		
 		Returns
-			grad (array): Gradient of parameterized operator
-		'''
+			out (array): Return of function
+		'''	
 
 		# Get class hyperparameters and attributes
 		hyperparameters = self.hyperparameters
@@ -1127,6 +1186,7 @@ class Unitary(Hamiltonian):
 
 		# Calculate parameters and gradient
 		parameters = self.__parameters__(parameters)
+
 		coefficients = self.coefficients
 		data = array(self.data,dtype=self.dtype)
 		identity = self.identity
@@ -1149,6 +1209,16 @@ class Unitary(Hamiltonian):
 
 		return grad
 
+	#@partial(jit,static_argnums=(0,))
+	def grad_analytical(self,parameters):
+		'''
+		Class gradient
+		Args:
+			parameters (array): parameters		
+		Returns
+			out (array): Return of function
+		'''	
+		return self.__grad_analytical__(parameters)
 
 
 class Callback(object):
@@ -1223,8 +1293,6 @@ class Callback(object):
 		default = nan
 
 		if ((not status) or done or start or other):
-
-			# TODO: Ensure all attributes are assigned value, either _value or default for all iterations
 
 			attrs = relsort(track,attributes)
 			size = max(len(track[attr]) for attr in track)
@@ -1487,7 +1555,7 @@ class Callback(object):
 			model.log(msg)
 
 
-			# print(parameters.reshape(-1,model.M))
+			# print(parameters.reshape(-1,model.M)) # Raw parameters have shape (-1,M)
 			# print(model.__layers__(parameters,'variables').T.reshape(model.M,-1))
 
 
@@ -1606,7 +1674,7 @@ class Operator(module):
 		self.D = space.D		
 		self.n = space.n
 		self.shape = (self.n,self.n)
-		self.size = 1
+		self.size = int(product(self.shape))
 		self.ndim = len(self.shape)
 		self.identity = identity(self.n,dtype=self.dtype)
 
@@ -1668,7 +1736,7 @@ class Operator(module):
 			for site in self.site:
 				state = self.__swap__(state,site)
 				operator = (parameters*self.data).dot(state)
-				operator = operator.reshape(self.dims)
+				operator = operator.reshape(self.shape)
 				state = self.__reshape__(state,site)
 
 		return operator

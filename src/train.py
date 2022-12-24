@@ -76,11 +76,10 @@ def train(hyperparameters):
 
 		parameters = model.parameters
 		shapes = model.shapes
-		label = model.labels
+		label = model.label
 		hyperparams = hyperparameters['optimize']
 		func = [model.__constraints__]
 		callback = cls['callback']()
-		model = model
 
 		metric = Metric(shapes=shapes,optimize=None,hyperparameters=hyperparams)
 		func = Objective(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
@@ -89,6 +88,8 @@ def train(hyperparameters):
 		optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams)
 
 		parameters = optimizer(parameters)
+
+		model.parameters = parameters
 	
 	if hyperparameters['boolean'].get('dump'):	
 		model.dump()

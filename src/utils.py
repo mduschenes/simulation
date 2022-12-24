@@ -43,7 +43,7 @@ import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 
 configs = {
-	'jax_disable_jit':True,
+	'jax_disable_jit':False,
 	'jax_platforms':'cpu',
 	'jax_enable_x64': True
 	}
@@ -1530,7 +1530,7 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = abs2(operands[0]-operands[1])
+		out = abs2(operands[0]-operands[1].conj())
 		return einsummation(out)
 	
 	if arrays:
@@ -1577,7 +1577,7 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = (operands[0]-operands[1])
+		out = (operands[0]-operands[1].conj())
 		return einsummation(out,operands[2])
 	
 	if arrays:

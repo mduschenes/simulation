@@ -1514,15 +1514,9 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 						else:
 							values = array(values,dtype=dtype)
 
-						#a = timer()
 						values = padding(values,shape,random=None)
-						#b = timer()
-						#print('padding',b-a)
 
-						#a = timer()
 						values = func(values,shape,hyperparams,reset=reset,slices=slices,shapes=shapes,layer=layer,dtype=dtype)
-						#b = timer()
-						#print(layer,'init',b-a)
 
 						# Get slices of values to put
 						attr = 'slice'
@@ -1559,10 +1553,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 						# Get values to take to put
 						values = data[attribute][reflayer][indices]
 
-						#a = timer()
 						values = func(values)
-						#b = timer()
-						#print(layer,'init',b-a)
 
 						# Get slices of values to put
 						attr = 'slice'
@@ -1600,10 +1591,7 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 						# Get values to take to put
 						values = data[attribute][reflayer][indices]
 
-						#a = timer()
 						values = func(values)
-						#b = timer()
-						#print(layer,'init',b-a)
 
 						# Get slices of values to put
 						attr = 'slice'
@@ -1671,9 +1659,6 @@ def parameterize(data,shape,hyperparameters,check=None,initialize=None,size=None
 									refindices = tuple([slice(None) if ax != axis else k for ax in range(ndim)])
 
 									data[attribute][layer] = data[attribute][layer].at[refslices].set(values[axis][refindices])
-
-					#b = timer()
-					#print('bcs',b-a)
 
 					attr = 'shape'
 					index = ('take','layer','variable')

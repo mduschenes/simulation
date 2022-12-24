@@ -411,7 +411,7 @@ class Lattice(object):
 		self.N = N
 		self.d = d
 		self.L = L if L is not None else self.N
-		self.delta = delta if delta is not None else self.N//self.L
+		self.delta = delta if delta is not None else self.L/self.N
 
 		# Define system
 		self.system = System(system)

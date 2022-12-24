@@ -15,8 +15,8 @@ from src.utils import jit,gradient
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
 from src.utils import summation,exponentiation
-from src.utils import inner_abs2,inner_real,inner_imag
-from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
+from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
+from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import eig,qr,einsum
 from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,norm,interpolate,unique,allclose,is_array,is_ndarray,isclose,is_naninf
@@ -50,11 +50,13 @@ file = None #'log.log'
 logger = Logger(name,conf,file=file)
 
 
-def test_unitary(path,tol):
+def test_class(path,tol):
 
 	hyperparameters = load(path)
 
-	model = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	cls = load(hyperparameters['class']['model'])
+
+	model = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	return
 
@@ -64,7 +66,10 @@ def test_load_dump(path,tol):
 	# Set instance
 	hyperparameters = load(path)
 
-	model = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	cls = load(hyperparameters['class']['model'])
+
+	cls = load(hyperparameters['class']['model'])
+	model = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	# Set hyperparameters
 	model.hyperparameters['optimize']['track']['alpha'].append(12345)
@@ -76,7 +81,7 @@ def test_load_dump(path,tol):
 
 	# Set instance
 	hyperparameters = load(path)
-	new = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	new = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	new.load()
 
@@ -93,7 +98,9 @@ def test_data(path,tol):
 
 	hyperparameters = load(path)
 
-	model = Unitary(**hyperparameters['data'],**{**hyperparameters['model'],'N':2},hyperparameters=hyperparameters)
+	cls = load(hyperparameters['class']['model'])
+
+	model = cls(**hyperparameters['data'],**{**hyperparameters['model'],'N':2},hyperparameters=hyperparameters)
 
 	I = array([[1,0],[0,1]],dtype=model.dtype)
 	X = array([[0,1],[1,0]],dtype=model.dtype)
@@ -128,6 +135,7 @@ def test_state(path,tol):
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 	hyperparams = hyperparameters['state']
 	hyperparams['shape'] = [2,1,-1,-1]
+	hyperparams['scale'] = 1
 	size = hyperparameters['model']['N']
 	samples = True
 	dtype = hyperparameters['model']['system']['dtype']
@@ -141,6 +149,7 @@ def test_state(path,tol):
 		eigs = eig(state,hermitian=True)
 		assert (abs(eigs)>=tol).all()
 	except TypeError:
+
 		raise
 
 	return
@@ -149,22 +158,18 @@ def test_grad(path,tol):
 
 	hyperparameters = load(path)
 
-	model = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	cls = load(hyperparameters['class']['model'])
+
+	model = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	func = model
 
 	parameters = model.parameters
 
 	# grad of unitary
-	grad_jax = model.__grad__
+	grad_jax = model.grad
 	grad_finite = gradient(model,mode='finite',tol=tol)
-	grad_analytical = model.__grad_analytical__
-
-	print(grad_jax(parameters).round(3).shape)
-	print()
-	print(grad_finite(parameters).round(3).shape)
-	print()
-	print(grad_analytical(parameters).round(3).shape)
+	grad_analytical = model.grad_analytical
 
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
@@ -172,15 +177,17 @@ def test_grad(path,tol):
 
 	return
 
-def test_grad_func(path,tol):
+def test_objective(path,tol):
 
 	hyperparameters = load(path)
 
-	model = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	cls = load(hyperparameters['class']['model'])
 
-	func = model
+	model = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+
+	func = []
 	shapes = model.shapes
-	label = model.labels
+	label = model.label
 	callback = None
 	hyperparams = hyperparameters['optimize']
 
@@ -188,15 +195,21 @@ def test_grad_func(path,tol):
 	func = Objective(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
 	callback = Callback(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
 
-
-
 	parameters = model.parameters
 
 	# Grad of objective
-	grad_jax = model.__grad__
+	grad_jax = func.grad
 	grad_finite = gradient(func,mode='finite',tol=tol)
-	grad_analytical = model.__grad_analytical__
+	grad_analytical = func.grad_analytical
 
+	print(func(parameters))
+	# print(grad_jax(parameters).round(3))
+	return
+
+	# print(grad_jax(parameters).round(3))
+	# print()
+	# print(grad_finite(parameters).round(3))
+	# return
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
 	assert allclose(grad_jax(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
@@ -209,7 +222,9 @@ def test_model(path,tol):
 
 	hyperparameters = load(path)
 
-	model = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	cls = load(hyperparameters['class']['model'])
+
+	model = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	func = jit(model.__call__)
 
@@ -217,19 +232,13 @@ def test_model(path,tol):
 
 	U = func(parameters)
 
-	subattrs = {}
-	for subattr in ['noise']:
-		subattrs[subattr] = getattr(model,subattr)
-		setattr(model,subattr,None)
-		model.__functions__()
+	model.__functions__(noise=None)
 
 	func = jit(model.__call__)
 
 	V = func(parameters)
 
-	for subattr in subattrs:
-		setattr(model,subattr,subattrs[subattr])
-	model.__functions__()
+	model.__functions__(noise=True)
 
 	func = jit(model.__call__)
 
@@ -300,5 +309,5 @@ def test_call():
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_grad(path,tol)
-	# test_grad_func(path,tol)
+	# test_grad(path,tol)
+	test_objective(path,tol)
