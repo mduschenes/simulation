@@ -73,7 +73,10 @@ def exists(path):
 		exists (bool): Path exists
 	'''
 
-	exists = os.path.exists(path)
+	try:
+		exists = os.path.exists(path)
+	except:
+		exists = False
 
 	return exists
 

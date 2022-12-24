@@ -53,7 +53,7 @@ def _setup(args,kwargs):
 	
 	shapes = ((kwargs['n'],kwargs['n']),(kwargs['n'],kwargs['n']))
 	
-	metric = Metric(metric,shapes,optimize=None,system=None)
+	metric = Metric(metric,shapes)
 	
 	
 	updates = {'x':x,'A':A,'I':I,'v':v,'B':B,'a':a,'b':b,'metric':metric}

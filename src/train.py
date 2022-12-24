@@ -48,37 +48,39 @@ def setup(hyperparameters)
 
 def train(hyperparameters):
 	'''
-	Train object
+	Train model
 	Args:
 		hyperparameters (dict,str): hyperparameters
+	Returns:
+		model (object): Model instance
 	'''
 
 	hyperparameters = setup(hyperparameters)
 
 	if not hyperparameters:
-		obj = None
-		return obj
+		model = None
+		return model
 
 	if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train']):
-		obj = None
-		return obj
+		model = None
+		return model
 
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
-	obj = cls['model'](**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls['model'](**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	if hyperparameters['boolean'].get('load'):
-		obj.load()
+		model.load()
 
 	if hyperparameters['boolean'].get('train'):
 
-		parameters = obj.parameters
-		shapes = obj.shapes
-		label = obj.labels
+		parameters = model.parameters
+		shapes = model.shapes
+		label = model.labels
 		hyperparams = hyperparameters['optimize']
-		func = [obj.__constraints__]
+		func = [model.__constraints__]
 		callback = cls['callback']()
-		model = obj
+		model = model
 
 		metric = Metric(shapes=shapes,optimize=None,hyperparameters=hyperparams)
 		func = Objective(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
@@ -89,9 +91,9 @@ def train(hyperparameters):
 		parameters = optimizer(parameters)
 	
 	if hyperparameters['boolean'].get('dump'):	
-		obj.dump()
+		model.dump()
 	
-	return obj
+	return model
 
 
 def main(*args,**kwargs):

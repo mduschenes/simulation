@@ -1,7 +1,7 @@
 {
 "class":{
 	"model":"src.quantum.Unitary",
-	"callback":"src.quantum.Callback",
+	"callback":"src.quantum.Callback"
 	},
 "hyperparameters":"settings.json",
 "sys":{
@@ -50,8 +50,8 @@
 		"parameters.xy.method":["constrained"],
 		"model.system.architecture":["constrained"],
 
-		"jobs.job.cwd":["new"],	
-		"jobs.postprocess.cwd":["new"],
+		"jobs.job.cwd":["data"],	
+		"jobs.postprocess.cwd":["data"],
 
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
@@ -79,7 +79,7 @@
 	"M":200,
 	"T":null,
 	"tau":5e1,
-	"p":1,
+	"p":2,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",

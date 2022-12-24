@@ -21,3 +21,4 @@ tmp
 examples/**
 build/new
 build/plots
+keep

@@ -301,6 +301,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 
 	if file:
 		with cd(path):
+			cmd = [*['#!/bin/bash\n'],*[arg for var in env for arg in ['export %s=%s\n'%(var,env[var])]],cmd]
 			touch(file,cmd,mod=True,env=env,execute=True,verbose=False)
 
 	if execute > 0:
@@ -325,7 +326,7 @@ def cp(source,destination,default=None,env=None,process=None,processes=None,devi
 	'''
 	if not exists(source):
 		source = default
-	
+
 	assert exists(source), 'source %s does not exist'%(source)
 
 	mkdir(destination)
@@ -437,7 +438,7 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 
 	exe = ['echo']
 	flags = []
-	cmd = ''.join([*['#!/bin/bash\n'],*[arg for var in env for arg in ['export %s=%s\n'%(var,env[var])]],*args])
+	cmd = ''.join(args)
 	options = []
 	env = [] if env is None else env
 	args = []

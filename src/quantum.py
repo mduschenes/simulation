@@ -39,8 +39,8 @@ from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,
 from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,dot,einsum
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationc,exponentiationc,summationmc,exponentiationmc
 from src.utils import trotter,gradient_trotter,gradient_expm,gradient_sigmoid
-from src.utils import normed,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
+from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
+from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 from src.utils import eig
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
 from src.utils import concatenate,vstack,hstack,sort,relsort,norm,interpolate,unique,allclose,isclose,is_array,is_naninf,to_key_value 
@@ -846,14 +846,13 @@ class Hamiltonian(Object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		metric (str,Metric): Type of metric
 		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,metric=metric,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 		return
 
 
@@ -1061,7 +1060,7 @@ class Unitary(Hamiltonian):
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,metric=metric,system=system)
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
 
 		return
 
@@ -1078,13 +1077,13 @@ class Unitary(Hamiltonian):
 		return self.exponentiation(self.coefficients*parameters)
 
 	#@partial(jit,static_argnums=(0,))
-	def __derivative_analytical__(self,parameters):
+	def __grad_analytical__(self,parameters):
 		'''
 		Return gradient of parameterized operator expm(parameters*data)
 		Args:
 			parameters (array): Parameters to parameterize operator
 		Returns
-			derivative (array): Gradient of parameterized operator
+			grad (array): Gradient of parameterized operator
 		'''
 
 		# Get class hyperparameters and attributes
@@ -1128,24 +1127,27 @@ class Unitary(Hamiltonian):
 
 		# Calculate parameters and gradient
 		parameters = self.__parameters__(parameters)
+		coefficients = self.coefficients
+		data = array(self.data,dtype=self.dtype)
+		identity = self.identity
 
-		derivative = gradient_expm(self.coefficients*parameters,self.data,self.identity)
-		derivative *= self.coefficients
+		grad = gradient_expm(coefficients*parameters,data,identity)
+		grad *= coefficients
 
 		# Reshape gradient
 		axis = 1
 
-		derivative = derivative.reshape((*shape,*derivative.shape[axis:]))
+		grad = grad.reshape((*shape,*grad.shape[axis:]))
 
-		derivative = derivative.transpose(axis,0,*[i for i in range(derivative.ndim) if i not in [0,axis]])
+		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
 
-		derivative = array(gradient_trotter(derivative,p))
+		grad = array(gradient_trotter(grad,p))
 
-		derivative = derivative[indices]
+		grad = grad[indices]
 
-		derivative = derivative.reshape((-1,*derivative.shape[axis+1:]))
+		grad = grad.reshape((-1,*grad.shape[axis+1:]))
 
-		return derivative
+		return grad
 
 
 
@@ -1214,13 +1216,13 @@ class Callback(object):
 				  (hyperparameters['eps']['grad']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))))
 			)
 
-		other = (len(attributes['iteration']) == 0) or 
+		other = ((len(attributes['iteration']) == 0) or 
 			(hyperparameters['modulo']['track'] is None) or 
-			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0)
+			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 
 		default = nan
 
-		if ((not status) or done or start or other)
+		if ((not status) or done or start or other):
 
 			# TODO: Ensure all attributes are assigned value, either _value or default for all iterations
 
@@ -1293,7 +1295,7 @@ class Callback(object):
 						value = model.__layers__(parameters,layer)[indices]
 						value = abs((value - track['features'][0] + eps)/(track['features'][0] + eps))
 					
-					elif attr in ['features.relative']
+					elif attr in ['features.relative']:
 						eps = 1e-20
 						value = model.__layers__(parameters,layer)[indices]
 						value = abs((value - track['features'][0] + eps)/(track['features'][0] + eps)).mean(-1)

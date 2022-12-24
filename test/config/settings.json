@@ -1,5 +1,8 @@
 {
-"class":"src.quantum.Unitary",
+"class":{
+	"model":"src.quantum.Unitary",
+	"callback":"src.quantum.Callback"
+	},
 "hyperparameters":"settings.json",
 "sys":{
 	"cwd":null,
@@ -22,17 +25,49 @@
 "boolean":{
 	"train":1,
 	"load":0,
-	"dump":1
+	"dump":0
 	},
 "seed":{
-	"seed":12332,
+	"seed":5576,
 	"size":1,
-	"reset":12332,
+	"reset":5576,
 	"index":null
 	},
 "permutations":{
-	"permutations":{},
-	"groups":[],
+	"permutations":{	
+	
+		"model.N":[4],		
+		"model.M":[500],		
+		"model.tau":[20e0],		
+		"noise.scale":[null],
+		"state.scale":[1],
+		"state.shape":[[1,1,-1,-1]],
+
+		"optimize.metric":["abs2"],
+		"optimize.metric":["norm"],
+		"optimize.iterations":[300],
+		"optimize.optimizer":["cg"],
+		"parameters.xy.method":["constrained"],
+		"model.system.architecture":["constrained"],
+
+		"jobs.job.cwd":["data"],	
+		"jobs.postprocess.cwd":["data"],
+
+		"jobs.job.device":["pc"],
+		"jobs.postprocess.device":["pc"],
+		"jobs.job.process":[null],
+		"jobs.postprocess.process":[null],
+		"jobs.job.pool":[1],
+		"jobs.postprocess.pool":[1],
+		"jobs.job.execute":[1],	
+		"jobs.postprocess.execute":[1],	
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.postprocess.args.JOB_PROCESSES":[1]
+
+		},
+	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null
 	},
 "model":{
@@ -43,12 +78,11 @@
 	"delta":null,
 	"M":10,
 	"T":null,
-	"tau":10e-1,
-	"p":2,
+	"tau":5e1,
+	"p":1,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"metric":"infidelity.abs",
 	"system":{
 		"dtype":"complex",
 		"format":"array",
@@ -61,16 +95,19 @@
 		}
 	},
 "optimize":{
-	"iterations":200,
+	"iterations":50,
 	"optimizer":"cg",
-	"line_search":"line_search",
-	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-8,"alpha":1e-20,"beta":1e3},
+	"metric":"norm",	
+	"search":{"alpha":"line_search","beta":"dai_yuan"},
+	"eps":{"value":1e-20,"grad":1e-12,"difference":1e-20,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
+	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[-1e7,1e7],"beta":[-1e20,1e3]},	
 	"status":1,
-	"reset":0,
-	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
+	"cwd":".",
+	"path":"data.hdf5",
+	"c1":0.0001,"c2":0.9,"maxiter":1500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":null},
+	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":10},
 	"length":{"log":null,"attributes":10,"track":null,"callback":null,"restart":null,"dump":null},
 	"attributes":{
 		"iteration":[],"parameters":[],
@@ -78,10 +115,29 @@
 		"alpha":[],"beta":[]
 		},
 	"track":{
-		"iteration":[],"objective":[],"parameters":[],
-		"parameters":[],
-		"value":[],
-		"alpha":[],"beta":[]
+			"iteration":[],
+			"parameters":false,
+			"grad":false,
+			"search":false,
+			"value":false,
+			"objective":[],
+			"alpha":false,
+			"beta":false,
+
+			"iteration.max":[],
+			"iteration.min":[],
+			"features":false,"features.mean":false,"features.relative":false,
+			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
+			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
+			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
+			"hessian":false,"fisher":false,
+			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
+			"hessian.rank":false,"fisher.rank":false,
+
+			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"p":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],
+
+			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
 		}
 	},
 "parameters":{
@@ -102,13 +158,13 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-40,40],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-30,-30]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
-		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1e1]}
+		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
 	"z": {
 		"string":"z",
@@ -116,7 +172,7 @@
 		"method":null,		
 		"use":true,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
-		"parameters":[-1e-2,0,1e-3,5e-3,2e-3],				
+		"parameters":[-1e-2,0,1e-3,5e-3,2e-3],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["z"]],
 		"scale":1,
@@ -136,7 +192,7 @@
 		"method":null,		
 		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],										
+		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"group":[["zz"]],
 		"scale":1,
@@ -184,7 +240,7 @@
 	"string":"phase",
 	"category":"constant",
 	"shape":[2,-1,-1],
-	"scale":null,
+	"scale":1e-6,
 	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,
@@ -199,7 +255,7 @@
 			"JOB_ENV":"mkl",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
-			"JOB_PROCESSES":2,
+			"JOB_PROCESSES":1,
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{},
@@ -214,7 +270,7 @@
 		"dependencies":[],
 		"pwd":"config",
 		"cwd":"test",
-		"pool":2,
+		"pool":null,
 		"pause":1,
 		"file":"job.sh",	
 		"process":null,
@@ -243,7 +299,7 @@
 		"cwd":"test",
 		"pool":null,		
 		"pause":1,	
-		"file":"postprocess.sh",		
+		"file":"postprocess.sh",
 		"process":null,
 		"processes":null,
 		"device":"pc",

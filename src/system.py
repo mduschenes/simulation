@@ -19,10 +19,8 @@ for PATH in PATHS:
 from src.utils import jit,gradient
 from src.utils import array,dictionary,arange,eye
 from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt
-from src.utils import normed,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import normed_einsum,inner_abs2_einsum,inner_real_einsum,inner_imag_einsum
-from src.utils import gradient_normed_einsum,gradient_inner_abs2_einsum,gradient_inner_real_einsum,gradient_inner_imag_einsum
+from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
+from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
 from src.utils import itg,dbl,flt
 

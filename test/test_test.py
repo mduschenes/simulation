@@ -35,7 +35,7 @@ from src.io import load,dump,join,split
 
 from src.plot import plot
 
-from src.optimize import Optimizer,Objective
+from src.optimize import Optimizer,Objective,Metric,Callback
 
 from src.quantum import Unitary,Hamiltonian,Object
 
@@ -54,7 +54,7 @@ def test_unitary(path,tol):
 
 	hyperparameters = load(path)
 
-	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	return
 
@@ -64,15 +64,15 @@ def test_load_dump(path,tol):
 	# Set instance
 	hyperparameters = load(path)
 
-	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	# Set hyperparameters
-	obj.hyperparameters['optimize']['track']['alpha'].append(12345)
-	obj.hyperparameters['optimize']['attributes']['search'].append([1,2,2,3])
+	model.hyperparameters['optimize']['track']['alpha'].append(12345)
+	model.hyperparameters['optimize']['attributes']['search'].append([1,2,2,3])
 	
 
 	# Dump instance
-	obj.dump()
+	model.dump()
 
 	# Set instance
 	hyperparameters = load(path)
@@ -85,7 +85,7 @@ def test_load_dump(path,tol):
 		for exception in [[callable],[is_array,is_ndarray],
 							[lambda a: isinstance(a,dict) and ((len(a)==0) or all(callable(a[item]) for item in a))]])
 	
-	equalizer(obj.hyperparameters,new.hyperparameters,types=types,exceptions=exceptions)
+	equalizer(model.hyperparameters,new.hyperparameters,types=types,exceptions=exceptions)
 
 	return
 
@@ -93,12 +93,12 @@ def test_data(path,tol):
 
 	hyperparameters = load(path)
 
-	obj = Unitary(**hyperparameters['data'],**{**hyperparameters['model'],'N':2},hyperparameters=hyperparameters)
+	model = Unitary(**hyperparameters['data'],**{**hyperparameters['model'],'N':2},hyperparameters=hyperparameters)
 
-	I = array([[1,0],[0,1]],dtype=obj.dtype)
-	X = array([[0,1],[1,0]],dtype=obj.dtype)
-	Y = array([[0,-1j],[1j,0]],dtype=obj.dtype)
-	Z = array([[1,0],[0,-1]],dtype=obj.dtype)
+	I = array([[1,0],[0,1]],dtype=model.dtype)
+	X = array([[0,1],[1,0]],dtype=model.dtype)
+	Y = array([[0,-1j],[1j,0]],dtype=model.dtype)
+	Z = array([[1,0],[0,-1]],dtype=model.dtype)
 	data = [
 		tensorprod(array([X,I])),
 		tensorprod(array([I,X])),
@@ -110,10 +110,10 @@ def test_data(path,tol):
 		]
 	string = ['XI','IX','YI','IY','ZI','IZ','ZZ']
 
-	data = trotter(data,obj.p)
-	string = trotter(string,obj.p)
+	data = trotter(data,model.p)
+	string = trotter(string,model.p)
 
-	for i,(d,o) in enumerate(zip(data,obj.data)):
+	for i,(d,o) in enumerate(zip(data,model.data)):
 		assert allclose(d,o), "data[%d] incorrect"%(i)
 
 	return
@@ -158,45 +158,52 @@ def test_state(path,tol):
 
 	return
 
-def test_derivative(path,tol):
-
-	hyperparameters = load(path)
-
-	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
-
-	func = obj.__func__
-
-	parameters = obj.parameters
-
-	# Derivative of unitary
-	derivative_jax = obj.__derivative__
-	derivative_finite = gradient(obj,mode='finite',tol=tol)
-	derivative_analytical = obj.__derivative_analytical__
-
-	# print(derivative_jax(parameters).round(3)[0])
-	# print()
-	# print(derivative_analytical(parameters).round(3)[0])
-
-	assert allclose(derivative_jax(parameters),derivative_finite(parameters)), "JAX derivative != Finite derivative"
-	assert allclose(derivative_finite(parameters),derivative_analytical(parameters)), "Finite derivative != Analytical derivative"
-	assert allclose(derivative_jax(parameters),derivative_analytical(parameters)), "JAX derivative != Analytical derivative"
-
-	return
-
 def test_grad(path,tol):
 
 	hyperparameters = load(path)
 
-	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
-	func = obj.__func__
+	func = model
 
-	parameters = obj.parameters
+	parameters = model.parameters
+
+	# grad of unitary
+	grad_jax = model.__grad__
+	grad_finite = gradient(model,mode='finite',tol=tol)
+	grad_analytical = model.__grad_analytical__
+
+	# print(grad_jax(parameters).round(3)[0])
+	# print()
+	# print(grad_analytical(parameters).round(3)[0])
+
+	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
+	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
+	assert allclose(grad_jax(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
+
+	return
+
+def test_grad_func(path,tol):
+
+	hyperparameters = load(path)
+
+	model = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+
+	func = model
+	shapes = model.shapes
+	callback = None
+	hyperparams = hyperparameters['optimize']
+
+	metric = Metric(shapes=shapes,optimize=None,hyperparameters=hyperparams)
+	func = Objective(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
+	callback = Callback(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
+
+	parameters = model.parameters
 
 	# Grad of objective
-	grad_jax = obj.__grad__
+	grad_jax = model.__grad__
 	grad_finite = gradient(func,mode='finite',tol=tol)
-	grad_analytical = obj.__grad_analytical__
+	grad_analytical = model.__grad_analytical__
 
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
@@ -206,33 +213,33 @@ def test_grad(path,tol):
 
 
 
-def test_obj(path,tol):
+def test_model(path,tol):
 
 	hyperparameters = load(path)
 
-	obj = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = Unitary(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
 
-	func = jit(obj.__call__)
+	func = jit(model.__call__)
 
-	parameters = obj.parameters
+	parameters = model.parameters
 
 	U = func(parameters)
 
 	subattrs = {}
 	for subattr in ['noise']:
-		subattrs[subattr] = getattr(obj,subattr)
-		setattr(obj,subattr,None)
-		obj.__functions__()
+		subattrs[subattr] = getattr(model,subattr)
+		setattr(model,subattr,None)
+		model.__functions__()
 
-	func = jit(obj.__call__)
+	func = jit(model.__call__)
 
 	V = func(parameters)
 
 	for subattr in subattrs:
-		setattr(obj,subattr,subattrs[subattr])
-	obj.__functions__()
+		setattr(model,subattr,subattrs[subattr])
+	model.__functions__()
 
-	func = jit(obj.__call__)
+	func = jit(model.__call__)
 
 	W = func(parameters)
 
@@ -301,5 +308,5 @@ def test_call():
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_derivative(path,tol)
 	test_grad(path,tol)
+	# test_grad_func(path,tol)
