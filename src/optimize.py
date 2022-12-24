@@ -29,13 +29,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient
+from src.utils import jit,function_and_gradient,gradient
 from src.utils import is_naninf,product,sqrt
 
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
-from src.utils import itg,dbl,flt,delim,nan
+from src.utils import itg,dbl,flt,delim,nan,Null
 
 from src.dictionary import updater
 
@@ -43,21 +43,6 @@ from src.line_search import line_search,armijo
 
 from src.io import dump,load,join,split,copy,rmdir,exists
 
-
-
-def value_and_grad(func,grad=None):
-	def _value_and_grad(func,grad):
-		def _func_and_grad(parameters):
-			return func(parameters),grad(parameters)
-		return _func_and_grad
-
-	if grad is None:
-		grad = gradient(func)
-		func_and_grad = value_and_gradient(func)
-	else:
-		func_and_grad = _value_and_grad(func,grad)
-
-	return func_and_grad,func,grad
 
 
 class LineSearchBase(object):
@@ -272,7 +257,9 @@ class FuncBase(object):
 	
 		if not callable(func):
 			funcs = func
-			func = jit((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=funcs)
+			@jit
+			def func(*args,**kwargs):
+				return sum(func(*args,**kwargs) for func in funcs)
 		else:
 			funcs = [func]
 			func = func
@@ -282,7 +269,9 @@ class FuncBase(object):
 			grad = None
 		elif not callable(grad):
 			grads = grad
-			grad = jit((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=grads)
+			@jit
+			def grad(*args,**kwargs):
+				return sum(grad(*args,**kwargs) for grad in grads)
 		else:
 			grads = [None for func in funcs]
 			grad = grad
@@ -291,10 +280,14 @@ class FuncBase(object):
 			def callback(parameters,track,attributes,model,func,grad,hyperparameters):
 				status = True
 				return status
+		print(funcs,grads)
+		if funcs and grads:
+			print(list(zip((function_and_gradient(func,grad) for func,grad in zip(funcs,grads)))))
+			self.values_and_grads,self.funcs,self.grads = zip((function_and_gradient(func,grad) for func,grad in zip(funcs,grads)))
+		else:
+			self.value_and_grads,self.funcs,self.grads = Null((0,0)),Null(0),Null(0)
 
-		self.values_and_grads,self.funcs,self.grads = zip((value_and_grad(func,grad) for func,grad in zip(funcs,grads)))
-
-		self.value_and_gradient,self.function,self.gradient = value_and_grad(func,grad)
+		self.value_and_gradient,self.function,self.gradient = function_and_gradient(func,grad)
 
 		self.model = model
 		self.callback = callback
@@ -407,8 +400,8 @@ class Objective(FuncBase):
 
 		super().__init__(model,func,grad=grad,callback=callback,metric=metric,label=label,hyperparameters=hyperparameters)
 
-		self.functions = self.function
-		self.gradients = self.gradient
+		self.funcs = self.function
+		self.grads = self.gradient
 		self.function = self.__call__
 		self.gradient = gradient(self.function)
 
@@ -527,10 +520,16 @@ class Metric(object):
 		return
 
 	def __string__(self):
+		'''
+		Class string
+		'''
 		self.string = str(self.metric)
 		return
 
 	def __size__(self):
+		'''
+		Class size
+		'''
 		if self.shapes:
 			self.size = sum(int(product(shape)**(1/len(shape))) for shape in self.shapes)//len(self.shapes)
 		else:
@@ -539,24 +538,87 @@ class Metric(object):
 
 	@partial(jit,static_argnums=(0,))
 	def __call__(self,*operands):
-		return self.func(*operands)
+		'''
+		Function call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''
+		return self.function(*operands)
 
 	@partial(jit,static_argnums=(0,))
 	def __grad__(self,*operands):
-		return self.grad(*operands)	
+		'''
+		Gradient call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.gradient_analytical(*operands)	
 
 	@partial(jit,static_argnums=(0,))
 	def __grad_analytical__(self,*operands):
-		return self.grad_analytical(*operands)		
+		'''
+		Gradient call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.gradient_analytical(*operands)	
+
+	@partial(jit,static_argnums=(0,))
+	def func(self,*operands):
+		'''
+		Function call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.__call__(*operands)
+
+	@partial(jit,static_argnums=(0,))
+	def grad(self,*operands):
+		'''
+		Gradient call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.__grad__(*operands)	
+
+	@partial(jit,static_argnums=(0,))
+	def grad_analytical(self,*operands):
+		'''
+		Gradient call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.__grad_analytical__(*operands)	
+
 
 	def __str__(self):
+		'''
+		Class string
+		'''
 		return str(self.string)
 
 	def __repr__(self):
+		'''
+		Class representation
+		'''
 		return str(self.string)
 
 	def get_metric(self):
-
+		'''
+		Setup metric	
+		'''
 		if callable(self.metric):
 			metric = self.metric
 			func = jit(metric)
@@ -732,9 +794,9 @@ class Metric(object):
 		grad = jit(gradient(func))
 		grad_analytical = jit(grad_analytical)
 
-		self.func = func
-		self.grad = grad
-		self.grad_analytical = grad_analytical
+		self.function = func
+		self.gradient = grad
+		self.gradient_analytical = grad_analytical
 
 		return
 
@@ -784,7 +846,7 @@ class OptimizerBase(object):
 
 		self.hyperparameters = hyperparameters
 
-		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
+		self.value_and_grad,self.func,self.grad = function_and_gradient(func,grad)
 
 		self.alpha = LineSearch(self.func,self.grad,self.hyperparameters)
 

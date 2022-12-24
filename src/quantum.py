@@ -141,7 +141,6 @@ class Object(object):
 		self.labels = None
 		self.label = None
 		self.states = None
-		self.states
 		self.state = None
 		self.noises = None
 		self.noise = None
@@ -149,7 +148,7 @@ class Object(object):
 		self.identity = None
 		self.constants = None
 		self.coefficients = 1
-		self.nparams = None	
+		self.dimensions = None	
 
 		self.summation = None
 		self.exponentiation = None 
@@ -426,7 +425,7 @@ class Object(object):
 		self.noises = noise
 		self.coefficients = coefficients
 		self.attributes = attributes
-		self.nparams = parameters.shape
+		self.dimensions = parameters.shape
 
 		return
 

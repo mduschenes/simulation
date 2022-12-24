@@ -67,7 +67,14 @@ scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
 
+class none(object): pass
 class null(object): pass
+class Null(object):
+	def __init__(self,default=0,*args,**kwargs):
+		self.default = default
+		return
+	def __call__(self,*args,**kwargs):
+		return self.default
 
 # Types
 itg = np.integer
@@ -285,6 +292,30 @@ def value_and_gradient(func):
 	# 	return jax.value_and_grad(func)(*args,**kwargs)
 	value_and_grad = jit(jax.value_and_grad(func))
 	return value_and_grad
+
+def function_and_gradient(func,grad=None):
+	'''
+	Compute value and gradient of function
+	Args:
+		func (callable): Function to differentiate
+		grad (callable): Gradient of function
+	Returns:
+		value_and_grad (callable): Value and Gradient of function
+		func (callable): Function
+		grad (callable): Gradient
+	'''	
+	def _value_and_grad(func,grad):
+		def _func_and_grad(parameters):
+			return func(parameters),grad(parameters)
+		return _func_and_grad
+
+	if grad is None:
+		grad = gradient(func)
+		func_and_grad = value_and_gradient(func)
+	else:
+		func_and_grad = _value_and_grad(func,grad)
+
+	return func_and_grad,func,grad
 
 def gradient(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	'''
@@ -528,6 +559,18 @@ def nullfunc(obj,*args,**kwargs):
 		obj (object): Object to return
 	'''
 	return obj
+
+def zerofunc(obj,*args,**kwargs):
+	'''
+	Zero function
+	Args:
+		obj (object): Object to return
+		args (iterable): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		obj (object): Object to return
+	'''
+	return 0
 
 
 def datatype(dtype):

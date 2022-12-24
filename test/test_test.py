@@ -202,9 +202,6 @@ def test_objective(path,tol):
 	grad_finite = gradient(func,mode='finite',tol=tol)
 	grad_analytical = func.grad_analytical
 
-	print(func(parameters))
-	# print(grad_jax(parameters).round(3))
-	return
 
 	# print(grad_jax(parameters).round(3))
 	# print()
