@@ -839,7 +839,7 @@ class OptimizerBase(object):
 		model (object): model instance
 		hyperparameters (dict): optimizer hyperparameters
 	'''
-	def __init__(self,func,grad=None,callback=None,model=None,hyperparameters={}):
+	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
 		updates = {
 			'verbose': {
@@ -859,6 +859,7 @@ class OptimizerBase(object):
 			'alpha':0,
 			'status':1,
 			'timestamp':None,
+			'key':None,
 			'cwd':None,
 			'path':None,
 			'verbose':False,
@@ -872,7 +873,6 @@ class OptimizerBase(object):
 		hyperparameters.update({attr: updates.get(attr,{}).get(hyperparameters[attr],hyperparameters[attr]) 
 			if attr in updates else hyperparameters[attr] for attr in hyperparameters})
 
-		self.model = model
 		self.hyperparameters = hyperparameters
 
 		self.value_and_grad,self.func,self.grad = value_and_gradient(func,grad,returns=True)
@@ -899,6 +899,7 @@ class OptimizerBase(object):
 		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
 		self.timestamp = hyperparameters['timestamp']
+		self.key = hyperparameters['key']
 		self.path = join(hyperparameters['path'],root=hyperparameters['cwd'])
 		self.verbose = hyperparameters['verbose']
 
@@ -916,8 +917,6 @@ class OptimizerBase(object):
 			elif ((isinstance(value,list)) and (value)):
 				self.track[value] = []				
 
-		self.load()
-
 		return
 
 	def __call__(self,parameters):
@@ -929,7 +928,9 @@ class OptimizerBase(object):
 			parameters (object): optimizer parameters
 		'''
 
+		iteration = self.iteration
 		state = self.opt_init(parameters)
+		iteration,state = self.load(iteration,state)
 
 		for iteration in self.iterations:
 
@@ -1071,7 +1072,7 @@ class OptimizerBase(object):
 		track = self.track
 		attributes = self.attributes
 
-		labels = [getattr(self,'timestamp'),getattr(self.model,'timestamp'),getattr(self.model,'key')]
+		labels = [self.timestamp,self.key]
 		size = min((len(track[attr]) for attr in track if len(track[attr])>0),default=0)
 		iterations = range(size)
 		default = nan
@@ -1091,9 +1092,12 @@ class OptimizerBase(object):
 
 		return
 
-	def load(self):
+	def load(self,iteration,state):
 		'''
 		Load data
+		Args:
+			iteration (int): optimizer iteration
+			state (object): optimizer state
 		Returns:
 			iteration (int): optimizer iteration
 			state (object): optimizer state
@@ -1111,7 +1115,6 @@ class OptimizerBase(object):
 		default = {}
 		data = load(path,default=default)
 
-		iteration = self.iteration
 		track = {}
 		for string in data:
 			iteration,labels = parse(string)
@@ -1122,29 +1125,33 @@ class OptimizerBase(object):
 				value = data[string][attr]
 				track[attr].append(value)
 
-		attr = 'iteration'	
-		if attr in track:
-			self.iteration = track[attr][-1]
-
-		attr = 'parameters'		
-		if attr in track:
-			self.parameters = track[attr][-1]
-
 		for attr in self.track:
 			if attr in track:
 				self.track[attr].extend(track[attr])
 
 		for attr in self.attributes:
 			if attr in track:
-				self.attributes[attr].extend(track[attr])			
+				self.attributes[attr].extend(track[attr])
 
-		self.iteration = max(self.iteration-1,-1)
 		self.size = min((len(self.track[attr]) for attr in self.track),default=self.size)
+
+		if self.size:
+			attr = 'iteration'	
+			if attr in track:
+				self.iteration = self.track[attr][-1]
+
+			attr = 'parameters'		
+			if attr in track:
+				self.parameters = self.track[attr][-1]
+		else:
+			self.iteration = iteration
+			self.parameters = self.get_params(state)
+	
+		self.iteration = max(iteration,self.iteration-1,-1)
 		self.iterations = range(
 			self.iterations.start+self.iteration+1,
 			self.iterations.stop+self.iteration+1,
-			self.iterations.step)
-
+			self.iterations.step)				
 
 		iteration = self.iteration
 		state = self.opt_init(self.parameters)

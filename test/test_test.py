@@ -56,7 +56,7 @@ def test_class(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	return
 
@@ -67,9 +67,8 @@ def test_load_dump(path,tol):
 	hyperparameters = load(path)
 
 	cls = load(hyperparameters['class']['model'])
-
-	cls = load(hyperparameters['class']['model'])
-	model = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	
+	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	# Set hyperparameters
 	model.hyperparameters['optimize']['track']['alpha'].append(12345)
@@ -81,7 +80,7 @@ def test_load_dump(path,tol):
 
 	# Set instance
 	hyperparameters = load(path)
-	new = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	new = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	new.load()
 
@@ -100,7 +99,7 @@ def test_data(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['data'],**{**hyperparameters['model'],'N':2},hyperparameters=hyperparameters)
+	model = cls(**{**hyperparameters['model'],'N':2},hyperparameters=hyperparameters)
 
 	I = array([[1,0],[0,1]],dtype=model.dtype)
 	X = array([[0,1],[1,0]],dtype=model.dtype)
@@ -160,7 +159,7 @@ def test_grad(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	func = model
 
@@ -183,7 +182,7 @@ def test_objective(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	func = []
 	shapes = model.shapes
@@ -223,7 +222,7 @@ def test_model(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	func = jit(model.__call__)
 

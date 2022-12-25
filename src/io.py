@@ -470,7 +470,7 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 			key = name
 		return key
 
-	null = {'None':None}
+	null = {'None':'None'}
 
 	data = {}
 	

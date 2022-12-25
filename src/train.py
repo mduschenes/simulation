@@ -37,6 +37,8 @@ def setup(hyperparameters)
 	updates = {
 		'optimize.cwd': 'sys.cwd',
 		'optimize.path': 'sys.path.data.data',
+		'optimize.timestamp': 'model.timestamp',
+		'optimize.key': 'model.key',
 	}
 
 	resetter(hyperparameters,updates)
@@ -64,7 +66,7 @@ def train(hyperparameters):
 
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
-	model = cls['model'](**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls['model'](**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	if hyperparameters['boolean'].get('load'):
 		model.load()
