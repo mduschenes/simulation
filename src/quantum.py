@@ -445,7 +445,7 @@ class Object(object):
 		noise = self.noises if (noise is None or noise is True) else noise if noise is not False else None
 		label = self.labels if (label is None or label is True) else label if label is not False else None
 
-		# Labels and Shapes of Labels
+		# Attribute values
 		if state is None:
 			self.state = state
 			self.noise = noise
@@ -555,7 +555,7 @@ class Object(object):
 		Returns:
 			out (array): Return of function
 		'''		
-		return self.__gradient__(parameters)
+		return self.gradient(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def value_and_grad(self,parameters):
@@ -1251,7 +1251,7 @@ class Callback(object):
 		}		
 		return
 
-	def __call__(self,parameters,track,attributes,model,metric,label,func,grad,hyperparameters):
+	def __call__(self,parameters,track,attributes,model,metric,func,grad,hyperparameters):
 		''' 
 		Callback
 		Args:
@@ -1260,7 +1260,6 @@ class Callback(object):
 			attributes (dict): Callback attributes
 			model (object): Model instance
 			metric (str,callable): Callback metric
-			label (str,callable): Callback label
 			func (callable): Objective function with signature func(parameters)
 			grad (callable): Objective gradient with signature grad(parameters)
 			hyperparameters(dict): Callback hyperparameters
@@ -1423,15 +1422,15 @@ class Callback(object):
 					_model = model
 					_func = func
 					_callback = None
-					_label = _model.labels
+					_label = _model.label
 					_metric = 'norm'
 					_shapes = model.shapes
 					_optimize = None
 					_hyperparameters = hyperparameters
 
-					_metric = Metric(_metric,shapes=_shapes,optimize=_optimize,hyperparameters=_hyperparameters)
-					_func = Objective(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
-					_callback = Callback(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
+					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
+					_func = Objective(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
+					_callback = Callback(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
 
 					if attr in ['objective.ideal.noise']:
 						value = _metric(parameters)
@@ -1446,15 +1445,15 @@ class Callback(object):
 					_model = model
 					_func = func
 					_callback = None
-					_label = _model.labels
+					_label = _model.label
 					_metric = 'norm'
 					_shapes = model.shapes
 					_optimize = None
 					_hyperparameters = hyperparameters
 
-					_metric = Metric(_metric,shapes=_shapes,optimize=_optimize,hyperparameters=_hyperparameters)
-					_func = Objective(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
-					_callback = Callback(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
+					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
+					_func = Objective(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
+					_callback = Callback(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
 
 					if attr in ['objective.ideal.noise']:
 						value = _metric(parameters)
@@ -1469,15 +1468,15 @@ class Callback(object):
 					_model = model
 					_func = func
 					_callback = None
-					_label = _model.labels
+					_label = _model.label
 					_metric = 'abs2'
 					_shapes = model.shapes
 					_optimize = None
 					_hyperparameters = hyperparameters
 
-					_metric = Metric(_metric,shapes=_shapes,optimize=_optimize,hyperparameters=_hyperparameters)
-					_func = Objective(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
-					_callback = Callback(_model,_func,callback=_callback,metric=_metric,label=_label,hyperparameters=_hyperparameters)
+					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
+					_func = Objective(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
+					_callback = Callback(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
 
 					if attr in ['objective.ideal.noise']:
 						value = _metric(parameters)
@@ -1543,11 +1542,7 @@ class Callback(object):
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				'U\n%s\nV\n%s\n'%(
 				to_string(abs(model(parameters)).round(4)),
-				to_string(abs(model.labels).round(4))),
-				# 'U: %0.4e\tV: %0.4e\n'%(
-				# 	trace(model(parameters)).real,
-				# 	trace(model.labels).real
-				# 	),				
+				to_string(abs(model.label).round(4))),
 				])
 
 

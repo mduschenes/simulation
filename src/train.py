@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,datetime
-from copy import deepcopy as deepcopy
-from time import time as timer
-from functools import partial
+import os,sys
 
 # Logging
 import logging
@@ -81,11 +78,11 @@ def train(hyperparameters):
 		func = [model.__constraints__]
 		callback = cls['callback']()
 
-		metric = Metric(shapes=shapes,optimize=None,hyperparameters=hyperparams)
-		func = Objective(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
-		callback = Callback(model,func,callback=callback,metric=metric,label=label,hyperparameters=hyperparams)
+		metric = Metric(shapes=shapes,label=label,optimize=None,hyperparameters=hyperparams)
+		func = Objective(model,func,callback=callback,metric=metric,hyperparameters=hyperparams)
+		callback = Callback(model,func,callback=callback,metric=metric,hyperparameters=hyperparams)
 
-		optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams)
+		optimizer = Optimizer(func=func,model=model,callback=callback,hyperparameters=hyperparams)
 
 		parameters = optimizer(parameters)
 

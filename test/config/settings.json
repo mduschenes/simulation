@@ -71,12 +71,12 @@
 	"index":null
 	},
 "model":{
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":5,
+	"M":3,
 	"T":null,
 	"tau":5e1,
 	"p":2,

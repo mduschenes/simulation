@@ -29,7 +29,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import user modules
-from src.utils import jit,function_and_gradient,gradient
+from src.utils import jit,value_and_gradient,gradient
 from src.utils import is_naninf,product,sqrt
 
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
@@ -242,16 +242,15 @@ class Null_Search(LineSearchBase):
 
 class FuncBase(object):
 
-	def __init__(self,model,func,grad=None,callback=None,metric=None,label=None,hyperparameters={}):
+	def __init__(self,model,func,grad=None,callback=None,metric=None,hyperparameters={}):
 		'''	
 		Class for function
 		Args:
 			model (object): Model instance
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,label,func,grad,hyperparameters)
+			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
 			metric (str,callable): Function metric
-			label (str,callable): Function label			
 			hyperparameters (dict): Function hyperparameters
 		'''
 	
@@ -280,19 +279,17 @@ class FuncBase(object):
 			def callback(parameters,track,attributes,model,func,grad,hyperparameters):
 				status = True
 				return status
-		print(funcs,grads)
-		if funcs and grads:
-			print(list(zip((function_and_gradient(func,grad) for func,grad in zip(funcs,grads)))))
-			self.values_and_grads,self.funcs,self.grads = zip((function_and_gradient(func,grad) for func,grad in zip(funcs,grads)))
-		else:
-			self.value_and_grads,self.funcs,self.grads = Null((0,0)),Null(0),Null(0)
 
-		self.value_and_gradient,self.function,self.gradient = function_and_gradient(func,grad)
+		if funcs and grads:
+			self.values_and_grads,self.funcs,self.grads = zip(*(value_and_gradient(func,grad,returns=True) for func,grad in zip(funcs,grads)))
+		else:
+			self.value_and_grads,self.funcs,self.grads = Null((0.0,0.0)),Null(0.0),Null(0.0)
+
+		self.value_and_gradient,self.function,self.gradient = value_and_gradient(func,grad,returns=True)
 
 		self.model = model
 		self.callback = callback
 		self.metric = metric
-		self.label = label
 		self.hyperparameters = hyperparameters
 
 		return
@@ -345,7 +342,7 @@ class FuncBase(object):
 		status = self.callback(parameters,track,attributes,
 			hyperparameters=hyperparameters,
 			model=self.model,
-			metric=self.metric,label=self.label,
+			metric=self.metric,
 			func=self.func,grad=self.grad)
 		return status
 
@@ -385,20 +382,19 @@ class FuncBase(object):
 
 
 class Objective(FuncBase):		
-	def __init__(self,model,func,grad=None,callback=None,metric=None,label=None,hyperparameters={}):
+	def __init__(self,model,func,grad=None,callback=None,metric=None,hyperparameters={}):
 		'''	
 		Objective class for metric + function
 		Args:
 			model (object): Model instance
 			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,label,func,grad,hyperparameters)			
+			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)			
 			metric (str,callable): Objective metric
-			label (str,callable): Objective label
 			hyperparameters (dict): Objective hyperparameters
 		'''
 
-		super().__init__(model,func,grad=grad,callback=callback,metric=metric,label=label,hyperparameters=hyperparameters)
+		super().__init__(model,func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
 
 		self.funcs = self.function
 		self.grads = self.gradient
@@ -416,7 +412,7 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric(self.model(parameters),self.label) + self.function(parameters)
+		return self.metric(self.model(parameters)) #+ self.funcs(parameters)
 
 
 	# @partial(jit,static_argnums=(0,))
@@ -439,26 +435,35 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric.grad(self.model(parameters),self.label,self.model.grad(parameters)) + self.gradient(parameters)	
-		# return self.metric.grad_analytical(self.model(parameters),self.label,self.model.grad_analytical(parameters)) + self.gradient(parameters)	
+		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) #+ self.grads(parameters)	
+
+	# @partial(jit,static_argnums=(0,))
+	def grad_analytical(self,parameters):
+		'''
+		Gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__grad_analytical__(parameters)
 
 
 class Callback(FuncBase):
 
-	def __init__(self,model,func,grad=None,callback=None,metric=None,label=None,hyperparameters={}):
+	def __init__(self,model,func,grad=None,callback=None,metric=None,hyperparameters={}):
 		'''	
 		Class for function
 		Args:
 			model (object): Model instance
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,label,func,grad,hyperparameters)
+			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
 			metric (str,callable): Callback metric
-			label (str,callable): Callback label			
 			hyperparameters (dict): Callback hyperparameters
 		'''
 		
-		super().__init__(model,func,grad=grad,callback=callback,metric=metric,label=label,hyperparameters=hyperparameters)
+		super().__init__(model,func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
 
 		return
 
@@ -484,15 +489,17 @@ class Metric(object):
 	Args:
 		metric (str,Metric): Type of metric
 		shapes (iterable[tuple[int]]): Shapes of Operators
+		label (str,callable): Label			
 		optimize (bool,str,iterable): Contraction type	
 		hyperparameters (dict): Metric hyperparameters	
 	'''
-	def __init__(self,metric=None,shapes=None,optimize=None,hyperparameters={}):
+	def __init__(self,metric=None,shapes=None,label=None,optimize=None,hyperparameters={}):
 
 		defaults = {'metric':metric}
 		updater(hyperparameters,defaults,delimiter=delim,func=False)
 
-		self.metric = hyperparameters['metric'] if metric is None else metric
+		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
+		self.label = hyperparameters.get('label',label) if label is None else label
 		self.shapes = shapes
 		self.optimize = optimize
 		self.hyperparameters = {}
@@ -556,7 +563,7 @@ class Metric(object):
 		Returns:
 			out (object): Return of function
 		'''		
-		return self.gradient_analytical(*operands)	
+		return self.gradient(*operands)
 
 	@partial(jit,static_argnums=(0,))
 	def __grad_analytical__(self,*operands):
@@ -567,7 +574,7 @@ class Metric(object):
 		Returns:
 			out (object): Return of function
 		'''		
-		return self.gradient_analytical(*operands)	
+		return self.gradient_analytical(*operands)
 
 	@partial(jit,static_argnums=(0,))
 	def func(self,*operands):
@@ -794,9 +801,29 @@ class Metric(object):
 		grad = jit(gradient(func))
 		grad_analytical = jit(grad_analytical)
 
-		self.function = func
-		self.gradient = grad
-		self.gradient_analytical = grad_analytical
+		if self.label is not None:
+			def _function(*operands):
+				return func(*operands[:1],self.label,*operands[1:])
+			def _gradient(*operands):
+				return grad(*operands[:1],self.label,*operands[1:])
+			def _gradient_analytical(*operands):
+				return grad_analytical(*operands[:1],self.label,*operands[1:])
+		else:
+			def _function(*operands):
+				return func(*operands)
+			def _gradient(*operands):
+				return grad(*operands)
+			def _gradient_analytical(*operands):
+				return grad_analytical(*operands)
+
+		_function = jit(_function)
+		_gradient = jit(gradient(_function))
+		_gradient_analytical = jit(_gradient_analytical)
+
+
+		self.function = _function
+		self.gradient = _gradient
+		self.gradient_analytical = _gradient_analytical
 
 		return
 
@@ -809,9 +836,10 @@ class OptimizerBase(object):
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
 		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
+		model (object): model instance
 		hyperparameters (dict): optimizer hyperparameters
 	'''
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,func,grad=None,callback=None,model=None,hyperparameters={}):
 
 		updates = {
 			'verbose': {
@@ -844,9 +872,10 @@ class OptimizerBase(object):
 		hyperparameters.update({attr: updates.get(attr,{}).get(hyperparameters[attr],hyperparameters[attr]) 
 			if attr in updates else hyperparameters[attr] for attr in hyperparameters})
 
+		self.model = model
 		self.hyperparameters = hyperparameters
 
-		self.value_and_grad,self.func,self.grad = function_and_gradient(func,grad)
+		self.value_and_grad,self.func,self.grad = value_and_gradient(func,grad,returns=True)
 
 		self.alpha = LineSearch(self.func,self.grad,self.hyperparameters)
 
@@ -1028,7 +1057,7 @@ class OptimizerBase(object):
 			return
 
 		def parse(iteration,labels):
-			string = delim.join([*(str(i) for i in labels),*([str(i) for i in [iteration]])])
+			string = delim.join([*(str(i) for i in labels if i is not None),*([str(i) for i in [iteration]])])
 			return string
 
 		start = (self.size==1) and (iteration<self.iterations.stop)
@@ -1042,7 +1071,7 @@ class OptimizerBase(object):
 		track = self.track
 		attributes = self.attributes
 
-		labels = [self.timestamp]
+		labels = [getattr(self,'timestamp'),getattr(self.model,'timestamp'),getattr(self.model,'key')]
 		size = min((len(track[attr]) for attr in track if len(track[attr])>0),default=0)
 		iterations = range(size)
 		default = nan

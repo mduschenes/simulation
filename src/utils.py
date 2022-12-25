@@ -279,43 +279,33 @@ def vfunc(funcs,index):
 	return lambda x,func=func,index=index: func(index,x)
 
 
-def value_and_gradient(func):
-	'''
-	Compute value and gradient of function
-	Args:
-		func (callable): Function to differentiate
-	Returns:
-		value_and_grad (callable): Value and Gradient of function
-	'''
-	# @jit
-	# def _value_and_gradient(*args,**kwargs):
-	# 	return jax.value_and_grad(func)(*args,**kwargs)
-	value_and_grad = jit(jax.value_and_grad(func))
-	return value_and_grad
-
-def function_and_gradient(func,grad=None):
+def value_and_gradient(func,grad=None,returns=False):
 	'''
 	Compute value and gradient of function
 	Args:
 		func (callable): Function to differentiate
 		grad (callable): Gradient of function
+		returns (bool): Return function and gradient
 	Returns:
 		value_and_grad (callable): Value and Gradient of function
 		func (callable): Function
 		grad (callable): Gradient
 	'''	
 	def _value_and_grad(func,grad):
-		def _func_and_grad(parameters):
-			return func(parameters),grad(parameters)
+		def _func_and_grad(*args,**kwargs):
+			return func(*args,**kwargs),grad(*args,**kwargs)
 		return _func_and_grad
 
 	if grad is None:
 		grad = gradient(func)
-		func_and_grad = value_and_gradient(func)
+		value_and_grad = jit(jax.value_and_grad(func))
 	else:
-		func_and_grad = _value_and_grad(func,grad)
+		value_and_grad = _value_and_grad(func,grad)
 
-	return func_and_grad,func,grad
+	if returns:
+		return value_and_grad,func,grad
+	else:
+		return value_and_grad
 
 def gradient(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	'''
@@ -1535,26 +1525,168 @@ def norm(a,axis=None,ord=2,keepdims=False):
 	return out
 
 
-def inner_norm(*operands,optimize=True,wrapper=None):
+def inner(*operands,optimize=True,wrapper=None,operand=None):
+	'''
+	Calculate inner product of arrays
+	Args:
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)	
+		operand (array): Fixed operands		
+	Returns:
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
+	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
+	fixed = operand is not None
+	
+	if arrays:
+		if fixed:
+			shapes = [*[operand.shape for operand in operands][:1],operand.shape,*[operand.shape for operand in operands][1:]]
+		else:
+			shapes = [operand.shape for operand in operands]
+	else:
+		if fixed:
+			shapes = [*[operand for operand in operands][:1],operand.shape,*[operand for operand in operands][1:]]
+		else:
+			shapes = [operand for operand in operands]
+	
+	if fixed:
+		ndim = min(len(shape) for shape in shapes)
+	else:
+		ndim = min(*(len(shape) for shape in shapes),operand.ndim)
+
+	if ndim == 1:
+		subscripts = 'i,i->'
+	elif ndim == 2:
+		subscripts = 'ij,ij->'
+	else:
+		subscripts = '...ij,...ij->...'
+
+	if fixed:
+		shapes = (shapes[0],operand.shape)
+	else:
+		shapes = (shapes[0],shapes[1])
+
+	@jit
+	def wrapper(out,*operands):
+		return wrapping(out.real,*operands)
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	if fixed:
+		@jit
+		def func(*operands):
+			return einsummation(operands[0],operand)
+	else:
+		@jit
+		def func(*operands):
+			return einsummation(*operands)
+
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
+
+	return out
+
+def gradient_inner(*operands,optimize=True,wrapper=None,operand=None):
+	'''
+	Calculate gradient of inner product of arrays
+	Args:
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)	
+		operand (array): Fixed operands					
+	Returns:
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
+	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapping = jit(wrapper) if wrapper is not None else nullfunc
+	fixed = operand is not None
+	
+	if arrays:
+		if fixed:
+			shapes = [*[operand.shape for operand in operands][:1],operand.shape,*[operand.shape for operand in operands][1:]]
+		else:
+			shapes = [operand.shape for operand in operands]
+	else:
+		if fixed:
+			shapes = [*[operand for operand in operands][:1],operand.shape,*[operand for operand in operands][1:]]
+		else:
+			shapes = [operand for operand in operands]
+	
+	if fixed:
+		ndim = min(len(shape) for shape in shapes)
+	else:
+		ndim = min(*(len(shape) for shape in shapes),operand.ndim)
+
+	if ndim == 1:
+		subscripts = '...i,i->...'
+	elif ndim == 2:
+		subscripts = '...ij,ij->...'
+	else:
+		subscripts = '...ij,...ij->...'
+	
+	if fixed:
+		shapes = (shapes[0],shapes[2])
+	else:
+		shapes = (shapes[0],shapes[2])
+
+	@jit
+	def wrapper(out,*operands):
+		return wrapping(out.real,*operands)
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+	if fixed:
+		@jit
+		def func(*operands):
+			return einsummation(operands[1],operand)
+	else:
+		@jit
+		def func(*operands):
+			return einsummation(*operands)
+
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
+
+	return out
+
+
+def inner_norm(*operands,optimize=True,wrapper=None,operand=None):
 	'''
 	Calculate norm squared of arrays a and b, with einsum if shapes supplied
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)		
+		operand (array): Fixed operands
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 
 	arrays = all(is_array(operand) for operand in operands)
 	wrapping = jit(wrapper) if wrapper is not None else nullfunc
+	fixed = operand is not None
 	
 	if arrays:
-		shapes = [operand.shape for operand in operands]
+		if fixed:
+			shapes = [*[operand.shape for operand in operands][:1],operand.shape,*[operand.shape for operand in operands][1:]]
+		else:
+			shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		if fixed:
+			shapes = [*[operand for operand in operands][:1],operand.shape,*[operand for operand in operands][1:]]
+		else:
+			shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	if fixed:
+		ndim = min(len(shape) for shape in shapes)
+	else:
+		ndim = min(*(len(shape) for shape in shapes),operand.ndim)
 
 	if ndim == 1:
 		subscripts = 'i->'
@@ -1562,8 +1694,11 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 		subscripts = 'ij->'
 	else:
 		subscripts = '...ij->...'
-
-	shapes = (shapes[0],)
+	
+	if fixed:
+		shapes = (shapes[0],)
+	else:
+		shapes = (shapes[0],)
 
 	@jit
 	def wrapper(out,*operands):
@@ -1571,10 +1706,17 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
-	@jit
-	def func(*operands):
-		out = abs2(operands[0]-operands[1].conj())
-		return einsummation(out)
+
+	if fixed:
+		@jit
+		def func(*operands):
+			out = abs2(operands[0]-operand.conj())
+			return einsummation(out)
+	else:
+		@jit
+		def func(*operands):
+			out = abs2(operands[0]-operands[1].conj())
+			return einsummation(out)
 	
 	if arrays:
 		out = func(*operands)
@@ -1583,34 +1725,48 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	return out
 
-def gradient_inner_norm(*operands,optimize=True,wrapper=None):
+def gradient_inner_norm(*operands,optimize=True,wrapper=None,operand=None):
 	'''
 	Calculate norm squared of arrays a and b, with einsum if shapes supplied
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		operand (array): Fixed operands		
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
 	wrapping = jit(wrapper) if wrapper is not None else nullfunc
+	fixed = operand is not None
 	
 	if arrays:
-		shapes = [operand.shape for operand in operands]
+		if fixed:
+			shapes = [*[operand.shape for operand in operands][:1],operand.shape,*[operand.shape for operand in operands][1:]]
+		else:
+			shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		if fixed:
+			shapes = [*[operand for operand in operands][:1],operand.shape,*[operand for operand in operands][1:]]
+		else:
+			shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	if fixed:
+		ndim = min(len(shape) for shape in shapes)
+	else:
+		ndim = min(*(len(shape) for shape in shapes),operand.ndim)
 
 	if ndim == 1:
-		subscripts = 'i,...i->...'
+		subscripts = '...i,i->...'
 	elif ndim == 2:
-		subscripts = 'ij,...ij->...'
+		subscripts = '...ij,ij->...'
 	else:
 		subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[0],shapes[2])
+	if fixed:
+		shapes = (shapes[0],shapes[2])
+	else:
+		shapes = (shapes[0],shapes[2])	
 
 	@jit
 	def wrapper(out,*operands):
@@ -1618,10 +1774,16 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
-	@jit
-	def func(*operands):
-		out = (operands[0]-operands[1].conj())
-		return einsummation(out,operands[2])
+	if fixed:
+		@jit
+		def func(*operands):
+			out = abs2(operands[0]-operand.conj())
+			return einsummation(out,operands[1])
+	else:
+		@jit
+		def func(*operands):
+			out = abs2(operands[0]-operands[1].conj())
+			return einsummation(out,operands[2])
 	
 	if arrays:
 		out = func(*operands)
@@ -1630,118 +1792,37 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 
 	return out
 
-def inner(*operands,optimize=True,wrapper=None):
-	'''
-	Calculate inner product of arrays
-	Args:
-		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
-	Returns:
-		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
-	arrays = all(is_array(operand) for operand in operands)
-	wrapping = jit(wrapper) if wrapper is not None else nullfunc
-	
-	if arrays:
-		shapes = [operand.shape for operand in operands]
-	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes)
 
-	if ndim == 1:
-		subscripts = 'i,i->'
-	elif ndim == 2:
-		subscripts = 'ij,ij->'
-	else:
-		subscripts = '...ij,...ij->...'
-
-	shapes = (shapes[0],shapes[1])
-
-	@jit
-	def wrapper(out,*operands):
-		return wrapping(out.real,*operands)
-
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
-
-	@jit
-	def func(*operands):
-		return einsummation(*operands)
-
-	if arrays:
-		out = func(*operands)
-	else:
-		out = func
-
-	return out
-
-def gradient_inner(*operands,optimize=True,wrapper=None):
-	'''
-	Calculate gradient of inner product of arrays
-	Args:
-		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
-	Returns:
-		out (callable,array): Summation, callable if shapes supplied, otherwise out array
-	'''	
-	arrays = all(is_array(operand) for operand in operands)
-	wrapping = jit(wrapper) if wrapper is not None else nullfunc
-	
-	if arrays:
-		shapes = [operand.shape for operand in operands]
-	else:
-		shapes = [operand for operand in operands]
-	
-	ndim = min(len(shape) for shape in shapes)
-
-	if ndim == 1:
-		subscripts = 'i,...i->...'
-	elif ndim == 2:
-		subscripts = 'ij,...ij->...'
-	else:
-		subscripts = '...ij,...ij->...'
-
-	shapes = (shapes[0],shapes[2])
-
-	@jit
-	def wrapper(out,*operands):
-		return wrapping(out.real,*operands)
-
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
-
-	@jit
-	def func(*operands):
-		return einsummation(operands[1],operands[2])
-
-	if arrays:
-		out = func(*operands)
-	else:
-		out = func
-
-	return out
-
-
-def inner_abs2(*operands,optimize=True,wrapper=None):
+def inner_abs2(*operands,optimize=True,wrapper=None,operand=None):
 	'''
 	Calculate absolute square inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		operand (array): Fixed operands		
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
 	wrapping = jit(wrapper) if wrapper is not None else nullfunc
+	fixed = operand is not None
 	
 	if arrays:
-		shapes = [operand.shape for operand in operands]
+		if fixed:
+			shapes = [*[operand.shape for operand in operands][:1],operand.shape,*[operand.shape for operand in operands][1:]]
+		else:
+			shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		if fixed:
+			shapes = [*[operand for operand in operands][:1],operand.shape,*[operand for operand in operands][1:]]
+		else:
+			shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	if fixed:
+		ndim = min(len(shape) for shape in shapes)
+	else:
+		ndim = min(*(len(shape) for shape in shapes),operand.ndim)
 
 	if ndim == 1:
 		subscripts = 'i,i->'
@@ -1750,7 +1831,10 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 	else:
 		subscripts = '...ij,...ij->...'
 	
-	shapes = (shapes[0],shapes[1])
+	if fixed:
+		shapes = (shapes[0],operand.shape)
+	else:
+		shapes = (shapes[0],shapes[1])	
 
 	@jit
 	def wrapper(out,*operands):
@@ -1758,9 +1842,14 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
-	@jit
-	def func(*operands):
-		return einsummation(*operands)
+	if fixed:
+		@jit
+		def func(*operands):
+			return einsummation(operands[0],operand)
+	else:
+		@jit
+		def func(*operands):
+			return einsummation(*operands)
 	
 	if arrays:
 		out = func(*operands)
@@ -1771,25 +1860,36 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 
 
 
-def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
+def gradient_inner_abs2(*operands,optimize=True,wrapper=None,operand=None):
 	'''
 	Calculate gradient of absolute square of inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		operand (array): Fixed operands				
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
 	wrapping = jit(wrapper) if wrapper is not None else nullfunc
+	fixed = operand is not None
 	
 	if arrays:
-		shapes = [operand.shape for operand in operands]
+		if fixed:
+			shapes = [*[operand.shape for operand in operands][:1],operand.shape,*[operand.shape for operand in operands][1:]]
+		else:
+			shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		if fixed:
+			shapes = [*[operand for operand in operands][:1],operand.shape,*[operand for operand in operands][1:]]
+		else:
+			shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	if fixed:
+		ndim = min(len(shape) for shape in shapes)
+	else:
+		ndim = min(*(len(shape) for shape in shapes),operand.ndim)
 
 	if ndim == 1:
 		subscripts_value = 'i,i->'
@@ -1798,7 +1898,10 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	else:
 		subscripts_value = '...ij,...ij->...'
 
-	shapes_value = (shapes[0],shapes[1])
+	if fixed:
+		shapes_value = (shapes[0],operand.shape)
+	else:
+		shapes_value = (shapes[0],shapes[1])
 
 	@jit
 	def wrapper_value(out,*operands):
@@ -1808,19 +1911,32 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 
 
 	if ndim == 1:
-		subscripts_grad = 'i,...i->...'
+		subscripts_grad = '...i,i->...'
 	elif ndim == 2:
-		subscripts_grad = 'ij,...ij->...'
+		subscripts_grad = '...ij,ij->...'
 	else:
 		subscripts_grad = '...ij,...ij->...'
 
-	shapes_grad = (shapes[0],shapes[2])
+	if fixed:
+		shapes_grad = (shapes[0],shapes[2])
+	else:
+		shapes_grad = (shapes[0],shapes[2])
 
 	@jit
 	def wrapper_grad(out,*operands):
 		return out
 
 	einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper_grad)
+	
+	if fixed:
+		@jit
+		def func(*operands):
+			return wrapping(2*(einsummation_value(operands[0],operands).conj()*einsummation_grad(operands[1],operands[2])).real)
+	else:
+		@jit
+		def func(*operands):
+			out = abs2(operands[0]-operands[1].conj())
+			return einsummation(out,operands[2])
 
 	@jit
 	def func(*operands):
@@ -1834,25 +1950,36 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def inner_real(*operands,optimize=True,wrapper=None):
+def inner_real(*operands,optimize=True,wrapper=None,operand=None):
 	'''
 	Calculate real inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		operand (array): Fixed operands		
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
 	wrapping = jit(wrapper) if wrapper is not None else nullfunc
+	fixed = operand is not None
 	
 	if arrays:
-		shapes = [operand.shape for operand in operands]
+		if fixed:
+			shapes = [*[operand.shape for operand in operands][:1],operand.shape,*[operand.shape for operand in operands][1:]]
+		else:
+			shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		if fixed:
+			shapes = [*[operand for operand in operands][:1],operand.shape,*[operand for operand in operands][1:]]
+		else:
+			shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	if fixed:
+		ndim = min(len(shape) for shape in shapes)
+	else:
+		ndim = min(*(len(shape) for shape in shapes),operand.ndim)
 
 	if ndim == 1:
 		subscripts = 'i,i->'
@@ -1861,7 +1988,10 @@ def inner_real(*operands,optimize=True,wrapper=None):
 	else:
 		subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[0],shapes[1])
+	if fixed:
+		shapes = (shapes[0],operand.shape)
+	else:
+		shapes = (shapes[0],shapes[1])	
 
 	@jit
 	def wrapper(out,*operands):
@@ -1881,34 +2011,48 @@ def inner_real(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def gradient_inner_real(*operands,optimize=True,wrapper=None):
+def gradient_inner_real(*operands,optimize=True,wrapper=None,operand=None):
 	'''
 	Calculate gradient of real inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		operand (array): Fixed operands		
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
 	wrapping = jit(wrapper) if wrapper is not None else nullfunc
+	fixed = operand is not None
 	
 	if arrays:
-		shapes = [operand.shape for operand in operands]
+		if fixed:
+			shapes = [*[operand.shape for operand in operands][:1],operand.shape,*[operand.shape for operand in operands][1:]]
+		else:
+			shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		if fixed:
+			shapes = [*[operand for operand in operands][:1],operand.shape,*[operand for operand in operands][1:]]
+		else:
+			shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	if fixed:
+		ndim = min(len(shape) for shape in shapes)
+	else:
+		ndim = min(*(len(shape) for shape in shapes),operand.ndim)
 
 	if ndim == 1:
-		subscripts = 'i,...i->...'
+		subscripts = '...i,i->...'
 	elif ndim == 2:
-		subscripts = 'ij,...ij->...'
+		subscripts = '...ij,ij->...'
 	else:
 		subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[0],shapes[2])
+	if fixed:
+		shapes = (shapes[0],shapes[2])
+	else:
+		shapes = (shapes[0],shapes[2])	
 
 	@jit
 	def wrapper(out,*operands):
@@ -1928,25 +2072,36 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def inner_imag(*operands,optimize=True,wrapper=None):
+def inner_imag(*operands,optimize=True,wrapper=None,operand=None):
 	'''
 	Calculate imag inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		operand (array): Fixed operands		
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
 	wrapping = jit(wrapper) if wrapper is not None else nullfunc
+	fixed = operand is not None
 	
 	if arrays:
-		shapes = [operand.shape for operand in operands]
+		if fixed:
+			shapes = [*[operand.shape for operand in operands][:1],operand.shape,*[operand.shape for operand in operands][1:]]
+		else:
+			shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		if fixed:
+			shapes = [*[operand for operand in operands][:1],operand.shape,*[operand for operand in operands][1:]]
+		else:
+			shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	if fixed:
+		ndim = min(len(shape) for shape in shapes)
+	else:
+		ndim = min(*(len(shape) for shape in shapes),operand.ndim)
 
 	if ndim == 1:
 		subscripts = 'i,i->'
@@ -1955,7 +2110,10 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 	else:
 		subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[0],shapes[1])
+	if fixed:
+		shapes = (shapes[0],operand.shape)
+	else:
+		shapes = (shapes[0],shapes[1])	
 
 	@jit
 	def wrapper(out,*operands):
@@ -1975,34 +2133,48 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 	return out
 
 
-def gradient_inner_imag(*operands,optimize=True,wrapper=None):
+def gradient_inner_imag(*operands,optimize=True,wrapper=None,operand=None):
 	'''
 	Calculate gradient of imag inner product of arrays
 	Args:
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
 		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+		operand (array): Fixed operands		
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
 	wrapping = jit(wrapper) if wrapper is not None else nullfunc
+	fixed = operand is not None
 	
 	if arrays:
-		shapes = [operand.shape for operand in operands]
+		if fixed:
+			shapes = [*[operand.shape for operand in operands][:1],operand.shape,*[operand.shape for operand in operands][1:]]
+		else:
+			shapes = [operand.shape for operand in operands]
 	else:
-		shapes = [operand for operand in operands]
+		if fixed:
+			shapes = [*[operand for operand in operands][:1],operand.shape,*[operand for operand in operands][1:]]
+		else:
+			shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	if fixed:
+		ndim = min(len(shape) for shape in shapes)
+	else:
+		ndim = min(*(len(shape) for shape in shapes),operand.ndim)
 
 	if ndim == 1:
-		subscripts = 'i,...i->...'
+		subscripts = '...i,i->...'
 	elif ndim == 2:
-		subscripts = 'ij,...ij->...'
+		subscripts = '...ij,ij->...'
 	else:
 		subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[0],shapes[2])
+	if fixed:
+		shapes = (shapes[0],shapes[2])
+	else:
+		shapes = (shapes[0],shapes[2])	
 
 	@jit
 	def wrapper(out,*operands):
