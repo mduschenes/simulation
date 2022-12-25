@@ -62,7 +62,7 @@ def test_dot():
 				_g = lambda *operands,optimize: (lambda a,b,da: (2*dot(da,(a-b.conj()).T.conj())).real)				
 			elif d == 2:
 				_f = lambda *operands,optimize: (lambda a,b: ((abs2(a-b.conj())).sum()).real)
-				_g = lambda *operands,optimize: (lambda a,b,da: (2*trace(dot(da,(a-b.conj()).conj()),axes=(-2,-1))).real)				
+				_g = lambda *operands,optimize: (lambda a,b,da: (2*trace(dot(da,(a-b.conj()).T.conj()),axes=(-2,-1))).real)				
 				# _g = lambda *operands,optimize: (lambda a,b,da: (2*(da*(a-b.conj()).conj()).sum(axis=[-2,-1])).real)				
 			else:
 				_f = lambda *operands,optimize: (lambda a,b: ((abs2(a-b.conj())).sum()).real)
@@ -113,8 +113,6 @@ def test_dot():
 
 		boolean &= allclose(out,_out)
 
-		print(allclose(out,_out))
-
 		grad = g(*shapes,optimize=optimize)
 		_grad = _g(*shapes,optimize=optimize)
 		_grad_ = gradient(func)
@@ -124,7 +122,7 @@ def test_dot():
 		_out_ = _grad_(a,b).real
 
 		boolean &= allclose(out,_out) #and allclose(out,_out_)# and allclose(_out,_out_)
-		print(allclose(out,_out))# , allclose(out,_out_))# , allclose(_out,_out_))
+
 		return boolean
 
 	n = 10
@@ -132,8 +130,8 @@ def test_dot():
 	dims = [1,2]
 	metrics = [
 		'norm',
-		# 'real',
-		# 'abs2'
+		'real',
+		'abs2'
 		]
 
 	for d in dims:
@@ -152,9 +150,9 @@ def test_dot():
 				})
 
 			_setup(args,kwargs)
-			print(metric,d)
+
 			boolean = func(*args,**kwargs)
-			boolean = True
+
 			assert boolean, "%s [dim = %d] metric function error"%(metric,d)
    
 

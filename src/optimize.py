@@ -242,7 +242,7 @@ class Null_Search(LineSearchBase):
 
 class FuncBase(object):
 
-	def __init__(self,model,func,grad=None,callback=None,metric=None,hyperparameters={}):
+	def __init__(self,model,func=None,grad=None,callback=None,metric=None,hyperparameters={}):
 		'''	
 		Class for function
 		Args:
@@ -254,7 +254,10 @@ class FuncBase(object):
 			hyperparameters (dict): Function hyperparameters
 		'''
 	
-		if not callable(func):
+		if func is None:
+			func = func
+			funcs = []
+		elif not callable(func):
 			funcs = func
 			@jit
 			def func(*args,**kwargs):
@@ -265,7 +268,7 @@ class FuncBase(object):
 
 		if grad is None:
 			grads = [None for func in funcs]
-			grad = None
+			grad = grad
 		elif not callable(grad):
 			grads = grad
 			@jit
@@ -283,14 +286,25 @@ class FuncBase(object):
 		if funcs and grads:
 			self.values_and_grads,self.funcs,self.grads = zip(*(value_and_gradient(func,grad,returns=True) for func,grad in zip(funcs,grads)))
 		else:
-			self.value_and_grads,self.funcs,self.grads = Null((0.0,0.0)),Null(0.0),Null(0.0)
+			self.value_and_grads,self.funcs,self.grads = None,None,None
 
-		self.value_and_gradient,self.function,self.gradient = value_and_gradient(func,grad,returns=True)
+		if func and grad:
+			self.value_and_gradient,self.function,self.gradient = value_and_gradient(func,grad,returns=True)
+		else:
+			self.value_and_gradient,self.function,self.gradient = None,None,None
 
 		self.model = model
 		self.callback = callback
 		self.metric = metric
 		self.hyperparameters = hyperparameters
+
+		if self.function is None and self.metric is not None:
+			@jit
+			def function(parameters):
+				return self.metric(self.model(parameters))
+			self.function = function
+		else:
+			assert self.function is not None,"%s : func or metric must be not None"%(self)
 
 		return
 
@@ -396,7 +410,13 @@ class Objective(FuncBase):
 
 		super().__init__(model,func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
 
-		self.funcs = self.function
+		if self.function is not None:
+			@jit
+			def function(parameters):
+				return self.metric(self.model(parameters)) + self.function()
+			self.function = function
+			self.funcs = self.function
+		else
 		self.grads = self.gradient
 		self.function = self.__call__
 		self.gradient = gradient(self.function)

@@ -1588,19 +1588,19 @@ def gradient_inner(*operands,optimize=True,wrapper=None):
 	ndim = min(len(shape) for shape in shapes)
 
 	if ndim == 1:
-		subscripts = 'i,...i->...'
+		subscripts = '...i,i->...'
 	elif ndim == 2:
-		subscripts = 'ij,...ij->...'
+		subscripts = '...ij,ij->...'
 	else:
 		subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[0],shapes[2])
+	shapes = (shapes[2],shapes[1])
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
 	@jit
 	def func(*operands):
-		return einsummation(operands[1],operands[2]).real
+		return einsummation(operands[2],operands[1]).real
 
 	if arrays:
 		out = func(*operands)
@@ -1675,20 +1675,20 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 	ndim = min(len(shape) for shape in shapes)
 
 	if ndim == 1:
-		subscripts = 'i,...i->...'
+		subscripts = '...i,i->...'
 	elif ndim == 2:
-		subscripts = 'ij,...ij->...'
+		subscripts = '...ij,ij->...'
 	else:
 		subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[0],shapes[2])
+	shapes = (shapes[2],shapes[1])
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
 	@jit
 	def func(*operands):
-		out = (operands[0]-operands[1].conj())
-		return 2*einsummation(out,operands[2]).real
+		out = (operands[0]-operands[1].conj()).conj()
+		return 2*einsummation(operands[2],out).real
 	
 	if arrays:
 		out = func(*operands)
@@ -1775,19 +1775,19 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 
 
 	if ndim == 1:
-		subscripts_grad = 'i,...i->...'
+		subscripts_grad = '...i,i->...'
 	elif ndim == 2:
-		subscripts_grad = 'ij,...ij->...'
+		subscripts_grad = '...ij,ij->...'
 	else:
 		subscripts_grad = '...ij,...ij->...'
 
-	shapes_grad = (shapes[0],shapes[2])
+	shapes_grad = (shapes[2],shapes[1])
 
 	einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper)
 
 	@jit
 	def func(*operands):
-		return wrapping(2*(einsummation_value(operands[0],operands[1]).conj()*einsummation_grad(operands[1],operands[2])).real)
+		return (2*(einsummation_value(operands[0],operands[1]).conj()*einsummation_grad(operands[2],operands[1])).real)
 
 	if arrays:
 		out = func(*operands)
@@ -1861,19 +1861,19 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 	ndim = min(len(shape) for shape in shapes)
 
 	if ndim == 1:
-		subscripts = 'i,...i->...'
+		subscripts = '...i,i->...'
 	elif ndim == 2:
-		subscripts = 'ij,...ij->...'
+		subscripts = '...ij,ij->...'
 	else:
 		subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[0],shapes[2])
+	shapes = (shapes[2],shapes[1])
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
 	@jit
 	def func(*operands):
-		return einsummation(operands[1],operands[2]).real
+		return einsummation(operands[2],operands[1]).real
 
 	if arrays:
 		out = func(*operands)
@@ -1947,19 +1947,19 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 	ndim = min(len(shape) for shape in shapes)
 
 	if ndim == 1:
-		subscripts = 'i,...i->...'
+		subscripts = '...i,i->...'
 	elif ndim == 2:
-		subscripts = 'ij,...ij->...'
+		subscripts = '...ij,ij->...'
 	else:
 		subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[0],shapes[2])
+	shapes = (shapes[2],shapes[1])
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
 
 	@jit
 	def func(*operands):
-		return einsummation(operands[1],operands[2]).imag
+		return einsummation(operands[2],operands[1]).imag
 
 	if arrays:
 		out = func(*operands)

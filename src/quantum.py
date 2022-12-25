@@ -613,16 +613,6 @@ class Object(object):
 				func = attributes[layer][layer][parameter][group]
 				
 				values = func(parameters,values)
-		# try:
-		# 	values = values.at[:2*self.N].set(parameters)
-		# except:
-		# 	attribute = 'slice'
-		# 	for parameter in attributes[attribute][layer]:
-		# 		for group in attributes[attribute][layer][parameter]:
-
-		# 			func = attributes[layer][layer][parameter][group]
-					
-		# 			values = func(parameters,values)
 
 		return values
 
@@ -1368,9 +1358,7 @@ class Callback(object):
 
 
 				elif attr in ['objective']:
-					if attr in ['objective']:
-						func = metric
-					value = func(parameters)
+					value = metric(model(parameters))
 
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
@@ -1433,11 +1421,11 @@ class Callback(object):
 					_callback = Callback(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
 
 					if attr in ['objective.ideal.noise']:
-						value = _metric(parameters)
+						value = _metric(_model(parameters))
 					elif attr in ['objective.diff.noise']:
-						value = abs((track['objective'][-1] - _metric(parameters)))
+						value = abs((track['objective'][-1] - _metric(_model(parameters))))
 					elif attr in ['objective.rel.noise']:
-						value = abs((track['objective'][-1] - _metric(parameters))/(track['objective'][-1]))
+						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
 
 
 					model.__functions__(state=state,noise=False,label=True)
@@ -1456,11 +1444,11 @@ class Callback(object):
 					_callback = Callback(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
 
 					if attr in ['objective.ideal.noise']:
-						value = _metric(parameters)
+						value = _metric(_model(parameters))
 					elif attr in ['objective.diff.noise']:
-						value = abs((track['objective'][-1] - _metric(parameters)))
+						value = abs((track['objective'][-1] - _metric(_model(parameters))))
 					elif attr in ['objective.rel.noise']:
-						value = abs((track['objective'][-1] - _metric(parameters))/(track['objective'][-1]))
+						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
 
 
 					model.__functions__(state=False,noise=False,label=True,metric='abs2')
@@ -1479,11 +1467,11 @@ class Callback(object):
 					_callback = Callback(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
 
 					if attr in ['objective.ideal.noise']:
-						value = _metric(parameters)
+						value = _metric(_model(parameters))
 					elif attr in ['objective.diff.noise']:
-						value = abs((track['objective'][-1] - _metric(parameters)))
+						value = abs((track['objective'][-1] - _metric(_model(parameters))))
 					elif attr in ['objective.rel.noise']:
-						value = abs((track['objective'][-1] - _metric(parameters))/(track['objective'][-1]))
+						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
 
 				
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and not ((not status) or done):
@@ -1492,18 +1480,18 @@ class Callback(object):
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and ((not status) or done):
 					
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
-						func = hessian(metric)
+						function = hessian(jit(lambda parameters: metric(model(parameters))))
 					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
-						func = fisher(model,model.grad,shapes=(model.dims,(model.dim,*model.dims)))
+						function = fisher(model,model.grad,shapes=(model.dims,(model.dim,*model.dims)))
 
 					if attr in ['hessian','fisher']:
-						value = func(parameters)
+						value = function(parameters)
 
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
-						value = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
+						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
 						value = value/max(1,maximum(value))
 					elif attr in ['hessian.rank','fisher.rank']:
-						value = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
+						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
 						value = argmax(abs(difference(value)/value[:-1]))+1						
 
 				elif attr in model.__dict__ and attr not in attributes:
