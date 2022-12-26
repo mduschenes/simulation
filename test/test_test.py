@@ -32,6 +32,7 @@ from src.operators import operatorize
 from src.states import stateize
 
 from src.io import load,dump,join,split
+from src.call import call,rm
 
 from src.plot import plot
 
@@ -42,12 +43,12 @@ from src.quantum import Unitary,Hamiltonian,Object
 # Logging
 from src.system import Logger
 
-name = __name__
-path = os.getcwd()
-file = 'logging.conf'
-conf = os.path.join(path,file)
-file = None #'log.log'
-logger = Logger(name,conf,file=file)
+# name = __name__
+# path = os.getcwd()
+# file = 'logging.conf'
+# conf = os.path.join(path,file)
+# file = None #'log.log'
+# logger = Logger(name,conf,file=file)
 
 
 def test_class(path,tol):
@@ -67,11 +68,13 @@ def test_load_dump(path,tol):
 	hyperparameters = load(path)
 
 	cls = load(hyperparameters['class']['model'])
-	
+
 	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	# Set hyperparameters
+	model.hyperparameters['optimize']['track']['alpha'] = []
 	model.hyperparameters['optimize']['track']['alpha'].append(12345)
+	model.hyperparameters['optimize']['attributes']['search']
 	model.hyperparameters['optimize']['attributes']['search'].append([1,2,2,3])
 	
 
@@ -90,6 +93,11 @@ def test_load_dump(path,tol):
 							[lambda a: isinstance(a,dict) and ((len(a)==0) or all(callable(a[item]) for item in a))]])
 	
 	equalizer(model.hyperparameters,new.hyperparameters,types=types,exceptions=exceptions)
+
+	paths = ['model','log']
+	for path in paths:
+		path = join(hyperparameters['sys']['path']['data'][path],root=hyperparameters['sys']['cwd'])
+		rm(path,execute=True)
 
 	return
 
@@ -204,9 +212,10 @@ def test_objective(path,tol):
 
 	print(grad_jax(parameters).round(3))
 	print()
+	print(grad_finite(parameters).round(3))
+	print()
 	print(grad_analytical(parameters).round(3))
 	print()
-	print(-gradient_inner_abs2(model(parameters),label,model.grad_analytical(parameters)).round(3)/model.n**2)
 	return
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
@@ -246,63 +255,6 @@ def test_model(path,tol):
 	assert allclose(U,W),"Incorrect restored noise"
 
 	return
-
-def test_call():
-	return
-	# process = None
-	# device = None
-	# execute = True
-	# verbose = 'info'
-
-	# default = -1
-	# def wrapper(stdout,stderr,returncode,default=default):
-	# 	try:
-	# 		result = int(stdout)
-	# 	except:
-	# 		result = stdout
-	# 	return result
-
-
-	# pattern = '#SBATCH'
-	# path = 'job.slurm'
-
-	# args = []
-
-	# exe = ['awk']
-	# flags = []
-	# cmd = [' /%s/ {print FNR}'%(pattern),path]
-	# arg = [*exe,*flags,*cmd]
-	# args.append(arg)
-
-	# exe = ['tail']
-	# flags = ['--lines=1']
-	# cmd = []
-	# arg = [*exe,*flags,*cmd]
-	# args.append(arg)
-
-
-	# exe = ['cat']
-	# flags = ['<']
-	# cmd = ['test.txt']
-	# arg = [*exe,*flags,*cmd]
-	# args.append(arg)
-
-	# exe = ['grep']
-	# flags = []
-	# cmd = ['job']
-	# arg = [*exe,*flags,*cmd]
-	# args.append(arg)
-
-
-	# exe = ['sbatch']
-	# flags = ['--export=JOB_SRC=../../src,JOB_CMD=train.py,JOB_ARGS=settings.json','<']
-	# cmd = [path]
-
-	# arg = [*exe,*flags,*cmd]
-	# args.append(arg)
-
-
-	# result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute,verbose=verbose)
 
 if __name__ == '__main__':
 	path = 'config/settings.json'

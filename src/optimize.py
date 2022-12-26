@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient
-from src.utils import is_naninf,product,sqrt
+from src.utils import is_naninf,product,sqrt,asarray
 
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
@@ -250,61 +250,55 @@ class FuncBase(object):
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
-			metric (str,callable): Function metric
+			metric (str,callable): Function metric with signature metric(*operands)
 			hyperparameters (dict): Function hyperparameters
 		'''
 	
 		if func is None:
-			func = func
-			funcs = []
-		elif not callable(func):
-			funcs = func
-			@jit
-			def func(*args,**kwargs):
-				return sum(func(*args,**kwargs) for func in funcs)
+			func = []
+		if not callable(func):
+			if len(func) == 1:
+				function = func[0]
+			elif func:
+				@jit
+				def function(*args,**kwargs):
+					return sum(function(*args,**kwargs) for function in func)
+			else:
+				@jit
+				def function(*args,**kwargs):
+					return 0.
 		else:
-			funcs = [func]
-			func = func
+			function = func
+			func = [func]
 
 		if grad is None:
-			grads = [None for func in funcs]
-			grad = grad
+			gradient = None
 		elif not callable(grad):
-			grads = grad
-			@jit
-			def grad(*args,**kwargs):
-				return sum(grad(*args,**kwargs) for grad in grads)
+			if len(grad) == 1:
+				gradient = grad[0]
+			elif grad:
+				@jit
+				def gradient(*args,**kwargs):
+					return sum(gradient(*args,**kwargs) for gradient in grad)
+			else:
+				@jit
+				def gradient(*args,**kwargs):
+					return 0.
 		else:
-			grads = [None for func in funcs]
-			grad = grad
+			gradient = grad
+			grad = [grad]
 
 		if callback is None:
 			def callback(parameters,track,attributes,model,func,grad,hyperparameters):
 				status = True
 				return status
 
-		if funcs and grads:
-			self.values_and_grads,self.funcs,self.grads = zip(*(value_and_gradient(func,grad,returns=True) for func,grad in zip(funcs,grads)))
-		else:
-			self.value_and_grads,self.funcs,self.grads = None,None,None
-
-		if func and grad:
-			self.value_and_gradient,self.function,self.gradient = value_and_gradient(func,grad,returns=True)
-		else:
-			self.value_and_gradient,self.function,self.gradient = None,None,None
+		self.value_and_gradient,self.function,self.gradient = value_and_gradient(function,gradient,returns=True)
 
 		self.model = model
 		self.callback = callback
 		self.metric = metric
 		self.hyperparameters = hyperparameters
-
-		if self.function is None and self.metric is not None:
-			@jit
-			def function(parameters):
-				return self.metric(self.model(parameters))
-			self.function = function
-		else:
-			assert self.function is not None,"%s : func or metric must be not None"%(self)
 
 		return
 
@@ -404,22 +398,11 @@ class Objective(FuncBase):
 			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)			
-			metric (str,callable): Objective metric
+			metric (str,callable): Objective metric with signature metric(*operands)
 			hyperparameters (dict): Objective hyperparameters
 		'''
 
 		super().__init__(model,func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
-
-		if self.function is not None:
-			@jit
-			def function(parameters):
-				return self.metric(self.model(parameters)) + self.function()
-			self.function = function
-			self.funcs = self.function
-		else
-		self.grads = self.gradient
-		self.function = self.__call__
-		self.gradient = gradient(self.function)
 
 		return
 
@@ -432,8 +415,18 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric(self.model(parameters)) #+ self.funcs(parameters)
+		return self.metric(self.model(parameters)) + self.function(parameters)
 
+	# @partial(jit,static_argnums=(0,))
+	def func(self,parameters):
+		'''
+		Function call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__call__(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
@@ -444,7 +437,7 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.gradient(parameters)
+		return self.metric.grad(self.model(parameters),self.model.grad(parameters)) + self.gradient(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def __grad_analytical__(self,parameters):
@@ -455,7 +448,7 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) #+ self.grads(parameters)	
+		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) + self.gradient(parameters)	
 
 	# @partial(jit,static_argnums=(0,))
 	def grad_analytical(self,parameters):
@@ -479,7 +472,7 @@ class Callback(FuncBase):
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
-			metric (str,callable): Callback metric
+			metric (str,callable): Callback metric with signature metric(*operands)
 			hyperparameters (dict): Callback hyperparameters
 		'''
 		
@@ -505,15 +498,16 @@ class Callback(FuncBase):
 
 class Metric(object):
 	'''
-	Metric class for distance between Operators
+	Metric class for distance between operands
 	Args:
 		metric (str,Metric): Type of metric
 		shapes (iterable[tuple[int]]): Shapes of Operators
+		model (object): Model instance	
 		label (str,callable): Label			
 		optimize (bool,str,iterable): Contraction type	
 		hyperparameters (dict): Metric hyperparameters	
 	'''
-	def __init__(self,metric=None,shapes=None,label=None,optimize=None,hyperparameters={}):
+	def __init__(self,metric=None,shapes=None,model=None,label=None,optimize=None,hyperparameters={}):
 
 		defaults = {'metric':metric}
 		updater(hyperparameters,defaults,delimiter=delim,func=False)
@@ -521,6 +515,7 @@ class Metric(object):
 		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
 		self.label = hyperparameters.get('label',label) if label is None else label
 		self.shapes = shapes
+		self.model = model
 		self.optimize = optimize
 		self.hyperparameters = {}
 
@@ -818,32 +813,33 @@ class Metric(object):
 				grad_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
 
 		func = jit(func)
-		grad = jit(gradient(func))
+		grad = jit(gradient(func,mode='fwd'))
 		grad_analytical = jit(grad_analytical)
 
-		if self.label is not None:
-			def _function(*operands):
+		if self.label is not None and self.metric in [None,'norm','abs2','real','imag']:
+			def function(*operands):
 				return func(*operands[:1],self.label,*operands[1:])
-			def _gradient(*operands):
-				return grad(*operands[:1],self.label,*operands[1:])
-			def _gradient_analytical(*operands):
+			def grad(*operands):
+				return func(*operands[:1],self.label,*operands[1:])				
+			def gradient_analytical(*operands):
 				return grad_analytical(*operands[:1],self.label,*operands[1:])
 		else:
-			def _function(*operands):
+			def function(*operands):
 				return func(*operands)
-			def _gradient(*operands):
+			def grad(*operands):
 				return grad(*operands)
-			def _gradient_analytical(*operands):
+			def gradient_analytical(*operands):
 				return grad_analytical(*operands)
 
-		_function = jit(_function)
-		_gradient = jit(gradient(_function))
-		_gradient_analytical = jit(_gradient_analytical)
+		function = jit(function)
+		# gradient = jit(gradient(function,mode='fwd'))
+		grad = jit(gradient_analytical)
+		gradient_analytical = jit(gradient_analytical)
 
 
-		self.function = _function
-		self.gradient = _gradient
-		self.gradient_analytical = _gradient_analytical
+		self.function = function
+		self.gradient = grad
+		self.gradient_analytical = gradient_analytical
 
 		return
 

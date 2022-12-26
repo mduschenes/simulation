@@ -208,7 +208,10 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 			return stdout,stderr,returncode
 
 		def parse(obj):
-			obj = obj.strip().decode('utf-8')
+			try:
+				obj = obj.strip().decode('utf-8')
+			except:
+				obj = str(obj)
 			return obj
 
 		stdin = None if inputs is None else inputs if isinstance(inputs,str) else inputs.pop(0) if len(inputs)>len(args) else None
@@ -221,6 +224,10 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		errors = [errors]*len(args) if errors is None or isinstance(errors,str) else errors
 
 		for arg,input,output,error in zip(args,inputs,outputs,errors):
+			if isinstance(output,str):
+				mkdir(output)
+			if isinstance(error,str):
+				mkdir(error)
 
 			stdin = open(input,'r') if isinstance(input,str) else input if input is not None else stdin
 			stdout = open(output,'w') if isinstance(output,str) else output if output is not None else stdout
@@ -241,17 +248,25 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		stdout,stderr,returncode = [],[],result.returncode
 		
 		if result.stdout is not None:
-			for line in result.stdout:
-				stdout.append(parse(line))			
+			try:
+				for line in result.stdout:
+					stdout.append(parse(line))			
+					logger.log(verbose,stdout[-1])
+			except:
+				stdout.append(parse(result.stdout))
 				logger.log(verbose,stdout[-1])
 		
 		returncode = result.wait()
 
 		if result.stderr is not None:
-			for line in result.stderr:	
-				stderr.append(parse(line))
-				if returncode is not None:
-					logger.log(verbose,stderr[-1])
+			try:
+				for line in result.stderr:	
+					stderr.append(parse(line))
+					if returncode is not None:
+						logger.log(verbose,stderr[-1])
+			except:
+				stderr.append(parse(result.stderr))
+				logger.log(verbose,stderr[-1])
 
 		stdout,stderr,returncode = wrap(stdout,stderr,returncode)
 
@@ -345,7 +360,8 @@ def cp(source,destination,default=None,env=None,process=None,processes=None,devi
 	if not exists(source):
 		source = default
 
-	assert exists(source), 'source %s does not exist'%(source)
+	if not exists(source):
+		return
 
 	mkdir(destination)
 
@@ -467,6 +483,54 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 
 	return
 
+def cat(*paths,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Show paths
+	Args:
+		paths (str): Path of file
+		env (dict[str,str]): Environmental variables for args
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	'''
+
+	exe = ['cat']
+	flags = []
+	cmd = []
+	options = []
+	env = [] if env is None else env
+	args = [*paths]
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return
+
+
+def diff(*paths,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Show difference of paths
+	Args:
+		paths (str): Path of file
+		env (dict[str,str]): Environmental variables for args
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	'''
+
+	exe = ['diff']
+	flags = []
+	cmd = []
+	options = []
+	env = [] if env is None else env
+	args = [*paths]
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return
 
 def chmod(path,mod=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''

@@ -31,7 +31,7 @@ for PATH in PATHS:
 
 from src.utils import argparser
 from src.utils import array,product,expand_dims,to_eval,to_repr,is_iterable,is_number,to_number,to_key_value
-from src.utils import asarray,asscalar
+from src.utils import asndarray,asscalar
 from src.utils import argmax,difference,is_nan,is_numeric,abs
 from src.utils import e,pi,nan,scalars,nulls,scinotation,padder
 from src.dictionary import branches
@@ -676,7 +676,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		unique = {attr: tuple((*realsorted(set(asscalar(data[name][attr])
 						for name in names 
 						if ((attr in data[name]) and 
-							((asarray(data[name][attr]).size <= 1) and isinstance(asscalar(data[name][attr]),scalars))
+							((asndarray(data[name][attr]).size <= 1) and isinstance(asscalar(data[name][attr]),scalars))
 							)
 						)),None))
 				for attr in attributes
@@ -689,7 +689,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		sort = {attr: tuple((*realsorted(set(asscalar(data[name][attr])
 						for name in names 
 						if ((attr in data[name]) and 
-							((asarray(data[name][attr]).size == 1) and isinstance(asscalar(data[name][attr]),scalars))
+							((asndarray(data[name][attr]).size == 1) and isinstance(asscalar(data[name][attr]),scalars))
 							)
 						)),None))
 				for attr in subattributes

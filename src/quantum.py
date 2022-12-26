@@ -555,7 +555,7 @@ class Object(object):
 		Returns:
 			out (array): Return of function
 		'''		
-		return self.gradient(parameters)
+		return self.__grad__(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def value_and_grad(self,parameters):
@@ -1405,75 +1405,37 @@ class Callback(object):
 					else:
 						noise = model.noise
 
-					model.__functions__(state=state,noise=noise,label=True)
+					label = True
+
+
+					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
+						_kwargs = {'state':state,'noise':noise,'label':label}
+						_metric = 'norm'
+					elif attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:						
+						_kwargs = {'state':state,'noise':noise,'label':label}
+						_metric = 'norm'
+					elif attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
+						_kwargs = {'state':state,'noise':noise,'label':label}
+						_metric = 'abs2'
 
 					_model = model
-					_func = func
-					_callback = None
-					_label = _model.label
-					_metric = 'norm'
 					_shapes = model.shapes
+					_label = _model.label
 					_optimize = None
 					_hyperparameters = hyperparameters
 
+					model.__functions__(**kwargs)
 					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
-					_func = Objective(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
-					_callback = Callback(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
 
-					if attr in ['objective.ideal.noise']:
+					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
 						value = _metric(_model(parameters))
-					elif attr in ['objective.diff.noise']:
+					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
 						value = abs((track['objective'][-1] - _metric(_model(parameters))))
-					elif attr in ['objective.rel.noise']:
+					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
 						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
 
+					model.__functions__()
 
-					model.__functions__(state=state,noise=False,label=True)
-
-					_model = model
-					_func = func
-					_callback = None
-					_label = _model.label
-					_metric = 'norm'
-					_shapes = model.shapes
-					_optimize = None
-					_hyperparameters = hyperparameters
-
-					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
-					_func = Objective(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
-					_callback = Callback(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
-
-					if attr in ['objective.ideal.noise']:
-						value = _metric(_model(parameters))
-					elif attr in ['objective.diff.noise']:
-						value = abs((track['objective'][-1] - _metric(_model(parameters))))
-					elif attr in ['objective.rel.noise']:
-						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
-
-
-					model.__functions__(state=False,noise=False,label=True,metric='abs2')
-
-					_model = model
-					_func = func
-					_callback = None
-					_label = _model.label
-					_metric = 'abs2'
-					_shapes = model.shapes
-					_optimize = None
-					_hyperparameters = hyperparameters
-
-					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
-					_func = Objective(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
-					_callback = Callback(_model,_func,callback=_callback,metric=_metric,hyperparameters=_hyperparameters)
-
-					if attr in ['objective.ideal.noise']:
-						value = _metric(_model(parameters))
-					elif attr in ['objective.diff.noise']:
-						value = abs((track['objective'][-1] - _metric(_model(parameters))))
-					elif attr in ['objective.rel.noise']:
-						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
-
-				
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and not ((not status) or done):
 					value = default
 

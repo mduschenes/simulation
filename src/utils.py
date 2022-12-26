@@ -901,7 +901,7 @@ class nparray(onp.ndarray):
 	def __new__(self,*args,**kwargs):
 		return onp.array(*args,**kwargs)
 
-class asarray(onp.ndarray):
+class asndarray(onp.ndarray):
 	'''
 	array class
 	Args:
@@ -912,6 +912,18 @@ class asarray(onp.ndarray):
 	'''
 	def __new__(self,*args,**kwargs):
 		return onp.asarray(*args,**kwargs)
+
+class asarray(np.ndarray):
+	'''
+	array class
+	Args:
+		args (iterable): Array arguments
+		kwargs (dict): Array keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return np.asarray(*args,**kwargs)
 
 class asscalar(onp.ndarray):
 	'''
@@ -952,7 +964,7 @@ class asobjs(onp.ndarray):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return asarray(*args,**kwargs)
+		return asndarray(*args,**kwargs)
 
 class ones(array):
 	'''
@@ -1186,7 +1198,7 @@ def PRNGKey(seed=None,size=False,reset=None):
 	if isinstance(seed,(int)):
 		key = jax.random.PRNGKey(seed)
 	else:
-		key = asarray(seed,dtype=np.uint32)
+		key = asndarray(seed,dtype=np.uint32)
 
 	if size:
 		key = jax.random.split(key,num=size)
