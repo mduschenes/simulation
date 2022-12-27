@@ -3,9 +3,6 @@
 # Import python modules
 import os,sys
 
-# Logging
-import logging
-
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..']
@@ -38,7 +35,7 @@ def setup(hyperparameters)
 		'optimize.cwd': 'sys.cwd',
 		'optimize.path': 'sys.path.data.data',
 		'optimize.logger': 'sys.path.config.logger',
-		'optimize.log': 'sys.path.data.log',
+		'optimize.logging': 'sys.path.data.log',
 		'optimize.timestamp': 'model.timestamp',
 		'optimize.key': 'model.key',
 	}

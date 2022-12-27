@@ -10,32 +10,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-envs = {
-	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
-
-
 from src.utils import PRNGKey,delim,union,is_equal
 from src.dictionary import getter,setter,permuter,clearer,leaves
 from src.io import load,dump,join,split
 from src.call import launch
-
-import jax
-import absl.logging
-absl.logging.set_verbosity(absl.logging.INFO)
-# jax.set_cpu_device_count(8)
-
-configs = {
-	'jax_disable_jit':False,
-	'jax_platforms':'cpu',
-	'jax_enable_x64': True
-	}
-for name in configs:
-	jax.config.update(name,configs[name])
-
 
 def allowed(index,value,values):
 	'''
@@ -200,8 +178,6 @@ def setup(settings):
 			if job is None:
 				continue
 
-			config = hyperparameters[key]['sys']['path']['config']
-
 			for attr in job:
 
 				if attr in ['jobs']:
@@ -210,12 +186,11 @@ def setup(settings):
 					value = job[attr]
 				elif attr in ['paths']:
 					value = {
-						**job[attr],
-						**{config[path]: None
-							for path in config},
-						**{config[path]: hyperparameters[key] 
+						**{job[attr][path]: None
+							for path in job[attr]},
+						**{job[attr][path]: hyperparameters[key] 
 							for path in ['settings']},
-						**{config[path]: hyperparameters[key].get(path,{}) 
+						**{job[attr][path]: hyperparameters[key].get(path,{}) 
 							for path in ['plot','process']},
 						}
 				elif attr in ['patterns']:

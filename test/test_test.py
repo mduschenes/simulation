@@ -205,16 +205,22 @@ def test_objective(path,tol):
 
 	parameters = model.parameters
 
-	# Grad of objective
-	grad_jax = func.grad
-	grad_finite = gradient(func,mode='finite',tol=tol)
-	grad_analytical = func.grad_analytical
-	model.log('--- Done ---')
+	metric = Metric(shapes=shapes,hyperparameters=hyperparams)
+
+	print(metric(label.conj(),label))
 	return
+
+	# Grad of objective
+	grad_jax = gradient(func)
+	grad_finite = gradient(func,mode='finite',tol=tol)
+	grad_grad = func.grad
+	grad_analytical = func.grad_analytical
 
 	print(grad_jax(parameters).round(3))
 	print()
 	print(grad_finite(parameters).round(3))
+	print()
+	print(grad_grad(parameters).round(3))
 	print()
 	print(grad_analytical(parameters).round(3))
 	print()

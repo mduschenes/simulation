@@ -28,7 +28,7 @@ from src.utils import itg,dbl,flt
 from src.dictionary import setter
 from src.io import join,split,copy,rm,exists
 
-def logconfig(name,conf=None,**kwargs):
+def config(name,conf=None,**kwargs):
 	'''
 	Configure logging
 	Args:
@@ -130,9 +130,9 @@ class Class(object):
 			args (iterable[object]): Class arguments
 			kwargs (dict[str,object]): Class keyword arguments
 		'''
-		defaults = {'system':None,'cwd':None,'path':None,'logger':None,'logging':None,'cleanup':None,'verbose':None}
-		
+		defaults = {}
 		hyperparameters = kwargs.get('hyperparameters',{})
+		system = kwargs.get('system',{})
 
 		for attr in defaults:
 			value = kwargs.get(attr,hyperparameters.get(attr,defaults.get(attr)))
@@ -140,7 +140,7 @@ class Class(object):
 			setattr(self,attr,value)
 		
 		self.hyperparameters = hyperparameters
-
+		self.system = system
 
 		self.__system__()
 		self.__logger__()
@@ -152,20 +152,15 @@ class Class(object):
 		'''
 		Set system attributes
 		Args:
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logger,logging,cleanup,verbose)		
 		'''
 		system = self.system if system is None else system
 		
-		self.system = System(system)		
+		self.system = System(system)	
 
-		self.dtype = self.system.dtype
-		self.format = self.system.format
-		self.seed = self.system.seed
-		self.key = self.system.key
-		self.timestamp = self.system.timestamp
-		self.backend = self.system.backend
-		self.architecture = self.system.architecture
-		self.verbose = self.system.verbose
+		for attr in self.system.attributes:
+			value = getattr(self.system,attr)
+			setattr(self,attr,value)
 
 		return
 
@@ -192,40 +187,18 @@ class Class(object):
 		return
 
 
-	def __logger__(self,hyperparameters=None):
+	def __logger__(self):
 		'''
 		Setup logger
-		Args:
-			hyperparameters (dict): Hyperparameters
 		'''
-		if hyperparameters is None:
-			hyperparameters = self.hyperparameters
-		else:
-			setter(hyperparameters,self.hyperparameters)
 
-		attr = 'sys'
-		if attr in hyperparameters:
-			paths = {
-				'cwd':hyperparameters[attr]['cwd'],
-				'conf':hyperparameters[attr]['path']['config']['logger'],
-				'logging':hyperparameters[attr]['path']['data']['logging'],
-				'cleanup':hyperparameters['cleanup'],
-				}
-		else:
-			paths = {
-				'cwd':hyperparameters['cwd'],
-				'conf':hyperparameters['logger'],
-				'logging':hyperparameters['logging'],
-				'cleanup':hyperparameters['cleanup'],
-				}
-
-		path = paths['cwd']
+		path = self.cwd
 		root = path
 
 		name = __name__
-		conf = join(paths['conf'],root=root)
-		file = join(paths['logging'],root=root)
-		cleanup = paths['cleanup']
+		conf = join(self.conf,root=root)
+		file = join(self.logging,root=root)
+		cleanup = self.cleanup
 
 		self.logger = Logger(name,conf,file=file,cleanup=cleanup)
 
@@ -279,16 +252,21 @@ class System(dictionary):
 			}
 
 		defaults = {
-			'dtype':'complex',
-			'format':'array',
-			'device':'cpu',
-			'seed':None,
-			'key':None,
-			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
-			'backend':None,
-			'architecture':None,
-			'verbose':False,
-			'logger':None,
+		'dtype':'float',
+		'format':'array',
+		'device':'cpu',
+		'backend':'jax',
+		'architecture':None,
+		'seed':None,
+		'key':None,
+		'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
+		'timestamp':None,		
+		'cwd':None,
+		'path':None,
+		'conf':None,
+		'logging':None,
+		'cleanup':None,
+		'verbose':None,
 		}
 
 
@@ -300,6 +278,8 @@ class System(dictionary):
 		attrs.update({attr: updates.get(attr,{}).get(attrs[attr],attrs[attr]) if attr in updates else attrs[attr] for attr in attrs})
 
 		super().__init__(**attrs)
+
+		self.attributes = list(attrs)
 
 		return
 
@@ -323,7 +303,7 @@ class Logger(object):
 
 		if isinstance(name,str):
 			try:
-				self.logger = logconfig(name,conf=conf,**kwargs)
+				self.logger = config(name,conf=conf,**kwargs)
 			except Exception as exception:
 				self.logger = logging.getLogger(name)
 		else:
@@ -357,7 +337,7 @@ class Logger(object):
 		'''
 
 		verbose = self.verbosity.get(verbose,self.verbose)
-
+		print('')
 		self.logger.log(verbose,msg)
 		return
 
@@ -574,7 +554,7 @@ class Lattice(object):
 		L (int,float): Scale in system
 		delta (float): Length scale in system	
 		lattice (str,Lattice): Type of lattice, allowed strings in ['square','square-nearest']
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logger,logging,cleanup,verbose)		
 	'''	
 	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None):
 		

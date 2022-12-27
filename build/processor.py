@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,copy
+import os,sys
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))

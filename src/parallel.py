@@ -11,34 +11,6 @@ import joblib
 import multiprocessing as multiprocessing
 import multiprocessing.dummy as multithreading
 
-envs = {
-	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5
-	# 'XLA_FLAGS':'--xla_force_host_platform_device_count=8'
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
-
-
-import jax
-import absl.logging
-absl.logging.set_verbosity(absl.logging.INFO)
-# jax.set_cpu_device_count(8)
-
-configs = {
-	'jax_disable_jit':False,
-	'jax_platforms':'cpu',
-	'jax_enable_x64': True
-	}
-for name in configs:
-	jax.config.update(name,configs[name])
-
-
-# warnings.simplefilter("ignore", (UserWarning,DeprecationWarning,FutureWarning))
-# warnings.simplefilter("ignore", (sp.sparse.SparseEfficiencyWarning))
-# warnings.filterwarnings('error',category=sp.sparse.SparseEfficiencyWarning)
-
-
 DELIMITER='__'
 MAX_PROCESSES = 8
 

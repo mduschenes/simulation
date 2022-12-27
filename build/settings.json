@@ -4,24 +4,6 @@
 	"callback":"src.quantum.Callback"
 	},
 "hyperparameters":"settings.json",
-"sys":{
-	"cwd":null,
-	"path":{
-		"data":{
-			"model":"model.pkl",
-			"data":"data.hdf5",
-			"settings":"settings.json",
-			"logging":"log.log"
-			},
-		"config":{
-			"settings":"settings.json",
-			"plot":"plot.json",
-			"process":"process.json",
-			"mplstyle":"plot.mplstyle",
-			"logger":"logging.conf"
-			}
-		}
-	},
 "boolean":{
 	"train":1,
 	"load":0,
@@ -82,7 +64,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":200,
+	"M":3,
 	"T":null,
 	"tau":5e1,
 	"p":2,
@@ -92,31 +74,29 @@
 	"system":{
 		"dtype":"complex",
 		"format":"array",
-		"key":null,
-		"seed":null,
-		"timestamp":null,
-		"architecture":null,
 		"device":"cpu",
+		"backend":"jax",
+		"architecture":null,
+		"seed":null,
+		"key":null,
+		"timestamp":null,		
+		"cwd":".",
+		"path":"model.pkl",
+		"conf":"logging.conf",
+		"logging":"log.log",
+		"cleanup":false,
 		"verbose":"info"
 		}
 	},
 "optimize":{
 	"iterations":50,
 	"optimizer":"cg",
-	"metric":"real",	
+	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"dai_yuan"},
 	"eps":{"value":1e-20,"grad":1e-12,"difference":1e-20,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[-1e7,1e7],"beta":[-1e20,1e3]},	
 	"status":1,
-	"cwd":".",
-	"path":"data.hdf5",
-	"logger":"logging.conf",
-	"logging":"log.log",
-	"cleanup":true,
-	"verbose":true,
-	"timestamp":null,
-	"key":null,
 	"c1":0.0001,"c2":0.9,"maxiter":1500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
 	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":10},
@@ -150,6 +130,22 @@
 			"space":[],"time":[],"lattice":[],"architecture":[],
 
 			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
+		},
+	"system":{
+		"dtype":"float",
+		"format":"array",
+		"device":"cpu",
+		"backend":"jax",
+		"architecture":null,
+		"seed":null,
+		"key":null,
+		"timestamp":null,		
+		"cwd":".",
+		"path":"data.hdf5",
+		"conf":"logging.conf",
+		"logging":"log.log",
+		"cleanup":false,
+		"verbose":"info"
 		}
 	},
 "parameters":{
@@ -263,7 +259,13 @@
 			"JOB_PROCESSES":1,
 			"JOB_ARGS":"settings.json"
 			},
-		"paths":{},
+		"paths":{
+			"settings":"settings.json",
+			"plot":"plot.json",
+			"process":"process.json",
+			"mplstyle":"plot.mplstyle",
+			"conf":"logging.conf"
+			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
 			"time":"01:00:00","mem":"64G",

@@ -4,25 +4,12 @@
 import os,sys,itertools,functools,copy,datetime
 from functools import partial
 
-envs = {
-	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
+# Import User modules
+ROOT = os.path.dirname(os.path.abspath(__file__))
+PATHS = ['','..']
+for PATH in PATHS:
+	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-
-import jax
-import absl.logging
-absl.logging.set_verbosity(absl.logging.INFO)
-
-configs = {
-	'jax_disable_jit':False,
-	'jax_platforms':'cpu',
-	'jax_enable_x64': True
-	}
-for name in configs:
-	jax.config.update(name,configs[name])
 
 # Logging
 import logging
@@ -48,13 +35,14 @@ from src.system import Class
 
 
 class LineSearchBase(Class):
-	def __init__(self,func,grad,hyperparameters):
+	def __init__(self,func,grad,hyperparameters,system=None):
 		'''	
 		Line search class
 		Args:
 			func (callable): objective function with signature func(parameters)
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 		'''
 		defaults = {}		
 		returns = ['alpha']
@@ -66,7 +54,7 @@ class LineSearchBase(Class):
 		self.defaults = defaults
 		self.returns = returns
 
-		super().__init__(hyperparameters=hyperparameters)
+		super().__init__(hyperparameters=hyperparameters,system=system)
 
 		return
 
@@ -123,8 +111,9 @@ class LineSearch(LineSearchBase):
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
 		hyperparameters (dict): line search hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 	'''
-	def __new__(cls,func,grad,hyperparameters={}):
+	def __new__(cls,func,grad,hyperparameters={},system=None):
 	
 		defaults = {'search':{'alpha':None}}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
@@ -140,20 +129,21 @@ class LineSearch(LineSearchBase):
 
 
 class Line_Search(LineSearchBase):
-	def __init__(self,func,grad,hyperparameters):
+	def __init__(self,func,grad,hyperparameters,system=None):
 		'''	
 		Line search class
 		Args:
 			func (callable): objective function with signature func(parameters)
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 		'''
 		defaults = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':None}
 		returns = ['alpha','nfunc','ngrad','value','_value','slope']
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
-		super().__init__(func,grad,hyperparameters)
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system)
 
 		self.defaults = defaults
 		self.returns = returns
@@ -187,20 +177,21 @@ class Line_Search(LineSearchBase):
 
 
 class Armijo(LineSearchBase):
-	def __init__(self,func,grad,hyperparameters):
+	def __init__(self,func,grad,hyperparameters,system=None):
 		'''	
 		Line search class
 		Args:
 			func (callable): objective function with signature func(parameters)
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 		'''
 		defaults = {'c1':0.0001,'alpha0':1e-4}
 		returns = ['alpha','nfunc','value']
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
-		super().__init__(func,grad,hyperparameters)
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system)
 
 		self.defaults = defaults
 		self.returns = returns
@@ -230,23 +221,24 @@ class Armijo(LineSearchBase):
 
 
 class Null_Search(LineSearchBase):
-	def __init__(self,func,grad,hyperparameters):
+	def __init__(self,func,grad,hyperparameters,system=None):
 		'''	
 		Line search class
 		Args:
 			func (callable): objective function with signature func(parameters)
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)			
 		'''
 
-		super().__init__(func,grad,hyperparameters)
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system)
 
 		return
 
 
 class FuncBase(Class):
 
-	def __init__(self,model,func=None,grad=None,callback=None,metric=None,hyperparameters={}):
+	def __init__(self,model,func=None,grad=None,callback=None,metric=None,hyperparameters={},system=None):
 		'''	
 		Class for function
 		Args:
@@ -256,6 +248,7 @@ class FuncBase(Class):
 			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
 			metric (str,callable): Function metric with signature metric(*operands)
 			hyperparameters (dict): Function hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 		'''
 
 		if func is None:
@@ -302,7 +295,7 @@ class FuncBase(Class):
 		self.metric = metric
 		self.hyperparameters = hyperparameters
 
-		super().__init__(hyperparameters=hyperparameters)
+		super().__init__(hyperparameters=hyperparameters,system=system)
 
 		return
 
@@ -393,7 +386,7 @@ class FuncBase(Class):
 
 
 class Objective(FuncBase):		
-	def __init__(self,model,metric,func=None,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,model,metric,func=None,grad=None,callback=None,hyperparameters={},system=None):
 		'''	
 		Objective class for metric + function
 		Args:
@@ -403,11 +396,10 @@ class Objective(FuncBase):
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)			
 			hyperparameters (dict): Objective hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 		'''
 
-		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
-
-		self.gradient = gradient(self.func)
+		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
 
 		return
 
@@ -420,7 +412,7 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric(self.model(parameters))# + self.function(parameters)
+		return self.metric(self.model(parameters)) + self.function(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def func(self,parameters):
@@ -442,7 +434,7 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.gradient(parameters)
+		return self.metric.grad(self.model(parameters),self.model.grad(parameters)) + self.gradient(parameters)	
 
 	# @partial(jit,static_argnums=(0,))
 	def __grad_analytical__(self,parameters):
@@ -453,7 +445,7 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters))# + self.gradient(parameters)	
+		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) + self.gradient(parameters)	
 
 	# @partial(jit,static_argnums=(0,))
 	def grad_analytical(self,parameters):
@@ -469,7 +461,7 @@ class Objective(FuncBase):
 
 class Callback(FuncBase):
 
-	def __init__(self,model,callback,func=None,grad=None,metric=None,hyperparameters={}):
+	def __init__(self,model,callback,func=None,grad=None,metric=None,hyperparameters={},system=None):
 		'''	
 		Class for function
 		Args:
@@ -479,9 +471,10 @@ class Callback(FuncBase):
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			metric (str,callable): Callback metric with signature metric(*operands)
 			hyperparameters (dict): Callback hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 		'''
 		
-		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
+		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
 
 		return
 
@@ -502,7 +495,7 @@ class Callback(FuncBase):
 
 
 class Metric(Class):
-	def __init__(self,metric=None,shapes=None,model=None,label=None,optimize=None,hyperparameters={}):
+	def __init__(self,metric=None,shapes=None,model=None,label=None,optimize=None,hyperparameters={},system=None):
 		'''
 		Metric class for distance between operands
 		Args:
@@ -511,7 +504,8 @@ class Metric(Class):
 			model (object): Model instance	
 			label (str,callable): Label			
 			optimize (bool,str,iterable): Contraction type	
-			hyperparameters (dict): Metric hyperparameters	
+			hyperparameters (dict): Metric hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 		'''
 
 		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
@@ -521,11 +515,11 @@ class Metric(Class):
 		self.optimize = optimize
 		self.hyperparameters = hyperparameters
 
-		super().__init__(hyperparameters=hyperparameters)
+		super().__init__(hyperparameters=hyperparameters,system=system)
 		self.__setup__()
 
 		self.info()
-		
+
 		return
 
 	def __setup__(self):
@@ -642,6 +636,22 @@ class Metric(Class):
 		'''
 		return str(self.string)
 
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = '%s'%('\n'.join([
+			*['%s: %s'%(attr,getattr(self,attr)) 
+				for attr in ['metric']
+			],
+			]
+			))
+		self.log(msg,verbose=verbose)
+		return
+
+
 	def get_metric(self):
 		'''
 		Setup metric	
@@ -716,6 +726,7 @@ class Metric(Class):
 				shapes = (*self.shapes,)
 				optimize = self.optimize
 				function = inner_abs2(*shapes,optimize=optimize,wrapper=wrapper)
+				print('DOing function',function)
 			else:
 				shapes = ()
 				optimize = self.optimize
@@ -859,8 +870,9 @@ class OptimizerBase(Class):
 		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
 		model (object): model instance
 		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 	'''
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None):
 
 		defaults = {
 			'optimizer':None,
@@ -868,13 +880,8 @@ class OptimizerBase(Class):
 			'eps':{'value':1e-4,'grad':1e-12,'alpha':1e-12,'beta':1e3},
 			'alpha':0,
 			'status':1,
-			'timestamp':None,
-			'key':None,
 			'cwd':None,
 			'path':None,
-			'logger':None,
-			'log':None,
-			'verbose':False,
 			'modulo':{'log':None,'attributes':None,'callback':None,'restart':None,'dump':None},
 			'length':{'log':None,'attributes':10,'callback':None,'restart':None,'dump':None},
 			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},	
@@ -909,8 +916,6 @@ class OptimizerBase(Class):
 		self.status = hyperparameters['status']
 		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
-		self.timestamp = hyperparameters['timestamp']
-		self.key = hyperparameters['key']
 		self.path = join(hyperparameters['path'],root=hyperparameters['cwd'])
 
 		for attr in list(self.attributes):
@@ -927,7 +932,7 @@ class OptimizerBase(Class):
 			elif ((isinstance(value,list)) and (value)):
 				self.track[value] = []		
 
-		super().__init__(hyperparameters=hyperparameters)
+		super().__init__(hyperparameters=hyperparameters,system=system)
 
 		return
 
@@ -1179,8 +1184,9 @@ class Optimizer(OptimizerBase):
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
 		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 	'''
-	def __new__(cls,func,grad=None,callback=None,hyperparameters={}):
+	def __new__(cls,func,grad=None,callback=None,hyperparameters={},system=None):
 	
 		defaults = {'optimizer':None}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
@@ -1189,7 +1195,7 @@ class Optimizer(OptimizerBase):
 
 		optimizer = hyperparameters['optimizer']		
 		
-		self = optimizers.get(optimizer,optimizers[None])(func,grad,callback,hyperparameters)
+		self = optimizers.get(optimizer,optimizers[None])(func,grad,callback,hyperparameters=hyperparameters,system=system)
 
 		return self
 	
@@ -1202,13 +1208,14 @@ class GradientDescent(OptimizerBase):
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
 		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 	'''
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None):
 
 		defaults = {'attributes':{'beta':False}}		
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
-		super().__init__(func,grad,callback,hyperparameters)
+		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system)
 
 		defaults = {}
 		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
@@ -1267,13 +1274,14 @@ class ConjugateGradient(OptimizerBase):
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
 		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 	'''
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None):
 
 		defaults = {'beta':0,'search':{'alpha':'line_search','beta':None},'attributes':{'beta':[]}}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
-		super().__init__(func,grad,callback,hyperparameters)
+		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system)
 
 		defaults = {}
 		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
@@ -1392,13 +1400,14 @@ class Adam(OptimizerBase):
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
 		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 	'''
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None):
 
 		defaults = {'attributes':{'beta':False}}		
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
-		super().__init__(func,grad,callback,hyperparameters)
+		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system)
 
 		defaults = {}
 		setter(self.hyperparameters,defaults,delimiter=delim,func=False)

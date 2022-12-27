@@ -5,29 +5,6 @@ import os,sys
 from copy import deepcopy
 from functools import partial
 
-envs = {
-	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
-
-import jax
-import absl.logging
-absl.logging.set_verbosity(absl.logging.INFO)
-# jax.set_cpu_device_count(8)
-
-configs = {
-	'jax_disable_jit':False,
-	'jax_platforms':'cpu',
-	'jax_enable_x64': True
-	}
-for name in configs:
-	jax.config.update(name,configs[name])
-
-# Logging
-import logging
-
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..']
@@ -95,7 +72,7 @@ class Object(Class):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
@@ -624,7 +601,7 @@ class Object(Class):
 			N (int): Number of qudits
 			D (int): Dimension of qudits
 			space (str,Space): Type of Hilbert space
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)		
 		'''
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -657,7 +634,7 @@ class Object(Class):
 			tau (float): Simulation time scale
 			p (int): Trotter order		
 			time (str,Time): Type of Time evolution space						
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)		
 		'''
 		M = self.M if M is None else M
 		T = self.T if T is None else T
@@ -688,7 +665,7 @@ class Object(Class):
 			L (int,float): Scale in system
 			delta (float): Length scale in system			
 			lattice (str,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)		
 		'''		
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -735,7 +712,7 @@ class Object(Class):
 		'''		
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','backend','architecture','shape']
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','p','shape','dims','cwd','path','backend','architecture','conf','logging']
 			],
 			*['%s: %s'%(attr,getattr(self,attr) is not None) 
 				for attr in ['state','noise']
@@ -746,6 +723,7 @@ class Object(Class):
 			]
 			))
 		self.log(msg,verbose=verbose)
+
 		return
 
 
@@ -770,12 +748,12 @@ class Object(Class):
 		else:
 			paths.update({attr: path[attr] for attr in path if path[attr]})
 
-		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.hyperparameters['sys']['cwd'] for attr in data if paths.get(attr)})			
+		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
 
 		# Dump data
 		for attr in paths:
 			root,file = split(paths[attr],directory=True,file_ext=True)
-			file = file if file is not None else self.hyperparameters['sys']['path']['data'][attr]
+			file = file if file is not None else self.path
 			path = join(file,root=root)
 			dump(data[attr],path)
 		
@@ -804,12 +782,12 @@ class Object(Class):
 		else:
 			paths.update({attr: path[attr] for attr in path if path[attr]})
 
-		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.hyperparameters['sys']['cwd'] for attr in data if paths.get(attr)})			
+		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
 
 		# Load data
 		for attr in paths:
 			root,file = split(paths[attr],directory=True,file_ext=True)
-			file = file if file is not None else self.hyperparameters['sys']['path']['data'][attr]
+			file = file if file is not None else self.path
 			path = join(file,root=root)
 			func = (list,)
 			default = data[attr]
@@ -846,7 +824,7 @@ class Hamiltonian(Object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
@@ -1056,7 +1034,7 @@ class Unitary(Hamiltonian):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space
 		lattice (str,Lattice): Type of lattice
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
@@ -1487,7 +1465,7 @@ class Operator(module,Class):
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		space (str,Space): Type of Hilbert space
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
 	'''
 
 	data : None
@@ -1541,7 +1519,7 @@ class Operator(module,Class):
 			N (int): Number of qudits
 			D (int): Dimension of qudits
 			space (str,Space): Type of Hilbert space
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)		
 		'''
 		N = self.N if N is None else N
 		D = self.D if D is None else D

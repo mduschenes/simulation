@@ -1,24 +1,9 @@
-	{
-"class":"src.quantum.Unitary",
-"hyperparameters":"settings.json",
-"sys":{
-	"cwd":null,
-	"path":{
-		"data":{
-			"model":"model.pkl",
-			"data":"data.hdf5",
-			"settings":"settings.json",
-			"log":"log.log"
-			},
-		"config":{
-			"settings":"settings.json",
-			"plot":"plot.json",
-			"process":"process.json",
-			"mplstyle":"plot.mplstyle",
-			"logger":"logging.conf"
-			}
-		}
+{
+"class":{
+	"model":"src.quantum.Unitary",
+	"callback":"src.quantum.Callback"
 	},
+"hyperparameters":"settings.json",
 "boolean":{
 	"train":1,
 	"load":0,
@@ -30,46 +15,91 @@
 	"reset":5576,
 	"index":null
 	},
-"permutations":{},
-	"groups":[],
+"permutations":{
+	"permutations":{	
+	
+		"model.N":[4],		
+		"model.M":[500],		
+		"model.tau":[20e0],		
+		"noise.scale":[null],
+		"state.scale":[1],
+		"state.shape":[[1,1,-1,-1]],
+
+		"optimize.metric":["abs2"],
+		"optimize.metric":["real"],
+		"optimize.iterations":[300],
+		"optimize.optimizer":["cg"],
+		"parameters.xy.method":["constrained"],
+		"model.system.architecture":["constrained"],
+
+		"jobs.job.cwd":["data"],	
+		"jobs.postprocess.cwd":["data"],
+
+		"jobs.job.device":["pc"],
+		"jobs.postprocess.device":["pc"],
+		"jobs.job.process":[null],
+		"jobs.postprocess.process":[null],
+		"jobs.job.pool":[1],
+		"jobs.postprocess.pool":[1],
+		"jobs.job.execute":[1],	
+		"jobs.postprocess.execute":[1],	
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.postprocess.args.JOB_PROCESSES":[1]
+
+		},
+	"groups":[["parameters.xy.method","model.system.architecture"]],
 	"index":null
 	},
 "model":{
+	"data":{
+		"x":{"operator":["X"],"site":["i"],"string":"x","interaction":"i"},
+		"y":{"operator":["Y"],"site":["i"],"string":"y","interaction":"i"},
+		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
+		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
+		},
 	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":200,
+	"M":3,
 	"T":null,
 	"tau":5e1,
 	"p":2,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square",
-	"metric":"infidelity.norm",
 	"system":{
 		"dtype":"complex",
 		"format":"array",
-		"key":null,
-		"seed":null,
-		"timestamp":null,
-		"architecture":null,
 		"device":"cpu",
+		"backend":"jax",
+		"architecture":null,
+		"seed":null,
+		"key":null,
+		"timestamp":null,		
+		"cwd":".",
+		"path":"model.pkl",
+		"conf":"logging.conf",
+		"logging":"log.log",
+		"cleanup":false,
 		"verbose":"info"
 		}
 	},
 "optimize":{
 	"iterations":50,
 	"optimizer":"cg",
-	"line_search":"line_search",
-	"eps":{"value":1e-20,"grad":1e-20,"difference":1e-20,"alpha":1e-20,"beta":1e3},
+	"metric":"abs2",	
+	"search":{"alpha":"line_search","beta":"dai_yuan"},
+	"eps":{"value":1e-20,"grad":1e-12,"difference":1e-20,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
+	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[-1e7,1e7],"beta":[-1e20,1e3]},	
 	"status":1,
-	"reset":0,
-	"c1":0.0001,"c2":0.9,"maxiter":500,"restart":1e6,
+	"c1":0.0001,"c2":0.9,"maxiter":1500,"restart":1e6,
 	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":100},
+	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":10},
 	"length":{"log":null,"attributes":10,"track":null,"callback":null,"restart":null,"dump":null},
 	"attributes":{
 		"iteration":[],"parameters":[],
@@ -77,17 +107,52 @@
 		"alpha":[],"beta":[]
 		},
 	"track":{
-		"iteration":[],"objective":[],"parameters":[],
-		"parameters":[],
-		"value":[],
-		"alpha":[],"beta":[]
+			"iteration":[],
+			"parameters":false,
+			"grad":false,
+			"search":false,
+			"value":false,
+			"objective":[],
+			"alpha":false,
+			"beta":false,
+
+			"iteration.max":[],
+			"iteration.min":[],
+			"features":false,"features.mean":false,"features.relative":false,
+			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
+			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
+			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
+			"hessian":false,"fisher":false,
+			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
+			"hessian.rank":false,"fisher.rank":false,
+
+			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"p":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],
+
+			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
+		},
+	"system":{
+		"dtype":"float",
+		"format":"array",
+		"device":"cpu",
+		"backend":"jax",
+		"architecture":null,
+		"seed":null,
+		"key":null,
+		"timestamp":null,		
+		"cwd":".",
+		"path":"data.hdf5",
+		"conf":"logging.conf",
+		"logging":"log.log",
+		"cleanup":false,
+		"verbose":"info"
 		}
 	},
 "parameters":{
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"method":"constrained",
+		"method":"unconstrained",
 		"use":true,		
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
@@ -101,11 +166,12 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -150,14 +216,6 @@
 		"kwargs":{}
 		}
 	},
-"data":{
-	"data":{
-		"x":{"operator":["X"],"site":["i"],"string":"x","interaction":"i"},
-		"y":{"operator":["Y"],"site":["i"],"string":"y","interaction":"i"},
-		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
-		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
-		}
-	},
 "label": {
 	"string":"random",
 	"category":"constant",
@@ -173,7 +231,7 @@
 	"string":"random",
 	"category":"constant",
 	"shape":[1,1,-1,-1],
-	"scale":1,
+	"scale":null,
 	"initialization":"random",
 	"random":"haar",
 	"seed":null,
@@ -183,7 +241,7 @@
 	"string":"phase",
 	"category":"constant",
 	"shape":[2,-1,-1],
-	"scale":1e-6,
+	"scale":null,
 	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,
@@ -201,7 +259,13 @@
 			"JOB_PROCESSES":1,
 			"JOB_ARGS":"settings.json"
 			},
-		"paths":{},
+		"paths":{
+			"settings":"settings.json",
+			"plot":"plot.json",
+			"process":"process.json",
+			"mplstyle":"plot.mplstyle",
+			"conf":"logging.conf"
+			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
 			"time":"01:00:00","mem":"64G",
@@ -250,6 +314,6 @@
 		"verbose":"info"
 		}
 	},
-"process": {"labels":["noise.scale"]},
+"process": {},
 "plot": {}
 }
