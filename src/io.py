@@ -158,7 +158,10 @@ def rm(path):
 	try:
 		os.remove(path)
 	except:
-		os.rmdir(path)
+		try:
+			os.rmdir(path)
+		except:
+			pass
 
 	return
 

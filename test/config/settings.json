@@ -11,7 +11,7 @@
 			"model":"model.pkl",
 			"data":"data.hdf5",
 			"settings":"settings.json",
-			"log":"log.log"
+			"logging":"log.log"
 			},
 		"config":{
 			"settings":"settings.json",
@@ -82,7 +82,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":7,
+	"M":3,
 	"T":null,
 	"tau":5e1,
 	"p":2,
@@ -111,9 +111,10 @@
 	"status":1,
 	"cwd":".",
 	"path":"data.hdf5",
-    "logger":"logging.conf",
-    "log":"log.log",
-    "cleanup":false,
+	"logger":"logging.conf",
+	"logging":"log.log",
+	"cleanup":false,
+	"verbose":true,
 	"timestamp":null,
 	"key":null,
 	"c1":0.0001,"c2":0.9,"maxiter":1500,"restart":1e6,

@@ -59,6 +59,8 @@ def test_class(path,tol):
 
 	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
 
+	model.log('Hello World')
+
 	return
 
 
@@ -198,7 +200,7 @@ def test_objective(path,tol):
 	callback = None
 	hyperparams = hyperparameters['optimize']
 
-	metric = Metric(shapes=shapes,label=label,verbose=True,hyperparameters=hyperparams)
+	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams)
 	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams)
 
 	parameters = model.parameters
@@ -207,6 +209,7 @@ def test_objective(path,tol):
 	grad_jax = func.grad
 	grad_finite = gradient(func,mode='finite',tol=tol)
 	grad_analytical = func.grad_analytical
+	model.log('--- Done ---')
 	return
 
 	print(grad_jax(parameters).round(3))
@@ -262,3 +265,4 @@ if __name__ == '__main__':
 	tol = 5e-8 
 	# test_grad(path,tol)
 	test_objective(path,tol)
+	# test_class(path,tol)

@@ -43,11 +43,11 @@ from src.line_search import line_search,armijo
 
 from src.io import dump,load,join,split,copy,exists
 
-from src.system import Logger
+from src.system import Class
 
 
 
-class LineSearchBase(object):
+class LineSearchBase(Class):
 	def __init__(self,func,grad,hyperparameters):
 		'''	
 		Line search class
@@ -65,6 +65,8 @@ class LineSearchBase(object):
 		self.hyperparameters = hyperparameters
 		self.defaults = defaults
 		self.returns = returns
+
+		super().__init__(hyperparameters=hyperparameters)
 
 		return
 
@@ -242,9 +244,9 @@ class Null_Search(LineSearchBase):
 		return
 
 
-class FuncBase(object):
+class FuncBase(Class):
 
-	def __init__(self,model,func=None,grad=None,callback=None,metric=None,verbose=None,hyperparameters={}):
+	def __init__(self,model,func=None,grad=None,callback=None,metric=None,hyperparameters={}):
 		'''	
 		Class for function
 		Args:
@@ -253,12 +255,8 @@ class FuncBase(object):
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
 			metric (str,callable): Function metric with signature metric(*operands)
-			verbose (int,str): Function verbosity
 			hyperparameters (dict): Function hyperparameters
 		'''
-
-		defaults = {'cwd':None,'path':None,'logger':None,'log':None,'cleanup':None}
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		if func is None:
 			func = []
@@ -302,10 +300,9 @@ class FuncBase(object):
 		self.model = model
 		self.callback = callback
 		self.metric = metric
-		self.verbose = verbose
 		self.hyperparameters = hyperparameters
 
-		self.info()
+		super().__init__(hyperparameters=hyperparameters)
 
 		return
 
@@ -393,53 +390,10 @@ class FuncBase(object):
 			out (object): Return of function
 		'''
 		return self.__value_and_gradient__(parameters)
-	
-	def __logger__(self,hyperparameters=None):
-		'''
-		Setup logger
-		Args:
-			hyperparameters (dict): Hyperparameters
-		'''
 
-		hyperparameters = self.hyperparameters if hyperparameters is None else hyperparameters
-
-		path = hyperparameters['cwd']
-		root = path
-
-		name = __name__
-		conf = join(hyperparameters['logger'],root=root)
-		file = join(hyperparameters['log'],root=root)
-
-		self.logger = Logger(name,conf,file=file,cleanup=True)
-
-		return
-
-	def log(self,msg,verbose=None):
-		'''
-		Log messages
-		Args:
-			msg (str): Message to log
-			verbose (int,str): Verbosity of message			
-		'''
-		if verbose is None:
-			verbose = self.verbose
-		if msg is None:
-			return
-		self.logger.log(verbose,msg)
-		return
-
-	def info(self,verbose=None):
-		'''
-		Log class information
-		Args:
-			verbose (int,str): Verbosity of message			
-		'''		
-		msg = None
-		self.log(msg,verbose=verbose)
-		return
 
 class Objective(FuncBase):		
-	def __init__(self,model,metric,func=None,grad=None,callback=None,verbose=None,hyperparameters={}):
+	def __init__(self,model,metric,func=None,grad=None,callback=None,hyperparameters={}):
 		'''	
 		Objective class for metric + function
 		Args:
@@ -448,11 +402,10 @@ class Objective(FuncBase):
 			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)			
-			verbose (int,str): Objective verbosity
 			hyperparameters (dict): Objective hyperparameters
 		'''
 
-		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,verbose=verbose,hyperparameters=hyperparameters)
+		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
 
 		self.gradient = gradient(self.func)
 
@@ -516,7 +469,7 @@ class Objective(FuncBase):
 
 class Callback(FuncBase):
 
-	def __init__(self,model,callback,func=None,grad=None,metric=None,verbose=None,hyperparameters={}):
+	def __init__(self,model,callback,func=None,grad=None,metric=None,hyperparameters={}):
 		'''	
 		Class for function
 		Args:
@@ -525,11 +478,10 @@ class Callback(FuncBase):
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			metric (str,callable): Callback metric with signature metric(*operands)
-			verbose (int,str): Callback verbosity
 			hyperparameters (dict): Callback hyperparameters
 		'''
 		
-		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,verbose=verbose,hyperparameters=hyperparameters)
+		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
 
 		return
 
@@ -549,8 +501,8 @@ class Callback(FuncBase):
 		return status
 
 
-class Metric(object):
-	def __init__(self,metric=None,shapes=None,model=None,label=None,optimize=None,verbose=None,hyperparameters={}):
+class Metric(Class):
+	def __init__(self,metric=None,shapes=None,model=None,label=None,optimize=None,hyperparameters={}):
 		'''
 		Metric class for distance between operands
 		Args:
@@ -559,21 +511,20 @@ class Metric(object):
 			model (object): Model instance	
 			label (str,callable): Label			
 			optimize (bool,str,iterable): Contraction type	
-			verbose (int,str): Function verbosity
 			hyperparameters (dict): Metric hyperparameters	
 		'''
-		defaults = {'metric':metric,'label':label,'cwd':None,'path':None,'logger':None,'log':None,'cleanup':None}
-		setter(hyperparameters,defaults,func=False)
 
 		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
 		self.label = hyperparameters.get('label',label) if label is None else label
 		self.shapes = shapes
 		self.model = model
 		self.optimize = optimize
-		self.verbose = verbose
 		self.hyperparameters = hyperparameters
 
+		super().__init__(hyperparameters=hyperparameters)
 		self.__setup__()
+
+		self.info()
 		
 		return
 
@@ -590,11 +541,8 @@ class Metric(object):
 
 		self.__string__()
 		self.__size__()
-		self.__logger__()
 
 		self.get_metric()
-
-		self.info()		
 
 		return
 
@@ -693,58 +641,6 @@ class Metric(object):
 		Class representation
 		'''
 		return str(self.string)
-
-
-	def __logger__(self,hyperparameters=None):
-		'''
-		Setup logger
-		Args:
-			hyperparameters (dict): Hyperparameters
-		'''
-
-		hyperparameters = self.hyperparameters if hyperparameters is None else hyperparameters
-
-		path = hyperparameters['cwd']
-		root = path
-
-		name = __name__
-		conf = join(hyperparameters['logger'],root=root)
-		file = join(hyperparameters['log'],root=root)
-		cleanup = hyperparameters['cleanup']
-
-		self.logger = Logger(name,conf,file=file,cleanup=cleanup)
-
-		return
-
-	def log(self,msg,verbose=None):
-		'''
-		Log messages
-		Args:
-			msg (str): Message to log
-			verbose (int,str): Verbosity of message			
-		'''
-		if verbose is None:
-			verbose = self.verbose
-		if msg is None:
-			return			
-		self.logger.log(verbose,msg)
-		return
-
-	def info(self,verbose=None):
-		'''
-		Log class information
-		Args:
-			verbose (int,str): Verbosity of message			
-		'''		
-		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['metric']
-			],
-			]
-			))
-		self.log(msg,verbose=verbose)
-		return
-
 
 	def get_metric(self):
 		'''
@@ -954,7 +850,7 @@ class Metric(object):
 
 
 
-class OptimizerBase(object):
+class OptimizerBase(Class):
 	'''
 	Base Optimizer class, with numpy optimizer API
 	Args:
@@ -965,17 +861,6 @@ class OptimizerBase(object):
 		hyperparameters (dict): optimizer hyperparameters
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
-
-		updates = {
-			'verbose': {
-				'notset':0,'debug':10,'info':20,'warning':30,'error':40,'critical':50,
-				'Notset':0,'Debug':10,'Info':20,'Warning':30,'Error':40,'Critical':50,
-				'NOTSET':0,'DEBUG':10,'INFO':20,'WARNING':30,'ERROR':40,'CRITICAL':50,
-				10:10,20:20,30:30,40:40,50:50,
-				2:20,3:30,4:40,5:50,
-				True:20,False:0,None:0,
-				}
-			}
 
 		defaults = {
 			'optimizer':None,
@@ -1027,7 +912,6 @@ class OptimizerBase(object):
 		self.timestamp = hyperparameters['timestamp']
 		self.key = hyperparameters['key']
 		self.path = join(hyperparameters['path'],root=hyperparameters['cwd'])
-		self.verbose = hyperparameters['verbose']
 
 		for attr in list(self.attributes):
 			value = self.attributes[attr]
@@ -1043,8 +927,7 @@ class OptimizerBase(object):
 			elif ((isinstance(value,list)) and (value)):
 				self.track[value] = []		
 
-		self.__logger__()
-		self.info()		
+		super().__init__(hyperparameters=hyperparameters)
 
 		return
 
@@ -1287,50 +1170,6 @@ class OptimizerBase(object):
 
 		return iteration,state
 
-	def __logger__(self,hyperparameters=None):
-		'''
-		Setup logger
-		Args:
-			hyperparameters (dict): Hyperparameters
-		'''
-
-		hyperparameters = self.hyperparameters if hyperparameters is None else hyperparameters
-
-		path = hyperparameters['cwd']
-		root = path
-
-		name = __name__
-		conf = join(hyperparameters['logger'],root=root)
-		file = join(hyperparameters['log'],root=root)
-		cleanup = hyperparameters['cleanup']
-
-		self.logger = Logger(name,conf,file=file,cleanup=cleanup)
-
-		return
-
-	def log(self,msg,verbose=None):
-		'''
-		Log messages
-		Args:
-			msg (str): Message to log
-			verbose (int,str): Verbosity of message			
-		'''
-		if verbose is None:
-			verbose = self.verbose
-		if msg is None:
-			return
-		self.logger.log(verbose,msg)
-		return
-
-	def info(self,verbose=None):
-		'''
-		Log class information
-		Args:
-			verbose (int,str): Verbosity of message			
-		'''		
-		msg = None
-		self.log(msg,verbose=verbose)
-		return
 
 class Optimizer(OptimizerBase):
 	'''

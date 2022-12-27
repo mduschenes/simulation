@@ -4,7 +4,6 @@
 import os,sys
 from copy import deepcopy
 from functools import partial
-import atexit
 
 envs = {
 	'JAX_PLATFORM_NAME':'cpu',
@@ -59,7 +58,7 @@ from src.noise import noiseize
 
 from src.io import load,dump,join,split
 
-from src.system import System,Logger,Space,Time,Lattice
+from src.system import Class,Space,Time,Lattice
 
 from src.optimize import Objective,Metric
 
@@ -71,7 +70,7 @@ basis = {
 	'Z': array([[1,0],[0,-1]],dtype=dtype),
 }
 
-class Object(object):
+class Object(Class):
 	'''
 	Class for object
 	Args:
@@ -154,21 +153,18 @@ class Object(object):
 		self.summation = None
 		self.exponentiation = None 
 
-		self.fig = {}
-		self.ax = {}
+		super().__init__(hyperparameters=hyperparameters,system=system)
 
-		self.__system__()
 		self.__space__()
 		self.__time__()
 		self.__lattice__()
-		self.__logger__()
-		self.__clean__()
 
 		self.__check__()
 
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
 		self.info()
+
 		return	
 
 	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={}):
@@ -621,28 +617,6 @@ class Object(object):
 		return self.__layers__(parameters,layer)
 
 
-	def __system__(self,system=None):
-		'''
-		Set system attributes
-		Args:
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
-		'''
-		system = self.system if system is None else system
-		
-		self.system = System(system)		
-
-		self.dtype = self.system.dtype
-		self.format = self.system.format
-		self.seed = self.system.seed
-		self.key = self.system.key
-		self.timestamp = self.system.timestamp
-		self.backend = self.system.backend
-		self.architecture = self.system.architecture
-		self.verbose = self.system.verbose
-
-		return
-
-
 	def __space__(self,N=None,D=None,space=None,system=None):
 		'''
 		Set space attributes
@@ -733,27 +707,6 @@ class Object(object):
 
 		return
 
-
-	def __logger__(self,hyperparameters=None):
-		'''
-		Setup logger
-		Args:
-			hyperparameters (dict): Hyperparameters
-		'''
-
-		hyperparameters = self.hyperparameters if hyperparameters is None else hyperparameters
-
-		path = hyperparameters['sys']['cwd']
-		root = path
-
-		name = __name__
-		conf = join(hyperparameters['sys']['path']['config']['logger'],root=root)
-		file = join(hyperparameters['sys']['path']['data']['log'],root=root)
-
-		self.logger = Logger(name,conf,file=file)
-
-		return
-
 	def __str__(self):
 		size = len(self.data)
 		multiple_time = (self.M>1)
@@ -773,38 +726,6 @@ class Object(object):
 
 	def __len__(self):
 		return len(self.data)
-
-	def __clean__(self,cleanup=None):
-		'''
-		Set cleanup state of class
-		Args:
-			cleanup (bool): Cleanup
-		'''
-
-		if cleanup:
-			atexit.register(self.__atexit__)
-		else:
-			atexit.unregister(self.__atexit__)
-
-		return
-		
-	def __atexit__(self):
-		'''
-		Cleanup upon class exit
-		'''
-		return
-
-	def log(self,msg,verbose=None):
-		'''
-		Log messages
-		Args:
-			msg (str): Message to log
-			verbose (int,str): Verbosity of message			
-		'''
-		if verbose is None:
-			verbose = self.verbose
-		self.logger.log(verbose,msg)
-		return	
 
 	def info(self,verbose=None):
 		'''
@@ -1549,7 +1470,7 @@ import equinox as nn
 class module(nn.Module):
 	pass
 
-class Operator(module):
+class Operator(module,Class):
 	'''
 	Class for Operator
 	Args:
@@ -1600,37 +1521,18 @@ class Operator(module):
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters={},
 					N=None,D=None,space=None,system=None):
 
+		super(Class).__init__(hyperparameters=hyperparameters,system=system)
+
 		self.N = N
 		self.D = D
 		self.space = space
 		self.system = system
 
-		self.__system__()
 		self.__space__()
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 		
 		return
-	
-	def __system__(self,system=None):
-		'''
-		Set system attributes
-		Args:
-			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
-		'''
-		system = self.system if system is None else system
 
-		system = System(system)		
-
-		self.dtype = system.dtype
-		self.format = system.format
-		self.seed = system.seed
-		self.key = system.key
-		self.timestamp = system.timestamp
-		self.backend = system.backend
-		self.architecture = system.architecture
-		self.verbose = system.verbose
-
-		return
 	
 	def __space__(self,N=None,D=None,space=None,system=None):
 		'''

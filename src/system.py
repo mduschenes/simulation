@@ -25,6 +25,7 @@ from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_rea
 
 from src.utils import itg,dbl,flt
 
+from src.dictionary import setter
 from src.io import join,split,copy,rm,exists
 
 def logconfig(name,conf=None,**kwargs):
@@ -119,6 +120,141 @@ def logconfig(name,conf=None,**kwargs):
 		rm(conf)
 
 	return logger
+
+
+class Class(object):
+	def __init__(self,*args,**kwargs):
+		'''
+		Base Class
+		Args:
+			args (iterable[object]): Class arguments
+			kwargs (dict[str,object]): Class keyword arguments
+		'''
+		defaults = {'system':None,'cwd':None,'path':None,'logger':None,'logging':None,'cleanup':None,'verbose':None}
+		
+		hyperparameters = kwargs.get('hyperparameters',{})
+
+		for attr in defaults:
+			value = kwargs.get(attr,hyperparameters.get(attr,defaults.get(attr)))
+			hyperparameters[attr] = value
+			setattr(self,attr,value)
+		
+		self.hyperparameters = hyperparameters
+
+
+		self.__system__()
+		self.__logger__()
+		self.__clean__()
+
+		return
+
+	def __system__(self,system=None):
+		'''
+		Set system attributes
+		Args:
+			system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
+		'''
+		system = self.system if system is None else system
+		
+		self.system = System(system)		
+
+		self.dtype = self.system.dtype
+		self.format = self.system.format
+		self.seed = self.system.seed
+		self.key = self.system.key
+		self.timestamp = self.system.timestamp
+		self.backend = self.system.backend
+		self.architecture = self.system.architecture
+		self.verbose = self.system.verbose
+
+		return
+
+	def __clean__(self,cleanup=None):
+		'''
+		Set cleanup state of class
+		Args:
+			cleanup (bool): Cleanup
+		'''
+
+		cleanup = self.cleanup if cleanup is None else cleanup
+
+		if cleanup:
+			atexit.register(self.__atexit__)
+		else:
+			atexit.unregister(self.__atexit__)
+
+		return
+		
+	def __atexit__(self):
+		'''
+		Cleanup upon class exit
+		'''
+		return
+
+
+	def __logger__(self,hyperparameters=None):
+		'''
+		Setup logger
+		Args:
+			hyperparameters (dict): Hyperparameters
+		'''
+		if hyperparameters is None:
+			hyperparameters = self.hyperparameters
+		else:
+			setter(hyperparameters,self.hyperparameters)
+
+		attr = 'sys'
+		if attr in hyperparameters:
+			paths = {
+				'cwd':hyperparameters[attr]['cwd'],
+				'conf':hyperparameters[attr]['path']['config']['logger'],
+				'logging':hyperparameters[attr]['path']['data']['logging'],
+				'cleanup':hyperparameters['cleanup'],
+				}
+		else:
+			paths = {
+				'cwd':hyperparameters['cwd'],
+				'conf':hyperparameters['logger'],
+				'logging':hyperparameters['logging'],
+				'cleanup':hyperparameters['cleanup'],
+				}
+
+		path = paths['cwd']
+		root = path
+
+		name = __name__
+		conf = join(paths['conf'],root=root)
+		file = join(paths['logging'],root=root)
+		cleanup = paths['cleanup']
+
+		self.logger = Logger(name,conf,file=file,cleanup=cleanup)
+
+		return
+
+	def log(self,msg,verbose=None):
+		'''
+		Log messages
+		Args:
+			msg (str): Message to log
+			verbose (int,str): Verbosity of message			
+		'''
+		if verbose is None:
+			verbose = self.verbose
+		if msg is None:
+			return
+		msg += '\n'
+		self.logger.log(verbose,msg)
+		return
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = None
+		self.log(msg,verbose=verbose)
+		return
 
 
 class System(dictionary):
