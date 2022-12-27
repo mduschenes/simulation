@@ -166,18 +166,7 @@ class Object(object):
 
 		self.__setup__(data,operator,site,string,interaction,hyperparameters)
 
-		self.log('%s\n'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','backend','architecture','shape']
-			],
-			*['%s: %s'%(attr,getattr(self,attr) is not None) 
-				for attr in ['state','noise']
-			],
-			*['%s: %s'%(attr,getattr(self,attr).__name__) 
-				for attr in ['exponentiation']
-			],			
-			]
-			)))
+		self.info()
 		return	
 
 	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={}):
@@ -787,12 +776,33 @@ class Object(object):
 		Log messages
 		Args:
 			msg (str): Message to log
-			verbose (int): Verbosity of message			
+			verbose (int,str): Verbosity of message			
 		'''
 		if verbose is None:
 			verbose = self.verbose
 		self.logger.log(verbose,msg)
 		return	
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = '%s'%('\n'.join([
+			*['%s: %s'%(attr,getattr(self,attr)) 
+				for attr in ['key','N','D','d','L','delta','M','tau','T','p','seed','backend','architecture','shape']
+			],
+			*['%s: %s'%(attr,getattr(self,attr) is not None) 
+				for attr in ['state','noise']
+			],
+			*['%s: %s'%(attr,getattr(self,attr).__name__) 
+				for attr in ['exponentiation']
+			],			
+			]
+			))
+		self.log(msg,verbose=verbose)
+		return
 
 	def dump(self,path=None):
 		'''
@@ -1410,10 +1420,10 @@ class Callback(object):
 
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
 						_kwargs = {'state':state,'noise':noise,'label':label}
-						_metric = 'norm'
+						_metric = 'real'
 					elif attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:						
 						_kwargs = {'state':state,'noise':noise,'label':label}
-						_metric = 'norm'
+						_metric = 'real'
 					elif attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
 						_kwargs = {'state':state,'noise':noise,'label':label}
 						_metric = 'abs2'
@@ -1490,7 +1500,7 @@ class Callback(object):
 					if attr in attributes and len(attributes[attr])>0
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
-				'U\n%s\nV\n%s\n'%(
+				'U\n%s\nV\n%s'%(
 				to_string(abs(model(parameters)).round(4)),
 				to_string(abs(model.label).round(4))),
 				])

@@ -44,7 +44,7 @@
 		"state.shape":[[1,1,-1,-1]],
 
 		"optimize.metric":["abs2"],
-		"optimize.metric":["norm"],
+		"optimize.metric":["real"],
 		"optimize.iterations":[300],
 		"optimize.optimizer":["cg"],
 		"parameters.xy.method":["constrained"],
@@ -103,7 +103,7 @@
 "optimize":{
 	"iterations":50,
 	"optimizer":"cg",
-	"metric":"norm",	
+	"metric":"real",	
 	"search":{"alpha":"line_search","beta":"dai_yuan"},
 	"eps":{"value":1e-20,"grad":1e-12,"difference":1e-20,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},

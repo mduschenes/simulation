@@ -37,6 +37,8 @@ def setup(hyperparameters)
 	updates = {
 		'optimize.cwd': 'sys.cwd',
 		'optimize.path': 'sys.path.data.data',
+		'optimize.logger': 'sys.path.config.logger',
+		'optimize.log': 'sys.path.data.log',
 		'optimize.timestamp': 'model.timestamp',
 		'optimize.key': 'model.key',
 	}
@@ -80,9 +82,9 @@ def train(hyperparameters):
 		func = [model.__constraints__]
 		callback = cls['callback']()
 
-		metric = Metric(shapes=shapes,label=label,optimize=None,hyperparameters=hyperparams)
-		func = Objective(model,func,callback=callback,metric=metric,hyperparameters=hyperparams)
-		callback = Callback(model,func,callback=callback,metric=metric,hyperparameters=hyperparams)
+		metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams)
+		func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams)
+		callback = Callback(model,callback=callback,func=func,metric=metric,hyperparameters=hyperparams)
 
 		optimizer = Optimizer(func=func,model=model,callback=callback,hyperparameters=hyperparams)
 

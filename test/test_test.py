@@ -198,9 +198,8 @@ def test_objective(path,tol):
 	callback = None
 	hyperparams = hyperparameters['optimize']
 
-	metric = Metric(shapes=shapes,label=label,optimize=None,hyperparameters=hyperparams)
-	func = Objective(model,func,callback=callback,metric=metric,hyperparameters=hyperparams)
-	callback = Callback(model,func,callback=callback,metric=metric,hyperparameters=hyperparams)
+	metric = Metric(shapes=shapes,label=label,verbose=True,hyperparameters=hyperparams)
+	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams)
 
 	parameters = model.parameters
 
@@ -216,6 +215,8 @@ def test_objective(path,tol):
 	print()
 	print(grad_analytical(parameters).round(3))
 	print()
+	print(grad_analytical(parameters)/grad_jax(parameters))
+
 	return
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"

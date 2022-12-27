@@ -57,19 +57,20 @@ def test_optimize(path,tol):
 
 	hyperparameters = load(path)
 
-	cls = load(hyperparameters['class']['model'])
+	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparams['class']}
 
-	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls['model'](**hyperparameters['model'],hyperparameters=hyperparameters)
 
 	func = []
 	shapes = model.shapes
 	label = model.label
-	callback = None
+	callback = cls['callback']()
 	hyperparams = hyperparameters['optimize']
 
-	metric = Metric(shapes=shapes,label=label,optimize=None,hyperparameters=hyperparams)
-	func = Objective(model,func,callback=callback,metric=metric,hyperparameters=hyperparams)
-	callback = Callback(model,func,callback=callback,metric=metric,hyperparameters=hyperparams)
+
+	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams)
+	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams)
+	callback = Callback(model,callback,func=func,metric=metric,hyperparameters=hyperparams)
 
 	parameters = model.parameters
 

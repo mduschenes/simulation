@@ -43,6 +43,8 @@ from src.line_search import line_search,armijo
 
 from src.io import dump,load,join,split,copy,rmdir,exists
 
+from src.system import Logger
+
 
 
 class LineSearchBase(object):
@@ -242,7 +244,7 @@ class Null_Search(LineSearchBase):
 
 class FuncBase(object):
 
-	def __init__(self,model,func=None,grad=None,callback=None,metric=None,hyperparameters={}):
+	def __init__(self,model,func=None,grad=None,callback=None,metric=None,verbose=None,hyperparameters={}):
 		'''	
 		Class for function
 		Args:
@@ -251,9 +253,13 @@ class FuncBase(object):
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
 			metric (str,callable): Function metric with signature metric(*operands)
+			verbose (int,str): Function verbosity
 			hyperparameters (dict): Function hyperparameters
 		'''
-	
+
+		defaults = {'cwd':None,'path':None,'logger':None,'log':None}
+		updater(hyperparameters,defaults,delimiter=delim,func=False)
+
 		if func is None:
 			func = []
 		if not callable(func):
@@ -269,7 +275,6 @@ class FuncBase(object):
 					return 0.
 		else:
 			function = func
-			func = [func]
 
 		if grad is None:
 			gradient = None
@@ -286,7 +291,6 @@ class FuncBase(object):
 					return 0.
 		else:
 			gradient = grad
-			grad = [grad]
 
 		if callback is None:
 			def callback(parameters,track,attributes,model,func,grad,hyperparameters):
@@ -298,7 +302,10 @@ class FuncBase(object):
 		self.model = model
 		self.callback = callback
 		self.metric = metric
+		self.verbose = verbose
 		self.hyperparameters = hyperparameters
+
+		self.info()
 
 		return
 
@@ -387,22 +394,67 @@ class FuncBase(object):
 		'''
 		return self.__value_and_gradient__(parameters)
 	
+	def __logger__(self,hyperparameters=None):
+		'''
+		Setup logger
+		Args:
+			hyperparameters (dict): Hyperparameters
+		'''
 
+		hyperparameters = self.hyperparameters if hyperparameters is None else hyperparameters
+
+		path = hyperparameters['cwd']
+		root = path
+
+		name = __name__
+		conf = join(hyperparameters['logger'],root=root)
+		file = join(hyperparameters['log'],root=root)
+
+		self.logger = Logger(name,conf,file=file)
+
+		return
+
+	def log(self,msg,verbose=None):
+		'''
+		Log messages
+		Args:
+			msg (str): Message to log
+			verbose (int,str): Verbosity of message			
+		'''
+		if verbose is None:
+			verbose = self.verbose
+		if msg is None:
+			return
+		self.logger.log(verbose,msg)
+		return
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = None
+		self.log(msg,verbose=verbose)
+		return
 
 class Objective(FuncBase):		
-	def __init__(self,model,func,grad=None,callback=None,metric=None,hyperparameters={}):
+	def __init__(self,model,metric,func=None,grad=None,callback=None,verbose=None,hyperparameters={}):
 		'''	
 		Objective class for metric + function
 		Args:
 			model (object): Model instance
+			metric (str,callable): Objective metric with signature metric(*operands)
 			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)			
-			metric (str,callable): Objective metric with signature metric(*operands)
+			verbose (int,str): Objective verbosity
 			hyperparameters (dict): Objective hyperparameters
 		'''
 
-		super().__init__(model,func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
+		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,verbose=verbose,hyperparameters=hyperparameters)
+
+		self.gradient = gradient(self.func)
 
 		return
 
@@ -415,7 +467,7 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric(self.model(parameters)) + self.function(parameters)
+		return self.metric(self.model(parameters))# + self.function(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def func(self,parameters):
@@ -437,7 +489,7 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric.grad(self.model(parameters),self.model.grad(parameters)) + self.gradient(parameters)
+		return self.gradient(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def __grad_analytical__(self,parameters):
@@ -448,7 +500,7 @@ class Objective(FuncBase):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) + self.gradient(parameters)	
+		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters))# + self.gradient(parameters)	
 
 	# @partial(jit,static_argnums=(0,))
 	def grad_analytical(self,parameters):
@@ -464,19 +516,20 @@ class Objective(FuncBase):
 
 class Callback(FuncBase):
 
-	def __init__(self,model,func,grad=None,callback=None,metric=None,hyperparameters={}):
+	def __init__(self,model,callback,func=None,grad=None,metric=None,verbose=None,hyperparameters={}):
 		'''	
 		Class for function
 		Args:
 			model (object): Model instance
+			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
 			metric (str,callable): Callback metric with signature metric(*operands)
+			verbose (int,str): Callback verbosity
 			hyperparameters (dict): Callback hyperparameters
 		'''
 		
-		super().__init__(model,func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters)
+		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,verbose=verbose,hyperparameters=hyperparameters)
 
 		return
 
@@ -497,19 +550,19 @@ class Callback(FuncBase):
 
 
 class Metric(object):
-	'''
-	Metric class for distance between operands
-	Args:
-		metric (str,Metric): Type of metric
-		shapes (iterable[tuple[int]]): Shapes of Operators
-		model (object): Model instance	
-		label (str,callable): Label			
-		optimize (bool,str,iterable): Contraction type	
-		hyperparameters (dict): Metric hyperparameters	
-	'''
-	def __init__(self,metric=None,shapes=None,model=None,label=None,optimize=None,hyperparameters={}):
-
-		defaults = {'metric':metric}
+	def __init__(self,metric=None,shapes=None,model=None,label=None,optimize=None,verbose=None,hyperparameters={}):
+		'''
+		Metric class for distance between operands
+		Args:
+			metric (str,Metric): Type of metric
+			shapes (iterable[tuple[int]]): Shapes of Operators
+			model (object): Model instance	
+			label (str,callable): Label			
+			optimize (bool,str,iterable): Contraction type	
+			verbose (int,str): Function verbosity
+			hyperparameters (dict): Metric hyperparameters	
+		'''
+		defaults = {'metric':metric,'label':label,'cwd':None,'path':None,'logger':None,'log':None}
 		updater(hyperparameters,defaults,delimiter=delim,func=False)
 
 		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
@@ -517,7 +570,8 @@ class Metric(object):
 		self.shapes = shapes
 		self.model = model
 		self.optimize = optimize
-		self.hyperparameters = {}
+		self.verbose = verbose
+		self.hyperparameters = hyperparameters
 
 		self.__setup__()
 		
@@ -536,8 +590,13 @@ class Metric(object):
 
 		self.__string__()
 		self.__size__()
+		self.__logger__()
+
+		self.log("Metric = %s"%(self.metric))
 
 		self.get_metric()
+
+		self.info()		
 
 		return
 
@@ -637,15 +696,66 @@ class Metric(object):
 		'''
 		return str(self.string)
 
+
+	def __logger__(self,hyperparameters=None):
+		'''
+		Setup logger
+		Args:
+			hyperparameters (dict): Hyperparameters
+		'''
+
+		hyperparameters = self.hyperparameters if hyperparameters is None else hyperparameters
+
+		path = hyperparameters['cwd']
+		root = path
+
+		name = __name__
+		conf = join(hyperparameters['logger'],root=root)
+		file = join(hyperparameters['log'],root=root)
+
+		self.logger = Logger(name,conf,file=file)
+
+		return
+
+	def log(self,msg,verbose=None):
+		'''
+		Log messages
+		Args:
+			msg (str): Message to log
+			verbose (int,str): Verbosity of message			
+		'''
+		if verbose is None:
+			verbose = self.verbose
+		if msg is None:
+			return			
+		self.logger.log(verbose,msg)
+		return
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = '%s'%('\n'.join([
+			*['%s: %s'%(attr,getattr(self,attr)) 
+				for attr in ['metric']
+			],
+			]
+			))
+		self.log(msg,verbose=verbose)
+		return
+
+
 	def get_metric(self):
 		'''
 		Setup metric	
 		'''
 		if callable(self.metric):
 			metric = self.metric
-			func = jit(metric)
+			function = jit(metric)
 			grad = jit(gradient(metric))
-			grad_analytical = jit(gradient(metric))
+			gradient_analytical = jit(gradient(metric))
 
 		elif self.metric is None:
 
@@ -655,11 +765,11 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,)
 				optimize = self.optimize
-				func = inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+				function = inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				func = partial(inner_norm,optimize=optimize,wrapper=wrapper)
+				function = partial(inner_norm,optimize=optimize,wrapper=wrapper)
 
 
 			def wrapper(out,*operands):
@@ -668,11 +778,11 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
 
 		elif self.metric in ['norm']:
 
@@ -682,11 +792,11 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,)
 				optimize = self.optimize
-				func = inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+				function = inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				func = partial(inner_norm,optimize=optimize,wrapper=wrapper)
+				function = partial(inner_norm,optimize=optimize,wrapper=wrapper)
 
 
 			def wrapper(out,*operands):
@@ -695,95 +805,95 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
 
 
 		elif self.metric in ['abs2']:
 
 			def wrapper(out,*operands):
-				return 1 - out/(operands[0].shape[0]*operands[1].shape[0])
+				return 1 - out/(operands[0].size)
 
 			if self.shapes:
 				shapes = (*self.shapes,)
 				optimize = self.optimize
-				func = inner_abs2(*shapes,optimize=optimize,wrapper=wrapper)
+				function = inner_abs2(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				func = partial(inner_abs2,optimize=optimize,wrapper=wrapper)
+				function = partial(inner_abs2,optimize=optimize,wrapper=wrapper)
 
 
 			def wrapper(out,*operands):
-				return - out/(operands[0].shape[0]*operands[1].shape[0])
+				return - out/(operands[0].size)
 
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad_analytical = gradient_inner_abs2(*shapes,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = gradient_inner_abs2(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad_analytical = partial(gradient_inner_abs2,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = partial(gradient_inner_abs2,optimize=optimize,wrapper=wrapper)
 
 
 		elif self.metric in ['real']:
 
 			def wrapper(out,*operands):
-				return 1 - out/sqrt(operands[0].shape[0]*operands[1].shape[0])
+				return 1 - out/(operands[0].shape[0])
 
 			if self.shapes:
 				shapes = (*self.shapes,)
 				optimize = self.optimize
-				func = inner_real(*shapes,optimize=optimize,wrapper=wrapper)
+				function = inner_real(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				func = partial(inner_real,optimize=optimize,wrapper=wrapper)
+				function = partial(inner_real,optimize=optimize,wrapper=wrapper)
 
 
 			def wrapper(out,*operands):
-				return  - out/sqrt(operands[0].shape[0]*operands[1].shape[0])
+				return  - out/(operands[0].shape[0])
 
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad_analytical = gradient_inner_real(*shapes,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = gradient_inner_real(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad_analytical = partial(gradient_inner_real,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = partial(gradient_inner_real,optimize=optimize,wrapper=wrapper)
 
 
 		elif self.metric in ['imag']:
 
 			def wrapper(out,*operands):
-				return 1 - out/sqrt(operands[0].shape[0]*operands[1].shape[0])
+				return 1 - out/(operands[0].shape[0])
 
 			if self.shapes:
 				shapes = (*self.shapes,)
 				optimize = self.optimize
-				func = inner_imag(*shapes,optimize=optimize,wrapper=wrapper)
+				function = inner_imag(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				func = partial(inner_imag,optimize=optimize,wrapper=wrapper)
+				function = partial(inner_imag,optimize=optimize,wrapper=wrapper)
 
 
 			def wrapper(out,*operands):
-				return - out/sqrt(operands[0].shape[0]*operands[1].shape[0])
+				return - out/(operands[0].shape[0])
 
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad_analytical = gradient_inner_imag(*shapes,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = gradient_inner_imag(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad_analytical = partial(gradient_inner_imag,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = partial(gradient_inner_imag,optimize=optimize,wrapper=wrapper)
 
 		else:
 
@@ -793,11 +903,11 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,)
 				optimize = self.optimize
-				func = inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+				function = inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				func = partial(inner_norm,optimize=optimize,wrapper=wrapper)
+				function = partial(inner_norm,optimize=optimize,wrapper=wrapper)
 
 
 			def wrapper(out,*operands):
@@ -806,34 +916,34 @@ class Metric(object):
 			if self.shapes:
 				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
 				optimize = self.optimize
-				grad_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
 			else:
 				shapes = ()
 				optimize = self.optimize
-				grad_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
+				gradient_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
 
-		func = jit(func)
-		grad = jit(gradient(func,mode='fwd'))
-		grad_analytical = jit(grad_analytical)
+		_function = jit(function)
+		_grad = jit(gradient_analytical)
+		# _grad = jit(gradient(function,mode='fwd',holomorphic=True,move=True))
+		_gradient_analytical = jit(gradient_analytical)
 
 		if self.label is not None and self.metric in [None,'norm','abs2','real','imag']:
 			def function(*operands):
-				return func(*operands[:1],self.label,*operands[1:])
+				return _function(*operands[:1],self.label,*operands[1:])
 			def grad(*operands):
-				return func(*operands[:1],self.label,*operands[1:])				
+				return _grad(*operands[:1],self.label,*operands[1:])				
 			def gradient_analytical(*operands):
-				return grad_analytical(*operands[:1],self.label,*operands[1:])
+				return _gradient_analytical(*operands[:1],self.label,*operands[1:])
 		else:
 			def function(*operands):
-				return func(*operands)
+				return _function(*operands)
 			def grad(*operands):
-				return grad(*operands)
+				return _grad(*operands)
 			def gradient_analytical(*operands):
-				return grad_analytical(*operands)
+				return _gradient_analytical(*operands)
 
 		function = jit(function)
-		# gradient = jit(gradient(function,mode='fwd'))
-		grad = jit(gradient_analytical)
+		grad = jit(grad)
 		gradient_analytical = jit(gradient_analytical)
 
 
@@ -878,6 +988,8 @@ class OptimizerBase(object):
 			'key':None,
 			'cwd':None,
 			'path':None,
+			'logger':None,
+			'log':None,
 			'verbose':False,
 			'modulo':{'log':None,'attributes':None,'callback':None,'restart':None,'dump':None},
 			'length':{'log':None,'attributes':10,'callback':None,'restart':None,'dump':None},
@@ -931,7 +1043,10 @@ class OptimizerBase(object):
 			if ((not isinstance(value,list)) and (not value)):
 				self.track.pop(attr)
 			elif ((isinstance(value,list)) and (value)):
-				self.track[value] = []				
+				self.track[value] = []		
+
+		self.__logger__()
+		self.info()		
 
 		return
 
@@ -1174,6 +1289,49 @@ class OptimizerBase(object):
 
 		return iteration,state
 
+	def __logger__(self,hyperparameters=None):
+		'''
+		Setup logger
+		Args:
+			hyperparameters (dict): Hyperparameters
+		'''
+
+		hyperparameters = self.hyperparameters if hyperparameters is None else hyperparameters
+
+		path = hyperparameters['cwd']
+		root = path
+
+		name = __name__
+		conf = join(hyperparameters['logger'],root=root)
+		file = join(hyperparameters['log'],root=root)
+
+		self.logger = Logger(name,conf,file=file)
+
+		return
+
+	def log(self,msg,verbose=None):
+		'''
+		Log messages
+		Args:
+			msg (str): Message to log
+			verbose (int,str): Verbosity of message			
+		'''
+		if verbose is None:
+			verbose = self.verbose
+		if msg is None:
+			return
+		self.logger.log(verbose,msg)
+		return
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = None
+		self.log(msg,verbose=verbose)
+		return
 
 class Optimizer(OptimizerBase):
 	'''
