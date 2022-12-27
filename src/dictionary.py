@@ -61,128 +61,78 @@ def clone(iterable,twin,copy=False):
 
 
 
-def setter(iterable,elements,delimiter=False,copy=False,reset=True):
+def setter(iterable,elements,delimiter=False,copy=False,reset=True,clear=False,func=None):
 	'''
 	Set nested value in iterable with nested elements keys
-
 	Args:
 		iterable (dict): dictionary to be set in-place with value
 		elements (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
+		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
+		func(callable,None,bool,iterable): Callable function with signature func(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
 	'''
 
 	assert isinstance(iterable,dict), "Error - iterable is not dictionary"
 	assert isinstance(elements,dict), "Error - elements is not dictionary"
 
-	for element in elements:
-	
-		# Get copy of value in elements
-		value = copier(element,elements[element],copy)
 
+	# Setup func as callable
+	if func is None:
+		func = lambda key_iterable,key_elements,iterable,elements: elements[key_elements]
+	elif func is True:
+		func = lambda key_iterable,key_elements,iterable,elements: elements[key_elements]
+	elif func is False:
+		func = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements[key_elements])
+	elif not callable(func):
+		types = tuple(func)
+		def func(key_iterable,key_elements,iterable,elements,types=types): 
+			i = iterable.get(key_iterable,elements.get(key_elements))
+			e = elements.get(key_elements,i)
+			return e if isinstance(e,types) else i
+
+	# Clear iterable if clear and elements is empty dictionary
+	if clear and elements == {}:
+		iterable.clear()
+
+	# Set nested elements
+	for element in elements:
+
+		# print('element: ',element)
 
 		# Get iterable, and index of tuple of nested element key
 		i = iterable
-		e = 0
+		index = 0
 
 		# Convert string instance of elements to list, splitting string based on delimiter delimiter
-		if isinstance(element,str) and delimiter:
-			element = tuple(element.split(delimiter))
-		elif not isinstance(element,str):
-			element = tuple(element)
-
-		# Boolean whether element is a tuple, otherwise is object that is explicit key in dictionary
-		istuple = isinstance(element,tuple)
-
-		# Update iterable with elements 
-		if not istuple:
-			# elements is object and iterable is to be updated at first level of nesting
-			isdict = not reset and isinstance(i.get(element),dict) and isinstance(value,dict)
-			if isdict:
-				i[element].update(value)
+		try:
+			if isinstance(element,str) and delimiter:
+				e = tuple(element.split(delimiter))
+			elif not isinstance(element,str):
+				e = tuple(element)
 			else:
-				i[element] = value
-		else:
-			# elements is list of nested keys and the nested values are to be extracted from iterable and set with value
-			try:
-				while e<len(element)-1:
-					if i.get(element[e]) is None:
-						i[element[e]] = {}
-					i = i[element[e]]
-					e+=1
-				isdict = not reset and isinstance(i.get(element[e]),dict) and isinstance(value,dict)
-				if isdict:
-					i[element[e]].update(value)
-				else:
-					i[element[e]] = value
-			except:
-				pass
+				e = tuple((element,))
 
-	return
+			# Update iterable with elements 
+			while index<len(e)-1:
+				if not isinstance(i.get(e[index]),dict):
+					i[e[index]] = {}
+				i = i[e[index]]
+				index+=1
 
+			value = copier(element,func(e[index],element,i,elements),copy)
 
-def resetter(iterable,elements,delimiter=False,copy=False,reset=True):
-	'''
-	Set nested value in iterable with nested elements keys
-
-	Args:
-		iterable (dict): dictionary to be set in-place with value
-		elements (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values of strings in iterable
-		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
-		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
-	'''
-
-	assert isinstance(iterable,dict), "Error - iterable is not dictionary"
-	assert isinstance(elements,dict), "Error - elements is not dictionary"
-
-	for element in elements:
-	
-
-		# Get iterable, and index of tuple of nested element key
-		i = iterable
-		e = 0
-
-		# Convert string instance of elements to list, splitting string based on delimiter delimiter
-		# Get copy of value in elements		
-		if isinstance(element,str) and delimiter:
-			value = copier(element,getter(iterable,elements[element],delimiter=delimiter),copy)
-			element = tuple(element.split(delimiter))
-		elif not isinstance(element,str):
-			value = copier(element,getter(iterable,elements[element],delimiter=delimiter),copy)
-			element = tuple(element)
-		else:
-			value = copier(element,elements[element],copy)
-			element = element
-
-
-		# Boolean whether element is a tuple, otherwise is object that is explicit key in dictionary
-		istuple = isinstance(element,tuple)
-
-		# Update iterable with elements 
-		if not istuple:
-			# elements is object and iterable is to be updated at first level of nesting
-			isdict = not reset and isinstance(i.get(element),dict) and isinstance(value,dict)
-			if isdict:
-				i[element].update(value)
+			if reset:
+				i[e[index]] = value
+			elif not isinstance(i,dict) or e[index] not in i:
+				i[e[index]] = value
+			elif isinstance(elements[element],dict):
+				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,func=func)
 			else:
-				i[element] = value
-		else:
-			# elements is list of nested keys and the nested values are to be extracted from iterable and set with value
-			try:
-				while e<len(element)-1:
-					if i.get(element[e]) is None:
-						i[element[e]] = {}
-					i = i[element[e]]
-					e+=1
-				isdict = not reset and isinstance(i.get(element[e]),dict) and isinstance(value,dict)
-				if isdict:
-					i[element[e]].update(value)
-				else:
-					i[element[e]] = value
-			except:
-				pass
+				i[e[index]] = value
+		except Exception as exception:
+			pass
 
 	return
 
@@ -197,7 +147,6 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 		default (object): default data to return if elements not in nested iterable
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
-
 	Returns:
 		Value at nested keys elements of iterable
 	'''	
@@ -298,6 +247,189 @@ def hasser(iterable,elements,delimiter=False):
 		return True
 	except:
 		return False
+
+
+def permuter(dictionary,copy=False,groups=None,ordered=True):
+	'''
+	Get all combinations of values of dictionary of lists
+
+	Args:
+		dictionary (dict): dictionary of keys with lists of values to be combined in all combinations across lists
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+		groups (list,None): List of lists of groups of keys that should not have their values permuted in all combinations, 
+			but should be combined in sequence element wise. 
+			For example groups = [[key0,key1]], where 
+			dictionary[key0] = [value_00,value_01,value_02],
+			dictionary[key1] = [value_10,value_11,value_12], 
+			then the permuted dictionary will have key0 and key1 keys with only pairwise values of 
+			[{key0:value_00,key1:value_10},{key0:value_01,key1:value_11},{key0:value_02,key1:value_12}].
+		ordered (bool): Boolean on whether to return dictionaries with same ordering of keys as dictionary
+
+	Returns:
+		List of dictionaries with all combinations of lists of values in dictionary
+	'''		
+	def indexer(keys,values,groups):
+		'''
+		Get lists of values for each group of keys in groups
+		'''
+		groups = copying.deepcopy(groups)
+		if groups is not None:
+			inds = [[keys.index(k) for k in g if k in keys] for g in groups]
+		else:
+			inds = []
+			groups = []
+		N = len(groups)
+		groups.extend([[k] for k in keys if all([k not in g for g in groups])])
+		inds.extend([[keys.index(k) for k in g if k in keys] for g in groups[N:]])
+		values = [[values[j] for j in i ] for i in inds]
+		return groups,values
+
+	def zipper(keys,values,copy): 
+		'''
+		Get list of dictionaries with keys, based on list of lists in values, retaining ordering in case of grouped values
+		'''
+		return [{k:copier(k,u,copy) for k,u in zip(keys,v)} for v in zip(*values)]
+
+	def unzipper(dictionary):
+		'''
+		Zip keys of dictionary of list, and values of dictionary as list
+		'''
+		keys, values = zip(*dictionary.items())	
+		return keys,values
+
+	def permute(dictionaries): 
+		'''
+		Get all list of dictionaries of all permutations of sub-dictionaries
+		'''
+		return [{k:d[k] for d in dicts for k in d} for dicts in itertools.product(*dictionaries)]
+
+	def retriever(keys,values):
+		'''
+		Get values of permuted nested dictionaries in values.
+		Recurse permute until values are lists and not dictionaries.
+		'''
+		keys,values = list(keys),list(values)
+		for i,(key,value) in enumerate(zip(keys,values)):
+			if isinstance(value,dict):
+				if isinstance(groups,dict):
+					group = groups.get(key,group)
+				else:
+					group = groups
+				values[i] = permuter(value,copy=copy,groups=group) 
+		return keys,values
+
+
+	if dictionary in [None,{}]:
+		return [{}]
+
+	# Get list of all keys from dictionary, and list of lists of values for each key
+	keys,values = unzipper(dictionary)
+
+
+	# Get values of permuted nested dictionaries in values
+	keys,values = retriever(keys,values)
+
+	# Retain ordering of keys in dictionary
+	keys_ordered = keys
+	
+	# Get groups of keys based on groups and get lists of values for each group
+	keys,values = indexer(keys,values,groups)
+
+	# Zip keys with lists of lists in values into list of dictionaries
+	dictionaries = [zipper(k,v,copy) for k,v in zip(keys,values)]
+
+
+	# Get all permutations of list of dictionaries into one list of dictionaries with all keys
+	dictionaries = permute(dictionaries)
+
+
+	# Retain original ordering of keys if ordered is True
+	if ordered:
+		for i,d in enumerate(dictionaries):
+			dictionaries[i] = {k: dictionaries[i][k] for k in keys_ordered}
+	return dictionaries
+
+
+
+def finder(iterable,key):
+	'''
+	Find and yield key in nested iterable
+
+	Args:
+		iterable (dict): dictionary to search
+		key (object): key to find in iterable dictionary
+
+	Yields:
+		value (object): Found values with key in iterable
+	'''	
+
+	# Recursively find and yield value associated with key in iterable		
+	try:
+		if not isinstance(iterable,dict):
+			raise
+		for k in iterable:
+			if k == key:
+				yield iterable[k]
+			for v in finder(iterable[k],key):
+				yield v
+	except:
+		pass
+	return
+				
+def replacer(iterable,key,replacement,append=False,copy=True,values=False):
+	'''
+	Find and replace key in-place in iterable with replacement key
+
+	Args:
+		iterable (dict): dictionary to be searched
+		key (object): key to be replaced with replacement key
+		replacement (object): dictionary key to replace key
+		append (bool): boolean on whether to append replacement key to dictionary with value associated with key
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+		values (bool): boolean of whether to replace any values that equal key with replacement in the iterable 
+	'''	
+
+	# Recursively find where nested iterable keys exist, and replace or append in-place with replacement key
+	try:
+		keys = list(iterable)
+		for k in keys:
+			if k == key:
+				if append:
+					iterable[replacement] = copier(replacement,iterable.get(key),copy)
+					k = replacement
+				else:
+					iterable[replacement] = copier(replacement,iterable.pop(key),copy)
+					k = replacement  
+			if values and iterable[k] == key:
+				iterable[k] = copier(k,replacement,copy)
+			replacer(iterable[k],key,replacement,append=append,copy=copy,values=values)
+	except Exception as e:
+		pass
+	return
+
+
+def clearer(dictionary,new,old):
+	'''
+	Clear dictionary and update new elements in-place
+	Args:
+		dictionary(dict): dictionary to update
+		new (dict): New dictionary to update
+		old (iterable): Old keys to clear
+	'''	
+	if new is None:
+		new = {}
+	if old is None:
+		old = []
+
+	dictionary.update(new)
+
+	for key in old:
+		dictionary.pop(key)
+	
+	return
+
+
+
 
 def equalizer(a,b,types=(dict,),exceptions=None):
 	'''
@@ -486,239 +618,6 @@ def counts(iterable,types=(dict,)):
 	else:
 		count = 1
 	return count
-
-def updater(iterable,elements,delimiter=False,copy=False,clear=False,func=None):
-	'''
-	Update nested iterable with elements
-
-	Args:
-		iterable (dict): dictionary to be updated in-place
-		elements (dict): dictionary of nested values to update iterable
-		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
-		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
-		func(callable,None,bool,iterable): Callable function with signature func(key,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
-	'''		
-
-	if delimiter:
-		setter(iterable,elements,delimiter=delimiter,copy=copy)
-		return
-
-	# Setup func as callable
-	if func is None:
-		func = lambda key,iterable,elements: elements[key]
-	elif func is True:
-		func = lambda key,iterable,elements: elements[key]
-	elif func is False:
-		func = lambda key,iterable,elements: iterable.get(key,elements[key])
-	elif not callable(func):
-		types = tuple(func)
-		def func(key,iterable,elements,types=types): 
-			i = iterable.get(key,elements.get(key))
-			e = elements.get(key,i)
-			return e if isinstance(e,types) else i
-
-	# Clear iterable if clear and elements is empty dictionary
-	if clear and elements == {}:
-		iterable.clear()
-
-	if not isinstance(elements,(dict)):
-		# elements is object and iterable is directly set as elements
-		key = None
-		iterable = copier(key,elements,copy)
-		return
-
-	# Recursively update iterable with elements
-	for key in elements:
-		if isinstance(iterable.get(key),dict):
-			if key not in iterable:
-				iterable.update({key: copier(key,func(key,iterable,elements),copy)})
-			elif not isinstance(elements[key],dict):
-				iterable[key] = copier(key,func(key,iterable,elements),copy)
-			else:
-				updater(iterable[key],elements[key],copy=copy,clear=clear,func=func)
-		else:
-			iterable.update({key:copier(key,func(key,iterable,elements),copy)})
-	return
-
-def permuter(dictionary,copy=False,groups=None,ordered=True):
-	'''
-	Get all combinations of values of dictionary of lists
-
-	Args:
-		dictionary (dict): dictionary of keys with lists of values to be combined in all combinations across lists
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
-		groups (list,None): List of lists of groups of keys that should not have their values permuted in all combinations, 
-			but should be combined in sequence element wise. 
-			For example groups = [[key0,key1]], where 
-			dictionary[key0] = [value_00,value_01,value_02],
-			dictionary[key1] = [value_10,value_11,value_12], 
-			then the permuted dictionary will have key0 and key1 keys with only pairwise values of 
-			[{key0:value_00,key1:value_10},{key0:value_01,key1:value_11},{key0:value_02,key1:value_12}].
-		ordered (bool): Boolean on whether to return dictionaries with same ordering of keys as dictionary
-
-	Returns:
-		List of dictionaries with all combinations of lists of values in dictionary
-	'''		
-	def indexer(keys,values,groups):
-		'''
-		Get lists of values for each group of keys in groups
-		'''
-		groups = copying.deepcopy(groups)
-		if groups is not None:
-			inds = [[keys.index(k) for k in g if k in keys] for g in groups]
-		else:
-			inds = []
-			groups = []
-		N = len(groups)
-		groups.extend([[k] for k in keys if all([k not in g for g in groups])])
-		inds.extend([[keys.index(k) for k in g if k in keys] for g in groups[N:]])
-		values = [[values[j] for j in i ] for i in inds]
-		return groups,values
-
-	def zipper(keys,values,copy): 
-		'''
-		Get list of dictionaries with keys, based on list of lists in values, retaining ordering in case of grouped values
-		'''
-		return [{k:copier(k,u,copy) for k,u in zip(keys,v)} for v in zip(*values)]
-
-	def unzipper(dictionary):
-		'''
-		Zip keys of dictionary of list, and values of dictionary as list
-		'''
-		keys, values = zip(*dictionary.items())	
-		return keys,values
-
-	def permute(dictionaries): 
-		'''
-		Get all list of dictionaries of all permutations of sub-dictionaries
-		'''
-		return [{k:d[k] for d in dicts for k in d} for dicts in itertools.product(*dictionaries)]
-
-	def retriever(keys,values):
-		'''
-		Get values of permuted nested dictionaries in values.
-		Recurse permute until values are lists and not dictionaries.
-		'''
-		keys,values = list(keys),list(values)
-		for i,(key,value) in enumerate(zip(keys,values)):
-			if isinstance(value,dict):
-				if isinstance(groups,dict):
-					group = groups.get(key,group)
-				else:
-					group = groups
-				values[i] = permuter(value,copy=copy,groups=group) 
-		return keys,values
-
-
-	if dictionary in [None,{}]:
-		return [{}]
-
-	# Get list of all keys from dictionary, and list of lists of values for each key
-	keys,values = unzipper(dictionary)
-
-
-	# Get values of permuted nested dictionaries in values
-	keys,values = retriever(keys,values)
-
-	# Retain ordering of keys in dictionary
-	keys_ordered = keys
-	
-	# Get groups of keys based on groups and get lists of values for each group
-	keys,values = indexer(keys,values,groups)
-
-	# Zip keys with lists of lists in values into list of dictionaries
-	dictionaries = [zipper(k,v,copy) for k,v in zip(keys,values)]
-
-
-	# Get all permutations of list of dictionaries into one list of dictionaries with all keys
-	dictionaries = permute(dictionaries)
-
-
-	# Retain original ordering of keys if ordered is True
-	if ordered:
-		for i,d in enumerate(dictionaries):
-			dictionaries[i] = {k: dictionaries[i][k] for k in keys_ordered}
-	return dictionaries
-
-
-
-def finder(iterable,key):
-	'''
-	Find and yield key in nested iterable
-
-	Args:
-		iterable (dict): dictionary to search
-		key (object): key to find in iterable dictionary
-
-	Yields:
-		value (object): Found values with key in iterable
-	'''	
-
-	# Recursively find and yield value associated with key in iterable		
-	try:
-		if not isinstance(iterable,dict):
-			raise
-		for k in iterable:
-			if k == key:
-				yield iterable[k]
-			for v in finder(iterable[k],key):
-				yield v
-	except:
-		pass
-	return
-				
-def replacer(iterable,key,replacement,append=False,copy=True,values=False):
-	'''
-	Find and replace key in-place in iterable with replacement key
-
-	Args:
-		iterable (dict): dictionary to be searched
-		key (object): key to be replaced with replacement key
-		replacement (object): dictionary key to replace key
-		append (bool): boolean on whether to append replacement key to dictionary with value associated with key
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
-		values (bool): boolean of whether to replace any values that equal key with replacement in the iterable 
-	'''	
-
-	# Recursively find where nested iterable keys exist, and replace or append in-place with replacement key
-	try:
-		keys = list(iterable)
-		for k in keys:
-			if k == key:
-				if append:
-					iterable[replacement] = copier(replacement,iterable.get(key),copy)
-					k = replacement
-				else:
-					iterable[replacement] = copier(replacement,iterable.pop(key),copy)
-					k = replacement  
-			if values and iterable[k] == key:
-				iterable[k] = copier(k,replacement,copy)
-			replacer(iterable[k],key,replacement,append=append,copy=copy,values=values)
-	except Exception as e:
-		pass
-	return
-
-
-def clearer(dictionary,new,old):
-	'''
-	Clear dictionary and update new elements in-place
-	Args:
-		dictionary(dict): dictionary to update
-		new (dict): New dictionary to update
-		old (iterable): Old keys to clear
-	'''	
-	if new is None:
-		new = {}
-	if old is None:
-		old = []
-
-	dictionary.update(new)
-
-	for key in old:
-		dictionary.pop(key)
-	
-	return
 
 
 def formatstring(key,iterable,elements,*args,**kwargs):

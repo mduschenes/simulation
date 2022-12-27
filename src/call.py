@@ -26,7 +26,7 @@ logger = Logger(name,conf,file=file)
 
 from src.utils import intersection,scalars
 from src.io import cd,mkdir,join,split,load,dump,exists,environ
-from src.dictionary import updater
+from src.dictionary import setter
 from src.parallel import Parallelize,Pooler
 
 
@@ -377,11 +377,11 @@ def cp(source,destination,default=None,env=None,process=None,processes=None,devi
 	return
 
 
-def rm(path,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def rm(*paths,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Remove path
 	Args:
-		path (str): Path to remove
+		paths (str): Path to remove
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
@@ -392,7 +392,7 @@ def rm(path,env=None,process=None,processes=None,device=None,execute=False,verbo
 
 	exe = ['rm']
 	flags = ['-rf']
-	cmd = [path]
+	cmd = [*paths]
 	options = []
 	env = [] if env is None else env
 	args = []
@@ -867,7 +867,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		# Update and Dump files
 		if isinstance(data,dict):
 			data,source,destination = load(source),deepcopy(data),destination
-			updater(source,data,func=lambda key,iterable,elements: iterable.get(key,elements[key]))
+			setter(source,data,func=False)
 			dump(source,destination)					
 		else:
 			cp(source,destination,default=path,execute=execute,verbose=verbose)

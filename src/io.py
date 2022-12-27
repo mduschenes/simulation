@@ -148,7 +148,7 @@ def mkdir(path):
 
 	return
 
-def rmdir(path):
+def rm(path):
 	'''
 	Remove path
 	Args:
@@ -587,7 +587,7 @@ def pickleable(obj,path=None,callables=True,verbose=False):
 		except Exception as exception:
 			pass
 	if exists(path):
-		rmdir(path)
+		rm(path)
 	return ispickleable
 
 
@@ -623,7 +623,7 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 		except Exception as exception:
 			pass
 	if exists(path):
-		rmdir(path)
+		rm(path)
 	return isjsonable
 
 

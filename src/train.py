@@ -12,7 +12,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose
+from src.utils import argparser,jit,allclose,delim
 from src.io import load
 from src.dictionary import resetter
 from src.optimize import Optimizer,Objective,Metric,Callback
@@ -43,7 +43,7 @@ def setup(hyperparameters)
 		'optimize.key': 'model.key',
 	}
 
-	resetter(hyperparameters,updates)
+	resetter(hyperparameters,updates,delimiter=delim)
 
 	return hyperparameters
 

@@ -37,11 +37,11 @@ from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_rea
 
 from src.utils import itg,dbl,flt,delim,nan,Null
 
-from src.dictionary import updater
+from src.dictionary import setter
 
 from src.line_search import line_search,armijo
 
-from src.io import dump,load,join,split,copy,rmdir,exists
+from src.io import dump,load,join,split,copy,exists
 
 from src.system import Logger
 
@@ -58,7 +58,7 @@ class LineSearchBase(object):
 		'''
 		defaults = {}		
 		returns = ['alpha']
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		self.func = func
 		self.grad = grad
@@ -125,7 +125,7 @@ class LineSearch(LineSearchBase):
 	def __new__(cls,func,grad,hyperparameters={}):
 	
 		defaults = {'search':{'alpha':None}}
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		line_searches = {'line_search':Line_Search,'armijo':Armijo,None:Null_Search}
@@ -148,7 +148,7 @@ class Line_Search(LineSearchBase):
 		'''
 		defaults = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':None}
 		returns = ['alpha','nfunc','ngrad','value','_value','slope']
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		super().__init__(func,grad,hyperparameters)
@@ -195,7 +195,7 @@ class Armijo(LineSearchBase):
 		'''
 		defaults = {'c1':0.0001,'alpha0':1e-4}
 		returns = ['alpha','nfunc','value']
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		super().__init__(func,grad,hyperparameters)
@@ -257,8 +257,8 @@ class FuncBase(object):
 			hyperparameters (dict): Function hyperparameters
 		'''
 
-		defaults = {'cwd':None,'path':None,'logger':None,'log':None}
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		defaults = {'cwd':None,'path':None,'logger':None,'log':None,'cleanup':None}
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		if func is None:
 			func = []
@@ -410,7 +410,7 @@ class FuncBase(object):
 		conf = join(hyperparameters['logger'],root=root)
 		file = join(hyperparameters['log'],root=root)
 
-		self.logger = Logger(name,conf,file=file)
+		self.logger = Logger(name,conf,file=file,cleanup=True)
 
 		return
 
@@ -562,8 +562,8 @@ class Metric(object):
 			verbose (int,str): Function verbosity
 			hyperparameters (dict): Metric hyperparameters	
 		'''
-		defaults = {'metric':metric,'label':label,'cwd':None,'path':None,'logger':None,'log':None}
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		defaults = {'metric':metric,'label':label,'cwd':None,'path':None,'logger':None,'log':None,'cleanup':None}
+		setter(hyperparameters,defaults,func=False)
 
 		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
 		self.label = hyperparameters.get('label',label) if label is None else label
@@ -591,8 +591,6 @@ class Metric(object):
 		self.__string__()
 		self.__size__()
 		self.__logger__()
-
-		self.log("Metric = %s"%(self.metric))
 
 		self.get_metric()
 
@@ -712,8 +710,9 @@ class Metric(object):
 		name = __name__
 		conf = join(hyperparameters['logger'],root=root)
 		file = join(hyperparameters['log'],root=root)
+		cleanup = hyperparameters['cleanup']
 
-		self.logger = Logger(name,conf,file=file)
+		self.logger = Logger(name,conf,file=file,cleanup=cleanup)
 
 		return
 
@@ -996,8 +995,7 @@ class OptimizerBase(object):
 			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},	
 			'track':{},		
 		}
-
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 		hyperparameters.update({attr: updates.get(attr,{}).get(hyperparameters[attr],hyperparameters[attr]) 
 			if attr in updates else hyperparameters[attr] for attr in hyperparameters})
 
@@ -1304,8 +1302,9 @@ class OptimizerBase(object):
 		name = __name__
 		conf = join(hyperparameters['logger'],root=root)
 		file = join(hyperparameters['log'],root=root)
+		cleanup = hyperparameters['cleanup']
 
-		self.logger = Logger(name,conf,file=file)
+		self.logger = Logger(name,conf,file=file,cleanup=cleanup)
 
 		return
 
@@ -1345,7 +1344,7 @@ class Optimizer(OptimizerBase):
 	def __new__(cls,func,grad=None,callback=None,hyperparameters={}):
 	
 		defaults = {'optimizer':None}
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,None:GradientDescent}
 
@@ -1368,12 +1367,12 @@ class GradientDescent(OptimizerBase):
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
 		defaults = {'attributes':{'beta':False}}		
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		super().__init__(func,grad,callback,hyperparameters)
 
 		defaults = {}
-		updater(self.hyperparameters,defaults,delimiter=delim,func=False)
+		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
 
 		return
 
@@ -1433,12 +1432,12 @@ class ConjugateGradient(OptimizerBase):
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
 		defaults = {'beta':0,'search':{'alpha':'line_search','beta':None},'attributes':{'beta':[]}}
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		super().__init__(func,grad,callback,hyperparameters)
 
 		defaults = {}
-		updater(self.hyperparameters,defaults,delimiter=delim,func=False)
+		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
 
 		beta = self.search.get('beta')
 		if beta is None:
@@ -1558,12 +1557,12 @@ class Adam(OptimizerBase):
 	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
 
 		defaults = {'attributes':{'beta':False}}		
-		updater(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		super().__init__(func,grad,callback,hyperparameters)
 
 		defaults = {}
-		updater(self.hyperparameters,defaults,delimiter=delim,func=False)
+		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
 
 		self._optimizer = getattr(jax.example_libraries.optimizers,self.optimizer)
 

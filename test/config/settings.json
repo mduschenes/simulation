@@ -113,6 +113,7 @@
 	"path":"data.hdf5",
     "logger":"logging.conf",
     "log":"log.log",
+    "cleanup":false,
 	"timestamp":null,
 	"key":null,
 	"c1":0.0001,"c2":0.9,"maxiter":1500,"restart":1e6,

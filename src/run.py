@@ -19,7 +19,7 @@ for var in envs:
 
 
 from src.utils import PRNGKey,delim,union,is_equal
-from src.dictionary import updater,getter,setter,permuter,clearer,leaves
+from src.dictionary import getter,setter,permuter,clearer,leaves
 from src.io import load,dump,join,split
 from src.call import launch
 
@@ -87,6 +87,7 @@ def setup(settings):
 
 	# Load default settings
 	default = {}
+	func = False
 	if settings is None:
 		defaults = path
 		settings = default
@@ -94,7 +95,7 @@ def setup(settings):
 		defaults = settings
 		settings = load(settings,default=default)
 
-	updater(settings,load(path,default=default),func=False)
+	setter(settings,load(path,default=default),func=func)
 
 	# Load default hyperparameters
 	default = {}
@@ -106,7 +107,8 @@ def setup(settings):
 		hyperparameters = load(hyperparameters,default=default)
 
 	default = {}
-	updater(hyperparameters,load(path,default=default),func=False)
+	func = False
+	setter(hyperparameters,load(path,default=default),func=func)
 
 	# Get permutations of hyperparameters
 	permutations = settings['permutations']['permutations']

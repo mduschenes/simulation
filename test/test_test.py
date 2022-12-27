@@ -25,7 +25,7 @@ from src.utils import trotter
 from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
 
-from src.dictionary import updater,getter,setter,permuter,equalizer
+from src.dictionary import getter,setter,permuter,equalizer
 
 from src.parameters import parameterize
 from src.operators import operatorize
@@ -207,7 +207,7 @@ def test_objective(path,tol):
 	grad_jax = func.grad
 	grad_finite = gradient(func,mode='finite',tol=tol)
 	grad_analytical = func.grad_analytical
-
+	return
 
 	print(grad_jax(parameters).round(3))
 	print()

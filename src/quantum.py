@@ -4,6 +4,7 @@
 import os,sys
 from copy import deepcopy
 from functools import partial
+import atexit
 
 envs = {
 	'JAX_PLATFORM_NAME':'cpu',
@@ -48,7 +49,7 @@ from src.utils import initialize,parse,to_string,to_number,datatype,slice_size,i
 from src.utils import pi,e,nan,null,delim,scalars,nulls
 from src.utils import itg,flt,dbl
 
-from src.dictionary import updater,getter,setter,permuter
+from src.dictionary import setter,getter
 from src.dictionary import leaves,counts,plant,grow
 
 from src.parameters import parameterize
@@ -161,6 +162,7 @@ class Object(object):
 		self.__time__()
 		self.__lattice__()
 		self.__logger__()
+		self.__clean__()
 
 		self.__check__()
 
@@ -266,7 +268,8 @@ class Object(object):
 		# Set defaults
 		path = 'config/settings.json'
 		default = {}		
-		updater(self.hyperparameters,load(path,default=default),func=False)
+		func = False
+		setter(self.hyperparameters,load(path,default=default),func=func)
 
 		setup(self.hyperparameters,cls=self)
 
@@ -771,6 +774,26 @@ class Object(object):
 	def __len__(self):
 		return len(self.data)
 
+	def __clean__(self,cleanup=None):
+		'''
+		Set cleanup state of class
+		Args:
+			cleanup (bool): Cleanup
+		'''
+
+		if cleanup:
+			atexit.register(self.__atexit__)
+		else:
+			atexit.unregister(self.__atexit__)
+
+		return
+		
+	def __atexit__(self):
+		'''
+		Cleanup upon class exit
+		'''
+		return
+
 	def log(self,msg,verbose=None):
 		'''
 		Log messages
@@ -803,6 +826,7 @@ class Object(object):
 			))
 		self.log(msg,verbose=verbose)
 		return
+
 
 	def dump(self,path=None):
 		'''
@@ -869,7 +893,7 @@ class Object(object):
 			func = (list,)
 			default = data[attr]
 			data[attr] = load(path,default=default)
-			updater(default,data[attr],func=func)
+			setter(default,data[attr],func=func)
 
 		return
 
