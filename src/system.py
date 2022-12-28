@@ -141,12 +141,6 @@ class Dictionary(dict):
 	def __getattribute__(self,item):
 		return super().__getattribute__(item)
 
-	# def __getattr__(self,item):
-	# 	return super().__getattr__(item)
-
-	# def __setattr__(self,item,value):
-	# 	return super().__setitem__(item,value)
-
 	def __getitem__(self,item):
 		return super().__getitem__(item)
 
