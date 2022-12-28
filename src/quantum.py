@@ -136,7 +136,9 @@ class Object(System):
 		self.__lattice__()
 
 		self.__setup__(data,operator,site,string,interaction)
-
+		self.__initialize__()
+		self.__functions__()
+		
 		self.info()
 
 		return	
@@ -178,12 +180,6 @@ class Object(System):
 		# Update class attributes
 		self.__extend__(data,operator,site,string,interaction)
 		
-		# Initialize parameters
-		self.__initialize__()
-
-		# Setup functions
-		self.__functions__()
-
 		return
 
 
@@ -245,7 +241,7 @@ class Object(System):
 
 
 
-	def __initialize__(self,parameters):
+	def __initialize__(self,parameters=None):
 		''' 
 		Setup initial parameters and attributes
 		Args:
@@ -776,9 +772,6 @@ class Hamiltonian(Object):
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		'''
 
-		# Get parameters
-		parameters = None		
-
 		# Get operator,site,string,interaction from data
 		if operator is None:
 			operator = []
@@ -872,12 +865,6 @@ class Hamiltonian(Object):
 
 		# Update class attributes
 		self.__extend__(data,operator,site,string,interaction)
-
-		# Initialize parameters
-		self.__initialize__(parameters)
-
-		# Setup functions
-		self.__functions__()
 
 		return
 

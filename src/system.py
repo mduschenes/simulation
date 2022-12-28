@@ -122,8 +122,47 @@ def config(name,conf=None,**kwargs):
 	return logger
 
 
-class Class(dictionary):
-	
+class Dictionary(dict):
+	'''
+	Dictionary subclass with dictionary elements explicitly accessible as class attributes
+	Args:
+		args (dict): Dictionary elements
+		kwargs (dict): Dictionary elements
+	'''
+	def __init__(self,*args,**kwargs):
+		
+		for attr in kwargs:
+			setattr(self,attr,kwargs[attr])
+
+		super().__init__(kwargs)
+
+		return
+
+	def __getattribute__(self,item):
+		return super().__getattribute__(item)
+
+	# def __getattr__(self,item):
+	# 	return super().__getattr__(item)
+
+	# def __setattr__(self,item,value):
+	# 	return super().__setitem__(item,value)
+
+	def __getitem__(self,item):
+		return super().__getitem__(item)
+
+	def __setitem__(self,item,value):
+		return super().__setitem__(item,value)
+
+	def __iter__(self):
+		return super().__iter__()
+
+	def __len__(self):
+		return super().__len__()
+
+
+
+class Class(Dictionary):
+
 	def __init__(self,*args,**kwargs):
 		'''
 		Base Class
