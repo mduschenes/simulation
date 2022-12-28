@@ -173,9 +173,8 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=True,clear=False,f
 		func(callable,None,bool,iterable): Callable function with signature func(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
 	'''
 
-	assert isinstance(iterable,dict), "Error - iterable is not dictionary"
-	assert isinstance(elements,dict), "Error - elements is not dictionary"
-
+	if not isinstance(iterable,dict) or not isinstance(elements,dict):
+		return
 
 	# Setup func as callable
 	if func is None:

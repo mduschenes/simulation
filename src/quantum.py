@@ -12,7 +12,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,gradient,hessian,fisher
-from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
+from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,dot,einsum
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationc,exponentiationc,summationmc,exponentiationmc
 from src.utils import trotter,gradient_trotter,gradient_expm,gradient_sigmoid
@@ -76,11 +76,12 @@ class Object(System):
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Operator): Type of label	
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
-		space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None):
+		space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
 
 		self.N = N
 		self.D = D
@@ -129,7 +130,8 @@ class Object(System):
 		self.summation = None
 		self.exponentiation = None 
 
-		super().__init__(**system)
+		setter(kwargs,system,delimiter=delim,func=True)
+		super().__init__(**kwargs)
 
 		self.__space__()
 		self.__time__()
@@ -138,7 +140,7 @@ class Object(System):
 		self.__setup__(data,operator,site,string,interaction)
 		self.__initialize__()
 		self.__functions__()
-		
+
 		self.info()
 
 		return	
@@ -251,7 +253,7 @@ class Object(System):
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
 		data = self.parameters
 		shape = (len(self.data)//self.p,self.M)
-		hyperparameters = self.parameters.hyperparameters is isinstance(self.parameters,Parameters) else self.parameters if isinstance(self.parameters,dict) else {}
+		hyperparameters = self.parameters.hyperparameters if isinstance(self.parameters,Parameters) else self.parameters if isinstance(self.parameters,dict) else {}
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
@@ -261,7 +263,7 @@ class Object(System):
 		cls = self
 		dtype = self.dtype
 
-		parameters = Parameters(data,shape,hyperparameters,check=check,initialize=initialize,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		parameters = Parameters(data,shape,hyperparameters,check=check,initialize=initialize,size=size,samples=samples,cls=cls,seed=seed,dtype=dtype)
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
@@ -297,21 +299,21 @@ class Object(System):
 
 		# Get state
 		data = state
-		hyperparameters = data.hyperparameters if isinstance(data,State) else data if isinstance(data,dict) else {}
+		hyperparameters = self.state.hyperparameters if isinstance(self.state,State) else data if isinstance(data,dict) else {}
 		samples = True
-		self.state = State(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		self.state = State(data,shape,hyperparameters,size=size,samples=samples,cls=cls,seed=seed,dtype=dtype)
 		
 		# Get noise
 		data = noise
-		hyperparameters = data.hyperparameters if isinstance(data,Noise) else data if isinstance(data,dict) else {}
+		hyperparameters = self.noise.hyperparameters if isinstance(self.noise,Noise) else data if isinstance(data,dict) else {}
 		samples = None
-		self.noise = Noise(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		self.noise = Noise(data,shape,hyperparameters,size=size,samples=samples,cls=cls,seed=seed,dtype=dtype)
 
 		# Get label
 		data = label
-		hyperparameters = data.hyperparameters if isinstance(data,Operator) else data if isinstance(data,dict) else {}
+		hyperparameters = self.label.hyperparameters if isinstance(self.label,Operator) else data if isinstance(data,dict) else {}
 		samples = None
-		self.label = Operator(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		self.label = Operator(data,shape,hyperparameters,size=size,samples=samples,cls=cls,seed=seed,dtype=dtype)
 
 		# Attribute values
 		if self.state() is None:
@@ -326,7 +328,7 @@ class Object(System):
 			shapes = ((self.n,),(self.n,))			
 		elif self.state.ndim == 2:
 			state = self.state()
-			noise = noise
+			noise = self.noise()
 			label = einsum('ij,jk,lk->il',self.label(),self.state(),self.label())
 			shapes = (self.shape,self.shape)			
 		else:
@@ -621,7 +623,7 @@ class Object(System):
 			*['%s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','p','shape','dims','cwd','path','backend','architecture','conf','logging']
 			],
-			*['%s: %s'%(attr,getattr(self,attr) is not None) 
+			*['%s: %s'%(attr,getattr(self,attr)() is not None) 
 				for attr in ['state','noise']
 			],
 			*['%s: %s'%(attr,getattr(self,attr).__name__) 
@@ -731,15 +733,16 @@ class Hamiltonian(Object):
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Operator): Type of label
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
-				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None):
+				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,
-				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system)
+				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
 		
 		return
 
@@ -924,15 +927,16 @@ class Unitary(Hamiltonian):
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Operator): Type of label
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
-				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None):
+				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,
-				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system)
+				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
 
 		return
 
@@ -1194,16 +1198,8 @@ class Callback(object):
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or start):
 
-					if model.state() is None:
-						state = {'scale':1}
-					else:
-						state = model.state
-
-					if model.noise() is None:
-						noise = {'scale':1}
-					else:
-						noise = model.noise
-
+					state = {'scale':1}
+					noise = {'scale':1}
 					label = True
 
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
@@ -1310,7 +1306,7 @@ import equinox as nn
 class module(nn.Module):
 	pass
 
-class Operator(module,System):
+class Op(module,System):
 	'''
 	Class for Operator
 	Args:
@@ -1328,6 +1324,7 @@ class Operator(module,System):
 		D (int): Dimension of qudits
 		space (str,Space): Type of Hilbert space
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
 	'''
 
 	data : None
@@ -1359,9 +1356,10 @@ class Operator(module,System):
 	verbose : int
 
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
-					N=None,D=None,space=None,system=None):
+					N=None,D=None,space=None,system=None,**kwargs):
 
-		super(System).__init__(**system)
+		setter(kwargs,system,delimiter=delim,func=True)
+		super(System).__init__(**kwargs)
 
 		self.N = N
 		self.D = D

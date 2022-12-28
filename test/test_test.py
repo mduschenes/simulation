@@ -12,7 +12,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,gradient
-from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
+from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
 from src.utils import summation,exponentiation
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
@@ -63,8 +63,25 @@ def test_class(path,tol):
 		noise=hyperparameters['noise'],
 		label=hyperparameters['label'])
 
-	model.log('Hello World')
+	print(model.noise())
+	print(model.state())
+	print(model.label())
+	model.__functions__(noise={'scale':None},state={'scale':1})
+	print('----')
+	print(model.noise())
+	print(model.state())
+	print(model.label())
+	model.__functions__(noise={'scale':None})
+	print('----')
 
+	print(model.noise())
+	print(model.state())
+	print(model.label())
+	model.__functions__()
+	print('----')
+	print(model.noise())
+	print(model.state())
+	print(model.label())
 	return
 
 
@@ -287,6 +304,6 @@ def test_model(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
+	test_class(path,tol)
 	# test_grad(path,tol)
-	test_objective(path,tol)
-	# test_class(path,tol)
+	# test_objective(path,tol)

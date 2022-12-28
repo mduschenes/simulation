@@ -170,7 +170,6 @@
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -211,6 +210,22 @@
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"args":[],
 		"kwargs":{}
+		},
+	"system":{
+		"dtype":"float",
+		"format":"array",
+		"device":"cpu",
+		"backend":"jax",
+		"architecture":null,
+		"seed":null,
+		"key":null,
+		"timestamp":null,		
+		"cwd":".",
+		"path":null,
+		"conf":"logging.conf",
+		"logging":null,
+		"cleanup":null,
+		"verbose":"info"
 		}
 	},
 "label": {
@@ -221,8 +236,23 @@
 	"scale":1,
 	"initialization":"random",
 	"random":"haar",
-	"seed":null,
-	"bounds":[-1,1]
+	"bounds":[-1,1],
+	"system":{
+		"dtype":"complex",
+		"format":"array",
+		"device":"cpu",
+		"backend":"jax",
+		"architecture":null,
+		"seed":123,
+		"key":null,
+		"timestamp":null,		
+		"cwd":".",
+		"path":null,
+		"conf":"logging.conf",
+		"logging":null,
+		"cleanup":null,
+		"verbose":"info"
+		}
 	},
 "state": {
 	"string":"random",
@@ -231,18 +261,49 @@
 	"scale":null,
 	"initialization":"random",
 	"random":"haar",
-	"seed":null,
-	"bounds":[-1,1]	
+	"bounds":[-1,1],
+	"system":{
+		"dtype":"complex",
+		"format":"array",
+		"device":"cpu",
+		"backend":"jax",
+		"architecture":null,
+		"seed":123,
+		"key":null,
+		"timestamp":null,		
+		"cwd":".",
+		"path":null,
+		"conf":"logging.conf",
+		"logging":null,
+		"cleanup":null,
+		"verbose":"info"
+		}
 },
 "noise": {
 	"string":"phase",
 	"category":"constant",
 	"shape":[2,-1,-1],
-	"scale":null,
+	"scale":0.5,
 	"initialization":"random",
 	"random":"gaussian",
-	"seed":null,
-	"bounds":[-1,1]	
+	"bounds":[-1,1],
+	"system":{
+		"dtype":"complex",
+		"format":"array",
+		"device":"cpu",
+		"backend":"jax",
+		"architecture":null,
+		"seed":123,
+		"key":null,
+		"timestamp":null,		
+		"cwd":".",
+		"path":null,
+		"conf":"logging.conf",
+		"logging":null,
+		"cleanup":null,
+		"verbose":"info"
+		}
+
 },
 "jobs":{
 	"preprocess":null,

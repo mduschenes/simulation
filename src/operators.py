@@ -15,11 +15,12 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
+from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,allclose
 from src.utils import slice_slice,datatype,returnargs,is_array
 from src.utils import pi,e,delim,null
 
+from src.system import System
 from src.io import load,dump,join,split
 from src.iterables import setter
 
@@ -147,8 +148,9 @@ def setup(hyperparameters,cls=None):
 
 	return
 
-class Operator(object):
-	def __init__(self,data,shape,hyperparameters,size=None,samples=None,seed=None,cls=None,dtype=None):
+class Operator(System):
+
+	def __init__(self,data,shape,hyperparameters,size=None,samples=None,cls=None,system=None,**kwargs):
 		'''
 		Initialize operators
 		Args:
@@ -157,9 +159,9 @@ class Operator(object):
 			hyperparameters (dict): Dictionary of hyperparameters for operator
 			size (int): size of operators
 			samples (bool,array): Weight samples (create random weights, or use samples weights)
-			seed (key,int): PRNG key or seed
 			cls (object): Class instance to update hyperparameters		
-			dtype (data_type): Data type of operator
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
+			kwargs (dict): Additional system keyword arguments
 		'''
 
 		# Setup class attributes
@@ -167,11 +169,16 @@ class Operator(object):
 		self.shape = shape
 		self.size = size
 		self.samples = samples
-		self.seed = seed
-		self.dtype = dtype
 		self.hyperparameters = hyperparameters
+
+		setter(kwargs,system,delimiter=delim,func=True)
+		super().__init__(**kwargs)
+
 		for attr in hyperparameters:
 			value = hyperparameters[attr]
+			setattr(self,attr,value)
+		for attr in hyperparameters.get('system',{}):
+			value = hyperparameters['system'][attr]
 			setattr(self,attr,value)
 
 		# Setup hyperparameters
@@ -181,17 +188,17 @@ class Operator(object):
 		# Set data
 		if isinstance(data,self.__class__):
 			self.data = data.data
-			return
 		elif is_array(data):
 			self.data = data
-			return
-		elif shape is None or hyperparameters.get('shape') is None:
-			self.data = None
 			return
 		elif isinstance(data,dict):
 			setter(hyperparameters,data,delimiter=delim,func=True)
 		elif isinstance(data,str):
 			hyperparameters['string'] = data
+
+		if shape is None or hyperparameters.get('shape') is None:
+			self.data = None
+			return
 
 		# Ensure shape is iterable
 		if isinstance(shape,int):
@@ -204,7 +211,13 @@ class Operator(object):
 		delimiter = '_'
 
 		# Get seed
-		seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
+		seed = hyperparameters.get('seed',self.seed) if hyperparameters.get('seed',self.seed) is not None else self.seed
+
+		# Get dtype
+		dtype = self.dtype
+
+		# Get scale
+		scale = hyperparameters.get('scale')
 
 		# Properties for strings
 		props = {
@@ -267,8 +280,8 @@ class Operator(object):
 		self.data = data
 		self.samples = samples
 		self.string = string
-		self.shape = self.data.shape
-		self.ndim = self.data.ndim
+		self.shape = self.data.shape if self.data is not None else None
+		self.ndim = self.data.ndim if self.data is not None else None
 		self.seed = seed
 		self.scale = scale
 
@@ -284,7 +297,7 @@ class Operator(object):
 		'''
 		if not isinstance(data,null):
 			self.data = data
-			self.shape = self.data.shape
-			self.ndim = self.data.ndim
+			self.shape = self.data.shape if self.data is not None else None
+			self.ndim = self.data.ndim if self.data is not None else None
 		return self.data
 

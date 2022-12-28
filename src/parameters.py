@@ -17,12 +17,14 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos,minimum,maximum
+from src.utils import jit,array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos,minimum,maximum
 from src.utils import tensorprod,trace,asscalar,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
 from src.utils import slice_slice,datatype,returnargs,is_array
-from src.utils import pi,itg,scalars,null
+from src.utils import pi,itg,scalars,delim,null
 
+from src.system import System
 from src.io import load,dump,join,split
+from src.iterables import setter
 
 
 def _variables(hyperparameters,parameter,group):
@@ -252,6 +254,8 @@ def setup(hyperparameters,cls=None):
 		},		
 	}
 	for parameter in hyperparameters:
+		if parameter in ['system']:
+			continue
 		for attr in updates:
 			hyperparameters[parameter][attr] = hyperparameters[parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
 			if updates[attr]['conditions'](parameter,hyperparameters):
@@ -274,8 +278,8 @@ def setup(hyperparameters,cls=None):
 	return 
 
 
-def Parameters(object):
-	def __init__(self,data,shape,hyperparameters,check=None,initialize=None,size=None,samples=None,seed=None,cls=None,dtype=None):
+class Parameters(System):
+	def __init__(self,data,shape,hyperparameters,check=None,initialize=None,size=None,samples=None,cls=None,system=None,**kwargs):
 		'''
 		Initialize data of shapes of parameters based on shape of data. Initializes attributes of
 			data (dict,array,Parameters): Dictionary of parameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
@@ -309,9 +313,9 @@ def Parameters(object):
 			initialize (callable): Function with signature initialize(parameters,shape,hyperparameters,reset=None,dtype=None) to initialize parameter values
 			size (int): size of parameters
 			samples (bool,array): Weight samples (create random weights, or use samples weights)
-			seed (key,int): PRNG key or seed		
 			cls (object): Class instance to update hyperparameters		
-			dtype (data_type): Data type of values		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
+			kwargs (dict): Additional system keyword arguments
 		'''
 		
 		# Implicit parameterizations that interact with the data to produce the output are called variables x
@@ -410,13 +414,16 @@ def Parameters(object):
 		self.shape = shape
 		self.size = size
 		self.samples = samples
-		self.seed = seed
-		self.dtype = dtype
 		self.hyperparameters = hyperparameters
 
 		# Setup hyperparameters
 		hyperparameters = deepcopy(hyperparameters)
+		setter(kwargs,system,delimiter=delim,func=True)
+		system = hyperparameters.pop('system')
+		setter(kwargs,system,delimiter=delim,func=True)
 		setup(hyperparameters,cls=cls)
+
+		super().__init__(**kwargs)
 
 		# Set data
 		if isinstance(data,self.__class__):
@@ -429,7 +436,10 @@ def Parameters(object):
 			self.data = None
 			return
 		elif isinstance(data,dict):
+			system = data.pop('system')
+			setter(kwargs,system,delimiter=delim,func=True)
 			setter(hyperparameters,data,delimiter=delim,func=True)
+			super().__init__(**kwargs)
 		elif isinstance(data,str):
 			pass
 
@@ -441,15 +451,14 @@ def Parameters(object):
 		ndim = len(shape)
 
 		# Get datatype of data
-		dtype = datatype(dtype)
+		dtype = datatype(self.dtype)
 
 		# Get seed
-		seed = [hyperparameters[parameter].get('seed',seed) if hyperparameters[parameter].get('seed',seed) is not None else seed 
+		seed = [hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
 				for parameter in hyperparameters][0]
-		
 
 		# Get properties of hyperparameters
-		properties = ['category','group','shape','locality','boundaries','constants','use','parameters']
+		properties = ['category','group','shape','locality','boundaries','constants','parameters']
 		assert all(all(prop in hyperparameters[parameter] 
 			for prop in properties) 
 			for parameter in hyperparameters), 'hyperparameters missing properties'
@@ -457,7 +466,7 @@ def Parameters(object):
 
 		# Remove not used parameters of hyperparameters
 		for parameter in list(hyperparameters):
-			if not hyperparameters[parameter]['use']:
+			if hyperparameters[parameter].get('use') is False:
 				hyperparameters.pop(parameter)
 
 		# Update properties of hyperparameters
@@ -2058,8 +2067,8 @@ def Parameters(object):
 		self.data = data
 		self.attributes = attributes
 		self.samples = samples
-		self.shape = self.data.shape
-		self.ndim = self.data.ndim
+		self.shape = self.data.shape if self.data is not None else None
+		self.ndim = self.data.ndim if self.data is not None else None
 
 		return
 
@@ -2073,7 +2082,7 @@ def Parameters(object):
 		'''
 		if not isinstance(data,null):
 			self.data = data
-			self.shape = self.data.shape
-			self.ndim = self.data.ndim
+			self.shape = self.data.shape if self.data is not None else None
+			self.ndim = self.data.ndim if self.data is not None else None
 		return self.data
 
