@@ -11,7 +11,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import PRNGKey,delim,union,is_equal
-from src.dictionary import getter,setter,permuter,clearer,leaves
+from src.iterables import getter,setter,permuter,clearer,leaves
 from src.io import load,dump,join,split
 from src.call import launch
 

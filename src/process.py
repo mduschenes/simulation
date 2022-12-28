@@ -25,7 +25,7 @@ from src.utils import array,product,expand_dims,to_eval,to_repr,is_iterable,is_n
 from src.utils import asndarray,asscalar
 from src.utils import argmax,difference,is_nan,is_numeric,abs
 from src.utils import e,pi,nan,scalars,nulls,scinotation,padder
-from src.dictionary import branches
+from src.iterables import branches
 from src.parallel import Parallelize,Pooler
 from src.io import setup,load,dump,join,split,glob
 from src.fit import fit,mean,std,normalize,sqrt,size

@@ -738,49 +738,6 @@ class String(str):
 		return obj
 
 
-class System(dictionary):
-	'''
-	System attributes (dtype,format,device,seed,verbose,...)
-	Args:
-		dtype (str,data-type): Data type of class
-		format (str): Format of array
-		device (str): Device for computation
-		seed (array,int): Seed for random number generation
-		verbose (bool,str): Verbosity of class	
-		args (dict,System): Additional system attributes
-		kwargs (dict): Additional system attributes
-	'''
-	def __init__(self,*args,**kwargs):
-
-
-		updates = {
-			'verbose':{
-				'notset':0,'debug':10,'info':20,'warning':30,'error':40,'critical':50,
-				'Notset':0,'Debug':10,'Info':20,'Warning':30,'Error':40,'Critical':50,
-				'NOTSET':0,'DEBUG':10,'INFO':20,'WARNING':30,'ERROR':40,'CRITICAL':50,
-				10:10,20:20,30:30,40:40,50:50,
-				2:20,3:30,4:40,5:50,
-				True:20,False:0,None:0,
-				}
-			}
-
-		defaults = {
-			'dtype':'complex',
-			'format':'array',
-			'device':'cpu',
-			'seed':None,
-			'verbose':False,
-		}
-
-		args = {k:v for a in args for k,v in ({} if a is None else a).items()}
-		attrs = {**args,**kwargs}
-		attrs.update({attr: defaults[attr] for attr in defaults if attrs.get(attr) is None})
-		attrs.update({attr: updates.get(attr,{}).get(attrs[attr],attrs[attr]) for attr in attrs})
-
-		super().__init__(**attrs)
-
-		return
-
 
 @tree_register
 class Parameters(dict):

@@ -6,6 +6,7 @@ import copy as copying
 
 warnings.simplefilter("ignore", (UserWarning,DeprecationWarning,FutureWarning))
 
+class null(object): pass
 
 def isiterable(obj,exceptions=()):
 	'''
@@ -17,6 +18,104 @@ def isiterable(obj,exceptions=()):
 		iterable (bool): whether object is iterable
 	'''
 	return hasattr(obj,'__iter__') and not isinstance(obj,exceptions)
+
+def getattrs(obj,attr,default=None,delimiter=None):
+	'''
+	Get nested attribute of object
+	Args:
+		obj (object): Object of attributes
+		attr (str,iterable[str]): Nested attribute of object
+		default (object): Default nested attribute of object
+		delimiter (str): Delimiter to split nested attributes
+	Returns:
+		obj (object): Nested attribute
+	'''
+	if isinstance(attr,str):
+		if delimiter is None:
+			attr = [attr]
+		else:
+			attr = attr.split(delimiter)
+	else:
+		if delimiter is None:
+			attr = [subattr for subattr in attr]
+		else:
+			attr = [subsubattr for subattr in attr for subsubattr in attr.split(delimiter)]
+
+	for subattr in attr:
+		if not hasattr(obj,subattr):
+			obj = default
+			break
+		obj = getattr(obj,subattr)
+
+	return obj
+
+def setattrs(obj,attr,value,delimiter=None):
+	'''
+	Set nested attribute of object
+	Args:
+		obj (object): Object of attributes
+		attr (str,iterable[str]): Nested attribute of object
+		value (object): Nested value of object
+		delimiter (str): Delimiter to split nested attributes
+	'''
+
+
+
+	if isinstance(attr,str):
+		if delimiter is None:
+			attr = [attr]
+		else:
+			attr = attr.split(delimiter)
+	else:
+		if delimiter is None:
+			attr = [subattr for subattr in attr]
+		else:
+			attr = [subsubattr for subattr in attr for subsubattr in attr.split(delimiter)]
+
+
+
+	for subattr in attr[:-1]:
+		if not hasattr(obj,subattr):
+			setattr(obj,subattr,null())
+		obj = getattr(obj,subattr)
+	
+	subattr = attr[-1]
+	setattr(obj,subattr,value)
+
+	return
+
+
+def hasattrs(obj,attr,default=None,delimiter=None):
+	'''
+	Check existence of nested attribute of object
+	Args:
+		obj (object): Object of attributes
+		attr (str,iterable[str]): Nested attribute of object
+		default (object): Default nested attribute of object
+		delimiter (str): Delimiter to split nested attributes
+	Returns:
+		has (bool): Nested attribute existence
+	'''
+	if isinstance(attr,str):
+		if delimiter is None:
+			attr = [attr]
+		else:
+			attr = attr.split(delimiter)
+	else:
+		if delimiter is None:
+			attr = [subattr for subattr in attr]
+		else:
+			attr = [subsubattr for subattr in attr for subsubattr in attr.split(delimiter)]
+
+	has = True
+	for subattr in attr:
+		if not hasattr(obj,subattr):
+			has = False
+			break
+		obj = getattr(obj,subattr)
+
+	return has
+
 
 def copier(key,value,copy):
 	'''

@@ -11,7 +11,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,allclose,delim
 from src.io import load
-from src.dictionary import resetter
+from src.iterables import resetter
 from src.optimize import Optimizer,Objective,Metric,Callback
 
 
@@ -65,7 +65,11 @@ def train(hyperparameters):
 
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
-	model = cls['model'](**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls['model'](**hyperparameters['model'],
+			init=hyperparameters['parameters'],
+			state=hyperparameters['state'],
+			noise=hyperparameters['noise'],
+			label=hyperparameters['label'])
 
 	if hyperparameters['boolean'].get('load'):
 		model.load()

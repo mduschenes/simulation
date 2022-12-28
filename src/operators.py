@@ -145,113 +145,128 @@ def setup(hyperparameters,cls=None):
 
 	return
 
-def operatorize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=None,dtype=None):
-	'''
-	Initialize operators
-	Args:
-		data (dict,str,array): Label or path or array of operator
-		shape (int,iterable[int]): Shape of operator
-		hyperparameters (dict): Dictionary of hyperparameters for operator
-		size (int): size of operators
-		samples (bool,array): Weight samples (create random weights, or use samples weights)
-		seed (key,int): PRNG key or seed
-		cls (object): Class instance to update hyperparameters		
-		dtype (data_type): Data type of operator
-	Returns:
-		data (array): Array of operator
-	'''
+class Operator(object):
+	def __init__(self,data,shape,hyperparameters,size=None,samples=None,seed=None,cls=None,dtype=None):
+		'''
+		Initialize operators
+		Args:
+			data (dict,str,array,Operator): Data corresponding to operator
+			shape (int,iterable[int]): Shape of operator
+			hyperparameters (dict): Dictionary of hyperparameters for operator
+			size (int): size of operators
+			samples (bool,array): Weight samples (create random weights, or use samples weights)
+			seed (key,int): PRNG key or seed
+			cls (object): Class instance to update hyperparameters		
+			dtype (data_type): Data type of operator
+		'''
 
-	# Setup hyperparameters
-	setup(hyperparameters,cls=cls)
+		self.data = data
+		self.shape = shape
+		self.size = size
+		self.samples = samples
+		self.seed = seed
+		self.dtype = dtype
+		self.hyperparameters = hyperparameters
 
-	# Set data
-	if shape is None or hyperparameters.get('shape') is None:
-		data = None
-		return data
+		# Setup hyperparameters
+		setup(hyperparameters,cls=cls)
 
-	# Ensure shape is iterable
-	if isinstance(shape,int):
-		shape = (shape,)
+		# Set data
+		if isinstance(data,self.__class__):
+			self.data = data.data
+			return
+		elif is_array(data):
+			self.data = data
+			return
+		elif shape is None or hyperparameters.get('shape') is None:
+			self.data = None
+			return
 
-	# Dimension of data
-	d = min(shape)
+		# Ensure shape is iterable
+		if isinstance(shape,int):
+			shape = (shape,)
 
-	# Delimiter for string
-	delimiter = '_'
+		# Dimension of data
+		d = min(shape)
 
-	# Get seed
-	seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
+		# Delimiter for string
+		delimiter = '_'
 
-	# Properties for strings
-	props = {
-		**{string: {'func':haar,'locality':size} for string in ['random','U','haar']},
-		**{string: {'func':hadamard,'locality':1} for string in ['hadamard','H']},
-		**{string: {'func':cnot,'locality':2} for string in ['cnot','CNOT','C']},
-		**{string: {'func':toffoli,'locality':3} for string in ['toffoli','TOFFOLI','T']},
-		**{string: {'func':{1:id,2:cnot,3:toffoli}.get(size,id),'locality':size} for string in ['control']},
-		None: {'func':haar,'locality':size},
-		}
+		# Get seed
+		seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
+
+		# Properties for strings
+		props = {
+			**{string: {'func':haar,'locality':size} for string in ['random','U','haar']},
+			**{string: {'func':hadamard,'locality':1} for string in ['hadamard','H']},
+			**{string: {'func':cnot,'locality':2} for string in ['cnot','CNOT','C']},
+			**{string: {'func':toffoli,'locality':3} for string in ['toffoli','TOFFOLI','T']},
+			**{string: {'func':{1:id,2:cnot,3:toffoli}.get(size,id),'locality':size} for string in ['control']},
+			None: {'func':haar,'locality':size},
+			}
 
 
-	if data is None:
-		string = hyperparameters.get('string')
-	elif isinstance(data,str):
-		string = data
-	elif is_array(data):
-		string = None
+		if data is None:
+			string = hyperparameters.get('string')
+		elif isinstance(data,str):
+			string = data
+		elif is_array(data):
+			string = None
 
-	if string is None or isinstance(string,str):
+		if string is None or isinstance(string,str):
 
-		if string is None:
-			strings = [string]
-			locality = size
-		elif all(string in props for string in string.split(delimiter)):
-			strings = string.split(delimiter)
-			locality = sum(props[string]['locality'] for string in strings)
+			if string is None:
+				strings = [string]
+				locality = size
+			elif all(string in props for string in string.split(delimiter)):
+				strings = string.split(delimiter)
+				locality = sum(props[string]['locality'] for string in strings)
+			else:
+				strings = None
+				locality = size			
+
+			assert (size%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,size)
+
+			if string is not None:
+				data = tensorprod([
+					props[string]['func'](shape,
+						bounds=hyperparameters.get('bounds'),
+						random=hyperparameters.get('random'),
+						seed=hyperparameters.get('seed',seed),
+						dtype=dtype
+						)
+					for string in strings
+					]*(size//locality)
+				)
+			else:
+				data = array(load(data))
+		
+		# Assert data is unitary
+		assert allclose(eye(d),data.conj().T.dot(data))
+		assert allclose(eye(d),data.dot(data.conj().T))
+
+
+		# Set dtype of data
+		data = data.astype(dtype=dtype)
+
+
+		# Set samples
+		if samples is not None and isinstance(samples,bool):
+			samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
+			samples /= samples.sum()
+		elif is_array(samples):
+			pass
 		else:
-			strings = None
-			locality = size			
+			samples = None
+			
+		
+		self.data = data
+		self.samples = samples
 
-		assert (size%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,size)
+		return
 
-		if string is not None:
-			data = tensorprod([
-				props[string]['func'](shape,
-					bounds=hyperparameters.get('bounds'),
-					random=hyperparameters.get('random'),
-					seed=hyperparameters.get('seed',seed),
-					dtype=dtype
-					)
-				for string in strings
-				]*(size//locality)
-			)
-		else:
-			data = array(load(data))
-	
-	# Assert data is unitary
-	assert allclose(eye(d),data.conj().T.dot(data))
-	assert allclose(eye(d),data.dot(data.conj().T))
-
-
-	# Set dtype of data
-	data = data.astype(dtype=dtype)
-
-
-	# Set samples
-	if samples is not None and isinstance(samples,bool):
-		samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
-		samples /= samples.sum()
-	elif is_array(samples):
-		pass
-	else:
-		samples = None
-	
-	# Set returns
-	returns = ()
-	returns += (data,)
-
-	if samples is not None:
-		returns += (samples,)
-
-
-	return returnargs(returns)
+	def __call__(self):
+		'''
+		Class data
+		'''
+		return self.data

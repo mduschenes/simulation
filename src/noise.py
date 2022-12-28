@@ -103,102 +103,115 @@ def setup(hyperparameters,cls=None):
 	return
 
 
-def noiseize(data,shape,hyperparameters,size=None,samples=None,seed=None,cls=None,dtype=None):
-	'''
-	Initialize data of noise based on shape
-	Args:
-		data (object): Data corresponding to parameters
-		shape (int,iterable[int]): Shape of data
-		hyperparameters (dict): Dictionary of parameter groupings, with dictionary values with properties:
-			'category':str : category of parameter
-			'shape':iterable[int] : shape of noise
-			'initialization':str : initialization type
-			'random':str : type of random initialization
-			'seed': int: random seed
-			'bounds': iterable[float]: bounds on noise
-		size (int): Size of noise
-		samples (bool,array): Weight samples (create random weights, or use samples weights)
-		seed (key,int): PRNG key or seed		
-		cls (object): Class instance to update hyperparameters
-		dtype (data_type): Data type of values		
-	Returns:
-		data (array): Array of noise
-		samples (array): Weights of samples
-	'''
+class Noise(object):
+	def __init__(self,data,shape,hyperparameters,size=None,samples=None,seed=None,cls=None,dtype=None):
+		'''
+		Initialize data of noise based on shape
+		Args:
+			data (dict,str,array,Noise): Data corresponding to noise
+			shape (int,iterable[int]): Shape of data
+			hyperparameters (dict): Dictionary of parameter groupings, with dictionary values with properties:
+				'category':str : category of parameter
+				'shape':iterable[int] : shape of noise
+				'initialization':str : initialization type
+				'random':str : type of random initialization
+				'seed': int: random seed
+				'bounds': iterable[float]: bounds on noise
+			size (int): Size of noise
+			samples (bool,array): Weight samples (create random weights, or use samples weights)
+			seed (key,int): PRNG key or seed		
+			cls (object): Class instance to update hyperparameters
+			dtype (data_type): Data type of values		
+		'''
 
-	# Setup hyperparameters
-	setup(hyperparameters,cls=cls)
+		self.data = data
+		self.shape = shape
+		self.size = size
+		self.samples = samples
+		self.seed = seed
+		self.dtype = dtype
+		self.hyperparameters = hyperparameters
 
-	# Set data
-	if shape is None or hyperparameters.get('shape') is None or hyperparameters.get('scale') is None:
+		# Setup hyperparameters
+		setup(hyperparameters,cls=cls)
+
+		# Set data
+		if isinstance(data,self.__class__):
+			self.data = data.data
+			return
+		elif is_array(data):
+			self.data = data
+			return
+		elif shape is None or hyperparameters.get('shape') is None or hyperparameters.get('scale') is None:
+			self.data = None
+			return
+
+		# Ensure shape is iterable
+		if isinstance(shape,int):
+			shape = (shape,)
+
+		# Get seed
+		seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
+
+		# Get scale
+		scale = hyperparameters.get('scale')
+
+		# Basis
+		operators = {
+			attr: basis[attr].astype(dtype)
+			for attr in basis
+			}
+
+		if data is None:
+			string = hyperparameters['string']
+		elif isinstance(data,str):
+			string = data
+		elif is_array(data):
+			string = None
+
+		# Set data
 		data = None
-		return data
 
-	# Ensure shape is iterable
-	if isinstance(shape,int):
-		shape = (shape,)
+		if scale is None:
+			data = None
+		elif isinstance(string,str):
 
-	# Get seed
-	seed = hyperparameters.get('seed',seed) if hyperparameters.get('seed',seed) is not None else seed
+			assert (scale >= 0) and (scale <= 1), "Noise scale %r not in [0,1]"%(scale)
 
-	# Get scale
-	scale = hyperparameters.get('scale')
+			if string in ['phase']:
+				data = [sqrt(1-scale)*basis['I'],
+						sqrt(scale)*basis['Z']]
+			elif string in ['amplitude']:
+				data = [basis['00'] + sqrt(1-scale)*basis['11'],
+						sqrt(scale)*basis['01']]
+			elif string in ['depolarize']:
+				data = [sqrt(1-scale)*basis['I'],
+						sqrt(scale/3)*basis['X'],
+						sqrt(scale/3)*basis['Y'],
+						sqrt(scale/3)*basis['Z']]
 
-	# Basis
-	operators = {
-		attr: basis[attr].astype(dtype)
-		for attr in basis
-		}
-
-	if data is None:
-		string = hyperparameters['string']
-	elif isinstance(data,str):
-		string = data
-	elif is_array(data):
-		string = None
-
-
-	# Set data
-	data = None
-
-	if scale is None:
-		data = None
-	elif isinstance(string,str):
-
-		assert (scale >= 0) and (scale <= 1), "Noise scale %r not in [0,1]"%(scale)
-
-		if string in ['phase']:
-			data = [sqrt(1-scale)*basis['I'],
-					sqrt(scale)*basis['Z']]
-		elif string in ['amplitude']:
-			data = [basis['00'] + sqrt(1-scale)*basis['11'],
-					sqrt(scale)*basis['01']]
-		elif string in ['depolarize']:
-			data = [sqrt(1-scale)*basis['I'],
-					sqrt(scale/3)*basis['X'],
-					sqrt(scale/3)*basis['Y'],
-					sqrt(scale/3)*basis['Z']]
-
-		data = array([
-			tensorprod(i)
-			for i in itertools.product(data,repeat=size)
-			])
+			data = array([
+				tensorprod(i)
+				for i in itertools.product(data,repeat=size)
+				])
+			
+		# Set samples
+		if samples is not None and isinstance(samples,bool):
+			samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
+			samples /= samples.sum()
+		elif is_array(samples):
+			pass		
+		else:
+			samples = None
 		
-	# Set samples
-	if samples is not None and isinstance(samples,bool):
-		samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
-		samples /= samples.sum()
-	elif is_array(samples):
-		pass		
-	else:
-		samples = None
-	
-	# Set returns
-	returns = ()
-	returns += (data,)
 
-	if samples is not None:
-		returns += (samples,)
+		self.data = data
+		self.samples = samples
 
+		return
 
-	return returnargs(returns)
+	def __call__(self):
+		'''
+		Class data
+		'''
+		return self.data

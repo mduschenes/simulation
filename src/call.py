@@ -26,7 +26,7 @@ logger = Logger(name,conf,file=file)
 
 from src.utils import intersection,scalars
 from src.io import cd,mkdir,join,split,load,dump,exists,environ
-from src.dictionary import setter
+from src.iterables import setter
 from src.parallel import Parallelize,Pooler
 
 

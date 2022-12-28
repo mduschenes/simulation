@@ -24,7 +24,7 @@ from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_rea
 
 from src.utils import itg,dbl,flt,delim,nan,Null
 
-from src.dictionary import setter
+from src.iterables import setter
 
 from src.line_search import line_search,armijo
 

@@ -25,7 +25,7 @@ from src.utils import trotter
 from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
 
-from src.dictionary import getter,setter,permuter,equalizer
+from src.iterables import getter,setter,permuter,equalizer
 
 from src.parameters import parameterize
 from src.operators import operatorize
@@ -57,7 +57,7 @@ def test_class(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls(**hyperparameters['model'])
 
 	model.log('Hello World')
 
@@ -71,7 +71,7 @@ def test_load_dump(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls(**hyperparameters['model'])
 
 	# Set hyperparameters
 	model.hyperparameters['optimize']['track']['alpha'] = []
@@ -85,7 +85,7 @@ def test_load_dump(path,tol):
 
 	# Set instance
 	hyperparameters = load(path)
-	new = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
+	new = cls(**hyperparameters['model'])
 
 	new.load()
 
@@ -109,7 +109,8 @@ def test_data(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**{**hyperparameters['model'],'N':2},hyperparameters=hyperparameters)
+	hyperparameters['model']['N'] = 2
+	model = cls(**hyperparameters['model'])
 
 	I = array([[1,0],[0,1]],dtype=model.dtype)
 	X = array([[0,1],[1,0]],dtype=model.dtype)
@@ -169,7 +170,7 @@ def test_grad(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls(**hyperparameters['model'])
 
 	func = model
 
@@ -192,7 +193,7 @@ def test_objective(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls(**hyperparameters['model'])
 
 	func = []
 	shapes = model.shapes
@@ -241,7 +242,7 @@ def test_model(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls(**hyperparameters['model'])
 
 	func = jit(model.__call__)
 

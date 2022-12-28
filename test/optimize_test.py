@@ -25,7 +25,7 @@ from src.utils import trotter
 from src.utils import pi,e,delim
 from src.utils import itg,flt,dbl
 
-from src.dictionary import getter,setter,permuter,equalizer
+from src.iterables import getter,setter,permuter,equalizer
 
 from src.parameters import parameterize
 from src.operators import operatorize
@@ -59,7 +59,7 @@ def test_optimize(path,tol):
 
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparams['class']}
 
-	model = cls['model'](**hyperparameters['model'],hyperparameters=hyperparameters)
+	model = cls['model'](**hyperparameters['model'])
 
 	func = []
 	shapes = model.shapes

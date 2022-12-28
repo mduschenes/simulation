@@ -25,13 +25,13 @@ from src.utils import initialize,parse,to_string,to_number,datatype,slice_size,i
 from src.utils import pi,e,nan,null,delim,scalars,nulls
 from src.utils import itg,flt,dbl
 
-from src.dictionary import setter,getter
-from src.dictionary import leaves,counts,plant,grow
+from src.iterables import setter,getattrs,hasattrs
+from src.iterables import leaves,counts,plant,grow
 
-from src.parameters import parameterize
-from src.operators import operatorize
-from src.states import stateize
-from src.noise import noiseize
+from src.parameters import Parameters
+from src.operators import Operator
+from src.states import State
+from src.noise import Noise
 
 from src.io import load,dump,join,split
 
@@ -59,7 +59,6 @@ class Object(Class):
 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		hyperparameters (dict) : class hyperparameters				
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -71,12 +70,17 @@ class Object(Class):
 		p (int): Trotter order		
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
-		lattice (str,Lattice): Type of lattice		
+		lattice (str,Lattice): Type of lattice	
+		init (str,dict,Parameters): Type of parameters	
+		state (str,dict,State): Type of state	
+		noise (str,dict,Noise): Type of noise
+		label (str,dict,Operator): Type of label	
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
+		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
+		space=None,time=None,lattice=None,init=None,state=None,noise=None,label=None,system=None):
 
 		self.N = N
 		self.D = D
@@ -113,14 +117,16 @@ class Object(Class):
 		self.ndim = len(self.shape)
 		self.shapes = (self.shape,self.shape)
 
-		self.hyperparameters = hyperparameters
 		self.parameters = None
-		self.labels = None
+		self.init = init
 		self.label = None
+		self.labels = None
+		self._label = None
 		self.states = None
 		self.state = None
 		self.noises = None
-		self.noise = None
+		self._noise = None
+		self.noise = noise
 		self.attributes = {}
 		self.identity = None
 		self.constants = None
@@ -130,21 +136,19 @@ class Object(Class):
 		self.summation = None
 		self.exponentiation = None 
 
-		super().__init__(hyperparameters=hyperparameters,system=system)
+		super().__init__(**system)
 
 		self.__space__()
 		self.__time__()
 		self.__lattice__()
 
-		self.__check__()
-
-		self.__setup__(data,operator,site,string,interaction,hyperparameters)
+		self.__setup__(data,operator,site,string,interaction)
 
 		self.info()
 
 		return	
 
-	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={}):
+	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup class
 		Args:
@@ -157,7 +161,6 @@ class Object(Class):
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (str,dict): Class hyperparameters, or path to load hyperparameters
 		'''
 
 		# Update data
@@ -170,86 +173,33 @@ class Object(Class):
 		if interaction is None:
 			interaction = []
 
-		names = [name for name in data 
-			if any(data[name]['string'] in group 
-				for parameter in hyperparameters['parameters'] 
-				for group in hyperparameters['parameters'][parameter]['group'] 
-				if hyperparameters['parameters'][parameter]['use'])]
-
-		operator.extend([data[name]['operator'] for name in names])
-		site.extend([data[name]['site'] for name in names])
-		string.extend([data[name]['string'] for name in names])
-		interaction.extend([data[name]['interaction'] for name in names])
+		operator.extend([data[name]['operator'] for name in data])
+		site.extend([data[name]['site'] for name in data])
+		string.extend([data[name]['string'] for name in data])
+		interaction.extend([data[name]['interaction'] for name in data])
 
 		size = min([len(i) for i in [operator,site,string,interaction]])
 
 		data = [self.identity.copy() for i in range(size)]
 
-		parameters = None
+		parameters = self.init
+		state = self.state
+		noise = self.noise
+		label = self.label
 
 		# Update class attributes
-		self.__extend__(data,operator,site,string,interaction,hyperparameters)
+		self.__extend__(data,operator,site,string,interaction)
 		
 		# Initialize parameters
 		self.__initialize__(parameters)
 
 		# Setup functions
-		self.__functions__()
+		self.__functions__(state=state,noise=noise,label=label)
 
 		return
 
 
-	def __check__(self,hyperparameters={}):
-		'''
-		Setup class hyperparameters
-		Args:
-			hyperparameters (str,dict): Class hyperparameters, or path to load hyperparameters
-		Returns:
-			hyperparameters (dict): Class hyperparameters
-		'''
-
-
-		def setup(hyperparameters,cls=None):
-			'''
-			Check hyperparameters
-			Args:
-				hyperparameters (dict): Hyperparameters
-				cls (object): Class instance to update hyperparameters		
-			'''
-
-			# Update with class attributes
-			sections = ['model']
-			if cls is not None:
-				for section in sections:
-					if section not in hyperparameters:
-						hyperparameters[section] = {}
-					hyperparameters[section].update({attr: getattr(cls,attr) for attr in cls.__dict__ 
-						if attr in hyperparameters[section] and isinstance(getattr(cls,attr),scalars)})
-
-			return
-
-
-		self.hyperparameters.update(hyperparameters)
-
-		# Set hyperparameters
-		default = {}
-		if self.hyperparameters is None:
-			self.hyperparameters = default
-		elif isinstance(self.hyperparameters,str):
-			self.hyperparameters = load(self.hyperparameters,default=default)
-
-		# Set defaults
-		path = 'config/settings.json'
-		default = {}		
-		func = False
-		setter(self.hyperparameters,load(path,default=default),func=func)
-
-		setup(self.hyperparameters,cls=self)
-
-		return
-
-
-	def __append__(self,data,operator,site,string,interaction,hyperparameters={}):
+	def __append__(self,data,operator,site,string,interaction):
 		'''
 		Append to class
 		Args:
@@ -258,14 +208,12 @@ class Object(Class):
 			site (int): site of local operator
 			string (str): string label of operator
 			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			
-			hyperparameters (dict) : class hyperparameters
 		'''
 		index = -1
-		self.__insert__(index,data,operator,site,string,interaction,hyperparameters)
+		self.__insert__(index,data,operator,site,string,interaction)
 		return
 
-	def __extend__(self,data,operator,site,string,interaction,hyperparameters={}):
+	def __extend__(self,data,operator,site,string,interaction):
 		'''
 		Setup class
 		Args:
@@ -274,15 +222,14 @@ class Object(Class):
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (dict) : class hyperparameters
 		'''
 		for _data,_operator,_site,_string,_interaction in zip(data,operator,site,string,interaction):
-			self.__append__(_data,_operator,_site,_string,_interaction,hyperparameters)
+			self.__append__(_data,_operator,_site,_string,_interaction)
 
 		return
 
 
-	def __insert__(self,index,data,operator,site,string,interaction,hyperparameters={}):
+	def __insert__(self,index,data,operator,site,string,interaction):
 		'''
 		Insert to class
 		Args:
@@ -292,7 +239,6 @@ class Object(Class):
 			site (int): site of local operator
 			string (str): string label of operator
 			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (dict) : class hyperparameters
 		'''
 
 		if index == -1:
@@ -306,8 +252,6 @@ class Object(Class):
 
 		self.dims = (len(self.data),self.M,*self.shape)
 		self.ndims = len(self.dims)		
-
-		self.hyperparameters.update(hyperparameters)
 
 		return
 
@@ -323,7 +267,7 @@ class Object(Class):
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
 		data = None
 		shape = (len(self.data)//self.p,self.M)
-		hyperparameters = self.hyperparameters['parameters']
+		hyperparameters = self.init
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
@@ -333,7 +277,8 @@ class Object(Class):
 		cls = self
 		dtype = self.dtype
 
-		attributes = parameterize(data,shape,hyperparameters,check=check,initialize=initialize,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		parameters = Parameters(data,shape,hyperparameters,check=check,initialize=initialize,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		attributes = parameters()
 
 		# Get reshaped parameters
 		attribute = 'values'
@@ -342,52 +287,12 @@ class Object(Class):
 
 		parameters = parameters.ravel()
 
-		# Get states
-		data = None
-		shape = self.shape
-		hyperparameters = self.hyperparameters['state']
-		size = self.N
-		samples = True
-		seed = self.seed		
-		dtype = self.dtype
-		cls = self
-
-		state = stateize(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-
-		# Get label
-		data = None
-		shape = self.shape
-		hyperparameters = self.hyperparameters['label']
-		size = self.N
-		samples = None
-		seed = self.seed
-		cls = self
-		dtype = self.dtype
-
-		label = operatorize(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-
-
-		# Get noise
-		data = None
-		shape = self.shape
-		hyperparameters = self.hyperparameters['noise']
-		size = self.N
-		samples = None
-		seed = self.seed		
-		cls = self
-		dtype = self.dtype
-
-		noise = noiseize(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
 
 		# Update class attributes
 		self.parameters = parameters
-		self.labels = label
-		self.states = state
-		self.noises = noise
 		self.coefficients = coefficients
 		self.attributes = attributes
 		self.dimensions = parameters.shape
@@ -409,6 +314,23 @@ class Object(Class):
 		state = self.states if (state is None or state is True) else state if state is not False else None
 		noise = self.noises if (noise is None or noise is True) else noise if noise is not False else None
 		label = self.labels if (label is None or label is True) else label if label is not False else None
+
+		shape = self.shape
+		size = self.N
+		seed = self.seed		
+		dtype = self.dtype
+		cls = self
+
+		# Get states
+		state = State(state,shape,self.state,size=size,samples=True,seed=seed,cls=cls,dtype=dtype)
+		state = state()
+		# Get noise
+		noise = Noise(noise,shape,self.noise,size=size,samples=None,seed=seed,cls=cls,dtype=dtype)
+		noise = noise()
+
+		# Get label
+		label = Operator(label,shape,self.label,size=size,samples=None,seed=seed,cls=cls,dtype=dtype)
+		label = label()
 
 		# Attribute values
 		if state is None:
@@ -735,9 +657,7 @@ class Object(Class):
 		'''
 
 		# Set data
-		data = {
-			'model':self.hyperparameters
-			}
+		data = {}
 
 		# Set path
 		paths = {}
@@ -769,9 +689,7 @@ class Object(Class):
 		# TODO: Determine dump/load model (.pkl?)
 
 		# Set data
-		data = {
-			'model':self.hyperparameters
-			}
+		data = {}
 
 		# Set path
 		paths = {}
@@ -811,7 +729,6 @@ class Hamiltonian(Object):
 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		hyperparameters (dict) : class hyperparameters
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -824,14 +741,20 @@ class Hamiltonian(Object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
+		init (str,dict,Parameters): Type of parameters	
+		state (str,dict,State): Type of state	
+		noise (str,dict,Noise): Type of noise
+		label (str,dict,Operator): Type of label
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
+				space=None,time=None,lattice=None,init=None,state=None,noise=None,label=None,system=None):
 		
-		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,
+				space=space,time=time,lattice=lattice,init=init,state=state,noise=noise,label=label,system=system)
 		
 		return
 
@@ -849,7 +772,7 @@ class Hamiltonian(Object):
 
 		return self.summation(parameters)
 
-	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={}):
+	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup class
 		Args:
@@ -862,15 +785,10 @@ class Hamiltonian(Object):
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (dict) : class hyperparameters
 		'''
 
 		# Get parameters
 		parameters = None		
-
-		# Get hyperparameters
-		hyperparameters.update(self.hyperparameters)
-
 
 		# Get operator,site,string,interaction from data
 		if operator is None:
@@ -882,18 +800,10 @@ class Hamiltonian(Object):
 		if interaction is None:
 			interaction = []									
 
-		names = [name for name in data 
-			if any(data[name]['string'] in group 
-				for parameter in hyperparameters['parameters'] 
-				for group in hyperparameters['parameters'][parameter]['group'] 
-				if hyperparameters['parameters'][parameter]['use'])]
-
-
-		operator.extend([data[name]['operator'] for name in names])
-		site.extend([data[name]['site'] for name in names])
-		string.extend([data[name]['string'] for name in names])
-		interaction.extend([data[name]['interaction'] for name in names])
-
+		operator.extend([data[name]['operator'] for name in data])
+		site.extend([data[name]['site'] for name in data])
+		string.extend([data[name]['string'] for name in data])
+		interaction.extend([data[name]['interaction'] for name in data])
 
 		# Get number of operators
 		size = min([len(i) for i in [operator,site,string,interaction]])
@@ -972,7 +882,7 @@ class Hamiltonian(Object):
 		
 
 		# Update class attributes
-		self.__extend__(data,operator,site,string,interaction,hyperparameters)
+		self.__extend__(data,operator,site,string,interaction)
 
 		# Initialize parameters
 		self.__initialize__(parameters)
@@ -1021,7 +931,6 @@ class Unitary(Hamiltonian):
 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		hyperparameters (dict) : class hyperparameters
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -1034,14 +943,20 @@ class Unitary(Hamiltonian):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space
 		lattice (str,Lattice): Type of lattice
+		init (str,dict,Parameters): Type of parameters	
+		state (str,dict,State): Type of state	
+		noise (str,dict,Noise): Type of noise
+		label (str,dict,Operator): Type of label
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,hyperparameters={},
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,space=None,time=None,lattice=None,system=None):
+	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
+				space=None,time=None,lattice=None,init=None,state=None,noise=None,label=None,system=None):
 		
-		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,space=space,time=time,lattice=lattice,system=system)
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,
+				space=space,time=time,lattice=lattice,init=init,state=state,noise=noise,label=label,system=system)
 
 		return
 
@@ -1067,8 +982,7 @@ class Unitary(Hamiltonian):
 			out (array): Return of function
 		'''	
 
-		# Get class hyperparameters and attributes
-		hyperparameters = self.hyperparameters
+		# Get class attributes
 		attributes = self.attributes
 
 		# Get shape and indices of variable parameters for gradient
@@ -1316,7 +1230,7 @@ class Callback(object):
 						dtype = model.dtype
 						cls = model
 
-						state = stateize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+						state = State(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 					else:
 						state = model.state
@@ -1325,7 +1239,7 @@ class Callback(object):
 
 						data = None
 						shape = model.dims
-						hyperparams = deepcopy(model.hyperparameters['noise'])
+						hyperparams = deepcopy(model.noise)
 						hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
 						size = model.N
 						samples = None
@@ -1333,10 +1247,10 @@ class Callback(object):
 						cls = model
 						dtype = model.dtype
 
-						noise = noiseize(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+						noise = Noise(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 					else:
-						noise = model.noise
+						noise = model.noises
 
 					label = True
 
@@ -1389,11 +1303,8 @@ class Callback(object):
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
 						value = argmax(abs(difference(value)/value[:-1]))+1						
 
-				elif attr in model.__dict__ and attr not in attributes:
-					value = getattr(model,attr)
-
-				elif getter(model.hyperparameters,attr,delimiter=delim,default=null) is not null:
-					value = getter(model.hyperparameters,attr,delimiter=delim,default=null)
+				elif hasattrs(model,attr,delimiter=delim):
+					value = getattrs(model,attr,default=default,delimiter=delim)
 
 
 			track[attr][-1] = value
@@ -1496,10 +1407,10 @@ class Operator(module,Class):
 	architecture : str
 	verbose : int
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters={},
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
 					N=None,D=None,space=None,system=None):
 
-		super(Class).__init__(hyperparameters=hyperparameters,system=system)
+		super(Class).__init__(**system)
 
 		self.N = N
 		self.D = D
@@ -1507,7 +1418,7 @@ class Operator(module,Class):
 		self.system = system
 
 		self.__space__()
-		self.__setup__(data,operator,site,string,interaction,hyperparameters)
+		self.__setup__(data,operator,site,string,interaction)
 		
 		return
 
@@ -1643,7 +1554,7 @@ class Operator(module,Class):
 		return state
 
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters={}):
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup class
 		Args:
@@ -1652,11 +1563,10 @@ class Operator(module,Class):
 						site (iterable[int]): site of local operators
 						string (str): string label of operator
 						interaction (str): interaction type of operator
-					operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']
-					site (iterable[int]): site of local operators
-					string (str): string label of operator
-					interaction (str): interaction type of operator
-					hyperparameters (dict) : class hyperparameters
+			operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']
+			site (iterable[int]): site of local operators
+			string (str): string label of operator
+			interaction (str): interaction type of operator
 		'''
 
 		if isinstance(data,str):
@@ -1683,8 +1593,6 @@ class Operator(module,Class):
 		self.string = string
 		self.interaction = interaction
 		self.locality = len(site)
-		
-		self.hyperparameters = hyperparameters
 		
 		if isinstance(self.data,dict):
 			for attr in self.data:
