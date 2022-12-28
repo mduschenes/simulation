@@ -23,7 +23,7 @@ from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqr
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
-from src.utils import itg,dbl,flt
+from src.utils import itg,dbl,flt,delim
 
 from src.iterables import setter
 from src.io import join,split,copy,rm,exists
@@ -122,7 +122,8 @@ def config(name,conf=None,**kwargs):
 	return logger
 
 
-class Class(object):
+class Class(dictionary):
+	
 	def __init__(self,*args,**kwargs):
 		'''
 		Base Class
@@ -131,36 +132,13 @@ class Class(object):
 			kwargs (dict[str,object]): Class keyword arguments
 		'''
 		defaults = {}
-		hyperparameters = kwargs.get('hyperparameters',{})
-		system = kwargs.get('system',{})
 
-		for attr in defaults:
-			value = kwargs.get(attr,hyperparameters.get(attr,defaults.get(attr)))
-			hyperparameters[attr] = value
-			setattr(self,attr,value)
-		
-		self.hyperparameters = hyperparameters
-		self.system = system
+		setter(kwargs,defaults,delimiter=delim,func=False)
 
-		self.__system__()
+		super().__init__(**kwargs)
+
 		self.__logger__()
 		self.__clean__()
-
-		return
-
-	def __system__(self,system=None):
-		'''
-		Set system attributes
-		Args:
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logger,logging,cleanup,verbose)		
-		'''
-		system = self.system if system is None else system
-		
-		self.system = System(system)	
-
-		for attr in self.system.attributes:
-			value = getattr(self.system,attr)
-			setattr(self,attr,value)
 
 		return
 
@@ -230,7 +208,7 @@ class Class(object):
 		return
 
 
-class System(dictionary):
+class System(Class):
 	'''
 	System attributes (dtype,format,device,seed,verbose,...)
 	Args:
@@ -248,38 +226,27 @@ class System(dictionary):
 	'''
 	def __init__(self,*args,**kwargs):
 
-		updates = {
-			}
-
 		defaults = {
-		'dtype':'float',
-		'format':'array',
-		'device':'cpu',
-		'backend':'jax',
-		'architecture':None,
-		'seed':None,
-		'key':None,
-		'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
-		'timestamp':None,		
-		'cwd':None,
-		'path':None,
-		'conf':None,
-		'logging':None,
-		'cleanup':None,
-		'verbose':None,
+			'dtype':'float',
+			'format':'array',
+			'device':'cpu',
+			'backend':'jax',
+			'architecture':None,
+			'seed':None,
+			'key':None,
+			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
+			'timestamp':None,		
+			'cwd':None,
+			'path':None,
+			'conf':None,
+			'logging':None,
+			'cleanup':None,
+			'verbose':None,
 		}
 
+		setter(kwargs,defaults,delimiter=delim,func=False)
 
-
-		args = {k:v for a in args for k,v in ({} if a is None else a).items()}
-		attrs = {**args,**kwargs}
-		attrs.update({attr: defaults[attr] for attr in defaults if attrs.get(attr) is None})
-
-		attrs.update({attr: updates.get(attr,{}).get(attrs[attr],attrs[attr]) if attr in updates else attrs[attr] for attr in attrs})
-
-		super().__init__(**attrs)
-
-		self.attributes = list(attrs)
+		super().__init__(**kwargs)
 
 		return
 
@@ -374,7 +341,7 @@ class Logger(object):
 		return
 
 
-class Space(object):
+class Space(System):
 	'''
 	Hilbert space class for Operators with size n
 	Args:
@@ -385,11 +352,12 @@ class Space(object):
 	'''
 	def __init__(self,N,D,space,system):
 
-		self.system = System(system)
 		self.N = N if N is not None else 1
 		self.D = D if D is not None else 2
 		self.space = space		
 		self.default = 'spin'
+
+		super().__init__(**system)
 
 		self.__setup__()
 		
@@ -457,7 +425,7 @@ class Space(object):
 			return self.get_n()**2-1
 		return			
 
-class Time(object):
+class Time(System):
 	'''
 	Time evolution class for Operators with size n
 	Args:
@@ -470,13 +438,14 @@ class Time(object):
 	'''
 	def __init__(self,M,T,tau,p,time,system):
 
-		self.system = System(system)
 		self.M = M if M is not None else 1
 		self.T = T if T is not None else None
 		self.tau = tau if tau is not None or T is not None else None
 		self.p = p if p is not None else 1
 		self.time = time
 		self.default = 'linear'
+
+		super().__init__(**system)
 
 		self.__setup__()
 		
@@ -545,7 +514,7 @@ class Time(object):
 			return self.tau
 		return	
 
-class Lattice(object):
+class Lattice(System):
 	'''
 	Define a hyper lattice class
 	Args:
@@ -573,8 +542,7 @@ class Lattice(object):
 		self.delta = delta if delta is not None else self.L/self.N
 
 		# Define system
-		self.system = System(system)
-		self.dtype = self.system.dtype
+		super().__init__(**system)
 
 		# Check system
 		self.dtype = self.dtype if self.dtype in ['int','Int32','Int64'] else int

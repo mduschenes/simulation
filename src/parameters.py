@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,copy
+import os,sys,itertools,functools
+from copy import deepcopy
 from functools import partial
 import time
 from time import time as timer
@@ -19,7 +20,7 @@ for PATH in PATHS:
 from src.utils import jit,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos,minimum,maximum
 from src.utils import tensorprod,trace,asscalar,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
 from src.utils import slice_slice,datatype,returnargs,is_array
-from src.utils import pi,itg,scalars
+from src.utils import pi,itg,scalars,null
 
 from src.io import load,dump,join,split
 
@@ -404,6 +405,7 @@ def Parameters(object):
 
 		#time = timer()
 
+		# Setup class attributes
 		self.data = data
 		self.shape = shape
 		self.size = size
@@ -413,6 +415,7 @@ def Parameters(object):
 		self.hyperparameters = hyperparameters
 
 		# Setup hyperparameters
+		hyperparameters = deepcopy(hyperparameters)
 		setup(hyperparameters,cls=cls)
 
 		# Set data
@@ -422,10 +425,13 @@ def Parameters(object):
 		elif is_array(data):
 			self.data = data
 			return
-		elif shape is None or hyperparameters.get('shape') is None:
+		elif shape is None:
 			self.data = None
 			return
-
+		elif isinstance(data,dict):
+			setter(hyperparameters,data,delimiter=delim,func=True)
+		elif isinstance(data,str):
+			pass
 
 		# Ensure shape is iterable
 		if isinstance(shape,int):
@@ -2029,10 +2035,11 @@ def Parameters(object):
 		attributes['shape'][layer] = shape
 		attributes['values'][layer] = values
 
-
 		# Set data
-		data = attributes
-
+		attribute = 'values'
+		layer = 'parameters'
+		data = attributes[attribute][layer]
+		data = data.ravel()
 
 		# Set samples
 		if samples is not None and isinstance(samples,bool):
@@ -2045,13 +2052,28 @@ def Parameters(object):
 		
 
 		self.data = data
+		self.attributes = attributes
 		self.samples = samples
+
+		self.data = data
+		self.attributes = attributes
+		self.samples = samples
+		self.shape = self.data.shape
+		self.ndim = self.data.ndim
 
 		return
 
-	def __call__(self):
+	def __call__(self,data=null()):
 		'''
 		Class data
+		Args:
+			data (array): Data
+		Returns:
+			data (array): Data
 		'''
+		if not isinstance(data,null):
+			self.data = data
+			self.shape = self.data.shape
+			self.ndim = self.data.ndim
 		return self.data
 

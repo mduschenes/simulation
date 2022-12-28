@@ -66,7 +66,7 @@ def train(hyperparameters):
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
 	model = cls['model'](**hyperparameters['model'],
-			init=hyperparameters['parameters'],
+			parameters=hyperparameters['parameters'],
 			state=hyperparameters['state'],
 			noise=hyperparameters['noise'],
 			label=hyperparameters['label'])
@@ -76,9 +76,9 @@ def train(hyperparameters):
 
 	if hyperparameters['boolean'].get('train'):
 
-		parameters = model.parameters
+		parameters = model.parameters()
 		shapes = model.shapes
-		label = model.label
+		label = model.label()
 		hyperparams = hyperparameters['optimize']
 		func = [model.__constraints__]
 		callback = cls['callback']()
@@ -91,7 +91,7 @@ def train(hyperparameters):
 
 		parameters = optimizer(parameters)
 
-		model.parameters = parameters
+		model.parameters(parameters)
 	
 	if hyperparameters['boolean'].get('dump'):	
 		model.dump()

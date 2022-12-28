@@ -43,12 +43,12 @@ from src.quantum import Unitary,Hamiltonian,Object
 # Logging
 from src.system import Logger
 
-name = __name__
-path = os.getcwd()
-file = 'logging.conf'
-conf = os.path.join(path,file)
-file = None #'log.log'
-logger = Logger(name,conf,file=file)
+# name = __name__
+# path = os.getcwd()
+# file = 'logging.conf'
+# conf = os.path.join(path,file)
+# file = None #'log.log'
+# logger = Logger(name,conf,file=file)
 
 
 def test_optimize(path,tol):
@@ -59,7 +59,12 @@ def test_optimize(path,tol):
 
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparams['class']}
 
-	model = cls['model'](**hyperparameters['model'])
+	model = cls['model'](**hyperparameters['model'],
+			parameters=hyperparameters['parameters'],
+			state=hyperparameters['state'],
+			noise=hyperparameters['noise'],
+			label=hyperparameters['label'])
+
 
 	func = []
 	shapes = model.shapes

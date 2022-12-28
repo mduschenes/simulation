@@ -19,7 +19,7 @@ for PATH in PATHS:
 from src.utils import vmap,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,einsum,eig,average
 from src.utils import slice_slice,datatype,returnargs,is_array
-from src.utils import pi,e,scalars
+from src.utils import pi,e,scalars,null
 
 from src.io import load,dump,join,split
 
@@ -124,6 +124,7 @@ class Noise(object):
 			dtype (data_type): Data type of values		
 		'''
 
+		# Setup class attributes
 		self.data = data
 		self.shape = shape
 		self.size = size
@@ -131,8 +132,12 @@ class Noise(object):
 		self.seed = seed
 		self.dtype = dtype
 		self.hyperparameters = hyperparameters
+		for attr in hyperparameters:
+			value = hyperparameters[attr]
+			setattr(self,attr,value)
 
 		# Setup hyperparameters
+		hyperparameters = deepcopy(hyperparameters)
 		setup(hyperparameters,cls=cls)
 
 		# Set data
@@ -145,6 +150,10 @@ class Noise(object):
 		elif shape is None or hyperparameters.get('shape') is None or hyperparameters.get('scale') is None:
 			self.data = None
 			return
+		elif isinstance(data,dict):
+			setter(hyperparameters,data,delimiter=delim,func=True)
+		elif isinstance(data,str):
+			hyperparameters['string'] = data			
 
 		# Ensure shape is iterable
 		if isinstance(shape,int):
@@ -162,38 +171,28 @@ class Noise(object):
 			for attr in basis
 			}
 
-		if data is None:
-			string = hyperparameters['string']
-		elif isinstance(data,str):
-			string = data
-		elif is_array(data):
-			string = None
+		string = hyperparameters.get('string')
 
-		# Set data
-		data = None
+		assert (scale >= 0) and (scale <= 1), "Noise scale %r not in [0,1]"%(scale)
 
-		if scale is None:
-			data = None
-		elif isinstance(string,str):
+		if string is None:
+			data = [basis['I']]
+		elif string in ['phase']:
+			data = [sqrt(1-scale)*basis['I'],
+					sqrt(scale)*basis['Z']]
+		elif string in ['amplitude']:
+			data = [basis['00'] + sqrt(1-scale)*basis['11'],
+					sqrt(scale)*basis['01']]
+		elif string in ['depolarize']:
+			data = [sqrt(1-scale)*basis['I'],
+					sqrt(scale/3)*basis['X'],
+					sqrt(scale/3)*basis['Y'],
+					sqrt(scale/3)*basis['Z']]
 
-			assert (scale >= 0) and (scale <= 1), "Noise scale %r not in [0,1]"%(scale)
-
-			if string in ['phase']:
-				data = [sqrt(1-scale)*basis['I'],
-						sqrt(scale)*basis['Z']]
-			elif string in ['amplitude']:
-				data = [basis['00'] + sqrt(1-scale)*basis['11'],
-						sqrt(scale)*basis['01']]
-			elif string in ['depolarize']:
-				data = [sqrt(1-scale)*basis['I'],
-						sqrt(scale/3)*basis['X'],
-						sqrt(scale/3)*basis['Y'],
-						sqrt(scale/3)*basis['Z']]
-
-			data = array([
-				tensorprod(i)
-				for i in itertools.product(data,repeat=size)
-				])
+		data = array([
+			tensorprod(i)
+			for i in itertools.product(data,repeat=size)
+			])
 			
 		# Set samples
 		if samples is not None and isinstance(samples,bool):
@@ -207,11 +206,25 @@ class Noise(object):
 
 		self.data = data
 		self.samples = samples
+		self.string = string
+		self.shape = self.data.shape
+		self.ndim = self.data.ndim
+		self.seed = seed
+		self.scale = scale
 
 		return
 
-	def __call__(self):
+
+	def __call__(self,data=null()):
 		'''
 		Class data
+		Args:
+			data (array): Data
+		Returns:
+			data (array): Data
 		'''
+		if not isinstance(data,null):
+			self.data = data
+			self.shape = self.data.shape
+			self.ndim = self.data.ndim
 		return self.data

@@ -35,7 +35,7 @@ from src.noise import Noise
 
 from src.io import load,dump,join,split
 
-from src.system import Class,Space,Time,Lattice
+from src.system import System,Space,Time,Lattice
 
 from src.optimize import Objective,Metric
 
@@ -47,7 +47,7 @@ basis = {
 	'Z': array([[1,0],[0,-1]],dtype=dtype),
 }
 
-class Object(Class):
+class Object(System):
 	'''
 	Class for object
 	Args:
@@ -71,7 +71,7 @@ class Object(Class):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice	
-		init (str,dict,Parameters): Type of parameters	
+		parameters (str,dict,Parameters): Type of parameters	
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Operator): Type of label	
@@ -80,7 +80,7 @@ class Object(Class):
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
-		space=None,time=None,lattice=None,init=None,state=None,noise=None,label=None,system=None):
+		space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None):
 
 		self.N = N
 		self.D = D
@@ -117,17 +117,10 @@ class Object(Class):
 		self.ndim = len(self.shape)
 		self.shapes = (self.shape,self.shape)
 
-		self.parameters = None
-		self.init = init
-		self.label = None
-		self.labels = None
-		self._label = None
-		self.states = None
-		self.state = None
-		self.noises = None
-		self._noise = None
+		self.parameters = parameters
+		self.state = state
 		self.noise = noise
-		self.attributes = {}
+		self.label = label
 		self.identity = None
 		self.constants = None
 		self.coefficients = 1
@@ -182,19 +175,14 @@ class Object(Class):
 
 		data = [self.identity.copy() for i in range(size)]
 
-		parameters = self.init
-		state = self.state
-		noise = self.noise
-		label = self.label
-
 		# Update class attributes
 		self.__extend__(data,operator,site,string,interaction)
 		
 		# Initialize parameters
-		self.__initialize__(parameters)
+		self.__initialize__()
 
 		# Setup functions
-		self.__functions__(state=state,noise=noise,label=label)
+		self.__functions__()
 
 		return
 
@@ -265,9 +253,9 @@ class Object(Class):
 		'''
 
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
-		data = None
+		data = self.parameters
 		shape = (len(self.data)//self.p,self.M)
-		hyperparameters = self.init
+		hyperparameters = self.parameters.hyperparameters is isinstance(self.parameters,Parameters) else self.parameters if isinstance(self.parameters,dict) else {}
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
@@ -278,15 +266,6 @@ class Object(Class):
 		dtype = self.dtype
 
 		parameters = Parameters(data,shape,hyperparameters,check=check,initialize=initialize,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-		attributes = parameters()
-
-		# Get reshaped parameters
-		attribute = 'values'
-		layer = 'parameters'
-		parameters = attributes[attribute][layer]
-
-		parameters = parameters.ravel()
-
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
@@ -294,7 +273,6 @@ class Object(Class):
 		# Update class attributes
 		self.parameters = parameters
 		self.coefficients = coefficients
-		self.attributes = attributes
 		self.dimensions = parameters.shape
 
 		return
@@ -303,17 +281,17 @@ class Object(Class):
 		''' 
 		Setup class functions
 		Args:
-			state (bool,array): State to act on with class of shape self.shape, if boolean choose self.states or None
-			noise (bool,array): Noise to act on with class of shape (-1,self.shape), if boolean choose self.noises or None
-			label (bool,array): Label of class of shape self.shape, if boolean choose self.labels or None
+			state (bool,array): State to act on with class of shape self.shape, if boolean choose self.state or None
+			noise (bool,array): Noise to act on with class of shape (-1,self.shape), if boolean choose self.noise or None
+			label (bool,array): Label of class of shape self.shape, if boolean choose self.label or None
 		'''
 
 		# Function arguments
 		data = array(self.data,dtype=self.dtype)
 		identity = self.identity
-		state = self.states if (state is None or state is True) else state if state is not False else None
-		noise = self.noises if (noise is None or noise is True) else noise if noise is not False else None
-		label = self.labels if (label is None or label is True) else label if label is not False else None
+		state = self.state if (state is None or state is True) else state if state is not False else None
+		noise = self.noise if (noise is None or noise is True) else noise if noise is not False else None
+		label = self.label if (label is None or label is True) else label if label is not False else None
 
 		shape = self.shape
 		size = self.N
@@ -321,39 +299,50 @@ class Object(Class):
 		dtype = self.dtype
 		cls = self
 
-		# Get states
-		state = State(state,shape,self.state,size=size,samples=True,seed=seed,cls=cls,dtype=dtype)
-		state = state()
+		# Get state
+		data = state
+		hyperparameters = data.hyperparameters if isinstance(data,State) else data if isinstance(data,dict) else {}
+		samples = True
+		self.state = State(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
+		
 		# Get noise
-		noise = Noise(noise,shape,self.noise,size=size,samples=None,seed=seed,cls=cls,dtype=dtype)
-		noise = noise()
+		data = noise
+		hyperparameters = data.hyperparameters if isinstance(data,Noise) else data if isinstance(data,dict) else {}
+		samples = None
+		self.noise = Noise(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 		# Get label
-		label = Operator(label,shape,self.label,size=size,samples=None,seed=seed,cls=cls,dtype=dtype)
-		label = label()
+		data = label
+		hyperparameters = data.hyperparameters if isinstance(data,Operator) else data if isinstance(data,dict) else {}
+		samples = None
+		self.label = Operator(data,shape,hyperparameters,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
 
 		# Attribute values
-		if state is None:
-			self.state = state
-			self.noise = noise
-			self.label = label.conj()
-			self.shapes = (self.shape,self.shape)
-		elif state.ndim == 1:
-			self.state = state
-			self.noise = noise
-			self.label = einsum('ij,j->i',label,state).conj()
-			self.shapes = ((self.n,),(self.n,))			
-		elif state.ndim == 2:
-			self.state = state
-			self.noise = noise
-			self.label = einsum('ij,jk,lk->il',label,state,label.conj())
-			self.shapes = (self.shape,self.shape)			
+		if self.state() is None:
+			state = self.state()
+			noise = self.noise()
+			label = self.label()
+			shapes = (self.shape,self.shape)
+		elif self.state.ndim == 1:
+			state = self.state()
+			noise = self.noise()
+			label = einsum('ij,j->i',self.label(),self.state())
+			shapes = ((self.n,),(self.n,))			
+		elif self.state.ndim == 2:
+			state = self.state()
+			noise = noise
+			label = einsum('ij,jk,lk->il',self.label(),self.state(),self.label())
+			shapes = (self.shape,self.shape)			
 		else:
-			self.state = state
-			self.noise = noise
-			self.label = label.conj()
-			self.shapes = (self.shape,self.shape)			
+			state = self.state()
+			noise = self.noise()
+			label = self.label()
+			shapes = (self.shape,self.shape)			
 
+		state = self.state(state)
+		noise = self.noise(noise)
+		label = self.label(label.conj())
+		shapes = self.shapes
 
 		# Operator functions
 		if state is None and noise is None:
@@ -465,7 +454,7 @@ class Object(Class):
 		Returns:
 			parameters (array): parameters
 		'''
-		self.parameters = parameters
+		self.parameters(parameters)
 		return parameters
 
 
@@ -481,8 +470,8 @@ class Object(Class):
 		'''
 
 		# Get class attributes
-		self.parameters = parameters
-		attributes = self.attributes
+		self.parameters(parameters)
+		attributes = self.parameters.attributes
 
 		attribute = 'shape'
 		layr = 'parameters'
@@ -741,7 +730,7 @@ class Hamiltonian(Object):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
-		init (str,dict,Parameters): Type of parameters	
+		parameters (str,dict,Parameters): Type of parameters	
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Operator): Type of label
@@ -750,11 +739,11 @@ class Hamiltonian(Object):
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
-				space=None,time=None,lattice=None,init=None,state=None,noise=None,label=None,system=None):
+				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,
-				space=space,time=time,lattice=lattice,init=init,state=state,noise=noise,label=label,system=system)
+				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system)
 		
 		return
 
@@ -943,7 +932,7 @@ class Unitary(Hamiltonian):
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space
 		lattice (str,Lattice): Type of lattice
-		init (str,dict,Parameters): Type of parameters	
+		parameters (str,dict,Parameters): Type of parameters	
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Operator): Type of label
@@ -952,11 +941,11 @@ class Unitary(Hamiltonian):
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
-				space=None,time=None,lattice=None,init=None,state=None,noise=None,label=None,system=None):
+				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,
-				space=space,time=time,lattice=lattice,init=init,state=state,noise=noise,label=label,system=system)
+				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system)
 
 		return
 
@@ -983,7 +972,7 @@ class Unitary(Hamiltonian):
 		'''	
 
 		# Get class attributes
-		attributes = self.attributes
+		attributes = self.parameters.attributes
 
 		# Get shape and indices of variable parameters for gradient
 		attribute = 'shape'
@@ -1165,7 +1154,7 @@ class Callback(object):
 
 					layer = 'features'
 					prop = 'index'
-					indices = model.attributes[prop][layer]
+					indices = model.parameters.attributes[prop][layer]
 					indices = tuple([(
 						slice(
 						min(indices[parameter][group][axis].start
@@ -1218,56 +1207,31 @@ class Callback(object):
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or start):
 
-					if model.state is None:
-
-						data = None
-						shape = model.dims
-						hyperparams = deepcopy(model.hyperparameters['state'])
-						hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
-						size = model.N
-						samples = True
-						seed = model.seed		
-						dtype = model.dtype
-						cls = model
-
-						state = State(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-
+					if model.state() is None:
+						state = {'scale':1}
 					else:
 						state = model.state
 
-					if model.noise is None:
-
-						data = None
-						shape = model.dims
-						hyperparams = deepcopy(model.noise)
-						hyperparams['scale'] = 1 if hyperparams.get('scale') is None else hyperparams.get('scale')
-						size = model.N
-						samples = None
-						seed = model.seed		
-						cls = model
-						dtype = model.dtype
-
-						noise = Noise(data,shape,hyperparams,size=size,samples=samples,seed=seed,cls=cls,dtype=dtype)
-
+					if model.noise() is None:
+						noise = {'scale':1}
 					else:
-						noise = model.noises
+						noise = model.noise
 
 					label = True
-
 
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
 						_kwargs = {'state':state,'noise':noise,'label':label}
 						_metric = 'real'
-					elif attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:						
-						_kwargs = {'state':state,'noise':noise,'label':label}
+					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
+						_kwargs = {'state':state,'noise':False,'label':label}
 						_metric = 'real'
-					elif attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
-						_kwargs = {'state':state,'noise':noise,'label':label}
+					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
+						_kwargs = {'state':False,'noise':False,'label':label}
 						_metric = 'abs2'
 
 					_model = model
 					_shapes = model.shapes
-					_label = _model.label
+					_label = _model.label()
 					_optimize = None
 					_hyperparameters = hyperparameters
 
@@ -1291,7 +1255,7 @@ class Callback(object):
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(jit(lambda parameters: metric(model(parameters))))
 					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
-						function = fisher(model,model.grad,shapes=(model.dims,(model.dim,*model.dims)))
+						function = fisher(model,model.grad,shapes=(model.shape,(model.length,*model.shape)))
 
 					if attr in ['hessian','fisher']:
 						value = function(parameters)
@@ -1336,7 +1300,7 @@ class Callback(object):
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				'U\n%s\nV\n%s'%(
 				to_string(abs(model(parameters)).round(4)),
-				to_string(abs(model.label).round(4))),
+				to_string(abs(model.label()).round(4))),
 				])
 
 
@@ -1359,7 +1323,7 @@ import equinox as nn
 class module(nn.Module):
 	pass
 
-class Operator(module,Class):
+class Operator(module,System):
 	'''
 	Class for Operator
 	Args:
@@ -1410,7 +1374,7 @@ class Operator(module,Class):
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
 					N=None,D=None,space=None,system=None):
 
-		super(Class).__init__(**system)
+		super(System).__init__(**system)
 
 		self.N = N
 		self.D = D

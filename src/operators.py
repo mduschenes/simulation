@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,copy
+import os,sys,itertools,functools
+from copy import deepcopy
 from functools import partial
 
 # Logging
@@ -17,9 +18,10 @@ for PATH in PATHS:
 from src.utils import array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,allclose
 from src.utils import slice_slice,datatype,returnargs,is_array
-from src.utils import pi,e
+from src.utils import pi,e,delim,null
 
 from src.io import load,dump,join,split
+from src.iterables import setter
 
 def haar(shape,bounds=None,random=None,seed=None,dtype=None,):
 	'''
@@ -160,6 +162,7 @@ class Operator(object):
 			dtype (data_type): Data type of operator
 		'''
 
+		# Setup class attributes
 		self.data = data
 		self.shape = shape
 		self.size = size
@@ -167,8 +170,12 @@ class Operator(object):
 		self.seed = seed
 		self.dtype = dtype
 		self.hyperparameters = hyperparameters
+		for attr in hyperparameters:
+			value = hyperparameters[attr]
+			setattr(self,attr,value)
 
 		# Setup hyperparameters
+		hyperparameters = deepcopy(hyperparameters)
 		setup(hyperparameters,cls=cls)
 
 		# Set data
@@ -181,6 +188,10 @@ class Operator(object):
 		elif shape is None or hyperparameters.get('shape') is None:
 			self.data = None
 			return
+		elif isinstance(data,dict):
+			setter(hyperparameters,data,delimiter=delim,func=True)
+		elif isinstance(data,str):
+			hyperparameters['string'] = data
 
 		# Ensure shape is iterable
 		if isinstance(shape,int):
@@ -206,40 +217,33 @@ class Operator(object):
 			}
 
 
-		if data is None:
-			string = hyperparameters.get('string')
-		elif isinstance(data,str):
-			string = data
-		elif is_array(data):
-			string = None
+		string = hyperparameters.get('string')
 
-		if string is None or isinstance(string,str):
+		if string is None:
+			strings = [string]
+			locality = size
+		elif all(string in props for string in string.split(delimiter)):
+			strings = string.split(delimiter)
+			locality = sum(props[string]['locality'] for string in strings)
+		else:
+			strings = None
+			locality = size			
 
-			if string is None:
-				strings = [string]
-				locality = size
-			elif all(string in props for string in string.split(delimiter)):
-				strings = string.split(delimiter)
-				locality = sum(props[string]['locality'] for string in strings)
-			else:
-				strings = None
-				locality = size			
+		assert (size%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,size)
 
-			assert (size%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,size)
-
-			if string is not None:
-				data = tensorprod([
-					props[string]['func'](shape,
-						bounds=hyperparameters.get('bounds'),
-						random=hyperparameters.get('random'),
-						seed=hyperparameters.get('seed',seed),
-						dtype=dtype
-						)
-					for string in strings
-					]*(size//locality)
-				)
-			else:
-				data = array(load(data))
+		if string is not None:
+			data = tensorprod([
+				props[string]['func'](shape,
+					bounds=hyperparameters.get('bounds'),
+					random=hyperparameters.get('random'),
+					seed=hyperparameters.get('seed',seed),
+					dtype=dtype
+					)
+				for string in strings
+				]*(size//locality)
+			)
+		else:
+			data = array(load(data))
 		
 		# Assert data is unitary
 		assert allclose(eye(d),data.conj().T.dot(data))
@@ -262,11 +266,25 @@ class Operator(object):
 		
 		self.data = data
 		self.samples = samples
+		self.string = string
+		self.shape = self.data.shape
+		self.ndim = self.data.ndim
+		self.seed = seed
+		self.scale = scale
 
 		return
 
-	def __call__(self):
+	def __call__(self,data=null()):
 		'''
 		Class data
+		Args:
+			data (array): Data
+		Returns:
+			data (array): Data
 		'''
+		if not isinstance(data,null):
+			self.data = data
+			self.shape = self.data.shape
+			self.ndim = self.data.ndim
 		return self.data
+

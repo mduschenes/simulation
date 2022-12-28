@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,copy
+import os,sys,itertools,functools
+from copy import deepcopy
 from functools import partial
 import time
 from time import time as timer
@@ -19,7 +20,7 @@ for PATH in PATHS:
 from src.utils import vmap,array,dictionary,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,einsum,eig,average,norm
 from src.utils import slice_slice,datatype,returnargs,is_array
-from src.utils import pi,e,scalars
+from src.utils import pi,e,scalars,null
 
 from src.io import load,dump,join,split
 
@@ -106,6 +107,8 @@ class State(object):
 			cls (object): Class instance to update hyperparameters
 			dtype (data_type): Data type of values		
 		'''
+
+		# Setup class attributes
 		self.data = data
 		self.shape = shape
 		self.size = size
@@ -113,8 +116,12 @@ class State(object):
 		self.seed = seed
 		self.dtype = dtype
 		self.hyperparameters = hyperparameters
+		for attr in hyperparameters:
+			value = hyperparameters[attr]
+			setattr(self,attr,value)
 
 		# Setup hyperparameters
+		hyperparameters = deepcopy(hyperparameters)
 		setup(hyperparameters,cls=cls)
 
 		# Set data
@@ -127,6 +134,10 @@ class State(object):
 		elif shape is None or hyperparameters.get('shape') is None or hyperparameters.get('scale') is None:
 			self.data = None
 			return
+		elif isinstance(data,dict):
+			setter(hyperparameters,data,delimiter=delim,func=True)
+		elif isinstance(data,str):
+			hyperparameters['string'] = data
 
 		# Ensure shape is iterable
 		if isinstance(shape,int):
@@ -150,14 +161,7 @@ class State(object):
 			None: {'func':haar,'locality':size},
 			}
 
-		if scale is None:
-			string = None
-		if data is None:
-			string = hyperparameters['string']
-		elif isinstance(data,str):
-			string = data
-		elif is_array(data):
-			string = None
+		string = hyperparameters.get('string')
 
 		if string is None or isinstance(string,str):
 
@@ -223,11 +227,24 @@ class State(object):
 
 		self.data = data
 		self.samples = samples
+		self.string = string
+		self.shape = self.data.shape
+		self.ndim = self.data.ndim
+		self.seed = seed
+		self.scale = scale
 
 		return
 
-	def __call__(self):
+	def __call__(self,data=null()):
 		'''
 		Class data
+		Args:
+			data (array): Data
+		Returns:
+			data (array): Data
 		'''
+		if not isinstance(data,null):
+			self.data = data
+			self.shape = self.data.shape
+			self.ndim = self.data.ndim
 		return self.data

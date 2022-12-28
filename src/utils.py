@@ -583,14 +583,10 @@ class dictionary(dict):
 	'''
 	def __init__(self,*args,**kwargs):
 		
-		args = {k:v for a in args for k,v in ({} if a is None else a).items()}		
-		kwargs = kwargs
-		attrs = {**args,**kwargs}
+		for attr in kwargs:
+			setattr(self,attr,kwargs[attr])
 
-		for attr in attrs:
-			setattr(self,attr,attrs[attr])
-
-		super().__init__(attrs)
+		super().__init__(kwargs)
 
 		return
 

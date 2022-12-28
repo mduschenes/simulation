@@ -27,9 +27,9 @@ from src.utils import itg,flt,dbl
 
 from src.iterables import getter,setter,permuter,equalizer
 
-from src.parameters import parameterize
-from src.operators import operatorize
-from src.states import stateize
+from src.parameters import Parameters
+from src.operators import Operator
+from src.states import State
 
 from src.io import load,dump,join,split
 from src.call import call,rm
@@ -57,7 +57,11 @@ def test_class(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'])
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'])
 
 	model.log('Hello World')
 
@@ -71,13 +75,17 @@ def test_load_dump(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'])
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'])
 
 	# Set hyperparameters
-	model.hyperparameters['optimize']['track']['alpha'] = []
-	model.hyperparameters['optimize']['track']['alpha'].append(12345)
-	model.hyperparameters['optimize']['attributes']['search']
-	model.hyperparameters['optimize']['attributes']['search'].append([1,2,2,3])
+	hyperparameters['optimize']['track']['alpha'] = []
+	hyperparameters['optimize']['track']['alpha'].append(12345)
+	hyperparameters['optimize']['attributes']['search']
+	hyperparameters['optimize']['attributes']['search'].append([1,2,2,3])
 	
 
 	# Dump instance
@@ -94,12 +102,7 @@ def test_load_dump(path,tol):
 		for exception in [[callable],[is_array,is_ndarray],
 							[lambda a: isinstance(a,dict) and ((len(a)==0) or all(callable(a[item]) for item in a))]])
 	
-	equalizer(model.hyperparameters,new.hyperparameters,types=types,exceptions=exceptions)
-
-	paths = ['model','log']
-	for path in paths:
-		path = join(hyperparameters['sys']['path']['data'][path],root=hyperparameters['sys']['cwd'])
-		rm(path,execute=True)
+	equalizer(hyperparameters,hyperparameters,types=types,exceptions=exceptions)
 
 	return
 
@@ -110,7 +113,11 @@ def test_data(path,tol):
 	cls = load(hyperparameters['class']['model'])
 
 	hyperparameters['model']['N'] = 2
-	model = cls(**hyperparameters['model'])
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'])
 
 	I = array([[1,0],[0,1]],dtype=model.dtype)
 	X = array([[0,1],[1,0]],dtype=model.dtype)
@@ -140,7 +147,6 @@ def test_state(path,tol):
 
 	hyperparameters = load(path)
 
-
 	data = None
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 	hyperparams = hyperparameters['state']
@@ -153,13 +159,12 @@ def test_state(path,tol):
 
 	tol = 1e-20
 
-	state = stateize(data,shape,hyperparams,size=size,samples=samples,dtype=dtype,cls=cls)
+	state = State(data,shape,hyperparams,size=size,samples=samples,dtype=dtype,cls=cls)
 
 	try:
-		eigs = eig(state,hermitian=True)
+		eigs = eig(state(),hermitian=True)
 		assert (abs(eigs)>=tol).all()
 	except TypeError:
-
 		raise
 
 	return
@@ -170,7 +175,11 @@ def test_grad(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'])
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'])
 
 	func = model
 
@@ -193,11 +202,15 @@ def test_objective(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'])
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'])
 
 	func = []
 	shapes = model.shapes
-	label = model.label
+	label = model.label()
 	callback = None
 	hyperparams = hyperparameters['optimize']
 
@@ -242,7 +255,11 @@ def test_model(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'])
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'])
 
 	func = jit(model.__call__)
 
