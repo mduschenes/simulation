@@ -9,7 +9,9 @@ The hierarchy of inheritance of classes is as follows
 
 `State,Noise,Operator <- Object <- System <- Class <- Dictionary`
 
-`Objective,Metric,Callback <- Function <- Class <- Dictionary`
+`Objective,Callback <- Function <- Class <- Dictionary`
+
+`Metric <- Class <- Dictionary`
 
 `Optimizer <- Optimization <- Class <- Dictionary`
 
