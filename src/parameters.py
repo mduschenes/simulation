@@ -22,7 +22,7 @@ from src.utils import tensorprod,trace,asscalar,broadcast_to,padding,expand_dims
 from src.utils import slice_slice,datatype,returnargs,is_array
 from src.utils import pi,itg,scalars,delim,null
 
-from src.system import System
+from src.system import Object
 from src.io import load,dump,join,split
 from src.iterables import setter
 
@@ -254,8 +254,6 @@ def setup(hyperparameters,cls=None):
 		},		
 	}
 	for parameter in hyperparameters:
-		if parameter in ['system']:
-			continue
 		for attr in updates:
 			hyperparameters[parameter][attr] = hyperparameters[parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
 			if updates[attr]['conditions'](parameter,hyperparameters):
@@ -278,11 +276,11 @@ def setup(hyperparameters,cls=None):
 	return 
 
 
-class Parameters(System):
-	def __init__(self,data,shape,hyperparameters,check=None,initialize=None,size=None,samples=None,cls=None,system=None,**kwargs):
+class Parameters(Object):
+	def __init__(self,data,shape,size=None,dims=None,samples=None,system=None,**kwargs):
 		'''
 		Initialize data of shapes of parameters based on shape of data. Initializes attributes of
-			data (dict,array,Parameters): Dictionary of parameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
+			data (dict,array,Parameters): Dictionary of parameter hyperparameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
 					for parameter,group keys and for layers ['parameters',features','variables','constraints']
 					Attributes are used to yield layer outputs, given input variable parameters, with layer functions acting on slices of parameters, yielding values at indices
 					
@@ -300,21 +298,21 @@ class Parameters(System):
 					layer (callable): Callable function with signature func(parameters,values,slices,indices) for input parameters[slices] that yields values[indices] for that layer
 				samples (array): Weights of samples
 		Args:
-			data (object): Data corresponding to parameters
-			shape (iterable[int]): Shape of data
-			hyperparameters (dict): Dictionary of parameter groupings, with dictionary values with properties:
+			data (dict): Dictionary of data corresponding to parameters groupings, with dictionary values with properties:
 				'category':str : category of parameter
 				'group':iterable[iterable[str]] : iterable of groups associated with parameter grouping
 				'shape':dict[str,iterable[int]] : dictionary of shape of each parameter layer
 				'locality':dict[str,iterable[str]] : dictionary of locality of each axis of each parameter layer
 				'boundaries':dict[str,iterable[dict[str,iterable]]] : dictionary of boundary indices and values of each axis of each parameter layer {'layer':[{'slice':[indices_axis],'value':[values_axis]}]}
 				'constants':dict[str,iterable[dict[str,iterable]]] : dictionary of constant indices and values of each axis of each parameter layer {'layer':[{'slice':[indices_axis],'value':[values_axis]}]}
+			shape (iterable[int]): Shape of data
+			size (int,iterable[int]): Number of data
+			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
+			samples (bool,array): Weight samples (create random weights, or use samples weights)
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
+			cls (object): Class instance to update hyperparameters		
 			check (callable): Function with signature check(group,index,axis) to check if index of data for axis corresponds to group
 			initialize (callable): Function with signature initialize(parameters,shape,hyperparameters,reset=None,dtype=None) to initialize parameter values
-			size (int): size of parameters
-			samples (bool,array): Weight samples (create random weights, or use samples weights)
-			cls (object): Class instance to update hyperparameters		
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
 		
@@ -407,48 +405,24 @@ class Parameters(System):
 		# The other ('take,put',<type>) indexes involve summing all shapes corresponding to the keys that are within the type group, 
 		# plus subtracting shapes corresponding with boundaries and constants
 
-		#time = timer()
+		super().__init__(data,shape,size=size,dims=dims,samples=samples,system=system,**kwargs)
 
-		# Setup class attributes
-		self.data = data
-		self.shape = shape
-		self.size = size
-		self.samples = samples
-		self.hyperparameters = hyperparameters
+		return
 
-		# Setup hyperparameters
-		hyperparameters = deepcopy(hyperparameters)
-		setter(kwargs,system,delimiter=delim,func=True)
-		system = hyperparameters.pop('system')
-		setter(kwargs,system,delimiter=delim,func=True)
-		setup(hyperparameters,cls=cls)
 
-		super().__init__(**kwargs)
+	def __setup__(self,**kwargs):
+		'''
+		Setup attribute
+		Args:
+			kwargs (dict): Additional keyword arguments
+		'''
 
-		# Set data
-		if isinstance(data,self.__class__):
-			self.data = data.data
-			return
-		elif is_array(data):
-			self.data = data
-			return
-		elif shape is None:
-			self.data = None
-			return
-		elif isinstance(data,dict):
-			system = data.pop('system')
-			setter(kwargs,system,delimiter=delim,func=True)
-			setter(hyperparameters,data,delimiter=delim,func=True)
-			super().__init__(**kwargs)
-		elif isinstance(data,str):
-			pass
-
-		# Ensure shape is iterable
-		if isinstance(shape,int):
-			shape = (shape,)
+		# Get Hyperparameters data
+		hyperparameters = self.data
+		setup(hyperparameters,cls=self.cls)
 
 		# Get number of dimensions of data
-		ndim = len(shape)
+		ndim = len(self.shape)
 
 		# Get datatype of data
 		dtype = datatype(self.dtype)
@@ -549,9 +523,10 @@ class Parameters(System):
 			}
 
 		# Get function to check if index of data for axis corresponds to group 
-		if check is None:
+		if self.check is None:
 			check = lambda group,index,axis: True
-
+		else:
+			check = self.check
 
 		# Get indexes of attributes
 		indexes = [(i,j,k) for i in ['put','take'] for j in ['key','category','layer'] for k in ['all','variable','constant']]
@@ -1445,8 +1420,10 @@ class Parameters(System):
 		# Initialize values parameters for each category,parameter,group,layer
 		# reshape, bound, impose boundary conditions accordingly, and assign category parameters
 
-		if initialize is None:
+		if self.initialize is None:
 			initialize = lambda parameters,shape,hyperparameters,**kwargs: parameters
+		else:
+			initialize = self.initialize
 
 		attribute = 'values'
 
@@ -2050,39 +2027,8 @@ class Parameters(System):
 		data = attributes[attribute][layer]
 		data = data.ravel()
 
-		# Set samples
-		if samples is not None and isinstance(samples,bool):
-			samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
-			samples /= samples.sum()
-		elif is_array(samples):
-			pass
-		else:
-			samples = None
-		
 
 		self.data = data
 		self.attributes = attributes
-		self.samples = samples
-
-		self.data = data
-		self.attributes = attributes
-		self.samples = samples
-		self.shape = self.data.shape if self.data is not None else None
-		self.ndim = self.data.ndim if self.data is not None else None
 
 		return
-
-	def __call__(self,data=null()):
-		'''
-		Class data
-		Args:
-			data (array): Data
-		Returns:
-			data (array): Data
-		'''
-		if not isinstance(data,null):
-			self.data = data
-			self.shape = self.data.shape if self.data is not None else None
-			self.ndim = self.data.ndim if self.data is not None else None
-		return self.data
-

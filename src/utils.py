@@ -1121,12 +1121,13 @@ def PRNGKey(seed=None,size=False,reset=None):
 	return key
 
 
-def rand(shape=None,bounds=[0,1],key=None,random='uniform',mesh=None,dtype=None):
+def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,dtype=None):
 	'''
 	Get random array
 	Args:
 		shape (int,iterable): Size or Shape of random array
 		key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+		seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
 		mesh (int): Get meshgrid of array for mesh dimensions
@@ -1140,6 +1141,8 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',mesh=None,dtype=None)
 	if isinstance(shape,int):
 		shape = (shape,)
 
+	if seed is not None:
+		key = seed
 	key = PRNGKey(key)
 
 	if bounds is None:
@@ -1185,20 +1188,18 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',mesh=None,dtype=None)
 			subdtype = 'complex'
 			ndim = len(shape)
 
-			is1d = ndim == 1 
-
 			if ndim < 2:
 				shape = [*shape]*2
-				ndim = 2
 
 			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)
 
 			if ndim < 3:
-				new = (*(1,)*(4-ndim),*out.shape)
-				out = out.reshape(new)
+				new = (*(1,)*(4-out.ndim),*out.shape)
+			elif ndim == 3:
+				new = (*out.shape[:1],*(1,)*(4-out.ndim),*out.shape[1:])
 			else:
-				new = (*out.shape[:1],*(1,)*(4-ndim),*out.shape[1:])
-				out = out.reshape(new)
+				new = out.shape
+			out = out.reshape(new)
 
 			for i in range(out.shape[0]):
 				for j in range(out.shape[1]):
@@ -1211,10 +1212,23 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',mesh=None,dtype=None)
 
 			out = out.reshape(shape)
 
-			if is1d:
+			assert allclose(1,einsum('...ij,...ij->...',out,out.conj()).real/out.shape[-1])
+			# Create random matrices versus vectors
+			if ndim == 1:
+				out = out[...,0] # Random vector
+			elif ndim == 2:
+				out = out[:,:] # Random matrix
+			elif ndim == 3:
+				out = out[...,0] # Samples of random vectors
+			elif ndim == 4:
+
 				out = out[...,0]
 
+				out = einsum('...i,...j->...ij',out,out.conj()) # Samples of random rank-1 matrices
+
+
 			return out
+
 
 	elif random in ['hermitian','symmetric']:
 		def func(key,shape,bounds,dtype):
@@ -1224,9 +1238,7 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',mesh=None,dtype=None)
 			subdtype = 'complex'
 			ndim = len(shape)
 
-			is1d = ndim == 1 
-
-			if is1d:
+			if ndim == 1:
 				shape = [*shape]*2
 				ndim = len(shape)
 
@@ -1235,10 +1247,8 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',mesh=None,dtype=None)
 			out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
 
 
-			if is1d:
-				print("HERITIAN 1D",out.shape)
+			if ndim == 1:
 				out = diag(out)
-				# exit()
 
 			return out
 
@@ -2174,6 +2184,10 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	Returns:
 		einsummation (callable,array): Optimal einsum operator or array of optimal einsum
 	'''
+
+	noperands = subscripts.count(',')+1
+	operands = operands[:noperands]
+
 	arrays = all(is_array(operand) for operand in operands)
 
 	if wrapper is None:

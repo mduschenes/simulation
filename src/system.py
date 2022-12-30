@@ -18,12 +18,12 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,gradient
-from src.utils import array,arange,eye
-from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt
+from src.utils import array,arange,eye,rand,einsum
+from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt,is_array,datatype
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
-from src.utils import itg,dbl,flt,delim
+from src.utils import itg,dbl,flt,delim,null
 
 from src.iterables import setter
 from src.io import join,split,copy,rm,exists
@@ -41,25 +41,20 @@ def config(name,conf=None,**kwargs):
 
 	logger = logging.getLogger(name)
 
+	default = 'logging.conf'
 	file = kwargs.get('file')
-
 	existing = exists(conf)
 
 	if not existing:
-		default = 'logging.conf'
 		source = join(split(__file__,directory=True,abspath=True),default)
-		destination = split(conf,directory=True,abspath=True)
+		destination = join(split(conf,directory=True,abspath=True),default,ext='tmp')
 		copy(source,destination)
-
-	try:
+		conf = destination
+	else:
 		source = conf
 		destination = join(conf,ext='tmp')
 		copy(source,destination)
-	except Exception as exception:
-		rmdir(conf)
-		raise exception
-
-	conf = join(conf,ext='tmp')
+		conf = join(conf,ext='tmp')
 
 
 	if conf is not None:
@@ -89,7 +84,8 @@ def config(name,conf=None,**kwargs):
 							if file is not None:
 								path = file
 							else:
-								path = str(config[section][arg][1:-1].split(',')[0])[1:-1]
+								break
+
 							directory = os.path.abspath(os.path.dirname(os.path.abspath(path)))
 							if not os.path.exists(directory):
 								os.makedirs(directory)
@@ -107,16 +103,15 @@ def config(name,conf=None,**kwargs):
 			logging.config.fileConfig(conf,disable_existing_loggers=False) 	
 
 		except Exception as exception:
+			print(exception)
 			pass
 
 		logger = logging.getLogger(name)
 
 
-	rm(conf)
-
 	if not existing:
-		conf = split(conf,file=True)
 		rm(conf)
+
 
 	return logger
 
@@ -129,30 +124,9 @@ class Dictionary(dict):
 		kwargs (dict): Dictionary elements
 	'''
 	def __init__(self,*args,**kwargs):
-		
-		for attr in kwargs:
-			setattr(self,attr,kwargs[attr])
-
-		super().__init__(kwargs)
-
+		super().__init__(*args,**kwargs)
+		self.__dict__ = self
 		return
-
-	def __getattribute__(self,item):
-		return super().__getattribute__(item)
-
-	def __getitem__(self,item):
-		return super().__getitem__(item)
-
-	def __setitem__(self,item,value):
-		return super().__setitem__(item,value)
-
-	def __iter__(self):
-		return super().__iter__()
-
-	def __len__(self):
-		return super().__len__()
-
-
 
 class Class(Dictionary):
 
@@ -369,6 +343,158 @@ class Logger(object):
 		for logger in loggers:
 			rm(logger)
 
+		return
+
+
+class Object(System):
+	def __init__(self,data,shape,size=None,dims=None,samples=None,system=None,**kwargs):
+		'''
+		Initialize data of attribute based on shape, with highest priority of arguments of: args,data,system,kwargs
+		Args:
+			data (dict,str,array,Noise): Data corresponding to noise
+			shape (int,iterable[int]): Shape of each data
+			size (int,iterable[int]): Number of data
+			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
+			samples (bool,array): Weight samples (create random weights, or use samples weights)
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
+			kwargs (dict): Additional system keyword arguments
+		'''
+
+		# Setup kwargs
+		setter(system,data,delimiter=delim,func=True)
+		setter(kwargs,system,delimiter=delim,func=True)
+		self.__check__(kwargs,data=data,shape=shape,size=size,dims=dims,samples=samples,system=system)
+		super().__init__(**kwargs)
+
+		# Ensure shape is iterable
+		if isinstance(self.shape,int):
+			self.shape = (self.shape,)
+
+		# Ensure size is iterable
+		if isinstance(self.size,int):
+			self.size = (self.size,)
+
+		# Dimension of data
+		self.ndim = len(self.shape)
+		self.n = min(self.shape)
+
+		# Number of sites and dimension of sites
+		self.N,self.D = self.dims[:2] if self.dims is not None else [1,self.n]
+
+		# Set samples
+		self.samples = None if self.samples is False else self.samples
+
+		# Set data
+		if isinstance(self.data,self.__class__):
+			self.data = self.data.data
+		elif is_array(data):
+			self.data = self.data
+		elif self.shape is None or self.scale is None:
+			self.data = None
+		else:
+			if isinstance(self.data,str):
+				self.string = self.data
+			self.__setup__(**kwargs)
+
+		if self.data is not None:
+			self.data = self.data.astype(dtype=self.dtype)
+
+		# Set samples
+		if self.data is not None and self.samples is not None:
+			if isinstance(self.samples,bool):
+				self.samples = rand(self.size,bounds=[0,1],key=self.seed,dtype=datatype(self.dtype))
+				self.samples /= self.samples.sum()
+			elif is_array(self.samples):
+				pass		
+			else:
+				self.samples = None
+
+			if self.samples is not None:
+				if product(self.size)>0:
+					self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:len(self.size)]),)*2),self.data,self.samples)
+					if self.data.ndim == 1:
+						self.data /= sqrt(einsum('...i,...i->...',self.data,self.data.conj()).real)
+					else:
+						self.data /= einsum('...ii->...',self.data).real/1
+
+		self.data = self(self.data)
+
+		return
+
+
+	def __call__(self,data=null()):
+		'''
+		Class data
+		Args:
+			data (array): Data
+		Returns:
+			data (array): Data
+		'''
+		if not isinstance(data,null):
+			self.data = data
+			self.shape = self.data.shape if self.data is not None else None
+			self.ndim = self.data.ndim if self.data is not None else None
+		return self.data
+
+	def __setup__(self,**kwargs):
+		'''
+		Setup attribute
+		Args:
+			kwargs (dict): Additional keyword arguments
+		'''
+
+		return
+
+
+	def __check__(self,settings,**kwargs):
+		'''
+		Check settings, with defaults
+			string (str) : class string
+			category (str) : class category
+			initialization (str): class initialization type
+			random (str): random type
+			seed (int): random seed
+			bounds (iterable[float]): bounds on data
+		Args:	
+			settings (dict): settings
+			kwargs (object): Additional kwargs
+		'''
+		dtype = 'complex'
+		defaults = {
+			'string':None,
+			'category':None,
+			"shape":[-1,-1],
+			"size":[1],
+			"scale":1,
+			'initialization':'random',
+			'random':'random',
+			'seed':None,
+			'bounds':[-1,1],
+			'basis':{
+				'I': array([[1,0],[0,1]],dtype=dtype),
+				'X': array([[0,1],[1,0]],dtype=dtype),
+				'Y': array([[0,-1j],[1j,0]],dtype=dtype),
+				'Z': array([[1,0],[0,-1]],dtype=dtype),
+				'00':array([[1,0],[0,0]],dtype=dtype),
+				'01':array([[0,1],[0,0]],dtype=dtype),
+				'10':array([[0,0],[1,0]],dtype=dtype),
+				'11':array([[0,0],[0,1]],dtype=dtype),
+			}
+		}
+
+		setter(settings,kwargs,delimiter=delim,func=True)
+		setter(settings,defaults,delimiter=delim,func=False)
+
+		return
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''
+		msg = '\n'.join(['%s : %s'%(attr,self[attr]) for attr in self])
+		self.log(msg,verbose=verbose)
 		return
 
 

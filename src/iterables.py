@@ -249,10 +249,6 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 		Value at nested keys elements of iterable
 	'''	
 
-
-	i = iterable
-	e = 0
-	
 	# Convert string instance of elements to list, splitting string based on delimiter delimiter
 	if isinstance(elements,str) and delimiter:
 		elements = elements.split(delimiter)
@@ -261,19 +257,22 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 	if not isinstance(elements,list):
 		# elements is object and value is to be got from iterable at first level of nesting
 		try:
-			return i[elements]
+			return copier(elements,i[elements],copy)
 		except:
 			return default
 	else:
 		# elements is list of nested keys and the nested values are to be extracted from iterable
 		try:
+			i = iterable
+			e = 0
 			while e<len(elements):
 				i = i[elements[e]]
 				e+=1			
+			return copier(elements[e-1],i,copy)
 		except:
 			return default
 
-	return copier(elements[e-1],i,copy)
+	return default
 
 def popper(iterable,elements,default=None,delimiter=False,copy=False):
 	'''

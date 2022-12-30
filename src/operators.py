@@ -20,29 +20,10 @@ from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis
 from src.utils import slice_slice,datatype,returnargs,is_array
 from src.utils import pi,e,delim,null
 
-from src.system import System
+from src.system import Object
 from src.io import load,dump,join,split
 from src.iterables import setter
 
-def haar(shape,bounds=None,random=None,seed=None,dtype=None,):
-	'''
-	Initialize haar random unitary operator
-	Args:
-		shape (int,iterable[int]): Shape of operator
-		bounds (iterable): Bounds on operator value
-		random (str): Type of random value
-		seed (int,key): Seed for random number generator
-		dtype (data_type): Data type of operator
-	Returns:
-		data (array): Array of operator
-	'''
-	
-	bounds = [-1,1]
-	random = 'haar'
-
-	data = rand(shape,bounds=bounds,random=random,key=seed,dtype=dtype)
-
-	return data
 
 
 def id(shape,bounds=None,random=None,seed=None,dtype=None,):
@@ -138,166 +119,76 @@ def toffoli(shape,bounds=None,random=None,seed=None,dtype=None,):
 	return data	
 
 
-def setup(hyperparameters,cls=None):
-	'''
-	Setup hyperparameters
-	Args:	
-		hyperparameters (dict): Hyperparameters
-		cls (object): Class instance
-	'''
-
-	return
-
-class Operator(System):
-
-	def __init__(self,data,shape,hyperparameters,size=None,samples=None,cls=None,system=None,**kwargs):
+class Operator(Object):
+	def __init__(self,data,shape,size=None,dims=None,samples=None,system=None,**kwargs):
 		'''
-		Initialize operators
+		Initialize data of attribute based on shape, with highest priority of arguments of: args,data,system,kwargs
 		Args:
-			data (dict,str,array,Operator): Data corresponding to operator
-			shape (int,iterable[int]): Shape of operator
-			hyperparameters (dict): Dictionary of hyperparameters for operator
-			size (int): size of operators
+			data (dict,str,array,Noise): Data corresponding to noise
+			shape (int,iterable[int]): Shape of each data
+			size (int,iterable[int]): Number of data
+			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
 			samples (bool,array): Weight samples (create random weights, or use samples weights)
-			cls (object): Class instance to update hyperparameters		
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		# Setup class attributes
-		self.data = data
-		self.shape = shape
-		self.size = size
-		self.samples = samples
-		self.hyperparameters = hyperparameters
+		super().__init__(data,shape,size=size,dims=dims,samples=samples,system=system,**kwargs)
 
-		setter(kwargs,system,delimiter=delim,func=True)
-		super().__init__(**kwargs)
+		return
 
-		for attr in hyperparameters:
-			value = hyperparameters[attr]
-			setattr(self,attr,value)
-		for attr in hyperparameters.get('system',{}):
-			value = hyperparameters['system'][attr]
-			setattr(self,attr,value)
-
-		# Setup hyperparameters
-		hyperparameters = deepcopy(hyperparameters)
-		setup(hyperparameters,cls=cls)
-
-		# Set data
-		if isinstance(data,self.__class__):
-			self.data = data.data
-		elif is_array(data):
-			self.data = data
-			return
-		elif isinstance(data,dict):
-			setter(hyperparameters,data,delimiter=delim,func=True)
-		elif isinstance(data,str):
-			hyperparameters['string'] = data
-
-		if shape is None or hyperparameters.get('shape') is None:
-			self.data = None
-			return
-
-		# Ensure shape is iterable
-		if isinstance(shape,int):
-			shape = (shape,)
-
-		# Dimension of data
-		d = min(shape)
+	def __setup__(self,**kwargs):
+		'''
+		Setup attribute
+		Args:
+			kwargs (dict): Additional keyword arguments
+		'''
 
 		# Delimiter for string
 		delimiter = '_'
 
-		# Get seed
-		seed = hyperparameters.get('seed',self.seed) if hyperparameters.get('seed',self.seed) is not None else self.seed
-
-		# Get dtype
-		dtype = self.dtype
-
-		# Get scale
-		scale = hyperparameters.get('scale')
-
 		# Properties for strings
 		props = {
-			**{string: {'func':haar,'locality':size} for string in ['random','U','haar']},
+			**{string: {'func':rand,'locality':self.N} for string in ['random','U','haar']},
 			**{string: {'func':hadamard,'locality':1} for string in ['hadamard','H']},
 			**{string: {'func':cnot,'locality':2} for string in ['cnot','CNOT','C']},
 			**{string: {'func':toffoli,'locality':3} for string in ['toffoli','TOFFOLI','T']},
-			**{string: {'func':{1:id,2:cnot,3:toffoli}.get(size,id),'locality':size} for string in ['control']},
-			None: {'func':haar,'locality':size},
+			**{string: {'func':{1:id,2:cnot,3:toffoli}.get(self.N,id),'locality':self.N} for string in ['control']},
+			None: {'func':rand,'locality':self.N},
 			}
 
 
-		string = hyperparameters.get('string')
-
-		if string is None:
-			strings = [string]
-			locality = size
-		elif all(string in props for string in string.split(delimiter)):
-			strings = string.split(delimiter)
+		if self.string is None:
+			strings = [self.string]
+			locality = self.N
+		elif all(string in props for string in self.string.split(delimiter)):
+			strings = self.string.split(delimiter)
 			locality = sum(props[string]['locality'] for string in strings)
 		else:
 			strings = None
-			locality = size			
+			locality = self.N			
 
-		assert (size%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,size)
+		assert (self.N%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,self.N)
 
-		if string is not None:
+		if self.string is not None:
 			data = tensorprod([
 				props[string]['func'](shape,
-					bounds=hyperparameters.get('bounds'),
-					random=hyperparameters.get('random'),
-					seed=hyperparameters.get('seed',seed),
-					dtype=dtype
+					bounds=self.bounds,
+					random=self.random,
+					seed=self.seed,
+					dtype=self.dtype
 					)
 				for string in strings
-				]*(size//locality)
+				]*(self.N//locality)
 			)
 		else:
-			data = array(load(data))
+			data = array(load(self.data))
 		
 		# Assert data is unitary
-		assert allclose(eye(d),data.conj().T.dot(data))
-		assert allclose(eye(d),data.dot(data.conj().T))
+		assert allclose(eye(self.n),data.conj().T.dot(data))
+		assert allclose(eye(self.n),data.dot(data.conj().T))
 
-
-		# Set dtype of data
-		data = data.astype(dtype=dtype)
-
-
-		# Set samples
-		if samples is not None and isinstance(samples,bool):
-			samples = rand(len(data),bounds=[0,1],key=seed,dtype=dtype)
-			samples /= samples.sum()
-		elif is_array(samples):
-			pass
-		else:
-			samples = None
-			
-		
 		self.data = data
-		self.samples = samples
-		self.string = string
-		self.shape = self.data.shape if self.data is not None else None
-		self.ndim = self.data.ndim if self.data is not None else None
-		self.seed = seed
-		self.scale = scale
 
 		return
-
-	def __call__(self,data=null()):
-		'''
-		Class data
-		Args:
-			data (array): Data
-		Returns:
-			data (array): Data
-		'''
-		if not isinstance(data,null):
-			self.data = data
-			self.shape = self.data.shape if self.data is not None else None
-			self.ndim = self.data.ndim if self.data is not None else None
-		return self.data
 

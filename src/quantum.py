@@ -25,7 +25,7 @@ from src.utils import initialize,parse,to_string,to_number,datatype,slice_size,i
 from src.utils import pi,e,nan,null,delim,scalars,nulls
 from src.utils import itg,flt,dbl
 
-from src.iterables import setter,getattrs,hasattrs
+from src.iterables import setter,getter,getattrs,hasattrs
 from src.iterables import leaves,counts,plant,grow
 
 from src.parameters import Parameters
@@ -47,9 +47,9 @@ basis = {
 	'Z': array([[1,0],[0,-1]],dtype=dtype),
 }
 
-class Object(System):
+class Observable(System):
 	'''
-	Class for object
+	Class for Observable
 	Args:
 		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
@@ -95,7 +95,6 @@ class Object(System):
 		self.space = space
 		self.time = time
 		self.lattice = lattice
-		self.system = system
 
 		self.data = []
 		self.operator = []
@@ -130,8 +129,9 @@ class Object(System):
 		self.summation = None
 		self.exponentiation = None 
 
-		setter(kwargs,system,delimiter=delim,func=True)
-		super().__init__(**kwargs)
+		self.system = system
+		setter(system,kwargs,delimiter=delim,func=True)
+		super().__init__(**system)
 
 		self.__space__()
 		self.__time__()
@@ -253,17 +253,15 @@ class Object(System):
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
 		data = self.parameters
 		shape = (len(self.data)//self.p,self.M)
-		hyperparameters = self.parameters.hyperparameters if isinstance(self.parameters,Parameters) else self.parameters if isinstance(self.parameters,dict) else {}
+		dims = None
+		samples = None
+		cls = self
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
-		size = product(shape)
-		samples = None
-		seed = self.seed
-		cls = self
-		dtype = self.dtype
+		system = self.system
 
-		parameters = Parameters(data,shape,hyperparameters,check=check,initialize=initialize,size=size,samples=samples,cls=cls,seed=seed,dtype=dtype)
+		parameters = Parameters(data,shape,dims=dims,samples=samples,system=system,cls=cls,check=check,initialize=initialize)
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
@@ -279,9 +277,9 @@ class Object(System):
 		''' 
 		Setup class functions
 		Args:
-			state (bool,array): State to act on with class of shape self.shape, if boolean choose self.state or None
-			noise (bool,array): Noise to act on with class of shape (-1,self.shape), if boolean choose self.noise or None
-			label (bool,array): Label of class of shape self.shape, if boolean choose self.label or None
+			state (bool,dict,array): State to act on with class of shape self.shape, or class hyperparameters, or boolean to choose self.state or None
+			noise (bool,dict,array): Noise to act on with class of shape (-1,self.shape), or class hyperparameters, or boolean to choose self.noise or None
+			label (bool,dict,array): Label of class of shape self.shape, or class hyperparameters, or boolean to choose self.label or None
 		'''
 
 		# Function arguments
@@ -292,55 +290,50 @@ class Object(System):
 		label = self.label if (label is None or label is True) else label if label is not False else None
 
 		shape = self.shape
-		size = self.N
-		seed = self.seed		
-		dtype = self.dtype
-		cls = self
+		dims = [self.N,self.D]
+		system = self.system
 
 		# Get state
-		data = state
-		hyperparameters = self.state.hyperparameters if isinstance(self.state,State) else data if isinstance(data,dict) else {}
+		data = state if state is None else dict(self.state) if isinstance(self.state,State) else state if isinstance(state,dict) else None
 		samples = True
-		self.state = State(data,shape,hyperparameters,size=size,samples=samples,cls=cls,seed=seed,dtype=dtype)
-		
+		self.state = State(data,shape,dims=dims,samples=samples,system=system)
+		state = self.state()
+
 		# Get noise
-		data = noise
-		hyperparameters = self.noise.hyperparameters if isinstance(self.noise,Noise) else data if isinstance(data,dict) else {}
+		data = noise if noise is None else dict(self.noise) if isinstance(self.noise,Noise) else noise if isinstance(noise,dict) else None
 		samples = None
-		self.noise = Noise(data,shape,hyperparameters,size=size,samples=samples,cls=cls,seed=seed,dtype=dtype)
+		self.noise = Noise(data,shape,dims=dims,samples=samples,system=system)
+		noise = self.noise()
 
 		# Get label
-		data = label
-		hyperparameters = self.label.hyperparameters if isinstance(self.label,Operator) else data if isinstance(data,dict) else {}
+		data = label if label is None else dict(self.label) if isinstance(self.label,Operator) else label if isinstance(label,dict) else None
 		samples = None
-		self.label = Operator(data,shape,hyperparameters,size=size,samples=samples,cls=cls,seed=seed,dtype=dtype)
+		self.label = Operator(data,shape,dims=dims,samples=samples,system=system)
+		label = self.label()
 
 		# Attribute values
-		if self.state() is None:
-			state = self.state()
-			noise = self.noise()
-			label = self.label()
-			shapes = (self.shape,self.shape)
-		elif self.state.ndim == 1:
-			state = self.state()
-			noise = self.noise()
-			label = einsum('ij,j->i',self.label(),self.state())
-			shapes = ((self.n,),(self.n,))			
-		elif self.state.ndim == 2:
-			state = self.state()
-			noise = self.noise()
-			label = einsum('ij,jk,lk->il',self.label(),self.state(),self.label())
-			shapes = (self.shape,self.shape)			
+		if state is None:
+			state = state
+			noise = noise
+			label = label
+		elif state.ndim == 1:
+			state = state
+			noise = noise
+			label = einsum('ij,j->i',label,state)
+		elif state.ndim == 2:
+			state = state
+			noise = noise
+			label = einsum('ij,jk,lk->il',label,state,label.conj())
 		else:
 			state = self.state()
 			noise = self.noise()
 			label = self.label()
-			shapes = (self.shape,self.shape)			
 
 		state = self.state(state)
 		noise = self.noise(noise)
 		label = self.label(label.conj())
-		shapes = self.shapes
+		shapes = (self.label.shape,self.label.shape)
+		self.shapes = shapes
 
 		# Operator functions
 		if state is None and noise is None:
@@ -703,7 +696,7 @@ class Object(System):
 
 
 
-class Hamiltonian(Object):
+class Hamiltonian(Observable):
 	'''
 	Hamiltonian class of Operators
 	Args:
@@ -1200,7 +1193,7 @@ class Callback(object):
 
 					state = {'scale':1}
 					noise = {'scale':1}
-					label = True
+					label = {'scale':1}
 
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
 						_kwargs = {'state':state,'noise':noise,'label':label}
@@ -1249,6 +1242,9 @@ class Callback(object):
 					elif attr in ['hessian.rank','fisher.rank']:
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
 						value = argmax(abs(difference(value)/value[:-1]))+1						
+
+				elif not isinstance(getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null(),delimiter=delim),null):
+					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)
 
 				elif hasattrs(model,attr,delimiter=delim):
 					value = getattrs(model,attr,default=default,delimiter=delim)
@@ -1308,7 +1304,7 @@ class module(nn.Module):
 
 class Op(module,System):
 	'''
-	Class for Operator
+	Class for Observable
 	Args:
 		data (dict,str,array): dictionary of operator attributes, or string or array for operator. Allowed strings in ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI'], allowed dictionary keys in
 			operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']

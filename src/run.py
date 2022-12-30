@@ -105,7 +105,7 @@ def setup(settings):
 
 	# Find keys of seeds in hyperparameters
 	key = 'seed'
-	exclude = ['seed.seed','model.system.seed']
+	exclude = ['seed.seed','system.seed']
 	seedlings = [delim.join(branch[0]) for branch in leaves(hyperparameters,key,returns='both') if not any(delim.join(branch[0][:len(e.split(delim))]) == e for e in exclude) and branch[1] is None]
 
 	count = len(seedlings)
@@ -116,7 +116,7 @@ def setup(settings):
 	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape).tolist()
 	seeds = [dict(zip(seedlings,seed)) for seed in seeds]
 
-	other = [{'model.system.key':None,'model.system.seed':seed}]
+	other = [{'system.key':None,'system.seed':seed}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	values = {'permutations':permutations,'seed':seeds,'other':other}
@@ -137,7 +137,7 @@ def setup(settings):
 			{attr: values[attr] for attr in index},
 			):
 
-			key = formatter(instance,value,values,getter(hyperparameters,'model.system.key',delimiter=delim))
+			key = formatter(instance,value,values,getter(hyperparameters,'system.key',delimiter=delim))
 			value = [v[1] for v in value]
 			keys[key] = {}
 			for setting in value:
@@ -145,7 +145,7 @@ def setup(settings):
 
 					keys[key][attr] = setting[attr]
 
-					if attr in ['model.system.key']:
+					if attr in ['system.key']:
 						keys[key][attr] = key
 
 	# Set settings with key and seed instances

@@ -69,7 +69,8 @@ def train(hyperparameters):
 			parameters=hyperparameters['parameters'],
 			state=hyperparameters['state'],
 			noise=hyperparameters['noise'],
-			label=hyperparameters['label'])
+			label=hyperparameters['label'],
+			system=hyperparameters['system'])
 
 	if hyperparameters['boolean'].get('load'):
 		model.load()

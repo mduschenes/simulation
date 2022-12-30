@@ -34,7 +34,7 @@ from src.system import Class
 
 
 
-class LineSearchBase(Class):
+class LineSearcher(Class):
 	def __init__(self,func,grad,hyperparameters,system=None):
 		'''	
 		Line search class
@@ -104,7 +104,7 @@ class LineSearchBase(Class):
 
 		return returns
 
-class LineSearch(LineSearchBase):
+class LineSearch(LineSearcher):
 	'''
 	Line Search class
 	Args:
@@ -128,7 +128,7 @@ class LineSearch(LineSearchBase):
 		return self
 
 
-class Line_Search(LineSearchBase):
+class Line_Search(LineSearcher):
 	def __init__(self,func,grad,hyperparameters,system=None):
 		'''	
 		Line search class
@@ -176,7 +176,7 @@ class Line_Search(LineSearchBase):
 		return alpha
 
 
-class Armijo(LineSearchBase):
+class Armijo(LineSearcher):
 	def __init__(self,func,grad,hyperparameters,system=None):
 		'''	
 		Line search class
@@ -220,7 +220,7 @@ class Armijo(LineSearchBase):
 		return returns
 
 
-class Null_Search(LineSearchBase):
+class Null_Search(LineSearcher):
 	def __init__(self,func,grad,hyperparameters,system=None):
 		'''	
 		Line search class
@@ -236,7 +236,7 @@ class Null_Search(LineSearchBase):
 		return
 
 
-class FuncBase(Class):
+class Function(Class):
 
 	def __init__(self,model,func=None,grad=None,callback=None,metric=None,hyperparameters={},system=None):
 		'''	
@@ -385,7 +385,7 @@ class FuncBase(Class):
 		return self.__value_and_gradient__(parameters)
 
 
-class Objective(FuncBase):		
+class Objective(Function):		
 	def __init__(self,model,metric,func=None,grad=None,callback=None,hyperparameters={},system=None):
 		'''	
 		Objective class for metric + function
@@ -459,7 +459,7 @@ class Objective(FuncBase):
 		return self.__grad_analytical__(parameters)
 
 
-class Callback(FuncBase):
+class Callback(Function):
 
 	def __init__(self,model,callback,func=None,grad=None,metric=None,hyperparameters={},system=None):
 		'''	
@@ -861,7 +861,7 @@ class Metric(Class):
 
 
 
-class OptimizerBase(Class):
+class Optimization(Class):
 	'''
 	Base Optimizer class, with numpy optimizer API
 	Args:
@@ -1176,7 +1176,7 @@ class OptimizerBase(Class):
 		return iteration,state
 
 
-class Optimizer(OptimizerBase):
+class Optimizer(Optimization):
 	'''
 	Optimizer class, with numpy optimizer API
 	Args:
@@ -1200,7 +1200,7 @@ class Optimizer(OptimizerBase):
 		return self
 	
 
-class GradientDescent(OptimizerBase):
+class GradientDescent(Optimization):
 	'''
 	Gradient Descent Optimizer class, with numpy optimizer API
 	Args:
@@ -1266,7 +1266,7 @@ class GradientDescent(OptimizerBase):
 		return state
 
 
-class ConjugateGradient(OptimizerBase):
+class ConjugateGradient(Optimization):
 	'''
 	Conjugate Gradient Optimizer class, with numpy optimizer API
 	Args:
@@ -1392,7 +1392,7 @@ class ConjugateGradient(OptimizerBase):
 		return state
 
 
-class Adam(OptimizerBase):
+class Adam(Optimization):
 	'''
 	Adam Optimizer class, with numpy optimizer API
 	Args:

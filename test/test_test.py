@@ -61,7 +61,45 @@ def test_class(path,tol):
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
 		noise=hyperparameters['noise'],
-		label=hyperparameters['label'])
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
+
+
+	attrs = {attr: [] for attr in ['noise','state','label']}
+	kwargs = {
+		'original.initial': {'noise':True,'state':True,'label':True},
+		'noisy.channel':{'noise':{'scale':0.5},'state':{'scale':1},'label':{'scale':1}},
+		'noiseless.state':{'noise':{'scale':None},'state':{'scale':1},'label':{'scale':1}},
+		'noiseless.operator':{'noise':{'scale':None},'state':{'scale':None},'label':{'scale':1}},
+		'original.final': {'noise':None,'state':None,'label':None},
+		}
+
+
+	for attr in attrs:
+		value = getattr(model,attr)()
+		attrs[attr].append(value)
+
+	for name in kwargs:
+		model.__functions__(**kwargs[name])
+		print(name)
+		for attr in attrs:
+			value = getattr(model,attr)()
+			attrs[attr].append(value)
+
+			print(attr)
+			print(value)
+			print()
+		print()
+
+			# if kwargs[name][attr] in [None,True]:
+			# 	assert attrs[attr][-1] is attrs[attr][0], "%s: %s = %r incorrect"%(name,attr,attrs[attr][-1])
+			# elif isinstance(kwargs[name][attr],dict) and kwargs[name][attr]['scale'] is None:
+			# 	assert attrs[attr][-1] is None, "%s: %s = %r incorrect"%(name,attr,attrs[attr][-1])
+			# elif isinstance(kwargs[name][attr],dict) and kwargs[name][attr]['scale'] == 1 and attr not in ['noise']:
+			# 	assert attrs[attr][-1] is attrs[attr][0], "%s: %s = %r incorrect"%(name,attr,attrs[attr][-1])
+	model.__functions__({'noise':False})
+	print(allclose(model.label().dot(model.state()).dot(model.label().conj()),attrs['label'][2]))
+	return
 
 	print(model.noise())
 	print(model.state())
@@ -96,7 +134,8 @@ def test_load_dump(path,tol):
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
 		noise=hyperparameters['noise'],
-		label=hyperparameters['label'])
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
 
 	# Set hyperparameters
 	hyperparameters['optimize']['track']['alpha'] = []
@@ -134,7 +173,8 @@ def test_data(path,tol):
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
 		noise=hyperparameters['noise'],
-		label=hyperparameters['label'])
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
 
 	I = array([[1,0],[0,1]],dtype=model.dtype)
 	X = array([[0,1],[1,0]],dtype=model.dtype)
@@ -196,7 +236,8 @@ def test_grad(path,tol):
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
 		noise=hyperparameters['noise'],
-		label=hyperparameters['label'])
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
 
 	func = model
 
@@ -223,7 +264,8 @@ def test_objective(path,tol):
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
 		noise=hyperparameters['noise'],
-		label=hyperparameters['label'])
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
 
 	func = []
 	shapes = model.shapes
@@ -276,7 +318,8 @@ def test_model(path,tol):
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
 		noise=hyperparameters['noise'],
-		label=hyperparameters['label'])
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
 
 	func = jit(model.__call__)
 

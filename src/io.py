@@ -248,7 +248,7 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	if len(paths)>0:
 		path = os.path.join(*paths)
 	else:
-		path = ''
+		path = None
 	if path is not None and ext is not None and not path.endswith('%s%s'%(delimiter,ext)):
 		paths = [path,ext]
 		paths = [path for path in paths if path not in ['',None]]		
