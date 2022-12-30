@@ -4,9 +4,13 @@ A pure JAX based quantum circuit simulator library, including automatic differen
 Pre-processing, hyperparameter searches, and inter-dependent, parallelized job submission scripts, and post-processing with statistical analysis, and plotting are also included in the library.
 
 The hierarchy of inheritance of classes is as follows
+
 `Unitary <- Hamiltonian <- Observable <- System <- Class <- Dictionary`
+
 `State,Noise,Operator <- Object <- System <- Class <- Dictionary`
+
 `Objective,Metric,Callback <- Function <- Class <- Dictionary`
+
 `Optimizer <- Optimization <- Class <- Dictionary`
 
 ## Install
