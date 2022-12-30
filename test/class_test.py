@@ -34,11 +34,14 @@ def test_class(path,tol):
 	classes = {'state':'src.states.State','noise':'src.noise.Noise','label':'src.operators.Operator'}
 
 	name = 'state'
+	name = 'label'
 	cls = load(classes[name])
 
+
+	# Initial instance
 	data = hyperparameters['state']
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
-	size = [1,]
+	size = [1,4]
 	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
 	samples = True
 	system = {'dtype':'complex','verbose':True}
@@ -51,13 +54,14 @@ def test_class(path,tol):
 
 	data = obj()
 
+
 	if obj.ndim == 1:
 		if obj.samples is not None:
 			normalization = einsum('...i,...i->...',data,data.conj()).real/1
 		else:
 			normalization = einsum('...i,...i->...',data,data.conj()).real/1
 	elif obj.ndim == 2:
-		if obj.samples is not None:
+		if name in ['state'] and obj.samples is not None:
 			normalization = einsum('...ii->...',data).real/1
 		else:
 			normalization = einsum('...ij,...ij->...',data,data.conj()).real/obj.n
@@ -66,9 +70,33 @@ def test_class(path,tol):
 
 	assert(allclose(1,normalization)),"Incorrectly normalized obj: %0.5e"%(normalization)
 
+
+
+	# Identical instance
 	old = obj()
 
 	data = dict(obj)
+	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
+	size = [1,4]
+	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
+	samples = True
+	system = {'dtype':'complex'}
+
+	obj = cls(data,shape,size=size,dims=dims,samples=samples,system=system)
+
+
+	print('Name : %s'%(name))
+	obj.info()
+	print()
+
+	assert(allclose(obj(),old))
+
+
+	# Difference instance
+	data = dict(obj)
+	data['scale'] = None
+	data['logger'] = 'log.txt'
+	data['system']['cleanup'] = True
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 	size = [1,]
 	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
@@ -82,8 +110,26 @@ def test_class(path,tol):
 	obj.info()
 	print()
 
-	assert(allclose(obj(),old))
+	assert(obj() is None)
 
+
+	# Reinit instance
+	data = dict(obj)
+	data['scale'] = 1
+	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
+	size = [1,4]
+	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
+	samples = True
+	system = {'dtype':'complex'}
+
+	obj = cls(data,shape,size=size,dims=dims,samples=samples,system=system)
+
+
+	print('Name : %s'%(name))
+	obj.info()
+	print()
+
+	assert(allclose(obj(),old))
 
 	return
 

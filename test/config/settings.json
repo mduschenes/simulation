@@ -84,7 +84,7 @@
 	"cwd":".",
 	"path":"data.hdf5",
 	"conf":"logging.conf",
-	"logging":"log.log",
+	"logger":"log.log",
 	"cleanup":false,
 	"verbose":"info"
 	},
@@ -208,7 +208,7 @@
 	"scale":1,
 	"initialization":"random",
 	"random":"haar",
-	"seed":null,
+	"seed":123,
 	"bounds":[-1,1]
 	},
 "state": {
@@ -230,7 +230,7 @@
 	"scale":0.5,
 	"initialization":"random",
 	"random":"gaussian",
-	"seed":null,
+	"seed":123,
 	"bounds":[-1,1]
 	},
 "jobs":{

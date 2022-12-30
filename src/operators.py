@@ -171,8 +171,9 @@ class Operator(Object):
 		assert (self.N%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,self.N)
 
 		if self.string is not None:
+			print('----shape',self.shape,self.string)
 			data = tensorprod([
-				props[string]['func'](shape,
+				props[string]['func'](self.shape,
 					bounds=self.bounds,
 					random=self.random,
 					seed=self.seed,
@@ -183,6 +184,9 @@ class Operator(Object):
 			)
 		else:
 			data = array(load(self.data))
+
+
+		print(data.shape)
 		
 		# Assert data is unitary
 		assert allclose(eye(self.n),data.conj().T.dot(data))

@@ -160,7 +160,7 @@ def clone(iterable,twin,copy=False):
 
 
 
-def setter(iterable,elements,delimiter=False,copy=False,reset=True,clear=False,func=None):
+def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,func=None):
 	'''
 	Set nested value in iterable with nested elements keys
 	Args:

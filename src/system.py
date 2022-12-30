@@ -179,12 +179,13 @@ class Class(Dictionary):
 		path = self.cwd
 		root = path
 
-		name = __name__
-		conf = join(self.conf,root=root)
-		file = join(self.logging,root=root)
-		cleanup = self.cleanup
+		if not isinstance(self.logger,Logger):
+			name = __name__
+			conf = join(self.conf,root=root)
+			file = join(self.logger,root=root)
+			cleanup = self.cleanup
 
-		self.logger = Logger(name,conf,file=file,cleanup=cleanup)
+			self.logger = Logger(name,conf,file=file,cleanup=cleanup)
 
 		return
 
@@ -245,7 +246,7 @@ class System(Class):
 			'cwd':None,
 			'path':None,
 			'conf':None,
-			'logging':None,
+			'logger':None,
 			'cleanup':None,
 			'verbose':None,
 		}
@@ -259,24 +260,21 @@ class System(Class):
 
 
 class Logger(object):
-	def __init__(self,name,conf,cleanup=None,verbose=True,**kwargs):
+	def __init__(self,name,conf,file=None,cleanup=None,verbose=True,**kwargs):
 		'''
 		Logger class
 		Args:
 			name (str,logger): Name of logger or Python logging logger
 			conf (str): Path to configuration
+			file (str): Path to log file
 			cleanup (bool): Cleanup log files upon exit
 			verbose (int,str,bool): Verbosity
 			kwargs (dict): Additional arguments
 		'''
-		defaults = {
-			'file':kwargs.get('file')
-		}
-		kwargs.update({kwarg: defaults[kwarg] for kwarg in defaults if kwarg not in kwargs and defaults[kwarg] is not None})
 
 		if isinstance(name,str):
 			try:
-				self.logger = config(name,conf=conf,**kwargs)
+				self.logger = config(name,conf=conf,file=file,**kwargs)
 			except Exception as exception:
 				self.logger = logging.getLogger(name)
 		else:
@@ -284,6 +282,7 @@ class Logger(object):
 
 		self.name = name
 		self.conf = conf
+		self.file = file
 
 		self.cleanup = cleanup
 		self.clean()
@@ -345,6 +344,12 @@ class Logger(object):
 
 		return
 
+	def __str__(self):
+		return str(self.file)
+
+	def __repr__(self):
+		return self.__str__()
+
 
 class Object(System):
 	def __init__(self,data,shape,size=None,dims=None,samples=None,system=None,**kwargs):
@@ -361,8 +366,8 @@ class Object(System):
 		'''
 
 		# Setup kwargs
-		setter(system,data,delimiter=delim,func=True)
 		setter(kwargs,system,delimiter=delim,func=True)
+		setter(kwargs,data,delimiter=delim,func=True)
 		self.__check__(kwargs,data=data,shape=shape,size=size,dims=dims,samples=samples,system=system)
 		super().__init__(**kwargs)
 
@@ -410,12 +415,8 @@ class Object(System):
 				self.samples = None
 
 			if self.samples is not None:
-				if product(self.size)>0:
+				if product(self.size)>0 and self.data.ndim>self.ndim:
 					self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:len(self.size)]),)*2),self.data,self.samples)
-					if self.data.ndim == 1:
-						self.data /= sqrt(einsum('...i,...i->...',self.data,self.data.conj()).real)
-					else:
-						self.data /= einsum('...ii->...',self.data).real/1
 
 		self.data = self(self.data)
 
@@ -446,9 +447,9 @@ class Object(System):
 		return
 
 
-	def __check__(self,settings,**kwargs):
+	def __check__(self,kwds,**kwargs):
 		'''
-		Check settings, with defaults
+		Check kwargs, with defaults
 			string (str) : class string
 			category (str) : class category
 			initialization (str): class initialization type
@@ -456,7 +457,7 @@ class Object(System):
 			seed (int): random seed
 			bounds (iterable[float]): bounds on data
 		Args:	
-			settings (dict): settings
+			kwds (dict): settings
 			kwargs (object): Additional kwargs
 		'''
 		dtype = 'complex'
@@ -482,8 +483,15 @@ class Object(System):
 			}
 		}
 
-		setter(settings,kwargs,delimiter=delim,func=True)
-		setter(settings,defaults,delimiter=delim,func=False)
+		setter(kwds,kwargs,delimiter=delim,func=True)
+		
+		setter(kwds,defaults,delimiter=delim,func=False)
+
+		attrs = ['system']
+		for attr in attrs:
+			setter(kwds,kwds.get(attr),delimiter=delim,func=True)
+
+		print('---samples',kwds.get('samples'))
 
 		return
 

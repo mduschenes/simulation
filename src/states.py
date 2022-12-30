@@ -43,6 +43,11 @@ class State(Object):
 
 		super().__init__(data,shape,size=size,dims=dims,samples=samples,system=system,**kwargs)
 
+		if self.ndim == 1:
+			self.data /= sqrt(einsum('...i,...i->...',self.data,self.data.conj()).real)
+		elif self.ndim == 2:
+			self.data /= einsum('...ii->...',self.data).real/1
+
 		return
 
 	def __setup__(self,**kwargs):
