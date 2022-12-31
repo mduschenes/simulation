@@ -44,11 +44,10 @@ def test_class(path,tol):
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 	size = [1,4]
 	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	samples = False
 	system = {'dtype':'complex','verbose':True}
-	kwargs = {}#kwarg : hyperparameters[name][kwarg] for kwarg in hyperparameters[name] if kwarg not in ['data','shape','size','dims','samples','system']}
+	kwargs = {kwarg : hyperparameters[name][kwarg] for kwarg in hyperparameters[name] if kwarg not in ['data','shape','size','dims','system']}
 
-	obj = cls(data,shape,size=size,dims=dims,samples=samples,system=system,**kwargs)
+	obj = cls(data,shape,size=size,dims=dims,system=system,**kwargs)
 
 	print('Name : %s'%(name))
 	obj.info()
@@ -95,10 +94,9 @@ def test_class(path,tol):
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 	size = [1,4]
 	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	samples = True
 	system = {'dtype':'complex'}
 
-	obj = cls(data,shape,size=size,dims=dims,samples=samples,system=system)
+	obj = cls(data,shape,size=size,dims=dims,system=system)
 
 
 	print('Name : %s'%(name))
@@ -116,10 +114,9 @@ def test_class(path,tol):
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 	size = [1,]
 	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	samples = False
 	system = {'dtype':'complex'}
 
-	obj = cls(data,shape,size=size,dims=dims,samples=samples,system=system)
+	obj = cls(data,shape,size=size,dims=dims,system=system)
 
 
 	print('Name : %s'%(name))
@@ -135,10 +132,9 @@ def test_class(path,tol):
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 	size = [1,4]
 	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	samples = True
 	system = {'dtype':'complex'}
 
-	obj = cls(data,shape,size=size,dims=dims,samples=samples,system=system)
+	obj = cls(data,shape,size=size,dims=dims,system=system)
 
 
 	print('Name : %s'%(name))

@@ -410,6 +410,7 @@ class Object(System):
 			self.samples = None
 
 		if self.samples is not None:
+			print(self.samples.shape,self.data.shape)
 			self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:len(self.size)]),)*2),self.data,self.samples)
 
 		self.data = self(self.data)
