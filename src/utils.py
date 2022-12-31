@@ -1193,13 +1193,12 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 
 			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)
 
-			if ndim < 3:
-				new = (*(1,)*(4-out.ndim),*out.shape)
-			elif ndim == 3:
-				new = (*out.shape[:1],*(1,)*(4-out.ndim),*out.shape[1:])
+			if ndim < 4:
+				reshape = (*(1,)*(4-out.ndim),*out.shape)
 			else:
-				new = out.shape
-			out = out.reshape(new)
+				reshape = out.shape
+
+			out = out.reshape(reshape)
 
 			for i in range(out.shape[0]):
 				for j in range(out.shape[1]):
@@ -1212,19 +1211,20 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 
 			out = out.reshape(shape)
 
-			assert allclose(1,einsum('...ij,...ij->...',out,out.conj()).real/out.shape[-1])
+			# assert allclose(1,einsum('...ij,...ij->...',out,out.conj()).real/out.shape[-1])
+
 			# Create random matrices versus vectors
-			if ndim == 1:
-				out = out[...,0] # Random vector
-			elif ndim == 2:
-				out = out[:,:] # Random matrix
-			elif ndim == 3:
-				out = out[...,0] # Samples of random vectors
-			elif ndim == 4:
+			if ndim == 1: # Random vector
+				out = out[...,0] 
+			elif ndim == 2: # Random matrix
+				out = out[:,:]
+			elif ndim == 3: # Samples of random vectors
+				out = out[...,0]
+			elif ndim == 4: # Samples of random rank-1 matrices
 
 				out = out[...,0]
 
-				out = einsum('...i,...j->...ij',out,out.conj()) # Samples of random rank-1 matrices
+				out = einsum('...i,...j->...ij',out,out.conj())
 
 
 			return out
@@ -3641,15 +3641,15 @@ def padding(a,shape,key=None,bounds=[0,1],random='zeros'):
 
 	if random is not None:
 		ax = 0
-		new = [a.shape[axis] for axis in range(ndim)]
-		diff = [shape[axis] - new[axis] for axis in range(ndim)]
+		reshape = [a.shape[axis] for axis in range(ndim)]
+		diff = [shape[axis] - reshape[axis] for axis in range(ndim)]
 
 		for axis in range(ndim-1,-1,-1):
 			if diff[axis] > 0:
 
-				new[axis] = diff[axis] 
-				pad = rand(new,key=key,bounds=bounds,random=random)
-				new[axis] = shape[axis]
+				reshape[axis] = diff[axis] 
+				pad = rand(reshape,key=key,bounds=bounds,random=random)
+				reshape[axis] = shape[axis]
 
 				a = moveaxis(a,axis,ax)
 				pad = moveaxis(pad,axis,ax)

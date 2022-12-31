@@ -371,8 +371,6 @@ class Object(System):
 		self.__check__(kwargs,data=data,shape=shape,size=size,dims=dims,samples=samples,system=system)
 		super().__init__(**kwargs)
 
-		print(kwargs.get('shape'),self.shape)
-
 		# Ensure shape is iterable
 		if isinstance(self.shape,int):
 			self.shape = (self.shape,)
@@ -388,10 +386,6 @@ class Object(System):
 		# Number of sites and dimension of sites
 		self.N,self.D = self.dims[:2] if self.dims is not None else [1,self.n]
 
-		# Set samples
-		self.samples = None if self.samples is False else self.samples
-
-		print('data',self.data,type(self.data))
 		# Set data
 		if isinstance(self.data,self.__class__):
 			self.data = self.data.data
@@ -404,29 +398,21 @@ class Object(System):
 				self.string = self.data
 			self.__setup__(**kwargs)
 
-		print('ubit da',self.data.shape)
-
 		if self.data is not None:
 			self.data = self.data.astype(dtype=self.dtype)
 
 		# Set samples
-		if self.data is not None and self.samples is not None:
-			if isinstance(self.samples,bool):
+		if self.size is not None:
+			if not is_array(self.samples):
 				self.samples = rand(self.size,bounds=[0,1],key=self.seed,dtype=datatype(self.dtype))
 				self.samples /= self.samples.sum()
-			elif is_array(self.samples):
-				pass		
-			else:
-				self.samples = None
+		else:
+			self.samples = None
 
-			if self.samples is not None:
-				if product(self.size)>0 and self.data.ndim>self.ndim:
-					self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:len(self.size)]),)*2),self.data,self.samples)
+		if self.samples is not None:
+			self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:len(self.size)]),)*2),self.data,self.samples)
 
 		self.data = self(self.data)
-
-		print(self.data)
-		exit()
 
 		return
 
@@ -475,6 +461,7 @@ class Object(System):
 			"shape":[-1,-1],
 			"size":[1],
 			"scale":1,
+			"samples":None,
 			'initialization':'random',
 			'random':'random',
 			'seed':None,
@@ -492,12 +479,12 @@ class Object(System):
 		}
 
 		setter(kwds,kwargs,delimiter=delim,func='None')
-		
+
 		setter(kwds,defaults,delimiter=delim,func=False)
 
 		attrs = ['system']
 		for attr in attrs:
-			setter(kwds,kwds.get(attr),delimiter=delim,func=True)
+			setter(kwds,kwds.get(attr),delimiter=delim,func='None')
 
 		return
 

@@ -144,6 +144,10 @@ class Operator(Object):
 			kwargs (dict): Additional keyword arguments
 		'''
 
+		# Size
+		size = None
+		self.size = size
+
 		# Delimiter for string
 		delimiter = '_'
 
@@ -189,8 +193,11 @@ class Operator(Object):
 		print(data.shape)
 		
 		# Assert data is unitary
-		assert allclose(eye(self.n),data.conj().T.dot(data))
-		assert allclose(eye(self.n),data.dot(data.conj().T))
+		if ndim == 2:
+			normalization = einsum('...ij,...jk->...ik',data.conj(),data)
+		else:
+			normalization = einsum('...ij,...jk->...ik',data.conj(),data)
+		assert allclose(eye(self.n),normalization), "Incorrect normalization data%r: %0.3e"%(data.shape,normalization)
 
 		self.data = data
 

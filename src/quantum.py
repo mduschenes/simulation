@@ -258,14 +258,13 @@ class Observable(System):
 		data = self.parameters
 		shape = (len(self.data)//self.p,self.M)
 		dims = None
-		samples = None
 		cls = self
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
 		system = self.system
 
-		parameters = Parameters(data,shape,dims=dims,samples=samples,system=system,cls=cls,check=check,initialize=initialize)
+		parameters = Parameters(data,shape,dims=dims,system=system,cls=cls,check=check,initialize=initialize)
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.p		
@@ -292,10 +291,9 @@ class Observable(System):
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 	size = [1,4]
 	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	samples = False
 	system = {'dtype':'complex','verbose':True}
 
-	obj = cls(data,shape,size=size,dims=dims,samples=samples,system=system)
+	obj = cls(data,shape,size=size,dims=dims,system=system)
 
 
 
@@ -303,27 +301,24 @@ class Observable(System):
 		# Function arguments
 		data = array(self.data,dtype=self.dtype)
 		identity = self.identity
-		state = dict(self.state) if (self.state is not None and state is None or state is True) else state if state is not False else None
-		noise = dict(self.noise) if (noise is None or noise is True) else noise if noise is not False else None
-		label = dict(self.label) if (label is None or label is True) else label if label is not False else None
+		state = dict(self.state) if (self.state is not None and (state is None or state is True)) else state if state is not False else None
+		noise = dict(self.noise) if (self.noise is not None and (noise is None or noise is True)) else noise if noise is not False else None
+		label = dict(self.label) if (self.label is not None and (label is None or label is True)) else label if label is not False else None
 
 		shape = self.shape
 		dims = [self.N,self.D]
 		system = self.system
 
 		# Get state
-		samples = True
-		self.state = State(state,shape,dims=dims,samples=samples,system=system)
+		self.state = State(state,shape,dims=dims,system=system)
 		state = self.state()
 
 		# Get noise
-		samples = None
-		self.noise = Noise(noise,shape,dims=dims,samples=samples,system=system)
+		self.noise = Noise(noise,shape,dims=dims,system=system)
 		noise = self.noise()
 
 		# Get label
-		samples = None
-		self.label = Operator(label,shape,dims=dims,samples=samples,system=system)
+		self.label = Operator(label,shape,dims=dims,system=system)
 		label = self.label()
 
 		# Attribute values

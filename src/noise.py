@@ -47,11 +47,10 @@ class Noise(Object):
 			kwargs (dict): Additional keyword arguments
 		'''
 
-		# Basis
-		operators = {
-			attr: self.basis[attr].astype(self.dtype)
-			for attr in self.basis
-			}
+		
+		# Size of data
+		size = None
+		self.size = size
 
 		assert (self.scale >= 0) and (self.scale <= 1), "Noise scale %r not in [0,1]"%(self.scale)
 
@@ -74,8 +73,16 @@ class Noise(Object):
 		data = array([
 			tensorprod(i)
 			for i in itertools.product(data,repeat=self.N)
-			])
+			],dtype=self.dtype)
 			
+		# Assert data is normalized
+		if data.ndim == 3:
+			normalization = einsum('...uij,...ujk->...',data.conj(),data)
+		else:
+			normalization = einsum('...uij,...ujk->...',data.conj(),data)
+
+		assert allclose(eye(self.n),normalization), "Incorrect normalization data%r: %0.3e"%(data.shape,normalization)
+
 		self.data = data
 
 		return

@@ -424,6 +424,10 @@ class Parameters(Object):
 		# Get number of dimensions of data
 		ndim = len(self.shape)
 
+		# Size of data
+		size = None
+		self.size = size
+
 		# Get datatype of data
 		dtype = datatype(self.dtype)
 
