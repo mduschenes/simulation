@@ -34,19 +34,21 @@ def test_class(path,tol):
 	classes = {'state':'src.states.State','noise':'src.noise.Noise','label':'src.operators.Operator'}
 
 	name = 'state'
-	name = 'label'
+	# name = 'label'
+	# name = 'noise'
 	cls = load(classes[name])
 
 
 	# Initial instance
-	data = hyperparameters['state']
+	data = None
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 	size = [1,4]
 	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	samples = True
+	samples = False
 	system = {'dtype':'complex','verbose':True}
+	kwargs = {}#kwarg : hyperparameters[name][kwarg] for kwarg in hyperparameters[name] if kwarg not in ['data','shape','size','dims','samples','system']}
 
-	obj = cls(data,shape,size=size,dims=dims,samples=samples,system=system)
+	obj = cls(data,shape,size=size,dims=dims,samples=samples,system=system,**kwargs)
 
 	print('Name : %s'%(name))
 	obj.info()
@@ -56,21 +58,35 @@ def test_class(path,tol):
 
 
 	if obj.ndim == 1:
-		if obj.samples is not None:
+		if name in ['state']: # state vector
+			normalization = einsum('...i,...i->...',data,data.conj()).real/1
+		elif name in ['label']: # label vector
+			normalization = einsum('...i,...i->...',data,data.conj()).real/1
+		elif name in ['noise']: # noise vector
 			normalization = einsum('...i,...i->...',data,data.conj()).real/1
 		else:
-			normalization = einsum('...i,...i->...',data,data.conj()).real/1
+			raise ValueError("Incorrect name = %s and obj.ndim = %d"%(name,obj.ndim))
 	elif obj.ndim == 2:
-		if name in ['state'] and obj.samples is not None:
+		if name in ['state']: # state matrix
 			normalization = einsum('...ii->...',data).real/1
-		else:
+		elif name in ['label']: # label matrix 
 			normalization = einsum('...ij,...ij->...',data,data.conj()).real/obj.n
+		elif name in ['noise']: # noise matrix
+			normalization = einsum('...ij,...ij->...',data,data.conj()).real/obj.n
+		else:
+			raise ValueError("Incorrect name = %s and obj.ndim = %d"%(name,obj.ndim))
+	elif obj.ndim == 3:
+		if name in ['noise']:
+			normalization = einsum('...uij,...uij->...',data.conj(),data).real/obj.n
+		else:
+			raise ValueError("Incorrect name = %s and obj.ndim = %d"%(name,obj.ndim))
+
 	else:
 		raise AssertionError("Incorrect obj.ndim = %d"%(obj.ndim))
 
 	assert(allclose(1,normalization)),"Incorrectly normalized obj: %0.5e"%(normalization)
 
-
+	return
 
 	# Identical instance
 	old = obj()

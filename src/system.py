@@ -371,6 +371,8 @@ class Object(System):
 		self.__check__(kwargs,data=data,shape=shape,size=size,dims=dims,samples=samples,system=system)
 		super().__init__(**kwargs)
 
+		print(kwargs.get('shape'),self.shape)
+
 		# Ensure shape is iterable
 		if isinstance(self.shape,int):
 			self.shape = (self.shape,)
@@ -389,6 +391,7 @@ class Object(System):
 		# Set samples
 		self.samples = None if self.samples is False else self.samples
 
+		print('data',self.data,type(self.data))
 		# Set data
 		if isinstance(self.data,self.__class__):
 			self.data = self.data.data
@@ -400,6 +403,8 @@ class Object(System):
 			if isinstance(self.data,str):
 				self.string = self.data
 			self.__setup__(**kwargs)
+
+		print('ubit da',self.data.shape)
 
 		if self.data is not None:
 			self.data = self.data.astype(dtype=self.dtype)
@@ -419,6 +424,9 @@ class Object(System):
 					self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:len(self.size)]),)*2),self.data,self.samples)
 
 		self.data = self(self.data)
+
+		print(self.data)
+		exit()
 
 		return
 
@@ -483,15 +491,13 @@ class Object(System):
 			}
 		}
 
-		setter(kwds,kwargs,delimiter=delim,func=True)
+		setter(kwds,kwargs,delimiter=delim,func='None')
 		
 		setter(kwds,defaults,delimiter=delim,func=False)
 
 		attrs = ['system']
 		for attr in attrs:
 			setter(kwds,kwds.get(attr),delimiter=delim,func=True)
-
-		print('---samples',kwds.get('samples'))
 
 		return
 

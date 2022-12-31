@@ -73,7 +73,7 @@ class Noise(Object):
 
 		data = array([
 			tensorprod(i)
-			for i in itertools.product(data,repeat=N)
+			for i in itertools.product(data,repeat=self.N)
 			])
 			
 		self.data = data

@@ -138,8 +138,6 @@ class Observable(System):
 		self.__lattice__()
 
 		self.__setup__(data,operator,site,string,interaction)
-		self.__initialize__()
-		self.__functions__()
 
 		self.info()
 
@@ -179,8 +177,14 @@ class Observable(System):
 
 		data = [self.identity.copy() for i in range(size)]
 
-		# Update class attributes
+		# Set class attributes
 		self.__extend__(data,operator,site,string,interaction)
+
+		# Set parameters
+		self.__initialize__()
+
+		# Set functions
+		self.__functions__()
 		
 		return
 
@@ -282,33 +286,44 @@ class Observable(System):
 			label (bool,dict,array): Label of class of shape self.shape, or class hyperparameters, or boolean to choose self.label or None
 		'''
 
+
+	# Initial instance
+	data = hyperparameters[name]
+	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
+	size = [1,4]
+	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
+	samples = False
+	system = {'dtype':'complex','verbose':True}
+
+	obj = cls(data,shape,size=size,dims=dims,samples=samples,system=system)
+
+
+
+
 		# Function arguments
 		data = array(self.data,dtype=self.dtype)
 		identity = self.identity
-		state = self.state if (state is None or state is True) else state if state is not False else None
-		noise = self.noise if (noise is None or noise is True) else noise if noise is not False else None
-		label = self.label if (label is None or label is True) else label if label is not False else None
+		state = dict(self.state) if (self.state is not None and state is None or state is True) else state if state is not False else None
+		noise = dict(self.noise) if (noise is None or noise is True) else noise if noise is not False else None
+		label = dict(self.label) if (label is None or label is True) else label if label is not False else None
 
 		shape = self.shape
 		dims = [self.N,self.D]
 		system = self.system
 
 		# Get state
-		data = state if state is None else dict(self.state) if isinstance(self.state,State) else state if isinstance(state,dict) else None
 		samples = True
-		self.state = State(data,shape,dims=dims,samples=samples,system=system)
+		self.state = State(state,shape,dims=dims,samples=samples,system=system)
 		state = self.state()
 
 		# Get noise
-		data = noise if noise is None else dict(self.noise) if isinstance(self.noise,Noise) else noise if isinstance(noise,dict) else None
 		samples = None
-		self.noise = Noise(data,shape,dims=dims,samples=samples,system=system)
+		self.noise = Noise(noise,shape,dims=dims,samples=samples,system=system)
 		noise = self.noise()
 
 		# Get label
-		data = label if label is None else dict(self.label) if isinstance(self.label,Operator) else label if isinstance(label,dict) else None
 		samples = None
-		self.label = Operator(data,shape,dims=dims,samples=samples,system=system)
+		self.label = Operator(label,shape,dims=dims,samples=samples,system=system)
 		label = self.label()
 
 		# Attribute values
@@ -325,9 +340,9 @@ class Observable(System):
 			noise = noise
 			label = einsum('ij,jk,lk->il',label,state,label.conj())
 		else:
-			state = self.state()
-			noise = self.noise()
-			label = self.label()
+			state = state
+			noise = noise
+			label = _label
 
 		state = self.state(state)
 		noise = self.noise(noise)
@@ -857,10 +872,15 @@ class Hamiltonian(Observable):
 			string = ['I']*self.p
 			interaction = ['i...j']*self.p
 		
-		
 
-		# Update class attributes
+		# Set class attributes
 		self.__extend__(data,operator,site,string,interaction)
+
+		# Set parameters
+		self.__initialize__()
+
+		# Set functions
+		self.__functions__()
 
 		return
 

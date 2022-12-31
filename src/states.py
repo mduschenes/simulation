@@ -58,7 +58,8 @@ class State(Object):
 		'''
 
 		# Shape of data, depending on size, samples and shape
-		shape = [*self.size,*self.shape] if self.samples is not None else [*self.shape[:1]]
+		shape = [*self.size,*self.shape] if self.samples is not None else [*self.shape]
+
 
 		# Delimiter for string
 		delimiter = '_'
@@ -83,12 +84,10 @@ class State(Object):
 
 			assert (self.N%locality == 0), 'Incorrect state with locality %d !%% size %d'%(locality,self.N)
 
-			# TODO: Vectorized tensorproduct over state samples
-			assert (self.N == locality), 'Only locality = size states'
-
-			if self.string is not None:
-				data = state = tensorprod([
-						props[string]['func'](shape,
+			if strings is not None:
+				data = tensorprod([
+						props[string]['func'](
+						shape,
 						bounds=self.bounds,
 						random=self.random,
 						seed=self.seed,
@@ -98,7 +97,7 @@ class State(Object):
 						]*(self.N//locality)
 						)
 			else:
-				data = array(load(self.data))
+				data = array(load(self.string))
 		
 		# Assert data is normalized
 		# assert allclose(ones(data.shape[0]),data.conj().T.dot(data))

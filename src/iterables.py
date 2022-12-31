@@ -178,11 +178,13 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 
 	# Setup func as callable
 	if func is None:
-		func = lambda key_iterable,key_elements,iterable,elements: elements[key_elements]
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
 	elif func is True:
-		func = lambda key_iterable,key_elements,iterable,elements: elements[key_elements]
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
 	elif func is False:
-		func = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements[key_elements])
+		func = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements.get(key_elements))
+	elif func in ['none','None']:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if elements.get(key_elements) is not None else iterable.get(key_iterable,elements.get(key_elements))
 	elif not callable(func):
 		types = tuple(func)
 		def func(key_iterable,key_elements,iterable,elements,types=types): 
