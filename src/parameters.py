@@ -430,6 +430,7 @@ class Parameters(Object):
 
 		# Get datatype of data
 		dtype = datatype(self.dtype)
+		self.dtype = dtype
 
 		# Get seed
 		seed = [hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
@@ -586,7 +587,7 @@ class Parameters(Object):
 
 						data['indices'][category][parameter][group][layer] = [
 							*[[i for i in range(1)] for axis in range(0,data['ndim'][category][parameter][group][layer]-ndim)],
-							*[[i for i in range(shape[axis]) if check(group,i,axis)] for axis in range(0,ndim)],
+							*[[i for i in range(self.shape[axis]) if check(group,i,axis)] for axis in range(0,ndim)],
 							]
 
 						data['boundaries'][category][parameter][group][layer] = [
@@ -2034,5 +2035,16 @@ class Parameters(Object):
 
 		self.data = data
 		self.attributes = attributes
+		self.hyperparameters = hyperparameters
 
 		return
+
+	def __call__(self,data=None):
+		'''
+		Class data
+		Args:
+			data (array): Data
+		Returns:
+			data (array): Data
+		'''
+		return self.data

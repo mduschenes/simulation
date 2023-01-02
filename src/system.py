@@ -388,11 +388,13 @@ class Object(System):
 
 		# Set data
 		if isinstance(self.data,self.__class__):
-			self.data = self.data.data
+			super().__init__(self.data)
 		elif is_array(data):
 			self.data = self.data
+			self.size = None
 		elif self.shape is None or self.scale is None:
 			self.data = None
+			self.size = None
 		else:
 			if isinstance(self.data,str):
 				self.string = self.data
@@ -410,7 +412,8 @@ class Object(System):
 			self.samples = None
 
 		if self.samples is not None:
-			self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:len(self.size)]),)*2),self.data,self.samples)
+			if all(self.data.shape[i] == self.size[i] for i in range(len(self.size))):
+				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:len(self.size)]),)*2),self.data,self.samples)
 
 		self.data = self(self.data)
 
@@ -510,12 +513,13 @@ class Space(System):
 	'''
 	def __init__(self,N,D,space,system):
 
+		super().__init__(**system)
+
 		self.N = N if N is not None else 1
 		self.D = D if D is not None else 2
 		self.space = space		
 		self.default = 'spin'
-
-		super().__init__(**system)
+		self.system = system
 
 		self.__setup__()
 		
@@ -596,14 +600,15 @@ class Time(System):
 	'''
 	def __init__(self,M,T,tau,p,time,system):
 
+		super().__init__(**system)
+
 		self.M = M if M is not None else 1
 		self.T = T if T is not None else None
 		self.tau = tau if tau is not None or T is not None else None
 		self.p = p if p is not None else 1
 		self.time = time
 		self.default = 'linear'
-
-		super().__init__(**system)
+		self.system = system
 
 		self.__setup__()
 		
@@ -684,7 +689,9 @@ class Lattice(System):
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logger,logging,cleanup,verbose)		
 	'''	
 	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None):
-		
+
+		# Define system
+		super().__init__(**system)
 
 		# Define lattice
 		if isinstance(lattice,Lattice):
@@ -698,9 +705,7 @@ class Lattice(System):
 		self.d = d
 		self.L = L if L is not None else self.N
 		self.delta = delta if delta is not None else self.L/self.N
-
-		# Define system
-		super().__init__(**system)
+		self.system = system
 
 		# Check system
 		self.dtype = self.dtype if self.dtype in ['int','Int32','Int64'] else int

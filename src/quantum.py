@@ -75,13 +75,16 @@ class Observable(System):
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Operator): Type of label	
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
 	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
 		space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
+
+		setter(system,kwargs,delimiter=delim,func=True)
+		super().__init__(**system)
 
 		self.N = N
 		self.D = D
@@ -102,7 +105,7 @@ class Observable(System):
 		self.string = []
 		self.interaction = []
 		self.indices = []		
-		self.dims = (len(self.data),self.M)
+		self.dims = (self.M,len(self.data))
 		self.length = int(product(self.dims))
 		self.ndims = len(self.dims)
 
@@ -130,8 +133,6 @@ class Observable(System):
 		self.exponentiation = None 
 
 		self.system = system
-		setter(system,kwargs,delimiter=delim,func=True)
-		super().__init__(**system)
 
 		self.__space__()
 		self.__time__()
@@ -240,7 +241,7 @@ class Observable(System):
 		self.string.insert(index,string)
 		self.interaction.insert(index,interaction)
 
-		self.dims = (len(self.data),self.M,*self.shape)
+		self.dims = (self.M,len(self.data),*self.shape)
 		self.ndims = len(self.dims)		
 
 		return
@@ -280,30 +281,18 @@ class Observable(System):
 		''' 
 		Setup class functions
 		Args:
-			state (bool,dict,array): State to act on with class of shape self.shape, or class hyperparameters, or boolean to choose self.state or None
-			noise (bool,dict,array): Noise to act on with class of shape (-1,self.shape), or class hyperparameters, or boolean to choose self.noise or None
-			label (bool,dict,array): Label of class of shape self.shape, or class hyperparameters, or boolean to choose self.label or None
+			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters, or boolean to choose self.state or None
+			noise (bool,dict,array,Noise): Noise to act on with class of shape (-1,self.shape), or class hyperparameters, or boolean to choose self.noise or None
+			label (bool,dict,array,Operator): Label of class of shape self.shape, or class hyperparameters, or boolean to choose self.label or None
 		'''
-
-
-	# Initial instance
-	data = hyperparameters[name]
-	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
-	size = [1,4]
-	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	system = {'dtype':'complex','verbose':True}
-
-	obj = cls(data,shape,size=size,dims=dims,system=system)
-
-
 
 
 		# Function arguments
 		data = array(self.data,dtype=self.dtype)
 		identity = self.identity
-		state = dict(self.state) if (self.state is not None and (state is None or state is True)) else state if state is not False else None
-		noise = dict(self.noise) if (self.noise is not None and (noise is None or noise is True)) else noise if noise is not False else None
-		label = dict(self.label) if (self.label is not None and (label is None or label is True)) else label if label is not False else None
+		state = self.state if state is None or state is True else state if state is not False else None
+		noise = self.noise if noise is None or noise is True else noise if noise is not False else None
+		label = self.label if label is None or label is True else label if label is not False else None
 
 		shape = self.shape
 		dims = [self.N,self.D]
@@ -323,27 +312,25 @@ class Observable(System):
 
 		# Attribute values
 		if state is None:
-			state = state
-			noise = noise
 			label = label
 		elif state.ndim == 1:
-			state = state
-			noise = noise
 			label = einsum('ij,j->i',label,state)
 		elif state.ndim == 2:
-			state = state
-			noise = noise
 			label = einsum('ij,jk,lk->il',label,state,label.conj())
 		else:
-			state = state
-			noise = noise
-			label = _label
-
-		state = self.state(state)
-		noise = self.noise(noise)
-		label = self.label(label.conj())
+			label = label
+		label = label.conj()
 		shapes = (self.label.shape,self.label.shape)
 		self.shapes = shapes
+
+		# print('state')
+		# print(state)
+
+		print('noise')
+		print(noise)
+
+		# print('label')
+		# print(label)
 
 		# Operator functions
 		if state is None and noise is None:
@@ -446,7 +433,7 @@ class Observable(System):
 		return self.__value_and_gradient__(parameters)
 
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __parameters__(self,parameters):
 		''' 
 		Setup parameters
@@ -459,7 +446,7 @@ class Observable(System):
 		return parameters
 
 
-	@partial(jit,static_argnums=(0,2))
+	# @partial(jit,static_argnums=(0,2))
 	def __layers__(self,parameters,layer='variables'):
 		''' 
 		Setup layer
@@ -493,7 +480,7 @@ class Observable(System):
 
 		return values
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __constraints__(self,parameters):
 		''' 
 		Setup constraints
@@ -513,8 +500,9 @@ class Observable(System):
 			N (int): Number of qudits
 			D (int): Dimension of qudits
 			space (str,Space): Type of Hilbert space
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
+
 		N = self.N if N is None else N
 		D = self.D if D is None else D
 		space = self.space if space is None else space
@@ -529,7 +517,7 @@ class Observable(System):
 		self.shape = (self.n,self.n)
 		self.size = int(product(self.shape))
 		self.ndim = len(self.shape)
-		self.dims = (len(self.data),self.M,*self.shape)
+		self.dims = (self.M,len(self.data),*self.shape)
 		self.length = int(product(self.dims))
 		self.ndims = len(self.dims)
 		self.identity = identity(self.n,dtype=self.dtype)
@@ -546,7 +534,7 @@ class Observable(System):
 			tau (float): Simulation time scale
 			p (int): Trotter order		
 			time (str,Time): Type of Time evolution space						
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 		M = self.M if M is None else M
 		T = self.T if T is None else T
@@ -561,7 +549,7 @@ class Observable(System):
 		self.T = self.time.T
 		self.p = self.time.p
 		self.tau = self.time.tau
-		self.dims = (*self.dims[:1],self.M,*self.dims[2:])	
+		self.dims = (self.M,self.dims[1:])	
 		self.ndims = len(self.dims)
 
 		return
@@ -577,7 +565,7 @@ class Observable(System):
 			L (int,float): Scale in system
 			delta (float): Length scale in system			
 			lattice (str,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''		
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -624,7 +612,7 @@ class Observable(System):
 		'''		
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','p','shape','dims','cwd','path','backend','architecture','conf','logging']
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','p','shape','dims','cwd','path','backend','architecture','conf','logger']
 			],
 			*['%s: %s'%(attr,getattr(self,attr)() is not None) 
 				for attr in ['state','noise']
@@ -735,7 +723,7 @@ class Hamiltonian(Observable):
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Operator): Type of label
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -880,7 +868,7 @@ class Hamiltonian(Observable):
 		return
 
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __parameters__(self,parameters):
 		''' 
 		Setup parameters
@@ -934,7 +922,7 @@ class Unitary(Hamiltonian):
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Operator): Type of label
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -1206,18 +1194,14 @@ class Callback(object):
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or start):
 
-					state = {'scale':1}
-					noise = {'scale':1}
-					label = {'scale':1}
-
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
-						_kwargs = {'state':state,'noise':noise,'label':label}
+						_kwargs = {'state':{'scale':1},'noise':{'scale':1},'label':{'scale':1}}
 						_metric = 'real'
 					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
-						_kwargs = {'state':state,'noise':False,'label':label}
+						_kwargs = {'state':{'scale':1},'noise':{'scale':None},'label':{'scale':1}}
 						_metric = 'real'
 					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
-						_kwargs = {'state':False,'noise':False,'label':label}
+						_kwargs = {'state':{'scale':None},'noise':{'scale':None},'label':{'scale':1}}
 						_metric = 'abs2'
 
 					_model = model
@@ -1334,7 +1318,7 @@ class Op(module,System):
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		space (str,Space): Type of Hilbert space
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -1390,7 +1374,7 @@ class Op(module,System):
 			N (int): Number of qudits
 			D (int): Dimension of qudits
 			space (str,Space): Type of Hilbert space
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 		N = self.N if N is None else N
 		D = self.D if D is None else D

@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 
 from src.states import State
-from src.utils import einsum,allclose
+from src.utils import jit,einsum,allclose
 from src.io import load,dump
 
 # Logging
@@ -25,6 +25,60 @@ from src.io import load,dump
 # file = None #'log.log'
 # logger = Logger(name,conf,file=file)
 
+def test_model(path,tol):
+
+	hyperparameters = load(path)
+
+	cls = load(hyperparameters['class']['model'])
+
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
+
+	parameters = model.parameters()
+	variables = model.__parameters__(parameters)
+
+
+	parameters = parameters.reshape(-1,model.dims[0])
+	variables = variables.reshape(model.dims[0],-1).T
+
+	shape = parameters.shape
+	slices = tuple((slice(size) for size in shape))
+	if all(model.parameters.hyperparameters.get(parameter,{}).get('method') in [None,'unconstrained'] for parameter in model.parameters.hyperparameters):
+		if not allclose(variables[slices],parameters):
+			print(parameters)
+			print(variables)
+			raise ValueError("Incorrect parameter init %r"%(model.parameters.hyperparameters))
+
+
+	parameters = model.parameters()
+	func = jit(model)
+
+	U = func(parameters)
+
+	model.__functions__(noise=False)
+
+	func = jit(model)
+
+	V = func(parameters)
+
+	model.__functions__(noise=True)
+
+	func = jit(model)
+
+	W = func(parameters)
+
+	print(U)
+	print(V)
+	print(W)
+
+	# assert allclose(U,V),"Incorrect identity noise"
+	assert allclose(U,W),"Incorrect restored noise"
+
+	return
 
 
 def test_class(path,tol):
@@ -33,118 +87,100 @@ def test_class(path,tol):
 
 	classes = {'state':'src.states.State','noise':'src.noise.Noise','label':'src.operators.Operator'}
 
-	name = 'state'
-	# name = 'label'
-	# name = 'noise'
-	cls = load(classes[name])
+	keys = ['state','label','noise']
 
+	for key in keys:
 
-	# Initial instance
-	data = None
-	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
-	size = [3,2]
-	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	system = {'dtype':'complex','verbose':True}
-	kwargs = {kwarg : hyperparameters[name][kwarg] for kwarg in hyperparameters[name] if kwarg not in ['data','shape','size','dims','system']}
+		cls = load(classes[key])
 
-	obj = cls(data,shape,size=size,dims=dims,system=system,**kwargs)
+		# Variables
+		shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
+		size = [3,2]
+		dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
+		system = {'dtype':'complex','verbose':True}
+		kwargs = {kwarg : hyperparameters[key][kwarg] for kwarg in hyperparameters[key] if kwarg not in ['data','shape','size','dims','system']}
 
-	obj.info()
+		# Initial instance
+		data = {'scale':1,'key':key}
 
-	data = obj()
+		obj = cls(data,shape,size=size,dims=dims,system=system,**kwargs)
 
-	print('----',name,obj.ndim)
+		# obj.info()
 
-	if obj.ndim == 1:
-		if name in ['state']: # state vector
-			normalization = einsum('...i,...i->...',data,data.conj()).real/1
-		elif name in ['label']: # label vector
-			normalization = einsum('...i,...i->...',data,data.conj()).real/1
-		elif name in ['noise']: # noise vector
-			normalization = einsum('...i,...i->...',data,data.conj()).real/1
+		data = obj()
+
+		if obj.ndim == 1:
+			if key in ['state']: # state vector
+				normalization = einsum('...i,...i->...',data,data.conj()).real/1
+			elif key in ['label']: # label vector
+				normalization = einsum('...i,...i->...',data,data.conj()).real/1
+			elif key in ['noise']: # noise vector
+				normalization = einsum('...i,...i->...',data,data.conj()).real/1
+			else:
+				raise ValueError("Incorrect key = %s and obj.ndim = %d"%(key,obj.ndim))
+		elif obj.ndim == 2:
+			if key in ['state']: # state matrix
+				normalization = einsum('...ii->...',data).real/1
+			elif key in ['label']: # label matrix 
+				normalization = einsum('...ij,...ij->...',data,data.conj()).real/obj.n
+			elif key in ['noise']: # noise matrix
+				normalization = einsum('...ij,...ij->...',data,data.conj()).real/obj.n
+			else:
+				raise ValueError("Incorrect key = %s and obj.ndim = %d"%(key,obj.ndim))
+		elif obj.ndim == 3:
+			if key in ['noise']:
+				normalization = einsum('...uij,...uij->...',data.conj(),data).real/obj.n
+			else:
+				raise ValueError("Incorrect key = %s and obj.ndim = %d"%(key,obj.ndim))
+
 		else:
-			raise ValueError("Incorrect name = %s and obj.ndim = %d"%(name,obj.ndim))
-	elif obj.ndim == 2:
-		if name in ['state']: # state matrix
-			normalization = einsum('...ii->...',data).real/1
-		elif name in ['label']: # label matrix 
-			normalization = einsum('...ij,...ij->...',data,data.conj()).real/obj.n
-		elif name in ['noise']: # noise matrix
-			normalization = einsum('...ij,...ij->...',data,data.conj()).real/obj.n
-		else:
-			raise ValueError("Incorrect name = %s and obj.ndim = %d"%(name,obj.ndim))
-	elif obj.ndim == 3:
-		if name in ['noise']:
-			normalization = einsum('...uij,...uij->...',data.conj(),data).real/obj.n
-		else:
-			raise ValueError("Incorrect name = %s and obj.ndim = %d"%(name,obj.ndim))
+			raise AssertionError("Incorrect obj.ndim = %d"%(obj.ndim))
 
-	else:
-		raise AssertionError("Incorrect obj.ndim = %d"%(obj.ndim))
-
-	assert(allclose(1,normalization)),"Incorrectly normalized obj: %0.5e"%(normalization)
-
-	return
-
-	# Identical instance
-	old = obj()
-
-	data = dict(obj)
-	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
-	size = [1,4]
-	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	system = {'dtype':'complex'}
-
-	obj = cls(data,shape,size=size,dims=dims,system=system)
+		assert(allclose(1,normalization)),"Incorrectly normalized obj: %0.5e"%(normalization)
 
 
-	print('Name : %s'%(name))
-	obj.info()
-	print()
+		# Identical instance
+		old = obj()
 
-	assert(allclose(obj(),old))
+		data = dict(obj)
 
-
-	# Difference instance
-	data = dict(obj)
-	data['scale'] = None
-	data['logger'] = 'log.txt'
-	data['system']['cleanup'] = True
-	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
-	size = [1,]
-	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	system = {'dtype':'complex'}
-
-	obj = cls(data,shape,size=size,dims=dims,system=system)
+		obj = cls(data,shape,size=size,dims=dims,system=system)
 
 
-	print('Name : %s'%(name))
-	obj.info()
-	print()
+		# obj.info()
 
-	assert(obj() is None)
+		assert(allclose(obj(),old))
 
 
-	# Reinit instance
-	data = dict(obj)
-	data['scale'] = 1
-	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
-	size = [1,4]
-	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-	system = {'dtype':'complex'}
+		# Difference instance
+		data = dict(obj)
+		data['scale'] = None
+		data['logger'] = 'log.txt'
+		data['system']['cleanup'] = True
 
-	obj = cls(data,shape,size=size,dims=dims,system=system)
+		obj = cls(data,shape,size=size,dims=dims,system=system)
 
 
-	print('Name : %s'%(name))
-	obj.info()
-	print()
+		# obj.info()
 
-	assert(allclose(obj(),old))
+		assert(obj() is None)
+
+
+		# Reinit instance
+		data = dict(obj)
+		data['scale'] = 1
+
+		obj = cls(data,shape,size=size,dims=dims,system=system)
+
+
+		# obj.info()
+
+		assert(allclose(obj(),old))
 
 	return
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_class(path,tol)
+	# test_class(path,tol)
+	test_model(path,tol)

@@ -51,7 +51,7 @@ from src.system import Logger
 # logger = Logger(name,conf,file=file)
 
 
-def test_class(path,tol):
+def test_attrs(path,tol):
 
 	hyperparameters = load(path)
 
@@ -199,33 +199,6 @@ def test_data(path,tol):
 
 	return
 
-
-def test_state(path,tol):
-
-	hyperparameters = load(path)
-
-	data = None
-	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
-	hyperparams = hyperparameters['state']
-	hyperparams['shape'] = [2,1,-1,-1]
-	hyperparams['scale'] = 1
-	size = hyperparameters['model']['N']
-	samples = True
-	dtype = hyperparameters['model']['system']['dtype']
-	cls = None
-
-	tol = 1e-20
-
-	state = State(data,shape,hyperparams,size=size,samples=samples,dtype=dtype,cls=cls)
-
-	try:
-		eigs = eig(state(),hermitian=True)
-		assert (abs(eigs)>=tol).all()
-	except TypeError:
-		raise
-
-	return
-
 def test_grad(path,tol):
 
 	hyperparameters = load(path)
@@ -241,7 +214,7 @@ def test_grad(path,tol):
 
 	func = model
 
-	parameters = model.parameters
+	parameters = model.parameters()
 
 	# grad of unitary
 	grad_jax = model.grad
@@ -276,7 +249,7 @@ def test_objective(path,tol):
 	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams)
 	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams)
 
-	parameters = model.parameters
+	parameters = model.parameters()
 
 	metric = Metric(shapes=shapes,hyperparameters=hyperparams)
 
@@ -306,43 +279,6 @@ def test_objective(path,tol):
 
 	return
 
-
-
-def test_model(path,tol):
-
-	hyperparameters = load(path)
-
-	cls = load(hyperparameters['class']['model'])
-
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	func = jit(model.__call__)
-
-	parameters = model.parameters
-
-	U = func(parameters)
-
-	model.__functions__(noise=None)
-
-	func = jit(model.__call__)
-
-	V = func(parameters)
-
-	model.__functions__(noise=True)
-
-	func = jit(model.__call__)
-
-	W = func(parameters)
-
-	assert allclose(U,V),"Incorrect identity noise"
-	assert allclose(U,W),"Incorrect restored noise"
-
-	return
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
