@@ -16,8 +16,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
-from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,allclose
-from src.utils import slice_slice,datatype,returnargs,is_array
+from src.utils import einsum,tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
+from src.utils import slice_slice,datatype,returnargs,is_array,allclose
 from src.utils import pi,e,delim,null
 
 from src.system import Object
@@ -175,7 +175,6 @@ class Operator(Object):
 		assert (self.N%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,self.N)
 
 		if self.string is not None:
-			print('----shape',self.shape,self.string)
 			data = tensorprod([
 				props[string]['func'](self.shape,
 					bounds=self.bounds,
@@ -190,16 +189,16 @@ class Operator(Object):
 			data = array(load(self.data))
 
 
-		print(data.shape)
-		
 		# Assert data is unitary
-		if ndim == 2:
-			normalization = einsum('...ij,...jk->...ik',data.conj(),data)
+		if data.ndim == 2:
+			normalization = einsum('...ij,...kj->...ik',data.conj(),data)
 		else:
-			normalization = einsum('...ij,...jk->...ik',data.conj(),data)
-		assert allclose(eye(self.n),normalization), "Incorrect normalization data%r: %0.3e"%(data.shape,normalization)
+			normalization = einsum('...ij,...kj->...ik',data.conj(),data)
+
+		assert allclose(eye(self.n,dtype=self.dtype),normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
 
 		self.data = data
+
 
 		return
 

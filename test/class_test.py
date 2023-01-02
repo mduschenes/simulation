@@ -42,19 +42,18 @@ def test_class(path,tol):
 	# Initial instance
 	data = None
 	shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
-	size = [1,4]
+	size = [3,2]
 	dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
 	system = {'dtype':'complex','verbose':True}
 	kwargs = {kwarg : hyperparameters[name][kwarg] for kwarg in hyperparameters[name] if kwarg not in ['data','shape','size','dims','system']}
 
 	obj = cls(data,shape,size=size,dims=dims,system=system,**kwargs)
 
-	print('Name : %s'%(name))
 	obj.info()
-	print()
 
 	data = obj()
 
+	print('----',name,obj.ndim)
 
 	if obj.ndim == 1:
 		if name in ['state']: # state vector

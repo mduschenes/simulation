@@ -94,7 +94,7 @@ class State(Object):
 			elif all(string in props for string in self.string.split(delimiter)):
 				strings = self.string.split(delimiter)
 				locality = sum(props[string]['locality'] for string in strings)
-				shape = {string: self.D**props[string]['locality'] for string in strings}
+				shape = {string: shape for string in strings}
 			else:
 				strings = None
 				locality = self.N			
@@ -117,7 +117,7 @@ class State(Object):
 				data = array(load(self.string))
 		
 		# Assert data is normalized
-		if data.ndim == 1:
+		if data.ndim == 2:
 			normalization = einsum('...i,...i->...',data,data.conj())
 		else:
 			normalization = einsum('...ii->...',data)

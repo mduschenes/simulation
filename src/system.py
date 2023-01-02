@@ -404,13 +404,12 @@ class Object(System):
 		# Set samples
 		if self.size is not None:
 			if not is_array(self.samples):
-				self.samples = rand(self.size,bounds=[0,1],key=self.seed,dtype=datatype(self.dtype))
+				self.samples = rand(self.size,bounds=[0,1],seed=self.seed,dtype=datatype(self.dtype))
 				self.samples /= self.samples.sum()
 		else:
 			self.samples = None
 
 		if self.samples is not None:
-			print(self.samples.shape,self.data.shape)
 			self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:len(self.size)]),)*2),self.data,self.samples)
 
 		self.data = self(self.data)

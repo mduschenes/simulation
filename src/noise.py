@@ -17,8 +17,8 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,rand
-from src.utils import tensorprod,sqrt
+from src.utils import array,rand,eye
+from src.utils import einsum,tensorprod,sqrt,allclose
 from src.system import Object
 
 
@@ -77,11 +77,11 @@ class Noise(Object):
 			
 		# Assert data is normalized
 		if data.ndim == 3:
-			normalization = einsum('...uij,...ujk->...',data.conj(),data)
+			normalization = einsum('...uji,...ujk->...ik',data.conj(),data)
 		else:
-			normalization = einsum('...uij,...ujk->...',data.conj(),data)
+			normalization = einsum('...uji,...ujk->...ik',data.conj(),data)
 
-		assert allclose(eye(self.n),normalization), "Incorrect normalization data%r: %0.3e"%(data.shape,normalization)
+		assert allclose(eye(self.n),normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
 
 		self.data = data
 
