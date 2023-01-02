@@ -54,6 +54,8 @@ class Noise(Object):
 
 		assert (self.scale >= 0) and (self.scale <= 1), "Noise scale %r not in [0,1]"%(self.scale)
 
+
+		print('----',self.string)
 		if self.string is None:
 			data = [self.basis['I']]
 		elif self.string in ['phase']:
