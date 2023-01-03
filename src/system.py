@@ -336,8 +336,7 @@ class Logger(object):
 		loggers = [logging.getLogger(),self.logger,*logging.Logger.manager.loggerDict.values()]
 		loggers = [handler.baseFilename for logger in loggers for handler in getattr(logger,'handlers',[]) if isinstance(handler,logging.FileHandler)]
 		loggers = list(set(loggers))
-		print(loggers)
-		return
+
 		for logger in loggers:
 			rm(logger)
 
