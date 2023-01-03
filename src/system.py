@@ -128,16 +128,41 @@ class Dictionary(dict):
 		self.__dict__ = self
 		return
 
-class Class(Dictionary):
 
+class System(Dictionary):
+	'''
+	System attributes (dtype,format,device,seed,verbose,...)
+	Args:
+		dtype (str,data-type): Data type of class
+		format (str): Format of array
+		device (str): Device for computation
+		seed (array,int): Seed for random number generation
+		key (object): key for class
+		timestamp (str): timestamp for class
+		backend (str): backend for class
+		architecture (str): architecture for class
+		verbose (bool,str): Verbosity of class	
+		args (dict,System): Additional system attributes
+		kwargs (dict): Additional system attributes
+	'''
 	def __init__(self,*args,**kwargs):
-		'''
-		Base Class
-		Args:
-			args (iterable[object]): Class arguments
-			kwargs (dict[str,object]): Class keyword arguments
-		'''
-		defaults = {}
+
+		defaults = {
+			'dtype':'float',
+			'format':'array',
+			'device':'cpu',
+			'backend':'jax',
+			'architecture':None,
+			'seed':None,
+			'key':None,
+			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
+			'cwd':None,
+			'path':None,
+			'conf':None,
+			'logger':None,
+			'cleanup':None,
+			'verbose':None,
+		}
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
 
@@ -215,49 +240,6 @@ class Class(Dictionary):
 		return
 
 
-class System(Class):
-	'''
-	System attributes (dtype,format,device,seed,verbose,...)
-	Args:
-		dtype (str,data-type): Data type of class
-		format (str): Format of array
-		device (str): Device for computation
-		seed (array,int): Seed for random number generation
-		key (object): key for class
-		timestamp (str): timestamp for class
-		backend (str): backend for class
-		architecture (str): architecture for class
-		verbose (bool,str): Verbosity of class	
-		args (dict,System): Additional system attributes
-		kwargs (dict): Additional system attributes
-	'''
-	def __init__(self,*args,**kwargs):
-
-		defaults = {
-			'dtype':'float',
-			'format':'array',
-			'device':'cpu',
-			'backend':'jax',
-			'architecture':None,
-			'seed':None,
-			'key':None,
-			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
-			'cwd':None,
-			'path':None,
-			'conf':None,
-			'logger':None,
-			'cleanup':None,
-			'verbose':None,
-		}
-
-		setter(kwargs,defaults,delimiter=delim,func=False)
-
-		super().__init__(**kwargs)
-
-		return
-
-
-
 class Logger(object):
 	def __init__(self,name,conf,file=None,cleanup=None,verbose=True,**kwargs):
 		'''
@@ -333,7 +315,7 @@ class Logger(object):
 		Cleanup log files upon class exit
 		'''
 
-		loggers = [logging.getLogger(),self.logger,*logging.Logger.manager.loggerDict.values()]
+		loggers = [logging.getLogger()]#,self.logger,*logging.Logger.manager.loggerDict.values()]
 		loggers = [handler.baseFilename for logger in loggers for handler in getattr(logger,'handlers',[]) if isinstance(handler,logging.FileHandler)]
 		loggers = list(set(loggers))
 
@@ -364,7 +346,7 @@ class Object(System):
 		'''
 
 		# Setup kwargs
-		setter(kwargs,system,delimiter=delim,func=True)
+		setter(kwargs,system,delimiter=delim,func=False)
 		setter(kwargs,data,delimiter=delim,func=True)
 		self.__check__(kwargs,data=data,shape=shape,size=size,dims=dims,samples=samples,system=system)
 		super().__init__(**kwargs)

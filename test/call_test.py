@@ -89,6 +89,7 @@ def test_echo(path=None):
 	return
 
 def test_sed(path=None):
+
 	path = 'config/test.slurm'
 	patterns = {'nodes=.*':'nodes=4'}
 	default = '#SBATCH'
@@ -100,7 +101,12 @@ def test_sed(path=None):
 	verbose = True
 	kwargs = {}
 
+	source = 'config/job.slurm'
+	destination = path
+
+	cp(source,destination,execute=True)
 	sed(path,patterns,default,process=process,processes=processes,device=device,execute=execute,verbose=verbose,**kwargs)
+	rm(destination,execute=True)
 	return
 
 def test_sleep(path=None):
@@ -183,7 +189,12 @@ def test_call(path=None):
 	arg = [*exe,*flags,*cmd]
 	args.append(arg)
 
+	source = 'config/job.slurm'
+	destination = path
+
+	cp(source,destination,execute=True)
 	result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute,verbose=verbose)
+	rm(destination,execute=True)
 
 	path = file
 	rm(path,execute=True)

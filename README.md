@@ -5,15 +5,15 @@ Pre-processing, hyperparameter searches, and inter-dependent, parallelized job s
 
 The hierarchy of inheritance of classes is as follows
 
-`Unitary <- Hamiltonian <- Observable <- System <- Class <- Dictionary`
+`Unitary <- Hamiltonian <- Observable <- System <- Dictionary`
 
-`State,Noise,Operator <- Object <- System <- Class <- Dictionary`
+`State,Noise,Operator <- Object <- System <- Dictionary`
 
-`Objective,Callback <- Function <- Class <- Dictionary`
+`Objective,Callback <- Function <- System <- Dictionary`
 
-`Metric <- Class <- Dictionary`
+`Metric <- System <- Dictionary`
 
-`Optimizer <- Optimization <- Class <- Dictionary`
+`Optimizer <- Optimization <- System <- Dictionary`
 
 ## Install
 After cloning the repository, under `setup`, please run 

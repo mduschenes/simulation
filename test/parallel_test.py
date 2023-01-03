@@ -20,7 +20,7 @@ from src.io import load,dump,glob
 def func(path,default={},options={},**kwargs):
 	value = load(path,default=default,**options)				
 	value.update(kwargs['value'])
-	dump(value,path)
+	# dump(value,path)
 	msg = 'Dumped: %s %d'%(path,len(value))
 	# print(msg)
 	return value
@@ -65,7 +65,7 @@ def test_pooler(path):
 	values = {}
 	processes = -1
 	args = ()
-	kwds = {}
+		kwds = {'value':{}}
 	callback_args = ()
 	callback_kwds = {'values':values}
 

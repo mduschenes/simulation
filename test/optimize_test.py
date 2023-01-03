@@ -27,9 +27,9 @@ from src.utils import itg,flt,dbl
 
 from src.iterables import getter,setter,permuter,equalizer
 
-from src.parameters import parameterize
-from src.operators import operatorize
-from src.states import stateize
+from src.parameters import Parameters
+from src.operators import Operator
+from src.states import State
 
 from src.io import load,dump,join,split
 from src.call import rm
@@ -38,7 +38,7 @@ from src.plot import plot
 
 from src.optimize import Optimizer,Objective,Metric,Callback
 
-from src.quantum import Unitary,Hamiltonian,Object
+from src.quantum import Unitary,Hamiltonian
 
 # Logging
 from src.system import Logger

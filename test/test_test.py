@@ -3,7 +3,8 @@
 # Import python modules
 import pytest
 import os,sys
-import itertools,functools,copy
+import itertools,functools
+from copy import deepcopy as deepcopy
 	
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -38,7 +39,7 @@ from src.plot import plot
 
 from src.optimize import Optimizer,Objective,Metric,Callback
 
-from src.quantum import Unitary,Hamiltonian,Object
+from src.quantum import Unitary,Hamiltonian,Observable
 
 # Logging
 from src.system import Logger
@@ -67,6 +68,7 @@ def test_attrs(path,tol):
 
 	attrs = {attr: [] for attr in ['noise','state','label']}
 	kwargs = {
+		'copy':{},
 		'original.initial': {'noise':True,'state':True,'label':True},
 		'noisy.channel':{'noise':{'scale':0.5},'state':{'scale':1},'label':{'scale':1}},
 		'noiseless.state':{'noise':{'scale':None},'state':{'scale':1},'label':{'scale':1}},
@@ -83,8 +85,10 @@ def test_attrs(path,tol):
 		model.__functions__(**kwargs[name])
 		print(name)
 		for attr in attrs:
+			kwargs[name][attr] = deepcopy(getattr(model,attr))
 			value = getattr(model,attr)()
 			attrs[attr].append(value)
+
 
 			print(attr)
 			print(value)
@@ -97,8 +101,8 @@ def test_attrs(path,tol):
 			# 	assert attrs[attr][-1] is None, "%s: %s = %r incorrect"%(name,attr,attrs[attr][-1])
 			# elif isinstance(kwargs[name][attr],dict) and kwargs[name][attr]['scale'] == 1 and attr not in ['noise']:
 			# 	assert attrs[attr][-1] is attrs[attr][0], "%s: %s = %r incorrect"%(name,attr,attrs[attr][-1])
-	model.__functions__({'noise':False})
-	print(allclose(model.label().dot(model.state()).dot(model.label().conj()),attrs['label'][2]))
+	model.__functions__(**kwargs['copy'])
+	print(allclose(model.label().dot(model.state()).dot(model.label().conj()),attrs['label'][0]))
 	return
 
 	print(model.noise())
@@ -149,7 +153,12 @@ def test_load_dump(path,tol):
 
 	# Set instance
 	hyperparameters = load(path)
-	new = cls(**hyperparameters['model'])
+	new = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
 
 	new.load()
 
@@ -253,7 +262,7 @@ def test_objective(path,tol):
 
 	metric = Metric(shapes=shapes,hyperparameters=hyperparams)
 
-	print(metric(label.conj(),label))
+	print(metric(label,label.conj()))
 	return
 
 	# Grad of objective
@@ -283,6 +292,7 @@ def test_objective(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_class(path,tol)
+	test_attrs(path,tol)
+	# test_class(path,tol)
 	# test_grad(path,tol)
 	# test_objective(path,tol)

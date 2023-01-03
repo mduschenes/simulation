@@ -83,7 +83,7 @@ class Observable(System):
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
 		space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
 
-		setter(system,kwargs,delimiter=delim,func=True)
+		setter(kwargs,system	,delimiter=delim,func=True)
 		super().__init__(**system)
 
 		self.N = N

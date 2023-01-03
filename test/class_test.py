@@ -233,6 +233,6 @@ def test_class(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_class(path,tol)
-	test_model(path,tol)
+	# test_class(path,tol)
+	# test_model(path,tol)
 	# test_functions(path,tol)
