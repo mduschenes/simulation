@@ -100,10 +100,10 @@ def config(name,conf=None,**kwargs):
 
 			with open(conf, 'w') as configfile:
 				config.write(configfile)
-			logging.config.fileConfig(conf,disable_existing_loggers=False) 	
+			logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
 
 		except Exception as exception:
-			print(exception)
+			print('EXception ----',exception)
 			pass
 
 		logger = logging.getLogger(name)
@@ -242,7 +242,6 @@ class System(Class):
 			'seed':None,
 			'key':None,
 			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
-			'timestamp':None,		
 			'cwd':None,
 			'path':None,
 			'conf':None,
@@ -334,10 +333,11 @@ class Logger(object):
 		Cleanup log files upon class exit
 		'''
 
-		loggers = [logging.getLogger(),self.logger]
-		loggers = [handler.baseFilename for logger in loggers for handler in logger.handlers if isinstance(handler,logging.FileHandler)]
-
+		loggers = [logging.getLogger(),self.logger,*logging.Logger.manager.loggerDict.values()]
+		loggers = [handler.baseFilename for logger in loggers for handler in getattr(logger,'handlers',[]) if isinstance(handler,logging.FileHandler)]
+		loggers = list(set(loggers))
 		print(loggers)
+		return
 		for logger in loggers:
 			rm(logger)
 
