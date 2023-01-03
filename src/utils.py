@@ -1379,6 +1379,17 @@ def qr(a):
 
 
 @jit
+def cholesky(a):
+	'''
+	Compute cholesky decomposition of array
+	Args:
+		a (array): Array to compute cholesky decomposition of shape (...,n,n)
+	Returns:
+		L (array): Cholesky factor of shape (...,n,n)
+	'''
+	return np.linalg.cholesky(a)
+
+@jit
 def lstsq(x,y):
 	'''
 	Compute least squares fit between x and y
@@ -1919,6 +1930,41 @@ def dot(a,b):
 	'''	
 	return np.dot(a,b)
 
+@jit
+def transpose(a):
+	'''
+	Calculate transpose of array a
+	Args:
+		a (array): Array to calculate transpose
+	Returns:
+		out (array): Transpose
+	'''	
+	return a.T
+
+
+@jit
+def conj(a):
+	'''
+	Calculate conjugate of array a
+	Args:
+		a (array): Array to calculate conjugate
+	Returns:
+		out (array): Conjugate
+	'''	
+	return a.conj()
+
+@jit
+def dagger(a):
+	'''
+	Calculate conjugate transpose of array a
+	Args:
+		a (array): Array to calculate conjugate transpose
+	Returns:
+		out (array): Conjugate transpose
+	'''	
+	return conj(transpose(a))
+
+
 
 @jit
 def outer(a,b):
@@ -2399,6 +2445,69 @@ def summationmc(parameters,data,identity,state,constants):
 
 @jit
 def exponentiationmc(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
+		data (array): Array of data to matrix exponentiate of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix exponential of data of shape (n,n)
+	'''		
+	out = expmc(parameters,data,identity,state,constants)
+	return out
+
+
+@jit
+def summationmvc(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix sum of parameters times data, acting on matrix, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return dot(addition(parameters*data),state)
+
+@jit
+def exponentiationmvc(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
+		data (array): Array of data to matrix exponentiate of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix exponential of data of shape (n,n)
+	'''		
+	out = expmvc(parameters,data,identity,state,constants)
+	return out
+
+@jit
+def summationmmc(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix sum of parameters times data, acting on matrix, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return dot(addition(parameters*data),state)
+
+@jit
+def exponentiationmmc(parameters,data,identity,state,constants):
 	'''
 	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
 	Args:
@@ -2968,14 +3077,14 @@ def expmc(x,A,I,B):
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity
-		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
 	d,shape = A.shape[0],A.shape[1:]
 
-	subscripts = 'ij,jk,kl->il'
+	subscripts = 'uij,jk,kl->il'
 	shapes = (shape,shape,shape)
 	einsummation = einsum #(subscripts,shapes)
 
@@ -3052,7 +3161,7 @@ def expmvc(x,A,I,v,B):
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,)
-		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
@@ -3060,7 +3169,7 @@ def expmvc(x,A,I,v,B):
 	d,shape = A.shape[0],A.shape[1:]
 	n = v.shape[0]
 
-	subscripts = 'ij,jk,k->i'
+	subscripts = 'uij,jk,k->i'
 	shapes = (shape,shape,(n,))
 	einsummation = einsum #(subscripts,shapes)
 
@@ -4040,6 +4149,45 @@ def is_complexdtype(dtype,*args,**kwargs):
 		out (bool): If dtype is complex
 	'''
 	return np.issubdtype(dtype, np.complexfloating)
+
+
+def is_hermitian(obj,*args,**kwargs):
+	'''
+	Check if object is hermitian
+	Args:
+		obj (array): Object to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If object is hermitian
+	'''
+	try:
+		out = cholesky(obj)
+		out = (True and not is_naninf(out).any()) or allclose(obj,dagger(obj))
+		# out = True
+	except:
+		out = False
+	return out
+
+
+def is_unitary(obj,*args,**kwargs):
+	'''
+	Check if object is unitary
+	Args:
+		obj (array): Object to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If object is unitary
+	'''
+	try:
+		if obj.ndim == 1:
+			out = allclose(ones(1,dtype=obj.dtype),dot(obj,dagger(obj)))
+		else:
+			out = allclose(identity(obj.shape,dtype=obj.dtype),dot(obj,dagger(obj)))
+	except:
+		out = False
+	return out
 
 def is_list(a,*args,**kwargs):
 	'''

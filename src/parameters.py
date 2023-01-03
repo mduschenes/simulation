@@ -277,7 +277,7 @@ def setup(hyperparameters,cls=None):
 
 
 class Parameters(Object):
-	def __init__(self,data,shape,size=None,dims=None,samples=None,system=None,**kwargs):
+	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
 		'''
 		Initialize data of shapes of parameters based on shape of data. Initializes attributes of
 			data (dict,array,Parameters): Dictionary of parameter hyperparameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
@@ -296,7 +296,6 @@ class Parameters(Object):
 					'values': (array): array of values for that layer with variable + boundary/constant values
 					'index' (tuple[slice]): slices along each axis of the output values of that layer for that parameter,group key
 					layer (callable): Callable function with signature func(parameters,values,slices,indices) for input parameters[slices] that yields values[indices] for that layer
-				samples (array): Weights of samples
 		Args:
 			data (dict): Dictionary of data corresponding to parameters groupings, with dictionary values with properties:
 				'category':str : category of parameter
@@ -308,7 +307,6 @@ class Parameters(Object):
 			shape (iterable[int]): Shape of data
 			size (int,iterable[int]): Number of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
-			samples (bool,array): Weight samples (create random weights, or use samples weights)
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			cls (object): Class instance to update hyperparameters		
 			check (callable): Function with signature check(group,index,axis) to check if index of data for axis corresponds to group
@@ -405,7 +403,7 @@ class Parameters(Object):
 		# The other ('take,put',<type>) indexes involve summing all shapes corresponding to the keys that are within the type group, 
 		# plus subtracting shapes corresponding with boundaries and constants
 
-		super().__init__(data,shape,size=size,dims=dims,samples=samples,system=system,**kwargs)
+		super().__init__(data,shape,size=size,dims=dims,system=system,**kwargs)
 
 		return
 
@@ -427,6 +425,7 @@ class Parameters(Object):
 		# Size of data
 		size = None
 		self.size = size
+		self.length = len(self.size) if self.size is not None else None
 
 		# Get datatype of data
 		dtype = datatype(self.dtype)

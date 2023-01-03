@@ -189,9 +189,9 @@ def setup(settings):
 						**{job[attr][path]: None
 							for path in job[attr]},
 						**{job[attr][path]: hyperparameters[key] 
-							for path in ['settings']},
+							for path in ['settings'] if path in job[attr]},
 						**{job[attr][path]: hyperparameters[key].get(path,{}) 
-							for path in ['plot','process']},
+							for path in ['plot','process'] if path in job[attr]},
 						}
 				elif attr in ['patterns']:
 					value = job[attr]

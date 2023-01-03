@@ -3,7 +3,8 @@
 # Import python modules
 import pytest
 import os,sys
-import itertools,functools,copy
+import itertools,functools
+from copy import deepcopy as deepcopy
 	
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -13,7 +14,9 @@ for PATH in PATHS:
 
 
 from src.states import State
-from src.utils import jit,einsum,allclose
+from src.utils import jit,einsum,allclose,is_hermitian,is_unitary,delim
+from src.utils import norm,dagger,cholesky
+from src.iterables import getter,setter
 from src.io import load,dump
 
 # Logging
@@ -38,6 +41,21 @@ def test_model(path,tol):
 		label=hyperparameters['label'],
 		system=hyperparameters['system'])
 
+	return 
+
+def test_parameters(path,tol):
+
+	hyperparameters = load(path)
+
+	cls = load(hyperparameters['class']['model'])
+
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
+
 	parameters = model.parameters()
 	variables = model.__parameters__(parameters)
 
@@ -48,37 +66,70 @@ def test_model(path,tol):
 	shape = parameters.shape
 	slices = tuple((slice(size) for size in shape))
 	if all(model.parameters.hyperparameters.get(parameter,{}).get('method') in [None,'unconstrained'] for parameter in model.parameters.hyperparameters):
+		# assert allclose(variables[slices],parameters), "Incorrect parameter initialization %r"%(model.parameters.hyperparameters)
 		if not allclose(variables[slices],parameters):
 			print(parameters)
 			print(variables)
-			raise ValueError("Incorrect parameter init %r"%(model.parameters.hyperparameters))
+			raise ValueError("Incorrect parameter initialization %r"%(model.parameters.hyperparameters))
 
-
-	parameters = model.parameters()
-	func = jit(model)
-
-	U = func(parameters)
-
-	model.__functions__(noise=False)
-
-	func = jit(model)
-
-	V = func(parameters)
-
-	model.__functions__(noise=True)
-
-	func = jit(model)
-
-	W = func(parameters)
-
-	print(U)
-	print(V)
-	print(W)
-
-	# assert allclose(U,V),"Incorrect identity noise"
-	assert allclose(U,W),"Incorrect restored noise"
 
 	return
+
+
+
+def test_functions(path,tol):
+
+	hyperparameters = load(path)
+
+	cls = load(hyperparameters['class']['model'])
+
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
+
+	parameters = model.parameters()
+
+	copy = {attr: deepcopy(getattr(model,attr)) for attr in ['state','noise','label']}
+	attrs = ['noise.string','noise.scale','exponentiation']
+	kwargs = {'initial':dict(),'test':dict(noise={'scale':0}),'alter':dict(noise={'scale':None},state={'scale':None}),'restore':dict(copy)}
+	U = {}
+
+	for name in kwargs:
+
+		kwds = {}
+		setter(kwds,copy,func=True,copy=True)
+		setter(kwds,kwargs[name],func=True,copy=True)
+		model.__functions__(**kwds)
+		func = jit(model)
+		u = func(parameters)
+		U[name] = u
+
+		if attrs:
+			print('---- %s ----'%(name))
+			print(u)
+		for attr in attrs:
+			print(attr,getter(model,attr,delimiter=delim))
+
+		if u.ndim == 1:
+			assert is_unitary(u), "Non-normalized state"
+		elif u.ndim == 2:
+			if getter(model,'noise.scale',delimiter=delim) is not None:
+				assert is_hermitian(u), "Non-hermitian state"
+			else:
+				assert is_unitary(u), "Non-unitary operator"
+		else:
+			raise ValueError("ndim = %d != 1,2"%(u.ndim))	
+
+		if attrs:
+			print()
+
+	assert allclose(U['initial'],U['restore']),"Incorrect restored noise"
+
+	return
+
 
 
 def test_class(path,tol):

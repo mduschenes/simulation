@@ -14,7 +14,7 @@ for PATH in PATHS:
 from src.utils import jit,gradient,hessian,fisher
 from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,dot,einsum
-from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationc,exponentiationc,summationmc,exponentiationmc
+from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
 from src.utils import trotter,gradient_trotter,gradient_expm,gradient_sigmoid
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
@@ -131,6 +131,7 @@ class Observable(System):
 
 		self.summation = None
 		self.exponentiation = None 
+		self.hermitian = False
 
 		self.system = system
 
@@ -294,20 +295,31 @@ class Observable(System):
 		noise = self.noise if noise is None or noise is True else noise if noise is not False else None
 		label = self.label if label is None or label is True else label if label is not False else None
 
+		# Class arguments
+		kwargs = {}
 		shape = self.shape
 		dims = [self.N,self.D]
 		system = self.system
 
 		# Get state
-		self.state = State(state,shape,dims=dims,system=system)
+		kwargs.clear()
+		kwargs.update(self.state if self.state is not None else {})
+		kwargs.update(dict(data=state,shape=shape,dims=dims,system=system))
+		self.state = State(**kwargs)
 		state = self.state()
 
 		# Get noise
-		self.noise = Noise(noise,shape,dims=dims,system=system)
+		kwargs.clear()
+		kwargs.update(self.noise if self.noise is not None else {})
+		kwargs.update(dict(data=noise,shape=shape,dims=dims,system=system))
+		self.noise = Noise(**kwargs)
 		noise = self.noise()
 
 		# Get label
-		self.label = Operator(label,shape,dims=dims,system=system)
+		kwargs.clear()
+		kwargs.update(self.label if self.label is not None else {})
+		kwargs.update(dict(data=label,shape=shape,dims=dims,system=system))
+		self.label = Operator(**kwargs)
 		label = self.label()
 
 		# Attribute values
@@ -323,38 +335,46 @@ class Observable(System):
 		shapes = (self.label.shape,self.label.shape)
 		self.shapes = shapes
 
-		# print('state')
-		# print(state)
-
-		print('noise')
-		print(noise)
-
-		# print('label')
-		# print(label)
-
 		# Operator functions
 		if state is None and noise is None:
 			self.summation = jit(summation,data=data,identity=identity)
 			self.exponentiation = jit(exponentiation,data=data,identity=identity)
+			self.hermitian = False
 		elif state is not None and noise is None:
 			if state.ndim == 1:
 				self.summation = jit(summationv,data=data,identity=identity,state=state)
 				self.exponentiation = jit(exponentiationv,data=data,identity=identity,state=state)
+				self.hermitian = True
 			elif state.ndim == 2:
 				self.summation = jit(summationm,data=data,identity=identity,state=state)
 				self.exponentiation = jit(exponentiationm,data=data,identity=identity,state=state)
+				self.hermitian = True
 			else:
 				self.summation = jit(summation,data=data,identity=identity)
 				self.exponentiation = jit(exponentiation,data=data,identity=identity)
+				self.hermitian = False
 		elif state is None and noise is not None:
 			self.summation = jit(summation,data=data,identity=identity)
 			self.exponentiation = jit(exponentiation,data=data,identity=identity)
+			self.hermitian = False
 		elif state is not None and noise is not None:
-			self.summation = jit(summationmc,data=data,identity=identity,state=state,constants=noise)
-			self.exponentiation = jit(exponentiationmc,data=data,identity=identity,state=state,constants=noise)
+			if state.ndim == 1:
+				self.summation = jit(summationmvc,data=data,identity=identity,state=state,constants=noise)
+				self.exponentiation = jit(exponentiationmvc,data=data,identity=identity,state=state,constants=noise)
+				self.hermitian = True
+			elif state.ndim == 2:
+				self.summation = jit(summationmmc,data=data,identity=identity,state=state,constants=noise)
+				self.exponentiation = jit(exponentiationmmc,data=data,identity=identity,state=state,constants=noise)
+				self.hermitian = True
+			else:
+				self.summation = jit(summation,data=data,identity=identity)
+				self.exponentiation = jit(exponentiation,data=data,identity=identity)
+				self.hermitian = False
 		else:
 			self.summation = jit(summation,data=data,identity=identity)
 			self.exponentiation = jit(exponentiation,data=data,identity=identity)
+			self.hermitian = False
+
 
 
 		# Functions
@@ -372,7 +392,6 @@ class Observable(System):
 			out (array): Return of function
 		'''		
 		parameters = self.__parameters__(parameters)
-
 		return self.summation(parameters)
 
 	#@partial(jit,static_argnums=(0,))
@@ -748,7 +767,6 @@ class Hamiltonian(Observable):
 			operator (array): Parameterized operator
 		'''		
 		parameters = self.__parameters__(parameters)
-
 		return self.summation(parameters)
 
 	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None):
@@ -1209,6 +1227,7 @@ class Callback(object):
 					_label = _model.label()
 					_optimize = None
 					_hyperparameters = hyperparameters
+					_restore = {kwarg: deepcopy(getattr(model,kwarg)) for kwarg in _kwargs}
 
 					model.__functions__(**kwargs)
 					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
@@ -1220,7 +1239,7 @@ class Callback(object):
 					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
 						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
 
-					model.__functions__()
+					model.__functions__(**_restore)
 
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and not ((not status) or done):
 					value = default
@@ -1283,11 +1302,6 @@ class Callback(object):
 
 
 			model.log(msg)
-
-
-			# print(parameters.reshape(-1,model.M)) # Raw parameters have shape (-1,M)
-			# print(model.__layers__(parameters,'variables').T.reshape(model.M,-1))
-
 
 
 		return status

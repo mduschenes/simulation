@@ -28,7 +28,7 @@ from src.iterables import setter
 
 
 class State(Object):
-	def __init__(self,data,shape,size=None,dims=None,samples=None,system=None,**kwargs):
+	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
 		'''
 		Initialize data of attribute based on shape, with highest priority of arguments of: args,data,system,kwargs
 		Args:
@@ -36,12 +36,11 @@ class State(Object):
 			shape (int,iterable[int]): Shape of each data
 			size (int,iterable[int]): Number of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
-			samples (bool,array): Weight samples (create random weights, or use samples weights)
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		super().__init__(data,shape,size=size,dims=dims,samples=samples,system=system,**kwargs)
+		super().__init__(data,shape,size=size,dims=dims,system=system,**kwargs)
 
 		if self.ndim == 1:
 			self.data /= sqrt(einsum('...i,...i->...',self.data,self.data.conj()).real)
@@ -57,15 +56,16 @@ class State(Object):
 			kwargs (dict): Additional keyword arguments
 		'''
 
-		# Shape of data, depending on size, samples and shape
+		# Shape of data, depending on size and shape
 		if self.size is not None:
 			size = self.size
 		else:
 			size = [*[1]*2]
 		self.size = size
+		self.length = len(self.size) if self.size is not None else None
 
 		if self.shape is not None:
-			shape = [*size,*self.shape]
+			shape = [*self.size,*self.shape]
 		else:
 			shape = self.shape
 		self.shape = shape

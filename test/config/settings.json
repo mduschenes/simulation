@@ -215,7 +215,7 @@
 	"string":"random",
 	"category":"constant",
 	"shape":[-1,-1],
-	"size":[1,1],
+	"size":null,
 	"scale":1,
 	"initialization":"random",
 	"random":"haar",
@@ -226,7 +226,7 @@
 	"string":"depolarize",
 	"category":"constant",
 	"shape":[-1,-1],
-	"size":[4],
+	"size":null,
 	"scale":0.5,
 	"initialization":"random",
 	"random":"gaussian",
@@ -246,11 +246,7 @@
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{
-			"settings":"settings.json",
-			"plot":"plot.json",
-			"process":"process.json",
-			"mplstyle":"plot.mplstyle",
-			"conf":"logging.conf"
+			"settings":"settings.json"
 			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
@@ -280,8 +276,14 @@
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.json","--hyperparameters=**/process.json","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--cwd=."]
 			},
+		"paths":{
+			"plot":"plot.json",
+			"process":"process.json",
+			"mplstyle":"plot.mplstyle",
+			"conf":"logging.conf"
+		},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
 			"time":"01:00:00","mem":"64G",

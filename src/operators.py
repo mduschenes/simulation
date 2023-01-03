@@ -120,7 +120,7 @@ def toffoli(shape,bounds=None,random=None,seed=None,dtype=None,):
 
 
 class Operator(Object):
-	def __init__(self,data,shape,size=None,dims=None,samples=None,system=None,**kwargs):
+	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
 		'''
 		Initialize data of attribute based on shape, with highest priority of arguments of: args,data,system,kwargs
 		Args:
@@ -128,12 +128,11 @@ class Operator(Object):
 			shape (int,iterable[int]): Shape of each data
 			size (int,iterable[int]): Number of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
-			samples (bool,array): Weight samples (create random weights, or use samples weights)
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		super().__init__(data,shape,size=size,dims=dims,samples=samples,system=system,**kwargs)
+		super().__init__(data,shape,size=size,dims=dims,system=system,**kwargs)
 
 		return
 
@@ -147,6 +146,7 @@ class Operator(Object):
 		# Size
 		size = None
 		self.size = size
+		self.length = len(self.size) if self.size is not None else None
 
 		# Delimiter for string
 		delimiter = '_'

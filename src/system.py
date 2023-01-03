@@ -380,8 +380,9 @@ class Object(System):
 			self.size = (self.size,)
 
 		# Dimension of data
-		self.ndim = len(self.shape)
-		self.n = min(self.shape)
+		self.ndim = len(self.shape) if self.shape is not None else None
+		self.length = len(self.size) if self.size is not None else None
+		self.n = min(self.shape)  if self.shape is not None else None
 
 		# Number of sites and dimension of sites
 		self.N,self.D = self.dims[:2] if self.dims is not None else [1,self.n]
@@ -412,8 +413,8 @@ class Object(System):
 			self.samples = None
 
 		if self.samples is not None:
-			if all(self.data.shape[i] == self.size[i] for i in range(len(self.size))):
-				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:len(self.size)]),)*2),self.data,self.samples)
+			if (self.data.ndim>=self.length) and all(self.data.shape[i] == self.size[i] for i in range(self.length)):
+				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.length]),)*2),self.data,self.samples)
 
 		self.data = self(self.data)
 
