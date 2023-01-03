@@ -285,7 +285,7 @@ class Logger(object):
 		self.file = file
 
 		self.cleanup = cleanup
-		self.clean()
+		self.__clean__()
 
 		self.verbosity = {
 			'notset':0,'debug':10,'info':20,'warning':30,'error':40,'critical':50,
@@ -312,15 +312,14 @@ class Logger(object):
 		self.logger.log(verbose,msg)
 		return
 
-	def clean(self,cleanup=None):
+	def __clean__(self,cleanup=None):
 		'''
 		Set cleanup state of class
 		Args:
 			cleanup (bool): Cleanup log files upon exit	
 		'''
 
-		if cleanup is None:
-			cleanup = self.cleanup
+		cleanup = self.cleanup if cleanup is None else cleanup
 
 		if cleanup:
 			atexit.register(self.__atexit__)
@@ -335,10 +334,10 @@ class Logger(object):
 		Cleanup log files upon class exit
 		'''
 
-		logger = logging.getLogger()
+		loggers = [logging.getLogger(),self.logger]
+		loggers = [handler.baseFilename for logger in loggers for handler in logger.handlers if isinstance(handler,logging.FileHandler)]
 
-		loggers = [handler.baseFilename for handler in logger.handlers if isinstance(handler,logging.FileHandler)]
-
+		print(loggers)
 		for logger in loggers:
 			rm(logger)
 

@@ -631,7 +631,7 @@ class Observable(System):
 		'''		
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','p','shape','dims','cwd','path','backend','architecture','conf','logger']
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','p','shape','dims','cwd','path','backend','architecture','conf','logger','cleanup']
 			],
 			*['%s: %s'%(attr,getattr(self,attr)() is not None) 
 				for attr in ['state','noise']

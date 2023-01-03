@@ -85,7 +85,7 @@
 	"path":"data.hdf5",
 	"conf":"logging.conf",
 	"logger":"log.log",
-	"cleanup":false,
+	"cleanup":true,
 	"verbose":"info"
 	},
 "optimize":{

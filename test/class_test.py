@@ -228,6 +228,8 @@ def test_class(path,tol):
 
 		assert(allclose(obj(),old))
 
+	print('Done')
+
 	return
 
 if __name__ == '__main__':
@@ -235,3 +237,4 @@ if __name__ == '__main__':
 	tol = 5e-8 
 	# test_class(path,tol)
 	test_model(path,tol)
+	
