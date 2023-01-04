@@ -1147,6 +1147,8 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 
 	if bounds is None:
 		bounds = ["-inf","inf"]
+	elif isinstance(bounds,scalars):
+		bounds = [0,bounds]
 	elif len(bounds)==0:
 		bounds = ["-inf","inf"]
 
@@ -1211,7 +1213,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 
 			out = out.reshape(shape)
 
-			# assert allclose(1,einsum('...ij,...ij->...',out,out.conj()).real/out.shape[-1])
+			assert allclose(1,einsum('...ij,...ij->...',out,out.conj()).real/out.shape[-1])
 
 			# Create random matrices versus vectors
 			if ndim == 1: # Random vector
@@ -1484,7 +1486,7 @@ def inner(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else nullfunc
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1502,11 +1504,12 @@ def inner(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[0],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		return einsummation(*operands).real
+		out = einsummation(*operands).real
+		return wrapper(out,*operands)
 
 	if arrays:
 		out = func(*operands)
@@ -1526,7 +1529,7 @@ def gradient_inner(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else nullfunc
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1544,11 +1547,12 @@ def gradient_inner(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		return einsummation(operands[2],operands[1]).real
+		out = einsummation(operands[2],operands[1]).real
+		return wrapper(out,*operands)
 
 	if arrays:
 		out = func(*operands)
@@ -1570,7 +1574,7 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 	'''	
 
 	arrays = all(is_array(operand) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else nullfunc
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1588,12 +1592,12 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[0],)
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		out = abs2(operands[0]-operands[1].conj())
-		return einsummation(out)
+		out = einsummation(abs2(operands[0]-operands[1].conj()).real)
+		return wrapper(out,*operands)
 	
 	if arrays:
 		out = func(*operands)
@@ -1613,7 +1617,7 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else nullfunc
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1631,12 +1635,13 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
 		out = (operands[0]-operands[1].conj()).conj()
-		return 2*einsummation(operands[2],out).real
+		out = 2*einsummation(operands[2],out).real
+		return wrapper(out,*operands)
 	
 	if arrays:
 		out = func(*operands)
@@ -1657,8 +1662,8 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else nullfunc
-	
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+
 	if arrays:
 		shapes = [operand.shape for operand in operands]
 	else:
@@ -1675,11 +1680,14 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 	
 	shapes = (shapes[0],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		return abs2(einsummation(*operands))
+		out = abs2(einsummation(*operands)).real
+		return wrapper(out,*operands)
 	
 	if arrays:
 		out = func(*operands)
@@ -1701,7 +1709,7 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else nullfunc
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1711,16 +1719,15 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	ndim = min(len(shape) for shape in shapes)
 
 	if ndim == 1:
-		subscripts_value = 'i,i->'
+		subscripts_func = 'i,i->'
 	elif ndim == 2:
-		subscripts_value = 'ij,ij->'
+		subscripts_func = 'ij,ij->'
 	else:
-		subscripts_value = '...ij,...ij->...'
+		subscripts_func = '...ij,...ij->...'
 
-	shapes_value = (shapes[0],shapes[1])
+	shapes_func = (shapes[0],shapes[1])
 
-	einsummation_value = einsum(subscripts_value,*shapes_value,optimize=optimize)
-
+	einsummation_func = einsum(subscripts_func,*shapes_func,optimize=optimize,wrapper=None)
 
 	if ndim == 1:
 		subscripts_grad = '...i,i->...'
@@ -1731,11 +1738,12 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 
 	shapes_grad = (shapes[2],shapes[1])
 
-	einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper)
+	einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		return (2*(einsummation_value(operands[0],operands[1]).conj()*einsummation_grad(operands[2],operands[1])).real)
+		out = (2*(einsummation_func(operands[0],operands[1]).conj()*einsummation_grad(operands[2],operands[1])).real)
+		return wrapper(out,*operands)
 
 	if arrays:
 		out = func(*operands)
@@ -1756,7 +1764,7 @@ def inner_real(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else nullfunc
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1774,11 +1782,12 @@ def inner_real(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[0],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		return einsummation(*operands).real
+		out = einsummation(*operands).real
+		return wrapper(out,*operands)
 
 	if arrays:
 		out = func(*operands)
@@ -1799,7 +1808,7 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else nullfunc
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1817,11 +1826,12 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		return einsummation(operands[2],operands[1]).real
+		out = einsummation(operands[2],operands[1]).real
+		return wrapper(out,*operands)
 
 	if arrays:
 		out = func(*operands)
@@ -1842,7 +1852,7 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else nullfunc
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1860,11 +1870,12 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[0],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		return einsummation(*operands).imag
+		out = einsummation(*operands).imag
+		return wrapper(out,*operands)
 
 	if arrays:
 		out = func(*operands)
@@ -1885,7 +1896,7 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 	arrays = all(is_array(operand) for operand in operands)
-	wrapper = jit(wrapper) if wrapper is not None else nullfunc
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
 	if arrays:
 		shapes = [operand.shape for operand in operands]
@@ -1903,11 +1914,12 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 
 	shapes = (shapes[2],shapes[1])
 
-	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		return einsummation(operands[2],operands[1]).imag
+		out = einsummation(operands[2],operands[1]).imag
+		return wrapper(out,*operands)
 
 	if arrays:
 		out = func(*operands)
@@ -2251,7 +2263,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	optimize = einsum_path(subscripts,*shapes,optimize=optimize)	
 
 	@jit
-	def einsummation(*operands):
+	def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
 		return wrapper(np.einsum(subscripts,*operands,optimize=optimize),*operands)
 
 	if arrays:
@@ -4162,9 +4174,9 @@ def is_hermitian(obj,*args,**kwargs):
 		out (bool): If object is hermitian
 	'''
 	try:
-		out = cholesky(obj)
-		out = (True and not is_naninf(out).any()) or allclose(obj,dagger(obj))
-		# out = True
+		# out = cholesky(obj)
+		# out = (True and not is_naninf(out).any()) or allclose(obj,dagger(obj))
+		out = allclose(obj,dagger(obj))
 	except:
 		out = False
 	return out

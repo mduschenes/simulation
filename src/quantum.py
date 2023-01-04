@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient,hessian,fisher
 from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,tensordot,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,dot,einsum
+from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,dot,dagger,conj,transpose,einsum
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
 from src.utils import trotter,gradient_trotter,gradient_expm,gradient_sigmoid
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
@@ -29,7 +29,7 @@ from src.iterables import setter,getter,getattrs,hasattrs
 from src.iterables import leaves,counts,plant,grow
 
 from src.parameters import Parameters
-from src.operators import Operator
+from src.operators import Gate
 from src.states import State
 from src.noise import Noise
 
@@ -39,23 +39,90 @@ from src.system import System,Space,Time,Lattice
 
 from src.optimize import Objective,Metric
 
-dtype = 'complex'
-basis = {
-	'I': array([[1,0],[0,1]],dtype=dtype),
-	'X': array([[0,1],[1,0]],dtype=dtype),
-	'Y': array([[0,-1j],[1j,0]],dtype=dtype),
-	'Z': array([[1,0],[0,-1]],dtype=dtype),
-}
+class Operator(System):
+	'''
+	Class for Observable
+	Args:
+		data (iterable[str]): data for operator
+		operator (iterable[str]): string names of operators		
+		site (iterable[int]): site of local operators
+		string (str): string labels of operators
+		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		N (int): Number of qudits
+		D (int): Dimension of qudits
+		parameters (str,dict,Parameters): Type of parameters	
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''	
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+		N=None,D=None,parameters=None,system=None,**kwargs):
+
+		setter(kwargs,system,delimiter=delim,func=False)
+		super().__init__(**kwargs)
+
+		self.N = N
+		self.D = D
+		self.parameters = parameters
+		self.system = system
+
+		self.__setup__(data,operator,site,string,interaction)
+
+		return
+
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+		'''
+		Setup operator
+		Args:
+			data (iterable[str]): data for operator
+			operator (iterable[str]): string names of operators			
+			site (iterable[int]): site of local operators
+			string (str): string labels of operators
+			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
+		'''
+
+		basis = {
+				'I': array([[1,0],[0,1]]),
+				'X': array([[0,1],[1,0]]),
+				'Y': array([[0,-1j],[1j,0]]),
+				'Z': array([[1,0],[0,-1]]),
+			}
+
+		if data is not None:
+			operator = data
+
+		data = tensorprod([basis[i] for i in operator])
+		data = data.astype(self.dtype)
+
+		self.data = data
+		self.operator = operator
+		self.site = site
+		self.string = string
+		self.interaction = interaction
+
+		return
+
+	def __call__(self,parameters=None):
+		'''
+		Call operator
+		Args:
+			parameters (array): parameters
+		Returns:
+			operator (array): operator
+		'''
+
+		return self.data
+
 
 class Observable(System):
 	'''
 	Class for Observable
 	Args:
-		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		operator (iterable[str]): string names of operators
 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
@@ -67,24 +134,24 @@ class Observable(System):
 		M (int): Number of time steps
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
-		p (int): Trotter order		
+		P (int): Trotter order		
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice	
 		parameters (str,dict,Parameters): Type of parameters	
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
-		label (str,dict,Operator): Type of label	
+		label (str,dict,Gate): Type of label	
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
-		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
 		space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
 
-		setter(kwargs,system	,delimiter=delim,func=True)
-		super().__init__(**system)
+		setter(kwargs,system,delimiter=delim,func=False)
+		super().__init__(**kwargs)
 
 		self.N = N
 		self.D = D
@@ -94,7 +161,7 @@ class Observable(System):
 		self.M = M
 		self.T = T
 		self.tau = tau
-		self.p = p
+		self.P = P
 		self.space = space
 		self.time = time
 		self.lattice = lattice
@@ -104,10 +171,7 @@ class Observable(System):
 		self.site = []
 		self.string = []
 		self.interaction = []
-		self.indices = []		
-		self.dims = (self.M,len(self.data))
-		self.length = int(product(self.dims))
-		self.ndims = len(self.dims)
+		self.indices = []
 
 		self.key = None
 
@@ -119,6 +183,9 @@ class Observable(System):
 		self.size = int(product(self.shape))
 		self.ndim = len(self.shape)
 		self.shapes = (self.shape,self.shape)
+		self.dims = (self.M if self.M is not None else 0,len(self.data),*self.shape)
+		self.length = int(product(self.dims))
+		self.ndims = len(self.dims)
 
 		self.parameters = parameters
 		self.state = state
@@ -135,8 +202,8 @@ class Observable(System):
 
 		self.system = system
 
-		self.__space__()
 		self.__time__()
+		self.__space__()
 		self.__lattice__()
 
 		self.__setup__(data,operator,site,string,interaction)
@@ -145,11 +212,11 @@ class Observable(System):
 
 		return	
 
-	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup class
 		Args:
-			data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 				operator (iterable[str]): string names of operators
 				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 				string (iterable[str]): string labels of operators
@@ -169,6 +236,10 @@ class Observable(System):
 			string = []
 		if interaction is None:
 			interaction = []
+
+
+		if not isinstance(data,dict):
+			data = {datum.timestamp: datum for datum in data}
 
 		operator.extend([data[name]['operator'] for name in data])
 		site.extend([data[name]['site'] for name in data])
@@ -195,7 +266,7 @@ class Observable(System):
 		'''
 		Append to class
 		Args:
-			data (array): data of operator
+			data (Operator): data of operator
 			operator (str): string name of operator
 			site (int): site of local operator
 			string (str): string label of operator
@@ -209,7 +280,7 @@ class Observable(System):
 		'''
 		Setup class
 		Args:
-			data (iterable[array]): data of operator
+			data (iterable[Operator]): data of operator
 			operator (iterable[str]): string names of operators
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
@@ -226,7 +297,7 @@ class Observable(System):
 		Insert to class
 		Args:
 			index (int): index to insert operator
-			data (array): data of operator
+			data (Operator): data of operator
 			operator (str): string name of operator
 			site (int): site of local operator
 			string (str): string label of operator
@@ -258,7 +329,7 @@ class Observable(System):
 
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
 		data = self.parameters
-		shape = (len(self.data)//self.p,self.M)
+		shape = (len(self.data),self.M)
 		dims = None
 		cls = self
 		check = lambda group,index,axis,site=self.site,string=self.string: (
@@ -269,7 +340,7 @@ class Observable(System):
 		parameters = Parameters(data,shape,dims=dims,system=system,cls=cls,check=check,initialize=initialize)
 
 		# Get coefficients
-		coefficients = -1j*2*pi/2*self.tau/self.p		
+		coefficients = -1j*2*pi/2*self.tau/self.P		
 
 		# Update class attributes
 		self.parameters = parameters
@@ -284,12 +355,11 @@ class Observable(System):
 		Args:
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters, or boolean to choose self.state or None
 			noise (bool,dict,array,Noise): Noise to act on with class of shape (-1,self.shape), or class hyperparameters, or boolean to choose self.noise or None
-			label (bool,dict,array,Operator): Label of class of shape self.shape, or class hyperparameters, or boolean to choose self.label or None
+			label (bool,dict,array,Gate): Label of class of shape self.shape, or class hyperparameters, or boolean to choose self.label or None
 		'''
 
-
 		# Function arguments
-		data = array(self.data,dtype=self.dtype)
+		data = array(trotter([data() for data in self.data],self.P),dtype=self.dtype)
 		identity = self.identity
 		state = self.state if state is None or state is True else state if state is not False else None
 		noise = self.noise if noise is None or noise is True else noise if noise is not False else None
@@ -303,23 +373,26 @@ class Observable(System):
 
 		# Get state
 		kwargs.clear()
-		kwargs.update(self.state if self.state is not None else {})
-		kwargs.update(dict(data=state,shape=shape,dims=dims,system=system))
+		setter(kwargs,self.state)
+		setter(kwargs,state)
+		setter(kwargs,dict(data=state,shape=shape,dims=dims,system=system))
 		self.state = State(**kwargs)
 		state = self.state()
 
 		# Get noise
 		kwargs.clear()
-		kwargs.update(self.noise if self.noise is not None else {})
-		kwargs.update(dict(data=noise,shape=shape,dims=dims,system=system))
+		setter(kwargs,self.noise)
+		setter(kwargs,noise)
+		setter(kwargs,dict(data=noise,shape=shape,dims=dims,system=system))
 		self.noise = Noise(**kwargs)
 		noise = self.noise()
 
 		# Get label
 		kwargs.clear()
-		kwargs.update(self.label if self.label is not None else {})
-		kwargs.update(dict(data=label,shape=shape,dims=dims,system=system))
-		self.label = Operator(**kwargs)
+		setter(kwargs,self.label)
+		setter(kwargs,label)
+		setter(kwargs,dict(data=label,shape=shape,dims=dims,system=system))
+		self.label = Gate(**kwargs)
 		label = self.label()
 
 		# Attribute values
@@ -328,10 +401,11 @@ class Observable(System):
 		elif state.ndim == 1:
 			label = einsum('ij,j->i',label,state)
 		elif state.ndim == 2:
-			label = einsum('ij,jk,lk->il',label,state,label.conj())
+			label = einsum('ij,jk,kl->il',label,state,dagger(label))
 		else:
 			label = label
-		label = label.conj()
+		label = self.label(label)
+
 		shapes = (self.label.shape,self.label.shape)
 		self.shapes = shapes
 
@@ -544,29 +618,29 @@ class Observable(System):
 		return
 
 
-	def __time__(self,M=None,T=None,tau=None,p=None,time=None,system=None):
+	def __time__(self,M=None,T=None,tau=None,P=None,time=None,system=None):
 		'''
 		Set time attributes
 		Args:
 			M (int): Number of time steps
 			T (int): Simulation Time
 			tau (float): Simulation time scale
-			p (int): Trotter order		
+			P (int): Trotter order		
 			time (str,Time): Type of Time evolution space						
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 		M = self.M if M is None else M
 		T = self.T if T is None else T
 		tau = self.tau if tau is None else tau
-		p = self.p if p is None else p
+		P = self.P if P is None else P
 		time = self.time if time is None else time
 		system = self.system if system is None else system
 
-		self.time = Time(M,T,tau,p,time,system=system)	
+		self.time = Time(M,T,tau,P,time,system=system)	
 
 		self.M = self.time.M
 		self.T = self.time.T
-		self.p = self.time.p
+		self.P = self.time.P
 		self.tau = self.time.tau
 		self.dims = (self.M,self.dims[1:])	
 		self.ndims = len(self.dims)
@@ -631,7 +705,7 @@ class Observable(System):
 		'''		
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','p','shape','dims','cwd','path','backend','architecture','conf','logger','cleanup']
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','shape','dims','cwd','path','backend','architecture','conf','logger','cleanup']
 			],
 			*['%s: %s'%(attr,getattr(self,attr)() is not None) 
 				for attr in ['state','noise']
@@ -717,7 +791,7 @@ class Hamiltonian(Observable):
 	'''
 	Hamiltonian class of Operators
 	Args:
-		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
@@ -734,24 +808,24 @@ class Hamiltonian(Observable):
 		M (int): Number of time steps
 		T (int): Simulation time
 		tau (float): Simulation time scale
-		p (int): Trotter order		
+		P (int): Trotter order		
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
 		parameters (str,dict,Parameters): Type of parameters	
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
-		label (str,dict,Operator): Type of label
+		label (str,dict,Gate): Type of label
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
 				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
 				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
 		
 		return
@@ -769,11 +843,11 @@ class Hamiltonian(Observable):
 		parameters = self.__parameters__(parameters)
 		return self.summation(parameters)
 
-	def __setup__(self,data={},operator=None,site=None,string=None,interaction=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup class
 		Args:
-			data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 				operator (iterable[str]): string names of operators
 				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 				string (iterable[str]): string labels of operators
@@ -794,24 +868,31 @@ class Hamiltonian(Observable):
 		if interaction is None:
 			interaction = []									
 
+		if data is None:
+			data = {}
+		elif data and all(isinstance(datum,Operator) for datum in data):
+			data = {datum.timestamp: datum for datum in data}
+		
+		assert isinstance(data,dict), "Incorrect data format %r"%(type(data))			
+		
+
+		# else:
+		# 	operator = [datum.operator for datum in data]
+		# 	site = [datum.site for datum in data]
+		# 	string = [datum.string for datum in data]
+		# 	interaction = [datum.interaction for datum in data]
+
 		operator.extend([data[name]['operator'] for name in data])
 		site.extend([data[name]['site'] for name in data])
 		string.extend([data[name]['string'] for name in data])
 		interaction.extend([data[name]['interaction'] for name in data])
 
 		# Get number of operators
-		size = min([len(i) for i in [operator,site,string,interaction]])
+		size = min(len(i) for i in [operator,site,string,interaction])
 
 		# Lattice sites
 		sites = {site: self.lattice(site) for site in ['i','i<j','<ij>','i...j']}	# sites types on lattice
 		indices = {'i': ['i'],'<ij>':['i','j'],'i<j':['i','j'],'i...j':['i','j']} # allowed symbolic indices and maximum number of body site interactions
-
-		# Basis single-site operators
-		dtype = self.dtype
-		operators = {
-			attr: basis[attr].astype(dtype)
-			for attr in basis
-			}
 
 		# Get identity operator I, to be maintained with same shape of data for Euler identities
 		# with minimal redundant copying of data
@@ -852,28 +933,30 @@ class Hamiltonian(Observable):
 
 
 		# Form (size,n,n) shape operator from local strings for each data term
-		data = [tensorprod([operators[j] for j in i]) for i in operator]
+		size = min(len(i) for i in [operator,site,string,interaction])
+
+		data = [Operator(operator=operator[i],site=site[i],string=string[i],interaction=interaction[i],
+					N=self.N,D=self.D,system=self.system) for i in range(size)]
 
 		# Assert all data satisfies data**2 = identity for matrix exponentials
-		assert all(allclose(d.dot(d),self.identity) for d in data), 'data is not involutory and data**2 != identity'
-
-		# Get Trotterized order of p copies of data for products of data
-		p = self.p
-		data = trotter(data,p)
-		operator = trotter(operator,p)
-		site = trotter(site,p)
-		string = trotter(string,p)
-		interaction = trotter(interaction,p)
+		# assert all(allclose(dot(d,d),self.identity) for d in data), 'data is not involutory and data**2 != identity'
 
 		# Check for case of size
-		if not size:
-			data = [self.identity]*self.p
-			operator = [['I']*self.N]*self.p
-			site = [list(range(self.N))]*self.p
-			string = ['I']*self.p
-			interaction = ['i...j']*self.p
-		
+		# if not size:
+		# 	operator = ['I']*self.N
+		# 	site = list(range(self.N))
+		# 	string = 'I'
+		# 	interaction = 'i...j'
 
+		# 	data = Operator(operator=operator,site=site,string=string,interaction=interaction,
+		# 			N=self.N,D=self.D,system=self.system)
+
+		# 	operator = [operator]
+		# 	site = [site]
+		# 	string = [string]
+		# 	interaction = [interaction]
+		# 	data = [data]
+			
 		# Set class attributes
 		self.__extend__(data,operator,site,string,interaction)
 
@@ -900,8 +983,8 @@ class Hamiltonian(Observable):
 		parameters = self.__layers__(parameters,layer)
 
 		# Get Trotterized order of copies of parameters
-		p = self.p
-		parameters = array(trotter(parameters,p))
+		P = self.P
+		parameters = array(trotter(parameters,P))
 
 		# Get reshaped parameters (transpose for shape (K,M) to (M,K) and reshape to (MK,) with periodicity of data)
 		shape = parameters.T.shape
@@ -915,7 +998,7 @@ class Unitary(Hamiltonian):
 	'''
 	Unitary class of Operators
 	Args:
-		data (dict[str,dict]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
@@ -932,24 +1015,24 @@ class Unitary(Hamiltonian):
 		M (int): Number of time steps
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
-		p (int): Trotter order		
+		P (int): Trotter order		
 		space (str,Space): Type of Hilbert space
 		time (str,Time): Type of Time evolution space
 		lattice (str,Lattice): Type of lattice
 		parameters (str,dict,Parameters): Type of parameters	
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
-		label (str,dict,Operator): Type of label
+		label (str,dict,Gate): Type of label
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	def __init__(self,data={},operator=None,site=None,string=None,interaction=None,
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,p=None,
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
 				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,p=p,
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
 				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
 
 		return
@@ -984,11 +1067,16 @@ class Unitary(Hamiltonian):
 		layer = 'variables'
 		shape = attributes[attribute][layer]
 
+
+		# Get data
+		data = self.data
+		dtype = self.dtype
+
 		# Get trotterized shape
-		p = self.p
+		P = self.P
 		shape = list(shape[::-1])
 
-		shape[-1] *= p
+		shape[-1] *= P
 
 		ndim = len(shape)
 
@@ -1018,7 +1106,7 @@ class Unitary(Hamiltonian):
 		parameters = self.__parameters__(parameters)
 
 		coefficients = self.coefficients
-		data = array(self.data,dtype=self.dtype)
+		data = array(trotter([datum() for datum in data],P),dtype=dtype)
 		identity = self.identity
 
 		grad = gradient_expm(coefficients*parameters,data,identity)
@@ -1031,7 +1119,7 @@ class Unitary(Hamiltonian):
 
 		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
 
-		grad = array(gradient_trotter(grad,p))
+		grad = array(gradient_trotter(grad,P))
 
 		grad = grad[indices]
 
@@ -1074,7 +1162,7 @@ class Callback(object):
 			"hessian.eigenvalues":[],"fisher.eigenvalues":[],
 			"hessian.rank":[],"fisher.rank":[],
 
-			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"p":[],
+			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],
 
 			"noise.scale":[],"optimize.c1":[],"optimize.c2":[],
@@ -1212,14 +1300,16 @@ class Callback(object):
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or start):
 
+					_kwargs = {kwarg: {prop: hyperparameters.get('settings',{}).get(kwarg) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
+					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
-						_kwargs = {'state':{'scale':1},'noise':{'scale':1},'label':{'scale':1}}
+						_kwargs = {kwarg: False if kwarg in [] else _kwargs[kwarg] for kwarg in _kwargs}
 						_metric = 'real'
 					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
-						_kwargs = {'state':{'scale':1},'noise':{'scale':None},'label':{'scale':1}}
+						_kwargs = {kwarg: False if kwarg in ['noise'] else _kwargs[kwarg] for kwarg in _kwargs}
 						_metric = 'real'
 					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
-						_kwargs = {'state':{'scale':None},'noise':{'scale':None},'label':{'scale':1}}
+						_kwargs = {kwarg: False if kwarg in ['noise','state'] else _kwargs[kwarg] for kwarg in _kwargs}
 						_metric = 'abs2'
 
 					_model = model
@@ -1315,7 +1405,7 @@ import equinox as nn
 class module(nn.Module):
 	pass
 
-class Op(module,System):
+class OpModule(module,System):
 	'''
 	Class for Observable
 	Args:
@@ -1367,8 +1457,8 @@ class Op(module,System):
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
 					N=None,D=None,space=None,system=None,**kwargs):
 
-		setter(kwargs,system,delimiter=delim,func=True)
-		super(System).__init__(**kwargs)
+		setter(kwargs,system,delimiter=delim,func=False)
+		super().__init__(**kwargs)
 
 		self.N = N
 		self.D = D
@@ -1429,7 +1519,7 @@ class Op(module,System):
 		if state is None:
 			operator = parameters*self.data
 		else:
-			operator = (parameters*self.data).dot(state)
+			operator = dot((parameters*self.data),state)
 		return operator
 
 	@nn.filter_jit
@@ -1462,7 +1552,7 @@ class Op(module,System):
 
 			for site in self.site:
 				state = self.__swap__(state,site)
-				operator = (parameters*self.data).dot(state)
+				operator = dot(parameters*self.data,state)
 				operator = operator.reshape(self.shape)
 				state = self.__reshape__(state,site)
 
@@ -1526,6 +1616,14 @@ class Op(module,System):
 			string (str): string label of operator
 			interaction (str): interaction type of operator
 		'''
+
+		dtype = 'complex'
+		basis = {
+			'I': array([[1,0],[0,1]]),
+			'X': array([[0,1],[1,0]]),
+			'Y': array([[0,-1j],[1j,0]]),
+			'Z': array([[1,0],[0,-1]]),
+		}
 
 		if isinstance(data,str):
 			operator = data

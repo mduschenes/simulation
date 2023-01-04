@@ -24,13 +24,12 @@ from src.utils import pi,e,scalars,delim,null
 
 from src.system import Object
 from src.io import load,dump,join,split
-from src.iterables import setter
 
 
 class State(Object):
 	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
 		'''
-		Initialize data of attribute based on shape, with highest priority of arguments of: args,data,system,kwargs
+		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
 		Args:
 			data (dict,str,array,Noise): Data corresponding to noise
 			shape (int,iterable[int]): Shape of each data

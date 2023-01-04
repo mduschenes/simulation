@@ -22,7 +22,6 @@ from src.utils import pi,e,delim,null
 
 from src.system import Object
 from src.io import load,dump,join,split
-from src.iterables import setter
 
 
 
@@ -119,10 +118,10 @@ def toffoli(shape,bounds=None,random=None,seed=None,dtype=None,):
 	return data	
 
 
-class Operator(Object):
+class Gate(Object):
 	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
 		'''
-		Initialize data of attribute based on shape, with highest priority of arguments of: args,data,system,kwargs
+		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
 		Args:
 			data (dict,str,array,Noise): Data corresponding to noise
 			shape (int,iterable[int]): Shape of each data
@@ -172,6 +171,7 @@ class Operator(Object):
 			strings = None
 			locality = self.N			
 
+
 		assert (self.N%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,self.N)
 
 		if self.string is not None:
@@ -198,7 +198,6 @@ class Operator(Object):
 		assert allclose(eye(self.n,dtype=self.dtype),normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
 
 		self.data = data
-
 
 		return
 

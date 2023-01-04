@@ -25,7 +25,7 @@ from src.system import Object
 class Noise(Object):
 	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
 		'''
-		Initialize data of attribute based on shape, with highest priority of arguments of: args,data,system,kwargs
+		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
 		Args:
 			data (dict,str,array,Noise): Data corresponding to noise
 			shape (int,iterable[int]): Shape of each data
@@ -54,23 +54,25 @@ class Noise(Object):
 
 		assert (self.scale >= 0) and (self.scale <= 1), "Noise scale %r not in [0,1]"%(self.scale)
 
-
-		if self.string is None:
-			data = [self.basis['I']]
-		elif self.string in ['phase']:
-			data = [sqrt(1-self.scale)*self.basis['I'],
-					sqrt(self.scale)*self.basis['Z']]
-		elif self.string in ['amplitude']:
-			data = [self.basis['00'] + sqrt(1-self.scale)*self.basis['11'],
-					sqrt(self.scale)*self.basis['01']]
-		elif self.string in ['depolarize']:
-			data = [sqrt(1-self.scale)*self.basis['I'],
-					sqrt(self.scale/3)*self.basis['X'],
-					sqrt(self.scale/3)*self.basis['Y'],
-					sqrt(self.scale/3)*self.basis['Z']]
+		if self.scale > 0:
+			if self.string is None:
+				data = [self.basis['I']]
+			elif self.string in ['phase']:
+				data = [sqrt(1-self.scale)*self.basis['I'],
+						sqrt(self.scale)*self.basis['Z']]
+			elif self.string in ['amplitude']:
+				data = [self.basis['00'] + sqrt(1-self.scale)*self.basis['11'],
+						sqrt(self.scale)*self.basis['01']]
+			elif self.string in ['depolarize']:
+				data = [sqrt(1-self.scale)*self.basis['I'],
+						sqrt(self.scale/3)*self.basis['X'],
+						sqrt(self.scale/3)*self.basis['Y'],
+						sqrt(self.scale/3)*self.basis['Z']]
+			else:
+				data = [self.basis['I']]
 		else:
 			data = [self.basis['I']]
-
+	
 		data = array([
 			tensorprod(i)
 			for i in itertools.product(data,repeat=self.N)

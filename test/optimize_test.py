@@ -28,7 +28,7 @@ from src.utils import itg,flt,dbl
 from src.iterables import getter,setter,permuter,equalizer
 
 from src.parameters import Parameters
-from src.operators import Operator
+from src.operators import Gate
 from src.states import State
 
 from src.io import load,dump,join,split

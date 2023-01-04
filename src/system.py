@@ -25,7 +25,7 @@ from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_rea
 
 from src.utils import itg,dbl,flt,delim,null
 
-from src.iterables import setter
+from src.iterables import getter,setter
 from src.io import join,split,copy,rm,exists
 
 def config(name,conf=None,**kwargs):
@@ -103,7 +103,6 @@ def config(name,conf=None,**kwargs):
 			logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
 
 		except Exception as exception:
-			print('EXception ----',exception)
 			pass
 
 		logger = logging.getLogger(name)
@@ -332,23 +331,44 @@ class Logger(object):
 
 
 class Object(System):
-	def __init__(self,data,shape,size=None,dims=None,samples=None,system=None,**kwargs):
+	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
 		'''
-		Initialize data of attribute based on shape, with highest priority of arguments of: args,data,system,kwargs
+		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
 		Args:
 			data (dict,str,array,Noise): Data corresponding to noise
 			shape (int,iterable[int]): Shape of each data
 			size (int,iterable[int]): Number of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
-			samples (bool,array): Weight samples (create random weights, or use samples weights)
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
+		defaults = {
+			'string':None,
+			'category':None,
+			"scale":1,
+			"samples":None,
+			'initialization':'random',
+			'random':'random',
+			'seed':None,
+			'bounds':[-1,1],
+			'basis':{
+				'I': array([[1,0],[0,1]]),
+				'X': array([[0,1],[1,0]]),
+				'Y': array([[0,-1j],[1j,0]]),
+				'Z': array([[1,0],[0,-1]]),
+				'00':array([[1,0],[0,0]]),
+				'01':array([[0,1],[0,0]]),
+				'10':array([[0,0],[1,0]]),
+				'11':array([[0,0],[0,1]]),
+			}
+		}
 
 		# Setup kwargs
+		setter(kwargs,dict(data=data,shape=shape,size=size,dims=dims,system=system),delimiter=delim,func=False)
+		setter(kwargs,data,delimiter=delim,func=False)
+		setter(kwargs,getter(data,'system'),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
-		setter(kwargs,data,delimiter=delim,func=True)
-		self.__check__(kwargs,data=data,shape=shape,size=size,dims=dims,samples=samples,system=system)
+		setter(kwargs,defaults,delimiter=delim,func=False)
 		super().__init__(**kwargs)
 
 		# Ensure shape is iterable
@@ -367,15 +387,24 @@ class Object(System):
 		# Number of sites and dimension of sites
 		self.N,self.D = self.dims[:2] if self.dims is not None else [1,self.n]
 
+		# Set basis
+		self.basis = {basis: self.basis[basis].astype(self.dtype) for basis in self.basis}
+
 		# Set data
-		if isinstance(self.data,self.__class__):
-			super().__init__(self.data)
-		elif is_array(data):
-			self.data = self.data
-			self.size = None
-		elif self.shape is None or self.scale is None:
+		if self.shape is None or self.scale is None:
 			self.data = None
 			self.size = None
+		
+		if is_array(self.data):
+			self.data = self.data
+			self.size = None
+		elif self.data is None:
+			self.data = self.data
+			self.shape = None
+			self.ndim = None
+			self.size = None
+			self.string = None
+			self.scale = None
 		else:
 			if isinstance(self.data,str):
 				self.string = self.data
@@ -424,53 +453,6 @@ class Object(System):
 
 		return
 
-
-	def __check__(self,kwds,**kwargs):
-		'''
-		Check kwargs, with defaults
-			string (str) : class string
-			category (str) : class category
-			initialization (str): class initialization type
-			random (str): random type
-			seed (int): random seed
-			bounds (iterable[float]): bounds on data
-		Args:	
-			kwds (dict): settings
-			kwargs (object): Additional kwargs
-		'''
-		dtype = 'complex'
-		defaults = {
-			'string':None,
-			'category':None,
-			"shape":[-1,-1],
-			"size":[1],
-			"scale":1,
-			"samples":None,
-			'initialization':'random',
-			'random':'random',
-			'seed':None,
-			'bounds':[-1,1],
-			'basis':{
-				'I': array([[1,0],[0,1]],dtype=dtype),
-				'X': array([[0,1],[1,0]],dtype=dtype),
-				'Y': array([[0,-1j],[1j,0]],dtype=dtype),
-				'Z': array([[1,0],[0,-1]],dtype=dtype),
-				'00':array([[1,0],[0,0]],dtype=dtype),
-				'01':array([[0,1],[0,0]],dtype=dtype),
-				'10':array([[0,0],[1,0]],dtype=dtype),
-				'11':array([[0,0],[0,1]],dtype=dtype),
-			}
-		}
-
-		setter(kwds,kwargs,delimiter=delim,func='None')
-
-		setter(kwds,defaults,delimiter=delim,func=False)
-
-		attrs = ['system']
-		for attr in attrs:
-			setter(kwds,kwds.get(attr),delimiter=delim,func='None')
-
-		return
 
 	def info(self,verbose=None):
 		'''
@@ -575,18 +557,18 @@ class Time(System):
 		M (int): Number of time steps
 		T (int): Simulation time
 		tau (float): Simulation time scale
-		p (int): Trotter order
+		P (int): Trotter order
 		time (str,Time): Type of Time evolution space
 		system (dict,System): System attributes
 	'''
-	def __init__(self,M,T,tau,p,time,system):
+	def __init__(self,M,T,tau,P,time,system):
 
 		super().__init__(**system)
 
 		self.M = M if M is not None else 1
 		self.T = T if T is not None else None
 		self.tau = tau if tau is not None or T is not None else None
-		self.p = p if p is not None else 1
+		self.P = P if P is not None else 1
 		self.time = time
 		self.default = 'linear'
 		self.system = system

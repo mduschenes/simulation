@@ -16,8 +16,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient
-from src.utils import is_naninf,product,sqrt,asarray
+from src.utils import jit,value_and_gradient,gradient,conj,abs
+from src.utils import is_naninf,is_unitary,is_hermitian,product,sqrt,asarray
 
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
@@ -577,7 +577,7 @@ class Metric(System):
 			self.size = 1
 		return 
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __call__(self,*operands):
 		'''
 		Function call
@@ -588,7 +588,7 @@ class Metric(System):
 		'''
 		return self.function(*operands)
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __grad__(self,*operands):
 		'''
 		Gradient call
@@ -599,7 +599,7 @@ class Metric(System):
 		'''		
 		return self.gradient(*operands)
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __grad_analytical__(self,*operands):
 		'''
 		Gradient call
@@ -610,7 +610,7 @@ class Metric(System):
 		'''		
 		return self.gradient_analytical(*operands)
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def func(self,*operands):
 		'''
 		Function call
@@ -621,7 +621,7 @@ class Metric(System):
 		'''		
 		return self.__call__(*operands)
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def grad(self,*operands):
 		'''
 		Gradient call
@@ -632,7 +632,7 @@ class Metric(System):
 		'''		
 		return self.__grad__(*operands)	
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def grad_analytical(self,*operands):
 		'''
 		Gradient call
@@ -676,202 +676,126 @@ class Metric(System):
 		'''
 		Setup metric	
 		'''
+		
 		if callable(self.metric):
 			metric = self.metric
 			function = jit(metric)
 			grad = jit(gradient(metric))
 			gradient_analytical = jit(gradient(metric))
-
-		elif self.metric is None:
-
-			def wrapper(out,*operands):
-				return out/2/operands[0].shape[0]
-
-			if self.shapes:
-				shapes = (*self.shapes,)
-				optimize = self.optimize
-				function = inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
-			else:
-				shapes = ()
-				optimize = self.optimize
-				function = partial(inner_norm,optimize=optimize,wrapper=wrapper)
-
-
-			def wrapper(out,*operands):
-				return out/2/operands[0].shape[0]
-
-			if self.shapes:
-				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-				optimize = self.optimize
-				gradient_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
-			else:
-				shapes = ()
-				optimize = self.optimize
-				gradient_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
-
-		elif self.metric in ['norm']:
-
-			def wrapper(out,*operands):
-				return out/2/operands[0].shape[0]
-
-			if self.shapes:
-				shapes = (*self.shapes,)
-				optimize = self.optimize
-				function = inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
-			else:
-				shapes = ()
-				optimize = self.optimize
-				function = partial(inner_norm,optimize=optimize,wrapper=wrapper)
-
-
-			def wrapper(out,*operands):
-				return out/2/operands[0].shape[0]
-
-			if self.shapes:
-				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-				optimize = self.optimize
-				gradient_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
-			else:
-				shapes = ()
-				optimize = self.optimize
-				gradient_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
-
-
-		elif self.metric in ['abs2']:
-
-			def wrapper(out,*operands):
-				return 1 - out/(operands[0].size)
-
-			if self.shapes:
-				shapes = (*self.shapes,)
-				optimize = self.optimize
-				function = inner_abs2(*shapes,optimize=optimize,wrapper=wrapper)
-				print('DOing function',function)
-			else:
-				shapes = ()
-				optimize = self.optimize
-				function = partial(inner_abs2,optimize=optimize,wrapper=wrapper)
-
-
-			def wrapper(out,*operands):
-				return - out/(operands[0].size)
-
-			if self.shapes:
-				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-				optimize = self.optimize
-				gradient_analytical = gradient_inner_abs2(*shapes,optimize=optimize,wrapper=wrapper)
-			else:
-				shapes = ()
-				optimize = self.optimize
-				gradient_analytical = partial(gradient_inner_abs2,optimize=optimize,wrapper=wrapper)
-
-
-		elif self.metric in ['real']:
-
-			def wrapper(out,*operands):
-				return 1 - out/(operands[0].shape[0])
-
-			if self.shapes:
-				shapes = (*self.shapes,)
-				optimize = self.optimize
-				function = inner_real(*shapes,optimize=optimize,wrapper=wrapper)
-			else:
-				shapes = ()
-				optimize = self.optimize
-				function = partial(inner_real,optimize=optimize,wrapper=wrapper)
-
-
-			def wrapper(out,*operands):
-				return  - out/(operands[0].shape[0])
-
-			if self.shapes:
-				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-				optimize = self.optimize
-				gradient_analytical = gradient_inner_real(*shapes,optimize=optimize,wrapper=wrapper)
-			else:
-				shapes = ()
-				optimize = self.optimize
-				gradient_analytical = partial(gradient_inner_real,optimize=optimize,wrapper=wrapper)
-
-
-		elif self.metric in ['imag']:
-
-			def wrapper(out,*operands):
-				return 1 - out/(operands[0].shape[0])
-
-			if self.shapes:
-				shapes = (*self.shapes,)
-				optimize = self.optimize
-				function = inner_imag(*shapes,optimize=optimize,wrapper=wrapper)
-			else:
-				shapes = ()
-				optimize = self.optimize
-				function = partial(inner_imag,optimize=optimize,wrapper=wrapper)
-
-
-			def wrapper(out,*operands):
-				return - out/(operands[0].shape[0])
-
-			if self.shapes:
-				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-				optimize = self.optimize
-				gradient_analytical = gradient_inner_imag(*shapes,optimize=optimize,wrapper=wrapper)
-			else:
-				shapes = ()
-				optimize = self.optimize
-				gradient_analytical = partial(gradient_inner_imag,optimize=optimize,wrapper=wrapper)
-
 		else:
 
-			def wrapper(out,*operands):
-				return out/2/operands[0].shape[0]
+			if self.label is not None:
+				if is_unitary(self.label) and self.metric in ['real','imag','norm']:
+					self.metric = 'abs2'
+				elif is_hermitian(self.label) and self.metric in ['abs2']:
+					self.metric = 'real'
 
-			if self.shapes:
-				shapes = (*self.shapes,)
-				optimize = self.optimize
-				function = inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+			if self.metric is None:
+
+				function = inner_norm
+				gradient_analytical = gradient_inner_norm
+
+				def wrapper_function(out,*operands):
+					return out/operands[0].shape[-1]/2
+
+				def wrapper_gradient(out,*operands):
+					return out/operands[0].shape[-1]/2
+
+			elif self.metric in ['norm']:
+
+				function = inner_norm
+				gradient_analytical = gradient_inner_norm
+
+				def wrapper_function(out,*operands):
+					return out/operands[0].shape[-1]/2
+				
+				def wrapper_gradient(out,*operands):
+					return out/operands[0].shape[-1]/2
+
+			elif self.metric in ['abs2']:
+
+				function = inner_abs2
+				gradient_analytical = gradient_inner_abs2
+
+				def wrapper_function(out,*operands):
+					return abs(1 - out/(operands[0].shape[-1]*operands[0].shape[-2]))
+
+				def wrapper_gradient(out,*operands):
+					return - out/(operands[0].shape[-1]*operands[0].shape[-2])
+
+			elif self.metric in ['real']:
+
+				function = inner_real
+				gradient_analytical = gradient_inner_real
+
+				def wrapper_function(out,*operands):
+					return abs(1 - out)
+
+				def wrapper_gradient(out,*operands):
+					return  - out
+
+			elif self.metric in ['imag']:
+
+				function = inner_imag
+				gradient_analytical = gradient_inner_imag
+
+				def wrapper_function(out,*operands):
+					return abs(1 - out)
+
+				def wrapper_gradient(out,*operands):
+					return - out
+
 			else:
-				shapes = ()
-				optimize = self.optimize
-				function = partial(inner_norm,optimize=optimize,wrapper=wrapper)
+
+				function = inner_norm
+				gradient_analytical = gradient_inner_norm
+
+				def wrapper_function(out,*operands):
+					return out/operands[0].shape[-1]/2
+
+				def wrapper_gradient(out,*operands):
+					return out/operands[0].shape[-1]/2
 
 
-			def wrapper(out,*operands):
-				return out/2/operands[0].shape[0]
+			shapes_function = (*self.shapes,) if self.shapes else ()
+			optimize_function = self.optimize
+			wrapper_function = jit(wrapper_function)
 
-			if self.shapes:
-				shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-				optimize = self.optimize
-				gradient_analytical = gradient_inner_norm(*shapes,optimize=optimize,wrapper=wrapper)
+			shapes_gradient = (*self.shapes,(self.size**2,*self.shapes[0])) if self.shapes else ()
+			optimize_gradient = self.optimize
+			wrapper_gradient = jit(wrapper_gradient)
+
+			if shapes_function:
+				function = function(*shapes_function,optimize=optimize_function,wrapper=wrapper_function)
 			else:
-				shapes = ()
-				optimize = self.optimize
-				gradient_analytical = partial(gradient_inner_norm,optimize=optimize,wrapper=wrapper)
+				function = partial(function,optimize=optimize_gradient,wrapper=wrapper_function)
 
-		_function = jit(function)
-		_grad = jit(gradient_analytical)
-		# _grad = jit(gradient(function,mode='fwd',holomorphic=True,move=True))
-		_gradient_analytical = jit(gradient_analytical)
+			if shapes_gradient:
+				gradient_analytical = gradient_analytical(*shapes_gradient,optimize=optimize_function,wrapper=wrapper_gradient)
+			else:
+				gradient_analytical = partial(gradient_analytical,optimize=optimize_gradient,wrapper=wrapper_gradient)
 
-		if self.label is not None and self.metric in [None,'norm','abs2','real','imag']:
-			def function(*operands):
-				return _function(*operands[:1],self.label,*operands[1:])
-			def grad(*operands):
-				return _grad(*operands[:1],self.label,*operands[1:])				
-			def gradient_analytical(*operands):
-				return _gradient_analytical(*operands[:1],self.label,*operands[1:])
-		else:
-			def function(*operands):
-				return _function(*operands)
-			def grad(*operands):
-				return _grad(*operands)
-			def gradient_analytical(*operands):
-				return _gradient_analytical(*operands)
+			grad = gradient_analytical
+			# grad = gradient(function,mode='fwd',holomorphic=True,move=True)
+
+			function = jit(function)
+			grad = jit(grad)
+			gradient_analytical = jit(gradient_analytical)
+
+			if self.label is not None:
+
+				label = conj(self.label)
+
+				def function(*operands,function=function,label=label):
+					return function(*operands[:1],label,*operands[1:])
+				def grad(*operands,function=grad,label=label):
+					return function(*operands[:1],label,*operands[1:])				
+				def gradient_analytical(*operands,function=gradient_analytical,label=label):
+					return function(*operands[:1],label,*operands[1:])
 
 		function = jit(function)
 		grad = jit(grad)
 		gradient_analytical = jit(gradient_analytical)
-
 
 		self.function = function
 		self.gradient = grad
@@ -913,8 +837,6 @@ class Optimization(System):
 			'track':{},		
 		}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
-		hyperparameters.update({attr: updates.get(attr,{}).get(hyperparameters[attr],hyperparameters[attr]) 
-			if attr in updates else hyperparameters[attr] for attr in hyperparameters})
 
 		self.hyperparameters = hyperparameters
 

@@ -24,7 +24,6 @@ from src.utils import pi,itg,scalars,delim,null
 
 from src.system import Object
 from src.io import load,dump,join,split
-from src.iterables import setter
 
 
 def _variables(hyperparameters,parameter,group):

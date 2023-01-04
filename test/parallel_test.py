@@ -65,7 +65,7 @@ def test_pooler(path):
 	values = {}
 	processes = -1
 	args = ()
-		kwds = {'value':{}}
+	kwds = {'value':{}}
 	callback_args = ()
 	callback_kwds = {'values':values}
 

@@ -7,7 +7,9 @@ The hierarchy of inheritance of classes is as follows
 
 `Unitary <- Hamiltonian <- Observable <- System <- Dictionary`
 
-`State,Noise,Operator <- Object <- System <- Dictionary`
+`Operator <- System <- Dictionary`
+
+`State,Noise,Gate <- Object <- System <- Dictionary`
 
 `Objective,Callback <- Function <- System <- Dictionary`
 
