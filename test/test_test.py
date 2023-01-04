@@ -72,15 +72,11 @@ def test_class(path,tol):
 	else:
 		assert is_unitary(out), "model not unitary"
 
-	return
-
 
 	initial = model(model.parameters())
 
-	print('initial',initial)
-	print('-----')
-
-	new = cls(**{**hyperparameters['model'],**dict(data=None)},
+	hyperparameters['model']['data'] = None
+	new = cls(**hyperparameters['model'],
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
 		noise=hyperparameters['noise'],
@@ -88,16 +84,16 @@ def test_class(path,tol):
 		system=hyperparameters['system'])
 
 	init  = new(new.parameters())
-	print('init',init)
-	print()
 
-	new.__setup__(data=model.data,operator=model.operator,site=model.site,string=model.string,interaction=model.interaction)
+	new.__setup__(model.data)
 
+	new.info()
 
 	final = new(new.parameters())
 
-	print('final',final)
-
+	print(initial)
+	print(init)
+	print(final)
 
 	assert(allclose(initial,final)), "Incorrect class re-initialization"
 
@@ -277,8 +273,8 @@ def test_objective(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_data(path,tol)
 	test_class(path,tol)
+	# test_data(path,tol)
 	# test_grad(path,tol)
 	# test_metric(path,tol)
 	# test_objective(path,tol)

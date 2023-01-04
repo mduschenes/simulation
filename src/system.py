@@ -83,13 +83,13 @@ def config(name,conf=None,**kwargs):
 						if key in ['formatter'] and value in ['file']:
 							if file is not None:
 								path = file
+								directory = os.path.abspath(os.path.dirname(os.path.abspath(path)))
+								if not os.path.exists(directory):
+									os.makedirs(directory)
 							else:
 								break
 
-							directory = os.path.abspath(os.path.dirname(os.path.abspath(path)))
-							if not os.path.exists(directory):
-								os.makedirs(directory)
-
+							
 							kwds = {'file':path}
 
 						elif key in ['keys','handlers'] and value in ['stdout,file']:
@@ -314,7 +314,7 @@ class Logger(object):
 		Cleanup log files upon class exit
 		'''
 
-		loggers = [logging.getLogger()]#,self.logger,*logging.Logger.manager.loggerDict.values()]
+		loggers = [logging.getLogger(),self.logger,*logging.Logger.manager.loggerDict.values()]
 		loggers = [handler.baseFilename for logger in loggers for handler in getattr(logger,'handlers',[]) if isinstance(handler,logging.FileHandler)]
 		loggers = list(set(loggers))
 
@@ -335,7 +335,7 @@ class Object(System):
 		'''
 		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
 		Args:
-			data (dict,str,array,Noise): Data corresponding to noise
+			data (dict,str,array,System): Data corresponding to class
 			shape (int,iterable[int]): Shape of each data
 			size (int,iterable[int]): Number of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
@@ -351,22 +351,11 @@ class Object(System):
 			'random':'random',
 			'seed':None,
 			'bounds':[-1,1],
-			'basis':{
-				'I': array([[1,0],[0,1]]),
-				'X': array([[0,1],[1,0]]),
-				'Y': array([[0,-1j],[1j,0]]),
-				'Z': array([[1,0],[0,-1]]),
-				'00':array([[1,0],[0,0]]),
-				'01':array([[0,1],[0,0]]),
-				'10':array([[0,0],[1,0]]),
-				'11':array([[0,0],[0,1]]),
-			}
 		}
 
 		# Setup kwargs
 		setter(kwargs,dict(data=data,shape=shape,size=size,dims=dims,system=system),delimiter=delim,func=False)
 		setter(kwargs,data,delimiter=delim,func=False)
-		setter(kwargs,getter(data,'system'),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 		setter(kwargs,defaults,delimiter=delim,func=False)
 		super().__init__(**kwargs)
@@ -386,9 +375,6 @@ class Object(System):
 
 		# Number of sites and dimension of sites
 		self.N,self.D = self.dims[:2] if self.dims is not None else [1,self.n]
-
-		# Set basis
-		self.basis = {basis: self.basis[basis].astype(self.dtype) for basis in self.basis}
 
 		# Set data
 		if self.shape is None or self.scale is None:

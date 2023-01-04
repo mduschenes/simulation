@@ -57,8 +57,16 @@ class Operator(System):
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
 		N=None,D=None,parameters=None,system=None,**kwargs):
 
+
 		setter(kwargs,system,delimiter=delim,func=False)
+
 		super().__init__(**kwargs)
+
+		self.data = data
+		self.operator = operator
+		self.site = site
+		self.string = string
+		self.interaction = interaction
 
 		self.N = N
 		self.D = D
@@ -87,8 +95,11 @@ class Operator(System):
 				'Z': array([[1,0],[0,-1]]),
 			}
 
-		if data is not None:
-			operator = data
+		data = self.data if data is None else data
+		operator = self.operator if operator is None else operator
+		site = self.site if site is None else site
+		string = self.string if string is None else string
+		interaction = self.interaction if interaction is None else interaction
 
 		data = tensorprod([basis[i] for i in operator])
 		data = data.astype(self.dtype)
@@ -111,6 +122,16 @@ class Operator(System):
 		'''
 
 		return self.data
+
+
+	def __str__(self):
+		return delim.join(self.operator)
+
+	def __repr__(self):
+		return self.__str__()
+	
+	def __len__(self):
+		return len(self.data)
 
 
 class Observable(System):
@@ -248,7 +269,7 @@ class Observable(System):
 
 		size = min([len(i) for i in [operator,site,string,interaction]])
 
-		data = [self.identity.copy() for i in range(size)]
+		data = [Operator(['I']*self.N,N=self.N,D=self.D,system=self.system) for i in range(size)]
 
 		# Set class attributes
 		self.__extend__(data,operator,site,string,interaction)
@@ -307,6 +328,7 @@ class Observable(System):
 		if index == -1:
 			index = len(self.data)
 
+
 		self.data.insert(index,data)
 		self.operator.insert(index,operator)
 		self.site.insert(index,site)
@@ -328,7 +350,7 @@ class Observable(System):
 		'''
 
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
-		data = self.parameters
+		parameters = self.parameters.hyperparameters if isinstance(self.parameters,Parameters) else self.parameters
 		shape = (len(self.data),self.M)
 		dims = None
 		cls = self
@@ -337,7 +359,7 @@ class Observable(System):
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
 		system = self.system
 
-		parameters = Parameters(data,shape,dims=dims,system=system,cls=cls,check=check,initialize=initialize)
+		parameters = Parameters(parameters,shape,dims=dims,system=system,cls=cls,check=check,initialize=initialize)
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.P		
@@ -870,25 +892,15 @@ class Hamiltonian(Observable):
 
 		if data is None:
 			data = {}
-		elif data and all(isinstance(datum,Operator) for datum in data):
+		elif all(isinstance(datum,Operator) for datum in data):
 			data = {datum.timestamp: datum for datum in data}
 		
 		assert isinstance(data,dict), "Incorrect data format %r"%(type(data))			
-		
-
-		# else:
-		# 	operator = [datum.operator for datum in data]
-		# 	site = [datum.site for datum in data]
-		# 	string = [datum.string for datum in data]
-		# 	interaction = [datum.interaction for datum in data]
 
 		operator.extend([data[name]['operator'] for name in data])
 		site.extend([data[name]['site'] for name in data])
 		string.extend([data[name]['string'] for name in data])
 		interaction.extend([data[name]['interaction'] for name in data])
-
-		# Get number of operators
-		size = min(len(i) for i in [operator,site,string,interaction])
 
 		# Lattice sites
 		sites = {site: self.lattice(site) for site in ['i','i<j','<ij>','i...j']}	# sites types on lattice
@@ -898,6 +910,9 @@ class Hamiltonian(Observable):
 		# with minimal redundant copying of data
 		I = 'I'
 
+		# Get number of operators
+		size = min(len(i) for i in [operator,site,string,interaction])
+		
 		# Get all indices from symbolic indices
 		for i in range(size):
 			_operator = operator.pop(0);
@@ -920,7 +935,7 @@ class Hamiltonian(Observable):
 						operator.append(_operator_)
 						string.append(_string_)
 						interaction.append(_interaction_)
-			else:
+			elif len(_operator) == len(_site):
 				_site_ = deepcopy(_site)
 				_operator_ = deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
 				_string_ = deepcopy(_string)
@@ -930,6 +945,16 @@ class Hamiltonian(Observable):
 				operator.append(_operator_)
 				string.append(_string_)
 				interaction.append(_interaction_)
+			else:
+				_site_ = deepcopy(_site)
+				_operator_ = deepcopy(_operator)
+				_string_ = deepcopy(_string)
+				_interaction_ = deepcopy(_interaction)
+
+				site.append(_site_)
+				operator.append(_operator_)
+				string.append(_string_)
+				interaction.append(_interaction_)				
 
 
 		# Form (size,n,n) shape operator from local strings for each data term
@@ -938,25 +963,6 @@ class Hamiltonian(Observable):
 		data = [Operator(operator=operator[i],site=site[i],string=string[i],interaction=interaction[i],
 					N=self.N,D=self.D,system=self.system) for i in range(size)]
 
-		# Assert all data satisfies data**2 = identity for matrix exponentials
-		# assert all(allclose(dot(d,d),self.identity) for d in data), 'data is not involutory and data**2 != identity'
-
-		# Check for case of size
-		# if not size:
-		# 	operator = ['I']*self.N
-		# 	site = list(range(self.N))
-		# 	string = 'I'
-		# 	interaction = 'i...j'
-
-		# 	data = Operator(operator=operator,site=site,string=string,interaction=interaction,
-		# 			N=self.N,D=self.D,system=self.system)
-
-		# 	operator = [operator]
-		# 	site = [site]
-		# 	string = [string]
-		# 	interaction = [interaction]
-		# 	data = [data]
-			
 		# Set class attributes
 		self.__extend__(data,operator,site,string,interaction)
 
@@ -1499,8 +1505,10 @@ class OpModule(module,System):
 	
 	def __str__(self):
 		return self.string
+
 	def __repr__(self):
 		return self.__str__()
+	
 	def __len__(self):
 		return len(self.data)
 	

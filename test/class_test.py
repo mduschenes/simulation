@@ -16,7 +16,7 @@ for PATH in PATHS:
 from src.utils import jit,einsum,allclose,is_hermitian,is_unitary,delim
 from src.utils import norm,dagger,cholesky
 from src.iterables import getter,setter
-from src.io import load,dump
+from src.io import load,dump,exists
 
 # Logging
 # from src.system import Logger
@@ -74,6 +74,27 @@ def test_parameters(path,tol):
 
 	return
 
+
+
+def test_logger(path,tol):
+	cls = load('src.system.Object')
+
+	data = None
+	shape = None
+	system = {'logger':'log.txt','cleanup':1}
+
+	obj = cls(data,shape,system=system)
+
+
+	data = None
+	shape = None
+	system = {'logger':'log.log','cleanup':1}
+
+	obj = cls(data,shape,system=system)
+
+	# assert not exists(system['logger']), "Incorrect cleanup"
+
+	return
 
 
 def test_class(path,tol):
@@ -150,7 +171,7 @@ def test_normalization(path,tol):
 		shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
 		size = [1,1]
 		dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-		system = {'dtype':'complex','verbose':True}
+		system = {'dtype':'complex','verbose':True,'cleanup':True}
 		kwargs = {kwarg : hyperparameters[key][kwarg] for kwarg in hyperparameters[key] if kwarg not in ['data','shape','size','dims','system']}
 
 		# Initial instance
@@ -191,7 +212,8 @@ def test_normalization(path,tol):
 
 		assert(allclose(1,normalization)),"Incorrectly normalized obj: %0.5e"%(normalization)
 
-		copy = obj
+		copy = deepcopy(dict(obj))
+		copydata = obj()
 
 		# Identical instance
 		data = dict(copy)
@@ -199,7 +221,7 @@ def test_normalization(path,tol):
 		obj = cls(data,shape,size=size,dims=dims,system=system)
 
 		print(key)
-		print('orig',copy())
+		print('orig',copydata)
 		print('----')
 		print('identical',obj())
 		print()
@@ -208,20 +230,19 @@ def test_normalization(path,tol):
 		# 	print()
 		# obj.info()
 
-		assert(allclose(obj(),copy())), "Incorrect identical initialization"
+		assert(allclose(obj(),copydata)), "Incorrect identical initialization"
 
 
 		# Difference instance
 		data = dict(copy)
 		data['scale'] = None
 		data['logger'] = 'log.txt'
-		data['cleanup'] = True
 
 		obj = cls(data,shape,size=size,dims=dims,system=system)
 
 
 		# obj.info()
-		print('None',obj())
+		print('None',obj(),obj.logger.file,obj.logger.cleanup)
 		print()
 
 		assert(obj() is None),"Incorrect data set to None"
@@ -230,24 +251,24 @@ def test_normalization(path,tol):
 		# Reinit instance
 		data = dict(copy)
 		data['scale'] = 1
-		data['cleanup'] = True
 
 		obj = cls(data,shape,size=size,dims=dims,system=system)
 
 
 		# obj.info()
-		print('reinit',obj())
+		print('reinit',obj(),obj.cleanup)
 		print()
 		print()
 
-		assert(allclose(obj(),copy())), "Incorrect reinitialization"
+		assert(allclose(obj(),copydata)), "Incorrect reinitialization"
 
 	return
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_parameters(path,tol)
+	# test_parameters(path,tol)
+	test_logger(path,tol)
 	# test_class(path,tol)
 	# test_model(path,tol)
 	# test_normalization(path,tol)

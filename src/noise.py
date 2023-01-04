@@ -52,26 +52,39 @@ class Noise(Object):
 		self.size = size
 		self.length = len(self.size) if self.size is not None else None
 
+		# Set basis
+		basis = {
+				'I': array([[1,0],[0,1]]),
+				'X': array([[0,1],[1,0]]),
+				'Y': array([[0,-1j],[1j,0]]),
+				'Z': array([[1,0],[0,-1]]),
+				'00':array([[1,0],[0,0]]),
+				'01':array([[0,1],[0,0]]),
+				'10':array([[0,0],[1,0]]),
+				'11':array([[0,0],[0,1]]),
+			}
+		basis = {string: basis[string].astype(self.dtype) for string in basis}
+
 		assert (self.scale >= 0) and (self.scale <= 1), "Noise scale %r not in [0,1]"%(self.scale)
 
 		if self.scale > 0:
 			if self.string is None:
-				data = [self.basis['I']]
+				data = [basis['I']]
 			elif self.string in ['phase']:
-				data = [sqrt(1-self.scale)*self.basis['I'],
-						sqrt(self.scale)*self.basis['Z']]
+				data = [sqrt(1-self.scale)*basis['I'],
+						sqrt(self.scale)*basis['Z']]
 			elif self.string in ['amplitude']:
-				data = [self.basis['00'] + sqrt(1-self.scale)*self.basis['11'],
-						sqrt(self.scale)*self.basis['01']]
+				data = [basis['00'] + sqrt(1-self.scale)*basis['11'],
+						sqrt(self.scale)*basis['01']]
 			elif self.string in ['depolarize']:
-				data = [sqrt(1-self.scale)*self.basis['I'],
-						sqrt(self.scale/3)*self.basis['X'],
-						sqrt(self.scale/3)*self.basis['Y'],
-						sqrt(self.scale/3)*self.basis['Z']]
+				data = [sqrt(1-self.scale)*basis['I'],
+						sqrt(self.scale/3)*basis['X'],
+						sqrt(self.scale/3)*basis['Y'],
+						sqrt(self.scale/3)*basis['Z']]
 			else:
-				data = [self.basis['I']]
+				data = [basis['I']]
 		else:
-			data = [self.basis['I']]
+			data = [basis['I']]
 	
 		data = array([
 			tensorprod(i)

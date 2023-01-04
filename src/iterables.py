@@ -174,7 +174,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 		func(callable,None,bool,iterable): Callable function with signature func(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
 	'''
 
-	if (not isinstance(elements,dict)):
+	if (not isinstance(iterable,dict)) or (not isinstance(elements,dict)):
 		return
 
 	# Setup func as callable
