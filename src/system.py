@@ -249,7 +249,7 @@ class Logger(object):
 			file (str): Path to log file
 			cleanup (bool): Cleanup log files upon exit
 			verbose (int,str,bool): Verbosity
-			kwargs (dict): Additional arguments
+			kwargs (dict): Additional keyword arguments
 		'''
 
 		if isinstance(name,str):
@@ -340,7 +340,7 @@ class Object(System):
 			size (int,iterable[int]): Number of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
-			kwargs (dict): Additional system keyword arguments
+			kwargs (dict): Additional keyword arguments
 		'''
 		defaults = {
 			'string':None,
@@ -459,10 +459,12 @@ class Space(System):
 		D (int): Dimension of qudits
 		space (str,Space): Type of Hilbert space
 		system (dict,System): System attributes
+		kwargs (dict): Additional keyword arguments
 	'''
-	def __init__(self,N,D,space,system):
+	def __init__(self,N,D,space,system=None,**kwargs):
 
-		super().__init__(**system)
+		setter(kwargs,system,delimiter=delim,func=False)
+		super().__init__(**kwargs)
 
 		self.N = N if N is not None else 1
 		self.D = D if D is not None else 2
@@ -546,10 +548,12 @@ class Time(System):
 		P (int): Trotter order
 		time (str,Time): Type of Time evolution space
 		system (dict,System): System attributes
+		kwargs (dict): Additional keyword arguments
 	'''
-	def __init__(self,M,T,tau,P,time,system):
+	def __init__(self,M,T,tau,P,time,system=None,**kwargs):
 
-		super().__init__(**system)
+		setter(kwargs,system,delimiter=delim,func=False)
+		super().__init__(**kwargs)
 
 		self.M = M if M is not None else 1
 		self.T = T if T is not None else None
@@ -636,11 +640,13 @@ class Lattice(System):
 		delta (float): Length scale in system	
 		lattice (str,Lattice): Type of lattice, allowed strings in ['square','square-nearest']
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logger,logging,cleanup,verbose)		
+		kwargs (dict): Additional keyword Arguments
 	'''	
-	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None):
+	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None,**kwargs):
 
 		# Define system
-		super().__init__(**system)
+		setter(kwargs,system,delimiter=delim,func=False)
+		super().__init__(**kwargs)
 
 		# Define lattice
 		if isinstance(lattice,Lattice):

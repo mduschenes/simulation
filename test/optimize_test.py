@@ -51,55 +51,82 @@ from src.system import Logger
 # logger = Logger(name,conf,file=file)
 
 
-def test_optimize(path,tol):
-
-	return
+def test_objective(path,tol):
 
 	hyperparameters = load(path)
 
-	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparams['class']}
+	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
 	model = cls['model'](**hyperparameters['model'],
 			parameters=hyperparameters['parameters'],
 			state=hyperparameters['state'],
 			noise=hyperparameters['noise'],
-			label=hyperparameters['label'])
-
+			label=hyperparameters['label'],
+			system=hyperparameters['system'])
 
 	func = []
 	shapes = model.shapes
-	label = model.label
+	label = model.label()
 	callback = cls['callback']()
 	hyperparams = hyperparameters['optimize']
+	system = model.system
 
 
-	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams)
-	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams)
-	callback = Callback(model,callback,func=func,metric=metric,hyperparameters=hyperparams)
+	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
+	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams,system=system)
+	callback = Callback(model,callback,func=func,metric=metric,hyperparameters=hyperparams,system=system)
 
-	parameters = model.parameters
+	parameters = model.parameters()
 
 	# Grad of objective
 	grad_jax = func.grad
 	grad_finite = gradient(func,mode='finite',tol=tol)
+	grad_grad = func.grad
 	grad_analytical = func.grad_analytical
 
 
-	print(grad_jax(parameters).round(3))
-	print()
-	print(grad_analytical(parameters).round(3))
-	print()
-	print(-gradient_inner_abs2(model(parameters),label,model.grad_analytical(parameters)).round(3)/model.n**2)
-	return
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
+	assert allclose(grad_finite(parameters),grad_grad(parameters)), "Finite grad != Analytical grad"
 	assert allclose(grad_jax(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
 
 	return
 
 
+def test_optimizer(path,tol):
+
+	hyperparameters = load(path)
+
+	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
+
+	model = cls['model'](**hyperparameters['model'],
+			parameters=hyperparameters['parameters'],
+			state=hyperparameters['state'],
+			noise=hyperparameters['noise'],
+			label=hyperparameters['label'],
+			system=hyperparameters['system'])
+
+	parameters = model.parameters()
+	shapes = model.shapes
+	label = model.label()
+	hyperparams = hyperparameters['optimize']
+	func = [model.__constraints__]
+	callback = cls['callback']()
+
+	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams)
+	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams)
+	callback = Callback(model,callback=callback,func=func,metric=metric,hyperparameters=hyperparams)
+
+	optimizer = Optimizer(func=func,model=model,callback=callback,hyperparameters=hyperparams)
+
+	parameters = optimizer(parameters)
+
+	model.parameters(parameters)
+
+	return
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_optimize(path,tol)
+	# test_objective(path,tol)
+	test_optimizer(path,tol)

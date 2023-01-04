@@ -11,6 +11,8 @@ The hierarchy of inheritance of classes is as follows
 
 `State,Noise,Gate <- Object <- System <- Dictionary`
 
+`Space,Time,Lattice <- System <- Dictionary`
+
 `Objective,Callback <- Function <- System <- Dictionary`
 
 `Metric <- System <- Dictionary`
