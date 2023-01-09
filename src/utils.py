@@ -227,7 +227,6 @@ def jit(func,*,static_argnums=None,**kwargs):
 	'''
 	return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
 
-
 # @partial(jit,static_argnums=(2,))	
 def vmap(func,in_axes=0,out_axes=0,axes_name=None):	
 	'''

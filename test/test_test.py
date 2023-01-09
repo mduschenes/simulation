@@ -145,43 +145,6 @@ def test_load_dump(path,tol):
 
 	return
 
-def test_data(path,tol):
-
-	hyperparameters = load(path)
-
-	cls = load(hyperparameters['class']['model'])
-
-	hyperparameters['model']['N'] = 2
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	I = array([[1,0],[0,1]],dtype=model.dtype)
-	X = array([[0,1],[1,0]],dtype=model.dtype)
-	Y = array([[0,-1j],[1j,0]],dtype=model.dtype)
-	Z = array([[1,0],[0,-1]],dtype=model.dtype)
-	data = [
-		tensorprod(array([X,I])),
-		tensorprod(array([I,X])),
-		tensorprod(array([Y,I])),
-		tensorprod(array([I,Y])),
-		tensorprod(array([Z,I])),
-		tensorprod(array([I,Z])),
-		tensorprod(array([Z,Z])),
-		]
-	string = ['XI','IX','YI','IY','ZI','IZ','ZZ']
-
-	data = trotter(data,model.P)
-	string = trotter(string,model.P)
-	model = trotter([d() for d in model.data],model.P)
-
-	for i,(s,d,o) in enumerate(zip(string,data,model)):
-		assert allclose(d,o), "data[%s,%d] incorrect"%(s,i)
-
-	return
 
 def test_grad(path,tol):
 

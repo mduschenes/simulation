@@ -94,6 +94,7 @@ class Operator(System):
 				'Y': array([[0,-1j],[1j,0]]),
 				'Z': array([[1,0],[0,-1]]),
 			}
+		default = 'I'
 
 		data = self.data if data is None else data
 		operator = self.operator if operator is None else operator
@@ -101,7 +102,9 @@ class Operator(System):
 		string = self.string if string is None else string
 		interaction = self.interaction if interaction is None else interaction
 
-		data = tensorprod([basis[i] for i in operator])
+		operator = [operator[site.index(j)] if j in site else default for j in range(self.N)] if operator is not None else [default]*self.N
+		data = operator
+		data = tensorprod([basis.get(i,basis[default]) for i in data])
 		data = data.astype(self.dtype)
 
 		self.data = data
@@ -267,12 +270,8 @@ class Observable(System):
 		string.extend([data[name]['string'] for name in data])
 		interaction.extend([data[name]['interaction'] for name in data])
 
-		size = min([len(i) for i in [operator,site,string,interaction]])
-
-		data = [Operator(['I']*self.N,N=self.N,D=self.D,system=self.system) for i in range(size)]
-
 		# Set class attributes
-		self.__extend__(data,operator,site,string,interaction)
+		self.__extend__(operator=operator,site=site,string=string,interaction=interaction)
 
 		# Set parameters
 		self.__initialize__()
@@ -283,11 +282,11 @@ class Observable(System):
 		return
 
 
-	def __append__(self,data,operator,site,string,interaction):
+	def __append__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Append to class
 		Args:
-			data (Operator): data of operator
+			data (str,Operator): data of operator
 			operator (str): string name of operator
 			site (int): site of local operator
 			string (str): string label of operator
@@ -297,16 +296,23 @@ class Observable(System):
 		self.__insert__(index,data,operator,site,string,interaction)
 		return
 
-	def __extend__(self,data,operator,site,string,interaction):
+	def __extend__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup class
 		Args:
-			data (iterable[Operator]): data of operator
+			data (iterable[str,Operator]): data of operator
 			operator (iterable[str]): string names of operators
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		'''
+		if all(i is None for i in [operator,site,string,interaction]):
+			return
+
+		if data is None:
+			size = min([len(i) for i in [operator,site,string,interaction]])
+			data = [None]*size
+
 		for _data,_operator,_site,_string,_interaction in zip(data,operator,site,string,interaction):
 			self.__append__(_data,_operator,_site,_string,_interaction)
 
@@ -318,7 +324,7 @@ class Observable(System):
 		Insert to class
 		Args:
 			index (int): index to insert operator
-			data (Operator): data of operator
+			data (str,Operator): data of operator
 			operator (str): string name of operator
 			site (int): site of local operator
 			string (str): string label of operator
@@ -328,6 +334,9 @@ class Observable(System):
 		if index == -1:
 			index = len(self.data)
 
+		if not isinstance(data,Operator):
+			data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,
+							N=self.N,D=self.D,system=self.system)
 
 		self.data.insert(index,data)
 		self.operator.insert(index,operator)
@@ -381,8 +390,8 @@ class Observable(System):
 		'''
 
 		# Function arguments
-		data = array(trotter([data() for data in self.data],self.P),dtype=self.dtype)
-		identity = self.identity
+		data = array(trotter([data() for data in self.data],self.P))
+		identity = self.identity()
 		state = self.state if state is None or state is True else state if state is not False else None
 		noise = self.noise if noise is None or noise is True else noise if noise is not False else None
 		label = self.label if label is None or label is True else label if label is not False else None
@@ -635,7 +644,8 @@ class Observable(System):
 		self.dims = (self.M,len(self.data),*self.shape)
 		self.length = int(product(self.dims))
 		self.ndims = len(self.dims)
-		self.identity = identity(self.n,dtype=self.dtype)
+		
+		self.identity = Operator(N=self.N,D=self.D,system=self.system)
 
 		return
 
@@ -926,18 +936,18 @@ class Hamiltonian(Observable):
 			if any(j in indices[_interaction] for j in _site):
 				for s in sites[_interaction]:
 					_site_ = deepcopy([dict(zip(indices[_interaction],s if not isinstance(s,int) else [s])).get(j,parse(j,int)) for j in _site])
-					_operator_ = deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
+					_operator_ = deepcopy(_operator)
 					_string_ = deepcopy(_string)
 					_interaction_ = deepcopy(_interaction)
 					
-					if _operator_ not in operator: 
-						site.append(_site_)
-						operator.append(_operator_)
-						string.append(_string_)
-						interaction.append(_interaction_)
+					site.append(_site_)
+					operator.append(_operator_)
+					string.append(_string_)
+					interaction.append(_interaction_)
+
 			elif len(_operator) == len(_site):
 				_site_ = deepcopy(_site)
-				_operator_ = deepcopy([_operator[_site_.index(j)] if j in _site_ else I for j in range(self.N)])
+				_operator_ = deepcopy(_operator)
 				_string_ = deepcopy(_string)
 				_interaction_ = deepcopy(_interaction)
 
@@ -957,14 +967,8 @@ class Hamiltonian(Observable):
 				interaction.append(_interaction_)				
 
 
-		# Form (size,n,n) shape operator from local strings for each data term
-		size = min(len(i) for i in [operator,site,string,interaction])
-
-		data = [Operator(operator=operator[i],site=site[i],string=string[i],interaction=interaction[i],
-					N=self.N,D=self.D,system=self.system) for i in range(size)]
-
 		# Set class attributes
-		self.__extend__(data,operator,site,string,interaction)
+		self.__extend__(operator=operator,site=site,string=string,interaction=interaction)
 
 		# Set parameters
 		self.__initialize__()
@@ -1112,8 +1116,8 @@ class Unitary(Hamiltonian):
 		parameters = self.__parameters__(parameters)
 
 		coefficients = self.coefficients
-		data = array(trotter([datum() for datum in data],P),dtype=dtype)
-		identity = self.identity
+		data = array(trotter([datum() for datum in data],P))
+		identity = self.identity()
 
 		grad = gradient_expm(coefficients*parameters,data,identity)
 		grad *= coefficients
@@ -1499,7 +1503,8 @@ class OpModule(module,System):
 		self.shape = (self.n,self.n)
 		self.size = int(product(self.shape))
 		self.ndim = len(self.shape)
-		self.identity = identity(self.n,dtype=self.dtype)
+		
+		self.identity = Operator(N=self.N,D=self.D,system=self.system)
 
 		return
 	

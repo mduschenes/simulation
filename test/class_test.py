@@ -13,8 +13,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,einsum,allclose,is_hermitian,is_unitary,delim
-from src.utils import norm,dagger,cholesky
+from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim
+from src.utils import norm,dagger,cholesky,trotter,expm
 from src.iterables import getter,setter
 from src.io import load,dump,exists
 
@@ -97,6 +97,59 @@ def test_logger(path,tol):
 	return
 
 
+def test_data(path,tol):
+
+	hyperparameters = load(path)
+
+	cls = load(hyperparameters['class']['model'])
+
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
+
+	basis = {
+		'I':array([[1,0],[0,1]],dtype=model.dtype),
+		'X':array([[0,1],[1,0]],dtype=model.dtype),
+		'Y':array([[0,-1j],[1j,0]],dtype=model.dtype),
+		'Z':array([[1,0],[0,-1]],dtype=model.dtype),
+		}
+	default = 'I'
+
+	N = model.N
+	P = model.P
+
+	string = [
+		*[[O if k in [i] else default for k in range(N)]
+			for O in ['X','Y','Z']
+			for i in range(N)
+			],
+		*[[O if k in [i,j] else default for k in range(N)]
+			for O in ['Z']
+			for i in range(N)
+			for j in range(N)
+			if i<j
+			],
+		]
+
+	data = [tensorprod(array([basis[i] for i in s])) for s in string]
+	identity = tensorprod(array([basis[default]]*N))
+
+	assert allclose(model.identity(),identity), "Incorrect model identity"
+
+	data = trotter(data,P)
+	string = trotter(string,P)
+	datas = trotter([d() for d in model.data],P)
+	strings = trotter([d.operator for d in model.data],P)
+	sites = trotter([d.site for d in model.data],P)
+
+	for i,(s,S,d,D,site) in enumerate(zip(string,strings,data,datas,sites)):
+		assert allclose(d,D), "data[%s,%d] incorrect"%(s,i)
+
+	return
+
 def test_class(path,tol):
 
 	hyperparameters = load(path)
@@ -152,6 +205,7 @@ def test_class(path,tol):
 	assert allclose(U['initial'],U['restore']),"Incorrect restored obj"
 
 	return
+
 
 
 
@@ -264,11 +318,48 @@ def test_normalization(path,tol):
 
 	return
 
+
+def test_call(path,tol):
+
+	hyperparameters = load(path)
+
+	cls = load(hyperparameters['class']['model'])
+
+	model = cls(**hyperparameters['model'],
+		parameters=hyperparameters['parameters'],
+		state=hyperparameters['state'],
+		noise=hyperparameters['noise'],
+		label=hyperparameters['label'],
+		system=hyperparameters['system'])
+
+	parameters = model.parameters()
+
+
+	parameters = model.parameters()
+	variables = model.__parameters__(parameters)
+	coefficients = model.coefficients
+	data = array(trotter([data() for data in model.data],model.P))
+	identity = model.identity()
+
+	params = parameters.reshape(-1,model.dims[0])
+	vars = variables.reshape(model.dims[0],-1).T
+
+	_out = expm(coefficients*variables,data,identity)
+
+	out = model(parameters)
+
+	assert allclose(_out,out), "Incorrect model function"
+
+	return 
+
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 	# test_parameters(path,tol)
-	test_logger(path,tol)
+	test_call(path,tol)
+	# test_data(path,tol)
+	# test_logger(path,tol)
 	# test_class(path,tol)
 	# test_model(path,tol)
 	# test_normalization(path,tol)
