@@ -1173,7 +1173,7 @@ class Callback(object):
 			"hessian.rank":[],"fisher.rank":[],
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],
 
 			"noise.scale":[],"optimize.c1":[],"optimize.c2":[],
 

@@ -102,7 +102,7 @@ def dirname(path,abspath=False,delimiter='.'):
 		'csv','txt',
 		'npy','pickle','pkl',
 		'json',
-		'hdf5','h5',
+		'hdf5','h5','ckpt',
 		'sh',
 		'git',
 		'pdf','mk',
@@ -683,7 +683,7 @@ def _load(obj,wr,ext,**kwargs):
 		data (object): Loaded object
 	'''	
 	
-	exts = ['npy','csv','txt','pickle','pkl','json','hdf5','h5']
+	exts = ['npy','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
 
 	try:
 		assert ext in exts, "Cannot load extension %s"%(ext)
@@ -707,7 +707,7 @@ def _load(obj,wr,ext,**kwargs):
 	elif ext in ['json']:
 		# data = json.load(obj,**{'object_hook':load_json,**kwargs})
 		data = decode_json(json.load(obj,**{'object_hook':load_json,**kwargs}),**kwargs)
-	elif ext in ['hdf5','h5']:
+	elif ext in ['hdf5','h5','ckpt']:
 		data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 
 	return data
@@ -763,7 +763,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 		kwargs (dict): Additional dumping keyword arguments
 	'''	
 
-	exts = ['npy','csv','txt','pickle','pkl','json','tex','hdf5','h5','pdf']
+	exts = ['npy','csv','txt','pickle','pkl','json','tex','hdf5','h5','ckpt','pdf']
 	assert ext in exts, "Cannot dump extension %s"%(ext)
 
 	if ext in ['npy']:
@@ -781,7 +781,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 		json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
 	elif ext in ['tex']:
 		obj.write(data,**kwargs)
-	elif ext in ['hdf5','h5']:
+	elif ext in ['hdf5','h5','ckpt']:
 		dump_hdf5(data,obj,wr=wr,ext=ext,**kwargs)
 	elif ext in ['pdf']:
 		data.savefig(obj,**{**kwargs})

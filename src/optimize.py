@@ -64,37 +64,38 @@ class LineSearcher(System):
 		
 		return
 
-	def __call__(self,parameters,alpha,value,gradient,search):
+	def __call__(self,parameters,alpha,value,grad,search):
 		'''
 		Perform line search
 		Args:
 			parameters (array): Objective parameters
-			alpha (iterable): Previous alpha
-			value (iterable): Previous objective values
-			gradient (array): Previous objective gradients
-			search (array): Previous objective search directions
+			alpha (iterable[array]): Previous alpha
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
 		Returns:
 			alpha (array): Returned search value
 		'''
-		returns = (alpha[-1],)
+		_alpha = alpha[-1]
+		returns = (_alpha,)
 
-		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
+		returns = self.__callback__(returns,parameters,alpha,value,grad,search)
 
 		attr = 'alpha'
 		alpha = returns[attr]
 
 		return alpha
 
-	def __callback__(self,returns,parameters,alpha,value,gradient,search):
+	def __callback__(self,returns,parameters,alpha,value,grad,search):
 		'''
 		Check return values of line search
 		Args:
 			returns (iterable): Iterable of returned values of line search
 			parameters (array): Objective parameters
-			alpha (iterable): Previous alpha
-			value (iterable): Previous objective values
-			gradient (array): Previous objective gradients
-			search (array): Previous objective search directions
+			alpha (iterable[array]): Previous alpha
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
 		Returns:
 			returns (dict): Dictionary of returned values of line search
 		'''
@@ -125,7 +126,11 @@ class LineSearch(LineSearcher):
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
-		line_searches = {'line_search':Line_Search,'armijo':Armijo,None:Null_Search}
+		line_searches = {
+			'line_search':Line_Search,
+			'armijo':Armijo,
+			None:Null_Line_Search
+			}
 
 		line_search = hyperparameters.get('search',{}).get('alpha',defaults['search']['alpha'])
 		
@@ -157,15 +162,15 @@ class Line_Search(LineSearcher):
 
 		return
 
-	def __call__(self,parameters,alpha,value,gradient,search):
+	def __call__(self,parameters,alpha,value,grad,search):
 		'''
 		Perform line search
 		Args:
 			parameters (array): Objective parameters
-			alpha (iterable): Previous alpha
-			value (iterable): Previous objective values
-			gradient (array): Previous objective gradients
-			search (array): Previous objective search directions
+			alpha (iterable[array]): Previous alpha
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
 		Returns:
 			alpha (array): Returned search value
 		'''
@@ -175,7 +180,7 @@ class Line_Search(LineSearcher):
 			parameters,search[-1],gradient[-1],value[-1],
 			**self.defaults)
 		
-		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
+		returns = self.__callback__(returns,parameters,alpha,value,grad,search)
 
 		attr = 'alpha'
 		alpha = returns[attr]
@@ -206,32 +211,341 @@ class Armijo(LineSearcher):
 
 		return
 
-	def __call__(self,parameters,alpha,value,gradient,search):
+	def __call__(self,parameters,alpha,value,grad,search):
 		'''
 		Perform line search
 		Args:
 			parameters (array): Objective parameters
-			alpha (iterable): Previous alpha
-			value (iterable): Previous objective values
-			gradient (array): Previous objective gradients
-			search (array): Previous objective search directions
+			alpha (iterable[array]): Previous alpha
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
 		Returns:
 			alpha (array): Returned search value
 		'''
 
 		returns = armijo(self.func,self.grad,
-			parameters,search[-1],gradient[-1],value[-1],
+			parameters,search[-1],grad[-1],value[-1],
 			**self.defaults)
 
-		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
+		returns = self.__callback__(returns,parameters,alpha,value,grad,search)
 		
 		return returns
 
 
-class Null_Search(LineSearcher):
+class Null_Line_Search(LineSearcher):
 	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
 		'''	
 		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)			
+			kwargs (dict): Additional system attributes
+		'''
+
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+
+		return
+
+
+
+class GradSearcher(System):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Grad search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
+
+
+		defaults = {}		
+		returns = ['beta']
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
+
+		self.func = func
+		self.grad = grad
+		self.hyperparameters = hyperparameters
+		self.system = system
+		self.defaults = defaults
+		self.returns = returns
+		
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = beta[-1]
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+	def __callback__(self,returns,parameters,beta,value,grad,search):
+		'''
+		Check return values of grad search
+		Args:
+			returns (iterable): Iterable of returned values of grad search
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			returns (dict): Dictionary of returned values of grad search
+		'''
+		
+		returns = dict(zip(self.returns,returns))
+
+		attr = 'beta'
+		if returns[attr] is None or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
+			if len(beta) > 1:
+				returns[attr] = beta[-1]
+			else:
+				returns[attr] = beta[-1]
+
+		return returns
+
+class GradSearch(GradSearcher):
+	'''
+	Grad Search class
+	Args:
+		func (callable): function to optimize, with signature function(parameters)
+		grad (callable): gradient of function to optimize, with signature grad(parameters)
+		hyperparameters (dict): grad search hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+	'''
+	def __new__(cls,func,grad,hyperparameters={},system=None):
+	
+		defaults = {'search':{'beta':None}}
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+
+		grad_searches = {
+			'grad_search':Fletcher_Reeves,'fletcher_reeves':Fletcher_Reeves,
+			'polak_ribiere':Polak_Ribiere,'polak_ribiere_fletcher_reeves':Polak_Ribiere_Fletcher_Reeves,
+			'hestenes_stiefel':Hestenes_Stiefel,'dai_yuan':Dai_Yuan,
+			None:Null_Grad_Search,
+			}
+
+		grad_search = hyperparameters.get('search',{}).get('beta',defaults['search']['beta'])
+		
+		self = grad_searches.get(grad_search,grad_searches[None])(func,grad,hyperparameters)
+
+		return self
+
+
+class Fletcher_Reeves(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = (grad[-1].dot(grad[-1]))/(grad[-2].dot(grad[-2])) # Fletcher-Reeves
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+
+class Polak_Ribiere(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = max(0,(grad[-1].dot(grad[-1]-grad[-2]))/grad[-2].dot(grad[-2]))  # Polak-Ribiere
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+
+class Polak_Ribiere_Fletcher_Reeves(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = [(grad[-1].dot(grad[-1]))/(grad[-2].dot(grad[-2])),max(0,(grad[-1].dot(grad[-1]-grad[-2]))/grad[-2].dot(grad[-2]))] # Polak-Ribiere-Fletcher-Reeves
+		_beta = -_beta[0] if _beta[1] < -_beta[0] else _beta[1] if abs(_beta[1]) <= _beta[0] else _beta[0]
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+
+class Hestenes_Stiefel(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = (grad[-1].dot(grad[-1]-grad[-2]))/(search.dot(grad[-1]-grad[-2])) # Hestenes-Stiefel
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+class Dai_Yuan(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = (grad[-1].dot(grad[-1]))/(search.dot(grad[-1]-grad[-2])) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+
+class Null_Grad_Search(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Grad search class
 		Args:
 			func (callable): objective function with signature func(parameters)
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
@@ -1007,7 +1321,7 @@ class Optimization(System):
 		return value,grad,parameters
 
 
-	def dump(self,iteration,state):
+	def dump(self,iteration=None,state=None):
 		'''
 		Dump data
 		Args:
@@ -1015,46 +1329,22 @@ class Optimization(System):
 			state (object): optimizer state
 		'''
 
+		do = (self.path is not None) or (self.modulo['dump'] is None) or (iteration is None) or (iteration%self.modulo['dump'] == 0)
+
+		if not do:
+			return
+
 		path = join(self.path,root=self.cwd)
+		data = self.track
+		dump(data,path)
 
-		if path is None:
-			return
-
-		def parse(iteration,labels):
-			string = delim.join([*(str(i) for i in labels if i is not None),*([str(i) for i in [iteration]])])
-			return string
-
-		start = (self.size==1) and (iteration<self.iterations.stop)
-		done = (self.size>0) and (iteration == self.iterations.stop)
-		other = (self.size == 0) or (self.modulo['dump'] is None) or (iteration%self.modulo['dump'] == 0)
-
-		if not ((not self.status) or done or start or other):
-			return
-
-		track = self.track
-		attributes = self.attributes
-
-		labels = [self.timestamp,self.key]
-		size = min((len(track[attr]) for attr in track if len(track[attr])>0),default=0)
-		iterations = range(size)
-		default = nan
-
-		data = {}
-		for iteration in iterations:
-			
-			string = parse(iteration,labels)
-			
-			value = {}
-			value.update({attr: attributes[attr][-1] if ((not self.status) or done or start) else default for attr in attributes})
-			value.update({attr: track[attr][iteration] for attr in track})
-
-			data[string] = value
-
+		path = join(self.path,ext='ckpt',root=self.cwd)
+		data = self.attributes
 		dump(data,path)
 
 		return
 
-	def load(self,iteration,state):
+	def load(self,iteration=None,state=None):
 		'''
 		Load data
 		Args:
@@ -1065,37 +1355,26 @@ class Optimization(System):
 			state (object): optimizer state
 		'''
 
+		do = (self.path is not None)
+
+		if not do:
+			return iteration,state
+
 		path = join(self.path,root=self.cwd)
-
-		if path is None:
-			return
-
-		def parse(string):
-			iteration = int(string.split(delim)[-1])
-			labels = string.split(delim)[:-1]
-			return iteration,labels
-
-		default = {}
-		data = load(path,default=default)
-
-		track = {}
-		for string in data:
-			iteration,labels = parse(string)
-
-			for attr in data[string]:
-				if attr not in track:
-					track[attr] = []
-				value = data[string][attr]
-				track[attr].append(value)
+		data = load(path)
 
 		for attr in self.track:
-			if attr in track:
-				self.track[attr].extend(track[attr])
+			if attr in data:
+				self.track[attr].extend(data[attr])
+
+
+		path = join(self.path,ext='chkpt',root=self.cwd)
+		data = load(path)
 
 		for attr in self.attributes:
-			if attr in track:
-				self.attributes[attr].extend(track[attr])
-
+			if attr in data:
+				self.attributes[attr].extend(data[attr])
+				
 		self.size = min((len(self.track[attr]) for attr in self.track),default=self.size)
 
 		if self.size:
@@ -1110,7 +1389,7 @@ class Optimization(System):
 			self.iteration = iteration
 			self.parameters = self.get_params(state)
 	
-		self.iteration = max(iteration,self.iteration-1,-1)
+		self.iteration = max(iteration,self.iteration-1,-1) if iteration is not None else self.iteration-1
 		self.iterations = range(
 			self.iterations.start+self.iteration+1,
 			self.iterations.stop+self.iteration+1,
@@ -1234,43 +1513,7 @@ class ConjugateGradient(Optimization):
 		defaults = {}
 		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
 
-		beta = self.search.get('beta')
-		if beta is None:
-			def beta(_grad,grad,search):
-				beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
-				return beta
-		
-		elif beta in ['fletcher_reeves']:
-			def beta(_grad,grad,search):
-				beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
-				return beta
-		
-		elif beta in ['polak_ribiere']:
-			def beta(_grad,grad,search):
-				return max(0,(_grad.dot(_grad-grad))/grad.dot(grad)) # Polak-Ribiere
-		
-		elif beta in ['polak_ribiere_fletcher_reeves']:
-			def beta(_grad,grad,search):
-				beta = [(_grad.dot(_grad))/(grad.dot(grad)),max(0,(_grad.dot(_grad-grad))/grad.dot(grad))] # Polak-Ribiere-Fletcher-Reeves
-				beta = -beta[0] if beta[1] < -beta[0] else beta[1] if abs(beta[1]) <= beta[0] else beta[0]
-				return beta			
-
-		elif beta in ['hestenes_stiefel']:
-			def beta(_grad,grad,search):
-				beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) # Hestenes-Stiefel
-				return beta
-
-		elif beta in ['dai_yuan']:
-			def beta(_grad,grad,search):
-				beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
-				return beta								
-					
-		else:
-			def beta(_grad,grad,search):
-				beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
-				return beta			
-
-		self.beta = beta
+		self.beta = GradSearch(self.func,self.grad,self.hyperparameters)
 
 		return
 
@@ -1298,8 +1541,13 @@ class ConjugateGradient(Optimization):
 
 			_value,_grad,parameters = optimizer.opt_step(iteration,state)
 			
-			beta = optimizer.beta(_grad,grad,search)
-			
+			beta = optimizer.beta(
+				parameters,
+				optimizer.attributes['alpha'],
+				optimizer.attributes['value'],
+				optimizer.attributes['grad'],
+				optimizer.attributes['search'])
+
 			search = -_grad + beta*search
 
 			return parameters,search,alpha,beta
