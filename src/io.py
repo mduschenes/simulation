@@ -547,9 +547,6 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 				try:
 					path[key] = obj[name]
 				except:
-					print()
-					print('----key',key,[o.shape for o in obj[name]] if name in ['features'] else None)
-					print()
 					path[key] = np.array(obj[name],dtype='S')
 	else:
 		path = obj

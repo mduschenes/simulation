@@ -1207,7 +1207,6 @@ class Callback(object):
 		start = (len(attributes['iteration'])==1) and ((attributes['iteration'][-1]==0) or ((attributes['iteration'][-1]%(hyperparameters['iterations']))!=0))
 		
 		done = (len(attributes['iteration'])>1) and ((attributes['iteration'][-1]%(hyperparameters['iterations']))==0)
-		print('start',attributes['iteration'][-1],start,done,hyperparameters['iterations'])
 		
 		status = (
 			(abs(attributes['value'][-1]) > 
@@ -1272,10 +1271,10 @@ class Callback(object):
 				elif attr in ['parameters','grad','search'] and ((not status) or done or start):
 					value = attributes[attr][-1]
 
-				elif attr in ['features','features.mean','features.relative'] and not ((not status) or done or start):
+				elif attr in ['features','features.mean','features.relative.mean'] and not ((not status) or done or start):
 					value = default
 
-				elif attr in ['features','features.mean','features.relative'] and ((not status) or done or start):
+				elif attr in ['features','features.mean','features.relative.mean'] and ((not status) or done or start):
 
 					layer = 'features'
 					prop = 'index'
@@ -1310,12 +1309,14 @@ class Callback(object):
 					elif attr in ['features.relative']:
 						eps = 1e-20
 						value = model.__layers__(parameters,layer)[indices]
-						value = abs((value - track['features'][0] + eps)/(track['features'][0] + eps))
+						_value = model.__layers__(attributes['parameters'][0],layer)[indices]
+						value = abs((value - _value + eps)/(_value + eps))
 					
 					elif attr in ['features.relative.mean']:
 						eps = 1e-20
 						value = model.__layers__(parameters,layer)[indices]
-						value = abs((value - track['features'][0] + eps)/(track['features'][0] + eps)).mean(-1)
+						_value = model.__layers__(attributes['parameters'][0],layer)[indices]						
+						value = abs((value - _value + eps)/(_value + eps)).mean()
 
 
 				elif attr in ['objective']:
