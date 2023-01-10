@@ -1207,7 +1207,7 @@ class Callback(object):
 			 ((len(attributes['value'])>1) and 
 			 (abs(attributes['value'][-1] - attributes['value'][-2]) > 
 				(hyperparameters['eps']['difference']*attributes['value'][-2])))) and
-			((len(attributes['value'])==1) or 			
+			((len(attributes['grad'])==1) or 			
 			 ((len(attributes['grad'])>1) and
 			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
 				  (hyperparameters['eps']['grad']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))))

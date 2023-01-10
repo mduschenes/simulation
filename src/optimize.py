@@ -3,6 +3,7 @@
 # Import python modules
 import os,sys,itertools,functools,copy,datetime
 from functools import partial
+import jax
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -1243,23 +1244,13 @@ class Optimization(System):
 			search = -grad
 			return parameters,search,alpha
 
-		steps = self.size == 0
+		value,grad,parameters = self.opt_step(iteration,state)
+		search = self.attributes['search'][-1] if self.size > 1 else 0
 
-		for step in range(steps+1):
+		parameters,search,alpha = update(parameters,value,grad,search,self)
 
-			init = self.size == 0
-
-			value,grad,parameters = self.opt_step(iteration-init,state)
-
-			if not init:
-				parameters,search,alpha = update(parameters,value,grad,search,self)
-			else:
-				parameters = parameters
-				alpha = self.hyperparameters['alpha']
-				search = -grad
-
-			self.attributes['search'].append(search)
-			self.attributes['alpha'].append(alpha)
+		self.attributes['search'].append(search)
+		self.attributes['alpha'].append(alpha)
 
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
@@ -1514,23 +1505,13 @@ class GradientDescent(Optimization):
 			search = -grad
 			return parameters,search,alpha
 
-		steps = self.size == 0
+		value,grad,parameters = self.opt_step(iteration,state)
+		search = self.attributes['search'][-1] if self.size > 1 else 0
 
-		for step in range(steps+1):
+		parameters,search,alpha = update(parameters,value,grad,search,self)
 
-			init = self.size == 0
-
-			value,grad,parameters = self.opt_step(iteration-init,state)
-
-			if not init:
-				parameters,search,alpha = update(parameters,value,grad,search,self)
-			else:
-				parameters = parameters
-				alpha = self.hyperparameters['alpha']
-				search = -grad
-
-			self.attributes['search'].append(search)
-			self.attributes['alpha'].append(alpha)
+		self.attributes['search'].append(search)
+		self.attributes['alpha'].append(alpha)
 
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
@@ -1628,12 +1609,12 @@ class ConjugateGradient(Optimization):
 			self.attributes['alpha'].append(alpha)
 			self.attributes['beta'].append(beta)
 		
-		state = self.opt_init(parameters)
-		parameters = self.get_params(state)
-		track = self.track		
-		attributes = self.attributes
-		hyperparameters = self.hyperparameters		
-		self.status = self.callback(parameters,track,attributes,hyperparameters)
+			state = self.opt_init(parameters)
+			parameters = self.get_params(state)
+			track = self.track		
+			attributes = self.attributes
+			hyperparameters = self.hyperparameters		
+			self.status = self.callback(parameters,track,attributes,hyperparameters)
 
 		return state
 
@@ -1688,38 +1669,30 @@ class Adam(Optimization):
 			state (object): optimizer state
 		'''
 
+		def update(parameters,value,grad,search,optimizer):
 
-		if self.size == 0:
-
-			value,grad,parameters = self.opt_step(iteration-1,state)
-
-			alpha = self.hyperparameters['alpha']
+			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
-
-			self.attributes['alpha'].append(alpha)
-			self.attributes['search'].append(search)
-
+			
 			state = self.opt_init(parameters)
-			parameters = self.get_params(state)
-			track = self.track		
-			attributes = self.attributes
-			hyperparameters = self.hyperparameters			
-			self.status = self.callback(parameters,track,attributes,hyperparameters)
+			state = self._opt_update(iteration,grad,state)
+			parameters = self.get_params(state)			
+
+			return parameters,search,alpha
 
 		value,grad,parameters = self.opt_step(iteration,state)
+		search = self.attributes['search'][-1] if self.size > 1 else 0
 
-		alpha = self.attributes['alpha'][-1]
-		search = -grad
-
-		state = self._opt_update(iteration,grad,state)
+		parameters,search,alpha = update(parameters,value,grad,search,self)
 
 		self.attributes['alpha'].append(alpha)
 		self.attributes['search'].append(search)
 
+		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
 		track = self.track		
 		attributes = self.attributes
-		hyperparameters = self.hyperparameters		
+		hyperparameters = self.hyperparameters			
 		self.status = self.callback(parameters,track,attributes,hyperparameters)
 
 		return state
