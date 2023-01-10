@@ -12,7 +12,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,gradient,hessian,fisher
-from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
+from src.utils import array,ones,zeros,empty,arange,eye,rand,identity,diag,PRNGKey
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,dot,dagger,conj,transpose,einsum
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
 from src.utils import trotter,gradient_trotter,gradient_expm,gradient_sigmoid
@@ -205,12 +205,6 @@ class Observable(System):
 		self.interaction = []
 		self.indices = []
 
-		self.key = None
-
-		self.timestamp = None
-		self.backend = None
-		self.architecture = None
-		self.delimiter = ' '
 		self.shape = ()
 		self.size = int(product(self.shape))
 		self.ndim = len(self.shape)
@@ -225,7 +219,7 @@ class Observable(System):
 		self.label = label
 		self.identity = None
 		self.constants = None
-		self.coefficients = 1
+		self.coefficients = None
 		self.dimensions = None	
 
 		self.summation = None
@@ -384,7 +378,7 @@ class Observable(System):
 		# Update class attributes
 		self.parameters = parameters
 		self.coefficients = coefficients
-		self.dimensions = parameters.shape
+		self.dimensions = parameters.dimensions
 
 		return
 
@@ -719,11 +713,12 @@ class Observable(System):
 
 	def __str__(self):
 		size = len(self.data)
+		delimiter = ' '
 		multiple_time = (self.M>1)
 		multiple_space = [size>1 and False for i in range(size)]
 		return '%s%s%s%s'%(
 				'{' if multiple_time else '',
-				self.delimiter.join(['%s%s%s'%(
+				delimiter.join(['%s%s%s'%(
 					'(' if multiple_space[i] else '',
 					self.string[i],
 					')' if multiple_space[i] else '',
@@ -1188,25 +1183,27 @@ class Callback(object):
 		}		
 		return
 
-	def __call__(self,parameters,track,attributes,model,metric,func,grad,hyperparameters):
+	def __call__(self,parameters,track,optimizer,model,metric,func,grad):
 		''' 
 		Callback
 		Args:
 			parameters (array): parameters
 			track (dict): callback tracking
-			attributes (dict): Callback attributes
+			optimizer (Optimizer): callback optimizer
 			model (object): Model instance
 			metric (str,callable): Callback metric
 			func (callable): Objective function with signature func(parameters)
 			grad (callable): Objective gradient with signature grad(parameters)
-			hyperparameters(dict): Callback hyperparameters
 		Returns:
 			status (int): status of callback
 		'''
+		attributes = optimizer.attributes
+		iterations = optimizer.iterations
+		hyperparameters = optimizer.hyperparameters
 
-		start = (len(attributes['iteration'])==1) and ((attributes['iteration'][-1]==0) or ((attributes['iteration'][-1]%(hyperparameters['iterations']))!=0))
+		start = (len(attributes['iteration'])==1) and ((attributes['iteration'][-1]==0) or (attributes['iteration'][-1] != (iterations.stop)))
 		
-		done = (len(attributes['iteration'])>1) and ((attributes['iteration'][-1]%(hyperparameters['iterations']))==0)
+		done = (len(attributes['iteration'])>1) and (attributes['iteration'][-1] == (iterations.stop))
 		
 		status = (
 			(abs(attributes['value'][-1]) > 
@@ -1352,7 +1349,7 @@ class Callback(object):
 					_hyperparameters = hyperparameters
 					_restore = {kwarg: deepcopy(getattr(model,kwarg)) for kwarg in _kwargs}
 
-					model.__functions__(**kwargs)
+					model.__functions__(**_kwargs)
 					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
 
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
@@ -1364,7 +1361,13 @@ class Callback(object):
 
 					model.__functions__(**_restore)
 
-				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and not ((not status) or done):
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues'] and not ((not status) or done):
+					if attr in ['hessian','fisher']:
+						value = empty((*parameters.shape,)*2)
+					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
+						value = empty((*parameters.shape,)*1)
+
+				elif attr in ['hessian.rank','fisher.rank'] and not ((not status) or done):
 					value = default
 
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and ((not status) or done):
@@ -1372,7 +1375,7 @@ class Callback(object):
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(jit(lambda parameters: metric(model(parameters))))
 					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
-						function = fisher(model,model.grad,shapes=(model.shape,(model.length,*model.shape)))
+						function = fisher(model,model.grad,shapes=(model.shape,(*model.dimensions,*model.shape)))
 
 					if attr in ['hessian','fisher']:
 						value = function(parameters)

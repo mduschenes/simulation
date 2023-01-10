@@ -40,7 +40,7 @@ def getattrs(obj,attr,default=None,delimiter=None):
 		if delimiter is None:
 			attr = [subattr for subattr in attr]
 		else:
-			attr = [subsubattr for subattr in attr for subsubattr in attr.split(delimiter)]
+			attr = [subsubattr for subattr in attr for subsubattr in subattr.split(delimiter)]
 
 	for subattr in attr:
 		if not hasattr(obj,subattr):

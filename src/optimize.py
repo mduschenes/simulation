@@ -569,7 +569,7 @@ class Function(System):
 			model (object): Model instance
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
+			callback (callable): Callback of function with signature callback(parameters,track,optimizer,model,metric,func,grad)
 			metric (str,callable): Function metric with signature metric(*operands)
 			hyperparameters (dict): Function hyperparameters
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
@@ -613,7 +613,7 @@ class Function(System):
 			gradient = grad
 
 		if callback is None:
-			def callback(parameters,track,attributes,model,func,grad,hyperparameters):
+			def callback(parameters,track,optimizer,model,metric,func,grad):
 				status = True
 				return status
 
@@ -661,19 +661,17 @@ class Function(System):
 		return self.value_and_gradient(parameters)
 
 	# @partial(jit,static_argnums=(0,))
-	def __callback__(self,parameters,track,attributes,hyperparameters):
+	def __callback__(self,parameters,track,optimizer):
 		'''
 		Callback call
 		Args:
 			parameters (array): parameters
 			track (dict): callback track			
-			attributes (dict): callback attributes			
-			hyperparameters (dict): callback hyperparameters			
+			optimizer (Optimizer): callback optimizer
 		Returns:
 			status (int): status of callback
 		'''
-		status = self.callback(parameters,track,attributes,
-			hyperparameters=hyperparameters,
+		status = self.callback(parameters,track,optimizer,
 			model=self.model,
 			metric=self.metric,
 			func=self.func,grad=self.grad)
@@ -722,7 +720,7 @@ class Objective(Function):
 			metric (str,callable): Objective metric with signature metric(*operands)
 			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
-			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)			
+			callback (callable): Callback of function with signature callback(parameters,track,optimizer,model,metric,func,grad)			
 			hyperparameters (dict): Objective hyperparameters
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 			kwargs (dict): Additional system attributes
@@ -795,7 +793,7 @@ class Callback(Function):
 		Class for function
 		Args:
 			model (object): Model instance
-			callback (callable): Callback of function with signature callback(parameters,track,attributes,model,metric,func,grad,hyperparameters)
+			callback (callable): Callback of function with signature callback(parameters,track,optimizer,model,metric,func,grad)
 			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
 			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
 			metric (str,callable): Callback metric with signature metric(*operands)
@@ -809,18 +807,17 @@ class Callback(Function):
 		return
 
 	# @partial(jit,static_argnums=(0,))
-	def __call__(self,parameters,track,attributes,hyperparameters):
+	def __call__(self,parameters,track,optimizer):
 		''' 
 		Callback
 		Args:
 			parameters (array): parameters
 			track (dict): callback tracking
-			attributes (dict): Callback attributes
-			hyperparameters(dict): Callback hyperparameters
+			optimizer (Optimizer): callback optimizer
 		Returns:
 			status (int): status of callback
 		'''
-		status = self.__callback__(parameters,track,attributes,hyperparameters)
+		status = self.__callback__(parameters,track,optimizer)
 		return status
 
 
@@ -1125,7 +1122,7 @@ class Optimization(System):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
 		model (object): model instance
 		hyperparameters (dict): optimizer hyperparameters
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
@@ -1143,7 +1140,7 @@ class Optimization(System):
 			'eps':{'value':1e-4,'grad':1e-12,'alpha':1e-12,'beta':1e3},
 			'alpha':0,
 			'status':1,
-			'reset':False,
+			'clear':True,
 			'cwd':None,
 			'path':None,
 			'modulo':{'log':None,'attributes':None,'callback':None,'restart':None,'dump':None},
@@ -1160,7 +1157,7 @@ class Optimization(System):
 		self.alpha = LineSearch(self.func,self.grad,self.hyperparameters)
 
 		if callback is None:
-			def callback(parameters,track,attributes,hyperparameters):
+			def callback(parameters,track,optimizer):
 				status = True
 				return status
 		self.callback = callback
@@ -1170,7 +1167,7 @@ class Optimization(System):
 		self.parameters = None
 		self.optimizer = hyperparameters['optimizer']		
 		self.status = hyperparameters['status']
-		self.reset = hyperparameters['reset']
+		self.clear = hyperparameters['clear']
 		self.modulo = hyperparameters['modulo']
 		self.length = hyperparameters['length']
 		self.attributes = hyperparameters['attributes']
@@ -1180,7 +1177,7 @@ class Optimization(System):
 		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
 
-		self.reset()
+		self.reset(clear=True)
 
 		return
 
@@ -1252,9 +1249,8 @@ class Optimization(System):
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
 		track = self.track		
-		attributes = self.attributes
-		hyperparameters = self.hyperparameters			
-		self.status = self.callback(parameters,track,attributes,hyperparameters)
+		optimizer = self
+		self.status = self.callback(parameters,track,optimizer)
 
 		return state
 
@@ -1360,6 +1356,8 @@ class Optimization(System):
 				if attr in self.attributes:
 					self.attributes[attr].extend(data[attr])
 				
+
+		self.parameters = self.get_params(state)
 		self.reset(clear=False)
 
 		iteration = self.iteration
@@ -1380,14 +1378,14 @@ class Optimization(System):
 			value = self.attributes[attr]
 			if ((not isinstance(value,list)) and (not value)):
 				self.attributes.pop(attr)
-			elif ((isinstance(value,list)) and (value) and (clear)):
+			elif ((not isinstance(value,list)) and (value)) or clear:
 				self.attributes[attr] = []
 
 		for attr in list(self.track):
 			value = self.track[attr]
 			if ((not isinstance(value,list)) and (not value)):
 				self.track.pop(attr)
-			elif ((isinstance(value,list)) and (value) and (clear)):
+			elif ((not isinstance(value,list)) and (value)) or clear:
 				self.track[attr] = []
 		
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
@@ -1442,7 +1440,7 @@ class Optimizer(Optimization):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 	'''
@@ -1466,7 +1464,7 @@ class GradientDescent(Optimization):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 		kwargs (dict): Additional system attributes
@@ -1510,9 +1508,8 @@ class GradientDescent(Optimization):
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
 		track = self.track		
-		attributes = self.attributes
-		hyperparameters = self.hyperparameters			
-		self.status = self.callback(parameters,track,attributes,hyperparameters)
+		optimizer = self
+		self.status = self.callback(parameters,track,optimizer)
 
 		return state
 
@@ -1523,7 +1520,7 @@ class ConjugateGradient(Optimization):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 		kwargs (dict): Additional system attributes
@@ -1605,10 +1602,9 @@ class ConjugateGradient(Optimization):
 		
 			state = self.opt_init(parameters)
 			parameters = self.get_params(state)
-			track = self.track		
-			attributes = self.attributes
-			hyperparameters = self.hyperparameters		
-			self.status = self.callback(parameters,track,attributes,hyperparameters)
+			track = self.track
+			optimizer = self
+			self.status = self.callback(parameters,track,optimizer)
 
 		return state
 
@@ -1619,7 +1615,7 @@ class Adam(Optimization):
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,track,attributes,hyperparameters) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 		kwargs (dict): Additional system attributes
@@ -1685,9 +1681,8 @@ class Adam(Optimization):
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
 		track = self.track		
-		attributes = self.attributes
-		hyperparameters = self.hyperparameters			
-		self.status = self.callback(parameters,track,attributes,hyperparameters)
+		optimizer = self
+		self.status = self.callback(parameters,track,optimizer)
 
 		return state
 

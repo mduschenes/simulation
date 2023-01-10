@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 
 from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim
-from src.utils import norm,dagger,cholesky,trotter,expm
+from src.utils import norm,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
 from src.iterables import getter,setter
 from src.io import load,dump,exists
 
@@ -352,14 +352,45 @@ def test_call(path,tol):
 
 	return 
 
+def test_fisher(path,tol):
+	hyperparameters = load(path)
+
+	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
+
+	model = cls['model'](**hyperparameters['model'],
+			parameters=hyperparameters['parameters'],
+			state=hyperparameters['state'],
+			noise=hyperparameters['noise'],
+			label=hyperparameters['label'],
+			system=hyperparameters['system'])
+
+	parameters = model.parameters()
+
+
+	func = fisher(model,shapes=(model.shape,(*model.dimensions,*model.shape)))
+
+	out = func(parameters)
+
+	eigs = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
+	eigs = eigs/max(1,maximum(eigs))
+
+	rank = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
+	rank = argmax(abs(difference(rank)/rank[:-1]))+1						
+
+	print(eigs)
+	print(rank)
+
+	return
+
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 	# test_parameters(path,tol)
-	test_call(path,tol)
+	# test_call(path,tol)
 	# test_data(path,tol)
 	# test_logger(path,tol)
 	# test_class(path,tol)
 	# test_model(path,tol)
 	# test_normalization(path,tol)
+	test_fisher(path,tol)

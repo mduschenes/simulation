@@ -2032,6 +2032,7 @@ class Parameters(Object):
 
 
 		self.data = data
+		self.dimensions = data.shape
 		self.attributes = attributes
 		self.hyperparameters = hyperparameters
 

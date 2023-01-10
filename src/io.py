@@ -15,7 +15,7 @@ from natsort import natsorted,realsorted
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-debug = 0
+debug = 100
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -465,8 +465,6 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 		data (object): Loaded object
 	'''	
 
-	null = {b'None':None}
-
 	data = {}
 	
 	if isinstance(obj, h5py._hl.group.Group):
@@ -488,8 +486,6 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 		for name in names:
 			key = name
 			data[key] = obj.attrs[name]
-			if obj.attrs[name] in null:
-				data[key] = null[obj.attrs[name]]
 
 	else:
 		data = obj.value
@@ -526,8 +522,6 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 		kwargs (dict): Additional loading keyword arguments
 	'''		
 
-	null = {}
-
 	if isinstance(obj,dict):
 		names = obj
 		for name in names:
@@ -539,10 +533,7 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 				try:
 					path.attrs[key] = obj[name]
 				except TypeError:
-					if obj[name] in null:
-						path.attrs[key] = null[obj[name]]
-					else:
-						continue
+					print('\n','----',key,'\n')
 			else:
 				try:
 					path[key] = obj[name]

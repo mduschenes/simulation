@@ -488,16 +488,15 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	Returns:
 		fisher (callable): Fisher information of function
 	'''
-
 	if mode in ['operator']:
 		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -1/operands[0].shape[0]*out]
+		wrappers = [lambda out,*operands: out,lambda out,*operands: -out/operands[0].shape[0]]
 	elif mode in ['state']:
 		subscripts = ['uai,vai->uv','uai,ai,vaj,aj->uv']
 		wrappers = [lambda out,*operands: out/operands[0].shape[1],lambda out,*operands: -out/operands[0].shape[1]]
 	else:
 		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -1/operands[0].shape[0]*out]
+		wrappers = [lambda out,*operands: out,lambda out,*operands: -out/operands[0].shape[0]]
 
 	if grad is None:
 		grad = gradient(func,mode='fwd',move=True)
@@ -530,6 +529,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 			out = out + einsummation(f,g,_f,_g)
 		out = out.real
 		return out
+
 	return fisher
 
 
