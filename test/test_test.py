@@ -86,6 +86,7 @@ def test_class(path,tol):
 	init  = new(new.parameters())
 
 	new.__setup__(model.data)
+	new.__initialize__()
 
 	new.info()
 

@@ -1200,6 +1200,8 @@ class Optimization(System):
 		state = self.opt_init(parameters)
 		iteration,state = self.load(iteration,state)
 
+		print('------',min(len(self.track[attr]) for attr in self.track))
+
 		self.info()
 
 		for iteration in self.iterations:
@@ -1348,9 +1350,12 @@ class Optimization(System):
 		path = join(self.path,root=self.cwd)
 		data = load(path)
 
+		print('data',data)
+
 		if data is not None:
 			for attr in data:
 				if attr in self.track:
+					print('extending',attr,len(data[attr]))
 					self.track[attr].extend(data[attr])
 
 
@@ -1420,6 +1425,8 @@ class Optimization(System):
 				self.track.pop(attr)
 			elif ((isinstance(value,list)) and (value)):
 				self.track[attr] = []
+
+		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
 		return
 

@@ -102,7 +102,15 @@ class Operator(System):
 		string = self.string if string is None else string
 		interaction = self.interaction if interaction is None else interaction
 
-		operator = [operator[site.index(j)] if j in site else default for j in range(self.N)] if operator is not None else [default]*self.N
+		if operator is None:
+			operator = [default]*self.N
+		elif len(operator) == self.N:
+			operator = [operator[j] for j in range(self.N)]
+		elif len(operator) == len(site):
+			operator = [operator[site.index(j)] if j in site else default for j in range(self.N)]
+		else:
+			operator = [i for i in operator]
+
 		data = operator
 		data = tensorprod([basis.get(i,basis[default]) for i in data])
 		data = data.astype(self.dtype)
@@ -1196,9 +1204,10 @@ class Callback(object):
 			status (int): status of callback
 		'''
 
-		start = (len(attributes['iteration'])==1) and (attributes['iteration'][-1]<hyperparameters['iterations'])
+		start = (len(attributes['iteration'])==1) and ((attributes['iteration'][-1]==0) or ((attributes['iteration'][-1]%(hyperparameters['iterations']))!=0))
 		
-		done = (len(attributes['iteration'])>0) and (attributes['iteration'][-1]==hyperparameters['iterations'])
+		done = (len(attributes['iteration'])>1) and ((attributes['iteration'][-1]%(hyperparameters['iterations']))==0)
+		print('start',attributes['iteration'][-1],start,done,hyperparameters['iterations'])
 		
 		status = (
 			(abs(attributes['value'][-1]) > 
@@ -1254,6 +1263,9 @@ class Callback(object):
 					value = track['iteration'][argmin(array(track['objective']))]
 					update = True
 
+				elif attr in ['value']:
+					value = attributes[attr][-1]
+
 				elif attr in ['parameters','grad','search'] and not ((not status) or done or start):
 					value = default
 
@@ -1300,7 +1312,7 @@ class Callback(object):
 						value = model.__layers__(parameters,layer)[indices]
 						value = abs((value - track['features'][0] + eps)/(track['features'][0] + eps))
 					
-					elif attr in ['features.relative']:
+					elif attr in ['features.relative.mean']:
 						eps = 1e-20
 						value = model.__layers__(parameters,layer)[indices]
 						value = abs((value - track['features'][0] + eps)/(track['features'][0] + eps)).mean(-1)
@@ -1371,10 +1383,10 @@ class Callback(object):
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
 						value = argmax(abs(difference(value)/value[:-1]))+1						
 
-				elif not isinstance(getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null(),delimiter=delim),null):
+				elif attr not in attributes and not isinstance(getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null(),delimiter=delim),null):
 					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)
 
-				elif hasattrs(model,attr,delimiter=delim):
+				elif attr not in attributes and hasattrs(model,attr,delimiter=delim):
 					value = getattrs(model,attr,default=default,delimiter=delim)
 
 

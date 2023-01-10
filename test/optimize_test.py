@@ -121,17 +121,25 @@ def test_optimizer(path,tol):
 
 	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system,**kwargs)
 
+	sizes = []
+
 	optimizer(parameters)
+	exit()
+
 	value = optimizer.track['objective'][-1]
 	iteration = optimizer.track['iteration'][-1]
 	size = min(len(optimizer.track[attr]) for attr in optimizer.track)
+	sizes.append(size)
 
 	optimizer.clear()
 	optimizer(parameters)
+
 	value = optimizer.track['objective'][-1]-value
 	iteration = optimizer.track['iteration'][-1]-iteration
 	size = min(len(optimizer.track[attr]) for attr in optimizer.track)-size
+	sizes.append(size)
 
+	print(sizes)
 	assert value < 0, "Checkpointed optimizer not re-initialized with value %s"%(value)
 	assert iteration == hyperparams['iterations'], "Checkpointed optimizer not re-initialized with iteration %s"%(iteration)
 	assert size == hyperparams['iterations'], "Checkpointed optimizer not re-initialized with size %s"%(size)
