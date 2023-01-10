@@ -1180,7 +1180,7 @@ class Optimization(System):
 		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
 
-		self.clear()
+		self.reset()
 
 		return
 
@@ -1193,13 +1193,10 @@ class Optimization(System):
 			parameters (object): optimizer parameters
 		'''
 
-		if self.reset:
-			self.clear()
-
 		iteration = self.iteration
 		state = self.opt_init(parameters)
 		iteration,state = self.load(iteration,state)
-
+		
 		self.info()
 
 		for iteration in self.iterations:
@@ -1287,10 +1284,10 @@ class Optimization(System):
 		value,grad = self.value_and_grad(parameters)
 		size = self.size
 
-		if (self.sizes is not None) and (size > 0) and (size >= self.sizes):
+		if (self.sizes is not None) and (self.size > 0) and (self.size >= self.sizes):
 			for attr in self.attributes:
 				if self.attributes[attr]:
-					self.attributes[attr].pop(min(size-1,0)+1)
+					self.attributes[attr].pop(min(self.size-2,0)+1)
 
 
 		iteration += 1
@@ -1363,13 +1360,42 @@ class Optimization(System):
 				if attr in self.attributes:
 					self.attributes[attr].extend(data[attr])
 				
+		self.reset(clear=False)
 
+		iteration = self.iteration
+		state = self.opt_init(self.parameters)
+
+		return iteration,state
+		
+
+	def reset(self,clear=None):
+		'''
+		Reset class attributes
+		Args:
+			clear (bool): clear attributes
+		'''
+		clear = self.clear if clear is None else clear
+
+		for attr in list(self.attributes):
+			value = self.attributes[attr]
+			if ((not isinstance(value,list)) and (not value)):
+				self.attributes.pop(attr)
+			elif ((isinstance(value,list)) and (value) and (clear)):
+				self.attributes[attr] = []
+
+		for attr in list(self.track):
+			value = self.track[attr]
+			if ((not isinstance(value,list)) and (not value)):
+				self.track.pop(attr)
+			elif ((isinstance(value,list)) and (value) and (clear)):
+				self.track[attr] = []
+		
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
 		while (self.sizes is not None) and (self.size > 0) and (self.size > self.sizes):
 			for attr in self.attributes:
 				if self.attributes[attr]:
-					self.attributes[attr].pop(0)
+					self.attributes[attr].pop(min(self.size-2,0)+1)
 			self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
 		if self.size:
@@ -1381,48 +1407,13 @@ class Optimization(System):
 			if attr in self.attributes:
 				self.parameters = self.attributes[attr][-1]
 		else:
-			self.iteration = iteration
-			self.parameters = self.get_params(state)
+			self.iteration = 0
 	
-		self.iteration = max(iteration,self.iteration) if iteration is not None else self.iteration
 		self.iterations = range(
 			self.iteration,
 			self.iterations.stop-self.iterations.start+self.iteration,
 			self.iterations.step)				
 
-		iteration = self.iteration
-		state = self.opt_init(self.parameters)
-
-		return iteration,state
-
-	def clear(self):
-		'''
-		Reset class attributes
-		'''
-
-		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
-
-		while (self.sizes is not None) and (self.size > 0) and (self.size > self.sizes):
-			for attr in self.attributes:
-				if self.attributes[attr]:
-					self.attributes[attr].pop(min(self.size-1,0)+1)
-			self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
-
-		for attr in list(self.attributes):
-			value = self.attributes[attr]
-			if ((not isinstance(value,list)) and (not value)):
-				self.attributes.pop(attr)
-			elif ((isinstance(value,list)) and (value)):
-				self.attributes[attr] = []
-
-		for attr in list(self.track):
-			value = self.track[attr]
-			if ((not isinstance(value,list)) and (not value)):
-				self.track.pop(attr)
-			elif ((isinstance(value,list)) and (value)):
-				self.track[attr] = []
-
-		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
 		return
 
