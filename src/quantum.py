@@ -1222,7 +1222,7 @@ class Callback(object):
 		if ((not status) or done or start or other):
 
 			attrs = relsort(track,attributes)
-			size = max(len(track[attr]) for attr in track)
+			size = min(len(track[attr]) for attr in track)
 
 			for attr in attrs:
 
@@ -1232,17 +1232,27 @@ class Callback(object):
 					_value = track[attr].pop(0)
 				
 				value = default
+				update = False
 
 				if attr in attributes:
 					value = attributes[attr][-1]
 				
 				track[attr].append(value)
 
-				if attr in ['iteration.max']:
-					value = track['iteration'][-1]
 
-				elif attr in ['iteration.min']:
+				if attr in ['iteration.max'] and not ((not status) or done or start):
+					value = default
+				
+				elif attr in ['iteration.max'] and ((not status) or done or start):
+					value = track['iteration'][-1]
+					update = True
+
+				elif attr in ['iteration.min'] and not ((not status) or done or start):
+					value = default
+				
+				elif attr in ['iteration.min'] and ((not status) or done or start):
 					value = track['iteration'][argmin(array(track['objective']))]
+					update = True
 
 				elif attr in ['parameters','grad','search'] and not ((not status) or done or start):
 					value = default
@@ -1250,7 +1260,7 @@ class Callback(object):
 				elif attr in ['parameters','grad','search'] and ((not status) or done or start):
 					value = attributes[attr][-1]
 
-				elif attr in ['features','features.mean','features.relative']and not ((not status) or done or start):
+				elif attr in ['features','features.mean','features.relative'] and not ((not status) or done or start):
 					value = default
 
 				elif attr in ['features','features.mean','features.relative'] and ((not status) or done or start):
@@ -1368,7 +1378,13 @@ class Callback(object):
 					value = getattrs(model,attr,default=default,delimiter=delim)
 
 
-			track[attr][-1] = value
+				track[attr][-1] = value
+
+				if update:
+					if not callable(update):
+						update = lambda i,attr,value,track: value
+					for i in range(size+1):
+						track[attr][i] = update(i,attr,value,track)
 
 
 		log = ((len(attributes['iteration']) == 0) or 

@@ -17,12 +17,12 @@ logger = logging.getLogger(__name__)
 
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient,conj,abs
-from src.utils import is_naninf,is_unitary,is_hermitian,product,sqrt,asarray
+from src.utils import is_unitary,is_hermitian,product,sqrt,asarray
 
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
-from src.utils import itg,dbl,flt,delim,nan,Null
+from src.utils import scalars,delim
 
 from src.iterables import setter
 
@@ -105,7 +105,7 @@ class LineSearcher(System):
 		attr = 'alpha'
 		if returns[attr] is None or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
 			if len(alpha) > 1:
-				returns[attr] = alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2])
+				returns[attr] = alpha[-1]*grad[-1].dot(search[-1])/grad[-2].dot(search[-2])
 			else:
 				returns[attr] = alpha[-1]
 
@@ -177,7 +177,7 @@ class Line_Search(LineSearcher):
 		self.defaults['old_old_fval'] = value[-2] if len(value)>1 else None
 		
 		returns = line_search(self.func,self.grad,
-			parameters,search[-1],gradient[-1],value[-1],
+			parameters,search[-1],grad[-1],value[-1],
 			**self.defaults)
 		
 		returns = self.__callback__(returns,parameters,alpha,value,grad,search)
@@ -495,7 +495,7 @@ class Hestenes_Stiefel(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = (grad[-1].dot(grad[-1]-grad[-2]))/(search.dot(grad[-1]-grad[-2])) # Hestenes-Stiefel
+		_beta = (grad[-1].dot(grad[-1]-grad[-2]))/(search[-1].dot(grad[-1]-grad[-2])) # Hestenes-Stiefel
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,parameters,beta,value,grad,search)
@@ -531,7 +531,7 @@ class Dai_Yuan(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = (grad[-1].dot(grad[-1]))/(search.dot(grad[-1]-grad[-2])) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
+		_beta = (grad[-1].dot(grad[-1]))/(search[-1].dot(grad[-1]-grad[-2])) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,parameters,beta,value,grad,search)
@@ -852,8 +852,6 @@ class Metric(System):
 
 		self.__setup__()
 
-		self.info()
-
 		return
 
 	def __setup__(self):
@@ -995,6 +993,7 @@ class Metric(System):
 			metric = self.metric
 			function = jit(metric)
 			grad = jit(gradient(metric))
+			# grad = gradient(function,mode='fwd',holomorphic=True,move=True)			
 			gradient_analytical = jit(gradient(metric))
 		else:
 
@@ -1032,7 +1031,7 @@ class Metric(System):
 				gradient_analytical = gradient_inner_abs2
 
 				def wrapper_function(out,*operands):
-					return abs(1 - out/(operands[0].shape[-1]*operands[0].shape[-2]))
+					return 1 - out/(operands[0].shape[-1]*operands[0].shape[-2])
 
 				def wrapper_gradient(out,*operands):
 					return - out/(operands[0].shape[-1]*operands[0].shape[-2])
@@ -1043,7 +1042,7 @@ class Metric(System):
 				gradient_analytical = gradient_inner_real
 
 				def wrapper_function(out,*operands):
-					return abs(1 - out)
+					return 1 - out
 
 				def wrapper_gradient(out,*operands):
 					return  - out
@@ -1054,7 +1053,7 @@ class Metric(System):
 				gradient_analytical = gradient_inner_imag
 
 				def wrapper_function(out,*operands):
-					return abs(1 - out)
+					return 1 - out
 
 				def wrapper_gradient(out,*operands):
 					return - out
@@ -1143,6 +1142,7 @@ class Optimization(System):
 			'eps':{'value':1e-4,'grad':1e-12,'alpha':1e-12,'beta':1e3},
 			'alpha':0,
 			'status':1,
+			'reset':False,
 			'cwd':None,
 			'path':None,
 			'modulo':{'log':None,'attributes':None,'callback':None,'restart':None,'dump':None},
@@ -1165,32 +1165,21 @@ class Optimization(System):
 		self.callback = callback
 
 		self.size = 0
-		self.iteration = -1
+		self.iteration = 0
 		self.parameters = None
 		self.optimizer = hyperparameters['optimizer']		
+		self.status = hyperparameters['status']
+		self.reset = hyperparameters['reset']
 		self.modulo = hyperparameters['modulo']
 		self.length = hyperparameters['length']
 		self.attributes = hyperparameters['attributes']
 		self.track = hyperparameters['track']
 		self.iterations = range(int(hyperparameters['iterations']))
-		self.sizes = hyperparameters['length'].get('attributes')
-		self.status = hyperparameters['status']
+		self.sizes = hyperparameters['length'].get('attributes')		
 		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
 
-		for attr in list(self.attributes):
-			value = self.attributes[attr]
-			if ((not isinstance(value,list)) and (not value)):
-				self.attributes.pop(attr)
-			elif ((isinstance(value,list)) and (value)):
-				self.attributes[value] = []
-
-		for attr in list(self.track):
-			value = self.track[attr]
-			if ((not isinstance(value,list)) and (not value)):
-				self.track.pop(attr)
-			elif ((isinstance(value,list)) and (value)):
-				self.track[value] = []		
+		self.clear()
 
 		return
 
@@ -1203,14 +1192,17 @@ class Optimization(System):
 			parameters (object): optimizer parameters
 		'''
 
+		if self.reset:
+			self.clear()
+
 		iteration = self.iteration
 		state = self.opt_init(parameters)
 		iteration,state = self.load(iteration,state)
 
+		self.info()
+
 		for iteration in self.iterations:
 
-			iteration += 1
-			
 			state = self.opt_update(iteration,state)
 
 			self.dump(iteration,state)
@@ -1269,12 +1261,12 @@ class Optimization(System):
 			self.attributes['search'].append(search)
 			self.attributes['alpha'].append(alpha)
 
-			state = self.opt_init(parameters)
-			parameters = self.get_params(state)
-			track = self.track		
-			attributes = self.attributes
-			hyperparameters = self.hyperparameters			
-			self.status = self.callback(parameters,track,attributes,hyperparameters)
+		state = self.opt_init(parameters)
+		parameters = self.get_params(state)
+		track = self.track		
+		attributes = self.attributes
+		hyperparameters = self.hyperparameters			
+		self.status = self.callback(parameters,track,attributes,hyperparameters)
 
 		return state
 
@@ -1302,21 +1294,23 @@ class Optimization(System):
 
 		parameters = self.get_params(state)
 		value,grad = self.value_and_grad(parameters)
+		size = self.size
 
-		if (self.sizes is not None) and (self.size > 0) and (self.size >= self.sizes):
+		if (self.sizes is not None) and (size > 0) and (size >= self.sizes):
 			for attr in self.attributes:
 				if self.attributes[attr]:
 					self.attributes[attr].pop(0)
 
-		self.iteration = iteration
-		
+		iteration += 1
+		size += 1
+
 		self.attributes['iteration'].append(iteration)
 		self.attributes['parameters'].append(parameters)
 		self.attributes['value'].append(value)
 		self.attributes['grad'].append(grad)
 
-		self.size += 1
-		self.iteration += 1
+		self.iteration = iteration
+		self.size = size
 
 		return value,grad,parameters
 
@@ -1363,36 +1357,45 @@ class Optimization(System):
 		path = join(self.path,root=self.cwd)
 		data = load(path)
 
-		for attr in self.track:
-			if attr in data:
-				self.track[attr].extend(data[attr])
+		if data is not None:
+			for attr in data:
+				if attr in self.track:
+					self.track[attr].extend(data[attr])
 
 
-		path = join(self.path,ext='chkpt',root=self.cwd)
+		path = join(self.path,ext='ckpt',root=self.cwd)
 		data = load(path)
 
-		for attr in self.attributes:
-			if attr in data:
-				self.attributes[attr].extend(data[attr])
+		if data is not None:
+			for attr in data:
+				if attr in self.attributes:
+					self.attributes[attr].extend(data[attr])
 				
-		self.size = min((len(self.track[attr]) for attr in self.track),default=self.size)
+
+		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
+
+		while (self.sizes is not None) and (self.size > 0) and (self.size > self.sizes):
+			for attr in self.attributes:
+				if self.attributes[attr]:
+					self.attributes[attr].pop(0)
+			self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
 		if self.size:
 			attr = 'iteration'	
-			if attr in track:
-				self.iteration = self.track[attr][-1]
+			if attr in self.attributes:
+				self.iteration = self.attributes[attr][-1]
 
 			attr = 'parameters'		
-			if attr in track:
-				self.parameters = self.track[attr][-1]
+			if attr in self.attributes:
+				self.parameters = self.attributes[attr][-1]
 		else:
 			self.iteration = iteration
 			self.parameters = self.get_params(state)
 	
-		self.iteration = max(iteration,self.iteration-1,-1) if iteration is not None else self.iteration-1
+		self.iteration = max(iteration,self.iteration) if iteration is not None else self.iteration
 		self.iterations = range(
-			self.iterations.start+self.iteration+1,
-			self.iterations.stop+self.iteration+1,
+			self.iteration,
+			self.iterations.stop-self.iterations.start+self.iteration,
 			self.iterations.step)				
 
 		iteration = self.iteration
@@ -1400,6 +1403,53 @@ class Optimization(System):
 
 		return iteration,state
 
+	def clear(self):
+		'''
+		Reset class attributes
+		'''
+
+		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
+
+		while (self.sizes is not None) and (self.size > 0) and (self.size > self.sizes):
+			for attr in self.attributes:
+				if self.attributes[attr]:
+					self.attributes[attr].pop(0)
+			self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
+
+		for attr in list(self.attributes):
+			value = self.attributes[attr]
+			if ((not isinstance(value,list)) and (not value)):
+				self.attributes.pop(attr)
+			elif ((isinstance(value,list)) and (value)):
+				self.attributes[attr] = []
+
+		for attr in list(self.track):
+			value = self.track[attr]
+			if ((not isinstance(value,list)) and (not value)):
+				self.track.pop(attr)
+			elif ((isinstance(value,list)) and (value)):
+				self.track[attr] = []
+
+		return
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = '%s'%('\n'.join([
+			*['%s: %s'%(attr,getattr(self,attr)) 
+				for attr in ['iterations','size','eps','modulo']
+			],
+			*['%s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
+				for attr in ['track','attributes']
+				if any(getattr(self,attr).get(key) for key in getattr(self,attr))
+			],			
+			]
+			))
+		self.log(msg,verbose=verbose)
+		return
 
 class Optimizer(Optimization):
 	'''
@@ -1482,12 +1532,12 @@ class GradientDescent(Optimization):
 			self.attributes['search'].append(search)
 			self.attributes['alpha'].append(alpha)
 
-			state = self.opt_init(parameters)
-			parameters = self.get_params(state)
-			track = self.track		
-			attributes = self.attributes
-			hyperparameters = self.hyperparameters			
-			self.status = self.callback(parameters,track,attributes,hyperparameters)
+		state = self.opt_init(parameters)
+		parameters = self.get_params(state)
+		track = self.track		
+		attributes = self.attributes
+		hyperparameters = self.hyperparameters			
+		self.status = self.callback(parameters,track,attributes,hyperparameters)
 
 		return state
 
@@ -1543,7 +1593,7 @@ class ConjugateGradient(Optimization):
 			
 			beta = optimizer.beta(
 				parameters,
-				optimizer.attributes['alpha'],
+				optimizer.attributes['beta'],
 				optimizer.attributes['value'],
 				optimizer.attributes['grad'],
 				optimizer.attributes['search'])
@@ -1574,9 +1624,9 @@ class ConjugateGradient(Optimization):
 				beta = self.hyperparameters['beta']
 				search = -grad
 
-		self.attributes['search'].append(search)
-		self.attributes['alpha'].append(alpha)
-		self.attributes['beta'].append(beta)
+			self.attributes['search'].append(search)
+			self.attributes['alpha'].append(alpha)
+			self.attributes['beta'].append(beta)
 		
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)

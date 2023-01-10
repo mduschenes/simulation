@@ -464,16 +464,8 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 	Returns:
 		data (object): Loaded object
 	'''	
-	def convert(name,conversion=None,**kwargs):
-		if conversion is None:
-			conversion = lambda name: str(name)
-		try:
-			key = conversion(name)
-		except:
-			key = name
-		return key
 
-	null = {'None':'None'}
+	null = {b'None':None}
 
 	data = {}
 	
@@ -485,13 +477,20 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 				data[key] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
 			else:
 				data[key] = obj[name][...]
-		
+
+				if data[key].dtype.kind in ['S']:
+					# if all(i in [b'None'] for i in data[key].flatten()):
+					# 	data[key] = np.array([None]*data[key].size).reshape(data[key].shape)
+					# else:
+					data[key] = data[key].astype(str)
+				
 		names = obj.attrs
 		for name in names:
 			key = name
 			data[key] = obj.attrs[name]
 			if obj.attrs[name] in null:
 				data[key] = null[obj.attrs[name]]
+
 	else:
 		data = obj.value
 	
@@ -527,13 +526,7 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 		kwargs (dict): Additional loading keyword arguments
 	'''		
 
-	def convert(name,conversion=None,**kwargs):
-		if conversion is None:
-			conversion = lambda name: str(name)
-		key = conversion(name)
-		return key
-
-	null = {None: 'None'}
+	null = {}
 
 	if isinstance(obj,dict):
 		names = obj
@@ -542,7 +535,6 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 			if isinstance(obj[name],dict):
 				path.create_group(key)
 				_dump_hdf5(obj[name],path[key],wr=wr,ext=ext,**kwargs)
-			
 			elif isinstance(obj[name],scalars):
 				try:
 					path.attrs[key] = obj[name]
@@ -552,7 +544,10 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 					else:
 						continue
 			else:
-				path[key] = obj[name]
+				try:
+					path[key] = obj[name]
+				except:
+					path[key] = np.array(obj[name],dtype='S')
 	else:
 		path = obj
 
@@ -657,13 +652,13 @@ def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):
 		try:
 			data = _load(path,wr=wr,ext=ext,**kwargs)
 			return data
-		except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError) as exception:			
+		except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError) as exception:			
 			logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
 			try:
 				with open(path,wr) as obj:
 					data = _load(obj,wr=wr,ext=ext,**kwargs)
 					return data
-			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError) as exception:
+			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError) as exception:
 				logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
 				pass
 
@@ -739,13 +734,13 @@ def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
 		try:
 			_dump(data,path,wr=wr,ext=ext,**kwargs)
 			return
-		except (ValueError,AttributeError,TypeError) as exception:
+		except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError) as exception:
 			logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
 			try:
 				with open(path,wr) as obj:
 					_dump(data,obj,wr=wr,ext=ext,**kwargs)
 				return
-			except (ValueError,AttributeError,TypeError) as exception:
+			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError) as exception:
 				logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
 				pass
 	return

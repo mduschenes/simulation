@@ -110,18 +110,31 @@ def test_optimizer(path,tol):
 	shapes = model.shapes
 	label = model.label()
 	hyperparams = hyperparameters['optimize']
-	func = [model.__constraints__]
+	system = hyperparameters['system']
+	kwargs = {}
+	func = []
 	callback = cls['callback']()
 
-	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams)
-	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams)
-	callback = Callback(model,callback=callback,func=func,metric=metric,hyperparameters=hyperparams)
+	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system,**kwargs)
+	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
+	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
 
-	optimizer = Optimizer(func=func,model=model,callback=callback,hyperparameters=hyperparams)
+	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system,**kwargs)
 
-	parameters = optimizer(parameters)
+	optimizer(parameters)
+	value = optimizer.track['objective'][-1]
+	iteration = optimizer.track['iteration'][-1]
+	size = min(len(optimizer.track[attr]) for attr in optimizer.track)
 
-	model.parameters(parameters)
+	optimizer.clear()
+	optimizer(parameters)
+	value = optimizer.track['objective'][-1]-value
+	iteration = optimizer.track['iteration'][-1]-iteration
+	size = min(len(optimizer.track[attr]) for attr in optimizer.track)-size
+
+	assert value < 0, "Checkpointed optimizer not re-initialized with value %s"%(value)
+	assert iteration == hyperparams['iterations'], "Checkpointed optimizer not re-initialized with iteration %s"%(iteration)
+	assert size == hyperparams['iterations'], "Checkpointed optimizer not re-initialized with size %s"%(size)
 
 	return
 
