@@ -490,6 +490,7 @@ def replacer(iterable,key,replacement,append=False,copy=True,values=False):
 	'''	
 
 	# Recursively find where nested iterable keys exist, and replace or append in-place with replacement key
+
 	try:
 		keys = list(iterable)
 		for k in keys:

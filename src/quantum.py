@@ -739,13 +739,13 @@ class Observable(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
+			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
 				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','shape','dims','cwd','path','backend','architecture','conf','logger','cleanup']
 			],
-			*['%s: %s'%(attr,getattr(self,attr)() is not None) 
-				for attr in ['state','noise']
+			*['%s: %s'%(attr.split(delim)[0],getattrs(self,attr,delimiter=delim)) 
+				for attr in ['state.scale','noise.scale']
 			],
-			*['%s: %s'%(attr,getattr(self,attr).__name__) 
+			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).__name__) 
 				for attr in ['exponentiation']
 			],			
 			]

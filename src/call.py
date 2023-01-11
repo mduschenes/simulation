@@ -472,7 +472,7 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 
 	exe = ['echo']
 	flags = []
-	cmd = ''.join(args)
+	cmd = ''.join([subarg for arg in args for subarg in arg])
 	options = []
 	env = [] if env is None else env
 	args = []
@@ -939,6 +939,7 @@ def init(key,
 			path = indices.index(key)
 		else:
 			path = None
+
 		path = join(path,root=cwd[key])
 
 		exe = jobs[key]

@@ -18,19 +18,16 @@
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[4],		
-		"model.M":[500],		
+		"model.N":[2],		
+		"model.M":[5,10],		
 		"model.tau":[20e0],		
-		"noise.scale":[null],
+		"noise.scale":[null,1e-10],
 		"state.scale":[1],
-		"state.shape":[[1,1,-1,-1]],
 
-		"optimize.metric":["abs2"],
-		"optimize.metric":["real"],
-		"optimize.iterations":[300],
+		"optimize.iterations":[5],
 		"optimize.optimizer":["cg"],
-		"parameters.xy.method":["constrained"],
-		"model.system.architecture":["constrained"],
+		"parameters.xy.method":["unconstrained"],
+		"system.architecture":["unconstrained"],
 
 		"jobs.job.cwd":["data"],	
 		"jobs.postprocess.cwd":["data"],
@@ -49,7 +46,7 @@
 		"jobs.postprocess.args.JOB_PROCESSES":[1]
 
 		},
-	"groups":[["parameters.xy.method","model.system.architecture"]],
+	"groups":[["parameters.xy.method","system.architecture"]],
 	"index":null
 	},
 "model":{
@@ -64,43 +61,47 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":3,
+	"M":5,
 	"T":null,
-	"tau":5e1,
-	"p":2,
+	"tau":50e0,
+	"P":2,
 	"space":"spin",
 	"time":"linear",
-	"lattice":"square",
-	"system":{
-		"dtype":"complex",
-		"format":"array",
-		"device":"cpu",
-		"backend":"jax",
-		"architecture":null,
-		"seed":null,
-		"key":null,
-		"timestamp":null,		
-		"cwd":".",
-		"path":"model.pkl",
-		"conf":"logging.conf",
-		"logging":"log.log",
-		"cleanup":false,
-		"verbose":"info"
-		}
+	"lattice":"square"
+	},
+"system":{
+	"dtype":"complex",
+	"format":"array",
+	"device":"cpu",
+	"backend":"jax",
+	"architecture":null,
+	"seed":null,
+	"key":null,
+	"cwd":".",
+	"path":null,
+	"path":"data.hdf5",
+	"conf":"logging.conf",
+	"logger":"log.log",
+	"cleanup":true,
+	"verbose":"info"
 	},
 "optimize":{
-	"iterations":50,
+	"iterations":5,
 	"optimizer":"cg",
 	"metric":"abs2",	
+	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
+	"search":{"alpha":"line_search","beta":"fletcher_reeves"},
 	"search":{"alpha":"line_search","beta":"dai_yuan"},
-	"eps":{"value":1e-20,"grad":1e-12,"difference":1e-20,"alpha":1e-7,"beta":1e3},
+	"eps":{"value":1e-30,"grad":1e-32,"difference":1e-30,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
-	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[-1e7,1e7],"beta":[-1e20,1e3]},	
+	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[1e-10,1e7],"beta":[-1e20,1e3]},	
 	"status":1,
+	"clear":false,
+	"settings":{"noise":1e-3},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,"restart":1e6,
-	"alpha":1e-4,"beta":1e-2,
-	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":10},
-	"length":{"log":null,"attributes":10,"track":null,"callback":null,"restart":null,"dump":null},
+	"alpha":1e-3,"beta":1e-2,
+	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":null},
+	"length":{"log":null,"attributes":5,"track":null,"callback":null,"restart":null,"dump":null},
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
@@ -111,53 +112,37 @@
 			"parameters":false,
 			"grad":false,
 			"search":false,
-			"value":false,
+			"value":[],
 			"objective":[],
-			"alpha":false,
-			"beta":false,
+			"alpha":[],
+			"beta":[],
 
 			"iteration.max":[],
 			"iteration.min":[],
-			"features":false,"features.mean":false,"features.relative":false,
-			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
+			"features":false,"features.relative":false,"features.relative.mean":[],
+			"objective.ideal.noise":true,"objective.diff.noise":false,"objective.rel.noise":false,
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
 			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
 			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
 			"hessian.rank":false,"fisher.rank":false,
 
-			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"p":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],
+			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],
 
 			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
-		},
-	"system":{
-		"dtype":"float",
-		"format":"array",
-		"device":"cpu",
-		"backend":"jax",
-		"architecture":null,
-		"seed":null,
-		"key":null,
-		"timestamp":null,		
-		"cwd":".",
-		"path":"data.hdf5",
-		"conf":"logging.conf",
-		"logging":"log.log",
-		"cleanup":false,
-		"verbose":"info"
-		}
+		}	
 	},
 "parameters":{
 	"xy": {
 		"string":"xy",
 		"category":"variable",
 		"method":"unconstrained",
-		"use":true,		
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"parameters":null,
 		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
+		"size":[-1,-1],
 		"group":[["x"],["y"]],
 		"scale":1,
 		"initialization":"interpolation",
@@ -171,7 +156,6 @@
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -179,10 +163,10 @@
 		"string":"z",
 		"category":"constant",
 		"method":null,		
-		"use":true,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-1e-2,0,1e-3,5e-3,2e-3],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
+		"size":[-1,-1],
 		"group":[["z"]],
 		"scale":1,
 		"initialization":"random",
@@ -199,10 +183,10 @@
 		"string":"zz",
 		"category":"constant",
 		"method":null,		
-		"use":true,
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
+		"size":[-1,-1],
 		"group":[["zz"]],
 		"scale":1,
 		"initialization":"random",
@@ -221,6 +205,7 @@
 	"category":"constant",
 	"parameters":null,
 	"shape":[-1,-1],
+	"size":null,
 	"scale":1,
 	"initialization":"random",
 	"random":"haar",
@@ -230,23 +215,25 @@
 "state": {
 	"string":"random",
 	"category":"constant",
-	"shape":[1,1,-1,-1],
-	"scale":null,
+	"shape":[-1,-1],
+	"size":[1,1],
+	"scale":1,
 	"initialization":"random",
 	"random":"haar",
 	"seed":null,
-	"bounds":[-1,1]	
-},
+	"bounds":[-1,1]
+	},
 "noise": {
-	"string":"phase",
+	"string":"dephase",
 	"category":"constant",
-	"shape":[2,-1,-1],
-	"scale":null,
+	"shape":[-1,-1],
+	"size":null,
+	"scale":1e-12,
 	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,
-	"bounds":[-1,1]	
-},
+	"bounds":[-1,1]
+	},
 "jobs":{
 	"preprocess":null,
 	"job":{
@@ -261,10 +248,7 @@
 			},
 		"paths":{
 			"settings":"settings.json",
-			"plot":"plot.json",
-			"process":"process.json",
-			"mplstyle":"plot.mplstyle",
-			"conf":"logging.conf"
+			"conf":"logging.conf"			
 			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
@@ -294,8 +278,13 @@
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=**/plot.json","--hyperparameters=**/process.json","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--cwd=."]
 			},
+		"paths":{
+			"plot":"plot.json",
+			"process":"process.json",
+			"mplstyle":"plot.mplstyle"
+		},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
 			"time":"01:00:00","mem":"64G",
@@ -312,7 +301,8 @@
 		"device":"pc",
 		"execute":1,
 		"verbose":"info"
-		}
+		},
+	"postprocess":null		
 	},
 "process": {},
 "plot": {}

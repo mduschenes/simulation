@@ -15,7 +15,7 @@ from natsort import natsorted,realsorted
 # Logging
 import logging
 logger = logging.getLogger(__name__)
-debug = 100
+debug = 0
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -259,6 +259,8 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 			paths = [root,path]
 			paths = [path for path in paths if path not in ['',None]]
 			path = os.path.join(*paths)
+	elif path is None and root is not None:
+		path = root
 	if path is not None and abspath:
 		path = os.path.abspath(os.path.expanduser(path))
 	return path
@@ -533,7 +535,7 @@ def _dump_hdf5(obj,path,wr='r',ext='hdf5',**kwargs):
 				try:
 					path.attrs[key] = obj[name]
 				except TypeError:
-					print('\n','----',key,'\n')
+					pass
 			else:
 				try:
 					path[key] = obj[name]
