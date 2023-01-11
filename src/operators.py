@@ -18,7 +18,7 @@ for PATH in PATHS:
 from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import einsum,tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
 from src.utils import slice_slice,datatype,returnargs,is_array,allclose
-from src.utils import pi,e,delim,null
+from src.utils import pi,e,delim
 
 from src.system import Object
 from src.io import load,dump,join,split

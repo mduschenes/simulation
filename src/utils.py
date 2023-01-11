@@ -67,14 +67,14 @@ scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
 
-class none(object): pass
-class null(object): pass
-class Null(object):
+class Null(object): pass
+class none(object):
 	def __init__(self,default=0,*args,**kwargs):
 		self.default = default
 		return
 	def __call__(self,*args,**kwargs):
 		return self.default
+null = Null()
 
 # Types
 itg = np.integer
@@ -4889,12 +4889,13 @@ def to_string(a,**kwargs):
 
 	return string
 
-def to_key_value(string,delimiter='=',**kwargs):
+def to_key_value(string,delimiter='=',default=None,**kwargs):
 	'''
 	Parse strings for specific values with key=value
 	Args:
 		string (str): String to parse
 		delimiter (str): Delimiter separating key and value
+		default (object): Default value
 		kwargs (dict): Additional keyword formatting options
 	Returns:
 		key (str): Key of string
@@ -4902,12 +4903,12 @@ def to_key_value(string,delimiter='=',**kwargs):
 	'''
 	if not isinstance(string,str):
 		key = string
-		value = None
+		value = default
 	else:
 		string = string.split(delimiter)
 		if len(string) == 1:
 			key = delimiter.join(string)
-			value = None
+			value = default
 		else:
 			key = string[0]
 			value = delimiter.join(string[1:])

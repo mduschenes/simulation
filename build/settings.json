@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":1,
+	"size":5,
 	"reset":5576,
 	"index":null
 	},
@@ -19,18 +19,18 @@
 	"permutations":{	
 	
 		"model.N":[2],		
-		"model.M":[5,10],		
+		"model.M":[8,16,32,64,128],		
 		"model.tau":[20e0],		
-		"noise.scale":[null,1e-10],
+		"noise.scale":[null,1e-10,1e-6],
 		"state.scale":[1],
 
-		"optimize.iterations":[5],
+		"optimize.iterations":[200],
 		"optimize.optimizer":["cg"],
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["data"],	
-		"jobs.postprocess.cwd":["data"],
+		"jobs.job.cwd":["test"],	
+		"jobs.postprocess.cwd":["test"],
 
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
@@ -296,10 +296,10 @@
 		"pool":null,		
 		"pause":1,	
 		"file":"postprocess.sh",
-		"process":null,
 		"processes":null,
 		"device":"pc",
 		"execute":1,
+		"process":null,
 		"verbose":"info"
 		},
 	"postprocess":null		

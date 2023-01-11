@@ -477,8 +477,7 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 				data[key] = _load_hdf5(obj[name],wr=wr,ext=ext,**kwargs)
 			else:
 				data[key] = obj[name][...]
-
-				if data[key].dtype.kind in ['S']:
+				if data[key].dtype.kind in ['S','O']:
 					# if all(i in [b'None'] for i in data[key].flatten()):
 					# 	data[key] = np.array([None]*data[key].size).reshape(data[key].shape)
 					# else:

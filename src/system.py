@@ -23,7 +23,7 @@ from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqr
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
-from src.utils import itg,dbl,flt,delim,null
+from src.utils import itg,dbl,flt,delim,Null,null
 
 from src.iterables import getter,setter
 from src.io import join,split,copy,rm,exists
@@ -416,7 +416,7 @@ class Object(System):
 		return
 
 
-	def __call__(self,data=null()):
+	def __call__(self,data=null):
 		'''
 		Class data
 		Args:
@@ -424,7 +424,7 @@ class Object(System):
 		Returns:
 			data (array): Data
 		'''
-		if not isinstance(data,null):
+		if not isinstance(data,Null):
 			self.data = data
 			self.shape = self.data.shape if self.data is not None else None
 			self.ndim = self.data.ndim if self.data is not None else None
