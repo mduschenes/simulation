@@ -21,10 +21,11 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import array,product,expand_dims,to_eval,to_repr,is_iterable,is_number,to_number,to_key_value
+from src.utils import array,product,expand_dims,conditions
 from src.utils import asndarray,asscalar
-from src.utils import argmax,difference,is_nan,is_numeric,abs
-from src.utils import e,pi,nan,scalars,nulls,scinotation,padder
+from src.utils import to_key_value,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
+from src.utils import argmax,difference,abs
+from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
 from src.iterables import branches
 from src.parallel import Parallelize,Pooler
 from src.io import setup,load,dump,join,split,glob
@@ -62,36 +63,116 @@ def Texify(string,texify={},usetex=True):
 
 def find(dictionary,properties):
 	'''
-	Find formatted keys of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
-	from dictionary, based on search properties 
+	Find formatted keys from dictionary, based on search properties of the form 'property':'attr=value'
 	All properties are assumed to be present in any branches where one or more property is found in dictionary
 	Args:
 		dictionary (dict): Dictionary to search
 		properties (iterable[str]): Iterable of properties to search for
 	Returns:
-		keys (list[dict]): Formatted keys based on found properties in dictionary
+		keys (dict[dict]): Formatted keys based on found properties of the form {name: {prop:[attr]} or {prop:{attr:value}}}
 	'''
+	values = branches(dictionary,properties,types=(dict,list),returns='value')
+	values = list(values)
+	
+	n = len(values)
+	p = len(properties)
+	delimiter = '='
+	default = null
 
-	keys = branches(dictionary,properties,types=(dict,list),returns='value')
+	keys = {}
+	
+	for i in range(n):
+		name = str(i)
+		keys[name] = {}
 
-	keys = map(lambda key: dict(zip(
-		properties,(tuple((dict(zip(['key','value'],to_key_value(k,delimiter='='))),))
-						if k is None or isinstance(k,str) 
-						else tuple(dict(zip(['key','value'],to_key_value(j,delimiter='='))) for j in k) for k in key))),
-		keys)
+		for j in range(p):
+			prop = properties[j]
+			value = values[i][j]
+			
+			if value is None or isinstance(value,str):
+				value = [value]
 
+			value = dict([to_key_value(val,delimiter=delimiter,default=default) for val in value])
+			keys[name][prop] = value
+			
+	for name in list(keys)[::-1]:
+		if all(keys[name][prop][attr] in [keys[other][prop][attr] for other in keys if attr in keys[other][prop] and other not in [name]]
+			  for prop in keys[name] for attr in keys[name][prop]):
+			keys.pop(name)
 
-	keys = [{prop: {
-				label:tuple(value[label] for value in key[prop]) for label in set(
-					label for value in key[prop] for label in value)}
-			 for prop in key} 
-			 for key in keys]
-
-	for key in keys:
-		if keys.count(key)>1:
-			keys.remove(key)
+	for name in keys:
+		for prop in keys[name]:
+			if all(isinstance(keys[name][prop][attr],Null) for attr in keys[name][prop]):
+				keys[name][prop] = [attr for attr in keys[name][prop]]
 
 	return keys
+
+
+def parse(key,value,data):
+	'''
+	Parse key and value condition for data, such that data[key] == value
+	Args:
+		key (str): key of condition
+		value (str): value of condition, allowed string in 
+			[None,
+			'value' (explit value),
+			'@key@' (data value), 
+			'#i,j,k,...#' (index value),
+			'%start,stop,step%' (slice value),]
+		data (dataframe): data of condition
+	Returns:
+		out (dataframe): Condition on data indices
+	'''
+	delimiters = ['$','@','#','%']
+	default = True
+	separator = ','
+
+	out = default
+	
+	if isinstance(value,Null):
+		pass
+	elif isinstance(value,str):
+		for delimiter in delimiters:
+
+			if value.startswith(delimiter) and value.endswith(delimiter):
+			
+				values = value.replace(delimiter,'').split(separator)
+
+				if delimiter in ['$']: # Explicit value: value
+					parser = lambda value: (to_number(value) if len(value)>0 else null)
+					values = [parser(value) for value in values]           
+					values = [value for value in values if not isinstance(value,Null)]
+
+					if values and not isinstance(values,Null):
+						out = data[key].isin(values)
+
+				elif delimiter in ['@']: # Data value: key
+					parser = lambda value: (to_str(value) if len(value)>0 else null)
+					values = [parser(value) for value in values]           
+				  
+					if values and not isinstance(values,Null):
+						out = conditions([data[key]==data[value] for value in values],op='or')
+
+				elif delimiter in ['#']: # Index value: i,j,k,...
+					parser = lambda value: (to_int(value) if len(value)>0 else null)
+					values = [parser(value) for value in values]
+					values = [value for value in values if not isinstance(value,Null)]
+
+					if values and not isinstance(values,Null):
+						out = data[key].unique()
+						out = data[key].isin(out[[value for value in values if value < out.size]])
+
+				elif delimiter in ['%']: # Slice value start,stop,step
+					parser = lambda value: (to_int(value) if len(value)>0 else None)
+					values = [*(parser(value) for value in values),*[None]*(3-len(values))]
+					values = [value for value in values if not isinstance(value,Null)]
+			
+					if values and not isinstance(values,Null):
+						out = data[key].isin(data[key].unique()[slice(*values)])
+	
+				break
+	
+	return out
 
 
 def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):

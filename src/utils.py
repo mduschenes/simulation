@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,copy,ast
+import os,sys,itertools,copy,ast,operator
 
 from functools import partial,wraps
 from natsort import natsorted
@@ -67,7 +67,12 @@ scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
 
-class Null(object): pass
+class Null(object):
+	def __str__(self):
+		return 'Null'
+	def __repr__(self):
+		return self.__str__()
+
 class none(object):
 	def __init__(self,default=0,*args,**kwargs):
 		self.default = default
@@ -2070,6 +2075,36 @@ def product(a):
 		out (array): Reduced array of product of elements
 	'''
 	return onp.prod(a)
+
+
+def conditions(booleans,op):
+    '''
+    Compute multiple conditions with boolean operator
+    Args:
+        booleans (iterable[bool]): Boolean conditions
+        op (str,iterable[str]): Boolean operators, ['and','or','lt','gt','eq','le','ge','ne'] 
+    Returns:
+        out (bool): Boolean of conditions
+    '''
+    if isinstance(op,str):
+        ops = [op]*len(booleans)
+    else:
+        ops = op
+
+    op = ops[0] if ops else None
+    
+    if op is None:
+        out = False
+    elif op in ['or']:
+        out = False
+    elif op in ['and','lt','gt','eq','le','ge','ne']:
+        out = True
+
+    for op,boolean in zip(ops,booleans):
+        out = getattr(operator,'__%s__'%(op))(out,boolean)
+        
+    return out
+
 
 @jit
 def _matmul(a,b):
@@ -4874,6 +4909,39 @@ def to_number(a,dtype=None,**kwargs):
 		if is_number(a):
 			number = dtype(coefficient*a)
 	return number
+
+def to_int(a,**kwargs):
+	'''
+	Convert object to int
+	Args:
+		a (object): Object to represent
+		kwargs (dict): Additional keyword formatting options
+	Returns:
+		integer (int): int representation of object
+	'''
+
+	try:
+		integer = int(a)
+	except:
+		integer = a
+	return integer
+
+
+def to_str(a,**kwargs):
+	'''
+	Convert object to string
+	Args:
+		a (object): Object to represent
+		kwargs (dict): Additional keyword formatting options
+	Returns:
+		string (str): String representation of object
+	'''
+
+	try:
+		string = str(a)
+	except:
+		string = a
+	return string
 
 def to_string(a,**kwargs):
 	'''
