@@ -2,6 +2,7 @@
 
 # Import python modules
 import os,sys,copy,warnings,itertools,inspect
+from copy import deepcopy
 import json,glob
 import numpy as np
 import pandas as pd
@@ -431,12 +432,18 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 	def attr_wrap(obj,attr,settings,**kwargs):
 
-		def attrs(obj,attr,_attr,_kwargs,**kwargs):
+		def attrs(obj,attr,_attr,index,_kwargs,kwargs):
 			call = True
 			args = []
 			kwds = {}
 			_args = []
 			_kwds = {}
+
+			attr_ = attr
+			kwargs = deepcopy(kwargs)
+			nullkwargs = []				
+
+
 			if attr in ['legend']:
 				handles,labels = getattr(obj,'get_legend_handles_labels')()
 				handles,labels = (
@@ -446,175 +453,137 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				if len(handles)>0 and len(labels)>0:
 					handles,labels = zip(
-						*((handle,attr_share(attr_texify(label,attr,handle,**{**kwargs,**_kwargs}),attr,handle,**{**kwargs,**_kwargs})) 
+						*((handle,attr_share(attr_texify(label,attr,handle,**{**kwargs[attr],**_kwargs}),attr,handle,**{**kwargs[attr],**_kwargs})) 
 							for handle,label in zip(handles,labels))
 						)
 
 
-				if kwargs.get('join') is not None:
+				if kwargs[attr].get('join') is not None:
 					n = min(len(handles),len(labels))
-					k = kwargs.pop('join',1)
+					k = kwargs[attr].get('join',1)
 					handles = list(zip(*(handles[i*n//k:(i+1)*n//k] for i in range(k))))
 					labels = labels[:n//k]
 					handler_map = {tuple: matplotlib.legend_handler.HandlerTuple(None,pad=0.5)}
 				else:
 					handler_map = None
 
-				if kwargs.get('flip') is True:
-					flip = kwargs.pop('flip',None)
-					ncol = kwargs.get('ncol',1)
+				if kwargs[attr].get('flip') is True:
+					flip = kwargs[attr].get('flip',None)
+					ncol = kwargs[attr].get('ncol',1)
 					flip = lambda items,n: list(itertools.chain(*[items[i::n] for i in range(n)]))
 					handles,labels = flip(handles,ncol),flip(labels,ncol)
 
-				kwargs.update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map	])))
+				kwargs[attr].update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map	])))
 
 				_kwds.update({
-					'set_zorder':kwargs.pop('set_zorder',{'level':100}),
+					'set_zorder':kwargs[attr].get('set_zorder',{'level':100}),
 					'set_title':{
-						**({'title': kwargs.pop('set_title',kwargs.pop('title',None)),
-							'prop':{'size':kwargs.get('prop',{}).get('size')},
+						**({'title': kwargs[attr].get('set_title',kwargs[attr].get('title',None)),
+							'prop':{'size':kwargs[attr].get('prop',{}).get('size')},
 							} 
-									if 'set_title' in kwargs or 'title' in kwargs else {'title':None})},
-					**{subattr: {**kwargs.pop(subattr,{})} for subattr in ['get_title','get_texts']},
+									if 'set_title' in kwargs[attr] or 'title' in kwargs[attr] else {'title':None})},
+					**{subattr: {**kwargs[attr].get(subattr,{})} for subattr in ['get_title','get_texts']},
 					})
 
 
 				call = (not (					
-					(kwargs['handles'] == [] or kwargs['labels'] == []) or 
-					(min(len(kwargs['handles']),len(kwargs['labels']))==1) or 
-					all([kwargs[k] is None for k in kwargs]))
+					(kwargs[attr]['handles'] == [] or kwargs[attr]['labels'] == []) or 
+					(min(len(kwargs[attr]['handles']),len(kwargs[attr]['labels']))==1) or 
+					all([kwargs[attr][k] is None for k in kwargs[attr]]))
 					or
-					('set_label' in kwargs) and (kwargs.pop('set_label',None) is True)
+					('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is True)
 					)
 
-				nullkwargs = ['set_title','title','prop','get_title','get_texts','set_label']				
-				for kwarg in nullkwargs:
-					kwargs.pop(kwarg,None)
-
+				nullkwargs.extend(['prop','join','flip','set_zorder','get_zorder','set_title','title','get_title','get_texts','set_label'])
 			
 			elif attr in ['plot','axvline','axhline']:
-				fields = ['color']
-				for field in fields:
-					# try:
-						if kwargs.get(field) == '__cycle__':
-							try:
-								_obj = _attr[-1]
-							except:
-								_obj = _attr
-							values = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)
-							kwargs[field] = values[-1]
-						
-						elif kwargs.get(field) == '__lines__':
-							_obj = getattr(obj,'get_lines')()[-1]
-							kwargs[field] = getattr(_obj,'get_%s'%(field))()
-						
-						else:
-							continue
-					# except:
-					# 	kwargs.pop(field)
-					# 	pass
 
-				args.extend([kwargs.pop(k) for k in ['x','y'] if kwargs.get(k) is not None])
+				args.extend([kwargs[attr].get(k) for k in ['x','y'] if kwargs[attr].get(k) is not None])
 
-				nullkwargs = ['x','y','z','xerr','yerr']				
-				for kwarg in nullkwargs:
-					kwargs.pop(kwarg,None)
+				nullkwargs.extend(['x','y','z','xerr','yerr'])
 
 				call = len(args)>0			
 
 
 			elif attr in ['errorbar']:
-				fields = ['color']
-				for field in fields:
-					# try:
-						if kwargs.get(field) == '__cycle__':
-							try:
-								_obj = _attr[-1]
-							except:
-								_obj = _attr
-							values = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)
-							kwargs[field] = values[-1]
-						
-						elif kwargs.get(field) == '__lines__':
-							_obj = getattr(obj,'get_lines')()[-1]
-							kwargs[field] = getattr(_obj,'get_%s'%(field))()
-						
-						else:
-							continue
-					# except:
-					# 	kwargs.pop(field)
-					# 	pass
 
-				args.extend([kwargs.get(k) for k in ['x','y','yerr','xerr'] if (
-					(k in kwargs) and (kwargs.get(k) is not None) and True #(not all(is_nan(kwargs.get(k)) for k in ['x','y','yerr','xerr']))
+				subattrs = 'set_%sscale'
+				props ='%s'
+				subprops = '%serr'
+				for axis in AXIS:
+					prop = props%(axis)
+					subprop = subprops%(axis)
+					subattr = subattrs%(axis)
+
+					if (
+						(kwargs[attr].get(prop) is not None) and
+						(kwargs[attr].get(subprop) is not None) and
+						(kwargs.get(subattr) is not None) and
+						(kwargs.get(subattr,{}).get('value') in ['log'])
+						):
+						if np.array(kwargs[attr][subprop]).ndim == 1:
+							kwargs[attr][subprop] = np.array([[k,k] for k in kwargs[attr][subprop]]).T
+						else:
+							kwargs[attr][subprop] = np.array([k for k in kwargs[attr][subprop]])
+						
+						kwargs[attr][prop] = np.array(kwargs[attr][prop])
+						
+						kwargs[attr][subprop] = np.array([
+							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
+							kwargs[attr][subprop][1]
+							])
+
+				args.extend([kwargs[attr].get(k) for k in ['x','y','yerr','xerr'] if (
+					(k in kwargs[attr]) and (kwargs[attr].get(k) is not None) and True #(not all(is_nan(kwargs[attr].get(k)) for k in ['x','y','yerr','xerr']))
 					)])
 
-				nullkwargs = ['x','y','z','xerr','yerr']								
-				for kwarg in nullkwargs:
-					kwargs.pop(kwarg,None)
+				nullkwargs.extend(['x','y','z','xerr','yerr'])
 
 				call = len(args)>0			
 
 			elif attr in ['fill_between']:
-				fields = ['color']
-				for field in fields:
-					# try:
-						if kwargs.get(field) == '__cycle__':
-							try:
-								_obj = _attr[-1]
-							except:
-								_obj = _attr
-							values = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)
-							kwargs[field] = values[-1]
-						
-						elif kwargs.get(field) == '__lines__':
-							_obj = getattr(obj,'get_lines')()[-1]
-							kwargs[field] = getattr(_obj,'get_%s'%(field))()
-						
-						else:
-							continue
-					# except:
-					# 	kwargs.pop(field)
-					# 	pass
-				if kwargs.get('y1') is not None and kwargs.get('y2') is not None:
+
+				if kwargs[attr].get('y1') is not None and kwargs[attr].get('y2') is not None:
 					call = True
-					args.extend([kwargs.get('x'),kwargs.get('y1'),kwargs.get('y2')])					
-				elif kwargs.get('yerr') is None:
+					args.extend([kwargs[attr].get('x'),kwargs[attr].get('y1'),kwargs[attr].get('y2')])					
+				elif kwargs[attr].get('yerr') is None:
 					call = False
-					args.extend([kwargs.get('x'),kwargs.get('y'),kwargs.get('y')])
+					args.extend([kwargs[attr].get('x'),kwargs[attr].get('y'),kwargs[attr].get('y')])
 				else:
 					call = True
-					if np.ndim(kwargs.get('yerr')) == 2 and len(kwargs.get('yerr'))==2:
-						args.extend([kwargs.get('x'),kwargs.get('y')-kwargs.get('yerr')[0],kwargs.get('y')+kwargs.get('yerr')[1]])
+					if np.ndim(kwargs[attr].get('yerr')) == 2 and len(kwargs[attr].get('yerr'))==2:
+						args.extend([kwargs[attr].get('x'),kwargs[attr].get('y')-kwargs[attr].get('yerr')[0],kwargs[attr].get('y')+kwargs[attr].get('yerr')[1]])
 					else:
-						args.extend([kwargs.get('x'),kwargs.get('y')-kwargs.get('yerr'),kwargs.get('y')+kwargs.get('yerr')])
+						args.extend([kwargs[attr].get('x'),kwargs[attr].get('y')-kwargs[attr].get('yerr'),kwargs[attr].get('y')+kwargs[attr].get('yerr')])
 
-				nullkwargs = ['x','y','z','xerr','yerr','y1','y2','label']
-				for kwarg in nullkwargs:
-					kwargs.pop(kwarg,None)
+				nullkwargs.extend(['x','y','z','xerr','yerr','y1','y2','label'])
 
 			elif attr in ['plot_surface','contour','contourf','scatter']:
-				args.extend([kwargs.pop(k) for k in ['x','y','z'] if kwargs.get(k) is not None])
+				args.extend([kwargs[attr].get(k) for k in ['x','y','z'] if kwargs[attr].get(k) is not None])
 				call = True
+
+				nullkwargs.extend(['x','y','z','xerr','yerr','zerr'])
 
 			elif attr in ['imshow']:
 				fields = ['X','y','x']
 				for field in fields:
-					if field in kwargs:
-						args.append(kwargs.pop(field))
+					if field in kwargs[attr]:
+						args.append(kwargs[attr].get(field))
 						break
-				for field in fields:
-					kwargs.pop(field)
+
 				call = True
+
+				nullkwargs.extend(['X','x','y','xerr','yerr'])
+
 
 			elif attr in ['%saxis.set_%s_%s'%(axis,which,formatter) for axis in AXIS for which in WHICH for formatter in FORMATTER]:
 				axis = attr.split('.')[0].replace('axis','')
 				which = attr.split('.')[1].replace('set_','').replace('_%s'%(attr.split('_')[-1]),'')
 				formatter = attr.split('_')[-1]
-				for k in kwargs:
-					for a in kwargs[k]:
+				for k in kwargs[attr]:
+					for a in kwargs[attr][k]:
 						getattr(getattr(obj,'%saxis'%(axis)),'set_%s_%s'%(which,formatter))(
-							getattr(getattr(matplotlib,k),a)(**kwargs[k][a]))					
+							getattr(getattr(matplotlib,k),a)(**kwargs[attr][k][a]))					
 				call = False
 
 
@@ -623,17 +592,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				fields = ['transform']
 				for field in fields:
 					if field in ['transform']:
-						kwargs[field] = getattr(obj,kwargs.pop(field))
+						kwargs[attr][field] = getattr(obj,kwargs[attr].get(field))
 
-				args.extend([kwargs.get(k) for k in ['x','y'] if (
-				(k in kwargs) and (kwargs.get(k) is not None) and True #(not all(is_nan(kwargs.get(k)) for k in ['x','y','yerr','xerr']))
+				args.extend([kwargs[attr].get(k) for k in ['x','y'] if (
+				(k in kwargs[attr]) and (kwargs[attr].get(k) is not None) and True #(not all(is_nan(kwargs[attr].get(k)) for k in ['x','y','yerr','xerr']))
 				)])
 
-				nullkwargs = ['x','y','z','xerr','yerr']								
-				for kwarg in nullkwargs:
-					kwargs.pop(kwarg,None)
+				nullkwargs.extend(['x','y','z','xerr','yerr','transform'])
 
-				attr = 'plot'
+				attr_ = 'plot'
 
 				call = len(args)>0		
 
@@ -645,21 +612,21 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				try:
 					a = 'MaxNLocator'
 					getattr(getattr(obj,'%saxis'%(axis)),'set_%s_%s'%(which,formatter))(
-							getattr(getattr(matplotlib,k),a)(**kwargs))
+							getattr(getattr(matplotlib,k),a)(**kwargs[attr]))
 				except:
 					a = 'LogLocator'
 					getattr(getattr(obj,'%saxis'%(axis)),'set_%s_%s'%(which,formatter))(
-							getattr(getattr(matplotlib,k),a)(**kwargs))
+							getattr(getattr(matplotlib,k),a)(**kwargs[attr]))
 				call = False
 
 			# elif attr in ['%saxis.offsetText.set_fontsize'%(axis) for axis in AXIS]:
 			# 	axis = attr.split('.')[0].replace('axis','')
-			# 	getattr(getattr(getattr(obj,'%saxis'%(axis)),'offsetText'),'set_fontsize')(**kwargs)
+			# 	getattr(getattr(getattr(obj,'%saxis'%(axis)),'offsetText'),'set_fontsize')(**kwargs[attr])
 			# 	call = False
 
 			elif attr in ['set_colorbar']:
-				values = kwargs.get('values')
-				colors = kwargs.get('colors')
+				values = kwargs[attr].get('values')
+				colors = kwargs[attr].get('colors')
 				norm = matplotlib.colors.Normalize(vmin=min(values), vmax=max(values))  
 				normed_values = norm(values)
 				cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(normed_values,colors)), N=len(normed_vals)*10)  
@@ -669,7 +636,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 			elif attr in ['savefig']:
-				path = kwargs.get('fname')
+				path = kwargs[attr].get('fname')
 				dirname = os.path.abspath(os.path.dirname(path))
 				if not os.path.exists(dirname):
 					os.makedirs(dirname)
@@ -678,16 +645,45 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['close']:
 				try:
-					plt.close(obj,**kwargs)
+					plt.close(obj,**kwargs[attr])
 				except:
 					plt.close(obj)
 				call = False
-				
+			
+			for kwarg in nullkwargs:
+				kwargs[attr].pop(kwarg,None)
+
+
 			if not call:	
 				return
 
+			fields = ['color','ecolor']
+			for field in fields:
+				if kwargs[attr].get(field) == '__cycle__':
+					try:
+						_obj = _attr[-1]
+					except:
+						_obj = _attr
+					values = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)
+					kwargs[attr][field] = values[-1]
+				
+				elif kwargs[attr].get(field) == '__lines__':
+					_obj = getattr(obj,'get_lines')()[-1]
+					kwargs[attr][field] = getattr(_obj,'get_%s'%(field))()
+			
+				elif isinstance(kwargs[attr].get(field),str):
+					value = kwargs[attr].get(field)
+					i = index/(len(kwargs.get((attr,index)))) if (isinstance(kwargs.get((attr,index)),list) and len(kwargs.get((attr,index)))>1) else 0.5
+					kwargs[attr][field] = getattr(plt.cm,value)(i)
+				
+				else:
+					continue
+
+
+
+
 			_obj = obj
-			for a in attr.split('.'):
+			for a in attr_.split('.'):
 				try:
 					_obj = getattr(_obj,a)
 				except:
@@ -695,12 +691,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			try:
 				if args != []:
-					_attr = _obj(*args,**kwargs)
+					_attr = _obj(*args,**kwargs[attr])
 				else:
-					_attr = _obj(**kwargs)
+					_attr = _obj(**kwargs[attr])
 			except Exception as e:
 				if not isinstance(e,AttributeError):
-					print(e,attr,_obj,args,kwargs,[a.dtype if isinstance(a,np.ndarray) else [type(i) for i in a] for a in args])
+					print(e,attr,_obj,args,kwargs[attr],[a.dtype if isinstance(a,np.ndarray) else [type(i) for i in a] for a in args])
 
 			for k in _kwds:
 				_attr_ = _attr
@@ -730,25 +726,29 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			# except:
 			# 	_kwargs = inspect.getfullargspec(getattr(obj,attr))[0]
-			# 	args.extend([kwargs[k] for k in kwargs if k not in _kwargs])
-			# 	kwargs = {k:kwargs[k] for k in kwargs if k in _kwargs}
+			# 	args.extend([kwargs[attr][k] for k in kwargs[attr] if k not in _kwargs])
+			# 	kwargs[attr] = {k:kwargs[attr][k] for k in kwargs[attr] if k in _kwargs}
 			# 	try:
-			# 		getattr(obj,attr)(*args,**kwargs)
+			# 		getattr(obj,attr)(*args,**kwargs[attr])
 			# 	except:
 			# 		pass
 			return _attr
 
 		_kwargs = []
-		_wrapper = lambda kwarg,attr,**kwargs:{k: attr_share(attr_texify(kwarg[k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg}
+		_wrapper = lambda kwarg,attr,kwargs,settings,index:{
+			**kwarg,
+			attr: {k: attr_share(attr_texify(kwarg[attr][k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg[attr]},
+			(attr,index):settings[attr],
+			}
 		_attr = None
-		if isinstance(settings,list):
-			_kwargs.extend(settings)
-		elif isinstance(settings,dict):
-			_kwargs.append(settings)
+		if isinstance(settings[attr],list):
+			_kwargs.extend([{**settings,attr:setting} for setting in settings[attr]])
+		elif isinstance(settings[attr],dict):
+			_kwargs.append({**settings,attr:settings[attr]})
 		else:
 			return
-		for _kwarg in _kwargs:
-			_attr = attrs(obj,attr,_attr,kwargs,**_wrapper(_kwarg,attr,**kwargs))
+		for index,_kwarg in enumerate(_kwargs):
+			_attr = attrs(obj,attr,_attr,index,kwargs,_wrapper(_kwarg,attr,kwargs,settings,index))
 		return
 
 	def obj_wrap(attr,key,fig,ax,settings):
@@ -821,22 +821,22 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			for prop in props:
 				kwargs = attr_kwargs(attr,key,settings)
-				if prop in exceptions and all([((settings[key][attr][k][l] if (k in settings[key][attr]) else (
-														getattr(obj,k.replace('set','get'))() if (
-														hasattr(obj,k.replace('set','get'))) else None))==exceptions[prop]['settings'][k][l]) 
-														for k in exceptions[prop]['settings'] 
-														for l in exceptions[prop]['settings'][k]]):
-					for kwarg in exceptions[prop]['kwargs']:
-						if isinstance(settings[key][attr][prop],dict):
-							settings[key][attr][prop][kwarg] = exceptions[prop]['kwargs'][kwarg](settings[key][attr])
-						else:
-							for i in range(len(settings[key][attr][prop])):
-								settings[key][attr][prop][i][kwarg] = exceptions[prop]['kwargs'][kwarg](
-									{_prop: settings[key][attr][_prop] if _prop !=prop else settings[key][attr][_prop][i] 
-										for _prop in settings[key][attr]})
-					if exceptions[prop]['pop']:
-						continue
-				attr_wrap(obj,prop,settings[key][attr][prop],**kwargs)
+				# if prop in exceptions and all([((settings[key][attr][k][l] if (k in settings[key][attr]) else (
+				# 										getattr(obj,k.replace('set','get'))() if (
+				# 										hasattr(obj,k.replace('set','get'))) else None))==exceptions[prop]['settings'][k][l]) 
+				# 										for k in exceptions[prop]['settings'] 
+				# 										for l in exceptions[prop]['settings'][k]]):
+				# 	for kwarg in exceptions[prop]['kwargs']:
+				# 		if isinstance(settings[key][attr][prop],dict):
+				# 			settings[key][attr][prop][kwarg] = exceptions[prop]['kwargs'][kwarg](settings[key][attr])
+				# 		else:
+				# 			for i in range(len(settings[key][attr][prop])):
+				# 				settings[key][attr][prop][i][kwarg] = exceptions[prop]['kwargs'][kwarg](
+				# 					{_prop: settings[key][attr][_prop] if _prop !=prop else settings[key][attr][_prop][i] 
+				# 						for _prop in settings[key][attr]})
+				# 	if exceptions[prop]['pop']:
+				# 		continue
+				attr_wrap(obj,prop,settings[key][attr],**kwargs)
 		return
 		
 		
@@ -851,10 +851,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 	def setup(x,y,z,settings,fig,ax,mplstyle,texify):
 
-
-		def _setup(settings,_settings):
-			updater(settings,_settings)
-			return
 		def _index(i,N,method='row'):
 			
 			if method == 'row':
@@ -892,7 +888,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		update = y is not None
 
 		if any([key in settings for key in defaults]):
-			settings = {key:copy.deepcopy(settings) for key in (y if update and isinstance(y,dict) else [None])}
+			settings = {key:deepcopy(settings) for key in (y if update and isinstance(y,dict) else [None])}
 
 
 		if not isinstance(y,dict):
@@ -911,7 +907,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			z = {key: z for key in settings}
 
 		for key in settings:
-			settings[key].update({k:copy.deepcopy(defaults[k])
+			settings[key].update({k:deepcopy(defaults[k])
 				for k in defaults if k not in settings[key]})
 
 		for i,key in enumerate(y):
@@ -923,6 +919,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		for key in y:
 
 			_settings = load(PATHS['plot'])
+			updater(_settings,settings[key])
 
 			_settings['style'].update({
 				'layout':{kwarg:settings[key]['style'].get('layout',{}).get(kwarg,_defaults['style']['layout'][kwarg])
@@ -933,19 +930,20 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				plotsettings = settings[key].get('ax',{}).pop('plot',{})				
 				_settings['ax'].update({
 					**{'plot':[{'x':_x,'y':_y,'z':_z,**(plotsettings if isinstance(plotsettings,dict) else plotsettings[_i])} 
-								for _i,(_x,_y,_z) in enumerate(zip(x.get(key,[None]*len(y[key])),y[key],z[key]))]},
-					**settings[key].pop('ax',{}), 
+								for _i,(_x,_y,_z) in enumerate(zip(x.get(key,[None]*len(y[key])),y[key],z[key]))]
+								},
+					**settings[key].get('ax',{}), 
 					})
 
 			for attr in settings[key]:
 				if attr in _settings:
 					_settings[attr].update(settings[key][attr])
-				if attr in _settings:
-					for kwarg in list(_settings[attr]):
-						if kwarg not in settings[key][attr]:
-							_settings[attr].pop(kwarg)
+				# if attr in _settings:
+				# 	for kwarg in list(_settings[attr]):
+				# 		if kwarg not in settings[key][attr]:
+				# 			_settings[attr].pop(kwarg)
 
-			_setup(settings[key],_settings)	
+			updater(settings[key],_settings)
 
 		for key in settings:
 			settings[key].update({k:defaults[k] 
@@ -1021,7 +1019,7 @@ if __name__ == '__main__':
 	for i,(x,y,z) in enumerate(zip(X,Y,Z)):
 		key = y
 
-		settings[key] = copy.deepcopy(_settings)
+		settings[key] = deepcopy(_settings)
 
 		settings[key]['ax']['plot']['x'] = df[x].values if x in df else df.index.values
 		settings[key]['ax']['plot']['y'] = df[y].values if y in df else df.index.values

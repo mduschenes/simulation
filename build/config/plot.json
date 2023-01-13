@@ -88,7 +88,13 @@
 			{
 			"x":"noise.scale",
 			"y":"objective",
-			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy}"],
+			"label":{
+				"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy}"],
+				"func":{"stat":{"":"mean","err":"std"}}, 
+				"wrapper":{"abs":{"abs":{}}},
+				"slice":[0,null,1],
+				"axis":{"row":[],"col":[],"plot":[0],"axis":[-1]}
+			},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,

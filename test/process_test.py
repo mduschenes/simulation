@@ -220,13 +220,15 @@ def test_groupby(path=None):
 
 		for func in funcs:
 			agg,columns = {},{}
+			by =  [*labels]
+
 			for attr in df:
 				agg[attr] = []
 				if attr in dependent:
 					functions = funcs[func]
 					for function in functions:
 						agg[attr].append(funcs[func][function])
-						columns[(attr,funcs[func][function])] = function
+						columns[(attr,funcs[func][function])] = delim.join([attr,function])
 				else:
 					functions = ['first']
 					for function in functions:
@@ -234,11 +236,16 @@ def test_groupby(path=None):
 						columns[(attr,function)] = attr
 
 			print(func,prop,labels)
-
-			value = groupby.agg(agg).reset_index()#rename(columns=columns)
-
-			print(columns)
+			value = groupby.agg(agg)
 			print(value.columns.values)
+			value.rename(columns=columns,inplace=True)
+			print(value.columns.values)
+			print(columns)
+			# print(columns)
+			# value.columns = [columns[label] for label in columns]
+			# value.rename(columns,inplace=True)
+			for i in zip(columns,value.columns.values):
+				print(i[0],columns[i[0]],i[0]==i[1])
 			continue
 
 			for i,function in enumerate(funcs[func]):
@@ -256,7 +263,6 @@ def test_groupby(path=None):
 				data[name][func][names] = value[dependent]
 
 
-			by =  [*labels]
 			data[name][func] = data[name][func].groupby(by=by)
 			# print(data[name][func])
 			# 	if not i:

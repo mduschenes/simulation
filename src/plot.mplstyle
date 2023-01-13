@@ -626,30 +626,29 @@
 ## Custom rcParams
 
 text.usetex : True
+pgf.texsystem : pdflatex
 
 
 #text.latex.preamble : \usepackage[T1]{fontenc}\usepackage{textcomp}\usepackage{lmodern}\boldmath\renewcommand{\seriesdefault}{\bfdefault}\usepackage{graphicx}\usepackage{relsize}\usepackage{amsmath}\usepackage{amssymb}\usepackage{physics}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\renewcommand{\square}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern0.5mu\sqsupset$\cr}}}\newcommand{\hrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}+}\newcommand{\vrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}-}\newcommand{\srectangle}{\sqsubset \! \sqsupset}\newcommand{\rectangle}{\fboxsep0pt\fbox{\rule{0.25em}{0pt}\rule{1pt}{1ex}}}
 
 
 
-text.latex.preamble : \usepackage{graphicx}\usepackage{relsize}\usepackage{physics}\usepackage{amsmath}\usepackage{amssymb}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\renewcommand{\square}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern0.5mu\sqsupset$\cr}}}\newcommand{\hrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}+}\newcommand{\vrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}-}\newcommand{\srectangle}{\sqsubset \! \sqsupset}\newcommand{\rectangle}{\fboxsep0pt\fbox{\rule{0.25em}{0pt}\rule{1pt}{1ex}}}
+text.latex.preamble : \usepackage{graphicx}\usepackage{relsize}\usepackage{amsmath}\usepackage{amssymb}\usepackage{physics}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\usepackage{xcolor}\renewcommand{\square}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern0.5mu\sqsupset$\cr}}}\newcommand{\hrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}+}\newcommand{\vrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}-}\newcommand{\srectangle}{\sqsubset \! \sqsupset}\newcommand{\rectangle}{\fboxsep0pt\fbox{\rule{0.25em}{0pt}\rule{1pt}{1ex}}}
+
+pgf.preamble : \usepackage{graphicx}\usepackage{relsize}\usepackage{amsmath}\usepackage{amssymb}\usepackage{physics}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\usepackage{xcolor}\renewcommand{\square}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern0.5mu\sqsupset$\cr}}}\newcommand{\hrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}+}\newcommand{\vrectangle}{{\ooalign{$\sqsubset\mkern1mu$\cr$\mkern3mu\sqsupset$\cr}}-}\newcommand{\srectangle}{\sqsubset \! \sqsupset}\newcommand{\rectangle}{\fboxsep0pt\fbox{\rule{0.25em}{0pt}\rule{1pt}{1ex}}}
 
 
 #text.latex.preamble : \usepackage{graphicx}\usepackage{relsize}\usepackage{amsmath}\usepackage{scalerel}\usepackage{amssymb}\usepackage{physics}\usepackage{mathtools}\usepackage{mathrsfs}\usepackage[cal=boondoxo]{mathalfa}\renewcommand{\square}{\mathord{\scalebox{0.8}[0.8]{\scalerel*{\Box}{gX}}}}\newcommand{\hrectangle}{\mathord{\scalebox{2}[0.8]{\scalerel*{\Box}{gX}}}}\newcommand{\vrectangle}{\mathord{\scalebox{0.8}[1.2]{\scalerel*{\Box}{gX}}}}
 
 
 
-
-
 #mathtext.fallback_to_cm : True
 
-font.size : 20
+font.size : 30
 #font.weight : bold
 #axes.labelweight : bold
 axes.linewidth : 2  
 #axes.prop_cycle : cycler(color='tab10')
-#figure.max_open_warning: 100
-
 
 #   # matplotlib.rcParams['font.family'] = 'sans-serif'
 #   # matplotlib.rcParams['font.serif'] = 'Computer modern'
