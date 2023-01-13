@@ -79,6 +79,7 @@ class none(object):
 		return
 	def __call__(self,*args,**kwargs):
 		return self.default
+
 null = Null()
 
 # Types
@@ -2096,6 +2097,7 @@ def conditions(booleans,op):
 		'!=':'ne',
 		}
 
+
 	if isinstance(op,str):
 		ops = [op]*len(booleans)
 	else:
@@ -2113,6 +2115,8 @@ def conditions(booleans,op):
 		out = True
 
 	for op,boolean in zip(ops,booleans):
+		if boolean is None:
+			continue
 		out = getattr(operator,'__%s__'%(op))(out,boolean)
 		
 	return out
@@ -4105,6 +4109,18 @@ def is_numeric(a,*args,**kwargs):
 	'''
 	dtype = getattr(a,'dtype',type(a))
 	return np.issubdtype(dtype, np.number)
+
+def is_null(a,*args,**kwargs):
+	'''
+	Check if object is Null
+	Args:
+		a (object): Object to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If object is Null
+	'''
+	return isinstance(a,Null)
 
 def is_none(a,*args,**kwargs):
 	'''

@@ -101,7 +101,7 @@ def find(dictionary,properties):
 			keys.pop(name)
 
 	for name in keys:
-		for prop in keys[name]:
+		for prop in list(keys[name])[:-1]:
 			if all(isinstance(keys[name][prop][attr],Null) for attr in keys[name][prop]):
 				keys[name][prop] = [attr for attr in keys[name][prop]]
 
@@ -124,12 +124,14 @@ def parse(key,value,data):
 		out (dataframe): Condition on data indices
 	'''
 	delimiters = ['$','@','#','%']
-	default = True
+	default = data.assign(**{key:True})[key]
 	separator = ','
 
 	out = default
 	
-	if isinstance(value,Null):
+	if key not in data:
+		pass
+	elif isinstance(value,Null):
 		pass
 	elif isinstance(value,str):
 		for delimiter in delimiters:

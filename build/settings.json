@@ -128,7 +128,7 @@
 			"hessian.rank":false,"fisher.rank":false,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
 
 			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
 		}	
