@@ -34,39 +34,33 @@ warnings.showwarning = warn_with_traceback
 
 def _setup(args,kwargs):
 	
-	n = kwargs.get('n',10)
-    
-    verbose = kwargs.get('verbose',False)
-    
-    path = 'config/test.json'
-    data = pd.DataFrame({
-        'x':2*np.random.rand(n)-1,
-        'y':2*np.random.rand(n)-1,
-        'b':np.random.randint(0,n,n),
-        'c':np.random.choice(['hello','world','goodbye'],n),
-        'd':np.random.choice(['hello','world','goodbye'],n),
-        'e':np.random.choice(['hello','world','goodbye'],n),
-        'f':[tuple((2*np.random.rand(1)-1).tolist()) for i in range(n)],
-        'g':np.random.choice(['first','second','third'],n),
-        'h':np.random.choice(['first','second','third','four','five','six'],n),
-    })
-    axes = ['x','y']
-    labels = ['label']
-    properties = [*axes,*labels]
-    
-    dictionary = load(path)
-    
-    updates = {
-        'path':path,'data':data,
-        'axes':axes,'labels':labels,'properties':properties,'dictionary':dictionary,
-        'verbose':verbose,
-    }
-    
-    kwargs.update(updates)
+	n,m,d,k = kwargs['n'],kwargs['m'],kwargs['d'],kwargs['k']
+	
+	metric = kwargs['metric']
+	
+	shape = (n,n)
+	key = 123
+	dtype = 'complex'
+	
+	x = rand((m*d,),key=key,dtype=datatype(dtype))
+	A = rand((d,*shape),random='hermitian',key=key,dtype=dtype)
+	I = identity(shape,dtype=dtype)
+	v = rand(shape,key=key,dtype=dtype)
+	v /= norm(v,axis=1,ord=2,keepdims=True)
+	B = rand((k,*shape),key=key,dtype=dtype)
+	a = rand(shape,key=key,dtype=dtype)
+	b = rand(shape,key=key+1,dtype=dtype)
+	
+	shapes = ((kwargs['n'],kwargs['n']),(kwargs['n'],kwargs['n']))
+	
+	metric = Metric(metric,shapes)
+	
+	
+	updates = {'x':x,'A':A,'I':I,'v':v,'B':B,'a':a,'b':b,'metric':metric}
+	
+	kwargs.update(updates)
 	
 	return
-
-
 
 
 def test_expm():

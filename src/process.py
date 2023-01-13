@@ -227,9 +227,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	hyperparameters = load(hyperparameters,default=hyperparameters)
 
 	# Load data
+	path = data
 	default = {}
-	paths = natsorted(set((subpath for path in set(data) for subpath in glob(path))))
-	data = {path: load(path,default=default) for path in paths}
+	wrapper = 'df'
+	data = load(path,default=default,wrapper=wrapper)
 
 	# Get paths
 	path,file,directory,ext,delimiter = {},{},{},{},{}

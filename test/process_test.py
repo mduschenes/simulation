@@ -43,15 +43,18 @@ def _setup(args,kwargs):
 		'g':np.random.choice(['first','second','third'],n),
 		'h':np.random.choice(['first','second','third','four','five','six'],n),
 	})
+
+	data = load('config/test/**.hdf5')
+
 	axes = ['x','y']
 	labels = ['label']
 	properties = [*axes,*labels]
 	
-	dictionary = load(path)
+	settings = load('config/plot.test.json')
 	
 	updates = {
 		'path':path,'data':data,
-		'axes':axes,'labels':labels,'properties':properties,'dictionary':dictionary,
+		'axes':axes,'labels':labels,'properties':properties,'settings':settings,
 		'verbose':verbose,
 	}
 	
@@ -90,9 +93,9 @@ def test_find():
 
 	_setup(args,kwargs)
 	
-	dictionary,properties,axes,labels = kwargs['dictionary'],kwargs['properties'],kwargs['axes'],kwargs['labels']
+	settings,properties,axes,labels = kwargs['settings'],kwargs['properties'],kwargs['axes'],kwargs['labels']
 	
-	keys = find(dictionary,properties)
+	keys = find(settings,properties)
 	
 	for name in keys:
 		assert (
@@ -115,10 +118,10 @@ def test_parse():
 	_setup(args,kwargs)
 	
 	data = kwargs['data']
-	dictionary,properties,axes,labels = kwargs['dictionary'],kwargs['properties'],kwargs['axes'],kwargs['labels']
+	settings,properties,axes,labels = kwargs['settings'],kwargs['properties'],kwargs['axes'],kwargs['labels']
 	verbose = kwargs['verbose']
 	
-	keys = find(dictionary,properties)
+	keys = find(settings,properties)
 
 	print()
 	print(data)
@@ -140,8 +143,39 @@ def test_parse():
 	return
 
 
+def test_groupby():
+	args = ()
+	kwargs = {}
+
+	kwargs.update({'verbose':0})
+
+	_setup(args,kwargs)
+	
+	data = kwargs['data']
+	settings,properties,axes = kwargs['settings'],kwargs['properties'],kwargs['axes'],kwargs['labels']
+	verbose = kwargs['verbose']
+	
+	keys = find(settings,properties)
+
+	print()
+	print(data)
+	print()
+	
+	
+	for name in keys:        
+		key = keys[name]
+		attrs = [*[axis for axis in axes[:-1]],*[attr for attr in key['label']]]
+		booleans = [parse(attr,key['label'][attr],data) for attr in attrs if attr in key['label']]
+		boolean = conditions(booleans,op='&')
+
+		data[booleans].groupby(attrs)
+						
+
+	return
+
 
 if __name__ == '__main__':
 	test_conditions()
 	test_find()
 	test_parse() 
+	test_groupby()

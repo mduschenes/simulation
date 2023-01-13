@@ -4,6 +4,8 @@
 import pytest
 import os,sys
 
+import pandas as pd
+
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..','..']
@@ -11,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,rand,allclose,scalars
-from src.io import load,dump,join,split,edit,dirname
+from src.io import load,dump,join,split,edit,dirname,exists
 from src.call import rm
 
 # Logging
@@ -32,6 +34,106 @@ def test_path(path='.tmp.tmp/data.hdf5'):
 	assert new == path, "Incorrect path edit"
 
 	return
+
+def test_load(path=None):
+	
+
+	kwargs = [
+		{
+		'path':'config/test/**/data.hdf5',
+		'default':{},
+		'wrapper':'df',
+		'type':pd.DataFrame,
+		},
+		{
+		'path':{'path':'config/test/-1/data.hdf5'},
+		'default':None,
+		'wrapper':'df',
+		'type':None,		
+		},
+		{
+		'path':{'path':'config/test/-1/data.hdf5'},
+		'default':{},
+		'wrapper':'df',
+		'type':dict,		
+		},		
+		{
+		'path':['config/test/**/data.hdf5'],
+		'default':{},
+		'wrapper':'df',
+		'type':pd.DataFrame,		
+		},
+		{
+		'path':['config/plot.json','config/process.json'],
+		'default':{},
+		'wrapper':None,
+		'type':list,
+		'subtype':dict,				
+		},						
+	]
+
+	for kwarg in kwargs:
+		typing = kwarg.pop('type')
+		subtyping = kwarg.pop('subtype',None)
+		data = load(**kwarg)
+		print(kwarg,type(data))
+		assert (typing is None and data is None) or isinstance(data,typing), "Incorrect loading %r"%(kwarg)
+		if isinstance(data,(list,dict)):
+			assert all(isinstance(datum,subtyping) for datum in data), "Incorrect multiple loading %r" %(kwarg)
+
+	return
+
+
+
+
+
+def test_dump(path=None):
+
+	kwargs = [
+		{
+		'data':load('config/data/0/data.hdf5'),
+		'path':'config/tmp/data.hdf5',
+		'default':{},
+		'wrapper':None,
+		},
+		{
+		'data':load('config/data/0/data.hdf5'),
+		'path':{'name':'config/tmp/data.hdf5','test':'config/tmp/tmp/test.hdf5'},
+		'default':{},
+		'wrapper':None,
+		},		
+		{
+		'data':load('config/plot.json'),
+		'path':['config/tmp/data.json','config/tmp/test.json'],
+		'default':{},
+		'wrapper':None,
+		},				
+	]
+
+
+
+	for kwarg in kwargs:
+
+		data = kwarg.pop('data',None)
+		path = kwarg.get('path',None)
+		dump(data,**kwarg)
+
+
+		msg = "Incorrect dumping %r"%(kwarg)
+
+		if isinstance(path,str):
+			assert exists(path),msg
+		elif isinstance(path,list):
+			assert all(exists(subpath) for subpath in path),msg
+		elif isinstance(path,dict):
+			assert all(exists(path[subpath]) for subpath in path),msg
+	
+	path = 'config/tmp'
+	rm(path,execute=True)
+
+	return
+
+
 
 def test_hdf5(path='.tmp.tmp/data.hdf5'):
 
@@ -85,3 +187,9 @@ def test_hdf5(path='.tmp.tmp/data.hdf5'):
 	rm(path,execute=True)
 
 	return
+
+
+if __name__ == '__main__':
+	# test_load()
+	test_dump()
+

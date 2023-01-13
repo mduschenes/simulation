@@ -2078,32 +2078,44 @@ def product(a):
 
 
 def conditions(booleans,op):
-    '''
-    Compute multiple conditions with boolean operator
-    Args:
-        booleans (iterable[bool]): Boolean conditions
-        op (str,iterable[str]): Boolean operators, ['and','or','lt','gt','eq','le','ge','ne'] 
-    Returns:
-        out (bool): Boolean of conditions
-    '''
-    if isinstance(op,str):
-        ops = [op]*len(booleans)
-    else:
-        ops = op
+	'''
+	Compute multiple conditions with boolean operator
+	Args:
+		booleans (iterable[bool]): Boolean conditions
+		op (str,iterable[str]): Boolean operators, ['and','or','lt','gt','eq','le','ge','ne'] 
+	Returns:
+		out (bool): Boolean of conditions
+	'''
 
-    op = ops[0] if ops else None
-    
-    if op is None:
-        out = False
-    elif op in ['or']:
-        out = False
-    elif op in ['and','lt','gt','eq','le','ge','ne']:
-        out = True
+	updates = {
+		'&':'and','&&':'and',
+		'|':'or','||':'or',
+		'=':'eq','==':'eq',
+		'<':'lt','<=':'le',
+		'>':'gt','ge':'ge',
+		'!=':'ne',
+		}
 
-    for op,boolean in zip(ops,booleans):
-        out = getattr(operator,'__%s__'%(op))(out,boolean)
-        
-    return out
+	if isinstance(op,str):
+		ops = [op]*len(booleans)
+	else:
+		ops = op
+
+	ops = [updates.get(op,op) for op in ops]
+
+	op = ops[0] if ops else None
+	
+	if op is None:
+		out = False
+	elif op in ['or']:
+		out = False
+	elif op in ['and','lt','gt','eq','le','ge','ne']:
+		out = True
+
+	for op,boolean in zip(ops,booleans):
+		out = getattr(operator,'__%s__'%(op))(out,boolean)
+		
+	return out
 
 
 @jit

@@ -23,10 +23,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,is_array,is_ndarray
+from src.utils import array,is_array,is_ndarray,concatenate
 from src.utils import to_repr,to_eval
 from src.utils import returnargs
-from src.utils import scalars,nan
+from src.utils import scalars,nan,delim
 
 
 class cd(object):
@@ -266,13 +266,14 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	return path
 
 
-def glob(path,include=None,recursive=False,**kwargs):
+def glob(path,include=None,recursive=False,default=None,**kwargs):
 	'''
 	Expand path
 	Args:
 		path (str): Path to expand
 		include (str): Type of paths to expand, allowed ['directory','file']
 		recursive (bool,str): Recursively find all included paths below path, or expander strings ['*','**']
+		default (str): Default path to return
 		kwargs (dict): Additional glob keyword arguments
 	Returns:
 		paths (list[str]): Expanded, absolute path
@@ -298,6 +299,9 @@ def glob(path,include=None,recursive=False,**kwargs):
 	paths = globber.glob(os.path.abspath(os.path.expanduser(path)),recursive=True,**kwargs)
 
 	paths = list(realsorted(filter(include,paths)))
+
+	if not paths:
+		paths = [default]
 
 	return paths
 
@@ -619,42 +623,117 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 
 
 
-def load(path,wr='r',default=None,delimiter='.',verbose=False,**kwargs):
+def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwargs):
 	'''
 	Load objects from path
 	Args:
-		path (str): Path to load object
+		path (str,iterable,dict[str,str]): Path to load object
 		wr (str): Read mode
 		default (object): Default return object if load fails
 		delimiter (str): Delimiter to separate file name from extension		
+		wrapper (str,callable): Process data, either string in ['df','np','array'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of loading
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
-		data (object): Loaded object
+		data (object,iterable[object],dict[str,object]): Loaded object
 	'''
 	wrs = [wr,'r','rb']
 
-	if not isinstance(path,str):
-		return default
-	
-	path = os.path.abspath(os.path.expanduser(path))
-	ext = split(path,ext=True,delimiter=delimiter)
+	args = {'path':path,'wrapper':wrapper}
 
-	for wr in wrs:
-		try:
-			data = _load(path,wr=wr,ext=ext,**kwargs)
+	if path is None:
+		return
+
+	if wrapper is None:
+		def wrapper(data,default=default,**kwargs):
 			return data
-		except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError) as exception:			
-			logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
+	elif callable(wrapper):
+		pass
+	elif wrapper in ['df']:
+		def wrapper(data,default=default,**kwargs):
+			options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
 			try:
-				with open(path,wr) as obj:
-					data = _load(obj,wr=wr,ext=ext,**kwargs)
-					return data
-			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError) as exception:
-				logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
-				pass
+				data = pd.concat((pd.DataFrame(data[path]) for path in data if data[path]),**options)
+			except ValueError:
+				data = default
+			return data
+	elif wrapper in ['np']:
+		def wrapper(data,default=default,**kwargs):
+			options = {**{},**{kwargs[kwarg] for kwarg in kwargs in kwarg in []}}
+			try:
+				data = np.concatenate(tuple((np.array(data[path]) for path in data)),**options)
+			except ValueError:
+				data = default
+			return data	
+	elif wrapper in ['array']:
+		def wrapper(data,default=default,**kwargs):
+			options = {**{},**{kwargs[kwarg] for kwarg in kwargs in kwarg in []}}
+			try:
+				data = concatenate(tuple((array(data[path]) for path in data)),**options)
+			except ValueError:
+				data = default
+			return data	
+	else:
+		def wrapper(data):
+			return data
 
-	return default			
+	if isinstance(path,str):
+		paths = [path]
+	else:
+		paths = path
+	
+	if not isinstance(path,dict):
+		paths = {path: path for path in paths}
+	else:
+		paths = path
+
+	paths = {delim.join([name,str(path)]) if path != name else name: path
+		for name in paths
+		for path in glob(paths[name])
+		}
+
+	data = {}
+
+	for name in paths:
+		
+		path = paths[name]
+
+		datum = default
+
+		if not isinstance(path,str):
+			data[name] = datum
+			continue
+	
+		path = os.path.abspath(os.path.expanduser(path))
+		ext = split(path,ext=True,delimiter=delimiter)
+
+		for wr in wrs:
+			try:
+				datum = _load(path,wr=wr,ext=ext,**kwargs)
+				break
+			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError) as exception:			
+				logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
+				try:
+					with open(path,wr) as obj:
+						datum = _load(obj,wr=wr,ext=ext,**kwargs)
+						break
+				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError) as exception:
+					logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
+					pass
+
+		data[name] = datum
+
+	data = wrapper(data)
+
+	if isinstance(args['path'],str) and args['wrapper'] is None:
+		name = list(data)[-1]
+		data = data[name]
+	elif not isinstance(args['path'],dict) and args['wrapper'] is None:
+		data = [data[name] for name in data]
+	else:
+		pass
+
+	return data
 
 
 
@@ -701,40 +780,77 @@ def _load(obj,wr,ext,**kwargs):
 
 
 
-def dump(data,path,wr='w',delimiter='.',verbose=False,**kwargs):
+def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 	'''
 	Dump objects to path
 	Args:
 		data (object): Object to dump
-		path (str): Path to dump object
+		path (str,iterable[str],dict[str,str]): Path to dump object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
+		wrapper (str,callable): Process data, either string in ['df','np','array'] or callable with signature wrapper(data)	
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
 	'''
 
 	wrs = [wr,'w','wb']
 
-	if not isinstance(path,str):
+	args = {'path':path,'wrapper':wrapper}
+
+	if path is None:
 		return
 
-	path = os.path.abspath(os.path.expanduser(path))
-	ext = split(path,ext=True,delimiter=delimiter)
-	mkdir(path)
+	if wrapper is None:
+		def wrapper(data):
+			return data
+	elif callable(wrapper):
+		pass
+	elif wrapper in ['df']:
+		def wrapper(data):
+			return pd.DataFrame(data)
+	elif wrapper in ['np']:
+		def wrapper(data):
+			return np.array(data)
+	elif wrapper in ['array']:
+		def wrapper(data):
+			return array(data)
+	else:
+		def wrapper(data):
+			return data
 
-	for wr in wrs:	
-		try:
-			_dump(data,path,wr=wr,ext=ext,**kwargs)
-			return
-		except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError) as exception:
-			logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
+	if isinstance(path,str):
+		paths = [path]
+	else:
+		paths = path
+	
+	if not isinstance(path,dict):
+		paths = {path: path for path in paths}
+	else:
+		paths = path
+
+	for name in paths:
+		
+		path = paths[name]
+		
+		path = os.path.abspath(os.path.expanduser(path))
+		ext = split(path,ext=True,delimiter=delimiter)
+		mkdir(path)
+
+		data = wrapper(data)
+
+		for wr in wrs:	
 			try:
-				with open(path,wr) as obj:
-					_dump(data,obj,wr=wr,ext=ext,**kwargs)
-				return
+				_dump(data,path,wr=wr,ext=ext,**kwargs)
+				break
 			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError) as exception:
-				logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
-				pass
+				logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
+				try:
+					with open(path,wr) as obj:
+						_dump(data,obj,wr=wr,ext=ext,**kwargs)
+					break
+				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError) as exception:
+					logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
+					pass
 	return
 
 
