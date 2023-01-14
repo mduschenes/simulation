@@ -181,6 +181,56 @@ def parse(key,value,data):
 	return out
 
 
+def apply(name,keys,data,df):
+	'''
+	Apply functions based on keys to data
+	Args:
+		name (object): Key of keys to apply functions
+		keys (dict): Keys of functions to apply
+		data (dict): Data to insert grouped functions
+		df (dataframe): Dataframe to apply functions to
+	'''
+
+	key = keys[name]
+
+	axes = [axis for axis in key if axis not in ['label']]
+	label = key['label'].get('label',{})
+	funcs = key['label'].get('func',{})
+
+	if not funcs:
+		funcs = {"":"mean","err":"std"}
+
+	independent = [attr for axis in axes[:-1] for attr in key[axis] if attr in df]
+	dependent = [attr for axis in axes[-1:] for attr in key[axis] if attr in df]
+	labels = [attr for attr in label if attr in df and label[attr] is null]
+
+	boolean = [parse(attr,label[attr],df) for attr in label]
+	boolean = conditions(boolean,op='&')	
+
+	by = [*labels,*independent]
+
+	groupby = df[boolean].groupby(by=by,as_index=False)
+
+	print(independent,dependent,labels)
+
+	agg = {
+		**{attr : [(attr,'first')] for attr in df},
+		**{attr : [(delim.join(((attr,*func.split(delim)))),funcs[func]) for func in funcs] for attr in df if attr in dependent},
+	}
+	droplevel = dict(level=0,axis=1)
+	by = [*labels]
+
+	data[name] = groupby.agg(agg).droplevel(**droplevel).groupby(by=by,as_index=False)
+
+	for group in data[name].groups:
+		value = data[name].get_group(group)
+		print(group,value.shape)
+	print()
+
+
+	return
+
+
 def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	'''
 	Process data

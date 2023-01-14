@@ -14,7 +14,7 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.process import parse,find
+from src.process import parse,find,apply
 from src.utils import conditions,null,delim
 from src.io import load,dump
 
@@ -188,41 +188,7 @@ def test_groupby(path=None):
 
 	for name in keys:      
 		
-		key = keys[name]
-
-		attr = other[0]
-		label = key[attr].get('label',{})
-		funcs = key[attr].get('func',{})
-
-		if not funcs:
-			funcs = {"":"mean","err":"std"}
-
-		independent = [attr for axis in axes[:-1] for attr in key[axis] if attr in df]
-		dependent = [attr for axis in axes[-1:] for attr in key[axis] if attr in df]
-		labels = [attr for attr in label if attr in df and label[attr] is null]
-
-		boolean = [parse(attr,label[attr],df) for attr in label]
-		boolean = conditions(boolean,op='&')	
-
-		by = [*labels,*independent]
-
-		groupby = df[boolean].groupby(by=by,as_index=False)
-
-		print(independent,dependent,labels)
-
-		agg = {
-			**{attr : [(attr,'first')] for attr in df},
-			**{attr : [(delim.join(((attr,*func.split(delim)))),funcs[func]) for func in funcs] for attr in df if attr in dependent},
-		}
-		droplevel = dict(level=0,axis=1)
-		by = [*labels]
-
-		data[name] = groupby.agg(agg).droplevel(**droplevel).groupby(by=by,as_index=False)
-
-		for group in data[name].groups:
-			value = data[name].get_group(group)
-			print(group,value.shape)
-		print()
+		apply(name,keys,data,df)
 
 	return
 
