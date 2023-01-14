@@ -287,42 +287,6 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	# Get texify
 	texify = lambda string: Texify(string,hyperparameters.get('texify',{}),usetex=hyperparameters.get('usetex',True))
 
-	# Get plot axes and statistics from settings
-	statistics = [*['%s'%(axis) for axis in axes],*['%serr'%(axis) for axis in axes]]
-	statistics = {
-		kwarg: {
-			**{kwarg:{
-				'property':kwarg.replace('',''),
-				'statistic':{
-					**{stat: lambda key,data,variables=None,dtype=None,axis=axis,stat=stat,**kwargs: mean(
-						data,axis=0,dtype=dtype,
-						# transform=stat[axis]
-						transform='linear',#stat[axis]
-						) for stat in itertools.product(['linear','log'],repeat=len(axes))
-					},
-					('fit','fit'): lambda key,data,variables=None,dtype=None,axis=axis,**kwargs: mean(
-						data,axis=0,dtype=dtype,transform=fit),
-					}
-				} 
-				for axis,kwarg in enumerate(['%s'%(axis) for axis in axes])},
-			**{kwarg:{
-				'property':kwarg.replace('err',''),
-				'statistic':{			
-					**{stat: lambda key,data,variables=None,dtype=None,axis=axis,stat=stat,**kwargs: std(
-						data,axis=0,dtype=dtype,
-						transform=stat[axis]						
-						# transform='linear',#stat[axis]
-						) for stat in itertools.product(['linear','log'],repeat=len(axes))
-					},				
-					('fit','fit'): lambda key,data,variables=None,dtype=None,axis=axis,**kwargs: std(
-						data,axis=0,dtype=dtype,transform=fit),
-					}
-				}	 
-				for axis,kwarg in enumerate(['%serr'%(axis) for axis in axes])},
-			}[kwarg]
-		for kwarg in statistics 			 	 			 	 
-		}
-
 
 	# Get keys of the form {name:{prop:{attr:value}}}
 	keys = [*axes]

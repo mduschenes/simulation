@@ -186,21 +186,16 @@ def test_groupby(path=None):
 
 	data = {}
 
-	print()
-	print(df)
-	print()
-
 	for name in keys:      
+		
 		key = keys[name]
-
-		data[name] = {}
 
 		attr = other[0]
 		label = key[attr].get('label',{})
 		funcs = key[attr].get('func',{})
 
 		if not funcs:
-			funcs = {"stat":{"":"mean","err":"std"}}
+			funcs = {"":"mean","err":"std"}
 
 		independent = [attr for axis in axes[:-1] for attr in key[axis] if attr in df]
 		dependent = [attr for axis in axes[-1:] for attr in key[axis] if attr in df]
@@ -213,26 +208,22 @@ def test_groupby(path=None):
 
 		groupby = df[boolean].groupby(by=by,as_index=False)
 
-		for func in funcs:
+		print(independent,dependent,labels)
 
-			print(independent,dependent,labels)
+		agg = {
+			**{attr : [(attr,'first')] for attr in df},
+			**{attr : [(delim.join(((attr,*func.split(delim)))),func[func]) for func in funcs] for attr in df if attr in dependent},
+		}
+		droplevel = dict(level=0,axis=1)
+		by = [*labels]
 
-			agg = {
-				**{attr : [(attr,'first')] for attr in df},
-				**{attr : [(delim.join(((attr,function))),funcs[func][function]) for function in funcs[func]] for attr in df if attr in dependent},
-			}
-			droplevel = dict(level=0,axis=1)
-			by = [*labels]
+		data[name] = groupby.agg(agg).droplevel(**droplevel).groupby(by=by,as_index=False)
 
+		for group in data[name].groups:
+			value = data[name].get_group(group)
+			print(group,value.shape)
+		print()
 
-			data[name][func] = groupby.agg(agg).droplevel(**droplevel).groupby(by=by,as_index=False)
-
-			for group in data[name][func].groups:
-				value = data[name][func].get_group(group)
-				print(group,value.shape)
-			print()
-			# 	# print(data[name][func])
-			# print()
 	return
 
 
