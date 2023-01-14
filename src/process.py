@@ -63,14 +63,14 @@ def Texify(string,texify={},usetex=True):
 
 def find(dictionary,keys,*other):
 	'''
-	Find formatted keys from dictionary, based on search keys of the form 'property':value
+	Find formatted keys from dictionary, based on search keys of the form 'property':attr
 	All keys are assumed to be present in any branches where one or more property is found in dictionary
 	Args:
 		dictionary (dict): Dictionary to search
 		keys (iterable[str]): Iterable of keys to search for
 		other (iterable[str]): Iterable of keys to search for
 	Returns:
-		keys (dict[dict]): Formatted keys based on found keys of the form {name: {prop:{attr:value}}}
+		keys (dict[dict]): Formatted keys based on found keys of the form {name: {prop:attr} or {prop:{attr:value}}}
 	'''
 
 	def parser(string,separator,default):
@@ -90,24 +90,35 @@ def find(dictionary,keys,*other):
 
 	for key in keys:
 		for attr in keys[key]:
-			if isinstance(keys[key][attr],dict):
-				keys[key][attr] = {prop: keys[key][attr][prop] if keys[key][attr] is not None else default for prop in keys[key][attr]}
-			elif isinstance(keys[key][attr],str):
-				keys[key][attr] = dict((parser(keys[key][attr],separator=separator,default=default),))
-			else:
-				keys[key][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[key][attr]))
+			
+			if attr in other:
 
-
-		for attr in other:
-			if attr in keys[key][attr]:
-				if isinstance(keys[key][attr][attr],dict):
-					keys[key][attr][attr] = {prop: keys[key][attr][attr][prop] if keys[key][attr][attr][prop] is not None else default for prop in keys[key][attr][attr]}
-				elif isinstance(keys[key][attr][attr],str):
-					keys[key][attr][attr] = dict((parser(keys[key][attr][attr],separator=separator,default=default)),)
+				if isinstance(keys[key][attr],dict):
+					keys[key][attr] = {prop: keys[key][attr][prop] if keys[key][attr] is not None else default for prop in keys[key][attr]}
+				elif isinstance(keys[key][attr],str):
+					keys[key][attr] = dict((parser(keys[key][attr],separator=separator,default=default),))
 				else:
-					keys[key][attr][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[key][attr][attr]))
+					keys[key][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[key][attr]))
+
+				if attr in keys[key][attr]:
+					if isinstance(keys[key][attr][attr],dict):
+						keys[key][attr][attr] = {prop: keys[key][attr][attr][prop] if keys[key][attr][attr][prop] is not None else default for prop in keys[key][attr][attr]}
+					elif isinstance(keys[key][attr][attr],str):
+						keys[key][attr][attr] = dict((parser(keys[key][attr][attr],separator=separator,default=default)),)
+					else:
+						keys[key][attr][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[key][attr][attr]))
+				else:
+					keys[key][attr] = {attr: keys[key][attr]}
+			
 			else:
-				keys[key][attr] = {attr: keys[key][attr]}
+				if not keys[key][attr]:
+					keys[key][attr] = default
+				elif isinstance(keys[key][attr],dict):
+					keys[key][attr] = keys[key][attr][list(keys[key][attr])[-1]]
+				elif isinstance(keys[key][attr],str):
+					keys[key][attr] = keys[key][attr]
+				else:
+					keys[key][attr] = keys[key][attr][-1]
 
 	return keys
 
@@ -191,17 +202,15 @@ def apply(name,keys,data,df):
 		df (dataframe): Dataframe to apply functions to
 	'''
 
-	key = keys[name]
-
-	axes = [axis for axis in key if axis not in ['label']]
-	label = key['label'].get('label',{})
-	funcs = key['label'].get('func',{})
+	axes = [axis for axis in keys[name] if axis not in ['label']]
+	label = keys[name]['label'].get('label',{})
+	funcs = keys[name]['label'].get('func',{})
 
 	if not funcs:
-		funcs = {"":"mean","err":"std"}
+		funcs = {'stat':{"":"mean","err":"std"}}
 
-	independent = [attr for axis in axes[:-1] for attr in key[axis] if attr in df]
-	dependent = [attr for axis in axes[-1:] for attr in key[axis] if attr in df]
+	independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in df]
+	dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in df]
 	labels = [attr for attr in label if attr in df and label[attr] is null]
 
 	boolean = [parse(attr,label[attr],df) for attr in label]
@@ -215,7 +224,7 @@ def apply(name,keys,data,df):
 
 	agg = {
 		**{attr : [(attr,'first')] for attr in df},
-		**{attr : [(delim.join(((attr,*func.split(delim)))),funcs[func]) for func in funcs] for attr in df if attr in dependent},
+		**{attr : [(delim.join(((attr,function,func))),funcs[function][func]) for function in funcs for func in funcs[function]] for attr in df if attr in dependent},
 	}
 	droplevel = dict(level=0,axis=1)
 	by = [*labels]
@@ -224,16 +233,58 @@ def apply(name,keys,data,df):
 
 	assert all(data[name].get_group(group).columns.nlevels == 1 for group in data[name].groups) # Possible future broken feature agg= (label,name)
 
-	for group in data[name].groups:
-		value = data[name].get_group(group)
-		print(group,value.shape)
-	print()
+	return
 
+
+def plotter(data,keys,df,settings,hyperparameters):
+	'''
+	Plot data based on plot keys, dataframe, plot settings, process hyperparameters
+	Args:
+		data (dict): data
+		keys (dict): keys
+		df (dataframe): dataframe
+		settings (dict): settings
+		hyperparameters (dict): hyperparameters
+	'''
+
+	for name in list(data):
+
+		values = data.pop(name)
+
+		axes = [axis for axis in keys[name] if axis not in ['label']]
+		label = keys[name]['label'].get('label',{})
+		funcs = keys[name]['label'].get('func',{})
+
+		if not funcs:
+			funcs = {'stat':{"":"mean","err":"std"}}
+
+		independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in df]
+		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in df]
+		labels = [attr for attr in label if attr in df and label[attr] is null]
+
+		for i,group in enumerate(values.groups):
+			for j,function in enumerate(funcs):
+				for func in funcs[function]:				
+					for axis in axes:
+						attr = keys[name][axis]
+						attr = '%s%s'%(axis,func) if attr in dependent else axis
+						key = (*name,i,j,attr)
+
+						attr = keys[name][axis]
+						attr = delim.join(((attr,function,func))) if attr in dependent else attr
+						value = values.get_group(group)[attr]
+
+						data[key] = value
+
+						print(group,key)
+						print(value)
+						print()
 
 	return
 
 
-def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
+
+def process(data,settings,hyperparameters,fig=None,ax=None,pwd=None,cwd=None):
 	'''
 	Process data
 	Args:
@@ -242,7 +293,8 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		hyperparameters (str,dict): Path to or dictionary of process settings
 		fig (dict): dictionary of subplots of figures of plots {key: figure}
 		ax (dict): dictionary of subplots of axes of plots {key: figure}
-		cwd (str): Root path
+		pwd (str): Root path of data
+		cwd (str): Root path of plots
 	Returns:
 		fig (dict): dictionary of subplots of figures of plots {key: figure}
 		ax (dict): dictionary of subplots of axes of plots {key: figure}
@@ -279,49 +331,35 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	'''
 
 	# Load plot settings
-	settings = load(settings,default=settings)
+	path = join(settings,root=pwd) if isinstance(settings,str) else settings
+	default = settings
+	wrapper = None	
+	settings = load(path,default=default,wrapper=wrapper)
 
 	# Load process hyperparameters
-	hyperparameters = load(hyperparameters,default=hyperparameters)
+	path = join(hyperparameters,root=pwd) if isinstance(hyperparameters,str) else hyperparameters
+	default = hyperparameters
+	wrapper = None
+	hyperparameters = load(path,default=default,wrapper=wrapper)
 
 	# Load data
 	path = data
 	default = {}
 	wrapper = 'df'
-	data = load(path,default=default,wrapper=wrapper)
+	df = load(path,default=default,wrapper=wrapper)
 
 	# Get paths
-	path,file,directory,ext,delimiter = {},{},{},{},{}
-	hyperparameters['plot'] = {'plot':'plot.pdf','process':'process.hdf5',**hyperparameters.get('path',{})}
-	for attr in hyperparameters['plot']:
-		delimiter[attr] = hyperparameters.get('delimiter','.')
-		directory[attr],file[attr],ext[attr] = split(
-			hyperparameters['plot'][attr],
-			directory=-1,file=True,ext=True) 
-		if (hyperparameters.get('cwd') is not None):
-			directory[attr] = hyperparameters.get('cwd')
-		else:
-			directory[attr] = cwd
+	file,directory,ext = {},{},{}
+	for attr in hyperparameters['path']:
+		directory[attr] = cwd
+		file[attr],ext[attr] = split(
+			hyperparameters['path'][attr],
+			file=True,ext=True) 
 
-		path[attr] = join(directory[attr],file[attr],ext=ext[attr])
-
-
-	# Get plot variables setting
-	parameters = hyperparameters.get('parameters',[])
-	null = hyperparameters.get('null',{})
-	for instance in list(null):
-		if instance not in settings:
-			null.pop(instance)
-			continue
-		if null[instance] is None:
-			null[instance] = list(settings[instance])
-		
-		for subinstance in null[instance]:
-			if subinstance in settings[instance]:
-				settings[instance].pop(subinstance)
-		if len(settings[instance]) == 0:
-			settings.pop(instance)
-
+	# Get plot settings
+	for instance in list(settings):
+		if settings.get(instance) is None:
+			settings.pop(instance,None);
 
 	# Get plot fig and axes
 	axes = AXES
@@ -339,11 +377,20 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	# Get texify
 	texify = lambda string: Texify(string,hyperparameters.get('texify',{}),usetex=hyperparameters.get('usetex',True))
 
-
 	# Get keys of the form {name:{prop:{attr:value}}}
 	keys = [*axes]
 	other = ['label']
 	keys = find(settings,keys,*other)
+
+	# Get functions of data
+	data = {}
+	for name in keys:      
+		apply(name,keys,data,df)
+
+	# Plot data
+	plotter(data,keys,df,settings,hyperparameters)
+
+	return
 
 
 def main(*args,**kwargs):
@@ -363,15 +410,21 @@ if __name__ == '__main__':
 		'--settings':{
 			'help':'Process plot settings',
 			'type':str,
-			'default':[],
-			'nargs':'*'
+			'default':None,
+			'nargs':'?'
 		},
 		'--hyperparameters':{
 			'help':'Process process settings',
 			'type':str,
-			'default':[],
-			'nargs':'*'
+			'default':None,
+			'nargs':'?'
 		},
+		'--pwd':{
+			'help':'Process pwd',
+			'type':str,
+			'default':None,
+			'nargs':'?',
+		},		
 		'--cwd':{
 			'help':'Process cwd',
 			'type':str,
@@ -381,7 +434,8 @@ if __name__ == '__main__':
 	}
 
 	wrappers = {
-		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1],directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg)
+		'pwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1],directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1],directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
 	}
 
 	args = argparser(arguments,wrappers)

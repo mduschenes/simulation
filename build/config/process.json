@@ -113,7 +113,6 @@
         "process": "process.hdf5",
         "metadata":"metadata.json"             
     },
-	"delimiter":".",
 	"process":[],
 	"process":["src.postprocess.process"],
 	"load":0,

@@ -15,7 +15,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.process import parse,find,apply
-from src.utils import conditions,null,delim
+from src.utils import conditions,null,delim,to_repr,to_eval
+from src.iterables import setter,getter
 from src.io import load,dump
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
@@ -106,7 +107,7 @@ def test_find(path=None):
 		for attr in keys[name]:
 			print(attr,keys[name][attr])
 		print()
-		assert all(isinstance(keys[name][prop],dict) for prop in keys[name]), "Incorrect find key format"
+		assert all(isinstance(keys[name][prop],(str,dict)) for prop in keys[name]), "Incorrect find key format"
 	
 	return
 
@@ -190,9 +191,42 @@ def test_groupby(path=None):
 	return
 
 
+def test_io(path=None):
+	args = ()
+	kwargs = {}	
+
+	kwargs.update({'path':path,'verbose':0})
+
+	_setup(args,kwargs)
+	
+	df = kwargs['df']
+	settings,axes,other = kwargs['settings'],kwargs['axes'],kwargs['other']
+
+	keys = find(settings,axes,*other)
+
+	data = {}
+
+	for name in keys:      
+		apply(name,keys,data,df)
+
+		value = data[name]
+
+		data[name] = [{
+			attr: data[name].get_group(group)[attr]
+			for attr in keys[name]
+			if attr in 
+		}
+
+
+	setter(settings,{name:data[name]})
+
+	return
+
+
 if __name__ == '__main__':
 	path = 'config/test/**/data.hdf5'
 	# test_conditions(path)
 	# test_find(path)
 	# test_parse(path) 
-	test_groupby(path)
+	# test_groupby(path)
+	test_io(path)

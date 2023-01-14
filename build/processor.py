@@ -18,7 +18,8 @@ def main(args):
 		'data':'**/data.hdf5',
 		'settings':'config/plot.json',
 		'hyperparameters':'config/process.json',
-		'cwd':args[0] if len(args)>0 else None
+		'cwd':args[0] if len(args)>0 else None,
+		'pwd':args[4] if len(args)>4 else None
 	}
 
 	kwargs.update({kwarg: join(arg,kwargs[kwarg]) if (kwargs[kwarg] is None or kwargs[kwarg].startswith('*')) and not arg.startswith("*") else arg 
