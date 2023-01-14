@@ -212,7 +212,7 @@ def test_groupby(path=None):
 
 		agg = {
 			**{attr : [(attr,'first')] for attr in df},
-			**{attr : [(delim.join(((attr,*func.split(delim)))),func[func]) for func in funcs] for attr in df if attr in dependent},
+			**{attr : [(delim.join(((attr,*func.split(delim)))),funcs[func]) for func in funcs] for attr in df if attr in dependent},
 		}
 		droplevel = dict(level=0,axis=1)
 		by = [*labels]
