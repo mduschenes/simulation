@@ -42,6 +42,27 @@ def updater(iterable,elements,_copy=False,_clear=True,_func=None):
 			iterable.update({e:elements[e]})
 	return
 
+
+def flatten(iterable,types=(list,)):
+	'''	
+	Flatten nested iterable
+	Args:
+		iterable (iterable): Nested iterable
+		types (type,tuple[type]): Allowed types to be flattened
+	Yields:
+		elements (object): Flattened iterable elements
+	'''
+	if not isinstance(iterable,types):
+		yield iterable
+	else:
+		for element in iterable:
+			if isinstance(iterable,dict):
+				element = iterable[element]
+			yield from flatten(element,types=types)
+
+	return
+
+
 # Load from path
 def load(path):
 	with open(path,'r') as f:
@@ -457,6 +478,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							for handle,label in zip(handles,labels))
 						)
 
+				if kwargs[attr].get('update') is not None:
+					update = kwargs[attr].get('update')
+					if isinstance(update,str) and update.count('%s'):
+						labels = [update%(label) for label in labels]
+					else:
+						labels = [string%(label) for stirng,label in zip(update,labels)]
 
 				if kwargs[attr].get('join') is not None:
 					n = min(len(handles),len(labels))
@@ -473,7 +500,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					flip = lambda items,n: list(itertools.chain(*[items[i::n] for i in range(n)]))
 					handles,labels = flip(handles,ncol),flip(labels,ncol)
 
-				kwargs[attr].update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map	])))
+				kwargs[attr].update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map])))
 
 				_kwds.update({
 					'set_zorder':kwargs[attr].get('set_zorder',{'level':100}),
@@ -494,7 +521,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is True)
 					)
 
-				nullkwargs.extend(['prop','join','flip','set_zorder','get_zorder','set_title','title','get_title','get_texts','set_label'])
+				nullkwargs.extend(['prop','join','flip','update','set_zorder','get_zorder','set_title','title','get_title','get_texts','set_label'])
 			
 			elif attr in ['plot','axvline','axhline']:
 
@@ -734,19 +761,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# 		pass
 			return _attr
 
-		_kwargs = []
 		_wrapper = lambda kwarg,attr,kwargs,settings,index:{
 			**kwarg,
 			attr: {k: attr_share(attr_texify(kwarg[attr][k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg[attr]},
 			(attr,index):settings[attr],
 			}
 		_attr = None
-		if isinstance(settings[attr],list):
-			_kwargs.extend([{**settings,attr:setting} for setting in settings[attr]])
-		elif isinstance(settings[attr],dict):
-			_kwargs.append({**settings,attr:settings[attr]})
-		else:
+
+		# Convert settings (dict,nested lists of dict) to list of dicts
+		if not isinstance(settings[attr],(dict,list)):
 			return
+			
+		_kwargs = [{**settings,attr:setting} for setting in flatten(settings[attr],type=(list,))]
+		
 		for index,_kwarg in enumerate(_kwargs):
 			_attr = attrs(obj,attr,_attr,index,kwargs,_wrapper(_kwarg,attr,kwargs,settings,index))
 		return

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,warnings,copy
+import os,sys,itertools,warnings
+from copy import deepcopy
 import numpy as np
 import scipy as sp
 import scipy.special
@@ -26,19 +27,42 @@ from src.utils import asndarray,asscalar
 from src.utils import to_key_value,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
-from src.iterables import brancher
+from src.iterables import brancher,getter,setter
 from src.parallel import Parallelize,Pooler
-from src.io import setup,load,dump,join,split,glob
+from src.io import load,dump,join,split
 from src.fit import fit,mean,std,normalize,sqrt,size
 from src.plot import plot
 
 AXES = ['x','y']
-STATS = ['','err']
-PROPS = ['%s%s'%(ax,stat) for ax in AXES for stat in STATS]
+PLOTS = ['plot','scatter','errorbar','histogram','axvline','axhline','vlines','hlines','plot_surface']
 
 
-# Texify strings
+class GroupBy(object):
+	def __init__(self,df):
+		'''
+		Null groupby wrapper for dataframe
+		Args:
+			df (dataframe): dataframe
+		'''
+		self.df = df
+		self.groups = [None]
+		return
+
+	def get_group(self,group):
+		return self.df
+
+
 def Texify(string,texify={},usetex=True):
+	'''
+	Texify string
+	Args:
+		string (str): String to texify
+		texify (dict): Dictionary of texify translations of strings
+		usetex (bool): Use latex formatting
+	Returns:
+		string (str): Texified string
+	'''
+
 	strings = {
 		**texify,
 	}
@@ -61,6 +85,83 @@ def Texify(string,texify={},usetex=True):
 	return string
 
 
+def setup(data,settings,hyperparameters,pwd=None,cwd=None):
+	'''
+	Setup data, settings, hyperparameters
+	Args:
+		data (dataframe): dataframe
+		settings (dict): settings
+		hyperparameters (dict): hyperparameters
+		pwd (str): Root path of data
+		cwd (str): Root path of plots
+	'''
+
+	# Set plot settings
+	defaults = {
+		'ax': {},
+		'fig': {},
+		'style': {
+			'layout': {
+				'nrows':1,'ncols':1,'index':1,
+				'left':None,'right':None,'top':None,'bottom':None,
+				'hspace':None,'wspace':None,'pad':None
+				}
+			}
+		}
+
+	for instance in list(settings):
+		if settings.get(instance) is None:
+			settings.pop(instance,None);
+
+		if all(subinstance in defaults for subinstance in settings[instance]):
+			settings[instance] = {None: settings[instance]}
+		for subinstance in settings[instance]:
+			setter(settings[instance][subinstance],defaults,delimiter=delim,func=False)
+
+			prop = 'ax'
+			for plots in PLOTS:
+				if not settings[instance][subinstance][prop].get(plots):
+					continue
+				elif isinstance(settings[instance][subinstance][prop][plots],dict):
+					settings[instance][subinstance][prop][plots] = [[settings[instance][subinstance][prop][plots]]]
+				elif all(isinstance(subplots,dict) for subplots in settings[instance][subinstance][prop][plots]):
+					settings[instance][subinstance][prop][plots] = [settings[instance][subinstance][prop][plots]]
+
+	# Set process hyperparameters
+	defaults = {}
+	setter(hyperparameters,defaults,delimiter=delim,func=False)
+
+	# Get paths
+	hyperparameters['file'],hyperparameters['directory'],hyperparameters['ext'] = {},{},{}
+	for attr in hyperparameters['path']:
+		hyperparameters['directory'][attr] = cwd
+		hyperparameters['file'][attr],hyperparameters['ext'][attr] = split(
+			hyperparameters['path'][attr],
+			file=True,ext=True) 
+
+	# Get plot fig and axes
+	axes = AXES
+	fig,ax = hyperparameters.get('fig'),hyperparameters.get('ax')
+	if fig is None:
+		fig = {}
+	if ax is None:
+		ax = {}
+
+	for instance in settings:
+		if instance not in fig:
+			fig[instance] = None
+		if instance not in ax:
+			ax[instance] = None
+	hyperparameters['fig'],hyperparameters['ax'] = fig,ax
+
+	# Get texify
+	texify = hyperparameters.get('texify',{})
+	usetex = hyperparameters.get('usetex',False)
+	hyperparameters['texify'] = lambda string,texify=texify,usetex=usetex: Texify(string,texify,usetex=usetex)
+
+
+	return
+
 def find(dictionary,keys,*other):
 	'''
 	Find formatted keys from dictionary, based on search keys of the form 'property':attr
@@ -82,6 +183,18 @@ def find(dictionary,keys,*other):
 
 	default = null
 	separator = '='
+	defaults = {
+				'func':{'stat':{'':'mean','err':'std'}}, 
+				'wrapper':{},
+				'attrs':{},
+				'slice':None,
+				'axis':{'row':[],'col':[],'plot':['group','func'],'axis':[-1]},
+				'settings':{
+					'ax.set_ylabel.ylabel':[['$\\textrm{Infidelity}$']],
+					'ax.legend.update':'%s \\textrm{Noisy}'
+				},
+				'texify':{}		
+	}
 
 	elements = [*keys,*other]
 	keys = brancher(dictionary,elements)
@@ -109,6 +222,8 @@ def find(dictionary,keys,*other):
 						keys[key][attr][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[key][attr][attr]))
 				else:
 					keys[key][attr] = {attr: keys[key][attr]}
+
+				setter(keys[key][attr],defaults,delimiter=delim,func=False)
 			
 			else:
 				if not keys[key][attr]:
@@ -192,93 +307,136 @@ def parse(key,value,data):
 	return out
 
 
-def apply(name,keys,data,df):
+def apply(keys,data,settings,hyperparameters):
 	'''
 	Apply functions based on keys to data
 	Args:
-		name (object): Key of keys to apply functions
 		keys (dict): Keys of functions to apply
-		data (dict): Data to insert grouped functions
-		df (dataframe): Dataframe to apply functions to
-	'''
-
-	axes = [axis for axis in keys[name] if axis not in ['label']]
-	label = keys[name]['label'].get('label',{})
-	funcs = keys[name]['label'].get('func',{})
-
-	if not funcs:
-		funcs = {'stat':{"":"mean","err":"std"}}
-
-	independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in df]
-	dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in df]
-	labels = [attr for attr in label if attr in df and label[attr] is null]
-
-	boolean = [parse(attr,label[attr],df) for attr in label]
-	boolean = conditions(boolean,op='&')	
-
-	by = [*labels,*independent]
-
-	groupby = df[boolean].groupby(by=by,as_index=False)
-
-	print(independent,dependent,labels)
-
-	agg = {
-		**{attr : [(attr,'first')] for attr in df},
-		**{attr : [(delim.join(((attr,function,func))),funcs[function][func]) for function in funcs for func in funcs[function]] for attr in df if attr in dependent},
-	}
-	droplevel = dict(level=0,axis=1)
-	by = [*labels]
-
-	data[name] = groupby.agg(agg).droplevel(**droplevel).groupby(by=by,as_index=False)
-
-	assert all(data[name].get_group(group).columns.nlevels == 1 for group in data[name].groups) # Possible future broken feature agg= (label,name)
-
-	return
-
-
-def plotter(data,keys,df,settings,hyperparameters):
-	'''
-	Plot data based on plot keys, dataframe, plot settings, process hyperparameters
-	Args:
-		data (dict): data
-		keys (dict): keys
-		df (dataframe): dataframe
+		data (dataframe): dataframe
 		settings (dict): settings
 		hyperparameters (dict): hyperparameters
 	'''
 
-	for name in list(data):
+	if hyperparameters.get('load'):
+		attr = 'metadata'
+		path = join(hyperparameters['directory'][attr],hyperparameters['file'][attr],ext=hyperparameters['ext'][attr])
+		default = {}
+		updater(settings,load(path,default={}),delimiter=delim,func=True)
+		return
 
-		values = data.pop(name)
+
+	for name in keys:
 
 		axes = [axis for axis in keys[name] if axis not in ['label']]
 		label = keys[name]['label'].get('label',{})
 		funcs = keys[name]['label'].get('func',{})
 
 		if not funcs:
-			funcs = {'stat':{"":"mean","err":"std"}}
+			funcs = {'stat':{'':'mean','err':'std'}}
 
-		independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in df]
-		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in df]
-		labels = [attr for attr in label if attr in df and label[attr] is null]
+		independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in data]
+		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in data]
+		labels = [attr for attr in label if attr in data and label[attr] is null]
 
-		for i,group in enumerate(values.groups):
+		boolean = [parse(attr,label[attr],data) for attr in label]
+		boolean = conditions(boolean,op='&')	
+
+		by = [*labels,*independent]
+
+		groupby = data[boolean].groupby(by=by,as_index=False)
+
+		print(independent,dependent,labels)
+
+		agg = {
+			**{attr : [(attr,'first')] for attr in data},
+			**{attr : [(delim.join(((attr,function,func))),funcs[function][func]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
+		}
+		droplevel = dict(level=0,axis=1)
+		by = [*labels]
+
+		groups = groupby.agg(agg).droplevel(**droplevel)
+
+		if by:
+			groups = groups.groupby(by=by,as_index=False)
+		else:
+			groups = GroupBy(groups)
+
+		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
+
+		for i,group in enumerate(groups.groups):
 			for j,function in enumerate(funcs):
-				for func in funcs[function]:				
+				
+				key = (*name[:-2],i,j)
+				value = deepcopy(getter(settings,name,delimiter=delim))
+
+				for func in funcs[function]:	
 					for axis in axes:
+						
 						attr = keys[name][axis]
-						attr = '%s%s'%(axis,func) if attr in dependent else axis
-						key = (*name,i,j,attr)
+						source = delim.join(((attr,function,func))) if attr in dependent else attr
+						destination = '%s%s'%(axis,func) if attr in dependent else axis
+						
+						value[destination] = groups.get_group(group)[source].to_numpy()
+					
+						source = [attr for attr in data if attr not in [keys[name][axis] for axis in axes]]
+						destination = 'label'
+						value[destination] = groups.get_group(group)[source].iloc[0].to_dict()
+						
+						value[destination].update({attr: label[attr] for attr in label if attr not in data})
 
-						attr = keys[name][axis]
-						attr = delim.join(((attr,function,func))) if attr in dependent else attr
-						value = values.get_group(group)[attr]
+				setter(settings,{key:value},delimiter=delim,func=True)
 
-						data[key] = value
+				print('-----')
+				print(group,key)
+				print(':::::::')
+				print(getter(settings,key,delimiter=delim))
+				print()
+				print()
 
-						print(group,key)
-						print(value)
-						print()
+
+
+	if hyperparameters.get('dump'):
+		attr = 'metadata'
+		path = join(hyperparameters['directory'][attr],hyperparameters['file'][attr],ext=hyperparameters['ext'][attr])
+		default = {}
+		dump(settings,path)
+
+	return
+
+
+def plotter(keys,data,settings,hyperparameters):
+	'''
+	Plot data based on keys, dataframe, plot settings, process hyperparameters
+	Args:
+		keys (dict): keys
+		data (dataframe): dataframe
+		settings (dict): settings
+		hyperparameters (dict): hyperparameters
+	'''
+
+	if not hyperparameters.get('plot'):
+		return
+
+	# Set layout
+	layout = {}
+	for instance in settings:
+		for subinstance in settings[instance]:
+			sublayout = settings[instance][subinstance]['style']['layout']
+			if not layout.get(instance):
+				layout[instance] = {prop:sublayout[prop] for prop in ['nrows','ncols']}
+			layout[instance] = {
+				'nrows':max(sublayout['nrows'],layout['nrows']),
+				'ncols':max(sublayout['ncols'],layout['ncols']),
+				'index':None,
+				'left':None,'right':None,'top':None,'bottom':None,
+				'hspace':None,'wspace':None,'pad':None
+				}
+			# 'index':index+1,
+			# 'top':1 - (nrow)/samplelayouts['nrows'] if subsublayouts and samplelayouts['nrows']>1 else None,
+			# 'bottom':1 - (nrow+1)/samplelayouts['nrows'] if subsublayouts and samplelayouts['nrows']>1 else None,
+			# 'right':(ncol+1)/samplelayouts['ncols'] if subsublayouts and samplelayouts['ncols']>1 else None,
+			# 'left':(ncol)/samplelayouts['ncols'] if subsublayouts and samplelayouts['ncols']>1 else None,											
+
 
 	return
 
@@ -346,49 +504,21 @@ def process(data,settings,hyperparameters,fig=None,ax=None,pwd=None,cwd=None):
 	path = data
 	default = {}
 	wrapper = 'df'
-	df = load(path,default=default,wrapper=wrapper)
+	data = load(path,default=default,wrapper=wrapper)
 
-	# Get paths
-	file,directory,ext = {},{},{}
-	for attr in hyperparameters['path']:
-		directory[attr] = cwd
-		file[attr],ext[attr] = split(
-			hyperparameters['path'][attr],
-			file=True,ext=True) 
-
-	# Get plot settings
-	for instance in list(settings):
-		if settings.get(instance) is None:
-			settings.pop(instance,None);
-
-	# Get plot fig and axes
-	axes = AXES
-	if fig is None:
-		fig = {}
-	if ax is None:
-		ax = {}
-
-	for instance in settings:
-		if instance not in fig:
-			fig[instance] = None
-		if instance not in ax:
-			ax[instance] = None
-
-	# Get texify
-	texify = lambda string: Texify(string,hyperparameters.get('texify',{}),usetex=hyperparameters.get('usetex',True))
+	# Set settings and hyperparameters
+	setup(data,settings,hyperparameters,pwd,cwd)
 
 	# Get keys of the form {name:{prop:{attr:value}}}
-	keys = [*axes]
+	keys = [*AXES]
 	other = ['label']
 	keys = find(settings,keys,*other)
 
 	# Get functions of data
-	data = {}
-	for name in keys:      
-		apply(name,keys,data,df)
+	apply(keys,data,settings,hyperparameters)
 
 	# Plot data
-	plotter(data,keys,df,settings,hyperparameters)
+	plotter(keys,data,settings,hyperparameters)
 
 	return
 

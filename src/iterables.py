@@ -262,7 +262,7 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 	Returns:
-		Value at nested keys elements of iterable
+		value (object): Value at nested keys elements of iterable
 	'''	
 
 	# Convert string instance of elements to list, splitting string based on delimiter delimiter
@@ -604,6 +604,27 @@ def brancher(iterable,keys,types=(dict,list,tuple,),exceptions=(str,),include=Tr
         pass
 
     return
+
+
+def flatten(iterable,types=(list,)):
+	'''	
+	Flatten nested iterable
+	Args:
+		iterable (iterable): Nested iterable
+		types (type,tuple[type]): Allowed types to be flattened
+	Yields:
+		elements (object): Flattened iterable elements
+	'''
+	if not isinstance(iterable,types):
+		yield iterable
+	else:
+		for element in iterable:
+			if isinstance(iterable,dict):
+				element = iterable[element]
+			yield from flatten(element,types=types)
+
+	return
+
 
 
 def formatstring(key,iterable,elements,*args,**kwargs):
