@@ -191,7 +191,7 @@ def test_groupby(path=None):
 
 
 if __name__ == '__main__':
-	path = 'config/data/**/data.hdf5'
+	path = 'config/test/**/data.hdf5'
 	# test_conditions(path)
 	# test_find(path)
 	# test_parse(path) 

@@ -222,6 +222,8 @@ def apply(name,keys,data,df):
 
 	data[name] = groupby.agg(agg).droplevel(**droplevel).groupby(by=by,as_index=False)
 
+	assert all(data[name].get_group(group).columns.nlevels == 1 for group in data[name].groups) # Possible future broken feature agg= (label,name)
+
 	for group in data[name].groups:
 		value = data[name].get_group(group)
 		print(group,value.shape)
