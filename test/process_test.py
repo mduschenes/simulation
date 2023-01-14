@@ -169,10 +169,6 @@ def test_groupby(path=None):
 	def std(group):
 		return group.std()
 
-	funcs = {
-		'stat':{'':'mean','err':'std'}
-	}
-
 	args = ()
 	kwargs = {}	
 
@@ -183,7 +179,7 @@ def test_groupby(path=None):
 	df = kwargs['df']
 	settings,axes,other = kwargs['settings'],kwargs['axes'],kwargs['other']
 	verbose = kwargs['verbose']
-	
+
 	keys = [*axes]
 	other = [*other]
 	keys = find(settings,keys,*other)
@@ -198,92 +194,39 @@ def test_groupby(path=None):
 		key = keys[name]
 
 		data[name] = {}
-		
-		prop = [attr for axis in axes for attr in key[axis]]
+
+		attr = other[0]
+		label = key[attr].get('label',{})
+		funcs = key[attr].get('func',{})
+
+		if not funcs:
+			funcs = {"stat":{"":"mean","err":"std"}}
+
 		independent = [attr for axis in axes[:-1] for attr in key[axis] if attr in df]
 		dependent = [attr for axis in axes[-1:] for attr in key[axis] if attr in df]
-		labels = {attr:key[label][attr] for attr in key[label] if attr in df and key[label][attr] is null}
-		booleans = {attr:key[label][attr] for attr in key[label] if attr in df}
+		labels = [attr for attr in label if attr in df and label[attr] is null]
 
-		boolean = [parse(attr,booleans[attr],df) for attr in booleans]	
+		boolean = [parse(attr,label[attr],df) for attr in label]
 		boolean = conditions(boolean,op='&')	
 
-
-
 		by = [*labels,*independent]
-		
-		print(name,by,booleans,boolean.sum())
+
 		groupby = df[boolean].groupby(by=by,as_index=False)
 
-		# if name == '1':
-
-		# 	for group in groupby.groups:
-		# 		print(group)
-		# 		print(groupby.get_group(group).shape)
-		# 		print()
-		# 	print()
-
 		for func in funcs:
-			agg,columns = {},{}
-			by =  [*labels]
 
-			for attr in df:
-				agg[attr] = []
-				if attr in dependent:
-					functions = funcs[func]
-					for function in functions:
-						agg[attr].append(funcs[func][function])
-						columns[(attr,funcs[func][function])] = delim.join([attr,function])
-				else:
-					functions = ['first']
-					for function in functions:
-						agg[attr].append(function)
-						columns[(attr,function)] = attr
+			print(independent,dependent,labels)
 
-			print(func,prop,labels)
-			value = groupby.agg(agg)
-			print(value.columns.values)
-			value.rename(columns=columns,inplace=True)
-			print(value.columns.values)
-			print(columns)
-			# print(columns)
-			# value.columns = [columns[label] for label in columns]
-			# value.rename(columns,inplace=True)
-			for i in zip(columns,value.columns.values):
-				print(i[0],columns[i[0]],i[0]==i[1])
-			continue
-
-			for i,function in enumerate(funcs[func]):
-				functions = {attr: funcs[func][function] for attr in dependent}
-				names = [delim.join([attr,function]) for attr in dependent]
-
-				agg.update(functions)
-				value = groupby.agg(agg)
-
-				print(function,value.shape)
-
-				if not i:
-					data[name][func] = value
-				
-				data[name][func][names] = value[dependent]
+			agg = {
+				**{attr : [(attr,'first')] for attr in df},
+				**{attr : [(delim.join(((attr,function))),funcs[func][function]) for function in funcs[func]] for attr in df if attr in dependent},
+			}
+			droplevel = dict(level=0,axis=1)
+			by = [*labels]
 
 
-			data[name][func] = data[name][func].groupby(by=by)
-			# print(data[name][func])
-			# 	if not i:
-			# 		data[name][func] = value
+			data[name][func] = groupby.agg(agg).droplevel(**droplevel).groupby(by=by,as_index=False)
 
-			# for i,func in enumerate(funcs[function]):
-			# 	agg = {**{attr: funcs[function][func] for attr in axis},**{attr: 'first' for attr in df if attr not in axis}}
-			# 	by =  [attr for attr in labels if attr in df and isinstance(labels[attr],Null)]
-			# 	value = groupby.agg(agg).groupby(by=by)
-			# 	if not i:
-			# 		data[name][func] = value
-			# 	data[name][func][[delim.join([attr,func]) for attr in axis]] = value[axis]
-
-				# data[name][func] = groupby.pipe({**{attr: funcs[func] for attr in prop},**{attr: 'first' for attr in df if attr not in prop}}).groupby(by=[*labels])
-					# data[name][func] = groupby.agg({**{attr: [funcs[func][prop] for prop in funcs[func]] for attr in axis},**{attr: 'first' for attr in df if attr not in axis}}).groupby(by=[attr for attr in labels if attr in df and isinstance(labels[attr],Null)])
-				# data[name][func] = {group: data[name][func].get_group(group) for group in data[name][func].groups}
 			for group in data[name][func].groups:
 				value = data[name][func].get_group(group)
 				print(group,value.shape)

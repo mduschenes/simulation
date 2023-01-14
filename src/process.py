@@ -73,9 +73,9 @@ def find(dictionary,keys,*other):
 		keys (dict[dict]): Formatted keys based on found keys of the form {name: {prop:{attr:value}}}
 	'''
 
-	def parse(string,separator,default):
+	def parser(string,separator,default):
 		if string.count(separator):
-			key,value = string.split(separator)[0],separator.join(string.split(separator)[1:])
+			key,value = string.split(separator)[0],to_number(separator.join(string.split(separator)[1:]))
 		else:
 			key,value = string,default
 		return key,value
@@ -91,21 +91,21 @@ def find(dictionary,keys,*other):
 	for key in keys:
 		for attr in keys[key]:
 			if isinstance(keys[key][attr],dict):
-				pass
+				keys[key][attr] = {prop: keys[key][attr][prop] if keys[key][attr] is not None else default for prop in keys[key][attr]}
 			elif isinstance(keys[key][attr],str):
-				keys[key][attr] = dict((parse(keys[key][attr],separator=separator,default=default),))
+				keys[key][attr] = dict((parser(keys[key][attr],separator=separator,default=default),))
 			else:
-				keys[key][attr] = dict((parse(prop,separator=separator,default=default) for prop in keys[key][attr]))
+				keys[key][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[key][attr]))
 
 
 		for attr in other:
 			if attr in keys[key][attr]:
 				if isinstance(keys[key][attr][attr],dict):
-					pass
+					keys[key][attr][attr] = {prop: keys[key][attr][attr][prop] if keys[key][attr][attr][prop] is not None else default for prop in keys[key][attr][attr]}
 				elif isinstance(keys[key][attr][attr],str):
-					keys[key][attr][attr] = dict((parse(keys[key][attr][attr],separator=separator,default=default)),)
+					keys[key][attr][attr] = dict((parser(keys[key][attr][attr],separator=separator,default=default)),)
 				else:
-					keys[key][attr][attr] = dict((parse(prop,separator=separator,default=default) for prop in keys[key][attr][attr]))
+					keys[key][attr][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[key][attr][attr]))
 			else:
 				keys[key][attr] = {attr: keys[key][attr]}
 
