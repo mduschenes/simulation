@@ -178,11 +178,8 @@ def test_groupby(path=None):
 	
 	df = kwargs['df']
 	settings,axes,other = kwargs['settings'],kwargs['axes'],kwargs['other']
-	verbose = kwargs['verbose']
 
-	keys = [*axes]
-	other = [*other]
-	keys = find(settings,keys,*other)
+	keys = find(settings,axes,*other)
 
 	data = {}
 
@@ -194,7 +191,7 @@ def test_groupby(path=None):
 
 
 if __name__ == '__main__':
-	path = 'config/test/**/data.hdf5'
+	path = 'config/data/**/data.hdf5'
 	# test_conditions(path)
 	# test_find(path)
 	# test_parse(path) 
