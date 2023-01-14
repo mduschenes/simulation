@@ -49,15 +49,14 @@ def _setup(args,kwargs):
 	df = load(path,default={},wrapper='df')
 
 	axes = ['x','y']
-	label = 'label'
-	properties = [*axes,label]
+	other = ['label']
 	
 	path = 'config/plot.test.json'
 	settings = load(path)
 	
 	updates = {
 		'data':data,'df':df,
-		'axes':axes,'label':label,'properties':properties,'settings':settings,
+		'axes':axes,'other':other,'settings':settings,
 		'verbose':verbose,
 	}
 	
@@ -96,18 +95,18 @@ def test_find(path=None):
 
 	_setup(args,kwargs)
 	
-	settings,properties,axes,label = kwargs['settings'],kwargs['properties'],kwargs['axes'],kwargs['label']
+	settings,axes,other = kwargs['settings'],kwargs['axes'],kwargs['other']
 	
-	keys = find(settings,properties)
+	keys = [*axes]
+	other = [*other]
+	keys = find(settings,keys,*other)
 	
 	for name in keys:
-		assert (
-			all(isinstance(keys[name][prop],list) for prop in axes) and 
-			(isinstance(keys[name][label],(list,dict))) and
-			all(isinstance(attr,str) and ((keys[name][prop][label] is null) or isinstance(keys[name][prop][label],str) for attr in keys[name][label]))
-		), "Incorrect find key format"
-	
-	print(keys)
+		print(name)
+		for attr in keys[name]:
+			print(attr,keys[name][attr])
+		print()
+		assert all(isinstance(keys[name][prop],dict) for prop in keys[name]), "Incorrect find key format"
 	
 	return
 
@@ -116,31 +115,34 @@ def test_parse(path=None):
 	args = ()
 	kwargs = {}
 
-	kwargs.update({'path':path,'verbose':0})
+	kwargs.update({'path':path,'verbose':1})
 
 	_setup(args,kwargs)
 	
-	data = kwargs['data']
-	settings,properties,axes,label = kwargs['settings'],kwargs['properties'],kwargs['axes'],kwargs['label']
+	df = kwargs['df']
+	settings,axes,other = kwargs['settings'],kwargs['axes'],kwargs['other']
 	verbose = kwargs['verbose']
 	
-	keys = find(settings,properties)
+	keys = [*axes]
+	other = [*other]
+	keys = find(settings,keys,*other)
 
-	print()
-	print(data)
+	print(df)
 	print()
 	
 	
-	for name in keys:        
+	for name in keys:  
+
 		key = keys[name]
-		for attr in key[label]:
-			value = key[label][attr]
-			boolean = parse(attr,value,data)
+
+		for attr in other:
+			for prop in key[attr][attr]:
+				value = key[attr][attr][prop]
+				boolean = parse(prop,value,df)
 			
-			if verbose:
-				print(attr,value,data[attr].unique())
-				print(boolean)
-				print()
+				if verbose and prop in df:
+					print(prop,value,df[prop][boolean].unique())
+					print()
 
 	return
 
@@ -179,10 +181,13 @@ def test_groupby(path=None):
 	_setup(args,kwargs)
 	
 	df = kwargs['df']
-	settings,properties,axes,label = kwargs['settings'],kwargs['properties'],kwargs['axes'],kwargs['label']
+	settings,axes,other = kwargs['settings'],kwargs['axes'],kwargs['other']
 	verbose = kwargs['verbose']
 	
-	keys = find(settings,properties)
+	keys = [*axes]
+	other = [*other]
+	keys = find(settings,keys,*other)
+
 	data = {}
 
 	print()
@@ -291,6 +296,6 @@ def test_groupby(path=None):
 if __name__ == '__main__':
 	path = 'config/test/**/data.hdf5'
 	# test_conditions(path)
-	# test_find(path)
-	# test_parse(path) 
-	test_groupby(path)
+	test_find(path)
+	test_parse(path) 
+	# test_groupby(path)

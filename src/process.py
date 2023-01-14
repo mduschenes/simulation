@@ -26,7 +26,7 @@ from src.utils import asndarray,asscalar
 from src.utils import to_key_value,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
-from src.iterables import branches
+from src.iterables import brancher
 from src.parallel import Parallelize,Pooler
 from src.io import setup,load,dump,join,split,glob
 from src.fit import fit,mean,std,normalize,sqrt,size
@@ -61,49 +61,53 @@ def Texify(string,texify={},usetex=True):
 	return string
 
 
-def find(dictionary,properties):
+def find(dictionary,keys,*other):
 	'''
-	Find formatted keys from dictionary, based on search properties of the form 'property':'attr=value'
-	All properties are assumed to be present in any branches where one or more property is found in dictionary
+	Find formatted keys from dictionary, based on search keys of the form 'property':value
+	All keys are assumed to be present in any branches where one or more property is found in dictionary
 	Args:
 		dictionary (dict): Dictionary to search
-		properties (iterable[str]): Iterable of properties to search for
+		keys (iterable[str]): Iterable of keys to search for
+		other (iterable[str]): Iterable of keys to search for
 	Returns:
-		keys (dict[dict]): Formatted keys based on found properties of the form {name: {prop:[attr]} or {prop:{attr:value}}}
+		keys (dict[dict]): Formatted keys based on found keys of the form {name: {prop:{attr:value}}}
 	'''
-	values = branches(dictionary,properties,types=(dict,list),returns='value')
-	values = list(values)
-	
-	n = len(values)
-	p = len(properties)
-	delimiter = '='
+
+	def parse(string,separator,default):
+		if string.count(separator):
+			key,value = string.split(separator)[0],separator.join(string.split(separator)[1:])
+		else:
+			key,value = string,default
+		return key,value
+
 	default = null
+	separator = '='
 
-	keys = {}
+	elements = [*keys,*other]
+	keys = brancher(dictionary,elements)
 	
-	for i in range(n):
-		name = str(i)
-		keys[name] = {}
+	keys = {key[:-1]:dict(zip(elements,[value[-1] for value in key[-1]])) for key in keys}
 
-		for j in range(p):
-			prop = properties[j]
-			value = values[i][j]
-			
-			if value is None or isinstance(value,str):
-				value = [value]
+	for key in keys:
+		for attr in keys[key]:
+			if isinstance(keys[key][attr],dict):
+				pass
+			elif isinstance(keys[key][attr],str):
+				keys[key][attr] = dict((parse(keys[key][attr],separator=separator,default=default),))
+			else:
+				keys[key][attr] = dict((parse(prop,separator=separator,default=default) for prop in keys[key][attr]))
 
-			value = dict([to_key_value(val,delimiter=delimiter,default=default) for val in value])
-			keys[name][prop] = value
-			
-	for name in list(keys)[::-1]:
-		if all(keys[name][prop][attr] in [keys[other][prop][attr] for other in keys if attr in keys[other][prop] and other not in [name]]
-			  for prop in keys[name] for attr in keys[name][prop]):
-			keys.pop(name)
 
-	for name in keys:
-		for prop in list(keys[name])[:-1]:
-			if all(isinstance(keys[name][prop][attr],Null) for attr in keys[name][prop]):
-				keys[name][prop] = [attr for attr in keys[name][prop]]
+		for attr in other:
+			if attr in keys[key][attr]:
+				if isinstance(keys[key][attr][attr],dict):
+					pass
+				elif isinstance(keys[key][attr][attr],str):
+					keys[key][attr][attr] = dict((parse(keys[key][attr][attr],separator=separator,default=default)),)
+				else:
+					keys[key][attr][attr] = dict((parse(prop,separator=separator,default=default) for prop in keys[key][attr][attr]))
+			else:
+				keys[key][attr] = {attr: keys[key][attr]}
 
 	return keys
 
@@ -115,7 +119,7 @@ def parse(key,value,data):
 		key (str): key of condition
 		value (str): value of condition, allowed string in 
 			[None,
-			'value' (explit value),
+			'value' (explicit value),
 			'@key@' (data value), 
 			'#i,j,k,...#' (index value),
 			'%start,stop,step%' (slice value),]
@@ -283,8 +287,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 	# Get texify
 	texify = lambda string: Texify(string,hyperparameters.get('texify',{}),usetex=hyperparameters.get('usetex',True))
 
-	# Get plot properties and statistics from settings
-	properties = [*['%s'%(axis) for axis in axes],'label']
+	# Get plot axes and statistics from settings
 	statistics = [*['%s'%(axis) for axis in axes],*['%serr'%(axis) for axis in axes]]
 	statistics = {
 		kwarg: {
@@ -321,10 +324,10 @@ def process(data,settings,hyperparameters,fig=None,ax=None,cwd=None):
 		}
 
 
-	# Get keys of properties of the form ({prop:attr} or {prop:{'key':(attr,),'value:(values,)}})
-	keys = find(settings,properties)
-
-
+	# Get keys of the form {name:{prop:{attr:value}}}
+	keys = [*axes]
+	other = ['label']
+	keys = find(settings,keys,*other)
 
 
 def main(*args,**kwargs):

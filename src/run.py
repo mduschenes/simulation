@@ -11,7 +11,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import PRNGKey,delim,union,is_equal
-from src.iterables import getter,setter,permuter,clearer,leaves
+from src.iterables import getter,setter,permuter,brancher
 from src.io import load,dump,join,split
 from src.call import launch
 
@@ -93,7 +93,7 @@ def setup(settings):
 	groups = settings['permutations']['groups']
 	permutations = permuter(permutations,groups=groups)
 
-	# Get seeds for number of splits/seedings, for all nested hyperparameters leaves that involve a seed
+	# Get seeds for number of splits/seedings, for all nested hyperparameters branches that involve a seed
 	seed = settings['seed']['seed']
 	size = settings['seed']['size']
 	reset = settings['seed']['reset']
@@ -104,17 +104,23 @@ def setup(settings):
 
 
 	# Find keys of seeds in hyperparameters
-	key = 'seed'
-	exclude = ['seed.seed','system.seed']
-	seedlings = [delim.join(branch[0]) for branch in leaves(hyperparameters,key,returns='both') if not any(delim.join(branch[0][:len(e.split(delim))]) == e for e in exclude) and branch[1] is None]
+	keys = ['seed']
+	exclude = ['seed','seed.seed','system.seed']
+	seedlings = brancher(hyperparameters,keys=keys,include=True)
+
+	seedlings = [delim.join(tuple((*seedling[:-1],seed[0]))) for seedling in seedlings for seed in seedling[-1] if seed[1] is None]
+	seedlings = [seedling for seedling in seedlings if seedling not in exclude]
 
 	count = len(seedlings)
 	
 	shape = (size,count,-1)
 	size *= count
 
-	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape).tolist()
-	seeds = [dict(zip(seedlings,seed)) for seed in seeds]
+	if size:
+		seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape).tolist()
+		seeds = [dict(zip(seedlings,seed)) for seed in seeds]
+	else:
+		seeds = []
 
 	other = [{'system.key':None,'system.seed':seed}]
 
@@ -149,14 +155,10 @@ def setup(settings):
 						keys[key][attr] = key
 
 	# Set settings with key and seed instances
-	old = [attr for attr in settings]
-	new = {key: deepcopy(settings) for key in keys}
-	clearer(settings,new,old)
+	settings = {key: deepcopy(settings) for key in keys}
 
 	# Set hyperparameters with key and seed instances
-	old = [attr for attr in hyperparameters]
-	new = {key: deepcopy(hyperparameters) for key in keys}
-	clearer(hyperparameters,new,old)	
+	hyperparameters = {key: deepcopy(hyperparameters) for key in keys}
 
 	for key in keys:
 		setter(settings[key],keys[key],delimiter=delim,copy=True)

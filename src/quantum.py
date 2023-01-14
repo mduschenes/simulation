@@ -26,7 +26,6 @@ from src.utils import pi,e,nan,null,delim,scalars,nulls
 from src.utils import itg,flt,dbl
 
 from src.iterables import setter,getter,getattrs,hasattrs
-from src.iterables import leaves,counts,plant,grow
 
 from src.parameters import Parameters
 from src.operators import Gate

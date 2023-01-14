@@ -29,8 +29,8 @@
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["test"],	
-		"jobs.postprocess.cwd":["test"],
+		"jobs.job.cwd":["new"],	
+		"jobs.postprocess.cwd":["new"],
 
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],

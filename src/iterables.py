@@ -5,7 +5,12 @@ import os,sys,warnings,itertools
 import copy as copying
 import traceback
 
+import numpy as np
+
 warnings.simplefilter("ignore", (UserWarning,DeprecationWarning,FutureWarning))
+
+scalars = (int,np.integer,float,np.floating,str,type(None))
+
 
 class null(object): pass
 
@@ -174,7 +179,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 		func(callable,None,bool,iterable): Callable function with signature func(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
 	'''
 
-	if (not isinstance(iterable,dict)) or (not isinstance(elements,dict)):
+	if (not isinstance(iterable,(dict,list))) or (not isinstance(elements,dict)):
 		return
 
 	# Setup func as callable
@@ -210,29 +215,37 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 		try:
 			if isinstance(element,str) and delimiter:
 				e = tuple(element.split(delimiter))
-			elif not isinstance(element,str):
+			elif isiterable(element,exceptions=scalars):
 				e = tuple(element)
 			else:
 				e = tuple((element,))
 
 			# Update iterable with elements 
-			while index<len(e)-1:
-				if not isinstance(i.get(e[index]),dict):
+			while index<(len(e)-1):
+				if isinstance(i,list):
+					if (e[index] >= len(i)):
+						i.extend([{} for j in range(e[index]-len(i)+1)])
+				elif (isinstance(i,dict) and (not isinstance(i.get(e[index]),(dict,list)))):
 					i[e[index]] = {}
 				i = i[e[index]]
 				index+=1
 
 			value = copier(element,function(e[index],element,i,elements),copy)
 
+			if isinstance(i,list) and (e[index] >= len(i)):
+				i.extend([{} for j in range(e[index]-len(i)+1)])
+
 			if reset:
 				i[e[index]] = value
-			elif e[index] not in i or not isinstance(i[e[index]],dict):
+			elif e[index] not in i or not isinstance(i[e[index]],(dict,list)):
 				i[e[index]] = value
 			elif isinstance(elements[element],dict):
 				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,func=func)
 			else:
 				i[e[index]] = value
 		except Exception as exception:
+			# print(traceback.format_exc())
+			# print(exception)
 			pass
 
 	return
@@ -257,12 +270,14 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 		elements = elements.split(delimiter)
 
 	# Get nested element if iterable, based on elements
-	if not isinstance(elements,list):
+	if not isinstance(elements,(list,tuple)):
 		# elements is object and value is to be got from iterable at first level of nesting
 		try:
-			return copier(elements,i[elements],copy)
+			return copier(elements,iterable[elements],copy)
 		except:
 			return default
+	elif not elements:
+		return copier(elements,iterable,copy)
 	else:
 		# elements is list of nested keys and the nested values are to be extracted from iterable
 		try:
@@ -509,28 +524,6 @@ def replacer(iterable,key,replacement,append=False,copy=True,values=False):
 	return
 
 
-def clearer(dictionary,new,old):
-	'''
-	Clear dictionary and update new elements in-place
-	Args:
-		dictionary(dict): dictionary to update
-		new (dict): New dictionary to update
-		old (iterable): Old keys to clear
-	'''	
-	if new is None:
-		new = {}
-	if old is None:
-		old = []
-
-	dictionary.update(new)
-
-	for key in old:
-		dictionary.pop(key)
-	
-	return
-
-
-
 
 def equalizer(a,b,types=(dict,),exceptions=None):
 	'''
@@ -566,159 +559,51 @@ def equalizer(a,b,types=(dict,),exceptions=None):
 
 	return
 
-def plant(old,new,key):
-	'''
-	Transfer leaf keys and values corresponding to key of old dictionary to new dictionary
-	Args:
-		old (dict): Old dictionary to retrieve leaves corresponding to key
-		new (dict): New dictionary to place leaves corresponding to key
-		key (object): Key of leaves to retrieve
-	'''
 
-	for branch,leaf in leaves(old,key,types=(dict,),returns='both'):
-		grow(new,branch,leaf)
-	return
+def brancher(iterable,keys,types=(dict,list,tuple,),exceptions=(str,),include=True):
+    '''
+    Find and yield branch of set of keys at same depth in nested iterable
+    Args:
+        iterable (iterable): Iterable of nested keys
+        keys (iterable[object],object): Keys in iterable
+        types (tuple[type]): Allowed nested types of iterable values		
+        exceptions (tuple[type]): Exceptional iterable key types to exclude		
+        include (bool): Include leaf value
+    Yields:
+        value (tuple[object]): Found path of branch in iterable
+    '''	
 
+    if isinstance(keys,exceptions):
+    	keys = [keys]
 
-def grow(dictionary,branch,leaf):
-	'''
-	Insert nested branch into dictionary in-place
-	Args:
-		dictionary (dict): Dictionary to insert nested branch
-		branch (iterable): Iterable of nested branch
-		leaf (object): Object to insert at leaf of nested branch
-	'''
-	temporary = dictionary
-	depth = len(branch)
-	for length,key in enumerate(branch):
-		nest = length < (depth-1)
-		old = temporary.get(key)
-		if nest:
-			if not isinstance(old,dict):
-				new = {}
-			else:
-				new = old
-		else:
-			new = leaf
-		temporary[key] = new
-		if nest:
-			temporary = temporary[key]
-	return
+    assert isiterable(keys,exceptions=exceptions)
 
+    try:
+        if not isinstance(iterable,types):
+            raise
 
-def leaves(iterable,key,types=(dict,),returns='value'):
-	'''
-	Find and yield branch of key in nested iterable
-	Args:
-		iterable (iterable): Iterable of nested keys
-		key (object): Key in iterable
-		types (tuple[type]): Allowed nested types of iterable values		
-		returns (str): Return of either {'value',key','both'}
-	Yields:
-		value (tuple[object]): Found path of branch in iterable
-	'''	
-	try:
-		if not isinstance(iterable,types):
-			raise
-		for item in iterable:
-			if isinstance(iterable,dict):
-				value = iterable[item]
-			else:
-				value = item
-			if item == key:
-				if returns == 'value':
-					yield value
-				elif returns == 'key':
-					yield (item,)				
-				elif returns == 'both':
-					yield ((item,),value)				
-			for value in leaves(value,key,types=types,returns=returns):
-				if returns == 'value':
-					yield value
-				elif returns == 'key':
-					yield (item,*value)				
-				elif returns == 'both':
-					yield ((item,*value[0]),value[1])				
-	except:
-		pass
-	return
+        if all(key in iterable for key in keys):
+            if isinstance(iterable,dict):
+                values = (iterable[key] for key in keys)
+            else:
+                values = keys
 
+            yield (tuple(((key,value) if include else (key,) for key,value in zip(keys,values))),)
+                
+        for index,item in enumerate(iterable):
+            if isinstance(iterable,dict):
+                value = iterable[item]
+                index = item
+            else:
+                value = item
+                index = index
+            for values in brancher(value,keys,types=types,exceptions=exceptions,include=include):
+                yield (index,*values)
 
-def branches(iterable,keys,types=(dict,),returns='value',exceptions=(str,)):
-	'''
-	Find and yield branch of set of keys at same depth in nested iterable
-	Args:
-		iterable (iterable): Iterable of nested keys
-		keys (iterable[object],object): Keys in iterable
-		types (tuple[type]): Allowed nested types of iterable values		
-		returns (str): Return of either {'value',key','both'}
-		exceptions (tuple[type]): Exceptional iterable key types to exclude		
-	Yields:
-		value (tuple[object]): Found path of branch in iterable
-	'''	
-	
-	# TODO: Fix bug of returning expanded keys in groups of keys instead of separate yields for each key
-	
-	assert returns in ['value'], 'TODO: returns "%s" not implemented'%(returns)
+    except:
+        pass
 
-	if not isiterable(keys,exceptions=exceptions):		
-		keys = (keys,)
-		slices = 0
-	else:
-		slices = slice(None)
-	try:
-		if not isinstance(iterable,types):
-			raise
-		if all(key in iterable for key in keys):
-			if isinstance(iterable,dict):
-				values = (iterable[key] for key in keys)
-			else:
-				values = keys	
-			if returns == 'value':
-				yield tuple(values)[slices]
-			elif returns == 'key':
-				for key in keys:
-					yield tuple((key,))
-			elif returns == 'both':
-				for key,value in zip(keys,values):
-					yield tuple(((key,),value))
-		for item in iterable:
-			if isinstance(iterable,dict):
-				value = iterable[item]
-			else:
-				value = item
-			for values in branches(value,keys,types=types,returns=returns,exceptions=exceptions):
-				if returns == 'value':
-					yield values
-				elif returns == 'key':
-					yield (item,*values)
-				elif returns == 'both':
-					yield ((item,*values[0]),values[1])
-	except:
-		pass
-	return	
-
-
-def counts(iterable,types=(dict,)):
-	'''
-	Count number of leaves in nested iterable
-	Args:
-		iterable (iterable): Iterable of nested keys
-		types (tuple[type]): Allowed nested types of iterable values
-	Returns:
-		count (int): Number of leaves in iterable
-	'''
-	count = 0
-	if isinstance(iterable,types):
-		for item in iterable:
-			if isinstance(iterable,dict):
-				value = iterable[item]
-			else:
-				value = item
-			count += counts(value)
-	else:
-		count = 1
-	return count
+    return
 
 
 def formatstring(key,iterable,elements,*args,**kwargs):
