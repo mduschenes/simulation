@@ -370,7 +370,10 @@ def apply(keys,data,settings,hyperparameters):
 
 				source = [attr for attr in data if attr not in variables]
 				destination = other
-				value[destination] = {attr: groups.get_group(group)[attr].to_list()[0] for attr in source}
+				value[destination] = {
+					**{attr: groups.get_group(group)[attr].to_list()[0] for attr in source},
+					**{'%s%s'%(axis,func) if keys[name][axis] in dependent else axis: {'func':function,'axis':keys[name][axis]} for axis in axes for func in funcs[function]},
+					}
 
 				for func in funcs[function]:	
 					for axis in axes:
