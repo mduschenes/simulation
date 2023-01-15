@@ -27,7 +27,7 @@ from src.utils import asndarray,asscalar
 from src.utils import to_key_value,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
-from src.iterables import brancher,getter,setter
+from src.iterables import brancher,getter,setter,flatten
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split
 from src.fit import fit,mean,std,normalize,sqrt,size
@@ -84,6 +84,26 @@ def Texify(string,texify={},usetex=True):
 		string = None
 
 	return string
+
+
+def Valify(value,valify={},useval=True):
+	'''
+	Valify value
+	Args:
+		value (str): String to valify
+		valify (dict): Dictionary of valify translations of strings
+		useval (bool): Use value formatting
+	Returns:
+		value (str): Valified string
+	'''
+	values = {
+		**valify,
+		None: valify.get('None',None)
+		}
+
+	value = valify.get(value,value)
+
+	return value
 
 
 def setup(data,settings,hyperparameters,pwd=None,cwd=None):
@@ -144,7 +164,8 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 		hyperparameters['directory'][attr] = cwd
 		hyperparameters['file'][attr],hyperparameters['ext'][attr] = split(
 			hyperparameters['path'][attr],
-			file=True,ext=True) 
+			file=True,ext=True)
+		hyperparameters['path'][attr] = join(hyperparameters['directory'][attr],hyperparameters['file'][attr],ext=hyperparameters['ext'][attr])
 
 	# Get plot fig and axes
 	fig,ax = hyperparameters.get('fig'),hyperparameters.get('ax')
@@ -165,6 +186,10 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 	usetex = hyperparameters.get('usetex',False)
 	hyperparameters['texify'] = lambda string,texify=texify,usetex=usetex: Texify(string,texify,usetex=usetex)
 
+	# Get valify
+	valify = hyperparameters.get('valify',{})
+	useval = hyperparameters.get('useval',True)
+	hyperparameters['valify'] = lambda string,valify=valify,useval=useval: Valify(string,valify,useval=useval)
 
 	return
 
@@ -200,7 +225,8 @@ def find(dictionary):
 					'ax.set_ylabel.ylabel':[['$\\textrm{Infidelity}$']],
 					'ax.legend.update':'%s \\textrm{Noisy}'
 				},
-				'texify':{}		
+				'texify':{},
+				'valify': {},		
 	}
 
 	elements = [*keys,*other]
@@ -373,6 +399,9 @@ def apply(keys,data,settings,hyperparameters):
 				value[destination] = {
 					**{attr: groups.get_group(group)[attr].to_list()[0] for attr in source},
 					**{'%s%s'%(axis,func) if keys[name][axis] in dependent else axis: {'func':function,'axis':keys[name][axis]} for axis in axes for func in funcs[function]},
+					**{other: {attr: {subattr: keys[name][other][attr][subattr] 
+						if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
+						if isinstance(keys[name][other][attr],dict) else keys[name][other][attr] for attr in keys[name][other]}},
 					}
 
 				for func in funcs[function]:	
@@ -384,63 +413,149 @@ def apply(keys,data,settings,hyperparameters):
 						destination = '%s%s'%(axis,func) if attr in dependent else axis
 						value[destination] = groups.get_group(group)[source].to_numpy()
 					
-				# print(key,value[other])
-				# print()
 
 				setter(settings,{key:value},delimiter=delim,func=True)
 
 	return
 
 
-def plotter(keys,data,settings,hyperparameters):
+def plotter(settings,hyperparameters):
 	'''
-	Plot data based on keys, dataframe, plot settings, process hyperparameters
+	Plot data based plot settings, process hyperparameters
 	Args:
-		keys (dict): keys
-		data (dataframe): dataframe
 		settings (dict): settings
 		hyperparameters (dict): hyperparameters
 	'''
 
+	# Variables
+	path = hyperparameters['path']['plot']
+	fig = hyperparameters['fig']
+	ax = hyperparameters['ax']
+	texify = hyperparameters['texify']
+	valify = hyperparameters['valify']
+
 	# Set layout
 	layout = {}
 	for instance in settings:
-		for subinstance in settings[instance]:
+		for index,subinstance in enumerate(settings[instance]):
 			sublayout = settings[instance][subinstance]['style']['layout']
 			if not layout.get(instance):
-				layout[instance] = {prop:sublayout[prop] for prop in ['nrows','ncols']}
-			layout[instance] = {
-				'nrows':max(sublayout['nrows'],layout['nrows']),
-				'ncols':max(sublayout['ncols'],layout['ncols']),
-				'index':None,
-				'left':None,'right':None,'top':None,'bottom':None,
-				'hspace':None,'wspace':None,'pad':None
-				}
-			# 'index':index+1,
-			# 'top':1 - (nrow)/samplelayouts['nrows'] if subsublayouts and samplelayouts['nrows']>1 else None,
-			# 'bottom':1 - (nrow+1)/samplelayouts['nrows'] if subsublayouts and samplelayouts['nrows']>1 else None,
-			# 'right':(ncol+1)/samplelayouts['ncols'] if subsublayouts and samplelayouts['ncols']>1 else None,
-			# 'left':(ncol)/samplelayouts['ncols'] if subsublayouts and samplelayouts['ncols']>1 else None,											
+				layout[instance] = sublayout
+			layout[instance].update({
+				**layout[instance],
+				**{attr: max(sublayout[attr],layout[instance][attr]) 
+					if (sublayout[attr] is not None) and (layout[instance][attr] is not None) else None
+					for attr in ['nrows','ncols']},
+				**{attr: None for attr in ['index']},
+				})
+		for index,subinstance in enumerate(settings[instance]):
+			sublayout = deepcopy(layout[instance])
 
+			indx = sublayout['index']-1	if sublayout['index'] is not None else index
+			nrow = (indx - indx%sublayout['ncols'])//sublayout['ncols']
+			ncol = indx%sublayout['ncols']
+
+			sublayout.update({
+				**{'index':index+1},
+				**{
+					'top':1 - (nrow)/sublayout['nrows'] if sublayout['top'] and sublayout['nrows']>1 else None,
+					'bottom':1 - (nrow+1)/sublayout['nrows'] if sublayout['bottom'] and sublayout['nrows']>1 else None,
+					'right':(ncol+1)/sublayout['ncols'] if sublayout['right'] and sublayout['ncols']>1 else None,
+					'left':(ncol)/sublayout['ncols'] if sublayout['left'] and sublayout['ncols']>1 else None,											
+					}
+				})
+
+
+			settings[instance][subinstance]['style']['layout'] = sublayout
+
+
+	# Set data
+	for instance in settings:
+		for subinstance in settings[instance]:
+
+			# savefig
+			attr = 'fname'
+			data = settings[instance][subinstance]['fig'].get('savefig',{})
+			value = join(delim.join([split(path,directory_file=True),instance]),ext=split(path,ext=True))
+			data[attr] = value
+
+			# legend
+			attr = 'set_title'
+			data = settings[instance][subinstance]['ax'].get('legend',{})
+
+			attrs = 'label'
+			values = {label: list(realsorted(set(data[attrs][label]
+						for plots in [plots for plots in PLOTS if plots in settings[instance][subinstance]['ax']]
+						for data in flatten(settings[instance][subinstance]['ax'][plots]))))
+					for label in list(realsorted(set(label
+					for plots in [plots for plots in PLOTS if plots in settings[instance][subinstance]['ax']]
+					for data in flatten(settings[instance][subinstance]['ax'][plots])
+					for label in data[attrs] 
+					if (label in data[attrs][attrs][attrs]) and (data[attrs][attrs][attrs][label] is None))))}
+
+			value = '~,~'.join([
+				'%s%s%s'%(texify(label),': ',scinotation(data[attrs][attrs][attrs][label],decimals=0,scilimits=[0,3],one=False)) 
+				if (False and (label in data[attrs][attrs][attrs])) else texify(label)
+				for label in values if len(values[label])>1
+				])
+			data[attr] = value
+
+			# data
+			for plots in PLOTS:
+
+				if settings[instance][subinstance]['ax'].get(plots) is None:
+					continue
+
+				for data in flatten(settings[instance][subinstance]['ax'][plots]):
+
+					for attr in AXES:
+						value = [valify(value) for value in data[attr]]
+						data[attr] = value
+
+					attr = 'label'
+					value = ', '.join([
+						*[texify(scinotation(data[attr][label],decimals=0,scilimits=[0,3],one=False))
+							for label in realsorted(data[attr]) if label in data[attr][attr][attr] and data[attr][attr][attr][label] is None and len(values[label])>1],
+						*[texify(scinotation(data[attr][data[attr][attr][attr][label]],decimals=0,scilimits=[0,3],one=False))
+							for label in realsorted(data[attr][attr][attr]) if label not in data[attr] and data[attr][attr][attr][label] in data[attr]],
+						])
+					data[attr] = value
+
+
+
+	# Plot data
+	for instance in settings:
+		fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
 
 	return
 
 
 
-def process(data,settings,hyperparameters,fig=None,ax=None,pwd=None,cwd=None):
+def process(data,settings,hyperparameters,pwd=None,cwd=None):
 	'''
 	Process data
 	Args:
 		data (str,dict,iterable[str,dict]): Paths to or dictionary of data to process
 		settings (str,dict): Path to or dictionary of plot settings
 		hyperparameters (str,dict): Path to or dictionary of process settings
-		fig (dict): dictionary of subplots of figures of plots {key: figure}
-		ax (dict): dictionary of subplots of axes of plots {key: figure}
 		pwd (str): Root path of data
 		cwd (str): Root path of plots
-	Returns:
-		fig (dict): dictionary of subplots of figures of plots {key: figure}
-		ax (dict): dictionary of subplots of axes of plots {key: figure}
+
+	Steps:
+	- Load data and settings
+	- Get data axes and labels based on branches of settings
+	- Iterate over all distinct data branches of settings
+	
+	- Filter with booleans of all labels
+	- Group by non-null labels and independent
+	- Aggregate functions of dependent (mean,std) for each group
+	- Assign new labels for functions with label.function 
+	- Regroup with non-null labels
+	
+	- Reshape each data into axes for [plot.type,plot.row,plot.col,plot.line=(plot.group,plot.function),plot.axis]
+	- Adjust settings based on data
+	
+	- Plot data
 
 	To process data, we find in plot settings dictionary the keys of 'x','y','label' properties for sorting.
 
@@ -474,26 +589,25 @@ def process(data,settings,hyperparameters,fig=None,ax=None,pwd=None,cwd=None):
 	'''
 
 	# Load plot settings
-	path = join(settings,root=pwd) if isinstance(settings,str) else settings
-	default = settings
+	path = join(settings,root=pwd) if isinstance(settings,str) else None
+	default = {} if isinstance(settings,str) else settings
 	wrapper = None	
 	settings = load(path,default=default,wrapper=wrapper)
 
 	# Load process hyperparameters
-	path = join(hyperparameters,root=pwd) if isinstance(hyperparameters,str) else hyperparameters
-	default = hyperparameters
+	path = join(hyperparameters,root=pwd) if isinstance(hyperparameters,str) else None
+	default = {} if isinstance(hyperparameters,str) else hyperparameters
 	wrapper = None
 	hyperparameters = load(path,default=default,wrapper=wrapper)
 
 	# Set settings and hyperparameters
 	setup(data,settings,hyperparameters,pwd,cwd)
 
-	# Get keys of the form {name:{prop:{attr:value}}}
+	# Get keys
 	keys = find(settings)
 
 	# Set metadata
-	attr = 'metadata'
-	metadata = join(hyperparameters['directory'][attr],hyperparameters['file'][attr],ext=hyperparameters['ext'][attr])
+	metadata = hyperparameters['path']['metadata']
 
 	# Load settings
 	if hyperparameters['load']:
@@ -520,7 +634,7 @@ def process(data,settings,hyperparameters,fig=None,ax=None,pwd=None,cwd=None):
 	# Plot data
 	if hyperparameters['plot']:
 
-		plotter(keys,data,settings,hyperparameters)
+		plotter(settings,hyperparameters)
 
 	return
 

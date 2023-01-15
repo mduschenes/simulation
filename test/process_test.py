@@ -46,7 +46,7 @@ def _setup(args,kwargs):
 		'h':np.random.choice(['first','second','third','four','five','six'],n),
 	})
 
-	path = path if path is not None else 'config/data/**/data.hdf5'
+	path = path if path is not None else 'data/data/**/data.hdf5'
 	df = load(path,default={},wrapper='df')
 
 	axes = ['x','y']
@@ -150,19 +150,6 @@ def test_parse(path=None):
 
 def test_groupby(path=None):
 
-	# Steps:
-		# - Load data and settings
-		# - Get data axes and labels based on branches of settings
-		# - Iterate over all distinct data branches of settings
-		# - Filter with booleans of all labels
-		# - Group by non-null labels and independent
-		# - Aggregate functions of dependent (mean,std) for each group
-		# - Assign new labels for functions with label.function 
-		# - Regroup with non-null labels
-		
-		# - Reshape each data into axes for [plot.type,plot.row,plot.col,plot.line=(plot.group,plot.function),plot.axis]
-		# - Adjust settings based on data
-		# - Plot data
 
 	def mean(group):
 		return group.mean()
@@ -191,42 +178,11 @@ def test_groupby(path=None):
 	return
 
 
-def test_io(path=None):
-	args = ()
-	kwargs = {}	
-
-	kwargs.update({'path':path,'verbose':0})
-
-	_setup(args,kwargs)
-	
-	df = kwargs['df']
-	settings,axes,other = kwargs['settings'],kwargs['axes'],kwargs['other']
-
-	keys = find(settings,axes,*other)
-
-	data = {}
-
-	for name in keys:      
-		apply(name,keys,data,df)
-
-		value = data[name]
-
-		data[name] = [{
-			attr: data[name].get_group(group)[attr]
-			for attr in keys[name]
-			if attr in 
-		}
-
-
-	setter(settings,{name:data[name]})
-
-	return
 
 
 if __name__ == '__main__':
-	path = 'config/test/**/data.hdf5'
+	path = 'data/test/**/data.hdf5'
 	# test_conditions(path)
 	# test_find(path)
 	# test_parse(path) 
 	# test_groupby(path)
-	test_io(path)

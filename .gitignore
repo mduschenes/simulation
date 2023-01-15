@@ -22,3 +22,4 @@ examples/**
 build/new
 build/plots
 keep
+**/*test.json
