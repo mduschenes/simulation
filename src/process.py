@@ -34,6 +34,7 @@ from src.fit import fit,mean,std,normalize,sqrt,size
 from src.plot import plot
 
 AXES = ['x','y']
+OTHER = 'label'
 PLOTS = ['plot','scatter','errorbar','histogram','axvline','axhline','vlines','hlines','plot_surface']
 
 
@@ -123,12 +124,18 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 				if not settings[instance][subinstance][prop].get(plots):
 					continue
 				elif isinstance(settings[instance][subinstance][prop][plots],dict):
-					settings[instance][subinstance][prop][plots] = [[settings[instance][subinstance][prop][plots]]]
+					settings[instance][subinstance][prop][plots] = [[[settings[instance][subinstance][prop][plots]]]]
 				elif all(isinstance(subplots,dict) for subplots in settings[instance][subinstance][prop][plots]):
-					settings[instance][subinstance][prop][plots] = [settings[instance][subinstance][prop][plots]]
+					settings[instance][subinstance][prop][plots] = [[[subplots]] for subplots in settings[instance][subinstance][prop][plots]]
+				elif all(isinstance(subsubplots,dict) for subplots in settings[instance][subinstance][prop][plots] for subsubplots in subplots):
+					settings[instance][subinstance][prop][plots] = [[[subsubplots] for subsubplots in subplots] for subplots in settings[instance][subinstance][prop][plots]]
 
 	# Set process hyperparameters
-	defaults = {}
+	defaults = {
+		'load':None,
+		'dump':None,
+		'plot':None,
+		}
 	setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 	# Get paths
@@ -140,7 +147,6 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 			file=True,ext=True) 
 
 	# Get plot fig and axes
-	axes = AXES
 	fig,ax = hyperparameters.get('fig'),hyperparameters.get('ax')
 	if fig is None:
 		fig = {}
@@ -162,17 +168,18 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 
 	return
 
-def find(dictionary,keys,*other):
+def find(dictionary):
 	'''
 	Find formatted keys from dictionary, based on search keys of the form 'property':attr
 	All keys are assumed to be present in any branches where one or more property is found in dictionary
 	Args:
 		dictionary (dict): Dictionary to search
-		keys (iterable[str]): Iterable of keys to search for
-		other (iterable[str]): Iterable of keys to search for
 	Returns:
 		keys (dict[dict]): Formatted keys based on found keys of the form {name: {prop:attr} or {prop:{attr:value}}}
 	'''
+
+	keys = AXES
+	other = [OTHER]
 
 	def parser(string,separator,default):
 		if string.count(separator):
@@ -188,7 +195,7 @@ def find(dictionary,keys,*other):
 				'wrapper':{},
 				'attrs':{},
 				'slice':None,
-				'axis':{'row':[],'col':[],'plot':['group','func'],'axis':[-1]},
+				'axis':{'row':[],'col':[],'plot':['plot','group','func'],'axis':[-1]},
 				'settings':{
 					'ax.set_ylabel.ylabel':[['$\\textrm{Infidelity}$']],
 					'ax.legend.update':'%s \\textrm{Noisy}'
@@ -317,19 +324,12 @@ def apply(keys,data,settings,hyperparameters):
 		hyperparameters (dict): hyperparameters
 	'''
 
-	if hyperparameters.get('load'):
-		attr = 'metadata'
-		path = join(hyperparameters['directory'][attr],hyperparameters['file'][attr],ext=hyperparameters['ext'][attr])
-		default = {}
-		updater(settings,load(path,default={}),delimiter=delim,func=True)
-		return
-
-
 	for name in keys:
 
-		axes = [axis for axis in keys[name] if axis not in ['label']]
-		label = keys[name]['label'].get('label',{})
-		funcs = keys[name]['label'].get('func',{})
+		axes = [axis for axis in AXES if axis in keys[name]]
+		other = OTHER
+		label = keys[name][other].get(other,{})
+		funcs = keys[name][other].get('func',{})
 
 		if not funcs:
 			funcs = {'stat':{'':'mean','err':'std'}}
@@ -345,14 +345,13 @@ def apply(keys,data,settings,hyperparameters):
 
 		groupby = data[boolean].groupby(by=by,as_index=False)
 
-		print(independent,dependent,labels)
-
 		agg = {
 			**{attr : [(attr,'first')] for attr in data},
 			**{attr : [(delim.join(((attr,function,func))),funcs[function][func]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
 		}
 		droplevel = dict(level=0,axis=1)
 		by = [*labels]
+		variables = [*independent,*dependent,*[subattr[0] for attr in dependent for subattr in agg[attr]]]
 
 		groups = groupby.agg(agg).droplevel(**droplevel)
 
@@ -369,37 +368,23 @@ def apply(keys,data,settings,hyperparameters):
 				key = (*name[:-2],i,j)
 				value = deepcopy(getter(settings,name,delimiter=delim))
 
+				source = [attr for attr in data if attr not in variables]
+				destination = other
+				value[destination] = {attr: groups.get_group(group)[attr].to_list()[0] for attr in source}
+
 				for func in funcs[function]:	
 					for axis in axes:
 						
 						attr = keys[name][axis]
+
 						source = delim.join(((attr,function,func))) if attr in dependent else attr
 						destination = '%s%s'%(axis,func) if attr in dependent else axis
-						
 						value[destination] = groups.get_group(group)[source].to_numpy()
 					
-						source = [attr for attr in data if attr not in [keys[name][axis] for axis in axes]]
-						destination = 'label'
-						value[destination] = groups.get_group(group)[source].iloc[0].to_dict()
-						
-						value[destination].update({attr: label[attr] for attr in label if attr not in data})
+				# print(key,value[other])
+				# print()
 
 				setter(settings,{key:value},delimiter=delim,func=True)
-
-				print('-----')
-				print(group,key)
-				print(':::::::')
-				print(getter(settings,key,delimiter=delim))
-				print()
-				print()
-
-
-
-	if hyperparameters.get('dump'):
-		attr = 'metadata'
-		path = join(hyperparameters['directory'][attr],hyperparameters['file'][attr],ext=hyperparameters['ext'][attr])
-		default = {}
-		dump(settings,path)
 
 	return
 
@@ -413,9 +398,6 @@ def plotter(keys,data,settings,hyperparameters):
 		settings (dict): settings
 		hyperparameters (dict): hyperparameters
 	'''
-
-	if not hyperparameters.get('plot'):
-		return
 
 	# Set layout
 	layout = {}
@@ -500,25 +482,42 @@ def process(data,settings,hyperparameters,fig=None,ax=None,pwd=None,cwd=None):
 	wrapper = None
 	hyperparameters = load(path,default=default,wrapper=wrapper)
 
-	# Load data
-	path = data
-	default = {}
-	wrapper = 'df'
-	data = load(path,default=default,wrapper=wrapper)
-
 	# Set settings and hyperparameters
 	setup(data,settings,hyperparameters,pwd,cwd)
 
 	# Get keys of the form {name:{prop:{attr:value}}}
-	keys = [*AXES]
-	other = ['label']
-	keys = find(settings,keys,*other)
+	keys = find(settings)
 
-	# Get functions of data
-	apply(keys,data,settings,hyperparameters)
+	# Set metadata
+	attr = 'metadata'
+	metadata = join(hyperparameters['directory'][attr],hyperparameters['file'][attr],ext=hyperparameters['ext'][attr])
+
+	# Load settings
+	if hyperparameters['load']:
+
+		settings = load(metadata)
+
+	else:
+
+		# Load data
+		path = data
+		default = {}
+		wrapper = 'df'
+		data = load(path,default=default,wrapper=wrapper)
+
+		# Get functions of data
+		apply(keys,data,settings,hyperparameters)
+
+	# Dump settings
+	if hyperparameters['dump']:
+		
+		dump(settings,metadata)
+
 
 	# Plot data
-	plotter(keys,data,settings,hyperparameters)
+	if hyperparameters['plot']:
+
+		plotter(keys,data,settings,hyperparameters)
 
 	return
 

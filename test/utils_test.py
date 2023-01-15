@@ -21,8 +21,12 @@ from src.utils import array,zeros,rand,identity,datatype,allclose,sqrt,abs2
 from src.utils import norm,trace,inner_abs2
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmc,_expm
 from src.utils import gradient_expm
+from src.utils import delim
 
 from src.optimize import Metric
+
+from src.iterables import getter,setter
+
 
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
@@ -309,3 +313,60 @@ def test_expmi():
 	assert allclose(out,_out)
 
 	return
+
+
+
+def test_getter(path=None,tol=None):
+	iterables = {'hi':{'world':[[{'goodbye':None}],[{'di':99}]]}}
+	
+	elements = [
+		('hi','world',1,0,'di'),
+		('hi','world',4),
+		('hi','world',1),        
+		('hi','world',1,0),        
+	]
+	tests = [
+		(lambda value,element,iterable: value==99),
+		(lambda value,element,iterable: value is None),
+		(lambda value,element,iterable: isinstance(value,list)),
+		(lambda value,element,iterable: isinstance(value,dict)),
+	]
+	
+	for element,test in zip(elements,tests):
+		iterable = iterables
+		value = getter(iterable,element)
+		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
+	
+	return
+
+def test_setter(path=None,tol=None):
+	iterables = {'hi':{'world':[[{'goodbye':None}],[{'di':99}]]}}
+	
+	elements = {
+		('hi','world',1,4,'di'):-99,
+		('hi','world',1,2,0):89,
+	}
+	
+	tests = [
+		(lambda value,element,iterable: value==-99),
+		(lambda value,element,iterable: value==89),
+	]
+	
+	for element,test in zip(elements,tests):
+#         iterable = deepcopy(iterables)
+		iterable = iterables
+		value = elements[element]
+		setter(iterable,{element:value},delimiter=delim,func=True)
+		value = getter(iterable,element)
+		print(iterable)
+		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
+	
+	return
+
+if __name__ == '__main__':
+	path = 'config/settings.json'
+	tol = 5e-8 
+	# test_objective(path,tol)
+	# test_optimizer(path,tol)
+	test_getter(path,tol)
+	test_setter(path,tol)

@@ -224,9 +224,9 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 			while index<(len(e)-1):
 				if isinstance(i,list):
 					if (e[index] >= len(i)):
-						i.extend([{} for j in range(e[index]-len(i)+1)])
+						i.extend([[] if isinstance(e[index+1],int) else {} for j in range(e[index]-len(i)+1)])
 				elif (isinstance(i,dict) and (not isinstance(i.get(e[index]),(dict,list)))):
-					i[e[index]] = {}
+					i[e[index]] = [] if isinstance(e[index+1],int) else {}
 				i = i[e[index]]
 				index+=1
 
