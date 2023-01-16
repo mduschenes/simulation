@@ -1,369 +1,855 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,copy
+import os,sys,itertools,functools,copy,datetime
 from functools import partial
-
-envs = {
-	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5,
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
-
-
 import jax
-import absl.logging
-absl.logging.set_verbosity(absl.logging.INFO)
 
-configs = {
-	'jax_disable_jit':False,
-	'jax_platforms':'cpu',
-	'jax_enable_x64': True
-	}
-for name in configs:
-	jax.config.update(name,configs[name])
+# Import User modules
+ROOT = os.path.dirname(os.path.abspath(__file__))
+PATHS = ['','..']
+for PATH in PATHS:
+	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
 
 # Logging
 import logging
 logger = logging.getLogger(__name__)
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,hessian
-from src.utils import is_naninf,product,sqrt
+from src.utils import jit,value_and_gradient,gradient,conj,abs
+from src.utils import is_unitary,is_hermitian,product,sqrt,asarray
 
-from src.utils import normed,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import normed_einsum,inner_abs2_einsum,inner_real_einsum,inner_imag_einsum
-from src.utils import gradient_normed_einsum,gradient_inner_abs2_einsum,gradient_inner_real_einsum,gradient_inner_imag_einsum
+from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
+from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
-from src.utils import itg,dbl,flt
+from src.utils import scalars,delim
+
+from src.iterables import setter
 
 from src.line_search import line_search,armijo
 
-from src.io import join,split,copy,rmdir,exists
+from src.io import dump,load,join,split,copy,exists
+
+from src.system import System
 
 
 
-def value_and_grad(func,grad=None):
-	def _value_and_grad(func,grad):
-		def _func_and_grad(parameters):
-			return func(parameters),grad(parameters)
-		return _func_and_grad
-
-	if grad is None:
-		grad = gradient(func)
-		func_and_grad = value_and_gradient(func)
-	else:
-		func_and_grad = _value_and_grad(func,grad)
-
-	return func_and_grad,func,grad
-
-
-class LineSearchBase(object):
-	def __init__(self,func,grad,hyperparameters):
+class LineSearcher(System):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
 		'''	
 		Line search class
 		Args:
 			func (callable): objective function with signature func(parameters)
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
 		'''
+		
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
+
+
+		defaults = {}		
 		returns = ['alpha']
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		self.func = func
 		self.grad = grad
 		self.hyperparameters = hyperparameters
+		self.system = system
+		self.defaults = defaults
 		self.returns = returns
-
+		
 		return
 
-	def __call__(self,parameters,alpha,value,gradient,search):
+	def __call__(self,parameters,alpha,value,grad,search):
 		'''
 		Perform line search
 		Args:
 			parameters (array): Objective parameters
-			alpha (iterable): Previous alpha
-			value (iterable): Previous objective values
-			gradient (array): Previous objective gradients
-			search (array): Previous objective search directions
+			alpha (iterable[array]): Previous alpha
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
 		Returns:
-			returns (dict): Dictionary of returned values of line search
+			alpha (array): Returned search value
 		'''
-		returns = (alpha[-1],)
+		_alpha = alpha[-1]
+		returns = (_alpha,)
 
-		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
+		returns = self.__callback__(returns,parameters,alpha,value,grad,search)
 
-		return returns
+		attr = 'alpha'
+		alpha = returns[attr]
 
-	def __callback__(self,returns,parameters,alpha,value,gradient,search):
+		return alpha
+
+	def __callback__(self,returns,parameters,alpha,value,grad,search):
 		'''
 		Check return values of line search
 		Args:
 			returns (iterable): Iterable of returned values of line search
 			parameters (array): Objective parameters
-			alpha (iterable): Previous alpha
-			value (iterable): Previous objective values
-			gradient (array): Previous objective gradients
-			search (array): Previous objective search directions
+			alpha (iterable[array]): Previous alpha
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
 		Returns:
 			returns (dict): Dictionary of returned values of line search
 		'''
 		
 		returns = dict(zip(self.returns,returns))
 
-		if returns['alpha'] is None:
+		attr = 'alpha'
+		if returns[attr] is None or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
 			if len(alpha) > 1:
-				returns['alpha'] = alpha[-1]*gradient[-1].dot(search[-1])/gradient[-2].dot(search[-2])
+				returns[attr] = alpha[-1]*grad[-1].dot(search[-1])/grad[-2].dot(search[-2])
 			else:
-				returns['alpha'] = alpha[-1]
+				returns[attr] = alpha[-1]
+
 		return returns
 
-class LineSearch(LineSearchBase):
+class LineSearch(LineSearcher):
 	'''
 	Line Search class
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
 		hyperparameters (dict): line search hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 	'''
-	def __new__(cls,func,grad,hyperparameters={}):
+	def __new__(cls,func,grad,hyperparameters={},system=None):
 	
-		defaults = {'line_search':None}
-		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
+		defaults = {'search':{'alpha':None}}
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
-		line_searches = {'line_search':Line_Search,'armijo':Armijo,None:Null_Search}
+		line_searches = {
+			'line_search':Line_Search,
+			'armijo':Armijo,
+			None:Null_Line_Search
+			}
 
-		line_search = hyperparameters['line_search']
+		line_search = hyperparameters.get('search',{}).get('alpha',defaults['search']['alpha'])
 		
 		self = line_searches.get(line_search,line_searches[None])(func,grad,hyperparameters)
 
 		return self
 
 
-class Line_Search(LineSearchBase):
-	def __init__(self,func,grad,hyperparameters):
+class Line_Search(LineSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
 		'''	
 		Line search class
 		Args:
 			func (callable): objective function with signature func(parameters)
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
 		'''
 		defaults = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':None}
 		returns = ['alpha','nfunc','ngrad','value','_value','slope']
-		hyperparameters = {attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults}
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
-		super().__init__(func,grad,hyperparameters)
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
 
+		self.defaults = defaults
 		self.returns = returns
 
 		return
 
-	def __call__(self,parameters,alpha,value,gradient,search):
+	def __call__(self,parameters,alpha,value,grad,search):
 		'''
 		Perform line search
 		Args:
 			parameters (array): Objective parameters
-			alpha (iterable): Previous alpha
-			value (iterable): Previous objective values
-			gradient (array): Previous objective gradients
-			search (array): Previous objective search directions
+			alpha (iterable[array]): Previous alpha
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
 		Returns:
-			returns (dict): Dictionary of returned values of line search
+			alpha (array): Returned search value
 		'''
-		self.hyperparameters['old_old_fval'] = value[-2] if len(value)>1 else None
+		self.defaults['old_old_fval'] = value[-2] if len(value)>1 else None
 		
-		# returns = osp.optimize.line_search(self.func,self.grad,
 		returns = line_search(self.func,self.grad,
-			parameters,search[-1],gradient[-1],value[-1],
-			**self.hyperparameters)
+			parameters,search[-1],grad[-1],value[-1],
+			**self.defaults)
 		
-		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
+		returns = self.__callback__(returns,parameters,alpha,value,grad,search)
 
-		return returns
+		attr = 'alpha'
+		alpha = returns[attr]
+
+		return alpha
 
 
-
-class Armijo(LineSearchBase):
-	def __init__(self,func,grad,hyperparameters):
+class Armijo(LineSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
 		'''	
 		Line search class
 		Args:
 			func (callable): objective function with signature func(parameters)
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
 		'''
-		defaults = {'c1':0.0001}
+		defaults = {'c1':0.0001,'alpha0':1e-4}
 		returns = ['alpha','nfunc','value']
-		hyperparameters = {attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults}
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
-		super().__init__(func,grad,hyperparameters)
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
 
+		self.defaults = defaults
 		self.returns = returns
 
 		return
 
-	def __call__(self,parameters,alpha,value,gradient,search):
+	def __call__(self,parameters,alpha,value,grad,search):
 		'''
 		Perform line search
 		Args:
 			parameters (array): Objective parameters
-			alpha (iterable): Previous alpha
-			value (iterable): Previous objective values
-			gradient (array): Previous objective gradients
-			search (array): Previous objective search directions
+			alpha (iterable[array]): Previous alpha
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
 		Returns:
-			returns (dict): Dictionary of returned values of line search
+			alpha (array): Returned search value
 		'''
-		# returns = osp.optimize.linesearch.line_search_armijo(self.func,self.grad,
-		returns = armijo(self.func,self.grad,
-			parameters,search[-1],gradient[-1],value[-1],
-			**self.hyperparameters)
 
-		returns = self.__callback__(returns,parameters,alpha,value,gradient,search)
+		returns = armijo(self.func,self.grad,
+			parameters,search[-1],grad[-1],value[-1],
+			**self.defaults)
+
+		returns = self.__callback__(returns,parameters,alpha,value,grad,search)
 		
 		return returns
 
 
-class Null_Search(LineSearchBase):
-	def __init__(self,func,grad,hyperparameters):
+class Null_Line_Search(LineSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
 		'''	
 		Line search class
 		Args:
 			func (callable): objective function with signature func(parameters)
 			grad (callable): gradient of function to optimize, with signature grad(parameters)
 			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)			
+			kwargs (dict): Additional system attributes
 		'''
 
-		super().__init__(func,grad,hyperparameters)
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
 
 		return
 
 
-class Objective(object):		
-	def __init__(self,func,grad=None,hess=None,callback=None,hyperparameters={}):
+
+class GradSearcher(System):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
 		'''	
-		Objective class for function
+		Grad search class
 		Args:
-			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
-			grad (callable,iterable[callable]): Gradient of function  with signature grad(parameters)
-			hess (callable,iterable[callable]): Hessian of function, with signature hess(parameters)
-			callback (callable): Gradient of function  with signature callback(parameters,attributes,func,grad,hess,funcs,grads,hesss,hyperparameters)
-			hyperparameters (dict): Objective hyperparameters
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
+
+
+		defaults = {}		
+		returns = ['beta']
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
+
+		self.func = func
+		self.grad = grad
+		self.hyperparameters = hyperparameters
+		self.system = system
+		self.defaults = defaults
+		self.returns = returns
+		
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = beta[-1]
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+	def __callback__(self,returns,parameters,beta,value,grad,search):
+		'''
+		Check return values of grad search
+		Args:
+			returns (iterable): Iterable of returned values of grad search
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			returns (dict): Dictionary of returned values of grad search
+		'''
+		
+		returns = dict(zip(self.returns,returns))
+
+		attr = 'beta'
+		if returns[attr] is None or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
+			if len(beta) > 1:
+				returns[attr] = beta[-1]
+			else:
+				returns[attr] = beta[-1]
+
+		return returns
+
+class GradSearch(GradSearcher):
+	'''
+	Grad Search class
+	Args:
+		func (callable): function to optimize, with signature function(parameters)
+		grad (callable): gradient of function to optimize, with signature grad(parameters)
+		hyperparameters (dict): grad search hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+	'''
+	def __new__(cls,func,grad,hyperparameters={},system=None):
+	
+		defaults = {'search':{'beta':None}}
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+
+		grad_searches = {
+			'grad_search':Fletcher_Reeves,'fletcher_reeves':Fletcher_Reeves,
+			'polak_ribiere':Polak_Ribiere,'polak_ribiere_fletcher_reeves':Polak_Ribiere_Fletcher_Reeves,
+			'hestenes_stiefel':Hestenes_Stiefel,'dai_yuan':Dai_Yuan,
+			None:Null_Grad_Search,
+			}
+
+		grad_search = hyperparameters.get('search',{}).get('beta',defaults['search']['beta'])
+		
+		self = grad_searches.get(grad_search,grad_searches[None])(func,grad,hyperparameters)
+
+		return self
+
+
+class Fletcher_Reeves(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = (grad[-1].dot(grad[-1]))/(grad[-2].dot(grad[-2])) # Fletcher-Reeves
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+
+class Polak_Ribiere(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = max(0,(grad[-1].dot(grad[-1]-grad[-2]))/grad[-2].dot(grad[-2]))  # Polak-Ribiere
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+
+class Polak_Ribiere_Fletcher_Reeves(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = [(grad[-1].dot(grad[-1]))/(grad[-2].dot(grad[-2])),max(0,(grad[-1].dot(grad[-1]-grad[-2]))/grad[-2].dot(grad[-2]))] # Polak-Ribiere-Fletcher-Reeves
+		_beta = -_beta[0] if _beta[1] < -_beta[0] else _beta[1] if abs(_beta[1]) <= _beta[0] else _beta[0]
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+
+class Hestenes_Stiefel(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = (grad[-1].dot(grad[-1]-grad[-2]))/(search[-1].dot(grad[-1]-grad[-2])) # Hestenes-Stiefel
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+class Dai_Yuan(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Line search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+		return
+
+	def __call__(self,parameters,beta,value,grad,search):
+		'''
+		Perform grad search
+		Args:
+			parameters (array): Objective parameters
+			beta (iterable[array]): Previous beta
+			value (iterable[array]): Previous objective values
+			grad (iterable[array]): Previous objective gradients
+			search (iterable[array]): Previous objective search directions
+		Returns:
+			beta (array): Returned search value
+		'''
+		_beta = (grad[-1].dot(grad[-1]))/(search[-1].dot(grad[-1]-grad[-2])) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
+		returns = (_beta,)
+
+		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+
+		attr = 'beta'
+		beta = returns[attr]
+
+		return beta
+
+
+class Null_Grad_Search(GradSearcher):
+	def __init__(self,func,grad,hyperparameters,system=None,**kwargs):
+		'''	
+		Grad search class
+		Args:
+			func (callable): objective function with signature func(parameters)
+			grad (callable): gradient of function to optimize, with signature grad(parameters)
+			hyperparameters (dict): Line search hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)			
+			kwargs (dict): Additional system attributes
 		'''
 
+		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
+
+		return
+
+
+class Function(System):
+
+	def __init__(self,model,func=None,grad=None,callback=None,metric=None,hyperparameters={},system=None,**kwargs):
+		'''	
+		Class for function
+		Args:
+			model (object): Model instance
+			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
+			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
+			callback (callable): Callback of function with signature callback(parameters,track,optimizer,model,metric,func,grad)
+			metric (str,callable): Function metric with signature metric(*operands)
+			hyperparameters (dict): Function hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
+
+		if func is None:
+			func = []
 		if not callable(func):
-			funcs = func
-			func = partial((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=funcs)
+			if len(func) == 1:
+				function = func[0]
+			elif func:
+				@jit
+				def function(*args,**kwargs):
+					return sum(function(*args,**kwargs) for function in func)
+			else:
+				@jit
+				def function(*args,**kwargs):
+					return 0.
 		else:
-			funcs = [func]
-			func = func
+			function = func
 
 		if grad is None:
-			grads = [None for func in funcs]
-			grad = None
+			gradient = None
 		elif not callable(grad):
-			grads = grad
-			grad = partial((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=grads)
+			if len(grad) == 1:
+				gradient = grad[0]
+			elif grad:
+				@jit
+				def gradient(*args,**kwargs):
+					return sum(gradient(*args,**kwargs) for gradient in grad)
+			else:
+				@jit
+				def gradient(*args,**kwargs):
+					return 0.
 		else:
-			grads = [None for func in funcs]
-			grad = grad
-
-		if hess is None:
-			hesss = [None for func in funcs]
-			hess = None
-		elif not callable(hess):
-			hesss = hess
-			hess = partial((lambda *args,funcs=None,**kwargs: sum(func(*args,**kwargs) for func in funcs)),funcs=hesss)
-		else:
-			hesss = [None for func in funcs]
-			hess = hess
-
-		values_and_grads = [value_and_grad(func,grad) for func,grad in zip(funcs,grads)]
-		self.values_and_grads,self.funcs,self.grads = [[val_and_grad[i] for val_and_grad in values_and_grads] 
-				for i in range(min(len(val_and_grad) for val_and_grad in values_and_grads))]
-		self.hesss = [hessian(func) if hess is None else hess for func,hess in zip(funcs,hesss)]
-
-		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
-		self.hess = hessian(func) if hess is None else hess
-
-		self.hyperparameters = hyperparameters
+			gradient = grad
 
 		if callback is None:
-			def callback(parameters,attributes,func,grad,hyperparameters):
-				status = False
-				return False
+			def callback(parameters,track,optimizer,model,metric,func,grad):
+				status = True
+				return status
 
-		self.callback = jit(partial(callback,func=self.func,grad=self.grad,
-				funcs=self.funcs,grads=self.grads,hess=self.hess,
-				hyperparameters=self.hyperparameters))
+		self.value_and_gradient,self.function,self.gradient = value_and_gradient(function,gradient,returns=True)
+
+		self.model = model
+		self.callback = callback
+		self.metric = metric
+		self.hyperparameters = hyperparameters
+		self.system = system
 
 		return
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __call__(self,parameters):
 		'''
 		Function call
 		Args:
 			parameters (array): parameters
 		Returns:
-			out (object): Return of objective function
+			out (object): Return of function
 		'''
-		return self.func(parameters)
+		return self.function(parameters)
 
-	@partial(jit,static_argnums=(0,))
+	# @partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
 		'''
 		Gradient call
 		Args:
 			parameters (array): parameters
 		Returns:
-			out (object): Return of gradient function
+			out (object): Return of function
 		'''
-		return self.grad(parameters)	
+		return self.gradient(parameters)
 
-	@partial(jit,static_argnums=(0,))
-	def __hessian__(self,parameters):
-		''' 
-		Hessian call
+	# @partial(jit,static_argnums=(0,))
+	def __value_and_grad__(self,parameters):
+		'''
+		Function and gradient call
 		Args:
 			parameters (array): parameters
 		Returns:
-			out (object): Return of hessian function
-		'''	
-		return self.hess(parameters)	
+			out (object): Return of function
+		'''
+		return self.value_and_gradient(parameters)
 
-	@partial(jit,static_argnums=(0,))
-	def __callback__(self,parameters,attributes):
+	# @partial(jit,static_argnums=(0,))
+	def __callback__(self,parameters,track,optimizer):
 		'''
 		Callback call
 		Args:
 			parameters (array): parameters
-			attributes (dict): callback attributes			
+			track (dict): callback track			
+			optimizer (Optimizer): callback optimizer
 		Returns:
-			out (object): Return of objective function
+			status (int): status of callback
 		'''
-		return self.callback(parameters,attributes)		
+		status = self.callback(parameters,track,optimizer,
+			model=self.model,
+			metric=self.metric,
+			func=self.func,grad=self.grad)
+		return status
+
+	# @partial(jit,static_argnums=(0,))
+	def func(self,parameters):
+		'''
+		Function call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__call__(parameters)
+
+	# @partial(jit,static_argnums=(0,))
+	def grad(self,parameters):
+		'''
+		Gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__grad__(parameters)
+
+	# @partial(jit,static_argnums=(0,))
+	def value_and_grad(self,parameters):
+		'''
+		Function and gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__value_and_gradient__(parameters)
 
 
-class Metric(object):
-	'''
-	Metric class for distance between Operators
-	Args:
-		metric (str,Metric): Type of metric
-		shapes (iterable[tuple[int]]): Shapes of Operators
-		optimize (bool,str,iterable): Contraction type		
-	'''
-	def __init__(self,metric,shapes,optimize=None):
+class Objective(Function):		
+	def __init__(self,model,metric,func=None,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
+		'''	
+		Objective class for metric + function
+		Args:
+			model (object): Model instance
+			metric (str,callable): Objective metric with signature metric(*operands)
+			func (callable,iterable[callable]): Objective function with signature func(parameters), or iterable of functions to sum
+			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
+			callback (callable): Callback of function with signature callback(parameters,track,optimizer,model,metric,func,grad)			
+			hyperparameters (dict): Objective hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
 
-		self.metric = metric
+		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
+
+		return
+
+	# @partial(jit,static_argnums=(0,))
+	def __call__(self,parameters):
+		'''
+		Function call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.metric(self.model(parameters)) + self.function(parameters)
+
+	# @partial(jit,static_argnums=(0,))
+	def func(self,parameters):
+		'''
+		Function call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__call__(parameters)
+
+	# @partial(jit,static_argnums=(0,))
+	def __grad__(self,parameters):
+		'''
+		Gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.metric.grad(self.model(parameters),self.model.grad(parameters)) + self.gradient(parameters)	
+
+	# @partial(jit,static_argnums=(0,))
+	def __grad_analytical__(self,parameters):
+		'''
+		Gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) + self.gradient(parameters)	
+
+	# @partial(jit,static_argnums=(0,))
+	def grad_analytical(self,parameters):
+		'''
+		Gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__grad_analytical__(parameters)
+
+
+class Callback(Function):
+
+	def __init__(self,model,callback,func=None,grad=None,metric=None,hyperparameters={},system=None,**kwargs):
+		'''	
+		Class for function
+		Args:
+			model (object): Model instance
+			callback (callable): Callback of function with signature callback(parameters,track,optimizer,model,metric,func,grad)
+			func (callable,iterable[callable]): Function function with signature func(parameters), or iterable of functions to sum
+			grad (callable,iterable[callable]): Gradient of function with signature grad(parameters), or iterable of functions to sum
+			metric (str,callable): Callback metric with signature metric(*operands)
+			hyperparameters (dict): Callback hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		'''
+		
+		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
+
+		return
+
+	# @partial(jit,static_argnums=(0,))
+	def __call__(self,parameters,track,optimizer):
+		''' 
+		Callback
+		Args:
+			parameters (array): parameters
+			track (dict): callback tracking
+			optimizer (Optimizer): callback optimizer
+		Returns:
+			status (int): status of callback
+		'''
+		status = self.__callback__(parameters,track,optimizer)
+		return status
+
+
+class Metric(System):
+	def __init__(self,metric=None,shapes=None,model=None,label=None,optimize=None,hyperparameters={},system=None,**kwargs):
+		'''
+		Metric class for distance between operands
+		Args:
+			metric (str,Metric): Type of metric
+			shapes (iterable[tuple[int]]): Shapes of Operators
+			model (object): Model instance	
+			label (str,callable): Label			
+			optimize (bool,str,iterable): Contraction type	
+			hyperparameters (dict): Metric hyperparameters
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
+			kwargs (dict): Additional system attributes
+		'''
+
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
+
+		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
+		self.label = hyperparameters.get('label',label) if label is None else label
 		self.shapes = shapes
+		self.model = model
 		self.optimize = optimize
-		self.default = None
+		self.hyperparameters = hyperparameters
+		self.system = system
 
 		self.__setup__()
-		
+
 		return
 
 	def __setup__(self):
@@ -373,7 +859,10 @@ class Metric(object):
 		if isinstance(self.metric,Metric):
 			self.metric = self.metric.metric
 		if self.metric is None:
-			self.metric = self.default
+			self.metric = None
+		if self.shapes is None:
+			self.shapes = ()
+
 		self.__string__()
 		self.__size__()
 
@@ -382,294 +871,313 @@ class Metric(object):
 		return
 
 	def __string__(self):
+		'''
+		Class string
+		'''
 		self.string = str(self.metric)
 		return
 
 	def __size__(self):
-		self.size = sum(int(product(shape)**(1/len(shape))) for shape in self.shapes)//len(self.shapes)
+		'''
+		Class size
+		'''
+		if self.shapes:
+			self.size = sum(int(product(shape)**(1/len(shape))) for shape in self.shapes)//len(self.shapes)
+		else:
+			self.size = 1
 		return 
 
-	@partial(jit,static_argnums=(0,))
-	def __call__(self,a,b):
-		return self.func(a,b)
+	# @partial(jit,static_argnums=(0,))
+	def __call__(self,*operands):
+		'''
+		Function call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''
+		return self.function(*operands)
 
-	@partial(jit,static_argnums=(0,))
-	def __grad__(self,a,b,da):
-		return self.grad(a,b,da)		
+	# @partial(jit,static_argnums=(0,))
+	def __grad__(self,*operands):
+		'''
+		Gradient call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.gradient(*operands)
+
+	# @partial(jit,static_argnums=(0,))
+	def __grad_analytical__(self,*operands):
+		'''
+		Gradient call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.gradient_analytical(*operands)
+
+	# @partial(jit,static_argnums=(0,))
+	def func(self,*operands):
+		'''
+		Function call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.__call__(*operands)
+
+	# @partial(jit,static_argnums=(0,))
+	def grad(self,*operands):
+		'''
+		Gradient call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.__grad__(*operands)	
+
+	# @partial(jit,static_argnums=(0,))
+	def grad_analytical(self,*operands):
+		'''
+		Gradient call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.__grad_analytical__(*operands)	
+
 
 	def __str__(self):
+		'''
+		Class string
+		'''
 		return str(self.string)
 
 	def __repr__(self):
+		'''
+		Class representation
+		'''
 		return str(self.string)
 
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = '%s'%('\n'.join([
+			*['%s: %s'%(attr,getattr(self,attr)) 
+				for attr in ['metric']
+			],
+			]
+			))
+		self.log(msg,verbose=verbose)
+		return
+
+
 	def get_metric(self):
-
+		'''
+		Setup metric	
+		'''
+		
 		if callable(self.metric):
-			func = jit(self.metric)
-			grad = jit(gradient(self.metric))
-
-		elif self.metric is None:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func = jit(normed_einsum(*shapes,optimize=optimize))
-			# _func = normed
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_normed_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_normed
-
-			@jit
-			def func(a,b):
-				return _func(a,b)/2/sqrt(a.shape[0]*b.shape[0])
-			@jit
-			def grad(a,b,da):
-				return _grad(a,b,da)/2/sqrt(a.shape[0]*b.shape[0])	
-
-		elif self.metric in ['norm','normed']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func = jit(normed_einsum(*shapes,optimize=optimize))
-			# _func = normed
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_normed_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_normed
-
-			@jit
-			def func(a,b):
-				return _func(a,b)/2/sqrt(a.shape[0]*b.shape[0])
-			@jit
-			def grad(a,b,da):
-				return _grad(a,b,da)/2/sqrt(a.shape[0]*b.shape[0])
-
-		elif self.metric in ['infidelity']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
-			# _func = inner_abs2
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_inner_abs2_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_abs2
-
-			@jit
-			def func(a,b):
-				return 1-_func(a,b)/(a.shape[0]*b.shape[0])
-			@jit
-			def grad(a,b,da):
-				return -_grad(a,b,da)/(a.shape[0]*b.shape[0])
-
-		elif self.metric in ['infidelity.abs']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
-			# _func = inner_abs2
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_inner_abs2_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_abs2
-
-			@jit
-			def func(a,b):
-				return 1-_func(a,b)/(a.shape[0]*b.shape[0])
-			@jit
-			def grad(a,b,da):
-				return -_grad(a,b,da)/(a.shape[0]*b.shape[0])
-
-		elif self.metric in ['infidelity.norm']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func = jit(inner_abs2_einsum(*shapes,optimize=optimize))
-			# _func = inner_abs2
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_inner_abs2_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_abs2
-
-			@jit
-			def func(a,b):
-				return 1-_func(a,b)
-			@jit
-			def grad(a,b,da):
-				return -_grad(a,b,da)					
-
-		elif self.metric in ['infidelity.real']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func = jit(inner_real_einsum(*shapes,optimize=optimize))
-			# _func = inner_real
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_inner_real_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_real
-
-			@jit
-			def func(a,b):
-				return 1-_func(a,b)/sqrt(a.shape[0]*b.shape[0])
-			@jit
-			def grad(a,b,da):
-				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])
-
-		elif self.metric in ['infidelity.imag']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func = jit(inner_imag_einsum(*shapes,optimize=optimize))
-			# _func = inner_imag
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_inner_imag_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_imag
-
-			@jit
-			def func(a,b):
-				return 1-_func(a,b)/sqrt(a.shape[0]*b.shape[0])
-			@jit
-			def grad(a,b,da):
-				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])	
-
-		elif self.metric in ['infidelity.real.imag']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func_real = jit(inner_real_einsum(*shapes,optimize=optimize))
-			# _func_real = inner_real
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad_real = jit(gradient_inner_real_einsum(*shapes,optimize=optimize))
-			# _grad_real = gradient_inner_real
-
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func_imag = jit(inner_imag_einsum(*shapes,optimize=optimize))
-			# _func_imag = inner_imag
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad_imag = jit(gradient_inner_imag_einsum(*shapes,optimize=optimize))
-			# _grad_imag = gradient_inner_imag
-
-			@jit
-			def func(a,b):
-				return 1-(_func_real(a,b)+_func_imag(a,b))/2/sqrt(a.shape[0]*b.shape[0])
-			@jit
-			def grad(a,b,da):
-				return -(_grad_real(a,b,da)+_grad_imag(a,b,da))/2/sqrt(a.shape[0]*b.shape[0])
-
-		elif self.metric in ['infidelity.vector']:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func = jit(inner_vectorabs2_einsum(*shapes,optimize=optimize))
-			# _func = inner_abs2
-
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_inner_vectorabs2_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_inner_abs2
-
-			@jit
-			def func(a,b):
-				return 1-_func(a,b)/sqrt(a.shape[0]*b.shape[0])
-			@jit
-			def grad(a,b,da):
-				return -_grad(a,b,da)/sqrt(a.shape[0]*b.shape[0])			
-						
+			metric = self.metric
+			function = jit(metric)
+			grad = jit(gradient(metric))
+			# grad = gradient(function,mode='fwd',holomorphic=True,move=True)			
+			gradient_analytical = jit(gradient(metric))
 		else:
-			shapes = (*self.shapes,)
-			optimize = self.optimize
-			_func = jit(normed_einsum(*shapes,optimize=optimize))
-			# _func = normed
 
-			shapes = (*self.shapes,(self.size**2,*self.shapes[0]))
-			optimize = self.optimize
-			_grad = jit(gradient_normed_einsum(*shapes,optimize=optimize))
-			# _grad = gradient_normed
+			if self.label is not None:
+				if is_unitary(self.label) and self.metric in ['real','imag','norm']:
+					self.metric = 'abs2'
+				elif is_hermitian(self.label) and self.metric in ['abs2']:
+					self.metric = 'real'
 
-			@jit
-			def func(a,b):
-				return _func(a,b)/2/sqrt(a.shape[0]*b.shape[0])
-			@jit
-			def grad(a,b,da):
-				return _grad(a,b,da)/2/sqrt(a.shape[0]*b.shape[0])
+			if self.metric is None:
 
-		self.func = func
+				function = inner_norm
+				gradient_analytical = gradient_inner_norm
 
-		self.grad = grad
+				def wrapper_function(out,*operands):
+					return out/operands[0].shape[-1]/2
+
+				def wrapper_gradient(out,*operands):
+					return out/operands[0].shape[-1]/2
+
+			elif self.metric in ['norm']:
+
+				function = inner_norm
+				gradient_analytical = gradient_inner_norm
+
+				def wrapper_function(out,*operands):
+					return out/operands[0].shape[-1]/2
+				
+				def wrapper_gradient(out,*operands):
+					return out/operands[0].shape[-1]/2
+
+			elif self.metric in ['abs2']:
+
+				function = inner_abs2
+				gradient_analytical = gradient_inner_abs2
+
+				def wrapper_function(out,*operands):
+					return 1 - out/(operands[0].shape[-1]*operands[0].shape[-2])
+
+				def wrapper_gradient(out,*operands):
+					return - out/(operands[0].shape[-1]*operands[0].shape[-2])
+
+			elif self.metric in ['real']:
+
+				function = inner_real
+				gradient_analytical = gradient_inner_real
+
+				def wrapper_function(out,*operands):
+					return 1 - out
+
+				def wrapper_gradient(out,*operands):
+					return  - out
+
+			elif self.metric in ['imag']:
+
+				function = inner_imag
+				gradient_analytical = gradient_inner_imag
+
+				def wrapper_function(out,*operands):
+					return 1 - out
+
+				def wrapper_gradient(out,*operands):
+					return - out
+
+			else:
+
+				function = inner_norm
+				gradient_analytical = gradient_inner_norm
+
+				def wrapper_function(out,*operands):
+					return out/operands[0].shape[-1]/2
+
+				def wrapper_gradient(out,*operands):
+					return out/operands[0].shape[-1]/2
+
+
+			shapes_function = (*self.shapes,) if self.shapes else ()
+			optimize_function = self.optimize
+			wrapper_function = jit(wrapper_function)
+
+			shapes_gradient = (*self.shapes,(self.size**2,*self.shapes[0])) if self.shapes else ()
+			optimize_gradient = self.optimize
+			wrapper_gradient = jit(wrapper_gradient)
+
+			if shapes_function:
+				function = function(*shapes_function,optimize=optimize_function,wrapper=wrapper_function)
+			else:
+				function = partial(function,optimize=optimize_gradient,wrapper=wrapper_function)
+
+			if shapes_gradient:
+				gradient_analytical = gradient_analytical(*shapes_gradient,optimize=optimize_function,wrapper=wrapper_gradient)
+			else:
+				gradient_analytical = partial(gradient_analytical,optimize=optimize_gradient,wrapper=wrapper_gradient)
+
+			grad = gradient_analytical
+			# grad = gradient(function,mode='fwd',holomorphic=True,move=True)
+
+			function = jit(function)
+			grad = jit(grad)
+			gradient_analytical = jit(gradient_analytical)
+
+			if self.label is not None:
+
+				label = conj(self.label)
+
+				def function(*operands,function=function,label=label):
+					return function(*operands[:1],label,*operands[1:])
+				def grad(*operands,function=grad,label=label):
+					return function(*operands[:1],label,*operands[1:])				
+				def gradient_analytical(*operands,function=gradient_analytical,label=label):
+					return function(*operands[:1],label,*operands[1:])
+
+		function = jit(function)
+		grad = jit(grad)
+		gradient_analytical = jit(gradient_analytical)
+
+		self.function = function
+		self.gradient = grad
+		self.gradient_analytical = gradient_analytical
 
 		return
 
 
 
-class Base(object):
+class Optimization(System):
 	'''
 	Base Optimizer class, with numpy optimizer API
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,attributes) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
+		model (object): model instance
 		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
+		kwargs (dict): Additional system attributes
 	'''
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
 
-		updates = {
-			'verbose': {
-				'notset':0,'debug':10,'info':20,'warning':30,'error':40,'critical':50,
-				'Notset':0,'Debug':10,'Info':20,'Warning':30,'Error':40,'Critical':50,
-				'NOTSET':0,'DEBUG':10,'INFO':20,'WARNING':30,'ERROR':40,'CRITICAL':50,
-				10:10,20:20,30:30,40:40,50:50,
-				2:20,3:30,4:40,5:50,
-				True:20,False:0,None:0,
-				}
-			}
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
 
 		defaults = {
 			'optimizer':None,
-			'line_search':'line_search',
+			'search':{'alpha':'line_search','beta':None},
 			'eps':{'value':1e-4,'grad':1e-12,'alpha':1e-12,'beta':1e3},
 			'alpha':0,
-			'iterations':0,
 			'status':1,
-			'reset':0,
-			'verbose':False,
+			'clear':True,
+			'cwd':None,
+			'path':None,
 			'modulo':{'log':None,'attributes':None,'callback':None,'restart':None,'dump':None},
 			'length':{'log':None,'attributes':10,'callback':None,'restart':None,'dump':None},
-			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},			
+			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},	
+			'track':{},		
 		}
-
-		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
-		hyperparameters.update({attr: updates.get(attr,{}).get(hyperparameters[attr],hyperparameters[attr]) 
-			if attr in updates else hyperparameters[attr] for attr in hyperparameters})
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		self.hyperparameters = hyperparameters
 
-		self.value_and_grad,self.func,self.grad = value_and_grad(func,grad)
+		self.value_and_grad,self.func,self.grad = value_and_gradient(func,grad,returns=True)
 
-		self.line_search = LineSearch(self.func,self.grad,self.hyperparameters)
+		self.alpha = LineSearch(self.func,self.grad,self.hyperparameters)
 
-		self.callback = callback if callback is not None else (lambda parameters: None)
+		if callback is None:
+			def callback(parameters,track,optimizer):
+				status = True
+				return status
+		self.callback = callback
 
 		self.size = 0
-		self.iteration = -1
+		self.iteration = 0
 		self.parameters = None
 		self.optimizer = hyperparameters['optimizer']		
+		self.status = hyperparameters['status']
+		self.clear = hyperparameters['clear']
 		self.modulo = hyperparameters['modulo']
 		self.length = hyperparameters['length']
 		self.attributes = hyperparameters['attributes']
+		self.track = hyperparameters['track']
 		self.iterations = range(int(hyperparameters['iterations']))
-		self.sizes = hyperparameters['length'].get('attributes')
-		self.status = hyperparameters['status']
+		self.sizes = hyperparameters['length'].get('attributes')		
+		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
-		self.reset = hyperparameters['reset']
-		self.verbose = hyperparameters['verbose']
 
-		self.__reset__()
+		self.reset(clear=True)
 
 		return
 
@@ -682,15 +1190,17 @@ class Base(object):
 			parameters (object): optimizer parameters
 		'''
 
-		if not self.reset and self.size > 0:
-			parameters = self.parameters
-			attributes = self.attributes
-			self.status = self.callback(parameters,attributes)
-
+		iteration = self.iteration
 		state = self.opt_init(parameters)
+		iteration,state = self.load(iteration,state)
+		
+		self.info()
+
 		for iteration in self.iterations:
-			
+
 			state = self.opt_update(iteration,state)
+
+			self.dump(iteration,state)
 
 			if not self.status:
 				break
@@ -722,20 +1232,25 @@ class Base(object):
 			state (object): optimizer state
 		'''
 
+		def update(parameters,value,grad,search,optimizer):
+			parameters = parameters + alpha*search
+			alpha = optimizer.hyperparameters['alpha']
+			search = -grad
+			return parameters,search,alpha
+
 		value,grad,parameters = self.opt_step(iteration,state)
+		search = self.attributes['search'][-1] if self.size > 1 else 0
 
-		alpha = self.attributes['alpha'][-1] if self.size > 1 else self.hyperparameters['alpha']
-		search = -grad
+		parameters,search,alpha = update(parameters,value,grad,search,self)
 
-		parameters = parameters + alpha*search
-
-		self.attributes['alpha'].append(alpha)
 		self.attributes['search'].append(search)
+		self.attributes['alpha'].append(alpha)
 
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
-		attributes = self.attributes
-		self.status = self.callback(parameters,attributes)
+		track = self.track		
+		optimizer = self
+		self.status = self.callback(parameters,track,optimizer)
 
 		return state
 
@@ -763,95 +1278,206 @@ class Base(object):
 
 		parameters = self.get_params(state)
 		value,grad = self.value_and_grad(parameters)
+		size = self.size
 
-		if (self.sizes is not None) and (self.size >= self.sizes):
+		if (self.sizes is not None) and (self.size > 0) and (self.size >= self.sizes):
 			for attr in self.attributes:
-				self.attributes[attr].pop(0)
+				if self.attributes[attr]:
+					self.attributes[attr].pop(min(self.size-2,0)+1)
 
-		self.iteration = iteration
-		
-		self.attributes['parameters'].append(parameters)
+
+		iteration += 1
+		size += 1
+
 		self.attributes['iteration'].append(iteration)
+		self.attributes['parameters'].append(parameters)
 		self.attributes['value'].append(value)
 		self.attributes['grad'].append(grad)
 
-		self.size += 1
+		self.iteration = iteration
+		self.size = size
 
 		return value,grad,parameters
 
-	def __reset__(self,reset=None):
+
+	def dump(self,iteration=None,state=None):
 		'''
-		Reset tracking of optimization
+		Dump data
 		Args:
-			reset (bool): Boolean of resetting optimization
+			iteration (int): optimizer iteration
+			state (object): optimizer state
 		'''
 
-		if reset is None:
-			reset = self.reset
+		do = (self.path is not None) or (self.modulo['dump'] is None) or (iteration is None) or (iteration%self.modulo['dump'] == 0)
 
-		if reset:
-			self.size = 0
-			self.iteration = -1
-			for attr in self.attributes:
-				self.attributes[attr].clear()
-			self.parameters = None
-		else:
-			if any(len(self.attributes[attr])>0 for attr in self.attributes):
-				self.size = min(len(self.attributes[attr]) for attr in self.attributes if len(self.attributes[attr])>0)
-			else:
-				self.size = 0
+		if not do:
+			return
 
-			if self.size > 0:
-				self.iteration = self.attributes['iteration'][-1]
-				self.parameters = self.attributes['parameters'][-1]
-			else:
-				self.iteration = 0
-				self.parameters = None
+		path = join(self.path,root=self.cwd)
+		data = self.track
+		dump(data,path)
 
-			self.iteration -= 1
-
-		self.iterations = range(
-			self.iterations.start+self.iteration+1,
-			self.iterations.stop+self.iteration+1,
-			self.iterations.step)
+		path = join(self.path,ext='ckpt',root=self.cwd)
+		data = self.attributes
+		dump(data,path)
 
 		return
 
-class Optimizer(Base):
+	def load(self,iteration=None,state=None):
+		'''
+		Load data
+		Args:
+			iteration (int): optimizer iteration
+			state (object): optimizer state
+		Returns:
+			iteration (int): optimizer iteration
+			state (object): optimizer state
+		'''
+
+		do = (self.path is not None)
+
+		if not do:
+			return iteration,state
+
+		path = join(self.path,root=self.cwd)
+		data = load(path)
+
+		if data is not None:
+			for attr in data:
+				if attr in self.track:
+					self.track[attr].extend(data[attr])
+
+
+		path = join(self.path,ext='ckpt',root=self.cwd)
+		data = load(path)
+
+		if data is not None:
+			for attr in data:
+				if attr in self.attributes:
+					self.attributes[attr].extend(data[attr])
+				
+
+		self.parameters = self.get_params(state)
+		self.reset(clear=False)
+
+		iteration = self.iteration
+		state = self.opt_init(self.parameters)
+
+		return iteration,state
+		
+
+	def reset(self,clear=None):
+		'''
+		Reset class attributes
+		Args:
+			clear (bool): clear attributes
+		'''
+		clear = self.clear if clear is None else clear
+
+		for attr in list(self.attributes):
+			value = self.attributes[attr]
+			if ((not isinstance(value,list)) and (not value)):
+				self.attributes.pop(attr)
+			elif ((not isinstance(value,list)) and (value)) or clear:
+				self.attributes[attr] = []
+
+		for attr in list(self.track):
+			value = self.track[attr]
+			if ((not isinstance(value,list)) and (not value)):
+				self.track.pop(attr)
+			elif ((not isinstance(value,list)) and (value)) or clear:
+				self.track[attr] = []
+		
+		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
+
+		while (self.sizes is not None) and (self.size > 0) and (self.size > self.sizes):
+			for attr in self.attributes:
+				if self.attributes[attr]:
+					self.attributes[attr].pop(min(self.size-2,0)+1)
+			self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
+
+		if self.size:
+			attr = 'iteration'	
+			if attr in self.attributes:
+				self.iteration = self.attributes[attr][-1]
+
+			attr = 'parameters'		
+			if attr in self.attributes:
+				self.parameters = self.attributes[attr][-1]
+		else:
+			self.iteration = 0
+	
+		self.iterations = range(
+			self.iteration,
+			self.iterations.stop-self.iterations.start+self.iteration,
+			self.iterations.step)				
+
+
+		return
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = '%s'%('\n'.join([
+			*['%s: %s'%(attr,getattr(self,attr)) 
+				for attr in ['iterations','size','eps','modulo']
+			],
+			*['%s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
+				for attr in ['track','attributes']
+				if any(getattr(self,attr).get(key) for key in getattr(self,attr))
+			],			
+			]
+			))
+		self.log(msg,verbose=verbose)
+		return
+
+class Optimizer(Optimization):
 	'''
 	Optimizer class, with numpy optimizer API
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,attributes) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 	'''
-	def __new__(cls,func,grad=None,callback=None,hyperparameters={}):
+	def __new__(cls,func,grad=None,callback=None,hyperparameters={},system=None):
 	
 		defaults = {'optimizer':None}
-		hyperparameters.update({attr: defaults[attr] for attr in defaults if attr not in hyperparameters})
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,None:GradientDescent}
 
 		optimizer = hyperparameters['optimizer']		
 		
-		self = optimizers.get(optimizer,optimizers[None])(func,grad,callback,hyperparameters)
+		self = optimizers.get(optimizer,optimizers[None])(func,grad,callback,hyperparameters=hyperparameters,system=system)
 
 		return self
 	
 
-class GradientDescent(Base):
+class GradientDescent(Optimization):
 	'''
 	Gradient Descent Optimizer class, with numpy optimizer API
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,attributes) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
+		kwargs (dict): Additional system attributes
 	'''
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
 
-		super().__init__(func,grad,callback,hyperparameters)
+		defaults = {'attributes':{'beta':False}}		
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
+
+		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system,**kwargs)
+
+		defaults = {}
+		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
 
 		return
 
@@ -865,52 +1491,51 @@ class GradientDescent(Base):
 			state (object): optimizer state
 		'''
 
+		def update(parameters,value,grad,search,optimizer):
+			parameters = parameters + alpha*search
+			alpha = optimizer.hyperparameters['alpha']
+			search = -grad
+			return parameters,search,alpha
+
 		value,grad,parameters = self.opt_step(iteration,state)
+		search = self.attributes['search'][-1] if self.size > 1 else 0
 
-		alpha = self.attributes['alpha'][-1] if self.size > 1 else self.hyperparameters['alpha']
-		search = -grad
+		parameters,search,alpha = update(parameters,value,grad,search,self)
 
-		parameters = parameters + alpha*search
-
-		self.attributes['alpha'].append(alpha)
 		self.attributes['search'].append(search)
+		self.attributes['alpha'].append(alpha)
 
 		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
-		attributes = self.attributes
-		self.status = self.callback(parameters,attributes)
+		track = self.track		
+		optimizer = self
+		self.status = self.callback(parameters,track,optimizer)
 
 		return state
 
 
-class ConjugateGradient(Base):
+class ConjugateGradient(Optimization):
 	'''
 	Conjugate Gradient Optimizer class, with numpy optimizer API
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,attributes) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
+		kwargs (dict): Additional system attributes
 	'''
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
 
-		super().__init__(func,grad,callback,hyperparameters)
+		defaults = {'beta':0,'search':{'alpha':'line_search','beta':None},'attributes':{'beta':[]}}
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
-		defaults = {
-			'beta':0,
-			'attributes':{'beta':[]},
-			}
-		self.hyperparameters.update({attr: self.hyperparameters.get(attr,defaults[attr]) for attr in defaults})
-		self.attributes.update({attr: self.attributes.get(attr,defaults['attributes'][attr]) for attr in defaults['attributes']})
+		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system,**kwargs)
 
-		null = {
-			'attributes':{},
-			}
-		for attr in null:
-			if attr not in ['attributes']:
-				self.hyperparameters.pop(attr,None)
-		for attr in null['attributes']:
-			self.attributes.pop(attr,None)
+		defaults = {}
+		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
+
+		self.beta = GradSearch(self.func,self.grad,self.hyperparameters)
 
 		return
 
@@ -924,85 +1549,86 @@ class ConjugateGradient(Base):
 			state (object): optimizer state
 		'''
 
-		if self.size == 0:
+		def update(parameters,value,grad,search,optimizer):
+			alpha = optimizer.alpha(
+				parameters,
+				optimizer.attributes['alpha'],
+				optimizer.attributes['value'],
+				optimizer.attributes['grad'],
+				optimizer.attributes['search'])
 
-			value,grad,parameters = self.opt_step(iteration,state)
+			parameters = parameters + alpha*search
 
-			self.attributes['alpha'].append(self.hyperparameters['alpha'])
-			self.attributes['beta'].append(self.hyperparameters['beta'])
-			self.attributes['search'].append(-grad)
+			state = optimizer.opt_init(parameters)
 
+			_value,_grad,parameters = optimizer.opt_step(iteration,state)
+			
+			beta = optimizer.beta(
+				parameters,
+				optimizer.attributes['beta'],
+				optimizer.attributes['value'],
+				optimizer.attributes['grad'],
+				optimizer.attributes['search'])
+
+			search = -_grad + beta*search
+
+			return parameters,search,alpha,beta
+
+
+		steps = self.size == 0
+
+		for step in range(steps+1):
+
+			init = self.size == 0
+
+			if not init:
+				parameters = self.get_params(state)
+				value = self.attributes['value'][-1]
+				grad = self.attributes['grad'][-1]
+				search = self.attributes['search'][-1]
+
+				parameters,search,alpha,beta = update(parameters,value,grad,search,self)
+
+			else:
+				value,grad,parameters = self.opt_step(iteration-init,state)
+
+				alpha = self.hyperparameters['alpha']
+				beta = self.hyperparameters['beta']
+				search = -grad
+
+			self.attributes['search'].append(search)
+			self.attributes['alpha'].append(alpha)
+			self.attributes['beta'].append(beta)
+		
 			state = self.opt_init(parameters)
 			parameters = self.get_params(state)
-			attributes = self.attributes
-			self.status = self.callback(parameters,attributes)
-
-		parameters = self.get_params(state)
-
-		returns = self.line_search(
-			parameters,
-			self.attributes['alpha'],
-			self.attributes['value'],
-			self.attributes['grad'],
-			self.attributes['search'])
-
-		alpha = returns['alpha']
-		search = self.attributes['search'][-1]
-		grad = self.attributes['grad'][-1]
-
-		parameters = parameters + alpha*search
-
-		state = self.opt_init(parameters)
-
-		_value,_grad,parameters = self.opt_step(iteration+1,state)
-
-		# beta = (_grad.dot(_grad))/(grad.dot(grad)) # Fletcher-Reeves
-		# beta = max(0,(_grad.dot(_grad-grad))/grad.dot(grad)) # Polak-Ribiere
-		# beta = [(_grad.dot(_grad))/(grad.dot(grad)),max(0,(_grad.dot(_grad-grad))/grad.dot(grad))]
-		# beta = -beta[0] if beta[1] < -beta[0] else beta[1] if abs(beta[1]) <= beta[0] else beta[0] # Polak-Ribiere-Fletcher-Reeves
-		beta = (_grad.dot(_grad-grad))/(search.dot(_grad-grad)) #	Hestenes-Stiefel 	
-		# beta = (_grad.dot(_grad))/(search.dot(_grad-grad)) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
-		
-		restart = ((self.modulo.get('restart') is not None) and ((iteration%self.modulo['restart']) == 0))
-		beta = 0 if (restart or is_naninf(beta) or beta>self.eps['beta']) else beta
-		search = -_grad + beta*search
-
-
-		self.attributes['alpha'].append(alpha)
-		self.attributes['beta'].append(beta)
-		self.attributes['search'].append(search)
-		
-		state = self.opt_init(parameters)
-
-		parameters = self.get_params(state)
-		attributes = self.attributes
-		self.status = self.callback(parameters,attributes)
+			track = self.track
+			optimizer = self
+			self.status = self.callback(parameters,track,optimizer)
 
 		return state
 
 
-class Adam(Base):
+class Adam(Optimization):
 	'''
 	Adam Optimizer class, with numpy optimizer API
 	Args:
 		func (callable): function to optimize, with signature function(parameters)
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
-		callback (callable): callback function with signature callback(parameters,attributes) and returns status of optimization
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
+		kwargs (dict): Additional system attributes
 	'''
-	def __init__(self,func,grad=None,callback=None,hyperparameters={}):
+	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
 
-		super().__init__(func,grad,callback,hyperparameters)
+		defaults = {'attributes':{'beta':False}}		
+		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
-		null = {
-			'beta':{},
-			'attributes':{'beta':None},
-			}
-		for attr in null:
-			if attr not in ['attributes']:
-				self.hyperparameters.pop(attr,None)
-		for attr in null['attributes']:
-			self.attributes.pop(attr,None)
+		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system,**kwargs)
+
+		defaults = {}
+		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
 
 		self._optimizer = getattr(jax.example_libraries.optimizers,self.optimizer)
 
@@ -1033,19 +1659,30 @@ class Adam(Base):
 			state (object): optimizer state
 		'''
 
+		def update(parameters,value,grad,search,optimizer):
+
+			alpha = optimizer.hyperparameters['alpha']
+			search = -grad
+			
+			state = self.opt_init(parameters)
+			state = self._opt_update(iteration,grad,state)
+			parameters = self.get_params(state)			
+
+			return parameters,search,alpha
+
 		value,grad,parameters = self.opt_step(iteration,state)
+		search = self.attributes['search'][-1] if self.size > 1 else 0
 
-		state = self._opt_update(iteration,grad,state)
-
-		alpha = self.attributes['alpha'][-1] if self.size > 1 else self.hyperparameters['alpha']
-		search = -grad
+		parameters,search,alpha = update(parameters,value,grad,search,self)
 
 		self.attributes['alpha'].append(alpha)
 		self.attributes['search'].append(search)
 
+		state = self.opt_init(parameters)
 		parameters = self.get_params(state)
-		attributes = self.attributes
-		self.status = self.callback(parameters,attributes)
+		track = self.track		
+		optimizer = self
+		self.status = self.callback(parameters,track,optimizer)
 
 		return state
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,datetime
+import os,sys,itertools
 from copy import deepcopy
 
 # Import User modules
@@ -10,34 +10,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-envs = {
-	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
-
-
-
 from src.utils import PRNGKey,delim,union,is_equal
-from src.dictionary import updater,getter,setter,permuter,clearer,leaves
+from src.iterables import getter,setter,permuter,brancher
 from src.io import load,dump,join,split
 from src.call import launch
-
-
-import jax
-import absl.logging
-absl.logging.set_verbosity(absl.logging.INFO)
-# jax.set_cpu_device_count(8)
-
-configs = {
-	'jax_disable_jit':False,
-	'jax_platforms':'cpu',
-	'jax_enable_x64': True
-	}
-for name in configs:
-	jax.config.update(name,configs[name])
-
 
 def allowed(index,value,values):
 	'''
@@ -89,6 +65,7 @@ def setup(settings):
 
 	# Load default settings
 	default = {}
+	func = False
 	if settings is None:
 		defaults = path
 		settings = default
@@ -96,8 +73,7 @@ def setup(settings):
 		defaults = settings
 		settings = load(settings,default=default)
 
-	func = lambda key,iterable,elements: iterable.get(key,elements[key])
-	updater(settings,load(path,default=default),func=func)
+	setter(settings,load(path,default=default),func=func)
 
 	# Load default hyperparameters
 	default = {}
@@ -109,18 +85,15 @@ def setup(settings):
 		hyperparameters = load(hyperparameters,default=default)
 
 	default = {}
-	func = lambda key,iterable,elements: iterable.get(key,elements[key])
-	updater(hyperparameters,load(path,default=default),func=func)
-
-	# Get timestamp
-	timestamp = datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')
+	func = False
+	setter(hyperparameters,load(path,default=default),func=func)
 
 	# Get permutations of hyperparameters
 	permutations = settings['permutations']['permutations']
 	groups = settings['permutations']['groups']
 	permutations = permuter(permutations,groups=groups)
 
-	# Get seeds for number of splits/seedings, for all nested hyperparameters leaves that involve a seed
+	# Get seeds for number of splits/seedings, for all nested hyperparameters branches that involve a seed
 	seed = settings['seed']['seed']
 	size = settings['seed']['size']
 	reset = settings['seed']['reset']
@@ -131,19 +104,25 @@ def setup(settings):
 
 
 	# Find keys of seeds in hyperparameters
-	key = 'seed'
-	exclude = ['seed.seed','model.system.seed']
-	seedlings = [delim.join(branch[0]) for branch in leaves(hyperparameters,key,returns='both') if not any(delim.join(branch[0][:len(e.split(delim))]) == e for e in exclude) and branch[1] is None]
+	keys = ['seed']
+	exclude = ['seed','seed.seed','system.seed']
+	seedlings = brancher(hyperparameters,keys=keys,include=True)
+
+	seedlings = [delim.join(tuple((*seedling[:-1],seed[0]))) for seedling in seedlings for seed in seedling[-1] if seed[1] is None]
+	seedlings = [seedling for seedling in seedlings if seedling not in exclude]
 
 	count = len(seedlings)
 	
 	shape = (size,count,-1)
 	size *= count
 
-	seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape).tolist()
-	seeds = [dict(zip(seedlings,seed)) for seed in seeds]
+	if size:
+		seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape).tolist()
+		seeds = [dict(zip(seedlings,seed)) for seed in seeds]
+	else:
+		seeds = []
 
-	other = [{'model.system.key':None,'model.system.timestamp':timestamp,'model.system.seed':seed}]
+	other = [{'system.key':None,'system.seed':seed}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	values = {'permutations':permutations,'seed':seeds,'other':other}
@@ -155,6 +134,7 @@ def setup(settings):
 		if any(len(values[k])>1 for k in values) else default)
 
 	keys = {}
+
 	for instance,value in enumerate(value for value in itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
 
 		if allowed(
@@ -163,27 +143,22 @@ def setup(settings):
 			{attr: values[attr] for attr in index},
 			):
 
-			key = formatter(instance,value,values,getter(hyperparameters,'model.system.key',delimiter=delim))
+			key = formatter(instance,value,values,getter(hyperparameters,'system.key',delimiter=delim))
 			value = [v[1] for v in value]
-
 			keys[key] = {}
 			for setting in value:
 				for attr in setting:
 
 					keys[key][attr] = setting[attr]
 
-					if attr in ['model.system.key']:
+					if attr in ['system.key']:
 						keys[key][attr] = key
 
 	# Set settings with key and seed instances
-	old = [attr for attr in settings]
-	new = {key: deepcopy(settings) for key in keys}
-	clearer(settings,new,old)
+	settings = {key: deepcopy(settings) for key in keys}
 
 	# Set hyperparameters with key and seed instances
-	old = [attr for attr in hyperparameters]
-	new = {key: deepcopy(hyperparameters) for key in keys}
-	clearer(hyperparameters,new,old)	
+	hyperparameters = {key: deepcopy(hyperparameters) for key in keys}
 
 	for key in keys:
 		setter(settings[key],keys[key],delimiter=delim,copy=True)
@@ -205,8 +180,6 @@ def setup(settings):
 			if job is None:
 				continue
 
-			config = hyperparameters[key]['sys']['path']['config']
-
 			for attr in job:
 
 				if attr in ['jobs']:
@@ -215,13 +188,12 @@ def setup(settings):
 					value = job[attr]
 				elif attr in ['paths']:
 					value = {
-						**job[attr],
-						**{config[path]: None
-							for path in config},
-						**{config[path]: hyperparameters[key] 
-							for path in ['settings']},
-						**{config[path]: hyperparameters[key].get(path,{}) 
-							for path in ['plot','process']},
+						**{job[attr][path]: None
+							for path in job[attr]},
+						**{job[attr][path]: hyperparameters[key] 
+							for path in ['settings'] if path in job[attr]},
+						**{job[attr][path]: hyperparameters[key].get(path,{}) 
+							for path in ['plot','process'] if path in job[attr]},
 						}
 				elif attr in ['patterns']:
 					value = job[attr]
@@ -242,6 +214,7 @@ def setup(settings):
 				elif name in ['postprocess']:
 					jobs[name][attr] = value
 
+	
 	return jobs
 
 

@@ -16,10 +16,10 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import array,zeros,ones,arange,linspace,rand,sort,eig,argmax,argmin,maximum,difference,rand,scinotation,log,sqrt
+from src.utils import array,zeros,ones,arange,linspace,logspace,rand,sort,eig,argmax,argmin,maximum,difference,rand,scinotation,exp,log,log10,sqrt
 from src.utils import is_naninf
 from src.utils import nan
-from src.dictionary import updater,getter
+from src.iterables import setter,getter
 from src.fit import fit
 from src.io import load,dump,join,split,glob,cd,exists,dirname
 
@@ -111,6 +111,7 @@ defaults = {
 			"markersize":10,
 			"linestyle":"--",
 			"linewidth":4,
+			"capsize":4,			
 			"color":"viridis",
 			},
 		"fill_between":{
@@ -125,7 +126,7 @@ defaults = {
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"log","base":10},
 		"set_xnbins":{"nbins":6},
-		"set_xticks":{"ticks":[1e-6,1e-5,1e-4,1e-3,1e-2]},
+		"set_xticks":{"ticks":[1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -133,7 +134,7 @@ defaults = {
 		"set_ynbins":{"nbins":7},
 		"set_ylim": {
 				"ymin": -100,
-				"ymax": 1200
+				"ymax": 2100
 			},
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
@@ -146,12 +147,12 @@ defaults = {
 		"legend":{
 			"title_fontsize": 12,
 			"get_title":{"ha":"center"},
-			"get_texts":{"va":"center","ha":"center","position":[0,15]},
+			"get_texts":{"va":"center","ha":"center","position":[0,30]},
 			"prop": {"size": 12},
 			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": [0.12,0.87],
+			"loc": [0.52,0.80],
 			"ncol": 1,
 			"set_zorder":{"level":100},
 			"set_label":True,
@@ -187,6 +188,7 @@ defaults = {
 			"marker":"o",
 			"markersize":10,
 			"linestyle":"--",
+			"capsize":4,			
 			"linewidth":4,
 			"color":"viridis",
 			},
@@ -200,7 +202,7 @@ defaults = {
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"linear"},
 		"set_xnbins":{"nbins":6},
-		"set_xlim": {"xmin": 0,"xmax": 400},
+		"set_xlim": {"xmin": 0,"xmax": 2100},
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim": {"ymin": 1e-5,"ymax": 1e1},
 		"set_ynbins":{"nbins":5},
@@ -223,8 +225,8 @@ defaults = {
 			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": [0.7,0.02],
-			"ncol": 1,
+			"loc": [0.1,0.02],
+			"ncol": 2,
 			"set_zorder":{"level":100},
 			"set_label":None,
 			}
@@ -272,9 +274,17 @@ def process(path):
 				label = {'x':'noise.scale','y':'M','z':'objective'}
 				values = getter(hyperparameters,key)
 
+				slices = slice(None,15,None)
 				attrs = set((attr for value in values for attr in value))
 				for attr in attrs:
-					data[attr] = [value[attr] for value in values]
+					try:
+						data[attr] = [value[attr][slices] for value in values]
+					except:
+						data[attr] = [value[attr] for value in values]
+
+
+					data[attr] = [value if value not in ['None',None,nan] else 1e-20 for value in data[attr]]
+
 					try:
 						data[attr] = array(data[attr])
 					except:
@@ -292,14 +302,13 @@ def process(path):
 				_X,_Y,_Z = [],[],[]
 				_Xerr,_Yerr,_Zerr = [],[],[]
 
-				print(X)
-				indices = arange(len(X))[X>=1e-8]
+				indices = arange(len(X))[(X>=1e-7) & (X<=1e-1) & (X != 1e0)]
 				slices = slice(0,30,None)
 
 				interpolate = 1
 
 				try:
-					x,y = [],[]
+					x,y,xerr,yerr = [],[],None,[]
 					for i,(x_,y_,z_,yerr_,zerr_) in enumerate(zip(X,Y,Z,Yerr,Zerr)):
 
 						y_ = y_[slices]
@@ -313,16 +322,19 @@ def process(path):
 						coef0 = None
 						kwargs = {}
 
-						_z,coef,_zerr,coefferr = fit(y_,z_,_x=_y,func=func,yerr=zerr_,coef0=coef0,uncertainty=True,**kwargs)	
+						_z,coef,_zerr,coefferr,_r = fit(y_,z_,_x=_y,func=func,yerr=zerr_,coef0=coef0,uncertainty=True,**kwargs)	
 
 						_Y.append(_y)
 						_Yerr.append(_yerr)
 						_Z.append(_z)
 						_Zerr.append(_zerr)
 
-						index = argmin(_z-_zerr)
+						index = int(argmin(_z))
+						indexerr = int(argmin(_z-_zerr)),int(argmin(_z+_zerr))
+
 						x.append(x_)
 						y.append(_y[index])
+						yerr.append(abs((_y[indexerr[0]] + _y[indexerr[1]] - 2*_y[index])/2))
 
 					
 					fig,ax = None,None
@@ -340,7 +352,22 @@ def process(path):
 								'xerr':Yerr[i],
 								'yerr':[(Z[i]*(1 - (Z[i]/(Z[i]+Zerr[i]))))[slices],Zerr[i][slices]],							
 								'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
-								'label':scinotation(X[i],decimals=1,scilimits=[-1,3]),
+								'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
+								'marker':'o',
+								'linestyle':'',
+								'alpha':0.7,
+								} for i in arange(len(Z))
+								if i not in indices
+								],
+								*[
+								{
+								**settings['ax']['errorbar'],
+								'x':Y[i][slices],
+								'y':Z[i][slices],
+								'xerr':Yerr[i],
+								'yerr':[(Z[i]*(1 - (Z[i]/(Z[i]+Zerr[i]))))[slices],Zerr[i][slices]],							
+								'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
+								'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
 								'marker':'o',
 								'linestyle':'',
 								'alpha':0.7,
@@ -384,7 +411,7 @@ def process(path):
 							},
 						}
 
-					updater(settings,options)
+					setter(settings,options)
 
 					fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
@@ -402,28 +429,42 @@ def process(path):
 					slices = tuple((slices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
 					x = _x
 					y = _y[slices]
+
 				
 				x = array(x)
 				y = array(y)
+				xerr = array(xerr) if xerr is not None else xerr
+				yerr = array(yerr) if yerr is not None else yerr
+				indices = arange(len(x))[(x>=1e-7) & (x<=1e-1) & (x != 1e0)]
 
-				x = x[indices]
-				y = y[indices]
-				xerr = None
-				yerr = None
+				# x = x[indices]
+				# y = y[indices]
+				# xerr = xerr[indices] if xerr is not None else xerr
+				# yerr = yerr[indices] if yerr is not None else yerr
 
 				def func(x,*coef):
-					y = coef[0]*(log(x))**1 + coef[1]
+					# y = coef[0]*((x)**(-coef[2])) + coef[1]
+					y = ((exp(-(log(x))*coef[0])))
+					# y = ((x-coef[1])**(-coef[0]))
+					y = coef[1]*((x)**(-coef[0]))
 					return y
 
-				_x = linspace(0.5*x.min(),1.75*x.max(),x.size*100)
+				_x = logspace(int(log10(x.min()))-2,int(log10(x.max()))+1,x.size*100)
+				# _x = x
 				p = 2
-				coef0 = array([-50,-50,1],dtype=float)[:p]
+				# coef0 = array([-50,0,1],dtype=float)[:p]
+				coef0 = array([0.5,1],dtype=float)[:p]
 				kwargs = {
-					'maxfev':2000,
+					'maxfev':20000,
 					# 'bounds':array([[-100,-100,1][:p],[-20,-20,2][:p]],dtype=float)
 				}
 
-				_y,coef,_yerr,coefferr = fit(x,y,_x=_x,func=func,coef0=coef0,uncertainty=True,**kwargs)
+				_y,coef,_yerr,coefferr,r = fit(x[indices],y[indices],_x=_x,_y=y[indices],
+					func=func,coef0=coef0,
+					yerr=yerr[indices] if yerr is not None else yerr,
+					xerr=xerr[indices] if xerr is not None else xerr,
+					uncertainty=True,**kwargs)
+				
 
 				fig,ax = None,None
 
@@ -449,9 +490,18 @@ def process(path):
 							'x':_x,
 							'y':_y,
 							# 'yerr':_yerr,
-							'label':r'$\quad~~ M_{\gamma} = \alpha\log^{}{\gamma} + \beta$'+'\n'+r'$%s$'%(',~'.join([
-								'%s = %s'%(z,scinotation(coef[i],decimals=2,scilimits=[-1,3],error=sqrt(coefferr[i][i]))) 
-									for i,z in enumerate([r'\alpha',r'\beta',r'\chi'][:len(coef)])])),
+							# 'label':r'$\quad~~ M_{\gamma} = \alpha\log{\gamma} + \beta$'+'\n'+r'$%s$'%(',~'.join([
+							# 'label':r'$\quad~~ M_{\gamma} = \alpha{\gamma}^{-\chi} + \beta$'+'\n'+r'$%s$'%(',~'.join([
+							# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
+							# 'label':r'$\quad~~ M_{\gamma} = {(\gamma-\beta)}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
+							# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
+							'label':(
+								r'$\quad~~ M_{\gamma} = \beta{\gamma}^{-\alpha}$' + '\n' + 
+								r'$%s$'%('\n'.join([
+								'%s = %s'%(z,scinotation(coef[i],decimals=4,scilimits=[-1,3],error=sqrt(coefferr[i][i]))) 
+									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(coef)])])) + '\n' +
+								r'$%s$'%('r^2 = %s'%(scinotation(r,decimals=4,scilimits=[-1,3])))
+								),
 							'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
 							'marker':None,
 							'linestyle':'--',
@@ -468,7 +518,7 @@ def process(path):
 						},
 					}
 
-				updater(settings,options)
+				setter(settings,options)
 
 				fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
@@ -570,7 +620,7 @@ def process(path):
 									}
 								}
 
-						updater(settings[i],options)
+						setter(settings[i],options)
 
 					fig,ax = plot(settings=settings,fig=fig,ax=ax)
 

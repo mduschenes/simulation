@@ -27,8 +27,8 @@ __all__ = ['LineSearchWarning', 'line_search_wolfe1', 'line_search_wolfe2',
 class LineSearchWarning(RuntimeWarning):
 	pass
 
-import absl.logging
-absl.logging.set_verbosity(absl.logging.INFO)
+# import absl.logging
+# absl.logging.set_verbosity(absl.logging.INFO)
 
 configs = {
 	'jax_disable_jit':False,

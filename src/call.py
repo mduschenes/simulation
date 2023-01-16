@@ -26,8 +26,25 @@ logger = Logger(name,conf,file=file)
 
 from src.utils import intersection,scalars
 from src.io import cd,mkdir,join,split,load,dump,exists,environ
-from src.dictionary import updater
+from src.iterables import setter
 from src.parallel import Parallelize,Pooler
+
+
+class Popen(object):
+	'''
+	Null Popen class
+	'''
+	def __init__(self,*args,stdin=None,stdout=None,stderr=None,env=None,**kwargs):
+		self.args = args
+		self.env = env
+		self.stdout = stdout
+		self.stderr = stderr
+		self.returncode = None
+		return
+
+	def wait(self,*args,**kwargs):
+		returncode = self.returncode
+		return returncode
 
 def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
@@ -178,7 +195,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 			try:
 				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env)
 			except (OSError,FileNotFoundError) as exception:
-				result = subprocess.Popen((),stdin=stdin,stdout=stdout,stderr=stderr,env=env)
+				result = Popen((),stdin=stdin,stdout=stdout,stderr=stderr,env=env)
 				logger.log(verbose,exception)
 				logger.log(verbose,args)
 			return result
@@ -191,7 +208,10 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 			return stdout,stderr,returncode
 
 		def parse(obj):
-			obj = obj.strip().decode('utf-8')
+			try:
+				obj = obj.strip().decode('utf-8')
+			except:
+				obj = str(obj)
 			return obj
 
 		stdin = None if inputs is None else inputs if isinstance(inputs,str) else inputs.pop(0) if len(inputs)>len(args) else None
@@ -204,6 +224,10 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		errors = [errors]*len(args) if errors is None or isinstance(errors,str) else errors
 
 		for arg,input,output,error in zip(args,inputs,outputs,errors):
+			if isinstance(output,str):
+				mkdir(output)
+			if isinstance(error,str):
+				mkdir(error)
 
 			stdin = open(input,'r') if isinstance(input,str) else input if input is not None else stdin
 			stdout = open(output,'w') if isinstance(output,str) else output if output is not None else stdout
@@ -224,16 +248,25 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		stdout,stderr,returncode = [],[],result.returncode
 		
 		if result.stdout is not None:
-			for line in result.stdout:
-				stdout.append(parse(line))			
+			try:
+				for line in result.stdout:
+					stdout.append(parse(line))			
+					logger.log(verbose,stdout[-1])
+			except:
+				stdout.append(parse(result.stdout))
 				logger.log(verbose,stdout[-1])
+		
 		returncode = result.wait()
 
 		if result.stderr is not None:
-			for line in result.stderr:	
-				stderr.append(parse(line))
-				if returncode is not None:
-					logger.log(verbose,stderr[-1])
+			try:
+				for line in result.stderr:	
+					stderr.append(parse(line))
+					if returncode is not None:
+						logger.log(verbose,stderr[-1])
+			except:
+				stderr.append(parse(result.stderr))
+				logger.log(verbose,stderr[-1])
 
 		stdout,stderr,returncode = wrap(stdout,stderr,returncode)
 
@@ -301,6 +334,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 
 	if file:
 		with cd(path):
+			cmd = [*['#!/bin/bash\n'],*[arg for var in env for arg in ['export %s=%s\n'%(var,env[var])]],cmd]
 			touch(file,cmd,mod=True,env=env,execute=True,verbose=False)
 
 	if execute > 0:
@@ -325,8 +359,9 @@ def cp(source,destination,default=None,env=None,process=None,processes=None,devi
 	'''
 	if not exists(source):
 		source = default
-	
-	assert exists(source), 'source %s does not exist'%(source)
+
+	if not exists(source):
+		return
 
 	mkdir(destination)
 
@@ -342,11 +377,11 @@ def cp(source,destination,default=None,env=None,process=None,processes=None,devi
 	return
 
 
-def rm(path,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def rm(*paths,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Remove path
 	Args:
-		path (str): Path to remove
+		paths (str): Path to remove
 		env (dict[str,str]): Environmental variables for args		
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command		
@@ -357,7 +392,7 @@ def rm(path,env=None,process=None,processes=None,device=None,execute=False,verbo
 
 	exe = ['rm']
 	flags = ['-rf']
-	cmd = [path]
+	cmd = [*paths]
 	options = []
 	env = [] if env is None else env
 	args = []
@@ -437,7 +472,7 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 
 	exe = ['echo']
 	flags = []
-	cmd = ''.join([*['#!/bin/bash\n'],*[arg for var in env for arg in ['export %s=%s\n'%(var,env[var])]],*args])
+	cmd = ''.join([subarg for arg in args for subarg in arg])
 	options = []
 	env = [] if env is None else env
 	args = []
@@ -448,6 +483,54 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 
 	return
 
+def cat(*paths,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Show paths
+	Args:
+		paths (str): Path of file
+		env (dict[str,str]): Environmental variables for args
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	'''
+
+	exe = ['cat']
+	flags = []
+	cmd = []
+	options = []
+	env = [] if env is None else env
+	args = [*paths]
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return
+
+
+def diff(*paths,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Show difference of paths
+	Args:
+		paths (str): Path of file
+		env (dict[str,str]): Environmental variables for args
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	'''
+
+	exe = ['diff']
+	flags = []
+	cmd = []
+	options = []
+	env = [] if env is None else env
+	args = [*paths]
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return
 
 def chmod(path,mod=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
@@ -784,7 +867,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		# Update and Dump files
 		if isinstance(data,dict):
 			data,source,destination = load(source),deepcopy(data),destination
-			updater(source,data,func=lambda key,iterable,elements: iterable.get(key,elements[key]))
+			setter(source,data,func=False)
 			dump(source,destination)					
 		else:
 			cp(source,destination,default=path,execute=execute,verbose=verbose)
@@ -856,6 +939,7 @@ def init(key,
 			path = indices.index(key)
 		else:
 			path = None
+
 		path = join(path,root=cwd[key])
 
 		exe = jobs[key]
@@ -935,7 +1019,6 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	Returns:
 		results (iterable[str]): Return of commands for each task
 	'''
-
 	keys = [None]
 
 	if isinstance(jobs,str):

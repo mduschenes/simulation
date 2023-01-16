@@ -141,13 +141,14 @@ def size(data,axis=None,transform=None,dtype=None,**kwargs):
 	return out
 
 
-def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef0=None,intercept=True,uncertainty=False,**kwargs):
+def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef0=None,intercept=True,uncertainty=False,**kwargs):
 	'''
 	Fit of data
 	Args:
 		x (array): Input data
 		y (array): Output data
-		_x (array): Output points to evaluate fit
+		_x (array): Input points to evaluate fit
+		_y (array): Output points to evaluate fit
 		func (callable,str): Function to fit to data with signature func(x,*coef), or string for spline fit, ['linear','cubic']
 		grad (callable): Gradient of function to fit to data with signature grad(x,*coef)
 		preprocess (callable): Function to preprocess data with signature x,y = preprocess(x,y,*coef)
@@ -163,6 +164,7 @@ def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=No
 		coef (array): Fit model parameters
 		_y (array): Fit data at _x
 		coef (array): Fit model parameters
+		r (float): Fit coefficient
 	'''	
 
 
@@ -188,6 +190,7 @@ def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=No
 	x,y = preprocess(x,y,*coef0)
 
 	x = x.at[is_naninf(x)].set(0)
+	y_ = _y
 
 	if func is None:
 		if intercept:
@@ -225,7 +228,7 @@ def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=No
 			
 			coef = array(coef)
 			coefferr = array(coefferr)	
-			
+
 			_y = func(_x,*coef)
 			_grad = grad(_x,*coef)		
 			_grad = array(_grad).T
@@ -251,6 +254,8 @@ def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=No
 
 				_yerr /= 2
 
+	else:
+		func = lambda x,*coef: y
 		
 
 	if coef is not None:
@@ -261,6 +266,10 @@ def fit(x,y,_x=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=No
 		coef = None
 
 	if uncertainty:
-		return _y,coef,_yerr,coefferr
+		y_ = func(x,*coef)
+		r = 1 - (((y - y_)**2).sum()/((y - y.mean())**2).sum())
+
+	if uncertainty:
+		return _y,coef,_yerr,coefferr,r
 	else:
 		return _y,coef

@@ -5,6 +5,7 @@ import os,sys,itertools,functools,datetime,shutil
 from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
+import atexit
 
 # Logging
 import logging
@@ -17,18 +18,17 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,gradient
-from src.utils import array,dictionary,arange,eye
-from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt
-from src.utils import normed,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_normed,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import normed_einsum,inner_abs2_einsum,inner_real_einsum,inner_imag_einsum
-from src.utils import gradient_normed_einsum,gradient_inner_abs2_einsum,gradient_inner_real_einsum,gradient_inner_imag_einsum
+from src.utils import array,arange,eye,rand,einsum
+from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt,is_array,datatype
+from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
+from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
-from src.utils import itg,dbl,flt
+from src.utils import itg,dbl,flt,delim,Null,null
 
-from src.io import join,split,copy,rmdir,exists
+from src.iterables import getter,setter
+from src.io import join,split,copy,rm,exists
 
-def logconfig(name,conf=None,**kwargs):
+def config(name,conf=None,**kwargs):
 	'''
 	Configure logging
 	Args:
@@ -41,19 +41,21 @@ def logconfig(name,conf=None,**kwargs):
 
 	logger = logging.getLogger(name)
 
+	default = 'logging.conf'
+	file = kwargs.get('file')
 	existing = exists(conf)
 
 	if not existing:
-		default = 'logging.conf'
 		source = join(split(__file__,directory=True,abspath=True),default)
-		destination = split(conf,directory=True,abspath=True)
+		destination = join(split(conf,directory=True,abspath=True),default,ext='tmp')
 		copy(source,destination)
+		conf = destination
+	else:
+		source = conf
+		destination = join(conf,ext='tmp')
+		copy(source,destination)
+		conf = join(conf,ext='tmp')
 
-	source = conf
-	destination = join(conf,ext='tmp')
-	copy(source,destination)
-
-	conf = join(conf,ext='tmp')
 
 	if conf is not None:
 		try:
@@ -64,7 +66,8 @@ def logconfig(name,conf=None,**kwargs):
 			values = ['file','stdout,file','stdout,file']
 			args = ['args','keys','handlers']
 			funcs = [
-				lambda config,**kwargs: '(%s)'%(','.join(['"%s"'%(kwargs.get('file','')),*config[1:-1].split(',')[1:]])),
+				lambda config,**kwargs: '(%s)'%(','.join(['"%s"'%(kwargs.get('file')),*(config[1:-1].split(',')[1:] if not exists(kwargs.get('file')) else ['"a"'])])),
+				# lambda config,**kwargs: '(%s)'%(','.join(['"%s"'%(kwargs.get('file')),*(config[1:-1].split(',')[1:])])),# if not exists(kwargs.get('file')) else ['"a"'])])),
 				lambda config,**kwargs: 'stdout,file' if kwargs.get('file') else 'stdout',
 				lambda config,**kwargs: 'stdout,file' if kwargs.get('file') else 'stdout',
 				]
@@ -78,27 +81,26 @@ def logconfig(name,conf=None,**kwargs):
 							continue
 
 						if key in ['formatter'] and value in ['file']:
-							kwarg = 'file'
-							if kwargs.get(kwarg) is not None:
-								file = kwargs[kwarg]
+							if file is not None:
+								path = file
+								directory = os.path.abspath(os.path.dirname(os.path.abspath(path)))
+								if not os.path.exists(directory):
+									os.makedirs(directory)
 							else:
-								file = str(config[section][arg][1:-1].split(',')[0])[1:-1]
-							directory = os.path.abspath(os.path.dirname(os.path.abspath(file)))
-							if not os.path.exists(directory):
-								os.makedirs(directory)
+								break
 
-							kwds = {kwarg:file}
+							
+							kwds = {'file':path}
 
 						elif key in ['keys','handlers'] and value in ['stdout,file']:
-							kwarg = 'file'
-							kwds = {kwarg: kwargs.get(kwarg) is not None}
+							kwds = {'file': file is not None}
 
 						config[section][arg] = func(config[section][arg],**kwds)
 
 
 			with open(conf, 'w') as configfile:
-			    config.write(configfile)
-			logging.config.fileConfig(conf,disable_existing_loggers=False) 	
+				config.write(configfile)
+			logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
 
 		except Exception as exception:
 			pass
@@ -106,16 +108,27 @@ def logconfig(name,conf=None,**kwargs):
 		logger = logging.getLogger(name)
 
 
-	rmdir(conf)
-
 	if not existing:
-		conf = split(conf,file=True)
-		rmdir(conf)
+		rm(conf)
+
 
 	return logger
 
 
-class System(dictionary):
+class Dictionary(dict):
+	'''
+	Dictionary subclass with dictionary elements explicitly accessible as class attributes
+	Args:
+		args (dict): Dictionary elements
+		kwargs (dict): Dictionary elements
+	'''
+	def __init__(self,*args,**kwargs):
+		super().__init__(*args,**kwargs)
+		self.__dict__ = self
+		return
+
+
+class System(Dictionary):
 	'''
 	System attributes (dtype,format,device,seed,verbose,...)
 	Args:
@@ -133,61 +146,126 @@ class System(dictionary):
 	'''
 	def __init__(self,*args,**kwargs):
 
-		updates = {
-			}
-
 		defaults = {
-			'dtype':'complex',
+			'dtype':'float',
 			'format':'array',
 			'device':'cpu',
+			'backend':'jax',
+			'architecture':None,
 			'seed':None,
 			'key':None,
-			'timestamp':None,
-			'backend':None,
-			'architecture':None,
-			'verbose':False,
+			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
+			'cwd':None,
+			'path':None,
+			'conf':None,
 			'logger':None,
+			'cleanup':None,
+			'verbose':None,
 		}
 
+		setter(kwargs,defaults,delimiter=delim,func=False)
 
+		super().__init__(**kwargs)
 
-		args = {k:v for a in args for k,v in ({} if a is None else a).items()}
-		attrs = {**args,**kwargs}
-		attrs.update({attr: defaults[attr] for attr in defaults if attrs.get(attr) is None})
-
-		attrs.update({attr: updates.get(attr,{}).get(attrs[attr],attrs[attr]) if attr in updates else attrs[attr] for attr in attrs})
-
-		super().__init__(**attrs)
+		self.__logger__()
+		self.__clean__()
 
 		return
 
+	def __clean__(self,cleanup=None):
+		'''
+		Set cleanup state of class
+		Args:
+			cleanup (bool): Cleanup
+		'''
+
+		cleanup = self.cleanup if cleanup is None else cleanup
+
+		if cleanup:
+			atexit.register(self.__atexit__)
+		else:
+			atexit.unregister(self.__atexit__)
+
+		return
+		
+	def __atexit__(self):
+		'''
+		Cleanup upon class exit
+		'''
+		return
+
+
+	def __logger__(self):
+		'''
+		Setup logger
+		'''
+
+		path = self.cwd
+		root = path
+
+		if not isinstance(self.logger,Logger):
+			name = __name__
+			conf = join(self.conf,root=root)
+			file = join(self.logger,root=root)
+			cleanup = self.cleanup
+
+			self.logger = Logger(name,conf,file=file,cleanup=cleanup)
+
+		return
+
+	def log(self,msg,verbose=None):
+		'''
+		Log messages
+		Args:
+			msg (str): Message to log
+			verbose (int,str): Verbosity of message			
+		'''
+		if verbose is None:
+			verbose = self.verbose
+		if msg is None:
+			return
+		msg += '\n'
+		self.logger.log(verbose,msg)
+		return
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = None
+		self.log(msg,verbose=verbose)
+		return
 
 
 class Logger(object):
-	'''
-	Logger class
-	Args:
-		name (str,logger): Name of logger or Python logging logger
-		conf (str): Path to configuration
-		verbose (int,str,bool): Verbosity
-		kwargs (dict): Additional arguments
-	'''
-	def __init__(self,name,conf,verbose=True,**kwargs):
-		defaults = {
-			'file':kwargs.get('file')
-		}
-		kwargs.update({kwarg: defaults[kwarg] for kwarg in defaults if kwarg not in kwargs and defaults[kwarg] is not None})
+	def __init__(self,name,conf,file=None,cleanup=None,verbose=True,**kwargs):
+		'''
+		Logger class
+		Args:
+			name (str,logger): Name of logger or Python logging logger
+			conf (str): Path to configuration
+			file (str): Path to log file
+			cleanup (bool): Cleanup log files upon exit
+			verbose (int,str,bool): Verbosity
+			kwargs (dict): Additional keyword arguments
+		'''
 
 		if isinstance(name,str):
 			try:
-				self.logger =  logconfig(name,conf=conf,**kwargs)
-			except:
+				self.logger = config(name,conf=conf,file=file,**kwargs)
+			except Exception as exception:
 				self.logger = logging.getLogger(name)
 		else:
 			self.logger = name
 
 		self.name = name
 		self.conf = conf
+		self.file = file
+
+		self.cleanup = cleanup
+		self.__clean__()
 
 		self.verbosity = {
 			'notset':0,'debug':10,'info':20,'warning':30,'error':40,'critical':50,
@@ -199,7 +277,7 @@ class Logger(object):
 			True:20,False:0,None:0,
 			}
 		self.verbose = self.verbosity.get(verbose,verbose)
-
+		
 		return
 	
 	def log(self,verbose,msg):
@@ -211,13 +289,169 @@ class Logger(object):
 		'''
 
 		verbose = self.verbosity.get(verbose,self.verbose)
-
 		self.logger.log(verbose,msg)
 		return
 
+	def __clean__(self,cleanup=None):
+		'''
+		Set cleanup state of class
+		Args:
+			cleanup (bool): Cleanup log files upon exit	
+		'''
+
+		cleanup = self.cleanup if cleanup is None else cleanup
+
+		if cleanup:
+			atexit.register(self.__atexit__)
+		else:
+			atexit.unregister(self.__atexit__)
+
+		return
 
 
-class Space(object):
+	def __atexit__(self):
+		'''
+		Cleanup log files upon class exit
+		'''
+
+		loggers = [logging.getLogger(),self.logger,*logging.Logger.manager.loggerDict.values()]
+		loggers = [handler.baseFilename for logger in loggers for handler in getattr(logger,'handlers',[]) if isinstance(handler,logging.FileHandler)]
+		loggers = list(set(loggers))
+
+		for logger in loggers:
+			rm(logger)
+
+		return
+
+	def __str__(self):
+		return str(self.file)
+
+	def __repr__(self):
+		return self.__str__()
+
+
+class Object(System):
+	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
+		'''
+		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
+		Args:
+			data (dict,str,array,System): Data corresponding to class
+			shape (int,iterable[int]): Shape of each data
+			size (int,iterable[int]): Number of data
+			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
+			kwargs (dict): Additional keyword arguments
+		'''
+		defaults = {
+			'string':None,
+			'category':None,
+			"scale":1,
+			"samples":None,
+			'initialization':'random',
+			'random':'random',
+			'seed':None,
+			'bounds':[-1,1],
+		}
+
+		# Setup kwargs
+		setter(kwargs,dict(data=data,shape=shape,size=size,dims=dims,system=system),delimiter=delim,func=False)
+		setter(kwargs,data,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,defaults,delimiter=delim,func=False)
+		super().__init__(**kwargs)
+
+		# Ensure shape is iterable
+		if isinstance(self.shape,int):
+			self.shape = (self.shape,)
+
+		# Ensure size is iterable
+		if isinstance(self.size,int):
+			self.size = (self.size,)
+
+		# Dimension of data
+		self.ndim = len(self.shape) if self.shape is not None else None
+		self.length = len(self.size) if self.size is not None else None
+		self.n = min(self.shape)  if self.shape is not None else None
+
+		# Number of sites and dimension of sites
+		self.N,self.D = self.dims[:2] if self.dims is not None else [1,self.n]
+
+		# Set data
+		if self.shape is None or self.scale is None:
+			self.data = None
+			self.size = None
+		
+		if is_array(self.data):
+			self.data = self.data
+			self.size = None
+		elif self.data is None:
+			self.data = self.data
+			self.shape = None
+			self.ndim = None
+			self.size = None
+			self.string = None
+			self.scale = None
+		else:
+			if isinstance(self.data,str):
+				self.string = self.data
+			self.__setup__(**kwargs)
+
+		if self.data is not None:
+			self.data = self.data.astype(dtype=self.dtype)
+
+		# Set samples
+		if self.size is not None:
+			if not is_array(self.samples):
+				self.samples = rand(self.size,bounds=[0,1],seed=self.seed,dtype=datatype(self.dtype))
+				self.samples /= self.samples.sum()
+		else:
+			self.samples = None
+
+		if self.samples is not None:
+			if (self.data.ndim>=self.length) and all(self.data.shape[i] == self.size[i] for i in range(self.length)):
+				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.length]),)*2),self.data,self.samples)
+
+		self.data = self(self.data)
+
+		return
+
+
+	def __call__(self,data=null):
+		'''
+		Class data
+		Args:
+			data (array): Data
+		Returns:
+			data (array): Data
+		'''
+		if not isinstance(data,Null):
+			self.data = data
+			self.shape = self.data.shape if self.data is not None else None
+			self.ndim = self.data.ndim if self.data is not None else None
+		return self.data
+
+	def __setup__(self,**kwargs):
+		'''
+		Setup attribute
+		Args:
+			kwargs (dict): Additional keyword arguments
+		'''
+
+		return
+
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''
+		msg = '\n'.join(['%s : %s'%(attr,self[attr]) for attr in self])
+		self.log(msg,verbose=verbose)
+		return
+
+
+class Space(System):
 	'''
 	Hilbert space class for Operators with size n
 	Args:
@@ -225,14 +459,18 @@ class Space(object):
 		D (int): Dimension of qudits
 		space (str,Space): Type of Hilbert space
 		system (dict,System): System attributes
+		kwargs (dict): Additional keyword arguments
 	'''
-	def __init__(self,N,D,space,system):
+	def __init__(self,N,D,space,system=None,**kwargs):
 
-		self.system = System(system)
+		setter(kwargs,system,delimiter=delim,func=False)
+		super().__init__(**kwargs)
+
 		self.N = N if N is not None else 1
 		self.D = D if D is not None else 2
 		self.space = space		
 		self.default = 'spin'
+		self.system = system
 
 		self.__setup__()
 		
@@ -300,26 +538,30 @@ class Space(object):
 			return self.get_n()**2-1
 		return			
 
-class Time(object):
+class Time(System):
 	'''
 	Time evolution class for Operators with size n
 	Args:
 		M (int): Number of time steps
 		T (int): Simulation time
 		tau (float): Simulation time scale
-		p (int): Trotter order
+		P (int): Trotter order
 		time (str,Time): Type of Time evolution space
 		system (dict,System): System attributes
+		kwargs (dict): Additional keyword arguments
 	'''
-	def __init__(self,M,T,tau,p,time,system):
+	def __init__(self,M,T,tau,P,time,system=None,**kwargs):
 
-		self.system = System(system)
+		setter(kwargs,system,delimiter=delim,func=False)
+		super().__init__(**kwargs)
+
 		self.M = M if M is not None else 1
 		self.T = T if T is not None else None
 		self.tau = tau if tau is not None or T is not None else None
-		self.p = p if p is not None else 1
+		self.P = P if P is not None else 1
 		self.time = time
 		self.default = 'linear'
+		self.system = system
 
 		self.__setup__()
 		
@@ -388,7 +630,7 @@ class Time(object):
 			return self.tau
 		return	
 
-class Lattice(object):
+class Lattice(System):
 	'''
 	Define a hyper lattice class
 	Args:
@@ -397,10 +639,14 @@ class Lattice(object):
 		L (int,float): Scale in system
 		delta (float): Length scale in system	
 		lattice (str,Lattice): Type of lattice, allowed strings in ['square','square-nearest']
-		system (dict,System): System attributes (dtype,format,device,seed,key,timestamp,backend,architecture,verbose)		
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logger,logging,cleanup,verbose)		
+		kwargs (dict): Additional keyword Arguments
 	'''	
-	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None):
-		
+	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None,**kwargs):
+
+		# Define system
+		setter(kwargs,system,delimiter=delim,func=False)
+		super().__init__(**kwargs)
 
 		# Define lattice
 		if isinstance(lattice,Lattice):
@@ -413,11 +659,8 @@ class Lattice(object):
 		self.N = N
 		self.d = d
 		self.L = L if L is not None else self.N
-		self.delta = delta if delta is not None else self.N//self.L
-
-		# Define system
-		self.system = System(system)
-		self.dtype = self.system.dtype
+		self.delta = delta if delta is not None else self.L/self.N
+		self.system = system
 
 		# Check system
 		self.dtype = self.dtype if self.dtype in ['int','Int32','Int64'] else int
