@@ -30,23 +30,25 @@ from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
 from src.iterables import brancher,getter,setter,flatten
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split
-from src.fit import fit,mean,std,normalize,sqrt,size
-from src.plot import plot
-
-AXES = ['x','y']
-OTHER = 'label'
-PLOTS = ['plot','scatter','errorbar','histogram','axvline','axhline','vlines','hlines','plot_surface']
-
+from src.fit import fit
+from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
 
 class GroupBy(object):
-	def __init__(self,df):
+	def __init__(self,df,by=[]):
 		'''
 		Null groupby wrapper for dataframe
 		Args:
 			df (dataframe): dataframe
 		'''
+		class grouper(object):
+			def __init__(self,by):
+				self.names = by
+				return
+
 		self.df = df
-		self.groups = [None]
+		self.by = by
+		self.groups = ["None"]
+		self.grouper = grouper(by=by)
 		return
 
 	def get_group(self,group):
@@ -98,7 +100,8 @@ def Valify(value,valify={},useval=True):
 	'''
 	values = {
 		**valify,
-		None: valify.get('None',None)
+		None: valify.get('None',None),
+		'None': valify.get('None',None),
 		}
 
 	value = valify.get(value,value)
@@ -110,11 +113,15 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 	'''
 	Setup data, settings, hyperparameters
 	Args:
-		data (dataframe): dataframe
-		settings (dict): settings
-		hyperparameters (dict): hyperparameters
+		data (str,dict,iterable[str,dict]): Paths to or dictionary of data to process
+		settings (str,dict): Path to or dictionary of plot settings
+		hyperparameters (str,dict): Path to or dictionary of process settings
 		pwd (str): Root path of data
 		cwd (str): Root path of plots
+	Returns:
+		data (str,dict,iterable[str,dict]): Paths to or dictionary of data to process
+		settings (dict): Plot settings
+		hyperparameters (dict): Process settings
 	'''
 
 	# Set plot settings
@@ -130,12 +137,26 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 			}
 		}
 
+
+	# Load plot settings
+	path = join(settings,root=pwd) if isinstance(settings,str) else None
+	default = {} if isinstance(settings,str) else settings
+	wrapper = None	
+	settings = load(path,default=default,wrapper=wrapper)
+
+	# Load process hyperparameters
+	path = join(hyperparameters,root=pwd) if isinstance(hyperparameters,str) else None
+	default = {} if isinstance(hyperparameters,str) else hyperparameters
+	wrapper = None
+	hyperparameters = load(path,default=default,wrapper=wrapper)
+
 	for instance in list(settings):
 		if settings.get(instance) is None:
 			settings.pop(instance,None);
+			continue
 
 		if all(subinstance in defaults for subinstance in settings[instance]):
-			settings[instance] = {None: settings[instance]}
+			settings[instance] = {"None": settings[instance]}
 		for subinstance in settings[instance]:
 			setter(settings[instance][subinstance],defaults,delimiter=delim,func=False)
 
@@ -189,9 +210,9 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 	# Get valify
 	valify = hyperparameters.get('valify',{})
 	useval = hyperparameters.get('useval',True)
-	hyperparameters['valify'] = lambda string,valify=valify,useval=useval: Valify(string,valify,useval=useval)
+	hyperparameters['valify'] = lambda value,valify=valify,useval=useval: Valify(value,valify,useval=useval)
 
-	return
+	return data,settings,hyperparameters
 
 def find(dictionary):
 	'''
@@ -203,7 +224,8 @@ def find(dictionary):
 		keys (dict[dict]): Formatted keys based on found keys of the form {name: {prop:attr} or {prop:{attr:value}}}
 	'''
 
-	keys = AXES
+	dim = 2
+	keys = AXIS[:dim]
 	other = [OTHER]
 
 	def parser(string,separator,default):
@@ -216,7 +238,7 @@ def find(dictionary):
 	default = null
 	separator = '='
 	defaults = {
-				'func':{'stat':{'':'mean','err':'std'}}, 
+				'func':{'stat':{'':'mean','err':'sem'}}, 
 				'wrapper':{},
 				'attrs':{},
 				'slice':None,
@@ -352,13 +374,13 @@ def apply(keys,data,settings,hyperparameters):
 
 	for name in keys:
 
-		axes = [axis for axis in AXES if axis in keys[name]]
+		axes = [axis for axis in AXIS if axis in keys[name]]
 		other = OTHER
 		label = keys[name][other].get(other,{})
 		funcs = keys[name][other].get('func',{})
 
 		if not funcs:
-			funcs = {'stat':{'':'mean','err':'std'}}
+			funcs = {'stat':{'':'mean','err':'sem'}}
 
 		independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in data]
 		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in data]
@@ -384,12 +406,14 @@ def apply(keys,data,settings,hyperparameters):
 		if by:
 			groups = groups.groupby(by=by,as_index=False)
 		else:
-			groups = GroupBy(groups)
+			groups = GroupBy(groups,by=by)
 
 		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
 		for i,group in enumerate(groups.groups):
 			for j,function in enumerate(funcs):
+
+				grouping = groups.get_group(group)
 				
 				key = (*name[:-2],i,j)
 				value = deepcopy(getter(settings,name,delimiter=delim))
@@ -397,8 +421,10 @@ def apply(keys,data,settings,hyperparameters):
 				source = [attr for attr in data if attr not in variables]
 				destination = other
 				value[destination] = {
-					**{attr: groups.get_group(group)[attr].to_list()[0] for attr in source},
-					**{'%s%s'%(axis,func) if keys[name][axis] in dependent else axis: {'func':function,'axis':keys[name][axis]} for axis in axes for func in funcs[function]},
+					**{attr: grouping[attr].to_list()[0] for attr in source},
+					**{'%s%s'%(axis,func) if keys[name][axis] in dependent else axis: 
+						{'group':[i,dict(zip(groups.grouper.names,group))],'func':[j,function],'axis':keys[name][axis]} 
+						for axis in axes for func in funcs[function]},
 					**{other: {attr: {subattr: keys[name][other][attr][subattr] 
 						if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
 						if isinstance(keys[name][other][attr],dict) else keys[name][other][attr] for attr in keys[name][other]}},
@@ -411,13 +437,74 @@ def apply(keys,data,settings,hyperparameters):
 
 						source = delim.join(((attr,function,func))) if attr in dependent else attr
 						destination = '%s%s'%(axis,func) if attr in dependent else axis
-						value[destination] = groups.get_group(group)[source].to_numpy()
-					
+
+						if source in grouping:
+							value[destination] = grouping[source].to_numpy()
+						else:
+							value[destination] = grouping.reset_index().index.to_numpy()
 
 				setter(settings,{key:value},delimiter=delim,func=True)
 
 	return
 
+def loader(data,settings,hyperparameters):
+	'''
+	Load data from settings and hyperparameters
+	Args:
+		data (str,dict,iterable[str,dict]): Paths to or dictionary of data to process
+		settings (str,dict): Path to or dictionary of plot settings
+		hyperparameters (str,dict): Path to or dictionary of process settings
+	'''
+
+	# Get keys
+	keys = find(settings)
+
+	# Set metadata
+	metadata = hyperparameters['path']['metadata']
+	
+	def func(key_iterable,key_elements,iterable,elements):
+		if (
+			(key_iterable == key_elements) and 
+			(key_iterable in PLOTS) and (key_elements in PLOTS) and 
+			isinstance(iterable.get(key_iterable),list) and	isinstance(elements.get(key_elements),list)
+			):
+			for index,data in enumerate(flatten(elements.get(key_elements))):
+				for subindex,datum in enumerate(flatten(iterable.get(key_iterable)[index])):
+					datum.update({attr: data[attr] for attr in data if attr not in [*ALL,OTHER]})
+
+		return iterable.get(key_iterable)	
+
+
+	if hyperparameters['load']:
+
+
+		# Load settings
+		path = metadata
+		default = {}
+		tmp = deepcopy(settings)
+
+		settings.update(load(path,default=default))
+		setter(settings,tmp,func=func)
+
+	else:
+
+		# Load data
+		path = data
+		default = {}
+		wrapper = 'df'
+		data = load(path,default=default,wrapper=wrapper)
+
+		# Get functions of data
+		apply(keys,data,settings,hyperparameters)
+
+	
+	# Dump settings
+	if hyperparameters['dump']:
+		
+		dump(settings,metadata)
+
+
+	return
 
 def plotter(settings,hyperparameters):
 	'''
@@ -426,6 +513,9 @@ def plotter(settings,hyperparameters):
 		settings (dict): settings
 		hyperparameters (dict): hyperparameters
 	'''
+
+	if not hyperparameters['plot']:
+		return
 
 	# Variables
 	path = hyperparameters['path']['plot']
@@ -483,7 +573,7 @@ def plotter(settings,hyperparameters):
 			attr = 'set_title'
 			data = settings[instance][subinstance]['ax'].get('legend',{})
 
-			attrs = 'label'
+			attrs = OTHER
 			values = {label: list(realsorted(set(data[attrs][label]
 						for plots in [plots for plots in PLOTS if plots in settings[instance][subinstance]['ax']]
 						for data in flatten(settings[instance][subinstance]['ax'][plots]))))
@@ -508,11 +598,12 @@ def plotter(settings,hyperparameters):
 
 				for data in flatten(settings[instance][subinstance]['ax'][plots]):
 
-					for attr in AXES:
-						value = [valify(value) for value in data[attr]]
-						data[attr] = value
+					for attr in data:
+						if attr in ALL:
+							value = [valify(value) for value in data[attr]]
+							data[attr] = value
 
-					attr = 'label'
+					attr = OTHER
 					value = ', '.join([
 						*[texify(scinotation(data[attr][label],decimals=0,scilimits=[0,3],one=False))
 							for label in realsorted(data[attr]) if label in data[attr][attr][attr] and data[attr][attr][attr][label] is None and len(values[label])>1],
@@ -548,7 +639,7 @@ def process(data,settings,hyperparameters,pwd=None,cwd=None):
 	
 	- Filter with booleans of all labels
 	- Group by non-null labels and independent
-	- Aggregate functions of dependent (mean,std) for each group
+	- Aggregate functions of dependent (mean,sem) for each group
 	- Assign new labels for functions with label.function 
 	- Regroup with non-null labels
 	
@@ -557,9 +648,9 @@ def process(data,settings,hyperparameters,pwd=None,cwd=None):
 	
 	- Plot data
 
-	To process data, we find in plot settings dictionary the keys of 'x','y','label' properties for sorting.
+	To process data, we find in plot settings dictionary the keys of ALL,OTHER ('x','y','label') properties for sorting.
 
-	For 'label' property with attributes and values to sort on, 
+	For OTHER property with attributes and values to sort on, 
 	datasets are sorted into sets of unique datasets that correspond 
 	to all possible combinations of the label values. i.e) if label is ('M','N'), 
 	will sort into sets of datasets that correspond to each possible 'M','N' pair. 
@@ -570,71 +661,32 @@ def process(data,settings,hyperparameters,pwd=None,cwd=None):
 	Label attributes with a non-None value indicate fixed values that the datasets must equal for that attribute
 	when sorting, and the set of datasets for that label combination are constrained to be those with the fixed values.
 
-	- Iterate over all combinations of 'label' attributes and values, to get included dataset that share these attributes
+	- Iterate over all combinations of OTHER attributes and values, to get included dataset that share these attributes
 	
-	- Iterate over all permutations of sort attributes and values, constrained by the specific combination of 'label' attributes and values
+	- Iterate over all permutations of sort attributes and values, constrained by the specific combination of OTHER attributes and values
 	to get included dataset that share all sort attributes
 	
 	- Get statistics (mean,variance) across samples datasets that share all attributes
 
-	- Merge datasets across permutations of sort attributes for a given combination of 'label' attributes and values
+	- Merge datasets across permutations of sort attributes for a given combination of OTHER attributes and values
 	
-	- After statistics and merging, variables data for each combination for 'label' attributes and values
+	- After statistics and merging, variables data for each combination for OTHER attributes and values
 	has shape of (1 + ndim) dimensions, with axes: 
 	(# of permutations of sort for each combination, ndim of datasets)	
 
-	- For parameters, we plot each combination for 'label' attributes and values variables data on the same plot, these being the labels.
-	  Subplots are plotted from iterating over over the 1...ndim-2 axis of the variables data, and parameters the 0 and ndim-1 axis for each 'label' set
-	  If the 'x' property is None, also iterate over the 0 (# of permutations of sort) axis variables data, and plot the ndim-1 axis for each 'label' 
+	- For parameters, we plot each combination for OTHER attributes and values variables data on the same plot, these being the labels.
+	  Subplots are plotted from iterating over over the 1...ndim-2 axis of the variables data, and parameters the 0 and ndim-1 axis for each OTHER set
+	  If the 'x' property is None, also iterate over the 0 (# of permutations of sort) axis variables data, and plot the ndim-1 axis for each OTHER 
 	'''
 
-	# Load plot settings
-	path = join(settings,root=pwd) if isinstance(settings,str) else None
-	default = {} if isinstance(settings,str) else settings
-	wrapper = None	
-	settings = load(path,default=default,wrapper=wrapper)
-
-	# Load process hyperparameters
-	path = join(hyperparameters,root=pwd) if isinstance(hyperparameters,str) else None
-	default = {} if isinstance(hyperparameters,str) else hyperparameters
-	wrapper = None
-	hyperparameters = load(path,default=default,wrapper=wrapper)
-
 	# Set settings and hyperparameters
-	setup(data,settings,hyperparameters,pwd,cwd)
+	data,settings,hyperparameters = setup(data,settings,hyperparameters,pwd,cwd)
 
-	# Get keys
-	keys = find(settings)
-
-	# Set metadata
-	metadata = hyperparameters['path']['metadata']
-
-	# Load settings
-	if hyperparameters['load']:
-
-		settings = load(metadata)
-
-	else:
-
-		# Load data
-		path = data
-		default = {}
-		wrapper = 'df'
-		data = load(path,default=default,wrapper=wrapper)
-
-		# Get functions of data
-		apply(keys,data,settings,hyperparameters)
-
-	# Dump settings
-	if hyperparameters['dump']:
-		
-		dump(settings,metadata)
-
+	# Load data
+	loader(data,settings,hyperparameters)
 
 	# Plot data
-	if hyperparameters['plot']:
-
-		plotter(settings,hyperparameters)
+	plotter(settings,hyperparameters)
 
 	return
 

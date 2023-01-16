@@ -207,7 +207,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 	# Set nested elements
 	for element in elements:
 
-		# Get iterable, and index of tuple of nested element key
+ 		# Get iterable, and index of tuple of nested element key
 		i = iterable
 		index = 0
 
@@ -230,6 +230,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 				i = i[e[index]]
 				index+=1
 
+			# try:
 			value = copier(element,function(e[index],element,i,elements),copy)
 
 			if isinstance(i,list) and (e[index] >= len(i)):
@@ -244,8 +245,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 			else:
 				i[e[index]] = value
 		except Exception as exception:
-			# print(traceback.format_exc())
-			# print(exception)
+			print(traceback.format_exc())
 			pass
 
 	return

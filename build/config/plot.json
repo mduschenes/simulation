@@ -13,6 +13,20 @@
 			"x":"iteration",
 			"y":"objective",
 			"label":["N","architecture","M","tau","noise.scale"],
+			"label":{
+				"label":{"N":null,"architecture":null,"M":null,"noise.scale":null},
+				"func":{"stat":{"":"mean","err":"sem"}}, 
+				"wrapper":{"abs":{"abs":{}}},
+				"attrs":{},
+				"slice":[0,null,1],
+				"axis":{"row":[],"col":[],"plot":[0],"axis":[-1]},
+				"settings":{
+					"ax.set_ylabel.ylabel":[["$\\textrm{Infidelity}$"]],
+					"ax.legend.update":"%s \\textrm{Noisy}"
+				},
+				"texify":{}
+			},			
+
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,

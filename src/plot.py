@@ -21,26 +21,148 @@ warnings.simplefilter('ignore', (UserWarning,DeprecationWarning,FutureWarning))
 
 
 # Global Variables
+AXIS = ['x','y','z']
+VARIANTS = ['','err','1','2']
+FORMATS = ['lower','upper']
+ALL = ['%s%s'%(getattr(axis,fmt)(),variant) for axis in AXIS for variant in VARIANTS for fmt in FORMATS]
+OTHER = 'label'
+WHICH = ['major','minor']
+FORMATTER = ['formatter','locator']
+AXES = ['colorbar']
+PLOTS = ['plot','scatter','errorbar','histogram','axvline','axhline','vlines','hlines','plot_surface']
+LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
+NULLLAYOUT = ['index','pad']
+DIM = 2
+PATHS = {
+	'plot':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.json'),
+	'mplstyle':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.mplstyle'),		
+	'mplstyle.notex':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.notex.mplstyle'),
+	}
 DELIMITER='__'
 
-# Update nested elements
-def updater(iterable,elements,_copy=False,_clear=True,_func=None):
-	if not callable(_func):
-		_func = lambda key,iterable,elements: elements[key]
-	if _clear and elements == {}:
-		iterable.clear()
-	if not isinstance(elements,(dict)):
-		iterable = elements
+def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,func=None):
+	'''
+	Set nested value in iterable with nested elements keys
+	Args:
+		iterable (dict): dictionary to be set in-place with value
+		elements (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
+		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
+		func(callable,None,bool,iterable): Callable function with signature func(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
+	'''
+
+	if (not isinstance(iterable,(dict,list))) or (not isinstance(elements,dict)):
 		return
-	for e in elements:
-		if isinstance(iterable.get(e),dict):
-			if e not in iterable:
-				iterable.update({e: elements[e]})
+
+	# Setup func as callable
+	if func is None:
+		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+	elif func is True:
+		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+	elif func is False:
+		function = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements.get(key_elements))
+	elif func in ['none','None']:
+		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if elements.get(key_elements) is not None else iterable.get(key_iterable,elements.get(key_elements))
+	elif not callable(func):
+		types = tuple(func)
+		def function(key_iterable,key_elements,iterable,elements,types=types): 
+			i = iterable.get(key_iterable,elements.get(key_elements))
+			e = elements.get(key_elements,i)
+			return e if isinstance(e,types) else i
+	else:
+		function = func
+
+	# Clear iterable if clear and elements is empty dictionary
+	if clear and elements == {}:
+		iterable.clear()
+
+	# Set nested elements
+	for element in elements:
+
+		# Get iterable, and index of tuple of nested element key
+		i = iterable
+		index = 0
+
+		# Convert string instance of elements to list, splitting string based on delimiter delimiter
+		try:
+			if isinstance(element,str) and delimiter:
+				e = tuple(element.split(delimiter))
+			elif isiterable(element,exceptions=scalars):
+				e = tuple(element)
 			else:
-				updater(iterable[e],elements[e],_copy=_copy,_clear=_clear,_func=_func)
-		else:
-			iterable.update({e:elements[e]})
+				e = tuple((element,))
+
+			# Update iterable with elements 
+			while index<(len(e)-1):
+				if isinstance(i,list):
+					if (e[index] >= len(i)):
+						i.extend([[] if isinstance(e[index+1],int) else {} for j in range(e[index]-len(i)+1)])
+				elif (isinstance(i,dict) and (not isinstance(i.get(e[index]),(dict,list)))):
+					i[e[index]] = [] if isinstance(e[index+1],int) else {}
+				i = i[e[index]]
+				index+=1
+
+			value = copier(element,function(e[index],element,i,elements),copy)
+
+			if isinstance(i,list) and (e[index] >= len(i)):
+				i.extend([{} for j in range(e[index]-len(i)+1)])
+
+			if reset:
+				i[e[index]] = value
+			elif e[index] not in i or not isinstance(i[e[index]],(dict,list)):
+				i[e[index]] = value
+			elif isinstance(elements[element],dict):
+				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,func=func)
+			else:
+				i[e[index]] = value
+		except Exception as exception:
+			pass
+
 	return
+
+
+def getter(iterable,elements,default=None,delimiter=False,copy=False):
+	'''
+	Get nested value in iterable with nested elements keys
+
+	Args:
+		iterable (dict): dictionary of values
+		elements (str,iterable[str]): delimiter separated string or list to nested keys of location to get value
+		default (object): default data to return if elements not in nested iterable
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+	Returns:
+		value (object): Value at nested keys elements of iterable
+	'''	
+
+	# Convert string instance of elements to list, splitting string based on delimiter delimiter
+	if isinstance(elements,str) and delimiter:
+		elements = elements.split(delimiter)
+
+	# Get nested element if iterable, based on elements
+	if not isinstance(elements,(list,tuple)):
+		# elements is object and value is to be got from iterable at first level of nesting
+		try:
+			return copier(elements,iterable[elements],copy)
+		except:
+			return default
+	elif not elements:
+		return copier(elements,iterable,copy)
+	else:
+		# elements is list of nested keys and the nested values are to be extracted from iterable
+		try:
+			i = iterable
+			e = 0
+			while e<len(elements):
+				i = i[elements[e]]
+				e+=1			
+			return copier(elements[e-1],i,copy)
+		except:
+			return default
+
+	return default
 
 
 def flatten(iterable,types=(list,)):
@@ -237,19 +359,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		fig (dict): dictionary of subplots of figures of plots {key: figure}
 		ax (dict): dictionary of subplots of axes of plots {key: figure}
 	'''
-	AXIS = ['x','y','z']
-	WHICH = ['major','minor']
-	FORMATTER = ['formatter','locator']
-	AXES = ['colorbar']
-	PLOTS = ['plot','scatter','errorbar','histogram','axvline','axhline','vlines','hlines','plot_surface']
-	LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
-	NULLLAYOUT = ['index','pad']
-	DIM = 2
-	PATHS = {
-		'plot':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.json'),
-		'mplstyle':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.mplstyle'),		
-		'mplstyle.notex':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.notex.mplstyle'),
-		}
 	def _layout(settings):
 		if isinstance(settings,(list,tuple)):
 			return dict(zip(LAYOUT,settings))
@@ -367,8 +476,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# 	for axis in AXIS},				
 			**{'set_%sticklabels'%(axis):['labels']
 				for axis in AXIS},	
-			**{k:['label'] for k in PLOTS},								
-			**{'set_title':['label'],'suptitle':['t'],
+			**{k:[OTHER] for k in PLOTS},								
+			**{'set_title':[OTHER],'suptitle':['t'],
 			'annotate':['s'],
 			'legend':['title','set_title']},
 		}
@@ -409,9 +518,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				for key,label in [('%slabel'%(axis),'%slabel'%(axis)),
 								  ('%sticks'%(axis),'ticks'),
 								  ('%sticklabels'%(axis),'labels')]},
-			**{k:['label'] for k in PLOTS},	
+			**{k:[OTHER] for k in PLOTS},	
 			**{
-				'set_title':['label'],
+				'set_title':[OTHER],
 				'suptitle':['t'],
 				'annotate':['s'],
 				'legend':['handles','labels','title','set_title']},
@@ -526,9 +635,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in [''] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in ['','err'] for k in AXIS],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
 				call = len(args)>0			
 
@@ -562,9 +671,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							kwargs[attr][subprop][1]
 							])
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in ['','err'] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in ['','err'] for k in AXIS],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 				
 				call = len(args)>0			
 
@@ -585,14 +694,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					else:
 						args.extend([kwargs[attr].get('x'),kwargs[attr].get('y')-kwargs[attr].get('yerr'),kwargs[attr].get('y')+kwargs[attr].get('yerr')])
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in ['','err','1','2'] for k in AXIS],*['label']])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS for k in AXIS],*[OTHER]])
 
 			elif attr in ['plot_surface','contour','contourf','scatter']:
 
 				dim = 3
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in [''] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in ['','err'] for k in AXIS],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
 				call = True
 
@@ -600,13 +709,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['imshow']:
 				dim = 2
 
-				fields = [*['X'],*AXIS[:dim][::-1]]
+				fields = [*['%s%s'%(k.upper(),s) for s in VARIANTS[:1] for k in AXIS[:1]],*AXIS[:dim][::-1]]
 				for field in fields:
 					if field in kwargs[attr]:
 						args.append(kwargs[attr].get(field))
 						break
 
-				nullkwargs.extend([*['X'],*['%s%s'%(k,s) for s in ['','err'] for k in AXIS],*[]])
+				nullkwargs.extend([*['%s%s'%(k.upper(),s) for s in VARIANTS[:2] for k in AXIS[:1]],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
 				call = True
 
@@ -630,9 +739,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr][field] = getattr(obj,kwargs[attr].get(field))
 
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in [''] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
 
-				nullkwargs.extend([*[],*['%s%s'%(k,s) for s in ['','err'] for k in AXIS],*['transform']])
+				nullkwargs.extend([*[],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*['transform']])
 
 				attr_ = 'plot'
 
@@ -730,7 +839,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					_attr = _obj(**kwargs[attr])
 			except Exception as e:
 				if not isinstance(e,AttributeError):
-					print(e,attr,_obj,args,kwargs[attr],[a.dtype if isinstance(a,np.ndarray) else [type(i) for i in a] for a in args])
+					print(e,_obj,attr,args,kwargs[attr])
 
 			for k in _kwds:
 				_attr_ = _attr
@@ -898,7 +1007,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		for key in y:
 
 			_settings = load(PATHS['plot'])
-			updater(_settings,settings[key])
+			setter(_settings,settings[key],func=True)
 
 			_settings['style'].update({
 				'layout':{kwarg:settings[key]['style'].get('layout',{}).get(kwarg,_defaults['style']['layout'][kwarg])
@@ -922,7 +1031,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				# 		if kwarg not in settings[key][attr]:
 				# 			_settings[attr].pop(kwarg)
 
-			updater(settings[key],_settings)
+			setter(settings[key],_settings,func=True)
 
 		for key in settings:
 			settings[key].update({k:defaults[k] 
