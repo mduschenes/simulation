@@ -13,8 +13,8 @@
 		"M.objective.noise.scale":0,
 		"M.features.relative.mean.N.iteration": 0,
 		"M.iteration.min.N": 0,
-		"None.hessian.eigenvalues.M": 0,
-		"None.fisher.eigenvalues.M": 0
+		"None.hessian.eigenvalues.M": 1,
+		"None.fisher.eigenvalues.M": 1
 	},
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",

@@ -104,7 +104,10 @@ def Valify(value,valify={},useval=True):
 		'None': valify.get('None',None),
 		}
 
-	value = valify.get(value,value)
+	try:
+		value = valify.get(value,value)
+	except:
+		pass
 
 	return value
 
@@ -297,7 +300,7 @@ def find(dictionary):
 				elif isinstance(keys[name][attr],dict):
 					keys[name][attr] = keys[name][attr][list(keys[name][attr])[-1]]
 				elif isinstance(keys[name][attr],str):
-					keys[name][attr] = keys[name][attr]
+					keys[name][attr] = keys[name][attr] if keys[name][attr] not in [''] else default
 				else:
 					keys[name][attr] = keys[name][attr][-1]
 
@@ -383,7 +386,18 @@ def apply(keys,data,settings,hyperparameters):
 		hyperparameters (dict): hyperparameters
 	'''
 
+	def mean(obj):
+		out = np.array(list(obj))
+		out = tuple(out.mean(0))
+		return out
+	def sem(obj):
+		out = np.array(list(obj))
+		out = tuple(out.std(0)/np.sqrt(out.shape[0]))
+		return out		
+
 	functions = {}			
+	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 
+				for attr in data}
 
 	for name in keys:
 
@@ -408,10 +422,13 @@ def apply(keys,data,settings,hyperparameters):
 
 		groupby = data[boolean].groupby(by=by,as_index=False)
 
+		agg = {}
+
 		agg = {
-			**{attr : [(attr,'first' if data[attr].dtype.kind in ['O','S'] else 'mean')] for attr in data},
-			**{attr : [(delim.join(((attr,function,func))),funcs[function][func]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
+			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]])] for attr in data},
+			**{attr : [(delim.join(((attr,function,func))),{'array':{'':mean,'err':sem}[func],'object':'first','dtype':funcs[function][func]}[dtypes[attr]]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
 		}
+
 		droplevel = dict(level=0,axis=1)
 		by = [*labels]
 		variables = [*independent,*dependent,*[subattr[0] for attr in dependent for subattr in agg[attr]]]
@@ -454,7 +471,13 @@ def apply(keys,data,settings,hyperparameters):
 						destination = '%s%s'%(axis,func) if attr in dependent else axis
 
 						if source in grouping:
-							value[destination] = grouping[source].to_numpy()
+							if dtypes[attr] in ['array']:
+								value[destination] = [list(i) for i in grouping[source]][0]
+							else:
+								value[destination] = grouping[source].to_numpy()
+						elif source is null:
+							source = delim.join(((dependent[-1],function,func)))
+							value[destination] = np.arange(len(grouping[source][0]))
 						else:
 							value[destination] = grouping.reset_index().index.to_numpy()
 
@@ -619,6 +642,7 @@ def plotter(settings,hyperparameters):
 						(values[plots][label]['other']))
 				]
 				)
+
 			data[attr] = value
 
 			# data

@@ -436,7 +436,7 @@
 		"errorbar":{
 			"x":null,
 			"y":"hessian.eigenvalues",
-			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null,"iteration":"@iteration.min@","rank":"@hessian.rank@"},
+			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null,"iteration":"@iteration.max@","rank":"hessian.rank"},
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -470,7 +470,8 @@
 			"framealpha": 0.8,
 			"loc": "lower right",
 			"ncol": 1,
-			"set_zorder":{"level":100}
+			"set_zorder":{"level":100},
+			"set_label":true
 			}			
 		},
 	"style":{
@@ -493,7 +494,7 @@
 		"errorbar":{
 			"x":null,
 			"y":"fisher.eigenvalues",
-			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null,"iteration":"@iteration.min@","rank":"@fisher.rank@"},
+			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null,"iteration":"@iteration.max@","rank":"fisher.rank"},
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -527,7 +528,8 @@
 			"framealpha": 0.8,
 			"loc": "lower right",
 			"ncol": 1,
-			"set_zorder":{"level":100}
+			"set_zorder":{"level":100},
+			"set_label":true			
 			}			
 		},
 	"style":{
