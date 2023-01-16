@@ -104,7 +104,7 @@
 			"y":"objective",
 			"label":{
 				"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy}"],
-				"func":{"stat":{"":"mean","err":"std"}}, 
+				"func":{"stat":{"":"mean","err":"sem"}}, 
 				"wrapper":{"abs":{"abs":{}}},
 				"slice":[0,null,1],
 				"axis":{"row":[],"col":[],"plot":[0],"axis":[-1]}
@@ -122,7 +122,13 @@
 			{
 			"x":"noise.scale",
 			"y":"objective.ideal.state",
-			"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless}"],
+			"label":{
+				"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noiseless}"],
+				"func":{"stat":{"":"mean","err":"sem"}}, 
+				"wrapper":{"abs":{"abs":{}}},
+				"slice":[0,null,1],
+				"axis":{"row":[],"col":[],"plot":[0],"axis":[-1]}
+			},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -191,7 +197,13 @@
 			{
 			"x":"noise.scale",
 			"y":"objective.diff.state",
-			"label":["N","architecture","M","iteration=@iteration.min@"],
+			"label":{
+				"label":["N","architecture","M","iteration=@iteration.min@","\\textrm{Noisy}"],
+				"func":{"stat":{"":"mean","err":"sem"}}, 
+				"wrapper":{"abs":{"abs":{}}},
+				"slice":[0,null,1],
+				"axis":{"row":[],"col":[],"plot":[0],"axis":[-1]}
+			},			
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -260,7 +272,12 @@
 			{
 			"x":"M",
 			"y":"objective",
-			"label":["N","architecture","noise.scale","iteration=@iteration.min@"],
+			"label":{
+				"label":["N","architecture","noise.scale","iteration=@iteration.min@"],
+				"wrapper":{"abs":{"abs":{}}},
+				"slice":[0,null,1],
+				"axis":{"row":[],"col":[],"plot":[0],"axis":[-1]}
+			},			
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -325,9 +342,14 @@
 		},
 	"ax":{
 		"errorbar":{
-			"x":"",
+			"x":null,
 			"y":"hessian.eigenvalues",
-			"label":["N","architecture","M","noise.scale","iteration=@iteration.min@","rank=@hessian.rank@"],
+			"label":{
+				"label":["N","architecture","M","noise.scale","iteration=@iteration.min@","rank=@hessian.rank@"],
+				"wrapper":{"abs":{"abs":{}}},
+				"slice":[0,null,1],
+				"axis":{"row":[],"col":[],"plot":[0],"axis":[-1]}
+			},				
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -382,9 +404,14 @@
 		},
 	"ax":{
 		"errorbar":{
-			"x":"",
+			"x":null,
 			"y":"fisher.eigenvalues",
-			"label":["N","architecture","M","noise.scale","iteration=@iteration.min@","rank=@fisher.rank@"],
+			"label":{
+				"label":["N","architecture","M","noise.scale","iteration=@iteration.min@","rank=@hessian.rank@"],
+				"wrapper":{"abs":{"abs":{}}},
+				"slice":[0,null,1],
+				"axis":{"row":[],"col":[],"plot":[0],"axis":[-1]}
+			},				
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -441,7 +468,12 @@
 		"errorbar":{
 			"x":"M",
 			"y":"features.relative.mean",
-			"label":["N","architecture","noise.scale","iteration=@iteration.min@"],
+			"label":{
+				"label":["N","architecture","noise.scale","iteration=@iteration.min@"],
+				"wrapper":{"abs":{"abs":{}}},
+				"slice":[0,null,1],
+				"axis":{"row":[],"col":[],"plot":[0],"axis":[-1]}
+			},				
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -510,7 +542,12 @@
 		"errorbar":{
 			"x":"M",
 			"y":"iteration.min",
-			"label":["N","architecture","noise.scale","iteration=@iteration.min@"],			
+			"label":{
+				"label":["N","architecture","noise.scale","iteration=@iteration.min@"],
+				"wrapper":{"abs":{"abs":{}}},
+				"slice":[0,null,1],
+				"axis":{"row":[],"col":[],"plot":[0],"axis":[-1]}
+			},				
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -555,127 +592,5 @@
 		"layout":{"nrows":1,"ncols":1,"index":1},
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
-	},	
-"None.parameters.iteration.M":{
-	"None.parameters.all.iteration.M":{
-		"fig":{
-			"set_size_inches":{"w":20,"h":12},
-			"subplots_adjust":{"hspace":0.5},
-			"tight_layout":{},
-			"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-			"close":{}
-			},
-		"ax":{
-			"errorbar":{
-				"x":"",
-				"y":"parameters",
-				"label":["N","architecture","M","iteration=%50%"],
-				"marker":"",
-				"linestyle":"--",
-				"elinewidth":2,
-				"capsize":3,						
-				"color":"viridis_r",
-				"ecolor":"viridis_r"
-				},
-			"legend":null,			
-			"set_title":{"label":"$\\varphi$","pad":12},	
-			"set_ylabel":{"ylabel":[["$\\alpha$"],["$\\phi$"]]},
-			"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
-			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-			"set_xnbins":{"nbins":5},
-			"set_ynbins":{"nbins":6},
-			"set_yscale":{"value":"linear"},
-			"set_ylim":{"ymin":-0.1,"ymax":1.1},			
-			"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
-			"ticklabel_format":{"axis":"y","style":"sci","scilimits":[-1,0]},
-			"tick_params":[
-				{"axis":"y","which":"major","length":8,"width":1},
-				{"axis":"y","which":"minor","length":0,"width":0},
-				{"axis":"x","which":"major","length":8,"width":1},
-				{"axis":"x","which":"minor","length":0,"width":0}
-				],
-			"set_aspect":{"aspect":"auto"},
-			"grid":{"visible":true,"which":"major","axis":"both"}
-			},
-		"style":{
-			"texify":null,
-			"mplstyle":"plot.mplstyle",	
-			"rcParams":{"font.size":25},
-			"layout":{"nrows":1,"ncols":2,"index":1,"left":null,"right":null,"top":null,"bottom":null,"hspace":0.5,"wspace":0.5,"pad":0.1},
-			"share": {
-				"ax":{
-					"legend":{"set_title":"bottom_right","handles":"bottom_right","labels":"bottom_right"},
-					"set_xlabel":{"xlabel":null},
-					"set_ylabel":{"ylabel":"left"},
-					"set_title":{"label":"top"}
-					}
-				}
-			}
-		},
-	"None.features.relative.iteration.M":{
-		"fig":{
-			"set_size_inches":{"w":14,"h":12},
-			"subplots_adjust":{"hspace":0.5},
-			"tight_layout":{},
-			"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-			"close":{}
-			},
-		"ax":{
-			"errorbar":{
-				"x":"",
-				"y":"features.relative",
-				"label":["N","architecture","M","iteration=%50%"],
-				"marker":"",
-				"linestyle":"--",
-				"elinewidth":2,
-				"capsize":3,						
-				"color":"viridis_r",
-				"ecolor":"viridis_r"
-				},
-			"legend":{
-				"title_fontsize": 20,
-				"get_title":{"ha":"center"},
-				"prop": {"size": 20},
-				"markerscale": 1.2,
-				"handlelength": 3,
-				"framealpha": 0.8,
-				"loc": [1.1,0.6],
-				"ncol": 1,
-				"set_zorder":{"level":100}
-				},			
-			"set_title":{"label":"$\\abs{({\\varphi}^{(i)}_{} - {\\varphi}^{(0)}_{})/{\\varphi}^{(0)}_{}}$","pad":12},				
-			"set_ylabel":{"ylabel":[["$\\alpha$"],["$\\phi$"]]},
-			"set_xlabel":{"xlabel":"$\\textrm{Time}$"},
-			"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-			"set_xnbins":{"nbins":5},
-			"set_ynbins":{"nbins":6},
-			"set_yscale":{"value":"linear"},
-			"set_ylim":{"ymin":-0.1,"ymax":1.1},
-			"set_ylim":{"ymin":null,"ymax":null},
-			"yaxis.set_major_formatter":{"ticker":{"ScalarFormatter":{}}},
-			"tick_params":[
-				{"axis":"y","which":"major","length":8,"width":1},
-				{"axis":"y","which":"minor","length":0,"width":0},
-				{"axis":"x","which":"major","length":8,"width":1},
-				{"axis":"x","which":"minor","length":0,"width":0}
-				],
-			"set_aspect":{"aspect":"auto"},
-			"grid":{"visible":true,"which":"major","axis":"both"}
-			},
-		"style":{
-			"texify":null,
-			"mplstyle":"plot.mplstyle",	
-			"rcParams":{"font.size":25},
-			"layout":{"nrows":1,"ncols":2,"index":2,"left":null,"right":null,"top":null,"bottom":null,"hspace":0.5,"wspace":3,"pad":0.1},
-			"share": {
-				"ax":{
-					"legend":{"set_title":"bottom_right","handles":"bottom_right","labels":"bottom_right"},
-					"set_xlabel":{"xlabel":null},
-					"set_ylabel":{"ylabel":"left"},
-					"set_title":{"label":"top"}
-					}
-				}			
-			}
-		}
-	}		
+	}	
 }

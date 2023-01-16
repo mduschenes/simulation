@@ -1,100 +1,14 @@
 {
-	"sort": ["N","D","d","L","delta","M","T","tau","iteration","architecture","noise.scale","optimize.c1","optimize.c2"],
-	"parameters":[
-		{
-			"key":{"x":"iteration","y":"objective"},
-			"slice":null,
-			"slice":[0,null,1],			
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}
-		},
-		{
-			"key":{"x":"iteration","y":"objective.ideal.noise"},
-			"slice":null,			
-			"slice":[0,null,1],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},		
-		{
-			"key":{"x":"iteration","y":"objective.ideal.state"},
-			"slice":null,			
-			"slice":[0,null,1],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},		
-		{
-			"key":{"x":"iteration","y":"objective.ideal.operator"},
-			"slice":null,
-			"slice":[0,null,1],			
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},						
-		{
-			"key":{"x":"noise.scale","y":"objective"},
-			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},		
-		{
-			"key":{"x":"noise.scale","y":"objective.ideal.noise"},
-			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},	
-		{
-			"key":{"x":"noise.scale","y":"objective.ideal.state"},
-			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},				
-		{
-			"key":{"x":"noise.scale","y":"objective.ideal.operator"},
-			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"wrapper":{"abs":{}}			
-		},						
-		{
-			"key":{"x":"M","y":"objective"},
-			"slice":[0,null,null],
-			"stat":[["linear","linear"]],
-			"label":{"noise.scale":null}
-		},		
-		{
-			"key":{"x":"","y":"parameters"},
-			"axis":[[0,1],[2],[],[-1]]
-		},
-		{
-			"key":{"x":"","y":"features.relative"},
-			"axis":[[0,1],[2],[],[-1]]
-		},
-		{
-			"key":{"x":"M","y":"features.relative.mean"},
-			"wrapper":{"mean":{"axis":[-1]}},			
-			"axis":[[1],[],[],[0]],
-			"wrapper":{"mean":{"axis":[-2,-1]}},
-			"axis":[[],[],[],[0]]
-		},
-		{
-			"key":{"x":"M","y":"iteration.min"},
-			"stat":[["linear","linear"]]
-		},		
-		{
-			"key":{"x":"","y":"hessian.eigenvalues"},
-			"slice":[0,100,null],			
-			"axis":[[0],[],[],[-1]]
-		},
-		{
-			"key":{"x":"","y":"fisher.eigenvalues"},
-			"slice":[0,100,null],						
-			"axis":[[0],[],[],[-1]]
-		}				
-		],	
-	"null":{},
-	"null":{"None.parameters.iteration.M":null},
+	"load":1,
+	"dump":1,
+	"plot":1,
+	"process":null,
+	"usetex":true,
+	"useval":true,
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",
 		"rank": "r",
-		"None": "\\textrm{None}",
+		"None": "$0$",
 		"key":null,
 		"architecture": "\\textrm{Architecture}",
 		"constrained": "\\textrm{Constrained}",
@@ -103,19 +17,12 @@
 		"optimize.c1":"c_{1}",
 		"optimize.c2":"c_{2}"
 	},
-	"kwargs":{
-		"labels":true
+	"valify": {
+		"None":1e-20
 	},
-	"pwd":null,
-	"cwd":null,
 	"path": {
-        "plot": "plot.pdf",
-        "process": "process.hdf5",
-        "metadata":"metadata.json"             
-    },
-	"process":[],
-	"process":["src.postprocess.process"],
-	"load":0,
-	"dump":1,
-	"plot":1
+		"plot": "plot.pdf",
+		"metadata":"metadata.json"             
+	},
+	"kwargs":{}
 }
