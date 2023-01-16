@@ -3,11 +3,8 @@
 # Import python modules
 import pytest
 import os,sys
-import itertools,functools,copy
 
-import jax
-import jax.numpy as np
-import numpy as onp
+import pandas as pd
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -15,7 +12,9 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.io import load,dump,join,split,edit
+from src.utils import array,rand,allclose,scalars
+from src.io import load,dump,join,split,edit,dirname,exists
+from src.call import rm
 
 # Logging
 # from src.utils import logconfig
@@ -23,7 +22,7 @@ from src.io import load,dump,join,split,edit
 # logger = logconfig(__name__,conf=conf)
 
 
-def test_path(path='data/data.hdf5'):
+def test_path(path='.tmp.tmp/data.hdf5'):
 	new = edit(
 			path=path,
 			directory=None,
@@ -36,17 +35,108 @@ def test_path(path='data/data.hdf5'):
 
 	return
 
-def test_hdf5(path='data/data.hdf5'):
+def test_load(path=None):
+	
+
+	kwargs = [
+		{
+		'path':'config/test/**/data.hdf5',
+		'default':{},
+		'wrapper':'df',
+		'type':pd.DataFrame,
+		},
+		{
+		'path':{'path':'config/test/-1/data.hdf5'},
+		'default':None,
+		'wrapper':'df',
+		'type':None,		
+		},
+		{
+		'path':{'path':'config/test/-1/data.hdf5'},
+		'default':{},
+		'wrapper':'df',
+		'type':dict,		
+		},		
+		{
+		'path':['config/test/**/data.hdf5'],
+		'default':{},
+		'wrapper':'df',
+		'type':pd.DataFrame,		
+		},
+		{
+		'path':['config/plot.json','config/process.json'],
+		'default':{},
+		'wrapper':None,
+		'type':list,
+		'subtype':dict,				
+		},						
+	]
+
+	for kwarg in kwargs:
+		typing = kwarg.pop('type')
+		subtyping = kwarg.pop('subtype',None)
+		data = load(**kwarg)
+		print(kwarg,type(data))
+		assert (typing is None and data is None) or isinstance(data,typing), "Incorrect loading %r"%(kwarg)
+		if isinstance(data,(list,dict)):
+			assert all(isinstance(datum,subtyping) for datum in data), "Incorrect multiple loading %r" %(kwarg)
+
 	return
-	# Create data
-	def rand(shape=None):
-		if shape is None:
-			if onp.random.rand() < 0.5:
-				return onp.random.randint(0,100)
-			else:
-				return 'sfdsgsdg'
-		else:
-			return np.array(onp.random.rand(*shape))
+
+
+
+
+
+def test_dump(path=None):
+
+	kwargs = [
+		{
+		'data':load('config/data/0/data.hdf5'),
+		'path':'config/tmp/data.hdf5',
+		'default':{},
+		'wrapper':None,
+		},
+		{
+		'data':load('config/data/0/data.hdf5'),
+		'path':{'name':'config/tmp/data.hdf5','test':'config/tmp/tmp/test.hdf5'},
+		'default':{},
+		'wrapper':None,
+		},		
+		{
+		'data':load('config/plot.json'),
+		'path':['config/tmp/data.json','config/tmp/test.json'],
+		'default':{},
+		'wrapper':None,
+		},				
+	]
+
+
+
+	for kwarg in kwargs:
+
+		data = kwarg.pop('data',None)
+		path = kwarg.get('path',None)
+		dump(data,**kwarg)
+
+
+		msg = "Incorrect dumping %r"%(kwarg)
+
+		if isinstance(path,str):
+			assert exists(path),msg
+		elif isinstance(path,list):
+			assert all(exists(subpath) for subpath in path),msg
+		elif isinstance(path,dict):
+			assert all(exists(path[subpath]) for subpath in path),msg
+	
+	path = 'config/tmp'
+	rm(path,execute=True)
+
+	return
+
+
+
+def test_hdf5(path='.tmp.tmp/data.hdf5'):
+
 	g = 3
 	n = 2
 	shape = (7,3)
@@ -80,18 +170,26 @@ def test_hdf5(path='data/data.hdf5'):
 
 	new = load(path,wr=wr,**kwargs)
 
-
-
 	# Check dumped and loaded data are equal
 	for group in groups:
 		for instance in instances:
 			for attr in attrs:
 				msg = "group: %s, instance: %s, attr: %s Unequal"%(group,instance,attr)
-				if isinstance(data[group][instance][attr],(int,np.integer,float,np.floating,str)):
+				if isinstance(data[group][instance][attr],scalars):
 					assertion = data[group][instance][attr] == new[group][instance][attr]
 				else:
-					assertion = np.allclose(data[group][instance][attr],new[group][instance][attr])
+					assertion = allclose(data[group][instance][attr],new[group][instance][attr])
 				assert assertion,msg
 
 
+	path = dirname(path)
+
+	rm(path,execute=True)
+
 	return
+
+
+if __name__ == '__main__':
+	# test_load()
+	test_dump()
+

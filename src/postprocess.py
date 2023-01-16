@@ -19,7 +19,7 @@ from src.utils import argparser
 from src.utils import array,zeros,ones,arange,linspace,logspace,rand,sort,eig,argmax,argmin,maximum,difference,rand,scinotation,exp,log,log10,sqrt
 from src.utils import is_naninf
 from src.utils import nan
-from src.dictionary import updater,getter
+from src.iterables import setter,getter
 from src.fit import fit
 from src.io import load,dump,join,split,glob,cd,exists,dirname
 
@@ -411,7 +411,7 @@ def process(path):
 							},
 						}
 
-					updater(settings,options)
+					setter(settings,options)
 
 					fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
@@ -518,7 +518,7 @@ def process(path):
 						},
 					}
 
-				updater(settings,options)
+				setter(settings,options)
 
 				fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
@@ -620,7 +620,7 @@ def process(path):
 									}
 								}
 
-						updater(settings[i],options)
+						setter(settings[i],options)
 
 					fig,ax = plot(settings=settings,fig=fig,ax=ax)
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,copy,ast
+import os,sys,itertools,copy,ast,operator
 
 from functools import partial,wraps
-from natsort import natsorted,realsorted
+from natsort import natsorted
 import argparse
 
 import traceback
@@ -50,7 +50,7 @@ configs = {
 for name in configs:
 	jax.config.update(name,configs[name])
 
-# np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',dbl,np.float32]}})
+np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 
 # Logging
@@ -62,9 +62,25 @@ logger = logging.getLogger(__name__)
 pi = np.pi
 e = np.exp(1)
 nan = np.nan
+inf = np.inf
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
+
+class Null(object):
+	def __str__(self):
+		return 'Null'
+	def __repr__(self):
+		return self.__str__()
+
+class none(object):
+	def __init__(self,default=0,*args,**kwargs):
+		self.default = default
+		return
+	def __call__(self,*args,**kwargs):
+		return self.default
+
+null = Null()
 
 # Types
 itg = np.integer
@@ -204,6 +220,7 @@ class argparser(argparse.ArgumentParser):
 	def values(self):
 		return self.kwargs.values()
 
+
 def jit(func,*,static_argnums=None,**kwargs):
 	'''
 	Just-in-time compile function
@@ -215,7 +232,6 @@ def jit(func,*,static_argnums=None,**kwargs):
 		func (callable): Compiled function
 	'''
 	return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-
 
 # @partial(jit,static_argnums=(2,))	
 def vmap(func,in_axes=0,out_axes=0,axes_name=None):	
@@ -268,19 +284,33 @@ def vfunc(funcs,index):
 	return lambda x,func=func,index=index: func(index,x)
 
 
-def value_and_gradient(func):
+def value_and_gradient(func,grad=None,returns=False):
 	'''
 	Compute value and gradient of function
 	Args:
 		func (callable): Function to differentiate
+		grad (callable): Gradient of function
+		returns (bool): Return function and gradient
 	Returns:
 		value_and_grad (callable): Value and Gradient of function
-	'''
-	# @jit
-	# def _value_and_gradient(*args,**kwargs):
-	# 	return jax.value_and_grad(func)(*args,**kwargs)
-	value_and_grad = jit(jax.value_and_grad(func))
-	return value_and_grad
+		func (callable): Function
+		grad (callable): Gradient
+	'''	
+	def _value_and_grad(func,grad):
+		def _func_and_grad(*args,**kwargs):
+			return func(*args,**kwargs),grad(*args,**kwargs)
+		return _func_and_grad
+
+	if grad is None:
+		grad = gradient(func)
+		value_and_grad = jit(jax.value_and_grad(func))
+	else:
+		value_and_grad = _value_and_grad(func,grad)
+
+	if returns:
+		return value_and_grad,func,grad
+	else:
+		return value_and_grad
 
 def gradient(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	'''
@@ -464,16 +494,15 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	Returns:
 		fisher (callable): Fisher information of function
 	'''
-
 	if mode in ['operator']:
 		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -1/operands[0].shape[0]*out]
+		wrappers = [lambda out,*operands: out,lambda out,*operands: -out/operands[0].shape[0]]
 	elif mode in ['state']:
 		subscripts = ['uai,vai->uv','uai,ai,vaj,aj->uv']
 		wrappers = [lambda out,*operands: out/operands[0].shape[1],lambda out,*operands: -out/operands[0].shape[1]]
 	else:
 		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -1/operands[0].shape[0]*out]
+		wrappers = [lambda out,*operands: out,lambda out,*operands: -out/operands[0].shape[0]]
 
 	if grad is None:
 		grad = gradient(func,mode='fwd',move=True)
@@ -506,6 +535,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 			out = out + einsummation(f,g,_f,_g)
 		out = out.real
 		return out
+
 	return fisher
 
 
@@ -525,6 +555,18 @@ def nullfunc(obj,*args,**kwargs):
 	'''
 	return obj
 
+def zerofunc(obj,*args,**kwargs):
+	'''
+	Zero function
+	Args:
+		obj (object): Object to return
+		args (iterable): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		obj (object): Object to return
+	'''
+	return 0
+
 
 def datatype(dtype):
 	'''
@@ -536,48 +578,6 @@ def datatype(dtype):
 	'''
 	
 	return array([],dtype=dtype).real.dtype
-
-class dictionary(dict):
-	'''
-	Dictionary subclass with dictionary elements explicitly accessible as class attributes
-	Args:
-		args (dict): Dictionary elements
-		kwargs (dict): Dictionary elements
-	'''
-	def __init__(self,*args,**kwargs):
-		
-		args = {k:v for a in args for k,v in ({} if a is None else a).items()}		
-		kwargs = kwargs
-		attrs = {**args,**kwargs}
-
-		for attr in attrs:
-			setattr(self,attr,attrs[attr])
-
-		super().__init__(attrs)
-
-		return
-
-	def __getattribute__(self,item):
-		return super().__getattribute__(item)
-
-	# def __getattr__(self,item):
-	# 	return super().__getattr__(item)
-
-	# def __setattr__(self,item,value):
-	# 	return super().__setitem__(item,value)
-
-	def __getitem__(self,item):
-		return super().__getitem__(item)
-
-	def __setitem__(self,item,value):
-		return super().__setitem__(item,value)
-
-	def __iter__(self):
-		return super().__iter__()
-
-	def __len__(self):
-		return super().__len__()
-
 
 class Array(onp.ndarray):
 	'''
@@ -701,49 +701,6 @@ class String(str):
 		return obj
 
 
-class System(dictionary):
-	'''
-	System attributes (dtype,format,device,seed,verbose,...)
-	Args:
-		dtype (str,data-type): Data type of class
-		format (str): Format of array
-		device (str): Device for computation
-		seed (array,int): Seed for random number generation
-		verbose (bool,str): Verbosity of class	
-		args (dict,System): Additional system attributes
-		kwargs (dict): Additional system attributes
-	'''
-	def __init__(self,*args,**kwargs):
-
-
-		updates = {
-			'verbose':{
-				'notset':0,'debug':10,'info':20,'warning':30,'error':40,'critical':50,
-				'Notset':0,'Debug':10,'Info':20,'Warning':30,'Error':40,'Critical':50,
-				'NOTSET':0,'DEBUG':10,'INFO':20,'WARNING':30,'ERROR':40,'CRITICAL':50,
-				10:10,20:20,30:30,40:40,50:50,
-				2:20,3:30,4:40,5:50,
-				True:20,False:0,None:0,
-				}
-			}
-
-		defaults = {
-			'dtype':'complex',
-			'format':'array',
-			'device':'cpu',
-			'seed':None,
-			'verbose':False,
-		}
-
-		args = {k:v for a in args for k,v in ({} if a is None else a).items()}
-		attrs = {**args,**kwargs}
-		attrs.update({attr: defaults[attr] for attr in defaults if attrs.get(attr) is None})
-		attrs.update({attr: updates.get(attr,{}).get(attrs[attr],attrs[attr]) for attr in attrs})
-
-		super().__init__(**attrs)
-
-		return
-
 
 @tree_register
 class Parameters(dict):
@@ -864,7 +821,7 @@ class nparray(onp.ndarray):
 	def __new__(self,*args,**kwargs):
 		return onp.array(*args,**kwargs)
 
-class asarray(onp.ndarray):
+class asndarray(onp.ndarray):
 	'''
 	array class
 	Args:
@@ -875,6 +832,18 @@ class asarray(onp.ndarray):
 	'''
 	def __new__(self,*args,**kwargs):
 		return onp.asarray(*args,**kwargs)
+
+class asarray(np.ndarray):
+	'''
+	array class
+	Args:
+		args (iterable): Array arguments
+		kwargs (dict): Array keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return np.asarray(*args,**kwargs)
 
 class asscalar(onp.ndarray):
 	'''
@@ -915,7 +884,7 @@ class asobjs(onp.ndarray):
 		out (array): array
 	'''
 	def __new__(self,*args,**kwargs):
-		return asarray(*args,**kwargs)
+		return asndarray(*args,**kwargs)
 
 class ones(array):
 	'''
@@ -992,7 +961,7 @@ class linspace(array):
 
 class logspace(array):
 	'''
-	array class of linspace
+	array class of logspace
 	Args:
 		args (iterable): Array arguments
 		kwargs (dict): Array keyword arguments
@@ -1109,7 +1078,6 @@ class toffoli(array):
 			return array([[out,out],[out,-out]],*args,**kwargs)
 
 
-
 def PRNGKey(seed=None,size=False,reset=None):
 	'''
 	Generate PRNG key
@@ -1150,7 +1118,7 @@ def PRNGKey(seed=None,size=False,reset=None):
 	if isinstance(seed,(int)):
 		key = jax.random.PRNGKey(seed)
 	else:
-		key = asarray(seed,dtype=np.uint32)
+		key = asndarray(seed,dtype=np.uint32)
 
 	if size:
 		key = jax.random.split(key,num=size)
@@ -1158,14 +1126,16 @@ def PRNGKey(seed=None,size=False,reset=None):
 	return key
 
 
-def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
+def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,dtype=None):
 	'''
 	Get random array
 	Args:
 		shape (int,iterable): Size or Shape of random array
 		key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+		seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
+		mesh (int): Get meshgrid of array for mesh dimensions
 		dtype (data_type): Datatype of array		
 	Returns:
 		out (array): Random array
@@ -1176,10 +1146,14 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 	if isinstance(shape,int):
 		shape = (shape,)
 
+	if seed is not None:
+		key = seed
 	key = PRNGKey(key)
 
 	if bounds is None:
 		bounds = ["-inf","inf"]
+	elif isinstance(bounds,scalars):
+		bounds = [0,bounds]
 	elif len(bounds)==0:
 		bounds = ["-inf","inf"]
 
@@ -1202,69 +1176,117 @@ def rand(shape=None,bounds=[0,1],key=None,random='uniform',dtype=None):
 		shape = (2,*shape)
 
 	if random in ['uniform','rand']:
-		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+		def func(key,shape,bounds,dtype):
+			out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+			return out
 	elif random in ['randint']:
-		out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+		def func(key,shape,bounds,dtype):		
+			out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+			return out
 	elif random in ['gaussian','normal']:
-		out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
+		def func(key,shape,bounds,dtype):
+			out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
+			return out
 	elif random in ['haar']:
+		def func(key,shape,bounds,dtype):
 
-		bounds = [-1,1]
-		subrandom = 'gaussian'
-		subdtype = 'complex'
-		ndim = len(shape)
+			bounds = [-1,1]
+			subrandom = 'gaussian'
+			subdtype = 'complex'
+			ndim = len(shape)
 
-		is1d = ndim == 1 
+			if ndim < 2:
+				shape = [*shape]*2
 
-		if ndim < 2:
-			shape = [*shape]*2
-			ndim = 2
+			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)
 
-		out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)
+			if ndim < 4:
+				reshape = (*(1,)*(4-out.ndim),*out.shape)
+			else:
+				reshape = out.shape
 
-		if ndim < 3:
-			new = (*(1,)*(4-ndim),*out.shape)
-			out = out.reshape(new)
-		else:
-			new = (*out.shape[:1],*(1,)*(4-ndim),*out.shape[1:])
-			out = out.reshape(new)
+			out = out.reshape(reshape)
 
-		for i in range(out.shape[0]):
-			for j in range(out.shape[1]):
+			for i in range(out.shape[0]):
+				for j in range(out.shape[1]):
 
-				Q,R = qr(out[i,j])
-				R = diag(R)
-				R = diag(R/abs(R))
-				
-				out = out.at[i,j].set(Q.dot(R))
+					Q,R = qr(out[i,j])
+					R = diag(R)
+					R = diag(R/abs(R))
+					
+					out = out.at[i,j].set(Q.dot(R))
 
-		out = out.reshape(shape)
+			out = out.reshape(shape)
 
-		if is1d:
-			out = out[...,0]
+			assert allclose(1,einsum('...ij,...ij->...',out,out.conj()).real/out.shape[-1])
+
+			# Create random matrices versus vectors
+			if ndim == 1: # Random vector
+				out = out[...,0] 
+			elif ndim == 2: # Random matrix
+				out = out[:,:]
+			elif ndim == 3: # Samples of random vectors
+				out = out[...,0]
+			elif ndim == 4: # Samples of random rank-1 matrices
+
+				out = out[...,0]
+
+				out = einsum('...i,...j->...ij',out,out.conj())
+
+
+			return out
+
+
 	elif random in ['hermitian','symmetric']:
+		def func(key,shape,bounds,dtype):
 		
-		bounds = [-1,1]
-		subrandom = 'gaussian'
-		subdtype = 'complex'
-		ndim = len(shape)
+			bounds = [-1,1]
+			subrandom = 'gaussian'
+			subdtype = 'complex'
+			ndim = len(shape)
 
-		is1d = ndim == 1 
+			if ndim == 1:
+				shape = [*shape]*2
+				ndim = len(shape)
 
-		if ndim < 2:
-			shape = [*shape]*2
-			ndim = 2
+			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)	
 
-		out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)	
+			out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
 
-		out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
+
+			if ndim == 1:
+				out = diag(out)
+
+			return out
 
 	elif random in ['zeros']:
-		out = zeros(shape,dtype=dtype)
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape,dtype=dtype)
+			return out
 	elif random in ['ones']:
-		out = ones(shape,dtype=dtype)		
+		def func(key,shape,bounds,dtype):
+			out = ones(shape,dtype=dtype)
+			return out	
+	elif random in ['linspace']:
+		def func(key,shape,bounds,dtype):
+			num = shape[0] if not isinstance(shape,int) else shape
+			out = linspace(*bounds,num,dtype=dtype)
+			return out					
+	elif random in ['logspace']:
+		def func(key,shape,bounds,dtype):
+			num = shape[0] if not isinstance(shape,int) else shape
+			out = logspace(*bounds,num,dtype=dtype)
+			return out								
 	else:
-		out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+		def func(key,shape,bounds,dtype):
+			out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+			return out
+
+	if mesh is not None:
+		out = array([out.reshape(-1) for out in np.meshgrid(*[func(key,shape,bounds,dtype) for i in range(mesh)])])
+	else:
+		out = func(key,shape,bounds,dtype)
+
 
 	if complex:
 		out = out[0] + 1j*out[1]
@@ -1364,6 +1386,17 @@ def qr(a):
 
 
 @jit
+def cholesky(a):
+	'''
+	Compute cholesky decomposition of array
+	Args:
+		a (array): Array to compute cholesky decomposition of shape (...,n,n)
+	Returns:
+		L (array): Cholesky factor of shape (...,n,n)
+	'''
+	return np.linalg.cholesky(a)
+
+@jit
 def lstsq(x,y):
 	'''
 	Compute least squares fit between x and y
@@ -1447,506 +1480,459 @@ def norm(a,axis=None,ord=2,keepdims=False):
 	return out
 
 
-
-@jit
-def normed(a,b):
+def inner(*operands,optimize=True,wrapper=None):
 	'''
-	Calculate norm squared of arrays a and b
+	Calculate inner product of arrays
 	Args:
-		a (array): Array to calculate distance
-		b (array): Array to calculate distance
-	Returns:
-		out (array): Distance
-	'''	
-	return norm(a-b,ord=2)
-
-@jit
-def gradient_normed(a,b,da):
-	'''
-	Calculate gradient of norm squared of arrays a and b with respect to a
-	Args:
-		a (array): Array to calculate norm
-		b (array): Array to calculate norm
-		da (array): Gradient of array to calculate norm
-	Returns:
-		out (array): Gradient of norm
-	'''
-	@jit
-	def func(da):
-		return (((a-b).conj()*da).sum()).real
-	out = vmap(func)(da)
-	return out
-	# return gradient(normed)(a,b)
-
-
-def normed_einsum(*shapes,optimize=True):
-	'''
-	Calculate norm squared of arrays a and b with einsum
-	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
-		einsummation (callable): Norm squared einsum
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
+	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+	
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes)
+
+	if ndim == 1:
+		subscripts = 'i,i->'
+	elif ndim == 2:
+		subscripts = 'ij,ij->'
+	else:
+		subscripts = '...ij,...ij->...'
+
+	shapes = (shapes[0],shapes[1])
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+
+	@jit
+	def func(*operands):
+		out = einsummation(*operands).real
+		return wrapper(out,*operands)
+
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
+
+	return out
+
+def gradient_inner(*operands,optimize=True,wrapper=None):
+	'''
+	Calculate gradient of inner product of arrays
+	Args:
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+	Returns:
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
+	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+	
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes)
+
+	if ndim == 1:
+		subscripts = '...i,i->...'
+	elif ndim == 2:
+		subscripts = '...ij,ij->...'
+	else:
+		subscripts = '...ij,...ij->...'
+
+	shapes = (shapes[2],shapes[1])
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+
+	@jit
+	def func(*operands):
+		out = einsummation(operands[2],operands[1]).real
+		return wrapper(out,*operands)
+
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
+
+	return out
+
+
+def inner_norm(*operands,optimize=True,wrapper=None):
+	'''
+	Calculate norm squared of arrays a and b, with einsum if shapes supplied
+	Args:
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)		
+	Returns:
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 
-	subscripts = 'ij->'
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+	
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes)
+
+	if ndim == 1:
+		subscripts = 'i->'
+	elif ndim == 2:
+		subscripts = 'ij->'
+	else:
+		subscripts = '...ij->...'
+
 	shapes = (shapes[0],)
 
-	@jit
-	def wrapper(out,*operands):
-		return out
-
-	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
-	def einsummation(*operands):
-		out = operands[0].conj()-operands[1]
-		out = abs2(out)
-		return _einsummation(out)
-
-	return einsummation
-
-
-
-def gradient_normed_einsum(*shapes,optimize=True):
-	'''
-	Calculate norm squared of arrays a and b with einsum
-	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-	Returns:
-		einsummation (callable): Gradient of norm squared einsum
-	'''	
-
-	subscripts = 'ij,uij->u'
-	shapes = (shapes[0],shapes[2])
-
-	@jit
-	def wrapper(out,*operands):
-		return 2*out.real
-
-	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
-
-	@jit
-	def einsummation(*operands):
-		out = (operands[0].conj()-operands[1])
-		return _einsummation(out,operands[2])
-
-	return einsummation
-
-
-@jit
-def inner(a,b):
-	'''
-	Calculate inner product of arrays a and b
-	Args:
-		a (array): Array to calculate inner product
-		b (array): Array to calculate inner product
-	Returns:
-		out (array): Inner product
-	'''	
-	return trace(tensordot(a,b.T,1).real)
-
-
-@jit
-def gradient_inner(a,b,da):
-	'''
-	Calculate gradient of inner product of arrays a and b with respect to a
-	Args:
-		a (array): Array to calculate inner product
-		b (array): Array to calculate inner product
-		da (array): Gradient of array to calculate inner product
-	Returns:
-		out (array): Gradient of inner product
-	'''
-	@jit
-	def func(da):
-		return trace(tensordot(da,b.T,1).real)
+	def func(*operands):
+		out = einsummation(abs2(operands[0]-operands[1].conj()).real)
+		return wrapper(out,*operands)
 	
-	out = vmap(func)(da)
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
+
 	return out
 
-
-def inner_einsum(*shapes,optimize=True):
+def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 	'''
-	Calculate inner product of arrays a and b with einsum
+	Calculate norm squared of arrays a and b, with einsum if shapes supplied
 	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
-		einsummation (callable): Inner product einsum
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-
-	subscripts = 'ij,ij->'
-
-	@jit
-	def wrapper(out,*operands):
-		return out.real
-		# return out.real/sqrt(operands[0].shape[0]*operands[1].shape[0])
-
-	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
-
-	@jit
-	def einsummation(*operands):
-		return _einsummation(*operands)
-
-	return einsummation
-
-
-
-def gradient_inner_einsum(*shapes,optimize=True):
-	'''
-	Calculate gradient of inner product of arrays a and b with einsum
-	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-	Returns:
-		einsummation (callable): Gradient of inner product einsum
-	'''	
-
-	subscripts = 'ij,uij->u'
-	shapes = (shapes[0],shapes[2])
-
-	@jit
-	def wrapper(out,*operands):
-		return out.real
-		# return out.real/sqrt(operands[0].shape[0]*operands[0].shape[1])
-
-	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
-
-	@jit
-	def einsummation(*operands):
-		return _einsummation(operands[1],operands[2])
-
-	return einsummation
-
-
-@jit
-def inner_abs2(a,b):
-	'''
-	Calculate absolute square of inner product of arrays a and b
-	Args:
-		a (array): Array to calculate inner product
-		b (array): Array to calculate inner product
-	Returns:
-		out (array): Absolute square of inner product
-	'''	
-	return abs2(trace(tensordot(a,b.T,1)))
-
-
-@jit
-def gradient_inner_abs2(a,b,da):
-	'''
-	Calculate gradient of absolute square inner product of arrays a and b with respect to a
-	Args:
-		a (array): Array to calculate inner product
-		b (array): Array to calculate inner product
-		da (array): Gradient of array to calculate inner product
-	Returns:
-		out (array): Gradient of inner product
-	'''
-	@jit
-	def func(da):
-		return (
-			2*(trace(tensordot(da,b.T,1))*
-			trace(tensordot(a,b.T,1)).conj())).real
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	out = vmap(func)(da)
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes)
+
+	if ndim == 1:
+		subscripts = '...i,i->...'
+	elif ndim == 2:
+		subscripts = '...ij,ij->...'
+	else:
+		subscripts = '...ij,...ij->...'
+
+	shapes = (shapes[2],shapes[1])
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+
+	@jit
+	def func(*operands):
+		out = (operands[0]-operands[1].conj()).conj()
+		out = 2*einsummation(operands[2],out).real
+		return wrapper(out,*operands)
+	
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
+
 	return out
-	# return gradient(inner_abs2)(a,b)
 
-def inner_abs2_einsum(*shapes,optimize=True):
+
+def inner_abs2(*operands,optimize=True,wrapper=None):
 	'''
-	Calculate absolute square inner product of arrays a and b with einsum
+	Calculate absolute square inner product of arrays
 	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
-		einsummation (callable): Absolute square inner product einsum
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
-	subscripts = 'ij,ij->'
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes)
 
-	@jit
-	def wrapper(out,*operands):
-		return abs2(out)
-
-	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
-
-	@jit
-	def einsummation(*operands):
-		return _einsummation(*operands)
-
-	return einsummation
+	if ndim == 1:
+		subscripts = 'i,i->'
+	elif ndim == 2:
+		subscripts = 'ij,ij->'
+	else:
+		subscripts = '...ij,...ij->...'
+	
+	shapes = (shapes[0],shapes[1])
 
 
 
-
-def gradient_inner_abs2_einsum(*shapes,optimize=True):
-	'''
-	Calculate gradient of absolute square of inner product of arrays a and b with einsum
-	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-	Returns:
-		einsummation (callable): Gradient of absolute square inner product einsum
-	'''	
-
-	subscripts_value = 'ij,ij->'
-	shapes_value = (shapes[0],shapes[1])
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
-	def wrapper_value(out,*operands):
-		return out
+	def func(*operands):
+		out = abs2(einsummation(*operands)).real
+		return wrapper(out,*operands)
+	
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
 
-	_einsummation_value = einsum(subscripts_value,*shapes_value,optimize=optimize,wrapper=wrapper_value)
-
-
-	subscripts_grad = 'ij,uij->u'
-	shapes_grad = (shapes[0],shapes[2])
-
-	@jit
-	def wrapper_grad(out,*operands):
-		return out
-
-	_einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper_grad)
-
-	@jit
-	def einsummation(*operands):
-		return 2*(_einsummation_value(operands[0],operands[1]).conj()*_einsummation_grad(operands[1],operands[2])).real
-
-	return einsummation
-
-
-@jit
-def inner_real(a,b):
-	'''
-	Calculate real inner product of arrays a and b
-	Args:
-		a (array): Array to calculate inner product
-		b (array): Array to calculate inner product
-	Returns:
-		out (array): Real inner product
-	'''	
-	return (trace(tensordot(a,b.T,1))).real
-
-
-@jit
-def gradient_inner_real(a,b,da):
-	'''
-	Calculate gradient of real inner product of arrays a and b with respect to a
-	Args:
-		a (array): Array to calculate inner product
-		b (array): Array to calculate inner product
-		da (array): Gradient of array to calculate inner product
-	Returns:
-		out (array): Gradient of real inner product
-	'''
-	@jit
-	def func(da):
-		return (trace(tensordot(da,b.T,1)).real)
-	out = vmap(func)(da)
 	return out
-	# return gradient(inner_real)(a,b)
 
 
-def inner_real_einsum(*shapes,optimize=True):
+
+def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	'''
-	Calculate real inner product of arrays a and b with einsum
+	Calculate gradient of absolute square of inner product of arrays
 	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
-		einsummation (callable): Real inner product einsum
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+	
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes)
 
-	subscripts = 'ij,ij->'
+	if ndim == 1:
+		subscripts_func = 'i,i->'
+	elif ndim == 2:
+		subscripts_func = 'ij,ij->'
+	else:
+		subscripts_func = '...ij,...ij->...'
 
-	@jit
-	def wrapper(out,*operands):
-		return out.real
+	shapes_func = (shapes[0],shapes[1])
 
-	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation_func = einsum(subscripts_func,*shapes_func,optimize=optimize,wrapper=None)
 
-	@jit
-	def einsummation(*operands):
-		return _einsummation(*operands)
+	if ndim == 1:
+		subscripts_grad = '...i,i->...'
+	elif ndim == 2:
+		subscripts_grad = '...ij,ij->...'
+	else:
+		subscripts_grad = '...ij,...ij->...'
 
-	return einsummation
+	shapes_grad = (shapes[2],shapes[1])
 
-
-
-def gradient_inner_real_einsum(*shapes,optimize=True):
-	'''
-	Calculate gradient of real inner product of arrays a and b with einsum
-	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
-		optimize (bool,str,iterable): Contraction type	
-	Returns:
-		einsummation (callable): Gradient of real inner product einsum
-	'''	
-
-	subscripts = 'ij,uij->u'
-	shapes = (shapes[0],shapes[2])
-
-	@jit
-	def wrapper(out,*operands):
-		return out.real
-
-	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=None)
 
 	@jit
-	def einsummation(*operands):
-		return _einsummation(operands[1],operands[2])
+	def func(*operands):
+		out = (2*(einsummation_func(operands[0],operands[1]).conj()*einsummation_grad(operands[2],operands[1])).real)
+		return wrapper(out,*operands)
 
-	return einsummation
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
 
-
-@jit
-def inner_imag(a,b):
-	'''
-	Calculate imaginary inner product of arrays a and b
-	Args:
-		a (array): Array to calculate inner product
-		b (array): Array to calculate inner product
-	Returns:
-		out (array): Imaginary inner product
-	'''	
-	return (trace(tensordot(a,b.T,1))).imag
-
-
-@jit
-def gradient_inner_imag(a,b,da):
-	'''
-	Calculate gradient of imaginary inner product of arrays a and b with respect to a
-	Args:
-		a (array): Array to calculate inner product
-		b (array): Array to calculate inner product
-		da (array): Gradient of array to calculate inner product
-	Returns:
-		out (array): Gradient of inner product
-	'''
-	@jit
-	def func(da):
-		return (trace(tensordot(da,b.T,1)).imag)
-	out = vmap(func)(da)
 	return out
-	# return gradient(inner_imag)(a,b)	
 
-def inner_imag_einsum(*shapes,optimize=True):
+
+def inner_real(*operands,optimize=True,wrapper=None):
 	'''
-	Calculate imaginary inner product of arrays a and b with einsum
+	Calculate real inner product of arrays
 	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
-		einsummation (callable): Imaginary inner product einsum
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+	
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes)
 
-	subscripts = 'ij,ij->'
+	if ndim == 1:
+		subscripts = 'i,i->'
+	elif ndim == 2:
+		subscripts = 'ij,ij->'
+	else:
+		subscripts = '...ij,...ij->...'
+
+	shapes = (shapes[0],shapes[1])
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
-	def wrapper(out,*operands):
-		return out.imag
+	def func(*operands):
+		out = einsummation(*operands).real
+		return wrapper(out,*operands)
 
-	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
 
-	@jit
-	def einsummation(*operands):
-		return _einsummation(*operands)
-
-	return einsummation
-
+	return out
 
 
-def gradient_inner_imag_einsum(*shapes,optimize=True):
+def gradient_inner_real(*operands,optimize=True,wrapper=None):
 	'''
-	Calculate gradient of imaginary inner product of arrays a and b with einsum
+	Calculate gradient of real inner product of arrays
 	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
-		einsummation (callable): Gradient of imaginary inner product einsum
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+	
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes)
 
-	subscripts = 'ij,uij->u'
-	shapes = (shapes[0],shapes[2])
+	if ndim == 1:
+		subscripts = '...i,i->...'
+	elif ndim == 2:
+		subscripts = '...ij,ij->...'
+	else:
+		subscripts = '...ij,...ij->...'
+
+	shapes = (shapes[2],shapes[1])
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
-	def wrapper(out,*operands):
-		return out.imag
+	def func(*operands):
+		out = einsummation(operands[2],operands[1]).real
+		return wrapper(out,*operands)
 
-	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
 
-	@jit
-	def einsummation(*operands):
-		return _einsummation(operands[1],operands[2])
-
-	return einsummation
-
+	return out
 
 
-def inner_vectorabs2_einsum(*shapes,optimize=True):
+def inner_imag(*operands,optimize=True,wrapper=None):
 	'''
-	Calculate absolute square inner product of arrays a and b with einsum
+	Calculate imag inner product of arrays
 	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
-		einsummation (callable): Absolute square inner product einsum
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+	
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes)
 
-	subscripts = 'ij,ij->'
+	if ndim == 1:
+		subscripts = 'i,i->'
+	elif ndim == 2:
+		subscripts = 'ij,ij->'
+	else:
+		subscripts = '...ij,...ij->...'
+
+	shapes = (shapes[0],shapes[1])
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
-	def wrapper(out,*operands):
-		return abs2(out)
+	def func(*operands):
+		out = einsummation(*operands).imag
+		return wrapper(out,*operands)
 
-	_einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=wrapper)
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
 
-	@jit
-	def einsummation(*operands):
-		return _einsummation(*operands)
-
-	return einsummation
-
-
+	return out
 
 
-def gradient_inner_vectorabs2_einsum(*shapes,optimize=True):
+def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 	'''
-	Calculate gradient of absolute square of inner product of arrays a and b with einsum
+	Calculate gradient of imag inner product of arrays
 	Args:
-		shapes (iterable[iterable[int]]): Shapes of arrays to compute summation of elements
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
 	Returns:
-		einsummation (callable): Gradient of absolute square inner product einsum
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+	
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes)
 
-	subscripts_value = 'ij,ij->'
-	shapes_value = (shapes[0],shapes[1])
+	if ndim == 1:
+		subscripts = '...i,i->...'
+	elif ndim == 2:
+		subscripts = '...ij,ij->...'
+	else:
+		subscripts = '...ij,...ij->...'
+
+	shapes = (shapes[2],shapes[1])
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
-	def wrapper_value(out,*operands):
-		return out
+	def func(*operands):
+		out = einsummation(operands[2],operands[1]).imag
+		return wrapper(out,*operands)
 
-	_einsummation_value = einsum(subscripts_value,*shapes_value,optimize=optimize,wrapper=wrapper_value)
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
 
+	return out
 
-	subscripts_grad = 'ij,uij->u'
-	shapes_grad = (shapes[0],shapes[2])
-
-	@jit
-	def wrapper_grad(out,*operands):
-		return out
-
-	_einsummation_grad = einsum(subscripts_grad,*shapes_grad,optimize=optimize,wrapper=wrapper_grad)
-
-	@jit
-	def einsummation(*operands):
-		return 2*(_einsummation_value(operands[0],operands[1]).conj()*_einsummation_grad(operands[1],operands[2])).real
-
-	return einsummation
 
 
 @jit
@@ -1960,6 +1946,41 @@ def dot(a,b):
 		out (array): Dot product
 	'''	
 	return np.dot(a,b)
+
+@jit
+def transpose(a):
+	'''
+	Calculate transpose of array a
+	Args:
+		a (array): Array to calculate transpose
+	Returns:
+		out (array): Transpose
+	'''	
+	return a.T
+
+
+@jit
+def conj(a):
+	'''
+	Calculate conjugate of array a
+	Args:
+		a (array): Array to calculate conjugate
+	Returns:
+		out (array): Conjugate
+	'''	
+	return a.conj()
+
+@jit
+def dagger(a):
+	'''
+	Calculate conjugate transpose of array a
+	Args:
+		a (array): Array to calculate conjugate transpose
+	Returns:
+		out (array): Conjugate transpose
+	'''	
+	return conj(transpose(a))
+
 
 
 @jit
@@ -2055,6 +2076,51 @@ def product(a):
 		out (array): Reduced array of product of elements
 	'''
 	return onp.prod(a)
+
+
+def conditions(booleans,op):
+	'''
+	Compute multiple conditions with boolean operator
+	Args:
+		booleans (iterable[bool]): Boolean conditions
+		op (str,iterable[str]): Boolean operators, ['and','or','lt','gt','eq','le','ge','ne'] 
+	Returns:
+		out (bool): Boolean of conditions
+	'''
+
+	updates = {
+		'&':'and','&&':'and',
+		'|':'or','||':'or',
+		'=':'eq','==':'eq',
+		'<':'lt','<=':'le',
+		'>':'gt','ge':'ge',
+		'!=':'ne',
+		}
+
+
+	if isinstance(op,str):
+		ops = [op]*len(booleans)
+	else:
+		ops = op
+
+	ops = [updates.get(op,op) for op in ops]
+
+	op = ops[0] if ops else None
+	
+	if op is None:
+		out = False
+	elif op in ['or']:
+		out = False
+	elif op in ['and','lt','gt','eq','le','ge','ne']:
+		out = True
+
+	for op,boolean in zip(ops,booleans):
+		if boolean is None:
+			continue
+		out = getattr(operator,'__%s__'%(op))(out,boolean)
+		
+	return out
+
 
 @jit
 def _matmul(a,b):
@@ -2226,6 +2292,10 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	Returns:
 		einsummation (callable,array): Optimal einsum operator or array of optimal einsum
 	'''
+
+	noperands = subscripts.count(',')+1
+	operands = operands[:noperands]
+
 	arrays = all(is_array(operand) for operand in operands)
 
 	if wrapper is None:
@@ -2243,7 +2313,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	optimize = einsum_path(subscripts,*shapes,optimize=optimize)	
 
 	@jit
-	def einsummation(*operands):
+	def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
 		return wrapper(np.einsum(subscripts,*operands,optimize=optimize),*operands)
 
 	if arrays:
@@ -2448,6 +2518,69 @@ def exponentiationmc(parameters,data,identity,state,constants):
 	Returns:
 		out (array): Matrix exponential of data of shape (n,n)
 	'''		
+	out = expmc(parameters,data,identity,state,constants)
+	return out
+
+
+@jit
+def summationmvc(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix sum of parameters times data, acting on matrix, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return dot(addition(parameters*data),state)
+
+@jit
+def exponentiationmvc(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
+		data (array): Array of data to matrix exponentiate of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix exponential of data of shape (n,n)
+	'''		
+	out = expmvc(parameters,data,identity,state,constants)
+	return out
+
+@jit
+def summationmmc(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix sum of parameters times data, acting on matrix, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return dot(addition(parameters*data),state)
+
+@jit
+def exponentiationmmc(parameters,data,identity,state,constants):
+	'''
+	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
+	Args:
+		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
+		data (array): Array of data to matrix exponentiate of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
+		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
+	Returns:
+		out (array): Matrix exponential of data of shape (n,n)
+	'''		
 	out = expmmc(parameters,data,identity,state,constants)
 	return out
 
@@ -2462,7 +2595,7 @@ def distance(a,b):
 	Returns:
 		out (array): Distance between objects a,b
 	'''	
-	return normed(a,b)
+	return norm(a-b,ord=2)
 
 @jit
 def swap(i,j,N,D):
@@ -3006,14 +3139,14 @@ def expmc(x,A,I,B):
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity
-		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
 	d,shape = A.shape[0],A.shape[1:]
 
-	subscripts = 'ij,jk,kl->il'
+	subscripts = 'uij,jk,kl->il'
 	shapes = (shape,shape,shape)
 	einsummation = einsum #(subscripts,shapes)
 
@@ -3090,7 +3223,7 @@ def expmvc(x,A,I,v,B):
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
 		I (array): Array of data identity
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,)
-		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
@@ -3098,7 +3231,7 @@ def expmvc(x,A,I,v,B):
 	d,shape = A.shape[0],A.shape[1:]
 	n = v.shape[0]
 
-	subscripts = 'ij,jk,k->i'
+	subscripts = 'uij,jk,k->i'
 	shapes = (shape,shape,(n,))
 	einsummation = einsum #(subscripts,shapes)
 
@@ -3679,15 +3812,15 @@ def padding(a,shape,key=None,bounds=[0,1],random='zeros'):
 
 	if random is not None:
 		ax = 0
-		new = [a.shape[axis] for axis in range(ndim)]
-		diff = [shape[axis] - new[axis] for axis in range(ndim)]
+		reshape = [a.shape[axis] for axis in range(ndim)]
+		diff = [shape[axis] - reshape[axis] for axis in range(ndim)]
 
 		for axis in range(ndim-1,-1,-1):
 			if diff[axis] > 0:
 
-				new[axis] = diff[axis] 
-				pad = rand(new,key=key,bounds=bounds,random=random)
-				new[axis] = shape[axis]
+				reshape[axis] = diff[axis] 
+				pad = rand(reshape,key=key,bounds=bounds,random=random)
+				reshape[axis] = shape[axis]
 
 				a = moveaxis(a,axis,ax)
 				pad = moveaxis(pad,axis,ax)
@@ -3977,6 +4110,18 @@ def is_numeric(a,*args,**kwargs):
 	dtype = getattr(a,'dtype',type(a))
 	return np.issubdtype(dtype, np.number)
 
+def is_null(a,*args,**kwargs):
+	'''
+	Check if object is Null
+	Args:
+		a (object): Object to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If object is Null
+	'''
+	return isinstance(a,Null)
+
 def is_none(a,*args,**kwargs):
 	'''
 	Check if object is None
@@ -4078,6 +4223,45 @@ def is_complexdtype(dtype,*args,**kwargs):
 		out (bool): If dtype is complex
 	'''
 	return np.issubdtype(dtype, np.complexfloating)
+
+
+def is_hermitian(obj,*args,**kwargs):
+	'''
+	Check if object is hermitian
+	Args:
+		obj (array): Object to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If object is hermitian
+	'''
+	try:
+		# out = cholesky(obj)
+		# out = (True and not is_naninf(out).any()) or allclose(obj,dagger(obj))
+		out = allclose(obj,dagger(obj))
+	except:
+		out = False
+	return out
+
+
+def is_unitary(obj,*args,**kwargs):
+	'''
+	Check if object is unitary
+	Args:
+		obj (array): Object to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If object is unitary
+	'''
+	try:
+		if obj.ndim == 1:
+			out = allclose(ones(1,dtype=obj.dtype),dot(obj,dagger(obj)))
+		else:
+			out = allclose(identity(obj.shape,dtype=obj.dtype),dot(obj,dagger(obj)))
+	except:
+		out = False
+	return out
 
 def is_list(a,*args,**kwargs):
 	'''
@@ -4199,6 +4383,27 @@ def generator(stop=None):
 					yield next(generator)
 		return wrapper
 	return wrap
+
+
+def relsort(iterable,relative):
+	'''
+	Sort iterable relative to other iterable
+	Args:
+		iterable (iterable): iterable to sort
+		relative (iterable): relative iterable
+	Returns:
+		sort (iterable): sorted iterable
+	'''
+
+	key = lambda item: list(relative).index(item) if item in relative else len(relative) + list(iterable).index(item)
+	sort = natsorted(iterable,key=key)
+
+	if isinstance(iterable,dict):
+		sort = {item: iterable[item] for item in sort}
+	else:
+		sort = type(iterable)(sort)
+
+	return sort
 
 
 def union(*iterables,sort=False):
@@ -4733,6 +4938,39 @@ def to_number(a,dtype=None,**kwargs):
 			number = dtype(coefficient*a)
 	return number
 
+def to_int(a,**kwargs):
+	'''
+	Convert object to int
+	Args:
+		a (object): Object to represent
+		kwargs (dict): Additional keyword formatting options
+	Returns:
+		integer (int): int representation of object
+	'''
+
+	try:
+		integer = int(a)
+	except:
+		integer = a
+	return integer
+
+
+def to_str(a,**kwargs):
+	'''
+	Convert object to string
+	Args:
+		a (object): Object to represent
+		kwargs (dict): Additional keyword formatting options
+	Returns:
+		string (str): String representation of object
+	'''
+
+	try:
+		string = str(a)
+	except:
+		string = a
+	return string
+
 def to_string(a,**kwargs):
 	'''
 	Convert array to string representation
@@ -4747,12 +4985,13 @@ def to_string(a,**kwargs):
 
 	return string
 
-def to_key_value(string,delimiter='=',**kwargs):
+def to_key_value(string,delimiter='=',default=None,**kwargs):
 	'''
 	Parse strings for specific values with key=value
 	Args:
 		string (str): String to parse
 		delimiter (str): Delimiter separating key and value
+		default (object): Default value
 		kwargs (dict): Additional keyword formatting options
 	Returns:
 		key (str): Key of string
@@ -4760,12 +4999,12 @@ def to_key_value(string,delimiter='=',**kwargs):
 	'''
 	if not isinstance(string,str):
 		key = string
-		value = None
+		value = default
 	else:
 		string = string.split(delimiter)
 		if len(string) == 1:
 			key = delimiter.join(string)
-			value = None
+			value = default
 		else:
 			key = string[0]
 			value = delimiter.join(string[1:])

@@ -18,3 +18,8 @@ examples/nmr_decomposition
 **/gobi
 tmp
 **/build/test
+examples/**
+build/new
+build/plots
+keep
+**/*test.json

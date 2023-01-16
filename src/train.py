@@ -1,13 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,datetime
-from copy import deepcopy as deepcopy
-from time import time as timer
-from functools import partial
-
-# Logging
-import logging
+import os,sys
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -15,19 +9,20 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose
+from src.utils import argparser,jit,allclose,delim
 from src.io import load
-from src.optimize import Optimizer
+from src.iterables import replacer
+from src.optimize import Optimizer,Objective,Metric,Callback
 
 
-
-def train(hyperparameters):
+def setup(hyperparameters):
 	'''
-	Train object
+	Setup hyperparameters
 	Args:
 		hyperparameters (dict,str): hyperparameters
+	Returns:
+		hyperparameters (dict): hyperparameters
 	'''
-
 
 	# Check hyperparameters
 	default = {}
@@ -36,40 +31,66 @@ def train(hyperparameters):
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters,default=default)
 
-	if hyperparameters == default:
-		obj = None
-		return obj
+	return hyperparameters
 
-	if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train','plot']):
-		obj = None
-		return obj
+def train(hyperparameters):
+	'''
+	Train model
+	Args:
+		hyperparameters (dict,str): hyperparameters
+	Returns:
+		model (object): Model instance
+	'''
 
-	cls = load(hyperparameters['class'])
+	hyperparameters = setup(hyperparameters)
 
-	obj = cls(**hyperparameters['data'],**hyperparameters['model'],hyperparameters=hyperparameters)
+	if not hyperparameters:
+		model = None
+		return model
+
+	if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train']):
+		model = None
+		return model
+
+	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
+
+
+	model = cls['model'](**hyperparameters['model'],
+			parameters=hyperparameters['parameters'],
+			state=hyperparameters['state'],
+			noise=hyperparameters['noise'],
+			label=hyperparameters['label'],
+			system=hyperparameters['system'])
+
 
 	if hyperparameters['boolean'].get('load'):
-		obj.load()
+		model.load()
 
 	if hyperparameters['boolean'].get('train'):
 
-		parameters = obj.parameters
-		hyperparams = obj.hyperparameters['optimize']
+		parameters = model.parameters()
+		shapes = model.shapes
+		label = model.label()
+		hyperparams = hyperparameters['optimize']
+		system = hyperparameters['system']
+		kwargs = {}
+		func = []
+		callback = cls['callback']()
 
-		func = obj.__func__
-		callback = obj.__callback__
+		metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system,**kwargs)
+		func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
+		callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
 
-		optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams)
+		optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system,**kwargs)
 
 		parameters = optimizer(parameters)
+
+		model.parameters(parameters)
 	
 	if hyperparameters['boolean'].get('dump'):	
-		obj.dump()
+		model.dump()
 	
-	if hyperparameters['boolean'].get('plot'):
-		obj.plot()
-
-	return obj
+	return model
 
 
 def main(*args,**kwargs):
