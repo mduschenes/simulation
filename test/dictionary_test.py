@@ -15,7 +15,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import is_array,is_ndarray
-from src.dictionary import updater,getter,setter,permuter,equalizer
+from src.iterables import getter,setter,permuter,equalizer
 
 def test_equalizer():
 	a = {1:{2:[3,4],3:lambda x:x,4:{1:[],2:[{4:np.array([])}]}}}
