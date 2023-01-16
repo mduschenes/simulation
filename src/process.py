@@ -455,7 +455,7 @@ def apply(keys,data,settings,hyperparameters):
 				value[destination] = {
 					**{attr: grouping[attr].to_list()[0] for attr in source},
 					**{'%s%s'%(axis,func) if keys[name][axis] in dependent else axis: 
-						{'group':[i,dict(zip(groups.grouper.names,group))],'func':[j,function],'axis':keys[name][axis]} 
+						{'group':[i,dict(zip(groups.grouper.names,group))],'func':[j,function],'axis':keys[name][axis] if keys[name][axis] is not null else None} 
 						for axis in axes for func in funcs[function]},
 					**{other: {attr: {subattr: keys[name][other][attr][subattr] 
 						if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
@@ -470,16 +470,19 @@ def apply(keys,data,settings,hyperparameters):
 						source = delim.join(((attr,function,func))) if attr in dependent else attr
 						destination = '%s%s'%(axis,func) if attr in dependent else axis
 
-						if source in grouping:
-							if dtypes[attr] in ['array']:
-								value[destination] = [list(i) for i in grouping[source]][0]
+						if grouping.shape[0]:
+							if source in grouping:
+								if dtypes[attr] in ['array']:
+									value[destination] = (grouping[source][0])
+								else:
+									value[destination] = grouping[source].to_numpy()
+							elif source is null:
+								source = delim.join(((dependent[-1],function,func)))
+								value[destination] = np.arange(len(grouping[source][0]))
 							else:
-								value[destination] = grouping[source].to_numpy()
-						elif source is null:
-							source = delim.join(((dependent[-1],function,func)))
-							value[destination] = np.arange(len(grouping[source][0]))
+								value[destination] = grouping.reset_index().index.to_numpy()
 						else:
-							value[destination] = grouping.reset_index().index.to_numpy()
+							value[destination] = None
 
 				setter(settings,{key:value},delimiter=delim,func=True)
 
@@ -607,7 +610,7 @@ def plotter(settings,hyperparameters):
 			values = {
 				plots: {
 					label: {
-						'value': list(realsorted(set(data[attrs][label]
+						'value': list(realsorted(set(data[attrs][label] if not isinstance(data[attrs][label],list) else tuple(data[attrs][label])
 							for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[attrs]))),
 						'sort': list(realsorted(set(data[attrs][attrs][attrs][label]
 							for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[attrs][attrs][attrs]))),
@@ -654,7 +657,7 @@ def plotter(settings,hyperparameters):
 				for data in flatten(settings[instance][subinstance]['ax'][plots]):
 
 					for attr in data:
-						if attr in ALL:
+						if (attr in ALL) and (data[attr] is not None):
 							value = [valify(value) for value in data[attr]]
 							data[attr] = value
 

@@ -11,23 +11,23 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":1,
+	"size":3,
 	"reset":5576,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[2],		
-		"model.M":[64],		
+		"model.N":[3],		
+		"model.M":[100],		
 		"model.tau":[100e0],		
 		"noise.scale":[null],
 		"state.scale":[null],
 
-		"optimize.iterations":[200],
+		"optimize.iterations":[30],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["abs2"],
-		"optimizer.search.beta":["hestenes_stiefel"],
+		"optimizer.search.beta":["fletcher_reeves"],
 
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
@@ -304,7 +304,7 @@
 		"execute":1,
 		"process":null,
 		"verbose":"info"
-		},
+		}
 	},
 "process": {},
 "plot": {}

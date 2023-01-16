@@ -1384,7 +1384,8 @@ class Callback(object):
 						value = value/max(1,maximum(value))
 					elif attr in ['hessian.rank','fisher.rank']:
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
-						value = argmax(abs(difference(value)/value[:-1]))+1						
+						value = argmax(abs(difference(value)/value[:-1]))+1	
+						value = value.size if (value==value.size-1) else value
 
 				elif attr not in attributes and not (getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null,delimiter=delim) is null):
 					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)

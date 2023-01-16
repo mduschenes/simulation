@@ -415,6 +415,7 @@ def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 	Returns:
 		obj (object): Serialized object
 	'''	
+
 	if is_array(obj) or is_ndarray(obj):
 		obj = obj.tolist()
 	return obj
