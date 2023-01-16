@@ -151,7 +151,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 	hyperparameters = load(path,default=default,wrapper=wrapper)
 
 	for instance in list(settings):
-		if settings.get(instance) is None:
+		if (settings.get(instance) is None) or (hyperparameters.get('instance') in [0,False]) or (hyperparameters.get('instance',{}).get(instance) in [0,False]):
 			settings.pop(instance,None);
 			continue
 
@@ -187,6 +187,16 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 			hyperparameters['path'][attr],
 			file=True,ext=True)
 		hyperparameters['path'][attr] = join(hyperparameters['directory'][attr],hyperparameters['file'][attr],ext=hyperparameters['ext'][attr])
+
+	# Set instances
+	attr = 'instance'
+	if hyperparameters.get(attr) is None:
+		hyperparameters[attr] = {}
+	elif isinstance(hyperparameters.get(attr),(bool,int)):
+		hyperparameters[attr] = {instance: bool(hyperparameters[attr][instance]) for instance in settings}
+	elif isinstance(hyperparameters.get(attr),list):
+		hyperparameters[attr] = {**{instance: False for instance in settings},**{instance: True for instance in hyperparameters[attr]}}
+	hyperparameters[attr] = {**{instance: True for instance in settings},**{instance: bool(hyperparameters[attr][instance]) for instance in hyperparameters[attr]}}
 
 	# Get plot fig and axes
 	fig,ax = hyperparameters.get('fig'),hyperparameters.get('ax')
@@ -233,6 +243,7 @@ def find(dictionary):
 			key,value = string.split(separator)[0],to_number(separator.join(string.split(separator)[1:]))
 		else:
 			key,value = string,default
+		value = default if value is None else value
 		return key,value
 
 	default = null
@@ -254,41 +265,41 @@ def find(dictionary):
 	elements = [*keys,*other]
 	keys = brancher(dictionary,elements)
 	
-	keys = {key[:-1]:dict(zip(elements,[value[-1] for value in key[-1]])) for key in keys}
+	keys = {name[:-1]:dict(zip(elements,[value[-1] for value in name[-1]])) for name in keys}
 
-	for key in keys:
-		for attr in keys[key]:
+	for name in keys:
+		for attr in keys[name]:
 			
 			if attr in other:
 
-				if isinstance(keys[key][attr],dict):
-					keys[key][attr] = {prop: keys[key][attr][prop] if keys[key][attr] is not None else default for prop in keys[key][attr]}
-				elif isinstance(keys[key][attr],str):
-					keys[key][attr] = dict((parser(keys[key][attr],separator=separator,default=default),))
+				if isinstance(keys[name][attr],dict):
+					keys[name][attr] = {prop: keys[name][attr][prop] if keys[name][attr][prop] is not None else default for prop in keys[name][attr]}
+				elif isinstance(keys[name][attr],str):
+					keys[name][attr] = dict((parser(keys[name][attr],separator=separator,default=default),))
 				else:
-					keys[key][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[key][attr]))
+					keys[name][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[name][attr]))
 
-				if attr in keys[key][attr]:
-					if isinstance(keys[key][attr][attr],dict):
-						keys[key][attr][attr] = {prop: keys[key][attr][attr][prop] if keys[key][attr][attr][prop] is not None else default for prop in keys[key][attr][attr]}
-					elif isinstance(keys[key][attr][attr],str):
-						keys[key][attr][attr] = dict((parser(keys[key][attr][attr],separator=separator,default=default)),)
+				if attr in keys[name][attr]:
+					if isinstance(keys[name][attr][attr],dict):
+						keys[name][attr][attr] = {prop: keys[name][attr][attr][prop] if keys[name][attr][attr][prop] is not None else default for prop in keys[name][attr][attr]}
+					elif isinstance(keys[name][attr][attr],str):
+						keys[name][attr][attr] = dict((parser(keys[name][attr][attr],separator=separator,default=default)),)
 					else:
-						keys[key][attr][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[key][attr][attr]))
+						keys[name][attr][attr] = dict((parser(prop,separator=separator,default=default) for prop in keys[name][attr][attr]))
 				else:
-					keys[key][attr] = {attr: keys[key][attr]}
+					keys[name][attr] = {attr: keys[name][attr]}
 
-				setter(keys[key][attr],defaults,delimiter=delim,func=False)
+				setter(keys[name][attr],defaults,delimiter=delim,func=False)
 			
 			else:
-				if not keys[key][attr]:
-					keys[key][attr] = default
-				elif isinstance(keys[key][attr],dict):
-					keys[key][attr] = keys[key][attr][list(keys[key][attr])[-1]]
-				elif isinstance(keys[key][attr],str):
-					keys[key][attr] = keys[key][attr]
+				if not keys[name][attr]:
+					keys[name][attr] = default
+				elif isinstance(keys[name][attr],dict):
+					keys[name][attr] = keys[name][attr][list(keys[name][attr])[-1]]
+				elif isinstance(keys[name][attr],str):
+					keys[name][attr] = keys[name][attr]
 				else:
-					keys[key][attr] = keys[key][attr][-1]
+					keys[name][attr] = keys[name][attr][-1]
 
 	return keys
 
@@ -391,7 +402,7 @@ def apply(keys,data,settings,hyperparameters):
 		labels = [attr for attr in label if attr in data and label[attr] is null]
 
 		boolean = [parse(attr,label[attr],data) for attr in label]
-		boolean = conditions(boolean,op='&')	
+		boolean = conditions(boolean,op='and')	
 
 		by = [*labels,*independent]
 
@@ -479,7 +490,6 @@ def loader(data,settings,hyperparameters):
 		else:
 			out = elements.get(key_elements)
 		return out	
-
 
 	if hyperparameters['load']:
 
@@ -639,6 +649,12 @@ def plotter(settings,hyperparameters):
 
 	# Plot data
 	for instance in settings:
+
+		if not hyperparameters.get('instance',{}).get(instance):
+			continue
+
+		print("Plotting : %s"%(instance))
+
 		fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
 
 	return

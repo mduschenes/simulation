@@ -124,8 +124,8 @@
 			"objective.ideal.state":true,"objective.diff.state":true,"objective.rel.state":true,
 			"objective.ideal.operator":true,"objective.diff.operator":true,"objective.rel.operator":true,
 			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
-			"hessian.rank":false,"fisher.rank":false,
+			"hessian.eigenvalues":true,"fisher.eigenvalues":true,
+			"hessian.rank":true,"fisher.rank":true,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],

@@ -19,7 +19,7 @@ def main(args):
 		'settings':'config/plot.json',
 		'hyperparameters':'config/process.json',
 		'cwd':args[0] if len(args)>0 else None,
-		'pwd':args[4] if len(args)>4 else None
+		'pwd':args[4] if len(args)>4 else 'config'
 	}
 
 	kwargs.update({kwarg: join(arg,kwargs[kwarg]) if (kwargs[kwarg] is None or kwargs[kwarg].startswith('*')) and not arg.startswith("*") else arg 
