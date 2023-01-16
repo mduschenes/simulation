@@ -633,7 +633,9 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	Returns:
 		data (object,iterable[object],dict[str,object]): Loaded object
 	'''
+	exts = ['npy','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
 	wrs = [wr,'r','rb']
+
 
 	args = {'path':path,'wrapper':wrapper}
 
@@ -685,7 +687,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	paths = {delim.join([name,str(path)]) if path != name else name: path
 		for name in paths
-		for path in glob(paths[name])
+		for path in glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name]))
 		}
 
 	data = {}

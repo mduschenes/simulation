@@ -387,10 +387,10 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 	# test_parameters(path,tol)
-	# test_call(path,tol)
+	test_call(path,tol)
 	# test_data(path,tol)
 	# test_logger(path,tol)
 	# test_class(path,tol)
 	# test_model(path,tol)
 	# test_normalization(path,tol)
-	test_fisher(path,tol)
+	# test_fisher(path,tol)

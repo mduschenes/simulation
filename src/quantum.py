@@ -1386,7 +1386,7 @@ class Callback(object):
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
 						value = argmax(abs(difference(value)/value[:-1]))+1						
 
-				elif attr not in attributes and not isinstance(getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null(),delimiter=delim),null):
+				elif attr not in attributes and not (getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null,delimiter=delim) is null):
 					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)
 
 				elif attr not in attributes and hasattrs(model,attr,delimiter=delim):
