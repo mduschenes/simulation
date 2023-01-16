@@ -760,7 +760,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		
 		matplotlib.rcParams.update(settings[key]['style'].get('rcParams',{}))
 
-
 		objs = lambda attr,key,fig,ax: {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in AXES}}[attr]
 		obj = objs(attr,key,fig,ax)
 
