@@ -64,7 +64,7 @@ def test_objective(path,tol):
 			label=hyperparameters['label'],
 			system=hyperparameters['system'])
 
-	func = []
+	func = [model.constraints]
 	shapes = model.shapes
 	label = model.label()
 	callback = cls['callback']()
@@ -188,6 +188,6 @@ def test_hessian(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	# test_objective(path,tol)
-	test_optimizer(path,tol)
+	test_objective(path,tol)
+	# test_optimizer(path,tol)
 	# test_hessian(path,tol)

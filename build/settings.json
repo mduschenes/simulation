@@ -11,23 +11,24 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":3,
+	"size":1,
 	"reset":5576,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[3],		
-		"model.M":[100],		
-		"model.tau":[100e0],		
+		"model.N":[4],		
+		"model.M":[2000],		
+		"model.tau":[10e0],		
 		"noise.scale":[null],
 		"state.scale":[null],
 
-		"optimize.iterations":[30],
+		"optimize.iterations":[500],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["abs2"],
-		"optimizer.search.beta":["fletcher_reeves"],
+		"optimize.search.alpha":["line_search"],
+		"optimize.search.beta":["hestenes_stiefel"],
 
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
@@ -102,7 +103,7 @@
 	"clear":false,
 	"settings":{"noise":1e-3},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,"restart":1e6,
-	"alpha":1e-3,"beta":1e-2,
+	"alpha":1e-4,"beta":1e-4,
 	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":null},
 	"length":{"log":null,"attributes":5,"track":null,"callback":null,"restart":null,"dump":null},
 	"attributes":{
@@ -123,12 +124,12 @@
 			"iteration.max":[],
 			"iteration.min":[],
 			"features":false,"features.relative":false,"features.relative.mean":[],
-			"objective.ideal.noise":true,"objective.diff.noise":true,"objective.rel.noise":true,
-			"objective.ideal.state":true,"objective.diff.state":true,"objective.rel.state":true,
-			"objective.ideal.operator":true,"objective.diff.operator":true,"objective.rel.operator":true,
+			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
+			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
+			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":true,"fisher.eigenvalues":true,
-			"hessian.rank":true,"fisher.rank":true,
+			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
+			"hessian.rank":false,"fisher.rank":false,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
@@ -188,6 +189,8 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
+		"parameters":[7.24e-2,-1.3e-4,5e-3,8e-2,2e-4,2e-3,-3e-3,6e-3,9e-4,-6e-4],	
+		"parameters":[7.24e-3,-1.3e-5,5e-4,8e-3,2e-6,2e-4,-3e-4,6e-4,9e-5,-6e-5],																	
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],

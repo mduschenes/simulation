@@ -143,15 +143,18 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 
 	# Load plot settings
 	path = join(settings,root=pwd) if isinstance(settings,str) else None
-	default = {} if isinstance(settings,str) else settings
+	default = None if isinstance(settings,str) else settings
 	wrapper = None	
 	settings = load(path,default=default,wrapper=wrapper)
 
 	# Load process hyperparameters
 	path = join(hyperparameters,root=pwd) if isinstance(hyperparameters,str) else None
-	default = {} if isinstance(hyperparameters,str) else hyperparameters
+	default = None if isinstance(hyperparameters,str) else hyperparameters
 	wrapper = None
 	hyperparameters = load(path,default=default,wrapper=wrapper)
+
+	if (settings is None) or (hyperparameters is None):
+		return data,settings,hyperparameters
 
 	for instance in list(settings):
 		if (settings.get(instance) is None) or (hyperparameters.get('instance') in [0,False]) or (hyperparameters.get('instance',{}).get(instance) in [0,False]):
@@ -386,6 +389,9 @@ def apply(keys,data,settings,hyperparameters):
 		hyperparameters (dict): hyperparameters
 	'''
 
+	if (keys is None) or (data is None):
+		return
+
 	def mean(obj):
 		out = np.array(list(obj))
 		out = tuple(out.mean(0))
@@ -401,6 +407,9 @@ def apply(keys,data,settings,hyperparameters):
 
 	for name in keys:
 
+		if any((keys[name][axis] not in data) and (keys[name][axis] is not null) for axis in AXIS if axis in keys[name]):
+			continue
+
 		axes = [axis for axis in AXIS if axis in keys[name]]
 		other = OTHER
 		label = keys[name][other].get(other,{})
@@ -414,7 +423,6 @@ def apply(keys,data,settings,hyperparameters):
 		independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in data]
 		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in data]
 		labels = [attr for attr in label if attr in data and label[attr] is null]
-
 		boolean = [parse(attr,label[attr],data) for attr in label]
 		boolean = conditions(boolean,op='and')	
 
@@ -532,7 +540,7 @@ def loader(data,settings,hyperparameters):
 
 		# Load data
 		path = data
-		default = {}
+		default = None
 		wrapper = 'df'
 		data = load(path,default=default,wrapper=wrapper)
 
@@ -602,32 +610,37 @@ def plotter(settings,hyperparameters):
 
 
 	# Set data
-	for instance in settings:
-		for subinstance in settings[instance]:
+	for instance in list(settings):
+		for subinstance in list(settings[instance]):
+
 
 			# variables
 			attrs = OTHER
-			values = {
-				plots: {
-					label: {
-						'value': list(realsorted(set(data[attrs][label] if not isinstance(data[attrs][label],list) else tuple(data[attrs][label])
-							for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[attrs]))),
-						'sort': list(realsorted(set(data[attrs][attrs][attrs][label]
-							for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[attrs][attrs][attrs]))),
-						'label': any(((label in data[attrs][attrs][attrs]) and (label in data[attrs]) and (data[attrs][attrs][attrs][label] is None))
-							for data in flatten(settings[instance][subinstance]['ax'][plots])),
-						'other': any(((label not in data[attrs]) and (data[attrs][attrs][attrs][label] in data[attrs]))
-							for data in flatten(settings[instance][subinstance]['ax'][plots])),	
+			try:
+				values = {
+					plots: {
+						label: {
+							'value': list(realsorted(set(data[attrs][label] if not isinstance(data[attrs][label],list) else tuple(data[attrs][label])
+								for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[attrs]))),
+							'sort': list(realsorted(set(data[attrs][attrs][attrs][label]
+								for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[attrs][attrs][attrs]))),
+							'label': any(((label in data[attrs][attrs][attrs]) and (label in data[attrs]) and (data[attrs][attrs][attrs][label] is None))
+								for data in flatten(settings[instance][subinstance]['ax'][plots])),
+							'other': any(((label not in data[attrs]) and (data[attrs][attrs][attrs][label] in data[attrs]))
+								for data in flatten(settings[instance][subinstance]['ax'][plots])),	
+							}
+						for label in list(realsorted(set(label
+						for data in flatten(settings[instance][subinstance]['ax'][plots])
+						for label in [*data[attrs],*data[attrs][attrs][attrs]]
+						if ((label not in [*ALL,OTHER]))))) 
 						}
-					for label in list(realsorted(set(label
-					for data in flatten(settings[instance][subinstance]['ax'][plots])
-					for label in [*data[attrs],*data[attrs][attrs][attrs]]
-					if ((label not in [*ALL,OTHER]))))) 
-					}
-					for plots in PLOTS 
-					if plots in settings[instance][subinstance]['ax']
-					}
-
+						for plots in PLOTS 
+						if plots in settings[instance][subinstance]['ax']
+						}
+			except KeyError:
+				settings[instance].pop(subinstance);
+				continue
+				
 			# savefig
 			attr = 'fname'
 			data = settings[instance][subinstance]['fig'].get('savefig',{})
@@ -677,7 +690,7 @@ def plotter(settings,hyperparameters):
 	# Plot data
 	for instance in settings:
 
-		if not hyperparameters.get('instance',{}).get(instance):
+		if (not hyperparameters.get('instance',{}).get(instance)) or (not settings[instance]):
 			continue
 
 		print("Plotting : %s"%(instance))

@@ -557,6 +557,17 @@ class Observable(System):
 		'''	
 		return self.__value_and_gradient__(parameters)
 
+	# @partial(jit,static_argnums=(0,))
+	def constraints(self,parameters):
+		''' 
+		Setup constraints
+		Args:
+			parameters (array): parameters
+		Returns:
+			constraints (array): constraints
+		'''		
+		return self.__constraints__(parameters)
+
 
 	# @partial(jit,static_argnums=(0,))
 	def __parameters__(self,parameters):
@@ -1428,8 +1439,10 @@ class Callback(object):
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				'U\n%s\nV\n%s'%(
-				to_string(abs(model(parameters)).round(4)),
-				to_string(abs(model.label()).round(4))),
+				# to_string(abs(model(parameters)).round(4)),
+				# to_string(abs(model.label()).round(4))),
+				to_string((model(parameters)).round(4)),
+				to_string((model.label()).round(4))),				
 				])
 
 
