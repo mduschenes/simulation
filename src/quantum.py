@@ -557,6 +557,17 @@ class Observable(System):
 		'''	
 		return self.__value_and_gradient__(parameters)
 
+	# @partial(jit,static_argnums=(0,))
+	def constraints(self,parameters):
+		''' 
+		Setup constraints
+		Args:
+			parameters (array): parameters
+		Returns:
+			constraints (array): constraints
+		'''		
+		return self.__constraints__(parameters)
+
 
 	# @partial(jit,static_argnums=(0,))
 	def __parameters__(self,parameters):
@@ -1384,9 +1395,10 @@ class Callback(object):
 						value = value/max(1,maximum(value))
 					elif attr in ['hessian.rank','fisher.rank']:
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
-						value = argmax(abs(difference(value)/value[:-1]))+1						
+						value = argmax(abs(difference(value)/value[:-1]))+1	
+						value = value.size if (value==value.size-1) else value
 
-				elif attr not in attributes and not isinstance(getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null(),delimiter=delim),null):
+				elif attr not in attributes and not (getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null,delimiter=delim) is null):
 					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)
 
 				elif attr not in attributes and hasattrs(model,attr,delimiter=delim):
@@ -1427,8 +1439,10 @@ class Callback(object):
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				'U\n%s\nV\n%s'%(
-				to_string(abs(model(parameters)).round(4)),
-				to_string(abs(model.label()).round(4))),
+				# to_string(abs(model(parameters)).round(4)),
+				# to_string(abs(model.label()).round(4))),
+				to_string((model(parameters)).round(4)),
+				to_string((model.label()).round(4))),				
 				])
 
 

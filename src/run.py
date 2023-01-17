@@ -102,7 +102,6 @@ def setup(settings):
 	size = size if size is not None else 1
 	reset = reset if reset is not None else None
 
-
 	# Find keys of seeds in hyperparameters
 	keys = ['seed']
 	exclude = ['seed','seed.seed','system.seed']

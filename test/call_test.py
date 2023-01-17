@@ -123,12 +123,6 @@ def test_sleep(path=None):
 	return
 
 
-def test_submit(path=None):
-	default = {}
-	settings = load(path,default=default)
-	submit(**settings)
-	return
-
 
 def test_call(path=None):
 

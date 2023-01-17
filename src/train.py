@@ -74,7 +74,7 @@ def train(hyperparameters):
 		hyperparams = hyperparameters['optimize']
 		system = hyperparameters['system']
 		kwargs = {}
-		func = []
+		func = [model.constraints]
 		callback = cls['callback']()
 
 		metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system,**kwargs)

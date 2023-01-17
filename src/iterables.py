@@ -190,7 +190,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 	elif func is False:
 		function = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements.get(key_elements))
 	elif func in ['none','None']:
-		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if elements.get(key_elements) is not None else iterable.get(key_iterable,elements.get(key_elements))
+		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if iterable.get(key_iterable,elements.get(key_elements)) is None else iterable.get(key_iterable,elements.get(key_elements))
 	elif not callable(func):
 		types = tuple(func)
 		def function(key_iterable,key_elements,iterable,elements,types=types): 

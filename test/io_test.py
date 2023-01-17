@@ -40,25 +40,25 @@ def test_load(path=None):
 
 	kwargs = [
 		{
-		'path':'config/test/**/data.hdf5',
+		'path':'data/test/**/data.hdf5',
 		'default':{},
 		'wrapper':'df',
 		'type':pd.DataFrame,
 		},
 		{
-		'path':{'path':'config/test/-1/data.hdf5'},
+		'path':{'path':'data/test/-1/data.hdf5'},
 		'default':None,
 		'wrapper':'df',
 		'type':None,		
 		},
 		{
-		'path':{'path':'config/test/-1/data.hdf5'},
+		'path':{'path':'data/test/-1/data.hdf5'},
 		'default':{},
 		'wrapper':'df',
 		'type':dict,		
 		},		
 		{
-		'path':['config/test/**/data.hdf5'],
+		'path':['data/test/**/data.hdf5'],
 		'default':{},
 		'wrapper':'df',
 		'type':pd.DataFrame,		
@@ -91,13 +91,13 @@ def test_dump(path=None):
 
 	kwargs = [
 		{
-		'data':load('config/data/0/data.hdf5'),
+		'data':load('data/data/0/data.hdf5'),
 		'path':'config/tmp/data.hdf5',
 		'default':{},
 		'wrapper':None,
 		},
 		{
-		'data':load('config/data/0/data.hdf5'),
+		'data':load('data/data/0/data.hdf5'),
 		'path':{'name':'config/tmp/data.hdf5','test':'config/tmp/tmp/test.hdf5'},
 		'default':{},
 		'wrapper':None,

@@ -145,18 +145,18 @@ def _constraints(hyperparameters,parameter,group):
 
 		elif parameter in ['z'] and group in [('z',)]:
 			def func(parameters):
-				return 0
+				return 0.
 
 		elif parameter in ['zz'] and group in [('zz',)]:
 			def func(parameters):
-				return 0			
+				return 0.			
 
 	elif method in ['unconstrained']:
 		def func(parameters):
-			return 0
+			return 0.
 	else:
 		def func(parameters):
-			return 0
+			return 0.
 
 	return func
 
