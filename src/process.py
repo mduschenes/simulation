@@ -481,7 +481,7 @@ def apply(keys,data,settings,hyperparameters):
 						if grouping.shape[0]:
 							if source in grouping:
 								if dtypes[attr] in ['array']:
-									value[destination] = (grouping[source][0])
+									value[destination] = np.array(grouping[source][0])
 								else:
 									value[destination] = grouping[source].to_numpy()
 							elif source is null:
@@ -652,11 +652,10 @@ def plotter(settings,hyperparameters):
 			data = settings[instance][subinstance]['ax'].get('legend',{})
 
 			
-			value = '~,~'.join([
+			value = '~,~'.join(realsorted(set((
 				texify(label) for plots in values for label in values[plots] 
 					if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) or 
-						(values[plots][label]['other']))
-				]
+						(values[plots][label]['other'])))))
 				)
 
 			data[attr] = value
@@ -671,7 +670,7 @@ def plotter(settings,hyperparameters):
 
 					for attr in data:
 						if (attr in ALL) and (data[attr] is not None):
-							value = [valify(value) for value in data[attr]]
+							value = np.array([valify(value) for value in data[attr]])
 							data[attr] = value
 
 					attr = OTHER

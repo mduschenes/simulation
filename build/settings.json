@@ -11,7 +11,8 @@
 	},
 "seed":{
 	"seed":5576,
-	"size":1,
+	"size":3,
+	"size":3,
 	"reset":5576,
 	"index":null
 	},
@@ -19,10 +20,13 @@
 	"permutations":{	
 	
 		"model.N":[4],		
-		"model.M":[2000],		
-		"model.tau":[10e0],		
+		"model.M":[250,500,1000,2000],		
+		"model.tau":[5e0],		
 		"noise.scale":[null],
 		"state.scale":[null],
+
+		"model.N":[2],		
+		"model.M":[20],		
 
 		"optimize.iterations":[500],
 		"optimize.optimizer":["cg"],
@@ -188,9 +192,9 @@
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
 		"parameters":[7.24e-2,-1.3e-4,5e-3,8e-2,2e-4,2e-3,-3e-3,6e-3,9e-4,-6e-4],	
-		"parameters":[7.24e-3,-1.3e-5,5e-4,8e-3,2e-6,2e-4,-3e-4,6e-4,9e-5,-6e-5],																	
+		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
+		"parameters":[7.24e-3,-1.3e-5,5e-4,8e-4,2e-6,2e-6,-3e-4,6e-4,9e-5,-6e-5],																	
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],
