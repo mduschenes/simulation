@@ -810,10 +810,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['savefig']:
 				path = kwargs[attr].get('fname')
-				dirname = os.path.abspath(os.path.dirname(path))
-				if not os.path.exists(dirname):
-					os.makedirs(dirname)
-				call = True
+				if path is not None:
+					dirname = os.path.abspath(os.path.dirname(path))
+					if not os.path.exists(dirname):
+						os.makedirs(dirname)
+					call = True
+				else:
+					call = False
 
 
 			elif attr in ['close']:

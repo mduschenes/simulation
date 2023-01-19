@@ -19,7 +19,7 @@ from src.utils import argparser
 from src.utils import array,zeros,ones,arange,linspace,logspace,rand,sort,eig,argmax,argmin,maximum,difference,rand,scinotation,exp,log,log10,sqrt
 from src.utils import is_naninf
 from src.utils import nan
-from src.iterables import setter,getter
+from src.iterables import setter,getter,flatten
 from src.fit import fit
 from src.io import load,dump,join,split,glob,cd,exists,dirname
 
@@ -30,12 +30,12 @@ from src.quantum import Unitary
 
 
 defaults = {
-'plot.None.eigenvalues.pdf': {
+'None.eigenvalues': {
 	"fig":{
 		"set_size_inches":{"w":20,"h":10},
 		"subplots_adjust":{},
 		"tight_layout":{},
-		"savefig":{"fname":"plot.None.eigenvalues.pdf","bbox_inches":"tight","pad_inches":0.2},
+		"savefig":{"fname":None,"bbox_inches":"tight","pad_inches":0.2},
 		"close":{}
 		},
 	"ax":{
@@ -94,12 +94,12 @@ defaults = {
 		}
 
 	},
-'plot.noise.scale.M.min.pdf': {
+'noise.scale.M.min': {
 	"fig":{
 		"set_size_inches":{"w":9.5,"h":9.5},
 		"subplots_adjust":{},
 		"tight_layout":{},
-		"savefig":{"fname":"plot.noise.scale.M.min.pdf","bbox_inches":"tight","pad_inches":0.2},
+		"savefig":{"fname":None,"bbox_inches":"tight","pad_inches":0.2},
 		"close":{}
 		},
 	"ax":{
@@ -160,7 +160,7 @@ defaults = {
 		},
 	"style":{
 		"texify":None,
-		"mplstyle":"config/plot.mplstyle",	
+		"mplstyle":"plot.mplstyle",	
 		"rcParams":{"font.size":20},
 		"layout":{"nrows":1,"ncols":1,"index":1},
 		"share": {
@@ -177,7 +177,7 @@ defaults = {
 		"set_size_inches":{"w":9.5,"h":9.5},
 		"subplots_adjust":{},
 		"tight_layout":{},
-		"savefig":{"fname":"plot.M.objective.noise.scale.fit.pdf","bbox_inches":"tight","pad_inches":0.2},
+		"savefig":{"fname":None,"bbox_inches":"tight","pad_inches":0.2},
 		"close":{}
 		},
 	"ax":{
@@ -233,7 +233,7 @@ defaults = {
 		},
 	"style":{
 		"texify":None,
-		"mplstyle":"config/plot.mplstyle",	
+		"mplstyle":"plot.mplstyle",	
 		"rcParams":{"font.size":20},
 		"layout":{"nrows":1,"ncols":1,"index":1},
 		"share": {
@@ -247,18 +247,24 @@ defaults = {
 	}
 }
 
-def process(path):
+def postprocess(path,**kwargs):
+	'''
+	Postprocess data
+	Args:
+		path (str): Path to postprocess
+		kwargs (dict): Additional keyword arguments
+	'''
 
 	plots = [
-		'plot.noise.scale.M.min.pdf',
-		# 'plot.None.eigenvalues.pdf',
+		'noise.scale.M.min',
+		# 'None.eigenvalues',
 		]
 	
 
 	for name in plots:
 		print('Plotting :',name)		
 
-		if name in ['plot.noise.scale.M.min.pdf']:
+		if name in ['noise.scale.M.min']:
 
 			with cd(path):
 
@@ -272,7 +278,7 @@ def process(path):
 				
 				key = ['M.objective.noise.scale','None','ax','errorbar']
 				label = {'x':'noise.scale','y':'M','z':'objective'}
-				values = getter(hyperparameters,key)
+				values = list(flatten(getter(hyperparameters,key)))
 
 				slices = slice(None,15,None)
 				attrs = set((attr for value in values for attr in value))
@@ -342,6 +348,12 @@ def process(path):
 					settings = deepcopy(defaults[key[0]])
 
 					options = {
+						'fig':{
+							'savefig':{
+								**settings['fig']['savefig'],
+								'fname':join(delim.join(['plot',name]),ext='pdf'),
+								}
+						},
 						'ax':{
 							'errorbar':[
 								*[
@@ -471,6 +483,12 @@ def process(path):
 				settings = deepcopy(defaults[name])
 
 				options = {
+					'fig':{
+						'savefig':{
+							**settings['fig']['savefig'],
+							'fname':join(delim.join(['plot',name]),ext='pdf'),
+							}
+						},
 					'ax':{
 						'errorbar':[
 							{
@@ -526,7 +544,7 @@ def process(path):
 
 
 
-		elif name in ['plot.None.eigenvalues.pdf']:
+		elif name in ['None.eigenvalues']:
 
 			files = {'hyperparameters':'settings.json','data':'data.hdf5','model':'model.pkl'}
 			paths = glob(path,include='directory',recursive='**')
@@ -590,7 +608,7 @@ def process(path):
 										},
 									'savefig':{
 										**defaults[name]['fig']['savefig'],
-										'fname':name,
+										'fname':join(delim.join(['plot',name]),ext='pdf'),
 									}
 									},
 								'ax':{
@@ -629,7 +647,7 @@ def process(path):
 
 def main(*args,**kwargs):
 
-	process(*args,**kwargs)
+	postprocess(*args,**kwargs)
 
 	return
 
