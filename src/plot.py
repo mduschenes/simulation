@@ -29,7 +29,7 @@ OTHER = 'label'
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
 AXES = ['colorbar']
-PLOTS = ['plot','scatter','errorbar','histogram','axvline','axhline','vlines','hlines','plot_surface']
+PLOTS = ['plot','scatter','errorbar','histogram','fill_between','axvline','axhline','vlines','hlines','plot_surface']
 LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
 NULLLAYOUT = ['index','pad']
 DIM = 2
@@ -593,7 +593,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if isinstance(update,str) and update.count('%s'):
 						labels = [update%(label) for label in labels]
 					else:
-						labels = [string%(label) for stirng,label in zip(update,labels)]
+						labels = [string%(label) for string,label in zip(update,labels)]
 
 				if kwargs[attr].get('join') is not None:
 					n = min(len(handles),len(labels))
@@ -623,13 +623,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					})
 
 
-				call = (not (					
-					(kwargs[attr]['handles'] == [] or kwargs[attr]['labels'] == []) or 
-					(min(len(kwargs[attr]['handles']),len(kwargs[attr]['labels']))==1) or 
-					all([kwargs[attr][k] is None for k in kwargs[attr]]))
-					or
-					('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is True)
-					)
+				call = (not (
+					((kwargs[attr]['handles'] == [] or kwargs[attr]['labels'] == []) or 
+					(all([kwargs[attr][k] is None for k in kwargs[attr]]))) or
+					((min(len(kwargs[attr]['handles']),len(kwargs[attr]['labels']))>=1) and
+					(('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is False)))
+					))
 
 				nullkwargs.extend(['prop','join','flip','update','set_zorder','get_zorder','set_title','title','get_title','get_texts','set_label'])
 			
@@ -680,6 +679,32 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['fill_between']:
 
 				dim = 2
+				
+				subattrs = 'set_%sscale'
+				props ='%s'
+				subprops = '%serr'
+				for axis in AXIS[:dim]:
+					prop = props%(axis)
+					subprop = subprops%(axis)
+					subattr = subattrs%(axis)
+
+					if (
+						(kwargs[attr].get(prop) is not None) and
+						(kwargs[attr].get(subprop) is not None) and
+						(kwargs.get(subattr) is not None) and
+						(kwargs.get(subattr,{}).get('value') in ['log'])
+						):
+						if np.array(kwargs[attr][subprop]).ndim == 1:
+							kwargs[attr][subprop] = np.array([[k,k] for k in kwargs[attr][subprop]]).T
+						else:
+							kwargs[attr][subprop] = np.array([k for k in kwargs[attr][subprop]])
+						
+						kwargs[attr][prop] = np.array(kwargs[attr][prop])
+						
+						kwargs[attr][subprop] = np.array([
+							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
+							kwargs[attr][subprop][1]
+							])
 
 				if kwargs[attr].get('y1') is not None and kwargs[attr].get('y2') is not None:
 					call = True
@@ -687,13 +712,18 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				elif kwargs[attr].get('yerr') is None:
 					call = False
 					args.extend([kwargs[attr].get('x'),kwargs[attr].get('y'),kwargs[attr].get('y')])
-				else:
+				elif (kwargs[attr].get('yerr') is not None) and (kwargs[attr].get('y') is not None):
 					call = True
-					if np.ndim(kwargs[attr].get('yerr')) == 2 and len(kwargs[attr].get('yerr'))==2:
-						args.extend([kwargs[attr].get('x'),kwargs[attr].get('y')-kwargs[attr].get('yerr')[0],kwargs[attr].get('y')+kwargs[attr].get('yerr')[1]])
+					yerr = np.array(kwargs[attr].get('yerr'))
+					y = np.array(kwargs[attr].get('y'))
+					x = kwargs[attr].get('x')
+					if ((yerr.ndim == 2) and (yerr.shape[0] == 2)):
+						args.extend([kwargs[attr].get('x'),y-yerr[0],y+yerr[1]])
 					else:
-						args.extend([kwargs[attr].get('x'),kwargs[attr].get('y')-kwargs[attr].get('yerr'),kwargs[attr].get('y')+kwargs[attr].get('yerr')])
-
+						args.extend([kwargs[attr].get('x'),y-yerr,y+yerr])
+				else:
+					args.extend([])
+					call = False
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS for k in AXIS],*[OTHER]])
 
 			elif attr in ['plot_surface','contour','contourf','scatter']:
@@ -821,8 +851,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				
 				else:
 					continue
-
-
 
 
 			_obj = obj
