@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim
+from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid,pi
 from src.utils import norm,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
 from src.iterables import getter,setter
 from src.io import load,dump,exists
@@ -59,18 +59,34 @@ def test_parameters(path,tol):
 	variables = model.__parameters__(parameters)
 
 
+	# Get parameters in shape (P*K,M)
+	M,N = model.M,model.N
 	parameters = parameters.reshape(-1,model.dims[0])
 	variables = variables.reshape(model.dims[0],-1).T
 
 	shape = parameters.shape
 	slices = tuple((slice(size) for size in shape))
-	if all(model.parameters.hyperparameters.get(parameter,{}).get('method') in [None,'unconstrained'] for parameter in model.parameters.hyperparameters):
-		# assert allclose(variables[slices],parameters), "Incorrect parameter initialization %r"%(model.parameters.hyperparameters)
-		if not allclose(variables[slices],parameters):
-			print(parameters)
-			print(variables)
+	parameter = 'xy'	
+	if (model.parameters.hyperparameters.get(parameter,{}).get('method') in [None,'unconstrained']):
+		vars = parameters
+		if not allclose(variables[slices],vars):
+			print(vars)
+			print(variables[slices])
 			raise ValueError("Incorrect parameter initialization %r"%(model.parameters.hyperparameters))
+	else:
+		G = len(model.parameters.hyperparameters[parameter]['group'])
+		wrapper = sigmoid
+		funcs = [cos,sin]
+		scale = [model.parameters.hyperparameters[parameter]['scale'],2*pi]
+		features = wrapper(parameters.reshape(G,shape[0]//G,*shape[1:]))
 
+		for i,func in zip(range(G),funcs):
+			slices = slice(i*N,(i+1)*N)
+			vars = scale[0]*features[0]*func(scale[1]*features[1])
+			if not allclose(variables[slices],vars):
+				print(vars)
+				print(variables[slices])
+				raise ValueError("Incorrect parameter initialization %r"%(model.parameters.hyperparameters))
 
 	return
 
@@ -386,8 +402,8 @@ def test_fisher(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	# test_parameters(path,tol)
-	test_call(path,tol)
+	test_parameters(path,tol)
+	# test_call(path,tol)
 	# test_data(path,tol)
 	# test_logger(path,tol)
 	# test_class(path,tol)
