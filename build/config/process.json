@@ -7,14 +7,14 @@
 	"useval":true,
 	"instance":{
 		"iteration.objective.M":true,
-		"noise.scale.objective.M":0,
+		"noise.scale.objective.M":1,
 		"noise.scale.objective.diff.M":0,
 		"noise.scale.objective.diff.M":0,
-		"M.objective.noise.scale":0,
+		"M.objective.noise.scale":1,
 		"M.features.relative.mean.N.iteration": 0,
 		"M.iteration.min.N": 0,
-		"None.hessian.eigenvalues.M": 1,
-		"None.fisher.eigenvalues.M": 1
+		"None.hessian.eigenvalues.M": 0,
+		"None.fisher.eigenvalues.M": 0
 	},
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",

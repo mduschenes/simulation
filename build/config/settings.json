@@ -194,7 +194,7 @@
 	"bounds":[-1,1]
 	},
 "noise": {
-	"string":"dephase",
+	"string":"phase",
 	"category":"constant",
 	"shape":[-1,-1],
 	"size":null,
