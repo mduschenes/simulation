@@ -415,6 +415,7 @@ def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 	Returns:
 		obj (object): Serialized object
 	'''	
+
 	if is_array(obj) or is_ndarray(obj):
 		obj = obj.tolist()
 	return obj
@@ -478,9 +479,6 @@ def _load_hdf5(obj,wr='r',ext='hdf5',**kwargs):
 			else:
 				data[key] = obj[name][...]
 				if data[key].dtype.kind in ['S','O']:
-					# if all(i in [b'None'] for i in data[key].flatten()):
-					# 	data[key] = np.array([None]*data[key].size).reshape(data[key].shape)
-					# else:
 					data[key] = data[key].astype(str)
 				
 		names = obj.attrs
@@ -633,7 +631,9 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	Returns:
 		data (object,iterable[object],dict[str,object]): Loaded object
 	'''
+	exts = ['npy','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
 	wrs = [wr,'r','rb']
+
 
 	args = {'path':path,'wrapper':wrapper}
 
@@ -648,9 +648,14 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	elif wrapper in ['df']:
 		def wrapper(data,default=default,**kwargs):
 			options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
+			def convert(data):
+				for attr in data:
+					if any(is_ndarray(i) for i in data[attr]):
+						data[attr] = [tuple(i) for i in data[attr]]
+				return data
 			try:
-				data = pd.concat((pd.DataFrame(data[path]) for path in data if data[path]),**options)
-			except ValueError:
+				data = pd.concat((pd.DataFrame(convert(data[path])) for path in data if data[path]),**options) #.convert_dtypes()
+			except Exception as exception:
 				data = default
 			return data
 	elif wrapper in ['np']:
@@ -685,7 +690,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	paths = {delim.join([name,str(path)]) if path != name else name: path
 		for name in paths
-		for path in glob(paths[name])
+		for path in glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name]))
 		}
 
 	data = {}

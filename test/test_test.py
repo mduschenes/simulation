@@ -216,7 +216,6 @@ def test_objective(path,tol):
 		label=hyperparameters['label'],
 		system=hyperparameters['system'])
 
-	func = []
 	parameters = model.parameters()
 	shapes = model.shapes
 	label = model(parameters)

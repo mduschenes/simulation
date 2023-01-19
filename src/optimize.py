@@ -868,6 +868,8 @@ class Metric(System):
 
 		self.get_metric()
 
+		self.info()
+
 		return
 
 	def __string__(self):
@@ -1148,6 +1150,7 @@ class Optimization(System):
 			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},	
 			'track':{},		
 		}
+
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		self.hyperparameters = hyperparameters
@@ -1233,9 +1236,9 @@ class Optimization(System):
 		'''
 
 		def update(parameters,value,grad,search,optimizer):
-			parameters = parameters + alpha*search
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
+			parameters = parameters + alpha*search
 			return parameters,search,alpha
 
 		value,grad,parameters = self.opt_step(iteration,state)
@@ -1423,7 +1426,7 @@ class Optimization(System):
 		'''		
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['iterations','size','eps','modulo']
+				for attr in ['optimizer','iterations','size','search','eps','modulo']
 			],
 			*['%s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
 				for attr in ['track','attributes']
@@ -1471,8 +1474,8 @@ class GradientDescent(Optimization):
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
 
-		defaults = {'attributes':{'beta':False}}		
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
+		setter(hyperparameters,defaults,delimiter=delim,func=True)
 
 		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system,**kwargs)
 
@@ -1492,9 +1495,9 @@ class GradientDescent(Optimization):
 		'''
 
 		def update(parameters,value,grad,search,optimizer):
-			parameters = parameters + alpha*search
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
+			parameters = parameters + alpha*search
 			return parameters,search,alpha
 
 		value,grad,parameters = self.opt_step(iteration,state)
@@ -1527,7 +1530,7 @@ class ConjugateGradient(Optimization):
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
 
-		defaults = {'beta':0,'search':{'alpha':'line_search','beta':None},'attributes':{'beta':[]}}
+		defaults = {'beta':0,'search':{'beta':None},'attributes':{'beta':[]}}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system,**kwargs)
@@ -1622,8 +1625,8 @@ class Adam(Optimization):
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
 
-		defaults = {'attributes':{'beta':False}}		
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
+		setter(hyperparameters,defaults,delimiter=delim,func=True)
 
 		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system,**kwargs)
 
