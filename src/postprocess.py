@@ -270,7 +270,7 @@ def process(path):
 
 				data = {}
 				
-				key = ['M.objective.noise.scale',-1]
+				key = ['M.objective.noise.scale','None','ax','errorbar']
 				label = {'x':'noise.scale','y':'M','z':'objective'}
 				values = getter(hyperparameters,key)
 
