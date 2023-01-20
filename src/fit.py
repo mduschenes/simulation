@@ -236,7 +236,8 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 
 		elif isinstance(func,str):
 			kind = func
-			_func = interp(x,y,kind)
+			smooth = kwargs.get('smooth')
+			_func = interp(x,y,kind,smooth)
 			func = lambda x,*coef,_func=_func: _func(x)
 			coef,coefferr = zeros(ncoef),zeros((ncoef,ncoef))
 
@@ -244,11 +245,11 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 
 			if yerr is not None:
 				_yerr = 0
-				_funcerr = interp(x,y+yerr,kind)
+				_funcerr = interp(x,y+yerr,kind,smooth)
 				funcerr = lambda x,*coef,_func=_funcerr: _func(x)
 				_yerr += abs(funcerr(_x,*coef) - _y)
 
-				_funcerr = interp(x,y-yerr,kind)
+				_funcerr = interp(x,y-yerr,kind,smooth)
 				funcerr = lambda x,*coef,_func=_funcerr: _func(x)
 				_yerr += abs(funcerr(_x,*coef) - _y)
 
