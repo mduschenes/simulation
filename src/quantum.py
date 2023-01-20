@@ -1232,9 +1232,15 @@ class Callback(object):
 			(hyperparameters['modulo']['track'] is None) or 
 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 
+		stop = (((len(attributes['value'])>1) and 
+			 ((attributes['value'][-1] - attributes['value'][-2]) > 
+				(hyperparameters['eps']['increase']*attributes['value'][-2]))))
+
+		status = status or stop
+
 		default = nan
 
-		if ((not status) or done or start or other):
+		if ((not status) or done or start or other) and (not stop):
 
 			attrs = relsort(track,attributes)
 			size = min(len(track[attr]) for attr in track)

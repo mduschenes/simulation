@@ -4,6 +4,7 @@
 import os,sys,itertools,functools
 from copy import deepcopy
 from functools import partial,wraps
+import traceback
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -18,24 +19,24 @@ for PATH in PATHS:
 from src.utils import argparser
 from src.utils import array,zeros,ones,arange,linspace,logspace,rand,sort,eig,argmax,argmin,maximum,difference,rand,scinotation,exp,log,log10,sqrt
 from src.utils import is_naninf
-from src.utils import nan
-from src.iterables import setter,getter
+from src.utils import nan,delim
+from src.iterables import setter,getter,flatten
 from src.fit import fit
 from src.io import load,dump,join,split,glob,cd,exists,dirname
 
-from src.plot import plot
+from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
 
 from src.quantum import Unitary
 
 
 
 defaults = {
-'plot.None.eigenvalues.pdf': {
+'None.eigenvalues': {
 	"fig":{
 		"set_size_inches":{"w":20,"h":10},
 		"subplots_adjust":{},
 		"tight_layout":{},
-		"savefig":{"fname":"plot.None.eigenvalues.pdf","bbox_inches":"tight","pad_inches":0.2},
+		"savefig":{"fname":None,"bbox_inches":"tight","pad_inches":0.2},
 		"close":{}
 		},
 	"ax":{
@@ -87,19 +88,19 @@ defaults = {
 		"layout":{"nrows":1,"ncols":1,"index":1},
 		"share": {
 			"ax":{
-				"legend":{"title":True,"handles":True,"labels":True},
+				"legend":{"title":True,"handles":True,"set_label":True},
 					"set_ylabel":{"ylabel":"left"}
 				}
 			}
 		}
 
 	},
-'plot.noise.scale.M.min.pdf': {
+'noise.scale.M.min': {
 	"fig":{
-		"set_size_inches":{"w":9.5,"h":9.5},
+		"set_size_inches":{"w":12,"h":12},
 		"subplots_adjust":{},
 		"tight_layout":{},
-		"savefig":{"fname":"plot.noise.scale.M.min.pdf","bbox_inches":"tight","pad_inches":0.2},
+		"savefig":{"fname":None,"bbox_inches":"tight","pad_inches":0.2},
 		"close":{}
 		},
 	"ax":{
@@ -124,7 +125,7 @@ defaults = {
 		"set_ylabel":{"ylabel":r'$M_{\gamma}$'},
 		"set_xlabel":{"xlabel":r"$\gamma$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"log","base":10},
+		"set_xscale":{"value":"log","base":5e0},
 		"set_xnbins":{"nbins":6},
 		"set_xticks":{"ticks":[1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
@@ -160,12 +161,12 @@ defaults = {
 		},
 	"style":{
 		"texify":None,
-		"mplstyle":"config/plot.mplstyle",	
+		"mplstyle":"plot.mplstyle",	
 		"rcParams":{"font.size":20},
 		"layout":{"nrows":1,"ncols":1,"index":1},
 		"share": {
 			"ax":{
-				"legend":{"title":True,"handles":True,"labels":True},
+				"legend":{"title":True,"handles":True,"set_label":True},
 					"set_ylabel":{"ylabel":"left"}
 				}
 			}
@@ -174,10 +175,10 @@ defaults = {
 	},
 'M.objective.noise.scale': {
 	"fig":{
-		"set_size_inches":{"w":9.5,"h":9.5},
+		"set_size_inches":{"w":16,"h":9.5},
 		"subplots_adjust":{},
 		"tight_layout":{},
-		"savefig":{"fname":"plot.M.objective.noise.scale.fit.pdf","bbox_inches":"tight","pad_inches":0.2},
+		"savefig":{"fname":None,"bbox_inches":"tight","pad_inches":0.2},
 		"close":{}
 		},
 	"ax":{
@@ -201,12 +202,13 @@ defaults = {
 		"set_xlabel":{"xlabel":r"$M$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"linear"},
-		"set_xnbins":{"nbins":6},
-		"set_xlim": {"xmin": 0,"xmax": 2100},
+		"set_xnbins":{"nbins":9},
+		"set_xlim": {"xmin": 0,"xmax": 6100},
+		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim": {"ymin": 1e-5,"ymax": 1e1},
+		"set_ylim": {"ymin": 1e-9,"ymax": 5e2},
 		"set_ynbins":{"nbins":5},
-		"set_yticks":{"ticks":[1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -225,20 +227,20 @@ defaults = {
 			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": [0.1,0.02],
-			"ncol": 2,
+			"loc": [0.125,0.82],
+			"ncol": 5,
 			"set_zorder":{"level":100},
 			"set_label":None,
 			}
 		},
 	"style":{
 		"texify":None,
-		"mplstyle":"config/plot.mplstyle",	
+		"mplstyle":"plot.mplstyle",	
 		"rcParams":{"font.size":20},
 		"layout":{"nrows":1,"ncols":1,"index":1},
 		"share": {
 			"ax":{
-				"legend":{"title":True,"handles":True,"labels":True},
+				"legend":{"title":True,"handles":True,"set_label":True},
 					"set_ylabel":{"ylabel":"left"}
 				}
 			}
@@ -247,18 +249,24 @@ defaults = {
 	}
 }
 
-def process(path):
+def postprocess(path,**kwargs):
+	'''
+	Postprocess data
+	Args:
+		path (str): Path to postprocess
+		kwargs (dict): Additional keyword arguments
+	'''
 
 	plots = [
-		'plot.noise.scale.M.min.pdf',
-		# 'plot.None.eigenvalues.pdf',
+		'noise.scale.M.min',
+		# 'None.eigenvalues',
 		]
 	
 
 	for name in plots:
 		print('Plotting :',name)		
 
-		if name in ['plot.noise.scale.M.min.pdf']:
+		if name in ['noise.scale.M.min']:
 
 			with cd(path):
 
@@ -272,40 +280,51 @@ def process(path):
 				
 				key = ['M.objective.noise.scale','None','ax','errorbar']
 				label = {'x':'noise.scale','y':'M','z':'objective'}
-				values = getter(hyperparameters,key)
+				other = OTHER
+				values = list(flatten(getter(hyperparameters,key)))
+				slices = slice(None,None,None)
 
-				slices = slice(None,15,None)
-				attrs = set((attr for value in values for attr in value))
-				for attr in attrs:
+				for axis in label:
+					ax = [ax for ax in AXIS if all(((ax in value[other]) and (value[other][ax]['axis'] == label[axis])) for value in values)]
+
+					if ax:
+						ax = ax[0]
+						data[label[axis]] = [value[ax][slices] for value in values]
+						data['%serr'%(label[axis])] = [value['%serr'%(ax)][slices] if '%serr'%(ax) in value else None for value in values]
+					else:
+						data[label[axis]] = [value[other][label[axis]] for value in values]
+						data['%serr'%(label[axis])] = [None for value in values]
+
+					# data[label[axis]] = [value if value not in ['None',None,nan] else 1e-20 for value in data[label[axis]]]
+
 					try:
-						data[attr] = [value[attr][slices] for value in values]
-					except:
-						data[attr] = [value[attr] for value in values]
+						data[label[axis]] = array(data[label[axis]])
+						data['%serr'%(label[axis])] = array(data['%serr'%(label[axis])])
 
-
-					data[attr] = [value if value not in ['None',None,nan] else 1e-20 for value in data[attr]]
-
-					try:
-						data[attr] = array(data[attr])
-					except:
+					except Exception as exception:
 						pass
+				
+
 
 
 				X = data[label['x']]
 				Y = data[label['y']]
 				Z = data[label['z']]
 
-				Xerr = data.get('%serr'%(label['x'])) if data.get('%serr'%(label['x'])) is not None else [None]*len(X)
-				Yerr = data.get('%serr'%(label['y'])) if data.get('%serr'%(label['y'])) is not None else [None]*len(Y)
-				Zerr = data.get('%serr'%(label['z'])) if data.get('%serr'%(label['z'])) is not None else [None]*len(Z)
+				Xerr = data['%serr'%(label['x'])]
+				Yerr = data['%serr'%(label['y'])]
+				Zerr = data['%serr'%(label['z'])]
+
 
 				_X,_Y,_Z = [],[],[]
 				_Xerr,_Yerr,_Zerr = [],[],[]
 
-				indices = arange(len(X))[(X>=1e-7) & (X<=1e-1) & (X != 1e0)]
-				slices = slice(0,30,None)
+				indices = arange(len(X))[(X>=1e-20) & (X<=1e0) & (X != 1e0)]
+				slices = slice(0,None,None)
 
 				interpolate = 1
+
+
 
 				try:
 					x,y,xerr,yerr = [],[],None,[]
@@ -313,14 +332,15 @@ def process(path):
 
 						y_ = y_[slices]
 						z_ = z_[slices]
+						
 						yerr_ = yerr_ if yerr_ is not None and not is_naninf(yerr_).all() else None
 						zerr_ = zerr_[slices] if zerr_ is not None and not is_naninf(zerr_).all() else None
 
 						_y = linspace(y_.min(),y_.max(),y_.size*20)
 						_yerr = zeros(_y.shape)
-						func = 'cubic'
+						func = 'linear'
 						coef0 = None
-						kwargs = {}
+						kwargs = {'smooth':0}
 
 						_z,coef,_zerr,coefferr,_r = fit(y_,z_,_x=_y,func=func,yerr=zerr_,coef0=coef0,uncertainty=True,**kwargs)	
 
@@ -336,12 +356,18 @@ def process(path):
 						y.append(_y[index])
 						yerr.append(abs((_y[indexerr[0]] + _y[indexerr[1]] - 2*_y[index])/2))
 
-					
+
 					fig,ax = None,None
 
 					settings = deepcopy(defaults[key[0]])
 
 					options = {
+						'fig':{
+							'savefig':{
+								**settings['fig']['savefig'],
+								'fname':join(delim.join(['plot',name]),ext='pdf'),
+								}
+						},
 						'ax':{
 							'errorbar':[
 								*[
@@ -349,8 +375,8 @@ def process(path):
 								**settings['ax']['errorbar'],
 								'x':Y[i][slices],
 								'y':Z[i][slices],
-								'xerr':Yerr[i],
-								'yerr':[(Z[i]*(1 - (Z[i]/(Z[i]+Zerr[i]))))[slices],Zerr[i][slices]],							
+								'xerr':Yerr[i] if Yerr.ndim == 1 else Yerr[i][slices],
+								'yerr':Zerr[i][slices],							
 								'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
 								'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
 								'marker':'o',
@@ -364,8 +390,8 @@ def process(path):
 								**settings['ax']['errorbar'],
 								'x':Y[i][slices],
 								'y':Z[i][slices],
-								'xerr':Yerr[i],
-								'yerr':[(Z[i]*(1 - (Z[i]/(Z[i]+Zerr[i]))))[slices],Zerr[i][slices]],							
+								'xerr':Yerr[i] if Yerr.ndim == 1 else Yerr[i][slices],
+								'yerr':Zerr[i][slices],	
 								'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
 								'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
 								'marker':'o',
@@ -402,7 +428,7 @@ def process(path):
 								**settings['ax']['fill_between'],	
 								'x':_Y[i],
 								'y':_Z[i],
-								'yerr':[(_Z[i]*(1 - (_Z[i]/(_Z[i]+_Zerr[i])))),_Zerr[i]],														
+								'yerr':_Zerr[i],
 								'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(Z)),	
 								'alpha':0.4,
 								} for i in indices
@@ -416,7 +442,8 @@ def process(path):
 					fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
 				except Exception as exception:
-					print(exception)
+					print(traceback.format_exc())
+					exit()
 					_x = X
 					_y = Y
 					_z = Z
@@ -435,7 +462,7 @@ def process(path):
 				y = array(y)
 				xerr = array(xerr) if xerr is not None else xerr
 				yerr = array(yerr) if yerr is not None else yerr
-				indices = arange(len(x))[(x>=1e-7) & (x<=1e-1) & (x != 1e0)]
+				indices = arange(len(x))[(x>=1e-10) & (x<=1e-5) & (x != 1e0)]
 
 				# x = x[indices]
 				# y = y[indices]
@@ -471,6 +498,12 @@ def process(path):
 				settings = deepcopy(defaults[name])
 
 				options = {
+					'fig':{
+						'savefig':{
+							**settings['fig']['savefig'],
+							'fname':join(delim.join(['plot',name,'fit']),ext='pdf'),
+							}
+						},
 					'ax':{
 						'errorbar':[
 							{
@@ -526,7 +559,9 @@ def process(path):
 
 
 
-		elif name in ['plot.None.eigenvalues.pdf']:
+		elif name in ['None.eigenvalues']:
+
+			raise("TODO: Fix model init")
 
 			files = {'hyperparameters':'settings.json','data':'data.hdf5','model':'model.pkl'}
 			paths = glob(path,include='directory',recursive='**')
@@ -590,7 +625,7 @@ def process(path):
 										},
 									'savefig':{
 										**defaults[name]['fig']['savefig'],
-										'fname':name,
+										'fname':join(delim.join(['plot',name]),ext='pdf'),
 									}
 									},
 								'ax':{
@@ -629,7 +664,7 @@ def process(path):
 
 def main(*args,**kwargs):
 
-	process(*args,**kwargs)
+	postprocess(*args,**kwargs)
 
 	return
 
