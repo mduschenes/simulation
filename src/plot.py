@@ -810,10 +810,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['savefig']:
 				path = kwargs[attr].get('fname')
-				dirname = os.path.abspath(os.path.dirname(path))
-				if not os.path.exists(dirname):
-					os.makedirs(dirname)
-				call = True
+				if path is not None:
+					dirname = os.path.abspath(os.path.dirname(path))
+					if not os.path.exists(dirname):
+						os.makedirs(dirname)
+					call = True
+				else:
+					call = False
 
 
 			elif attr in ['close']:
@@ -845,9 +848,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					kwargs[attr][field] = getattr(_obj,'get_%s'%(field))()
 			
 				elif isinstance(kwargs[attr].get(field),str):
-					value = kwargs[attr].get(field)
-					i = (index/size) if (size > 1) else 0.5
-					kwargs[attr][field] = getattr(plt.cm,value)(i)
+					if hasattr(plt.cm,kwargs[attr].get(field)):
+						value = kwargs[attr].get(field)
+						i = (index/size) if (size > 1) else 0.5
+						kwargs[attr][field] = getattr(plt.cm,value)(i)
 				
 				else:
 					continue

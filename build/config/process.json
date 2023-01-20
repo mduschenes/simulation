@@ -1,8 +1,9 @@
 {
 	"load":0,
-	"dump":1,
-	"plot":1,
-	"process":null,
+	"dump":0,
+	"plot":0,
+	"process":1,
+	"postprocess":1,
 	"usetex":true,
 	"useval":true,
 	"instance":{

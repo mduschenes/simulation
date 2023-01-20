@@ -31,6 +31,7 @@ from src.iterables import brancher,getter,setter,flatten
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split
 from src.fit import fit
+from src.postprocess import postprocess
 from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
 
 class GroupBy(object):
@@ -182,6 +183,8 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 		'load':None,
 		'dump':None,
 		'plot':None,
+		'process':None,
+		'postprocess':None,
 		}
 	setter(hyperparameters,defaults,delimiter=delim,func=False)
 
@@ -392,6 +395,9 @@ def apply(keys,data,settings,hyperparameters):
 	if (keys is None) or (data is None):
 		return
 
+	if not hyperparameters['process']:
+		return
+
 	def mean(obj):
 		out = np.array(list(obj))
 		out = tuple(out.mean(0))
@@ -505,6 +511,9 @@ def loader(data,settings,hyperparameters):
 		hyperparameters (str,dict): Path to or dictionary of process settings
 	'''
 
+	if (data is None) or (settings is None) or (hyperparameters is None):
+		return
+
 	# Get keys
 	keys = find(settings)
 
@@ -550,6 +559,7 @@ def loader(data,settings,hyperparameters):
 	
 	# Dump settings
 	if hyperparameters['dump']:
+		path = metadata
 		
 		dump(settings,metadata)
 
@@ -563,6 +573,9 @@ def plotter(settings,hyperparameters):
 		settings (dict): settings
 		hyperparameters (dict): hyperparameters
 	'''
+
+	if (settings is None) or (hyperparameters is None):
+		return
 
 	if not hyperparameters['plot']:
 		return
@@ -699,6 +712,23 @@ def plotter(settings,hyperparameters):
 	return
 
 
+def postprocessor(hyperparameters,pwd=None,cwd=None):
+	'''
+	Postprocess data
+	Args:
+		hyperparameters (str,dict): Path to or dictionary of process settings
+		pwd (str): Root path of data
+		cwd (str): Root path of plots
+	'''
+
+	if not hyperparameters['postprocess']:
+		return
+
+	path = cwd
+	postprocess(path)
+
+	return
+
 
 def process(data,settings,hyperparameters,pwd=None,cwd=None):
 	'''
@@ -765,6 +795,9 @@ def process(data,settings,hyperparameters,pwd=None,cwd=None):
 
 	# Plot data
 	plotter(settings,hyperparameters)
+
+	# Post process data
+	postprocessor(hyperparameters,pwd,cwd)
 
 	return
 
