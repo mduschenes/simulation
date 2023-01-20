@@ -10,25 +10,25 @@
 	"dump":0
 	},
 "seed":{
-	"seed":28271,
-	"size":8,
-	"reset":28271,
+	"seed":1982,
+	"size":16,
+	"reset":1982,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
 		"model.N":[4],		
-		"model.M":[100,200,400,600,800,1000,1250,1500,1750,2000,2500,3000,5000,6000],		
-		"model.M":[10,20,50,75,100,200,400,600,800,1000,1250,1500,1750,2000,2500,3000,5000,6000],		
-		"model.M":[10,20,50,75],		
+		"model.M":[10,50,75,100,200,300,400,500,600,750,800,1000,1250,1500,1750,2000,2500,3000,5000,6000],		
+		"model.M":[10,50,75,100,200,300,400,500,600,750,800,1000,1250,1500],		
+		"model.M":[1750,2000,2500,3000,5000,6000],		
 		"model.tau":[20e0],		
-		"noise.scale":[1e-10,1e-8,1e-6,1e-5,1e-4,1e-3,1e-2],
-		"noise.scale":[1e-18],
-		"noise.scale":[1e-18,1e-10,1e-8,1e-6,1e-5,1e-4,1e-3,1e-2],
+		"noise.scale":[0,1e-18,1e-15,1e-12,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
+		"noise.scale":[0,1e-18,1e-15,1e-12,1e-10,1e-9,1e-8],
+		"noise.scale":[1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
 		"state.scale":[1],
 
-		"optimize.iterations":[600],
+		"optimize.iterations":[500],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
@@ -37,8 +37,8 @@
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
 
-		"jobs.job.cwd":["gobi/noise.constrained.long/extra"],
-		"jobs.postprocess.cwd":["gobi/noise.constrained.long/extra"],
+		"jobs.job.cwd":["gobi/noise"],
+		"jobs.postprocess.cwd":["gobi/noise"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -99,7 +99,7 @@
 	"path":"data.hdf5",
 	"conf":"logging.conf",
 	"logger":"log.log",
-	"cleanup":true,
+	"cleanup":false,
 	"verbose":"info"
 	},
 "optimize":{
@@ -109,8 +109,8 @@
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
 	"search":{"alpha":"line_search","beta":"fletcher_reeves"},
 	"search":{"alpha":"line_search","beta":"dai_yuan"},
-	"eps":{"value":1e-12,"grad":1e-20,"difference":1e-12,"alpha":1e-7,"beta":1e3},
-	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
+	"eps":{"value":1e-12,"grad":1e-20,"difference":1e-12,"increase":1e-2,"alpha":1e-7,"beta":1e3},
+	"value":{"value":1,"grad":1,"difference":1,"increase":1,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[1e-10,1e7],"beta":[-1e20,1e3]},	
 	"status":1,
 	"clear":false,
