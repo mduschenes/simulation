@@ -4695,20 +4695,25 @@ def invtrotter(a,p):
 	return a[:n]
 
 
-def interp(x,y,kind):
+def interp(x,y,kind,smooth=None):
 	'''
 	Interpolate array at new points
 	Args:
 		x (array): Interpolation points
 		y (array): Interpolation values
 		kind (int): Order of interpolation
+		smooth (int,float): Smoothness of fit
 	Returns:
 		func (callable): Interpolation function
 	'''		
-	def _interpolate(x,y,kind):
-		return osp.interpolate.interp1d(x,y,kind)
+	def _interpolate(x,y,kind,smooth):
+		kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5}
+		k = kinds.get(kind,kind)
+		s = smooth
+		return osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
+		# return osp.interpolate.interp1d(x,y,kind)
 
-	return _interpolate(x,y,kind)
+	return _interpolate(x,y,kind,smooth)
 
 
 def interpolate(x,y,x_new,kind):
