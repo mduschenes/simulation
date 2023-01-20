@@ -1211,7 +1211,7 @@ class Callback(object):
 		iterations = optimizer.iterations
 		hyperparameters = optimizer.hyperparameters
 
-		start = (len(attributes['iteration'])==1) and ((attributes['iteration'][-1]==0) or (attributes['iteration'][-1] != (iterations.stop)))
+		init = (len(attributes['iteration'])==1) and ((attributes['iteration'][-1]==0) or (attributes['iteration'][-1] != (iterations.stop)))
 		
 		done = (len(attributes['iteration'])>1) and (attributes['iteration'][-1] == (iterations.stop))
 		
@@ -1240,7 +1240,7 @@ class Callback(object):
 
 		default = nan
 
-		if ((not status) or done or start or other) and (not stop):
+		if ((not status) or done or init or other) and (not stop):
 
 			attrs = relsort(track,attributes)
 			size = min(len(track[attr]) for attr in track)
@@ -1261,33 +1261,33 @@ class Callback(object):
 				track[attr].append(value)
 
 
-				if attr in ['iteration.max'] and not ((not status) or done or start):
+				if attr in ['iteration.max'] and not ((not status) or done or init):
 					value = default
 				
-				elif attr in ['iteration.max'] and ((not status) or done or start):
+				elif attr in ['iteration.max'] and ((not status) or done or init):
 					value = track['iteration'][-1]
 					update = True
 
-				elif attr in ['iteration.min'] and not ((not status) or done or start):
+				elif attr in ['iteration.min'] and not ((not status) or done or init):
 					value = default
 				
-				elif attr in ['iteration.min'] and ((not status) or done or start):
+				elif attr in ['iteration.min'] and ((not status) or done or init):
 					value = track['iteration'][argmin(array(track['objective']))]
 					update = True
 
 				elif attr in ['value']:
 					value = attributes[attr][-1]
 
-				elif attr in ['parameters','grad','search'] and not ((not status) or done or start):
+				elif attr in ['parameters','grad','search'] and not ((not status) or done or init):
 					value = default
 
-				elif attr in ['parameters','grad','search'] and ((not status) or done or start):
+				elif attr in ['parameters','grad','search'] and ((not status) or done or init):
 					value = attributes[attr][-1]
 
-				elif attr in ['features','features.mean','features.relative.mean'] and not ((not status) or done or start):
+				elif attr in ['features','features.mean','features.relative.mean'] and not ((not status) or done or init):
 					value = default
 
-				elif attr in ['features','features.mean','features.relative.mean'] and ((not status) or done or start):
+				elif attr in ['features','features.mean','features.relative.mean'] and ((not status) or done or init):
 
 					layer = 'features'
 					prop = 'index'
@@ -1338,13 +1338,13 @@ class Callback(object):
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
-					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and not ((not status) or done or start):
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and not ((not status) or done or init):
 					value = default
 
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
-					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or start):
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or init):
 
 					_kwargs = {kwarg: {prop: hyperparameters.get('settings',{}).get(kwarg) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
 					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
@@ -1365,7 +1365,7 @@ class Callback(object):
 					_hyperparameters = hyperparameters
 					_restore = {kwarg: deepcopy(getattr(model,kwarg)) for kwarg in _kwargs}
 
-					model.__functions__(**_kwargs)
+					_model.__functions__(**_kwargs)
 					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
 
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
@@ -1376,6 +1376,7 @@ class Callback(object):
 						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
 
 					model.__functions__(**_restore)
+
 
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues'] and not ((not status) or done):
 					if attr in ['hessian','fisher']:

@@ -462,7 +462,7 @@ def postprocess(path,**kwargs):
 				y = array(y)
 				xerr = array(xerr) if xerr is not None else xerr
 				yerr = array(yerr) if yerr is not None else yerr
-				indices = arange(len(x))[(x>=1e-10) & (x<=1e-5) & (x != 1e0)]
+				indices = arange(len(x))[(x>=1e-8) & (x<=1e-3) & (x != 1e0)]
 
 				# x = x[indices]
 				# y = y[indices]
