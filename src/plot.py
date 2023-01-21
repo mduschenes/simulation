@@ -726,7 +726,16 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					call = False
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS for k in AXIS],*[OTHER]])
 
-			elif attr in ['plot_surface','contour','contourf','scatter']:
+			elif attr in ['scatter']:
+
+				dim = 2
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
+
+				call = True
+
+			elif attr in ['plot_surface','contour','contourf']:
 
 				dim = 3
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
@@ -895,7 +904,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								for _subattr_ in getattr(_attr_,a)():
 									for l in _kwds[k]:
 										getattr(_subattr_,l)(**_kwds[k][l])
-							except:
+							except Exception as exception:
 								pass
 				
 

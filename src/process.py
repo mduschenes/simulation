@@ -639,18 +639,20 @@ def plotter(settings,hyperparameters):
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[attrs][attrs][attrs]))),
 							'label': any(((label in data[attrs][attrs][attrs]) and (label in data[attrs]) and (data[attrs][attrs][attrs][label] is None))
 								for data in flatten(settings[instance][subinstance]['ax'][plots])),
-							'other': any(((label not in data[attrs]) and (data[attrs][attrs][attrs][label] in data[attrs]))
-								for data in flatten(settings[instance][subinstance]['ax'][plots])),	
+							'other': any(((label not in data[attrs]) and (label in data[attrs][attrs][attrs]) and (data[attrs][attrs][attrs][label] in data[attrs]))
+								for data in flatten(settings[instance][subinstance]['ax'][plots])),
+							'legend': any(((label not in data[attrs]) and (label in data[attrs][attrs][attrs]) and (data[attrs][attrs][attrs][label] not in data[attrs]))
+								for data in flatten(settings[instance][subinstance]['ax'][plots])),
 							}
 						for label in list(realsorted(set(label
 						for data in flatten(settings[instance][subinstance]['ax'][plots])
 						for label in [*data[attrs],*data[attrs][attrs][attrs]]
-						if ((label not in [*ALL,OTHER]))))) 
+						if ((label not in [*ALL,OTHER])))))
 						}
 						for plots in PLOTS 
 						if plots in settings[instance][subinstance]['ax']
 						}
-			except KeyError:
+			except KeyError as e:
 				settings[instance].pop(subinstance);
 				continue
 				
@@ -688,11 +690,15 @@ def plotter(settings,hyperparameters):
 
 					attr = OTHER
 					value = ', '.join([
-						(texify(scinotation(data[attr][label],decimals=0,scilimits=[0,3],one=False)) 
+						*[(texify(scinotation(data[attr][label],decimals=0,scilimits=[0,3],one=False)) 
 						if values[plots][label]['label'] else texify(scinotation(data[attr][data[attr][attr][attr][label]],decimals=0,scilimits=[0,3],one=False)))
 						for label in values[plots]
 						if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) or 
-							(values[plots][label]['other']))
+							(values[plots][label]['other']))],
+						*[texify(scinotation(data[attr][attr][attr][label],decimals=0,scilimits=[0,3],one=False)) 
+						for label in values[plots]
+						if values[plots][label]['legend']
+						]
 						])
 
 					data[attr] = value
