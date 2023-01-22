@@ -1239,14 +1239,13 @@ class Callback(object):
 
 		stop = (((len(attributes['value'])>1) and 
 			 ((attributes['value'][-1] - attributes['value'][-2]) > 
-				(hyperparameters['eps']['increase']*attributes['value'][-2]))))
+				(hyperparameters['eps']['increase']*attributes['value'][-1]))))
 
-		status = status or stop
+		status = (status) and (not stop)
 
 		default = nan
 
-		if ((not status) or done or init or other) and (not stop):
-
+		if ((not status) or done or init or other):
 			attrs = relsort(track,attributes)
 			size = min(len(track[attr]) for attr in track)
 
@@ -1289,10 +1288,10 @@ class Callback(object):
 				elif attr in ['parameters','grad','search'] and ((not status) or done or init):
 					value = attributes[attr][-1]
 
-				elif attr in ['features','features.mean','features.relative.mean'] and not ((not status) or done or init):
+				elif attr in ['features','features.mean','features.relative.mean'] and (init):
 					value = default
 
-				elif attr in ['features','features.mean','features.relative.mean'] and ((not status) or done or init):
+				elif attr in ['features','features.mean','features.relative.mean'] and (not init):
 
 					layer = 'features'
 					prop = 'index'
@@ -1335,7 +1334,6 @@ class Callback(object):
 						value = model.__layers__(parameters,layer)[indices]
 						_value = model.__layers__(attributes['parameters'][0],layer)[indices]						
 						value = abs((value - _value + eps)/(_value + eps)).mean()
-
 
 				elif attr in ['objective']:
 					value = metric(model(parameters))
@@ -1460,7 +1458,6 @@ class Callback(object):
 
 
 			model.log(msg)
-
 
 		return status
 

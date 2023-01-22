@@ -483,14 +483,15 @@ def apply(keys,data,settings,hyperparameters):
 						if grouping.shape[0]:
 							if source in grouping:
 								if dtypes[attr] in ['array']:
-									value[destination] = np.array(grouping[source][0])
+									value[destination] = np.array(grouping[source].iloc[0])
 								else:
 									value[destination] = grouping[source].to_numpy()
 							elif source is null:
 								source = delim.join(((dependent[-1],function,func)))
-								value[destination] = np.arange(len(grouping[source][0]))
+								value[destination] = np.arange(len(grouping[source].iloc[0]))
 							else:
 								value[destination] = grouping.reset_index().index.to_numpy()
+
 						else:
 							value[destination] = None
 
@@ -682,7 +683,21 @@ def plotter(settings,hyperparameters):
 					for attr in data:
 						if (attr in ALL) and (data[attr] is not None):
 							value = np.array([valify(value) for value in data[attr]])
+
+							if data[OTHER][OTHER].get('slice') is not None:
+								slices = slice(*data[OTHER][OTHER].get('slice'))
+								value = value[slices]
+
 							data[attr] = value
+
+
+			# label
+			for plots in PLOTS:
+
+				if settings[instance][subinstance]['ax'].get(plots) is None:
+					continue
+
+				for data in flatten(settings[instance][subinstance]['ax'][plots]):
 
 					attr = OTHER
 					value = ', '.join([
@@ -697,7 +712,7 @@ def plotter(settings,hyperparameters):
 						]
 						])
 
-					data[attr] = value
+					data[attr] = value					
 
 
 

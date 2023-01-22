@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools,datetime,shutil
+import os,sys,itertools,functools,datetime,shutil,traceback
 from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
@@ -43,18 +43,19 @@ def config(name,conf=None,**kwargs):
 
 	default = 'logging.conf'
 	file = kwargs.get('file')
+	ext = 'tmp'
 	existing = exists(conf)
 
 	if not existing:
 		source = join(split(__file__,directory=True,abspath=True),default)
-		destination = join(split(conf,directory=True,abspath=True),default,ext='tmp')
+		destination = join(split(conf,directory=True,abspath=True),default,ext=ext)
 		copy(source,destination)
 		conf = destination
 	else:
 		source = conf
-		destination = join(conf,ext='tmp')
+		destination = join(conf,ext=ext)
 		copy(source,destination)
-		conf = join(conf,ext='tmp')
+		conf = destination
 
 
 	if conf is not None:
@@ -100,17 +101,18 @@ def config(name,conf=None,**kwargs):
 
 			with open(conf, 'w') as configfile:
 				config.write(configfile)
-			logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
+			
+			try:
+				logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
+			except KeyError:
+				pass
 
 		except Exception as exception:
-			print(traceback.format_exc())
 			pass
 
 		logger = logging.getLogger(name)
 
-
-	if not existing:
-		rm(conf)
+	rm(conf)
 
 	return logger
 

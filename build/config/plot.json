@@ -504,7 +504,17 @@
 		"errorbar":{
 			"x":null,
 			"y":"hessian.eigenvalues",
-			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null,"iteration":"@iteration.max@","rank":"hessian.rank"},
+            "label": {
+                "label":{
+                    "N": null,
+                    "architecture": null,
+                    "M": null,
+                    "noise.scale": null,
+                    "iteration": "@iteration.max@",
+                    "rank": "hessian.rank"
+                },
+                "slice":[0,1000,null]
+            },		
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -562,7 +572,17 @@
 		"errorbar":{
 			"x":null,
 			"y":"fisher.eigenvalues",
-			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null,"iteration":"@iteration.max@","rank":"fisher.rank"},
+            "label": {
+                "label":{
+                    "N": null,
+                    "architecture": null,
+                    "M": null,
+                    "noise.scale": null,
+                    "iteration": "@iteration.max@",
+                    "rank": "fisher.rank"
+                },
+                "slice":[0,1000,null]
+            },			
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
