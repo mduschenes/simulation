@@ -46,18 +46,15 @@ def _setup(args,kwargs):
 		'h':np.random.choice(['first','second','third','four','five','six'],n),
 	})
 
-	path = path if path is not None else 'data/data/**/data.hdf5'
+	path = path if path is not None else 'data/test/**/data.hdf5'
 	df = load(path,default={},wrapper='df')
 
-	axes = ['x','y']
-	other = ['label']
-	
 	path = 'config/plot.test.json'
 	settings = load(path)
 	
 	updates = {
 		'data':data,'df':df,
-		'axes':axes,'other':other,'settings':settings,
+		'settings':settings,
 		'verbose':verbose,
 	}
 	
@@ -96,11 +93,9 @@ def test_find(path=None):
 
 	_setup(args,kwargs)
 	
-	settings,axes,other = kwargs['settings'],kwargs['axes'],kwargs['other']
+	settings = kwargs['settings']
 	
-	keys = [*axes]
-	other = [*other]
-	keys = find(settings,keys,*other)
+	keys = find(settings)
 	
 	for name in keys:
 		print(name)
@@ -121,12 +116,10 @@ def test_parse(path=None):
 	_setup(args,kwargs)
 	
 	df = kwargs['df']
-	settings,axes,other = kwargs['settings'],kwargs['axes'],kwargs['other']
+	settings = kwargs['settings']
 	verbose = kwargs['verbose']
 	
-	keys = [*axes]
-	other = [*other]
-	keys = find(settings,keys,*other)
+	keys = find(settings)
 
 	print(df)
 	print()
@@ -136,7 +129,7 @@ def test_parse(path=None):
 
 		key = keys[name]
 
-		for attr in other:
+		for attr in ['label']:
 			for prop in key[attr][attr]:
 				value = key[attr][attr][prop]
 				boolean = parse(prop,value,df)
@@ -150,32 +143,8 @@ def test_parse(path=None):
 
 def test_groupby(path=None):
 
-
-	def mean(group):
-		return group.mean()
-
-	def std(group):
-		return group.std()
-
-	args = ()
-	kwargs = {}	
-
-	kwargs.update({'path':path,'verbose':0})
-
-	_setup(args,kwargs)
-	
-	df = kwargs['df']
-	settings,axes,other = kwargs['settings'],kwargs['axes'],kwargs['other']
-
-	keys = find(settings,axes,*other)
-
-	data = {}
-
-	for name in keys:      
-		
-		apply(name,keys,data,df)
-
 	return
+
 
 
 

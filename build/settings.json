@@ -1,29 +1,7 @@
 {
-<<<<<<< HEAD
-"class":"src.quantum.Unitary",
-"hyperparameters":"settings.json",
-"sys":{
-	"cwd":null,
-	"path":{
-		"data":{
-			"model":"model.pkl",
-			"data":"data.hdf5",
-			"settings":"settings.json",
-			"log":"log.log"
-			},
-		"config":{
-			"settings":"settings.json",
-			"plot":"plot.json",
-			"process":"process.json",
-			"mplstyle":"plot.mplstyle",
-			"logger":"logging.conf"
-			}
-		}
-=======
 "class":{
 	"model":"src.quantum.Unitary",
 	"callback":"src.quantum.Callback"
->>>>>>> dev
 	},
 "hyperparameters":"settings.json",
 "boolean":{
@@ -32,49 +10,58 @@
 	"dump":0
 	},
 "seed":{
-	"seed":5576,
-	"size":5,
-	"reset":5576,
+	"seed":1982,
+	"size":16,
+	"reset":1982,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
-<<<<<<< HEAD
-		"model.N":[2],
-		"model.M":[4,8,16,64],
-		"noise.scale":[1e-10,1e-8,1e-6,1e-4,1e-1],
-		"state.scale":[1],
-		"model.metric":["infidelity.norm"],
-		"optimize.iterations":[10],
-=======
-		"model.N":[2],		
-		"model.M":[8,16,32,64,128],		
+		"model.N":[4],		
+		"model.M":[10,50,75,100,200,300,400,500,600,750,800,1000,1250,1500,1750,2000,2500,3000,5000,6000],		
+		"model.M":[10,50,75,100,200,300,400,500,600,750,800,1000,1250,1500],		
+		"model.M":[1750,2000,2500,3000,5000,6000],		
 		"model.tau":[20e0],		
-		"noise.scale":[null,1e-10,1e-6],
+		"noise.scale":[0,1e-18,1e-15,1e-12,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
+		"noise.scale":[0,1e-18,1e-15,1e-12,1e-10,1e-9,1e-8],
+		"noise.scale":[1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
 		"state.scale":[1],
 
-		"optimize.iterations":[200],
->>>>>>> dev
+		"optimize.iterations":[500],
 		"optimize.optimizer":["cg"],
-		"parameters.xy.method":["unconstrained"],
-		"system.architecture":["unconstrained"],
+		"optimize.metric":["real"],
+		"optimize.search.alpha":["line_search"],
+		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["new"],	
-		"jobs.postprocess.cwd":["new"],
+		"parameters.xy.method":["constrained"],
+		"system.architecture":["constrained"],
+
+		"jobs.job.cwd":["gobi/noise"],
+		"jobs.postprocess.cwd":["gobi/noise"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
-		"jobs.job.pool":[2],
+		"jobs.job.processes":[1],
+		"jobs.postprocess.processes":[1],
+		"jobs.job.pool":[16],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
+		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.postprocess.args.JOB_PROCESSES":[1]
+		"jobs.job.args.JOB_PROCESSES":[16],		
+		"jobs.postprocess.args.JOB_PROCESSES":[1],
+		"jobs.job.patterns.time":["30:00:00"],
+		"jobs.postprocess.patterns.time":["30:00:00"],
+		"jobs.job.patterns.mem":["72GB"],
+		"jobs.postprocess.patterns.mem":["64GB"],
+		"jobs.job.patterns.cpus-per-task":[16],
+		"jobs.postprocess.patterns.cpus-per-task":[2]
+
 		},
 	"groups":[["parameters.xy.method","system.architecture"]],
 	"index":null
@@ -112,7 +99,7 @@
 	"path":"data.hdf5",
 	"conf":"logging.conf",
 	"logger":"log.log",
-	"cleanup":true,
+	"cleanup":false,
 	"verbose":"info"
 	},
 "optimize":{
@@ -122,14 +109,14 @@
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
 	"search":{"alpha":"line_search","beta":"fletcher_reeves"},
 	"search":{"alpha":"line_search","beta":"dai_yuan"},
-	"eps":{"value":1e-30,"grad":1e-32,"difference":1e-30,"alpha":1e-7,"beta":1e3},
-	"value":{"value":1,"grad":1,"difference":1,"alpha":0,"beta":0},
+	"eps":{"value":1e-12,"grad":1e-20,"difference":1e-12,"increase":1e-2,"alpha":1e-7,"beta":1e3},
+	"value":{"value":1,"grad":1,"difference":1,"increase":1,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[1e-10,1e7],"beta":[-1e20,1e3]},	
 	"status":1,
 	"clear":false,
 	"settings":{"noise":1e-3},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,"restart":1e6,
-	"alpha":1e-3,"beta":1e-2,
+	"alpha":1e-4,"beta":1e-4,
 	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"restart":null,"dump":null},
 	"length":{"log":null,"attributes":5,"track":null,"callback":null,"restart":null,"dump":null},
 	"attributes":{
@@ -150,9 +137,9 @@
 			"iteration.max":[],
 			"iteration.min":[],
 			"features":false,"features.relative":false,"features.relative.mean":[],
-			"objective.ideal.noise":true,"objective.diff.noise":true,"objective.rel.noise":true,
-			"objective.ideal.state":true,"objective.diff.state":true,"objective.rel.state":true,
-			"objective.ideal.operator":true,"objective.diff.operator":true,"objective.rel.operator":true,
+			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
+			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
+			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
 			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
 			"hessian.rank":false,"fisher.rank":false,
@@ -167,7 +154,7 @@
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"method":"unconstrained",
+		"method":"constrained",
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"parameters":null,
@@ -181,11 +168,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -194,7 +181,7 @@
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
-		"parameters":[-1e-2,0,1e-3,5e-3,2e-3],		
+		"parameters":[-1e-2,0,1e-3,-5e-2,2e-3],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["z"]],
@@ -214,7 +201,7 @@
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],						
+		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],
@@ -254,7 +241,7 @@
 	"bounds":[-1,1]
 	},
 "noise": {
-	"string":"dephase",
+	"string":"phase",
 	"category":"constant",
 	"shape":[-1,-1],
 	"size":null,
@@ -292,9 +279,9 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,
-		"pause":1,	
-		"file":"job.sh",
-		"process":"array",
+		"pause":1,
+		"file":"job.sh",	
+		"process":null,
 		"processes":null,
 		"device":"pc",
 		"execute":1,
@@ -331,8 +318,7 @@
 		"execute":1,
 		"process":null,
 		"verbose":"info"
-		},
-	"postprocess":null		
+		}
 	},
 "process": {},
 "plot": {}

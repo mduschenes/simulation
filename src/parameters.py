@@ -49,6 +49,7 @@ def _variables(hyperparameters,parameter,group):
 	if parameter in ['zz'] and group in [('zz',)]:
 		scale[index] /= 1 #4*kwargs['min']*kwargs['tau']
 
+	# Parameters shape (G,K/G,M) -> (K/G,M)
 	if method in ['constrained']:
 		if parameter in ['xy'] and group in [('x',)]:
 			def func(parameters):
@@ -99,6 +100,7 @@ def _features(hyperparameters,parameter,group):
 	else:
 		wrapper = nullbound
 
+	# Parameters shape (K,M) -> (G,K/G,M)
 	def func(parameters):
 		shape = (size,parameters.shape[0]//size,*parameters.shape[1:])
 		return wrapper(parameters,kwargs).reshape(shape)
@@ -145,18 +147,18 @@ def _constraints(hyperparameters,parameter,group):
 
 		elif parameter in ['z'] and group in [('z',)]:
 			def func(parameters):
-				return 0
+				return 0.
 
 		elif parameter in ['zz'] and group in [('zz',)]:
 			def func(parameters):
-				return 0			
+				return 0.			
 
 	elif method in ['unconstrained']:
 		def func(parameters):
-			return 0
+			return 0.
 	else:
 		def func(parameters):
-			return 0
+			return 0.
 
 	return func
 
@@ -481,7 +483,7 @@ class Parameters(Object):
 							parameter=parameter,
 							group=group)
 						)
-					except:
+					except Exception as exception:
 						hyperparameters[parameter][prop][group] = jit(hyperparameters[parameter][prop][group])
 
 		# Get attributes

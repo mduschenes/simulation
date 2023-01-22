@@ -1,10 +1,22 @@
 {
-	"load":1,
-	"dump":1,
-	"plot":1,
-	"process":null,
+	"load":0,
+	"dump":0,
+	"plot":0,
+	"process":1,
+	"postprocess":1,
 	"usetex":true,
 	"useval":true,
+	"instance":{
+		"iteration.objective.M":true,
+		"noise.scale.objective.M":1,
+		"noise.scale.objective.diff.M":0,
+		"noise.scale.objective.diff.M":0,
+		"M.objective.noise.scale":1,
+		"M.features.relative.mean.N.iteration": 0,
+		"M.iteration.min.N": 0,
+		"None.hessian.eigenvalues.M": 0,
+		"None.fisher.eigenvalues.M": 0
+	},
 	"texify":{
 		"iteration":"\\textrm{Iteration}~i",
 		"rank": "r",
