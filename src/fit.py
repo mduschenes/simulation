@@ -4,10 +4,6 @@
 import os,sys,itertools,warnings,copy
 warnings.filterwarnings('ignore')
 
-# Logging
-import logging
-logger = logging.getLogger(__name__)
-
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..','../..','../../lib']

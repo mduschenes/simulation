@@ -103,6 +103,7 @@ def config(name,conf=None,**kwargs):
 			logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
 
 		except Exception as exception:
+			print(traceback.format_exc())
 			pass
 
 		logger = logging.getLogger(name)
@@ -110,7 +111,6 @@ def config(name,conf=None,**kwargs):
 
 	if not existing:
 		rm(conf)
-
 
 	return logger
 
@@ -287,8 +287,8 @@ class Logger(object):
 			verbose (int): Verbosity of message
 			msg (str): Message to log
 		'''
-
 		verbose = self.verbosity.get(verbose,self.verbose)
+		
 		self.logger.log(verbose,msg)
 		return
 
@@ -324,7 +324,10 @@ class Logger(object):
 		return
 
 	def __str__(self):
-		return str(self.file)
+		try:
+			return str(self.file)
+		except:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		return self.__str__()
@@ -498,8 +501,12 @@ class Space(System):
 		self.size = self.n
 		return 
 
+	
 	def __str__(self):
-		return str(self.string)
+		try:
+			return str(self.string)
+		except:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		return str(self.string)
@@ -594,7 +601,10 @@ class Time(System):
 		return 
 
 	def __str__(self):
-		return str(self.string)
+		try:
+			return str(self.string)
+		except:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		return str(self.string)
@@ -762,7 +772,10 @@ class Lattice(System):
 		return
 
 	def __str__(self):
-		return self.string
+		try:
+			return str(self.string)
+		except:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		return self.string

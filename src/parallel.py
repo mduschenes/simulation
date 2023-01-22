@@ -5,6 +5,9 @@ import os,sys,copy,warnings,functools,itertools,inspect,timeit
 import numpy as np
 from functools import partial
 
+import logging
+logger = logging.getLogger(__name__)
+
 # import multiprocess as mp
 # import multithreading as mt
 import joblib
@@ -13,11 +16,6 @@ import multiprocessing.dummy as multithreading
 
 DELIMITER='__'
 MAX_PROCESSES = 8
-
-# Logging
-import logging
-logger = logging.getLogger(__name__)
-
 
 class mapping(dict):
 	def __init__(self,*args,**kwargs):

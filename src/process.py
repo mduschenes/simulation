@@ -10,10 +10,6 @@ import pandas as pd
 from natsort import natsorted,realsorted
 import matplotlib.pyplot as plt
 
-# Logging
-import logging
-logger = logging.getLogger(__name__)
-
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))

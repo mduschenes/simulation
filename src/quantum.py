@@ -133,9 +133,11 @@ class Operator(System):
 
 		return self.data
 
-
 	def __str__(self):
-		return delim.join(self.operator)
+		try:
+			return delim.join(self.operator)
+		except:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		return self.__str__()
@@ -722,19 +724,22 @@ class Observable(System):
 		return
 
 	def __str__(self):
-		size = len(self.data)
-		delimiter = ' '
-		multiple_time = (self.M>1)
-		multiple_space = [size>1 and False for i in range(size)]
-		return '%s%s%s%s'%(
-				'{' if multiple_time else '',
-				delimiter.join(['%s%s%s'%(
-					'(' if multiple_space[i] else '',
-					self.string[i],
-					')' if multiple_space[i] else '',
-					) for i in range(size)]),
-				'}' if multiple_time else '',
-				'^%d'%(self.M) if multiple_time else '')
+		try:
+			size = len(self.data)
+			delimiter = ' '
+			multiple_time = (self.M>1)
+			multiple_space = [size>1 and False for i in range(size)]
+			return '%s%s%s%s'%(
+					'{' if multiple_time else '',
+					delimiter.join(['%s%s%s'%(
+						'(' if multiple_space[i] else '',
+						self.string[i],
+						')' if multiple_space[i] else '',
+						) for i in range(size)]),
+					'}' if multiple_time else '',
+					'^%d'%(self.M) if multiple_time else '')
+		except AttributeError:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		return self.__str__()
@@ -1360,13 +1365,14 @@ class Callback(object):
 
 					_model = model
 					_shapes = model.shapes
-					_label = _model.label()
+					_label = model.label()
 					_optimize = None
 					_hyperparameters = hyperparameters
+					_system = model.system
 					_restore = {kwarg: deepcopy(getattr(model,kwarg)) for kwarg in _kwargs}
 
 					_model.__functions__(**_kwargs)
-					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
+					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters,system=_system,verbose=False)
 
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
 						value = _metric(_model(parameters))
@@ -1561,7 +1567,10 @@ class OpModule(module,System):
 		return
 	
 	def __str__(self):
-		return self.string
+		try:
+			return str(self.string)
+		except:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		return self.__str__()
