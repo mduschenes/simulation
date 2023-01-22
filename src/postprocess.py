@@ -327,7 +327,7 @@ def postprocess(path,**kwargs):
 
 
 				try:
-					x,y,xerr,yerr = [],[],None,[]
+					x,y,xerr,yerr,indexes = [],[],None,[],[]
 					for i,(x_,y_,z_,yerr_,zerr_) in enumerate(zip(X,Y,Z,Yerr,Zerr)):
 
 						y_ = y_[slices]
@@ -350,11 +350,13 @@ def postprocess(path,**kwargs):
 						_Zerr.append(_zerr)
 
 						index = int(argmin(_z))
+						# index = argmax(abs((difference(_z)[1:] - difference(_z)[:-1]))/difference(_z)[1:])
 						indexerr = int(argmin(_z-_zerr)),int(argmin(_z+_zerr))
 
 						x.append(x_)
 						y.append(_y[index])
 						yerr.append(abs((_y[indexerr[0]] + _y[indexerr[1]] - 2*_y[index])/2))
+						indexes.append(index)
 
 
 					fig,ax = None,None
@@ -412,6 +414,20 @@ def postprocess(path,**kwargs):
 								'alpha':0.8,
 								} for i in indices
 								],
+								*[
+								{
+								'x':[_Y[i][indexes[i]]],
+								'y':[_Z[i][indexes[i]]],
+								# 'yerr':[(_Z[i]*(1 - (_Z[i]/(_Z[i]+_Zerr[i])))),_Zerr[i]],							
+								'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
+								'marker':'o',
+								'markersize':20,
+								'markerfacecolor':"None",
+								'linestyle':'-',
+								'linewidth':2,
+								'alpha':0.8,
+								} for i in indices
+								],								
 							],
 							'fill_between':[
 								# *[
@@ -462,7 +478,7 @@ def postprocess(path,**kwargs):
 				y = array(y)
 				xerr = array(xerr) if xerr is not None else xerr
 				yerr = array(yerr) if yerr is not None else yerr
-				indices = arange(len(x))[(x>=1e-10) & (x<=1e-5) & (x != 1e0)]
+				indices = arange(len(x))[(x>=1e-8) & (x<=1e-3) & (x != 1e0)]
 
 				# x = x[indices]
 				# y = y[indices]
@@ -471,9 +487,10 @@ def postprocess(path,**kwargs):
 
 				def func(x,*coef):
 					# y = coef[0]*((x)**(-coef[2])) + coef[1]
-					y = ((exp(-(log(x))*coef[0])))
+					# y = ((exp(-(log(x))*coef[0])))
 					# y = ((x-coef[1])**(-coef[0]))
 					y = coef[1]*((x)**(-coef[0]))
+					# y = coef[1]*(log(x)**(-coef[0]))
 					return y
 
 				_x = logspace(int(log10(x.min()))-2,int(log10(x.max()))+1,x.size*100)

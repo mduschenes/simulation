@@ -12,10 +12,6 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-# Logging
-import logging
-logger = logging.getLogger(__name__)
-
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient,conj,abs
 from src.utils import is_unitary,is_hermitian,product,sqrt,asarray
@@ -65,10 +61,11 @@ class LineSearcher(System):
 		
 		return
 
-	def __call__(self,parameters,alpha,value,grad,search):
+	def __call__(self,iteration,parameters,alpha,value,grad,search):
 		'''
 		Perform line search
 		Args:
+			iteration (int): Objective iteration
 			parameters (array): Objective parameters
 			alpha (iterable[array]): Previous alpha
 			value (iterable[array]): Previous objective values
@@ -80,18 +77,19 @@ class LineSearcher(System):
 		_alpha = alpha[-1]
 		returns = (_alpha,)
 
-		returns = self.__callback__(returns,parameters,alpha,value,grad,search)
+		returns = self.__callback__(returns,iteration,parameters,alpha,value,grad,search)
 
 		attr = 'alpha'
 		alpha = returns[attr]
 
 		return alpha
 
-	def __callback__(self,returns,parameters,alpha,value,grad,search):
+	def __callback__(self,returns,iteration,parameters,alpha,value,grad,search):
 		'''
 		Check return values of line search
 		Args:
 			returns (iterable): Iterable of returned values of line search
+			iteration (int): Objective iteration			
 			parameters (array): Objective parameters
 			alpha (iterable[array]): Previous alpha
 			value (iterable[array]): Previous objective values
@@ -104,11 +102,16 @@ class LineSearcher(System):
 		returns = dict(zip(self.returns,returns))
 
 		attr = 'alpha'
-		if returns[attr] is None or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
+		if (returns[attr] is None) or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
 			if len(alpha) > 1:
 				returns[attr] = alpha[-1]*grad[-1].dot(search[-1])/grad[-2].dot(search[-2])
 			else:
 				returns[attr] = alpha[-1]
+		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
+			if len(alpha) > 1:
+				returns[attr] = alpha[-1]
+			else:
+				returns[attr] = self.hyperparameters.get(attr,alpha[-1])
 
 		return returns
 
@@ -135,7 +138,7 @@ class LineSearch(LineSearcher):
 
 		line_search = hyperparameters.get('search',{}).get('alpha',defaults['search']['alpha'])
 		
-		self = line_searches.get(line_search,line_searches[None])(func,grad,hyperparameters)
+		self = line_searches.get(line_search,line_searches[None])(func,grad,hyperparameters,system=system)
 
 		return self
 
@@ -163,10 +166,11 @@ class Line_Search(LineSearcher):
 
 		return
 
-	def __call__(self,parameters,alpha,value,grad,search):
+	def __call__(self,iteration,parameters,alpha,value,grad,search):
 		'''
 		Perform line search
 		Args:
+			iteration (int): Objective iteration			
 			parameters (array): Objective parameters
 			alpha (iterable[array]): Previous alpha
 			value (iterable[array]): Previous objective values
@@ -181,7 +185,7 @@ class Line_Search(LineSearcher):
 			parameters,search[-1],grad[-1],value[-1],
 			**self.defaults)
 		
-		returns = self.__callback__(returns,parameters,alpha,value,grad,search)
+		returns = self.__callback__(returns,iteration,parameters,alpha,value,grad,search)
 
 		attr = 'alpha'
 		alpha = returns[attr]
@@ -212,10 +216,11 @@ class Armijo(LineSearcher):
 
 		return
 
-	def __call__(self,parameters,alpha,value,grad,search):
+	def __call__(self,iteration,parameters,alpha,value,grad,search):
 		'''
 		Perform line search
 		Args:
+			iteration (int): Objective iteration			
 			parameters (array): Objective parameters
 			alpha (iterable[array]): Previous alpha
 			value (iterable[array]): Previous objective values
@@ -229,7 +234,7 @@ class Armijo(LineSearcher):
 			parameters,search[-1],grad[-1],value[-1],
 			**self.defaults)
 
-		returns = self.__callback__(returns,parameters,alpha,value,grad,search)
+		returns = self.__callback__(returns,iteration,parameters,alpha,value,grad,search)
 		
 		return returns
 
@@ -282,10 +287,11 @@ class GradSearcher(System):
 		
 		return
 
-	def __call__(self,parameters,beta,value,grad,search):
+	def __call__(self,iteration,parameters,beta,value,grad,search):
 		'''
 		Perform grad search
 		Args:
+			iteration (int): Objective iteration			
 			parameters (array): Objective parameters
 			beta (iterable[array]): Previous beta
 			value (iterable[array]): Previous objective values
@@ -297,18 +303,19 @@ class GradSearcher(System):
 		_beta = beta[-1]
 		returns = (_beta,)
 
-		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
 
 		attr = 'beta'
 		beta = returns[attr]
 
 		return beta
 
-	def __callback__(self,returns,parameters,beta,value,grad,search):
+	def __callback__(self,returns,iteration,parameters,beta,value,grad,search):
 		'''
 		Check return values of grad search
 		Args:
 			returns (iterable): Iterable of returned values of grad search
+			iteration (int): Objective iteration			
 			parameters (array): Objective parameters
 			beta (iterable[array]): Previous beta
 			value (iterable[array]): Previous objective values
@@ -321,11 +328,16 @@ class GradSearcher(System):
 		returns = dict(zip(self.returns,returns))
 
 		attr = 'beta'
-		if returns[attr] is None or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
+		if (returns[attr] is None) or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
 			if len(beta) > 1:
 				returns[attr] = beta[-1]
 			else:
 				returns[attr] = beta[-1]
+		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
+			if len(beta) > 1:
+				returns[attr] = beta[0]
+			else:
+				returns[attr] = self.hyperparameters.get(attr,beta[-1])
 
 		return returns
 
@@ -353,7 +365,7 @@ class GradSearch(GradSearcher):
 
 		grad_search = hyperparameters.get('search',{}).get('beta',defaults['search']['beta'])
 		
-		self = grad_searches.get(grad_search,grad_searches[None])(func,grad,hyperparameters)
+		self = grad_searches.get(grad_search,grad_searches[None])(func,grad,hyperparameters,system=system)
 
 		return self
 
@@ -372,10 +384,11 @@ class Fletcher_Reeves(GradSearcher):
 		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
 		return
 
-	def __call__(self,parameters,beta,value,grad,search):
+	def __call__(self,iteration,parameters,beta,value,grad,search):
 		'''
 		Perform grad search
 		Args:
+			iteration (int): Objective iteration			
 			parameters (array): Objective parameters
 			beta (iterable[array]): Previous beta
 			value (iterable[array]): Previous objective values
@@ -387,7 +400,7 @@ class Fletcher_Reeves(GradSearcher):
 		_beta = (grad[-1].dot(grad[-1]))/(grad[-2].dot(grad[-2])) # Fletcher-Reeves
 		returns = (_beta,)
 
-		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
 
 		attr = 'beta'
 		beta = returns[attr]
@@ -409,10 +422,11 @@ class Polak_Ribiere(GradSearcher):
 		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
 		return
 
-	def __call__(self,parameters,beta,value,grad,search):
+	def __call__(self,iteration,parameters,beta,value,grad,search):
 		'''
 		Perform grad search
 		Args:
+			iteration (int): Objective iteration						
 			parameters (array): Objective parameters
 			beta (iterable[array]): Previous beta
 			value (iterable[array]): Previous objective values
@@ -424,7 +438,7 @@ class Polak_Ribiere(GradSearcher):
 		_beta = max(0,(grad[-1].dot(grad[-1]-grad[-2]))/grad[-2].dot(grad[-2]))  # Polak-Ribiere
 		returns = (_beta,)
 
-		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
 
 		attr = 'beta'
 		beta = returns[attr]
@@ -446,10 +460,11 @@ class Polak_Ribiere_Fletcher_Reeves(GradSearcher):
 		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
 		return
 
-	def __call__(self,parameters,beta,value,grad,search):
+	def __call__(self,iteration,parameters,beta,value,grad,search):
 		'''
 		Perform grad search
 		Args:
+			iteration (int): Objective iteration			
 			parameters (array): Objective parameters
 			beta (iterable[array]): Previous beta
 			value (iterable[array]): Previous objective values
@@ -462,7 +477,7 @@ class Polak_Ribiere_Fletcher_Reeves(GradSearcher):
 		_beta = -_beta[0] if _beta[1] < -_beta[0] else _beta[1] if abs(_beta[1]) <= _beta[0] else _beta[0]
 		returns = (_beta,)
 
-		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
 
 		attr = 'beta'
 		beta = returns[attr]
@@ -484,10 +499,11 @@ class Hestenes_Stiefel(GradSearcher):
 		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
 		return
 
-	def __call__(self,parameters,beta,value,grad,search):
+	def __call__(self,iteration,parameters,beta,value,grad,search):
 		'''
 		Perform grad search
 		Args:
+			iteration (int): Objective iteration			
 			parameters (array): Objective parameters
 			beta (iterable[array]): Previous beta
 			value (iterable[array]): Previous objective values
@@ -499,7 +515,7 @@ class Hestenes_Stiefel(GradSearcher):
 		_beta = (grad[-1].dot(grad[-1]-grad[-2]))/(search[-1].dot(grad[-1]-grad[-2])) # Hestenes-Stiefel
 		returns = (_beta,)
 
-		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
 
 		attr = 'beta'
 		beta = returns[attr]
@@ -520,10 +536,11 @@ class Dai_Yuan(GradSearcher):
 		super().__init__(func,grad,hyperparameters=hyperparameters,system=system,**kwargs)
 		return
 
-	def __call__(self,parameters,beta,value,grad,search):
+	def __call__(self,iteration,parameters,beta,value,grad,search):
 		'''
 		Perform grad search
 		Args:
+			iteration (int): Objective iteration			
 			parameters (array): Objective parameters
 			beta (iterable[array]): Previous beta
 			value (iterable[array]): Previous objective values
@@ -535,7 +552,7 @@ class Dai_Yuan(GradSearcher):
 		_beta = (grad[-1].dot(grad[-1]))/(search[-1].dot(grad[-1]-grad[-2])) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		returns = (_beta,)
 
-		returns = self.__callback__(returns,parameters,beta,value,grad,search)
+		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
 
 		attr = 'beta'
 		beta = returns[attr]
@@ -960,7 +977,10 @@ class Metric(System):
 		'''
 		Class string
 		'''
-		return str(self.string)
+		try:
+			return delim.join(self.string)
+		except:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		'''
@@ -1145,8 +1165,8 @@ class Optimization(System):
 			'clear':True,
 			'cwd':None,
 			'path':None,
-			'modulo':{'log':None,'attributes':None,'callback':None,'restart':None,'dump':None},
-			'length':{'log':None,'attributes':10,'callback':None,'restart':None,'dump':None},
+			'modulo':{'log':None,'attributes':None,'callback':None,'alpha':None,'beta':None,'dump':None},
+			'length':{'log':None,'attributes':10,'callback':None,'alpha':None,'beta':None,'dump':None},
 			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},	
 			'track':{},		
 		}
@@ -1154,10 +1174,11 @@ class Optimization(System):
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 		self.hyperparameters = hyperparameters
+		self.system = system
 
 		self.value_and_grad,self.func,self.grad = value_and_gradient(func,grad,returns=True)
 
-		self.alpha = LineSearch(self.func,self.grad,self.hyperparameters)
+		self.alpha = LineSearch(self.func,self.grad,self.hyperparameters,system=self.system)
 
 		if callback is None:
 			def callback(parameters,track,optimizer):
@@ -1235,7 +1256,7 @@ class Optimization(System):
 			state (object): optimizer state
 		'''
 
-		def update(parameters,value,grad,search,optimizer):
+		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
 			parameters = parameters + alpha*search
@@ -1244,7 +1265,7 @@ class Optimization(System):
 		value,grad,parameters = self.opt_step(iteration,state)
 		search = self.attributes['search'][-1] if self.size > 1 else 0
 
-		parameters,search,alpha = update(parameters,value,grad,search,self)
+		parameters,search,alpha = update(iteration,parameters,value,grad,search,self)
 
 		self.attributes['search'].append(search)
 		self.attributes['alpha'].append(alpha)
@@ -1494,7 +1515,7 @@ class GradientDescent(Optimization):
 			state (object): optimizer state
 		'''
 
-		def update(parameters,value,grad,search,optimizer):
+		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
 			parameters = parameters + alpha*search
@@ -1503,7 +1524,7 @@ class GradientDescent(Optimization):
 		value,grad,parameters = self.opt_step(iteration,state)
 		search = self.attributes['search'][-1] if self.size > 1 else 0
 
-		parameters,search,alpha = update(parameters,value,grad,search,self)
+		parameters,search,alpha = update(iteration,parameters,value,grad,search,self)
 
 		self.attributes['search'].append(search)
 		self.attributes['alpha'].append(alpha)
@@ -1538,7 +1559,7 @@ class ConjugateGradient(Optimization):
 		defaults = {}
 		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
 
-		self.beta = GradSearch(self.func,self.grad,self.hyperparameters)
+		self.beta = GradSearch(self.func,self.grad,self.hyperparameters,system=self.system)
 
 		return
 
@@ -1552,8 +1573,9 @@ class ConjugateGradient(Optimization):
 			state (object): optimizer state
 		'''
 
-		def update(parameters,value,grad,search,optimizer):
+		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.alpha(
+				iteration,
 				parameters,
 				optimizer.attributes['alpha'],
 				optimizer.attributes['value'],
@@ -1567,6 +1589,7 @@ class ConjugateGradient(Optimization):
 			_value,_grad,parameters = optimizer.opt_step(iteration,state)
 			
 			beta = optimizer.beta(
+				iteration,
 				parameters,
 				optimizer.attributes['beta'],
 				optimizer.attributes['value'],
@@ -1590,7 +1613,7 @@ class ConjugateGradient(Optimization):
 				grad = self.attributes['grad'][-1]
 				search = self.attributes['search'][-1]
 
-				parameters,search,alpha,beta = update(parameters,value,grad,search,self)
+				parameters,search,alpha,beta = update(iteration,parameters,value,grad,search,self)
 
 			else:
 				value,grad,parameters = self.opt_step(iteration-init,state)
@@ -1662,7 +1685,7 @@ class Adam(Optimization):
 			state (object): optimizer state
 		'''
 
-		def update(parameters,value,grad,search,optimizer):
+		def update(iteration,parameters,value,grad,search,optimizer):
 
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
@@ -1676,7 +1699,7 @@ class Adam(Optimization):
 		value,grad,parameters = self.opt_step(iteration,state)
 		search = self.attributes['search'][-1] if self.size > 1 else 0
 
-		parameters,search,alpha = update(parameters,value,grad,search,self)
+		parameters,search,alpha = update(iteration,parameters,value,grad,search,self)
 
 		self.attributes['alpha'].append(alpha)
 		self.attributes['search'].append(search)

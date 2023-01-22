@@ -157,7 +157,8 @@ def rm(path):
 
 	try:
 		os.remove(path)
-	except:
+	except Exception as exception:
+		print(exception)
 		try:
 			os.rmdir(path)
 		except:

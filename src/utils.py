@@ -53,11 +53,6 @@ for name in configs:
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 
 
-# Logging
-import logging
-logger = logging.getLogger(__name__)
-
-
 # Constants
 pi = np.pi
 e = np.exp(1)
@@ -657,15 +652,6 @@ class Array(onp.ndarray):
 
 	def to_jax(self):
 		return np.array(self)
-
-	def log(self,msg):
-		'''
-		Log messages
-		Args:
-			msg (str): Message to log
-		'''
-		logger.log(self.verbose,msg)
-		return
 
 class String(str):
 	'''
