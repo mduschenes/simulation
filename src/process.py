@@ -10,10 +10,6 @@ import pandas as pd
 from natsort import natsorted,realsorted
 import matplotlib.pyplot as plt
 
-# Logging
-import logging
-logger = logging.getLogger(__name__)
-
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -487,14 +483,15 @@ def apply(keys,data,settings,hyperparameters):
 						if grouping.shape[0]:
 							if source in grouping:
 								if dtypes[attr] in ['array']:
-									value[destination] = np.array(grouping[source][0])
+									value[destination] = np.array(grouping[source].iloc[0])
 								else:
 									value[destination] = grouping[source].to_numpy()
 							elif source is null:
 								source = delim.join(((dependent[-1],function,func)))
-								value[destination] = np.arange(len(grouping[source][0]))
+								value[destination] = np.arange(len(grouping[source].iloc[0]))
 							else:
 								value[destination] = grouping.reset_index().index.to_numpy()
+
 						else:
 							value[destination] = None
 
@@ -639,18 +636,20 @@ def plotter(settings,hyperparameters):
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[attrs][attrs][attrs]))),
 							'label': any(((label in data[attrs][attrs][attrs]) and (label in data[attrs]) and (data[attrs][attrs][attrs][label] is None))
 								for data in flatten(settings[instance][subinstance]['ax'][plots])),
-							'other': any(((label not in data[attrs]) and (data[attrs][attrs][attrs][label] in data[attrs]))
-								for data in flatten(settings[instance][subinstance]['ax'][plots])),	
+							'other': any(((label not in data[attrs]) and (label in data[attrs][attrs][attrs]) and (data[attrs][attrs][attrs][label] in data[attrs]))
+								for data in flatten(settings[instance][subinstance]['ax'][plots])),
+							'legend': any(((label not in data[attrs]) and (label in data[attrs][attrs][attrs]) and (data[attrs][attrs][attrs][label] not in data[attrs]))
+								for data in flatten(settings[instance][subinstance]['ax'][plots])),
 							}
 						for label in list(realsorted(set(label
 						for data in flatten(settings[instance][subinstance]['ax'][plots])
 						for label in [*data[attrs],*data[attrs][attrs][attrs]]
-						if ((label not in [*ALL,OTHER]))))) 
+						if ((label not in [*ALL,OTHER])))))
 						}
 						for plots in PLOTS 
 						if plots in settings[instance][subinstance]['ax']
 						}
-			except KeyError:
+			except KeyError as e:
 				settings[instance].pop(subinstance);
 				continue
 				
@@ -684,18 +683,36 @@ def plotter(settings,hyperparameters):
 					for attr in data:
 						if (attr in ALL) and (data[attr] is not None):
 							value = np.array([valify(value) for value in data[attr]])
+
+							if data[OTHER][OTHER].get('slice') is not None:
+								slices = slice(*data[OTHER][OTHER].get('slice'))
+								value = value[slices]
+
 							data[attr] = value
+
+
+			# label
+			for plots in PLOTS:
+
+				if settings[instance][subinstance]['ax'].get(plots) is None:
+					continue
+
+				for data in flatten(settings[instance][subinstance]['ax'][plots]):
 
 					attr = OTHER
 					value = ', '.join([
-						(texify(scinotation(data[attr][label],decimals=0,scilimits=[0,3],one=False)) 
+						*[(texify(scinotation(data[attr][label],decimals=0,scilimits=[0,3],one=False)) 
 						if values[plots][label]['label'] else texify(scinotation(data[attr][data[attr][attr][attr][label]],decimals=0,scilimits=[0,3],one=False)))
 						for label in values[plots]
 						if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) or 
-							(values[plots][label]['other']))
+							(values[plots][label]['other']))],
+						*[texify(scinotation(data[attr][attr][attr][label],decimals=0,scilimits=[0,3],one=False)) 
+						for label in values[plots]
+						if values[plots][label]['legend']
+						]
 						])
 
-					data[attr] = value
+					data[attr] = value					
 
 
 

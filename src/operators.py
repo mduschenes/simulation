@@ -5,10 +5,6 @@ import os,sys,itertools,functools
 from copy import deepcopy
 from functools import partial
 
-# Logging
-import logging
-logger = logging.getLogger(__name__)
-
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..']
