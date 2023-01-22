@@ -133,9 +133,11 @@ class Operator(System):
 
 		return self.data
 
-
 	def __str__(self):
-		return delim.join(self.operator)
+		try:
+			return delim.join(self.operator)
+		except:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		return self.__str__()
@@ -722,19 +724,22 @@ class Observable(System):
 		return
 
 	def __str__(self):
-		size = len(self.data)
-		delimiter = ' '
-		multiple_time = (self.M>1)
-		multiple_space = [size>1 and False for i in range(size)]
-		return '%s%s%s%s'%(
-				'{' if multiple_time else '',
-				delimiter.join(['%s%s%s'%(
-					'(' if multiple_space[i] else '',
-					self.string[i],
-					')' if multiple_space[i] else '',
-					) for i in range(size)]),
-				'}' if multiple_time else '',
-				'^%d'%(self.M) if multiple_time else '')
+		try:
+			size = len(self.data)
+			delimiter = ' '
+			multiple_time = (self.M>1)
+			multiple_space = [size>1 and False for i in range(size)]
+			return '%s%s%s%s'%(
+					'{' if multiple_time else '',
+					delimiter.join(['%s%s%s'%(
+						'(' if multiple_space[i] else '',
+						self.string[i],
+						')' if multiple_space[i] else '',
+						) for i in range(size)]),
+					'}' if multiple_time else '',
+					'^%d'%(self.M) if multiple_time else '')
+		except AttributeError:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		return self.__str__()
@@ -1234,14 +1239,13 @@ class Callback(object):
 
 		stop = (((len(attributes['value'])>1) and 
 			 ((attributes['value'][-1] - attributes['value'][-2]) > 
-				(hyperparameters['eps']['increase']*attributes['value'][-2]))))
+				(hyperparameters['eps']['increase']*attributes['value'][-1]))))
 
-		status = status or stop
+		status = (status) and (not stop)
 
 		default = nan
 
-		if ((not status) or done or init or other) and (not stop):
-
+		if ((not status) or done or init or other):
 			attrs = relsort(track,attributes)
 			size = min(len(track[attr]) for attr in track)
 
@@ -1284,10 +1288,10 @@ class Callback(object):
 				elif attr in ['parameters','grad','search'] and ((not status) or done or init):
 					value = attributes[attr][-1]
 
-				elif attr in ['features','features.mean','features.relative.mean'] and not ((not status) or done or init):
+				elif attr in ['features','features.mean','features.relative.mean'] and (init):
 					value = default
 
-				elif attr in ['features','features.mean','features.relative.mean'] and ((not status) or done or init):
+				elif attr in ['features','features.mean','features.relative.mean'] and (not init):
 
 					layer = 'features'
 					prop = 'index'
@@ -1331,7 +1335,6 @@ class Callback(object):
 						_value = model.__layers__(attributes['parameters'][0],layer)[indices]						
 						value = abs((value - _value + eps)/(_value + eps)).mean()
 
-
 				elif attr in ['objective']:
 					value = metric(model(parameters))
 
@@ -1360,13 +1363,14 @@ class Callback(object):
 
 					_model = model
 					_shapes = model.shapes
-					_label = _model.label()
+					_label = model.label()
 					_optimize = None
 					_hyperparameters = hyperparameters
+					_system = model.system
 					_restore = {kwarg: deepcopy(getattr(model,kwarg)) for kwarg in _kwargs}
 
 					_model.__functions__(**_kwargs)
-					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters)
+					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters,system=_system,verbose=False)
 
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
 						value = _metric(_model(parameters))
@@ -1454,7 +1458,6 @@ class Callback(object):
 
 
 			model.log(msg)
-
 
 		return status
 
@@ -1561,7 +1564,10 @@ class OpModule(module,System):
 		return
 	
 	def __str__(self):
-		return self.string
+		try:
+			return str(self.string)
+		except:
+			return self.__class__.__name__
 
 	def __repr__(self):
 		return self.__str__()
