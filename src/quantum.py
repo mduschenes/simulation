@@ -1245,7 +1245,7 @@ class Callback(object):
 
 		default = nan
 
-		if ((not status) or done or init or other):
+		if ((not status) or done or init or other) and (not stop):
 			attrs = relsort(track,attributes)
 			size = min(len(track[attr]) for attr in track)
 
