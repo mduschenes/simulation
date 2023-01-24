@@ -487,11 +487,6 @@ def apply(keys,data,settings,hyperparameters):
 
 		by = [*labels,*independent]
 		
-		pd.options.display.max_rows = 1000
-
-		print(data[boolean][['M','objective','iteration','iteration.min','iteration.max','features.relative.mean']])
-		exit()
-
 		groupby = data[boolean].groupby(by=by,as_index=False)
 
 		agg = {}
