@@ -3,4 +3,4 @@ build/settings.json merge=ours
 build/settings.*.json merge=ours
 build/config/** merge=theirs
 setup/** merge=ours
-test/config/** merge=ours
+test/config/** merge=theirs
