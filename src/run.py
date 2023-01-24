@@ -72,17 +72,21 @@ def setup(settings):
 	elif isinstance(settings,str):
 		defaults = settings
 		settings = load(settings,default=default)
+	else:
+		settings = default
 
 	setter(settings,load(path,default=default),func=func)
 
 	# Load default hyperparameters
-	default = {}
-	hyperparameters = settings.get('hyperparameters',defaults)
+	default = deepcopy(settings)
+	hyperparameters = settings['hyperparameters'] if settings.get('hyperparameters') is not None else default
 
 	if hyperparameters is None:
 		hyperparameters = default
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters,default=default)
+	else:
+		hyperparameters = default
 
 	default = {}
 	func = False
