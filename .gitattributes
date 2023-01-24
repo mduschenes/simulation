@@ -1,5 +1,6 @@
 # git config --global merge.ours.driver true 
 build/settings.json merge=ours 
 build/settings.*.json merge=ours 
-build/config/** merge=ours 
+build/config/** merge=theirs
 setup/** merge=ours
+test/config/** merge=theirs
