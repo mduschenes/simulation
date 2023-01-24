@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":145982,
-	"size":3,
+	"size":50,
 	"reset":145982,
 	"index":null
 	},
@@ -19,7 +19,7 @@
 	"permutations":{	
 	
 		"model.N":[4],		
-		"model.M":[10,50,100,200,300,400,500,1000],		
+		"model.M":[10,50,100,200,300,400,500,1000,2000,3000,5000,6000],		
 		"model.tau":[100e0],		
 		"noise.scale":[null],
 		"state.scale":[null],
@@ -33,8 +33,8 @@
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
 
-		"jobs.job.cwd":["gobi/eig"],
-		"jobs.postprocess.cwd":["gobi/eig"],
+		"jobs.job.cwd":["gobi/constrained"],
+		"jobs.postprocess.cwd":["gobi/constrained"],
 	
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -42,20 +42,20 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[1],
+		"jobs.job.pool":[32],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.job.args.JOB_PROCESSES":[4],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["30:00:00"],
 		"jobs.postprocess.patterns.time":["30:00:00"],
 		"jobs.job.patterns.mem":["128GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[8],
+		"jobs.job.patterns.cpus-per-task":[4],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 
 		},
@@ -135,8 +135,8 @@
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
 			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":1,"fisher.eigenvalues":1,
-			"hessian.rank":1,"fisher.rank":1,
+			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
+			"hessian.rank":false,"fisher.rank":false,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
