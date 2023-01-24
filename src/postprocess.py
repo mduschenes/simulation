@@ -478,7 +478,7 @@ def postprocess(path,**kwargs):
 				y = array(y)
 				xerr = array(xerr) if xerr is not None else xerr
 				yerr = array(yerr) if yerr is not None else yerr
-				indices = arange(len(x))[(x>=1e-8) & (x<=1e-3) & (x != 1e0)]
+				indices = arange(len(x))[(x>=1e-28) & (x<=1e3) & (x != 1e0)]
 
 				# x = x[indices]
 				# y = y[indices]
@@ -489,8 +489,9 @@ def postprocess(path,**kwargs):
 					# y = coef[0]*((x)**(-coef[2])) + coef[1]
 					# y = ((exp(-(log(x))*coef[0])))
 					# y = ((x-coef[1])**(-coef[0]))
-					y = coef[1]*((x)**(-coef[0]))
+					# y = coef[1]*((x)**(-coef[0]))
 					# y = coef[1]*(log(x)**(-coef[0]))
+					y = coef[1]*(log(x)) + coef[0]
 					return y
 
 				_x = logspace(int(log10(x.min()))-2,int(log10(x.max()))+1,x.size*100)
@@ -546,7 +547,7 @@ def postprocess(path,**kwargs):
 							# 'label':r'$\quad~~ M_{\gamma} = {(\gamma-\beta)}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 							# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 							'label':(
-								r'$\quad~~ M_{\gamma} = \beta{\gamma}^{-\alpha}$' + '\n' + 
+								r'$\quad~~ M_{\gamma} = \beta\log{\gamma} + {\alpha}$' + '\n' + 
 								r'$%s$'%('\n'.join([
 								'%s = %s'%(z,scinotation(coef[i],decimals=4,scilimits=[-1,3],error=sqrt(coefferr[i][i]))) 
 									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(coef)])])) + '\n' +
