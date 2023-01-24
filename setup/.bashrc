@@ -62,7 +62,7 @@ function gims(){
 function gics(){
 	branch=${1:-master}
 	shift 1;
-	files=${@}
+	files=(${@})
 	current=$(git name-rev --name-only HEAD)
 
 	git status;
@@ -75,7 +75,7 @@ function gics(){
 	
 	for file in ${files[@]}
 	do
-		git show ${branch}./${file} > ${file}
+		git show ${branch}:./${file} > ${file}
 	done
 
 	return 0
