@@ -95,7 +95,7 @@
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
 	"eps":{"value":1e-22,"grad":1e-32,"difference":1e-22,"increase":1e-1,"alpha":1e-7,"beta":1e3},
-	"value":{"value":1,"grad":1,"difference":1,"increase":1,"alpha":0,"beta":0},
+	"value":{"value":1,"grad":1,"difference":1,"increase":10,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[1e-10,1e7],"beta":[-1e20,1e3]},	
 	"status":1,
 	"clear":false,
