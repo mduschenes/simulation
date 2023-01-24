@@ -66,6 +66,29 @@ function gims(){
 	return 0
 }
 
+# Git Pull, Checkout, Copy
+function gics(){
+	branch=${1:-master}
+	shift 1;
+	files=(${@})
+	current=$(git name-rev --name-only HEAD)
+
+	git status;
+	git pull
+
+	git checkout ${branch}
+	git pull
+	
+	git checkout ${current}
+	
+	for file in ${files[@]}
+	do
+		git show ${branch}:./${file} > ${file}
+	done
+
+	return 0
+}
+
 function bkill(){
 	job=${1}
 	if [ -z "${job}" ]
