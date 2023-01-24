@@ -1,9 +1,9 @@
 {
 "class":{
-    "model":"src.quantum.Unitary",
-    "callback":"src.quantum.Callback"
-    },
-"hyperparameters":"settings.json",
+	"model":"src.quantum.Unitary",
+	"callback":"src.quantum.Callback"
+	},
+"hyperparameters":null, 
 "boolean":{
     "train":1,
     "load":0,
