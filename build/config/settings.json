@@ -3,7 +3,7 @@
 	"model":"src.quantum.Unitary",
 	"callback":"src.quantum.Callback"
 	},
-"hyperparameters":"settings.json",
+"hyperparameters":null,
 "boolean":{
 	"train":1,
 	"load":0,

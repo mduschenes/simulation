@@ -154,7 +154,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 		return data,settings,hyperparameters
 
 	for instance in list(settings):
-		if (settings.get(instance) is None) or (hyperparameters.get('instance') in [0,False]) or (hyperparameters.get('instance',{}).get(instance) in [0,False]):
+		if (settings.get(instance) is None):
 			settings.pop(instance,None);
 			continue
 
@@ -316,64 +316,121 @@ def parse(key,value,data):
 		key (str): key of condition
 		value (str): value of condition, allowed string in 
 			[None,
-			'value' (explicit value),
-			'@key@' (data value), 
+			'value,' (explicit value),
+			'@key,@' (data value), 
 			'#i,j,k,...#' (index value),
-			'%start,stop,step%' (slice value),]
+			'%start,stop,step%' (slice value),
+			'<upper<' (exclusive upper bound value),
+			'>lower>' (exclusive lower bound value),
+			'<=upper<=' (inclusive upper bound value),
+			'>=lower>=' (inclusive lower bound value),
+			'==value,==' (include values),
+			'!=value,!=' (exclude values),
+			]
 		data (dataframe): data of condition
 	Returns:
 		out (dataframe): Condition on data indices
 	'''
-	delimiters = ['$','@','#','%']
+	delimiters = ['$','@','#','%','<','>','<=','>=','==','!=']
 	default = data.assign(**{key:True})[key]
+	parser = ';'
 	separator = ','
 
 	out = default
 	
 	if key not in data:
 		pass
-	elif isinstance(value,Null):
+	elif value is null:
 		pass
 	elif isinstance(value,str):
-		for delimiter in delimiters:
+		outs = [default]
+		for value in value.split(parser):
 
-			if value.startswith(delimiter) and value.endswith(delimiter):
-			
-				values = value.replace(delimiter,'').split(separator)
+			for delimiter in delimiters:
 
-				if delimiter in ['$']: # Explicit value: value
-					parser = lambda value: (to_number(value) if len(value)>0 else null)
-					values = [parser(value) for value in values]           
-					values = [value for value in values if not isinstance(value,Null)]
+				if value.startswith(delimiter) and value.endswith(delimiter):
+				
+					values = value.replace(delimiter,'').split(separator)
 
-					if values and not isinstance(values,Null):
-						out = data[key].isin(values)
+					if delimiter in ['$']: # Explicit value: value
+						parser = lambda value: (to_number(value) if len(value)>0 else null)
+						values = [parser(value) for value in values]           
+						values = [value for value in values if (value is not null)]
 
-				elif delimiter in ['@']: # Data value: key
-					parser = lambda value: (to_str(value) if len(value)>0 else null)
-					values = [parser(value) for value in values]           
-				  
-					if values and not isinstance(values,Null):
-						out = conditions([data[key]==data[value] for value in values],op='or')
+						if values and (values is not null):
+							out = data[key].isin(values)
 
-				elif delimiter in ['#']: # Index value: i,j,k,...
-					parser = lambda value: (to_int(value) if len(value)>0 else null)
-					values = [parser(value) for value in values]
-					values = [value for value in values if not isinstance(value,Null)]
+					elif delimiter in ['@']: # Data value: key
+						parser = lambda value: (to_str(value) if len(value)>0 else null)
+						values = [parser(value) for value in values]           
+					  
+						if values and (values is not null):
+							out = conditions([data[key]==data[value] for value in values],op='or')
 
-					if values and not isinstance(values,Null):
-						out = data[key].unique()
-						out = data[key].isin(out[[value for value in values if value < out.size]])
+					elif delimiter in ['#']: # Index value: i,j,k,...
+						parser = lambda value: (to_int(value) if len(value)>0 else null)
+						values = [parser(value) for value in values]
+						values = [value for value in values if (value is not null)]
 
-				elif delimiter in ['%']: # Slice value start,stop,step
-					parser = lambda value: (to_int(value) if len(value)>0 else None)
-					values = [*(parser(value) for value in values),*[None]*(3-len(values))]
-					values = [value for value in values if not isinstance(value,Null)]
-			
-					if values and not isinstance(values,Null):
-						out = data[key].isin(data[key].unique()[slice(*values)])
+						if values and (values is not null):
+							out = data[key].unique()
+							out = data[key].isin(out[[value for value in values if value < out.size]])
+
+					elif delimiter in ['%']: # Slice value start,stop,step
+						parser = lambda value: (to_int(value) if len(value)>0 else None)
+						values = [*(parser(value) for value in values),*[None]*(3-len(values))]
+						values = [value for value in values if (value is not null)]
+				
+						if values and (values is not null):
+							out = data[key].isin(data[key].unique()[slice(*values)])
+
+					elif delimiter in ['<']: # Bound value: upper (exclusive)
+						parser = lambda value: (to_number(value) if len(value)>0 else null)
+						values = [parser(value) for value in values]           
+					  
+						if values and (values is not null):
+							out = conditions([data[key] < value for value in values],op='and')
+
+					elif delimiter in ['<=']: # Bound value: upper (inclusive)
+						parser = lambda value: (to_number(value) if len(value)>0 else null)
+						values = [parser(value) for value in values]           
+					  
+						if values and (values is not null):
+							out = conditions([data[key] <= value for value in values],op='and')
+
+					elif delimiter in ['>']: # Bound value: lower (exclusive)
+						parser = lambda value: (to_number(value) if len(value)>0 else null)
+						values = [parser(value) for value in values]           
+					  
+						if values and (values is not null):
+							out = conditions([data[key] > value for value in values],op='and')
+
+					elif delimiter in ['<=']: # Bound value: lower (inclusive)
+						parser = lambda value: (to_number(value) if len(value)>0 else null)
+						values = [parser(value) for value in values]           
+					  
+						if values and (values is not null):
+							out = conditions([data[key] >= value for value in values],op='and')
+
+					elif delimiter in ['==']: # Include value
+						parser = lambda value: (to_number(value) if len(value)>0 else null)
+						values = [parser(value) for value in values]           
+						
+						if values and (values is not null):
+							out = conditions([data[key] == value for value in values],op='and')																												
+
+					elif delimiter in ['!=']: # Exclude value
+						parser = lambda value: (to_number(value) if len(value)>0 else null)
+						values = [parser(value) for value in values]           
+
+						if values and (values is not null):
+							out = conditions([data[key] != value for value in values],op='and')																												
+
 	
-				break
+					outs.append(out)
+					break
+
+		out = conditions(outs,op='and')
 	
 	return out
 
@@ -429,6 +486,11 @@ def apply(keys,data,settings,hyperparameters):
 		boolean = conditions(boolean,op='and')	
 
 		by = [*labels,*independent]
+		
+		pd.options.display.max_rows = 1000
+
+		print(data[boolean][['M','objective','iteration','iteration.min','iteration.max','features.relative.mean']])
+		exit()
 
 		groupby = data[boolean].groupby(by=by,as_index=False)
 
