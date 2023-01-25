@@ -152,7 +152,7 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 		xerr (array): Input error
 		yerr (array): Output error
 		coef0 (array): Initial estimate of fit coefficients
-		bounds (iterable): Bounds on data to fit
+		bounds (iterable,object): Bounds on data to fit
 		intercept (bool): Include intercept in fit
 		uncertainty (bool): Calculate uncertainty
 		kwargs (dict[str,object]): Additional keyword arguments for fitting
@@ -174,7 +174,10 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 		coef0 = (None,)
 	elif ((func is not None) and not callable(func)) or (isinstance(coef0,tuple)):
 		if bounds is not None:
+			if not isinstance(bounds,(list,tuple)):
+				bounds = [[min(x),bounds],[bounds,max(x)]]
 			coef0 = array([[*bound,*coef] for bound,coef in zip(bounds,coef0)])
+		print(coef0)
 		func = piecewise(func,coef0,bounds=True,split=False)
 		coef0 = array([coef for coefs in coef0 for coef in coefs])
 		ncoef = len(coef0)
