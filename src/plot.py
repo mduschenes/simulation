@@ -929,7 +929,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if not isinstance(settings[attr],(dict,list)):
 			return
 			
-		_kwargs = [{**settings,attr:setting} for setting in flatten(settings[attr],types=(list,))]
+		_kwargs = [{**settings,attr:setting} for setting in flatten(settings[attr],types=(list,)) if setting]
 		size = len(_kwargs)
 
 		for index,_kwarg in enumerate(_kwargs):

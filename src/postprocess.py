@@ -307,8 +307,8 @@ def postprocess(path,**kwargs):
 					except Exception as exception:
 						pass
 
-				slices = [3,5]
-				slices = range(len(data[label['y']])-2)
+				slices = [4,*list(range(5,len(data[label['y']])-3))]
+				# slices = range(len(data[label['y']])-2)
 
 				X = array([data['%s'%(label['x'])][i] for i in slices])
 				Y = array([data['%s'%(label['y'])][i] for i in slices])
@@ -324,6 +324,7 @@ def postprocess(path,**kwargs):
 
 				try:
 					x,y,z,xerr,yerr,zerr = [],[],[],None,[],[]
+					coefs,coeferrs,rs = [],[],[]
 					indices,indexes,slices = [],[],[]
 					for i,(x_,y_,z_,yerr_,zerr_) in enumerate(zip(X,Y,Z,Yerr,Zerr)):
 
@@ -350,7 +351,10 @@ def postprocess(path,**kwargs):
 						# 	bounds0 = [[_y.min(),800],[800,_y.max()]]
 						# 	coef0 = [[1e-5,1e-1],[1,1]]						
 						# else:
-						bounds0 = [[_y.min(),((1100-800)/(1e-8-1e-6))*(x_-1e-6) + 800],[((1100-800)/(1e-8-1e-6))*(x_-1e-6) + 800,_y.max()]]
+						bounds0 = [[y_[slices].min(),((1200-900)/(-8--6))*(log10(x_)--6) + 900],
+								   [((1200-900)/(-8--6))*(log10(x_)--6) + 900,y_[slices].max()]]
+						print(bounds0,[((y_[slices]>=b[0]) & (y_[slices]<=b[1])).sum() for b in bounds0])
+						print()
 						coef0 = [[1e-5,1e-1],[1,1]]	
 						kwargs = {'maxfev':1000000}
 
@@ -359,16 +363,19 @@ def postprocess(path,**kwargs):
 						# bounds0 = None
 						# kwargs = {'smooth':0}
 
-						_z,coef,_zerr,coefferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef0=coef0,bounds=bounds0,uncertainty=True,**kwargs)	
+						_z,_coef,_zerr,_coefferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef0=coef0,bounds=bounds0,uncertainty=True,**kwargs)	
 
 						index = int(argmin(_z))
 
-						# coefs = [[coef[i] for i in range(2*j + sum(len(coef0[k]) for k in range(j)),2*(j+1) + sum(len(coef0[k]) for k in range(j+1)))] for j in range(len(coef0))]
+						_coefs = [[_coef[i] for i in range(2*j + sum(len(coef0[k]) for k in range(j)),2*(j+1) + sum(len(coef0[k]) for k in range(j+1)))] for j in range(len(coef0))]
 
-						# funcs = piecewise(func,coefs,bounds=True,split=True)
+						funcs = piecewise(func,_coefs,bounds=True,split=True)
 
-						# _zs = funcs(_y,*coef)
+						_zs = funcs(_y,*_coef)
 
+						index = int(where(_y==_zs[0][-1][-1])[0][0])
+
+						print(_x,_r)
 						# kind = 5
 						# smooth = 0
 						# der = 2
@@ -388,6 +395,9 @@ def postprocess(path,**kwargs):
 						yerr.append(_yerr[index])
 						zerr.append(10*mean(_zerr) if _zerr is not None else None)
 						indexes.append(index)
+						coefs.append(_coef)
+						coeferrs.append(_coefferr)
+						rs.append(_r)
 
 
 					fig,ax = None,None

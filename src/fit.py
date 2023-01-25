@@ -174,7 +174,7 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 		coef0 = (None,)
 	elif ((func is not None) and not callable(func)) or (isinstance(coef0,tuple)):
 		if bounds is not None:
-			coef0 = [[*bound,*coef] for bound,coef in zip(bounds,coef0)]
+			coef0 = array([[*bound,*coef] for bound,coef in zip(bounds,coef0)])
 		func = piecewise(func,coef0,bounds=True,split=False)
 		coef0 = array([coef for coefs in coef0 for coef in coefs])
 		ncoef = len(coef0)
