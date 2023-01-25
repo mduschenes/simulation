@@ -20,6 +20,7 @@
 	
 		"model.N":[4],		
 		"model.M":[10,50,75,100,200,300,400,500,600,800,1000,1250,1500,2000,2500,3000,5000,6000],		
+		"model.M":[1400,1600,1750,1800,2250],		
 		"model.tau":[20e0],		
 		"noise.scale":[0,1e-18,1e-15,1e-12,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
 		"state.scale":[1],
@@ -35,6 +36,9 @@
 
 		"jobs.job.cwd":["gobi/noise"],
 		"jobs.postprocess.cwd":["gobi/noise"],
+		
+		"jobs.job.cwd":["gobi/noise/extra"],
+		"jobs.postprocess.cwd":["gobi/noise"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -43,6 +47,7 @@
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
 		"jobs.job.pool":[24],
+		"jobs.job.pool":[8],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
