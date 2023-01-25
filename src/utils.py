@@ -1410,6 +1410,96 @@ def curve_fit(func,x,y,**kwargs):
 	return osp.optimize.curve_fit(func,x,y,**kwargs)
 
 
+# @partial(jit,static_argnums=(0,))
+def piecewise(funcs,coefs,bounds=False,split=False,**kwargs):
+	'''
+	Compute piecewise curve from funcs
+	Args:
+		funcs (callable,iterable[callable]): Functions to fit
+		coefs (iterable[iterable[object]]): Piecewise sections of coefs of the form [[lower_i,upper_i,*coef_i]] if bounds or [[*coef_i]]
+		bounds (bool): coefs include bounds
+		split (bool): split function in domains
+		kwargs (dict[str,object]): Additional keyword arguments for fitting		
+	Returns:
+		func (callable): Piecewise function with signature func(x,*coefs), where coefs are of the form [[lower_i,upper_i,*coef_i]]
+	'''
+
+	bounds = True if bounds else False
+
+	indices = []
+	for coef in coefs:
+		size = indices[-1][-1].stop if indices else 0
+		indices.append([size,size+1,slice(size+2,size+2+len(coef)-2*bounds)])
+
+	if callable(funcs):
+		funcs = [funcs]
+
+	if split:
+		def func(x,*coefs):
+			bounds = [[coefs[index[0]],coefs[index[1]]] for index in indices]
+			conditions = [((x>=bound[0]) & (x<=bound[1])) for bound in bounds]
+			coefs = [[*coefs[index[2]]] for index in indices]
+			func = [(func(x[condition],*coef),x[condition]) for func,coef,condition in zip(funcs,coefs,conditions)]
+			return func
+	else:
+		def func(x,*coefs):
+			bounds = [[coefs[index[0]],coefs[index[1]]] for index in indices]
+			conditions = [((x>=bound[0]) & (x<=bound[1])) for bound in bounds]
+			coefs = [[*coefs[index[2]]] for index in indices]
+			func = [(lambda x,coef=coef,func=func: func(x,*coef)) for func,coef,condition in zip(funcs,coefs,conditions)]			
+			func = np.piecewise(x,conditions,func)
+			return func
+
+	return func
+
+
+
+@partial(jit,static_argnums=(1,))
+def mean(a,axis=None):
+	'''
+	Compute mean of array along axis
+	Args:
+		a (array): array to compute mean
+		axis (int): axis to compute over. Flattens array if None.
+	Returns:
+		out (array): mean of array
+	'''
+	return np.mean(a,axis=axis)
+
+@partial(jit,static_argnums=(1,2,))
+def std(a,axis=None,ddof=None):
+	'''
+	Compute std of array along axis
+	Args:
+		a (array): array to compute std
+		axis (int): axis to compute over. Flattens array if None.
+		ddof (int): Number of degrees of freedom
+	Returns:
+		out (array): std of array
+	'''
+	return np.std(a,axis=axis,ddof=ddof)
+
+
+@partial(jit,static_argnums=(1,2,))
+def sem(a,axis=None,ddof=None):
+
+	'''
+	Compute standard error of mean
+	Args:
+		a (array): array to compute sem
+		axis (int): axis to compute over. Flattens array if None.
+		ddof (int): Number of degrees of freedom
+	Returns:
+		out (array): sem of array
+	'''
+	if axis is None:
+		size = a.size
+	elif isinstance(axis,int):
+		size = a.shape[axis]
+	else:
+		size = int(product([a.shape[ax] for ax in axis]))
+	return std(a,axis=axis,ddof=ddof)/np.sqrt(size)
+
 @partial(jit,static_argnums=(1,))
 def nanmean(a,axis=None):
 	'''
@@ -1435,6 +1525,26 @@ def nanstd(a,axis=None,ddof=None):
 	'''
 	return np.nanstd(a,axis=axis,ddof=ddof)
 
+
+@partial(jit,static_argnums=(1,2,))
+def nansem(a,axis=None,ddof=None):
+
+	'''
+	Compute nan standard error of mean
+	Args:
+		a (array): array to compute sem
+		axis (int): axis to compute over. Flattens array if None.
+		ddof (int): Number of degrees of freedom
+	Returns:
+		out (array): sem of array
+	'''
+	if axis is None:
+		size = a.size
+	elif isinstance(axis,int):
+		size = a.shape[axis]
+	else:
+		size = int(product([a.shape[ax] for ax in axis]))
+	return nanstd(a,axis=axis,ddof=ddof)/np.sqrt(size)
 
 @jit
 def nansqrt(a):
@@ -2063,6 +2173,16 @@ def product(a):
 	'''
 	return onp.prod(a)
 
+
+def where(conditions):
+	'''
+	Indices where conditions are True
+	Args:
+		conditions (array): conditions
+	Returns:
+		out (array): Indices of conditions
+	'''
+	return np.where(conditions)
 
 def conditions(booleans,op):
 	'''
@@ -4681,7 +4801,7 @@ def invtrotter(a,p):
 	return a[:n]
 
 
-def interp(x,y,kind,smooth=None):
+def interp(x,y,kind,smooth=None,der=None):
 	'''
 	Interpolate array at new points
 	Args:
@@ -4689,35 +4809,57 @@ def interp(x,y,kind,smooth=None):
 		y (array): Interpolation values
 		kind (int): Order of interpolation
 		smooth (int,float): Smoothness of fit
+		der (int): order of derivative to estimate
 	Returns:
 		func (callable): Interpolation function
-	'''		
-	def _interpolate(x,y,kind,smooth):
-		kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5}
-		k = kinds.get(kind,kind)
-		s = smooth
-		return osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
-		# return osp.interpolate.interp1d(x,y,kind)
+	'''	
+
+	if der is None:	
+		def _interpolate(x,y,kind,smooth):
+			kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5}
+			k = kinds.get(kind,kind)
+			s = smooth
+			func = osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
+			# func = osp.interpolate.interp1d(x,y,kind)
+			return func
+
+	else:
+		def _interpolate(x,y,kind,smooth):
+			kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5}
+			k = kinds.get(kind,kind)
+			s = smooth
+			spline = osp.interpolate.splrep(x, y, k=k,s=s)
+			func = lambda x: osp.interpolate.splev(x, spline, der=der)
+			return func
 
 	return _interpolate(x,y,kind,smooth)
 
 
-def interpolate(x,y,x_new,kind):
+
+
+
+def interpolate(x,y,x_new,**kwargs):
 	'''
 	Interpolate array at new points
 	Args:
 		x (array): Interpolation points
 		y (array): Interpolation values
 		x_new (array): New points
-		kind (int): Order of interpolation
+		kwargs (dict): Additional keyword arguments for interpolation
 	Returns:
 		out (array): Interpolated values at new points
 	'''		
+	is1d = (y.ndim == 1)
 
-	if y.ndim>1:
-		return array([interp(x,u,kind)(x_new) for u in y])
-	else:
-		return array(interp(x,y,kind)(x_new))
+	if is1d:
+		y = [y]
+
+	out = array([interp(x,u,**kwargs)(x_new) for u in y])
+
+	if is1d:
+		out = out[0]
+
+	return out
 
 
 
