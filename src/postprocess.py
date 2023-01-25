@@ -17,7 +17,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import array,zeros,ones,arange,linspace,logspace,rand,sort,eig,argmax,argmin,maximum,difference,rand,scinotation,exp,log,log10,sqrt
+from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig,mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,exp,log,log10,sqrt,piecewise,interp
 from src.utils import is_naninf
 from src.utils import nan,delim
 from src.iterables import setter,getter,flatten
@@ -125,7 +125,7 @@ defaults = {
 		"set_ylabel":{"ylabel":r'$M_{\gamma}$'},
 		"set_xlabel":{"xlabel":r"$\gamma$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"log","base":5e0},
+		"set_xscale":{"value":"log","base":10},
 		"set_xnbins":{"nbins":6},
 		"set_xticks":{"ticks":[1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
@@ -205,9 +205,12 @@ defaults = {
 		"set_xnbins":{"nbins":9},
 		"set_xlim": {"xmin": 0,"xmax": 6100},
 		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
+		"set_yscale":{"value":"linear"},
 		"set_yscale":{"value":"log","base":10},
+		"set_ylim": {"ymin": 1e-5,"ymax": 1e-1},
 		"set_ylim": {"ymin": 1e-9,"ymax": 5e2},
 		"set_ynbins":{"nbins":5},
+		"set_yticks":{"ticks":[1e-4,1e-3,1e-2,1e-1]},
 		"set_yticks":{"ticks":[1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
@@ -303,66 +306,93 @@ def postprocess(path,**kwargs):
 
 					except Exception as exception:
 						pass
-				
+
+				slices = [3,5]
+				slices = range(len(data[label['y']])-2)
+
+				X = array([data['%s'%(label['x'])][i] for i in slices])
+				Y = array([data['%s'%(label['y'])][i] for i in slices])
+				Z = array([data['%s'%(label['z'])][i] for i in slices])
 
 
-
-				X = data[label['x']]
-				Y = data[label['y']]
-				Z = data[label['z']]
-
-				Xerr = data['%serr'%(label['x'])]
-				Yerr = data['%serr'%(label['y'])]
-				Zerr = data['%serr'%(label['z'])]
-
+				Xerr = array([data['%serr'%(label['x'])][i] for i in slices])
+				Yerr = array([data['%serr'%(label['y'])][i] for i in slices])
+				Zerr = array([data['%serr'%(label['z'])][i] for i in slices])
 
 				_X,_Y,_Z = [],[],[]
 				_Xerr,_Yerr,_Zerr = [],[],[]
 
-				indices = arange(len(X))[(X>=1e-20) & (X<=1e0) & (X != 1e0)]
-				slices = slice(0,None,None)
-
-				interpolate = 1
-
-
-
 				try:
-					x,y,xerr,yerr,indexes = [],[],None,[],[]
+					x,y,z,xerr,yerr,zerr = [],[],[],None,[],[]
+					indices,indexes,slices = [],[],[]
 					for i,(x_,y_,z_,yerr_,zerr_) in enumerate(zip(X,Y,Z,Yerr,Zerr)):
 
-						y_ = y_[slices]
-						z_ = z_[slices]
-						
+						indices.append(i)
+
+						slices = slice(0,None,None)
+
 						yerr_ = yerr_ if yerr_ is not None and not is_naninf(yerr_).all() else None
 						zerr_ = zerr_[slices] if zerr_ is not None and not is_naninf(zerr_).all() else None
 
-						_y = linspace(y_.min(),y_.max(),y_.size*20)
-						_yerr = zeros(_y.shape)
-						func = 'linear'
-						coef0 = None
-						kwargs = {'smooth':0}
+						_x = x_
+						_n = y_[slices].size*20
+						_y = linspace(y_[slices].min(),y_[slices].max(),_n)
+						_yerr = zeros(_n)
 
-						_z,coef,_zerr,coefferr,_r = fit(y_,z_,_x=_y,func=func,yerr=zerr_,coef0=coef0,uncertainty=True,**kwargs)	
+						func = [
+							(lambda x,*coef: exp(coef[1] - coef[0]*x)),
+							(lambda x,*coef: coef[1] + coef[0]*x),
+							]
+						# if x_ in [1e-8]:
+						# 	bounds0 = [[_y.min(),1100],[1100,_y.max()]]							
+						# 	coef0 = [[1e-5,1e-1],[1,1]]
+						# elif x_ in [1e-6]:
+						# 	bounds0 = [[_y.min(),800],[800,_y.max()]]
+						# 	coef0 = [[1e-5,1e-1],[1,1]]						
+						# else:
+						bounds0 = [[_y.min(),((1100-800)/(1e-8-1e-6))*(x_-1e-6) + 800],[((1100-800)/(1e-8-1e-6))*(x_-1e-6) + 800,_y.max()]]
+						coef0 = [[1e-5,1e-1],[1,1]]	
+						kwargs = {'maxfev':1000000}
 
+						# func = 'linear'
+						# coef0 = None
+						# bounds0 = None
+						# kwargs = {'smooth':0}
+
+						_z,coef,_zerr,coefferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef0=coef0,bounds=bounds0,uncertainty=True,**kwargs)	
+
+						index = int(argmin(_z))
+
+						# coefs = [[coef[i] for i in range(2*j + sum(len(coef0[k]) for k in range(j)),2*(j+1) + sum(len(coef0[k]) for k in range(j+1)))] for j in range(len(coef0))]
+
+						# funcs = piecewise(func,coefs,bounds=True,split=True)
+
+						# _zs = funcs(_y,*coef)
+
+						# kind = 5
+						# smooth = 0
+						# der = 2
+						# ddy = interp(y_[slices],z_[slices],kind=kind,smooth=smooth,der=der)(_y)
+						# index = int(argmax(ddy))
+
+
+						_X.append(_x)
 						_Y.append(_y)
 						_Yerr.append(_yerr)
 						_Z.append(_z)
 						_Zerr.append(_zerr)
 
-						index = int(argmin(_z))
-						# index = argmax(abs((difference(_z)[1:] - difference(_z)[:-1]))/difference(_z)[1:])
-						indexerr = int(argmin(_z-_zerr)),int(argmin(_z+_zerr))
-
-						x.append(x_)
+						x.append(_x)
 						y.append(_y[index])
-						yerr.append(abs((_y[indexerr[0]] + _y[indexerr[1]] - 2*_y[index])/2))
+						z.append(_z[index])
+						yerr.append(_yerr[index])
+						zerr.append(10*mean(_zerr) if _zerr is not None else None)
 						indexes.append(index)
 
 
 					fig,ax = None,None
 
 					settings = deepcopy(defaults[key[0]])
-
 					options = {
 						'fig':{
 							'savefig':{
@@ -375,25 +405,10 @@ def postprocess(path,**kwargs):
 								*[
 								{
 								**settings['ax']['errorbar'],
-								'x':Y[i][slices],
-								'y':Z[i][slices],
-								'xerr':Yerr[i] if Yerr.ndim == 1 else Yerr[i][slices],
-								'yerr':Zerr[i][slices],							
-								'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
-								'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
-								'marker':'o',
-								'linestyle':'',
-								'alpha':0.7,
-								} for i in arange(len(Z))
-								if i not in indices
-								],
-								*[
-								{
-								**settings['ax']['errorbar'],
-								'x':Y[i][slices],
-								'y':Z[i][slices],
-								'xerr':Yerr[i] if Yerr.ndim == 1 else Yerr[i][slices],
-								'yerr':Zerr[i][slices],	
+								'x':Y[i],
+								'y':Z[i],
+								'xerr':Yerr[i] if Yerr.ndim == 1 else Yerr[i],
+								'yerr':Zerr[i],	
 								'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
 								'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
 								'marker':'o',
@@ -416,26 +431,30 @@ def postprocess(path,**kwargs):
 								],
 								*[
 								{
-								'x':[_Y[i][indexes[i]]],
-								'y':[_Z[i][indexes[i]]],
+								'x':[y[i] for i in indices],
+								'y':[z[i] for i in indices],
+								'xerr':[yerr[i] for i in indices],
+								'yerr':[zerr[i] for i in indices],
 								# 'yerr':[(_Z[i]*(1 - (_Z[i]/(_Z[i]+_Zerr[i])))),_Zerr[i]],							
 								'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
+								'ecolor':'viridis',
 								'marker':'o',
 								'markersize':20,
 								'markerfacecolor':"None",
-								'linestyle':'-',
-								'linewidth':2,
+								"linestyle":"--",
+								"capsize":4,			
+								"linewidth":4,
 								'alpha':0.8,
-								} for i in indices
+								}
 								],								
 							],
 							'fill_between':[
 								# *[
 								# {
 								# **settings['ax']['fill_between'],	
-								# 'x':Y[i][slices],
-								# 'y':Z[i][slices],
-								# 'yerr':[(Z[i]*(1 - (Z[i]/(Z[i]+Zerr[i]))))[slices],Zerr[i][slices]],
+								# 'x':Y[i],
+								# 'y':Z[i],
+								# 'yerr':[(Z[i]*(1 - (Z[i]/(Z[i]+Zerr[i])))),Zerr[i]],
 								# 'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(Z)),	
 								# } for i in indices
 								# ],
@@ -458,8 +477,9 @@ def postprocess(path,**kwargs):
 					fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
 				except Exception as exception:
-					print(traceback.format_exc())
-					exit()
+					raise
+
+
 					_x = X
 					_y = Y
 					_z = Z
@@ -467,6 +487,8 @@ def postprocess(path,**kwargs):
 					shape = _y.shape
 					ndim = _y.ndim
 					axis = 1
+					indices = arange(len(_x))
+					slices = slice(None,None,None)
 					slices = tuple((slices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
 					slices = argmin(_z[slices],axis=axis)
 					slices = tuple((slices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
@@ -588,7 +610,6 @@ def postprocess(path,**kwargs):
 			for path in paths:
 				with cd(path):
 				
-					print('Loading: ',path,files)
 					hyperparameters = load(files['hyperparameters'])
 
 					if hyperparameters is None:

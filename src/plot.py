@@ -659,9 +659,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						(kwargs.get(subattr,{}).get('value') in ['log'])
 						):
 						if np.array(kwargs[attr][subprop]).ndim == 1:
-							kwargs[attr][subprop] = np.array([[k,k] for k in kwargs[attr][subprop]]).T
+							kwargs[attr][subprop] = np.array([[k if k is not None else 0,k if k is not None else 0] for k in kwargs[attr][subprop]]).T
 						else:
-							kwargs[attr][subprop] = np.array([k for k in kwargs[attr][subprop]])
+							kwargs[attr][subprop] = np.array([k if k is not None else 0 for k in kwargs[attr][subprop]])
 						
 						kwargs[attr][prop] = np.array(kwargs[attr][prop])
 						
