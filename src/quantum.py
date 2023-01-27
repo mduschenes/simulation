@@ -1221,14 +1221,15 @@ class Callback(object):
 		done = (len(attributes['iteration'])>1) and (attributes['iteration'][-1] == (iterations.stop))
 		
 		status = (
-			(abs(attributes['value'][-1]) > 
-				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
+			((len(attributes['value'])>max(0,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 0)) and 
+			   (abs(attributes['value'][-1]) > 
+				(hyperparameters['eps']['value']*hyperparameters['value']['value']))) and
 			((len(attributes['value'])==1) or 
-			 ((len(attributes['value'])>1) and 
+			 ((len(attributes['value'])>max(1,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1)) and 
 			 (abs(attributes['value'][-1] - attributes['value'][-2]) > 
 				(hyperparameters['eps']['difference']*attributes['value'][-2])))) and
 			((len(attributes['grad'])==1) or 			
-			 ((len(attributes['grad'])>1) and
+			 ((len(attributes['grad'])>max(1,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1)) and
 			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
 				  (hyperparameters['eps']['grad']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))))
 			)
@@ -1238,8 +1239,8 @@ class Callback(object):
 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 
 		stop = (
-			(hyperparameters['value']['increase'] is not None) and
-			(len(attributes['value'])>hyperparameters['value']['increase']) and 
+			(hyperparameters['eps']['increase'] is not None) and
+			(len(attributes['value'])>max(1,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1)) and 
 			((attributes['value'][-1] - attributes['value'][-2]) > 
 			(hyperparameters['eps']['increase']*attributes['value'][-1]))
 			)
@@ -1352,7 +1353,7 @@ class Callback(object):
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or init):
 
-					_kwargs = {kwarg: {prop: hyperparameters.get('settings',{}).get(kwarg) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
+					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
 					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
 						_kwargs = {kwarg: False if kwarg in [] else _kwargs[kwarg] for kwarg in _kwargs}
