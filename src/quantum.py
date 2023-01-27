@@ -1237,11 +1237,12 @@ class Callback(object):
 			(hyperparameters['modulo']['track'] is None) or 
 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 
-		stop = ((
-				(((hyperparameters['value']['increase'] is None) and (len(attributes['value'])>1)) or 
-			  	 (len(attributes['value'])>hyperparameters['value']['increase'])) and 
-				 ((attributes['value'][-1] - attributes['value'][-2]) > 
-					(hyperparameters['eps']['increase']*attributes['value'][-1]))))
+		stop = (
+			(hyperparameters['value']['increase'] is not None) and
+			(len(attributes['value'])>hyperparameters['value']['increase']) and 
+			((attributes['value'][-1] - attributes['value'][-2]) > 
+			(hyperparameters['eps']['increase']*attributes['value'][-1]))
+			)
 
 		status = (status) and (not stop)
 

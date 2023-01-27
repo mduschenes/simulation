@@ -258,6 +258,7 @@ def find(dictionary):
 				'wrapper':{},
 				'attrs':{},
 				'slice':None,
+				'include':None,
 				'axis':{'row':[],'col':[],'plot':['plot','group','func'],'axis':[-1]},
 				'settings':{
 					'ax.set_ylabel.ylabel':[['$\\textrm{Infidelity}$']],
@@ -314,7 +315,7 @@ def parse(key,value,data):
 	Parse key and value condition for data, such that data[key] == value
 	Args:
 		key (str): key of condition
-		value (str): value of condition, allowed string in 
+		value (str,iterable): value of condition, allowed string in 
 			[None,
 			'value,' (explicit value),
 			'@key,@' (data value), 
@@ -332,19 +333,23 @@ def parse(key,value,data):
 		out (dataframe): Condition on data indices
 	'''
 	delimiters = ['$','@','#','%','<','>','<=','>=','==','!=']
-	default = data.assign(**{key:True})[key]
-	parser = ';'
+	parserator = ';'
 	separator = ','
 
+	try:
+		default = data.assign(**{key:True})[key]
+	except:
+		default = True
+
 	out = default
-	
+
 	if key not in data:
 		pass
 	elif value is null:
 		pass
 	elif isinstance(value,str):
 		outs = [default]
-		for value in value.split(parser):
+		for value in value.split(parserator):
 
 			for delimiter in delimiters:
 
@@ -358,7 +363,10 @@ def parse(key,value,data):
 						values = [value for value in values if (value is not null)]
 
 						if values and (values is not null):
-							out = data[key].isin(values)
+							try:
+								out = data[key].isin(values)
+							except:
+								out = data[key] in values
 
 					elif delimiter in ['@']: # Data value: key
 						parser = lambda value: (to_str(value) if len(value)>0 else null)
@@ -373,8 +381,11 @@ def parse(key,value,data):
 						values = [value for value in values if (value is not null)]
 
 						if values and (values is not null):
-							out = data[key].unique()
-							out = data[key].isin(out[[value for value in values if value < out.size]])
+							try:
+								out = data[key].unique()
+								out = data[key].isin(out[[value for value in values if value < out.size]])
+							except:
+								out = not default
 
 					elif delimiter in ['%']: # Slice value start,stop,step
 						parser = lambda value: (to_int(value) if len(value)>0 else None)
@@ -382,7 +393,10 @@ def parse(key,value,data):
 						values = [value for value in values if (value is not null)]
 				
 						if values and (values is not null):
-							out = data[key].isin(data[key].unique()[slice(*values)])
+							try:
+								out = data[key].isin(data[key].unique()[slice(*values)])
+							except:
+								out = not default
 
 					elif delimiter in ['<']: # Bound value: upper (exclusive)
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
@@ -405,7 +419,7 @@ def parse(key,value,data):
 						if values and (values is not null):
 							out = conditions([data[key] > value for value in values],op='and')
 
-					elif delimiter in ['<=']: # Bound value: lower (inclusive)
+					elif delimiter in ['>=']: # Bound value: lower (inclusive)
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
 						values = [parser(value) for value in values]           
 					  
@@ -431,6 +445,15 @@ def parse(key,value,data):
 					break
 
 		out = conditions(outs,op='and')
+
+	else:
+		try:
+			out = data[key].isin(value)
+		except:
+			try:
+				out = data[key] in value
+			except:
+				out = not default
 	
 	return out
 
@@ -489,10 +512,8 @@ def apply(keys,data,settings,hyperparameters):
 		
 		groupby = data[boolean].groupby(by=by,as_index=False)
 
-		agg = {}
-
 		agg = {
-			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]])] for attr in data},
+			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] for attr in data},
 			**{attr : [(delim.join(((attr,function,func))),{'array':{'':mean,'err':sem}[func],'object':'first','dtype':funcs[function][func]}[dtypes[attr]]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
 		}
 
@@ -575,14 +596,53 @@ def loader(data,settings,hyperparameters):
 	metadata = hyperparameters['path']['metadata']
 	
 	def func(key_iterable,key_elements,iterable,elements):
+
 		if (
 			(key_iterable == key_elements) and 
 			(key_iterable in PLOTS) and (key_elements in PLOTS) and 
 			isinstance(iterable.get(key_iterable),list) and	isinstance(elements.get(key_elements),list)
 			):
+
+			def parser(string,separator,default):
+				if string.count(separator):
+					key,value = string.split(separator)[0],to_number(separator.join(string.split(separator)[1:]))
+				else:
+					key,value = string,default
+				value = default if value is None else value
+				return key,value
+
+			default = None
+			separator = '='
+
+
 			for index,data in enumerate(flatten(elements.get(key_elements))):
 				for subindex,datum in enumerate(flatten(iterable.get(key_iterable)[index])):
 					datum.update({attr: data[attr] for attr in data if attr not in [*ALL,OTHER]})
+
+					attr = OTHER
+
+					if (data.get(attr) is None) or (attr not in datum[attr]):
+						continue
+					elif isinstance(data[attr],dict) and attr in data[attr]:
+						if attr in datum[attr][attr]:
+							datum[attr][attr][attr] = data[attr][attr]
+							datum[attr][attr].update({prop: data[attr][prop] for prop in data[attr] if prop not in [attr]})
+						else:
+							datum[attr][attr] = data[attr][attr]
+							datum[attr].update({prop: data[attr][prop] for prop in data[attr] if prop not in [attr]})
+					elif isinstance(data[attr],dict) and attr not in data[attr]:
+						if attr in datum[attr][attr]:
+							datum[attr][attr][attr] = data[attr]
+						else:
+							datum[attr][attr] = data[attr]
+					elif isinstance(data[attr],str):
+						continue
+					else:
+						if attr in datum[attr][attr]:
+							datum[attr][attr][attr] = {prop: None for prop in data[attr]}
+						else:
+							datum[attr][attr] = {prop: None for prop in data[attr]}
+
 			out = iterable.get(key_iterable)
 		else:
 			out = elements.get(key_elements)
@@ -748,6 +808,22 @@ def plotter(settings,hyperparameters):
 							data[attr] = value
 
 
+			# include
+			for plots in PLOTS:
+
+				if settings[instance][subinstance]['ax'].get(plots) is None:
+					continue
+
+				for data in flatten(settings[instance][subinstance]['ax'][plots]):
+
+					attr = OTHER
+					if data[attr][attr].get('include') is not None:
+						for label in data[attr][attr]['include']:
+							if not parse(label,data[attr][attr]['include'][label],data[attr]):
+								data.clear()
+								break
+
+
 			# label
 			for plots in PLOTS:
 
@@ -755,6 +831,9 @@ def plotter(settings,hyperparameters):
 					continue
 
 				for data in flatten(settings[instance][subinstance]['ax'][plots]):
+
+					if not data:
+						continue
 
 					attr = OTHER
 					value = ', '.join([
@@ -769,7 +848,8 @@ def plotter(settings,hyperparameters):
 						]
 						])
 
-					data[attr] = value					
+					data[attr] = value	
+
 
 
 

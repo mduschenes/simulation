@@ -373,12 +373,13 @@ def encode_json(obj,represent=False,**kwargs):
 	Returns:
 		dictionary (dictionary): Jsonable dictionary of object
 	'''
-	dictionary = {}
 	if not isinstance(obj,dict):
 		dictionary = deepcopy(dump_json(obj))
 	else:
-		for key in obj:
-			dictionary[to_repr(key,represent=represent)] = encode_json(obj[key],represent=represent,**kwargs)
+		dictionary = obj
+		# dictionary = {}
+		# for key in obj:
+			# dictionary[to_repr(key,represent=represent)] = encode_json(obj[key],represent=represent,**kwargs)
 	return dictionary
 
 def decode_json(dictionary,represent=False,**kwargs):
@@ -391,16 +392,19 @@ def decode_json(dictionary,represent=False,**kwargs):
 	Returns:
 		obj (dictionary): Dictionary to convert to obj
 	'''
-	obj = {}
-	if not isinstance(dictionary,dict):
-		obj = dictionary
-	else:
-		for key in dictionary:
-			try:
-				obj[to_eval(key,represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
-			except (ValueError,SyntaxError):
-				obj[to_eval(to_repr(key,represent=represent),represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
+	obj = dictionary
 	return obj
+
+	# obj = {}
+	# if not isinstance(dictionary,dict):
+	# 	obj = dictionary
+	# else:
+	# 	for key in dictionary:
+	# 		try:
+	# 			obj[to_eval(key,represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
+	# 		except (ValueError,SyntaxError):
+	# 			obj[to_eval(to_repr(key,represent=represent),represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
+	# return obj
 
 
 
