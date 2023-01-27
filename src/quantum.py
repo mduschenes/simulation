@@ -1221,20 +1221,18 @@ class Callback(object):
 		done = (len(attributes['iteration'])>1) and (attributes['iteration'][-1] == (iterations.stop))
 		
 		status = (
-			((len(attributes['value'])>max(0,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 0)) and 
-			   (abs(attributes['value'][-1]) > 
-				(hyperparameters['eps']['value']*hyperparameters['value']['value']))) and
-			((len(attributes['value'])==1) or 
-			 ((len(attributes['value'])>max(1,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1)) and 
-			 (abs(attributes['value'][-1] - attributes['value'][-2]) > 
-				(hyperparameters['eps']['difference']*attributes['value'][-2])))) and
-			((len(attributes['grad'])==1) or 			
-			 ((len(attributes['grad'])>max(1,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1)) and
+			(len(attributes['value']) <= max(1,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1)) or
+			(
+			(abs(attributes['value'][-1]) > 
+				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
+			(abs(attributes['value'][-1] - attributes['value'][-2]) > 
+				(hyperparameters['eps']['difference']*attributes['value'][-2])) and
 			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
-				  (hyperparameters['eps']['grad']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))))
+				  (hyperparameters['eps']['grad']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))
+			)
 			)
 
-		other = ((len(attributes['iteration']) == 0) or 
+		other = ((len(attributes['iteration']) == 1) or 
 			(hyperparameters['modulo']['track'] is None) or 
 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 
@@ -1242,7 +1240,7 @@ class Callback(object):
 			(hyperparameters['eps']['increase'] is not None) and
 			(len(attributes['value'])>max(1,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1)) and 
 			((attributes['value'][-1] - attributes['value'][-2]) > 
-			(hyperparameters['eps']['increase']*attributes['value'][-1]))
+			(hyperparameters['eps']['increase']*attributes['value'][-2]))
 			)
 
 		status = (status) and (not stop)
@@ -1429,7 +1427,7 @@ class Callback(object):
 						track[attr][i] = update(i,attr,value,track)
 
 
-		log = ((len(attributes['iteration']) == 0) or 
+		log = ((len(attributes['iteration']) == 1) or 
 			(hyperparameters['modulo']['log'] is None) or 
 			(attributes['iteration'][-1]%hyperparameters['modulo']['log'] == 0)
 			)
