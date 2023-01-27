@@ -1157,9 +1157,13 @@ class Optimization(System):
 		super().__init__(**kwargs)
 
 		defaults = {
+			'iterations':None,
 			'optimizer':None,
 			'search':{'alpha':'line_search','beta':None},
-			'eps':{'value':1e-4,'grad':1e-12,'alpha':1e-12,'beta':1e3},
+			'eps':{'value':1e-16,'grad':1e-18,'difference':1e-18,'increase':1e1,'iteration':1,'alpha':1e-7,'beta':1e3},
+			'value':{'value':1,'grad':1,'difference':1,'increase':1,'iteration':100,'alpha':0,'beta':0},
+			'bounds':{'value':[-1e20,1e20],'grad':[-1e12,1e12],'difference':[-1e20,1e20],'alpha':[1e-20,1e6],'beta':[-1e10,1e10]},	
+			'kwargs':{},
 			'alpha':0,
 			'status':1,
 			'clear':True,

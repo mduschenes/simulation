@@ -62,7 +62,8 @@ def Texify(string,texify={},usetex=True):
 	Returns:
 		string (str): Texified string
 	'''
-
+	if texify is None:
+		texify = {}
 	strings = {
 		**texify,
 	}
@@ -95,8 +96,11 @@ def Valify(value,valify={},useval=True):
 	Returns:
 		value (str): Valified string
 	'''
+	if valify is None:
+		valify = {}
 	values = {
 		**valify,
+		**{to_number(value): valify[value] for value in valify},
 		None: valify.get('None',None),
 		'None': valify.get('None',None),
 		}
@@ -220,12 +224,18 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None):
 	# Get texify
 	texify = hyperparameters.get('texify',{})
 	usetex = hyperparameters.get('usetex',False)
-	hyperparameters['texify'] = lambda string,texify=texify,usetex=usetex: Texify(string,texify,usetex=usetex)
+	hyperparameters['texify'] = lambda string,texify=None,_texify=texify,usetex=usetex: Texify(
+		string,
+		texify={**(_texify if _texify is not None else {}),**(texify if texify is not None else {})},
+		usetex=usetex)
 
 	# Get valify
 	valify = hyperparameters.get('valify',{})
 	useval = hyperparameters.get('useval',True)
-	hyperparameters['valify'] = lambda value,valify=valify,useval=useval: Valify(value,valify,useval=useval)
+	hyperparameters['valify'] = lambda value,valify=None,_valify=valify,useval=useval: Valify(
+		value,
+		valify={**(_valify if _valify is not None else {}),**(valify if valify is not None else {})},
+		useval=useval)
 
 	return data,settings,hyperparameters
 
@@ -240,7 +250,7 @@ def find(dictionary):
 	'''
 
 	dim = 2
-	keys = AXIS[:dim]
+	axes = AXIS[:dim]
 	other = [OTHER]
 
 	def parser(string,separator,default):
@@ -268,7 +278,7 @@ def find(dictionary):
 				'valify': {},		
 	}
 
-	elements = [*keys,*other]
+	elements = [*axes,*other]
 	keys = brancher(dictionary,elements)
 	
 	keys = {name[:-1]:dict(zip(elements,[value[-1] for value in name[-1]])) for name in keys}
@@ -799,7 +809,7 @@ def plotter(settings,hyperparameters):
 
 					for attr in data:
 						if (attr in ALL) and (data[attr] is not None):
-							value = np.array([valify(value) for value in data[attr]])
+							value = np.array([valify(value,valify=data[OTHER][OTHER].get('valify')) for value in data[attr]])
 
 							if data[OTHER][OTHER].get('slice') is not None:
 								slices = slice(*data[OTHER][OTHER].get('slice'))
@@ -837,12 +847,12 @@ def plotter(settings,hyperparameters):
 
 					attr = OTHER
 					value = ', '.join([
-						*[(texify(scinotation(data[attr][label],decimals=0,scilimits=[0,3],one=False)) 
-						if values[plots][label]['label'] else texify(scinotation(data[attr][data[attr][attr][attr][label]],decimals=0,scilimits=[0,3],one=False)))
+						*[(texify(scinotation(data[attr][label],decimals=0,scilimits=[0,3],one=False),texify=data[OTHER][OTHER].get('texify')) 
+						if values[plots][label]['label'] else texify(scinotation(data[attr][data[attr][attr][attr][label]],decimals=0,scilimits=[0,3],one=False),texify=data[OTHER][OTHER].get('texify')))
 						for label in values[plots]
 						if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) or 
 							(values[plots][label]['other']))],
-						*[texify(scinotation(data[attr][attr][attr][label],decimals=0,scilimits=[0,3],one=False)) 
+						*[texify(scinotation(data[attr][attr][attr][label],decimals=0,scilimits=[0,3],one=False),texify=data[OTHER][OTHER].get('texify')) 
 						for label in values[plots]
 						if values[plots][label]['legend']
 						]
