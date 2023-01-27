@@ -307,8 +307,7 @@ def postprocess(path,**kwargs):
 					except Exception as exception:
 						pass
 
-				slices = [4,*list(range(5,len(data[label['y']])-3))]
-				# slices = range(len(data[label['y']])-2)
+				slices = range(3,len(data[label['y']])-3)
 
 				X = array([data['%s'%(label['x'])][i] for i in slices])
 				Y = array([data['%s'%(label['y'])][i] for i in slices])
@@ -344,18 +343,9 @@ def postprocess(path,**kwargs):
 							(lambda x,*coef: exp(coef[1] - coef[0]*x)),
 							(lambda x,*coef: coef[1] + coef[0]*x),
 							]
-						# if x_ in [1e-8]:
-						# 	bounds0 = [[_y.min(),1100],[1100,_y.max()]]							
-						# 	coef0 = [[1e-5,1e-1],[1,1]]
-						# elif x_ in [1e-6]:
-						# 	bounds0 = [[_y.min(),800],[800,_y.max()]]
-						# 	coef0 = [[1e-5,1e-1],[1,1]]						
-						# else:
-						bounds0 = [[y_[slices].min(),((1200-900)/(-8--6))*(log10(x_)--6) + 900],
-								   [((1200-900)/(-8--6))*(log10(x_)--6) + 900,y_[slices].max()]]
-						print(bounds0,[((y_[slices]>=b[0]) & (y_[slices]<=b[1])).sum() for b in bounds0])
-						print()
-						coef0 = [[1e-5,1e-1],[1,1]]	
+						bounds0 = ((2000-1000)/(-12--7))*(log10(x_)--7) + 1000
+
+						coef0 = (((2000-1000)/(-12--7),1e-1),(1,1))
 						kwargs = {'maxfev':1000000}
 
 						# func = 'linear'
@@ -369,6 +359,7 @@ def postprocess(path,**kwargs):
 
 						_coefs = [[_coef[i] for i in range(2*j + sum(len(coef0[k]) for k in range(j)),2*(j+1) + sum(len(coef0[k]) for k in range(j+1)))] for j in range(len(coef0))]
 
+						print(_coefs)
 						funcs = piecewise(func,_coefs,bounds=True,split=True)
 
 						_zs = funcs(_y,*_coef)
