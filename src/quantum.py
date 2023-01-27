@@ -1242,7 +1242,7 @@ class Callback(object):
 			(hyperparameters['eps']['increase'] is not None) and
 			(len(attributes['value'])>max(1,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1)) and 
 			((attributes['value'][-1] - attributes['value'][-2]) > 
-			(hyperparameters['eps']['increase']*attributes['value'][-1]))
+			(hyperparameters['eps']['increase']*attributes['value'][-2]))
 			)
 
 		status = (status) and (not stop)
