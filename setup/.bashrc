@@ -83,6 +83,7 @@ function gics(){
 	
 	for file in ${files[@]}
 	do
+		echo "git show ${branch}:./${file} > ${file}"
 		git show ${branch}:./${file} > ${file}
 	done
 
