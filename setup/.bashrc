@@ -83,6 +83,7 @@ function gics(){
 	
 	for file in ${files[@]}
 	do
+		echo "git show ${branch}:./${file} > ${file}"
 		git show ${branch}:./${file} > ${file}
 	done
 
@@ -108,7 +109,7 @@ function bint(){
 	time=${1:-01:00:00}
 	mem=${2:-15G}
 	partition=${3:-cpu}
-	srun --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --partition=${partition} --pty bash -i
+	srun --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --pty bash -i
 	return 0
 }
 
