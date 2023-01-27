@@ -1407,48 +1407,69 @@ def curve_fit(func,x,y,**kwargs):
 	Returns:
 		out (array): Curve fit returns
 	'''
+	defaults = {'p0':kwargs.pop('coef0'),'maxfev':10000}
+	kwargs = {kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults}
+
 	return osp.optimize.curve_fit(func,x,y,**kwargs)
 
 
 # @partial(jit,static_argnums=(0,))
-def piecewise(funcs,coefs,bounds=False,split=False,**kwargs):
+def piecewise(func,bounds=None,shape=None,split=False,**kwargs):
 	'''
 	Compute piecewise curve from funcs
 	Args:
-		funcs (callable,iterable[callable]): Functions to fit
-		coefs (iterable[iterable[object]]): Piecewise sections of coefs of the form [[lower_i,upper_i,*coef_i]] if bounds or [[*coef_i]]
-		bounds (bool): coefs include bounds
+		func (callable,iterable[callable]): Functions to fit
+		bounds (iterable[object]): Piecewise domains, of length len(func)+1
+		shape (iterable[int]): Piecewise coefs shape
 		split (bool): split function in domains
 		kwargs (dict[str,object]): Additional keyword arguments for fitting		
 	Returns:
-		func (callable): Piecewise function with signature func(x,*coefs), where coefs are of the form [[lower_i,upper_i,*coef_i]]
+		func (callable): Piecewise function with signature func(x,*coefs)
 	'''
 
-	bounds = True if bounds else False
-
-	indices = []
-	for coef in coefs:
-		size = indices[-1][-1].stop if indices else 0
-		indices.append([size,size+1,slice(size+2,size+2+len(coef)-2*bounds)])
-
-	if callable(funcs):
+	if callable(func):
 		funcs = [funcs]
-
-	if split:
-		def func(x,*coefs):
-			bounds = [[coefs[index[0]],coefs[index[1]]] for index in indices]
-			conditions = [((x>=bound[0]) & (x<=bound[1])) for bound in bounds]
-			coefs = [[*coefs[index[2]]] for index in indices]
-			func = [(func(x[condition],*coef),x[condition]) for func,coef,condition in zip(funcs,coefs,conditions)]
-			return func
 	else:
-		def func(x,*coefs):
-			bounds = [[coefs[index[0]],coefs[index[1]]] for index in indices]
-			conditions = [((x>=bound[0]) & (x<=bound[1])) for bound in bounds]
-			coefs = [[*coefs[index[2]]] for index in indices]
-			func = [(lambda x,coef=coef,func=func: func(x,*coef)) for func,coef,condition in zip(funcs,coefs,conditions)]			
-			func = np.piecewise(x,conditions,func)
-			return func
+		funcs = func
+
+	if bounds is None:
+		x = kwargs.pop('x')
+		y = kwargs.pop('y')
+		_x = kwargs.pop('_x')
+		defaults = {'kind':2,'smooth':0,'der':2}
+		kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
+		nfuncs = len(funcs)
+
+		bounds = _x[argsort(interp(x,y,**kwargs)(_x))][-nfuncs+1:]
+
+		print(-nfuncs+1,bounds)
+
+		nbounds = len(bounds)
+		if nbounds == (nfuncs-1):
+			bounds = [min(x),*bounds,max(x)]
+		elif nbounds == (nfuncs):
+			bounds = [min(x),*bounds]
+		elif nbounds == (nfuncs+1):
+			bounds = [*bounds]
+	
+		bounds = [[bounds[i],bounds[i+1]] for i in range(nfuncs)]
+
+	shape = [slice(sum(shape[:i-1]),sum(shape[:i])) for i in range(1,nfuncs+2)] if shape is not None else None
+	
+	def func(x,*coefs):
+
+		if shape is not None:
+			coefs = [coefs[size] for size in shape]
+
+		conditions = [((x>=bound[0]) & (x<=bound[1])) for bound in bounds]
+
+		if split:
+			func = [(func(x[condition],*coef),x[condition]) for func,coef,condition in zip(funcs,coefs,conditions)]
+		else:
+			func = [(lambda x,coef=coef,func=func,condition=condition: func(x,*coef)) for func,coef,condition in zip(funcs,coefs,conditions)]
+			func = np.piecewise(x,conditions,func)			
+
+		return func
 
 	return func
 
@@ -3659,6 +3680,18 @@ def sort(a,axis=0):
 	'''
 	return np.sort(a,axis)
 
+@partial(jit,static_argnums=(1,))
+def argsort(a,axis=0):
+	'''
+	Argsort array along axis
+	Args:
+		a (array): Array to sort
+		axis (int): Axis to sort array
+	Returns:
+		out (array): Sorted array
+	'''
+	return np.argsort(a,axis)
+
 
 @partial(jit,static_argnums=(1,))
 def concatenate(a,axis):
@@ -4801,38 +4834,35 @@ def invtrotter(a,p):
 	return a[:n]
 
 
-def interp(x,y,kind,smooth=None,der=None):
+def interp(x,y,**kwargs):
 	'''
 	Interpolate array at new points
 	Args:
 		x (array): Interpolation points
 		y (array): Interpolation values
-		kind (int): Order of interpolation
-		smooth (int,float): Smoothness of fit
-		der (int): order of derivative to estimate
+		kwargs (dict): Additional keyword arguments for interpolation
+			kind (int): Order of interpolation
+			smooth (int,float): Smoothness of fit
+			der (int): order of derivative to estimate
 	Returns:
 		func (callable): Interpolation function
 	'''	
 
-	if der is None:	
-		def _interpolate(x,y,kind,smooth):
-			kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5}
-			k = kinds.get(kind,kind)
-			s = smooth
+	def _interpolate(x,y,**kwargs):
+		kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5,None:3}
+		k = kinds.get(kwargs.get('k',kwargs.get('kind')),kwargs.get('k',kwargs.get('kind')))
+		s = kwargs.get('s',kwargs.get('smooth'))
+		der = kwargs.get('der')
+		if der:
+			spline = osp.interpolate.splrep(x,y,k=k,s=s)
+			def func(x):
+				return osp.interpolate.splev(x,spline,der=der)
+		else:
 			func = osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
 			# func = osp.interpolate.interp1d(x,y,kind)
-			return func
+		return func
 
-	else:
-		def _interpolate(x,y,kind,smooth):
-			kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5}
-			k = kinds.get(kind,kind)
-			s = smooth
-			spline = osp.interpolate.splrep(x, y, k=k,s=s)
-			func = lambda x: osp.interpolate.splev(x, spline, der=der)
-			return func
-
-	return _interpolate(x,y,kind,smooth)
+	return _interpolate(x,y,**kwargs)
 
 
 
@@ -4846,6 +4876,9 @@ def interpolate(x,y,x_new,**kwargs):
 		y (array): Interpolation values
 		x_new (array): New points
 		kwargs (dict): Additional keyword arguments for interpolation
+				kind (int): Order of interpolation
+				smooth (int,float): Smoothness of fit
+				der (int): order of derivative to estimate
 	Returns:
 		out (array): Interpolated values at new points
 	'''		

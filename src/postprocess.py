@@ -343,36 +343,22 @@ def postprocess(path,**kwargs):
 							(lambda x,*coef: exp(coef[1] - coef[0]*x)),
 							(lambda x,*coef: coef[1] + coef[0]*x),
 							]
-						bounds0 = ((2000-1000)/(-12--7))*(log10(x_)--7) + 1000
-
-						coef0 = (((2000-1000)/(-12--7),1e-1),(1,1))
-						kwargs = {'maxfev':1000000}
+						coef0 = ones(2+2)
+						kwargs = {'shape':[2,2],'smooth':6e-1}
+						preprocess = lambda x,y,*coef: (x,log(y))
+						postprocess = lambda x,y,*coef: (x,exp(y))
 
 						# func = 'linear'
 						# coef0 = None
-						# bounds0 = None
 						# kwargs = {'smooth':0}
+						# preprocess = lambda x,y,*coef: (x,y)
+						# postprocess = lambda x,y,*coef: (x,y)
 
-						_z,_coef,_zerr,_coefferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef0=coef0,bounds=bounds0,uncertainty=True,**kwargs)	
+						_z,_coef,_zerr,_coefferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef0=coef0,uncertainty=True,preprocess=preprocess,postprocess=postprocess,**kwargs)	
 
 						index = int(argmin(_z))
 
-						_coefs = [[_coef[i] for i in range(2*j + sum(len(coef0[k]) for k in range(j)),2*(j+1) + sum(len(coef0[k]) for k in range(j+1)))] for j in range(len(coef0))]
-
-						print(_coefs)
-						funcs = piecewise(func,_coefs,bounds=True,split=True)
-
-						_zs = funcs(_y,*_coef)
-
-						index = int(where(_y==_zs[0][-1][-1])[0][0])
-
 						print(_x,_r)
-						# kind = 5
-						# smooth = 0
-						# der = 2
-						# ddy = interp(y_[slices],z_[slices],kind=kind,smooth=smooth,der=der)(_y)
-						# index = int(argmax(ddy))
-
 
 						_X.append(_x)
 						_Y.append(_y)

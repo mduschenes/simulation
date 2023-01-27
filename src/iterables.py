@@ -618,10 +618,13 @@ def flatten(iterable,types=(list,)):
 	if not isinstance(iterable,types):
 		yield iterable
 	else:
-		for element in iterable:
-			if isinstance(iterable,dict):
-				element = iterable[element]
-			yield from flatten(element,types=types)
+		try:
+			for element in iterable:
+				if isinstance(iterable,dict):
+					element = iterable[element]
+				yield from flatten(element,types=types)
+		except:
+			yield iterable
 
 	return
 
