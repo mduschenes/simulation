@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":982727,
-	"size":8,
+	"size":16,
 	"reset":982727,
 	"index":null
 	},
@@ -19,10 +19,9 @@
 	"permutations":{	
 	
 		"model.N":[4],		
-		"model.M":[10,50,75,100,200,300,400,500,600,800,1000,1250,1500,2000,2500,3000,5000,6000],		
-		"model.M":[1400,1600,1750,1800,2250],		
+		"model.M":[10,50,75,100,200,300,400,500,600,800,1000,1250,1500,1400,1600,1750,1800,2000,2250,2500,3000,5000,6000],		
 		"model.tau":[20e0],		
-		"noise.scale":[0,1e-18,1e-15,1e-12,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
+		"noise.scale":[1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
 		"state.scale":[1],
 
 		"optimize.iterations":[500],
@@ -37,17 +36,13 @@
 		"jobs.job.cwd":["gobi/noise"],
 		"jobs.postprocess.cwd":["gobi/noise"],
 		
-		"jobs.job.cwd":["gobi/noise/extra"],
-		"jobs.postprocess.cwd":["gobi/noise"],
-
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[24],
-		"jobs.job.pool":[8],
+		"jobs.job.pool":[16],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -108,16 +103,16 @@
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
-	"eps":{"value":1e-16,"grad":1e-18,"difference":1e-18,"increase":1e-1,"alpha":1e-7,"beta":1e3},
-	"value":{"value":1,"grad":1,"difference":1,"increase":10,"alpha":0,"beta":0},
+	"eps":{"value":1e-16,"grad":1e-18,"difference":1e-18,"increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
+	"value":{"value":1,"grad":1,"difference":1,"increase":1,"iteration":100,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
-	"settings":{"noise":1e-3},
+	"kwargs":{"noise":1e-3},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
 	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
-	"length":{"log":null,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":400,"dump":null},	
+	"length":{"log":null,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
