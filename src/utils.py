@@ -1440,9 +1440,9 @@ def piecewise(func,bounds=None,shape=None,split=False,**kwargs):
 		kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
 		nfuncs = len(funcs)
 
-		bounds = _x[argsort(interp(x,y,**kwargs)(_x))][-nfuncs+1:]
+		bounds = _x[argsort(abs(interp(x,y,**kwargs)(_x)))][-nfuncs+1:]
 
-		print(-nfuncs+1,bounds)
+		print(bounds)
 
 		nbounds = len(bounds)
 		if nbounds == (nfuncs-1):

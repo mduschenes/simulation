@@ -246,9 +246,11 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 
 	elif isinstance(func,(tuple,list)):
 		_kwargs = {**kwargs,'x':x,'y':y,'_x':_x}
+		
 		func = piecewise(func,**_kwargs)
 
 		x,y = postprocess(x,y,*coef0)
+		
 		preprocess,postprocess = None,None
 
 		_returns = fit(
