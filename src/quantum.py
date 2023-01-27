@@ -1455,11 +1455,17 @@ class Callback(object):
 				# to_string(abs(model(parameters)).round(4)),
 				# to_string(abs(model.label()).round(4))),
 				to_string((model(parameters)).round(4)),
-				to_string((model.label()).round(4))),				
+				to_string((model.label()).round(4))),
+				'stop: diff = %0.4e , bound = %0.1e , %r %r'%(
+					(attributes['value'][-1] - attributes['value'][-2]),
+					(hyperparameters['eps']['increase']*attributes['value'][-2]),
+					stop,status
+					)				
 				])
 
 
 			model.log(msg)
+
 
 		return status
 
