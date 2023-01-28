@@ -17,7 +17,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig,mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,exp,log,log10,sqrt,piecewise,interp
+from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig,mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,exp,exp10,log,log10,sqrt,piecewise,interp
 from src.utils import is_naninf
 from src.utils import nan,delim
 from src.iterables import setter,getter,flatten
@@ -340,13 +340,13 @@ def postprocess(path,**kwargs):
 						_yerr = zeros(_n)
 
 						func = [
-							(lambda x,*coef: exp(coef[1] - coef[0]*x)),
-							(lambda x,*coef: coef[1] + coef[0]*x),
-							]
-						coef0 = ones(2+2)
-						kwargs = {'shape':[2,2],'smooth':6e-1}
-						preprocess = lambda x,y,*coef: (x,log(y))
-						postprocess = lambda x,y,*coef: (x,exp(y))
+								(lambda x,*coef: coef[1] - coef[0]*x),
+								(lambda x,*coef: coef[2]*log10(x-coef[1]) + coef[0]),
+								]
+						coef0 = array([y_[slices][argmin(z_[slices])],1e-3,1,1,1,1])
+						kwargs = {'shape':[1,2,3]}
+						preprocess = lambda x,y,*coef: (x,log10(y))
+						postprocess = lambda x,y,*coef: (x,exp10(y))
 
 						# func = 'linear'
 						# coef0 = None
@@ -357,8 +357,10 @@ def postprocess(path,**kwargs):
 						_z,_coef,_zerr,_coefferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef0=coef0,uncertainty=True,preprocess=preprocess,postprocess=postprocess,**kwargs)	
 
 						index = int(argmin(_z))
+						indexerr = (int(argmin(_z+_zerr)) + int(argmin(_z-_zerr)))//2
 
 						print(_x,_r)
+						print()
 
 						_X.append(_x)
 						_Y.append(_y)
@@ -369,8 +371,8 @@ def postprocess(path,**kwargs):
 						x.append(_x)
 						y.append(_y[index])
 						z.append(_z[index])
-						yerr.append(_yerr[index])
-						zerr.append(10*mean(_zerr) if _zerr is not None else None)
+						yerr.append(_yerr[indexerr])
+						zerr.append(_zerr[index])
 						indexes.append(index)
 						coefs.append(_coef)
 						coeferrs.append(_coefferr)

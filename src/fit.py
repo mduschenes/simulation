@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,warnings,copy
+import os,sys,itertools,warnings,copy,traceback
 warnings.filterwarnings('ignore')
 
 # Import user modules
@@ -210,7 +210,7 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 		try:
 			coef,coefferr = curve_fit(func,x,y,**kwargs)
 		except Exception as e:
-			print(e)
+			print(traceback.format_exc())
 			coef,coefferr = zeros(ncoef),zeros((ncoef,ncoef))
 
 		if grad is None:
@@ -220,8 +220,7 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 		coefferr = array(coefferr)
 
 		_y = func(_x,*coef)
-		_grad = array(grad(_x,*coef))
-		_grad = array(_grad).T
+		_grad = array(grad(_x,*coef)).T
 		_yerr = sqrt(einsum('ui,ij,uj->u',_grad,coefferr,_grad))
 
 	elif isinstance(func,str):
@@ -245,25 +244,19 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 			_yerr /= 2
 
 	elif isinstance(func,(tuple,list)):
-		_kwargs = {**kwargs,'x':x,'y':y,'_x':_x}
 		
-		func = piecewise(func,**_kwargs)
+		func = piecewise(func,**kwargs)
 
-		x,y = postprocess(x,y,*coef0)
-		
-		preprocess,postprocess = None,None
 
 		_returns = fit(
 			x,y,_x=_x,_y=_y,
 			func=func,grad=grad,
-			preprocess=preprocess,postprocess=postprocess,
 			xerr=xerr,yerr=yerr,
+			preprocess=None,postprocess=postprocess,
 			coef0=coef0,intercept=intercept,uncertainty=uncertainty,
 			**kwargs)
-		if uncertainty:
-			_y,coef,_yerr,coefferr,r = _returns
-		else:
-			_y,coef = _returns
+
+		return _returns
 		
 	else:
 		func = lambda x,*coef: y
@@ -272,16 +265,18 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 	if postprocess is None:
 		postprocess = lambda x,y,*coef: (x,y)	
 
+	if uncertainty:
+		y_ = func(x,*coef)
+		r = 1 - (((y - y_)**2).sum()/((y - y.mean())**2).sum())
+
 	if coef is not None:
 		_x,_y = postprocess(_x,_y,*coef)
+		x,y = postprocess(x,y,*coef)
+		x,_yerr = postprocess(x,_yerr,*coef)
 	elif coef0 is not None:
 		coef = zeros(coef0.shape)
 	else:
 		coef = None
-
-	if uncertainty:
-		y_ = func(x,*coef)
-		r = 1 - (((y - y_)**2).sum()/((y - y.mean())**2).sum())
 
 	if uncertainty:
 		return _y,coef,_yerr,coefferr,r
