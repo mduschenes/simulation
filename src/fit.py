@@ -10,7 +10,7 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import gradient,einsum
+from src.utils import gradient,einsum,diag
 from src.utils import array,zeros,ones
 from src.utils import lstsq,curve_fit,interp,piecewise
 from src.utils import exp,log,abs,sqrt,sort,norm,nanmean,nanstd,nansqrt,product,is_naninf
@@ -169,11 +169,25 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 	ncoef = len(coef0)
 
 	if preprocess is None:
-		preprocess = lambda x,y,*coef: (x,y)
+		preprocess = lambda x,y: (x,y)
 	
-	x,y = preprocess(x,y,*coef0)
+	if postprocess is None:
+		postprocess = lambda x,y: (x,y)	
 
-	x = x.at[is_naninf(x)].set(0)
+	if grad is None and callable(func):
+		grad = gradient(func,argnums=tuple(range(1,ncoef+1)),mode='fwd')
+	
+	if preprocess is not None:
+		gradpreprocess = gradient(preprocess,argnums=-1,mode='fwd')
+	
+	if postprocess is not None:
+		gradpostprocess = gradient(postprocess,argnums=-1,mode='fwd')
+
+	
+	x,y = preprocess(x,y)
+
+	if _x is None:
+		_x = x
 	y_ = _y
 
 	if func is None:
@@ -182,9 +196,8 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 			x = array([x,ones(x.size)]).T
 		else:
 			x = array([x]).T
-		if _x is None:
-			_x = x
-		elif intercept:
+		
+		if intercept:
 			_x = array([_x,ones(_x.size)]).T
 		else:
 			_x = array([_x]).T
@@ -192,42 +205,42 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 		try:
 			coef = lstsq(x,y)[0] + 0.0
 			_y = _x.dot(coef)
-			coefferr = zeros((*coef.shape,*coef.shape))
+			coeferr = zeros((*coef.shape,*coef.shape))
 			_yerr = zeros(_y.shape)
 		except:
 			coef = zeros(_x.shape[1])
 			_y = y
-			coefferr = zeros((*coef.shape,*coef.shape))
+			coeferr = zeros((*coef.shape,*coef.shape))
 			_yerr = zeros(_y.shape)
 
 	elif callable(func):
 		
-		if _x is None:
-			_x = x
-
-		kwargs['coef0'] = coef0
+		kwargs.update({'coef0':coef0,'yerr':yerr,'xerr':xerr})
 
 		try:
-			coef,coefferr = curve_fit(func,x,y,**kwargs)
+			coef,coeferr = curve_fit(func,x,y,**kwargs)
 		except Exception as e:
 			print(traceback.format_exc())
-			coef,coefferr = zeros(ncoef),zeros((ncoef,ncoef))
+			coef,coeferr = zeros(ncoef),zeros((ncoef,ncoef))
 
-		if grad is None:
-			grad = gradient(func,argnums=tuple(range(1,ncoef+1)),mode='fwd')
-		
 		coef = array(coef)
-		coefferr = array(coefferr)
+		coeferr = array(coeferr)
 
 		_y = func(_x,*coef)
 		_grad = array(grad(_x,*coef)).T
-		_yerr = sqrt(einsum('ui,ij,uj->u',_grad,coefferr,_grad))
+		_gradpostprocess = array(diag(gradpostprocess(_x,_y)[-1]))
+
+		_yerr = sqrt(einsum('u,ui,ij,uj,u->u',_gradpostprocess,_grad,coeferr,_grad,_gradpostprocess))
 
 	elif isinstance(func,str):
-		kwargs['kind'] = func
+
+		kwargs.update({'kind':func})
+		
 		_func = interp(x,y,**kwargs)
+		
 		func = lambda x,*coef,_func=_func: _func(x)
-		coef,coefferr = zeros(ncoef),zeros((ncoef,ncoef))
+		
+		coef,coeferr = zeros(ncoef),zeros((ncoef,ncoef))
 
 		_y = func(_x,*coef)
 
@@ -262,23 +275,18 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 		func = lambda x,*coef: y
 	
 
-	if postprocess is None:
-		postprocess = lambda x,y,*coef: (x,y)	
-
 	if uncertainty:
 		y_ = func(x,*coef)
 		r = 1 - (((y - y_)**2).sum()/((y - y.mean())**2).sum())
 
-	if coef is not None:
-		_x,_y = postprocess(_x,_y,*coef)
-		x,y = postprocess(x,y,*coef)
-		x,_yerr = postprocess(x,_yerr,*coef)
-	elif coef0 is not None:
-		coef = zeros(coef0.shape)
-	else:
-		coef = None
+	if coef is None:
+		coef = zeros(len(coef0))
+
+
+	_x,_y = postprocess(_x,_y)
+	x,y = postprocess(x,y)
 
 	if uncertainty:
-		return _y,coef,_yerr,coefferr,r
+		return _y,coef,_yerr,coeferr,r
 	else:
 		return _y,coef

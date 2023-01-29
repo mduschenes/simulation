@@ -213,7 +213,10 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 
 		# Convert string instance of elements to list, splitting string based on delimiter delimiter
 		try:
-			if isinstance(element,str) and delimiter:
+			if (
+				(isinstance(element,str) and delimiter) and 
+				(element not in iterable)):
+				#((element.count(delimiter)>0) and ((element not in iterable)) or (element.split(delimiter)[0] in iterable))):
 				e = tuple(element.split(delimiter))
 			elif isiterable(element,exceptions=scalars):
 				e = tuple(element)
@@ -618,14 +621,18 @@ def flatten(iterable,types=(list,)):
 	if not isinstance(iterable,types):
 		yield iterable
 	else:
-		try:
-			for element in iterable:
-				if isinstance(iterable,dict):
-					element = iterable[element]
-				yield from flatten(element,types=types)
-		except:
-			yield iterable
-
+		# try:
+		for element in iterable:
+			if isinstance(iterable,dict):
+				element = iterable[element]
+			yield from flatten(element,types=types)
+		
+		# except:
+		# 	try:
+		# 		yield iterable
+		# 	except GeneratorExit as exception:
+		# 		raise exception
+				
 	return
 
 

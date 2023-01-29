@@ -923,7 +923,7 @@ class Hamiltonian(Observable):
 		elif all(isinstance(datum,Operator) for datum in data):
 			data = {datum.timestamp: datum for datum in data}
 		
-		assert isinstance(data,dict), "Incorrect data format %r"%(type(data))			
+		assert isinstance(data,dict), 'Incorrect data format %r'%(type(data))			
 
 		operator.extend([data[name]['operator'] for name in data])
 		site.extend([data[name]['site'] for name in data])
@@ -1176,25 +1176,30 @@ class Callback(object):
 			kwargs (dict): Class keyword arguments
 		'''
 		self.defaults = {
-			"iteration":[],
-			"parameters":[],"grad":[],"search":[],
-			"value":[],"objective":[],
-			"alpha":[],"beta":[],
+			'iteration':[],
+			'parameters':[],'grad':[],'search':[],
+			'value':[],'objective':[],
+			'alpha':[],'beta':[],
 
-			"iteration.max":[],"iteration.min":[],
-			"features":[],"features.mean":[],"features.relative":[],
-			"objective.ideal.noise":[],"objective.diff.noise":[],"objective.rel.noise":[],
-			"objective.ideal.state":[],"objective.diff.state":[],"objective.rel.state":[],
-			"objective.ideal.operator":[],"objective.diff.operator":[],"objective.rel.operator":[],
-			"hessian":[],"fisher":[],
-			"hessian.eigenvalues":[],"fisher.eigenvalues":[],
-			"hessian.rank":[],"fisher.rank":[],
+			'iteration.max':[],'iteration.min':[],
+			'variables':[],'variables.mean':[],'variables.relative':[],
+			'features':[],'features.mean':[],'features.relative':[],
+			'objective.ideal.noise':[],'objective.diff.noise':[],'objective.rel.noise':[],
+			'objective.ideal.state':[],'objective.diff.state':[],'objective.rel.state':[],
+			'objective.ideal.operator':[],'objective.diff.operator':[],'objective.rel.operator':[],
+			'hessian':[],'fisher':[],
+			'hessian.eigenvalues':[],'fisher.eigenvalues':[],
+			'hessian.rank':[],'fisher.rank':[],
 
-			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],
+			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
+			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
 
-			"noise.scale":[],"optimize.c1":[],"optimize.c2":[],
+			'noise.scale':[],'optimize.c1':[],'optimize.c2':[],
 
+		}
+
+		self.updates = {
+			'iteration.max':True,'iteration.max':True,
 		}		
 		return
 
@@ -1221,14 +1226,18 @@ class Callback(object):
 		done = (len(attributes['iteration'])>1) and (attributes['iteration'][-1] == (iterations.stop))
 		
 		status = (
-			(len(attributes['value']) <= max(1,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1)) or
+			((len(attributes['value']) >= 1) and 
+			 (attributes['iteration'][-1] <= max(1,
+			 	hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) or
 			(
 			(abs(attributes['value'][-1]) > 
 				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
 			(abs(attributes['value'][-1] - attributes['value'][-2]) > 
-				(hyperparameters['eps']['difference']*attributes['value'][-2])) and
+				(hyperparameters['eps']['value.difference']*attributes['value'][-2])) and
+			(norm(attributes['grad'][-1])/attributes['grad'][-1].size > 
+				  (hyperparameters['eps']['grad']*hyperparameters['value']['grad'])) and
 			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
-				  (hyperparameters['eps']['grad']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))
+				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))
 			)
 			)
 
@@ -1237,20 +1246,23 @@ class Callback(object):
 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 
 		stop = (
-			(hyperparameters['eps']['increase'] is not None) and
-			(len(attributes['value'])>max(1,hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1)) and 
+			(hyperparameters['eps'].get('value.increase') is not None) and
+			((len(attributes['value']) > 1) and 
+			 (attributes['iteration'][-1] >= max(1,
+			 	hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and			
 			((attributes['value'][-1] - attributes['value'][-2]) > 
-			(hyperparameters['eps']['increase']*attributes['value'][-2]))
+			(hyperparameters['eps']['value.increase']*attributes['value'][-2]))
 			)
 
 		status = (status) and (not stop)
 
+
+		attrs = relsort(track,attributes)
+		size = min(len(track[attr]) for attr in track)
 		default = nan
 
 		if ((not status) or done or init or other) and (not stop):
-			attrs = relsort(track,attributes)
-			size = min(len(track[attr]) for attr in track)
-
+			
 			for attr in attrs:
 
 				if ((hyperparameters['length']['track'] is not None) and 
@@ -1259,43 +1271,33 @@ class Callback(object):
 					_value = track[attr].pop(0)
 				
 				value = default
-				update = False
 
 				if attr in attributes:
 					value = attributes[attr][-1]
 				
 				track[attr].append(value)
 
-
-				if attr in ['iteration.max'] and not ((not status) or done or init):
-					value = default
-				
-				elif attr in ['iteration.max'] and ((not status) or done or init):
+				if attr in ['iteration.max']:
 					value = track['iteration'][-1]
-					update = True
 
-				elif attr in ['iteration.min'] and not ((not status) or done or init):
-					value = default
-				
-				elif attr in ['iteration.min'] and ((not status) or done or init):
+				elif attr in ['iteration.min']:
 					value = track['iteration'][argmin(array(track['objective']))]
-					update = True
 
 				elif attr in ['value']:
 					value = attributes[attr][-1]
 
 				elif attr in ['parameters','grad','search'] and not ((not status) or done or init):
-					value = default
+					value = empty((*parameters.shape,)*1)
 
 				elif attr in ['parameters','grad','search'] and ((not status) or done or init):
 					value = attributes[attr][-1]
 
-				elif attr in ['features','features.mean','features.relative.mean'] and (init):
+				elif attr in ['variables','variables.mean','variables.relative.mean','features','features.mean','features.relative.mean'] and (init):
 					value = default
 
-				elif attr in ['features','features.mean','features.relative.mean'] and (not init):
+				elif attr in ['variables','variables.mean','variables.relative.mean','features','features.mean','features.relative.mean'] and (not init):
 
-					layer = 'features'
+					layer = attr.split(delim)[0]
 					prop = 'index'
 					indices = model.parameters.attributes[prop][layer]
 					indices = tuple([(
@@ -1322,16 +1324,16 @@ class Callback(object):
 											for group in indices[parameter]))
 						])
 
-					if attr in ['features']:
+					if attr in ['variables','features']:
 						value = model.__layers__(parameters,layer)[indices]
 					
-					elif attr in ['features.relative']:
+					elif attr in ['variables.relative','features.relative']:
 						eps = 1e-20
 						value = model.__layers__(parameters,layer)[indices]
 						_value = model.__layers__(attributes['parameters'][0],layer)[indices]
 						value = abs((value - _value + eps)/(_value + eps))
 					
-					elif attr in ['features.relative.mean']:
+					elif attr in ['variables.relative.mean','features.relative.mean']:
 						eps = 1e-20
 						value = model.__layers__(parameters,layer)[indices]
 						_value = model.__layers__(attributes['parameters'][0],layer)[indices]						
@@ -1343,13 +1345,7 @@ class Callback(object):
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
-					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and not ((not status) or done or init):
-					value = default
-
-				elif attr in [
-					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
-					'objective.ideal.state','objective.diff.state','objective.rel.state',
-					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or init):
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
 
 					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
 					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
@@ -1417,14 +1413,23 @@ class Callback(object):
 				elif attr not in attributes and hasattrs(model,attr,delimiter=delim):
 					value = getattrs(model,attr,default=default,delimiter=delim)
 
-
 				track[attr][-1] = value
 
-				if update:
+		elif (stop):
+			
+			for attr in attrs:
+				value = track[attr][-1]
+				track[attr].append(value)
+
+		if ((not status) or done or init or other):
+
+			for attr in attrs:
+				if self.updates.get(attr):
+					update = self.updates[attr]
 					if not callable(update):
-						update = lambda i,attr,value,track: value
+						update = lambda i,attr,track: track[attr][-1]
 					for i in range(size+1):
-						track[attr][i] = update(i,attr,value,track)
+						track[attr][i] = update(i,attr,track)
 
 
 		log = ((len(attributes['iteration']) == 1) or 
@@ -1456,11 +1461,6 @@ class Callback(object):
 				# to_string(abs(model.label()).round(4))),
 				to_string((model(parameters)).round(4)),
 				to_string((model.label()).round(4))),
-				*(['stop: diff = %0.4e , bound = %0.1e , %r %r'%(
-					(attributes['value'][-1] - attributes['value'][-2]),
-					(hyperparameters['eps']['increase']*attributes['value'][-2]),
-					stop,status
-					)] if len(attributes['value']) > 1 else []),
 				])
 
 

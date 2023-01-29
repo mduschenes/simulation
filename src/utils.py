@@ -1407,12 +1407,13 @@ def curve_fit(func,x,y,**kwargs):
 	Returns:
 		out (array): Curve fit returns
 	'''
-	defaults = {'p0':kwargs.pop('coef0'),'maxfev':10000}
+	defaults = {'p0':kwargs.pop('coef0',None),'sigma':kwargs.pop('yerr',None),'maxfev':1000,'absolute_sigma':False}
+
 	kwargs = {kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults}
 
 	x = onp.asarray(x)
 	y = onp.asarray(y)
-	kwargs['p0'] = onp.asarray(kwargs['p0'])
+	kwargs.update({kwarg: onp.asarray(kwargs[kwarg]) for kwarg in ['p0','sigma'] if kwarg in kwargs})
 
 	return osp.optimize.curve_fit(func,x,y,**kwargs)
 

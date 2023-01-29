@@ -1160,9 +1160,9 @@ class Optimization(System):
 			'iterations':None,
 			'optimizer':None,
 			'search':{'alpha':'line_search','beta':None},
-			'eps':{'value':1e-16,'grad':1e-18,'difference':1e-18,'increase':1e1,'iteration':1,'alpha':1e-7,'beta':1e3},
-			'value':{'value':1,'grad':1,'difference':1,'increase':1,'iteration':100,'alpha':0,'beta':0},
-			'bounds':{'value':[-1e20,1e20],'grad':[-1e12,1e12],'difference':[-1e20,1e20],'alpha':[1e-20,1e6],'beta':[-1e10,1e10]},	
+			'eps':{'value':1e-16,'grad':1e-18,'value.difference':1e-18,'grad.difference':1e-18,'value.increase':1e1,'iteration':1,'alpha':1e-7,'beta':1e3},
+			'value':{'value':1,'grad':1,'value.difference':1,'grad.difference':1,'value.increase':1,'iteration':100,'alpha':0,'beta':0},
+			'bounds':{'value':[-1e20,1e20],'grad':[-1e12,1e12],'alpha':[1e-20,1e6],'beta':[-1e10,1e10]},	
 			'kwargs':{},
 			'alpha':0,
 			'status':1,
@@ -1175,7 +1175,7 @@ class Optimization(System):
 			'track':{},		
 		}
 
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=None,func=False)
 
 		self.hyperparameters = hyperparameters
 		self.system = system
@@ -1336,7 +1336,7 @@ class Optimization(System):
 			state (object): optimizer state
 		'''
 
-		do = (self.path is not None) or (self.modulo['dump'] is None) or (iteration is None) or (iteration%self.modulo['dump'] == 0)
+		do = (self.path is not None) and ((self.modulo['dump'] is None) or (iteration is None) or (iteration%self.modulo['dump'] == 0))
 
 		if not do:
 			return
