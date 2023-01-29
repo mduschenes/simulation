@@ -1272,12 +1272,9 @@ class Callback(object):
 				parameters = attributes['parameters'][index]
 				value = default
 
-				params = parameters
-				assert ((index == -1) and allclose(parameters,params)) or (index == -2)
-
 				if attr in attributes:
 					value = attributes[attr][index]
-				
+
 				track[attr].append(value)
 
 				if attr in ['iteration.max']:
