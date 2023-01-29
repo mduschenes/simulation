@@ -249,8 +249,6 @@ def test_normalization(path,tol):
 		data = {}
 		obj = cls(data,shape,size=size,dims=dims,system=system,**kwargs)
 
-		# obj.info()
-
 		data = obj()
 
 		if obj.ndim == 1:

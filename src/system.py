@@ -326,10 +326,7 @@ class Logger(object):
 		return
 
 	def __str__(self):
-		try:
-			return str(self.file)
-		except:
-			return self.__class__.__name__
+		return str(self.file)
 
 	def __repr__(self):
 		return self.__str__()
@@ -472,8 +469,10 @@ class Space(System):
 		setter(kwargs,system,delimiter=delim,func=False)
 		super().__init__(**kwargs)
 
-		self.N = N if N is not None else 1
-		self.D = D if D is not None else 2
+		self.N = N
+		self.D = D
+		self.n = None
+		self.g = None
 		self.space = space		
 		self.default = 'spin'
 		self.system = system
@@ -486,12 +485,33 @@ class Space(System):
 		'''
 		Setup space attributes space,string,n
 		'''
+
+		funcs =  {
+			'spin':{
+				'N': (lambda N,D,n,g,space: int(log(n)/log(D))),
+				'D': (lambda N,D,n,g,space: int(n**(1/N))),
+				'n': (lambda N,D,n,g,space: int(D**N)),
+				'g': (lambda N,D,n,g,space: int(n**2 - 1)),
+				},
+			None:{
+				'N': (lambda N,D,n,g,space: int(log(n)/log(D))),
+				'D': (lambda N,D,n,g,space: int(n**(1/N))),
+				'n': (lambda N,D,n,g,space: int(D**N)),
+				'g': (lambda N,D,n,g,space: int(n**2 - 1)),
+				},				
+			}
+
+
 		if isinstance(self.space,Space):
 			self.space = self.space.space
 		if self.space is None:
 			self.space = self.default
+	
+		self.funcs = funcs.get(self.space,funcs[self.default])
+
 		self.__string__()
 		self.__size__()
+	
 		return
 
 	def __string__(self):
@@ -499,54 +519,23 @@ class Space(System):
 		return
 
 	def __size__(self):
-		self.n = self.get_n()
-		self.g = self.get_g()
+
+		assert sum(var is not None for var in [self.N,self.D]) > 1,'2 of 2 of N, D must be non-None'
+
+		self.n = self.funcs['n'](self.N,self.D,self.n,self.g,self.space)
+		self.g = self.funcs['g'](self.N,self.D,self.n,self.g,self.space)
+
 		self.size = self.n
+
 		return 
 
 	
 	def __str__(self):
-		try:
-			return str(self.string)
-		except:
-			return self.__class__.__name__
-
-	def __repr__(self):
 		return str(self.string)
 
-	def get_N(self):
-		if self.space in ['spin']:
-			try:
-				return int(log(self.n)/log(self.D))
-			except:
-				return 1
-		else:
-			try:
-				return int(log(self.n)/log(self.D))
-			except:
-				return 1			
-		return 		
-
-	def get_D(self):
-		if self.space in ['spin']:
-			return int(self.n**(1/self.N))
-		else:
-			return int(n**(1/self.N))
-		return
-
-	def get_n(self):
-		if self.space in ['spin']:
-			return self.D**self.N
-		else:
-			return self.D**self.N
-		return
-
-	def get_g(self):
-		if self.space in ['spin']:
-			return self.get_n()**2-1
-		else:
-			return self.get_n()**2-1
-		return			
+	def __repr__(self):
+		return self.__str__()
+		
 
 class Time(System):
 	'''
@@ -565,10 +554,10 @@ class Time(System):
 		setter(kwargs,system,delimiter=delim,func=False)
 		super().__init__(**kwargs)
 
-		self.M = M if M is not None else 1
-		self.T = T if T is not None else None
-		self.tau = tau if tau is not None or T is not None else None
-		self.P = P if P is not None else 1
+		self.M = M
+		self.T = T
+		self.tau = tau
+		self.P = P
 		self.time = time
 		self.default = 'linear'
 		self.system = system
@@ -581,67 +570,55 @@ class Time(System):
 		'''
 		Setup time evolution attributes tau
 		'''
+
+		funcs =  {
+			'linear':{
+				'M': (lambda M,T,tau,time: int(self.T/self.tau)),
+				'T': (lambda M,T,tau,time: self.M*self.tau),
+				'tau': (lambda M,T,tau,time: self.T/self.M),
+				},
+			None:{
+				'M': (lambda M,T,tau,time: int(self.T/self.tau)),
+				'T': (lambda M,T,tau,time: self.M*self.tau),
+				'tau': (lambda M,T,tau,time: self.T/self.M),
+				},				
+			}
+
 		if isinstance(self.time,Time):
 			self.time = self.time.time
 		if self.time is None:
 			self.time = self.default
+
+		self.funcs = funcs.get(self.time,funcs[self.default])
+		
 		self.__string__()
 		self.__size__()
+	
 		return
 
 	def __string__(self):
 		self.string = self.time
 		return
+
 	def __size__(self):
-		assert self.T is not None or self.tau is not None, 'Either T or tau must not be None'
-		self.tau = self.get_tau()
-		try:
-			self.T = self.get_T(self.tau)
-			self.M = self.get_M()			
-		except:
-			self.M = self.get_M(self.tau)
-			self.T = self.get_T()
+
+		assert sum(var is not None for var in [self.M,self.T,self.tau]) > 1,'2 of 3 of M, T, tau must be non-None'
+
+		if (self.M is not None) and (self.T is not None) and (self.tau is None):
+			self.tau = self.funcs['tau'](self.T,self.M,self.tau,self.time)
+		elif (self.M is not None) and (self.T is None) and (self.tau is not None):
+			self.T = self.funcs['T'](self.T,self.M,self.tau,self.time)
+		elif (self.M is None) and (self.T is not None) and (self.tau is not None):
+			self.M = self.funcs['M'](self.T,self.M,self.tau,self.time)
+
 		return 
 
 	def __str__(self):
-		try:
-			return str(self.string)
-		except:
-			return self.__class__.__name__
-
-	def __repr__(self):
 		return str(self.string)
 
-	def get_T(self,tau=None):
-		if tau is None:
-			tau = self.tau
-		if self.T is None:
-			if self.time in ['linear']:
-				return tau*self.M
-			else:
-				return tau*self.M
-		else:
-			return self.T
-		return 		
+	def __repr__(self):
+		return self.__str__()
 
-	def get_M(self,tau=None):
-		if tau is None:
-			tau = self.tau		
-		if self.time in ['linear']:
-			return int(round(self.T/tau))
-		else:
-			return int(round(self.T/tau))
-		return
-
-	def get_tau(self):
-		if self.tau is None:
-			if self.time in ['linear']:
-				return self.T/self.M
-			else:
-				return self.T/self.M
-		else:
-			return self.tau
-		return	
 
 class Lattice(System):
 	'''
@@ -661,6 +638,17 @@ class Lattice(System):
 		setter(kwargs,system,delimiter=delim,func=False)
 		super().__init__(**kwargs)
 
+		funcs = {
+			'square': {
+				'L': (lambda N,d,L,delta,n,z,lattice: L if L is not None else float(N)),
+				'delta': (lambda N,d,L,delta,n,z,lattice: delta if delta is not None else L/n),
+			},
+			None: {
+				'L': (lambda N,d,L,delta,n,z,lattice: L if L is not None else float(N)),
+				'delta': (lambda N,d,L,delta,n,z,lattice: delta if delta is not None else L/n),
+			}			
+		}
+
 		# Define lattice
 		if isinstance(lattice,Lattice):
 			lattice = lattice.lattice
@@ -668,11 +656,12 @@ class Lattice(System):
 			lattice = lattice
 
 		# Define parameters of system        
-		self.lattice = lattice
 		self.N = N
 		self.d = d
-		self.L = L if L is not None else self.N
-		self.delta = delta if delta is not None else self.L/self.N
+		self.L = L
+		self.delta = delta
+		self.lattice = lattice	
+		self.default = 'square'
 		self.system = system
 
 		# Check system
@@ -684,6 +673,7 @@ class Lattice(System):
 			d = 0
 			n = 0
 			z = 0
+			self.lattice = self.default
 		elif self.lattice in ['square','square-nearest']:
 			n = int(N**(1/d))
 			z = 2*d
@@ -696,7 +686,8 @@ class Lattice(System):
 		self.n = n
 		self.z = z
 
-
+		self.funcs = funcs.get(self.lattice,funcs[self.default])
+	
 		# Define attributes
 		self.__size__()
 		self.__shape__()
@@ -767,7 +758,13 @@ class Lattice(System):
 		return
 		
 	def __size__(self):
+	
 		self.size = self.N
+
+		self.L = self.funcs['L'](self.N,self.d,self.L,self.delta,self.n,self.z,self.lattice)
+		self.delta = self.funcs['delta'](self.N,self.d,self.L,self.delta,self.n,self.z,self.lattice)
+
+
 		return 
 
 	def __shape__(self):
@@ -775,14 +772,11 @@ class Lattice(System):
 		return
 
 	def __str__(self):
-		try:
-			return str(self.string)
-		except:
-			return self.__class__.__name__
+		return str(self.string)
 
 	def __repr__(self):
-		return self.string
-		
+		return self.__str__()
+
 	def position(self,site):
 		'''
 		Return position coordinates in d-dimensional n^d lattice 

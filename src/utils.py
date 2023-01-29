@@ -2260,7 +2260,11 @@ def product(a):
 	Returns:
 		out (array): Reduced array of product of elements
 	'''
-	return onp.prod(a)
+	try:
+		out = onp.prod(a)
+	except:
+		out = 0
+	return 0
 
 
 def where(conditions):

@@ -134,10 +134,7 @@ class Operator(System):
 		return self.data
 
 	def __str__(self):
-		try:
-			return delim.join(self.operator)
-		except:
-			return self.__class__.__name__
+		return delim.join(self.operator)
 
 	def __repr__(self):
 		return self.__str__()
@@ -168,7 +165,7 @@ class Observable(System):
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
 		P (int): Trotter order		
-		space (str,Space): Type of Hilbert space
+		space (str,Space): Type of local space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice	
 		parameters (str,dict,Parameters): Type of parameters	
@@ -206,14 +203,9 @@ class Observable(System):
 		self.interaction = []
 		self.indices = []
 
-		self.shape = ()
-		self.size = int(product(self.shape))
-		self.ndim = len(self.shape)
-		self.shapes = (self.shape,self.shape)
-		self.dims = (self.M if self.M is not None else 0,len(self.data),*self.shape)
-		self.length = int(product(self.dims))
-		self.ndims = len(self.dims)
-
+		self.n = None
+		self.g = None
+		
 		self.parameters = parameters
 		self.state = state
 		self.noise = noise
@@ -229,6 +221,7 @@ class Observable(System):
 
 		self.system = system
 
+		self.__shape__()
 		self.__time__()
 		self.__space__()
 		self.__lattice__()
@@ -347,8 +340,7 @@ class Observable(System):
 		self.string.insert(index,string)
 		self.interaction.insert(index,interaction)
 
-		self.dims = (self.M,len(self.data),*self.shape)
-		self.ndims = len(self.dims)		
+		self.__shape__()
 
 		return
 
@@ -371,7 +363,7 @@ class Observable(System):
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
 		system = self.system
 
-		parameters = Parameters(parameters,shape,dims=dims,system=system,cls=cls,check=check,initialize=initialize)
+		parameters = Parameters(parameters,shape,dims=dims,cls=cls,check=check,initialize=initialize,system=system)
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.P		
@@ -404,12 +396,13 @@ class Observable(System):
 		shape = self.shape
 		dims = [self.N,self.D]
 		system = self.system
+		cls = self
 
 		# Get state
 		kwargs.clear()
 		setter(kwargs,self.state)
 		setter(kwargs,state)
-		setter(kwargs,dict(data=state,shape=shape,dims=dims,system=system))
+		setter(kwargs,dict(data=state,shape=shape,dims=dims,cls=cls,system=system))
 		self.state = State(**kwargs)
 		state = self.state()
 
@@ -417,7 +410,7 @@ class Observable(System):
 		kwargs.clear()
 		setter(kwargs,self.noise)
 		setter(kwargs,noise)
-		setter(kwargs,dict(data=noise,shape=shape,dims=dims,system=system))
+		setter(kwargs,dict(data=noise,shape=shape,dims=dims,cls=cls,system=system))
 		self.noise = Noise(**kwargs)
 		noise = self.noise()
 
@@ -425,7 +418,7 @@ class Observable(System):
 		kwargs.clear()
 		setter(kwargs,self.label)
 		setter(kwargs,label)
-		setter(kwargs,dict(data=label,shape=shape,dims=dims,system=system))
+		setter(kwargs,dict(data=label,shape=shape,dims=dims,cls=cls,system=system))
 		self.label = Gate(**kwargs)
 		label = self.label()
 
@@ -631,13 +624,40 @@ class Observable(System):
 		return self.__layers__(parameters,layer)
 
 
+	def __shape__(self,data=None,N=None,D=None,M=None):
+		'''
+		Set shape attributes
+		Args:
+			data (iterable[Operator]): Class data
+			N (int): Number of qudits
+			D (int): Dimension of qudits
+			M (int): Number of time steps
+		'''
+
+		if (data is not None):
+			self.__append__(data)
+		if (N is not None) and (D is not None):
+			self.__space__(N=N,D=D)
+		if (M is not None):
+			self.__time__(M=M)
+
+		self.shape = () if self.n is None else (self.n,self.n)
+		self.size = int(product(self.shape))
+		self.ndim = len(self.shape)
+		self.shapes = (self.shape,self.shape)
+		self.dims = (self.M,len(self.data),*self.shape)
+		self.length = int(product(self.dims))
+		self.ndims = len(self.dims)
+
+		return
+
 	def __space__(self,N=None,D=None,space=None,system=None):
 		'''
 		Set space attributes
 		Args:
 			N (int): Number of qudits
 			D (int): Dimension of qudits
-			space (str,Space): Type of Hilbert space
+			space (str,Space): Type of local space
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 
@@ -652,12 +672,8 @@ class Observable(System):
 		self.D = self.space.D		
 		self.n = self.space.n
 		self.g = self.space.g
-		self.shape = (self.n,self.n)
-		self.size = int(product(self.shape))
-		self.ndim = len(self.shape)
-		self.dims = (self.M,len(self.data),*self.shape)
-		self.length = int(product(self.dims))
-		self.ndims = len(self.dims)
+
+		self.__shape__()
 		
 		self.identity = Operator(N=self.N,D=self.D,system=self.system)
 
@@ -688,8 +704,8 @@ class Observable(System):
 		self.T = self.time.T
 		self.P = self.time.P
 		self.tau = self.time.tau
-		self.dims = (self.M,self.dims[1:])	
-		self.ndims = len(self.dims)
+		
+		self.__shape__()
 
 		return
 
@@ -724,22 +740,19 @@ class Observable(System):
 		return
 
 	def __str__(self):
-		try:
-			size = len(self.data)
-			delimiter = ' '
-			multiple_time = (self.M>1)
-			multiple_space = [size>1 and False for i in range(size)]
-			return '%s%s%s%s'%(
-					'{' if multiple_time else '',
-					delimiter.join(['%s%s%s'%(
-						'(' if multiple_space[i] else '',
-						self.string[i],
-						')' if multiple_space[i] else '',
-						) for i in range(size)]),
-					'}' if multiple_time else '',
-					'^%d'%(self.M) if multiple_time else '')
-		except AttributeError:
-			return self.__class__.__name__
+		size = len(self.data)
+		delimiter = ' '
+		multiple_time = (self.M>1) if self.M is not None else None
+		multiple_space = [size>1 and False for i in range(size)]
+		return '%s%s%s%s'%(
+				'{' if multiple_time else '',
+				delimiter.join(['%s%s%s'%(
+					'(' if multiple_space[i] else '',
+					self.string[i],
+					')' if multiple_space[i] else '',
+					) for i in range(size)]),
+				'}' if multiple_time else '',
+				'%s'%('^%s'%(self.M) if multiple_time else '') if multiple_time else '')
 
 	def __repr__(self):
 		return self.__str__()
@@ -755,9 +768,9 @@ class Observable(System):
 		'''		
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
-				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','shape','dims','cwd','path','backend','architecture','conf','logger','cleanup']
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','shape','dims','cwd','path','backend','architecture','conf','logger','cleanup']
 			],
-			*['%s: %s'%(attr[0].split(delim)[0],getattrs(self,attr[1],delimiter=delim) if getattrs(self,attr[0],delimiter=delim) else getattrs(self,attr[0],delimiter=delim)) 
+			*['%s: %s'%(attr[0].split(delim)[0],'%0.3e'%(getattrs(self,attr[1],delimiter=delim)) if getattrs(self,attr[0],delimiter=delim) else getattrs(self,attr[0],delimiter=delim)) 
 				for attr in [['state.init','state.scale'],['noise.init','noise.scale']]
 			],
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).__name__) 
@@ -859,7 +872,7 @@ class Hamiltonian(Observable):
 		T (int): Simulation time
 		tau (float): Simulation time scale
 		P (int): Trotter order		
-		space (str,Space): Type of Hilbert space
+		space (str,Space): Type of local space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice		
 		parameters (str,dict,Parameters): Type of parameters	
@@ -1044,7 +1057,7 @@ class Unitary(Hamiltonian):
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
 		P (int): Trotter order		
-		space (str,Space): Type of Hilbert space
+		space (str,Space): Type of local space
 		time (str,Time): Type of Time evolution space
 		lattice (str,Lattice): Type of lattice
 		parameters (str,dict,Parameters): Type of parameters	
@@ -1474,273 +1487,3 @@ class Callback(object):
 
 
 
-
-from typing import List,Tuple
-import equinox as nn
-
-class module(nn.Module):
-	pass
-
-class OpModule(module,System):
-	'''
-	Class for Observable
-	Args:
-		data (dict,str,array): dictionary of operator attributes, or string or array for operator. Allowed strings in ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI'], allowed dictionary keys in
-			operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']
-			site (iterable[int]): site of local operators
-			string (str): string label of operator
-			interaction (str): interaction type of operator
-		operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']
-		site (iterable[int]): site of local operators
-		string (str): string label of operator
-		interaction (str): interaction type of operator
-		hyperparameters (dict) : class hyperparameters
-		N (int): Number of qudits
-		D (int): Dimension of qudits
-		space (str,Space): Type of Hilbert space
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		kwargs (dict): Additional system keyword arguments	
-	'''
-
-	data : None
-	operator : str
-	site : List[int]
-	string : str
-	interaction : str
-	hyperparameters : dict
-	N : int
-	D : int
-	space : str
-	system : dict
-
-	n : int
-	shape : Tuple[int]
-	size : int
-	ndim : int
-	locality : int
-
-	identity : array
-
-	dtype: str
-	format : str
-	seed : int
-	key : List[int]
-	timestamp : str
-	backend : str
-	architecture : str
-	verbose : int
-
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
-					N=None,D=None,space=None,system=None,**kwargs):
-
-		setter(kwargs,system,delimiter=delim,func=False)
-		super().__init__(**kwargs)
-
-		self.N = N
-		self.D = D
-		self.space = space
-		self.system = system
-
-		self.__space__()
-		self.__setup__(data,operator,site,string,interaction)
-		
-		return
-
-	
-	def __space__(self,N=None,D=None,space=None,system=None):
-		'''
-		Set space attributes
-		Args:
-			N (int): Number of qudits
-			D (int): Dimension of qudits
-			space (str,Space): Type of Hilbert space
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
-		'''
-		N = self.N if N is None else N
-		D = self.D if D is None else D
-		space = self.space if space is None else space
-		system = self.system if system is None else system
-
-		space = Space(N,D,space,system=system)
-
-		self.N = space.N
-		self.D = space.D		
-		self.n = space.n
-		self.shape = (self.n,self.n)
-		self.size = int(product(self.shape))
-		self.ndim = len(self.shape)
-		
-		self.identity = Operator(N=self.N,D=self.D,system=self.system)
-
-		return
-	
-	def __str__(self):
-		try:
-			return str(self.string)
-		except:
-			return self.__class__.__name__
-
-	def __repr__(self):
-		return self.__str__()
-	
-	def __len__(self):
-		return len(self.data)
-	
-	@nn.filter_jit
-	def __call__(self,parameters,state=None):
-		'''
-		Return parameterized operator 
-		Args:
-			parameters (array): Parameters to parameterize operator			
-			state (array): State to apply operator
-		Returns
-			operator (array): Parameterized operator
-		'''		
-		parameters = self.__parameters__(parameters)
-
-		if state is None:
-			operator = parameters*self.data
-		else:
-			operator = dot((parameters*self.data),state)
-		return operator
-
-	@nn.filter_jit
-	def __parameters__(self,parameters):
-		''' 
-		Setup parameters
-		Args:
-			parameters (array): parameters
-		Returns:
-			parameters (array): parameters
-		'''
-		return parameters
-
-	@nn.filter_jit
-	def __apply__(self,parameters,state=None):
-		'''
-		Return parameterized operator 
-		Args:
-			parameters (array): Parameters to parameterize operator			
-			state (array): State to apply operator
-		Returns
-			operator (array): Parameterized operator
-		'''
-		
-		parameters = self.__parameters__(parameters)
-
-		if state is None:
-			operator = parameters*self.data
-		else:
-
-			for site in self.site:
-				state = self.__swap__(state,site)
-				operator = dot(parameters*self.data,state)
-				operator = operator.reshape(self.shape)
-				state = self.__reshape__(state,site)
-
-		return operator
-
-	@nn.filter_jit
-	def __swap__(self,state,site):
-		'''
-		Swap axes of state at site
-		Args:
-			state (array): State to apply operator of shape (n,)
-			site (iterable[int]): Axes to apply operator of size locality
-		Returns
-			state (array): State to apply operator of shape (*(D)*locality,n/D**locality)
-		'''
-		# TODO Implement SWAP
-		raise NotImplementedError
-
-		locality = len(site)
-		axes = range(locality)
-		shape = (*(self.D)*locality,-1)
-
-		state = moveaxis(state,site,axes).reshape(shape)
-
-		return state
-
-	@nn.filter_jit
-	def __reshape__(self,state,site):
-		'''
-		Reshape state to shape (n,)
-		Args:
-			state (array): State to apply operator of shape (n,)
-			site (iterable[int]): Axes to apply operator
-		Returns
-			state (array): State to apply operator of shape (D,D,n/D**2)
-		'''
-
-		# TODO Implement RESHAPE
-		raise NotImplementedError
-
-		locality = len(site)
-		axes = range(locality)
-		shape = (self.n,)
-
-		state = moveaxis(state.reshape(shape),site,axes)
-
-		return state
-
-
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
-		'''
-		Setup class
-		Args:
-			data (dict,str,array): dictionary of operator attributes, or string or array for operator. Allowed strings in ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI'], allowed dictionary keys in
-						operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']
-						site (iterable[int]): site of local operators
-						string (str): string label of operator
-						interaction (str): interaction type of operator
-			operator (str,iterable[str],array): string or array for operator, allowed ['X','Y','Z','I','CNOT','HADAMARD','TOFFOLI']
-			site (iterable[int]): site of local operators
-			string (str): string label of operator
-			interaction (str): interaction type of operator
-		'''
-
-		dtype = 'complex'
-		basis = {
-			'I': array([[1,0],[0,1]]),
-			'X': array([[0,1],[1,0]]),
-			'Y': array([[0,-1j],[1j,0]]),
-			'Z': array([[1,0],[0,-1]]),
-		}
-
-		if isinstance(data,str):
-			operator = data
-		elif is_array(data):
-			operator = data
-				
-		if operator is None:
-			operator = ''
-		if site is None:
-			site = list(range(len(operator)))
-		if string is None:
-			string = '%s_%s'%(operator,''.join(['%d'%(i) for i in site]))
-		else:
-			string = '%s_%s'%(string,''.join(['%d'%(i) for i in site]))
-		if interaction is None:
-			interaction = ''
-		if hyperparameters is None:
-			hyperparameters = {}
-
-		self.data = data
-		self.operator = operator
-		self.site = site
-		self.string = string
-		self.interaction = interaction
-		self.locality = len(site)
-		
-		if isinstance(self.data,dict):
-			for attr in self.data:
-				setattr(self,attr,self.data[attr])
-
-		self.data = self.operator
-		if not is_array(self.data):
-			self.data = [basis[operator] for operator in self.data]
-			self.data = tensorprod(self.data)
-
-		self.data = self.data.astype(self.dtype)
-
-		return

@@ -19,10 +19,11 @@
 	"permutations":{	
 	
 		"model.N":[2],		
-		"model.M":[200],		
-		"model.tau":[20e0],		
-		"noise.init":[true,false],
+		"model.M":[null],		
+		"model.tau":[10,20,100,1000],		
+		"model.T": [5e4],
 		"noise.scale":[1e-12],
+		"noise.initialization":["time"],
 		"state.scale":[1],
 
 		"optimize.iterations":[200],
@@ -191,8 +192,8 @@
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
 		"parameters":[7.24e-2,-1.3e-3,5e-2,8e-2,2e-3,2e-2,-3e-2,6e-2,9e-3,-6e-3],								
+		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],
