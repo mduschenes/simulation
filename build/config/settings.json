@@ -1,8 +1,8 @@
 {
 "class":{
-	"model":"src.quantum.Unitary",
-	"callback":"src.quantum.Callback"
-	},
+    "model":"src.quantum.Unitary",
+    "callback":"src.quantum.Callback"
+    },
 "hyperparameters":null, 
 "boolean":{
     "train":1,
@@ -62,9 +62,9 @@
     "search":{"alpha":"line_search","beta":"hestenes_stiefel"},
     "search":{"alpha":"line_search","beta":"fletcher_reeves"},
     "search":{"alpha":"line_search","beta":"dai_yuan"},
-    "eps":{"value":1e-16,"grad":1e-18,"difference":1e-18,"increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
-    "value":{"value":1,"grad":1,"difference":1,"increase":1,"iteration":100,"alpha":0,"beta":0},
-    "bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"difference":[-1e20,1e20],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},  
+    "eps":{"value":1e-16,"grad":1e-18,"value.difference":1e-18,"grad.difference":1e-18,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
+    "value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":10,"alpha":0,"beta":0},
+    "bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},    
     "status":1,
     "clear":false,
     "kwargs":{"noise":1e-3},
@@ -89,7 +89,8 @@
 
             "iteration.max":[],
             "iteration.min":[],
-            "features":false,"features.relative":false,"features.relative.mean":[],
+            "variables":false,"variables.relative":false,"variables.relative.mean":[],
+            "features":false,"features.relative":false,"features.relative.mean":false,
             "objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
             "objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
             "objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
@@ -194,7 +195,7 @@
     "bounds":[-1,1]
     },
 "noise": {
-    "string":"phase",
+    "string":"dephase",
     "category":"constant",
     "shape":[-1,-1],
     "size":null,
@@ -248,7 +249,7 @@
             "JOB_SRC":"~/files/uw/research/code/simulation/code/src",
             "JOB_CMD":"process.py",
             "JOB_PROCESSES":1,          
-            "JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--cwd=."]
+            "JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--cwd=.","--pwd=."]
             },
         "paths":{
             "plot":"plot.json",
