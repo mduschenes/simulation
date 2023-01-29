@@ -13,7 +13,7 @@
 		"noise.scale.objective.diff.M":0,
 		"M.objective.noise.scale":1,
 		"M.objective.noise.scale.noiseless":1,
-		"M.features.relative.mean.N.iteration": 1,
+		"M.variables.relative.mean.N.iteration": 1,
 		"M.iteration.min.N": 0,
 		"None.hessian.eigenvalues.M": 1,
 		"None.fisher.eigenvalues.M": 1

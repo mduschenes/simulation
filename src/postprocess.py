@@ -17,7 +17,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig,mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,exp,log,log10,sqrt,piecewise,interp
+from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig,mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,exp,exp10,log,log10,sqrt,piecewise,interp
 from src.utils import is_naninf
 from src.utils import nan,delim
 from src.iterables import setter,getter,flatten
@@ -283,12 +283,13 @@ def postprocess(path,**kwargs):
 				
 				key = ['M.objective.noise.scale','None','ax','errorbar']
 				label = {'x':'noise.scale','y':'M','z':'objective'}
+				axes = AXIS
 				other = OTHER
 				values = list(flatten(getter(hyperparameters,key)))
 				slices = slice(None,None,None)
 
 				for axis in label:
-					ax = [ax for ax in AXIS if all(((ax in value[other]) and (value[other][ax]['axis'] == label[axis])) for value in values)]
+					ax = [ax for ax in axes if all(((ax in value[other]) and (value[other][ax]['axis'] == label[axis])) for value in values)]
 
 					if ax:
 						ax = ax[0]
@@ -307,7 +308,8 @@ def postprocess(path,**kwargs):
 					except Exception as exception:
 						pass
 
-				slices = range(3,len(data[label['y']])-3)
+				slices = range(4,len(data[label['y']])-5)
+				slices = [6]#range(4,len(data[label['y']])-5)
 
 				X = array([data['%s'%(label['x'])][i] for i in slices])
 				Y = array([data['%s'%(label['y'])][i] for i in slices])
@@ -340,39 +342,33 @@ def postprocess(path,**kwargs):
 						_yerr = zeros(_n)
 
 						func = [
-							(lambda x,*coef: exp(coef[1] - coef[0]*x)),
-							(lambda x,*coef: coef[1] + coef[0]*x),
-							]
-						bounds0 = ((2000-1000)/(-12--7))*(log10(x_)--7) + 1000
-
-						coef0 = (((2000-1000)/(-12--7),1e-1),(1,1))
-						kwargs = {'maxfev':1000000}
+								(lambda x,*coef: coef[1] + coef[0]*x),
+								(lambda x,*coef: coef[2]*log10(x-coef[1]) + coef[0]),
+								]
+						coef0 = array([
+							y_[slices][argmin(z_[slices])],
+							(z_[slices][argmin(z_[slices])] - z_[slices][0])/(y_[slices][argmin(z_[slices])] - y_[slices][0]),1,
+							1,y_[slices][argmin(z_[slices])],1
+							])
+						kwargs = {'shape':[1,2,3]}
+						preprocess = lambda x,y: (x,log10(y))
+						postprocess = lambda x,y: (x,exp10(y))
 
 						# func = 'linear'
 						# coef0 = None
-						# bounds0 = None
 						# kwargs = {'smooth':0}
+						# preprocess = lambda x,y: (x,y)
+						# postprocess = lambda x,y: (x,y)
 
-						_z,_coef,_zerr,_coefferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef0=coef0,bounds=bounds0,uncertainty=True,**kwargs)	
+						_z,_coef,_zerr,_coefferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef0=coef0,uncertainty=True,preprocess=preprocess,postprocess=postprocess,**kwargs)	
 
 						index = int(argmin(_z))
-
-						_coefs = [[_coef[i] for i in range(2*j + sum(len(coef0[k]) for k in range(j)),2*(j+1) + sum(len(coef0[k]) for k in range(j+1)))] for j in range(len(coef0))]
-
-						print(_coefs)
-						funcs = piecewise(func,_coefs,bounds=True,split=True)
-
-						_zs = funcs(_y,*_coef)
-
-						index = int(where(_y==_zs[0][-1][-1])[0][0])
+						indexerr = (int(argmin(_z+_zerr)) + int(argmin(_z-_zerr)))//2
 
 						print(_x,_r)
-						# kind = 5
-						# smooth = 0
-						# der = 2
-						# ddy = interp(y_[slices],z_[slices],kind=kind,smooth=smooth,der=der)(_y)
-						# index = int(argmax(ddy))
-
+						print(coef0)
+						print(_coef)
+						print()
 
 						_X.append(_x)
 						_Y.append(_y)
@@ -383,8 +379,8 @@ def postprocess(path,**kwargs):
 						x.append(_x)
 						y.append(_y[index])
 						z.append(_z[index])
-						yerr.append(_yerr[index])
-						zerr.append(10*mean(_zerr) if _zerr is not None else None)
+						yerr.append(_yerr[indexerr])
+						zerr.append(_zerr[index])
 						indexes.append(index)
 						coefs.append(_coef)
 						coeferrs.append(_coefferr)
@@ -501,12 +497,12 @@ def postprocess(path,**kwargs):
 				y = array(y)
 				xerr = array(xerr) if xerr is not None else xerr
 				yerr = array(yerr) if yerr is not None else yerr
-				indices = arange(len(x))[(x>=1e-28) & (x<=1e3) & (x != 1e0)]
+				slices = arange(len(x))[(x>=1e-28) & (x<=1e3) & (x != 1e0)]
 
-				# x = x[indices]
-				# y = y[indices]
-				# xerr = xerr[indices] if xerr is not None else xerr
-				# yerr = yerr[indices] if yerr is not None else yerr
+				# x = x[slices]
+				# y = y[slices]
+				# xerr = xerr[slices] if xerr is not None else xerr
+				# yerr = yerr[slices] if yerr is not None else yerr
 
 				def func(x,*coef):
 					# y = coef[0]*((x)**(-coef[2])) + coef[1]
@@ -518,19 +514,16 @@ def postprocess(path,**kwargs):
 					return y
 
 				_x = logspace(int(log10(x.min()))-2,int(log10(x.max()))+1,x.size*100)
-				# _x = x
 				p = 2
-				# coef0 = array([-50,0,1],dtype=float)[:p]
-				coef0 = array([0.5,1],dtype=float)[:p]
+				coef0 = array([0.5,1.0])[:p]
 				kwargs = {
-					'maxfev':20000,
-					# 'bounds':array([[-100,-100,1][:p],[-20,-20,2][:p]],dtype=float)
+					'maxfev':200000,
 				}
 
-				_y,coef,_yerr,coefferr,r = fit(x[indices],y[indices],_x=_x,_y=y[indices],
+				_y,coef,_yerr,coefferr,r = fit(x[slices],y[slices],_x=_x,_y=y[slices],
 					func=func,coef0=coef0,
-					yerr=yerr[indices] if yerr is not None else yerr,
-					xerr=xerr[indices] if xerr is not None else xerr,
+					yerr=yerr[slices] if yerr is not None else yerr,
+					xerr=xerr[slices] if xerr is not None else xerr,
 					uncertainty=True,**kwargs)
 				
 
