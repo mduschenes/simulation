@@ -18,8 +18,8 @@
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[4],		
-		"model.M":[3000],		
+		"model.N":[2],		
+		"model.M":[200],		
 		"model.tau":[20e0],		
 		"noise.scale":[1e-12],
 		"state.scale":[1],
@@ -30,8 +30,8 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"parameters.xy.method":["unconstrained"],
-		"system.architecture":["unconstrained"],
+		"parameters.xy.method":["constrained"],
+		"system.architecture":["constrained"],
 
 		"jobs.job.cwd":["test"],	
 		"jobs.postprocess.cwd":["test"],
@@ -102,8 +102,8 @@
 	"kwargs":{"noise":1e-3},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
-	"modulo":{"log":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":10},
-	"length":{"log":null,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
+	"modulo":{"log":null,"buffer":1,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":10},
+	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
@@ -122,12 +122,12 @@
 			"iteration.max":[],
 			"iteration.min":[],
 			"variables":false,"variables.relative":false,"variables.relative.mean":[],
-			"features":false,"features.relative":false,"features.relative.mean":false,
-			"objective.ideal.noise":0,"objective.diff.noise":0,"objective.rel.noise":0,
-			"objective.ideal.state":0,"objective.diff.state":0,"objective.rel.state":0,
+			"features":false,"features.relative":false,"features.relative.mean":[],
+			"objective.ideal.noise":0,"objective.diff.noise":0,"objective.rel.noise":1,
+			"objective.ideal.state":1,"objective.diff.state":1,"objective.rel.state":0,
 			"objective.ideal.operator":0,"objective.diff.operator":0,"objective.rel.operator":0,
 			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":0,"fisher.eigenvalues":0,
+			"hessian.eigenvalues":1,"fisher.eigenvalues":1,
 			"hessian.rank":0,"fisher.rank":0,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
@@ -154,11 +154,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},

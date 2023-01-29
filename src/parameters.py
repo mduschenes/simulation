@@ -135,7 +135,6 @@ def _constraints(hyperparameters,parameter,group):
 	method = hyperparameters[parameter]['method']
 	scale = hyperparameters[parameter]['kwargs'].get('lambda',1)
 	constants = hyperparameters[parameter]['constants']['features'][-1]
-
 	if method in ['constrained']:
 		if parameter in ['xy'] and group in [('x',),('y',)]:
 			def func(parameters):

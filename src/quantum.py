@@ -1198,9 +1198,6 @@ class Callback(object):
 
 		}
 
-		self.updates = {
-			'iteration.max':True,'iteration.max':True,
-		}		
 		return
 
 	def __call__(self,parameters,track,optimizer,model,metric,func,grad):
@@ -1256,12 +1253,13 @@ class Callback(object):
 
 		status = (status) and (not stop)
 
+		updates = {'iteration.max':True,'iteration.min':True}
 
 		attrs = relsort(track,attributes)
 		size = min(len(track[attr]) for attr in track)
 		default = nan
 
-		if ((not status) or done or init or other) and (not stop):
+		if ((not status) or done or init or other):
 			
 			for attr in attrs:
 
@@ -1270,32 +1268,40 @@ class Callback(object):
 					):
 					_value = track[attr].pop(0)
 				
+				index = -1 if (not stop) else -2
+				parameters = attributes['parameters'][index]
 				value = default
 
+				params = parameters
+				assert ((index == -1) and allclose(parameters,params)) or (index == -2)
+
 				if attr in attributes:
-					value = attributes[attr][-1]
+					value = attributes[attr][index]
 				
 				track[attr].append(value)
 
 				if attr in ['iteration.max']:
-					value = track['iteration'][-1]
+					value = track['iteration'][index]
 
 				elif attr in ['iteration.min']:
 					value = track['iteration'][argmin(array(track['objective']))]
 
 				elif attr in ['value']:
-					value = attributes[attr][-1]
+					value = attributes[attr][index]
 
 				elif attr in ['parameters','grad','search'] and not ((not status) or done or init):
-					value = empty((*parameters.shape,)*1)
+					value = empty(track[attr][index].shape)
 
 				elif attr in ['parameters','grad','search'] and ((not status) or done or init):
-					value = attributes[attr][-1]
+					value = attributes[attr][index]
 
-				elif attr in ['variables','variables.mean','variables.relative.mean','features','features.mean','features.relative.mean'] and (init):
+				elif attr in ['variables','features'] and not ((not status) or done or init):
+					value = empty(track[attr][index].shape)
+
+				elif attr in ['variables.mean','variables.relative.mean','features.mean','features.relative.mean'] and not ((not status) or done or init):
 					value = default
 
-				elif attr in ['variables','variables.mean','variables.relative.mean','features','features.mean','features.relative.mean'] and (not init):
+				elif attr in ['variables','variables.mean','variables.relative.mean','features','features.mean','features.relative.mean'] and ((not status) or done or init):
 
 					layer = attr.split(delim)[0]
 					prop = 'index'
@@ -1341,11 +1347,18 @@ class Callback(object):
 
 				elif attr in ['objective']:
 					value = metric(model(parameters))
+				
+				elif attr in [
+					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
+					'objective.ideal.state','objective.diff.state','objective.rel.state',
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and not ((not status) or done or init):
+					value = default
+
 
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
-					'objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or init):
 
 					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
 					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
@@ -1373,9 +1386,9 @@ class Callback(object):
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
 						value = _metric(_model(parameters))
 					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
-						value = abs((track['objective'][-1] - _metric(_model(parameters))))
+						value = abs((track['objective'][index] - _metric(_model(parameters))))
 					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
-						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
+						value = abs((track['objective'][index] - _metric(_model(parameters)))/(track['objective'][index]))
 
 					model.__functions__(**_restore)
 
@@ -1413,19 +1426,12 @@ class Callback(object):
 				elif attr not in attributes and hasattrs(model,attr,delimiter=delim):
 					value = getattrs(model,attr,default=default,delimiter=delim)
 
+				
 				track[attr][-1] = value
 
-		elif (stop):
-			
-			for attr in attrs:
-				value = track[attr][-1]
-				track[attr].append(value)
 
-		if ((not status) or done or init or other):
-
-			for attr in attrs:
-				if self.updates.get(attr):
-					update = self.updates[attr]
+				if updates.get(attr):
+					update = updates[attr]
 					if not callable(update):
 						update = lambda i,attr,track: track[attr][-1]
 					for i in range(size+1):
