@@ -1398,7 +1398,7 @@ def lstsq(x,y):
 # @partial(jit,static_argnums=(0,))
 def curve_fit(func,x,y,**kwargs):
 	'''
-	Compute curve_fit fit between x and y
+	Compute fit between x and y
 	Args:
 		func (callable): Function to fit
 		x (array): Array of input data
@@ -1407,51 +1407,140 @@ def curve_fit(func,x,y,**kwargs):
 	Returns:
 		out (array): Curve fit returns
 	'''
+	defaults = {'p0':kwargs.pop('coef0',None),'sigma':kwargs.pop('yerr',None),'maxfev':1000,'absolute_sigma':False}
+
+	kwargs = {kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults}
+
+	x = onp.asarray(x)
+	y = onp.asarray(y)
+	kwargs.update({kwarg: onp.asarray(kwargs[kwarg]) for kwarg in ['p0','sigma'] if kwarg in kwargs})
+
 	return osp.optimize.curve_fit(func,x,y,**kwargs)
 
 
+
+def interp(x,y,**kwargs):
+	'''
+	Interpolate array at new points
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		kwargs (dict): Additional keyword arguments for interpolation
+			kind (int): Order of interpolation
+			smooth (int,float): Smoothness of fit
+			der (int): order of derivative to estimate
+	Returns:
+		func (callable): Interpolation function
+	'''	
+
+	def _interpolate(x,y,**kwargs):
+		kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5,None:3}
+		k = kinds.get(kwargs.get('k',kwargs.get('kind')),kwargs.get('k',kwargs.get('kind')))
+		s = kwargs.get('s',kwargs.get('smooth'))
+		der = kwargs.get('der')
+		if der:
+			spline = osp.interpolate.splrep(x,y,k=k,s=s)
+			def func(x):
+				return osp.interpolate.splev(x,spline,der=der)
+		else:
+			func = osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
+			# func = osp.interpolate.interp1d(x,y,kind)
+		return func
+
+	return _interpolate(x,y,**kwargs)
+
+
+
+
+
+def interpolate(x,y,_x,**kwargs):
+	'''
+	Interpolate array at new points
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		_x (array): New points
+		kwargs (dict): Additional keyword arguments for interpolation
+				kind (int): Order of interpolation
+				smooth (int,float): Smoothness of fit
+				der (int): order of derivative to estimate
+	Returns:
+		out (array): Interpolated values at new points
+	'''		
+	is1d = (y.ndim == 1)
+
+	if is1d:
+		y = [y]
+
+	out = array([interp(x,u,**kwargs)(_x) for u in y])
+
+	if is1d:
+		out = out[0]
+
+	return out
+
+
+
 # @partial(jit,static_argnums=(0,))
-def piecewise(funcs,coefs,bounds=False,split=False,**kwargs):
+def piecewise(func,shape,**kwargs):
 	'''
 	Compute piecewise curve from funcs
 	Args:
-		funcs (callable,iterable[callable]): Functions to fit
-		coefs (iterable[iterable[object]]): Piecewise sections of coefs of the form [[lower_i,upper_i,*coef_i]] if bounds or [[*coef_i]]
-		bounds (bool): coefs include bounds
-		split (bool): split function in domains
+		func (callable,iterable[callable]): Functions to fit
+		shape (iterable[int]): Piecewise coefs shape
 		kwargs (dict[str,object]): Additional keyword arguments for fitting		
 	Returns:
-		func (callable): Piecewise function with signature func(x,*coefs), where coefs are of the form [[lower_i,upper_i,*coef_i]]
+		func (callable): Piecewise function with signature func(x,*coefs)
 	'''
 
-	bounds = True if bounds else False
-
-	indices = []
-	for coef in coefs:
-		size = indices[-1][-1].stop if indices else 0
-		indices.append([size,size+1,slice(size+2,size+2+len(coef)-2*bounds)])
-
-	if callable(funcs):
+	if callable(func):
 		funcs = [funcs]
-
-	if split:
-		def func(x,*coefs):
-			bounds = [[coefs[index[0]],coefs[index[1]]] for index in indices]
-			conditions = [((x>=bound[0]) & (x<=bound[1])) for bound in bounds]
-			coefs = [[*coefs[index[2]]] for index in indices]
-			func = [(func(x[condition],*coef),x[condition]) for func,coef,condition in zip(funcs,coefs,conditions)]
-			return func
 	else:
-		def func(x,*coefs):
-			bounds = [[coefs[index[0]],coefs[index[1]]] for index in indices]
-			conditions = [((x>=bound[0]) & (x<=bound[1])) for bound in bounds]
-			coefs = [[*coefs[index[2]]] for index in indices]
-			func = [(lambda x,coef=coef,func=func: func(x,*coef)) for func,coef,condition in zip(funcs,coefs,conditions)]			
-			func = np.piecewise(x,conditions,func)
-			return func
+		funcs = func
 
+	n = len(funcs)
+	indices = [slice(sum(shape[:i-1]),sum(shape[:i])) for i in range(1,n+2)]
+	
+	def func(x,*coefs):
+		
+		bounds,coefs = coefs[indices[0]],[coefs[index] for index in indices[1:]]
+		
+		conditions = [(x<=bounds[i]) if i==0 else ((x>=bounds[i-1]) & (x<=bounds[i])) if i < (n-1) else (x>=bounds[i-1]) 
+					  for i in range(n)]
+		
+		func = [lambda x,func=func,coef=coef: func(x,*coef) for func,coef in zip(funcs,coefs)]
+		func = np.piecewise(x,conditions,func)
+
+		return func
+	
 	return func
 
+
+def extrema(x,y,_x=None,**kwargs):
+	'''
+	Get extreme points of array
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		_x (array): New points		
+		kwargs (dict): Additional keyword arguments for interpolation
+			kind (int): Order of interpolation
+			smooth (int,float): Smoothness of fit
+			der (int): order of derivative to estimate
+	Returns:
+		indices (array): Indices of extreme points
+	'''	
+
+	defaults = {'kind':1,'smooth':0,'der':2}
+
+	if _x is None:
+		_x = x
+
+	kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
+
+	indices = argsort(abs(interp(x,y,**kwargs)(_x)))
+
+	return indices
 
 
 @partial(jit,static_argnums=(1,))
@@ -3128,6 +3217,17 @@ def log(a):
 	return np.log(a)
 
 @jit
+def exp10(a):
+	'''
+	Calculate element-wise base 10 exponential of array a
+	Args:
+		a (array): Array to compute element-wise exponential
+	Returns:
+		out (array): Element-wise exponential of array
+	'''
+	return 10**a
+
+@jit
 def exp(a):
 	'''
 	Calculate element-wise exponential of array a
@@ -3658,6 +3758,18 @@ def sort(a,axis=0):
 		out (array): Sorted array
 	'''
 	return np.sort(a,axis)
+
+@partial(jit,static_argnums=(1,))
+def argsort(a,axis=0):
+	'''
+	Argsort array along axis
+	Args:
+		a (array): Array to sort
+		axis (int): Axis to sort array
+	Returns:
+		out (array): Sorted array
+	'''
+	return np.argsort(a,axis)
 
 
 @partial(jit,static_argnums=(1,))
@@ -4799,69 +4911,6 @@ def invtrotter(a,p):
 	'''	
 	n = a.shape[0]//p
 	return a[:n]
-
-
-def interp(x,y,kind,smooth=None,der=None):
-	'''
-	Interpolate array at new points
-	Args:
-		x (array): Interpolation points
-		y (array): Interpolation values
-		kind (int): Order of interpolation
-		smooth (int,float): Smoothness of fit
-		der (int): order of derivative to estimate
-	Returns:
-		func (callable): Interpolation function
-	'''	
-
-	if der is None:	
-		def _interpolate(x,y,kind,smooth):
-			kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5}
-			k = kinds.get(kind,kind)
-			s = smooth
-			func = osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
-			# func = osp.interpolate.interp1d(x,y,kind)
-			return func
-
-	else:
-		def _interpolate(x,y,kind,smooth):
-			kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5}
-			k = kinds.get(kind,kind)
-			s = smooth
-			spline = osp.interpolate.splrep(x, y, k=k,s=s)
-			func = lambda x: osp.interpolate.splev(x, spline, der=der)
-			return func
-
-	return _interpolate(x,y,kind,smooth)
-
-
-
-
-
-def interpolate(x,y,x_new,**kwargs):
-	'''
-	Interpolate array at new points
-	Args:
-		x (array): Interpolation points
-		y (array): Interpolation values
-		x_new (array): New points
-		kwargs (dict): Additional keyword arguments for interpolation
-	Returns:
-		out (array): Interpolated values at new points
-	'''		
-	is1d = (y.ndim == 1)
-
-	if is1d:
-		y = [y]
-
-	out = array([interp(x,u,**kwargs)(x_new) for u in y])
-
-	if is1d:
-		out = out[0]
-
-	return out
-
-
 
 
 

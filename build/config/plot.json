@@ -353,7 +353,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},			
-"M.features.relative.mean.N.iteration":{
+"M.variables.relative.mean.N.iteration":{
 	"fig":{
 		"set_size_inches":{"w":8,"h":16},
 		"subplots_adjust":{"hspace":0.5},
@@ -364,7 +364,7 @@
 	"ax":{
 		"errorbar":{
 			"x":"M",
-			"y":"features.relative.mean",
+			"y":"variables.relative.mean",
 			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@;!=0!="},			
 			"marker":"o",
 			"markersize":8,

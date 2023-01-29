@@ -270,10 +270,7 @@ def find(dictionary):
 				'slice':None,
 				'include':None,
 				'axis':{'row':[],'col':[],'plot':['plot','group','func'],'axis':[-1]},
-				'settings':{
-					'ax.set_ylabel.ylabel':[['$\\textrm{Infidelity}$']],
-					'ax.legend.update':'%s \\textrm{Noisy}'
-				},
+				'settings':{},
 				'texify':{},
 				'valify': {},		
 	}
@@ -282,6 +279,7 @@ def find(dictionary):
 	keys = brancher(dictionary,elements)
 	
 	keys = {name[:-1]:dict(zip(elements,[value[-1] for value in name[-1]])) for name in keys}
+
 
 	for name in keys:
 		for attr in keys[name]:
@@ -306,6 +304,7 @@ def find(dictionary):
 					keys[name][attr] = {attr: keys[name][attr]}
 
 				setter(keys[name][attr],defaults,delimiter=delim,func=False)
+
 			
 			else:
 				if not keys[name][attr]:
@@ -583,6 +582,7 @@ def apply(keys,data,settings,hyperparameters):
 						else:
 							value[destination] = None
 
+
 				setter(settings,{key:value},delimiter=delim,func=True)
 
 	return
@@ -750,7 +750,6 @@ def plotter(settings,hyperparameters):
 	for instance in list(settings):
 		for subinstance in list(settings[instance]):
 
-
 			# variables
 			attrs = OTHER
 			try:
@@ -779,7 +778,8 @@ def plotter(settings,hyperparameters):
 			except KeyError as e:
 				settings[instance].pop(subinstance);
 				continue
-				
+
+
 			# savefig
 			attr = 'fname'
 			data = settings[instance][subinstance]['fig'].get('savefig',{})
