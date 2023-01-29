@@ -173,7 +173,6 @@ def setup(settings):
 	names = union(*(settings[key]['jobs'] for key in keys),sort=True)
 
 	for name in names:
-
 		jobs[name] = {}
 
 		for key in keys:

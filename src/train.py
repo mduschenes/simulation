@@ -54,7 +54,6 @@ def train(hyperparameters):
 
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
-
 	model = cls['model'](**hyperparameters['model'],
 			parameters=hyperparameters['parameters'],
 			state=hyperparameters['state'],
