@@ -349,9 +349,11 @@ class Object(System):
 		'''
 		defaults = {
 			'string':None,
+			'init':True,
 			'category':None,
-			"scale":1,
-			"samples":None,
+			'method':None,
+			'scale':1,
+			'samples':None,
 			'initialization':'random',
 			'random':'random',
 			'seed':None,
@@ -382,9 +384,8 @@ class Object(System):
 		self.N,self.D = self.dims[:2] if self.dims is not None else [1,self.n]
 
 		# Set data
-		if self.shape is None or self.scale is None:
+		if (not self.init) or (not self.shape) or (not self.scale):
 			self.data = None
-			self.size = None
 		
 		if is_array(self.data):
 			self.data = self.data

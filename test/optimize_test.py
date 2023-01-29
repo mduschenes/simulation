@@ -138,6 +138,10 @@ def test_optimizer(path,tol):
 	assert iteration == hyperparams['iterations'], "Checkpointed optimizer not re-initialized with iteration %s"%(iteration)
 	assert size == hyperparams['iterations'], "Checkpointed optimizer not re-initialized with size %s"%(size)
 
+	if optimizer.paths is not None:
+		for path in optimizer.paths:
+			rm(optimizer.paths[path],execute=True)
+
 	return
 
 
@@ -188,6 +192,6 @@ def test_hessian(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_objective(path,tol)
-	# test_optimizer(path,tol)
+	# test_objective(path,tol)
+	test_optimizer(path,tol)
 	# test_hessian(path,tol)

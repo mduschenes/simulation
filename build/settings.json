@@ -21,6 +21,7 @@
 		"model.N":[2],		
 		"model.M":[200],		
 		"model.tau":[20e0],		
+		"noise.init":[true,false],
 		"noise.scale":[1e-12],
 		"state.scale":[1],
 
@@ -86,7 +87,7 @@
 	"path":"data.hdf5",
 	"conf":"logging.conf",
 	"logger":"log.log",
-	"cleanup":true,
+	"cleanup":false,
 	"verbose":"info"
 	},
 "optimize":{
@@ -99,7 +100,7 @@
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
-	"kwargs":{"noise":1e-3},
+	"kwargs":{"noise":{"scale":1e-3}},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
 	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
@@ -139,6 +140,7 @@
 "parameters":{
 	"xy": {
 		"string":"xy",
+		"init":true,
 		"category":"variable",
 		"method":"unconstrained",
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
@@ -164,6 +166,7 @@
 		},
 	"z": {
 		"string":"z",
+		"init":true,		
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
@@ -184,6 +187,7 @@
 		},
 	"zz": {
 		"string":"zz",
+		"init":true,		
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
@@ -206,7 +210,9 @@
 	},
 "label": {
 	"string":"random",
+	"init":true,	
 	"category":"constant",
+	"method":null,
 	"parameters":null,
 	"shape":[-1,-1],
 	"size":null,
@@ -218,7 +224,9 @@
 	},
 "state": {
 	"string":"random",
+	"init":true,	
 	"category":"constant",
+	"method":null,	
 	"shape":[-1,-1],
 	"size":[1,1],
 	"scale":null,
@@ -229,11 +237,13 @@
 	},
 "noise": {
 	"string":"phase",
+	"init":true,
 	"category":"constant",
+	"method":null,
 	"shape":[-1,-1],
 	"size":null,
 	"scale":null,
-	"initialization":"random",
+	"initialization":"time",
 	"random":"gaussian",
 	"seed":null,
 	"bounds":[-1,1]

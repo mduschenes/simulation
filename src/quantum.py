@@ -702,7 +702,7 @@ class Observable(System):
 			D (int): Dimension of qudits
 			d (int): Spatial dimension
 			L (int,float): Scale in system
-			delta (float): Length scale in system			
+			delta (float): Simulation length scale		
 			lattice (str,Lattice): Type of lattice		
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''		
@@ -757,8 +757,8 @@ class Observable(System):
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
 				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','shape','dims','cwd','path','backend','architecture','conf','logger','cleanup']
 			],
-			*['%s: %s'%(attr.split(delim)[0],getattrs(self,attr,delimiter=delim)) 
-				for attr in ['state.scale','noise.scale']
+			*['%s: %s'%(attr[0].split(delim)[0],getattrs(self,attr[1],delimiter=delim) if getattrs(self,attr[0],delimiter=delim) else getattrs(self,attr[0],delimiter=delim)) 
+				for attr in [['state.init','state.scale'],['noise.init','noise.scale']]
 			],
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).__name__) 
 				for attr in ['exponentiation']
@@ -1357,7 +1357,7 @@ class Callback(object):
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or init):
 
-					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
+					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg,{}).get(prop) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
 					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
 						_kwargs = {kwarg: False if kwarg in [] else _kwargs[kwarg] for kwarg in _kwargs}
