@@ -996,7 +996,7 @@ def callback(value,key,values):
 	values[key] = value
 	return
 
-def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands as tasks to command line
 	Args:
@@ -1008,6 +1008,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+		resume (bool): Resume jobs
 		pause (int,str): Time to sleep after call		
 		file (str): Write command to file		
 		env (dict[str,str]): Environmental variables for args		
@@ -1063,12 +1064,13 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	results = []
 	keys = {key:{} for key in keys}
 
-	directories = set((cwd[key] for key in cwd))
-	for directory in directories:
-		if exists(join(directory,file)):
-			result = run(file,path=directory,process=None,processes=None,device=None,execute=execute,verbose=verbose)
-			results.append(result)
-			return results
+	if resume:
+		directories = set((cwd[key] for key in cwd))
+		for directory in directories:
+			if exists(join(directory,file)):
+				result = run(file,path=directory,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+				results.append(result)
+				return results
 
 	iterable = [key for key in keys]
 	kwds = dict(
@@ -1170,6 +1172,7 @@ def launch(jobs={},wrapper=None):
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+			resume (bool): Resume jobs		
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file			
 			env (dict[str,str]): Environmental variables for args		

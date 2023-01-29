@@ -1169,8 +1169,8 @@ class Optimization(System):
 			'clear':True,
 			'cwd':None,
 			'path':None,
-			'modulo':{'log':None,'attributes':None,'callback':None,'alpha':None,'beta':None,'dump':None},
-			'length':{'log':None,'attributes':10,'callback':None,'alpha':None,'beta':None,'dump':None},
+			'modulo':{'log':None,'buffer':None,'attributes':None,'callback':None,'alpha':None,'beta':None,'dump':None},
+			'length':{'log':None,'buffer':1,'attributes':5,'callback':None,'alpha':None,'beta':None,'dump':None},
 			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},	
 			'track':{},		
 		}
@@ -1201,7 +1201,7 @@ class Optimization(System):
 		self.attributes = hyperparameters['attributes']
 		self.track = hyperparameters['track']
 		self.iterations = range(int(hyperparameters['iterations']))
-		self.sizes = hyperparameters['length'].get('attributes')		
+		self.sizes = {attr: hyperparameters['length'].get(attr) if hyperparameters['length'].get(attr) else 1 for attr in ['buffer','attributes']}
 		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
 
@@ -1308,11 +1308,10 @@ class Optimization(System):
 		value,grad = self.value_and_grad(parameters)
 		size = self.size
 
-		if (self.sizes is not None) and (self.size > 0) and (self.size >= self.sizes):
+		if (self.sizes) and (self.size > 0) and (self.size >= sum(self.sizes[attr] for attr in self.sizes)):
 			for attr in self.attributes:
 				if self.attributes[attr]:
-					self.attributes[attr].pop(min(self.size-2,0)+1)
-
+					self.attributes[attr].pop(self.sizes['buffer'])
 
 		iteration += 1
 		size += 1
@@ -1336,7 +1335,7 @@ class Optimization(System):
 			state (object): optimizer state
 		'''
 
-		do = (self.path is not None) and ((self.modulo['dump'] is None) or (iteration is None) or (iteration%self.modulo['dump'] == 0))
+		do = (self.path is not None) and ((not self.status) or (self.modulo['dump'] is None) or (iteration is None) or (iteration%self.modulo['dump'] == 0))
 
 		if not do:
 			return
@@ -1418,10 +1417,10 @@ class Optimization(System):
 		
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
-		while (self.sizes is not None) and (self.size > 0) and (self.size > self.sizes):
+		while (self.sizes) and (self.size > 0) and (self.size >= sum(self.sizes[attr] for attr in self.sizes)):
 			for attr in self.attributes:
 				if self.attributes[attr]:
-					self.attributes[attr].pop(min(self.size-2,0)+1)
+					self.attributes[attr].pop(self.sizes['buffer'])
 			self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
 		if self.size:
