@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,warnings,copy
+import os,sys,itertools,warnings,copy,traceback
 warnings.filterwarnings('ignore')
 
 # Import user modules
@@ -10,10 +10,10 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import gradient,einsum
+from src.utils import gradient,einsum,diag
 from src.utils import array,zeros,ones
 from src.utils import lstsq,curve_fit,interp,piecewise
-from src.utils import exp,log,abs,sqrt,norm,nanmean,nanstd,nansqrt,product,is_naninf
+from src.utils import exp,log,abs,sqrt,sort,norm,nanmean,nanstd,nansqrt,product,is_naninf
 
 def transformation(transform=None):
 	'''
@@ -137,7 +137,7 @@ def size(data,axis=None,transform=None,dtype=None,**kwargs):
 	return out
 
 
-def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef0=None,bounds=None,intercept=True,uncertainty=False,**kwargs):
+def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef0=None,intercept=False,uncertainty=False,**kwargs):
 	'''
 	Fit of data
 	Args:
@@ -152,7 +152,6 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 		xerr (array): Input error
 		yerr (array): Output error
 		coef0 (array): Initial estimate of fit coefficients
-		bounds (iterable,object): Bounds on data to fit
 		intercept (bool): Include intercept in fit
 		uncertainty (bool): Calculate uncertainty
 		kwargs (dict[str,object]): Additional keyword arguments for fitting
@@ -164,122 +163,130 @@ def fit(x,y,_x=None,_y=None,func=None,grad=None,preprocess=None,postprocess=None
 		r (float): Fit coefficient
 	'''	
 
-
-
-
-
 	if coef0 is None:
-		ncoef = 1
-		kwargs['p0'] = coef0
-		coef0 = (None,)
-	elif ((func is not None) and not callable(func)) or (isinstance(coef0,tuple)):
-		if bounds is not None:
-			if not isinstance(bounds,(list,tuple)):
-				bounds = [[min(x),bounds],[bounds,max(x)]]
-			coef0 = array([[*bound,*coef] for bound,coef in zip(bounds,coef0)])
-		print(coef0)
-		func = piecewise(func,coef0,bounds=True,split=False)
-		coef0 = array([coef for coefs in coef0 for coef in coefs])
-		ncoef = len(coef0)
-		kwargs['p0'] = coef0
-	else:
-		ncoef = len(coef0)
-		kwargs['p0'] = coef0
-		coef0 = coef0
+		coef0 = (coef0,)
+
+	ncoef = len(coef0)
 
 	if preprocess is None:
-		preprocess = lambda x,y,*coef: (x,y)
+		preprocess = lambda x,y: (x,y)
 	
 	if postprocess is None:
-		postprocess = lambda x,y,*coef: (x,y)
+		postprocess = lambda x,y: (x,y)	
 
-	x,y = preprocess(x,y,*coef0)
+	if grad is None and callable(func):
+		grad = gradient(func,argnums=tuple(range(1,ncoef+1)),mode='fwd')
+	
+	if preprocess is not None:
+		gradpreprocess = gradient(preprocess,argnums=-1,mode='fwd')
+	
+	if postprocess is not None:
+		gradpostprocess = gradient(postprocess,argnums=-1,mode='fwd')
 
-	x = x.at[is_naninf(x)].set(0)
+	
+	x,y = preprocess(x,y)
+
+	if _x is None:
+		_x = x
 	y_ = _y
 
 	if func is None:
+
 		if intercept:
 			x = array([x,ones(x.size)]).T
 		else:
 			x = array([x]).T
-		if _x is None:
-			_x = x
-		elif intercept:
+		
+		if intercept:
 			_x = array([_x,ones(_x.size)]).T
 		else:
 			_x = array([_x]).T
+
 		try:
 			coef = lstsq(x,y)[0] + 0.0
 			_y = _x.dot(coef)
-			coefferr = zeros((*coef.shape,*coef.shape))
+			coeferr = zeros((*coef.shape,*coef.shape))
 			_yerr = zeros(_y.shape)
 		except:
 			coef = zeros(_x.shape[1])
 			_y = y
-			coefferr = zeros((*coef.shape,*coef.shape))
+			coeferr = zeros((*coef.shape,*coef.shape))
 			_yerr = zeros(_y.shape)
 
+	elif callable(func):
+		
+		kwargs.update({'coef0':coef0,'yerr':yerr,'xerr':xerr})
 
-	if func is not None:
-		if _x is None:
-			_x = x
-		if callable(func):
+		try:
+			coef,coeferr = curve_fit(func,x,y,**kwargs)
+		except Exception as e:
+			print(traceback.format_exc())
+			coef,coeferr = zeros(ncoef),zeros((ncoef,ncoef))
 
-			try:
-				coef,coefferr = curve_fit(func,x,y,**kwargs)
-			except Exception as e:
-				print(e)
-				coef,coefferr = zeros(ncoef),zeros((ncoef,ncoef))
+		coef = array(coef)
+		coeferr = array(coeferr)
 
-			if grad is None:
-				grad = gradient(func,argnums=tuple(range(1,ncoef+1)),mode='fwd')
-			
-			coef = array(coef)
-			coefferr = array(coefferr)
+		_y = func(_x,*coef)
+		_grad = array(grad(_x,*coef)).T
+		_gradpostprocess = array(diag(gradpostprocess(_x,_y)[-1]))
 
-			_y = func(_x,*coef)
-			_grad = array(grad(_x,*coef))
-			_grad = array(_grad).T
-			_yerr = sqrt(einsum('ui,ij,uj->u',_grad,coefferr,_grad))
+		_yerr = sqrt(einsum('u,ui,ij,uj,u->u',_gradpostprocess,_grad,coeferr,_grad,_gradpostprocess))
 
-		elif isinstance(func,str):
-			kind = func
-			smooth = kwargs.get('smooth')
-			_func = interp(x,y,kind,smooth)
-			func = lambda x,*coef,_func=_func: _func(x)
-			coef,coefferr = zeros(ncoef),zeros((ncoef,ncoef))
+	elif isinstance(func,str):
 
-			_y = func(_x,*coef)
+		kwargs.update({'kind':func})
+		
+		_func = interp(x,y,**kwargs)
+		
+		func = lambda x,*coef,_func=_func: _func(x)
+		
+		coef,coeferr = zeros(ncoef),zeros((ncoef,ncoef))
 
-			if yerr is not None:
-				_yerr = 0
-				_funcerr = interp(x,y+yerr,kind,smooth)
-				funcerr = lambda x,*coef,_func=_funcerr: _func(x)
-				_yerr += abs(funcerr(_x,*coef) - _y)
+		_y = func(_x,*coef)
 
-				_funcerr = interp(x,y-yerr,kind,smooth)
-				funcerr = lambda x,*coef,_func=_funcerr: _func(x)
-				_yerr += abs(funcerr(_x,*coef) - _y)
+		if yerr is not None:
+			_yerr = 0
+			_funcerr = interp(x,y+yerr,**kwargs)
+			funcerr = lambda x,*coef,_func=_funcerr: _func(x)
+			_yerr += abs(funcerr(_x,*coef) - _y)
 
-				_yerr /= 2
+			_funcerr = interp(x,y-yerr,**kwargs)
+			funcerr = lambda x,*coef,_func=_funcerr: _func(x)
+			_yerr += abs(funcerr(_x,*coef) - _y)
 
+			_yerr /= 2
+
+	elif isinstance(func,(tuple,list)):
+		
+		func = piecewise(func,**kwargs)
+
+
+		_returns = fit(
+			x,y,_x=_x,_y=_y,
+			func=func,grad=grad,
+			xerr=xerr,yerr=yerr,
+			preprocess=None,postprocess=postprocess,
+			coef0=coef0,intercept=intercept,uncertainty=uncertainty,
+			**kwargs)
+
+		return _returns
+		
 	else:
 		func = lambda x,*coef: y
-		
-
-	if coef is not None:
-		_x,_y = postprocess(_x,_y,*coef)
-	elif coef0 is not None:
-		coef = zeros(coef0.shape)
-	else:
-		coef = None
+	
 
 	if uncertainty:
 		y_ = func(x,*coef)
 		r = 1 - (((y - y_)**2).sum()/((y - y.mean())**2).sum())
 
+	if coef is None:
+		coef = zeros(len(coef0))
+
+
+	_x,_y = postprocess(_x,_y)
+	x,y = postprocess(x,y)
+
 	if uncertainty:
-		return _y,coef,_yerr,coefferr,r
+		return _y,coef,_yerr,coeferr,r
 	else:
 		return _y,coef
