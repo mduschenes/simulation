@@ -753,25 +753,25 @@ def plotter(settings,hyperparameters):
 		for subinstance in list(settings[instance]):
 
 			# variables
-			attrs = OTHER
 			try:
 				values = {
 					plots: {
 						label: {
-							'value': list(realsorted(set(data[attrs][label] if not isinstance(data[attrs][label],list) else tuple(data[attrs][label])
-								for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[attrs]))),
-							'sort': list(realsorted(set(data[attrs][attrs][attrs][label]
-								for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[attrs][attrs][attrs]))),
-							'label': any(((label in data[attrs][attrs][attrs]) and (label in data[attrs]) and (data[attrs][attrs][attrs][label] is None))
+							'value': list(realsorted(set(
+								data[OTHER][label] if ((label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else tuple(data[OTHER][label]) if (label in data[OTHER]) else data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (label in data[OTHER][OTHER][OTHER] and data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER]) else data[OTHER][OTHER][OTHER][label]
+								for data in flatten(settings[instance][subinstance]['ax'][plots])))),
+							'sort': list(realsorted(set(data[OTHER][OTHER][OTHER][label]
+								for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[OTHER][OTHER][OTHER]))),
+							'label': any(((label in data[OTHER][OTHER][OTHER]) and (label in data[OTHER]) and (data[OTHER][OTHER][OTHER][label] is None))
 								for data in flatten(settings[instance][subinstance]['ax'][plots])),
-							'other': any(((label not in data[attrs]) and (label in data[attrs][attrs][attrs]) and (data[attrs][attrs][attrs][label] in data[attrs]))
+							'other': any(((label not in data[OTHER]) and (label in data[OTHER][OTHER][OTHER]) and (data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER]))
 								for data in flatten(settings[instance][subinstance]['ax'][plots])),
-							'legend': any(((label not in data[attrs]) and (label in data[attrs][attrs][attrs]) and (data[attrs][attrs][attrs][label] not in data[attrs]))
+							'legend': any(((label not in data[OTHER]) and (label in data[OTHER][OTHER][OTHER]) and (data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER]))
 								for data in flatten(settings[instance][subinstance]['ax'][plots])),
 							}
 						for label in list(realsorted(set(label
 						for data in flatten(settings[instance][subinstance]['ax'][plots])
-						for label in [*data[attrs],*data[attrs][attrs][attrs]]
+						for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
 						if ((label not in [*ALL,OTHER])))))
 						}
 						for plots in PLOTS 
@@ -780,7 +780,6 @@ def plotter(settings,hyperparameters):
 			except KeyError as e:
 				settings[instance].pop(subinstance);
 				continue
-
 
 			# savefig
 			attr = 'fname'
@@ -793,11 +792,52 @@ def plotter(settings,hyperparameters):
 			data = settings[instance][subinstance]['ax'].get('legend',{})
 
 			
-			value = '~,~'.join(realsorted(set((
-				texify(label) for plots in values for label in values[plots] 
-					if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) or 
-						(values[plots][label]['other'])))))
-				)
+			value = [
+				[
+					*['%s'%(texify(label)) 
+						for label in realsorted(set((
+						label 
+						for plots in values 					
+						for label in values[plots] 
+						if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
+							not (values[plots][label]['other'])))))],
+					*['%s'%(texify(label))
+						for label in realsorted(set((
+						label 
+						for plots in values 
+						for label in values[plots]
+						if (not ((values[plots][label]['label'])) and 
+							(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))],
+					*['%s'%(texify(label))
+					 	for label in realsorted(set((
+						label 
+						for plots in values 
+						for label in values[plots]
+						if (not ((values[plots][label]['label'])) and 
+							(values[plots][label]['legend']) and (len(values[plots][label]['value'])>1)))))],
+					],
+				[
+					*['%s : %s'%(
+						texify(label),
+						',~'.join([texify(scinotation(value,decimals=0,scilimits=[0,2],one=False)) for value in values[plots][label]['value']]))
+						for plots in values 
+						for label in realsorted(set((
+						label 
+						for label in values[plots]
+						if (not ((values[plots][label]['label'])) and 
+							(values[plots][label]['other']) and (len(values[plots][label]['value'])==1)))))],
+					*['%s : %s'%(
+						texify(label),
+						',~'.join([texify(scinotation(value,decimals=0,scilimits=[0,2],one=False)) for value in values[plots][label]['value']]))
+						for plots in values 
+					 	for label in realsorted(set((
+						label 
+						for label in values[plots]
+						if (not ((values[plots][label]['label'])) and 
+							(values[plots][label]['legend']) and (len(values[plots][label]['value'])==1)))))],
+					],
+				]
+			value = '\n'.join(['~,~'.join(val).replace('$','') for val in value if val])
 
 			data[attr] = value
 
@@ -835,6 +875,33 @@ def plotter(settings,hyperparameters):
 								data.clear()
 								break
 
+			# axis label
+			for attr in settings[instance][subinstance]['ax']:
+
+				for plots in PLOTS:
+
+					if settings[instance][subinstance]['ax'].get(plots) is None:
+						continue
+
+					for axis in AXIS:
+
+						for data in flatten(settings[instance][subinstance]['ax'][plots]):
+
+
+							if attr not in ['set_%slabel'%(axis)] or (not settings[instance][subinstance]['ax'].get(attr)):
+								continue
+
+							if settings[instance][subinstance]['ax'].get(attr,{}).get('%slabel'%(axis)) is None:
+								value = data[OTHER][axis]['axis']
+							else:
+								value = data.get(attr,{}).get('%slabel'%(axis))
+
+							value = texify(value,texify=data[OTHER][OTHER].get('texify'))
+
+							settings[instance][subinstance]['ax'][attr]['%slabel'%(axis)] = value
+
+							break
+
 
 			# label
 			for plots in PLOTS:
@@ -848,17 +915,31 @@ def plotter(settings,hyperparameters):
 						continue
 
 					attr = OTHER
-					value = ', '.join([
-						*[(texify(scinotation(data[attr][label],decimals=0,scilimits=[0,3],one=False),texify=data[OTHER][OTHER].get('texify')) 
-						if values[plots][label]['label'] else texify(scinotation(data[attr][data[attr][attr][attr][label]],decimals=0,scilimits=[0,3],one=False),texify=data[OTHER][OTHER].get('texify')))
-						for label in values[plots]
-						if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) or 
-							(values[plots][label]['other']))],
-						*[texify(scinotation(data[attr][attr][attr][label],decimals=0,scilimits=[0,3],one=False),texify=data[OTHER][OTHER].get('texify')) 
-						for label in values[plots]
-						if values[plots][label]['legend']
-						]
+					value = ',~'.join([
+						*[(texify(scinotation(data[OTHER][label],decimals=0,scilimits=[0,2],one=False),texify=data[OTHER][OTHER].get('texify')) 
+							if values[plots][label]['label'] else texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],decimals=0,scilimits=[0,2],one=False),texify=data[OTHER][OTHER].get('texify'))
+							) 
+							for label in realsorted(set((
+							label 
+							for label in values[plots] 
+							if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
+								not (values[plots][label]['other'])))))],
+						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],decimals=0,scilimits=[0,2],one=False),texify=data[OTHER][OTHER].get('texify'))
+							)
+							for label in realsorted(set((
+							label 
+							for label in values[plots]
+							if (not ((values[plots][label]['label'])) and 
+								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))],
+						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],decimals=0,scilimits=[0,2],one=False),texify=data[OTHER][OTHER].get('texify'))
+							)
+						 	for label in realsorted(set((
+							label 
+							for label in values[plots]
+							if (not ((values[plots][label]['label'])) and 
+								(values[plots][label]['legend']) and (len(values[plots][label]['value'])>1)))))],
 						])
+
 
 					data[attr] = value	
 
