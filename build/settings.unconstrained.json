@@ -148,6 +148,7 @@
 "parameters":{
 	"xy": {
 		"string":"xy",
+		"init":true,
 		"category":"variable",
 		"method":"constrained",
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
@@ -173,6 +174,7 @@
 		},
 	"z": {
 		"string":"z",
+		"init":true,
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
@@ -193,6 +195,7 @@
 		},
 	"zz": {
 		"string":"zz",
+		"init":true,
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
@@ -214,7 +217,9 @@
 	},
 "label": {
 	"string":"random",
+	"init":true,	
 	"category":"constant",
+	"method":null,	
 	"parameters":null,
 	"shape":[-1,-1],
 	"size":null,
@@ -226,7 +231,10 @@
 	},
 "state": {
 	"string":"random",
+	"init":true,	
 	"category":"constant",
+	"method":null,	
+	"parameters":null,
 	"shape":[-1,-1],
 	"size":[1,1],
 	"scale":1,
@@ -237,7 +245,10 @@
 	},
 "noise": {
 	"string":"phase",
+	"init":true,	
 	"category":"constant",
+	"method":null,	
+	"parameters":null,
 	"shape":[-1,-1],
 	"size":null,
 	"scale":1e-12,
