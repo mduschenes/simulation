@@ -22,7 +22,7 @@
 		"model.M":[null],		
 		"model.tau":[10,20,100,1000],		
 		"model.T": [5e4],
-		"noise.scale":[1e-12],
+		"noise.scale":[1e-3],
 		"noise.initialization":["time"],
 		"state.scale":[1],
 
