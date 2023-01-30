@@ -14,7 +14,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array,rand,eye
-from src.utils import einsum,tensorprod,sqrt,allclose
+from src.utils import einsum,tensorprod,sqrt,allclose,exp
 from src.system import Object
 
 
@@ -60,6 +60,9 @@ class Noise(Object):
 				'11':array([[0,0],[0,1]]),
 			}
 		basis = {string: basis[string].astype(self.dtype) for string in basis}
+
+		if self.initialization in ['time']:
+			self.scale = 1 - exp(-self.cls['tau']/self.scale)
 
 		assert (self.scale >= 0) and (self.scale <= 1), "Noise scale %r not in [0,1]"%(self.scale)
 

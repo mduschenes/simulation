@@ -37,7 +37,7 @@ def getattrs(obj,attr,default=None,delimiter=None):
 		obj (object): Nested attribute
 	'''
 	if isinstance(attr,str):
-		if delimiter is None:
+		if (delimiter is None) or (hasattr(obj,attr)):
 			attr = [attr]
 		else:
 			attr = attr.split(delimiter)
@@ -68,7 +68,7 @@ def setattrs(obj,attr,value,delimiter=None):
 
 
 	if isinstance(attr,str):
-		if delimiter is None:
+		if (delimiter is None) or (hasattr(obj,attr)):
 			attr = [attr]
 		else:
 			attr = attr.split(delimiter)
@@ -269,8 +269,11 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 	'''	
 
 	# Convert string instance of elements to list, splitting string based on delimiter delimiter
-	if isinstance(elements,str) and delimiter:
-		elements = elements.split(delimiter)
+	if isinstance(elements,str):
+		if delimiter and (elements not in iterable):
+			elements = elements.split(delimiter)
+		else:
+			elements = [elements]
 
 	# Get nested element if iterable, based on elements
 	if not isinstance(elements,(list,tuple)):
