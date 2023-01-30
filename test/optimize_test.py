@@ -138,6 +138,10 @@ def test_optimizer(path,tol):
 	assert iteration == hyperparams['iterations'], "Checkpointed optimizer not re-initialized with iteration %s"%(iteration)
 	assert size == hyperparams['iterations'], "Checkpointed optimizer not re-initialized with size %s"%(size)
 
+	if optimizer.paths is not None:
+		for path in optimizer.paths:
+			rm(optimizer.paths[path],execute=True)
+
 	return
 
 

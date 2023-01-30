@@ -219,6 +219,7 @@ def test_objective(path,tol):
 	parameters = model.parameters()
 	shapes = model.shapes
 	label = model(parameters)
+	func = []
 	callback = None
 	hyperparams = hyperparameters['optimize']
 	system = model.system
@@ -236,8 +237,8 @@ def test_objective(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_class(path,tol)
+	# test_class(path,tol)
 	# test_data(path,tol)
 	# test_grad(path,tol)
 	# test_metric(path,tol)
-	# test_objective(path,tol)
+	test_objective(path,tol)

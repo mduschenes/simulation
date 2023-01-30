@@ -1205,6 +1205,8 @@ class Optimization(System):
 		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
 
+		self.paths = {'track':join(self.path,ext=None,root=self.cwd),'attributes':join(self.path,ext='ckpt',root=self.cwd)} if self.path is not None else None
+
 		self.reset(clear=True)
 
 		return
@@ -1335,16 +1337,16 @@ class Optimization(System):
 			state (object): optimizer state
 		'''
 
-		do = (self.path is not None) and ((not self.status) or (self.modulo['dump'] is None) or (iteration is None) or (iteration%self.modulo['dump'] == 0))
+		do = (self.paths is not None) and ((not self.status) or (self.modulo['dump'] is None) or (iteration is None) or (iteration%self.modulo['dump'] == 0))
 
 		if not do:
 			return
 
-		path = join(self.path,root=self.cwd)
+		path = self.paths['track']
 		data = self.track
 		dump(data,path)
 
-		path = join(self.path,ext='ckpt',root=self.cwd)
+		path = self.paths['attributes']
 		data = self.attributes
 		dump(data,path)
 
@@ -1361,12 +1363,12 @@ class Optimization(System):
 			state (object): optimizer state
 		'''
 
-		do = (self.path is not None)
+		do = (self.paths is not None)
 
 		if not do:
 			return iteration,state
 
-		path = join(self.path,root=self.cwd)
+		path = self.paths['track']
 		data = load(path)
 
 		if data is not None:
@@ -1375,7 +1377,7 @@ class Optimization(System):
 					self.track[attr].extend(data[attr])
 
 
-		path = join(self.path,ext='ckpt',root=self.cwd)
+		path = self.paths['attributes']
 		data = load(path)
 
 		if data is not None:

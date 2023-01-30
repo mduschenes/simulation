@@ -18,13 +18,13 @@
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[4],		
-		"model.M":[500],		
+		"model.N":[2],		
+		"model.M":[5],		
 		"model.tau":[20e0],		
 		"noise.scale":[null],
 		"state.scale":[1],
 
-		"optimize.iterations":[300],
+		"optimize.iterations":[10],
 		"optimize.optimizer":["cg"],
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
@@ -61,9 +61,9 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":5,
-	"T":null,
-	"tau":50e0,
+	"M":null,
+	"T":1e3,
+	"tau":200,
 	"P":2,
 	"space":"spin",
 	"time":"linear",
@@ -86,7 +86,7 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":100,
+	"iterations":10,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
@@ -97,10 +97,10 @@
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
-	"kwargs":{"noise":1e-3},
+	"kwargs":{"noise":{"scale":1e-3}},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
-	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
+	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},
 	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"attributes":{
 		"iteration":[],"parameters":[],
@@ -137,6 +137,7 @@
 "parameters":{
 	"xy": {
 		"string":"xy",
+		"init":true,		
 		"category":"variable",
 		"method":"unconstrained",
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
@@ -162,6 +163,7 @@
 		},
 	"z": {
 		"string":"z",
+		"init":true,
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
@@ -182,6 +184,7 @@
 		},
 	"zz": {
 		"string":"zz",
+		"init":true,		
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
@@ -207,7 +210,9 @@
 	},
 "label": {
 	"string":"random",
+	"init":true,	
 	"category":"constant",
+	"method":null,	
 	"parameters":null,
 	"shape":[-1,-1],
 	"size":null,
@@ -219,7 +224,9 @@
 	},
 "state": {
 	"string":"random",
+	"init":true,	
 	"category":"constant",
+	"method":null,	
 	"shape":[-1,-1],
 	"size":[1,1],
 	"scale":null,
@@ -229,12 +236,14 @@
 	"bounds":[-1,1]
 	},
 "noise": {
-	"string":"dephase",
+	"string":"phase",
+	"init":true,	
 	"category":"constant",
+	"method":null,
 	"shape":[-1,-1],
 	"size":null,
 	"scale":null,
-	"initialization":"random",
+	"initialization":"time",
 	"random":"gaussian",
 	"seed":123456,
 	"bounds":[-1,1]

@@ -456,9 +456,11 @@ def parse(key,value,data):
 		out = conditions(outs,op='and')
 
 	else:
+		if not isinstance(value,list):
+			value = [value]
 		try:
 			out = data[key].isin(value)
-		except:
+		except Exception as exception:
 			try:
 				out = data[key] in value
 			except:

@@ -215,7 +215,7 @@ def setup(hyperparameters,cls=None):
 	Setup hyperparameters
 	Args:	
 		hyperparameters (dict): Hyperparameters
-		cls (object): Class instance
+		cls (dict): Class attributes
 	'''
 
 	# Update with checked values
@@ -236,8 +236,8 @@ def setup(hyperparameters,cls=None):
 		**{attr: {
 			'value': (lambda parameter,hyperparameters,attr=attr: {
 				**hyperparameters[parameter][attr],
-				**({kwarg: getattr(cls,kwarg) for kwarg in cls.__dict__ 
-					if isinstance(getattr(cls,kwarg),scalars) and not isinstance(getattr(cls,kwarg),str)
+				**({kwarg: cls[kwarg] for kwarg in cls
+					if isinstance(cls[kwarg],scalars) and not isinstance(cls[kwarg],str)
 					} if cls is not None else {}),
 				**{kwarg: {'min':minimum,'max':maximum}[kwarg](array(hyperparameters[parameter]['parameters'])) if hyperparameters[parameter].get('parameters') 
 						  else {'min':minimum,'max':maximum}[kwarg](array(hyperparameters[parameter]['bounds']['parameters']))
@@ -304,7 +304,7 @@ class Parameters(Object):
 			size (int,iterable[int]): Number of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
-			cls (object): Class instance to update hyperparameters		
+			cls (dict): Class attributes
 			check (callable): Function with signature check(group,index,axis) to check if index of data for axis corresponds to group
 			initialize (callable): Function with signature initialize(parameters,shape,hyperparameters,reset=None,dtype=None) to initialize parameter values
 			kwargs (dict): Additional system keyword arguments
