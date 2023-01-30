@@ -240,9 +240,10 @@
 	},
 "state": {
 	"string":"random",
-	"init":true,
+	"init":true,	
 	"category":"constant",
 	"method":null,
+	"parameters":null,
 	"shape":[-1,-1],
 	"size":[1,1],
 	"scale":1,
@@ -253,9 +254,10 @@
 	},
 "noise": {
 	"string":"phase",
-	"init":true,
+	"init":true,	
 	"category":"constant",
 	"method":null,
+	"parameters":null,
 	"shape":[-1,-1],
 	"size":null,
 	"scale":1e-12,
