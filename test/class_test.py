@@ -245,7 +245,7 @@ def test_normalization(path,tol):
 		kwargs = {kwarg : hyperparameters[key][kwarg] for kwarg in hyperparameters[key] if kwarg not in ['data','shape','size','dims','system']}
 
 		# Initial instance
-		kwargs.update({'scale':1,'key':key})
+		kwargs.update({'scale':1,'key':key,'cls':{'tau':1}})
 		data = {}
 		obj = cls(data,shape,size=size,dims=dims,system=system,**kwargs)
 
@@ -285,6 +285,7 @@ def test_normalization(path,tol):
 
 		# Identical instance
 		data = dict(copy)
+		data.update(kwargs)
 
 		obj = cls(data,shape,size=size,dims=dims,system=system)
 
@@ -293,6 +294,8 @@ def test_normalization(path,tol):
 		print('----')
 		print('identical',obj())
 		print()
+		print(copy['cls'],copy['scale'])
+		print(obj.cls,obj.scale)
 		# for attr in data:
 		# 	print(attr,data[attr])
 		# 	print()
@@ -400,11 +403,12 @@ def test_fisher(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_parameters(path,tol)
+
+	# test_parameters(path,tol)
 	# test_call(path,tol)
 	# test_data(path,tol)
 	# test_logger(path,tol)
 	# test_class(path,tol)
 	# test_model(path,tol)
-	# test_normalization(path,tol)
+	test_normalization(path,tol)
 	# test_fisher(path,tol)

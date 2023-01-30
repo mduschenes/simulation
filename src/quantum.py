@@ -357,7 +357,7 @@ class Observable(System):
 		parameters = self.parameters.hyperparameters if isinstance(self.parameters,Parameters) else self.parameters
 		shape = (len(self.data),self.M)
 		dims = None
-		cls = self
+		cls = {attr: getattr(self,attr) for attr in self if isinstance(getattr(self,attr),scalars)}
 		check = lambda group,index,axis,site=self.site,string=self.string: (
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
@@ -396,7 +396,7 @@ class Observable(System):
 		shape = self.shape
 		dims = [self.N,self.D]
 		system = self.system
-		cls = self
+		cls = {attr: getattr(self,attr) for attr in self if isinstance(getattr(self,attr),scalars)}
 
 		# Get state
 		kwargs.clear()
@@ -433,7 +433,7 @@ class Observable(System):
 			label = label
 		label = self.label(label)
 
-		shapes = (self.label.shape,self.label.shape)
+		shapes = (self.shape,self.label.shape)
 		self.shapes = shapes
 
 		# Operator functions
@@ -770,8 +770,8 @@ class Observable(System):
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
 				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','shape','dims','cwd','path','backend','architecture','conf','logger','cleanup']
 			],
-			*['%s: %s'%(attr[0].split(delim)[0],'%0.3e'%(getattrs(self,attr[1],delimiter=delim)) if getattrs(self,attr[0],delimiter=delim) else getattrs(self,attr[0],delimiter=delim)) 
-				for attr in [['state.init','state.scale'],['noise.init','noise.scale']]
+			*['%s: %s'%(attr.split(delim)[0],'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
+				for attr in ['state.scale','noise.scale']
 			],
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).__name__) 
 				for attr in ['exponentiation']

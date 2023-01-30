@@ -2264,7 +2264,7 @@ def product(a):
 		out = onp.prod(a)
 	except:
 		out = 0
-	return 0
+	return out
 
 
 def where(conditions):

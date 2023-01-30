@@ -355,6 +355,7 @@ class Object(System):
 			'random':'random',
 			'seed':None,
 			'bounds':[-1,1],
+
 		}
 
 		# Setup kwargs
@@ -473,7 +474,8 @@ class Space(System):
 		self.D = D
 		self.n = None
 		self.g = None
-		self.space = space		
+		self.space = space
+		self.string = None		
 		self.default = 'spin'
 		self.system = system
 
@@ -559,6 +561,7 @@ class Time(System):
 		self.tau = tau
 		self.P = P
 		self.time = time
+		self.string = None				
 		self.default = 'linear'
 		self.system = system
 
@@ -661,6 +664,7 @@ class Lattice(System):
 		self.L = L
 		self.delta = delta
 		self.lattice = lattice	
+		self.string = None				
 		self.default = 'square'
 		self.system = system
 
