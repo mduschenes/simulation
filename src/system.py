@@ -349,6 +349,7 @@ class Object(System):
 			'init':True,
 			'category':None,
 			'method':None,
+			'parameters':None,
 			'scale':1,
 			'samples':None,
 			'initialization':'random',

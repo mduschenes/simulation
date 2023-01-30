@@ -5245,17 +5245,17 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 	if error is not None and is_naninf(error):
 		# error = r'$\infty$'
 		error = None
-	
+
 	if zero and number == 0:
 		string = r'%d%%s%%s%%s'%(number)
 
-	elif is_int(number):
+	elif is_int(number) and ((number >= base**scilimits[0]) and (number <= base**scilimits[1])):
 		string = r'%s%%s%%s%%s'%(str(number))
 
 	elif is_naninf(number):
 		string = r'%s%%s%%s%%s'%(str(0))
 
-	elif isinstance(number,(float,dbl)):		
+	elif isinstance(number,(float,dbl,int,itg)):		
 		string = '%0.*e'%(decimals-1,number)
 		string = string.split('e')
 		basechange = log(10)/log(base)

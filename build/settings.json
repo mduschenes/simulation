@@ -20,20 +20,21 @@
 	
 		"model.N":[2],		
 		"model.M":[null],		
-		"model.tau":[10,20,100,1000],		
-		"model.T": [5e4],
-		"noise.scale":[1e-4],
+		"model.tau":[2e1,5e1,1e2],		
+		"model.T": [1e5],
+		"noise.parameters":[1e6,1e5,1e4],
 		"noise.initialization":["time"],
+		"noise.scale":[1],
 		"state.scale":[1],
 
-		"optimize.iterations":[200],
+		"optimize.iterations":[100],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"parameters.xy.method":["constrained"],
-		"system.architecture":["constrained"],
+		"parameters.xy.method":["unconstrained"],
+		"system.architecture":["unconstrained"],
 
 		"jobs.job.cwd":["test"],	
 		"jobs.postprocess.cwd":["test"],
@@ -125,17 +126,17 @@
 			"iteration.min":[],
 			"variables":false,"variables.relative":false,"variables.relative.mean":[],
 			"features":false,"features.relative":false,"features.relative.mean":[],
-			"objective.ideal.noise":0,"objective.diff.noise":0,"objective.rel.noise":1,
-			"objective.ideal.state":1,"objective.diff.state":1,"objective.rel.state":0,
+			"objective.ideal.noise":0,"objective.diff.noise":0,"objective.rel.noise":0,
+			"objective.ideal.state":0,"objective.diff.state":0,"objective.rel.state":0,
 			"objective.ideal.operator":0,"objective.diff.operator":0,"objective.rel.operator":0,
 			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":1,"fisher.eigenvalues":1,
+			"hessian.eigenvalues":0,"fisher.eigenvalues":0,
 			"hessian.rank":0,"fisher.rank":0,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
 
-			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
+			"noise.scale":[],"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
 		}	
 	},
 "parameters":{
@@ -157,11 +158,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},

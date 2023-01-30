@@ -1337,7 +1337,7 @@ class Optimization(System):
 			state (object): optimizer state
 		'''
 
-		do = (self.paths is not None) and ((not self.status) or (self.modulo['dump'] is None) or (iteration is None) or (iteration%self.modulo['dump'] == 0))
+		do = (self.paths is not None) and ((not self.status) or (self.modulo['dump'] is None) or (iteration is None) or (iteration%self.modulo['dump'] == 0) or (iteration==(self.iterations.stop-1)))
 
 		if not do:
 			return
