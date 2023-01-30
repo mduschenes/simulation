@@ -455,7 +455,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			string = str(string)
 				
-			substring = '\n'.join(['%s'%(substring.replace('$','')) for substring in string.split('\n')])
+			substring = '\n'.join(['%s'%(substring.replace('$','')) if (len(substring.replace('$',''))>0) else r'~' for substring in string.split('\n')])
 
 			if not any([t in substring for t in [r'\textrm','_','^','\\']]):
 				pass
@@ -464,7 +464,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# 	substring = substring.split(t)
 			# 	substring = [r'\textrm{%s}'%i  if (not (is_number(i) or any([j in i for j in ['$','textrm','_','^','\\','}','{']]))) else i for i in substring]
 			# 	substring = t.join(['{%s}'%i for i in substring])
-			substring = '\n'.join(['$%s$'%(substring.replace('$','')) for substring in string.split('\n')])
+			substring = '\n'.join(['$%s$'%(substring.replace('$','')) if (len(substring.replace('$',''))>0) else r'~' for substring in string.split('\n')])
 
 			if len(substring) == 0:
 				substring = substring.replace('$','')

@@ -21,7 +21,7 @@ from src.utils import array,zeros,rand,identity,datatype,allclose,sqrt,abs2
 from src.utils import norm,trace,inner_abs2
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmc,_expm
 from src.utils import gradient_expm
-from src.utils import delim
+from src.utils import scinotation,delim
 
 from src.optimize import Metric
 
@@ -363,10 +363,38 @@ def test_setter(path=None,tol=None):
 	
 	return
 
+def test_scinotation(path=None,tol=None):
+	number = 1e5
+	_string = '10^{5}'
+	kwargs = dict(decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,2],error=None,usetex=False)
+	string = scinotation(number,**kwargs)
+	assert string == _string, "%s != %s"%(string,_string)
+
+	number = 1e5
+	_string = '100000'
+	kwargs = dict(decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,5],error=None,usetex=False)
+	string = scinotation(number,**kwargs)
+	assert string == _string, "%s != %s"%(string,_string)
+
+	number = 2.1e-5
+	_string = r'2.1\cdot10^{-5}'
+	kwargs = dict(decimals=2,base=10,order=20,zero=True,one=False,scilimits=[-1,5],error=None,usetex=False)
+	string = scinotation(number,**kwargs)
+	assert string == _string, "%s != %s"%(string,_string)
+
+	number = 1.1e-5
+	_string = r'0.000011'
+	kwargs = dict(decimals=7,base=10,order=20,zero=True,one=False,scilimits=[-5,5],error=None,usetex=False)
+	string = scinotation(number,**kwargs)
+	assert string == _string, "%s != %s"%(string,_string)
+
+	return
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 	# test_objective(path,tol)
 	# test_optimizer(path,tol)
-	test_getter(path,tol)
-	test_setter(path,tol)
+	# test_getter(path,tol)
+	# test_setter(path,tol)
+	test_scinotation(path,tol)

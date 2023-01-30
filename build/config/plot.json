@@ -12,7 +12,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null,"":"\\textrm{Noisy}"},
+			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -28,7 +28,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null,"":"\\textrm{Noisy}"},
+			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null},
 			"alpha":0.5,			
 			"color":"viridis"
 			}						
@@ -88,7 +88,10 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"tau":null,"noise.scale":null,"":"\\textrm{Noisy}"},
+			"label":{
+				"N":null,"architecture":null,"tau":null,"noise.parameters":null,
+				"$T$":"@T@"
+			},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -104,7 +107,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"tau":null,"noise.scale":null,"":"\\textrm{Noisy}"},
+			"label":{"N":null,"architecture":null,"tau":null,"noise.parameters":null},
 			"alpha":0.5,			
 			"color":"viridis"
 			}						
@@ -130,13 +133,13 @@
 		"grid":{"visible":true,"which":"both","axis":"both"},
 		"legend":{
 			"title_fontsize": 20,
-			"get_title":{"ha":"center"},
+			"get_title":{"ha":"center","linespacing":2},
 			"prop": {"size": 20},
 			"markerscale": 1.2,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": [1.1,0.05],
-			"ncol": 4,
+			"loc": [1.1,0.65],
+			"ncol": 1,
 			"set_label":true,
 			"set_zorder":{"level":100},
 			"update":"%s \\textrm{Noisy}",
@@ -164,7 +167,7 @@
 			{
 			"x":"noise.scale",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"M":null,"iteration":"@iteration.min@;!=0!="},
+			"label":{"N":null,"architecture":null,"M":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -233,7 +236,7 @@
 			{
 			"x":"noise.scale",
 			"y":"objective.diff.state",
-			"label":{"N":null,"architecture":null,"M":null,"iteration":"@iteration.min@;!=0!=","":"\\textrm{Noisy}"},
+			"label":{"N":null,"architecture":null,"M":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -289,7 +292,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
-"noise.scale.objective.tau":{
+"noise.parameters.objective.tau":{
 	"fig":{
 		"set_size_inches":{"w":28,"h":18},
 		"subplots_adjust":{},
@@ -300,9 +303,9 @@
 	"ax":{
 		"errorbar":[
 			{
-			"x":"noise.scale",
+			"x":"noise.parameters",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"tau":null,"iteration":"@iteration.min@;!=0!="},
+			"label":{"N":null,"architecture":null,"tau":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -314,8 +317,8 @@
 			"ecolor":"viridis"
 			}	
 		],			
-		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
-		"set_xlabel":{"xlabel":"$\\gamma$"},
+		"set_ylabel":{"ylabel":null},
+		"set_xlabel":{"xlabel":null},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"log","base":10},
 		"set_xscale":{"value":"symlog","base":10,"linthresh":1e-20},
@@ -358,7 +361,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
-"noise.scale.objective.diff.tau":{
+"noise.parameters.objective.diff.tau":{
 	"fig":{
 		"set_size_inches":{"w":18,"h":18},
 		"subplots_adjust":{},
@@ -369,9 +372,9 @@
 	"ax":{
 		"errorbar":[
 			{
-			"x":"noise.scale",
+			"x":"noise.parameters",
 			"y":"objective.diff.state",
-			"label":{"N":null,"architecture":null,"tau":null,"iteration":"@iteration.min@;!=0!=","":"\\textrm{Noisy}"},
+			"label":{"N":null,"architecture":null,"tau":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -384,7 +387,7 @@
 			}	
 		],
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity Difference}$"},
-		"set_xlabel":{"xlabel":"$\\gamma$"},
+		"set_xlabel":{"xlabel":null},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"log","base":10},
 		"set_xscale":{"value":"symlog","base":10,"linthresh":1e-20},
@@ -440,7 +443,7 @@
 			{
 			"x":"M",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@;!=0!=","":"\\textrm{Noisy}"},
+			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -509,7 +512,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"variables.relative.mean",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@;!=0!="},			
+			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@"},			
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -581,7 +584,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"iteration.min",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@;!=0!="},										
+			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@"},										
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -627,7 +630,7 @@
 		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
 		}
 	},
-"tau.objective.noise.scale":{
+"tau.objective.noise.parameters":{
 	"fig":{
 		"set_size_inches":{"w":18,"h":18},
 		"subplots_adjust":{},
@@ -640,7 +643,7 @@
 			{
 			"x":"tau",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@;!=0!=","":"\\textrm{Noisy}"},
+			"label":{"N":null,"architecture":null,"noise.parameters":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -652,8 +655,8 @@
 			"ecolor":"viridis"
 			}				
 		],			
-		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
-		"set_xlabel":{"xlabel":"$M$"},
+		"set_ylabel":{"ylabel":null},
+		"set_xlabel":{"xlabel":null},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"linear"},
 		"set_xlim":{"xmin":0,"xmax":1100},
@@ -708,7 +711,7 @@
 		"errorbar":{
 			"x":"tau",
 			"y":"variables.relative.mean",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@;!=0!="},			
+			"label":{"N":null,"architecture":null,"noise.parameters":null,"iteration":"@iteration.min@"},			
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -736,7 +739,7 @@
 				],
 			"ylabel":"$\\abs{({\\theta}^{*}_{} - {\\tilde{\\theta}^{}_{}})/{\\tilde{\\theta}^{}_{}}}$"
 			},		
-		"set_xlabel":{"xlabel":"$M$"},
+		"set_xlabel":{"xlabel":null},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xlim":{"xmin":0,"xmax":1100},
 		"set_xnbins":{"nbins":6},
@@ -778,7 +781,7 @@
 		"errorbar":{
 			"x":"tau",
 			"y":"iteration.min",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@;!=0!="},										
+			"label":{"N":null,"architecture":null,"noise.parameters":null,"iteration":"@iteration.min@"},										
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -800,7 +803,7 @@
 			"set_zorder":{"level":100}
 			},
 		"set_ylabel":{"ylabel":"$\\textrm{Number of Iterations}$"},
-		"set_xlabel":{"xlabel":"$M$"},
+		"set_xlabel":{"xlabel":null},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},
 		"set_xlim":{"xmin":0,"xmax":1100},
 		"set_xnbins":{"nbins":6},
@@ -978,7 +981,7 @@
                     "N": null,
                     "architecture": null,
                     "tau": null,
-                    "noise.scale": null,
+                    "noise.parameters": null,
                     "iteration": "@iteration.max@",
                     "rank": "hessian.rank"
                 },
@@ -1046,7 +1049,7 @@
                     "N": null,
                     "architecture": null,
                     "tau": null,
-                    "noise.scale": null,
+                    "noise.par": null,
                     "iteration": "@iteration.max@",
                     "rank": "fisher.rank"
                 },
