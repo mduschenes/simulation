@@ -10,31 +10,35 @@
 	"dump":0
 	},
 "seed":{
-	"seed":1892632,
-	"size":16,
-	"reset":1892632,
+	"seed":49535,
+	"size":4,
+	"reset":49535,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
+
 		"model.N":[4],		
-		"model.M":[10,100,200,400,500,600,800,1000,1250,1400,1500,1600,1750,1800,2000,2250,2500,3000,4000,5000],		
-		"model.tau":[20e0],		
-		"noise.scale":[1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
+		"model.M":[null],		
+		"model.tau":[2e1,5e1,1e2,5e2,1e3],		
+		"model.T": [1e5,1e4],
+		"noise.parameters":[1e7,1e6,1e5,1e4,1e3,1e2],
+		"noise.initialization":["time"],
+		"noise.scale":[1],
 		"state.scale":[1],
 
-		"optimize.iterations":[500],
+		"optimize.iterations":[200],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"parameters.xy.method":["constrained"],
-		"system.architecture":["constrained"],
+		"parameters.xy.method":["unconstrained"],
+		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["gobi/noise"],
-		"jobs.postprocess.cwd":["gobi/noise"],
+		"jobs.job.cwd":["gobi/tau"],
+		"jobs.postprocess.cwd":["gobi/tau"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -42,7 +46,7 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[64],
+		"jobs.job.pool":[8],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -51,7 +55,7 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[2],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["40:00:00"],
+		"jobs.job.patterns.time":["20:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
 		"jobs.job.patterns.mem":["256GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
@@ -142,7 +146,7 @@
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
 
-			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
+			"noise.scale":[],"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
 		}	
 	},
 "parameters":{
@@ -164,11 +168,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
