@@ -146,7 +146,7 @@
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
 
-			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
+			"noise.scale":[],"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
 		}	
 	},
 "parameters":{
