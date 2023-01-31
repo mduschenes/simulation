@@ -1029,10 +1029,22 @@ class Metric(System):
 				gradient_analytical = gradient_inner_norm
 
 				def wrapper_function(out,*operands):
-					return out/operands[0].shape[-1]/2
+					return out/2
 
 				def wrapper_gradient(out,*operands):
-					return out/operands[0].shape[-1]/2
+					return out/2
+
+			elif self.metric in ['lstsq']:
+
+				function = inner_norm
+				gradient_analytical = gradient_inner_norm
+
+				def wrapper_function(out,*operands):
+					return out/2
+
+				def wrapper_gradient(out,*operands):
+					return out/2					
+
 
 			elif self.metric in ['norm']:
 

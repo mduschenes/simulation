@@ -100,7 +100,8 @@ def dirname(path,abspath=False,delimiter='.'):
 		'tmp',
 		'cpp','o','out','err','obj',
 		'csv','txt',
-		'npy','pickle','pkl',
+		'npy','npz',
+		'pickle','pkl',
 		'json',
 		'hdf5','h5','ckpt',
 		'sh',
@@ -635,7 +636,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	Returns:
 		data (object,iterable[object],dict[str,object]): Loaded object
 	'''
-	exts = ['npy','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
+	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
 	wrs = [wr,'r','rb']
 
 
@@ -754,7 +755,7 @@ def _load(obj,wr,ext,**kwargs):
 		data (object): Loaded object
 	'''	
 	
-	exts = ['npy','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
+	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
 
 	try:
 		assert ext in exts, "Cannot load extension %s"%(ext)
@@ -767,6 +768,8 @@ def _load(obj,wr,ext,**kwargs):
 		# 	raise exception
 
 	if ext in ['npy']:
+		data = np.load(obj,**{**kwargs})
+	elif ext in ['npz']:
 		data = np.load(obj,**{**kwargs})
 	elif ext in ['csv']:
 		data = getattr(pd,'read_%s'%ext)(obj,**{**kwargs})
@@ -871,11 +874,18 @@ def _dump(data,obj,wr,ext,**kwargs):
 		kwargs (dict): Additional dumping keyword arguments
 	'''	
 
-	exts = ['npy','csv','txt','pickle','pkl','json','tex','hdf5','h5','ckpt','pdf']
+	exts = ['npy','npz','csv','txt','pickle','pkl','json','tex','hdf5','h5','ckpt','pdf']
 	assert ext in exts, "Cannot dump extension %s"%(ext)
 
 	if ext in ['npy']:
 		np.save(obj,data,**{**kwargs})
+	if ext in ['npz']:
+		if isinstance(data,dict):
+			np.savez(obj,**data)
+		elif isinstance(data,(tuple)):
+			np.savez(obj,*data)
+		else:
+			np.savez(obj,data)
 	elif ext in ['csv']:
 		getattr(data,'to_%s'%ext)(obj,**{'index':False,**kwargs})
 	elif ext in ['txt']:

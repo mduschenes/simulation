@@ -127,7 +127,13 @@ defaults = {
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"log","base":10},
 		"set_xnbins":{"nbins":6},
+		"set_xlim": {"xmin": 5e-13,"xmax":5e0},
+		"set_xlim": {"xmin": 5e-21,"xmax":5e0},
+		"set_xlim": {"xmin": 5e-13,"xmax":5e0},
 		"set_xticks":{"ticks":[1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_xticks":{"ticks":[1e-20,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_xticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
+		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -135,8 +141,12 @@ defaults = {
 		"set_ynbins":{"nbins":7},
 		"set_ylim": {
 				"ymin": -100,
-				"ymax": 2100
+				"ymin": -500,
+				"ymax": 5100,
+				"ymax": 2500
 			},
+		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
+		"set_yticks":{"ticks":[0,1000,2000]},		
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
@@ -208,9 +218,11 @@ defaults = {
 		"set_yscale":{"value":"linear"},
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim": {"ymin": 1e-5,"ymax": 1e-1},
-		"set_ylim": {"ymin": 1e-9,"ymax": 5e2},
+		"set_ylim": {"ymin": 1e-13,"ymax": 5e2},
+		"set_ylim": {"ymin": 5e-9,"ymax": 5e2},
 		"set_ynbins":{"nbins":5},
 		"set_yticks":{"ticks":[1e-4,1e-3,1e-2,1e-1]},
+		"set_yticks":{"ticks":[1e-12,1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
 		"set_yticks":{"ticks":[1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
@@ -309,7 +321,8 @@ def postprocess(path,**kwargs):
 						pass
 
 				slices = range(4,len(data[label['y']])-5)
-				slices = [6]#range(4,len(data[label['y']])-5)
+				slices = [4,6,8,9,11]#range(4,len(data[label['y']])-5)
+				# slices = range(len(data[label['y']])-3)
 
 				X = array([data['%s'%(label['x'])][i] for i in slices])
 				Y = array([data['%s'%(label['y'])][i] for i in slices])
@@ -351,8 +364,9 @@ def postprocess(path,**kwargs):
 							1,y_[slices][argmin(z_[slices])],1
 							])
 						kwargs = {'shape':[1,2,3]}
-						preprocess = lambda x,y: (x,log10(y))
-						postprocess = lambda x,y: (x,exp10(y))
+						
+						preprocess = lambda x,y: (x if x is not None else None,log10(y) if y is not None else None)
+						postprocess = lambda x,y: (x if x is not None else None,exp10(y) if y is not None else None)
 
 						# func = 'linear'
 						# coef0 = None
@@ -360,8 +374,11 @@ def postprocess(path,**kwargs):
 						# preprocess = lambda x,y: (x,y)
 						# postprocess = lambda x,y: (x,y)
 
-						_z,_coef,_zerr,_coefferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef0=coef0,uncertainty=True,preprocess=preprocess,postprocess=postprocess,**kwargs)	
+						# _z,_coef,_zerr,_coefferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef0=coef0,uncertainty=True,preprocess=preprocess,postprocess=postprocess,**kwargs)	
 
+
+						_z,_coef,_zerr,_coefferr,_r = z_[slices],coef0,zerr_[slices],None,1
+						_y = y_[slices] 
 						index = int(argmin(_z))
 						indexerr = (int(argmin(_z+_zerr)) + int(argmin(_z-_zerr)))//2
 
@@ -406,7 +423,7 @@ def postprocess(path,**kwargs):
 								'y':Z[i],
 								'xerr':Yerr[i] if Yerr.ndim == 1 else Yerr[i],
 								'yerr':Zerr[i],	
-								'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
+								'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
 								'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
 								'marker':'o',
 								'linestyle':'',
@@ -419,7 +436,7 @@ def postprocess(path,**kwargs):
 								'x':_Y[i],
 								'y':_Z[i],
 								# 'yerr':[(_Z[i]*(1 - (_Z[i]/(_Z[i]+_Zerr[i])))),_Zerr[i]],							
-								'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
+								'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
 								'marker':'',
 								'linestyle':'-',
 								'linewidth':2,
@@ -433,7 +450,7 @@ def postprocess(path,**kwargs):
 								'xerr':[yerr[i] for i in indices],
 								'yerr':[zerr[i] for i in indices],
 								# 'yerr':[(_Z[i]*(1 - (_Z[i]/(_Z[i]+_Zerr[i])))),_Zerr[i]],							
-								'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(Z)),	
+								'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
 								'ecolor':'viridis',
 								'marker':'o',
 								'markersize':20,
@@ -452,7 +469,7 @@ def postprocess(path,**kwargs):
 								# 'x':Y[i],
 								# 'y':Z[i],
 								# 'yerr':[(Z[i]*(1 - (Z[i]/(Z[i]+Zerr[i])))),Zerr[i]],
-								# 'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(Z)),	
+								# 'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(indices)),	
 								# } for i in indices
 								# ],
 								*[
@@ -461,7 +478,7 @@ def postprocess(path,**kwargs):
 								'x':_Y[i],
 								'y':_Z[i],
 								'yerr':_Zerr[i],
-								'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(Z)),	
+								'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(indices)),	
 								'alpha':0.4,
 								} for i in indices
 								],
@@ -506,27 +523,30 @@ def postprocess(path,**kwargs):
 
 				def func(x,*coef):
 					# y = coef[0]*((x)**(-coef[2])) + coef[1]
-					# y = ((exp(-(log(x))*coef[0])))
+					# y = ((exp(-(log10(x))*coef[0])))
 					# y = ((x-coef[1])**(-coef[0]))
 					# y = coef[1]*((x)**(-coef[0]))
-					# y = coef[1]*(log(x)**(-coef[0]))
-					y = coef[1]*(log(x)) + coef[0]
+					# y = coef[1]*(log10(x)**(-coef[0]))
+					y = coef[0] + coef[1]*(x)
 					return y
 
-				_x = logspace(int(log10(x.min()))-2,int(log10(x.max()))+1,x.size*100)
+				_x = logspace(int(log10(x.min()))-2,int(log10(x.max())),x.size*100)
 				p = 2
-				coef0 = array([0.5,1.0])[:p]
+				coef0 = array([-900.0,-300])[:p]
 				kwargs = {
 					'maxfev':200000,
 				}
+				preprocess = lambda x,y: (log10(x) if x is not None else None,y if y is not None else None)
+				postprocess = lambda x,y: (exp10(x) if x is not None else None,y if y is not None else None)
 
 				_y,coef,_yerr,coefferr,r = fit(x[slices],y[slices],_x=_x,_y=y[slices],
 					func=func,coef0=coef0,
 					yerr=yerr[slices] if yerr is not None else yerr,
 					xerr=xerr[slices] if xerr is not None else xerr,
+					preprocess=preprocess,postprocess=postprocess,
 					uncertainty=True,**kwargs)
-				
 
+				print(coef)
 				fig,ax = None,None
 
 				settings = deepcopy(defaults[name])

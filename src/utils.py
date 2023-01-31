@@ -464,16 +464,23 @@ def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 
 	return grad
 
-
-def hessian(func):
+def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute hessian of function
 	Args:
 		func (callable): Function to differentiate
+		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic
+		kwargs : Additional keyword arguments for gradient mode:
+			'finite': tol (float): Finite difference tolerance
+			'shift': shifts (int): Number of eigenvalues of shifted values
+			'fwd': move (bool): Move differentiated axes to beginning of dimensions
+			'rev': move (bool): Move differentiated axes to beginning of dimensions
 	Returns:
 		grad (callable): Hessian of function
 	'''
-	grad = jit(jax.hessian(func))
+	grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
 	return grad
 
 
@@ -532,6 +539,20 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		return out
 
 	return fisher
+
+
+def rao(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
+	'''
+	Compute cramer rao bound of function
+	Args:
+		func (callable): Function to compute
+		grad (callable): Gradient to compute
+		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type
+		mode (str): Type of fisher information, allowed ['operator','state']
+	Returns:
+		fisher (callable): Fisher information of function
+	'''
 
 
 @jit
@@ -1395,6 +1416,18 @@ def lstsq(x,y):
 	return np.linalg.lstsq(x,y)
 
 
+@jit
+def inv(a):
+	'''
+	Compute inverse of a
+	Args:
+		a (array): Array to compute inverse
+	Returns:
+		out (array): Inverse
+	'''
+	return np.linalg.inv(a)
+
+
 # @partial(jit,static_argnums=(0,))
 def curve_fit(func,x,y,**kwargs):
 	'''
@@ -1542,6 +1575,49 @@ def extrema(x,y,_x=None,**kwargs):
 
 	return indices
 
+
+def standardize(x,y,coef=None,axis=None,mode='bounds',**kwargs):
+	'''
+	Compute standardization of data
+	Args:
+		x (array): array to compute standardization
+		y (array): array to compute standardization
+		coef (array): array to compute standardization (parameters of linear model y = coef[0] + coef[1]*x)
+		axis (int): axis to compute over. Flattens array if None.
+		mode (str): Method of standardization, allowed strings in ['bounds']
+		kwargs (dict): Additional keyword arguments for standardization
+	Returns:
+		transform (callable): standardization function
+		invtransform (callable): inverse standardization function
+	'''
+	params = [[x.min(),x.max()],[y.min(),y.max()]]
+	params = [[param[1],0] if param[0]==param[1] else param for param in params]
+
+	if mode is None or mode in ['bounds']:
+		def transform(x,y,coef=None,params=params):
+			_x = ((x-params[0][0])/(params[0][1]-params[0][0]))
+			_y = ((y-params[1][0])/(params[1][1]-params[1][0]))
+			_coef = coef if coef is not None else None
+
+			if coef is not None:
+				return _x,_y,_coef
+			else:
+				return _x,_y
+		
+		def invtransform(x,y,coef=None,params=params):
+			_x = ((x)*(params[0][1]-params[0][0]) + params[0][0])
+			_y = ((y)*(params[1][1]-params[1][0]) + params[1][0])
+			_coef = array([
+				((params[1][1]-params[1][0])*coef[0]/(params[0][1]-params[0][0])),
+				((params[1][1]-params[1][0])*coef[1] - (params[1][1]-params[1][0])*coef[0]/(params[0][1]-params[0][0])*params[0][0] + params[1][0]),
+				]) if coef is not None else None
+
+			if coef is not None:
+				return _x,_y,_coef
+			else:
+				return _x,_y				
+
+	return transform,invtransform
 
 @partial(jit,static_argnums=(1,))
 def mean(a,axis=None):
@@ -2267,7 +2343,7 @@ def product(a):
 	return out
 
 
-def where(conditions):
+def where(conditions,x=None,y=None):
 	'''
 	Indices where conditions are True
 	Args:
@@ -2275,7 +2351,7 @@ def where(conditions):
 	Returns:
 		out (array): Indices of conditions
 	'''
-	return np.where(conditions)
+	return np.where(conditions,x,y)
 
 def conditions(booleans,op):
 	'''
@@ -5213,7 +5289,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		order (int): Max power of number allowed for rounding
 		zero (bool): Make numbers that equal 0 be the int representation
 		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
-		scilimits (list): Limits on where not to represent with scientific notation
+		scilimits (iterable[int]): Limits on where not to represent with scientific notation
 		error (str,int,float): Error of number to be processed
 		usetex (bool): Render string with Latex
 	
@@ -5221,6 +5297,10 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		String with scientific notation format for number
 
 	'''
+
+	if scilimits is None:
+		scilimits = [-1,1]
+
 	if not is_number(number):
 		return str(number)
 
