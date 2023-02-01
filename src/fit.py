@@ -138,7 +138,7 @@ def size(data,axis=None,transform=None,dtype=None,**kwargs):
 	return out
 
 
-def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef=None,coeferr=None,coefframe=None,intercept=False,bounds=None,kwargs={}):
+def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef=None,coeferr=None,coefframe=True,intercept=False,bounds=None,kwargs={}):
 	'''
 	Fit of data
 	Args:
@@ -158,7 +158,7 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 		bounds (iterable[object]): piecewise domains
 		kwargs (dict[str,object],iterable[dict[str,object]]): Additional keyword arguments for fitting
 	Returns:
-		_func (callable): Fit function
+		_func (callable): Fit function with signature func(coef,x)
 		_y (array): Fit data at _x
 		_coef (array): Fit model parameters
 		_yerr (array): Fit data error at _x
@@ -166,7 +166,9 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 		_r (float): Fit coefficient
 	'''	
 
-	if callable(func) or isinstance(func,str):
+	single = callable(func) or isinstance(func,str)
+
+	if single:
 		func = [func]
 	else:
 		func = func
@@ -179,13 +181,13 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 	if postprocess is None or callable(postprocess):
 		postprocess = [postprocess for i in range(n)]
 
-	if coef is None or isinstance(coef,array):
+	if coef is None or isinstance(coef,(array,*scalars)):
 		coef = [coef for i in range(n)]
 
-	if coeferr is None or isinstance(coeferr,array):
+	if coeferr is None or isinstance(coeferr,(array,*scalars)):
 		coeferr = [coeferr for i in range(n)]
 
-	if coefframe is None or isinstance(coefframe,array):
+	if coefframe is None or isinstance(coefframe,bool):
 		coefframe = [coefframe for i in range(n)]
 
 	if intercept is None or isinstance(intercept,bool):
@@ -194,37 +196,30 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 	if kwargs is None or isinstance(kwargs,dict):
 		kwargs = [kwargs for i in range(n)]
 
-	if bounds is None:
-		raise ValueError("TODO: Allow for bounds to be fit")
-	elif isinstance(bounds,scalars):
-		bounds = [bounds for i in range(n+1)]
-	elif len(bounds) == (n-1):
-		bounds = [*bounds,True,True]
-
-	conditions = [
-		((bounds[i-1] if (bounds is not None and isinstance(bounds[i-1],bool)) else 
-		  x>=bounds[i-1] if ((bounds is not None) and (bounds[i-1] is not None)) else False) and
-		((bounds[i] if (bounds is not None and isinstance(bounds[i],bool)) else 
-		  x<=bounds[i] if ((bounds is not None) and (bounds[i] is not None)) else False) and			
-		(bounds[i-1] if isinstance(bounds[i],bool) else x<=bounds[i] if bounds is not None else False)))
-		for i in range(n)]
-
 	n = min(len(i) for i in [func,preprocess,postprocess,coef,coeferr,coefframe,intercept,kwargs])
 
-	_func = piecewise(func,conditions)
+	funcs = func
+	funcs = [lambda x,coef,func=func,**kwargs: func(coef,x,**kwargs) for func in funcs]
+	funcs,conditions = piecewise(funcs,bounds)
+	_func = lambda coef,x,func=funcs,**kwargs: func(x,coef,**kwargs)
+
+	_funcs = [None for i in range(n)]
 	_y = _y
 	_coef = coef
-	_yerr = _yerr
+	_yerr = zeros(_y.shape)
 	_coeferr = coeferr
 	_r = [None for i in range(n)]
 
 	for i in range(n):
 		
-		returns = _fit(
+		condition = conditions(x)
+		_condition = conditions(_x)
+
+		returns = fitter(
 			x=x[condition[i]] if x is not None else x,
 			y=y[condition[i]] if y is not None else y,
-			_x=_x[condition[i]] if _x is not None else _x,
-			_y=_y[condition[i]] if _y is not None else _y,
+			_x=_x[_condition[i]] if _x is not None else _x,
+			_y=_y[_condition[i]] if _y is not None else _y,
 			func=func[i] if func is not None else func,
 			preprocess=preprocess[i] if preprocess is not None else preprocess,
 			postprocess=postprocess[i] if postprocess is not None else postprocess,
@@ -237,15 +232,19 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 			**(kwargs[i] if kwargs is not None and kwargs[i] is not None else {})
 			)
 
-		_y.at[condition[i]].set(returns[0])
-		_coef[i] = returns[1]
-		_yerr.at[condition[i]].set(returns[2])
-		_coeferr[i] = returns[3]
-		_r[i] = returns[4]
+		_funcs[i] = returns[0]
+		_y = _y.at[_condition[i]].set(returns[1]) 
+		_coef[i] = returns[2]
+		_yerr = _yerr.at[_condition[i]].set(returns[3])
+		_coeferr[i] = returns[4]
+		_r[i] = returns[5]
 
+
+	if single:
+		_func,_y,_coef,_yerr,_coeferr,_r = _func,_y,_coef[0],_yerr,_coeferr[0],_r[0]
 	return _func,_y,_coef,_yerr,_coeferr,_r
 
-def _fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef=None,coeferr=None,coefframe=None,intercept=False,**kwargs):
+def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef=None,coeferr=None,coefframe=True,intercept=False,**kwargs):
 	'''
 	Fit of data
 	Args:
@@ -264,7 +263,7 @@ def _fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=Non
 		intercept (bool): Include intercept in fit
 		kwargs (dict[str,object]): Additional keyword arguments for fitting
 	Returns:
-		_func (callable): Fit function
+		_func (callable): Fit function with signature func(coef,x)
 		_y (array): Fit data at _x
 		_coef (array): Fit model parameters
 		_yerr (array): Fit data error at _x
@@ -275,7 +274,7 @@ def _fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=Non
 	if _x is None:	
 		_x = x
 	if _y is None:
-		_y = y
+		_y = zeros((len(_x),*y.shape[1:]))
 	if xerr is None:
 		xerr = None
 	if yerr is None:
@@ -318,7 +317,7 @@ def _fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=Non
 			jac = inv(invgrad[i][i])
 			yerr = jac.dot(yerr).dot(jac.T)
 
-	_invgrad = gradtransform(_x,_y,_coef)
+	_invgrad = gradtransform(x,y,coef)
 	if _xerr is not None:
 		i = 0
 		if _xerr.ndim == 1:
@@ -336,8 +335,8 @@ def _fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=Non
 			_jac = inv(_invgrad[i][i])
 			_yerr = _jac.dot(_yerr).dot(_jac.T)
 
+	_invgrad = gradtransform(x,y,coef)
 	if not coefframe:
-		_invgrad = gradtransform(x,y,coef)
 		if _coeferr is not None:
 			i = 2
 			if _coeferr.ndim == 1:

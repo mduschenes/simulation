@@ -17,7 +17,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig,mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,exp,exp10,log,log10,sqrt,piecewise,interp
+from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig,piecewise,interp,uncertainty 
+from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,exp,exp10,log,log10,sqrt
 from src.utils import is_naninf
 from src.utils import nan,delim,null
 from src.iterables import setter,getter,flatten
@@ -157,7 +158,7 @@ defaults = {
 		"legend":{
 			"title_fontsize": 12,
 			"get_title":{"ha":"center"},
-			"get_texts":{"va":"center","ha":"center","position":[0,30]},
+			"get_texts":{"va":"center","ha":"center","position":[0,45]},
 			"prop": {"size": 12},
 			"markerscale": 1.2,
 			"handlelength": 3,
@@ -320,7 +321,7 @@ def postprocess(path,**kwargs):
 						pass
 
 				slices = range(4,len(data[label['y']])-5)
-				slices = [4,6,8,9,11]#range(4,len(data[label['y']])-5)
+				slices = [4,6,8,9]#range(4,len(data[label['y']])-5)
 				# slices = range(len(data[label['y']])-3)
 
 				X = array([data['%s'%(label['x'])][i] for i in slices])
@@ -344,13 +345,16 @@ def postprocess(path,**kwargs):
 						indices.append(i)
 
 						slices = slice(0,None,None)
+						
+						y_ = y_[slices] if y_ is not None else None
+						z_ = z_[slices] if z_ is not None else None
 
-						yerr_ = yerr_ if yerr_ is not None and not is_naninf(yerr_).all() else None
+						yerr_ = yerr_[slices] if yerr_ is not None and not is_naninf(yerr_).all() else None
 						zerr_ = zerr_[slices] if zerr_ is not None and not is_naninf(zerr_).all() else None
 
 						_x = x_
-						_n = y_[slices].size*20
-						_y = linspace(y_[slices].min(),y_[slices].max(),_n)
+						_n = y_.size*20
+						_y = linspace(y_.min(),y_.max(),_n)
 						_z = zeros(_n)
 						_yerr = zeros(_n)
 						_zerr = zeros(_n)
@@ -359,17 +363,17 @@ def postprocess(path,**kwargs):
 								(lambda coef,x: coef[0] + coef[1]*x),
 								(lambda coef,x: coef[0] + coef[1]*x),
 								]
-						coef = [[1.0,1.0],[1.0,1.0]]
-						bounds = [y_[slices][argmin(z_[slices])]]
+						coef = [array([1.0,1.0]),array([1.0,1.0])]
+						bounds = [y_[argmin(z_)]]
 						kwargs = {}
 						
 						preprocess = [
-							lambda x,y,coef: (x if x is not None else None,log10(y) if y is not None else None,coef if coef is not None else None),
-							lambda x,y,coef: (log10(x) if x is not None else None,log10(y) if y is not None else None,coef if coef is not None else None),
+							lambda x,y,coef: (x if x is not None else None,log(y) if y is not None else None,coef if coef is not None else None),
+							lambda x,y,coef: (log(x) if x is not None else None,log(y) if y is not None else None,coef if coef is not None else None),
 							]
 						postprocess = [
-							lambda x,y,coef: (x if x is not None else None,exp10(y) if y is not None else None,coef if coef is not None else None),
-							lambda x,y,coef: (exp10(x) if x is not None else None,exp10(y) if y is not None else None,coef if coef is not None else None),
+							lambda x,y,coef: (x if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
+							lambda x,y,coef: (exp(x) if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
 							]
 
 						# func = 'linear'
@@ -377,20 +381,26 @@ def postprocess(path,**kwargs):
 						# kwargs = {'smooth':0}
 						# preprocess = None
 						# postprocess = None
+						print(coef)
 
-						_z,_coef,_zerr,_coeferr,_r = fit(y_[slices],z_[slices],_x=_y,_y=_z,func=func,xerr=yerr_[slices],yerr=zerr_[slices],coef=coef,coefframe=True,uncertainty=True,preprocess=preprocess,postprocess=postprocess,kwargs=kwargs)	
+						_func,_z,_coef,_zerr,_coeferr,_r = fit(
+							y_,z_,
+							_x=_y,_y=_z,
+							func=func,
+							xerr=yerr_,yerr=zerr_,
+							coef=coef,coefframe=True,
+							preprocess=preprocess,postprocess=postprocess,
+							bounds=bounds,kwargs=kwargs)	
 
-						# _z,_coef,_zerr,_coeferr,_r = z_[slices],coef,zerr_[slices],None,1
-
-						_y = y_[slices] 
+						# _z,_coef,_zerr,_coeferr,_r = z_,coef,zerr_[slices],None,1
 						index = argmin(_z)
 						indexerr = (argmin(_z+_zerr) + argmin(_z-_zerr))//2
 
-						_yerr.at[index].set(sum(abs(_y[argmin(_z)+k] - _y[argmin(_z)]) for k in [1,-1])/2)
+						_yerr = _yerr.at[index].set(sum(abs(_y[argmin(_z)+k] - _y[argmin(_z)]) for k in [1,-1])/2)
 
-						print(_x,_r)
 						print(coef)
 						print(_coef)
+						print(_x,_r)
 						print()
 
 						_X.append(_x)
@@ -526,7 +536,9 @@ def postprocess(path,**kwargs):
 					y = coef[0] + coef[1]*(x)
 					return y
 
-				_x = logspace(int(log10(x.min()))-2,int(log10(x.max())),x.size*100)
+				_n = x.size*10
+				_x = logspace(int(log10(x.min()))-2,int(log10(x.max())),_n)
+				_y = zeros(_n)
 				p = 2
 				coef = array([1.0,-1.0])[:p]
 				kwargs = {
@@ -535,14 +547,18 @@ def postprocess(path,**kwargs):
 				preprocess = lambda x,y,coef: (log10(x) if x is not None else None,y if y is not None else None,coef if coef is not None else None)
 				postprocess = lambda x,y,coef: (exp10(x) if x is not None else None,y if y is not None else None,coef if coef is not None else None)
 
-				_y,_coef,_yerr,_coeferr,_r = fit(
+				_func,_y,_coef,_yerr,_coeferr,_r = fit(
 					x[slices],y[slices],
-					_x=_x,_y=y[slices],
+					_x=_x,_y=_y,
 					func=func,coef=coef,
 					yerr=yerr[slices] if yerr is not None else yerr,
 					xerr=xerr[slices] if xerr is not None else xerr,
 					preprocess=preprocess,postprocess=postprocess,
-					coefframe=True,uncertainty=True,**kwargs)
+					coefframe=True,kwargs=kwargs)
+
+				print(_y)
+				print(func(_coef,log10(_x)))
+				print(_coef[0]+_coef[1]*log10(_x))
 
 				fig,ax = None,None
 
@@ -582,9 +598,10 @@ def postprocess(path,**kwargs):
 							'label':(
 								r'$\quad~~ M_{\gamma} = \beta\log{\gamma} + {\alpha}$' + '\n' + 
 								r'$%s$'%('\n'.join([
-								'%s = %s'%(z,scinotation(_coef[i],decimals=4,scilimits=[-1,3],error=sqrt(_coeferr[i][i]) if _coeferr is not None else None)) 
+								'%s = %s'%(z,scinotation(_coef[i],decimals=2,scilimits=[-1,4],error=sqrt(_coeferr[i][i]) if _coeferr is not None else None)) 
 									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_coef)])])) + '\n' +
-								r'$%s$'%('r^2 = %s'%(scinotation(_r,decimals=4,scilimits=[-1,3])))
+								r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation(log10(exp(1))*(_coef[0]/_coef[1]),decimals=2,scilimits=[-1,4],error=log10(exp(1))*uncertainty(*(_coef[i] for i in [0,1]),*(sqrt(_coeferr[i][i]) for i in [0,1]),'/')[1] if _coeferr is not None else None)) + '\n' +
+								r'$%s$'%('r^2 = %s'%(scinotation(_r,decimals=4,scilimits=[-1,4])))
 								),
 							'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
 							'marker':None,

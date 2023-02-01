@@ -554,6 +554,8 @@ def rao(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		fisher (callable): Fisher information of function
 	'''
 
+	return
+
 
 @jit
 def difference(a,n=1,axis=-1):
@@ -1447,26 +1449,24 @@ def curve_fit(func,x,y,**kwargs):
 
 	kwargs = {kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults}
 
-	function = func
 	coef = kwargs['p0']
 
-	def func(x,*coef):
-		return function(coef,x)
+	def function(x,*coef):
+		return func(coef,x)
 
 	x = onp.asarray(x)
 	y = onp.asarray(y)
 	coef = onp.asarray(coef)
 	kwargs.update({kwarg: onp.asarray(kwargs[kwarg]) if kwargs[kwarg] is not None else None for kwarg in ['p0','sigma'] if kwarg in kwargs})
 
-
 	# fig,ax = plt.subplots()
 	# path = 'data.pdf'
 	# ax.plot(x,y,'*-')
-	# ax.plot(x,func(x,*coef),'o--')
+	# ax.plot(x,function(x,*coef),'o--')
 	# fig.savefig(path)
 
 	try:
-		coef,coeferr = osp.optimize.curve_fit(func,x,y,**kwargs)
+		coef,coeferr = osp.optimize.curve_fit(function,x,y,**kwargs)
 	except Exception as exception:
 		print(traceback.format_exc())
 		raise(exception)
@@ -1474,7 +1474,7 @@ def curve_fit(func,x,y,**kwargs):
 	coef = array(coef)
 	coeferr = array(coeferr)
 
-	return coef,coeferr
+	return func,coef,coeferr
 
 # @partial(jit,static_argnums=(0,))
 def piecewise_fit(func,x,y,shape,**kwargs):
@@ -1511,7 +1511,7 @@ def piecewise_fit(func,x,y,shape,**kwargs):
 		func = funcs[i]
 		coef = coefs[i]
 		
-		condition = (x<=bounds[i]) if i==0 else ((x>=bounds[i-1]) & (x<=bounds[i])) if i < (n-1) else (x>=bounds[i-1])
+		condition = (x<=bounds[i]) if i==0 else ((x>=bounds[i-1]) and (x<=bounds[i])) if i < (n-1) else (x>=bounds[i-1])
 		
 		_x = x[condition]
 		_y = y[condition]
@@ -1542,7 +1542,7 @@ def interp(x,y,**kwargs):
 			smooth (int,float): Smoothness of fit
 			der (int): order of derivative to estimate
 	Returns:
-		func (callable): Interpolation function
+		func (callable): Interpolation function with signature func(x,*args,**kwargs)
 	'''	
 
 	def _interpolate(x,y,**kwargs):
@@ -1598,14 +1598,14 @@ def piecewises(func,shape,include=None,**kwargs):
 	'''
 	Compute piecewise curve from func
 	Args:
-		func (callable,iterable[callable]): Functions to fit
+		func (callable,iterable[callable]): Functions to fit with signature func(x,*args,**kwargs)
 		shape (iterable[int]): Piecewise coef shape
 		include (bool): Include piecewise indices of coefficients
 		kwargs (dict[str,object]): Additional keyword arguments for fitting		
 	Returns:
-		func (callable): Piecewise function with signature func(coef,x)
-		funcs (iterable[callable]): Piecewise functions with signature func(coef,x)
-		indices
+		func (callable): Piecewise function with signature func(x,*args,**kwargs)
+		funcs (iterable[callable]): Piecewise functions with signature func(x,*args,**kwargs)
+		indices (array): indices of coefficients for piecewise domains
 	'''
 
 	if callable(func):
@@ -1616,16 +1616,16 @@ def piecewises(func,shape,include=None,**kwargs):
 	n = len(funcs)
 	indices = [slice(sum(shape[:i-1]),sum(shape[:i])) for i in range(1,n+2)]
 
-	def func(coef,x):
+	def func(x,coef):
 
-		bounds,coef = coef[indices[0]],[coef[index] for index in indices[1:]]
-		
-		conditions = [(x<=bounds[i]) if i==0 else ((x>=bounds[i-1]) & (x<=bounds[i])) if i < (n-1) else (x>=bounds[i-1]) 
-					  for i in range(n)]
-		
-		func = [lambda x,func=func,coef=coef: func(coef,x) for func,coef in zip(funcs,coef)]
-		function = piecewise(func,conditions)
-		return function(x)
+		bounds,coefs = coef[indices[0]],[coef[index] for index in indices[1:]]
+		n = len(funcs)
+
+		func = [lambda x,coef,i=i: funcs[i](x,coef[i]) for i in range(n)]
+
+		function,conditions = piecewise(func,bounds)
+
+		return function(x,coef)
 	
 	if include:
 		return func,funcs,indices
@@ -1633,21 +1633,48 @@ def piecewises(func,shape,include=None,**kwargs):
 		return func
 
 
-def piecewise(func,conditions,**kwargs):
+def piecewise(func,bounds,**kwargs):
 	'''
 	Compute piecewise curve from func
 	Args:
-		func (iterable[callable]): Functions to fit
-		conditions (iterable[bool]): Conditions for piecewise domains
+		func (iterable[callable]): Functions to fit with signature func(x,*args,**kwargs)
+		bounds (iterable[object]): Bounds for piecewise domains
 		kwargs (dict): Additional keyword arguments
 	Returns:
-		func (callable): Piecewise function with signature func(x)
+		func (callable): Piecewise function with signature func(x,*args,**kwargs)
+		conditions (callable): Conditions for piecewise domains with signature conditions(x) -> iterable[bool]
 	'''
-	function = func
-	def func(x,*args,**kwargs):
-		return np.piecewise(x,conditions,function)
 
-	return func
+	if callable(func) or isinstance(func,str):
+		func = [func]
+	else:
+		func = func
+
+	n = len(func)
+
+	if bounds is None and n>1:
+		raise ValueError("TODO: Allow for bounds to be fit")
+	elif isinstance(bounds,scalars):
+		bounds = [True for i in range(n+1)]
+	elif len(bounds) == (n-1):
+		bounds = [*bounds,True,True]
+
+	function = func
+
+	def conditions(x,*args,**kwargs):
+		n = len(bounds)-1
+		conditions = [(
+			(bool(bounds[i-1])*ones(x.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else x>=bounds[i-1]) & 
+			(bool(bounds[i])*ones(x.shape,dtype=bool) if (bounds[i] is None or isinstance(bounds[i],bool)) else x<=bounds[i])
+			)
+			for i in range(n)]
+		return conditions
+
+	def func(x,*args,**kwargs):
+		func = function
+		return np.piecewise(x,conditions(x,*args,**kwargs),func,*args,**kwargs)
+
+	return func,conditions
 
 
 def extrema(x,y,_x=None,**kwargs):
@@ -1677,7 +1704,7 @@ def extrema(x,y,_x=None,**kwargs):
 	return indices
 
 
-def standardize(x,y,coef=None,axis=None,mode='bounds',preprocess=None,postprocess=None,**kwargs):
+def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postprocess=None,**kwargs):
 	'''
 	Compute standardization of data
 	Args:
@@ -1685,7 +1712,7 @@ def standardize(x,y,coef=None,axis=None,mode='bounds',preprocess=None,postproces
 		y (array): array to compute standardization
 		coef (array): array to compute standardization (parameters of linear model y = coef[0] + coef[1]*x)
 		axis (int): axis to compute over. Flattens array if None.
-		mode (str): Method of standardization, allowed strings in ['bounds']
+		mode (str): Method of standardization, allowed strings in ['linear']
 		preprocess (callable): Function to preprocess data with signature x,y,coef = preprocess(x,y,coef) (with coef argument/return optional)
 		postprocess (callable): Function to postprocess data with signature x,y,coef = postprocess(x,y,coef) (with coef argument/return optional)
 		kwargs (dict): Additional keyword arguments for standardization
@@ -1701,7 +1728,7 @@ def standardize(x,y,coef=None,axis=None,mode='bounds',preprocess=None,postproces
 		def postprocess(x,y,coef):
 			return x,y,coef
 
-	if mode is None or mode in ['bounds']:
+	if mode is None or mode in ['linear']:
 		x,y,coef = preprocess(x,y,coef)
 		params = [[x.min(),x.max()],[y.min(),y.max()]]
 		params = [[param[1],0] if param[0]==param[1] else param for param in params]
@@ -1735,7 +1762,7 @@ def standardize(x,y,coef=None,axis=None,mode='bounds',preprocess=None,postproces
 			_x = (ax)*(x + bx)
 			_y = (ay)*(y + by)
 			_coef = array([
-				ay*(coef[0] - coef[1]*bx) + by,
+				ay*(coef[0] - coef[1]*bx) + ay*by,
 				ay*coef[1]*(1/ax)
 				]) if coef is not None else None
 
@@ -1747,6 +1774,43 @@ def standardize(x,y,coef=None,axis=None,mode='bounds',preprocess=None,postproces
 				return _x,_y				
 
 	return transform,invtransform
+
+def uncertainty(x,y,xerr,yerr,operation):
+	'''
+	Calculate uncertainty of binary operations
+	Args:
+		x (array): x array
+		y (array): y array
+		xerr (array): error in x
+		yerr (array): error in y
+		operation (str): Binary operation between x and y, allowed strings in ['+','-','*','/','plus','minus','times','divides']
+	Returns:
+		out (array): Result of binary operation
+		err (array): Error of binary operation
+	'''
+
+	operations = ['+','-','*','/','plus','minus','times','divides']
+	assert operation in operations, "operation: %s not in operations %r"%(operation,operations)
+
+	if operation in ['+','plus']:
+		func = lambda x,y: x+y
+		error = lambda x,y: sqrt((xerr*1)**2+(yerr*1)**2)
+	elif operation in ['-','minus']:
+		func = lambda x,y: x-y
+		error = lambda x,y: sqrt((xerr*1)**2+(yerr*-1)**2)
+	elif operation in ['*','times']:
+		func = lambda x,y: x*y
+		error = lambda x,y: sqrt((xerr*y)**2+(yerr*x)**2)
+	elif operation in ['/','divides']:
+		func = lambda x,y: x+y
+		error = lambda x,y: sqrt((xerr/y)**2+(yerr*x/-y**2)**2)
+
+	out,err = func(x,y),error(x,y)
+
+	return out,err
+
+
+
 
 @partial(jit,static_argnums=(1,))
 def mean(a,axis=None):
