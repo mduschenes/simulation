@@ -1492,7 +1492,7 @@ def piecewise_fit(func,x,y,shape,**kwargs):
 		coeferr (array): Fit parameters error
 	'''
 
-	function,funcs,indices = piecewise(func,shape,include=True,**kwargs)
+	function,funcs,indices = piecewises(func,shape,include=True,**kwargs)
 
 	n = len(funcs)
 
@@ -1594,7 +1594,7 @@ def interpolate(x,y,_x,**kwargs):
 
 
 # @partial(jit,static_argnums=(0,))
-def piecewise(func,shape,include=None,**kwargs):
+def piecewises(func,shape,include=None,**kwargs):
 	'''
 	Compute piecewise curve from func
 	Args:
@@ -1609,13 +1609,13 @@ def piecewise(func,shape,include=None,**kwargs):
 	'''
 
 	if callable(func):
-		funcs = [funcs]
+		funcs = [func]
 	else:
 		funcs = func
 
 	n = len(funcs)
 	indices = [slice(sum(shape[:i-1]),sum(shape[:i])) for i in range(1,n+2)]
-	
+
 	def func(coef,x):
 
 		bounds,coef = coef[indices[0]],[coef[index] for index in indices[1:]]
@@ -1624,14 +1624,30 @@ def piecewise(func,shape,include=None,**kwargs):
 					  for i in range(n)]
 		
 		func = [lambda x,func=func,coef=coef: func(coef,x) for func,coef in zip(funcs,coef)]
-		func = np.piecewise(x,conditions,func)
-
-		return func
+		function = piecewise(func,conditions)
+		return function(x)
 	
 	if include:
 		return func,funcs,indices
 	else:
 		return func
+
+
+def piecewise(func,conditions,**kwargs):
+	'''
+	Compute piecewise curve from func
+	Args:
+		func (iterable[callable]): Functions to fit
+		conditions (iterable[bool]): Conditions for piecewise domains
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		func (callable): Piecewise function with signature func(x)
+	'''
+	function = func
+	def func(x,*args,**kwargs):
+		return np.piecewise(x,conditions,function)
+
+	return func
 
 
 def extrema(x,y,_x=None,**kwargs):

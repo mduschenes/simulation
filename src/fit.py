@@ -12,9 +12,9 @@ for PATH in PATHS:
 
 from src.utils import gradient,diag
 from src.utils import array,zeros,ones
-from src.utils import lstsq,curve_fit,piecewise_fit,interp,piecewise,standardize
+from src.utils import lstsq,curve_fit,piecewise_fit,piecewise,interp,standardize
 from src.utils import exp,log,abs,sqrt,sort,norm,nanmean,nanstd,nansqrt,product,is_naninf,allclose
-from src.utils import nan,null
+from src.utils import nan,null,scalars
 
 def transformation(transform=None):
 	'''
@@ -138,27 +138,27 @@ def size(data,axis=None,transform=None,dtype=None,**kwargs):
 	return out
 
 
-def fits(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef=None,coeferr=None,coefframe=None,intercept=False,uncertainty=False,**kwargs):
+def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef=None,coeferr=None,coefframe=None,intercept=False,bounds=None,kwargs={}):
 	'''
-	Piecewise fit of data
+	Fit of data
 	Args:
 		x (array): Input data
 		y (array): Output data
 		_x (array): Input points to evaluate fit
 		_y (array): Output points to evaluate fit
-		funcs (iterable[callable,str]): Functions to fit to data with signature func(coef,x), or string for spline fit, ['linear','cubic']
-		preprocess (callable): Function to preprocess data with signature x,y,coef = preprocess(x,y,coef) (with coef argument/return optional)
-		postprocess (callable): Function to postprocess data with signature x,y,coef = postprocess(x,y,coef) (with coef argument/return optional)
+		func (callable,str,iterable[callable,str]): Functions to fit to data with signature func(coef,x), or string for spline fit, ['linear','cubic']
+		preprocess (callable,iterable[callable]): Function to preprocess data with signature x,y,coef = preprocess(x,y,coef) (with coef argument/return optional)
+		postprocess (callable,iterable[callable]): Function to postprocess data with signature x,y,coef = postprocess(x,y,coef) (with coef argument/return optional)
 		xerr (array): Input error
 		yerr (array): Output error
-		coef (array): Model coefficients
-		coeferr (array): Model coefficients error
-		coefframe (bool): Coefficients are in transformed frame
-		intercept (bool): Include intercept in fit
-		shape (iterable[int]): shape of piecewise coefficients
-		uncertainty (bool): Calculate uncertainty
-		kwargs (dict[str,object]): Additional keyword arguments for fitting
+		coef (array,iterable[array]): Model coefficients
+		coeferr (array,iterable[array]): Model coefficients error
+		coefframe (bool,iterable[array]): Coefficients are in transformed frame
+		intercept (bool,iterable[bool]): Include intercept in fit
+		bounds (iterable[object]): piecewise domains
+		kwargs (dict[str,object],iterable[dict[str,object]]): Additional keyword arguments for fitting
 	Returns:
+		_func (callable): Fit function
 		_y (array): Fit data at _x
 		_coef (array): Fit model parameters
 		_yerr (array): Fit data error at _x
@@ -166,54 +166,86 @@ def fits(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=Non
 		_r (float): Fit coefficient
 	'''	
 
-	if callable(func):
-		funcs = [funcs]
+	if callable(func) or isinstance(func,str):
+		func = [func]
 	else:
-		funcs = func
+		func = func
 
-	n = len(funcs)
+	n = len(func)
 
+	if preprocess is None or callable(preprocess):
+		preprocess = [preprocess for i in range(n)]
 
-	if n == 1
+	if postprocess is None or callable(postprocess):
+		postprocess = [postprocess for i in range(n)]
 
-		bounds,coefs = [None],coef
-	else:
-		assert (shape is not None), "shape must be supplied for n>1 funcs"
-		indices = [slice(sum(shape[:i-1]),sum(shape[:i])) for i in range(1,n+2)]
+	if coef is None or isinstance(coef,array):
+		coef = [coef for i in range(n)]
 
-		bounds,coefs = coef[indices[0]] if coef is not None else,[coefs[index] for index in indices[1:]]
+	if coeferr is None or isinstance(coeferr,array):
+		coeferr = [coeferr for i in range(n)]
 
-	yerrs = yerr
-	
+	if coefframe is None or isinstance(coefframe,array):
+		coefframe = [coefframe for i in range(n)]
+
+	if intercept is None or isinstance(intercept,bool):
+		intercept = [intercept for i in range(n)]
+
+	if kwargs is None or isinstance(kwargs,dict):
+		kwargs = [kwargs for i in range(n)]
+
+	if bounds is None:
+		raise ValueError("TODO: Allow for bounds to be fit")
+	elif isinstance(bounds,scalars):
+		bounds = [bounds for i in range(n+1)]
+	elif len(bounds) == (n-1):
+		bounds = [*bounds,True,True]
+
+	conditions = [
+		((bounds[i-1] if (bounds is not None and isinstance(bounds[i-1],bool)) else 
+		  x>=bounds[i-1] if ((bounds is not None) and (bounds[i-1] is not None)) else False) and
+		((bounds[i] if (bounds is not None and isinstance(bounds[i],bool)) else 
+		  x<=bounds[i] if ((bounds is not None) and (bounds[i] is not None)) else False) and			
+		(bounds[i-1] if isinstance(bounds[i],bool) else x<=bounds[i] if bounds is not None else False)))
+		for i in range(n)]
+
+	n = min(len(i) for i in [func,preprocess,postprocess,coef,coeferr,coefframe,intercept,kwargs])
+
+	_func = piecewise(func,conditions)
+	_y = _y
+	_coef = coef
+	_yerr = _yerr
+	_coeferr = coeferr
+	_r = [None for i in range(n)]
+
 	for i in range(n):
 		
-		func = funcs[i]
-		coef = coefs[i]
-		bound = 
-		if bounds[i] is
-		condition = (x<=bounds[i]) if bounds[i] is not None else x==x) if i==0 else ((x>=bounds[i-1]) & (x<=bounds[i])) if i < (n-1) else (x>=bounds[i-1])
-		
-		_x = x[condition]
-		_y = y[condition]
-		_yerr = y[condition]
+		returns = _fit(
+			x=x[condition[i]] if x is not None else x,
+			y=y[condition[i]] if y is not None else y,
+			_x=_x[condition[i]] if _x is not None else _x,
+			_y=_y[condition[i]] if _y is not None else _y,
+			func=func[i] if func is not None else func,
+			preprocess=preprocess[i] if preprocess is not None else preprocess,
+			postprocess=postprocess[i] if postprocess is not None else postprocess,
+			xerr=xerr[condition[i]] if xerr is not None else xerr,
+			yerr=yerr[condition[i]] if yerr is not None else yerr,
+			coef=coef[i] if coef is not None else coef,
+			coeferr=coeferr[i] if coeferr is not None else coeferr,
+			coefframe=coefframe[i] if coefframe is not None else coefframe,
+			intercept=intercept[i] if intercept is not None else intercept,
+			**(kwargs[i] if kwargs is not None and kwargs[i] is not None else {})
+			)
 
-		kwargs['coef'] = coef
-		kwargs['yerr'] = _yerr
+		_y.at[condition[i]].set(returns[0])
+		_coef[i] = returns[1]
+		_yerr.at[condition[i]].set(returns[2])
+		_coeferr[i] = returns[3]
+		_r[i] = returns[4]
 
-		_coef,_coeferr = curve_fit(func,_x,_y,**kwargs)
+	return _func,_y,_coef,_yerr,_coeferr,_r
 
-		_coefs.append(_coef)
-		_coeferrs.append(_coeferr)
-
-	func = function
-	_coef = array(_coefs)
-	_coeferr = array(_coeferrs)
-
-	return func,_coef,_coeferr
-
-
-
-def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef=None,coeferr=None,coefframe=None,intercept=False,uncertainty=False,**kwargs):
+def _fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,coef=None,coeferr=None,coefframe=None,intercept=False,**kwargs):
 	'''
 	Fit of data
 	Args:
@@ -230,9 +262,9 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 		coeferr (array): Model coefficients error
 		coefframe (bool): Coefficients are in transformed frame
 		intercept (bool): Include intercept in fit
-		uncertainty (bool): Calculate uncertainty
 		kwargs (dict[str,object]): Additional keyword arguments for fitting
 	Returns:
+		_func (callable): Fit function
 		_y (array): Fit data at _x
 		_coef (array): Fit model parameters
 		_yerr (array): Fit data error at _x
@@ -347,7 +379,6 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 
 		grad = gradient(func,argnums=0,mode='fwd')
 
-
 		_y = func(_coef,_x)
 		_grad = grad(_coef,_x)
 
@@ -380,9 +411,10 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 
 	else:
 		func = lambda coef,x,y=y: y
-	
-	if uncertainty:
-		_r = 1 - (((y - func(_coef,x))**2).sum()/((y - y.mean())**2).sum())
+
+	_func = func
+
+	_r = 1 - (((y - func(_coef,x))**2).sum()/((y - y.mean())**2).sum())
 
 	invgrad = gradtransform(x,y,coef)
 	if xerr is not None:
@@ -434,7 +466,4 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 
 	_x,_y,_coef = invtransform(_x,_y,_coef)
 
-	if uncertainty:
-		return _y,_coef,_yerr,_coeferr,_r
-	else:
-		return _y,_coef
+	return _func,_y,_coef,_yerr,_coeferr,_r

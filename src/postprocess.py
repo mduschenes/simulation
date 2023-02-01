@@ -351,19 +351,26 @@ def postprocess(path,**kwargs):
 						_x = x_
 						_n = y_[slices].size*20
 						_y = linspace(y_[slices].min(),y_[slices].max(),_n)
+						_z = zeros(_n)
+						_yerr = zeros(_n)
+						_zerr = zeros(_n)
 
 						func = [
 								(lambda coef,x: coef[0] + coef[1]*x),
-								(lambda coef,x: coef[0] + coef[1]*log10(x)),
+								(lambda coef,x: coef[0] + coef[1]*x),
 								]
-						coef = array([
-							argmin(z_[slices])/len(y_[slices]),
-							1,1,1,1.0
-							])
-						kwargs = {'shape':[1,2,3]}
+						coef = [[1.0,1.0],[1.0,1.0]]
+						bounds = [y_[slices][argmin(z_[slices])]]
+						kwargs = {}
 						
-						preprocess = lambda x,y,coef: (x if x is not None else None,log10(y) if y is not None else None,coef if coef is not None else None)
-						postprocess = lambda x,y,coef: (x if x is not None else None,exp10(y) if y is not None else None,coef if coef is not None else None)
+						preprocess = [
+							lambda x,y,coef: (x if x is not None else None,log10(y) if y is not None else None,coef if coef is not None else None),
+							lambda x,y,coef: (log10(x) if x is not None else None,log10(y) if y is not None else None,coef if coef is not None else None),
+							]
+						postprocess = [
+							lambda x,y,coef: (x if x is not None else None,exp10(y) if y is not None else None,coef if coef is not None else None),
+							lambda x,y,coef: (exp10(x) if x is not None else None,exp10(y) if y is not None else None,coef if coef is not None else None),
+							]
 
 						# func = 'linear'
 						# coef = None
@@ -371,7 +378,7 @@ def postprocess(path,**kwargs):
 						# preprocess = None
 						# postprocess = None
 
-						_z,_coef,_zerr,_coeferr,_r = fit(y_[slices],z_[slices],_x=_y,func=func,yerr=zerr_[slices],coef=coef,coefframe=True,uncertainty=True,preprocess=preprocess,postprocess=postprocess,**kwargs)	
+						_z,_coef,_zerr,_coeferr,_r = fit(y_[slices],z_[slices],_x=_y,_y=_z,func=func,xerr=yerr_[slices],yerr=zerr_[slices],coef=coef,coefframe=True,uncertainty=True,preprocess=preprocess,postprocess=postprocess,kwargs=kwargs)	
 
 						# _z,_coef,_zerr,_coeferr,_r = z_[slices],coef,zerr_[slices],None,1
 
@@ -379,7 +386,6 @@ def postprocess(path,**kwargs):
 						index = argmin(_z)
 						indexerr = (argmin(_z+_zerr) + argmin(_z-_zerr))//2
 
-						_yerr = zeros(_n)
 						_yerr.at[index].set(sum(abs(_y[argmin(_z)+k] - _y[argmin(_z)]) for k in [1,-1])/2)
 
 						print(_x,_r)
