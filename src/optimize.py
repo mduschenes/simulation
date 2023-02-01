@@ -1034,7 +1034,7 @@ class Metric(System):
 				def wrapper_gradient(out,*operands):
 					return out/2
 
-			elif self.metric in ['lstsq']:
+			elif self.metric in ['lstsq','mse']:
 
 				function = inner_norm
 				gradient_analytical = gradient_inner_norm

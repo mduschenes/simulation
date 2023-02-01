@@ -541,20 +541,67 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	return fisher
 
 
-def rao(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
+def rao(func,grad=None,label=None,error=None,optimize=None,mode=None,**kwargs):
 	'''
 	Compute cramer rao bound of function
 	Args:
 		func (callable): Function to compute
 		grad (callable): Gradient to compute
-		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
+		label (array): label data for function
+		error (array): error data for function
 		optimize (bool,str,iterable): Contraction type
-		mode (str): Type of fisher information, allowed ['operator','state']
+		mode (str): Type of distribution, allowed ['lstsq','mse','normal','gaussian']
 	Returns:
-		fisher (callable): Fisher information of function
+		rao (callable): Rao bound of function
 	'''
+	if label is None:
+		label = None
+	else:
+		label = label
 
-	return
+	if error is None:
+		error = None
+	elif error.ndim == 1:
+		error = 1/error
+	elif error.ndim == 2:
+		error = inv(error)
+	else:
+		error = error
+
+
+	if mode in ['lstsq','mse','normal','gaussian',None]:
+		if label is None:
+			def function(parameters,*args,**kwargs):
+				out = func(parameters,*args,**kwargs)
+				return out
+		else:
+			if error is None:
+				def function(parameters,*args,**kwargs):
+					out = func(parameters,*args,**kwargs)
+					out = (1/2)*norm(out-label,axis=None,ord=2)**2
+					return out
+			elif error.ndim == 1:
+				def function(parameters,*args,**kwargs):
+					out = func(parameters,*args,**kwargs)
+					out = (1/2)*norm((out-label)*error,axis=None,ord=2)**2
+					return out					
+			elif error.ndim == 2:
+				def function(parameters,*args,**kwargs):
+					out = func(parameters,*args,**kwargs)
+					out = (1/2)*(out.dot(error).dot(out.T))
+					return out
+			else:
+				def function(parameters,*args,**kwargs):
+					out = func(parameters,*args,**kwargs)
+					out = (1/2)*norm(out-label,axis=None,ord=2)**2
+					return out					
+
+	hess = hessian(jit(function))
+
+	def rao(parameters,*args,**kwargs):
+		return inv(hess(parameters,*args,**kwargs))
+
+	return rao
 
 
 @jit
@@ -1742,10 +1789,18 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 
 			_x = (1/ax)*(x) - bx if x is not None else None
 			_y = (1/ay)*(y) - by if y is not None else None
-			_coef = array([
-				(1/ay)*(coef[0] + coef[1]*bx) - by,
-				(1/ay)*(coef[1])*(ax),
-				]) if coef is not None else None
+
+			if coef is None:
+				_coef = None
+			elif coef.size == 1:
+				_coef = (1/ay)*(coef)*(ax)
+			elif coef.size == 2:
+				_coef = array([
+					(1/ay)*(coef[0] + coef[1]*bx) - by,
+					(1/ay)*(coef[1])*(ax),
+					])
+			else:
+				_coef = coef
 
 			if coef is not None:
 				return _x,_y,_coef
@@ -1765,6 +1820,18 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 				ay*(coef[0] - coef[1]*bx) + ay*by,
 				ay*coef[1]*(1/ax)
 				]) if coef is not None else None
+
+			if coef is None:
+				_coef = None
+			elif coef.size == 1:
+				_coef =	ay*coef*(1/ax)
+			elif coef.size == 2:
+				_coef = array([
+					ay*(coef[0] - coef[1]*bx) + ay*by,
+					ay*coef[1]*(1/ax)
+					])
+			else:
+				_coef = coef
 
 			_x,_y,_coef = postprocess(_x,_y,_coef)
 

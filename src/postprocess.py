@@ -360,7 +360,7 @@ def postprocess(path,**kwargs):
 						_zerr = zeros(_n)
 
 						func = [
-								(lambda coef,x: coef[0] + coef[1]*x),
+								'cubic',#(lambda coef,x: coef[0] + coef[1]*x),
 								(lambda coef,x: coef[0] + coef[1]*x),
 								]
 						coef = [array([1.0,1.0]),array([1.0,1.0])]
@@ -375,13 +375,6 @@ def postprocess(path,**kwargs):
 							lambda x,y,coef: (x if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
 							lambda x,y,coef: (exp(x) if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
 							]
-
-						# func = 'linear'
-						# coef = None
-						# kwargs = {'smooth':0}
-						# preprocess = None
-						# postprocess = None
-						print(coef)
 
 						_func,_z,_coef,_zerr,_coeferr,_r = fit(
 							y_,z_,
@@ -398,9 +391,12 @@ def postprocess(path,**kwargs):
 
 						_yerr = _yerr.at[index].set(sum(abs(_y[argmin(_z)+k] - _y[argmin(_z)]) for k in [1,-1])/2)
 
+						print(_x,_r)
+						print(_yerr[index])
+						print(zerr_[index])
+						print(_zerr[index])
 						print(coef)
 						print(_coef)
-						print(_x,_r)
 						print()
 
 						_X.append(_x)
@@ -412,8 +408,7 @@ def postprocess(path,**kwargs):
 						x.append(_x)
 						y.append(_y[index])
 						z.append(_z[index])
-						# yerr.append(_yerr[index])
-						yerr.append(sum(abs(_y[argmin(_z)+k] - _y[argmin(_z)]) for k in [1,-1])/2)
+						yerr.append(_yerr[index])
 						zerr.append(_zerr[index])
 						indexes.append(index)
 						coefs.append(_coef)
@@ -451,7 +446,7 @@ def postprocess(path,**kwargs):
 								**settings['ax']['errorbar'],
 								'x':_Y[i],
 								'y':_Z[i],
-								# 'yerr':[(_Z[i]*(1 - (_Z[i]/(_Z[i]+_Zerr[i])))),_Zerr[i]],							
+								# 'yerr':_Zerr[i],							
 								'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
 								'marker':'',
 								'linestyle':'-',
@@ -463,8 +458,8 @@ def postprocess(path,**kwargs):
 								{
 								'x':[y[i] for i in indices],
 								'y':[z[i] for i in indices],
-								'xerr':[yerr[i] for i in indices],
-								'yerr':[zerr[i] for i in indices],
+								# 'xerr':[yerr[i] for i in indices],
+								# 'yerr':[zerr[i] for i in indices],
 								# 'yerr':[(_Z[i]*(1 - (_Z[i]/(_Z[i]+_Zerr[i])))),_Zerr[i]],							
 								'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
 								'ecolor':'viridis',
@@ -555,10 +550,6 @@ def postprocess(path,**kwargs):
 					xerr=xerr[slices] if xerr is not None else xerr,
 					preprocess=preprocess,postprocess=postprocess,
 					coefframe=True,kwargs=kwargs)
-
-				print(_y)
-				print(func(_coef,log10(_x)))
-				print(_coef[0]+_coef[1]*log10(_x))
 
 				fig,ax = None,None
 

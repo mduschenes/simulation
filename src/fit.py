@@ -215,6 +215,7 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 		condition = conditions(x)
 		_condition = conditions(_x)
 
+
 		returns = fitter(
 			x=x[condition[i]] if x is not None else x,
 			y=y[condition[i]] if y is not None else y,
@@ -377,7 +378,6 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			func,_coef,_coeferr = curve_fit(func,x,y,**kwargs)
 
 		grad = gradient(func,argnums=0,mode='fwd')
-
 		_y = func(_coef,_x)
 		_grad = grad(_coef,_x)
 
