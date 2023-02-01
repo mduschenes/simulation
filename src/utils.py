@@ -1413,7 +1413,8 @@ def lstsq(x,y):
 	Returns:
 		out (array): Least squares fit
 	'''
-	return np.linalg.lstsq(x,y)
+	out = np.linalg.lstsq(x,y)[0] + 0.0
+	return out
 
 
 @jit
@@ -1433,24 +1434,102 @@ def curve_fit(func,x,y,**kwargs):
 	'''
 	Compute fit between x and y
 	Args:
-		func (callable): Function to fit
+		func (callable): Function to fit with signature func(coef,x)
 		x (array): Array of input data
 		y (array): Array of output data
 		kwargs (dict[str,object]): Additional keyword arguments for fitting		
 	Returns:
-		out (array): Curve fit returns
+		func (callable): Fit function with signature func(coef,x)
+		coef (array): Fit parameters
+		coeferr (array): Fit parameters error
 	'''
-	defaults = {'p0':kwargs.pop('coef0',None),'sigma':kwargs.pop('yerr',None),'maxfev':1000,'absolute_sigma':False}
+	defaults = {'p0':kwargs.pop('coef0',kwargs.pop('coef',None)),'sigma':kwargs.pop('yerr',None),'maxfev':1000,'absolute_sigma':False}
 
 	kwargs = {kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults}
 
+	function = func
+	coef = kwargs['p0']
+
+	def func(x,*coef):
+		return function(coef,x)
+
 	x = onp.asarray(x)
 	y = onp.asarray(y)
-	kwargs.update({kwarg: onp.asarray(kwargs[kwarg]) for kwarg in ['p0','sigma'] if kwarg in kwargs})
+	coef = onp.asarray(coef)
+	kwargs.update({kwarg: onp.asarray(kwargs[kwarg]) if kwargs[kwarg] is not None else None for kwarg in ['p0','sigma'] if kwarg in kwargs})
 
-	return osp.optimize.curve_fit(func,x,y,**kwargs)
 
+	# fig,ax = plt.subplots()
+	# path = 'data.pdf'
+	# ax.plot(x,y,'*-')
+	# ax.plot(x,func(x,*coef),'o--')
+	# fig.savefig(path)
 
+	try:
+		coef,coeferr = osp.optimize.curve_fit(func,x,y,**kwargs)
+	except Exception as exception:
+		print(traceback.format_exc())
+		raise(exception)
+
+	coef = array(coef)
+	coeferr = array(coeferr)
+
+	return coef,coeferr
+
+# @partial(jit,static_argnums=(0,))
+def piecewise_fit(func,x,y,shape,**kwargs):
+	'''
+	Compute piecewise curve fit between x and y
+	Args:
+		func (callable): Function to fit with signature func(coef,x)
+		x (array): Array of input data
+		y (array): Array of output data
+		shape (iterable[int]): Piecewise coef shape, including bounds		
+		kwargs (dict[str,object]): Additional keyword arguments for fitting		
+	Returns:
+		func (callable): Piecewise function with signature func(coef,x)
+		coef (array): Fit parameters
+		coeferr (array): Fit parameters error
+	'''
+
+	function,funcs,indices = piecewise(func,shape,include=True,**kwargs)
+
+	n = len(funcs)
+
+	coefs = kwargs.pop('coef',kwargs.pop('coef0',None))
+	yerrs = kwargs.pop('yerr',kwargs.pop('sigma',None))
+	
+	if coefs is None:
+		raise ValueError("coef not in kwargs")
+
+	bounds,coefs = coefs[indices[0]],[coefs[index] for index in indices[1:]]
+
+	_coefs,_coeferrs = [*bounds],[*[None]*(n-1)]
+
+	for i in range(n):
+		
+		func = funcs[i]
+		coef = coefs[i]
+		
+		condition = (x<=bounds[i]) if i==0 else ((x>=bounds[i-1]) & (x<=bounds[i])) if i < (n-1) else (x>=bounds[i-1])
+		
+		_x = x[condition]
+		_y = y[condition]
+		_yerr = y[condition]
+
+		kwargs['coef'] = coef
+		kwargs['yerr'] = _yerr
+
+		_coef,_coeferr = curve_fit(func,_x,_y,**kwargs)
+
+		_coefs.append(_coef)
+		_coeferrs.append(_coeferr)
+
+	func = function
+	_coef = array(_coefs)
+	_coeferr = array(_coeferrs)
+
+	return func,_coef,_coeferr
 
 def interp(x,y,**kwargs):
 	'''
@@ -1515,15 +1594,18 @@ def interpolate(x,y,_x,**kwargs):
 
 
 # @partial(jit,static_argnums=(0,))
-def piecewise(func,shape,**kwargs):
+def piecewise(func,shape,include=None,**kwargs):
 	'''
-	Compute piecewise curve from funcs
+	Compute piecewise curve from func
 	Args:
 		func (callable,iterable[callable]): Functions to fit
-		shape (iterable[int]): Piecewise coefs shape
+		shape (iterable[int]): Piecewise coef shape
+		include (bool): Include piecewise indices of coefficients
 		kwargs (dict[str,object]): Additional keyword arguments for fitting		
 	Returns:
-		func (callable): Piecewise function with signature func(x,*coefs)
+		func (callable): Piecewise function with signature func(coef,x)
+		funcs (iterable[callable]): Piecewise functions with signature func(coef,x)
+		indices
 	'''
 
 	if callable(func):
@@ -1534,19 +1616,22 @@ def piecewise(func,shape,**kwargs):
 	n = len(funcs)
 	indices = [slice(sum(shape[:i-1]),sum(shape[:i])) for i in range(1,n+2)]
 	
-	def func(x,*coefs):
-		
-		bounds,coefs = coefs[indices[0]],[coefs[index] for index in indices[1:]]
+	def func(coef,x):
+
+		bounds,coef = coef[indices[0]],[coef[index] for index in indices[1:]]
 		
 		conditions = [(x<=bounds[i]) if i==0 else ((x>=bounds[i-1]) & (x<=bounds[i])) if i < (n-1) else (x>=bounds[i-1]) 
 					  for i in range(n)]
 		
-		func = [lambda x,func=func,coef=coef: func(x,*coef) for func,coef in zip(funcs,coefs)]
+		func = [lambda x,func=func,coef=coef: func(coef,x) for func,coef in zip(funcs,coef)]
 		func = np.piecewise(x,conditions,func)
 
 		return func
 	
-	return func
+	if include:
+		return func,funcs,indices
+	else:
+		return func
 
 
 def extrema(x,y,_x=None,**kwargs):
@@ -1576,7 +1661,7 @@ def extrema(x,y,_x=None,**kwargs):
 	return indices
 
 
-def standardize(x,y,coef=None,axis=None,mode='bounds',**kwargs):
+def standardize(x,y,coef=None,axis=None,mode='bounds',preprocess=None,postprocess=None,**kwargs):
 	'''
 	Compute standardization of data
 	Args:
@@ -1585,19 +1670,39 @@ def standardize(x,y,coef=None,axis=None,mode='bounds',**kwargs):
 		coef (array): array to compute standardization (parameters of linear model y = coef[0] + coef[1]*x)
 		axis (int): axis to compute over. Flattens array if None.
 		mode (str): Method of standardization, allowed strings in ['bounds']
+		preprocess (callable): Function to preprocess data with signature x,y,coef = preprocess(x,y,coef) (with coef argument/return optional)
+		postprocess (callable): Function to postprocess data with signature x,y,coef = postprocess(x,y,coef) (with coef argument/return optional)
 		kwargs (dict): Additional keyword arguments for standardization
 	Returns:
 		transform (callable): standardization function
 		invtransform (callable): inverse standardization function
 	'''
-	params = [[x.min(),x.max()],[y.min(),y.max()]]
-	params = [[param[1],0] if param[0]==param[1] else param for param in params]
+
+	if preprocess is None:
+		def preprocess(x,y,coef):
+			return x,y,coef
+	if postprocess is None:
+		def postprocess(x,y,coef):
+			return x,y,coef
 
 	if mode is None or mode in ['bounds']:
+		x,y,coef = preprocess(x,y,coef)
+		params = [[x.min(),x.max()],[y.min(),y.max()]]
+		params = [[param[1],0] if param[0]==param[1] else param for param in params]
 		def transform(x,y,coef=None,params=params):
-			_x = ((x-params[0][0])/(params[0][1]-params[0][0]))
-			_y = ((y-params[1][0])/(params[1][1]-params[1][0]))
-			_coef = coef if coef is not None else None
+			ax = (params[0][1]-params[0][0])
+			bx = params[0][0]/(params[0][1]-params[0][0])
+			ay = (params[1][1]-params[1][0])
+			by = params[1][0]/(params[1][1]-params[1][0])
+
+			x,y,coef = preprocess(x,y,coef)
+
+			_x = (1/ax)*(x) - bx if x is not None else None
+			_y = (1/ay)*(y) - by if y is not None else None
+			_coef = array([
+				(1/ay)*(coef[0] + coef[1]*bx) - by,
+				(1/ay)*(coef[1])*(ax),
+				]) if coef is not None else None
 
 			if coef is not None:
 				return _x,_y,_coef
@@ -1605,12 +1710,20 @@ def standardize(x,y,coef=None,axis=None,mode='bounds',**kwargs):
 				return _x,_y
 		
 		def invtransform(x,y,coef=None,params=params):
-			_x = ((x)*(params[0][1]-params[0][0]) + params[0][0])
-			_y = ((y)*(params[1][1]-params[1][0]) + params[1][0])
+			ax = (params[0][1]-params[0][0])
+			bx = params[0][0]/(params[0][1]-params[0][0])
+			ay = (params[1][1]-params[1][0])
+			by = params[1][0]/(params[1][1]-params[1][0])
+
+
+			_x = (ax)*(x + bx)
+			_y = (ay)*(y + by)
 			_coef = array([
-				((params[1][1]-params[1][0])*coef[0]/(params[0][1]-params[0][0])),
-				((params[1][1]-params[1][0])*coef[1] - (params[1][1]-params[1][0])*coef[0]/(params[0][1]-params[0][0])*params[0][0] + params[1][0]),
+				ay*(coef[0] - coef[1]*bx) + by,
+				ay*coef[1]*(1/ax)
 				]) if coef is not None else None
+
+			_x,_y,_coef = postprocess(_x,_y,_coef)
 
 			if coef is not None:
 				return _x,_y,_coef
@@ -4473,6 +4586,18 @@ def is_nan(a,*args,**kwargs):
 	'''
 	return is_numeric(a) and np.isnan(a)
 
+def is_zero(a,*args,**kwargs):
+	'''
+	Check if array is zeros
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is zeros
+	'''
+	return allclose(a,zeros(a.shape,dtype=a.dtype))
+
 
 def is_realdtype(dtype,*args,**kwargs):
 	'''
@@ -5599,8 +5724,6 @@ def bloch(state,path=None):
 			if not isinstance(path,str):
 				path = 'bloch.pdf'
 			fig.savefig(path,pad_inches=0.5)
-			# fig.savefig(path)
-			# fig.savefig(path,bbox_inches="tight",pad_inches=0.2)
 
 	return fig,ax
 

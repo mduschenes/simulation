@@ -768,9 +768,9 @@ def _load(obj,wr,ext,**kwargs):
 		# 	raise exception
 
 	if ext in ['npy']:
-		data = np.load(obj,**{**kwargs})
+		data = np.load(obj,**{'allow_pickle':True,**kwargs})
 	elif ext in ['npz']:
-		data = np.load(obj,**{**kwargs})
+		data = np.load(obj,**{'allow_pickle':True,**kwargs})
 	elif ext in ['csv']:
 		data = getattr(pd,'read_%s'%ext)(obj,**{**kwargs})
 	elif ext in ['txt']:
@@ -878,7 +878,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 	assert ext in exts, "Cannot dump extension %s"%(ext)
 
 	if ext in ['npy']:
-		np.save(obj,data,**{**kwargs})
+		np.save(obj,data,**{'allow_pickle':True,**kwargs})
 	if ext in ['npz']:
 		if isinstance(data,dict):
 			np.savez(obj,**data)
