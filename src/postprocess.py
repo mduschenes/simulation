@@ -130,10 +130,12 @@ defaults = {
 		"set_xlim": {"xmin": 5e-13,"xmax":5e0},
 		"set_xlim": {"xmin": 5e-21,"xmax":5e0},
 		"set_xlim": {"xmin": 5e-13,"xmax":5e0},
+		"set_xlim": {"xmin": 5e-21,"xmax":5e0},
 		"set_xticks":{"ticks":[1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"set_xticks":{"ticks":[1e-20,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"set_xticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
 		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},
+		"set_xticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -141,12 +143,14 @@ defaults = {
 		"set_ynbins":{"nbins":7},
 		"set_ylim": {
 				"ymin": -100,
-				"ymin": -500,
+				"ymin": -1000,
 				"ymax": 5100,
-				"ymax": 2500
+				"ymax": 2500,
+				"ymax": 5500
 			},
 		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
 		"set_yticks":{"ticks":[0,1000,2000]},		
+		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
@@ -213,17 +217,19 @@ defaults = {
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xscale":{"value":"linear"},
 		"set_xnbins":{"nbins":9},
-		"set_xlim": {"xmin": 0,"xmax": 6100},
+		"set_xlim": {"xmin": -100,"xmax": 6100},
 		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
 		"set_yscale":{"value":"linear"},
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim": {"ymin": 1e-5,"ymax": 1e-1},
 		"set_ylim": {"ymin": 1e-13,"ymax": 5e2},
 		"set_ylim": {"ymin": 5e-9,"ymax": 5e2},
+		"set_ylim": {"ymin": 1e-17,"ymax": 1e5},
 		"set_ynbins":{"nbins":5},
 		"set_yticks":{"ticks":[1e-4,1e-3,1e-2,1e-1]},
 		"set_yticks":{"ticks":[1e-12,1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
 		"set_yticks":{"ticks":[1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
+		"set_yticks":{"ticks":[1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0,1e2,1e4]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -321,7 +327,7 @@ def postprocess(path,**kwargs):
 						pass
 
 				slices = range(4,len(data[label['y']])-5)
-				slices = [4,6,8,9]#range(4,len(data[label['y']])-5)
+				slices = [1,2,4,5,6,8,9,10]#range(4,len(data[label['y']])-5)
 				# slices = range(len(data[label['y']])-3)
 
 				X = array([data['%s'%(label['x'])][i] for i in slices])
@@ -360,8 +366,8 @@ def postprocess(path,**kwargs):
 						_zerr = zeros(_n)
 
 						func = [
-								# 'cubic',#
-								(lambda coef,x: coef[0] + coef[1]*x),
+								'cubic',#
+								# (lambda coef,x: coef[0] + coef[1]*x),
 								(lambda coef,x: coef[0] + coef[1]*x),
 								]
 						coef = [array([1.0,1.0]),array([1.0,1.0])]
@@ -377,6 +383,11 @@ def postprocess(path,**kwargs):
 							lambda x,y,coef: (exp(x) if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
 							]
 
+						_y_ = y_
+						_z_ = z_
+						_yerr_ = yerr_
+						_zerr_ = zerr_
+
 						_func,_z,_coef,_zerr,_coeferr,_r = fit(
 							y_,z_,
 							_x=_y,_y=_z,
@@ -385,6 +396,47 @@ def postprocess(path,**kwargs):
 							coef=coef,coefframe=True,
 							preprocess=preprocess,postprocess=postprocess,
 							bounds=bounds,kwargs=kwargs)	
+						
+						y_ = _y
+						z_ = _z
+						yerr_ = None
+						zerr_ = _zerr
+						func = [
+							# 'cubic',#
+							(lambda coef,x: coef[0] + coef[1]*x),
+							(lambda coef,x: coef[0] + coef[1]*x),
+						]
+						bounds = [y_[argmin(z_)]]
+
+						_func,_z,_coef,_zerr,_coeferr,_r = fit(
+							y_,z_,
+							_x=_y,_y=_z,
+							func=func,
+							xerr=yerr_,yerr=zerr_,
+							coef=coef,coefframe=True,
+							preprocess=preprocess,postprocess=postprocess,
+							bounds=bounds,kwargs=kwargs)
+
+						# y_ = _y
+						# z_ = _z
+						# yerr_ = None
+						# zerr_ = _zerr
+						# func = [
+						# 	# 'cubic',#
+						# 	(lambda coef,x: coef[0] + coef[1]*x),
+						# 	(lambda coef,x: coef[0] + coef[1]*x),
+						# ]
+						# bounds = [y_[argmin(z_)]]
+
+						# _func,_z,_coef,_zerr,_coeferr,_r = fit(
+						# 	y_,z_,
+						# 	_x=_y_,_y=_z_,
+						# 	func=func,
+						# 	xerr=yerr_,yerr=zerr_,
+						# 	coef=coef,coefframe=True,
+						# 	preprocess=preprocess,postprocess=postprocess,
+						# 	bounds=bounds,kwargs=kwargs)
+
 
 						# _z,_coef,_zerr,_coeferr,_r = z_,coef,zerr_[slices],None,1
 						index = argmin(_z)
@@ -533,7 +585,7 @@ def postprocess(path,**kwargs):
 					return y
 
 				_n = x.size*10
-				_x = logspace(int(log10(x.min()))-2,0,_n)
+				_x = logspace(int(log10(x.min()))-3,0,_n)
 				_y = zeros(_n)
 				p = 2
 				coef = array([1.0,-1.0])[:p]
@@ -592,7 +644,7 @@ def postprocess(path,**kwargs):
 								r'$%s$'%('\n'.join([
 								'%s = %s'%(z,scinotation(_coef[i],decimals=2,scilimits=[-1,4],error=sqrt(_coeferr[i][i]) if _coeferr is not None else None)) 
 									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_coef)])])) + '\n' +
-								r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation(log10(exp(1))*(_coef[0]/_coef[1]),decimals=2,scilimits=[-1,4],error=log10(exp(1))*uncertainty(*(_coef[i] for i in [0,1]),*(sqrt(_coeferr[i][i]) for i in [0,1]),'/')[1] if _coeferr is not None else None)) + '\n' +
+								r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_coef[0]/_coef[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty(*(_coef[i] for i in [0,1]),*(sqrt(_coeferr[i][i]) for i in [0,1]),'/')[1] if _coeferr is not None else None)) + '\n' +
 								r'$%s$'%('r^2 = %s'%(scinotation(_r,decimals=4,scilimits=[-1,4])))
 								),
 							'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	

@@ -578,12 +578,12 @@ def rao(func,grad=None,label=None,error=None,optimize=None,mode=None,**kwargs):
 			if error is None:
 				def function(parameters,*args,**kwargs):
 					out = func(parameters,*args,**kwargs)
-					out = (1/2)*norm(out-label,axis=None,ord=2)**2
+					out = (1/2)*norm(label-out,axis=None,ord=2)**2
 					return out
 			elif error.ndim == 1:
 				def function(parameters,*args,**kwargs):
 					out = func(parameters,*args,**kwargs)
-					out = (1/2)*norm((out-label)*error,axis=None,ord=2)**2
+					out = (1/2)*norm((label-out)*error,axis=None,ord=2)**2
 					return out					
 			elif error.ndim == 2:
 				def function(parameters,*args,**kwargs):
@@ -593,7 +593,7 @@ def rao(func,grad=None,label=None,error=None,optimize=None,mode=None,**kwargs):
 			else:
 				def function(parameters,*args,**kwargs):
 					out = func(parameters,*args,**kwargs)
-					out = (1/2)*norm(out-label,axis=None,ord=2)**2
+					out = (1/2)*norm(label-out,axis=None,ord=2)**2
 					return out					
 
 	hess = hessian(jit(function))
@@ -1804,7 +1804,7 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 				_coef = (1/ay)*(coef)*(ax)
 			elif coef.size == 2:
 				_coef = array([
-					(1/ay)*(coef[0] - coef[1]*ax*bx) - by,
+					(1/ay)*(coef[0] + coef[1]*ax*bx) - by,
 					(1/ay)*(coef[1])*(ax),
 					])
 			else:
@@ -1824,10 +1824,6 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 
 			_x = (ax)*(x + bx)
 			_y = (ay)*(y + by)
-			_coef = array([
-				ay*(coef[0] - coef[1]*bx + by),
-				ay*coef[1]*(1/ax)
-				]) if coef is not None else None
 
 			if coef is None:
 				_coef = None
@@ -1835,7 +1831,7 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 				_coef =	ay*coef*(1/ax)
 			elif coef.size == 2:
 				_coef = array([
-					ay*(-coef[0] + coef[1]*bx + by),
+					ay*(coef[0] - coef[1]*bx + by),
 					ay*coef[1]*(1/ax)
 					])
 			else:

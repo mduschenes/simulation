@@ -100,13 +100,13 @@ def test_err(path=None,tol=None):
 	# ax.plot(_x,(model(coef_,(_x))),label='func')
 	# ax.legend();
 
-	tol = 1e-2
+	tol = 1e-7
 	
 	s,a,b = 'coef',_coef,coef_
 	eps = norm(a-b)/norm(b)
 	assert eps < tol,'%s: %r - %r = %0.3e < %0.1e'%(s,a,b,eps,tol)
 
-	s,a,b = 'covar',abs(_rao),abs(rao_)
+	s,a,b = 'covar',(_rao),(rao_)
 	eps = norm(a-b)/norm(b)
 	assert eps < tol,'%s: %r - %r = %0.3e < %0.1e'%(s,a,b,eps,tol)
 
