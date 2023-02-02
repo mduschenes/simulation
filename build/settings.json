@@ -18,11 +18,20 @@
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[2],		
+		"model.N":[4],		
+		
+		"model.M":[5e3],	
+		"model.tau":[2e1],				
+		"model.T": [null],
+		"noise.parameters":[null],
+		"noise.initialization":["random"],
+		"noise.scale":[1e-11],
+		"state.scale":[1],
+		
 		"model.M":[null],		
-		"model.tau":[2e1,5e1,1e2],		
+		"model.tau":[2e1],	
 		"model.T": [1e5],
-		"noise.parameters":[1e6,1e5,1e4],
+		"noise.parameters":[2e12],
 		"noise.initialization":["time"],
 		"noise.scale":[1],
 		"state.scale":[1],
@@ -36,8 +45,8 @@
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["test"],	
-		"jobs.postprocess.cwd":["test"],
+		"jobs.job.cwd":["test.other"],	
+		"jobs.postprocess.cwd":["test.other"],
 
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],

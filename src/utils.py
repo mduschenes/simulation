@@ -1492,7 +1492,15 @@ def curve_fit(func,x,y,**kwargs):
 		coef (array): Fit parameters
 		coeferr (array): Fit parameters error
 	'''
-	defaults = {'p0':kwargs.pop('coef0',kwargs.pop('coef',None)),'sigma':kwargs.pop('yerr',None),'maxfev':1000,'absolute_sigma':False}
+	defaults = {
+	'p0':kwargs.pop('coef0',kwargs.pop('coef',None)),
+	'sigma':kwargs.pop('yerr',None),
+	'absolute_sigma':True,
+	'maxfev':1000,
+	'xtol':1e-12,
+	'ftol':1e-12,
+	'gtol':1e-12,
+	}
 
 	kwargs = {kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults}
 
@@ -1796,7 +1804,7 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 				_coef = (1/ay)*(coef)*(ax)
 			elif coef.size == 2:
 				_coef = array([
-					(1/ay)*(coef[0] + coef[1]*bx) - by,
+					(1/ay)*(coef[0] - coef[1]*ax*bx) - by,
 					(1/ay)*(coef[1])*(ax),
 					])
 			else:
@@ -1817,7 +1825,7 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 			_x = (ax)*(x + bx)
 			_y = (ay)*(y + by)
 			_coef = array([
-				ay*(coef[0] - coef[1]*bx) + ay*by,
+				ay*(coef[0] - coef[1]*bx + by),
 				ay*coef[1]*(1/ax)
 				]) if coef is not None else None
 
@@ -1827,7 +1835,7 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 				_coef =	ay*coef*(1/ax)
 			elif coef.size == 2:
 				_coef = array([
-					ay*(coef[0] - coef[1]*bx) + ay*by,
+					ay*(-coef[0] + coef[1]*bx + by),
 					ay*coef[1]*(1/ax)
 					])
 			else:

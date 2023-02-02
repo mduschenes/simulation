@@ -838,7 +838,7 @@ def plotter(settings,hyperparameters):
 				[
 					*['%s : %s'%(
 						texify(label),
-						',~'.join([texify(scinotation(value,decimals=0,scilimits=[0,2],one=False)) for value in values[plots][label]['value']]))
+						',~'.join([texify(scinotation(value,decimals=0,scilimits=[0,5],one=False)) for value in values[plots][label]['value']]))
 						for plots in values 
 						for label in realsorted(set((
 						label 
@@ -847,7 +847,7 @@ def plotter(settings,hyperparameters):
 							(values[plots][label]['other']) and (len(values[plots][label]['value'])==1)))))],
 					*['%s : %s'%(
 						texify(label),
-						',~'.join([texify(scinotation(value,decimals=0,scilimits=[0,2],one=False)) for value in values[plots][label]['value']]))
+						',~'.join([texify(scinotation(value,decimals=0,scilimits=[0,5],one=False)) for value in values[plots][label]['value']]))
 						for plots in values 
 					 	for label in realsorted(set((
 						label 

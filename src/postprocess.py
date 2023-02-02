@@ -360,7 +360,8 @@ def postprocess(path,**kwargs):
 						_zerr = zeros(_n)
 
 						func = [
-								'cubic',#(lambda coef,x: coef[0] + coef[1]*x),
+								# 'cubic',#
+								(lambda coef,x: coef[0] + coef[1]*x),
 								(lambda coef,x: coef[0] + coef[1]*x),
 								]
 						coef = [array([1.0,1.0]),array([1.0,1.0])]
@@ -532,7 +533,7 @@ def postprocess(path,**kwargs):
 					return y
 
 				_n = x.size*10
-				_x = logspace(int(log10(x.min()))-2,int(log10(x.max())),_n)
+				_x = logspace(int(log10(x.min()))-2,0,_n)
 				_y = zeros(_n)
 				p = 2
 				coef = array([1.0,-1.0])[:p]
