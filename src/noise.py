@@ -64,7 +64,7 @@ class Noise(Object):
 		if (self.parameters is not None):
 			if (self.initialization in ['time']):
 				if (self.cls.get('tau') is not None):
-					self.scale = 1 - exp(-self.cls['tau']/self.parameters)
+					self.scale = (1 - exp(-self.cls['tau']/self.parameters))/2
 
 		assert (self.scale >= 0) and (self.scale <= 1), "Noise scale %r not in [0,1]"%(self.scale)
 

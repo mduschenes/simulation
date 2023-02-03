@@ -18,6 +18,7 @@ for PATH in PATHS:
 from src.io import load,dump,join,split,edit
 
 from src.utils import array,zeros,rand,identity,datatype,allclose,sqrt,abs2
+from src.utils import gradient,rand,eye,diag,sin,cos
 from src.utils import norm,trace,inner_abs2
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmc,_expm
 from src.utils import gradient_expm
@@ -390,6 +391,42 @@ def test_scinotation(path=None,tol=None):
 
 	return
 
+def test_gradient(path=None,tol=None):
+	def func(x,y,z):
+		x,y,z = sin(z),cos(x),sin(y)
+		return x,y
+	n = 10
+	p = 3
+	d = 2
+
+	grad = gradient(func,argnums=range(p),mode='fwd')
+
+	x,y,z = rand(n),rand(n),rand(n)
+
+	g = grad(x,y,z)
+
+	_g = ((zeros(n),zeros(n),diag(cos(z))),(diag(-sin(x)),zeros(n),zeros(n)))
+
+	assert isinstance(g,tuple) and len(g)==d
+	assert all(isinstance(h,tuple) and len(h)==p for i,h in enumerate(g))
+	assert all(isinstance(k,array) and k.shape == (n,n) and allclose(k,_g[i][j]) for i,h in enumerate(g) for j,k in enumerate(h))
+
+	return
+
+def test_mult(path=None,tol=None):
+
+	m = 5
+	n = 3
+	a = rand(n)
+	b = rand((m,n))
+
+	c = b*a
+	d = b.dot(diag(a))
+
+	assert allclose(c,d)
+
+	return
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
@@ -397,4 +434,6 @@ if __name__ == '__main__':
 	# test_optimizer(path,tol)
 	# test_getter(path,tol)
 	# test_setter(path,tol)
-	test_scinotation(path,tol)
+	# test_scinotation(path,tol)
+	test_gradient(path,tol)
+	
