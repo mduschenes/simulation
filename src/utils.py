@@ -1524,7 +1524,7 @@ def curve_fit(func,x,y,**kwargs):
 		coef,coeferr = osp.optimize.curve_fit(function,x,y,**kwargs)
 	except Exception as exception:
 		print(traceback.format_exc())
-		raise(exception)
+		exit()
 
 	coef = array(coef)
 	coeferr = array(coeferr)

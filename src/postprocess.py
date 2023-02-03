@@ -327,7 +327,7 @@ def postprocess(path,**kwargs):
 						pass
 
 				slices = range(4,len(data[label['y']])-5)
-				slices = [1,2,4,5,6,8,9,10]#range(4,len(data[label['y']])-5)
+				slices = [2,3,4,5,6,7,8,9,10]#range(4,len(data[label['y']])-5)
 				# slices = range(len(data[label['y']])-3)
 
 				X = array([data['%s'%(label['x'])][i] for i in slices])
@@ -397,25 +397,37 @@ def postprocess(path,**kwargs):
 							preprocess=preprocess,postprocess=postprocess,
 							bounds=bounds,kwargs=kwargs)	
 						
-						y_ = _y
-						z_ = _z
-						yerr_ = None
-						zerr_ = _zerr
-						func = [
-							# 'cubic',#
-							(lambda coef,x: coef[0] + coef[1]*x),
-							(lambda coef,x: coef[0] + coef[1]*x),
-						]
-						bounds = [y_[argmin(z_)]]
+						# y_ = _y
+						# z_ = _z
+						# yerr_ = None
+						# zerr_ = _zerr
+						# func = [
+						# 	# 'cubic',#
+						# 	(lambda coef,x: coef[0] + coef[1]*x),
+						# 	'cubic',
+						# 	(lambda coef,x: coef[0] + coef[1]*x),
+						# ]
+						# coef = [array([1.0,1.0]),array([1.0,1.0]),array([1.0,1.0])]
+						# preprocess = [
+						# 	lambda x,y,coef: (x if x is not None else None,log(y) if y is not None else None,coef if coef is not None else None),
+						# 	lambda x,y,coef: (x if x is not None else None,log(y) if y is not None else None,coef if coef is not None else None),
+						# 	lambda x,y,coef: (log(x) if x is not None else None,log(y) if y is not None else None,coef if coef is not None else None),
+						# 	]
+						# postprocess = [
+						# 	lambda x,y,coef: (x if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
+						# 	lambda x,y,coef: (x if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
+						# 	lambda x,y,coef: (exp(x) if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
+						# 	]
+						# bounds = [y_[argmin(z_)-10],y_[argmin(z_)]]
 
-						_func,_z,_coef,_zerr,_coeferr,_r = fit(
-							y_,z_,
-							_x=_y,_y=_z,
-							func=func,
-							xerr=yerr_,yerr=zerr_,
-							coef=coef,coefframe=True,
-							preprocess=preprocess,postprocess=postprocess,
-							bounds=bounds,kwargs=kwargs)
+						# _func,_z,_coef,_zerr,_coeferr,_r = fit(
+						# 	y_,z_,
+						# 	_x=_y,_y=_z,
+						# 	func=func,
+						# 	xerr=yerr_,yerr=zerr_,
+						# 	coef=coef,coefframe=True,
+						# 	preprocess=preprocess,postprocess=postprocess,
+						# 	bounds=bounds,kwargs=kwargs)
 
 						# y_ = _y
 						# z_ = _z
@@ -439,15 +451,17 @@ def postprocess(path,**kwargs):
 
 
 						# _z,_coef,_zerr,_coeferr,_r = z_,coef,zerr_[slices],None,1
-						index = argmin(_z)
-						indexerr = (argmin(_z+_zerr) + argmin(_z-_zerr))//2
 
-						_yerr = _yerr.at[index].set(sum(abs(_y[argmin(_z)+k] - _y[argmin(_z)]) for k in [1,-1])/2)
+						index = argmin(_z)
+						indexerr = [argmin(_z+k*_zerr) for k in [-1,1]]
+						_yerrindex = sum(abs(_y[i] - _y[index]) for i in indexerr)/len(indexerr)
 
 						print(_x,_r)
-						print(_yerr[index])
-						print(zerr_[index])
-						print(_zerr[index])
+						print(index,indexerr,_yerrindex)
+						print(_y[index],[_y[i] for i in indexerr])
+						# print(_yerr[index])
+						# print(zerr_[index])
+						# print(_zerr[index])
 						print(coef)
 						print(_coef)
 						print()
@@ -461,7 +475,7 @@ def postprocess(path,**kwargs):
 						x.append(_x)
 						y.append(_y[index])
 						z.append(_z[index])
-						yerr.append(_yerr[index])
+						yerr.append(_yerrindex if _yerrindex else 1)
 						zerr.append(_zerr[index])
 						indexes.append(index)
 						coefs.append(_coef)

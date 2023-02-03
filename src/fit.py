@@ -406,7 +406,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			funcerr = lambda coef,x,_func=_funcerr: _func(x)
 			_yerr += abs(funcerr(_coef,_x) - _y)
 
-			_yerr /= 2
+			_yerr /= 1
 
 	else:
 		func = lambda coef,x,y=y: y
