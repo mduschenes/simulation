@@ -12,7 +12,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null},
+			"label":{"N":null,"architecture":null,"M":null,"T":null,"noise.scale":null},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -89,8 +89,7 @@
 			"x":"iteration",
 			"y":"objective",
 			"label":{
-				"N":null,"architecture":null,"tau":null,"noise.parameters":null,
-				"$T$":"@T@"
+				"N":null,"architecture":null,"T":null,"tau":null,"noise.parameters":null
 			},
 			"alpha":0.8,
 			"marker":"o",
@@ -167,7 +166,7 @@
 			{
 			"x":"noise.scale",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"M":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"architecture":null,"T":null,"M":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -305,7 +304,7 @@
 			{
 			"x":"noise.parameters",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"tau":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"architecture":null,"T":null,"tau":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -374,7 +373,7 @@
 			{
 			"x":"noise.parameters",
 			"y":"objective.diff.state",
-			"label":{"N":null,"architecture":null,"tau":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"architecture":null,"T":null,"tau":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -443,7 +442,7 @@
 			{
 			"x":"M",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"architecture":null,"T":null,"noise.scale":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -512,7 +511,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"variables.relative.mean",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@"},			
+			"label":{"N":null,"architecture":null,"T":null,"noise.scale":null,"iteration":"@iteration.min@"},			
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -980,6 +979,7 @@
                 "label":{
                     "N": null,
                     "architecture": null,
+                    "T":null,
                     "tau": null,
                     "noise.parameters": null,
                     "iteration": "@iteration.max@",
@@ -1048,6 +1048,7 @@
                 "label":{
                     "N": null,
                     "architecture": null,
+                    "T":null,
                     "tau": null,
                     "noise.par": null,
                     "iteration": "@iteration.max@",

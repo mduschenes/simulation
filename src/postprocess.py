@@ -327,7 +327,7 @@ def postprocess(path,**kwargs):
 						pass
 
 				slices = range(4,len(data[label['y']])-5)
-				slices = [2,3,4,5,6,7,8,9,10]#range(4,len(data[label['y']])-5)
+				slices = [1,4,5,6,8,9,10]#range(4,len(data[label['y']])-5)
 				# slices = range(len(data[label['y']])-3)
 
 				X = array([data['%s'%(label['x'])][i] for i in slices])
