@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":18231,
-	"size":4,
+	"size":12,
 	"reset":18231,
 	"index":null
 	},
@@ -21,14 +21,15 @@
 
 		"model.N":[4],		
 		"model.M":[null],		
-		"model.tau":[2e1,3e1,4e1,1e2,1.5e2,2e2],		
-		"model.T": [1e5],
-		"noise.parameters":[1e12,1e10,1e8,1e6,1e4,1e2],
+		"model.tau":[5e1,7.5e1,1e2,1.5e2,2e2],		
+		"model.T": [1e3,1e4,1e5],
+		"noise.parameters":[1e6],
 		"noise.initialization":["time"],
+		"parameters.zz.scale":[1],
 		"noise.scale":[1],
 		"state.scale":[1],
 
-		"optimize.iterations":[200],
+		"optimize.iterations":[500],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
@@ -37,8 +38,8 @@
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["gobi/tau.long.2"],
-		"jobs.postprocess.cwd":["gobi/tau.long.2"],
+		"jobs.job.cwd":["gobi/tau"],
+		"jobs.postprocess.cwd":["gobi/tau"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -55,7 +56,7 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[2],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["48:00:00"],
+		"jobs.job.patterns.time":["72:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
 		"jobs.job.patterns.mem":["256GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
@@ -204,6 +205,7 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
+		"parameters":[72.4e-4,-1.3e-4,50e-4,80e-4,2e-4,20e-4,-30e-4,60e-4,9e-4,-6e-4],								
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],
