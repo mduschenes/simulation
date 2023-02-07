@@ -33,20 +33,19 @@ warnings.showwarning = warn_with_traceback
 def test_err(path=None,tol=None):
 
 	scale = 3
-	scale = 1
 	def model(coef,x):
+		y = coef[0] + coef[1]*x
 		# y = scale*log10(coef[0] + coef[1]*log10(x))
-		y = scale*(coef[0] + coef[1]*(x))
 		return y
 
 	n = 100
 	d = 2
 	sigma = None
-	key = {'x':19354,'coef':[1923,2424],'yerr':25215}
+	key = {'x':1214,'coef':[1923,2424],'yerr':25215}
 
 
 	x = sort(rand((n,),bounds=[1e-6,3],key=key['x']))
-	coef = array([rand(bounds=[0,7],key=key['coef'][0]),rand(bounds=[-1,0],key=key['coef'][1])]).ravel()
+	coef = array([rand(bounds=[0,7],key=key['coef'][0]),rand(bounds=[0,1],key=key['coef'][1])])[:d].ravel()
 	y = model(coef,x) 
 	xerr = None
 	yerr = sigma*rand(n,bounds=[-1,1],key=key['yerr']) if (sigma is not None and sigma>0) else None
@@ -57,8 +56,10 @@ def test_err(path=None,tol=None):
 
 	x_ = x
 	y_ = y
+	xerr_ = xerr
+	yerr_ = yerr
 	coef_ = coef
-	_rao_ = rao(model,label=y,error=yerr)(coef_,x)
+	_rao_ = rao(model,label=y_,error=yerr_)(coef_,x_)
 
 	def func(coef,x):
 		y = coef[0] + coef[1]*x
@@ -76,11 +77,12 @@ def test_err(path=None,tol=None):
 		'maxfev':200000,
 		'absolute_sigma':True,
 	}
-	preprocess = lambda x,y,coef: (log10(x) if x is not None else None,exp10(y/scale) if y is not None else None,coef if coef is not None else None)
-	postprocess = lambda x,y,coef: (exp10(x) if x is not None else None,scale*log10(y) if y is not None else None,coef if coef is not None else None)
+	
+	preprocess = None
+	postprocess = None
 
-	preprocess = lambda x,y,coef: ((x) if x is not None else None,(y/scale) if y is not None else None,coef if coef is not None else None)
-	postprocess = lambda x,y,coef: ((x) if x is not None else None,scale*(y) if y is not None else None,coef if coef is not None else None)
+	# preprocess = lambda x,y,coef: (log10(x) if x is not None else None,exp10(y/scale) if y is not None else None,coef if coef is not None else None)
+	# postprocess = lambda x,y,coef: (exp10(x) if x is not None else None,scale*log10(y) if y is not None else None,coef if coef is not None else None)
 
 	_func,_y,_coef,_yerr,_coeferr,_r,_other = fit(
 		x,y,
@@ -92,12 +94,10 @@ def test_err(path=None,tol=None):
 		kwargs=kwargs)
 
 
-
 	rao_ = rao(_func,label=y,error=yerr)(_coef,x)
 	_rao = _coeferr
 
 	print(coef_)
-	print(coef)
 	print(_coef)
 	print()
 	print(_rao_)

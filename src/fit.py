@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 from src.utils import gradient,diag
 from src.utils import array,zeros,ones,eye
-from src.utils import lstsq,curve_fit,piecewise_fit,piecewise,interp,standardize,sort,norm
+from src.utils import lstsq,curve_fit,piecewise_fit,piecewise,interp,standardize,sort,norm,inv
 from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,product,is_naninf,allclose
 from src.utils import nan,null,scalars
 
@@ -321,6 +321,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_yerr = _jac.dot(_yerr).dot(_jac.T)
 
 	_invgrad = gradtransform(_x,_y,_coef)
+
 	if _coeferr is not None:
 		i = 2
 		if _coeferr.ndim == 1:
@@ -330,11 +331,12 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_jac = _invgrad[i][i]
 			_coeferr = _jac.dot(_coeferr).dot(_jac.T)
 
+
 	x,y,coef = invtransform(x,y,coef)
 
 	_x,_y,_coef = invtransform(_x,_y,_coef)
 
-	def _func(coef,x,*args,func=func,transform=transform,invtransform=invtransform,**kwargs):
+	def _func(coef,x,*args,**kwargs):
 		x,coef = transform(x=x,coef=coef)
 		y = func(coef,x,*args,**kwargs)
 		y = invtransform(y=y)

@@ -568,34 +568,42 @@ def rao(func,grad=None,label=None,error=None,optimize=None,mode=None,**kwargs):
 	else:
 		error = error
 
+	function = func
+
 	if mode in ['lstsq','mse','normal','gaussian',None]:
 		if label is None:
-			def function(parameters,*args,**kwargs):
-				out = func(parameters,*args,**kwargs)
+			def func(parameters,*args,**kwargs):
+				out = function(parameters,*args,**kwargs)
 				return out
 		else:
 			if error is None:
-				def function(parameters,*args,**kwargs):
-					out = func(parameters,*args,**kwargs)
-					out = (1/2)*norm(label-out,axis=None,ord=2)**2
+				def func(parameters,*args,**kwargs):
+					out = function(parameters,*args,**kwargs)
+					out = label - out
+					out = (1/2)*norm2(out)
 					return out
 			elif error.ndim == 1:
-				def function(parameters,*args,**kwargs):
-					out = func(parameters,*args,**kwargs)
-					out = (1/2)*norm((label-out)*error,axis=None,ord=2)**2
+				def func(parameters,*args,**kwargs):
+					out = function(parameters,*args,**kwargs)
+					out = label - out	
+					out = (1/2)*norm2(out*error)
 					return out					
 			elif error.ndim == 2:
-				def function(parameters,*args,**kwargs):
-					out = func(parameters,*args,**kwargs)
-					out = (1/2)*(out.dot(error).dot(out.T))
+				def func(parameters,*args,**kwargs):
+					out = function(parameters,*args,**kwargs)
+					out = label - out
+					out = (1/2)*norm2(out,error)
 					return out
 			else:
-				def function(parameters,*args,**kwargs):
-					out = func(parameters,*args,**kwargs)
-					out = (1/2)*norm(label-out,axis=None,ord=2)**2
+				def func(parameters,*args,**kwargs):
+					out = function(parameters,*args,**kwargs)
+					out = label - out					
+					out = (1/2)*norm2(out)
 					return out					
 
-	hess = hessian(jit(function))
+	func = jit(func)
+	grad = gradient(func)
+	hess = hessian(func)
 
 	def rao(parameters,*args,**kwargs):
 		return inv(hess(parameters,*args,**kwargs))
@@ -1503,8 +1511,10 @@ def curve_fit(func,x,y,**kwargs):
 
 	kwargs = {kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults}
 
-	def function(x,*coef):
-		return func(coef,x)
+	function = func
+
+	def func(x,*coef):
+		return function(coef,x)
 
 	x = onp.asarray(x)
 	y = onp.asarray(y)
@@ -1518,11 +1528,12 @@ def curve_fit(func,x,y,**kwargs):
 	# fig.savefig(path)
 
 	try:
-		coef,coeferr = osp.optimize.curve_fit(function,x,y,**kwargs)
+		coef,coeferr = osp.optimize.curve_fit(func,x,y,**kwargs)
 	except Exception as exception:
 		print(traceback.format_exc())
 		exit()
 
+	func = function
 	coef = array(coef)
 	coeferr = array(coeferr)
 
@@ -1789,29 +1800,31 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 		x,y,coef = preprocess(x,y,coef)
 		params = [[x.min(),x.max()],[y.min(),y.max()]]
 		params = [[param[1],0] if param[0]==param[1] else param for param in params]
-		
+		params = array(params)
+
+		ax = (params[0][1]-params[0][0])
+		bx = params[0][0]/(params[0][1]-params[0][0])
+		ay = (params[1][1]-params[1][0])
+		by = params[1][0]/(params[1][1]-params[1][0])
+
+		@jit
 		def transform(x=None,y=None,coef=None,params=params):
 			ax = (params[0][1]-params[0][0])
 			bx = params[0][0]/(params[0][1]-params[0][0])
 			ay = (params[1][1]-params[1][0])
 			by = params[1][0]/(params[1][1]-params[1][0])
 
-			x,y,coef = preprocess(x,y,coef)
+			_x,_y,_coef = x,y,coef
 
-			_x = (1/ax)*(x) - bx if x is not None else None
-			_y = (1/ay)*(y) - by if y is not None else None
+			_x,_y,_coef = preprocess(_x,_y,_coef)
 
-			if coef is None:
-				_coef = None
-			elif coef.size == 1:
-				_coef = (1/ay)*(coef)*(ax)
-			elif coef.size == 2:
-				_coef = array([
-					(1/ay)*(coef[0] + coef[1]*ax*bx) - by,
-					(1/ay)*(coef[1])*(ax),
-					])
-			else:
-				_coef = coef
+			# _x = (1/ax)*(_x) - bx if x is not None else None
+			# _y = (1/ay)*(_y) - by if y is not None else None
+
+			# _coef = array([
+			# 	(1/ay)*(_coef[0] + _coef[1]*ax*bx) - by,
+			# 	(1/ay)*(_coef[1])*(ax),
+			# 	]) if coef is not None else None
 
 			if x is not None:
 				if y is not None:
@@ -1836,28 +1849,22 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 					else:
 						return
 
-		
+		@jit
 		def invtransform(x=None,y=None,coef=None,params=params):
 			ax = (params[0][1]-params[0][0])
 			bx = params[0][0]/(params[0][1]-params[0][0])
 			ay = (params[1][1]-params[1][0])
 			by = params[1][0]/(params[1][1]-params[1][0])
 
+			_x,_y,_coef = x,y,coef
 
-			_x = (ax)*(x + bx) if x is not None else None
-			_y = (ay)*(y + by) if y is not None else None
+			# _x = (ax)*(_x + bx) if x is not None else None
+			# _y = (ay)*(_y + by) if y is not None else None
 
-			if coef is None:
-				_coef = None
-			elif coef.size == 1:
-				_coef =	ay*coef*(1/ax)
-			elif coef.size == 2:
-				_coef = array([
-					ay*(coef[0] - coef[1]*bx + by),
-					ay*coef[1]*(1/ax)
-					])
-			else:
-				_coef = coef
+			# _coef = array([
+			# 		ay*(_coef[0] - _coef[1]*bx + by),
+			# 		ay*(_coef[1])*(1/ax)
+			# 		]) if coef is not None else None
 
 			_x,_y,_coef = postprocess(_x,_y,_coef)
 
@@ -2042,6 +2049,23 @@ def norm(a,axis=None,ord=2,keepdims=False):
 
 	out = np.linalg.norm(a,axis=axis,ord=ord,keepdims=keepdims)
 
+	return out
+
+
+@jit
+def norm2(a,b=None):
+	'''
+	2-Norm squared of array
+	Args:
+		a (array): array to be normalized
+		b (array): array to weight normalization
+	Returns:
+		out (array): Norm of array
+	'''
+	if b is None:
+		out = dot(conj(a),a)
+	else:
+		out = dot(dot(conj(a),b),a)
 	return out
 
 
