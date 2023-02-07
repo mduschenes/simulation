@@ -568,7 +568,6 @@ def rao(func,grad=None,label=None,error=None,optimize=None,mode=None,**kwargs):
 	else:
 		error = error
 
-
 	if mode in ['lstsq','mse','normal','gaussian',None]:
 		if label is None:
 			def function(parameters,*args,**kwargs):
@@ -1504,18 +1503,16 @@ def curve_fit(func,x,y,**kwargs):
 
 	kwargs = {kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults}
 
-	coef = kwargs['p0']
-
 	def function(x,*coef):
 		return func(coef,x)
 
 	x = onp.asarray(x)
 	y = onp.asarray(y)
-	coef = onp.asarray(coef)
-	kwargs.update({kwarg: onp.asarray(kwargs[kwarg]) if kwargs[kwarg] is not None else None for kwarg in ['p0','sigma'] if kwarg in kwargs})
+	kwargs.update({kwarg: onp.asarray(kwargs[kwarg]) if kwargs[kwarg] is not None else None for kwarg in kwargs if kwarg in ['p0','sigma']})
 
 	# fig,ax = plt.subplots()
 	# path = 'data.pdf'
+	# coef = onp.asarray(kwargs['p0'])
 	# ax.plot(x,y,'*-')
 	# ax.plot(x,function(x,*coef),'o--')
 	# fig.savefig(path)
@@ -1718,9 +1715,14 @@ def piecewise(func,bounds,**kwargs):
 
 	def conditions(x,*args,**kwargs):
 		n = len(bounds)-1
+		if x.ndim > 1:
+			axis,ord,r = 1,2,x.reshape(*x.shape[:1],-1)
+			r = norm(r,axis=axis,ord=axis)
+		else:
+			r = x
 		conditions = [(
-			(bool(bounds[i-1])*ones(x.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else x>=bounds[i-1]) & 
-			(bool(bounds[i])*ones(x.shape,dtype=bool) if (bounds[i] is None or isinstance(bounds[i],bool)) else x<=bounds[i])
+			(bool(bounds[i-1])*ones(r.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else r>=bounds[i-1]) & 
+			(bool(bounds[i])*ones(r.shape,dtype=bool) if (bounds[i] is None or isinstance(bounds[i],bool)) else r<=bounds[i])
 			)
 			for i in range(n)]
 		return conditions
@@ -1787,7 +1789,8 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 		x,y,coef = preprocess(x,y,coef)
 		params = [[x.min(),x.max()],[y.min(),y.max()]]
 		params = [[param[1],0] if param[0]==param[1] else param for param in params]
-		def transform(x,y,coef=None,params=params):
+		
+		def transform(x=None,y=None,coef=None,params=params):
 			ax = (params[0][1]-params[0][0])
 			bx = params[0][0]/(params[0][1]-params[0][0])
 			ay = (params[1][1]-params[1][0])
@@ -1810,20 +1813,39 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 			else:
 				_coef = coef
 
-			if coef is not None:
-				return _x,_y,_coef
+			if x is not None:
+				if y is not None:
+					if coef is not None:
+						return _x,_y,_coef
+					else:
+						return _x,_y
+				else:
+					if coef is not None:
+						return _x,_coef
+					else:
+						return _x
 			else:
-				return _x,_y
+				if y is not None:
+					if coef is not None:
+						return _y,_coef
+					else:
+						return _y
+				else:
+					if coef is not None:
+						return _coef
+					else:
+						return
+
 		
-		def invtransform(x,y,coef=None,params=params):
+		def invtransform(x=None,y=None,coef=None,params=params):
 			ax = (params[0][1]-params[0][0])
 			bx = params[0][0]/(params[0][1]-params[0][0])
 			ay = (params[1][1]-params[1][0])
 			by = params[1][0]/(params[1][1]-params[1][0])
 
 
-			_x = (ax)*(x + bx)
-			_y = (ay)*(y + by)
+			_x = (ax)*(x + bx) if x is not None else None
+			_y = (ay)*(y + by) if y is not None else None
 
 			if coef is None:
 				_coef = None
@@ -1839,10 +1861,28 @@ def standardize(x,y,coef=None,axis=None,mode='linear',preprocess=None,postproces
 
 			_x,_y,_coef = postprocess(_x,_y,_coef)
 
-			if coef is not None:
-				return _x,_y,_coef
+			if x is not None:
+				if y is not None:
+					if coef is not None:
+						return _x,_y,_coef
+					else:
+						return _x,_y
+				else:
+					if coef is not None:
+						return _x,_coef
+					else:
+						return _x
 			else:
-				return _x,_y				
+				if y is not None:
+					if coef is not None:
+						return _y,_coef
+					else:
+						return _y
+				else:
+					if coef is not None:
+						return _coef
+					else:
+						return
 
 	return transform,invtransform
 
@@ -1993,7 +2033,7 @@ def norm(a,axis=None,ord=2,keepdims=False):
 	Norm of array
 	Args:
 		a (array): array to be normalized
-		axis (int): axis to normalize over. Flattens array if None.
+		axis (int,iterable[int]): axis to normalize over. Flattens array if None.
 		ord (int,str): order of normalization
 		keepdims (bool): Keep axis of size 1 along normalization
 	Returns:

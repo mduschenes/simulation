@@ -388,12 +388,12 @@ def postprocess(path,**kwargs):
 						_yerr_ = yerr_
 						_zerr_ = zerr_
 
-						_func,_z,_coef,_zerr,_coeferr,_r = fit(
+						_func,_z,_coef,_zerr,_coeferr,_r,_other = fit(
 							y_,z_,
 							_x=_y,_y=_z,
 							func=func,
 							xerr=yerr_,yerr=zerr_,
-							coef=coef,coefframe=True,
+							coef=coef,
 							preprocess=preprocess,postprocess=postprocess,
 							bounds=bounds,kwargs=kwargs)	
 						
@@ -420,12 +420,12 @@ def postprocess(path,**kwargs):
 						# 	]
 						# bounds = [y_[argmin(z_)-10],y_[argmin(z_)]]
 
-						# _func,_z,_coef,_zerr,_coeferr,_r = fit(
+						# _func,_z,_coef,_zerr,_coeferr,_r,_other = fit(
 						# 	y_,z_,
 						# 	_x=_y,_y=_z,
 						# 	func=func,
 						# 	xerr=yerr_,yerr=zerr_,
-						# 	coef=coef,coefframe=True,
+						# 	coef=coef
 						# 	preprocess=preprocess,postprocess=postprocess,
 						# 	bounds=bounds,kwargs=kwargs)
 
@@ -440,12 +440,12 @@ def postprocess(path,**kwargs):
 						# ]
 						# bounds = [y_[argmin(z_)]]
 
-						# _func,_z,_coef,_zerr,_coeferr,_r = fit(
+						# _func,_z,_coef,_zerr,_coeferr,_r,_other = fit(
 						# 	y_,z_,
 						# 	_x=_y_,_y=_z_,
 						# 	func=func,
 						# 	xerr=yerr_,yerr=zerr_,
-						# 	coef=coef,coefframe=True,
+						# 	coef=coef
 						# 	preprocess=preprocess,postprocess=postprocess,
 						# 	bounds=bounds,kwargs=kwargs)
 
@@ -609,14 +609,14 @@ def postprocess(path,**kwargs):
 				preprocess = lambda x,y,coef: (log10(x) if x is not None else None,y if y is not None else None,coef if coef is not None else None)
 				postprocess = lambda x,y,coef: (exp10(x) if x is not None else None,y if y is not None else None,coef if coef is not None else None)
 
-				_func,_y,_coef,_yerr,_coeferr,_r = fit(
+				_func,_y,_coef,_yerr,_coeferr,_r,_other = fit(
 					x[slices],y[slices],
 					_x=_x,_y=_y,
 					func=func,coef=coef,
 					yerr=yerr[slices] if yerr is not None else yerr,
 					xerr=xerr[slices] if xerr is not None else xerr,
 					preprocess=preprocess,postprocess=postprocess,
-					coefframe=True,kwargs=kwargs)
+					kwargs=kwargs)
 
 				fig,ax = None,None
 
