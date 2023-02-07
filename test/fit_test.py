@@ -8,6 +8,7 @@ import itertools,functools,copy,warnings
 import jax
 import jax.numpy as np
 import numpy as onp
+import matplotlib.pyplot as plt
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -31,21 +32,24 @@ warnings.showwarning = warn_with_traceback
 
 def test_err(path=None,tol=None):
 
+	scale = 3
+	scale = 1
 	def model(coef,x):
-		y = 2*log10(coef[0] + coef[1]*log10(x))
+		# y = scale*log10(coef[0] + coef[1]*log10(x))
+		y = scale*(coef[0] + coef[1]*(x))
 		return y
 
 	n = 100
 	d = 2
-	sigma = 1e-3
-	key = 12345
+	sigma = None
+	key = {'x':19354,'coef':[1923,2424],'yerr':25215}
 
 
-	x = sort(rand((n,),bounds=[1e-6,1],key=key))
-	coef = array([rand(bounds=[0,4]),rand(bounds=[-2,0])]).ravel()
+	x = sort(rand((n,),bounds=[1e-6,3],key=key['x']))
+	coef = array([rand(bounds=[0,7],key=key['coef'][0]),rand(bounds=[-1,0],key=key['coef'][1])]).ravel()
 	y = model(coef,x) 
 	xerr = None
-	yerr = sigma*rand(n,bounds=[-1,1]) if (sigma is not None and sigma>0) else None
+	yerr = sigma*rand(n,bounds=[-1,1],key=key['yerr']) if (sigma is not None and sigma>0) else None
 	yerr = sigma*ones(n) if (sigma is not None and sigma>0) else None
 
 	y = y#+yerr if yerr is not None else y
@@ -54,11 +58,11 @@ def test_err(path=None,tol=None):
 	x_ = x
 	y_ = y
 	coef_ = coef
+	_rao_ = rao(model,label=y,error=yerr)(coef_,x)
 
 	def func(coef,x):
 		y = coef[0] + coef[1]*x
 		return y
-
 
 
 	_n = n*10
@@ -72,9 +76,13 @@ def test_err(path=None,tol=None):
 		'maxfev':200000,
 		'absolute_sigma':True,
 	}
-	preprocess = lambda x,y,coef: (log10(x) if x is not None else None,exp10(y/2) if y is not None else None,coef if coef is not None else None)
-	postprocess = lambda x,y,coef: (exp10(x) if x is not None else None,2*log10(y) if y is not None else None,coef if coef is not None else None)
-	_func,_y,_coef,_yerr,_coeferr,_r = fit(
+	preprocess = lambda x,y,coef: (log10(x) if x is not None else None,exp10(y/scale) if y is not None else None,coef if coef is not None else None)
+	postprocess = lambda x,y,coef: (exp10(x) if x is not None else None,scale*log10(y) if y is not None else None,coef if coef is not None else None)
+
+	preprocess = lambda x,y,coef: ((x) if x is not None else None,(y/scale) if y is not None else None,coef if coef is not None else None)
+	postprocess = lambda x,y,coef: ((x) if x is not None else None,scale*(y) if y is not None else None,coef if coef is not None else None)
+
+	_func,_y,_coef,_yerr,_coeferr,_r,_other = fit(
 		x,y,
 		_x=_x,_y=_y,
 		func=func,coef=coef,
@@ -83,22 +91,26 @@ def test_err(path=None,tol=None):
 		preprocess=preprocess,postprocess=postprocess,
 		kwargs=kwargs)
 
+
+
+	rao_ = rao(_func,label=y,error=yerr)(_coef,x)
 	_rao = _coeferr
-	rao_ = rao(model,label=y,error=yerr)(coef_,x)
 
 	print(coef_)
 	print(coef)
 	print(_coef)
 	print()
-	# print(yerr)
-	print(_coeferr)
+	print(_rao_)
 	print(rao_)
+	print(_rao)
 
-	# fig,ax = plt.subplots()
-	# ax.plot(x_,y_,label='orig')
-	# ax.plot(_x,_y,label='pred')
-	# ax.plot(_x,(model(coef_,(_x))),label='func')
-	# ax.legend();
+	fig,ax = plt.subplots()
+	ax.plot(x_,y_,label='orig',marker='o',linestyle='')
+	ax.plot(_x,_y,label='pred',marker='*',linestyle='-')
+	ax.plot(_x,(model(coef_,(_x))),label='func')
+	ax.plot(_x,(_func(coef_,(_x))),label='$\_$func',linestyle='--')
+	ax.legend();
+	fig.savefig('plot.pdf')
 
 	tol = 1e-7
 	
