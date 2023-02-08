@@ -13,12 +13,8 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,conj,abs,inv
+from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,inv,metrics
 from src.utils import is_unitary,is_hermitian,product,sqrt,asarray
-
-from src.utils import inner,mse,inner_norm,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_inner,gradient_mse,gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-
 from src.utils import scalars,delim
 
 from src.iterables import setter
@@ -595,8 +591,6 @@ class Function(System):
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
-		super().__init__(**kwargs)
-
 		if func is None:
 			func = []
 		if not callable(func):
@@ -867,7 +861,7 @@ class Metric(System):
 		self.hyperparameters = hyperparameters
 		self.system = system
 
-		self.string = None
+		self.string = str(self.metric)
 
 		self.__setup__()
 
@@ -884,31 +878,11 @@ class Metric(System):
 		if self.shapes is None:
 			self.shapes = ()
 
-		self.__string__()
-		self.__size__()
-
 		self.metrics()
 
 		self.info()
 
 		return
-
-	def __string__(self):
-		'''
-		Class string
-		'''
-		self.string = str(self.metric)
-		return
-
-	def __size__(self):
-		'''
-		Class size
-		'''
-		if self.shapes:
-			self.size = sum(int(product(shape)**(1/len(shape))) for shape in self.shapes[:2] if shape is not None)//len(self.shapes[:2])
-		else:
-			self.size = 1
-		return 
 
 	# @partial(jit,static_argnums=(0,))
 	def __call__(self,*operands):
@@ -981,13 +955,13 @@ class Metric(System):
 		'''
 		Class string
 		'''
-		return str(self.string)
+		return self.string
 
 	def __repr__(self):
 		'''
 		Class representation
 		'''
-		return str(self.string)
+		return self.__str__()
 
 	def info(self,verbose=None):
 		'''
@@ -1009,165 +983,22 @@ class Metric(System):
 		'''
 		Setup metric	
 		'''
-		
-		if callable(self.metric):
-			metric = self.metric
-			function = jit(metric)
-			grad = jit(gradient(metric))
-			# grad = gradient(function,mode='fwd',holomorphic=True,move=True)			
-			gradient_analytical = jit(gradient(metric))
-		else:
 
-			if self.label is not None:
-				if is_unitary(self.label) and self.metric in ['real','imag','norm']:
-					self.metric = 'abs2'
-				elif is_hermitian(self.label) and self.metric in ['abs2']:
-					self.metric = 'real'
+		if isinstance(self.metric,str) and self.label is not None:
+			if is_unitary(self.label) and self.metric in ['real','imag','norm']:
+				self.metric = 'abs2'
+			elif is_hermitian(self.label) and self.metric in ['abs2']:
+				self.metric = 'real'
 
-			if self.metric is None:
+		func,grad,grad_analytical = metrics(
+			metric=self.metric,shapes=self.shapes,
+			label=self.label,weights=self.weights,
+			optimize=self.optimize,
+			returns=True)
 
-				function = inner_norm
-				gradient_analytical = gradient_inner_norm
-
-				def wrapper_function(out,*operands):
-					return out/2
-
-				def wrapper_gradient(out,*operands):
-					return out/2
-
-			elif self.metric in ['lstsq','mse']:
-				function = mse
-				gradient_analytical = gradient_mse
-
-				def wrapper_function(out,*operands):
-					return out/2
-
-				def wrapper_gradient(out,*operands):
-					return out/2					
-
-
-			elif self.metric in ['norm']:
-
-				function = inner_norm
-				gradient_analytical = gradient_inner_norm
-
-				def wrapper_function(out,*operands):
-					return out/operands[0].shape[-1]/2
-				
-				def wrapper_gradient(out,*operands):
-					return out/operands[0].shape[-1]/2
-
-			elif self.metric in ['abs2']:
-
-				function = inner_abs2
-				gradient_analytical = gradient_inner_abs2
-
-				def wrapper_function(out,*operands):
-					return 1 - out/(operands[0].shape[-1]*operands[0].shape[-2])
-
-				def wrapper_gradient(out,*operands):
-					return - out/(operands[0].shape[-1]*operands[0].shape[-2])
-
-			elif self.metric in ['real']:
-
-				function = inner_real
-				gradient_analytical = gradient_inner_real
-
-				def wrapper_function(out,*operands):
-					return 1 - out
-
-				def wrapper_gradient(out,*operands):
-					return  - out
-
-			elif self.metric in ['imag']:
-
-				function = inner_imag
-				gradient_analytical = gradient_inner_imag
-
-				def wrapper_function(out,*operands):
-					return 1 - out
-
-				def wrapper_gradient(out,*operands):
-					return - out
-
-			else:
-
-				function = inner_norm
-				gradient_analytical = gradient_inner_norm
-
-				def wrapper_function(out,*operands):
-					return out/operands[0].shape[-1]/2
-
-				def wrapper_gradient(out,*operands):
-					return out/operands[0].shape[-1]/2
-
-
-			shapes_function = (*(shape for shape in self.shapes if shape is not None),) if self.shapes else ()
-			optimize_function = self.optimize
-			wrapper_function = jit(wrapper_function)
-
-			shapes_gradient = (*(shape for shape in self.shapes if shape is not None),(self.size**2,*self.shapes[0]),) if self.shapes else ()
-			optimize_gradient = self.optimize
-			wrapper_gradient = jit(wrapper_gradient)
-
-			if shapes_function:
-				function = function(*shapes_function,optimize=optimize_function,wrapper=wrapper_function)
-			else:
-				function = partial(function,optimize=optimize_gradient,wrapper=wrapper_function)
-
-			if shapes_gradient:
-				gradient_analytical = gradient_analytical(*shapes_gradient,optimize=optimize_function,wrapper=wrapper_gradient)
-			else:
-				gradient_analytical = partial(gradient_analytical,optimize=optimize_gradient,wrapper=wrapper_gradient)
-
-			grad = gradient_analytical
-			# grad = gradient(function,mode='fwd',holomorphic=True,move=True)
-
-			function = jit(function)
-			grad = jit(grad)
-			gradient_analytical = jit(gradient_analytical)
-
-			if (self.label is not None) and (self.weights is not None):
-
-				label = conj(self.label)
-				weights = inv(self.weights) if self.weights.ndim>1 else 1/self.weights**2
-
-				def function(*operands,function=function,label=label,weights=weights):
-					return function(*operands[:1],label,weights,*operands[1:])
-				def grad(*operands,function=grad,label=label,weights=weights):
-					return function(*operands[:1],label,weights,*operands[1:])				
-				def gradient_analytical(*operands,function=gradient_analytical,label=label,weights=weights):
-					return function(*operands[:1],label,weights,*operands[1:])
-			
-			elif (self.label is not None):
-
-				label = conj(self.label)
-
-				def function(*operands,function=function,label=label):
-					return function(*operands[:1],label,*operands[1:])
-				def grad(*operands,function=grad,label=label):
-					return function(*operands[:1],label,*operands[1:])				
-				def gradient_analytical(*operands,function=gradient_analytical,label=label):
-					return function(*operands[:1],label,*operands[1:])
-
-			elif (self.weights is not None):
-
-				weights = inv(self.weights) if self.weights.ndim>1 else 1/self.weights**2
-
-				def function(*operands,function=function,weights=weights):
-					return function(*operands[:2],weights,*operands[2:])
-				def grad(*operands,function=grad,weights=weights):
-					return function(*operands[:2],weights,*operands[2:])				
-				def gradient_analytical(*operands,function=gradient_analytical,weights=weights):
-					return function(*operands[:2],weights,*operands[2:])
-
-		function = jit(function)
-		grad = jit(grad)
-		gradient_analytical = jit(gradient_analytical)
-
-		self.function = function
+		self.function = func
 		self.gradient = grad
-		self.gradient_analytical = gradient_analytical
+		self.gradient_analytical = grad_analytical
 
 		return
 
@@ -1764,3 +1595,63 @@ class Adam(Optimization):
 		parameters = self._get_params(state)
 
 		return parameters
+
+
+
+class Covariance(System):
+	def __init__(self,func,grad=None,shapes=None,label=None,weights=None,optimize=None,metric=None,hyperparameters={},system=None,**kwargs):
+		'''
+		Compute covariance of function (with Cramer Rao bound)
+		Args:
+			func (callable): Function to compute
+			grad (callable): Gradient to compute
+			shapes (iterable[tuple[int]]): Shapes of functions		
+			label (array): label data for function
+			weights (array): weights data for function
+			optimize (bool,str,iterable): Contraction type
+			metric (str,Metric): Type of distribution, allowed ['lstsq','mse','normal','gaussian']
+			hyperparameters (dict): Function hyperparameters			
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+			kwargs (dict): Additional system attributes
+		Returns:
+			cov (callable): Covariance of function
+		'''
+
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
+
+		if label is None:
+			shapes = (*shapes[:1],*shapes[2:])				
+		else:
+			shapes = (*shapes[:1],label.shape,*shapes[2:])						
+
+		if weights is None:
+			shapes = (*shapes[:2],None)
+		else:
+			shapes = (*shapes[:2],weights.shape)		
+
+		if isinstance(metric,Metric):
+			metric = metric.metric
+
+		function = func
+
+		metric = metrics(metric,shapes=shapes,label=label,weights=weights)
+
+		@jit
+		def func(parameters,*args,**kwargs):
+			return metric(function(parameters,*args,**kwargs))
+
+		self.func = func
+		self.metric = metric
+		self.function = function
+		self.hess = hessian(func)
+
+		self.optimize = optimize
+		self.hyperparameters = hyperparameters
+		self.system = system
+		
+		return
+
+	def __call__(self,parameters,*args,**kwargs):
+		return inv(self.hess(parameters,*args,**kwargs))

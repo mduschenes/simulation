@@ -17,9 +17,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.io import load,dump,join,split,edit
-
-from src.utils import array,ones,zeros,rand,logspace,gradient,cov,sort,norm,allclose,log10,exp10,abs,inf
-from src.fit import fit
+from src.utils import array,ones,zeros,rand,logspace,gradient,sort,norm,allclose,log10,exp10,abs,inf
+from src.fit import fit,cov
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
 	# log = file if hasattr(file,'write') else sys.stderr
@@ -34,17 +33,18 @@ def test_err(path=None,tol=None):
 
 	scale = 3
 	def model(parameters,x):
-		# y = parameters[0] + parameters[1]*x
-		y = scale*log10(parameters[0] + parameters[1]*log10(x))
+		y = parameters[0] + parameters[1]*x
+		# y = scale*log10(parameters[0] + parameters[1]*log10(x))
 		# y = scale*(parameters[0] + parameters[1]*log10(x))
 		return y
 
 	n = 100
 	d = 2
-	sigma = 1e-1
+	sigma = 2e-1
 	key = {'x':25643632235,'parameters':[23512313,123],'parameters_':[924254,1047324],'yerr':1313}
+	shapes = ((n,),(n,),(n,))
 
-	x = sort(rand((n,),bounds=[1e-6,100],key=key['x']))
+	x = sort(rand((n,),bounds=[0,1],key=key['x']))
 	parameters = array([rand(bounds=[0,1],key=key['parameters_'][0]),rand(bounds=[0,1],key=key['parameters_'][1])])[:d].ravel()
 	y = model(parameters,x) 
 	xerr = None
@@ -59,7 +59,7 @@ def test_err(path=None,tol=None):
 	xerr_ = xerr
 	yerr_ = yerr
 	parameters_ = parameters
-	_cov_ = cov(model,label=y_,error=yerr_)(parameters_,x_)
+	_cov_ = cov(model,shapes=shapes,label=y_,weights=yerr_)(parameters_,x_)
 
 	def func(parameters,x):
 		y = parameters[0] + parameters[1]*x
@@ -72,10 +72,10 @@ def test_err(path=None,tol=None):
 	_x = x
 	_y = zeros(_n)
 
-	parameters = array([rand(bounds=[0,12],key=key['parameters'][0]),rand(bounds=[0,20],key=key['parameters'][1])])[:d].ravel()
+	parameters = array([rand(bounds=[0,1],key=key['parameters'][0]),rand(bounds=[0,1],key=key['parameters'][1])])[:d].ravel()
 	kwargs = {
-		'process':True,
-		'standardize':True,
+		'process':False,
+		'standardize':False,
 	}
 	
 	preprocess = None
@@ -97,7 +97,7 @@ def test_err(path=None,tol=None):
 		kwargs=kwargs)
 
 
-	cov_ = cov(_func,label=y_,error=yerr)(_parameters,x)
+	cov_ = cov(_func,shapes=shapes,label=y_,weights=yerr)(_parameters,x)
 	_cov = _parameterserr
 
 	print(sigma)

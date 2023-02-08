@@ -18,8 +18,10 @@ from src.utils import norm,inv,lstsq
 from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,product,is_naninf,allclose
 from src.utils import nan,null,scalars,delim
 
-from src.optimize import Optimizer,Metric,Objective,Callback
+from src.optimize import Optimizer,Metric,Objective,Callback,Covariance
 from src.iterables import setter,getter
+
+cov = Covariance
 
 def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,parameters=None,covariance=None,intercept=False,bounds=None,kwargs={}):
 	'''
@@ -404,7 +406,7 @@ def curve_fit(func,x,y,**kwargs):
 		attr = 'value'
 		status = (abs(optimizer.attributes[attr][-1]) > 
 				(optimizer.hyperparameters['eps'][attr]*optimizer.hyperparameters['value'][attr]))
-		# print(optimizer.attributes[attr][-1])
+		print(optimizer.attributes[attr][-1])
 		return status
 
 	function = func
@@ -418,7 +420,7 @@ def curve_fit(func,x,y,**kwargs):
 		'iterations':1000 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 500,
 		'alpha':1e-20 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-6,
 		'beta':1e-20 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-6,
-		'uncertainty':parameters < 1000 if parameters is not None else True,
+		'uncertainty':parameters.size < 1000 if parameters is not None else True,
 		}
 	setter(kwargs,defaults,delimiter=delim,func=False)
 
@@ -432,7 +434,10 @@ def curve_fit(func,x,y,**kwargs):
 	func = []
 	callback = callback
 
-	metric = Metric(metric,shapes=shapes,label=label,weights=weights,hyperparameters=hyperparams,system=system,**kwargs)
+	metric,cov = (
+		Metric(metric,shapes=shapes,label=label,weights=weights,hyperparameters=hyperparams,system=system,**kwargs),
+		Covariance(model,shapes=shapes,label=label,weights=weights,metric=metric,system=system,**kwargs)
+		)
 	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
 	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
 
@@ -458,7 +463,6 @@ def curve_fit(func,x,y,**kwargs):
 	print(lstsq(z.T.dot(z),lstsq(z.T.dot(z),z.T.dot(zerr).dot(z)).T).T)
 	print('inv')
 	print()
-
 	if uncertainty:
 		covariance = inv(hess(parameters))
 	else:
@@ -802,7 +806,7 @@ def transformation(x,y,parameters=None,axis=None,mode='linear',process=True,stan
 
 	return transform,invtransform
 
-def uncertainty(x,y,xerr,yerr,operation):
+def uncertainty_propagation(x,y,xerr,yerr,operation):
 	'''
 	Calculate uncertainty of binary operations
 	Args:

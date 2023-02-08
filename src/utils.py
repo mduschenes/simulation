@@ -541,77 +541,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	return fisher
 
 
-def cov(func,grad=None,label=None,error=None,optimize=None,mode=None,**kwargs):
-	'''
-	Compute covariance of function (with Cramer Rao bound)
-	Args:
-		func (callable): Function to compute
-		grad (callable): Gradient to compute
-		label (array): label data for function
-		error (array): error data for function
-		optimize (bool,str,iterable): Contraction type
-		mode (str): Type of distribution, allowed ['lstsq','mse','normal','gaussian']
-	Returns:
-		cov (callable): Covariance of function
-	'''
-	if label is None:
-		label = None
-	else:
-		label = label
-
-	if error is None:
-		error = None
-	elif error.ndim == 1:
-		error = 1/error
-	elif error.ndim == 2:
-		error = inv(error)
-	else:
-		error = error
-
-	function = func
-
-	if mode in ['lstsq','mse','normal','gaussian',None]:
-		if label is None:
-			def func(parameters,*args,**kwargs):
-				out = function(parameters,*args,**kwargs)
-				return out
-		else:
-			if error is None:
-				def func(parameters,*args,**kwargs):
-					out = function(parameters,*args,**kwargs)
-					out = label - out
-					out = (1/2)*norm2(out)
-					return out
-			elif error.ndim == 1:
-				def func(parameters,*args,**kwargs):
-					out = function(parameters,*args,**kwargs)
-					out = label - out	
-					out = (1/2)*norm2(out,error)
-					return out					
-			elif error.ndim == 2:
-				def func(parameters,*args,**kwargs):
-					out = function(parameters,*args,**kwargs)
-					out = label - out
-					out = (1/2)*norm2(out,error)
-					return out
-			else:
-				def func(parameters,*args,**kwargs):
-					out = function(parameters,*args,**kwargs)
-					out = label - out					
-					out = (1/2)*norm2(out)
-					return out					
-
-	func = jit(func)
-	grad = gradient(func)
-	hess = hessian(func)
-
-	@jit
-	def cov(parameters,*args,**kwargs):
-		return inv(hess(parameters,*args,**kwargs))
-
-	return cov
-
-
 @jit
 def difference(a,n=1,axis=-1):
 	return np.diff(a,n=n,axis=axis)
@@ -1802,6 +1731,180 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 		out = func
 
 	return out
+
+
+def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=None):
+	'''
+	Setup metrics
+	Args:
+		metric (str,callable): Type of metric
+		shapes (iterable[tuple[int]]): Shapes of Operators
+		label (array): Label			
+		weights (array): Weights
+		optimize (bool,str,iterable): Contraction type			
+		returns (bool): Return metric gradients
+	Returns:
+		func (callable): Metric function with signature func(*operands,label,weights)
+		grad (callable): Metric gradient with signature grad(*operands,label,weights,*gradients)
+		grad_analytical (callable): Metric analytical gradient with signature grad_analytical(*operands,label,weights,*gradients)
+	'''
+	
+	if shapes:
+		size = sum(int(product(shape)**(1/len(shape))) for shape in shapes[:2] if shape is not None)//len(shapes[:2])
+	else:
+		size = 1
+
+	if callable(metric):
+			metric = metric
+			func = jit(metric)
+			grad = jit(gradient(metric))
+			# grad = gradient(func,mode='fwd',holomorphic=True,move=True)			
+			grad_analytical = jit(gradient(metric))
+	elif metric is None:
+
+		func = inner_norm
+		grad_analytical = gradient_inner_norm
+
+		def wrapper_func(out,*operands):
+			return out/2
+
+		def wrapper_grad(out,*operands):
+			return out/2
+
+	elif metric in ['lstsq','mse']:
+		func = mse
+		grad_analytical = gradient_mse
+
+		def wrapper_func(out,*operands):
+			return out/2
+
+		def wrapper_grad(out,*operands):
+			return out/2					
+
+
+	elif metric in ['norm']:
+
+		func = inner_norm
+		grad_analytical = gradient_inner_norm
+
+		def wrapper_func(out,*operands):
+			return out/operands[0].shape[-1]/2
+		
+		def wrapper_grad(out,*operands):
+			return out/operands[0].shape[-1]/2
+
+	elif metric in ['abs2']:
+
+		func = inner_abs2
+		grad_analytical = gradient_inner_abs2
+
+		def wrapper_func(out,*operands):
+			return 1 - out/(operands[0].shape[-1]*operands[0].shape[-2])
+
+		def wrapper_grad(out,*operands):
+			return - out/(operands[0].shape[-1]*operands[0].shape[-2])
+
+	elif metric in ['real']:
+
+		func = inner_real
+		grad_analytical = gradient_inner_real
+
+		def wrapper_func(out,*operands):
+			return 1 - out
+
+		def wrapper_grad(out,*operands):
+			return  - out
+
+	elif metric in ['imag']:
+
+		func = inner_imag
+		grad_analytical = gradient_inner_imag
+
+		def wrapper_func(out,*operands):
+			return 1 - out
+
+		def wrapper_grad(out,*operands):
+			return - out
+
+	else:
+
+		func = inner_norm
+		grad_analytical = gradient_inner_norm
+
+		def wrapper_func(out,*operands):
+			return out/operands[0].shape[-1]/2
+
+		def wrapper_grad(out,*operands):
+			return out/operands[0].shape[-1]/2
+
+
+	shapes_func = (*(shape for shape in shapes if shape is not None),) if shapes else ()
+	optimize_func = optimize
+	wrapper_func = jit(wrapper_func)
+
+	shapes_grad = (*(shape for shape in shapes if shape is not None),(size**2,*shapes[0]),) if shapes else ()
+	optimize_grad = optimize
+	wrapper_grad = jit(wrapper_grad)
+
+	if shapes_func:
+		func = func(*shapes_func,optimize=optimize_func,wrapper=wrapper_func)
+	else:
+		func = partial(func,optimize=optimize_grad,wrapper=wrapper_func)
+
+	if shapes_grad:
+		grad_analytical = grad_analytical(*shapes_grad,optimize=optimize_func,wrapper=wrapper_grad)
+	else:
+		grad_analytical = partial(grad_analytical,optimize=optimize_grad,wrapper=wrapper_grad)
+
+	grad = grad_analytical
+	# grad = gradient(func,mode='fwd',holomorphic=True,move=True)
+
+	func = jit(func)
+	grad = jit(grad)
+	grad_analytical = jit(grad_analytical)
+
+	if (label is not None) and (weights is not None):
+
+		label = conj(label)
+		weights = inv(weights) if weights.ndim>1 else 1/weights**2
+
+		def func(*operands,func=func,label=label,weights=weights):
+			return func(*operands[:1],label,weights,*operands[1:])
+		def grad(*operands,func=grad,label=label,weights=weights):
+			return func(*operands[:1],label,weights,*operands[1:])				
+		def grad_analytical(*operands,func=grad_analytical,label=label,weights=weights):
+			return func(*operands[:1],label,weights,*operands[1:])
+	
+	elif (label is not None):
+
+		label = conj(label)
+
+		def func(*operands,func=func,label=label):
+			return func(*operands[:1],label,*operands[1:])
+		def grad(*operands,func=grad,label=label):
+			return func(*operands[:1],label,*operands[1:])				
+		def grad_analytical(*operands,func=grad_analytical,label=label):
+			return func(*operands[:1],label,*operands[1:])
+
+	elif (weights is not None):
+
+		weights = inv(weights) if weights.ndim>1 else 1/weights**2
+
+		def func(*operands,func=func,weights=weights):
+			return func(*operands[:2],weights,*operands[2:])
+		def grad(*operands,func=grad,weights=weights):
+			return func(*operands[:2],weights,*operands[2:])				
+		def grad_analytical(*operands,func=grad_analytical,weights=weights):
+			return func(*operands[:2],weights,*operands[2:])
+
+	func = jit(func)
+	grad = jit(grad)
+	grad_analytical = jit(grad_analytical)
+
+	if not returns:
+		return func
+	else:
+		return func,grad,grad_analytical
 
 
 def inner(*operands,optimize=True,wrapper=None):

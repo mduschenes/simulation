@@ -17,12 +17,12 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig,piecewise,interp,uncertainty 
+from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig 
 from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,exp,exp10,log,log10,sqrt
 from src.utils import is_naninf
 from src.utils import nan,delim,null
 from src.iterables import setter,getter,flatten
-from src.fit import fit
+from src.fit import fit,uncertainty_propagation
 from src.io import load,dump,join,split,glob,cd,exists,dirname
 
 from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
@@ -658,7 +658,7 @@ def postprocess(path,**kwargs):
 								r'$%s$'%('\n'.join([
 								'%s = %s'%(z,scinotation(_parameters[i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
 									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_parameters)])])) + '\n' +
-								r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
+								r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty_propagation(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
 								r'$%s$'%('r^2 = %s'%(scinotation(_other['r'],decimals=4,scilimits=[-1,4])))
 								),
 							'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
