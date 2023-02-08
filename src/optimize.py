@@ -13,11 +13,11 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,conj,abs
+from src.utils import jit,value_and_gradient,gradient,conj,abs,inv
 from src.utils import is_unitary,is_hermitian,product,sqrt,asarray
 
-from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
+from src.utils import inner,mse,inner_norm,inner_abs2,inner_real,inner_imag
+from src.utils import gradient_inner,gradient_mse,gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
 from src.utils import scalars,delim
 
@@ -839,14 +839,15 @@ class Callback(Function):
 
 
 class Metric(System):
-	def __init__(self,metric=None,shapes=None,model=None,label=None,optimize=None,hyperparameters={},system=None,**kwargs):
+	def __init__(self,metric=None,shapes=None,model=None,label=None,weights=None,optimize=None,hyperparameters={},system=None,**kwargs):
 		'''
 		Metric class for distance between operands
 		Args:
 			metric (str,Metric): Type of metric
 			shapes (iterable[tuple[int]]): Shapes of Operators
 			model (object): Model instance	
-			label (str,callable): Label			
+			label (array): Label			
+			weights (array): Weights
 			optimize (bool,str,iterable): Contraction type	
 			hyperparameters (dict): Metric hyperparameters
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
@@ -859,11 +860,14 @@ class Metric(System):
 
 		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
 		self.label = hyperparameters.get('label',label) if label is None else label
+		self.weights = hyperparameters.get('weights',weights) if weights is None else weights
 		self.shapes = shapes
 		self.model = model
 		self.optimize = optimize
 		self.hyperparameters = hyperparameters
 		self.system = system
+
+		self.string = None
 
 		self.__setup__()
 
@@ -883,7 +887,7 @@ class Metric(System):
 		self.__string__()
 		self.__size__()
 
-		self.get_metric()
+		self.metrics()
 
 		self.info()
 
@@ -901,7 +905,7 @@ class Metric(System):
 		Class size
 		'''
 		if self.shapes:
-			self.size = sum(int(product(shape)**(1/len(shape))) for shape in self.shapes)//len(self.shapes)
+			self.size = sum(int(product(shape)**(1/len(shape))) for shape in self.shapes[:2] if shape is not None)//len(self.shapes[:2])
 		else:
 			self.size = 1
 		return 
@@ -977,10 +981,7 @@ class Metric(System):
 		'''
 		Class string
 		'''
-		try:
-			return delim.join(self.string)
-		except:
-			return self.__class__.__name__
+		return str(self.string)
 
 	def __repr__(self):
 		'''
@@ -1004,7 +1005,7 @@ class Metric(System):
 		return
 
 
-	def get_metric(self):
+	def metrics(self):
 		'''
 		Setup metric	
 		'''
@@ -1035,9 +1036,8 @@ class Metric(System):
 					return out/2
 
 			elif self.metric in ['lstsq','mse']:
-
-				function = inner_norm
-				gradient_analytical = gradient_inner_norm
+				function = mse
+				gradient_analytical = gradient_mse
 
 				def wrapper_function(out,*operands):
 					return out/2
@@ -1102,11 +1102,11 @@ class Metric(System):
 					return out/operands[0].shape[-1]/2
 
 
-			shapes_function = (*self.shapes,) if self.shapes else ()
+			shapes_function = (*(shape for shape in self.shapes if shape is not None),) if self.shapes else ()
 			optimize_function = self.optimize
 			wrapper_function = jit(wrapper_function)
 
-			shapes_gradient = (*self.shapes,(self.size**2,*self.shapes[0])) if self.shapes else ()
+			shapes_gradient = (*(shape for shape in self.shapes if shape is not None),(self.size**2,*self.shapes[0]),) if self.shapes else ()
 			optimize_gradient = self.optimize
 			wrapper_gradient = jit(wrapper_gradient)
 
@@ -1127,7 +1127,19 @@ class Metric(System):
 			grad = jit(grad)
 			gradient_analytical = jit(gradient_analytical)
 
-			if self.label is not None:
+			if (self.label is not None) and (self.weights is not None):
+
+				label = conj(self.label)
+				weights = inv(self.weights) if self.weights.ndim>1 else 1/self.weights**2
+
+				def function(*operands,function=function,label=label,weights=weights):
+					return function(*operands[:1],label,weights,*operands[1:])
+				def grad(*operands,function=grad,label=label,weights=weights):
+					return function(*operands[:1],label,weights,*operands[1:])				
+				def gradient_analytical(*operands,function=gradient_analytical,label=label,weights=weights):
+					return function(*operands[:1],label,weights,*operands[1:])
+			
+			elif (self.label is not None):
 
 				label = conj(self.label)
 
@@ -1137,6 +1149,17 @@ class Metric(System):
 					return function(*operands[:1],label,*operands[1:])				
 				def gradient_analytical(*operands,function=gradient_analytical,label=label):
 					return function(*operands[:1],label,*operands[1:])
+
+			elif (self.weights is not None):
+
+				weights = inv(self.weights) if self.weights.ndim>1 else 1/self.weights**2
+
+				def function(*operands,function=function,weights=weights):
+					return function(*operands[:2],weights,*operands[2:])
+				def grad(*operands,function=grad,weights=weights):
+					return function(*operands[:2],weights,*operands[2:])				
+				def gradient_analytical(*operands,function=gradient_analytical,weights=weights):
+					return function(*operands[:2],weights,*operands[2:])
 
 		function = jit(function)
 		grad = jit(grad)

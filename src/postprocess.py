@@ -344,7 +344,7 @@ def postprocess(path,**kwargs):
 
 				try:
 					x,y,z,xerr,yerr,zerr = [],[],[],None,[],[]
-					coefs,coeferrs,rs = [],[],[]
+					parameterss,covariances,others = [],[],[]
 					indices,indexes,slices = [],[],[]
 					for i,(x_,y_,z_,yerr_,zerr_) in enumerate(zip(X,Y,Z,Yerr,Zerr)):
 
@@ -367,20 +367,20 @@ def postprocess(path,**kwargs):
 
 						func = [
 								'cubic',#
-								# (lambda coef,x: coef[0] + coef[1]*x),
-								(lambda coef,x: coef[0] + coef[1]*x),
+								# (lambda parameters,x: parameters[0] + parameters[1]*x),
+								(lambda parameters,x: parameters[0] + parameters[1]*x),
 								]
-						coef = [array([1.0,1.0]),array([1.0,1.0])]
-						bounds = [y_[argmin(z_)]]
-						kwargs = {}
+						parameters = [array([1.0,1.0]),array([1.0,1.0])]
+						bounds = [y_[argmin(z_)]]					
+						kwargs = {'uncertainty':parameters.size<1000}
 						
 						preprocess = [
-							lambda x,y,coef: (x if x is not None else None,log(y) if y is not None else None,coef if coef is not None else None),
-							lambda x,y,coef: (log(x) if x is not None else None,log(y) if y is not None else None,coef if coef is not None else None),
+							lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+							lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
 							]
 						postprocess = [
-							lambda x,y,coef: (x if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
-							lambda x,y,coef: (exp(x) if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
+							lambda x,y,parameters: (x if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+							lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
 							]
 
 						_y_ = y_
@@ -388,12 +388,12 @@ def postprocess(path,**kwargs):
 						_yerr_ = yerr_
 						_zerr_ = zerr_
 
-						_func,_z,_coef,_zerr,_coeferr,_r,_other = fit(
+						_func,_z,_parameters,_zerr,_covariance,_other = fit(
 							y_,z_,
 							_x=_y,_y=_z,
 							func=func,
 							xerr=yerr_,yerr=zerr_,
-							coef=coef,
+							parameters=parameters,
 							preprocess=preprocess,postprocess=postprocess,
 							bounds=bounds,kwargs=kwargs)	
 						
@@ -403,29 +403,29 @@ def postprocess(path,**kwargs):
 						# zerr_ = _zerr
 						# func = [
 						# 	# 'cubic',#
-						# 	(lambda coef,x: coef[0] + coef[1]*x),
+						# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
 						# 	'cubic',
-						# 	(lambda coef,x: coef[0] + coef[1]*x),
+						# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
 						# ]
-						# coef = [array([1.0,1.0]),array([1.0,1.0]),array([1.0,1.0])]
+						# parameters = [array([1.0,1.0]),array([1.0,1.0]),array([1.0,1.0])]
 						# preprocess = [
-						# 	lambda x,y,coef: (x if x is not None else None,log(y) if y is not None else None,coef if coef is not None else None),
-						# 	lambda x,y,coef: (x if x is not None else None,log(y) if y is not None else None,coef if coef is not None else None),
-						# 	lambda x,y,coef: (log(x) if x is not None else None,log(y) if y is not None else None,coef if coef is not None else None),
+						# 	lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+						# 	lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+						# 	lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
 						# 	]
 						# postprocess = [
-						# 	lambda x,y,coef: (x if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
-						# 	lambda x,y,coef: (x if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
-						# 	lambda x,y,coef: (exp(x) if x is not None else None,exp(y) if y is not None else None,coef if coef is not None else None),
+						# 	lambda x,y,parameters: (x if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+						# 	lambda x,y,parameters: (x if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+						# 	lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
 						# 	]
 						# bounds = [y_[argmin(z_)-10],y_[argmin(z_)]]
 
-						# _func,_z,_coef,_zerr,_coeferr,_r,_other = fit(
+						# _func,_z,_parameters,_zerr,_covariance,_other = fit(
 						# 	y_,z_,
 						# 	_x=_y,_y=_z,
 						# 	func=func,
 						# 	xerr=yerr_,yerr=zerr_,
-						# 	coef=coef
+						# 	parameters=parameters
 						# 	preprocess=preprocess,postprocess=postprocess,
 						# 	bounds=bounds,kwargs=kwargs)
 
@@ -435,35 +435,35 @@ def postprocess(path,**kwargs):
 						# zerr_ = _zerr
 						# func = [
 						# 	# 'cubic',#
-						# 	(lambda coef,x: coef[0] + coef[1]*x),
-						# 	(lambda coef,x: coef[0] + coef[1]*x),
+						# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
+						# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
 						# ]
 						# bounds = [y_[argmin(z_)]]
 
-						# _func,_z,_coef,_zerr,_coeferr,_r,_other = fit(
+						# _func,_z,_parameters,_zerr,_covariance,_other = fit(
 						# 	y_,z_,
 						# 	_x=_y_,_y=_z_,
 						# 	func=func,
 						# 	xerr=yerr_,yerr=zerr_,
-						# 	coef=coef
+						# 	parameters=parameters
 						# 	preprocess=preprocess,postprocess=postprocess,
 						# 	bounds=bounds,kwargs=kwargs)
 
 
-						# _z,_coef,_zerr,_coeferr,_r = z_,coef,zerr_[slices],None,1
+						# _z,_parameters,_zerr,_covariance = z_,parameters,zerr_[slices],None,1
 
 						index = argmin(_z)
 						indexerr = [argmin(_z+k*_zerr) for k in [-1,1]]
 						_yerrindex = sum(abs(_y[i] - _y[index]) for i in indexerr)/len(indexerr)
 
-						print(_x,_r)
+						print(_x,_other['r'])
 						print(index,indexerr,_yerrindex)
 						print(_y[index],[_y[i] for i in indexerr])
 						# print(_yerr[index])
 						# print(zerr_[index])
 						# print(_zerr[index])
-						print(coef)
-						print(_coef)
+						print(parameters)
+						print(_parameters)
 						print()
 
 						_X.append(_x)
@@ -478,9 +478,9 @@ def postprocess(path,**kwargs):
 						yerr.append(_yerrindex if _yerrindex else 1)
 						zerr.append(_zerr[index])
 						indexes.append(index)
-						coefs.append(_coef)
-						coeferrs.append(_coeferr)
-						rs.append(_r)
+						parameterss.append(_parameters)
+						covariances.append(_covariance)
+						others.append(_other)
 
 					fig,ax = None,None
 
@@ -594,25 +594,25 @@ def postprocess(path,**kwargs):
 				yerr = array(yerr) if yerr is not None and not all([z is None for z in yerr]) else None
 				slices = arange(len(x))[(x>=1e-28) & (x<=1e3) & (x != 1e0)]
 
-				def func(coef,x):
-					y = coef[0] + coef[1]*(x)
+				def func(parameters,x):
+					y = parameters[0] + parameters[1]*(x)
 					return y
 
 				_n = x.size*10
 				_x = logspace(int(log10(x.min()))-3,0,_n)
 				_y = zeros(_n)
 				p = 2
-				coef = array([1.0,-1.0])[:p]
+				parameters = array([1.0,-1.0])[:p]
 				kwargs = {
-					'maxfev':200000,
+					'uncertainty':parameters.size<1000
 				}
-				preprocess = lambda x,y,coef: (log10(x) if x is not None else None,y if y is not None else None,coef if coef is not None else None)
-				postprocess = lambda x,y,coef: (exp10(x) if x is not None else None,y if y is not None else None,coef if coef is not None else None)
+				preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,y if y is not None else None,parameters if parameters is not None else None)
+				postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,y if y is not None else None,parameters if parameters is not None else None)
 
-				_func,_y,_coef,_yerr,_coeferr,_r,_other = fit(
+				_func,_y,_parameters,_yerr,_covariance,_other = fit(
 					x[slices],y[slices],
 					_x=_x,_y=_y,
-					func=func,coef=coef,
+					func=func,parameters=parameters,
 					yerr=yerr[slices] if yerr is not None else yerr,
 					xerr=xerr[slices] if xerr is not None else xerr,
 					preprocess=preprocess,postprocess=postprocess,
@@ -656,10 +656,10 @@ def postprocess(path,**kwargs):
 							'label':(
 								r'$\quad~~ M_{\gamma} = \beta\log{\gamma} + {\alpha}$' + '\n' + 
 								r'$%s$'%('\n'.join([
-								'%s = %s'%(z,scinotation(_coef[i],decimals=2,scilimits=[-1,4],error=sqrt(_coeferr[i][i]) if _coeferr is not None else None)) 
-									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_coef)])])) + '\n' +
-								r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_coef[0]/_coef[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty(*(_coef[i] for i in [0,1]),*(sqrt(_coeferr[i][i]) for i in [0,1]),'/')[1] if _coeferr is not None else None)) + '\n' +
-								r'$%s$'%('r^2 = %s'%(scinotation(_r,decimals=4,scilimits=[-1,4])))
+								'%s = %s'%(z,scinotation(_parameters[i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
+									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_parameters)])])) + '\n' +
+								r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
+								r'$%s$'%('r^2 = %s'%(scinotation(_other['r'],decimals=4,scilimits=[-1,4])))
 								),
 							'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0.25),	
 							'marker':None,
