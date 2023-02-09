@@ -25,7 +25,7 @@ def warn_with_traceback(message, category, filename, lineno, file=None, line=Non
 	# traceback.print_stack(file=log)
 	# log.write(warnings.formatwarning(message, category, filename, lineno, line))
 	return
-warnings.showwarning = warn_with_traceback
+# warnings.showwarning = warn_with_traceback
 
 
 
@@ -76,8 +76,10 @@ def test_err(path=None,tol=None):
 	kwargs = {
 		'process':True,
 		'standardize':True,
-		'iterations':2000,
+		'iterations':1500,
 		'alpha':1e-10,'beta':1e-10,
+		"c1":0.0001,"c2":0.9,"maxiter":2000,
+
 	}
 	
 	preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,exp10(y/scale) if y is not None else None,parameters if parameters is not None else None)

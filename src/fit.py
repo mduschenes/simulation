@@ -400,6 +400,7 @@ def curve_fit(func,x,y,**kwargs):
 		attr = 'value'
 		status = (abs(optimizer.attributes[attr][-1]) > 
 				(optimizer.hyperparameters['eps'][attr]*optimizer.hyperparameters['value'][attr]))
+		# print(optimizer.attributes[attr][-1])
 		return status
 
 	function = func
@@ -410,7 +411,7 @@ def curve_fit(func,x,y,**kwargs):
 	metric = kwargs.pop('metric',None)
 	
 	defaults = {
-		'iterations':1000 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 500,
+		'iterations':1000 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1000,
 		'alpha':1e-20 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-6,
 		'beta':1e-20 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-6,
 		'uncertainty':parameters.size < 1000 if parameters is not None else True,
