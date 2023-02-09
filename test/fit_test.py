@@ -33,19 +33,19 @@ def test_err(path=None,tol=None):
 
 	scale = 3
 	def model(parameters,x):
-		y = parameters[0] + parameters[1]*x
-		# y = scale*log10(parameters[0] + parameters[1]*log10(x))
-		# y = scale*(parameters[0] + parameters[1]*log10(x))
+		# y = parameters[0] + parameters[1]*x
+		y = scale*log10(parameters[0] + parameters[1]*log10(x))
 		return y
 
 	n = 100
 	d = 2
-	sigma = 2e-1
-	key = {'x':25643632235,'parameters':[23512313,123],'parameters_':[924254,1047324],'yerr':1313}
+	sigma = 1e-2
+	key = {'x':18212,'parameters':[23512313,123],'parameters_':[924254,1047324],'yerr':1313}
 	shapes = ((n,),(n,),(n,))
+	metric = 'lstsq'
 
 	x = sort(rand((n,),bounds=[0,1],key=key['x']))
-	parameters = array([rand(bounds=[0,1],key=key['parameters_'][0]),rand(bounds=[0,1],key=key['parameters_'][1])])[:d].ravel()
+	parameters = array([rand(bounds=[0,1],key=key['parameters_'][0]),rand(bounds=[-1,0],key=key['parameters_'][1])])[:d].ravel()
 	y = model(parameters,x) 
 	xerr = None
 	yerr = sigma*rand(n,bounds=[-1,1],key=key['yerr']) if (sigma is not None and sigma>0) else None
@@ -59,7 +59,7 @@ def test_err(path=None,tol=None):
 	xerr_ = xerr
 	yerr_ = yerr
 	parameters_ = parameters
-	_cov_ = cov(model,shapes=shapes,label=y_,weights=yerr_)(parameters_,x_)
+	_cov_ = cov(model,shapes=shapes,label=y_,weights=yerr_,metric=metric)(parameters_,x_)
 
 	def func(parameters,x):
 		y = parameters[0] + parameters[1]*x
@@ -74,20 +74,16 @@ def test_err(path=None,tol=None):
 
 	parameters = array([rand(bounds=[0,1],key=key['parameters'][0]),rand(bounds=[0,1],key=key['parameters'][1])])[:d].ravel()
 	kwargs = {
-		'process':False,
-		'standardize':False,
+		'process':True,
+		'standardize':True,
+		'iterations':2000,
+		'alpha':1e-10,'beta':1e-10,
 	}
 	
-	preprocess = None
-	postprocess = None
-
 	preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,exp10(y/scale) if y is not None else None,parameters if parameters is not None else None)
 	postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,scale*log10(y) if y is not None else None,parameters if parameters is not None else None)
 	
-	# preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,(y/scale) if y is not None else None,parameters if parameters is not None else None)
-	# postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,scale*(y) if y is not None else None,parameters if parameters is not None else None)
-	
-	_func,_y,_parameters,_yerr,_parameterserr,_other = fit(
+	_func,_y,_parameters,_yerr,_covariance,_other = fit(
 		x,y,
 		_x=_x,_y=_y,
 		func=func,parameters=parameters,
@@ -96,10 +92,8 @@ def test_err(path=None,tol=None):
 		preprocess=preprocess,postprocess=postprocess,
 		kwargs=kwargs)
 
-
-	cov_ = cov(_func,shapes=shapes,label=y_,weights=yerr)(_parameters,x)
-	_cov = _parameterserr
-
+	cov_ = cov(_func,shapes=shapes,label=y_,weights=yerr,metric=metric)(_parameters,x_)
+	_cov = _covariance
 	print(sigma)
 	print('----')
 	print(parameters_)
@@ -109,13 +103,13 @@ def test_err(path=None,tol=None):
 	print(cov_)
 	print(_cov)
 
-	fig,ax = plt.subplots()
-	ax.plot(x_,y_,label='orig',marker='o',linestyle='')
-	ax.plot(_x,_y,label='pred',marker='*',linestyle='-')
-	ax.plot(_x,(model(parameters_,(_x))),label='func')
-	ax.plot(_x,(_func(parameters_,(_x))),label='$\_$func',linestyle='--')
-	ax.legend();
-	fig.savefig('plot.pdf')
+	# fig,ax = plt.subplots()
+	# ax.plot(x_,y_,label='orig',marker='o',linestyle='')
+	# ax.plot(_x,_y,label='pred',marker='*',linestyle='-')
+	# ax.plot(_x,(model(parameters_,(_x))),label='func')
+	# ax.plot(_x,(_func(parameters_,(_x))),label='$\_$func',linestyle='--')
+	# ax.legend();
+	# fig.savefig('plot.pdf')
 
 	tol = 1e-7
 	

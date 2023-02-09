@@ -950,7 +950,6 @@ class Metric(System):
 		'''		
 		return self.__grad_analytical__(*operands)	
 
-
 	def __str__(self):
 		'''
 		Class string
@@ -1647,11 +1646,41 @@ class Covariance(System):
 		self.function = function
 		self.hess = hessian(func)
 
+		self.string = str(self.metric)
+
 		self.optimize = optimize
 		self.hyperparameters = hyperparameters
 		self.system = system
 		
+
 		return
 
 	def __call__(self,parameters,*args,**kwargs):
 		return inv(self.hess(parameters,*args,**kwargs))
+
+	def __str__(self):
+		'''
+		Class string
+		'''
+		return self.string
+
+	def __repr__(self):
+		'''
+		Class representation
+		'''
+		return self.__str__()
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = '%s'%('\n'.join([
+			*['%s: %s'%(attr,getattr(self,attr)) 
+				for attr in ['metric']
+			],
+			]
+			))
+		self.log(msg,verbose=verbose)
+		return

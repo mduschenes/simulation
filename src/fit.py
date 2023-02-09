@@ -21,7 +21,7 @@ from src.utils import nan,null,scalars,delim
 from src.optimize import Optimizer,Metric,Objective,Callback,Covariance
 from src.iterables import setter,getter
 
-cov = Covariance
+class cov(Covariance):pass
 
 def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None,yerr=None,parameters=None,covariance=None,intercept=False,bounds=None,kwargs={}):
 	'''
@@ -150,6 +150,12 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		_covariance (array): Fit model parameters error
 		_other (object): Other fit returns
 	'''	
+	defaults = {
+		'metric':'lstsq',
+		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,yerr.shape if yerr is not None else None)),
+		}
+	setter(kwargs,defaults,delimiter=delim,func=False)
+
 
 	if _x is None:	
 		_x = x
@@ -271,30 +277,6 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		else:
 			func,_parameters,_covariance = curve_fit(func,x,y,**kwargs)
 
-		# if yerr is None:
-		# 	invgrad = gradtransform(x,y,parameters)
-		# 	yerr = ones(y.size)
-		# 	i = 1
-		# 	if yerr.ndim == 1:
-		# 		jac = diag(invgrad[i][i])
-		# 		yerr = abs((1/jac)*yerr)
-		# 	else:
-		# 		jac = invgrad[i][i]
-		# 		yerr = lstsq(jac.T,lstsq(jax,yerr).T).T
-		z = array([ones(x.size),x.ravel()]).T
-		if yerr is None:
-			zerr = eye(y.size)
-			covariancez = inv(z.T.dot(z))
-		else:
-			if yerr.ndim == 1:
-				zerr = diag(yerr)**2
-
-			covariancez = lstsq(z.T.dot(z),lstsq(z.T.dot(z),z.T.dot(zerr).dot(z)).T).T
-
-		print(_covariance)
-		print(covariancez)
-		print()
-
 		grad = gradient(func,argnums=0,mode='fwd')
 		_y = func(_parameters,_x)
 		_grad = grad(_parameters,_x)
@@ -375,6 +357,18 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		return y
 
 
+	model = jit(_func,x=x)
+	metric = kwargs.pop('metric',None)
+	shapes = kwargs.pop('shapes',None)
+	label = y
+	weights = yerr
+	hyperparameters = kwargs
+	system = {}
+	kwargs = {}
+	cov = Covariance(model,shapes=shapes,label=label,weights=weights,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
+
+	_covariance = cov(_parameters)
+
 	return _func,_y,_parameters,_yerr,_covariance,_other
 
 
@@ -406,7 +400,6 @@ def curve_fit(func,x,y,**kwargs):
 		attr = 'value'
 		status = (abs(optimizer.attributes[attr][-1]) > 
 				(optimizer.hyperparameters['eps'][attr]*optimizer.hyperparameters['value'][attr]))
-		print(optimizer.attributes[attr][-1])
 		return status
 
 	function = func
@@ -421,50 +414,33 @@ def curve_fit(func,x,y,**kwargs):
 		'alpha':1e-20 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-6,
 		'beta':1e-20 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-6,
 		'uncertainty':parameters.size < 1000 if parameters is not None else True,
+		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,covariance.shape if covariance is not None else None)),
 		}
 	setter(kwargs,defaults,delimiter=delim,func=False)
 
 	uncertainty = kwargs.pop('uncertainty',True)
-	shapes = (y.shape,y.shape,covariance.shape if covariance is not None else None)
-	weights = covariance
+	shapes = kwargs.pop('shapes',None)
 	label = y
-	hyperparams = kwargs
+	weights = covariance
+	hyperparameters = kwargs
 	system = {}
 	kwargs = {}
 	func = []
 	callback = callback
 
 	metric,cov = (
-		Metric(metric,shapes=shapes,label=label,weights=weights,hyperparameters=hyperparams,system=system,**kwargs),
-		Covariance(model,shapes=shapes,label=label,weights=weights,metric=metric,system=system,**kwargs)
+		Metric(metric,shapes=shapes,label=label,weights=weights,hyperparameters=hyperparameters,system=system,**kwargs),
+		Covariance(model,shapes=shapes,label=label,weights=weights,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
 		)
-	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
-	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
+	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
+	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
 
-	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system,**kwargs)
+	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters,system=system,**kwargs)
 
 	parameters = optimizer(parameters)
 
-	hess = hessian(func)
-	z = array([ones(x.size),x.ravel()]).T
-	zerr = diag(covariance)**2 if covariance is not None else eye(y.size)
-	e = lambda parameters: y - z.dot(parameters)
-	l = lambda parameters: (e(parameters).dot(inv(zerr)).dot(e(parameters)))/2
-	h = hessian(l)
-	print(l(parameters))
-	print(func(parameters))
-	print('function')
-	print(hess(parameters))
-	print(h(parameters))
-	print(z.T.dot(inv(zerr)).dot(z))
-	print('hess')
-	print(inv(hess(parameters)))
-	print(inv(h(parameters)))
-	print(lstsq(z.T.dot(z),lstsq(z.T.dot(z),z.T.dot(zerr).dot(z)).T).T)
-	print('inv')
-	print()
 	if uncertainty:
-		covariance = inv(hess(parameters))
+		covariance = cov(parameters)
 	else:
 		covariance = None
 	
