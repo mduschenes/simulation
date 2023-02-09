@@ -18,11 +18,11 @@ for PATH in PATHS:
 
 from src.utils import argparser
 from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig 
-from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,exp,exp10,log,log10,sqrt
+from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,uncertainty_propagation,exp,exp10,log,log10,sqrt
 from src.utils import is_naninf
 from src.utils import nan,delim,null
 from src.iterables import setter,getter,flatten
-from src.fit import fit,uncertainty_propagation
+from src.fit import fit
 from src.io import load,dump,join,split,glob,cd,exists,dirname
 
 from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
@@ -372,7 +372,7 @@ def postprocess(path,**kwargs):
 								]
 						parameters = [array([1.0,1.0]),array([1.0,1.0])]
 						bounds = [y_[argmin(z_)]]					
-						kwargs = {'uncertainty':parameters.size<1000}
+						kwargs = {'uncertainty':all(parameter.size<1000 for parameter in parameters)}
 						
 						preprocess = [
 							lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
@@ -456,7 +456,7 @@ def postprocess(path,**kwargs):
 						indexerr = [argmin(_z+k*_zerr) for k in [-1,1]]
 						_yerrindex = sum(abs(_y[i] - _y[index]) for i in indexerr)/len(indexerr)
 
-						print(_x,_other['r'])
+						print(_x,[_o['r'] for _o in _other])
 						print(index,indexerr,_yerrindex)
 						print(_y[index],[_y[i] for i in indexerr])
 						# print(_yerr[index])

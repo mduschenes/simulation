@@ -5169,6 +5169,186 @@ def binary(a,n,function):
 
 
 
+def interp(x,y,**kwargs):
+	'''
+	Interpolate array at new points
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		kwargs (dict): Additional keyword arguments for interpolation
+			kind (int): Order of interpolation
+			smooth (int,float): Smoothness of fit
+			der (int): order of derivative to estimate
+	Returns:
+		func (callable): Interpolation function with signature func(x,*args,**kwargs)
+	'''	
+
+	def _interpolate(x,y,**kwargs):
+		kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5,None:3}
+		k = kinds.get(kwargs.get('k',kwargs.get('kind')),kwargs.get('k',kwargs.get('kind')))
+		s = kwargs.get('s',kwargs.get('smooth'))
+		der = kwargs.get('der')
+		if der:
+			spline = osp.interpolate.splrep(x,y,k=k,s=s)
+			_func = lambda x: osp.interpolate.splev(x,spline,der=der)
+			def func(x,_func=_func):
+				return _func(x)
+		else:
+			_func = osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
+			def func(x,_func=_func):
+				x = onp.asarray(x)
+				return _func(x)
+			# func = osp.interpolate.interp1d(x,y,kind)
+		return func
+
+	return _interpolate(x,y,**kwargs)
+
+
+def interpolate(x,y,_x,**kwargs):
+	'''
+	Interpolate array at new points
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		_x (array): New points
+		kwargs (dict): Additional keyword arguments for interpolation
+				kind (int): Order of interpolation
+				smooth (int,float): Smoothness of fit
+				der (int): order of derivative to estimate
+	Returns:
+		out (array): Interpolated values at new points
+	'''		
+	is1d = (y.ndim == 1)
+
+	if is1d:
+		y = [y]
+
+	out = array([interp(x,u,**kwargs)(_x) for u in y])
+
+	if is1d:
+		out = out[0]
+
+	return out
+
+
+
+# @partial(jit,static_argnums=(0,))
+def piecewises(func,shape,include=None,**kwargs):
+	'''
+	Compute piecewise curve from func
+	Args:
+		func (callable,iterable[callable]): Functions to fit with signature func(x,*args,**kwargs)
+		shape (iterable[int]): Piecewise parameters shape
+		include (bool): Include piecewise indices of coefficients
+		kwargs (dict[str,object]): Additional keyword arguments for fitting		
+	Returns:
+		func (callable): Piecewise function with signature func(x,*args,**kwargs)
+		funcs (iterable[callable]): Piecewise functions with signature func(x,*args,**kwargs)
+		indices (array): indices of coefficients for piecewise domains
+	'''
+
+	if callable(func):
+		funcs = [func]
+	else:
+		funcs = func
+
+	n = len(funcs)
+	indices = [slice(sum(shape[:i-1]),sum(shape[:i])) for i in range(1,n+2)]
+
+	def func(x,parameters):
+
+		bounds,parameterss = parameters[indices[0]],[parameters[index] for index in indices[1:]]
+		n = len(funcs)
+
+		func = [lambda x,parameters,i=i: funcs[i](x,parameters[i]) for i in range(n)]
+
+		function,conditions = piecewise(func,bounds)
+
+		return function(x,parameters)
+	
+	if include:
+		return func,funcs,indices
+	else:
+		return func
+
+
+def piecewise(func,bounds,**kwargs):
+	'''
+	Compute piecewise curve from func
+	Args:
+		func (iterable[callable]): Functions to fit with signature func(x,*args,**kwargs)
+		bounds (iterable[object]): Bounds for piecewise domains
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		func (callable): Piecewise function with signature func(x,*args,**kwargs)
+		conditions (callable): Conditions for piecewise domains with signature conditions(x) -> iterable[bool]
+	'''
+
+	if callable(func) or isinstance(func,str):
+		func = [func]
+	else:
+		func = func
+
+	n = len(func)
+
+	if bounds is None and n>1:
+		raise ValueError("TODO: Allow for bounds to be fit")
+	elif isinstance(bounds,scalars):
+		bounds = [True for i in range(n+1)]
+	elif len(bounds) == (n-1):
+		bounds = [*bounds,True,True]
+
+	function = func
+
+	def conditions(x,*args,**kwargs):
+		n = len(bounds)-1
+		if x.ndim > 1:
+			axis,ord,r = 1,2,x.reshape(*x.shape[:1],-1)
+			r = norm(r,axis=axis,ord=axis)
+		else:
+			r = x
+		conditions = [(
+			(bool(bounds[i-1])*ones(r.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else r>=bounds[i-1]) & 
+			(bool(bounds[i])*ones(r.shape,dtype=bool) if (bounds[i] is None or isinstance(bounds[i],bool)) else r<=bounds[i])
+			)
+			for i in range(n)]
+		return conditions
+
+	def func(x,*args,**kwargs):
+		func = function
+		return np.piecewise(x,conditions(x,*args,**kwargs),func,*args,**kwargs)
+
+	return func,conditions
+
+
+def extrema(x,y,_x=None,**kwargs):
+	'''
+	Get extreme points of array
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		_x (array): New points		
+		kwargs (dict): Additional keyword arguments for interpolation
+			kind (int): Order of interpolation
+			smooth (int,float): Smoothness of fit
+			der (int): order of derivative to estimate
+	Returns:
+		indices (array): Indices of extreme points
+	'''	
+
+	defaults = {'kind':1,'smooth':0,'der':2}
+
+	if _x is None:
+		_x = x
+
+	kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
+
+	indices = argsort(abs(interp(x,y,**kwargs)(_x)))
+
+	return indices
+
+
+
 # @partial(jit,static_argnums=(2,))
 # def trotter(A,U,p):
 # 	r'''
@@ -5652,6 +5832,41 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 	else:
 		string = string.replace('$','')
 	return string
+
+
+def uncertainty_propagation(x,y,xerr,yerr,operation):
+	'''
+	Calculate uncertainty of binary operations
+	Args:
+		x (array): x array
+		y (array): y array
+		xerr (array): error in x
+		yerr (array): error in y
+		operation (str): Binary operation between x and y, allowed strings in ['+','-','*','/','plus','minus','times','divides']
+	Returns:
+		out (array): Result of binary operation
+		err (array): Error of binary operation
+	'''
+
+	operations = ['+','-','*','/','plus','minus','times','divides']
+	assert operation in operations, "operation: %s not in operations %r"%(operation,operations)
+
+	if operation in ['+','plus']:
+		func = lambda x,y: x+y
+		error = lambda x,y: sqrt((xerr*1)**2+(yerr*1)**2)
+	elif operation in ['-','minus']:
+		func = lambda x,y: x-y
+		error = lambda x,y: sqrt((xerr*1)**2+(yerr*-1)**2)
+	elif operation in ['*','times']:
+		func = lambda x,y: x*y
+		error = lambda x,y: sqrt((xerr*y)**2+(yerr*x)**2)
+	elif operation in ['/','divides']:
+		func = lambda x,y: x+y
+		error = lambda x,y: sqrt((xerr/y)**2+(yerr*x/-y**2)**2)
+
+	out,err = func(x,y),error(x,y)
+
+	return out,err
 
 
 def padder(strings,padding=' ',delimiter=None,justification='left'):
