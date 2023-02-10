@@ -370,9 +370,9 @@ def postprocess(path,**kwargs):
 								# (lambda parameters,x: parameters[0] + parameters[1]*x),
 								(lambda parameters,x: parameters[0] + parameters[1]*x),
 								]
-						parameters = [array([1.0,1.0]),array([1.0,1.0])]
+						parameters = [array([1.0,1.0]),array([0.0,1.0])]
 						bounds = [y_[argmin(z_)]]					
-						kwargs = {'uncertainty':all(parameter.size<1000 for parameter in parameters)}
+						kwargs = {'uncertainty':all(parameter.size<1000 for parameter in parameters),'optimizer':'cg','alpha':1e-4,'eps':{'value':1e-4},'iterations':500}
 						
 						preprocess = [
 							lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
@@ -457,13 +457,14 @@ def postprocess(path,**kwargs):
 						_yerrindex = sum(abs(_y[i] - _y[index]) for i in indexerr)/len(indexerr)
 
 						print(_x,[_o['r'] for _o in _other])
-						print(index,indexerr,_yerrindex)
-						print(_y[index],[_y[i] for i in indexerr])
+						# print(index,indexerr,_yerrindex)
+						print(_y[index])
+						# print([_y[i] for i in indexerr])
 						# print(_yerr[index])
 						# print(zerr_[index])
 						# print(_zerr[index])
-						print(parameters)
-						print(_parameters)
+						# print(parameters)
+						# print(_parameters)
 						print()
 
 						_X.append(_x)
@@ -647,7 +648,7 @@ def postprocess(path,**kwargs):
 							**settings['ax']['errorbar'],						
 							'x':_x,
 							'y':_y,
-							'yerr':_yerr,
+							# 'yerr':_yerr,
 							# 'label':r'$\quad~~ M_{\gamma} = \alpha\log{\gamma} + \beta$'+'\n'+r'$%s$'%(',~'.join([
 							# 'label':r'$\quad~~ M_{\gamma} = \alpha{\gamma}^{-\chi} + \beta$'+'\n'+r'$%s$'%(',~'.join([
 							# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([

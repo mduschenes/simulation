@@ -151,13 +151,6 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		_covariance (array): Fit model parameters error
 		_other (dict[str,object]): Other fit returns
 	'''	
-	defaults = {
-		'metric':'lstsq',
-		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,yerr.shape if yerr is not None else None)),
-		}
-	setter(kwargs,defaults,delimiter=delim,func=False)
-
-
 	if _x is None:	
 		_x = x
 	if _y is None:
@@ -165,7 +158,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	if xerr is None:
 		xerr = None
 	if yerr is None:
-		yerr = None
+		yerr = ones(y.size)
 	if parameters is None:
 		parameters = None
 	if covariance is None:
@@ -175,6 +168,13 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	_yerr = yerr
 	_parameters = parameters
 	_covariance = covariance
+
+	defaults = {
+		'metric':'lstsq',
+		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,yerr.shape if yerr is not None else None)),
+		}
+	setter(kwargs,defaults,delimiter=delim,func=False)
+
 
 	transform,invtransform = transformation(x,y,parameters,preprocess=preprocess,postprocess=postprocess,**kwargs)
 	gradtransform = gradient(invtransform,argnums=(0,1,2),mode='fwd')
@@ -269,7 +269,6 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_yerr /= 1
 
 	elif callable(func) or not isinstance(func,(str,array)):
-		# yerr = 2e-1*ones(y.size)
 
 		kwargs.update({'parameters':parameters,'yerr':yerr,'xerr':xerr})
 
@@ -356,22 +355,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		y = func(parameters,x,*args,**kwargs)
 		y = invtransform(y=y)
 		return y
-
-
-	model = jit(_func,x=x)
-	metric = kwargs.pop('metric',None)
-	shapes = kwargs.pop('shapes',None)
-	label = y
-	weights = yerr
-	hyperparameters = kwargs
-	system = {}
-	kwargs = {}
-	cov = Covariance(model,shapes=shapes,label=label,weights=weights,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
-
-	if _covariance is not None:
-		_covariance = cov(_parameters)
-	else:
-		_covariance = None
+	
 	return _func,_y,_parameters,_yerr,_covariance,_other
 
 
@@ -403,7 +387,7 @@ def curve_fit(func,x,y,**kwargs):
 		attr = 'value'
 		status = (abs(optimizer.attributes[attr][-1]) > 
 				(optimizer.hyperparameters['eps'][attr]*optimizer.hyperparameters['value'][attr]))
-		# print(optimizer.attributes[attr][-1])
+		# print(optimizer.attributes['value'][-1],optimizer.attributes['alpha'][-1])
 		return status
 
 	function = func
@@ -415,8 +399,8 @@ def curve_fit(func,x,y,**kwargs):
 	
 	defaults = {
 		'iterations':1000 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1000,
-		'alpha':1e-20 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-6,
-		'beta':1e-20 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-6,
+		'alpha':1e-10 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-20,
+		'beta':1e-10 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-20,
 		'uncertainty':parameters.size < 1000 if parameters is not None else True,
 		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,covariance.shape if covariance is not None else None)),
 		}
@@ -425,7 +409,7 @@ def curve_fit(func,x,y,**kwargs):
 	uncertainty = kwargs.pop('uncertainty',True)
 	shapes = kwargs.pop('shapes',None)
 	label = y
-	weights = covariance
+	weights = covariance/covariance.sum() if covariance is not None else None
 	hyperparameters = kwargs
 	system = {}
 	kwargs = {}
@@ -440,6 +424,10 @@ def curve_fit(func,x,y,**kwargs):
 	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
 
 	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters,system=system,**kwargs)
+
+	# fig,ax = plt.subplots()
+	# ax.errorbar(x,y,covariance,marker='o',linestyle='--')
+	# fig.savefig('/home/matt/files/uw/research/code/simulation/code/build/plot.fit.pdf')
 
 	parameters = optimizer(parameters)
 

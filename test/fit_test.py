@@ -33,13 +33,13 @@ def test_err(path=None,tol=None):
 
 	scale = 3
 	def model(parameters,x):
-		# y = parameters[0] + parameters[1]*x
-		y = scale*log10(parameters[0] + parameters[1]*log10(x))
+		y = parameters[0] + parameters[1]*x
+		# y = scale*log10(parameters[0] + parameters[1]*log10(x))
 		return y
 
-	n = 100
+	n = 20
 	d = 2
-	sigma = 1e-2
+	sigma = 3e-3
 	key = {'x':18212,'parameters':[23512313,123],'parameters_':[924254,1047324],'yerr':1313}
 	shapes = ((n,),(n,),(n,))
 	metric = 'lstsq'
@@ -74,7 +74,7 @@ def test_err(path=None,tol=None):
 
 	parameters = array([rand(bounds=[0,1],key=key['parameters'][0]),rand(bounds=[0,1],key=key['parameters'][1])])[:d].ravel()
 	kwargs = {
-		'process':True,
+		'process':False,
 		'standardize':True,
 		'iterations':1500,
 		'alpha':1e-10,'beta':1e-10,
