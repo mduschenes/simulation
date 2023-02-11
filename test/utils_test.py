@@ -19,7 +19,7 @@ from src.io import load,dump,join,split,edit
 
 from src.utils import array,zeros,rand,identity,datatype,allclose,sqrt,abs2
 from src.utils import gradient,rand,eye,diag,sin,cos
-from src.utils import norm,trace,inner_abs2
+from src.utils import einsum,norm,norm2,trace,mse
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmc,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
@@ -27,7 +27,6 @@ from src.utils import scinotation,delim
 from src.optimize import Metric
 
 from src.iterables import getter,setter
-
 
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
@@ -427,6 +426,40 @@ def test_mult(path=None,tol=None):
 
 	return
 
+
+def test_norm(path=None,tol=None):
+
+	n = 10
+	a = rand(n)
+	b = rand(n)
+	c = rand((n,n))
+
+	if c is None:
+		subscripts = 'i,i->'  
+	elif c.ndim == 1:
+		subscripts = 'i,i,i->'
+	else:
+		subscripts = 'i,j,ij->'
+	shapes = (a.shape,b.shape,c.shape if c is not None else None)
+
+	einsummation = mse(*shapes)
+
+	d = einsum(subscripts,a-b,a-b,c)
+	if c is None:
+		e = ((a-b)*(a-b)).sum()
+	elif c.ndim == 1:
+		e = ((a-b)*c*(a-b)).sum()
+	else:
+		e = (a-b).dot(c).dot((a-b))
+	f = einsummation(a,b,c)
+	h = norm2(a-b,c)
+
+	assert all((allclose(d,e),allclose(d,f),allclose(d,h),allclose(e,f),allclose(e,h))), "norm^2 incorrect"
+
+	return
+
+
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
@@ -435,5 +468,6 @@ if __name__ == '__main__':
 	# test_getter(path,tol)
 	# test_setter(path,tol)
 	# test_scinotation(path,tol)
-	test_gradient(path,tol)
+	# test_gradient(path,tol)
+	test_norm(path,tol)
 	

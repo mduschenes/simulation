@@ -17,37 +17,36 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.io import load,dump,join,split,edit
-
-from src.utils import array,ones,zeros,rand,logspace,gradient,rao,sort,norm,allclose,log10,exp10,abs,inf
-from src.fit import fit
+from src.utils import array,ones,zeros,rand,logspace,gradient,sort,norm,allclose,log10,exp10,abs,inf
+from src.fit import fit,cov
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
 	# log = file if hasattr(file,'write') else sys.stderr
 	# traceback.print_stack(file=log)
 	# log.write(warnings.formatwarning(message, category, filename, lineno, line))
 	return
-warnings.showwarning = warn_with_traceback
+# warnings.showwarning = warn_with_traceback
 
 
 
 def test_err(path=None,tol=None):
 
 	scale = 3
-	scale = 1
-	def model(coef,x):
-		# y = scale*log10(coef[0] + coef[1]*log10(x))
-		y = scale*(coef[0] + coef[1]*(x))
+	def model(parameters,x):
+		y = parameters[0] + parameters[1]*x
+		# y = scale*log10(parameters[0] + parameters[1]*log10(x))
 		return y
 
-	n = 100
+	n = 20
 	d = 2
-	sigma = None
-	key = {'x':19354,'coef':[1923,2424],'yerr':25215}
+	sigma = 3e-3
+	key = {'x':18212,'parameters':[23512313,123],'parameters_':[924254,1047324],'yerr':1313}
+	shapes = ((n,),(n,),(n,))
+	metric = 'lstsq'
 
-
-	x = sort(rand((n,),bounds=[1e-6,3],key=key['x']))
-	coef = array([rand(bounds=[0,7],key=key['coef'][0]),rand(bounds=[-1,0],key=key['coef'][1])]).ravel()
-	y = model(coef,x) 
+	x = sort(rand((n,),bounds=[0,1],key=key['x']))
+	parameters = array([rand(bounds=[0,1],key=key['parameters_'][0]),rand(bounds=[-1,0],key=key['parameters_'][1])])[:d].ravel()
+	y = model(parameters,x) 
 	xerr = None
 	yerr = sigma*rand(n,bounds=[-1,1],key=key['yerr']) if (sigma is not None and sigma>0) else None
 	yerr = sigma*ones(n) if (sigma is not None and sigma>0) else None
@@ -57,11 +56,13 @@ def test_err(path=None,tol=None):
 
 	x_ = x
 	y_ = y
-	coef_ = coef
-	_rao_ = rao(model,label=y,error=yerr)(coef_,x)
+	xerr_ = xerr
+	yerr_ = yerr
+	parameters_ = parameters
+	_cov_ = cov(model,shapes=shapes,label=y_,weights=yerr_,metric=metric)(parameters_,x_)
 
-	def func(coef,x):
-		y = coef[0] + coef[1]*x
+	def func(parameters,x):
+		y = parameters[0] + parameters[1]*x
 		return y
 
 
@@ -71,54 +72,54 @@ def test_err(path=None,tol=None):
 	_x = x
 	_y = zeros(_n)
 
-	coef = rand(coef.shape)
+	parameters = array([rand(bounds=[0,1],key=key['parameters'][0]),rand(bounds=[0,1],key=key['parameters'][1])])[:d].ravel()
 	kwargs = {
-		'maxfev':200000,
-		'absolute_sigma':True,
+		'process':False,
+		'standardize':True,
+		'iterations':1500,
+		'alpha':1e-10,'beta':1e-10,
+		"c1":0.0001,"c2":0.9,"maxiter":2000,
+
 	}
-	preprocess = lambda x,y,coef: (log10(x) if x is not None else None,exp10(y/scale) if y is not None else None,coef if coef is not None else None)
-	postprocess = lambda x,y,coef: (exp10(x) if x is not None else None,scale*log10(y) if y is not None else None,coef if coef is not None else None)
-
-	preprocess = lambda x,y,coef: ((x) if x is not None else None,(y/scale) if y is not None else None,coef if coef is not None else None)
-	postprocess = lambda x,y,coef: ((x) if x is not None else None,scale*(y) if y is not None else None,coef if coef is not None else None)
-
-	_func,_y,_coef,_yerr,_coeferr,_r,_other = fit(
+	
+	preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,exp10(y/scale) if y is not None else None,parameters if parameters is not None else None)
+	postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,scale*log10(y) if y is not None else None,parameters if parameters is not None else None)
+	
+	_func,_y,_parameters,_yerr,_covariance,_other = fit(
 		x,y,
 		_x=_x,_y=_y,
-		func=func,coef=coef,
+		func=func,parameters=parameters,
 		yerr=yerr,
 		xerr=xerr,
 		preprocess=preprocess,postprocess=postprocess,
 		kwargs=kwargs)
 
-
-
-	rao_ = rao(_func,label=y,error=yerr)(_coef,x)
-	_rao = _coeferr
-
-	print(coef_)
-	print(coef)
-	print(_coef)
+	cov_ = cov(_func,shapes=shapes,label=y_,weights=yerr,metric=metric)(_parameters,x_)
+	_cov = _covariance
+	print(sigma)
+	print('----')
+	print(parameters_)
+	print(_parameters)
 	print()
-	print(_rao_)
-	print(rao_)
-	print(_rao)
+	print(_cov_)
+	print(cov_)
+	print(_cov)
 
-	fig,ax = plt.subplots()
-	ax.plot(x_,y_,label='orig',marker='o',linestyle='')
-	ax.plot(_x,_y,label='pred',marker='*',linestyle='-')
-	ax.plot(_x,(model(coef_,(_x))),label='func')
-	ax.plot(_x,(_func(coef_,(_x))),label='$\_$func',linestyle='--')
-	ax.legend();
-	fig.savefig('plot.pdf')
+	# fig,ax = plt.subplots()
+	# ax.plot(x_,y_,label='orig',marker='o',linestyle='')
+	# ax.plot(_x,_y,label='pred',marker='*',linestyle='-')
+	# ax.plot(_x,(model(parameters_,(_x))),label='func')
+	# ax.plot(_x,(_func(parameters_,(_x))),label='$\_$func',linestyle='--')
+	# ax.legend();
+	# fig.savefig('plot.pdf')
 
 	tol = 1e-7
 	
-	s,a,b = 'coef',_coef,coef_
+	s,a,b = 'parameters',_parameters,parameters_
 	eps = norm(a-b)/norm(b)
 	assert eps < tol,'%s: %r - %r = %0.3e < %0.1e'%(s,a,b,eps,tol)
 
-	s,a,b = 'covar',(_rao),(rao_)
+	s,a,b = 'covar',(_cov),(cov_)
 	eps = norm(a-b)/norm(b)
 	assert eps < tol,'%s: %r - %r = %0.3e < %0.1e'%(s,a,b,eps,tol)
 
