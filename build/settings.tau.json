@@ -12,7 +12,6 @@
 "seed":{
 	"seed":1453421,
 	"size":12,
-	"size":1,
 	"reset":1453421,
 	"index":null
 	},
@@ -57,7 +56,7 @@
 		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[8],		
+		"jobs.job.args.JOB_PROCESSES":[4],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["72:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
