@@ -313,7 +313,8 @@ def line_search_wolfe2(f, myfprime, xk, pk, gfk=None, old_fval=None,
 			extra_condition2, maxiter=maxiter)
 
 	if derphi_star is None:
-		warn('The line search algorithm did not converge', LineSearchWarning)
+		pass
+		# warn('The line search algorithm did not converge', LineSearchWarning)
 	else:
 		# derphi_star is a number (derphi) -- so use the most recently
 		# calculated gradient used in computing it derphi = gfk*pk
