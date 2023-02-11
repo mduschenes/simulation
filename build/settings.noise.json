@@ -10,9 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":1892632,
+	"seed":1721,
 	"size":16,
-	"reset":1892632,
+	"reset":1721,
 	"index":null
 	},
 "permutations":{
@@ -49,9 +49,9 @@
 		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[2],		
+		"jobs.job.args.JOB_PROCESSES":[8],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["40:00:00"],
+		"jobs.job.patterns.time":["72:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
 		"jobs.job.patterns.mem":["256GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
