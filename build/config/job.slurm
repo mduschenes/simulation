@@ -1,6 +1,7 @@
 #!/bin/bash
 
-#SBATCH --account=def-carrasqu
+##SBATCH --account=def-carrasqu
+#SBATCH --account=def-raymond
 #SBATCH --job-name=output
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
