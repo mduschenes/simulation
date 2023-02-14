@@ -418,7 +418,7 @@ def curve_fit(func,x,y,**kwargs):
 
 	metric,cov = (
 		Metric(metric,shapes=shapes,label=label,weights=weights,hyperparameters=hyperparameters,system=system,**kwargs),
-		Covariance(model,shapes=shapes,label=label,weights=weights,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
+		Covariance(model,shapes=shapes,label=label,weights=covariance,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
 		)
 	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
 	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)

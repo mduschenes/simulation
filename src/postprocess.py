@@ -230,6 +230,7 @@ defaults = {
 		"set_yticks":{"ticks":[1e-12,1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
 		"set_yticks":{"ticks":[1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
 		"set_yticks":{"ticks":[1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0,1e2,1e4]},
+		"set_yticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0,1e4]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -245,11 +246,11 @@ defaults = {
 			"title_fontsize": 20,
 			"set_title":r"$\gamma$",
 			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
+			"markerscale": 1,
+			"handlelength": 2,
 			"framealpha": 0.8,
-			"loc": [0.125,0.82],
-			"ncol": 5,
+			"loc": [0.07,0.85],
+			"ncol": 6,
 			"set_zorder":{"level":100},
 			"set_label":None,
 			}
@@ -327,7 +328,7 @@ def postprocess(path,**kwargs):
 						pass
 
 				slices = range(4,len(data[label['y']])-5)
-				slices = [1,4,5,6,8,9,10]#range(4,len(data[label['y']])-5)
+				slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5)
 				# slices = range(len(data[label['y']])-3)
 
 				X = array([data['%s'%(label['x'])][i] for i in slices])
