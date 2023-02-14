@@ -12,7 +12,6 @@
 "seed":{
 	"seed":932781,
 	"size":16,
-	"size":1,
 	"reset":932781,
 	"index":null
 	},
@@ -25,8 +24,6 @@
 
 		"model.tau":[1e2,2.5e2,5e2,7.5e2,10e2,12.5e2,15e2,17.5e2],
 		"model.T": [1e4,5e4,1e5,5e5,1e6],
-		"model.tau":[1e2],
-		"model.T": [1e4],
 		"noise.parameters":[1e7],
 
 		"noise.initialization":["time"],
@@ -46,9 +43,6 @@
 		"jobs.job.cwd":["gobi/tau.J"],
 		"jobs.postprocess.cwd":["gobi/tau.J"],
 
-		"jobs.job.cwd":["gobi/test"],
-		"jobs.postprocess.cwd":["gobi/test"],
-		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
