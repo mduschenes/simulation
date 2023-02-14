@@ -23,7 +23,7 @@
 		"model.M":[null],		
 		"model.tau":[2e1,5e1,1e2,5e2,1e3],		
 		"model.T": [1e5,1e4],
-		"noise.parameters":[1e7,1e6,1e5,1e4,1e3,1e2],
+		"noise.parameters":[1e5],
 		"noise.initialization":["time"],
 		"noise.scale":[1],
 		"state.scale":[1],
@@ -37,8 +37,8 @@
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["gobi/tau"],
-		"jobs.postprocess.cwd":["gobi/tau"],
+		"jobs.job.cwd":["gobi/tau.J"],
+		"jobs.postprocess.cwd":["gobi/tau.J"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
