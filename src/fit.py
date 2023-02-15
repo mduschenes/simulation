@@ -380,23 +380,34 @@ def curve_fit(func,x,y,**kwargs):
 		'value':{'value':1},
 		'parameters':kwargs.pop('parameters',kwargs.pop('parameters0',kwargs.pop('coef',kwargs.pop('coef0',None)))),
 		'covariance':kwargs.pop('covariance',kwargs.pop('yerr',kwargs.pop('sigma',None))),
+		'path':None,
+		'verbose':None,
 		}
 	setter(kwargs,defaults,delimiter=delim,func=False)
 
-	def callback(parameters,track,optimizer,model,metric,func,grad):
-		attr = 'value'
-		status = (abs(optimizer.attributes[attr][-1]) > 
-				(optimizer.hyperparameters['eps'][attr]*optimizer.hyperparameters['value'][attr]))
-		# print(optimizer.attributes['value'][-1],optimizer.attributes['alpha'][-1])
-		return status
-
 	function = func
-
 	model = jit(func,x=x)
 	parameters = kwargs.pop('parameters',None)
 	covariance = kwargs.pop('covariance',None)
 	metric = kwargs.pop('metric',None)
+	path = kwargs.pop('path',None)
+	verbose = kwargs.pop('verbose',None)
 	
+	def callback(parameters,track,optimizer,model,metric,func,grad):
+		attr = 'value'
+		status = (abs(optimizer.attributes[attr][-1]) > 
+				(optimizer.hyperparameters['eps'][attr]*optimizer.hyperparameters['value'][attr]))
+		
+		if verbose:
+			print('\t'.join(['%s: %0.3e'%(attr,value) for attr,value in [
+				['value',optimizer.attributes['value'][-1]],
+				['alpha',optimizer.attributes['alpha'][-1]],
+				['grad',norm(optimizer.attributes['grad'][-1])]
+				]
+				])
+			)
+		return status
+
 	defaults = {
 		'iterations':1000 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1000,
 		'alpha':1e-10 if covariance is not None and norm(covariance)/covariance.size < 1e-3 else 1e-20,
@@ -409,7 +420,7 @@ def curve_fit(func,x,y,**kwargs):
 	uncertainty = kwargs.pop('uncertainty',True)
 	shapes = kwargs.pop('shapes',None)
 	label = y
-	weights = covariance/covariance.sum() if covariance is not None else None
+	weights = covariance*((inv(covariance) if covariance.ndim > 1 else 1/covariance).sum()) if covariance is not None else None
 	hyperparameters = kwargs
 	system = {}
 	kwargs = {}
@@ -425,11 +436,13 @@ def curve_fit(func,x,y,**kwargs):
 
 	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters,system=system,**kwargs)
 
-	# fig,ax = plt.subplots()
-	# ax.errorbar(x,y,covariance,marker='o',linestyle='--')
-	# fig.savefig('/home/matt/files/uw/research/code/simulation/code/build/plot.fit.pdf')
-
 	parameters = optimizer(parameters)
+
+	if path is not None:
+		fig,ax = plt.subplots()
+		ax.errorbar(x,y,marker='o',linestyle='-')
+		ax.errorbar(x,model(parameters),covariance,marker='*',linestyle='--')
+		fig.savefig(path)
 
 	if uncertainty:
 		covariance = cov(parameters)
@@ -522,7 +535,7 @@ def transformation(x,y,parameters=None,axis=None,mode='linear',process=True,stan
 			x,y,parameters = func(x,y,parameters)
 		if standardize:
 			params = array([[x.min(),x.max()],[y.min(),y.max()]])
-			params = array([[param[1],0] if param[0]==param[1] else param for param in params])
+			params = array([[0,param[1]] if param[0]==param[1] else param for param in params])
 		else:
 			params = None
 

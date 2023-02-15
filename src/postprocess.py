@@ -320,25 +320,18 @@ def postprocess(path,**kwargs):
 
 					# data[label[axis]] = [value if value not in ['None',None,nan] else 1e-20 for value in data[label[axis]]]
 
-					try:
-						data[label[axis]] = array(data[label[axis]])
-						data['%serr'%(label[axis])] = array(data['%serr'%(label[axis])])
-
-					except Exception as exception:
-						pass
-
 				slices = range(4,len(data[label['y']])-5)
-				slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5)
-				# slices = range(len(data[label['y']])-3)
+				slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5) # noise.long
+				slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
 
-				X = array([data['%s'%(label['x'])][i] for i in slices])
-				Y = array([data['%s'%(label['y'])][i] for i in slices])
-				Z = array([data['%s'%(label['z'])][i] for i in slices])
+				X = [array(data['%s'%(label['x'])][i]) for i in slices]
+				Y = [array(data['%s'%(label['y'])][i]) for i in slices]
+				Z = [array(data['%s'%(label['z'])][i]) for i in slices]
 
 
-				Xerr = array([data['%serr'%(label['x'])][i] for i in slices])
-				Yerr = array([data['%serr'%(label['y'])][i] for i in slices])
-				Zerr = array([data['%serr'%(label['z'])][i] for i in slices])
+				Xerr = [array(data['%serr'%(label['x'])][i]) for i in slices]
+				Yerr = [array(data['%serr'%(label['y'])][i]) for i in slices]
+				Zerr = [array(data['%serr'%(label['z'])][i]) for i in slices]
 
 				_X,_Y,_Z = [],[],[]
 				_Xerr,_Yerr,_Zerr = [],[],[]
@@ -360,27 +353,39 @@ def postprocess(path,**kwargs):
 						zerr_ = zerr_[slices] if zerr_ is not None and not is_naninf(zerr_).all() else None
 
 						_x = x_
-						_n = y_.size*20
+						_n = y_.size
 						_y = linspace(y_.min(),y_.max(),_n)
-						_z = zeros(_n)
+						_z = ones(_n)
 						_yerr = zeros(_n)
 						_zerr = zeros(_n)
 
 						func = [
-								'cubic',#
+								'cubic',
 								# (lambda parameters,x: parameters[0] + parameters[1]*x),
 								(lambda parameters,x: parameters[0] + parameters[1]*x),
 								]
 						parameters = [array([1.0,1.0]),array([0.0,1.0])]
 						bounds = [y_[argmin(z_)]]					
-						kwargs = {'uncertainty':all(parameter.size<1000 for parameter in parameters),'optimizer':'cg','alpha':1e-4,'eps':{'value':1e-4},'iterations':500}
+						kwargs = {
+							'optimizer':'cg',
+							'alpha':1e-10,
+							'iterations':1000,
+							'eps':{'value':1e-4},
+							'uncertainty':all(parameter.size<1000 for parameter in parameters),
+							# 'path':'fit.%0.1e.pdf'%(_x),
+							'verbose':0,
+							}
 						
 						preprocess = [
 							lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
-							lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+							# lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+							# lambda x,y,parameters: (log(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None),
+							lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),							
 							]
 						postprocess = [
 							lambda x,y,parameters: (x if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+							# lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+							# lambda x,y,parameters: (log(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None),
 							lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
 							]
 
@@ -398,6 +403,9 @@ def postprocess(path,**kwargs):
 							preprocess=preprocess,postprocess=postprocess,
 							bounds=bounds,kwargs=kwargs)	
 						
+
+						###########
+
 						# y_ = _y
 						# z_ = _z
 						# yerr_ = None
@@ -426,7 +434,7 @@ def postprocess(path,**kwargs):
 						# 	_x=_y,_y=_z,
 						# 	func=func,
 						# 	xerr=yerr_,yerr=zerr_,
-						# 	parameters=parameters
+						# 	parameters=parameters,
 						# 	preprocess=preprocess,postprocess=postprocess,
 						# 	bounds=bounds,kwargs=kwargs)
 
@@ -446,12 +454,12 @@ def postprocess(path,**kwargs):
 						# 	_x=_y_,_y=_z_,
 						# 	func=func,
 						# 	xerr=yerr_,yerr=zerr_,
-						# 	parameters=parameters
+						# 	parameters=parameters,
 						# 	preprocess=preprocess,postprocess=postprocess,
 						# 	bounds=bounds,kwargs=kwargs)
 
 
-						# _z,_parameters,_zerr,_covariance = z_,parameters,zerr_[slices],None,1
+						# _z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_[slices],None,[{'r':1}]*(len(bounds)+1)
 
 						index = argmin(_z)
 						indexerr = [argmin(_z+k*_zerr) for k in [-1,1]]
@@ -485,7 +493,6 @@ def postprocess(path,**kwargs):
 						others.append(_other)
 
 					fig,ax = None,None
-
 					settings = deepcopy(defaults[key[0]])
 					options = {
 						'fig':{
@@ -501,7 +508,7 @@ def postprocess(path,**kwargs):
 								**settings['ax']['errorbar'],
 								'x':Y[i],
 								'y':Z[i],
-								'xerr':Yerr[i] if Yerr.ndim == 1 else Yerr[i],
+								'xerr':Yerr[i],
 								'yerr':Zerr[i],	
 								'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
 								'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
@@ -602,14 +609,20 @@ def postprocess(path,**kwargs):
 
 				_n = x.size*10
 				_x = logspace(int(log10(x.min()))-3,0,_n)
-				_y = zeros(_n)
+				_y = ones(_n)
 				p = 2
-				parameters = array([1.0,-1.0])[:p]
+				parameters = array([-1.0,-1.0])[:p]
 				kwargs = {
-					'uncertainty':parameters.size<1000
+					'optimizer':'cg',
+					'alpha':1e-4,
+					'iterations':1000,
+					'eps':{'value':1e-5},
+					'uncertainty':parameters.size<1000,
+					'path':None,
+					'verbose':0,
 				}
-				preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,y if y is not None else None,parameters if parameters is not None else None)
-				postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,y if y is not None else None,parameters if parameters is not None else None)
+				preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)
+				postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)
 
 				_func,_y,_parameters,_yerr,_covariance,_other = fit(
 					x[slices],y[slices],
@@ -656,9 +669,9 @@ def postprocess(path,**kwargs):
 							# 'label':r'$\quad~~ M_{\gamma} = {(\gamma-\beta)}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 							# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 							'label':(
-								r'$\quad~~ M_{\gamma} = \beta\log{\gamma} + {\alpha}$' + '\n' + 
+								r'$\quad~~ M_{\gamma} = -\beta\log{\gamma} - {\alpha}$' + '\n' + 
 								r'$%s$'%('\n'.join([
-								'%s = %s'%(z,scinotation(_parameters[i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
+								'%s = %s'%(z,scinotation(-_parameters[i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
 									for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_parameters)])])) + '\n' +
 								r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty_propagation(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
 								r'$%s$'%('r^2 = %s'%(scinotation(_other['r'],decimals=4,scilimits=[-1,4])))
