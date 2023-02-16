@@ -464,16 +464,23 @@ def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 
 	return grad
 
-
-def hessian(func):
+def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	'''
 	Compute hessian of function
 	Args:
 		func (callable): Function to differentiate
+		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+		argnums (int,iterable[int]): Arguments of func to derive with respect to
+		holomorphic (bool): Whether function is holomorphic
+		kwargs : Additional keyword arguments for gradient mode:
+			'finite': tol (float): Finite difference tolerance
+			'shift': shifts (int): Number of eigenvalues of shifted values
+			'fwd': move (bool): Move differentiated axes to beginning of dimensions
+			'rev': move (bool): Move differentiated axes to beginning of dimensions
 	Returns:
 		grad (callable): Hessian of function
 	'''
-	grad = jit(jax.hessian(func))
+	grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
 	return grad
 
 
@@ -1392,155 +1399,20 @@ def lstsq(x,y):
 	Returns:
 		out (array): Least squares fit
 	'''
-	return np.linalg.lstsq(x,y)
-
-
-# @partial(jit,static_argnums=(0,))
-def curve_fit(func,x,y,**kwargs):
-	'''
-	Compute fit between x and y
-	Args:
-		func (callable): Function to fit
-		x (array): Array of input data
-		y (array): Array of output data
-		kwargs (dict[str,object]): Additional keyword arguments for fitting		
-	Returns:
-		out (array): Curve fit returns
-	'''
-	defaults = {'p0':kwargs.pop('coef0',None),'sigma':kwargs.pop('yerr',None),'maxfev':1000,'absolute_sigma':False}
-
-	kwargs = {kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults}
-
-	x = onp.asarray(x)
-	y = onp.asarray(y)
-	kwargs.update({kwarg: onp.asarray(kwargs[kwarg]) for kwarg in ['p0','sigma'] if kwarg in kwargs})
-
-	return osp.optimize.curve_fit(func,x,y,**kwargs)
-
-
-
-def interp(x,y,**kwargs):
-	'''
-	Interpolate array at new points
-	Args:
-		x (array): Interpolation points
-		y (array): Interpolation values
-		kwargs (dict): Additional keyword arguments for interpolation
-			kind (int): Order of interpolation
-			smooth (int,float): Smoothness of fit
-			der (int): order of derivative to estimate
-	Returns:
-		func (callable): Interpolation function
-	'''	
-
-	def _interpolate(x,y,**kwargs):
-		kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5,None:3}
-		k = kinds.get(kwargs.get('k',kwargs.get('kind')),kwargs.get('k',kwargs.get('kind')))
-		s = kwargs.get('s',kwargs.get('smooth'))
-		der = kwargs.get('der')
-		if der:
-			spline = osp.interpolate.splrep(x,y,k=k,s=s)
-			def func(x):
-				return osp.interpolate.splev(x,spline,der=der)
-		else:
-			func = osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
-			# func = osp.interpolate.interp1d(x,y,kind)
-		return func
-
-	return _interpolate(x,y,**kwargs)
-
-
-
-
-
-def interpolate(x,y,_x,**kwargs):
-	'''
-	Interpolate array at new points
-	Args:
-		x (array): Interpolation points
-		y (array): Interpolation values
-		_x (array): New points
-		kwargs (dict): Additional keyword arguments for interpolation
-				kind (int): Order of interpolation
-				smooth (int,float): Smoothness of fit
-				der (int): order of derivative to estimate
-	Returns:
-		out (array): Interpolated values at new points
-	'''		
-	is1d = (y.ndim == 1)
-
-	if is1d:
-		y = [y]
-
-	out = array([interp(x,u,**kwargs)(_x) for u in y])
-
-	if is1d:
-		out = out[0]
-
+	out = np.linalg.lstsq(x,y)[0] + 0.0
 	return out
 
 
-
-# @partial(jit,static_argnums=(0,))
-def piecewise(func,shape,**kwargs):
+@jit
+def inv(a):
 	'''
-	Compute piecewise curve from funcs
+	Compute inverse of a
 	Args:
-		func (callable,iterable[callable]): Functions to fit
-		shape (iterable[int]): Piecewise coefs shape
-		kwargs (dict[str,object]): Additional keyword arguments for fitting		
+		a (array): Array to compute inverse
 	Returns:
-		func (callable): Piecewise function with signature func(x,*coefs)
+		out (array): Inverse
 	'''
-
-	if callable(func):
-		funcs = [funcs]
-	else:
-		funcs = func
-
-	n = len(funcs)
-	indices = [slice(sum(shape[:i-1]),sum(shape[:i])) for i in range(1,n+2)]
-	
-	def func(x,*coefs):
-		
-		bounds,coefs = coefs[indices[0]],[coefs[index] for index in indices[1:]]
-		
-		conditions = [(x<=bounds[i]) if i==0 else ((x>=bounds[i-1]) & (x<=bounds[i])) if i < (n-1) else (x>=bounds[i-1]) 
-					  for i in range(n)]
-		
-		func = [lambda x,func=func,coef=coef: func(x,*coef) for func,coef in zip(funcs,coefs)]
-		func = np.piecewise(x,conditions,func)
-
-		return func
-	
-	return func
-
-
-def extrema(x,y,_x=None,**kwargs):
-	'''
-	Get extreme points of array
-	Args:
-		x (array): Interpolation points
-		y (array): Interpolation values
-		_x (array): New points		
-		kwargs (dict): Additional keyword arguments for interpolation
-			kind (int): Order of interpolation
-			smooth (int,float): Smoothness of fit
-			der (int): order of derivative to estimate
-	Returns:
-		indices (array): Indices of extreme points
-	'''	
-
-	defaults = {'kind':1,'smooth':0,'der':2}
-
-	if _x is None:
-		_x = x
-
-	kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
-
-	indices = argsort(abs(interp(x,y,**kwargs)(_x)))
-
-	return indices
+	return np.linalg.inv(a)
 
 
 @partial(jit,static_argnums=(1,))
@@ -1653,7 +1525,7 @@ def norm(a,axis=None,ord=2,keepdims=False):
 	Norm of array
 	Args:
 		a (array): array to be normalized
-		axis (int): axis to normalize over. Flattens array if None.
+		axis (int,iterable[int]): axis to normalize over. Flattens array if None.
 		ord (int,str): order of normalization
 		keepdims (bool): Keep axis of size 1 along normalization
 	Returns:
@@ -1663,6 +1535,388 @@ def norm(a,axis=None,ord=2,keepdims=False):
 	out = np.linalg.norm(a,axis=axis,ord=ord,keepdims=keepdims)
 
 	return out
+
+
+@jit
+def norm2(a,b=None):
+	'''
+	2-Norm squared of array
+	Args:
+		a (array): array to be normalized
+		b (array): array to weight normalization
+	Returns:
+		out (array): Norm of array
+	'''
+	if b is None:
+		out = dot(conj(a),a)
+	elif b.ndim == 1:
+		out = dot(conj(a),a*b)
+	elif b.ndim == 2:
+		out = dot(dot(conj(a),b),a)
+	else:
+		out = dot(conj(a),a)
+
+	return out
+
+
+def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=None):
+	'''
+	Setup metrics
+	Args:
+		metric (str,callable): Type of metric
+		shapes (iterable[tuple[int]]): Shapes of Operators
+		label (array): Label			
+		weights (array): Weights
+		optimize (bool,str,iterable): Contraction type			
+		returns (bool): Return metric gradients
+	Returns:
+		func (callable): Metric function with signature func(*operands,label,weights)
+		grad (callable): Metric gradient with signature grad(*operands,label,weights,*gradients)
+		grad_analytical (callable): Metric analytical gradient with signature grad_analytical(*operands,label,weights,*gradients)
+	'''
+	
+	if shapes:
+		size = sum(int(product(shape)**(1/len(shape))) for shape in shapes[:2] if shape is not None)//len(shapes[:2])
+	else:
+		size = 1
+
+	if callable(metric):
+			metric = metric
+			func = jit(metric)
+			grad = jit(gradient(metric))
+			# grad = gradient(func,mode='fwd',holomorphic=True,move=True)			
+			grad_analytical = jit(gradient(metric))
+	elif metric is None:
+
+		func = inner_norm
+		grad_analytical = gradient_inner_norm
+
+		def wrapper_func(out,*operands):
+			return out/2
+
+		def wrapper_grad(out,*operands):
+			return out/2
+
+	elif metric in ['lstsq']:
+		func = mse
+		grad_analytical = gradient_mse
+
+		def wrapper_func(out,*operands):
+			return out/2
+
+		def wrapper_grad(out,*operands):
+			return out/2	
+
+	elif metric in ['mse']:
+		func = mse
+		grad_analytical = gradient_mse
+
+		def wrapper_func(out,*operands):
+			return out/operands[0].size/2
+
+		def wrapper_grad(out,*operands):
+			return out/operands[0].size/2					
+
+	elif metric in ['norm']:
+
+		func = inner_norm
+		grad_analytical = gradient_inner_norm
+
+		def wrapper_func(out,*operands):
+			return out/operands[0].shape[-1]/2
+		
+		def wrapper_grad(out,*operands):
+			return out/operands[0].shape[-1]/2
+
+	elif metric in ['abs2']:
+
+		func = inner_abs2
+		grad_analytical = gradient_inner_abs2
+
+		def wrapper_func(out,*operands):
+			return 1 - out/(operands[0].shape[-1]*operands[0].shape[-2])
+
+		def wrapper_grad(out,*operands):
+			return - out/(operands[0].shape[-1]*operands[0].shape[-2])
+
+	elif metric in ['real']:
+
+		func = inner_real
+		grad_analytical = gradient_inner_real
+
+		def wrapper_func(out,*operands):
+			return 1 - out
+
+		def wrapper_grad(out,*operands):
+			return  - out
+
+	elif metric in ['imag']:
+
+		func = inner_imag
+		grad_analytical = gradient_inner_imag
+
+		def wrapper_func(out,*operands):
+			return 1 - out
+
+		def wrapper_grad(out,*operands):
+			return - out
+
+	else:
+
+		func = inner_norm
+		grad_analytical = gradient_inner_norm
+
+		def wrapper_func(out,*operands):
+			return out/operands[0].shape[-1]/2
+
+		def wrapper_grad(out,*operands):
+			return out/operands[0].shape[-1]/2
+
+
+	shapes_func = (*(shape for shape in shapes if shape is not None),) if shapes else ()
+	optimize_func = optimize
+	wrapper_func = jit(wrapper_func)
+
+	shapes_grad = (*(shape for shape in shapes if shape is not None),(size**2,*shapes[0]),) if shapes else ()
+	optimize_grad = optimize
+	wrapper_grad = jit(wrapper_grad)
+
+	if shapes_func:
+		func = func(*shapes_func,optimize=optimize_func,wrapper=wrapper_func)
+	else:
+		func = partial(func,optimize=optimize_grad,wrapper=wrapper_func)
+
+	if shapes_grad:
+		grad_analytical = grad_analytical(*shapes_grad,optimize=optimize_func,wrapper=wrapper_grad)
+	else:
+		grad_analytical = partial(grad_analytical,optimize=optimize_grad,wrapper=wrapper_grad)
+
+	grad = grad_analytical
+	# grad = gradient(func,mode='fwd',holomorphic=True,move=True)
+
+	func = jit(func)
+	grad = jit(grad)
+	grad_analytical = jit(grad_analytical)
+
+	if (label is not None) and (weights is not None):
+
+		label = conj(label)
+		weights = inv(weights) if weights.ndim>1 else 1/weights**2
+
+		def func(*operands,func=func,label=label,weights=weights):
+			return func(*operands[:1],label,weights,*operands[1:])
+		def grad(*operands,func=grad,label=label,weights=weights):
+			return func(*operands[:1],label,weights,*operands[1:])				
+		def grad_analytical(*operands,func=grad_analytical,label=label,weights=weights):
+			return func(*operands[:1],label,weights,*operands[1:])
+	
+	elif (label is not None):
+
+		label = conj(label)
+
+		def func(*operands,func=func,label=label):
+			return func(*operands[:1],label,*operands[1:])
+		def grad(*operands,func=grad,label=label):
+			return func(*operands[:1],label,*operands[1:])				
+		def grad_analytical(*operands,func=grad_analytical,label=label):
+			return func(*operands[:1],label,*operands[1:])
+
+	elif (weights is not None):
+
+		weights = inv(weights) if weights.ndim>1 else 1/weights**2
+
+		def func(*operands,func=func,weights=weights):
+			return func(*operands[:2],weights,*operands[2:])
+		def grad(*operands,func=grad,weights=weights):
+			return func(*operands[:2],weights,*operands[2:])				
+		def grad_analytical(*operands,func=grad_analytical,weights=weights):
+			return func(*operands[:2],weights,*operands[2:])
+
+	func = jit(func)
+	grad = jit(grad)
+	grad_analytical = jit(grad_analytical)
+
+	if not returns:
+		return func
+	else:
+		return func,grad,grad_analytical
+
+
+
+
+def mse(*operands,optimize=True,wrapper=None):
+	'''
+	Calculate square inner product of arrays
+	Args:
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+	Returns:
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
+	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+	
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+
+	if ndim == 1:
+		if length == 2:
+			subscripts = 'i,i->'
+		elif length == 3:
+			if len(shapes[2]) == 1:
+				subscripts = 'i,i,i->'
+			elif len(shapes[2]) == 2:
+				subscripts = 'i,j,ij->'			
+			else:
+				subscripts = 'i,i->'
+		else:
+			subscripts = 'i,i->'
+	elif ndim == 2:
+		if length == 2:
+			subscripts = 'ij,ij->'
+		elif length == 3:
+			if len(shapes[2]) == 1:
+				subscripts = 'ij,ij,j->'			
+			elif len(shapes[2]) == 2:
+				subscripts = 'ij,ik,jk->'			
+			else:
+				subscripts = 'ij,ij->'
+		else:
+			subscripts = 'ij,ij->'
+	else:
+		if length == 2:
+			subscripts = '...ij,...ij->...'
+		elif length == 3:
+			if len(shapes[2]) == 1:
+				subscripts = '...ij,...ij,j->...'
+			elif len(shapes[2]) == 2:
+				subscripts = '...ij,...ik,jk->...'
+			else:
+				subscripts = '...ij,...ij->...'
+		else:
+			subscripts = '...ij,...ij->...'
+
+	if length == 2:
+		shapes = (shapes[0],shapes[1])
+	elif length == 3:
+		shapes = (shapes[0],shapes[1],shapes[2])
+	else:
+		shapes = (shapes[0],shapes[1])
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+
+	@jit
+	def func(*operands):
+		out = operands[0]-operands[1]
+		out = einsummation(out,out,*operands[2:]).real
+		return wrapper(out,*operands)
+
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
+
+	return out
+
+def gradient_mse(*operands,optimize=True,wrapper=None):
+	'''
+	Calculate gradient of square inner product of arrays
+	Args:
+		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
+		optimize (bool,str,iterable): Contraction type	
+		wrapper (callable): Wrapper for einsum with signature wrapper(out,*operands)				
+	Returns:
+		out (callable,array): Summation, callable if shapes supplied, otherwise out array
+	'''	
+	arrays = all(is_array(operand) for operand in operands)
+	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
+	
+	if arrays:
+		shapes = [operand.shape for operand in operands]
+	else:
+		shapes = [operand for operand in operands]
+	
+	ndim = min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
+
+	if ndim == 1:
+		if length == 3:
+			subscripts = '...i,i->'
+		elif length == 4:
+			if len(shapes[2]) == 1:
+				subscripts = '...i,i,i->'
+			elif len(shapes[2]) == 2:
+				subscripts = '...i,j,ij->'			
+			else:
+				subscripts = '...i,i->'
+		else:
+			subscripts = '...i,i->'
+	elif ndim == 2:
+		if length == 3:
+			subscripts = '...ij,ij->'
+		elif length == 4:
+			if len(shapes[2]) == 1:
+				subscripts = '...ij,ij,j->'			
+			elif len(shapes[2]) == 2:
+				subscripts = '...ij,ik,jk->'			
+			else:
+				subscripts = '...ij,ij->'
+		else:
+			subscripts = '...ij,ij->'
+	else:
+		if length == 3:
+			subscripts = '...ij,...ij->...'
+		elif length == 4:
+			if len(shapes[2]) == 1:
+				subscripts = '...ij,...ij,j->...'
+			elif len(shapes[2]) == 2:
+				subscripts = '...ij,...ik,jk->...'
+			else:
+				subscripts = '...ij,...ij->...'
+		else:
+			subscripts = '...ij,...ij->...'
+
+	if length == 3:
+		shapes = (shapes[2],shapes[1])
+	elif length == 4:
+		shapes = (shapes[3],shapes[1],shapes[2])
+	else:
+		shapes = (shapes[2],shapes[1])
+
+	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
+
+	if length == 3:
+		@jit
+		def func(*operands):
+			out = operands[0]-operands[1]
+			out = einsummation(operands[2],out).real
+			return wrapper(out,*operands)
+	elif length == 4:
+		@jit
+		def func(*operands):
+			out = operands[0]-operands[1]			
+			out = einsummation(operands[3],out,operands[2]).real
+			return wrapper(out,*operands)
+	else:
+		@jit
+		def func(*operands):
+			out = operands[0]-operands[1]
+			out = einsummation(operands[2],out).real
+			return wrapper(out,*operands)			
+
+	if arrays:
+		out = func(*operands)
+	else:
+		out = func
+
+	return out
+
 
 
 def inner(*operands,optimize=True,wrapper=None):
@@ -1683,22 +1937,58 @@ def inner(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	ndim = min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
 
 	if ndim == 1:
-		subscripts = 'i,i->'
+		if length == 2:
+			subscripts = 'i,i->'
+		elif length == 3:
+			if len(shapes[2]) == 1:
+				subscripts = 'i,i,i->'
+			elif len(shapes[2]) == 2:
+				subscripts = 'i,j,ij->'			
+			else:
+				subscripts = 'i,i->'
+		else:
+			subscripts = 'i,i->'
 	elif ndim == 2:
-		subscripts = 'ij,ij->'
+		if length == 2:
+			subscripts = 'ij,ij->'
+		elif length == 3:
+			if len(shapes[2]) == 1:
+				subscripts = 'ij,ij,j->'			
+			elif len(shapes[2]) == 2:
+				subscripts = 'ij,ik,jk->'			
+			else:
+				subscripts = 'ij,ij->'
+		else:
+			subscripts = 'ij,ij->'
 	else:
-		subscripts = '...ij,...ij->...'
+		if length == 2:
+			subscripts = '...ij,...ij->...'
+		elif length == 3:
+			if len(shapes[2]) == 1:
+				subscripts = '...ij,...ij,j->...'
+			elif len(shapes[2]) == 2:
+				subscripts = '...ij,...ik,jk->...'
+			else:
+				subscripts = '...ij,...ij->...'
+		else:
+			subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[0],shapes[1])
+	if length == 2:
+		shapes = (shapes[0],shapes[1])
+	elif length == 3:
+		shapes = (shapes[0],shapes[1],shapes[2])
+	else:
+		shapes = (shapes[0],shapes[1])
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
 	def func(*operands):
-		out = einsummation(*operands).real
+		out = einsummation(*operands[:length]).real
 		return wrapper(out,*operands)
 
 	if arrays:
@@ -1726,23 +2016,71 @@ def gradient_inner(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	ndim = min(len(shape) for shape in shapes if shape is not None)
+	length = len([shape for shape in shapes if shape is not None])
 
 	if ndim == 1:
-		subscripts = '...i,i->...'
+		if length == 3:
+			subscripts = '...i,i->'
+		elif length == 4:
+			if len(shapes[2]) == 1:
+				subscripts = '...i,i,i->'
+			elif len(shapes[2]) == 2:
+				subscripts = '...i,j,ij->'			
+			else:
+				subscripts = '...i,i->'
+		else:
+			subscripts = '...i,i->'
 	elif ndim == 2:
-		subscripts = '...ij,ij->...'
+		if length == 3:
+			subscripts = '...ij,ij->'
+		elif length == 4:
+			if len(shapes[2]) == 1:
+				subscripts = '...ij,ij,j->'			
+			elif len(shapes[2]) == 2:
+				subscripts = '...ij,ik,jk->'			
+			else:
+				subscripts = '...ij,ij->'
+		else:
+			subscripts = '...ij,ij->'
 	else:
-		subscripts = '...ij,...ij->...'
+		if length == 3:
+			subscripts = '...ij,...ij->...'
+		elif length == 4:
+			if len(shapes[2]) == 1:
+				subscripts = '...ij,...ij,j->...'
+			elif len(shapes[2]) == 2:
+				subscripts = '...ij,...ik,jk->...'
+			else:
+				subscripts = '...ij,...ij->...'
+		else:
+			subscripts = '...ij,...ij->...'
 
-	shapes = (shapes[2],shapes[1])
+	if length == 3:
+		shapes = (shapes[2],shapes[1])
+	elif length == 4:
+		shapes = (shapes[3],shapes[1],shapes[2])
+	else:
+		shapes = (shapes[2],shapes[1])
+
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
-	@jit
-	def func(*operands):
-		out = einsummation(operands[2],operands[1]).real
-		return wrapper(out,*operands)
+	if length == 3:
+		@jit
+		def func(*operands):
+			out = einsummation(operands[2],operands[1]).real
+			return wrapper(out,*operands)
+	elif length == 4:
+		@jit
+		def func(*operands):
+			out = einsummation(operands[3],operands[1],operands[2]).real
+			return wrapper(out,*operands)
+	else:
+		@jit
+		def func(*operands):
+			out = einsummation(operands[2],operands[1]).real
+			return wrapper(out,*operands)			
 
 	if arrays:
 		out = func(*operands)
@@ -1771,7 +2109,7 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	ndim = min(len(shape) for shape in shapes if shape is not None)
 
 	if ndim == 1:
 		subscripts = 'i->'
@@ -1814,7 +2152,7 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	ndim = min(len(shape) for shape in shapes if shape is not None)
 
 	if ndim == 1:
 		subscripts = '...i,i->...'
@@ -1859,7 +2197,7 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	ndim = min(len(shape) for shape in shapes if shape is not None)
 
 	if ndim == 1:
 		subscripts = 'i,i->'
@@ -1906,7 +2244,7 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	ndim = min(len(shape) for shape in shapes if shape is not None)
 
 	if ndim == 1:
 		subscripts_func = 'i,i->'
@@ -1961,7 +2299,7 @@ def inner_real(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	ndim = min(len(shape) for shape in shapes if shape is not None)
 
 	if ndim == 1:
 		subscripts = 'i,i->'
@@ -2005,7 +2343,7 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	ndim = min(len(shape) for shape in shapes if shape is not None)
 
 	if ndim == 1:
 		subscripts = '...i,i->...'
@@ -2049,7 +2387,7 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	ndim = min(len(shape) for shape in shapes if shape is not None)
 
 	if ndim == 1:
 		subscripts = 'i,i->'
@@ -2093,7 +2431,7 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 	else:
 		shapes = [operand for operand in operands]
 	
-	ndim = min(len(shape) for shape in shapes)
+	ndim = min(len(shape) for shape in shapes if shape is not None)
 
 	if ndim == 1:
 		subscripts = '...i,i->...'
@@ -2267,7 +2605,7 @@ def product(a):
 	return out
 
 
-def where(conditions):
+def where(conditions,x=None,y=None):
 	'''
 	Indices where conditions are True
 	Args:
@@ -2275,7 +2613,7 @@ def where(conditions):
 	Returns:
 		out (array): Indices of conditions
 	'''
-	return np.where(conditions)
+	return np.where(conditions,x,y)
 
 def conditions(booleans,op):
 	'''
@@ -2507,7 +2845,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	if arrays:
 		shapes = [tuple(operand.shape) for operand in operands]
 	else:
-		shapes = [tuple(operand) for operand in operands]
+		shapes = [tuple(operand) for operand in operands if operand is not None]
 
 	optimize = einsum_path(subscripts,*shapes,optimize=optimize)	
 
@@ -4397,6 +4735,18 @@ def is_nan(a,*args,**kwargs):
 	'''
 	return is_numeric(a) and np.isnan(a)
 
+def is_zero(a,*args,**kwargs):
+	'''
+	Check if array is zeros
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is zeros
+	'''
+	return allclose(a,zeros(a.shape,dtype=a.dtype))
+
 
 def is_realdtype(dtype,*args,**kwargs):
 	'''
@@ -4819,6 +5169,201 @@ def binary(a,n,function):
 
 
 
+def interp(x,y,**kwargs):
+	'''
+	Interpolate array at new points
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		kwargs (dict): Additional keyword arguments for interpolation
+			kind (int): Order of interpolation
+			smooth (int,float): Smoothness of fit
+			der (int): order of derivative to estimate
+	Returns:
+		func (callable): Interpolation function with signature func(x,*args,**kwargs)
+	'''	
+
+	def _interpolate(x,y,**kwargs):
+		n = len(x)
+		kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':4,'quintic':5,None:3}
+		kind = kwargs.get('k',kwargs.get('kind'))
+		
+		if n == 1:
+			k = None
+		elif n < kinds.get(kind,n+1):
+			k = [kinds[k] for k in kinds if kinds[k]==(n-1)][-1]
+		else:
+			k = kinds.get(kind)
+
+		s = kwargs.get('s',kwargs.get('smooth'))
+		der = kwargs.get('der')
+
+		if n == 1:
+			_func = lambda x,y=y: onp.linspace(abs(y.min()),abs(y.max()),x.size)
+			def func(x,y=y,_func=_func):
+				print('func',x,_func(x))
+				return _func(x)
+		elif der:
+			spline = osp.interpolate.splrep(x,y,k=k,s=s)
+			_func = lambda x: osp.interpolate.splev(x,spline,der=der)
+			def func(x,y=y,_func=_func):
+				return _func(x)
+		else:
+			_func = osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
+			def func(x,y=y,_func=_func):
+				x = onp.asarray(x)
+				return _func(x)
+			# func = osp.interpolate.interp1d(x,y,kind)
+		return func
+
+	return _interpolate(x,y,**kwargs)
+
+
+def interpolate(x,y,_x,**kwargs):
+	'''
+	Interpolate array at new points
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		_x (array): New points
+		kwargs (dict): Additional keyword arguments for interpolation
+				kind (int): Order of interpolation
+				smooth (int,float): Smoothness of fit
+				der (int): order of derivative to estimate
+	Returns:
+		out (array): Interpolated values at new points
+	'''		
+	is1d = (y.ndim == 1)
+
+	if is1d:
+		y = [y]
+
+	out = array([interp(x,u,**kwargs)(_x) for u in y])
+
+	if is1d:
+		out = out[0]
+
+	return out
+
+
+
+# @partial(jit,static_argnums=(0,))
+def piecewises(func,shape,include=None,**kwargs):
+	'''
+	Compute piecewise curve from func
+	Args:
+		func (callable,iterable[callable]): Functions to fit with signature func(x,*args,**kwargs)
+		shape (iterable[int]): Piecewise parameters shape
+		include (bool): Include piecewise indices of coefficients
+		kwargs (dict[str,object]): Additional keyword arguments for fitting		
+	Returns:
+		func (callable): Piecewise function with signature func(x,*args,**kwargs)
+		funcs (iterable[callable]): Piecewise functions with signature func(x,*args,**kwargs)
+		indices (array): indices of coefficients for piecewise domains
+	'''
+
+	if callable(func):
+		funcs = [func]
+	else:
+		funcs = func
+
+	n = len(funcs)
+	indices = [slice(sum(shape[:i-1]),sum(shape[:i])) for i in range(1,n+2)]
+
+	def func(x,parameters):
+
+		bounds,parameterss = parameters[indices[0]],[parameters[index] for index in indices[1:]]
+		n = len(funcs)
+
+		func = [lambda x,parameters,i=i: funcs[i](x,parameters[i]) for i in range(n)]
+
+		function,conditions = piecewise(func,bounds)
+
+		return function(x,parameters)
+	
+	if include:
+		return func,funcs,indices
+	else:
+		return func
+
+
+def piecewise(func,bounds,**kwargs):
+	'''
+	Compute piecewise curve from func
+	Args:
+		func (iterable[callable]): Functions to fit with signature func(x,*args,**kwargs)
+		bounds (iterable[object]): Bounds for piecewise domains
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		func (callable): Piecewise function with signature func(x,*args,**kwargs)
+		conditions (callable): Conditions for piecewise domains with signature conditions(x) -> iterable[bool]
+	'''
+
+	if callable(func) or isinstance(func,str):
+		func = [func]
+	else:
+		func = func
+
+	n = len(func)
+
+	if bounds is None and n>1:
+		raise ValueError("TODO: Allow for bounds to be fit")
+	elif isinstance(bounds,scalars):
+		bounds = [True for i in range(n+1)]
+	elif len(bounds) == (n-1):
+		bounds = [*bounds,True,True]
+
+	function = func
+
+	def conditions(x,*args,**kwargs):
+		n = len(bounds)-1
+		if x.ndim > 1:
+			axis,ord,r = 1,2,x.reshape(*x.shape[:1],-1)
+			r = norm(r,axis=axis,ord=axis)
+		else:
+			r = x
+		conditions = [(
+			(bool(bounds[i-1])*ones(r.shape,dtype=bool) if (bounds[i-1] is None or isinstance(bounds[i-1],bool)) else r>=bounds[i-1]) & 
+			(bool(bounds[i])*ones(r.shape,dtype=bool) if (bounds[i] is None or isinstance(bounds[i],bool)) else r<=bounds[i])
+			)
+			for i in range(n)]
+		return conditions
+
+	def func(x,*args,**kwargs):
+		func = function
+		return np.piecewise(x,conditions(x,*args,**kwargs),func,*args,**kwargs)
+
+	return func,conditions
+
+
+def extrema(x,y,_x=None,**kwargs):
+	'''
+	Get extreme points of array
+	Args:
+		x (array): Interpolation points
+		y (array): Interpolation values
+		_x (array): New points		
+		kwargs (dict): Additional keyword arguments for interpolation
+			kind (int): Order of interpolation
+			smooth (int,float): Smoothness of fit
+			der (int): order of derivative to estimate
+	Returns:
+		indices (array): Indices of extreme points
+	'''	
+
+	defaults = {'kind':1,'smooth':0,'der':2}
+
+	if _x is None:
+		_x = x
+
+	kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
+
+	indices = argsort(abs(interp(x,y,**kwargs)(_x)))
+
+	return indices
+
+
+
 # @partial(jit,static_argnums=(2,))
 # def trotter(A,U,p):
 # 	r'''
@@ -5213,7 +5758,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		order (int): Max power of number allowed for rounding
 		zero (bool): Make numbers that equal 0 be the int representation
 		one (bool): Make numbers that equal 1 be the int representation, otherwise ''
-		scilimits (list): Limits on where not to represent with scientific notation
+		scilimits (iterable[int]): Limits on where not to represent with scientific notation
 		error (str,int,float): Error of number to be processed
 		usetex (bool): Render string with Latex
 	
@@ -5221,6 +5766,10 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		String with scientific notation format for number
 
 	'''
+
+	if scilimits is None:
+		scilimits = [-1,1]
+
 	if not is_number(number):
 		return str(number)
 
@@ -5298,6 +5847,41 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 	else:
 		string = string.replace('$','')
 	return string
+
+
+def uncertainty_propagation(x,y,xerr,yerr,operation):
+	'''
+	Calculate uncertainty of binary operations
+	Args:
+		x (array): x array
+		y (array): y array
+		xerr (array): error in x
+		yerr (array): error in y
+		operation (str): Binary operation between x and y, allowed strings in ['+','-','*','/','plus','minus','times','divides']
+	Returns:
+		out (array): Result of binary operation
+		err (array): Error of binary operation
+	'''
+
+	operations = ['+','-','*','/','plus','minus','times','divides']
+	assert operation in operations, "operation: %s not in operations %r"%(operation,operations)
+
+	if operation in ['+','plus']:
+		func = lambda x,y: x+y
+		error = lambda x,y: sqrt((xerr*1)**2+(yerr*1)**2)
+	elif operation in ['-','minus']:
+		func = lambda x,y: x-y
+		error = lambda x,y: sqrt((xerr*1)**2+(yerr*-1)**2)
+	elif operation in ['*','times']:
+		func = lambda x,y: x*y
+		error = lambda x,y: sqrt((xerr*y)**2+(yerr*x)**2)
+	elif operation in ['/','divides']:
+		func = lambda x,y: x+y
+		error = lambda x,y: sqrt((xerr/y)**2+(yerr*x/-y**2)**2)
+
+	out,err = func(x,y),error(x,y)
+
+	return out,err
 
 
 def padder(strings,padding=' ',delimiter=None,justification='left'):
@@ -5519,8 +6103,6 @@ def bloch(state,path=None):
 			if not isinstance(path,str):
 				path = 'bloch.pdf'
 			fig.savefig(path,pad_inches=0.5)
-			# fig.savefig(path)
-			# fig.savefig(path,bbox_inches="tight",pad_inches=0.2)
 
 	return fig,ax
 

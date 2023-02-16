@@ -18,7 +18,8 @@ for PATH in PATHS:
 from src.io import load,dump,join,split,edit
 
 from src.utils import array,zeros,rand,identity,datatype,allclose,sqrt,abs2
-from src.utils import norm,trace,inner_abs2
+from src.utils import gradient,rand,eye,diag,sin,cos
+from src.utils import einsum,norm,norm2,trace,mse
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmc,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
@@ -26,7 +27,6 @@ from src.utils import scinotation,delim
 from src.optimize import Metric
 
 from src.iterables import getter,setter
-
 
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
@@ -390,6 +390,76 @@ def test_scinotation(path=None,tol=None):
 
 	return
 
+def test_gradient(path=None,tol=None):
+	def func(x,y,z):
+		x,y,z = sin(z),cos(x),sin(y)
+		return x,y
+	n = 10
+	p = 3
+	d = 2
+
+	grad = gradient(func,argnums=range(p),mode='fwd')
+
+	x,y,z = rand(n),rand(n),rand(n)
+
+	g = grad(x,y,z)
+
+	_g = ((zeros(n),zeros(n),diag(cos(z))),(diag(-sin(x)),zeros(n),zeros(n)))
+
+	assert isinstance(g,tuple) and len(g)==d
+	assert all(isinstance(h,tuple) and len(h)==p for i,h in enumerate(g))
+	assert all(isinstance(k,array) and k.shape == (n,n) and allclose(k,_g[i][j]) for i,h in enumerate(g) for j,k in enumerate(h))
+
+	return
+
+def test_mult(path=None,tol=None):
+
+	m = 5
+	n = 3
+	a = rand(n)
+	b = rand((m,n))
+
+	c = b*a
+	d = b.dot(diag(a))
+
+	assert allclose(c,d)
+
+	return
+
+
+def test_norm(path=None,tol=None):
+
+	n = 10
+	a = rand(n)
+	b = rand(n)
+	c = rand((n,n))
+
+	if c is None:
+		subscripts = 'i,i->'  
+	elif c.ndim == 1:
+		subscripts = 'i,i,i->'
+	else:
+		subscripts = 'i,j,ij->'
+	shapes = (a.shape,b.shape,c.shape if c is not None else None)
+
+	einsummation = mse(*shapes)
+
+	d = einsum(subscripts,a-b,a-b,c)
+	if c is None:
+		e = ((a-b)*(a-b)).sum()
+	elif c.ndim == 1:
+		e = ((a-b)*c*(a-b)).sum()
+	else:
+		e = (a-b).dot(c).dot((a-b))
+	f = einsummation(a,b,c)
+	h = norm2(a-b,c)
+
+	assert all((allclose(d,e),allclose(d,f),allclose(d,h),allclose(e,f),allclose(e,h))), "norm^2 incorrect"
+
+	return
+
+
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
@@ -397,4 +467,7 @@ if __name__ == '__main__':
 	# test_optimizer(path,tol)
 	# test_getter(path,tol)
 	# test_setter(path,tol)
-	test_scinotation(path,tol)
+	# test_scinotation(path,tol)
+	# test_gradient(path,tol)
+	test_norm(path,tol)
+	

@@ -652,16 +652,18 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					subprop = subprops%(axis)
 					subattr = subattrs%(axis)
 
+					if ((kwargs[attr].get(subprop) is not None)):
+						if np.array(kwargs[attr][subprop]).ndim == 1:
+							kwargs[attr][subprop] = np.array([[k if k is not None else 0,k if k is not None else 0] for k in kwargs[attr][subprop]]).T
+						elif np.array(kwargs[attr][subprop]).ndim == 2:
+							kwargs[attr][subprop] = np.array([k if k is not None else 0 for k in kwargs[attr][subprop]])
+
 					if (
 						(kwargs[attr].get(prop) is not None) and
 						(kwargs[attr].get(subprop) is not None) and
 						(kwargs.get(subattr) is not None) and
 						(kwargs.get(subattr,{}).get('value') in ['log'])
 						):
-						if np.array(kwargs[attr][subprop]).ndim == 1:
-							kwargs[attr][subprop] = np.array([[k if k is not None else 0,k if k is not None else 0] for k in kwargs[attr][subprop]]).T
-						else:
-							kwargs[attr][subprop] = np.array([k if k is not None else 0 for k in kwargs[attr][subprop]])
 						
 						kwargs[attr][prop] = np.array(kwargs[attr][prop])
 						
@@ -669,6 +671,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
 							kwargs[attr][subprop][1]
 							])
+					
 
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
 

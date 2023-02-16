@@ -48,10 +48,10 @@ export -f RUN
 export JOB_NAME=${SLURM_JOB_NAME}
 export JOB_ID=${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
 export JOB_TASK=${SLURM_ARRAY_TASK_ID}
-export JOB_STEP=${SLURM_ARRAY_TASK_STEP}
 export JOB_MIN=${SLURM_ARRAY_TASK_MIN}
 export JOB_MAX=${SLURM_ARRAY_TASK_MAX}
-export JOB_MAX=${SLURM_ARRAY_TASK_MAX}
+export JOB_STEP=${SLURM_ARRAY_TASK_STEP}
+export JOB_COUNT=${SLURM_ARRAY_TASK_COUNT}
 export JOB_SLICE=${SLURM_ARRAY_TASK_SLICE}
 export JOB_SIZE=${SLURM_ARRAY_TASK_SIZE}
 
@@ -66,7 +66,7 @@ shift 5;
 export JOB_ARGS=${@:-${JOB_ARGS}}
 
 # Directory
-if [[ -z ${JOB_CWD} ]] || [[ ! -z ${JOB_TASK} ]]
+if ([ ! -z ${JOB_SLICE} ] && [ ! -z ${JOB_SIZE} ]) && ([ -z ${JOB_CWD} ] || [ ! -z ${JOB_TASK} ])
 then
 	START=$(( ${JOB_TASK}*${JOB_SLICE} ))
 	END=$(( (${JOB_TASK}+1)*${JOB_SLICE} ))
@@ -97,7 +97,7 @@ JOBS=${JOB_PROCESSES:-1}
 # Executable
 EXE=()
 EXE+=(parallel)
-EXE+=(--jobs ${JOBS} --env _ --linebuffer)
+EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${PWD} --compress)
 # EXE+=(--resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
 EXE+=(RUN {} ${CMD[@]} :::)
 
