@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":932781,
-	"size":4,
+	"size":20,
 	"reset":932781,
 	"index":null
 	},
@@ -44,8 +44,8 @@
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["gobi/tau.test"],
-		"jobs.postprocess.cwd":["gobi/tau.test"],
+		"jobs.job.cwd":["gobi/tau.test.short"],
+		"jobs.postprocess.cwd":["gobi/tau.test.short"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -53,7 +53,7 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[1],
+		"jobs.job.pool":[20],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
