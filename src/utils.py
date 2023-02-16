@@ -5184,18 +5184,33 @@ def interp(x,y,**kwargs):
 	'''	
 
 	def _interpolate(x,y,**kwargs):
-		kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':3,'quintic':5,None:3}
-		k = kinds.get(kwargs.get('k',kwargs.get('kind')),kwargs.get('k',kwargs.get('kind')))
+		n = len(x)
+		kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':4,'quintic':5,None:3}
+		kind = kwargs.get('k',kwargs.get('kind'))
+		
+		if n == 1:
+			k = None
+		elif n < kinds.get(kind,n+1):
+			k = [kinds[k] for k in kinds if kinds[k]==(n-1)][-1]
+		else:
+			k = kinds.get(kind)
+
 		s = kwargs.get('s',kwargs.get('smooth'))
 		der = kwargs.get('der')
-		if der:
+
+		if n == 1:
+			_func = lambda x,y=y: onp.linspace(abs(y.min()),abs(y.max()),x.size)
+			def func(x,y=y,_func=_func):
+				print('func',x,_func(x))
+				return _func(x)
+		elif der:
 			spline = osp.interpolate.splrep(x,y,k=k,s=s)
 			_func = lambda x: osp.interpolate.splev(x,spline,der=der)
-			def func(x,_func=_func):
+			def func(x,y=y,_func=_func):
 				return _func(x)
 		else:
 			_func = osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
-			def func(x,_func=_func):
+			def func(x,y=y,_func=_func):
 				x = onp.asarray(x)
 				return _func(x)
 			# func = osp.interpolate.interp1d(x,y,kind)
