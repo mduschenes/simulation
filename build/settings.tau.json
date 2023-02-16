@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":932781,
-	"size":16,
+	"size":4,
 	"reset":932781,
 	"index":null
 	},
@@ -25,6 +25,10 @@
 		"model.tau":[1e2,2.5e2,5e2,7.5e2,10e2,12.5e2,15e2,17.5e2],
 		"model.T": [1e4,5e4,1e5,5e5,1e6],
 		"noise.parameters":[1e7],
+
+		"model.tau":[0.5e0,1e0,2.5e0,5e0,7.5e0,10e0],
+		"model.T": [1e1,1e2,1e3],
+		"noise.parameters":[1e5],		
 
 		"noise.initialization":["time"],
 		"parameters.zz.scale":[1],
@@ -40,8 +44,8 @@
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["gobi/tau.J"],
-		"jobs.postprocess.cwd":["gobi/tau.J"],
+		"jobs.job.cwd":["gobi/tau.test"],
+		"jobs.postprocess.cwd":["gobi/tau.test"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -49,20 +53,20 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[8],
+		"jobs.job.pool":[1],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[4],		
+		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["72:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
-		"jobs.job.patterns.mem":["256GB"],
+		"jobs.job.patterns.mem":["64GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[8],
+		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 
 		},
@@ -110,7 +114,7 @@
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
-	"eps":{"value":1e-16,"grad":1e-18,"value.difference":1e-18,"grad.difference":1e-18,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
+	"eps":{"value":1e-16,"grad":1e-14,"value.difference":1e-14,"grad.difference":1e-14,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":100,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,

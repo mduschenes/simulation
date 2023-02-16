@@ -10,9 +10,10 @@
 	"dump":0
 	},
 "seed":{
-	"seed":812731,
+	"seed":73284,
 	"size":16,
-	"reset":812731,
+	"size":1,
+	"reset":73284,
 	"index":null
 	},
 "permutations":{
@@ -20,8 +21,10 @@
 	
 		"model.N":[4],		
 		"model.M":[10,20,50,100,200,300,400,500,600,700,800,900,1000,1250,1400,1500,1600,1750,1800,2000],		
+		"model.M":[10,100,500,1000,2000],		
 		"model.tau":[20e0],		
 		"noise.scale":[1e-20,1e-16,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
+		"noise.scale":[1e-20,1e-12,1e-8,1e-4,1e-2],
 		"state.scale":[1],
 
 		"optimize.iterations":[500],
@@ -33,8 +36,8 @@
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
 
-		"jobs.job.cwd":["gobi/noise.J"],
-		"jobs.postprocess.cwd":["gobi/noise.J"],
+		"jobs.job.cwd":["gobi/noise.test"],
+		"jobs.postprocess.cwd":["gobi/noise.test"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -43,19 +46,23 @@
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
 		"jobs.job.pool":[16],
+		"jobs.job.pool":[1],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[2],		
+		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["48:00:00"],
+		"jobs.job.patterns.time":["6:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
 		"jobs.job.patterns.mem":["128GB"],
+		"jobs.job.patterns.mem":["64GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[4],
+		"jobs.job.patterns.cpus-per-task":[2],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 
 		},
@@ -108,7 +115,7 @@
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
-	"kwargs":{"noise":1e-3},
+	"kwargs":{"noise":{"scale":1e-3}},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
 	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
@@ -133,7 +140,7 @@
 			"variables":false,"variables.relative":false,"variables.relative.mean":[],
 			"features":false,"features.relative":false,"features.relative.mean":false,				
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
-			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
+			"objective.ideal.state":1,"objective.diff.state":1,"objective.rel.state":1,
 			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
 			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
