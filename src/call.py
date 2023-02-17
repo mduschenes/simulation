@@ -779,12 +779,21 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 		
 		elif pattern in ['array']:
 			# pattern = int(value.split('-')[:].split(':')[0].split('%')[0])
+			resume = kwargs.get('resume') if kwargs.get('resume') is not None else None
 			count = kwargs.get('count') if kwargs.get('count') is not None else 1
 			step = kwargs.get('step') if kwargs.get('step') is not None else 1
 			min = kwargs.get('min') if kwargs.get('min') is not None else 0
 			max = kwargs.get('max') if kwargs.get('max') is not None else min + count - 1
 			simultaneous = kwargs.get('simultaneous') if kwargs.get('simultaneous') is not None else int(value.split('%')[-1]) if isinstance(value,str) and value.count('%') > 0 else 100
-			value = '%d-%d:%d%%%d'%(min,max,step,simultaneous)
+			
+			if resume is None:
+				value = '%d-%d:%d%%%d'%(min,max,step,simultaneous)
+			elif isinstance(resume,(bool)) and resume:
+				value = '%d-%d:%d%%%d'%(min,max,step,simultaneous)
+			elif isinstance(resume,(bool)) and not resume:
+				value = None
+			else:
+				value = '%s:%d%%%d'%(','.join(['%d'%(i) for i in resume]),step,simultaneous)
 		
 		elif pattern in ['output','error']:
 			value = join(split(value,directory_file=True) if value is not None else '%x.%A.%a',
@@ -811,9 +820,16 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 
 	patterns.update({
 		string(pattern=pattern,default=default): 
+		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='#',default=default)
+		for pattern in list(patterns)
+		if (pattern not in nulls) and (patterns.get(pattern,None) is None)
+		})
+
+	patterns.update({
+		string(pattern=pattern,default=default): 
 		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='',default=default)
 		for pattern in list(patterns)
-		if pattern not in nulls
+		if (pattern not in nulls) and (patterns.get(pattern) is not None)
 		})
 
 	patterns.update({
@@ -823,10 +839,8 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 		if search(path,string(pattern=pattern,default=default),execute=True,verbose=verbose) >= 0
 		})
 
-
 	for pattern in nulls:
 		patterns.pop(pattern,None)
-
 
 	sed(path,patterns,default=default,env=env,execute=execute,verbose=verbose)
 
@@ -878,7 +892,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 def init(key,
 		keys=None,
 		jobs=None,args=None,paths=None,patterns=None,dependencies=None,
-		pwd=None,cwd=None,pool=None,pause=None,file=None,
+		pwd=None,cwd=None,pool=None,resume=None,pause=None,file=None,
 		env=None,process=None,processes=None,device=None,execute=None,verbose=None):
 		'''
 		Process job commands as tasks to command line
@@ -894,6 +908,7 @@ def init(key,
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+			resume (bool,iterable[int],dict[str,bool,iterable[int]]): Resume jobs
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file		
 			process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
@@ -935,6 +950,8 @@ def init(key,
 			step = None
 			count = None
 
+		resume = resume.get(key,False) if isinstance(resume,dict) else resume
+
 		if size > 1:
 			path = indices.index(key)
 		else:
@@ -958,6 +975,7 @@ def init(key,
 			'cmd':None,
 			'env':None,
 			'pool':pool,
+			'resume':resume,
 			'size':size,
 			'index': index,
 			'mod':mod,
@@ -974,7 +992,8 @@ def init(key,
 
 		cmd,env = command(args[key],task,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
-		configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
+		if not resume:
+			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
 		task['cmd'] = cmd
 		task['env'] = env
@@ -1008,7 +1027,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
-		resume (bool): Resume jobs
+		resume (bool,iterable[int],dict[str,bool,iterable[int]]): Resume jobs
 		pause (int,str): Time to sleep after call		
 		file (str): Write command to file		
 		env (dict[str,str]): Environmental variables for args		
@@ -1064,19 +1083,11 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	results = []
 	keys = {key:{} for key in keys}
 
-	if resume:
-		directories = set((cwd[key] for key in cwd))
-		for directory in directories:
-			if exists(join(directory,file)):
-				result = run(file,path=directory,process=None,processes=None,device=None,execute=execute,verbose=verbose)
-				results.append(result)
-				return results
-
 	iterable = [key for key in keys]
 	kwds = dict(
 		keys=keys,
 		jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
-		pwd=pwd,cwd=cwd,pool=pool,pause=pause,file=file,
+		pwd=pwd,cwd=cwd,pool=pool,resume=resume,pause=pause,file=file,
 		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose
 	)
 	callback_kwds = {'values':keys}
@@ -1143,6 +1154,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		path = task['path']
 		cwd = task['cwd']
 		pwd = task['pwd']
+		resume = task['resume']
 		patterns = task['patterns']
 		kwargs = task
 
@@ -1153,7 +1165,11 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		update(destination,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
-		result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+		if resume is not None:
+			result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+			# result = run(file,path=path,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+		else:
+			result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,execute=execute,verbose=verbose)
 
 		results.append(result)
 
@@ -1172,7 +1188,7 @@ def launch(jobs={},wrapper=None):
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
-			resume (bool): Resume jobs		
+			resume (bool,iterable[int],dict[str,bool,iterable[int]]): Resume jobs
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file			
 			env (dict[str,str]): Environmental variables for args		
