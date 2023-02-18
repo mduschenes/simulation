@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -i
 
 ##SBATCH --account=def-carrasqu
 #SBATCH --account=def-raymond
@@ -8,7 +8,7 @@
 
 ##SBATCH --partition=cpu
 #SBATCH --time=01:00:00
-#SBATCH --mem=64G
+#SBATCH --mem=32G
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 

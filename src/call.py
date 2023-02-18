@@ -25,7 +25,7 @@ file = None #'log.log'
 logger = Logger(name,conf,file=file)
 
 from src.utils import intersection,scalars
-from src.io import cd,mkdir,join,split,load,dump,exists,environ
+from src.io import cd,mkdir,join,split,load,dump,exists,environ,glob
 from src.iterables import setter
 from src.parallel import Parallelize,Pooler
 
@@ -592,6 +592,56 @@ def sleep(pause=None,env=None,process=None,processes=None,device=None,execute=Fa
 	return
 
 
+def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Check if path is not empty
+	Args:
+		path (str,iterable[str]): Path of file
+		pattern (str): Pattern of path to return if not empty
+		env (dict[str,str]): Environmental variables for args
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	Returns:
+		stdout [str,iterable[str]]: Path that is not empty, modified with pattern
+	'''
+	
+	if path is None or any(i is None for i in path):
+		stdout = None
+		return stdout
+
+	isstring = isinstance(path,str)
+
+	if isstring:
+		path = [path]
+
+	path=' '.join(path)
+
+	if pattern is None:
+		pattern = r'\(\):\1'
+
+	args = [
+		r'bash',r'-c',r"for file in %s; do if [[ -s ${file} ]]; then echo $(echo ${file} | sed 's:%s:');fi;done;"%(path,pattern),
+	]
+
+	exe = []
+	flags = []
+	cmd = []
+	options = []
+	env = [] if env is None else env
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	stdout = [str(i) for i in stdout.split('\n')]
+
+	if isstring:
+		stdout = stdout[-1]
+
+	return stdout
+
+
 def sed(path,patterns,default=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	GNU sed replace patterns in path
@@ -787,19 +837,54 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 			simultaneous = kwargs.get('simultaneous') if kwargs.get('simultaneous') is not None else int(value.split('%')[-1]) if isinstance(value,str) and value.count('%') > 0 else 100
 			
 			if resume is None:
-				value = '%d-%d:%d%%%d'%(min,max,step,simultaneous)
+				iterations='%d-%d'%(min,max)
+				step = ':%d'%(step)
 			elif isinstance(resume,(bool)) and resume:
-				value = '%d-%d:%d%%%d'%(min,max,step,simultaneous)
+				value = patterns.get('error')
+				if value is not None:
+					value = join(
+						kwargs['path'],
+						split(value,directory=True),
+						'*.*.*.stderr' if ((kwargs['count'] is not None)) else '*.*.',
+						ext=split(value,ext=True)
+						)
+				else:
+					value = join(
+						kwargs['path'],'*.*.*.stderr' if ((kwargs['count'] is not None)) else '*.*.',
+						ext='stderr')
+				value = glob(value)
+				iterations = nonempty(
+					path=value,
+					pattern=r'[^.]*\.[^.]*\.\([^.]*\)\..*$:\1',
+					execute=True
+					)
+				if iterations is None:
+					iterations='%d-%d'%(min,max)
+					step = ':%d'%(step)
+				elif isinstance(iterations,str):
+					iterations = '%s'%(iterations)		
+					step = ''				
+				else:
+					iterations = list(set(iterations))
+					if len(iterations) > 1:
+						iterations = ','.join(['%s'%(i) for i in iterations])
+					else:
+						iterations = '%s'%(iterations[-1])
+					step = ''				
 			elif isinstance(resume,(bool)) and not resume:
 				value = None
 			else:
-				value = '%s:%d%%%d'%(','.join(['%d'%(i) for i in resume]),step,simultaneous)
+				iterations = resume
+				iterations = ','.join(['%s'%(i) for i in iterations])
+				step = ''
+			value = '%s%s%%%d'%(iterations,step,simultaneous)
 		
 		elif pattern in ['output','error']:
 			value = join(split(value,directory_file=True) if value is not None else '%x.%A.%a',
 					ext=(split(value,ext=True) if value is not None else 
 						{'output':'stdout','error':'stderr'}.get(pattern,'log')),
 					root=None)
+			value = value.replace('.%a','') if ((kwargs['count'] is None)) else value
 		else:
 			value = value
 
@@ -950,7 +1035,7 @@ def init(key,
 			step = None
 			count = None
 
-		resume = resume.get(key,False) if isinstance(resume,dict) else resume
+		resume = resume.get(key,None) if isinstance(resume,dict) else resume
 
 		if size > 1:
 			path = indices.index(key)
@@ -992,8 +1077,7 @@ def init(key,
 
 		cmd,env = command(args[key],task,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
-		if not resume:
-			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
+		configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
 		task['cmd'] = cmd
 		task['env'] = env
