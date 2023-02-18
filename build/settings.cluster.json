@@ -286,7 +286,7 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,
-		"resume":true,
+		"resume":false,
 		"pause":1,
 		"file":"job.sh",	
 		"process":null,
