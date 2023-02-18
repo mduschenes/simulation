@@ -1266,7 +1266,18 @@ class Callback(object):
 
 		status = (status) and (not stop)
 
-		updates = {'iteration.max':True,'iteration.min':True}
+		updates = {
+			'iteration.max':True,
+			'iteration.min':True,
+			'parameters':False,'grad':False,'search':False,
+			'variables':False,'features':False,
+			'variables.mean':False,'variables.relative.mean':False,'features.mean':False,'features.relative.mean':False,
+			'objective.ideal.noise':False,'objective.diff.noise':False,'objective.rel.noise':False,
+			'objective.ideal.state':False,'objective.diff.state':False,'objective.rel.state':False,
+			'objective.ideal.operator':False,'objective.diff.operator':False,'objective.rel.operator':False,
+			'hessian':False,'fisher':False,'hessian.eigenvalues':False,'fisher.eigenvalues':False,
+			'hessian.rank':False,'fisher.rank':False,
+			}
 
 		attrs = relsort(track,attributes)
 		size = min(len(track[attr]) for attr in track)
@@ -1440,10 +1451,12 @@ class Callback(object):
 				track[attr][-1] = value
 
 
-				if updates.get(attr):
+				if updates.get(attr) is not None:
 					update = updates[attr]
-					if not callable(update):
+					if not callable(update) and update:
 						update = lambda i,attr,track: track[attr][-1]
+					else:
+						update = lambda i,attr,track: default if i<(len(track[attr])-1) else track[attr][i]
 					for i in range(size+1):
 						track[attr][i] = update(i,attr,track)
 

@@ -1239,11 +1239,17 @@ class Optimization(System):
 		default = nan
 		size = min(len(self.track[attr]) for attr in self.track)
 
+		print(list(self.track))
+
 		if data is not None:
 			for attr in data:
 				if attr not in self.track:
+					print('New tracking',attr)
 					self.track[attr] = [default for i in range(size)]
 				self.track[attr].extend(data[attr])
+
+		print(list(self.track))
+		print('----')
 
 		path = self.paths['attributes']
 		data = load(path)
@@ -1257,7 +1263,6 @@ class Optimization(System):
 					self.attributes[attr] = [default for i in range(size)]
 				self.attributes[attr].extend(data[attr])
 
-				
 
 		self.parameters = self.get_params(state)
 		self.reset(clear=False)

@@ -607,11 +607,16 @@ def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,
 	Returns:
 		stdout [str,iterable[str]]: Path that is not empty, modified with pattern
 	'''
+	
+	if path is None or any(i is None for i in path):
+		stdout = None
+		return stdout
 
 	isstring = isinstance(path,str)
 
 	if isstring:
 		path = [path]
+
 	path=' '.join(path)
 
 	if pattern is None:
@@ -853,15 +858,19 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 					pattern=r'[^.]*\.[^.]*\.\([^.]*\)\..*$:\1',
 					execute=True
 					)
-				if isinstance(iterations,str):
-					iterations = '%s'%(iterations)					
+				if iterations is None:
+					iterations='%d-%d'%(min,max)
+					step = ':%d'%(step)
+				elif isinstance(iterations,str):
+					iterations = '%s'%(iterations)		
+					step = ''				
 				else:
 					iterations = list(set(iterations))
 					if len(iterations) > 1:
 						iterations = ','.join(['%s'%(i) for i in iterations])
 					else:
 						iterations = '%s'%(iterations[-1])
-				step = ''				
+					step = ''				
 			elif isinstance(resume,(bool)) and not resume:
 				value = None
 			else:

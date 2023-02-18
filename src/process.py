@@ -766,9 +766,10 @@ def plotter(settings,hyperparameters):
 								data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (
 									(label in data[OTHER][OTHER][OTHER] and 
 									(data[OTHER][OTHER][OTHER].get(label) is not None) and
-									data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else 
-								data[OTHER][OTHER][OTHER][label]
-								for data in flatten(settings[instance][subinstance]['ax'][plots])))),
+									data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else None
+								for data in flatten(settings[instance][subinstance]['ax'][plots]) if (
+									(label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))
+								))),
 							'sort': list(realsorted(set(data[OTHER][OTHER][OTHER][label]
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[OTHER][OTHER][OTHER]))),
 							'label': any((
@@ -797,6 +798,8 @@ def plotter(settings,hyperparameters):
 						if plots in settings[instance][subinstance]['ax']
 						}
 			except KeyError as e:
+				# import traceback
+				# print(traceback.format_exc(),instance,subinstance)
 				settings[instance].pop(subinstance);
 				continue
 

@@ -22,7 +22,21 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			}							
+			},
+			{
+			"x":"iteration",
+			"y":"objective.ideal.state",
+			"label":{"N":null,"architecture":null,"M":null,"T":null,"noise.scale":null},
+			"alpha":0.8,
+			"marker":"o",
+			"markersize":12,
+			"linestyle":"--",
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
+			"color":"viridis",
+			"ecolor":"viridis"
+			}										
 			],	
 		"fill_between":[
 			{
