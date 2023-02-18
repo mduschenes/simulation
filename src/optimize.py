@@ -15,7 +15,7 @@ for PATH in PATHS:
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,inv,metrics
 from src.utils import is_unitary,is_hermitian,product,sqrt,asarray
-from src.utils import scalars,delim
+from src.utils import scalars,delim,nan
 
 from src.iterables import setter
 
@@ -1236,19 +1236,27 @@ class Optimization(System):
 		path = self.paths['track']
 		data = load(path)
 
+		default = nan
+		size = min(len(self.track[attr]) for attr in self.track)
+
 		if data is not None:
 			for attr in data:
-				if attr in self.track:
-					self.track[attr].extend(data[attr])
-
+				if attr not in self.track:
+					self.track[attr] = [default for i in range(size)]
+				self.track[attr].extend(data[attr])
 
 		path = self.paths['attributes']
 		data = load(path)
 
+		default = nan
+		size = min(len(self.attributes[attr]) for attr in self.attributes)
+
 		if data is not None:
 			for attr in data:
-				if attr in self.attributes:
-					self.attributes[attr].extend(data[attr])
+				if attr not in self.attributes:
+					self.attributes[attr] = [default for i in range(size)]
+				self.attributes[attr].extend(data[attr])
+
 				
 
 		self.parameters = self.get_params(state)
