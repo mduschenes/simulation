@@ -1250,12 +1250,7 @@ class Callback(object):
 				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))
 			)
 			)
-		print(norm(attributes['grad'][-1])/attributes['grad'][-1].size,
-				  (hyperparameters['eps']['grad']*hyperparameters['value']['grad']))
-		if len(attributes['grad'])>1:
 
-			print(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size,
-				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))
 		other = ((len(attributes['iteration']) == 1) or 
 			(hyperparameters['modulo']['track'] is None) or 
 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
