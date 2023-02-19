@@ -1236,26 +1236,35 @@ class Optimization(System):
 		path = self.paths['track']
 		data = load(path)
 
-		default = nan
-		size = min(len(self.track[attr]) for attr in self.track)
-
 		if data is not None:
+			length = min(len(data[attr]) for attr in data)
 			for attr in data:
 				if attr not in self.track:
-					self.track[attr] = [default for i in range(size)]
-				self.track[attr].extend(data[attr])
+					continue
+				self.track[attr] = [*data[attr],*self.track[attr]]
+
+		size = max(len(self.track[attr]) for attr in self.track)
+		default = nan
+
+		for attr in self.track:
+			data = [default for i in range(size-len(self.track[attr]))]
+			self.track[attr] = [*self.track[attr],*data]
 
 		path = self.paths['attributes']
 		data = load(path)
 
-		default = nan
-		size = min(len(self.attributes[attr]) for attr in self.attributes)
-
 		if data is not None:
 			for attr in data:
 				if attr not in self.attributes:
-					self.attributes[attr] = [default for i in range(size)]
-				self.attributes[attr].extend(data[attr])
+					continue
+				self.attributes[attr] = [*data[attr],*self.attributes[attr]]
+
+		size = max(len(self.attributes[attr]) for attr in self.attributes)
+		default = nan
+
+		for attr in self.attributes:
+			data = [default for i in range(size-len(self.attributes[attr]))]
+			self.attributes[attr] = [*self.attributes[attr],*data]
 
 
 		self.parameters = self.get_params(state)

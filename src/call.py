@@ -776,7 +776,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 	'''
 
 	def wrapper(kwargs,string='.*'):
-		_wrapper = lambda pattern,string=string: str(pattern) if pattern is not None else string
+		_wrapper = lambda pattern,string=string: str(pattern) if pattern is not None else ''
 		_defaults = {
 			'pattern':'.*',
 			'value':'.*',
@@ -822,10 +822,18 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 			value = join(value)
 		
 		elif pattern in ['dependency']:
-			value = '%s:%s'%(
-				':'.join(value.split(':')[:-1]) if isinstance(value,str) and value.count(':') > 0 else '',
-				','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]) if kwargs.get('dependencies') is not None else ''
-				)
+			value = kwargs.get('dependencies')
+			if value is None:
+				value is None
+			elif all(i is None for i in value):
+				value = None
+			else:
+				value = patterns[pattern]
+				value = '%s:%s'%(
+					':'.join(value.split(':')[:-1]) if isinstance(value,str) and value.count(':') > 0 else '',
+					','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]) if (
+						(kwargs.get('dependencies') is not None)) else ''
+					)
 		
 		elif pattern in ['array']:
 			# pattern = int(value.split('-')[:].split(':')[0].split('%')[0])
@@ -858,26 +866,48 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 					pattern=r'[^.]*\.[^.]*\.\([^.]*\)\..*$:\1',
 					execute=True
 					)
-				if iterations is None:
-					iterations='%d-%d'%(min,max)
-					step = ':%d'%(step)
-				elif isinstance(iterations,str):
-					iterations = '%s'%(iterations)		
-					step = ''				
+				
+				if iterations is None or isinstance(iterations,str):
+					if (iterations is not None) and (int(iterations)>=min) and (int(iterations)<=max):
+						iterations = '%s'%(iterations)		
+						step = ''				
+					else:
+						iterations = None
+						step = None
 				else:
 					iterations = list(set(iterations))
+					iterations = [i for i in iterations if (i is not None) and (int(i)>=min) and (int(i)<=max)]
 					if len(iterations) > 1:
 						iterations = ','.join(['%s'%(i) for i in iterations])
-					else:
+						step = ''										
+					elif len(iterations) == 1:
 						iterations = '%s'%(iterations[-1])
-					step = ''				
+						step = ''				
+					else:
+						iterations = None
+						step = None
 			elif isinstance(resume,(bool)) and not resume:
-				value = None
+				iterations = None
+				step = None
 			else:
 				iterations = resume
-				iterations = ','.join(['%s'%(i) for i in iterations])
-				step = ''
-			value = '%s%s%%%d'%(iterations,step,simultaneous)
+				iterations = list(set(iterations))
+				iterations = [i for i in iterations if (i is not None) and (int(i)>=min) and (int(i)<=max)]
+				if len(iterations) > 1:
+					iterations = ','.join(['%s'%(i) for i in iterations])
+					step = ''										
+				elif len(iterations) == 1:
+					iterations = '%s'%(iterations[-1])
+					step = ''				
+				else:
+					iterations = None
+					step = None
+
+			if (iterations is not None) and (step is not None):
+				value = '%s%s%%%d'%(iterations,step,simultaneous)
+			else:
+				value = None
+
 		
 		elif pattern in ['output','error']:
 			value = join(split(value,directory_file=True) if value is not None else '%x.%A.%a',
@@ -889,6 +919,13 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 			value = value
 
 		patterns[pattern] = value
+
+
+	for pattern in patterns:
+		if ((pattern in ['array']) and (patterns[pattern] is None)):
+			kwargs['submit'] = False
+		elif ((pattern in ['dependency']) and (kwargs.get('dependencies') is not None) and (patterns[pattern] is None)):
+			kwargs['submit'] = False
 
 	if process in ['serial']:
 		nulls = ['chdir','array']
@@ -903,12 +940,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 		nulls = ['chdir','array']
 		patterns.update({})
 
-	patterns.update({
-		string(pattern=pattern,default=default): 
-		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='#',default=default)
-		for pattern in list(patterns)
-		if (pattern not in nulls) and (patterns.get(pattern,None) is None)
-		})
+	nulls.extend([pattern for pattern in patterns if patterns[pattern] is None])
 
 	patterns.update({
 		string(pattern=pattern,default=default): 
@@ -1037,6 +1069,8 @@ def init(key,
 
 		resume = resume.get(key,None) if isinstance(resume,dict) else resume
 
+		submit = (resume is None) or (resume)
+
 		if size > 1:
 			path = indices.index(key)
 		else:
@@ -1061,6 +1095,7 @@ def init(key,
 			'env':None,
 			'pool':pool,
 			'resume':resume,
+			'submit':submit,
 			'size':size,
 			'index': index,
 			'mod':mod,
@@ -1238,7 +1273,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		path = task['path']
 		cwd = task['cwd']
 		pwd = task['pwd']
-		resume = task['resume']
+		submit = task['submit']
 		patterns = task['patterns']
 		kwargs = task
 
@@ -1249,8 +1284,10 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		update(destination,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
-		if resume is not None:
-			result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+		submit = task['submit']
+
+		if not submit:
+			result = None
 			# result = run(file,path=path,process=None,processes=None,device=None,execute=execute,verbose=verbose)
 		else:
 			result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,execute=execute,verbose=verbose)
