@@ -327,7 +327,7 @@ def parse(key,value,data):
 		key (str): key of condition
 		value (str,iterable): value of condition, allowed string in 
 			[None,
-			'value,' (explicit value),
+			'$value,$' (explicit value),
 			'@key,@' (data value), 
 			'#i,j,k,...#' (index value),
 			'%start,stop,step%' (slice value),

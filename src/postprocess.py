@@ -320,9 +320,11 @@ def postprocess(path,**kwargs):
 
 					# data[label[axis]] = [value if value not in ['None',None,nan] else 1e-20 for value in data[label[axis]]]
 
-				slices = range(4,len(data[label['y']])-5)
+				slices = list(range(4,len(data[label['y']])-5))
 				slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5) # noise.long
 				slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
+				slices = list(range(2,14))#range(4,len(data[label['y']])-5) # noise.new.vectorv
+				slices = list([11])#range(4,len(data[label['y']])-5) # noise.new.vectorv
 
 				X = [array(data['%s'%(label['x'])][i]) for i in slices]
 				Y = [array(data['%s'%(label['y'])][i]) for i in slices]
@@ -339,18 +341,18 @@ def postprocess(path,**kwargs):
 				try:
 					x,y,z,xerr,yerr,zerr = [],[],[],None,[],[]
 					parameterss,covariances,others = [],[],[]
-					indices,indexes,slices = [],[],[]
+					indices,indexes = [],[]
 					for i,(x_,y_,z_,yerr_,zerr_) in enumerate(zip(X,Y,Z,Yerr,Zerr)):
 
 						indices.append(i)
 
-						slices = slice(0,None,None)
+						slices_ = slice(0,None,None)
 						
-						y_ = y_[slices] if y_ is not None else None
-						z_ = z_[slices] if z_ is not None else None
+						y_ = y_[slices_] if y_ is not None else None
+						z_ = z_[slices_] if z_ is not None else None
 
-						yerr_ = yerr_[slices] if yerr_ is not None and not is_naninf(yerr_).all() else None
-						zerr_ = zerr_[slices] if zerr_ is not None and not is_naninf(zerr_).all() else None
+						yerr_ = yerr_[slices_] if yerr_ is not None and not is_naninf(yerr_).all() else None
+						zerr_ = zerr_[slices_] if zerr_ is not None and not is_naninf(zerr_).all() else None
 
 						_x = x_
 						_n = y_.size
@@ -459,13 +461,13 @@ def postprocess(path,**kwargs):
 						# 	bounds=bounds,kwargs=kwargs)
 
 
-						# _z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_[slices],None,[{'r':1}]*(len(bounds)+1)
+						# _z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_,None,[{'r':1}]*(len(bounds)+1)
 
 						index = argmin(_z)
 						indexerr = [argmin(_z+k*_zerr) for k in [-1,1]]
 						_yerrindex = sum(abs(_y[i] - _y[index]) for i in indexerr)/len(indexerr)
 
-						print(_x,[_o['r'] for _o in _other])
+						print(i,slices[i],_x,[_o['r'] for _o in _other])
 						# print(index,indexerr,_yerrindex)
 						print(_y[index])
 						# print([_y[i] for i in indexerr])
