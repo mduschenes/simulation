@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -i
 
 ##SBATCH --account=mduschenes
 #SBATCH --job-name=output
@@ -79,7 +79,7 @@ fi
 export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
 # Environment
-# source ~/.bashrc &>/dev/null 2>&1
+source ~/.bashrc &>/dev/null 2>&1
 module purge &>/dev/null 2>&1
 conda activate ${JOB_ENV} &>/dev/null 2>&1
 # source activate ${JOB_ENV} &>/dev/null 2>&1

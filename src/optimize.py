@@ -1243,7 +1243,7 @@ class Optimization(System):
 					continue
 				self.track[attr] = [*data[attr],*self.track[attr]]
 
-		size = max(len(self.track[attr]) for attr in self.track)
+		size = max((len(self.track[attr]) for attr in self.track),default=0)
 		default = nan
 
 		for attr in self.track:
@@ -1259,7 +1259,7 @@ class Optimization(System):
 					continue
 				self.attributes[attr] = [*data[attr],*self.attributes[attr]]
 
-		size = max(len(self.attributes[attr]) for attr in self.attributes)
+		size = max((len(self.attributes[attr]) for attr in self.attributes),default=0)
 		default = nan
 
 		for attr in self.attributes:

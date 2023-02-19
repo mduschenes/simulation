@@ -31,6 +31,7 @@ def setup(hyperparameters):
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters,default=default)
 
+
 	return hyperparameters
 
 def train(hyperparameters):
@@ -60,7 +61,6 @@ def train(hyperparameters):
 			noise=hyperparameters['noise'],
 			label=hyperparameters['label'],
 			system=hyperparameters['system'])
-
 
 	if hyperparameters['boolean'].get('load'):
 		model.load()

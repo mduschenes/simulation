@@ -3,42 +3,40 @@
 # Setup variables
 
 # Environment Name
-env=${1:-jax}
+env=${1:-env}
 
 # Install Type ["install","reinstall","uninstall"]
 install=${2:-"reinstall"}
 
-# Silent yes to all commands ["yes","no"]
-yes=${3}
+# Type of env (env,intel)
+type=${3:-intel}
 
+# Silent yes to all commands ["yes","no"]
+yes=${4:-no}
+
+
+# Paths
 pkgs=${HOME}/miniconda3
-envs=${HOME}/miniconda/envs
+envs=${HOME}/miniconda3/envs
+env_vars=env_vars.sh
 
 # pkgs=/pkgs/anaconda3
 # envs=${HOME}/env
 
-channels=(intel conda-forge)
-requirements=requirements.txt
-
-
-# Setup paths
 mkdir -p ${envs}
 
-if [[ -z $(grep ${pkgs}/bin <<< ${PATH}) ]] && ( [[ -f ${pkgs}/bin ]] || [[ -d ${pkgs}/bin ]] )
+if [ ${type} == "intel" ]
 then
-	export PATH=${pkgs}/bin:${PATH}
-fi
-
-if [[ -z $(grep ${pkgs}/lib <<< ${PATH}) ]] && ( [[ -f ${pkgs}/lib ]] || [[ -d ${pkgs}/lib ]] )
+	channels=(intel conda-forge)
+	requirements=requirements.txt
+elif [ ${type} == "env" ]
 then
-	export LD_LIBRARY_PATH=${pkgs}/lib:${LD_LIBRARY_PATH}
+	channels=(conda-forge)
+	requirements=requirements.txt	
+else
+	channels=(intel conda-forge)
+	requirements=requirements.txt	
 fi
-
-if [[ -z $(grep ${envs}/${env} <<< ${PYTHONPATH}) ]] && ( [[ -f ${envs}/${env} ]] || [[ -d ${envs}/${env} ]] )
-then
-	export PYTHONPATH=${envs}/${env}:$PYTHONPATH
-fi
-
 
 # Setup conda
 __conda_setup="$('${pkgs}/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
@@ -73,6 +71,36 @@ then
 	conda remove --name ${env} --all
 fi
 
+# Setup activation scripts
+source=${env_vars}
+destination=${envs}/${env}/etc/conda/activate.d
+
+mkdir -p ${destination}
+
+cp ${source} ${destination}/
+
+sed -i "s%env=.*%env=${env}%g" ${destination}/${env_vars}
+source ${destination}/${env_vars}
+
+
+# Setup environment variables
+
+if [[ -z $(grep ${pkgs}/bin <<< ${PATH}) ]] && ( [[ -f ${pkgs}/bin ]] || [[ -d ${pkgs}/bin ]] )
+then
+	export PATH=${pkgs}/bin:${PATH}
+fi
+
+if [[ -z $(grep ${pkgs}/lib <<< ${PATH}) ]] && ( [[ -f ${pkgs}/lib ]] || [[ -d ${pkgs}/lib ]] )
+then
+	export LD_LIBRARY_PATH=${pkgs}/lib:${LD_LIBRARY_PATH}
+fi
+
+if [[ -z $(grep ${envs}/${env} <<< ${PYTHONPATH}) ]] && ( [[ -f ${envs}/${env} ]] || [[ -d ${envs}/${env} ]] )
+then
+	export PYTHONPATH=${envs}/${env}:$PYTHONPATH
+fi
+
+
 # Activate environment
 # conda activate ${env}
 source activate ${envs}/${env}
@@ -104,6 +132,10 @@ do
 done
 
 rm ${requirements[@]} 
+
+# Pip packages
+# packages=(gnureadline)
+# pip install ${packages[@]}
 
 # conda update --all
 
