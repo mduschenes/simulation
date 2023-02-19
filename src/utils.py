@@ -5195,6 +5195,8 @@ def interp(x,y,**kwargs):
 		else:
 			k = kinds.get(kind)
 
+		print(n,k,kind)
+
 		s = kwargs.get('s',kwargs.get('smooth'))
 		der = kwargs.get('der')
 
