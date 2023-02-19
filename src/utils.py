@@ -5190,12 +5190,10 @@ def interp(x,y,**kwargs):
 		
 		if n == 1:
 			k = None
-		elif n < kinds.get(kind,n+1):
+		elif n <= kinds.get(kind):
 			k = [kinds[k] for k in kinds if kinds[k]==(n-1)][-1]
 		else:
 			k = kinds.get(kind)
-
-		print(n,k,kind)
 
 		s = kwargs.get('s',kwargs.get('smooth'))
 		der = kwargs.get('der')
@@ -5203,7 +5201,6 @@ def interp(x,y,**kwargs):
 		if n == 1:
 			_func = lambda x,y=y: onp.linspace(abs(y.min()),abs(y.max()),x.size)
 			def func(x,y=y,_func=_func):
-				print('func',x,_func(x))
 				return _func(x)
 		elif der:
 			spline = osp.interpolate.splrep(x,y,k=k,s=s)

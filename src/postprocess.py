@@ -324,7 +324,6 @@ def postprocess(path,**kwargs):
 				slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5) # noise.long
 				slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
 				slices = list(range(2,14))#range(4,len(data[label['y']])-5) # noise.new.vectorv
-				slices = list([11])#range(4,len(data[label['y']])-5) # noise.new.vectorv
 
 				X = [array(data['%s'%(label['x'])][i]) for i in slices]
 				Y = [array(data['%s'%(label['y'])][i]) for i in slices]
