@@ -1475,9 +1475,9 @@ class Callback(object):
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
 					norm(attributes['parameters'][-1])/
-						 max(1,attributes['parameters'][-1].size),
+						 (attributes['parameters'][-1].size),
 					norm(attributes['grad'][-1])/
-						 max(1,attributes['grad'][-1].size),
+						 (attributes['grad'][-1].size),
 				),
 				'\t\t'.join([
 					'%s = %0.4e'%(attr,attributes[attr][-1])

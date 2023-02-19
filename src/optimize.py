@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,inv,metrics
-from src.utils import is_unitary,is_hermitian,product,sqrt,asarray
+from src.utils import is_unitary,is_hermitian,is_naninf,product,sqrt,asarray
 from src.utils import scalars,delim,nan
 
 from src.iterables import setter
@@ -98,7 +98,7 @@ class LineSearcher(System):
 		returns = dict(zip(self.returns,returns))
 
 		attr = 'alpha'
-		if (returns[attr] is None) or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
+		if (returns[attr] is None) or (is_naninf(returns[attr])) or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):		
 			if len(alpha) > 1:
 				returns[attr] = alpha[-1]*grad[-1].dot(search[-1])/grad[-2].dot(search[-2])
 			else:
@@ -324,11 +324,11 @@ class GradSearcher(System):
 		returns = dict(zip(self.returns,returns))
 
 		attr = 'beta'
-		if (returns[attr] is None) or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
+		if (returns[attr] is None) or (is_naninf(returns[attr])) or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):
 			if len(beta) > 1:
-				returns[attr] = beta[-1]
+				returns[attr] = 0
 			else:
-				returns[attr] = beta[-1]
+				returns[attr] = beta[0]
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
 			if len(beta) > 1:
 				returns[attr] = beta[0]
