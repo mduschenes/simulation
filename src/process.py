@@ -480,7 +480,7 @@ def apply(keys,data,settings,hyperparameters):
 		hyperparameters (dict): hyperparameters
 	'''
 
-	if (keys is None) or (data is None):
+	if (keys is None) or (data is None) or (settings is None) or (hyperparameters is None):
 		return
 
 	if not hyperparameters['process']:
@@ -1007,6 +1007,8 @@ def postprocessor(hyperparameters,pwd=None,cwd=None):
 		pwd (str): Root path of data
 		cwd (str): Root path of plots
 	'''
+	if (hyperparameters is None):
+		return
 
 	if not hyperparameters['postprocess']:
 		return
