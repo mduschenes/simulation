@@ -1,7 +1,7 @@
-#!/bin/bash -i
+#!/bin/bash
 
-##SBATCH --account=def-carrasqu
-#SBATCH --account=def-raymond
+#SBATCH --account=def-carrasqu
+##SBATCH --account=def-raymond
 #SBATCH --job-name=output
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
@@ -80,6 +80,7 @@ fi
 export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
 # Environment
+# source ~/.bashrc &>/dev/null 2>&1
 module purge &>/dev/null 2>&1
 module load python/3.8
 source ${HOME}/env/${JOB_ENV}/bin/activate
