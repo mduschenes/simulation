@@ -480,7 +480,7 @@ def apply(keys,data,settings,hyperparameters):
 		hyperparameters (dict): hyperparameters
 	'''
 
-	if (keys is None) or (data is None):
+	if (keys is None) or (data is None) or (settings is None) or (hyperparameters is None):
 		return
 
 	if not hyperparameters['process']:
@@ -502,6 +502,8 @@ def apply(keys,data,settings,hyperparameters):
 	for name in keys:
 
 		if any((keys[name][axis] not in data) and (keys[name][axis] is not null) for axis in AXIS if axis in keys[name]):
+			key,value = name,None
+			setter(settings,{key:value},delimiter=delim,func=True)
 			continue
 
 		axes = [axis for axis in AXIS if axis in keys[name]]
@@ -766,37 +768,48 @@ def plotter(settings,hyperparameters):
 								data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (
 									(label in data[OTHER][OTHER][OTHER] and 
 									(data[OTHER][OTHER][OTHER].get(label) is not None) and
-									data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else 
-								data[OTHER][OTHER][OTHER][label]
-								for data in flatten(settings[instance][subinstance]['ax'][plots])))),
+									data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else None
+								for data in flatten(settings[instance][subinstance]['ax'][plots]) if (
+									((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
+								))),
 							'sort': list(realsorted(set(data[OTHER][OTHER][OTHER][label]
-								for data in flatten(settings[instance][subinstance]['ax'][plots]) if label in data[OTHER][OTHER][OTHER]))),
+								for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data) and (label in data[OTHER][OTHER][OTHER]))
+								))),
 							'label': any((
 								(label in data[OTHER][OTHER][OTHER]) and 
 								(label in data[OTHER]) and (data[OTHER][OTHER][OTHER][label] is None))
-								for data in flatten(settings[instance][subinstance]['ax'][plots])),
+								for data in flatten(settings[instance][subinstance]['ax'][plots]) 
+								if (data)
+								),
 							'other': any((
 								(label not in data[OTHER]) and 
 								(label in data[OTHER][OTHER][OTHER]) and 
 								((data[OTHER][OTHER][OTHER].get(label) is not None) and
 								(data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])))
-								for data in flatten(settings[instance][subinstance]['ax'][plots])),
+								for data in flatten(settings[instance][subinstance]['ax'][plots])
+								if (data)
+								),
 							'legend': any((
 								(label not in data[OTHER]) and 
 								(label in data[OTHER][OTHER][OTHER]) and
 								((data[OTHER][OTHER][OTHER].get(label) is not None) and
 								(data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER])))
-								for data in flatten(settings[instance][subinstance]['ax'][plots])),
+								for data in flatten(settings[instance][subinstance]['ax'][plots])
+								if (data)
+								),
 							}
 						for label in list(realsorted(set(label
 						for data in flatten(settings[instance][subinstance]['ax'][plots])
+						if (data)
 						for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
-						if ((label not in [*ALL,OTHER])))))
+						if ((data) and (label not in [*ALL,OTHER])))))
 						}
 						for plots in PLOTS 
 						if plots in settings[instance][subinstance]['ax']
 						}
 			except KeyError as e:
+				# import traceback
+				# print(traceback.format_exc(),instance,subinstance)
 				settings[instance].pop(subinstance);
 				continue
 
@@ -868,6 +881,9 @@ def plotter(settings,hyperparameters):
 
 				for data in flatten(settings[instance][subinstance]['ax'][plots]):
 
+					if not data:
+						continue
+
 					for attr in data:
 						if (attr in ALL) and (data[attr] is not None):
 							value = np.array([valify(value,valify=data[OTHER][OTHER].get('valify')) for value in data[attr]])
@@ -886,6 +902,9 @@ def plotter(settings,hyperparameters):
 					continue
 
 				for data in flatten(settings[instance][subinstance]['ax'][plots]):
+
+					if not data:
+						continue
 
 					attr = OTHER
 					if data[attr][attr].get('include') is not None:
@@ -906,6 +925,8 @@ def plotter(settings,hyperparameters):
 
 						for data in flatten(settings[instance][subinstance]['ax'][plots]):
 
+							if not data:
+								continue
 
 							if attr not in ['set_%slabel'%(axis)] or (not settings[instance][subinstance]['ax'].get(attr)):
 								continue
@@ -986,6 +1007,8 @@ def postprocessor(hyperparameters,pwd=None,cwd=None):
 		pwd (str): Root path of data
 		cwd (str): Root path of plots
 	'''
+	if (hyperparameters is None):
+		return
 
 	if not hyperparameters['postprocess']:
 		return
