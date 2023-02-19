@@ -828,6 +828,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 			elif all(i is None for i in value):
 				value = None
 			else:
+				value = patterns[pattern]
 				value = '%s:%s'%(
 					':'.join(value.split(':')[:-1]) if isinstance(value,str) and value.count(':') > 0 else '',
 					','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]) if (
