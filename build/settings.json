@@ -20,14 +20,6 @@
 	
 		"model.N":[4],		
 		
-		"model.M":[5e3],	
-		"model.tau":[2e1],				
-		"model.T": [null],
-		"noise.parameters":[null],
-		"noise.initialization":["random"],
-		"noise.scale":[1e-11],
-		"state.scale":[1],
-		
 		"model.M":[null],		
 		"model.tau":[2e1],	
 		"model.T": [1e5],
@@ -36,6 +28,15 @@
 		"noise.scale":[1],
 		"state.scale":[1],
 
+
+		"model.M":[400],	
+		"model.tau":[2e1],				
+		"model.T": [null],
+		"noise.parameters":[null],
+		"noise.initialization":["random"],
+		"noise.scale":[1e-1],
+		"state.scale":[1],
+		
 		"optimize.iterations":[100],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["abs2"],
@@ -256,7 +257,7 @@
 	"shape":[-1,-1],
 	"size":null,
 	"scale":null,
-	"initialization":"time",
+	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,
 	"bounds":[-1,1]
