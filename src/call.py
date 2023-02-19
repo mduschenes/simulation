@@ -863,7 +863,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 				value = glob(value)
 				iterations = nonempty(
 					path=value,
-					pattern=r'[^.]*\.[^.]*\.\([^.]*\)\..*$:\1',
+					pattern=r'.*\.[^.]*\.\([^.]*\)\.[^.]*$:\1',
 					execute=True
 					)
 				

@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":982727,
-	"size":1,
+	"size":3,
 	"reset":982727,
 	"index":null
 	},
@@ -296,7 +296,7 @@
 		"verbose":"info"
 		},
 	"postprocess":{
-		"jobs":"postprocess.slurm",
+		"jobs":"postprocess.cluster.slurm",
 		"args":{
 			"JOB_CWD":".",
 			"JOB_ENV":"jax",
