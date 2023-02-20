@@ -863,6 +863,19 @@ def plotter(settings,hyperparameters):
 								for data in flatten(settings[instance][subinstance]['ax'][plots])
 								if (data)
 								),
+							'attr': {
+								**{attr: {string:  data[OTHER][OTHER][attr][string]
+									for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data))
+									for string in data[OTHER][OTHER][attr]}
+									for attr in ['texify','valify'] if attr in data[OTHER][OTHER]},
+								**{attr: [
+									min(data[OTHER][OTHER][attr][0]
+										for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data)),default=0),
+									max(data[OTHER][OTHER][attr][1]
+										for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data)),default=2)
+									]
+									for attr in ['scilimits'] if attr in data[OTHER][OTHER]},									
+									},
 							}
 						for label in list(realsorted(set(label
 						for data in flatten(settings[instance][subinstance]['ax'][plots])
@@ -892,21 +905,21 @@ def plotter(settings,hyperparameters):
 			
 			value = [
 				[
-					*['%s'%(texify(label)) 
+					*['%s'%(texify(label,texify=values[plots][label]['attr']['texify'])) 
 						for label in realsorted(set((
 						label 
 						for plots in values 					
 						for label in values[plots] 
 						if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
 							not (values[plots][label]['other'])))))],
-					*['%s'%(texify(label))
+					*['%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
 						for label in realsorted(set((
 						label 
 						for plots in values 
 						for label in values[plots]
 						if (not ((values[plots][label]['label'])) and 
 							(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))],
-					*['%s'%(texify(label))
+					*['%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
 						for label in realsorted(set((
 						label 
 						for plots in values 
@@ -917,7 +930,8 @@ def plotter(settings,hyperparameters):
 				[
 					*['%s : %s'%(
 						texify(label),
-						',~'.join([texify(scinotation(value,decimals=0,scilimits=[0,2],one=False)) for value in values[plots][label]['value']]))
+						',~'.join([texify(scinotation(value,decimals=0,scilimits=values[plots][label]['attr']['scilimits'],one=False),texify=values[plots][label]['attr']['texify']) 
+								for value in values[plots][label]['value']]))
 						for plots in values 
 						for label in realsorted(set((
 						label 
@@ -926,7 +940,8 @@ def plotter(settings,hyperparameters):
 							(values[plots][label]['other']) and (len(values[plots][label]['value'])==1)))))],
 					*['%s : %s'%(
 						texify(label),
-						',~'.join([texify(scinotation(value,decimals=0,scilimits=[0,2],one=False)) for value in values[plots][label]['value']]))
+						',~'.join([texify(scinotation(value,decimals=0,scilimits=values[plots][label]['attr']['scilimits'],one=False),texify=values[plots][label]['attr']['texify']) 
+								for value in values[plots][label]['value']]))
 						for plots in values 
 						for label in realsorted(set((
 						label 
