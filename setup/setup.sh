@@ -124,6 +124,8 @@ if [ ! -z ${yes} ] && [ ${yes} == "yes" ]
 then
 	options+=("--yes")
 fi
+# options+=(--strict-channel-priority)
+options+=()
 
 # Install packages
 for file in ${requirements[@]}
