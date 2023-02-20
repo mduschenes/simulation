@@ -926,6 +926,8 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 			kwargs['submit'] = False
 		elif ((pattern in ['dependency']) and (kwargs.get('dependencies') is not None) and (patterns[pattern] is None)):
 			kwargs['submit'] = False
+		else:
+			kwargs['submit'] = True
 
 	if process in ['serial']:
 		nulls = ['chdir','array']
@@ -1067,10 +1069,6 @@ def init(key,
 			step = None
 			count = None
 
-		resume = resume.get(key,None) if isinstance(resume,dict) else resume
-
-		submit = (resume is None) or (resume)
-
 		if size > 1:
 			path = indices.index(key)
 		else:
@@ -1094,8 +1092,8 @@ def init(key,
 			'cmd':None,
 			'env':None,
 			'pool':pool,
-			'resume':resume,
-			'submit':submit,
+			'resume':resume[key],
+			'submit':True,
 			'size':size,
 			'index': index,
 			'mod':mod,
@@ -1112,7 +1110,8 @@ def init(key,
 
 		cmd,env = command(args[key],task,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
-		configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
+		if resume[key] is None:
+			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
 		task['cmd'] = cmd
 		task['env'] = env
@@ -1193,11 +1192,17 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	if isinstance(cwd,str):
 		cwd = {key:cwd for key in keys}
 
-	keys = intersection(keys,cwd,sort=None)
+	keys = intersection(keys,cwd)
+
+	if not isinstance(resume,dict):
+		resume = {key: resume for key in keys}
+
+	keys = intersection(keys,resume,sort=None)
 
 	execution = True if execute == -1 else execute
 	execute = False if execute == -1 else execute
-	
+
+
 	tasks = []
 	results = []
 	keys = {key:{} for key in keys}
