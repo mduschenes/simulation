@@ -10,9 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":1837213,
-	"size":2,
-	"reset":1837213,
+	"seed":23424,
+	"size":3,
+	"reset":23424,
 	"index":null
 	},
 "permutations":{
@@ -23,14 +23,14 @@
 		"model.M":[null],		
 
 		"model.tau":[
-			1e-9,1e-8,1e-7,
-			7.5e-5,1e-4,5e-3,
-			7.5e-3,1e-2,5e-1
+			1e-7,1e-6,1e-5,1e-4,
+			5e-5,1e-4,5e-4,1e-3,
+			1e-4,1e-3,1e-2,1e-1
 		],
 		"model.T": [
-			1e-3,1e-3,1e-3,
-			5e-1,5e-1,5e-1,
-			2e0,2e0,2e0
+			1e-3,1e-3,1e-3,1e-3,
+			1e-1,1e-1,1e-1,1e-1,
+			1e0,1e0,1e0,1e0
 		],
 		"noise.parameters":[1],
 
@@ -47,14 +47,14 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"parameters.xy.method":["unconstrained"],
-		"system.architecture":["unconstrained"],
+		"parameters.xy.method":["constrained"],
+		"system.architecture":["constrained"],
 
 		"jobs.job.cwd":["gobi/tau.J"],
 		"jobs.postprocess.cwd":["gobi/tau.J"],
 
-		"jobs.job.cwd":["gobi/test"],
-		"jobs.postprocess.cwd":["gobi/test"],
+		"jobs.job.cwd":["gobi/tau"],
+		"jobs.postprocess.cwd":["gobi/tau"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -62,20 +62,20 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[2],
+		"jobs.job.pool":[1],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[2],		
+		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["72:00:00"],
+		"jobs.job.patterns.time":["24:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
-		"jobs.job.patterns.mem":["64GB"],
+		"jobs.job.patterns.mem":["32GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[2],
+		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 
 		},
@@ -123,7 +123,7 @@
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
-	"eps":{"value":1e-16,"grad":1e-18,"value.difference":1e-18,"grad.difference":1e-18,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
+	"eps":{"value":1e-16,"grad":1e-16,"value.difference":1e-18,"grad.difference":1e-16,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":100,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
@@ -184,11 +184,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
