@@ -53,8 +53,8 @@
 		"jobs.job.cwd":["gobi/tau.J"],
 		"jobs.postprocess.cwd":["gobi/tau.J"],
 
-		"jobs.job.cwd":["gobi/tau"],
-		"jobs.postprocess.cwd":["gobi/tau"],
+		"jobs.job.cwd":["gobi/tau.extra"],
+		"jobs.postprocess.cwd":["gobi/tau.extra"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -75,6 +75,8 @@
 		"jobs.postprocess.patterns.time":["1:00:00"],
 		"jobs.job.patterns.mem":["32GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
+		"jobs.job.patterns.account":["def-raymond"],
+		"jobs.postprocess.patterns.account":["def-raymond"],		
 		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 
