@@ -5,6 +5,7 @@ import os,sys,itertools,warnings
 from copy import deepcopy
 import numpy as np
 import scipy as sp
+import scipy.stats
 import scipy.special
 import pandas as pd
 from natsort import natsorted,realsorted
@@ -269,6 +270,10 @@ def find(dictionary):
 				'attrs':{},
 				'slice':None,
 				'include':None,
+				'analysis':{
+					# 'zscore':[{'attr':['objective'],'default':None,'kwargs':{'sigma':None}}],
+					# 'quantile':[{'attr':['objective'],'default':None,'kwargs':{'sigma':None}}]
+					},
 				'axis':{'row':[],'col':[],'plot':['plot','group','func'],'axis':[-1]},
 				'settings':{},
 				'texify':{},
@@ -470,6 +475,63 @@ def parse(key,value,data):
 	return out
 
 
+def analyse(data,analyses=None):
+	'''
+	Analyse data, cleaning data, removing outliers etc
+	Args:
+		data (dataframe): data of attributes
+		analyses (dict[str,dict]): Processes to analyse of the form 
+			{analysis:[{'attr':[attr],'default':value,'kwargs':{kwarg:value}}]},
+			allowed analysis strings in ['zscore','quantile']
+	Returns:
+		out (dataframe): Condition on data indices
+	'''
+
+	default = True
+
+	out = default
+
+	if analyses is not None:
+		for analysis in analyses:
+			if analysis in ['zscore']:
+				def func(attr,data,default,**kwargs):
+					function = sp.stats.zscore
+					sigma = kwargs.pop('sigma',None)
+					out = data[[attr]].apply(function,**kwargs)[attr]
+					out = (out < sigma) if sigma is not None else default
+					return out
+			elif analysis in ['quantile']:
+				def func(attr,data,default,**kwargs):
+					sigma = kwargs.pop('sigma',None)
+					out = [data[attr].quantile(sigma),data[attr].quantile(1-sigma)] if sigma is not None else default
+					out = ((data[attr] > out[0]) & (data[attr] < out[1])) if sigma is not None else default
+					return out
+			else:
+				continue
+
+			if isinstance(analyses[analysis],dict):
+				args = [analyses[analysis]]
+			else:
+				args = analyses[analysis]
+
+			for arg in args:
+				attrs = arg.get('attr',[])
+				default = arg.get('default',None)
+				kwargs = arg.get('kwargs',{})
+
+				value = [func(attr,data,default,**kwargs) for attr in attrs if attr in data]			
+
+				out = conditions([out,*value],op='and')
+
+
+	if out is True:
+		out = data
+	else:
+		out = data[out]
+	
+	return out
+
+
 def apply(keys,data,settings,hyperparameters):
 	'''
 	Apply functions based on keys to data
@@ -510,6 +572,7 @@ def apply(keys,data,settings,hyperparameters):
 		other = OTHER
 		label = keys[name][other].get(other,{})
 		funcs = keys[name][other].get('func',{})
+		analyses = keys[name][other].get('analysis',{})
 
 		if not funcs:
 			funcs = {'stat':{'':'mean','err':'sem'}}
@@ -520,12 +583,14 @@ def apply(keys,data,settings,hyperparameters):
 		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in data]
 		labels = [attr for attr in label if attr in data and label[attr] is null]
 		boolean = [parse(attr,label[attr],data) for attr in label]
-		boolean = conditions(boolean,op='and')	
+		boolean = conditions(boolean,op='and')
 
 		by = [*labels,*independent]
-		
+
 		groupby = data[boolean].groupby(by=by,as_index=False)
 
+		groupby = groupby.apply(analyse,analyses=analyses).reset_index(drop=True).groupby(by=by,as_index=False)
+		
 		agg = {
 			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] for attr in data},
 			**{attr : [(delim.join(((attr,function,func))),{'array':{'':mean,'err':sem}[func],'object':'first','dtype':funcs[function][func]}[dtypes[attr]]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
@@ -545,6 +610,7 @@ def apply(keys,data,settings,hyperparameters):
 		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
 		for i,group in enumerate(groups.groups):
+
 			for j,function in enumerate(funcs):
 
 				grouping = groups.get_group(group)
@@ -797,6 +863,19 @@ def plotter(settings,hyperparameters):
 								for data in flatten(settings[instance][subinstance]['ax'][plots])
 								if (data)
 								),
+							'attr': {
+								**{attr: {string:  data[OTHER][OTHER][attr][string]
+									for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data))
+									for string in data[OTHER][OTHER][attr]}
+									for attr in ['texify','valify'] if attr in data[OTHER][OTHER]},
+								**{attr: [
+									min(data[OTHER][OTHER][attr][0]
+										for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data)),default=0),
+									max(data[OTHER][OTHER][attr][1]
+										for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data)),default=2)
+									]
+									for attr in ['scilimits'] if attr in data[OTHER][OTHER]},									
+									},
 							}
 						for label in list(realsorted(set(label
 						for data in flatten(settings[instance][subinstance]['ax'][plots])
@@ -826,22 +905,22 @@ def plotter(settings,hyperparameters):
 			
 			value = [
 				[
-					*['%s'%(texify(label)) 
+					*['%s'%(texify(label,texify=values[plots][label]['attr']['texify'])) 
 						for label in realsorted(set((
 						label 
 						for plots in values 					
 						for label in values[plots] 
 						if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
 							not (values[plots][label]['other'])))))],
-					*['%s'%(texify(label))
+					*['%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
 						for label in realsorted(set((
 						label 
 						for plots in values 
 						for label in values[plots]
 						if (not ((values[plots][label]['label'])) and 
 							(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))],
-					*['%s'%(texify(label))
-					 	for label in realsorted(set((
+					*['%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
+						for label in realsorted(set((
 						label 
 						for plots in values 
 						for label in values[plots]
@@ -851,7 +930,8 @@ def plotter(settings,hyperparameters):
 				[
 					*['%s : %s'%(
 						texify(label),
-						',~'.join([texify(scinotation(value,decimals=0,scilimits=[0,2],one=False)) for value in values[plots][label]['value']]))
+						',~'.join([texify(scinotation(value,decimals=0,scilimits=values[plots][label]['attr']['scilimits'],one=False),texify=values[plots][label]['attr']['texify']) 
+								for value in values[plots][label]['value']]))
 						for plots in values 
 						for label in realsorted(set((
 						label 
@@ -860,9 +940,10 @@ def plotter(settings,hyperparameters):
 							(values[plots][label]['other']) and (len(values[plots][label]['value'])==1)))))],
 					*['%s : %s'%(
 						texify(label),
-						',~'.join([texify(scinotation(value,decimals=0,scilimits=[0,2],one=False)) for value in values[plots][label]['value']]))
+						',~'.join([texify(scinotation(value,decimals=0,scilimits=values[plots][label]['attr']['scilimits'],one=False),texify=values[plots][label]['attr']['texify']) 
+								for value in values[plots][label]['value']]))
 						for plots in values 
-					 	for label in realsorted(set((
+						for label in realsorted(set((
 						label 
 						for label in values[plots]
 						if (not ((values[plots][label]['label'])) and 
@@ -973,7 +1054,7 @@ def plotter(settings,hyperparameters):
 								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))],
 						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],decimals=0,scilimits=data[OTHER][OTHER].get('scilimits'),one=False),texify=data[OTHER][OTHER].get('texify'))
 							)
-						 	for label in realsorted(set((
+							for label in realsorted(set((
 							label 
 							for label in values[plots]
 							if (not ((values[plots][label]['label'])) and 
