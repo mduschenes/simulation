@@ -23,14 +23,16 @@
 		"model.M":[null],		
 
 		"model.tau":[
-			1e-7,1e-6,1e-5,1e-4,
-			5e-5,1e-4,5e-4,1e-3,
-			1e-4,1e-3,1e-2,1e-1
+			1e-7,1e-6,1e-5,1e-4,5e-4,
+			25e-7,5e-5,25e-5,5e-4,25e-4,5e-3,5e-2,
+			5e-6,1e-5,5e-5,1e-4,5e-4,1e-3,1e-2,
+			5e-5,1e-4,1e-3,1e-2,1e-1
 		],
 		"model.T": [
-			1e-3,1e-3,1e-3,1e-3,
-			1e-1,1e-1,1e-1,1e-1,
-			1e0,1e0,1e0,1e0
+			1e-3,1e-3,1e-3,1e-3,1e-3,
+			5e-1,5e-1,5e-1,5e-1,5e-1,5e-1,5e-1,
+			1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,
+			1e0,1e0,1e0,1e0,1e0
 		],
 		"noise.parameters":[1],
 
@@ -50,11 +52,8 @@
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
 
-		"jobs.job.cwd":["gobi/tau.J"],
-		"jobs.postprocess.cwd":["gobi/tau.J"],
-
-		"jobs.job.cwd":["gobi/tau.extra"],
-		"jobs.postprocess.cwd":["gobi/tau.extra"],
+		"jobs.job.cwd":["gobi/tau.T"],
+		"jobs.postprocess.cwd":["gobi/tau.T"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -71,12 +70,14 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["24:00:00"],
+		"jobs.job.patterns.time":["36:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
 		"jobs.job.patterns.mem":["32GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.account":["def-raymond"],
 		"jobs.postprocess.patterns.account":["def-raymond"],		
+		"jobs.job.patterns.account":["def-carrasqu"],		
+		"jobs.postprocess.patterns.account":["def-carrasqu"],		
 		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 
@@ -152,7 +153,7 @@
 
 			"iteration.max":[],
 			"iteration.min":[],
-			"variables":false,"variables.relative":false,"variables.relative.mean":[],
+			"variables":false,"variables.relative":false,"variables.relative.mean":false,
 			"features":false,"features.relative":false,"features.relative.mean":false,				
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
