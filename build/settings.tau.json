@@ -26,20 +26,22 @@
 			1e-7,1e-6,1e-5,1e-4,5e-4,
 			25e-7,5e-5,25e-5,5e-4,25e-4,5e-3,5e-2,
 			5e-6,1e-5,5e-5,1e-4,5e-4,1e-3,1e-2,
+			25e-7,5e-5,25e-5,5e-4,25e-4,5e-3,5e-2,
 			5e-5,1e-4,1e-3,1e-2,1e-1
 		],
 		"model.T": [
 			1e-3,1e-3,1e-3,1e-3,1e-3,
-			5e-1,5e-1,5e-1,5e-1,5e-1,5e-1,5e-1,
+			1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,
 			1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,
+			5e-1,5e-1,5e-1,5e-1,5e-1,5e-1,5e-1,
 			1e0,1e0,1e0,1e0,1e0
 		],
 		"noise.parameters":[1],
 
 		"noise.initialization":["time"],
-		"parameters.xy.scale":[1e6],
-		"parameters.z.scale":[1e6],
-		"parameters.zz.scale":[1e6],
+		"parameters.xy.scale":[2e6],
+		"parameters.z.scale":[2e6],
+		"parameters.zz.scale":[2e6],
 		"noise.scale":[1],
 		"state.scale":[1],
 
@@ -49,8 +51,8 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"parameters.xy.method":["constrained"],
-		"system.architecture":["constrained"],
+		"parameters.xy.method":["unconstrained"],
+		"system.architecture":["unconstrained"],
 
 		"jobs.job.cwd":["gobi/tau"],
 		"jobs.postprocess.cwd":["gobi/tau"],
@@ -165,7 +167,8 @@
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],"n":[],"g":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
 
-			"noise.scale":[],"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
+			"noise.scale":[],"noise.parameters":[],"parameters.xy.scale":[],"parameters.z.scale":[],"parameters.zz.scale":[],
+			"optimize.c1":false,"optimize.c2":false
 		}	
 	},
 "parameters":{
@@ -187,11 +190,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
