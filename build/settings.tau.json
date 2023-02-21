@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":23424,
-	"size":3,
+	"size":12,
 	"reset":23424,
 	"index":null
 	},
@@ -52,8 +52,8 @@
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
 
-		"jobs.job.cwd":["gobi/tau.T"],
-		"jobs.postprocess.cwd":["gobi/tau.T"],
+		"jobs.job.cwd":["gobi/tau"],
+		"jobs.postprocess.cwd":["gobi/tau"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -70,14 +70,14 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["36:00:00"],
+		"jobs.job.patterns.time":["30:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
 		"jobs.job.patterns.mem":["128GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"],		
 		"jobs.job.patterns.account":["def-carrasqu"],		
-		"jobs.postprocess.patterns.account":["def-carrasqu"],		
+		"jobs.postprocess.patterns.account":["def-carrasqu"],
+		"jobs.job.patterns.account":["def-raymond"],
+		"jobs.postprocess.patterns.account":["def-raymond"],				
 		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 
@@ -309,7 +309,7 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,
-		"resume":true,
+		"resume":null,
 		"pause":1,
 		"file":"job.sh",	
 		"process":null,
