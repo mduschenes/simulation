@@ -24,7 +24,7 @@
 		"noise.scale":[1e-12],
 		"state.scale":[1],
 
-		"optimize.iterations":[3],
+		"optimize.iterations":[1],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
