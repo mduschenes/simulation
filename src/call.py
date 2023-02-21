@@ -1028,102 +1028,54 @@ def init(key,
 
 		path = join(path,root=cwd[key])
 
-		if resume[key] is None:
-			resume[key] = None
-		elif isinstance(resume[key],(bool)) and resume[key]:
-			files = patterns[key].get('error')
-			directory = path if process in ['serial'] else cwd[key]
-			pattern = ['*.*.*' if (count is not None) else '*.*',r'.*\.[^.]*\.\([^.]*\)\.[^.]*$:\1']
-			files = glob(join(
-				directory,split(files,directory=True),
-				pattern[0],ext=split(files,ext=True)))
-			files = nonempty(
-				path=files,
-				pattern=pattern[1],
-				execute=True
-				)
-			resume[key] = [int(i) for i in files if (count is None) or (int(i) < count)]
-		elif isinstance(resume[key],(bool)) and not resume[key]:
-			resume[key] = []
-		else:
-			resume[key] = [int(i) for i in resume[key] if (count is None) or (int(i) < count)]
 
-		if process in ['serial']:
-			def updates(task):
-				attr = 'path'
-				value = task['path']
-				task[attr] = value
+		def updates(task):
+			attr = 'path'
+			subattr = {'serial':'path','parallel':'cwd','array':'cwd',None:'cwd'}.get(task['process'],'cwd')
+			value = task[subattr]
+			task[attr] = value
 
-				attr = 'boolean'
-				value = (task['mod'] in [0,None]) and all([*({
-						'array': ((task['process'] not in ['array']) or (task['resume'] is None) or (task['resume'])),
-						'dependency': ((task['dependencies'] is None) or (task['patterns'].get('dependency') is None) or
-							(task['dependencies'] and all(i is not None for i in task['dependencies']))),
-					}.get(pattern,True) for pattern in task['patterns']),
-					])
-				task[attr] = value
+			attr = 'resume'
+			subattr = attr
+			value = task[subattr]
+			if value is None:
+				value = None
+			elif isinstance(value,(bool)) and value:
+				subattr = {'serial':'path','parallel':'cwd','array':'cwd',None:'cwd'}.get(task['process'],'cwd')
+				files = task['patterns'].get('error')
+				directory = task[subattr]
+				pattern = ['*.*.*' if (task['count'] is not None) else '*.*',r'.*\.[^.]*\.\([^.]*\)\.[^.]*$:\1']
+				files = glob(join(
+					directory,split(files,directory=True),
+					pattern[0],ext=split(files,ext=True)))
+				files = nonempty(
+					path=files,
+					pattern=pattern[1],
+					execute=True
+					)
+				value = files
+			elif isinstance(value,(bool)) and not value:
+				value = []
+			else:
+				value = [i for i in value]
+				
+			value = [int(i) for i in value if (task['count'] is None) or (int(i) < task['count'])] if value is not None else value
 
-				boolean = (task['resume'] is None) or (task['id'] in task['resume'])
+			task[attr] = value
 
-				return boolean
+			attr = 'boolean'
+			subattr = {'serial':'mod','parallel':'mod','array':'index',None:'mod'}.get(task['process'],'mod')				
+			value = (task[subattr] in [0,None]) and all([*({
+					'array': ((task['process'] not in ['array']) or (task['resume'] is None) or (task['resume'])),
+					'dependency': ((task['dependencies'] is None) or (task['patterns'].get('dependency') is None) or
+						(task['dependencies'] and all(i is not None for i in task['dependencies']))),
+				}.get(pattern,True) for pattern in task['patterns']),
+				])
+			task[attr] = value
 
-		elif process in ['parallel']:
-			def updates(task):
-				attr = 'path'
-				value = task['cwd']
-				task[attr] = value
+			boolean = ((task['resume'] is None) or (task['id'] in task['resume'])) and (task['boolean'] or (task['size']>1))
 
-				attr = 'boolean'
-				value = (task['mod'] in [0,None]) and all([*({
-						'array': ((task['process'] not in ['array']) or (task['resume'] is None) or (task['resume'])),
-						'dependency': ((task['dependencies'] is None) or (task['patterns'].get('dependency') is None) or
-							(task['dependencies'] and all(i is not None for i in task['dependencies']))),
-					}.get(pattern,True) for pattern in task['patterns']),
-					])
-				task[attr] = value
-
-
-				boolean = ((task['resume'] is None) or (task['id'] in task['resume'])) and (task['boolean'] or (task['size']>1))
-
-				return boolean
-
-		elif process in ['array']:
-			def updates(task):
-				attr = 'path'			
-				value = task['cwd']
-				task[attr] = value
-
-				attr = 'boolean'
-				value = (task['index'] in [0,None]) and all([*({
-						'array': ((task['process'] not in ['array']) or (task['resume'] is None) or (task['resume'])),
-						'dependency': ((task['dependencies'] is None) or (task['patterns'].get('dependency') is None) or
-							(task['dependencies'] and all(i is not None for i in task['dependencies']))),
-					}.get(pattern,True) for pattern in task['patterns']),
-					])
-				task[attr] = value
-
-				boolean = ((task['resume'] is None) or (task['id'] in task['resume'])) and (task['boolean'] or (task['size']>1))
-
-				return boolean
-
-		else:
-			def updates(task):
-				attr = 'path'
-				value = task['cwd']
-				task[attr] = value
-
-				attr = 'boolean'
-				value = (task['mod'] in [0,None]) and all([*({
-						'array': ((task['process'] not in ['array']) or (task['resume'] is None) or (task['resume'])),
-						'dependency': ((task['dependencies'] is None) or (task['patterns'].get('dependency') is None) or
-							(task['dependencies'] and all(i is not None for i in task['dependencies']))),
-					}.get(pattern,True) for pattern in task['patterns']),
-					])
-				task[attr] = value
-
-				boolean = ((task['resume'] is None) or (task['id'] in task['resume'])) and (task['boolean'] or (task['size']>1))
-
-				return boolean
+			return boolean
 
 
 		exe = jobs[key]
@@ -1138,11 +1090,11 @@ def init(key,
 			'pwd':pwd[key],
 			'cwd':cwd[key],
 			'job':jobs[key],
+			'resume':resume[key],
 			'cmd':None,
 			'env':None,
-			'pool':pool,
-			'resume':resume[key],
 			'process':process,
+			'pool':pool,
 			'size':size,
 			'index': index,
 			'mod':mod,
