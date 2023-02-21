@@ -22,7 +22,7 @@
 		
 		"model.M":[null],		
 		"model.tau":[2e1],	
-		"model.T": [1e5],
+		"model.T": [1e2],
 		"noise.parameters":[2e12],
 		"noise.initialization":["time"],
 		"noise.scale":[1],
@@ -46,8 +46,8 @@
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["test.other"],	
-		"jobs.postprocess.cwd":["test.other"],
+		"jobs.job.cwd":["gobi/test"],	
+		"jobs.postprocess.cwd":["gobi/test"],
 
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
@@ -78,7 +78,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":5000,
+	"M":5,
 	"T":null,
 	"tau":100e0,
 	"P":2,
@@ -268,7 +268,7 @@
 		"jobs":"job.slurm",
 		"args":{
 			"JOB_CWD":".",					
-			"JOB_ENV":"mkl",
+			"JOB_ENV":"jax",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
 			"JOB_PROCESSES":1,
@@ -302,7 +302,7 @@
 		"jobs":"postprocess.slurm",
 		"args":{
 			"JOB_CWD":".",
-			"JOB_ENV":"mkl",
+			"JOB_ENV":"jax",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			

@@ -16,6 +16,7 @@
 ##SBATCH --dependency=afterany:
 
 #SBATCH --parsable
+#SBATCH --get-user-env
 #SBATCH --cpus-per-task=1
 
 
