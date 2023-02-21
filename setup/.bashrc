@@ -122,6 +122,28 @@ function balloc(){
 	return 0
 }
 
+function bctl(){
+	job=${1}
+	time=${2}
+	mem=${3}
+
+	if [ -z ${job} ]
+	then
+		return 0
+	fi
+
+	if [ ! -z ${time} ]
+	then
+		scontrol update job=${job} TimeLimit=${time}
+	fi
+
+	if [ ! -z ${time} ]
+	then
+		scontrol update job=${job} MinMemoryNode=${mem}
+	fi
+
+	return 0
+}
 
 function catls(){
 	files=(${@})
