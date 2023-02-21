@@ -57,7 +57,6 @@ function gims(){
 	return 0
 }
 
-
 # Git Pull, Checkout, Copy
 function gics(){
 	branch=${1:-master}
@@ -75,6 +74,7 @@ function gics(){
 	
 	for file in ${files[@]}
 	do
+		echo "git show ${branch}:./${file} > ${file}"
 		git show ${branch}:./${file} > ${file}
 	done
 
@@ -97,13 +97,57 @@ function bkill(){
 }
 
 function bint(){
-	t=${1:-06:00:00}
-	m=${2:-15G}
-	srun --nodes=1 --ntasks-per-node=1 --time=${t} --mem=${m} --pty bash -i
+	time=${1:-01:00:00}
+	mem=${2:-15G}
+	partition=${3:-cpu}
+	srun --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --pty bash -i
+	return 0
+}
+
+function bctl(){
+	job=${1}
+	time=${2}
+	mem=${3}
+
+	if [ -z ${job} ]
+	then
+		return 0
+	fi
+
+	if [ ! -z ${time} ]
+	then
+		scontrol update job=${job} TimeLimit=${time}
+	fi
+
+	if [ ! -z ${time} ]
+	then
+		scontrol update job=${job} MinMemoryNode=${mem}
+	fi
+
 	return 0
 }
 
 
+function balloc(){
+	time=${1:-01:00:00}
+	mem=${2:-15G}
+	partition=${3:-cpu}
+	salloc --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --partition=${partition}
+	return 0
+}
+
+
+function catls(){
+	files=(${@})
+	files=($(ls ${files[@]} | sort -V))
+	for file in ${files[@]}
+	do
+		echo ${file}
+		cat ${file}
+		echo
+	done
+
+}
 
 
 # Conda
