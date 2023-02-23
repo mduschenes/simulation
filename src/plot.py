@@ -673,7 +673,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							])
 					
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([np.abs(kwargs[attr].get('%s%s'%(k,s))) for s in VARIANTS[:2] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 				
@@ -717,7 +717,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					args.extend([kwargs[attr].get('x'),kwargs[attr].get('y'),kwargs[attr].get('y')])
 				elif (kwargs[attr].get('yerr') is not None) and (kwargs[attr].get('y') is not None):
 					call = True
-					yerr = np.array(kwargs[attr].get('yerr'))
+					yerr = np.abs(np.array(kwargs[attr].get('yerr')))
 					y = np.array(kwargs[attr].get('y'))
 					x = kwargs[attr].get('x')
 					if ((yerr.ndim == 2) and (yerr.shape[0] == 2)):

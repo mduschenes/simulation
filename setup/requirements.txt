@@ -7,10 +7,10 @@ libgcc
 
 numpy
 scipy
+scikit-learn
 scikit-learn-intelex
-matplotlib=3.5
-pandas
 h5py
+pandas
 
 jax=0.3.14
 jaxlib=0.3.7
@@ -27,3 +27,5 @@ notebook
 nb_conda_kernels
 jupyter
 jupyter_contrib_nbextensions
+
+#matplotlib=3.5

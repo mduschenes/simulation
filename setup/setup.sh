@@ -108,6 +108,7 @@ source activate ${envs}/${env}
 # Install packages
 
 # Get line-break separated groups of requirements to install individually
+rm -rf ${requirements}.tmp.*
 awk -v requirements="${requirements}" -v RS= '{print > (requirements".tmp." NR "")}' ${requirements}
 requirements=(${requirements}.tmp.*)
 
