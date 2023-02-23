@@ -698,6 +698,8 @@ def loader(data,settings,hyperparameters):
 
 			for index,data in enumerate(flatten(elements.get(key_elements))):
 				for subindex,datum in enumerate(flatten(iterable.get(key_iterable)[index])):
+					if not datum:
+						continue
 					datum.update({attr: data[attr] for attr in data if attr not in [*ALL,OTHER]})
 
 					attr = OTHER
