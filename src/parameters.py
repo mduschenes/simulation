@@ -18,7 +18,7 @@ from src.utils import tensorprod,trace,asscalar,broadcast_to,padding,expand_dims
 from src.utils import slice_slice,datatype,returnargs,is_array
 from src.utils import pi,itg,scalars,delim
 
-from src.system import Object
+from src.system import System,Object
 from src.io import load,dump,join,split
 
 
@@ -429,7 +429,8 @@ class Parameters(Object):
 
 		# Get parameters
 		for parameter in hyperparameters:
-			setattr(self,parameter,hyperparameters[parameter])
+			setattr(self,parameter,System(**hyperparameters[parameter]))
+
 
 		# Get seed
 		seed = [hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
