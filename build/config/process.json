@@ -35,6 +35,8 @@
 		"None": "$0$",
 		"key":null,
 		"tau":"\\delta",
+		"tau.parameters.noise":"\\delta/T_{\\gamma}",
+		"T.parameters.noise":"T/T_{\\gamma}",
 		"architecture": "\\textrm{Architecture}",
 		"constrained": "\\textrm{Constrained}",
 		"unconstrained": "\\textrm{Unconstrained}",

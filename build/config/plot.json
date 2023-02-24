@@ -654,9 +654,9 @@
 	"ax":{
 		"errorbar":[
 			{
-			"x":"tau",
+			"x":"tau.noise.parameters",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"noise.parameters":null,"parameters.zz.scale":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"architecture":null,"noise.parameters":null,"T.noise.parameters":null,"parameters.zz.scale":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
