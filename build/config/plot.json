@@ -12,7 +12,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"M":null,"T":null,"noise.scale":null},
+			"label":{"N":null,"architecture":null,"M":null,"T":null,"parameters.zz.scale":null,"noise.scale":null},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -26,7 +26,7 @@
 			{
 			"x":"iteration",
 			"y":"objective.ideal.state",
-			"label":{"N":null,"architecture":null,"M":null,"T":null,"noise.scale":null},
+			"label":{"N":null,"architecture":null,"M":null,"T":null,"parameters.zz.scale":null,"noise.scale":null},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -654,9 +654,9 @@
 	"ax":{
 		"errorbar":[
 			{
-			"x":"tau",
+			"x":"tau.noise.parameters",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"noise.parameters":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"architecture":null,"noise.parameters":null,"T.noise.parameters":null,"parameters.zz.scale":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -671,11 +671,12 @@
 		"set_ylabel":{"ylabel":null},
 		"set_xlabel":{"xlabel":null},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"linear"},
+		"set_xscale":{"value":"log"},
 		"set_xlim":{"xmin":0,"xmax":1100},
-		"set_xlim":{"xmin":0,"xmax":1100},
+		"set_xlim":{"xmin":5e-9,"xmax":5e0},
 		"set_xnbins":{"nbins":6},
 		"set_xticks":{"ticks":[0,200,400,600,800,1000]},		
+		"set_xticks":{"ticks":[1e-8,1e-6,1e-4,1e-2,1e0]},		
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim":{"ymin":1e-15,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
