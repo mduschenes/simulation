@@ -18,7 +18,7 @@ from src.utils import tensorprod,trace,asscalar,broadcast_to,padding,expand_dims
 from src.utils import slice_slice,datatype,returnargs,is_array
 from src.utils import pi,itg,scalars,delim
 
-from src.system import Object
+from src.system import System,Object
 from src.io import load,dump,join,split
 
 
@@ -427,6 +427,11 @@ class Parameters(Object):
 		dtype = datatype(self.dtype)
 		self.dtype = dtype
 
+		# Get parameters
+		for parameter in hyperparameters:
+			setattr(self,parameter,System(**hyperparameters[parameter]))
+
+
 		# Get seed
 		seed = [hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
 				for parameter in hyperparameters][0]
@@ -480,6 +485,8 @@ class Parameters(Object):
 						)
 					except Exception as exception:
 						hyperparameters[parameter][prop][group] = jit(hyperparameters[parameter][prop][group])
+
+
 
 		# Get attributes
 		attributes = ['ndim','locality','size','indices','boundaries','constants','shape','slice','parameters','features','variables','values','constraints']

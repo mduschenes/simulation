@@ -50,7 +50,7 @@ class Operator(System):
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		parameters (str,dict,Parameters): Type of parameters	
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''	
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
@@ -172,7 +172,7 @@ class Observable(System):
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Gate): Type of label	
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -366,7 +366,7 @@ class Observable(System):
 		parameters = Parameters(parameters,shape,dims=dims,cls=cls,check=check,initialize=initialize,system=system)
 
 		# Get coefficients
-		coefficients = -1j*2*pi/2*self.tau/self.P		
+		coefficients = -1j*2*pi/2*self.unit*self.tau/self.P		
 
 		# Update class attributes
 		self.parameters = parameters
@@ -658,7 +658,7 @@ class Observable(System):
 			N (int): Number of qudits
 			D (int): Dimension of qudits
 			space (str,Space): Type of local space
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 
 		N = self.N if N is None else N
@@ -689,7 +689,7 @@ class Observable(System):
 			tau (float): Simulation time scale
 			P (int): Trotter order		
 			time (str,Time): Type of Time evolution space						
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 		M = self.M if M is None else M
 		T = self.T if T is None else T
@@ -720,7 +720,7 @@ class Observable(System):
 			L (int,float): Scale in system
 			delta (float): Simulation length scale		
 			lattice (str,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''		
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -768,7 +768,7 @@ class Observable(System):
 		'''		
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
-				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','shape','dims','cwd','path','backend','architecture','conf','logger','cleanup']
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
 			],
 			*['%s: %s'%(attr.split(delim)[0],'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
 				for attr in ['state.scale','noise.scale']
@@ -879,7 +879,7 @@ class Hamiltonian(Observable):
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Gate): Type of label
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -1028,7 +1028,6 @@ class Hamiltonian(Observable):
 		parameters = array(trotter(parameters,P))
 
 		# Get reshaped parameters (transpose for shape (K,M) to (M,K) and reshape to (MK,) with periodicity of data)
-		shape = parameters.T.shape
 		parameters = parameters.T.ravel()
 
 		return parameters
@@ -1064,7 +1063,7 @@ class Unitary(Hamiltonian):
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Gate): Type of label
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -1440,6 +1439,11 @@ class Callback(object):
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
 						value = argmax(abs(difference(value)/value[:-1]))+1	
 						value = value.size if (value==value.size-1) else value
+
+				elif attr in ['tau.noise.parameters','T.noise.parameters']:
+					value = [attr.split(delim)[0],delim.join(attr.split(delim)[1:])]
+					value = [getattrs(model,i,default=default,delimiter=delim) for i in value]
+					value = value[0]/value[1] if value[1] else value[0]
 
 				elif attr not in attributes and not (getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null,delimiter=delim) is null):
 					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)

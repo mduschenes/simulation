@@ -891,6 +891,14 @@ def plotter(settings,hyperparameters):
 						for plots in PLOTS 
 						if plots in settings[instance][subinstance]['ax']
 						}
+				_values = {}
+				for plots in list(values):
+					if plots not in _values:
+						_values[plots] = {}
+					for label in list(values[plots]):
+						if not any(label in _values[_plots] for _plots in _values):
+							_values[plots][label] = values[plots][label]
+				values = _values
 			except KeyError as e:
 				# import traceback
 				# print(traceback.format_exc(),instance,subinstance)
@@ -1066,6 +1074,7 @@ def plotter(settings,hyperparameters):
 								(values[plots][label]['legend']) and (len(values[plots][label]['value'])>1)))))],
 						])
 
+					value = value if value else None
 
 					data[attr] = value	
 

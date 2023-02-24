@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":982727,
-	"size":4,
+	"size":1,
 	"reset":982727,
 	"index":null
 	},
@@ -57,6 +57,7 @@
 		"jobs.job.patterns.mem":["16GB"],
 		"jobs.postprocess.patterns.mem":["16GB"],
 		"jobs.job.patterns.cpus-per-task":[1],
+		"jobs.job.patterns.account":[null],
 		"jobs.postprocess.patterns.cpus-per-task":[1]
 
 		},
