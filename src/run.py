@@ -128,7 +128,10 @@ def setup(settings):
 	other = [{'system.key':None,'system.seed':seed}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
-	values = {'permutations':permutations,'seed':seeds,'other':other}
+	if size:
+		values = {'permutations':permutations,'seed':seeds,'other':other}
+	else:
+		values = {'permutations':permutations,'other':other}
 	index = {attr: hyperparameters.get(attr,{}).get('index') for attr in values}
 	# formatter = lambda instance,value,values,default: '%d'%(instance)	
 	formatter = lambda instance,value,values,default: ((delim.join([

@@ -491,16 +491,16 @@ class Space(System):
 
 		funcs =  {
 			'spin':{
-				'N': (lambda N,D,n,g,space: int(log(n)/log(D))),
-				'D': (lambda N,D,n,g,space: int(n**(1/N))),
-				'n': (lambda N,D,n,g,space: int(D**N)),
-				'g': (lambda N,D,n,g,space: int(n**2 - 1)),
+				'N': (lambda N,D,n,g,space: round(log(n)/log(D))),
+				'D': (lambda N,D,n,g,space: round(n**(1/N))),
+				'n': (lambda N,D,n,g,space: round(D**N)),
+				'g': (lambda N,D,n,g,space: round(n**2 - 1)),
 				},
 			None:{
-				'N': (lambda N,D,n,g,space: int(log(n)/log(D))),
-				'D': (lambda N,D,n,g,space: int(n**(1/N))),
-				'n': (lambda N,D,n,g,space: int(D**N)),
-				'g': (lambda N,D,n,g,space: int(n**2 - 1)),
+				'N': (lambda N,D,n,g,space: round(log(n)/log(D))),
+				'D': (lambda N,D,n,g,space: round(n**(1/N))),
+				'n': (lambda N,D,n,g,space: round(D**N)),
+				'g': (lambda N,D,n,g,space: round(n**2 - 1)),
 				},				
 			}
 
@@ -577,12 +577,12 @@ class Time(System):
 
 		funcs =  {
 			'linear':{
-				'M': (lambda M,T,tau,time: int(self.T/self.tau)),
+				'M': (lambda M,T,tau,time: round(self.T/self.tau)),
 				'T': (lambda M,T,tau,time: self.M*self.tau),
 				'tau': (lambda M,T,tau,time: self.T/self.M),
 				},
 			None:{
-				'M': (lambda M,T,tau,time: int(self.T/self.tau)),
+				'M': (lambda M,T,tau,time: round(self.T/self.tau)),
 				'T': (lambda M,T,tau,time: self.M*self.tau),
 				'tau': (lambda M,T,tau,time: self.T/self.M),
 				},				
@@ -680,11 +680,11 @@ class Lattice(System):
 			z = 0
 			self.lattice = self.default
 		elif self.lattice in ['square','square-nearest']:
-			n = int(N**(1/d))
+			n = round(N**(1/d))
 			z = 2*d
 			assert n**d == N, 'N != n^d for N=%d, d=%d, n=%d'%(N,d,n)
 		else:
-			n = int(N**(1/d))
+			n = round(N**(1/d))
 			z = 2*d
 			assert n**d == N, 'N != n^d for N=%d, d=%d, n=%d'%(N,d,n)
 

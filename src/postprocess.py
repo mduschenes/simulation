@@ -131,11 +131,13 @@ defaults = {
 		"set_xlim": {"xmin": 5e-21,"xmax":5e0},
 		"set_xlim": {"xmin": 5e-13,"xmax":5e0},
 		"set_xlim": {"xmin": 5e-21,"xmax":5e0},
+		"set_xlim": {"xmin": 5e-17,"xmax":5e0},
 		"set_xticks":{"ticks":[1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"set_xticks":{"ticks":[1e-20,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"set_xticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
 		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},
 		"set_xticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
+		"set_xticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0]},
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -144,13 +146,16 @@ defaults = {
 		"set_ylim": {
 				"ymin": -100,
 				"ymin": -1000,
+				"ymin": -100,
 				"ymax": 5100,
 				"ymax": 2500,
-				"ymax": 5500
+				"ymax": 5500,
+				"ymax": 1100,
 			},
 		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
 		"set_yticks":{"ticks":[0,1000,2000]},		
 		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
+		"set_yticks":{"ticks":[0,200,400,600,800,1000]},		
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
@@ -218,19 +223,23 @@ defaults = {
 		"set_xscale":{"value":"linear"},
 		"set_xnbins":{"nbins":9},
 		"set_xlim": {"xmin": -100,"xmax": 6100},
+		"set_xlim": {"xmin": -100,"xmax": 2600},
 		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
+		"set_xticks":{"ticks":[0,500,1000,1500,2000,2500]},
 		"set_yscale":{"value":"linear"},
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim": {"ymin": 1e-5,"ymax": 1e-1},
 		"set_ylim": {"ymin": 1e-13,"ymax": 5e2},
 		"set_ylim": {"ymin": 5e-9,"ymax": 5e2},
 		"set_ylim": {"ymin": 1e-17,"ymax": 1e5},
+		"set_ylim": {"ymin": 1e-11,"ymax": 1e1},
 		"set_ynbins":{"nbins":5},
 		"set_yticks":{"ticks":[1e-4,1e-3,1e-2,1e-1]},
 		"set_yticks":{"ticks":[1e-12,1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
 		"set_yticks":{"ticks":[1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
 		"set_yticks":{"ticks":[1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0,1e2,1e4]},
 		"set_yticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0,1e4]},
+		"set_yticks":{"ticks":[1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -249,8 +258,8 @@ defaults = {
 			"markerscale": 1,
 			"handlelength": 2,
 			"framealpha": 0.8,
-			"loc": [0.07,0.85],
-			"ncol": 6,
+			"loc": [0.82,0.15],
+			"ncol": 1,
 			"set_zorder":{"level":100},
 			"set_label":None,
 			}
@@ -320,9 +329,11 @@ def postprocess(path,**kwargs):
 
 					# data[label[axis]] = [value if value not in ['None',None,nan] else 1e-20 for value in data[label[axis]]]
 
-				slices = range(4,len(data[label['y']])-5)
+				slices = list(range(4,len(data[label['y']])-5))
 				slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5) # noise.long
 				slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
+				slices = list(range(2,14,2))#range(4,len(data[label['y']])-5) # noise.new.vectorv
+				slices = list(range(2,12,1))#range(4,len(data[label['y']])-5) # noise.vectorq
 
 				X = [array(data['%s'%(label['x'])][i]) for i in slices]
 				Y = [array(data['%s'%(label['y'])][i]) for i in slices]
@@ -339,18 +350,18 @@ def postprocess(path,**kwargs):
 				try:
 					x,y,z,xerr,yerr,zerr = [],[],[],None,[],[]
 					parameterss,covariances,others = [],[],[]
-					indices,indexes,slices = [],[],[]
+					indices,indexes = [],[]
 					for i,(x_,y_,z_,yerr_,zerr_) in enumerate(zip(X,Y,Z,Yerr,Zerr)):
 
 						indices.append(i)
 
-						slices = slice(0,None,None)
+						slices_ = slice(0,None,None)
 						
-						y_ = y_[slices] if y_ is not None else None
-						z_ = z_[slices] if z_ is not None else None
+						y_ = y_[slices_] if y_ is not None else None
+						z_ = z_[slices_] if z_ is not None else None
 
-						yerr_ = yerr_[slices] if yerr_ is not None and not is_naninf(yerr_).all() else None
-						zerr_ = zerr_[slices] if zerr_ is not None and not is_naninf(zerr_).all() else None
+						yerr_ = yerr_[slices_] if yerr_ is not None and not is_naninf(yerr_).all() else None
+						zerr_ = zerr_[slices_] if zerr_ is not None and not is_naninf(zerr_).all() else None
 
 						_x = x_
 						_n = y_.size
@@ -359,13 +370,32 @@ def postprocess(path,**kwargs):
 						_yerr = zeros(_n)
 						_zerr = zeros(_n)
 
+						y_min = y_[argmin(z_)]
+
+						# x_min = arange(3)
+						# y_min = array([y_[argmin(z_)-1],y_[argmin(z_)],y_[argmin(z_)+1]])
+						# z_min = array([z_[argmin(z_)-1],z_[argmin(z_)],z_[argmin(z_)+1]])
+						# _x_min = linspace(x_min.min(),x_min.max(),100)
+						# _y_min = linspace(y_min.min(),y_min.max(),100)
+						# _z_min = linspace(z_min.min(),z_min.max(),100)
+						# func_min = lambda parameters,x: sum(c*x**i for i,c in enumerate(parameters))
+						# parameters_min = ones(1+4)
+						# _z_min = fit(y_min,z_min,_y_min,_z_min,parameters=parameters_min,func=func_min)[1]
+						# import matplotlib.pyplot as plt
+						# fig,ax = plt.subplots()
+						# ax.plot(y_min,z_min,label='data')
+						# ax.plot(_y_min,_z_min,label='fit')
+						# ax.legend()
+						# fig.savefig('fit.%e.pdf'%(_x))
+						# y_min = _y_min[argmin(_z_min)]
+
 						func = [
 								'cubic',
 								# (lambda parameters,x: parameters[0] + parameters[1]*x),
 								(lambda parameters,x: parameters[0] + parameters[1]*x),
 								]
 						parameters = [array([1.0,1.0]),array([0.0,1.0])]
-						bounds = [y_[argmin(z_)]]					
+						bounds = [y_min]
 						kwargs = {
 							'optimizer':'cg',
 							'alpha':1e-10,
@@ -459,13 +489,13 @@ def postprocess(path,**kwargs):
 						# 	bounds=bounds,kwargs=kwargs)
 
 
-						# _z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_[slices],None,[{'r':1}]*(len(bounds)+1)
+						# _z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_,None,[{'r':1}]*(len(bounds)+1)
 
 						index = argmin(_z)
 						indexerr = [argmin(_z+k*_zerr) for k in [-1,1]]
 						_yerrindex = sum(abs(_y[i] - _y[index]) for i in indexerr)/len(indexerr)
 
-						print(_x,[_o['r'] for _o in _other])
+						print(i,slices[i],_x,[_o['r'] for _o in _other])
 						# print(index,indexerr,_yerrindex)
 						print(_y[index])
 						# print([_y[i] for i in indexerr])
