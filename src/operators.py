@@ -223,7 +223,7 @@ class Gate(Object):
 # 		N (int): Number of qudits
 # 		D (int): Dimension of qudits
 # 		space (str,Space): Type of local space
-# 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+# 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 # 		kwargs (dict): Additional system keyword arguments	
 # 	'''
 
@@ -279,7 +279,7 @@ class Gate(Object):
 # 			N (int): Number of qudits
 # 			D (int): Dimension of qudits
 # 			space (str,Space): Type of local space
-# 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+# 			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 # 		'''
 # 		N = self.N if N is None else N
 # 		D = self.D if D is None else D

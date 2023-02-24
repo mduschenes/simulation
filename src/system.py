@@ -142,6 +142,7 @@ class System(Dictionary):
 		timestamp (str): timestamp for class
 		backend (str): backend for class
 		architecture (str): architecture for class
+		unit (int,float): units of values
 		verbose (bool,str): Verbosity of class	
 		args (dict,System): Additional system attributes
 		kwargs (dict): Additional system attributes
@@ -154,6 +155,7 @@ class System(Dictionary):
 			'device':'cpu',
 			'backend':'jax',
 			'architecture':None,
+			'unit':None,			
 			'seed':None,
 			'key':None,
 			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
@@ -165,6 +167,12 @@ class System(Dictionary):
 			'verbose':None,
 		}
 
+		def updates(kwargs,defaults):
+			kwargs['unit'] = 1 if kwargs.get('unit',defaults.get('unit')) is None else kwargs.get('unit')
+			return
+
+		updates(kwargs,defaults)
+		
 		setter(kwargs,defaults,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
