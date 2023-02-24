@@ -10,9 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":932781,
-	"size":16,
-	"reset":932781,
+	"seed":921391,
+	"size":8,
+	"reset":921391,
 	"index":null
 	},
 "permutations":{
@@ -22,14 +22,56 @@
 		"model.N":[4],		
 		"model.M":[null],		
 
-		"model.tau":[1e2,2.5e2,5e2,7.5e2,10e2,12.5e2,15e2,17.5e2],
-		"model.T": [1e4,5e4,1e5,5e5,1e6],
-		"noise.parameters":[1e7],
+		"model.tau":[
+			1e-8,1e-7,5e-7,1e-6,5e-6,1e-5,
+			1e-7,1e-6,5e-6,1e-5,5e-5,1e-4,
+			1e-6,1e-5,5e-5,1e-4,5e-4,1e-3,
+			1e-5,1e-6,5e-4,1e-3,5e-3,1e-2,
+			2e-5,2e-6,2e-4,2e-3,2e-3,2e-2,
+			5e-5,5e-6,25e-4,5e-3,25e-3,5e-2,
+			1e-4,1e-3,5e-3,1e-2,5e-2,1e-1
+		],
+		"model.T": [
+			1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,
+			1e-3,1e-3,1e-3,1e-3,1e-3,1e-3,
+			1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,
+			1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,
+			2e-1,2e-1,2e-1,2e-1,2e-1,2e-1,
+			5e-1,5e-1,5e-1,5e-1,5e-1,5e-1,
+			1e0,1e0,1e0,1e0,1e0,1e0
+		],
+		"noise.parameters":[1],
 
 		"noise.initialization":["time"],
-		"parameters.zz.scale":[1],
+		"parameters.xy.scale":[10e6],
+		"parameters.z.scale":[10e6],
+		"parameters.zz.scale":[10e6],
 		"noise.scale":[1],
 		"state.scale":[1],
+
+
+		"model.N":[3],		
+		"model.M":[null],		
+
+		"model.tau":[
+			1e-5,2.5e-5,5e-5,7.5e-5,1e-4,2.5e-4,5e-4,7.5e-4,1e-3,
+			1e-4,2.5e-4,5e-4,7.5e-4,1e-3,2.5e-3,5e-3,7.5e-3,1e-2,
+			1e-3,2.5e-3,5e-3,7.5e-3,1e-2,2.5e-2,5e-2,7.5e-2,1e-1
+		],
+		"model.T": [
+			1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,
+			1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,
+			1e0,1e0,1e0,1e0,1e0,1e0,1e0,1e0,1e0
+		],
+		"noise.parameters":[1],
+
+		"noise.initialization":["random"],
+		"parameters.xy.scale":[1],
+		"parameters.z.scale":[1],
+		"parameters.zz.scale":[1],
+		"noise.scale":[null],
+		"state.scale":[1],
+
 
 		"optimize.iterations":[500],
 		"optimize.optimizer":["cg"],
@@ -40,33 +82,38 @@
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["gobi/tau.J"],
-		"jobs.postprocess.cwd":["gobi/tau.J"],
-
+		"jobs.job.cwd":["gobi/tau"],
+		"jobs.postprocess.cwd":["gobi/tau"],
+		
+		"jobs.job.cwd":["gobi/tau.T.noiseless.3"],
+		"jobs.postprocess.cwd":["gobi/tau.T.noiseless.3"],
+		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[8],
+		"jobs.job.pool":[1],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[4],		
+		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["72:00:00"],
+		"jobs.job.patterns.time":["6:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
-		"jobs.job.patterns.mem":["256GB"],
+		"jobs.job.patterns.mem":["64GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[8],
+		"jobs.job.patterns.account":[null],
+		"jobs.postprocess.patterns.account":[null],				
+		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 
 		},
-	"groups":[["parameters.xy.method","system.architecture"]],
+	"groups":[["parameters.xy.method","system.architecture"],["model.T","model.tau"]],
 	"index":null
 	},
 "model":{
@@ -110,16 +157,16 @@
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
-	"eps":{"value":1e-16,"grad":1e-18,"value.difference":1e-18,"grad.difference":1e-18,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
+	"eps":{"value":1e-16,"grad":1e-16,"value.difference":1e-18,"grad.difference":1e-16,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
 	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":100,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
-	"kwargs":{"noise":{"scale":1e-3}},
+	"kwargs":{"noise":1e-3},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
 	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
-	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
+	"length":{"log":null,"buffer":1,"attributes":3,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
@@ -137,7 +184,7 @@
 
 			"iteration.max":[],
 			"iteration.min":[],
-			"variables":false,"variables.relative":false,"variables.relative.mean":[],
+			"variables":false,"variables.relative":false,"variables.relative.mean":false,
 			"features":false,"features.relative":false,"features.relative.mean":false,				
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
@@ -149,7 +196,8 @@
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],"n":[],"g":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
 
-			"noise.scale":[],"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
+			"noise.scale":[],"noise.parameters":[],"parameters.xy.scale":[],"parameters.z.scale":[],"parameters.zz.scale":[],
+			"optimize.c1":false,"optimize.c2":false
 		}	
 	},
 "parameters":{
@@ -186,6 +234,7 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-1e-2,0,1e-3,-5e-2,2e-3],
+		"parameters":[-1e-3,0,1e-3,-1e-3,1e-3],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["z"]],
@@ -208,6 +257,7 @@
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
 		"parameters":[1.1e-4,-0.8e-4,0.9e-4,1.4e-4,-1.5e-4,0.87e-4,1.4e-4,-0.7e-4,0.6e-4,-1.2e-4],								
+		"parameters":[1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4],								
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],
@@ -293,6 +343,7 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,
+		"resume":null,
 		"pause":1,
 		"file":"job.sh",	
 		"process":null,
