@@ -44,13 +44,30 @@
 		"model.tau":[5e1],
 		"model.T": [null],
 		"noise.parameters":[1],
-
 		"noise.initialization":["random"],
+
 		"parameters.xy.scale":[1],
 		"parameters.z.scale":[1],
 		"parameters.zz.scale":[1],
 		"noise.scale":[null],
 		"state.scale":[1],	
+
+
+		"model.N":[3],		
+		"model.M":[null],		
+
+		"model.tau":[1e-5],
+		"model.T": [1e-3],
+		"noise.parameters":[1],
+		"noise.initialization":["random"],
+
+		"system.unit":[1e6],
+		"parameters.xy.scale":[1],
+		"parameters.z.scale":[1e-3],
+		"parameters.zz.scale":[1e-4,2e-4,5e-4],
+		"noise.scale":[null],
+		"state.scale":[1],
+
 		
 		"optimize.iterations":[200],
 		"optimize.optimizer":["cg"],
@@ -61,8 +78,8 @@
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["gobi/test.4"],	
-		"jobs.postprocess.cwd":["gobi/test.4"],
+		"jobs.job.cwd":["gobi/check"],	
+		"jobs.postprocess.cwd":["gobi/check"],
 
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],
@@ -198,7 +215,8 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-1e-2,0,1e-3,-5e-2,2e-3],
-		"parameters":[-1e-3,0,1e-3,-1e-3,1e-3],		
+		"parameters":[-1e-3,0,1e-3,-1e-3,1e-3],
+		"parameters":[-1,0,1,-1,1],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["z"]],
@@ -221,7 +239,8 @@
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[7.24e-2,-1.3e-3,5e-2,8e-2,2e-3,2e-2,-3e-2,6e-2,9e-3,-6e-3],								
 		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],
-		"parameters":[1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4],										
+		"parameters":[1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4],	
+		"parameters":[1,1,1,1,1,1,1,1,1,1],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],

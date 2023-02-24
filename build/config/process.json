@@ -21,7 +21,7 @@
 		"noise.parameters.objective.tau":0,
 		"noise.parameters.objective.diff.tau":0,
 		"noise.parameters.objective.diff.tau":0,
-		"tau.objective.noise.parameters":0,
+		"tau.objective.noise.parameters":1,
 		"tau.objective.noise.parameters.noiseless":0,
 		"tau.variables.relative.mean.N.iteration": 0,
 		"tau.iteration.min.N": 0,
@@ -40,6 +40,9 @@
 		"unconstrained": "\\textrm{Unconstrained}",
 		"noise.scale":"\\gamma",
 		"noise.parameters":"\\tau",
+		"parameters.xy.scale":"\\theta",
+		"parameters.z.scale":"\\nu",
+		"parameters.zz.scale":"J",
 		"optimize.c1":"c_{1}",
 		"optimize.c2":"c_{2}"
 	},
