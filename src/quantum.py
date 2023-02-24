@@ -1442,7 +1442,8 @@ class Callback(object):
 
 				elif attr in ['tau.noise.parameters','T.noise.parameters']:
 					value = [attr.split(delim)[0],delim.join(attr.split(delim)[1:])]
-					value = getattrs(model,value[0],default=default,delimiter=delim)/getattrs(model,value[1],default=default,delimiter=delim)
+					value = [getattrs(model,i,default=default,delimiter=delim) for i in value]
+					value = value[0]/value[1] if value[1] else value[0]
 
 				elif attr not in attributes and not (getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null,delimiter=delim) is null):
 					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)
