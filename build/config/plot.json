@@ -456,7 +456,7 @@
 			{
 			"x":"M",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"T":null,"noise.scale":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,

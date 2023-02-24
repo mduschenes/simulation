@@ -85,7 +85,8 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 	funcs,conditions = piecewise(funcs,bounds)
 
 	_func = [None for i in range(n)]
-	_y = _y
+	_y = _y if _y is not None else y
+	_x = _x if _x is not None else x
 	_parameters = parameters
 	_yerr = zeros(_y.shape)
 	_covariance = covariance

@@ -333,6 +333,7 @@ def postprocess(path,**kwargs):
 				slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5) # noise.long
 				slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
 				slices = list(range(2,14,2))#range(4,len(data[label['y']])-5) # noise.new.vectorv
+				slices = list(range(2,12,1))#range(4,len(data[label['y']])-5) # noise.vectorq
 
 				X = [array(data['%s'%(label['x'])][i]) for i in slices]
 				Y = [array(data['%s'%(label['y'])][i]) for i in slices]
@@ -369,13 +370,32 @@ def postprocess(path,**kwargs):
 						_yerr = zeros(_n)
 						_zerr = zeros(_n)
 
+						y_min = y_[argmin(z_)]
+
+						# x_min = arange(3)
+						# y_min = array([y_[argmin(z_)-1],y_[argmin(z_)],y_[argmin(z_)+1]])
+						# z_min = array([z_[argmin(z_)-1],z_[argmin(z_)],z_[argmin(z_)+1]])
+						# _x_min = linspace(x_min.min(),x_min.max(),100)
+						# _y_min = linspace(y_min.min(),y_min.max(),100)
+						# _z_min = linspace(z_min.min(),z_min.max(),100)
+						# func_min = lambda parameters,x: sum(c*x**i for i,c in enumerate(parameters))
+						# parameters_min = ones(1+4)
+						# _z_min = fit(y_min,z_min,_y_min,_z_min,parameters=parameters_min,func=func_min)[1]
+						# import matplotlib.pyplot as plt
+						# fig,ax = plt.subplots()
+						# ax.plot(y_min,z_min,label='data')
+						# ax.plot(_y_min,_z_min,label='fit')
+						# ax.legend()
+						# fig.savefig('fit.%e.pdf'%(_x))
+						# y_min = _y_min[argmin(_z_min)]
+
 						func = [
 								'cubic',
 								# (lambda parameters,x: parameters[0] + parameters[1]*x),
 								(lambda parameters,x: parameters[0] + parameters[1]*x),
 								]
 						parameters = [array([1.0,1.0]),array([0.0,1.0])]
-						bounds = [y_[argmin(z_)]]					
+						bounds = [y_min]
 						kwargs = {
 							'optimizer':'cg',
 							'alpha':1e-10,

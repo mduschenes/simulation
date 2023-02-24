@@ -671,9 +671,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
 							kwargs[attr][subprop][1]
 							])
+
+					if kwargs[attr].get(subprop) is not None:
+						kwargs[attr][subprop] = np.abs(kwargs[attr][subprop])
 					
 
-				args.extend([np.abs(kwargs[attr].get('%s%s'%(k,s))) for s in VARIANTS[:2] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 				
@@ -717,7 +720,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					args.extend([kwargs[attr].get('x'),kwargs[attr].get('y'),kwargs[attr].get('y')])
 				elif (kwargs[attr].get('yerr') is not None) and (kwargs[attr].get('y') is not None):
 					call = True
-					yerr = np.abs(np.array(kwargs[attr].get('yerr')))
+					yerr = np.array(kwargs[attr].get('yerr'))
 					y = np.array(kwargs[attr].get('y'))
 					x = kwargs[attr].get('x')
 					if ((yerr.ndim == 2) and (yerr.shape[0] == 2)):
@@ -825,7 +828,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if path is not None:
 					dirname = os.path.abspath(os.path.dirname(path))
 					if not os.path.exists(dirname):
-						os.makedirs(dirname)
+						os.makedirs(dirname)		
+					kwargs[attr]['fname'] = os.path.abspath(os.path.expanduser(path))
 					call = True
 				else:
 					call = False
