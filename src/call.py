@@ -795,7 +795,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 	if path is None or patterns is None:
 		return
 
-	patterns = {str(pattern): str(patterns[pattern]) for pattern in patterns}
+	patterns = {str(pattern): str(patterns[pattern]) if patterns[pattern] is not None else None for pattern in patterns}
 	kwargs = {} if not isinstance(kwargs,dict) else kwargs
 
 	if device in ['pc']:
@@ -906,7 +906,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 	patterns.update({
 		string(pattern=pattern,default=default): 
 		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='#',default=default)
-		for pattern in list(nulls)
+		for pattern in [*list(nulls),*[pattern for pattern in patterns if patterns[pattern] is None]]
 		if search(path,string(pattern=pattern,default=default),execute=True,verbose=verbose) >= 0
 		})
 
