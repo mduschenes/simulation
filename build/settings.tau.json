@@ -70,7 +70,7 @@
 			1e-5
 		],
 		"model.T": [
-			1e-2
+			1e-1,5e-1
 		],
 
 		"noise.parameters":[1],
@@ -84,7 +84,7 @@
 		"state.scale":[1],
 
 
-		"optimize.iterations":[500],
+		"optimize.iterations":[50],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
@@ -125,6 +125,7 @@
 
 		},
 	"groups":[["parameters.xy.method","system.architecture"],["model.T","model.tau"]],
+	"groups":[["parameters.xy.method","system.architecture"]],
 	"index":null
 	},
 "model":{
