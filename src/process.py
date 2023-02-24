@@ -267,9 +267,10 @@ def find(dictionary):
 	defaults = {
 				'func':{'stat':{'':'mean','err':'sem'}}, 
 				'wrapper':{},
-				'attrs':{},
-				'slice':None,
 				'include':None,
+				'exclude':None,
+				'slice':None,
+				'labels':None,
 				'analysis':{
 					# 'zscore':[{'attr':['objective'],'default':None,'kwargs':{'sigma':None}}],
 					# 'quantile':[{'attr':['objective'],'default':None,'kwargs':{'sigma':None}}]
@@ -293,7 +294,10 @@ def find(dictionary):
 			if attr in other:
 
 				if isinstance(keys[name][attr],dict):
-					keys[name][attr] = {prop: keys[name][attr][prop] if keys[name][attr][prop] is not None else default for prop in keys[name][attr]}
+					if attr in keys[name][attr]:
+						keys[name][attr] = {prop: keys[name][attr][prop] if (prop != attr) or (keys[name][attr][prop] is not None) else default for prop in keys[name][attr]}
+					else:
+						keys[name][attr] = {prop: keys[name][attr][prop] if keys[name][attr][prop] is not None else default for prop in keys[name][attr]}
 				elif isinstance(keys[name][attr],str):
 					keys[name][attr] = dict((parser(keys[name][attr],separator=separator,default=default),))
 				else:
@@ -571,6 +575,8 @@ def apply(keys,data,settings,hyperparameters):
 		axes = [axis for axis in AXIS if axis in keys[name]]
 		other = OTHER
 		label = keys[name][other].get(other,{})
+		include = keys[name][other].get('include')
+		exclude = keys[name][other].get('exclude')
 		funcs = keys[name][other].get('func',{})
 		analyses = keys[name][other].get('analysis',{})
 
@@ -581,7 +587,7 @@ def apply(keys,data,settings,hyperparameters):
 
 		independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in data]
 		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in data]
-		labels = [attr for attr in label if attr in data and label[attr] is null]
+		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
 		boolean = [parse(attr,label[attr],data) for attr in label]
 		boolean = conditions(boolean,op='and')
 
@@ -623,7 +629,7 @@ def apply(keys,data,settings,hyperparameters):
 				value[destination] = {
 					**{attr: grouping[attr].to_list()[0] for attr in source},
 					**{'%s%s'%(axis,func) if keys[name][axis] in dependent else axis: 
-						{'group':[i,dict(zip(groups.grouper.names,group))],'func':[j,function],'axis':keys[name][axis] if keys[name][axis] is not null else None} 
+						{'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],'func':[j,function],'axis':keys[name][axis] if keys[name][axis] is not null else None} 
 						for axis in axes for func in funcs[function]},
 					**{other: {attr: {subattr: keys[name][other][attr][subattr] 
 						if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
@@ -886,7 +892,10 @@ def plotter(settings,hyperparameters):
 						for data in flatten(settings[instance][subinstance]['ax'][plots])
 						if (data)
 						for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
-						if ((data) and (label not in [*ALL,OTHER])))))
+						if ((data) and (label not in [*ALL,OTHER]) and (
+							((data[OTHER][OTHER].get('exclude') is None) or (label not in data[OTHER][OTHER]['exclude'])) and 
+							((data[OTHER][OTHER].get('include') is None) or (label in data[OTHER][OTHER]['include'])))  
+						))))
 						}
 						for plots in PLOTS 
 						if plots in settings[instance][subinstance]['ax']
@@ -989,7 +998,7 @@ def plotter(settings,hyperparameters):
 							data[attr] = value
 
 
-			# include
+			# include labels
 			for plots in PLOTS:
 
 				if settings[instance][subinstance]['ax'].get(plots) is None:
@@ -1001,9 +1010,9 @@ def plotter(settings,hyperparameters):
 						continue
 
 					attr = OTHER
-					if data[attr][attr].get('include') is not None:
-						for label in data[attr][attr]['include']:
-							if not parse(label,data[attr][attr]['include'][label],data[attr]):
+					if data[attr][attr].get('labels') is not None:
+						for label in data[attr][attr]['labels']:
+							if not parse(label,data[attr][attr]['labels'][label],data[attr]):
 								data.clear()
 								break
 
