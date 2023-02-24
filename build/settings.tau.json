@@ -10,10 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":921391,
+	"seed":1823213,
 	"size":8,
-	"size":1,
-	"reset":921391,
+	"reset":1823213,
 	"index":null
 	},
 "permutations":{
@@ -66,13 +65,6 @@
 			1e0,1e0,1e0,1e0,1e0,1e0,1e0,1e0,1e0
 		],
 
-		"model.tau":[
-			1e-5
-		],
-		"model.T": [
-			1e-1,5e-1
-		],
-
 		"noise.parameters":[1],
 		"noise.initialization":["random"],
 
@@ -84,7 +76,7 @@
 		"state.scale":[1],
 
 
-		"optimize.iterations":[50],
+		"optimize.iterations":[500],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
@@ -96,8 +88,8 @@
 		"jobs.job.cwd":["gobi/tau"],
 		"jobs.postprocess.cwd":["gobi/tau"],
 		
-		"jobs.job.cwd":["gobi/tau.T.noiseless.test"],
-		"jobs.postprocess.cwd":["gobi/tau.T.noiseless.test"],
+		"jobs.job.cwd":["gobi/tau.T.noiseless.3"],
+		"jobs.postprocess.cwd":["gobi/tau.T.noiseless.3"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -125,7 +117,6 @@
 
 		},
 	"groups":[["parameters.xy.method","system.architecture"],["model.T","model.tau"]],
-	"groups":[["parameters.xy.method","system.architecture"]],
 	"index":null
 	},
 "model":{
