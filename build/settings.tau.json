@@ -10,9 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":1823213,
+	"seed":128912,
 	"size":8,
-	"reset":1823213,
+	"reset":128912,
 	"index":null
 	},
 "permutations":{
@@ -65,13 +65,18 @@
 			1e0,1e0,1e0,1e0,1e0,1e0,1e0,1e0,1e0
 		],
 
+		"model.tau":[
+			1e-3,2.5e-3,5e-3,7.5e-3,1e-2,2.5e-2,5e-2,7.5e-2,1e-1
+		],
+		"model.T": []
+
 		"noise.parameters":[1],
 		"noise.initialization":["random"],
 
 		"system.unit":[1e6],
 		"parameters.xy.scale":[1],
-		"parameters.z.scale":[1e-3],
-		"parameters.zz.scale":[1e-4,2e-4,5e-4],
+		"parameters.z.scale":[1e-2],
+		"parameters.zz.scale":[1e-4],
 		"noise.scale":[null],
 		"state.scale":[1],
 
