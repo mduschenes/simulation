@@ -1032,6 +1032,7 @@ class Optimization(System):
 			'alpha':0,
 			'status':1,
 			'clear':True,
+			'it'
 			'cwd':None,
 			'path':None,
 			'modulo':{'log':None,'buffer':None,'attributes':None,'callback':None,'alpha':None,'beta':None,'dump':None},
@@ -1065,7 +1066,7 @@ class Optimization(System):
 		self.length = hyperparameters['length']
 		self.attributes = hyperparameters['attributes']
 		self.track = hyperparameters['track']
-		self.iterations = range(int(hyperparameters['iterations']))
+		self.iterations = hyperparameters['iterations']
 		self.sizes = {attr: hyperparameters['length'].get(attr) if hyperparameters['length'].get(attr) else 1 for attr in ['buffer','attributes']}
 		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
@@ -1280,7 +1281,7 @@ class Optimization(System):
 		'''
 		Reset class attributes
 		Args:
-			clear (bool): clear attributes
+			clear (bool,str): clear attributes
 		'''
 		clear = self.clear if clear is None else clear
 
@@ -1317,11 +1318,16 @@ class Optimization(System):
 		else:
 			self.iteration = 0
 	
-		self.iterations = range(
-			self.iteration,
-			self.iterations.stop-self.iterations.start+self.iteration,
-			self.iterations.step)				
-
+		if not clear:
+			if isinstance(self.iterations,int):
+				self.iterations = range(self.iteration,self.iterations+self.iteration)
+			elif isinstance(self.iterations,range):
+				self.iterations = range(
+					self.iteration,
+					self.iterations.stop-self.iterations.start+self.iteration,
+					self.iterations.step)				
+			else:
+				self.iterations = range(self.iteration,self.iterations[1],*self.iterations[2:])
 
 		return
 
