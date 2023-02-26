@@ -561,9 +561,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			return value
 		return
 
-	def attr_wrap(obj,attr,settings,**kwargs):
+	def attr_wrap(obj,attr,objs,settings,**kwargs):
 
-		def attrs(obj,attr,_attr,index,size,_kwargs,kwargs):
+		def attrs(obj,attr,objs,index,size,_kwargs,kwargs):
 			call = True
 			args = []
 			kwds = {}
@@ -581,6 +581,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					[handle[0] if isinstance(handle, matplotlib.container.ErrorbarContainer) else handle for handle,label in zip(handles,labels)],
 					[label if isinstance(handle, matplotlib.container.ErrorbarContainer) else label for handle,label in zip(handles,labels)]
 					)
+				handler_map = {}
 
 				if len(handles)>0 and len(labels)>0:
 					handles,labels = zip(
@@ -595,14 +596,29 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					else:
 						labels = [string%(label) for string,label in zip(update,labels)]
 
+
+				if kwargs[attr].get('handlers') is not None:
+					handlers = kwargs[attr].get('handlers')
+					funcs = {
+						**{
+						container:{
+							getattr(matplotlib.container,'%sContainer'%(container.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%(container.capitalize()))
+							}
+						for container in ['errorbar']
+						},
+						}
+					for handler in handlers:
+						for _obj in objs:
+							func = funcs.get(handler)
+							if func is not None:
+								handler_map.update({types: func[types](**handlers[handler]) for types in func if isinstance(_obj,types)})
+
 				if kwargs[attr].get('join') is not None:
 					n = min(len(handles),len(labels))
 					k = kwargs[attr].get('join',1)
 					handles = list(zip(*(handles[i*n//k:(i+1)*n//k] for i in range(k))))
 					labels = labels[:n//k]
-					handler_map = {tuple: matplotlib.legend_handler.HandlerTuple(None,pad=0.5)}
-				else:
-					handler_map = None
+					handler_map.update({tuple: matplotlib.legend_handler.HandlerTuple(None,pad=0.5)})
 
 				if kwargs[attr].get('flip') is True:
 					flip = kwargs[attr].get('flip',None)
@@ -630,7 +646,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					(('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is False)))
 					))
 
-				nullkwargs.extend(['prop','join','flip','update','set_zorder','get_zorder','set_title','title','get_title','get_texts','set_label'])
+				nullkwargs.extend(['prop','join','flip','update','handlers','set_zorder','get_zorder','set_title','title','get_title','get_texts','set_label'])
 			
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
@@ -853,9 +869,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			for field in fields:
 				if kwargs[attr].get(field) == '__cycle__':
 					try:
-						_obj = _attr[-1]
+						_obj = objs[-1][-1]
 					except:
-						_obj = _attr
+						try:
+							_obj = objs[-1]
+						except:
+							_obj = objs
 					values = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)
 					kwargs[attr][field] = values[-1]
 				
@@ -888,6 +907,16 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			except Exception as e:
 				if not isinstance(e,AttributeError):
 					print(e,_obj,attr,args,kwargs[attr])
+
+			# if attr in ['errorbar']:
+			# 	_value = _attr[1]
+			# 	for i in _value:
+			# 		for kwarg in kwargs[attr]:
+			# 			if kwarg in ['capsize']:
+			# 				if hasattr(i,'set_%s'%(kwarg)):
+			# 					i._marker._capsize = 15
+			# 					# getattr(i,'set_%s'%(kwarg))(kwargs[attr][kwarg])
+			# 					getattr(i,'set_%s'%('markeredgewidth'))(20)
 
 			for k in _kwds:
 				_attr_ = _attr
@@ -923,14 +952,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# 		getattr(obj,attr)(*args,**kwargs[attr])
 			# 	except:
 			# 		pass
-			return _attr
+			_obj = _attr
+			
+			objs.append(_obj)
+
+			return
 
 		_wrapper = lambda kwarg,attr,kwargs,settings,index:{
 			**kwarg,
 			attr: {k: attr_share(attr_texify(kwarg[attr][k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg[attr]},
 			(attr,index):settings[attr],
 			}
-		_attr = None
 
 		# Convert settings (dict,nested lists of dict) to list of dicts
 		if not isinstance(settings[attr],(dict,list)):
@@ -940,7 +972,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		size = len(_kwargs)
 
 		for index,_kwarg in enumerate(_kwargs):
-			_attr = attrs(obj,attr,_attr,index,size,kwargs,_wrapper(_kwarg,attr,kwargs,settings,index))
+			attrs(obj,attr,objs,index,size,kwargs,_wrapper(_kwarg,attr,kwargs,settings,index))
+
 		return
 
 	def obj_wrap(attr,key,fig,ax,settings):
@@ -967,11 +1000,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						ordering[prop] += 1
 					props.insert(ordering[prop],props.pop(props.index(prop)))
 
+			objs = []
 			for prop in props:
 
 				kwargs = attr_kwargs(attr,key,settings)
 
-				attr_wrap(obj,prop,settings[key][attr],**kwargs)
+				attr_wrap(obj,prop,objs,settings[key][attr],**kwargs)
 
 		return
 		

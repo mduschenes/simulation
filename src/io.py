@@ -40,7 +40,8 @@ class cd(object):
 		self.path = path
 		return
 	def __enter__(self):
-		self.cwd = os.getcwd()
+
+		self.cwd = cwd()
 
 		try:
 			os.chdir(self.path)
@@ -51,6 +52,18 @@ class cd(object):
 		os.chdir(self.cwd)
 		return
 
+
+def cwd(*args,**kwargs):
+	'''
+	Get current directory
+	Args:
+		args (iterable): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		path (str): Current directory
+	'''
+	path = os.getcwd()
+	return path
 
 def environ():
 	'''
