@@ -1232,6 +1232,7 @@ class Optimization(System):
 		do = (self.paths is not None)
 
 		if not do:
+			self.reset(clear=False)
 			return iteration,state
 
 		path = self.paths['track']
