@@ -155,7 +155,7 @@ class System(Dictionary):
 			'device':'cpu',
 			'backend':'jax',
 			'architecture':None,
-			'unit':None,			
+			'unit':1,			
 			'seed':None,
 			'key':None,
 			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
@@ -168,7 +168,7 @@ class System(Dictionary):
 		}
 
 		def updates(kwargs,defaults):
-			kwargs['unit'] = 1 if kwargs.get('unit',defaults.get('unit')) is None else kwargs.get('unit')
+			kwargs['unit'] = defaults.get('unit') if kwargs.get('unit',defaults.get('unit')) is None else kwargs.get('unit')
 			return
 
 		updates(kwargs,defaults)
@@ -364,7 +364,6 @@ class Object(System):
 			'random':'random',
 			'seed':None,
 			'bounds':[-1,1],
-
 		}
 
 		# Setup kwargs
