@@ -65,13 +65,18 @@
 			1e0,1e0,1e0,1e0,1e0,1e0,1e0,1e0,1e0
 		],
 
+		"model.tau":[
+			1e0,1e1,1e2
+		],
+		"model.T": [1e3],
+
 		"noise.parameters":[1],
 		"noise.initialization":["random"],
 
 		"system.unit":[1e6],
 		"parameters.xy.scale":[1],
 		"parameters.z.scale":[5e-3],
-		"parameters.zz.scale":[1e-4,2e-4,5e-4],
+		"parameters.zz.scale":[1e-4],
 		"noise.scale":[null],
 		"state.scale":[1],
 
@@ -91,6 +96,9 @@
 		"jobs.job.cwd":["gobi/tau.T.noiseless.3"],
 		"jobs.postprocess.cwd":["gobi/tau.T.noiseless.3"],
 		
+		"jobs.job.cwd":["gobi/test"],
+		"jobs.postprocess.cwd":["gobi/test"],
+		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
@@ -106,9 +114,9 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["6:00:00"],
+		"jobs.job.patterns.time":["1:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
-		"jobs.job.patterns.mem":["64GB"],
+		"jobs.job.patterns.mem":["32GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.account":["def-raymond"],
 		"jobs.postprocess.patterns.account":["def-raymond"],				
@@ -119,6 +127,7 @@
 
 		},
 	"groups":[["parameters.xy.method","system.architecture"],["model.T","model.tau"]],
+	"groups":[["parameters.xy.method","system.architecture"]],
 	"index":null
 	},
 "model":{
