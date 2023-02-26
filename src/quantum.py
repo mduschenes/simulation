@@ -366,7 +366,7 @@ class Observable(System):
 		parameters = Parameters(parameters,shape,dims=dims,cls=cls,check=check,initialize=initialize,system=system)
 
 		# Get coefficients
-		coefficients = -1j*2*pi/2*self.tau/self.P		
+		coefficients = -1j*2*pi/2*self.tau/self.P*self.unit
 
 		# Update class attributes
 		self.parameters = parameters
