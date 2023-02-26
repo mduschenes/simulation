@@ -103,7 +103,7 @@
 			"x":"iteration",
 			"y":"objective",
 			"label":{
-				"N":null,"architecture":null,"T":null,"tau":null,"noise.parameters":null
+				"N":null,"architecture":null,"tau.noise.parameters":null,"T.noise.parameters":null,"noise.parameters":null
 			},
 			"alpha":0.8,
 			"marker":"o",
