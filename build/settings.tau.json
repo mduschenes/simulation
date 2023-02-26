@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":38421,
-	"size":1,
+	"size":8,
 	"reset":38421,
 	"index":null
 	},
@@ -65,11 +65,6 @@
 			1e6,1e6,1e6,1e6,1e6,1e6,1e6,1e6,1e6
 		],
 
-		"model.tau":[
-			2e1,2e1,2e1
-		],
-		"model.T": [null],
-
 		"noise.parameters":[1e6],
 		"noise.initialization":["random"],
 
@@ -81,7 +76,7 @@
 		"state.scale":[1],
 
 
-		"optimize.iterations":[100],
+		"optimize.iterations":[300],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
@@ -126,9 +121,8 @@
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 
 		},
-	"groups":[["parameters.xy.method","system.architecture"],["model.T","model.tau"]],
 	"groups":[["parameters.xy.method","system.architecture"]],
-	"groups":[["parameters.xy.method","system.architecture"],["model.M","model.tau"]],	
+	"groups":[["parameters.xy.method","system.architecture"],["model.T","model.tau"]],
 	"index":null
 	},
 "model":{
