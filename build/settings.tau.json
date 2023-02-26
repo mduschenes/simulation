@@ -43,7 +43,7 @@
 		"noise.parameters":[1],
 		"noise.initialization":["time"],
 
-		"system.unit":[1e6],
+		"system.unit":[null],
 		"parameters.xy.scale":[1],
 		"parameters.z.scale":[1e-3],
 		"parameters.zz.scale":[1e-4],
@@ -55,33 +55,33 @@
 		"model.M":[null],		
 
 		"model.tau":[
-			1e-5,2.5e-5,5e-5,7.5e-5,1e-4,2.5e-4,5e-4,7.5e-4,1e-3,
-			1e-4,2.5e-4,5e-4,7.5e-4,1e-3,2.5e-3,5e-3,7.5e-3,1e-2,
-			1e-3,2.5e-3,5e-3,7.5e-3,1e-2,2.5e-2,5e-2,7.5e-2,1e-1
+			1e1,2.5e1,5e1,7.5e1,1e2,2.5e2,5e2,7.5e2,1e3,
+			1e2,2.5e2,5e2,7.5e2,1e3,2.5e3,5e3,7.5e3,1e4,
+			1e3,2.5e3,5e3,7.5e3,1e4,2.5e4,5e4,7.5e4,1e5
 		],
 		"model.T": [
-			1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,1e-2,
-			1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,1e-1,
-			1e0,1e0,1e0,1e0,1e0,1e0,1e0,1e0,1e0
+			1e4,1e4,1e4,1e4,1e4,1e4,1e4,1e4,1e4,
+			1e5,1e5,1e5,1e5,1e5,1e5,1e5,1e5,1e5,
+			1e6,1e6,1e6,1e6,1e6,1e6,1e6,1e6,1e6
 		],
 
 		"model.tau":[
-			1e0,1e1,1e2
+			2e1,2e1,2e1
 		],
-		"model.T": [1e3],
+		"model.T": [null],
 
-		"noise.parameters":[1],
+		"noise.parameters":[1e6],
 		"noise.initialization":["random"],
 
 		"system.unit":[1e6],
 		"parameters.xy.scale":[1],
-		"parameters.z.scale":[5e-3],
+		"parameters.z.scale":[1e-3],
 		"parameters.zz.scale":[1e-4],
 		"noise.scale":[null],
 		"state.scale":[1],
 
 
-		"optimize.iterations":[500],
+		"optimize.iterations":[100],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
@@ -128,6 +128,7 @@
 		},
 	"groups":[["parameters.xy.method","system.architecture"],["model.T","model.tau"]],
 	"groups":[["parameters.xy.method","system.architecture"]],
+	"groups":[["parameters.xy.method","system.architecture"],["model.M","model.tau"]],	
 	"index":null
 	},
 "model":{
@@ -156,7 +157,7 @@
 	"device":"cpu",
 	"backend":"jax",
 	"architecture":null,
-	"unit":1,
+	"unit":null,
 	"seed":null,
 	"key":null,
 	"cwd":".",
@@ -173,13 +174,13 @@
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
 	"eps":{"value":1e-16,"grad":1e-16,"value.difference":1e-18,"grad.difference":1e-16,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
-	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":100,"alpha":0,"beta":0},
+	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":50,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
 	"kwargs":{"noise":1e-3},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
-	"alpha":1e-4,"beta":1e-4,
+	"alpha":1e-2,"beta":1e-2,
 	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
 	"length":{"log":null,"buffer":1,"attributes":3,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"attributes":{
