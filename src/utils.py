@@ -151,6 +151,10 @@ class argparser(argparse.ArgumentParser):
 			'action':action
 		}
 
+		nulls = {
+			'action':['type','nargs','default']
+		}
+
 		if arguments is None:
 			arguments = '--args'
 		if isinstance(arguments,str):
@@ -175,13 +179,28 @@ class argparser(argparse.ArgumentParser):
 
 			name = '%s'%(argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
-			options.update({option: options.get(option,defaults[option]) for option in defaults})
-			options.update({'nargs':'?' if options.get('nargs') not in ['*','+'] or i>0 else '*','default':argparse.SUPPRESS})
+
+			for null in nulls:
+				if null in options:
+					for option in nulls[null]:
+						options.pop(option,None);
+
+			options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
+			options.update({
+				**{option:'?' if options.get(option) not in ['*','+'] or i>0 else '*' for option in ['nargs'] if option in options},
+				**{option: argparse.SUPPRESS for option in ['default'] if option in options}
+				})
 			self.add_argument(name,**options)
 
 			name = '--%s'%(argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
-			options.update({option: options.get(option,defaults[option]) for option in defaults})
+			
+			for null in nulls:
+				if null in options:
+					for option in nulls[null]:
+						options.pop(option,None);
+
+			options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
 			options.update({'dest':options.get('dest',argument.replace('--',''))})
 			names = [argument,argument.replace('--','')]
 			self.add_argument(name,**options)
@@ -5745,6 +5764,32 @@ def to_key_value(string,delimiter='=',default=None,**kwargs):
 			else:
 				value = value
 	return key,value
+
+def to_position(index,shape):
+	'''
+	Convert linear index to dimensional position
+	Args:
+		index (int): Linear index
+		shape (iterable[int]): Dimensions of positions
+	Returns:
+		position (iterable[int]): Dimensional positions
+	'''
+	from math import prod
+	position = [index//(prod(shape[i+1:]))%(shape[i]) for i in range(len(shape))]
+	return position
+
+def to_index(position,shape):
+	'''
+	Convert dimensional position to linear index
+	Args:
+		position (iterable[int]): Dimensional positions
+		shape (iterable[int]): Dimensions of positions
+	Returns:
+		index (int): Linear index
+	'''	
+	from math import prod
+	index = sum((position[i]*(prod(shape[i+1:])) for i in range(len(shape))))
+	return index
 
 
 def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):

@@ -1304,10 +1304,10 @@ class Callback(object):
 					value = track['iteration'][index]
 
 				elif attr in ['iteration.min']:
-					value = track['iteration'][argmin(array(track['objective']))]
+					value = track['iteration'][argmin(abs(array(track['objective'])))]
 
 				elif attr in ['value']:
-					value = attributes[attr][index]
+					value = abs(attributes[attr][index])
 
 				elif attr in ['parameters','grad','search'] and not ((not status) or done or init):
 					value = empty(track[attr][index].shape)
@@ -1366,7 +1366,7 @@ class Callback(object):
 						value = abs((value - _value + eps)/(_value + eps)).mean()
 
 				elif attr in ['objective']:
-					value = metric(model(parameters))
+					value = abs(metric(model(parameters)))
 				
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
@@ -1404,7 +1404,7 @@ class Callback(object):
 					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters,system=_system,verbose=False)
 
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
-						value = _metric(_model(parameters))
+						value = abs(_metric(_model(parameters)))
 					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
 						value = abs((track['objective'][index] - _metric(_model(parameters))))
 					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
