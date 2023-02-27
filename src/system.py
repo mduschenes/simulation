@@ -18,7 +18,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,gradient
-from src.utils import array,arange,eye,rand,einsum
+from src.utils import array,arange,eye,rand,einsum,prod
 from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt,is_array,datatype
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
@@ -155,7 +155,7 @@ class System(Dictionary):
 			'device':'cpu',
 			'backend':'jax',
 			'architecture':None,
-			'unit':None,			
+			'unit':1,			
 			'seed':None,
 			'key':None,
 			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
@@ -168,7 +168,7 @@ class System(Dictionary):
 		}
 
 		def updates(kwargs,defaults):
-			kwargs['unit'] = 1 if kwargs.get('unit',defaults.get('unit')) is None else kwargs.get('unit')
+			kwargs['unit'] = defaults.get('unit') if kwargs.get('unit',defaults.get('unit')) is None else kwargs.get('unit')
 			return
 
 		updates(kwargs,defaults)
@@ -364,7 +364,6 @@ class Object(System):
 			'random':'random',
 			'seed':None,
 			'bounds':[-1,1],
-
 		}
 
 		# Setup kwargs
@@ -709,8 +708,11 @@ class Lattice(System):
 		# Define array of vertices
 		self.vertices = arange(self.N)
 		
-		# n^i for i = 1:d array
-		self.n_i = self.n**arange(self.d,dtype=self.dtype)
+		# n^i for i = 0:d-1 array
+		if isinstance(self.n,scalars):
+			self.n_i = self.n**arange(self.d,dtype=self.dtype)
+		else:
+			self.n_i = array([prod(self.n[i+1:]) for i in range(self.d)])
 		
 		# Arrays for finding coordinate and linear position in d dimensions
 		self.I = eye(self.d)
@@ -789,6 +791,8 @@ class Lattice(System):
 
 	def __repr__(self):
 		return self.__str__()
+
+
 
 	def position(self,site):
 		'''

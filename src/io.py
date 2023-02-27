@@ -14,7 +14,10 @@ from natsort import natsorted,realsorted
 
 # Logging
 import logging
+format = '%(message)s'
+logging.basicConfig(format=format)
 logger = logging.getLogger(__name__)
+info = 100
 debug = 0
 
 # Import user modules
@@ -40,7 +43,8 @@ class cd(object):
 		self.path = path
 		return
 	def __enter__(self):
-		self.cwd = os.getcwd()
+
+		self.cwd = cwd()
 
 		try:
 			os.chdir(self.path)
@@ -51,6 +55,18 @@ class cd(object):
 		os.chdir(self.cwd)
 		return
 
+
+def cwd(*args,**kwargs):
+	'''
+	Get current directory
+	Args:
+		args (iterable): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		path (str): Current directory
+	'''
+	path = os.getcwd()
+	return path
 
 def environ():
 	'''
@@ -565,7 +581,7 @@ def pickleable(obj,path=None,callables=True,verbose=False):
 		pickleables = {k: pickleable(obj[k],path,callables=callables) for k in obj} 
 		for k in pickleables:
 			if not pickleables[k] or (not callables and callable(pickleables[k])):
-				logger.log(verbose,'Cannot pickle (key,value) %r, %r'%(k,obj[k]))
+				logger.log(info*verbose,'Cannot pickle (key,value) %r, %r'%(k,obj[k]))
 				obj.pop(k);
 				pickleables[k] = True		
 		return all([pickleables[k] for k in pickleables])
@@ -701,6 +717,8 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	data = {}
 
 	for name in paths:
+
+		logger.log(info*verbose,'Path: %s'%(paths[name]))
 		
 		path = paths[name]
 
@@ -837,6 +855,8 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		paths = path
 
 	for name in paths:
+		
+		logger.log(info*verbose,'Path: %s'%(paths[name]))
 		
 		path = paths[name]
 		
