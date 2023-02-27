@@ -46,7 +46,12 @@
 		"parameters.z.scale":"\\nu",
 		"parameters.zz.scale":"J",
 		"optimize.c1":"c_{1}",
-		"optimize.c2":"c_{2}"
+		"optimize.c2":"c_{2}",
+        "optimize.optimizer": "\\textrm{Optimizer}",
+        "gd": "\\textrm{Gradient Descent}",
+        "cg": "\\textrm{Conjugate Gradient}",
+        "adam": "\\textrm{Adam}",
+        "ls": "\\textrm{Line Search}"		
 	},
 	"valify": {
 		"None":1e-20
