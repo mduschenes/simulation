@@ -18,7 +18,7 @@ format = '%(message)s'
 logging.basicConfig(format=format)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-info = 20	
+info = 10	
 debug = 0
 
 # Import user modules
