@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":38421,
-	"size":8,
+	"size":16,
 	"reset":38421,
 	"index":null
 	},
@@ -65,12 +65,15 @@
 			1e6,1e6,1e6,1e6,1e6,1e6,1e6,1e6,1e6
 		],
 
+		"model.tau":[1e2,2.5e2,5e2,7.5e2,1e3,2.5e3,5e3,7.5e3,1e4],
+		"model.T": [1e5],
+
 		"noise.parameters":[1e6],
 		"noise.initialization":["random"],
 
 		"system.unit":[1e6],
 		"parameters.xy.scale":[1],
-		"parameters.z.scale":[1e-3],
+		"parameters.z.scale":[1e-2],
 		"parameters.zz.scale":[1e-4],
 		"noise.scale":[null],
 		"state.scale":[1],
@@ -91,9 +94,6 @@
 		"jobs.job.cwd":["gobi/tau.T.noiseless.3"],
 		"jobs.postprocess.cwd":["gobi/tau.T.noiseless.3"],
 		
-		"jobs.job.cwd":["gobi/test"],
-		"jobs.postprocess.cwd":["gobi/test"],
-		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
@@ -112,17 +112,17 @@
 		"jobs.job.patterns.time":["1:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
 		"jobs.job.patterns.mem":["32GB"],
-		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"],				
+		"jobs.postprocess.patterns.mem":["64GB"],			
 		"jobs.job.patterns.account":["def-carrasqu"],
 		"jobs.postprocess.patterns.account":["def-carrasqu"],
+		"jobs.job.patterns.account":["def-raymond"],
+		"jobs.postprocess.patterns.account":["def-raymond"],		
 		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 
 		},
-	"groups":[["parameters.xy.method","system.architecture"]],
 	"groups":[["parameters.xy.method","system.architecture"],["model.T","model.tau"]],
+	"groups":[["parameters.xy.method","system.architecture"]],
 	"index":null
 	},
 "model":{
