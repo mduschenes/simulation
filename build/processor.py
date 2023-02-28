@@ -48,20 +48,18 @@ def main(args):
 		},						
 		'--verbose':{
 			'help':'Verbosity',
-			'type':bool,
-			'default':False,
-			'nargs':'?',			
-		},						
+			'action':'store_true'
+		},												
 
 	}
 
 	wrappers = {
-		'settings':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1],directory=True).replace('/**','').replace('**',''),'plot.json') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
-		'hyperparameters':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1],directory=True).replace('/**','').replace('**',''),'process.json') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
-		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1],directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
-		'pwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1],directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
-		'verbose': lambda kwarg,wrappers,kwargs: True if kwargs.get(kwarg) is None else kwargs.get(kwarg),
-		'data':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1],directory=True).replace('/**','').replace('**',''),'**/data.hdf5'),
+		'settings':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**',''),'plot.json') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'hyperparameters':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**',''),'process.json') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'pwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'verbose': lambda kwarg,wrappers,kwargs: kwargs.get(kwarg),
+		'data':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**',''),'**/data.hdf5'),
 	}
 
 

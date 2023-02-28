@@ -146,6 +146,9 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		}
 
 
+	if verbose:
+		print('Paths: pwd: %s , cwd: %s'%(pwd,cwd))
+
 	# Load plot settings
 	path = join(settings,root=pwd) if isinstance(settings,str) else None
 	default = None if isinstance(settings,str) else settings
@@ -1067,7 +1070,7 @@ def plotter(settings,hyperparameters,verbose=None):
 				else:
 					separator = '~,~'
 
-				value = separator.join(['~,~'.join(val).replace('$','') for val in value if val])
+				value = separator.join(['~,~'.join(i).replace('$','') for i in value if i])
 
 				if isinstance(data.get(attr),str) and data[attr].count('%s'):
 					data[attr] = data[attr]%(value)
@@ -1334,16 +1337,14 @@ if __name__ == '__main__':
 		},						
 		'--verbose':{
 			'help':'Verbosity',
-			'type':bool,
-			'default':None,
-			'nargs':'?',
+			'action':'store_true'
 		},						
 
 	}
 
 	wrappers = {
-		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1],directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
-		'pwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1],directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'pwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
 	}
 
 	args = argparser(arguments,wrappers)

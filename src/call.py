@@ -1,14 +1,11 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools,inspect,traceback
+import os,sys,warnings,itertools,inspect,traceback,datetime
 from functools import partial
 from copy import deepcopy
 import subprocess
 from natsort import natsorted
-
-# Logging
-import logging
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -22,6 +19,7 @@ path = os.getcwd()
 file = 'logging.conf'
 conf = os.path.join(path,file)
 file = None #'log.log'
+info = 100
 logger = Logger(name,conf,file=file)
 
 from src.utils import intersection,scalars
@@ -1120,8 +1118,7 @@ def init(key,
 			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
 			msg = 'Job %s'%(key)
-			logger.log(verbose,msg)
-			print(msg)
+			logger.log(info,msg)
 
 		return task
 

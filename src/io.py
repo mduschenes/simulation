@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools,inspect,traceback
+import os,sys,warnings,itertools,inspect,traceback,datetime
 import shutil
 from copy import deepcopy
 import glob as globber
@@ -13,12 +13,11 @@ import pandas as pd
 from natsort import natsorted,realsorted
 
 # Logging
-import logging
-format = '%(message)s'
-logging.basicConfig(format=format)
+import logging,logging.config
+conf = os.path.join(os.path.dirname(__file__),'logging.conf')
+logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-info = 20	
+info = 100	
 debug = 0
 
 # Import user modules
@@ -68,6 +67,8 @@ def cwd(*args,**kwargs):
 	'''
 	path = os.getcwd()
 	return path
+
+
 
 def environ():
 	'''
@@ -151,6 +152,25 @@ def dirname(path,abspath=False,delimiter='.'):
 
 	return directory
 
+def relpath(path,relative=None,**kwargs):
+	'''
+	Get path relative to path
+	Args:
+		path (str): Path to get relative path
+		relative (str): Relative path
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		path (str): Relative path
+	'''
+	if relative is None:
+		relative = cwd()
+
+	try:
+		path = os.path.relpath(path,relative)
+	except ValueError:
+		pass
+
+	return path
 	
 
 def mkdir(path):
@@ -719,7 +739,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	for name in paths:
 
-		logger.log(info*verbose,'Path: %s'%(paths[name]))
+		logger.log(info*verbose,'Path: %s'%(relpath(paths[name])))
 		
 		path = paths[name]
 
@@ -857,7 +877,7 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 
 	for name in paths:
 		
-		logger.log(info*verbose,'Path: %s'%(paths[name]))
+		logger.log(info*verbose,'Path: %s'%(relpath(paths[name])))
 		
 		path = paths[name]
 		

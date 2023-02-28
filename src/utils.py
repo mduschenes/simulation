@@ -177,20 +177,23 @@ class argparser(argparse.ArgumentParser):
 
 		for i,argument in enumerate(arguments):
 
+
 			name = '%s'%(argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
 
-			for null in nulls:
-				if null in options:
-					for option in nulls[null]:
-						options.pop(option,None);
+			if options.get('action') is None:
+				for null in nulls:
+					if null in options:
+						for option in nulls[null]:
+							options.pop(option,None);
 
-			options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
-			options.update({
-				**{option:'?' if options.get(option) not in ['*','+'] or i>0 else '*' for option in ['nargs'] if option in options},
-				**{option: argparse.SUPPRESS for option in ['default'] if option in options}
-				})
-			self.add_argument(name,**options)
+				options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
+				options.update({
+					**{option:'?' if options.get(option) not in ['*','+'] or i>0 else '*' for option in ['nargs'] if option in options},
+					**{option: argparse.SUPPRESS for option in ['default'] if option in options}
+					})
+				names = [name]
+				self.add_argument(*names,**options)
 
 			name = '--%s'%(argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
@@ -202,8 +205,8 @@ class argparser(argparse.ArgumentParser):
 
 			options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
 			options.update({'dest':options.get('dest',argument.replace('--',''))})
-			names = [argument,argument.replace('--','')]
-			self.add_argument(name,**options)
+			names = [name]
+			self.add_argument(*names,**options)
 
 		kwargs,args = self.parse_known_args()
 

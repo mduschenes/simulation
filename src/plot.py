@@ -691,7 +691,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 			elif attr in ['errorbar']:
-				print(index,kwargs[attr]['y'])
 				dim = 2
 
 				subattrs = 'set_%sscale'
