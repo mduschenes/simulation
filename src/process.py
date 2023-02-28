@@ -285,7 +285,7 @@ def find(dictionary,verbose=None):
 				'settings':{},
 				'texify':{},
 				'valify': {},		
-				'scilimits':[0,2],
+				'scinotation':{'scilimits':[0,2],'decimals':0,'one':False},
 	}
 
 	elements = [*axes,*other]
@@ -713,6 +713,9 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 
 			for index,data in enumerate(flatten(elements.get(key_elements))):
+				if index >= len(iterable.get(key_iterable)):
+					# iterable[key_iterable].append(deepcopy(data))
+					continue
 				for subindex,datum in enumerate(flatten(iterable.get(key_iterable)[index])):
 					if not datum:
 						continue
@@ -888,16 +891,31 @@ def plotter(settings,hyperparameters,verbose=None):
 									if ((data) and attr in data[OTHER][OTHER])
 									for string in data[OTHER][OTHER][attr]}
 									for attr in ['texify','valify']},
-								**{attr: [
-									min((data[OTHER][OTHER][attr][0]
+								**{attr: {
+									**{kwarg:[
+									min((data[OTHER][OTHER][attr][kwarg][0]
 										for data in flatten(settings[instance][subinstance]['ax'][plots]) 
-										if ((data) and attr in data[OTHER][OTHER])),default=0),
-									max((data[OTHER][OTHER][attr][1]
+										if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+										default=0),
+									max((data[OTHER][OTHER][attr][kwarg][1]
 										for data in flatten(settings[instance][subinstance]['ax'][plots]) 
-										if ((data) and attr in data[OTHER][OTHER])),default=0),
-									]
-									for attr in ['scilimits']},									
-									},
+										if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+										default=0),											
+									] for kwarg in ['scilimits']},
+									**{kwarg: 
+										max((data[OTHER][OTHER][attr][kwarg]
+										for data in flatten(settings[instance][subinstance]['ax'][plots]) 
+										if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+										default=0) 
+										for kwarg in ['decimals']},
+									**{kwarg: 
+										any((data[OTHER][OTHER][attr][kwarg]
+										for data in flatten(settings[instance][subinstance]['ax'][plots]) 
+										if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))))
+										for kwarg in ['one']},										
+									}
+									for attr in ['scinotation']},
+								},
 							}
 						for label in list(realsorted(set(label
 						for data in flatten(settings[instance][subinstance]['ax'][plots])
@@ -964,8 +982,8 @@ def plotter(settings,hyperparameters,verbose=None):
 						if subvalue is None:
 							continue
 						value[-1][subattr%(axis)][subsubattr%(axis)] = texify(
-							scinotation(subvalue.get(subsubattr%(axis)),decimals=0,
-								scilimits=values[plots][label]['attr']['scilimits'],one=False),
+							scinotation(subvalue.get(subsubattr%(axis)),
+								**values[plots][label]['attr']['scinotation']),
 							texify=values[plots][label]['attr']['texify']) 
 
 					subattr = 'set_%sticks'
@@ -1003,8 +1021,8 @@ def plotter(settings,hyperparameters,verbose=None):
 
 						value[-1][subattr%(axis)][subsubattr] = [
 							texify(
-							scinotation(i,decimals=0,
-								scilimits=values[plots][label]['attr']['scilimits'],one=False),
+							scinotation(i,
+								**values[plots][label]['attr']['scinotation']),
 							texify=values[plots][label]['attr']['texify']) for i in subvalue[subsubattr]]							
 
 					settings[instance][subinstance]['ax'][attr] = value
@@ -1043,7 +1061,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					[
 						*['%s%s%s'%(
 							texify(label),' : ' if label else '',
-							',~'.join([texify(scinotation(value,decimals=0,scilimits=values[plots][label]['attr']['scilimits'],one=False),texify=values[plots][label]['attr']['texify']) 
+							',~'.join([texify(scinotation(value,**values[plots][label]['attr']['scinotation']),texify=values[plots][label]['attr']['texify']) 
 									for value in values[plots][label]['value']]))
 							for plots in values 
 							for label in realsorted(set((
@@ -1053,7 +1071,7 @@ def plotter(settings,hyperparameters,verbose=None):
 								(values[plots][label]['other']) and (len(values[plots][label]['value'])==1)))))],
 						*['%s%s%s'%(
 							texify(label),' : ' if label else '',
-							',~'.join([texify(scinotation(value,decimals=0,scilimits=values[plots][label]['attr']['scilimits'],one=False),texify=values[plots][label]['attr']['texify']) 
+							',~'.join([texify(scinotation(value,**values[plots][label]['attr']['scinotation']),texify=values[plots][label]['attr']['texify']) 
 									for value in values[plots][label]['value']]))
 							for plots in values 
 							for label in realsorted(set((
@@ -1160,22 +1178,22 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					attr = OTHER
 					value = ',~'.join([
-						*[(texify(scinotation(data[OTHER][label],decimals=0,scilimits=data[OTHER][OTHER].get('scilimits'),one=False),texify=data[OTHER][OTHER].get('texify')) 
-							if values[plots][label]['label'] else texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],decimals=0,scilimits=data[OTHER][OTHER].get('scilimits'),one=False),texify=data[OTHER][OTHER].get('texify'))
+						*[(texify(scinotation(data[OTHER][label],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
+							if values[plots][label]['label'] else texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
 							) 
 							for label in realsorted(set((
 							label 
 							for label in values[plots] 
 							if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
 								not (values[plots][label]['other'])))))],
-						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],decimals=0,scilimits=data[OTHER][OTHER].get('scilimits'),one=False),texify=data[OTHER][OTHER].get('texify'))
+						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
 							)
 							for label in realsorted(set((
 							label 
 							for label in values[plots]
 							if (not ((values[plots][label]['label'])) and 
 								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))],
-						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],decimals=0,scilimits=data[OTHER][OTHER].get('scilimits'),one=False),texify=data[OTHER][OTHER].get('texify'))
+						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
 							)
 							for label in realsorted(set((
 							label 
