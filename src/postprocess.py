@@ -98,7 +98,7 @@ defaults = {
 	},
 'noise.scale.M.min': {
 	"fig":{
-		"set_size_inches":{"w":12,"h":12},
+		"set_size_inches":{"w":9,"h":6},
 		"subplots_adjust":{},
 		"tight_layout":{},
 		"savefig":{"fname":None,"bbox_inches":"tight","pad_inches":0.2},
@@ -109,14 +109,15 @@ defaults = {
 			"x":"noise.scale",
 			"y":"M",
 			"label":None,
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":20,
-			"linestyle":"--",
-			"capsize":10,			
-			"linewidth":10,
-			"elinewidth":7,		
-			"color":"viridis",
+
+            "alpha": 0.8,
+            "marker": "o",
+            "markersize": 12,
+            "linestyle": "",
+            "capsize": 10,
+            "linewidth": 10,
+            "elinewidth": 5,
+            "color": "#73d055ff",
 			},
 		"fill_between":{
 			"x":"noise.scale",
@@ -143,6 +144,7 @@ defaults = {
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
+		"xaxis.set_minor_locator":None,		
 		
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
@@ -175,14 +177,14 @@ defaults = {
 		"set_aspect":{"aspect":"auto"},
 		"grid":{"visible":True,"which":"major","axis":"both","zorder":0},
 		"legend":{
-			"title_fontsize": 15,
+			"title_fontsize": 20,
 			"get_title":{"ha":"center"},
-			"get_texts":{"va":"center","ha":"center","position":[0,45]},
-			"prop": {"size": 15},
-			"markerscale": 1.2,
+			"get_texts":{"va":"center","ha":"center","position":[0,37.5]},
+			"prop": {"size": 10},
+			"markerscale": 0.5,
 			"handlelength": 3,
 			"framealpha": 0.8,
-			"loc": [0.52,0.80],
+			"loc": [0.49,0.69],
 			"ncol": 1,
 			"set_zorder":{"level":100},
 			"set_label":True,
@@ -191,7 +193,7 @@ defaults = {
 	"style":{
 		"texify":None,
 		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
+		"rcParams":{"font.size":20},
 		"layout":{"nrows":1,"ncols":1,"index":1},
 		"share": {
 			"ax":{
@@ -215,18 +217,18 @@ defaults = {
 			"x":"M",
 			"y":"objective",
 			"label":None,
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"capsize":10,			
-			"linewidth":10,
-			"elinewidth":7,
+			"alpha": 0.8,
+            "marker": "o",
+            "markersize": 8,
+            "linestyle": "",
+            "capsize": 1,
+            "linewidth": 1.75,
+            "elinewidth": 7,
 			"color":"viridis",
 			},
 		"fill_between":{
 			"x":"noise.scale",
-			"alpha":0.5,
+			"alpha":0.4,
 			"color":'viridis',
 			},			
 		"set_ylabel":{"ylabel":r'$\textrm{Infidelity}$'},
@@ -279,10 +281,11 @@ defaults = {
 			"title_fontsize": 20,
 			"set_title":r"$\gamma$",
 			"prop": {"size": 20},
-			"markerscale": 0.6,
+			"markerscale": 1,
 			"handlelength": 2,
 			"framealpha": 0.8,
-			"loc": [0.72,0.2],
+			"loc": [0.76,0.38],
+            "handlers":{"errorbar":{"yerr_size":20}},			
 			"ncol": 1,
 			"set_zorder":{"level":100},
 			"set_label":None,
@@ -291,7 +294,10 @@ defaults = {
 	"style":{
 		"texify":None,
 		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":20},
+		"rcParams":{
+			"font.size":20,
+            "errorbar.capsize":30			
+			},
 		"layout":{"nrows":1,"ncols":1,"index":1},
 		"share": {
 			"ax":{
@@ -585,15 +591,14 @@ def postprocess(path,**kwargs):
 									'x':_Y[i],
 									'y':_Z[i],
 									# 'yerr':_Zerr[i],							
-									'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
-									"alpha":0.8,
-									"marker":None,
-									"markersize":None,
-									"linestyle":"--",
-									"capsize":10,			
-									"linewidth":10,
-									"elinewidth":7,
-
+					                "alpha": 0.8,
+					                "marker": None,
+					                "markersize": None,
+					                "linestyle": "-",
+					                "capsize": 1,
+					                "linewidth": 1.75,
+					                "elinewidth": 7,
+					                "color": "k"									
 									} for i in indices
 									],
 									*[
@@ -632,7 +637,6 @@ def postprocess(path,**kwargs):
 									'y':_Z[i],
 									'yerr':_Zerr[i],
 									'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(indices)),	
-									'alpha':0.4,
 									} for i in indices
 									],
 									]
@@ -748,21 +752,19 @@ def postprocess(path,**kwargs):
 										r'$%s$'%('\n'.join([
 										'%s = %s'%(z,scinotation(-_parameters[i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
 											for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_parameters)])])) + '\n' +
-										r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty_propagation(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
+										# r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty_propagation(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
 										r'$%s$'%('r^2 = %s'%(scinotation(_other['r'],decimals=4,scilimits=[-1,4])))
 										),
 									'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(1),	
-									'marker':None,
-									'linestyle':'--',
-									'zorder':-1,
-									"alpha":0.8,
-									"marker":None,
-									"markersize":20,
-									"linestyle":None,
-									"capsize":10,			
-									"linewidth":10,
-									"elinewidth":7,
-
+								"alpha": 0.8,
+				                "marker": None,
+				                "markersize": 20,
+				                "linestyle": "--",
+				                "capsize": 10,
+				                "linewidth": 5,
+				                "elinewidth": 7,
+				                "color": "#481567ff",
+				                "zorder": -1
 									},												
 									],
 								'fill_between':{
