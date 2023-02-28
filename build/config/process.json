@@ -9,7 +9,7 @@
 	"instance":{
 		"iteration.objective.M":1,
 		"noise.scale.objective.M":1,
-		"noise.scale.objective.diff.M":1,
+		"noise.scale.objective.diff.M":0,
 		"noise.scale.objective.diff.M":0,
 		"M.objective.noise.scale":1,
 		"M.objective.noise.scale.noiseless":0,
