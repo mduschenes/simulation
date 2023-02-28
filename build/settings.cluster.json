@@ -19,7 +19,7 @@
 	"permutations":{	
 	
 		"model.N":[2],		
-		"model.M":[10,20,50],		
+		"model.M":[10],		
 		"model.tau":[20e0],		
 		"noise.scale":[1e-12],
 		"state.scale":[1],
@@ -304,7 +304,7 @@
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--pwd=.","--cwd=.","--verbose"]
 			},
 		"paths":{
 			"plot":"plot.json",
