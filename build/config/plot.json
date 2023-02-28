@@ -12,7 +12,12 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null},
+			"label":{
+				"label":{
+					"N":null,"architecture":null,"M":null,"noise.scale":null
+				},
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
+			},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -26,7 +31,12 @@
 			{
 			"x":"iteration",
 			"y":"objective.ideal.state",
-			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null},
+			"label":{
+				"label":{
+					"N":null,"architecture":null,"M":null,"noise.scale":null
+				},
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
+			},			
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":12,
@@ -103,7 +113,14 @@
 			"x":"iteration",
 			"y":"objective",
 			"label":{
-				"N":null,"architecture":null,"tau.noise.parameters":null,"T.noise.parameters":null,"noise.parameters":null
+				"label": {
+					"N":null,
+					"architecture":null,
+					"tau.noise.parameters":null,
+					"T.noise.parameters":null,
+					"noise.parameters":null
+				},
+				"scinotation":{"scilimits":[0,4],"decimals":0}
 			},
 			"alpha":0.8,
 			"marker":"o",
@@ -187,7 +204,7 @@
 						"M": null,
 						"iteration": "@iteration.min@"
 					},
-					"scilimits":[0,4]
+					"scinotation":{"scilimits":[0,4],"decimals":0}					
 				},
 				"alpha": 0.8,
 				"marker": "o",
@@ -209,7 +226,7 @@
 						"M": null,
 						"iteration": "@iteration.min@"
 					},
-					"scilimits":[0,4]
+					"scinotation":{"scilimits":[0,4],"decimals":0}
 				},
 				"alpha": 0.8,
 				"marker": "o",

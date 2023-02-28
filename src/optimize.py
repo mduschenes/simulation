@@ -1134,6 +1134,7 @@ class Optimization(System):
 		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search
 			parameters = parameters + alpha*search
 			return parameters,search,alpha
 
@@ -1186,6 +1187,8 @@ class Optimization(System):
 
 		iteration += 1
 		size += 1
+
+		grad = grad/norm(grad) if self.kwargs.get('normalize') else grad
 
 		self.attributes['iteration'].append(iteration)
 		self.attributes['parameters'].append(parameters)
@@ -1414,6 +1417,7 @@ class GradientDescent(Optimization):
 		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search
 			parameters = parameters + alpha*search
 			return parameters,search,alpha
 
@@ -1476,6 +1480,7 @@ class LineSearchDescent(Optimization):
 				optimizer.attributes['grad'],
 				optimizer.attributes['search']) if optimizer.size > 1 else optimizer.hyperparameters['alpha']
 			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search			
 			parameters = parameters + alpha*search
 			return parameters,search,alpha
 
@@ -1531,6 +1536,7 @@ class HessianDescent(Optimization):
 		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search			
 			hess = optimizer.hess(parameters)
 			parameters = parameters + alpha*lstsq(hess,search)
 			return parameters,search,alpha
@@ -1610,6 +1616,7 @@ class ConjugateGradient(Optimization):
 				optimizer.attributes['search'])
 
 			search = -grad + beta*search
+			search = search/norm(search) if self.kwargs.get('normalize') else search			
 
 			return parameters,search,alpha,beta
 
@@ -1619,6 +1626,7 @@ class ConjugateGradient(Optimization):
 			beta = self.hyperparameters['beta']
 			
 			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search			
 			
 			return parameters,search,alpha,beta
 
@@ -1639,7 +1647,7 @@ class ConjugateGradient(Optimization):
 
 			else:
 				value,grad,parameters = self.opt_step(iteration-init,state)
-				search = None
+				search = -grad
 
 				parameters,search,alpha,beta = _update(iteration,parameters,value,grad,search,self)
 
@@ -1710,6 +1718,7 @@ class Adam(Optimization):
 
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search			
 			
 			state = self.opt_init(parameters)
 			state = self._opt_update(iteration,grad,state)
