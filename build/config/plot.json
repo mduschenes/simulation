@@ -176,21 +176,51 @@
 		"close":{}
 		},
 	"ax":{
-		"errorbar":[
+		"errorbar": [
 			{
-			"x":"noise.scale",
-			"y":"objective",
-			"label":{"N":null,"architecture":null,"M":null,"iteration":"@iteration.min@"},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":20,
-			"linestyle":"--",
-			"linewidth":10,
-			"elinewidth":7,
-			"capsize":10,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}	
+				"x": "noise.scale",
+				"y": "objective",
+				"label": {
+					"label":{
+						"N": null,
+						"architecture": null,
+						"M": null,
+						"iteration": "@iteration.min@"
+					},
+					"scilimits":[0,4]
+				},
+				"alpha": 0.8,
+				"marker": "o",
+				"markersize": 20,
+				"linestyle": "-",
+				"linewidth": 10,
+				"elinewidth": 7,
+				"capsize": 10,
+				"color": "viridis",
+				"ecolor": "viridis"
+			},
+			{
+				"x": "noise.scale",
+				"y": "objective.ideal.state",
+				"label": {
+					"label":{
+						"N": null,
+						"architecture": null,
+						"M": null,
+						"iteration": "@iteration.min@"
+					},
+					"scilimits":[0,4]
+				},
+				"alpha": 0.8,
+				"marker": "o",
+				"markersize": 20,
+				"linestyle": "--",
+				"linewidth": 10,
+				"elinewidth": 7,
+				"capsize": 10,
+				"color": "viridis",
+				"ecolor": "viridis"
+			}				
 		],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\gamma$"},
