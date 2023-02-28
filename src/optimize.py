@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,inv,metrics
+from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,lstsq,inv,norm,metrics
 from src.utils import is_unitary,is_hermitian,is_naninf,product,sqrt,asarray
 from src.utils import scalars,delim,nan
 
@@ -1046,6 +1046,7 @@ class Optimization(System):
 		self.system = system
 
 		self.value_and_grad,self.func,self.grad = value_and_gradient(func,grad,returns=True)
+		self.hess = hessian(func)
 
 		self.alpha = LineSearch(self.func,self.grad,self.hyperparameters,system=self.system)
 
@@ -1065,10 +1066,13 @@ class Optimization(System):
 		self.length = hyperparameters['length']
 		self.attributes = hyperparameters['attributes']
 		self.track = hyperparameters['track']
-		self.iterations = range(int(hyperparameters['iterations']))
+		self.iterations = hyperparameters['iterations']
 		self.sizes = {attr: hyperparameters['length'].get(attr) if hyperparameters['length'].get(attr) else 1 for attr in ['buffer','attributes']}
 		self.search = hyperparameters['search']
 		self.eps = hyperparameters['eps']
+		self.bounds = hyperparameters['bounds']
+		self.value = hyperparameters['value']
+		self.kwargs = hyperparameters['kwargs']
 
 		self.paths = {'track':join(self.path,ext=None,root=self.cwd),'attributes':join(self.path,ext='ckpt',root=self.cwd)} if self.path is not None else None
 
@@ -1130,6 +1134,7 @@ class Optimization(System):
 		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search
 			parameters = parameters + alpha*search
 			return parameters,search,alpha
 
@@ -1183,6 +1188,8 @@ class Optimization(System):
 		iteration += 1
 		size += 1
 
+		grad = grad/norm(grad) if self.kwargs.get('normalize') else grad
+
 		self.attributes['iteration'].append(iteration)
 		self.attributes['parameters'].append(parameters)
 		self.attributes['value'].append(value)
@@ -1231,6 +1238,7 @@ class Optimization(System):
 		do = (self.paths is not None)
 
 		if not do:
+			self.reset(clear=False)
 			return iteration,state
 
 		path = self.paths['track']
@@ -1280,7 +1288,7 @@ class Optimization(System):
 		'''
 		Reset class attributes
 		Args:
-			clear (bool): clear attributes
+			clear (bool,str): clear attributes
 		'''
 		clear = self.clear if clear is None else clear
 
@@ -1317,11 +1325,16 @@ class Optimization(System):
 		else:
 			self.iteration = 0
 	
-		self.iterations = range(
-			self.iteration,
-			self.iterations.stop-self.iterations.start+self.iteration,
-			self.iterations.step)				
-
+		if not clear:
+			if isinstance(self.iterations,int):
+				self.iterations = range(self.iteration,self.iterations+self.iteration)
+			elif isinstance(self.iterations,range):
+				self.iterations = range(
+					self.iteration,
+					self.iterations.stop-self.iterations.start+self.iteration,
+					self.iterations.step)				
+			else:
+				self.iterations = range(self.iteration,self.iterations[1],*self.iterations[2:])
 
 		return
 
@@ -1333,7 +1346,7 @@ class Optimization(System):
 		'''		
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['optimizer','iterations','size','search','eps','modulo']
+				for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']
 			],
 			*['%s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
 				for attr in ['track','attributes']
@@ -1359,7 +1372,7 @@ class Optimizer(Optimization):
 		defaults = {'optimizer':None}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
-		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,None:GradientDescent}
+		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
 
 		optimizer = hyperparameters['optimizer']		
 		
@@ -1404,6 +1417,7 @@ class GradientDescent(Optimization):
 		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search
 			parameters = parameters + alpha*search
 			return parameters,search,alpha
 
@@ -1423,6 +1437,125 @@ class GradientDescent(Optimization):
 
 		return state
 
+
+class LineSearchDescent(Optimization):
+	'''
+	Gradient Descent with Line Search Optimizer class, with numpy optimizer API
+	Args:
+		func (callable): function to optimize, with signature function(parameters)
+		grad (callable): gradient of function to optimize, with signature grad(parameters)
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
+		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
+		kwargs (dict): Additional system attributes
+	'''
+	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
+
+		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
+		setter(hyperparameters,defaults,delimiter=delim,func=True)
+
+		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system,**kwargs)
+
+		defaults = {}
+		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
+
+		return
+
+	def opt_update(self,iteration,state):
+		'''
+		Update optimizer state with parameters
+		Args:
+			iteration (int): optimizer iteration
+			state (object): optimizer state
+		Returns:
+			state (object): optimizer state
+		'''
+
+		def update(iteration,parameters,value,grad,search,optimizer):
+			alpha = optimizer.alpha(
+				iteration,
+				parameters,
+				optimizer.attributes['alpha'],
+				optimizer.attributes['value'],
+				optimizer.attributes['grad'],
+				optimizer.attributes['search']) if optimizer.size > 1 else optimizer.hyperparameters['alpha']
+			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search			
+			parameters = parameters + alpha*search
+			return parameters,search,alpha
+
+		value,grad,parameters = self.opt_step(iteration,state)
+		search = self.attributes['search'][-1] if self.size > 1 else 0
+
+		parameters,search,alpha = update(iteration,parameters,value,grad,search,self)
+
+		self.attributes['search'].append(search)
+		self.attributes['alpha'].append(alpha)
+
+		state = self.opt_init(parameters)
+		parameters = self.get_params(state)
+		track = self.track		
+		optimizer = self
+		self.status = self.callback(parameters,track,optimizer)
+
+		return state
+
+class HessianDescent(Optimization):
+	'''
+	Gradient Descent with Hessian Optimizer class, with numpy optimizer API
+	Args:
+		func (callable): function to optimize, with signature function(parameters)
+		grad (callable): gradient of function to optimize, with signature grad(parameters)
+		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
+		hyperparameters (dict): optimizer hyperparameters
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
+		kwargs (dict): Additional system attributes
+	'''
+	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
+
+		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
+		setter(hyperparameters,defaults,delimiter=delim,func=True)
+
+		super().__init__(func,grad,callback,hyperparameters=hyperparameters,system=system,**kwargs)
+
+		defaults = {}
+		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
+
+		return
+
+	def opt_update(self,iteration,state):
+		'''
+		Update optimizer state with parameters
+		Args:
+			iteration (int): optimizer iteration
+			state (object): optimizer state
+		Returns:
+			state (object): optimizer state
+		'''
+
+		def update(iteration,parameters,value,grad,search,optimizer):
+			alpha = optimizer.hyperparameters['alpha']
+			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search			
+			hess = optimizer.hess(parameters)
+			parameters = parameters + alpha*lstsq(hess,search)
+			return parameters,search,alpha
+
+		value,grad,parameters = self.opt_step(iteration,state)
+		search = self.attributes['search'][-1] if self.size > 1 else 0
+
+		parameters,search,alpha = update(iteration,parameters,value,grad,search,self)
+
+		self.attributes['search'].append(search)
+		self.attributes['alpha'].append(alpha)
+
+		state = self.opt_init(parameters)
+		parameters = self.get_params(state)
+		track = self.track		
+		optimizer = self
+		self.status = self.callback(parameters,track,optimizer)
+
+		return state
 
 class ConjugateGradient(Optimization):
 	'''
@@ -1472,7 +1605,7 @@ class ConjugateGradient(Optimization):
 
 			state = optimizer.opt_init(parameters)
 
-			_value,_grad,parameters = optimizer.opt_step(iteration,state)
+			value,grad,parameters = optimizer.opt_step(iteration,state)
 			
 			beta = optimizer.beta(
 				iteration,
@@ -1482,8 +1615,19 @@ class ConjugateGradient(Optimization):
 				optimizer.attributes['grad'],
 				optimizer.attributes['search'])
 
-			search = -_grad + beta*search
+			search = -grad + beta*search
+			search = search/norm(search) if self.kwargs.get('normalize') else search			
 
+			return parameters,search,alpha,beta
+
+		def _update(iteration,parameters,value,grad,search,optimizer):
+
+			alpha = optimizer.hyperparameters['alpha']
+			beta = self.hyperparameters['beta']
+			
+			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search			
+			
 			return parameters,search,alpha,beta
 
 
@@ -1503,10 +1647,9 @@ class ConjugateGradient(Optimization):
 
 			else:
 				value,grad,parameters = self.opt_step(iteration-init,state)
-
-				alpha = self.hyperparameters['alpha']
-				beta = self.hyperparameters['beta']
 				search = -grad
+
+				parameters,search,alpha,beta = _update(iteration,parameters,value,grad,search,self)
 
 			self.attributes['search'].append(search)
 			self.attributes['alpha'].append(alpha)
@@ -1575,6 +1718,7 @@ class Adam(Optimization):
 
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
+			search = search/norm(search) if self.kwargs.get('normalize') else search			
 			
 			state = self.opt_init(parameters)
 			state = self._opt_update(iteration,grad,state)

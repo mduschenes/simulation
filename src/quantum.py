@@ -50,7 +50,7 @@ class Operator(System):
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		parameters (str,dict,Parameters): Type of parameters	
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''	
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
@@ -172,7 +172,7 @@ class Observable(System):
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Gate): Type of label	
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -366,7 +366,7 @@ class Observable(System):
 		parameters = Parameters(parameters,shape,dims=dims,cls=cls,check=check,initialize=initialize,system=system)
 
 		# Get coefficients
-		coefficients = -1j*2*pi/2*self.tau/self.P		
+		coefficients = -1j*2*pi/2*self.tau/self.P
 
 		# Update class attributes
 		self.parameters = parameters
@@ -658,7 +658,7 @@ class Observable(System):
 			N (int): Number of qudits
 			D (int): Dimension of qudits
 			space (str,Space): Type of local space
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 
 		N = self.N if N is None else N
@@ -689,7 +689,7 @@ class Observable(System):
 			tau (float): Simulation time scale
 			P (int): Trotter order		
 			time (str,Time): Type of Time evolution space						
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 		M = self.M if M is None else M
 		T = self.T if T is None else T
@@ -720,7 +720,7 @@ class Observable(System):
 			L (int,float): Scale in system
 			delta (float): Simulation length scale		
 			lattice (str,Lattice): Type of lattice		
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''		
 		N = self.N if N is None else N
 		D = self.D if D is None else D
@@ -768,7 +768,7 @@ class Observable(System):
 		'''		
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
-				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','shape','dims','cwd','path','backend','architecture','conf','logger','cleanup']
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
 			],
 			*['%s: %s'%(attr.split(delim)[0],'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
 				for attr in ['state.scale','noise.scale']
@@ -879,7 +879,7 @@ class Hamiltonian(Observable):
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Gate): Type of label
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -1028,7 +1028,6 @@ class Hamiltonian(Observable):
 		parameters = array(trotter(parameters,P))
 
 		# Get reshaped parameters (transpose for shape (K,M) to (M,K) and reshape to (MK,) with periodicity of data)
-		shape = parameters.T.shape
 		parameters = parameters.T.ravel()
 
 		return parameters
@@ -1064,7 +1063,7 @@ class Unitary(Hamiltonian):
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		label (str,dict,Gate): Type of label
-		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
@@ -1305,10 +1304,10 @@ class Callback(object):
 					value = track['iteration'][index]
 
 				elif attr in ['iteration.min']:
-					value = track['iteration'][argmin(array(track['objective']))]
+					value = track['iteration'][argmin(abs(array(track['objective'])))]
 
 				elif attr in ['value']:
-					value = attributes[attr][index]
+					value = abs(attributes[attr][index])
 
 				elif attr in ['parameters','grad','search'] and not ((not status) or done or init):
 					value = empty(track[attr][index].shape)
@@ -1367,7 +1366,7 @@ class Callback(object):
 						value = abs((value - _value + eps)/(_value + eps)).mean()
 
 				elif attr in ['objective']:
-					value = metric(model(parameters))
+					value = abs(metric(model(parameters)))
 				
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
@@ -1405,7 +1404,7 @@ class Callback(object):
 					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters,system=_system,verbose=False)
 
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
-						value = _metric(_model(parameters))
+						value = abs(_metric(_model(parameters)))
 					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
 						value = abs((track['objective'][index] - _metric(_model(parameters))))
 					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
@@ -1440,6 +1439,11 @@ class Callback(object):
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
 						value = argmax(abs(difference(value)/value[:-1]))+1	
 						value = value.size if (value==value.size-1) else value
+
+				elif attr in ['tau.noise.parameters','T.noise.parameters']:
+					value = [attr.split(delim)[0],delim.join(attr.split(delim)[1:])]
+					value = [getattrs(model,i,default=default,delimiter=delim) for i in value]
+					value = value[0]/value[1] if value[1] else value[0]
 
 				elif attr not in attributes and not (getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null,delimiter=delim) is null):
 					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)

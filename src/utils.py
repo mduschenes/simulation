@@ -151,6 +151,10 @@ class argparser(argparse.ArgumentParser):
 			'action':action
 		}
 
+		nulls = {
+			'action':['type','nargs','default']
+		}
+
 		if arguments is None:
 			arguments = '--args'
 		if isinstance(arguments,str):
@@ -173,18 +177,36 @@ class argparser(argparse.ArgumentParser):
 
 		for i,argument in enumerate(arguments):
 
+
 			name = '%s'%(argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
-			options.update({option: options.get(option,defaults[option]) for option in defaults})
-			options.update({'nargs':'?' if options.get('nargs') not in ['*','+'] or i>0 else '*','default':argparse.SUPPRESS})
-			self.add_argument(name,**options)
+
+			if options.get('action') is None:
+				for null in nulls:
+					if null in options:
+						for option in nulls[null]:
+							options.pop(option,None);
+
+				options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
+				options.update({
+					**{option:'?' if options.get(option) not in ['*','+'] or i>0 else '*' for option in ['nargs'] if option in options},
+					**{option: argparse.SUPPRESS for option in ['default'] if option in options}
+					})
+				names = [name]
+				self.add_argument(*names,**options)
 
 			name = '--%s'%(argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
-			options.update({option: options.get(option,defaults[option]) for option in defaults})
+			
+			for null in nulls:
+				if null in options:
+					for option in nulls[null]:
+						options.pop(option,None);
+
+			options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
 			options.update({'dest':options.get('dest',argument.replace('--',''))})
-			names = [argument,argument.replace('--','')]
-			self.add_argument(name,**options)
+			names = [name]
+			self.add_argument(*names,**options)
 
 		kwargs,args = self.parse_known_args()
 
@@ -5746,13 +5768,39 @@ def to_key_value(string,delimiter='=',default=None,**kwargs):
 				value = value
 	return key,value
 
+def to_position(index,shape):
+	'''
+	Convert linear index to dimensional position
+	Args:
+		index (int): Linear index
+		shape (iterable[int]): Dimensions of positions
+	Returns:
+		position (iterable[int]): Dimensional positions
+	'''
+	from math import prod
+	position = [index//(prod(shape[i+1:]))%(shape[i]) for i in range(len(shape))]
+	return position
+
+def to_index(position,shape):
+	'''
+	Convert dimensional position to linear index
+	Args:
+		position (iterable[int]): Dimensional positions
+		shape (iterable[int]): Dimensions of positions
+	Returns:
+		index (int): Linear index
+	'''	
+	from math import prod
+	index = sum((position[i]*(prod(shape[i+1:])) for i in range(len(shape))))
+	return index
+
 
 def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
 		number (str,int,float): Number to be processed
-		decimals (int): Number of decimals in base part of number (including leading digit)
+		decimals (int): Number of decimals in base part of number (including leading ones digit)
 		base (int): Base of scientific notation
 		order (int): Max power of number allowed for rounding
 		zero (bool): Make numbers that equal 0 be the int representation
@@ -5816,8 +5864,8 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 			string = r'%s%%s%%s%%s'%(flt)
 		else:
 			string = r'%s%s%s%%s%%s%%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',
-				r'\cdot' if (one or (float(flt) != 1.0)) else '',
-				'%d^{%s}'%(base,exp) if exp!= '0' else ''
+				r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
+				'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
 				)
 	
 		if error is not None and not isinstance(error,str):
@@ -5826,8 +5874,8 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 			else:
 				error = r'%s%s%s'%(
 					'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
-					r'\cdot' if (one or (float(flt) != 1.0)) else '',
-					'%d^{%s}'%(base,exp) if exp!= '0' else ''
+					r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
+					'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
 					)
 
 	if error is None:
