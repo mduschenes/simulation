@@ -10,21 +10,21 @@
 	"dump":0
 	},
 "seed":{
-	"seed":12781,
+	"seed":17261,
 	"size":50,
-	"reset":12781,
+	"reset":17261,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
 		"model.N":[4],		
-		"model.M":[1,5,10,20,50,100,200,500,1000],
-		"model.tau":[50e0],		
+		"model.M":[10,50,100,500,1000],
+		"model.tau":[150e0],		
 		"noise.scale":[null],
 		"state.scale":[null],
 
-		"optimize.iterations":[[0,300]],
+		"optimize.iterations":[[0,500]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
@@ -130,7 +130,7 @@
 
 			"iteration.max":[],
 			"iteration.min":[],
-			"variables":false,"variables.relative":false,"variables.relative.mean":false,
+			"variables":false,"variables.relative":false,"variables.relative.mean":true,
 			"features":false,"features.relative":false,"features.relative.mean":false,				
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
@@ -179,10 +179,12 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-1e-2,0,1e-3,-5e-2,2e-3],
+		"parameters":[-1,0,1,-1,1],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["z"]],
 		"scale":1,
+		"scale":1e-2,
 		"initialization":"random",
 		"random":"uniform",
 		"pad":"random",
@@ -201,10 +203,12 @@
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],
 		"parameters":[1.1e-4,-0.8e-4,0.9e-4,1.4e-4,-1.5e-4,0.87e-4,1.4e-4,-0.7e-4,0.6e-4,-1.2e-4],
+		"parameters":[1,1,1,1,1,1,1,1,1,1],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],
 		"scale":1,
+		"scale":1e-4,
 		"initialization":"random",
 		"random":"uniform",	
 		"pad":"random",
