@@ -5800,7 +5800,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 	Put number into scientific notation string
 	Args:
 		number (str,int,float): Number to be processed
-		decimals (int): Number of decimals in base part of number (including leading digit)
+		decimals (int): Number of decimals in base part of number (including leading ones digit)
 		base (int): Base of scientific notation
 		order (int): Max power of number allowed for rounding
 		zero (bool): Make numbers that equal 0 be the int representation
@@ -5864,8 +5864,8 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 			string = r'%s%%s%%s%%s'%(flt)
 		else:
 			string = r'%s%s%s%%s%%s%%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',
-				r'\cdot' if (one or (float(flt) != 1.0)) else '',
-				'%d^{%s}'%(base,exp) if exp!= '0' else ''
+				r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
+				'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
 				)
 	
 		if error is not None and not isinstance(error,str):
@@ -5874,8 +5874,8 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 			else:
 				error = r'%s%s%s'%(
 					'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
-					r'\cdot' if (one or (float(flt) != 1.0)) else '',
-					'%d^{%s}'%(base,exp) if exp!= '0' else ''
+					r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
+					'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
 					)
 
 	if error is None:
