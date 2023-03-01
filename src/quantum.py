@@ -1494,7 +1494,6 @@ class Callback(object):
 				# # to_string(abs(model.label()).round(4))),
 				# to_string((model(parameters)).round(4)),
 				# to_string((model.label()).round(4))),
-				''
 				])
 
 
