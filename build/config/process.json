@@ -21,7 +21,7 @@
 		"noise.parameters.objective.tau":0,
 		"noise.parameters.objective.diff.tau":0,
 		"noise.parameters.objective.diff.tau":0,
-		"tau.objective.noise.parameters":1,
+		"tau.objective.noise.parameters":0,
 		"tau.objective.noise.parameters.noiseless":0,
 		"tau.variables.relative.mean.N.iteration": 1,
 		"tau.iteration.min.N": 0,
