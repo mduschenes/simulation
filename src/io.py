@@ -147,8 +147,9 @@ def dirname(path,abspath=False,delimiter='.'):
 			directory = path
 	elif ext not in exts:
 		directory = path
+	directory = os.path.expandvars(os.path.expanduser(directory))
 	if abspath:
-		directory = os.path.abspath(os.path.expanduser(directory))
+		directory = os.path.abspath(os.path.expandvars(os.path.expanduser(directory)))
 
 	return directory
 
@@ -216,7 +217,7 @@ def copy(source,destination):
 
 	return
 
-def split(path,directory=False,file=False,ext=False,directory_file=False,file_ext=False,abspath=None,delimiter='.'):
+def split(path,directory=False,file=False,ext=False,directory_file_ext=False,directory_file=False,file_ext=False,abspath=None,delimiter='.'):
 	'''
 	Split path into directory,file,ext
 	Args:
@@ -224,6 +225,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 		directory (bool,int,iterable[int]): Return split directory name, or number of intermediate directories after root / before directory containing folder
 		file (bool): Return split file name
 		ext (bool): Return split extension name
+		directory_file_ext (bool): Return split and joined directory and file name and ext
 		directory_file (bool): Return split and joined directory and file name
 		file_ext (bool): Return split and joined file and extension name
 		abspath (bool): Return absolute directory		
@@ -234,7 +236,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 
 	path = str(path) if path is not None else None
 
-	returns = {'directory':directory,'file':file or directory_file or file_ext,'ext':ext}
+	returns = {'directory':directory,'file':file or directory_file_ext or directory_file or file_ext,'ext':ext}
 	paths = {}
 
 	if path is None or not (directory or file or ext or file_ext or directory_file):
@@ -252,7 +254,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 	else:
 		paths['directory'] = dirname(path)
 	if abspath:
-		paths['directory'] = os.path.abspath(os.path.expanduser(paths['directory']))
+		paths['directory'] = os.path.abspath(os.path.expandvars(os.path.expanduser(paths['directory'])))
 
 	paths['file'],paths['ext'] = os.path.splitext(path)
 	if paths['ext'].startswith(delimiter):
@@ -261,7 +263,7 @@ def split(path,directory=False,file=False,ext=False,directory_file=False,file_ex
 		if dirname(path) == paths['file']:
 			paths['file'] = None
 		else:
-			paths['file'] = os.path.basename(paths['file'])
+			paths['file'] = os.path.basename(os.path.expandvars(paths['file']))
 	if file_ext:
 		if paths['file'] is not None:
 			paths['file'] = delimiter.join([paths['file'],paths['ext']])
@@ -300,7 +302,7 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	elif path is None and root is not None:
 		path = root
 	if path is not None and abspath:
-		path = os.path.abspath(os.path.expanduser(path))
+		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 	return path
 
 
@@ -334,7 +336,7 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 
 	path = join(path,recursive)
 
-	paths = globber.glob(os.path.abspath(os.path.expanduser(path)),recursive=True,**kwargs)
+	paths = globber.glob(os.path.abspath(os.path.expandvars(os.path.expanduser(path))),recursive=True,**kwargs)
 
 	paths = list(realsorted(filter(include,paths)))
 
@@ -749,7 +751,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			data[name] = datum
 			continue
 	
-		path = os.path.abspath(os.path.expanduser(path))
+		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 		ext = split(path,ext=True,delimiter=delimiter)
 
 		for wr in wrs:
@@ -881,7 +883,7 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		
 		path = paths[name]
 		
-		path = os.path.abspath(os.path.expanduser(path))
+		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 		ext = split(path,ext=True,delimiter=delimiter)
 		mkdir(path)
 
