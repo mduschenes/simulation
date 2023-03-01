@@ -1042,22 +1042,32 @@ def init(key,
 				subattr = {'serial':'path','parallel':'cwd','array':'cwd',None:'cwd'}.get(task['process'],'cwd')
 				files = task['patterns'].get('error')
 				directory = task[subattr]
-				pattern = ['*.*.*' if (task['count'] is not None) else '*.*',r'.*\.[^.]*\.\([^.]*\)\.[^.]*$:\1']
-				files = glob(join(
-					directory,split(files,directory=True),
-					pattern[0],ext=split(files,ext=True)))
+				pattern = [
+					'*.*.*' if (task['count'] is not None) else '*.*',
+					r'.*\.[^.]*\.\([^.]*\)\.[^.]*$:\1' if (task['count'] is not None) else r'.*\.\([^.]*\)\.[^.]*$:\1']
+				files = join(
+					split(files,directory=True),
+					pattern[0],ext=split(files,ext=True),
+					root=directory if (not split(files,directory=True)) else None)
+				files = glob(files)
 				files = nonempty(
 					path=files,
 					pattern=pattern[1],
 					execute=True
 					)
-				value = files
+				if (task['count'] is None) and files:
+					value = None
+				else:
+					value = files
 			elif isinstance(value,(bool)) and not value:
 				value = []
 			else:
 				value = [i for i in value]
 				
-			value = [int(i) for i in value if (task['count'] is None) or (int(i) < task['count'])] if value is not None else value
+			try:
+				value = [int(i) for i in value if (task['count'] is None) or (int(i) < task['count'])] if value is not None else value
+			except:
+				value = []			
 
 			task[attr] = value
 
@@ -1089,6 +1099,7 @@ def init(key,
 			'cwd':cwd[key],
 			'job':jobs[key],
 			'resume':resume[key],
+			'boolean':True,
 			'cmd':None,
 			'env':None,
 			'process':process,
