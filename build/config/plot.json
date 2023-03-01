@@ -239,6 +239,19 @@
 				"ecolor": "viridis"
 			}				
 		],			
+		"set_colorbar":{
+                "values":"noise.scale",
+                "colors":"viridis",
+                "size":"3%",
+                "pad":0.1,
+                "norm":[1e-16,1e0],
+                "set_scale":{"value":"log"},
+                "set_label":{"label":"noise.scale","labelpad":10,"size":30},
+                "set_ticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0],"labelsize":50},                
+                "ax.yaxis.set_tick_params":{"pad":5},                
+                "ax.tick_params":{"labelsize":30,"which":"major","size":10,"length":8,"width":1}
+                },			
+		"set_colorbar":null,			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$\\gamma$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
@@ -514,7 +527,19 @@
 			"color":"viridis",
 			"ecolor":"viridis"
 			}				
-		],			
+		],		
+		"set_colorbar":{
+			"values":"M",
+			"colors":"viridis",
+			"size":"3%",
+			"pad":0.1,
+			"norm":[0,800],
+			"set_label":{"label":"M","labelpad":10,"size":30},
+			"set_ticks":{"ticks":[0,200,400,600,800],"size":50},
+			"ax.yaxis.set_tick_params":{"pad":5},                
+			"ax.tick_params":{"labelsize":30,"which":"major","size":10,"length":8,"width":1}
+			},
+		"set_colorbar":null,
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
 		"set_xlabel":{"xlabel":"$M$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
@@ -833,17 +858,17 @@
 		"errorbar":{
 			"x":null,
 			"y":"hessian.eigenvalues",
-            "label": {
-                "label":{
-                    "N": null,
-                    "architecture": null,
-                    "M": null,
-                    "noise.scale": null,
-                    "iteration": "@iteration.max@",
-                    "rank": "hessian.rank"
-                },
-                "slice":[0,1000,null]
-            },		
+			"label": {
+				"label":{
+					"N": null,
+					"architecture": null,
+					"M": null,
+					"noise.scale": null,
+					"iteration": "@iteration.max@",
+					"rank": "hessian.rank"
+				},
+				"slice":[0,1000,null]
+			},		
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -901,17 +926,17 @@
 		"errorbar":{
 			"x":null,
 			"y":"fisher.eigenvalues",
-            "label": {
-                "label":{
-                    "N": null,
-                    "architecture": null,
-                    "M": null,
-                    "noise.scale": null,
-                    "iteration": "@iteration.max@",
-                    "rank": "fisher.rank"
-                },
-                "slice":[0,1000,null]
-            },			
+			"label": {
+				"label":{
+					"N": null,
+					"architecture": null,
+					"M": null,
+					"noise.scale": null,
+					"iteration": "@iteration.max@",
+					"rank": "fisher.rank"
+				},
+				"slice":[0,1000,null]
+			},			
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -969,18 +994,18 @@
 		"errorbar":{
 			"x":null,
 			"y":"hessian.eigenvalues",
-            "label": {
-                "label":{
-                    "N": null,
-                    "architecture": null,
-                    "T":null,
-                    "tau": null,
-                    "noise.parameters": null,
-                    "iteration": "@iteration.max@",
-                    "rank": "hessian.rank"
-                },
-                "slice":[0,1000,null]
-            },		
+			"label": {
+				"label":{
+					"N": null,
+					"architecture": null,
+					"T":null,
+					"tau": null,
+					"noise.parameters": null,
+					"iteration": "@iteration.max@",
+					"rank": "hessian.rank"
+				},
+				"slice":[0,1000,null]
+			},		
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,
@@ -1038,18 +1063,18 @@
 		"errorbar":{
 			"x":null,
 			"y":"fisher.eigenvalues",
-            "label": {
-                "label":{
-                    "N": null,
-                    "architecture": null,
-                    "T":null,
-                    "tau": null,
-                    "noise.par": null,
-                    "iteration": "@iteration.max@",
-                    "rank": "fisher.rank"
-                },
-                "slice":[0,1000,null]
-            },			
+			"label": {
+				"label":{
+					"N": null,
+					"architecture": null,
+					"T":null,
+					"tau": null,
+					"noise.par": null,
+					"iteration": "@iteration.max@",
+					"rank": "fisher.rank"
+				},
+				"slice":[0,1000,null]
+			},			
 			"marker":"o",
 			"linestyle":"--",
 			"elinewidth":2,

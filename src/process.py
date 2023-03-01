@@ -977,7 +977,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					subattr = 'set_%slabel'
 					subsubattr = '%slabel'
-					for axis in AXIS:
+					for axis in ['',*AXIS]:
 						subvalue = value[-1].get(subattr%(axis))
 						if subvalue is None:
 							continue
@@ -988,7 +988,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					subattr = 'set_%sticks'
 					subsubattr = 'ticks'
-					for axis in AXIS:
+					for axis in ['',*AXIS]:
 						subvalue = value[-1].get(subattr%(axis))
 						if subvalue is None:
 							continue
@@ -1004,7 +1004,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					subattr = 'set_%sticklabels'
 					subsubattr = 'labels'
-					for axis in AXIS:
+					for axis in ['',*AXIS]:
 						subvalue = value[-1].get(subattr%(axis))
 						if subvalue is None:
 							continue
