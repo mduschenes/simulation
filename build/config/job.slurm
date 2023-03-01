@@ -2,6 +2,8 @@
 
 ##SBATCH --account=mduschenes
 #SBATCH --job-name=output
+##SBATCH --output=/checkpoint/mduschen/%j/%x.%A.stdout
+##SBATCH --error=/checkpoint/mduschen/%j/%x.%A.stderr
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
@@ -20,8 +22,10 @@
 #SBATCH --cpus-per-task=1
 
 
-# Run Parallel tasks
+# Checkpointing
+# touch /checkpoint/${USER}/${SLURM_JOB_ID}/DELAYPURGE
 
+# Run Parallel tasks
 
 # Function
 function RUN(){
