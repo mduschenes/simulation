@@ -1489,11 +1489,12 @@ class Callback(object):
 					if attr in attributes and len(attributes[attr])>0
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
-				'U\n%s\nV\n%s'%(
-				# to_string(abs(model(parameters)).round(4)),
-				# to_string(abs(model.label()).round(4))),
-				to_string((model(parameters)).round(4)),
-				to_string((model.label()).round(4))),
+				# 'U\n%s\nV\n%s'%(
+				# # to_string(abs(model(parameters)).round(4)),
+				# # to_string(abs(model.label()).round(4))),
+				# to_string((model(parameters)).round(4)),
+				# to_string((model.label()).round(4))),
+				''
 				])
 
 

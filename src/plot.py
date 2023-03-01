@@ -868,6 +868,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				padding = kwargs[attr].pop('pad',0.05)
 				sizing = kwargs[attr].pop('size','5%')
 				orientation = kwargs[attr].pop('orientation','vertical')
+				scale = kwargs[attr].pop('set_scale',{}).get('value',
+						kwargs[attr].pop('set_yscale',{}).get('value',
+						kwargs[attr].pop('set_xscale',{}).get('value')))
 
 				normed_values = {'vmin':min(values),'vmax':max(values)} if values else None 
 				if norm is None:
@@ -909,21 +912,24 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					else:
 						colors = [colors for i in range(N)] if N else None
 				
-
-
-				for axis in AXIS:
+				for axis in ['',*AXIS]:
 					field = 'set_%slabel'%(axis)
 					subfield = '%slabel'%(axis)
 					if field in kwargs[attr]:
 						kwargs[attr][field][subfield] = attr_texify(kwargs[attr][field][subfield],field,subfield)
-				
+
 				if (values is not None) and (colors is not None):
 					
 					N = min(len(values),len(colors))
 					if any(isinstance(i,str) for i in values):
 						values = list(range(N))
 					norm = dict(zip(['vmin','vmax'],norm)) if not isinstance(norm,dict) else norm
-					norm = matplotlib.colors.Normalize(**norm)  
+					if scale in ['linear',None]:
+						norm = matplotlib.colors.Normalize(**norm)  
+					elif scale in ['log']:
+						norm = matplotlib.colors.LogNorm(**norm)  
+					else:
+						norm = matplotlib.colors.Normalize(**norm)
 					normed_values = norm(values)
 					cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(normed_values,colors)), N=N*10)  
 					pos = obj.get_position()
@@ -937,26 +943,37 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						divider = make_axes_locatable(obj)
 						cax = divider.append_axes('right',size=sizing,pad=padding)
 						colorbar = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm, orientation=orientation)
-						obj = cax	
+						obj = colorbar	
 						for kwarg in kwargs[attr]:
+							_obj = obj
+							for _kwarg in kwarg.split('.'):
+								try:
+									_obj = getattr(_obj,_kwarg)
+								except Exception as exception:
+									print(kwarg,_kwarg,exception)
+									break									
 							if isinstance(kwargs[attr][kwarg],dict):
 								try:
-									getattr(obj,kwarg)(**kwargs[attr][kwarg])
-								except:
+									if _kwarg.startswith('get_'):
+										for i in _obj():
+											print(_kwarg,i)
+											getattr(i,_kwarg)(kwargs[attr][kwarg])
+									else:
+										_obj(**kwargs[attr][kwarg])
+								except Exception as exception:
+									print(kwarg,exception)
 									continue
 							else:
 								continue
+
+# 						try:
+# 							obj.ax.tick_
+# 						font_size = 14 # Adjust as appropriate.
+# cb.ax.tick_params(labelsize=font_size)
 					else:
 						pass
 				
 				call = False
-
-				# norm = matplotlib.colors.Normalize(vmin=min(values), vmax=max(values))  
-				# normed_values = norm(values)
-				# cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(normed_values,colors)), N=len(normed_values)*10)  
-				# colorbar = matplotlib.colorbar.ColorbarBase(ax=obj, cmap=cmap, norm=norm, orientation='vertical')
-				# obj = colorbar
-				# call = True
 
 
 			elif attr in ['savefig']:
