@@ -1128,7 +1128,7 @@ def init(key,
 
 			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
-			msg = 'Job %s'%(key)
+			msg = 'Job : %s'%(key)
 			logger.log(info,msg)
 
 		return task
