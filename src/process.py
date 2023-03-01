@@ -585,7 +585,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 	for name in keys:
 
-		logger.log(info,"Processing : %s"%(name))
+		logger.log(info,"Processing : %r"%(name))
 
 		if any((keys[name][axis] not in data) and (keys[name][axis] is not null) for axis in AXIS if axis in keys[name]):
 			key,value = name,None
@@ -637,7 +637,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		for i,group in enumerate(groups.groups):
 
-			logger.log(info,"Group : %s"%(group))
+			logger.log(info,"Group : %r"%(group))
 
 			for j,function in enumerate(funcs):
 
