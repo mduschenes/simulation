@@ -963,10 +963,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							else:
 								continue
 
-# 						try:
-# 							obj.ax.tick_
-# 						font_size = 14 # Adjust as appropriate.
-# cb.ax.tick_params(labelsize=font_size)
 					else:
 						pass
 				
