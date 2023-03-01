@@ -604,7 +604,7 @@ def pickleable(obj,path=None,callables=True,verbose=False):
 		pickleables = {k: pickleable(obj[k],path,callables=callables) for k in obj} 
 		for k in pickleables:
 			if not pickleables[k] or (not callables and callable(pickleables[k])):
-				logger.log(info*verbose,'Cannot pickle (key,value) %r, %r'%(k,obj[k]))
+				logger.log(debug,'Exception : Cannot pickle (key,value) %r, %r'%(k,obj[k]))
 				obj.pop(k);
 				pickleables[k] = True		
 		return all([pickleables[k] for k in pickleables])
@@ -741,7 +741,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	for name in paths:
 
-		logger.log(info*verbose,'Path: %s'%(relpath(paths[name])))
+		logger.log(info*verbose,'Path : %s'%(relpath(paths[name])))
 		
 		path = paths[name]
 
@@ -759,13 +759,13 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 				datum = _load(path,wr=wr,ext=ext,**kwargs)
 				break
 			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError) as exception:			
-				logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
+				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						datum = _load(obj,wr=wr,ext=ext,**kwargs)
 						break
 				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError) as exception:
-					logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
+					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 					pass
 
 		data[name] = datum
@@ -879,7 +879,7 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 
 	for name in paths:
 		
-		logger.log(info*verbose,'Path: %s'%(relpath(paths[name])))
+		logger.log(info*verbose,'Path : %s'%(relpath(paths[name])))
 		
 		path = paths[name]
 		
@@ -894,13 +894,13 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 				_dump(data,path,wr=wr,ext=ext,**kwargs)
 				break
 			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError) as exception:
-				logger.log(debug,'Path: %r\n%r'%(exception,traceback.format_exc()))
+				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						_dump(data,obj,wr=wr,ext=ext,**kwargs)
 					break
 				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError) as exception:
-					logger.log(debug,'Object: %r\n%r'%(exception,traceback.format_exc()))
+					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 					pass
 	return
 
