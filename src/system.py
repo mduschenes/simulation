@@ -43,6 +43,7 @@ def config(name,conf=None,**kwargs):
 
 	default = 'logging.conf'
 	file = kwargs.get('file')
+	path = os.path.abspath(os.path.expandvars(os.path.expanduser(file))) if file is not None else None
 	ext = 'tmp'
 	existing = exists(conf)
 
@@ -82,9 +83,8 @@ def config(name,conf=None,**kwargs):
 							continue
 
 						if key in ['formatter'] and value in ['file']:
-							if file is not None:
-								path = file
-								directory = os.path.abspath(os.path.dirname(os.path.abspath(path)))
+							if path is not None:
+								directory = os.path.abspath(os.path.dirname(path))
 								if not os.path.exists(directory):
 									os.makedirs(directory)
 							else:
@@ -94,7 +94,7 @@ def config(name,conf=None,**kwargs):
 							kwds = {'file':path}
 
 						elif key in ['keys','handlers'] and value in ['stdout,file']:
-							kwds = {'file': file is not None}
+							kwds = {'file': path is not None}
 
 						config[section][arg] = func(config[section][arg],**kwds)
 
