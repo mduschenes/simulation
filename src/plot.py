@@ -282,6 +282,17 @@ def is_nan(obj):
 	except:
 		return False
 
+# Check if obj is inf
+def is_inf(obj):
+	try:
+		return np.isinf(obj).all()
+	except:
+		return False	
+
+# Check if obj is nan or inf
+def is_naninf(obj):
+	return is_nan(obj) or is_inf(obj)
+
 def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
 	'''
 	Put number into scientific notation string
@@ -321,7 +332,7 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 			number = int(number)
 		string = str(number)
 
-	if error is not None and (np.isnan(error) or np.isinf(error)):
+	if error is not None and (is_nan(error) or is_inf(error)):
 		# error = r'$\infty$'
 		error = None
 	
@@ -888,7 +899,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				nullkwargs.extend(['values','colors','norm','size','orientation','set_scale','set_yscale','set_xscale','normed_values'])
 				
-				values = values if values or any(isinstance(i,str) for i in values) else range(shape[-2]) if not norm else []
+				values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) or any(isinstance(i,str) for i in values)) else range(shape[-2]) if not norm else []
 				norm = ({**norm,**{
 						 'vmin':norm.get('vmin',min(values,default=0)),
 						 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
@@ -1012,7 +1023,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							values = kwargs[subattr].get('values',None)
 							norm = kwargs[subattr].get('norm',None)
 
-							values = values if values or any(isinstance(i,str) for i in values) else range(shape[-2]) if not norm else []
+							values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) or any(isinstance(i,str) for i in values)) else range(shape[-2]) if not norm else []
 							norm = ({**norm,**{
 									 'vmin':norm.get('vmin',min(values,default=0)),
 									 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
