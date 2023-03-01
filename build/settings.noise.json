@@ -10,22 +10,28 @@
 	"dump":0
 	},
 "seed":{
-	"seed":23813,
-	"size":12,
-	"reset":23813,
+	"seed":12781,
+	"size":24,
+	"reset":12781,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
 		"model.N":[4],		
-		"model.M":[
-			1100,1200,1300,1400,1500],
+		"model.M":[5,10,20,50,100,200,300,400,500,600,700,800,900,1000,1250,1400,1500,1600,1750,1800,2000,2500,3000,3500,4000,4500,5000,6000],		
+		"model.M":[			
+			200,225,250,275,
+			300,325,350,375,
+			400,425,450,475,
+			500,525,550,575,
+			600,625,650,675,
+			700,750,800,850,900,950,1000,1200],
 		"model.tau":[50e0],		
 		"noise.scale":[1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
 		"state.scale":[1],
 
-		"optimize.iterations":[500],
+		"optimize.iterations":[[0,500]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
@@ -34,8 +40,8 @@
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
 
-		"jobs.job.cwd":["gobi/noise.1000.1500"],
-		"jobs.postprocess.cwd":["gobi/noise.1000.1500"],
+		"jobs.job.cwd":["gobi/noise"],
+		"jobs.postprocess.cwd":["gobi/noise"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -43,17 +49,16 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[6],
+		"jobs.job.pool":[16],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
-		"jobs.job.resume":[null],	
 		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[2],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["24:00:00"],
+		"jobs.job.patterns.time":["72:00:00"],
 		"jobs.postprocess.patterns.time":["1:00:00"],
 		"jobs.job.patterns.mem":["64GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
@@ -288,6 +293,7 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,
+		"resume":true,
 		"pause":1,
 		"file":"job.sh",	
 		"process":null,
@@ -304,7 +310,7 @@
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--pwd=.","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--cwd=."]
 			},
 		"paths":{
 			"plot":"plot.json",
