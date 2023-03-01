@@ -950,26 +950,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								try:
 									_obj = getattr(_obj,_kwarg)
 								except Exception as exception:
-									print(kwarg,_kwarg,exception)
 									break									
 							if isinstance(kwargs[attr][kwarg],dict):
 								try:
 									if _kwarg.startswith('get_'):
 										for i in _obj():
-											print(_kwarg,i)
 											getattr(i,_kwarg)(kwargs[attr][kwarg])
 									else:
 										_obj(**kwargs[attr][kwarg])
 								except Exception as exception:
-									print(kwarg,exception)
 									continue
 							else:
 								continue
 
-# 						try:
-# 							obj.ax.tick_
-# 						font_size = 14 # Adjust as appropriate.
-# cb.ax.tick_params(labelsize=font_size)
 					else:
 						pass
 				
