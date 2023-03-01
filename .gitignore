@@ -16,6 +16,7 @@ build/constrained.py
 build/unconstrained.py
 examples/nmr_decomposition
 **/gobi
+**/ckpt
 tmp
 **/build/test
 examples/**
