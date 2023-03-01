@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,warnings
+import os,sys,itertools,warnings,traceback
 from copy import deepcopy
 import numpy as np
 import scipy as sp
@@ -9,14 +9,22 @@ import scipy.stats
 import scipy.special
 import pandas as pd
 from natsort import natsorted,realsorted
-import matplotlib.pyplot as plt
-
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
+from src.system	 import Logger
+name = __name__
+path = os.path.dirname(__file__) #os.getcwd()
+file = 'logging.conf'
+conf = os.path.join(path,file)
+file = None #'log.log'
+info = 100
+debug = 0
+logger = Logger(name,conf,file=file)
 
 from src.utils import argparser
 from src.utils import array,product,expand_dims,conditions
@@ -30,6 +38,8 @@ from src.io import load,dump,join,split
 from src.fit import fit
 from src.postprocess import postprocess
 from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
+
+
 
 DIM = 2
 
@@ -146,8 +156,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		}
 
 
-	if verbose:
-		print('Paths: pwd: %s , cwd: %s'%(pwd,cwd))
+	logger.log(info*verbose,'Paths: pwd: %s , cwd: %s'%(pwd,cwd))
 
 	# Load plot settings
 	path = join(settings,root=pwd) if isinstance(settings,str) else None
@@ -576,6 +585,8 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 	for name in keys:
 
+		logger.log(info,"Processing : %s"%(name))
+
 		if any((keys[name][axis] not in data) and (keys[name][axis] is not null) for axis in AXIS if axis in keys[name]):
 			key,value = name,None
 			setter(settings,{key:value},delimiter=delim,func=True)
@@ -625,6 +636,8 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
 		for i,group in enumerate(groups.groups):
+
+			logger.log(info,"Group : %s"%(group))
 
 			for j,function in enumerate(funcs):
 
@@ -779,7 +792,6 @@ def loader(data,settings,hyperparameters,verbose=None):
 		
 		dump(settings,metadata,verbose=verbose)
 
-
 	return
 
 def plotter(settings,hyperparameters,verbose=None):
@@ -806,8 +818,16 @@ def plotter(settings,hyperparameters,verbose=None):
 
 	# Set layout
 	layout = {}
-	for instance in settings:
+	for instance in list(settings):
+
+		if (not hyperparameters.get('instance',{}).get(instance)) or (not settings[instance]):
+			settings.pop(instance,None);
+			continue
+
+		logger.log(info*verbose,"Setting : %s"%(instance))
+
 		for index,subinstance in enumerate(settings[instance]):
+		
 			sublayout = settings[instance][subinstance]['style']['layout']
 			if not layout.get(instance):
 				layout[instance] = sublayout
@@ -841,6 +861,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 	# Set data
 	for instance in list(settings):
+		
 		for subinstance in list(settings[instance]):
 
 			# variables
@@ -938,8 +959,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							_values[plots][label] = values[plots][label]
 				values = _values
 			except KeyError as e:
-				# import traceback
-				# print(traceback.format_exc(),instance,subinstance)
+				# logger.log(debug,traceback.format_exc(),instance,subinstance)
 				settings[instance].pop(subinstance);
 				continue
 
@@ -973,7 +993,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 						subvalue = subvalue if len(subvalue) >= 1 else None
 
-					value[-1][subattr] = subvalue
+						value[-1][subattr] = subvalue
 
 					subattr = 'set_%slabel'
 					subsubattr = '%slabel'
@@ -982,8 +1002,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						if subvalue is None:
 							continue
 						value[-1][subattr%(axis)][subsubattr%(axis)] = texify(
-							scinotation(subvalue.get(subsubattr%(axis)),
-								**values[plots][label]['attr']['scinotation']),
+							subvalue.get(subsubattr%(axis)),
 							texify=values[plots][label]['attr']['texify']) 
 
 					subattr = 'set_%sticks'
@@ -1025,9 +1044,12 @@ def plotter(settings,hyperparameters,verbose=None):
 								**values[plots][label]['attr']['scinotation']),
 							texify=values[plots][label]['attr']['texify']) for i in subvalue[subsubattr]]							
 
-					settings[instance][subinstance]['ax'][attr] = value
+					settings[instance][subinstance]['ax'][attr] = value[-1]
 
 					break
+
+				if not value:
+					settings[instance][subinstance]['ax'][attr] = None
 
 			# legend
 			attr = 'set_title'
@@ -1206,16 +1228,10 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					data[attr] = value	
 
-
-
-
 	# Plot data
 	for instance in settings:
 
-		if (not hyperparameters.get('instance',{}).get(instance)) or (not settings[instance]):
-			continue
-
-		print("Plotting : %s"%(instance))
+		logger.log(info,"Plotting : %s"%(instance))
 
 		fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
 
