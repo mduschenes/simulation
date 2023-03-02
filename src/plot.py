@@ -702,7 +702,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and (len(kwargs[attr].get('%s%s'%(k,s)))))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and ((isinstance(kwargs[attr].get('%s%s'%(k,s)),(int,np.integer,float,np.floating))) or (len(kwargs[attr].get('%s%s'%(k,s))))))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
@@ -720,7 +720,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					subprop = subprops%(axis)
 					subattr = subattrs%(axis)
 
-					if ((kwargs[attr].get(subprop) is not None) and (len(kwargs[attr].get(subprop)))):
+					if ((kwargs[attr].get(subprop) is not None) and (((isinstance(kwargs[attr].get(subprop),(int,np.integer,float,np.floating))) or (len(kwargs[attr].get(subprop)))))):
 
 						if np.array(kwargs[attr][subprop]).ndim == 1 and (np.array(kwargs[attr][subprop]).shape[0] >= 1):
 							kwargs[attr][subprop] = np.array([[k if k is not None else 0,k if k is not None else 0] for k in kwargs[attr][subprop]]).T
@@ -728,7 +728,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							kwargs[attr][subprop] = np.array([k if k is not None else 0 for k in kwargs[attr][subprop]])
 					if (
 						(kwargs[attr].get(prop) is not None) and (len(kwargs[attr].get(prop))) and
-						(kwargs[attr].get(subprop) is not None) and (len(kwargs[attr].get(subprop))) and
+						(kwargs[attr].get(subprop) is not None) and (((isinstance(kwargs[attr].get(subprop),(int,np.integer,float,np.floating))) or (len(kwargs[attr].get(subprop))))) and
 						(kwargs.get(subattr) is not None) and
 						(kwargs.get(subattr,{}).get('value') in ['log'])
 						):
@@ -744,7 +744,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr][subprop] = np.abs(kwargs[attr][subprop])
 					
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and (len(kwargs[attr].get('%s%s'%(k,s)))))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and ((isinstance(kwargs[attr].get('%s%s'%(k,s)),(int,np.integer,float,np.floating))) or (len(kwargs[attr].get('%s%s'%(k,s))))))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 				
@@ -805,7 +805,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['scatter']:
 
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and (len(kwargs[attr].get('%s%s'%(k,s)))))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and ((isinstance(kwargs[attr].get('%s%s'%(k,s)),(int,np.integer,float,np.floating))) or (len(kwargs[attr].get('%s%s'%(k,s))))))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
@@ -814,7 +814,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['plot_surface','contour','contourf']:
 
 				dim = 3
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and (len(kwargs[attr].get('%s%s'%(k,s)))))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and ((isinstance(kwargs[attr].get('%s%s'%(k,s)),(int,np.integer,float,np.floating))) or (len(kwargs[attr].get('%s%s'%(k,s))))))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
@@ -854,7 +854,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr][field] = getattr(obj,kwargs[attr].get(field))
 
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and (len(kwargs[attr].get('%s%s'%(k,s)))))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and ((isinstance(kwargs[attr].get('%s%s'%(k,s)),(int,np.integer,float,np.floating))) or (len(kwargs[attr].get('%s%s'%(k,s))))))])
 
 				nullkwargs.extend([*[],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*['transform']])
 
@@ -892,7 +892,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				scale = kwargs[attr].get('set_scale',{}).get('value',
 						kwargs[attr].get('set_yscale',{}).get('value',
 						kwargs[attr].get('set_xscale',{}).get('value')))
-
+				size = shape[-2] if len(shape)>2 else shape[0]
 				for axis in ['',*AXIS]:
 					field = 'set_%slabel'%(axis)
 					subfield = '%slabel'%(axis)
@@ -901,7 +901,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				nullkwargs.extend(['values','colors','norm','size','orientation','set_scale','set_yscale','set_xscale','normed_values'])
 				
-				values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(shape[-2]) if not norm else []
+				values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
 				norm = ({**norm,**{
 						 'vmin':norm.get('vmin',min(values,default=0)),
 						 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
@@ -1024,7 +1024,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						if kwargs.get(subattr) is not None:
 							values = kwargs[subattr].get('values',None)
 							norm = kwargs[subattr].get('norm',None)
-							values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(shape[-2]) if not norm else []
+							size = shape[-2] if len(shape)>2 else shape[0]
+							values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
 							norm = ({**norm,**{
 									 'vmin':norm.get('vmin',min(values,default=0)),
 									 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
@@ -1039,9 +1040,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							N = len(values)
 
 						else:
-							N = shape[-2]
+							size = shape[-2] if len(shape)>2 else shape[0]							
+							N = size
 						
-						i = (to_position(index,shape)[-2]+(N > shape[-2]))/N if N>1 else 0.5
+						i = (to_position(index,shape)[-2 if len(shape)>2 else 0]+(N > size))/N if N>1 else 0.5
 
 						_kwargs_[field] = getattr(plt.cm,value)(i)
 				
