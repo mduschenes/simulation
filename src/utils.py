@@ -2673,7 +2673,7 @@ def conditions(booleans,op):
 	op = ops[0] if ops else None
 	
 	if op is None:
-		out = False
+		out = None
 	elif op in ['or']:
 		out = False
 	elif op in ['and','lt','gt','eq','le','ge','ne']:

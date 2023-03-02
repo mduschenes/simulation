@@ -1149,7 +1149,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							if subslice:
 								subslice = [
 									conditions([parse(axis,subslice[axis],{axis: np.array(data[axis])},verbose=verbose) 
-									for axis in subslice if isinstance(subslice[axis],str)],'and'),
+									for axis in subslice if isinstance(subslice[axis],str)],op='and'),
 									*[slice(*subslice[axis]) for axis in subslice 
 									 if not isinstance(subslice[axis],str)]
 									]
@@ -1160,10 +1160,12 @@ def plotter(settings,hyperparameters,verbose=None):
 						
 						slices.extend(subslice)
 
+
 					slices = [
-						conditions([subslice for subslice in slices if not isinstance(subslice,slice)],'and'),
+						conditions([subslice for subslice in slices if not isinstance(subslice,slice)],op='and'),
 						*[subslice for subslice in slices if isinstance(subslice,slice)]
 						]
+					slices = [subslice if subslice is not None else slice(None) for subslice in slices]
 
 					for attr in data:
 						if (attr in ALL) and (data[attr] is not None):
