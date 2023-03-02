@@ -1156,7 +1156,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							else:
 								subslice = [slice(None)]
 						else:
-							subslice = [slice(subslice)]
+							subslice = [slice(*subslice)]
 						
 						slices.extend(subslice)
 

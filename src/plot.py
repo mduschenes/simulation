@@ -901,7 +901,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				nullkwargs.extend(['values','colors','norm','size','orientation','set_scale','set_yscale','set_xscale','normed_values'])
 				
-				values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) or any(isinstance(i,str) for i in values)) else range(shape[-2]) if not norm else []
+				values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(shape[-2]) if not norm else []
 				norm = ({**norm,**{
 						 'vmin':norm.get('vmin',min(values,default=0)),
 						 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
@@ -1024,8 +1024,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						if kwargs.get(subattr) is not None:
 							values = kwargs[subattr].get('values',None)
 							norm = kwargs[subattr].get('norm',None)
-
-							values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) or any(isinstance(i,str) for i in values)) else range(shape[-2]) if not norm else []
+							values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(shape[-2]) if not norm else []
 							norm = ({**norm,**{
 									 'vmin':norm.get('vmin',min(values,default=0)),
 									 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
