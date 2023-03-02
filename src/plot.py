@@ -702,7 +702,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and (len(kwargs[attr].get('%s%s'%(k,s)))))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
@@ -720,21 +720,21 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					subprop = subprops%(axis)
 					subattr = subattrs%(axis)
 
-					if ((kwargs[attr].get(subprop) is not None)):
-						if np.array(kwargs[attr][subprop]).ndim == 1:
-							kwargs[attr][subprop] = np.array([[k if k is not None else 0,k if k is not None else 0] for k in kwargs[attr][subprop]]).T
-						elif np.array(kwargs[attr][subprop]).ndim == 2:
-							kwargs[attr][subprop] = np.array([k if k is not None else 0 for k in kwargs[attr][subprop]])
+					if ((kwargs[attr].get(subprop) is not None) and (len(kwargs[attr].get(subprop)))):
 
+						if np.array(kwargs[attr][subprop]).ndim == 1 and (np.array(kwargs[attr][subprop]).shape[0] >= 1):
+							kwargs[attr][subprop] = np.array([[k if k is not None else 0,k if k is not None else 0] for k in kwargs[attr][subprop]]).T
+						elif np.array(kwargs[attr][subprop]).ndim == 2 and (np.array(kwargs[attr][subprop]).shape[0] >= 1):
+							kwargs[attr][subprop] = np.array([k if k is not None else 0 for k in kwargs[attr][subprop]])
 					if (
-						(kwargs[attr].get(prop) is not None) and
-						(kwargs[attr].get(subprop) is not None) and
+						(kwargs[attr].get(prop) is not None) and (len(kwargs[attr].get(prop))) and
+						(kwargs[attr].get(subprop) is not None) and (len(kwargs[attr].get(subprop))) and
 						(kwargs.get(subattr) is not None) and
 						(kwargs.get(subattr,{}).get('value') in ['log'])
 						):
 						
 						kwargs[attr][prop] = np.array(kwargs[attr][prop])
-						
+
 						kwargs[attr][subprop] = np.array([
 							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
 							kwargs[attr][subprop][1]
@@ -744,7 +744,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr][subprop] = np.abs(kwargs[attr][subprop])
 					
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and (len(kwargs[attr].get('%s%s'%(k,s)))))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 				
@@ -763,9 +763,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					subattr = subattrs%(axis)
 
 					if (
-						(kwargs[attr].get(prop) is not None) and
-						(kwargs[attr].get(subprop) is not None) and
-						(kwargs.get(subattr) is not None) and
+						(kwargs[attr].get(prop) is not None) and (len(kwargs[attr].get(prop))) and
+						(kwargs[attr].get(subprop) is not None) and (len(kwargs[attr].get(prop))) and
+						(kwargs.get(subattr) is not None) and (len(kwargs[attr].get(prop))) and
 						(kwargs.get(subattr,{}).get('value') in ['log'])
 						):
 						if np.array(kwargs[attr][subprop]).ndim == 1:
@@ -780,13 +780,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							kwargs[attr][subprop][1]
 							])
 
-				if kwargs[attr].get('y1') is not None and kwargs[attr].get('y2') is not None:
+				if ((kwargs[attr].get('y1') is not None) and (len(kwargs[attr].get('y1'))) and 
+					(kwargs[attr].get('y2') is not None) and (len(kwargs[attr].get('y2')))):
 					call = True
 					args.extend([kwargs[attr].get('x'),kwargs[attr].get('y1'),kwargs[attr].get('y2')])					
-				elif kwargs[attr].get('yerr') is None:
+				elif ((kwargs[attr].get('yerr') is None) and (len(kwargs[attr].get('yerr')))):
 					call = False
 					args.extend([kwargs[attr].get('x'),kwargs[attr].get('y'),kwargs[attr].get('y')])
-				elif (kwargs[attr].get('yerr') is not None) and (kwargs[attr].get('y') is not None):
+				elif ((kwargs[attr].get('yerr') is not None) and (len(kwargs[attr].get('yerr'))) and
+					  (kwargs[attr].get('y') is not None) and (len(kwargs[attr].get('y')))):
 					call = True
 					yerr = np.array(kwargs[attr].get('yerr'))
 					y = np.array(kwargs[attr].get('y'))
@@ -803,7 +805,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['scatter']:
 
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and (len(kwargs[attr].get('%s%s'%(k,s)))))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
@@ -812,7 +814,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['plot_surface','contour','contourf']:
 
 				dim = 3
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and (len(kwargs[attr].get('%s%s'%(k,s)))))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
@@ -852,7 +854,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr][field] = getattr(obj,kwargs[attr].get(field))
 
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if kwargs[attr].get('%s%s'%(k,s)) is not None])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and (len(kwargs[attr].get('%s%s'%(k,s)))))])
 
 				nullkwargs.extend([*[],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*['transform']])
 
