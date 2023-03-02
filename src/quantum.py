@@ -1434,7 +1434,7 @@ class Callback(object):
 
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
-						value = value/max(1,maximum(value))
+						value = value/maximum(value)
 					elif attr in ['hessian.rank','fisher.rank']:
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
 						value = argmax(abs(difference(value)/value[:-1]))+1	
