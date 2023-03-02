@@ -748,9 +748,9 @@ def postprocess(path,**kwargs):
 									# 'label':r'$\quad~~ M_{\gamma} = {(\gamma-\beta)}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 									# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 									'label':(
-										r'$\quad~~ M_{\gamma} = -\beta\log{\gamma} - {\alpha}$' + '\n' + 
+										r'$\quad~~ M_{\gamma} = -\alpha\log{\gamma} - {\beta}$' + '\n' + 
 										r'$%s$'%('\n'.join([
-										'%s = %s'%(z,scinotation(-_parameters[i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
+										'%s = %s'%(z,scinotation(-_parameters[len(_parameters)-1-i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
 											for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_parameters)])])) + '\n' +
 										# r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty_propagation(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
 										r'$%s$'%('r^2 = %s'%(scinotation(_other['r'],decimals=4,scilimits=[-1,4])))
