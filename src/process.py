@@ -1128,13 +1128,50 @@ def plotter(settings,hyperparameters,verbose=None):
 					if not data:
 						continue
 
+					slices = []
+					subslices = [data[OTHER][OTHER].get('slice'),data[OTHER][OTHER].get('labels')]
+					for subslice in subslices:
+						if subslice is None:
+							subslice = [slice(None)]
+						elif isinstance(subslice,dict):
+							subslice = {
+								axis if (axis in data) else [subaxis 
+										for subaxis in ALL if ((subaxis in data[OTHER]) and 
+											(data[OTHER][subaxis]['axis']==axis))][0]: 
+								subslice[axis] for axis in subslice if (
+								(not isinstance(subslice[axis],str)) or
+								((axis in data) or any(data[OTHER][subaxis]['axis']==axis 
+									for subaxis in data[OTHER] if (
+									(subaxis in ALL) and (subaxis in data[OTHER]))))
+								)
+								}
+
+							if subslice:
+								subslice = [
+									conditions([parse(axis,subslice[axis],{axis: np.array(data[axis])},verbose=verbose) 
+									for axis in subslice if isinstance(subslice[axis],str)],'and'),
+									*[slice(*subslice[axis]) for axis in subslice 
+									 if not isinstance(subslice[axis],str)]
+									]
+							else:
+								subslice = [slice(None)]
+						else:
+							subslice = [slice(subslice)]
+						
+						slices.extend(subslice)
+
+					slices = [
+						conditions([subslice for subslice in slices if not isinstance(subslice,slice)],'and'),
+						*[subslice for subslice in slices if isinstance(subslice,slice)]
+						]
+
 					for attr in data:
 						if (attr in ALL) and (data[attr] is not None):
+							
 							value = np.array([valify(value,valify=data[OTHER][OTHER].get('valify')) for value in data[attr]])
-
-							if data[OTHER][OTHER].get('slice') is not None:
-								slices = slice(*data[OTHER][OTHER].get('slice'))
-								value = value[slices]
+							
+							for subslice in slices:
+								value = value[subslice]
 
 							data[attr] = value
 
@@ -1153,7 +1190,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					attr = OTHER
 					if data[attr][attr].get('labels') is not None:
 						for label in data[attr][attr]['labels']:
-							if not parse(label,data[attr][attr]['labels'][label],data[attr],verbose=verbose):
+							if (label in data[attr]) and (label not in ALL) and not parse(label,data[attr][attr]['labels'][label],data[attr],verbose=verbose):
 								data.clear()
 								break
 
