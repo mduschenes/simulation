@@ -10,9 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":17261,
+	"seed":64724,
 	"size":50,
-	"reset":17261,
+	"reset":64724,
 	"index":null
 	},
 "permutations":{
@@ -20,7 +20,7 @@
 	
 		"model.N":[4],		
 		"model.M":[10,50,100,500,1000],
-		"model.tau":[150e0],		
+		"model.tau":[75e0],		
 		"noise.scale":[null],
 		"state.scale":[null],
 
