@@ -10,9 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":67211,
+	"seed":891231,
 	"size":50,
-	"reset":67211,
+	"reset":891231,
 	"index":null
 	},
 "permutations":{
@@ -29,7 +29,7 @@
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
-		"optimize.search.beta":["polak_ribiere_fletcher_reeves"],
+		"optimize.search.beta":["fletcher_reeves"],
 
 		"parameters.xy.method":["unconstrained"],
 		"system.architecture":["unconstrained"],
@@ -132,7 +132,7 @@
 			"iteration.max":[],
 			"iteration.min":[],
 			"variables":false,"variables.relative":false,"variables.relative.mean":true,
-			"features":false,"features.relative":false,"features.relative.mean":false,				
+			"features":false,"features.relative":false,"features.relative.mean":true,				
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
 			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
