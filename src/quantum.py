@@ -1194,8 +1194,8 @@ class Callback(object):
 			'alpha':[],'beta':[],
 
 			'iteration.max':[],'iteration.min':[],
-			'variables':[],'variables.mean':[],'variables.relative':[],
-			'features':[],'features.mean':[],'features.relative':[],
+			'variables':[],'variables.relative':[],'variables.relative.mean':[],
+			'features':[],'features.relative':[],'features.relative.mean':[],
 			'objective.ideal.noise':[],'objective.diff.noise':[],'objective.rel.noise':[],
 			'objective.ideal.state':[],'objective.diff.state':[],'objective.rel.state':[],
 			'objective.ideal.operator':[],'objective.diff.operator':[],'objective.rel.operator':[],
@@ -1270,7 +1270,7 @@ class Callback(object):
 			'iteration.min':True,
 			'parameters':None,'grad':None,'search':None,
 			'variables':False,'features':False,
-			'variables.mean':False,'variables.relative.mean':False,'features.mean':False,'features.relative.mean':False,
+			'variables.relative':False,'variables.relative.mean':False,'features.relative':False,'features.relative.mean':False,
 			'objective.ideal.noise':False,'objective.diff.noise':False,'objective.rel.noise':False,
 			'objective.ideal.state':False,'objective.diff.state':False,'objective.rel.state':False,
 			'objective.ideal.operator':False,'objective.diff.operator':False,'objective.rel.operator':False,
@@ -1318,10 +1318,10 @@ class Callback(object):
 				elif attr in ['variables','features'] and ((status) and (not done)):
 					value = empty(track[attr][index].shape)
 
-				elif attr in ['variables.mean','variables.relative.mean','features.mean','features.relative.mean'] and ((status) and (not done)):
+				elif attr in ['variables.relative','variables.relative.mean','features.relative','features.relative.mean'] and ((status) and (not done)):
 					value = default
 
-				elif attr in ['variables','variables.mean','variables.relative.mean','features','features.mean','features.relative.mean'] and not ((status) and (not done)):
+				elif attr in ['variables','variables.relative','variables.relative.mean','features','features.relative','features.relative.mean'] and not ((status) and (not done)):
 
 					layer = attr.split(delim)[0]
 					prop = 'index'
