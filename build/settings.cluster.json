@@ -33,9 +33,9 @@
 
 
 		"model.N":[3],		
-		"model.M":[null],		
-		"model.tau":[7.5e3],
-		"model.T": [1e5],
+		"model.M":[1000],		
+		"model.tau":[null],
+		"model.T": [1e4],
 
 		"noise.parameters":[1e6],
 		"noise.initialization":["random"],
@@ -58,8 +58,8 @@
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
 
-		"jobs.job.cwd":["gobi/analysis"],
-		"jobs.postprocess.cwd":["gobi/analysis"],		
+		"jobs.job.cwd":["data"],
+		"jobs.postprocess.cwd":["data"],		
 	
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
