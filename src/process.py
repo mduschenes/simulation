@@ -289,6 +289,7 @@ def find(dictionary,verbose=None):
 				'analysis':{
 					# 'zscore':[{'attr':['objective'],'default':None,'kwargs':{'sigma':None}}],
 					# 'quantile':[{'attr':['objective'],'default':None,'kwargs':{'sigma':None}}]
+					# 'parse':[{'attr':{'__path__':'*','M':"<600<"},'default':None,'kwargs':{'sigma':None}}]
 					},
 				'axis':{'row':[],'col':[],'plot':['plot','group','func'],'axis':[-1]},
 				'settings':{},
@@ -355,6 +356,7 @@ def parse(key,value,data,verbose=None):
 			'@key,@' (data value), 
 			'#i,j,k,...#' (index value),
 			'%start,stop,step%' (slice value),
+			'*pattern,*' (regex pattern),
 			'<upper<' (exclusive upper bound value),
 			'>lower>' (exclusive lower bound value),
 			'<=upper<=' (inclusive upper bound value),
@@ -367,7 +369,7 @@ def parse(key,value,data,verbose=None):
 	Returns:
 		out (dataframe): Condition on data indices
 	'''
-	delimiters = ['$','@','#','%','<','>','<=','>=','==','!=']
+	delimiters = ['$','@','#','%','*','<','>','<=','>=','==','!=']
 	parserator = ';'
 	separator = ','
 
@@ -390,7 +392,7 @@ def parse(key,value,data,verbose=None):
 
 				if value.startswith(delimiter) and value.endswith(delimiter):
 				
-					values = value.replace(delimiter,'').split(separator)
+					values = value[len(delimiter):-len(delimiter)].split(separator)
 
 					if delimiter in ['$']: # Explicit value: value
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
@@ -432,6 +434,23 @@ def parse(key,value,data,verbose=None):
 								out = data[key].isin(data[key].unique()[slice(*values)])
 							except:
 								out = not default
+
+					elif delimiter in ['*']: # Regex value pattern
+						def parser(value):
+							replacements = {'.':r'\.','*':'.'}							
+							if not len(value):
+								return value
+							value = r'%s'%(to_str(value))
+							for replacement in replacements:
+								value = value.replace(replacement,replacements[replacement])
+							value = r'%s'%(value)
+							return value
+
+						values = [parser(value) for value in values if (value is not None)]
+						values = [value for value in values if (value is not None)]
+				
+						if values and (values is not null):
+							out = conditions([data[key].str.contains(r'%s'%(value)) for value in values],op='or')
 
 					elif delimiter in ['<']: # Bound value: upper (exclusive)
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
@@ -501,8 +520,8 @@ def analyse(data,analyses=None,verbose=None):
 	Args:
 		data (dataframe): data of attributes
 		analyses (dict[str,dict]): Processes to analyse of the form 
-			{analysis:[{'attr':[attr],'default':value,'kwargs':{kwarg:value}}]},
-			allowed analysis strings in ['zscore','quantile']
+			{analysis:[{'attr':{attr:value},[attr],'default':value,'kwargs':{kwarg:value}}]},
+			allowed analysis strings in ['zscore','quantile','parse']
 		verbose (bool): Verbosity			
 	Returns:
 		out (dataframe): Condition on data indices
@@ -515,17 +534,30 @@ def analyse(data,analyses=None,verbose=None):
 	if analyses is not None:
 		for analysis in analyses:
 			if analysis in ['zscore']:
-				def func(attr,data,default,**kwargs):
+				def func(attr,attrs,data,default,**kwargs):
+					reverse = kwargs.pop('reverse',None)					
 					function = sp.stats.zscore
 					sigma = kwargs.pop('sigma',None)
 					out = data[[attr]].apply(function,**kwargs)[attr]
 					out = (out < sigma) if sigma is not None else default
+					out = ~out if reverse else out
 					return out
 			elif analysis in ['quantile']:
-				def func(attr,data,default,**kwargs):
+				def func(attr,attrs,data,default,**kwargs):
+					reverse = kwargs.pop('reverse',None)					
 					sigma = kwargs.pop('sigma',None)
 					out = [data[attr].quantile(sigma),data[attr].quantile(1-sigma)] if sigma is not None else default
 					out = ((data[attr] > out[0]) & (data[attr] < out[1])) if sigma is not None else default
+					out = ~out if reverse else out					
+					return out
+			elif analysis in ['parse']:
+				def func(attr,attrs,data,default,**kwargs):
+					reverse = kwargs.pop('reverse',None)
+					out = [parse(attr,attrs[attr],data,verbose=verbose) for attr in attrs]
+					if reverse:
+						out = conditions([~i for i in out],op='or')
+					else:
+						out = conditions([i for i in out],op='and')
 					return out
 			else:
 				continue
@@ -536,11 +568,11 @@ def analyse(data,analyses=None,verbose=None):
 				args = analyses[analysis]
 
 			for arg in args:
-				attrs = arg.get('attr',[])
+				attrs = arg.get('attr',{})
 				default = arg.get('default',None)
 				kwargs = arg.get('kwargs',{})
 
-				value = [func(attr,data,default,**kwargs) for attr in attrs if attr in data]			
+				value = [func(attr,attrs,data,default,**kwargs) for attr in attrs if attr in data]			
 
 				out = conditions([out,*value],op='and')
 
@@ -549,7 +581,7 @@ def analyse(data,analyses=None,verbose=None):
 		out = data
 	else:
 		out = data[out]
-	
+
 	return out
 
 
@@ -637,7 +669,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		for i,group in enumerate(groups.groups):
 
-			logger.log(info,"Group : %r"%(group,))
+			logger.log(info,"Group : %r %r"%(group,groups.get_group(group).shape))
 
 			for j,function in enumerate(funcs):
 

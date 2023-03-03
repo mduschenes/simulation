@@ -692,13 +692,15 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	elif wrapper in ['df']:
 		def wrapper(data,default=default,**kwargs):
 			options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
-			def convert(data):
+			def convert(path,data):
 				for attr in data:
 					if any(is_ndarray(i) for i in data[attr]):
 						data[attr] = [tuple(i) for i in data[attr]]
+				size = max([len(data[attr]) for attr in data],default=0)
+				data['__path__'] = [path]*size
 				return data
 			try:
-				data = pd.concat((pd.DataFrame(convert(data[path])) for path in data if data[path]),**options) #.convert_dtypes()
+				data = pd.concat((pd.DataFrame(convert(path,data[path])) for path in data if data[path]),**options) #.convert_dtypes()
 			except Exception as exception:
 				data = default
 			return data
