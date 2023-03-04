@@ -702,7 +702,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and ((isinstance(kwargs[attr].get('%s%s'%(k,s)),(int,np.integer,float,np.floating))) or (is_naninf(kwargs[attr].get('%s%s'%(k,s)))) or (len(kwargs[attr].get('%s%s'%(k,s))))))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
@@ -720,20 +720,23 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					subprop = subprops%(axis)
 					subattr = subattrs%(axis)
 
-					if ((kwargs[attr].get(subprop) is not None) and (((isinstance(kwargs[attr].get(subprop),(int,np.integer,float,np.floating))) or (is_naninf(kwargs[attr].get(subprop))) or (len(kwargs[attr].get(subprop)))))):
-
-						if np.array(kwargs[attr][subprop]).ndim == 1 and (np.array(kwargs[attr][subprop]).shape[0] >= 1):
-							kwargs[attr][subprop] = np.array([[k if k is not None else 0,k if k is not None else 0] for k in kwargs[attr][subprop]]).T
-						elif np.array(kwargs[attr][subprop]).ndim == 2 and (np.array(kwargs[attr][subprop]).shape[0] >= 1):
-							kwargs[attr][subprop] = np.array([k if k is not None else 0 for k in kwargs[attr][subprop]])
 					if (
-						(kwargs[attr].get(prop) is not None) and (len(kwargs[attr].get(prop))) and
-						(kwargs[attr].get(subprop) is not None) and (((isinstance(kwargs[attr].get(subprop),(int,np.integer,float,np.floating))) or (is_naninf(kwargs[attr].get(subprop))) or (len(kwargs[attr].get(subprop))))) and
+						(kwargs[attr].get(prop) is not None) and (kwargs[attr].get(subprop) is not None) and 
 						(kwargs.get(subattr) is not None) and
 						(kwargs.get(subattr,{}).get('value') in ['log'])
 						):
-						
+
+						if isinstance(kwargs[attr][subprop],(int,np.integer,float,np.floating)) or is_naninf(kwargs[attr][subprop]):
+							kwargs[attr][subprop] = [kwargs[attr][subprop],kwargs[attr][subprop]]
+						elif np.array(kwargs[attr][subprop]).ndim == 1:
+							kwargs[attr][subprop] = [i if i is not None else 0 for i in kwargs[attr][subprop]]
+							kwargs[attr][subprop] = np.array([kwargs[attr][subprop],kwargs[attr][subprop]])
+						elif np.array(kwargs[attr][subprop]).ndim == 2:
+							kwargs[attr][subprop] = [[j if j is not None else 0 for j in i] for i in kwargs[attr][subprop]]
+							kwargs[attr][subprop] = np.array(kwargs[attr][subprop])
+
 						kwargs[attr][prop] = np.array(kwargs[attr][prop])
+						kwargs[attr][subprop] = np.array(kwargs[attr][subprop])
 
 						kwargs[attr][subprop] = np.array([
 							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
@@ -744,7 +747,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr][subprop] = np.abs(kwargs[attr][subprop])
 					
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and ((isinstance(kwargs[attr].get('%s%s'%(k,s)),(int,np.integer,float,np.floating))) or (is_naninf(kwargs[attr].get('%s%s'%(k,s)))) or (len(kwargs[attr].get('%s%s'%(k,s))))))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 				
@@ -763,18 +766,23 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					subattr = subattrs%(axis)
 
 					if (
-						(kwargs[attr].get(prop) is not None) and (len(kwargs[attr].get(prop))) and
-						(kwargs[attr].get(subprop) is not None) and (len(kwargs[attr].get(prop))) and
-						(kwargs.get(subattr) is not None) and (len(kwargs[attr].get(prop))) and
+						(kwargs[attr].get(prop) is not None) and (kwargs[attr].get(subprop) is not None) and 
+						(kwargs.get(subattr) is not None) and
 						(kwargs.get(subattr,{}).get('value') in ['log'])
 						):
-						if np.array(kwargs[attr][subprop]).ndim == 1:
-							kwargs[attr][subprop] = np.array([[k,k] for k in kwargs[attr][subprop]]).T
-						else:
-							kwargs[attr][subprop] = np.array([k for k in kwargs[attr][subprop]])
-						
+
+						if isinstance(kwargs[attr][subprop],(int,np.integer,float,np.floating)) or is_naninf(kwargs[attr][subprop]):
+							kwargs[attr][subprop] = [kwargs[attr][subprop],kwargs[attr][subprop]]
+						elif np.array(kwargs[attr][subprop]).ndim == 1:
+							kwargs[attr][subprop] = [i if i is not None else 0 for i in kwargs[attr][subprop]]
+							kwargs[attr][subprop] = np.array([kwargs[attr][subprop],kwargs[attr][subprop]])
+						elif np.array(kwargs[attr][subprop]).ndim == 2:
+							kwargs[attr][subprop] = [[j if j is not None else 0 for j in i] for i in kwargs[attr][subprop]]
+							kwargs[attr][subprop] = np.array(kwargs[attr][subprop])
+
 						kwargs[attr][prop] = np.array(kwargs[attr][prop])
-						
+						kwargs[attr][subprop] = np.array(kwargs[attr][subprop])
+
 						kwargs[attr][subprop] = np.array([
 							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
 							kwargs[attr][subprop][1]
@@ -805,7 +813,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['scatter']:
 
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and ((isinstance(kwargs[attr].get('%s%s'%(k,s)),(int,np.integer,float,np.floating))) or (is_naninf(kwargs[attr].get('%s%s'%(k,s)))) or (len(kwargs[attr].get('%s%s'%(k,s))))))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
@@ -814,7 +822,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['plot_surface','contour','contourf']:
 
 				dim = 3
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and ((isinstance(kwargs[attr].get('%s%s'%(k,s)),(int,np.integer,float,np.floating))) or (is_naninf(kwargs[attr].get('%s%s'%(k,s)))) or (len(kwargs[attr].get('%s%s'%(k,s))))))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
 
@@ -854,7 +862,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr][field] = getattr(obj,kwargs[attr].get(field))
 
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None) and ((isinstance(kwargs[attr].get('%s%s'%(k,s)),(int,np.integer,float,np.floating))) or (is_naninf(kwargs[attr].get('%s%s'%(k,s)))) or (len(kwargs[attr].get('%s%s'%(k,s))))))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				nullkwargs.extend([*[],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*['transform']])
 
