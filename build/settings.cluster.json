@@ -287,7 +287,7 @@
 "jobs":{
 	"preprocess":null,
 	"job":{
-		"jobs":"job.cluster.slurm",
+		"jobs":"job.slurm",
 		"args":{
 			"JOB_CWD":".",					
 			"JOB_ENV":"jax",
@@ -322,7 +322,7 @@
 		"verbose":"info"
 		},
 	"postprocess":{
-		"jobs":"postprocess.cluster.slurm",
+		"jobs":"postprocess.slurm",
 		"args":{
 			"JOB_CWD":".",
 			"JOB_ENV":"jax",
