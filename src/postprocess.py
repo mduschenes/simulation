@@ -118,6 +118,7 @@ defaults = {
             "linewidth": 10,
             "elinewidth": 5,
             "color": "#73d055ff",
+            "color": "#EB008B",
 			},
 		"fill_between":{
 			"x":"noise.scale",
@@ -155,19 +156,13 @@ defaults = {
 
 		"set_yscale":{"value":"linear"},
 		"set_ynbins":{"nbins":7},
-		"set_ylim": {
-				"ymin": -100,
-				"ymin": -1000,
-				"ymin": -100,
-				"ymax": 5100,
-				"ymax": 2500,
-				"ymax": 5500,
-				"ymax": 1100,
-			},
+		"set_ylim": {"ymin": -100,"ymax": 1100},
+		"set_ylim": {"ymin": -100,"ymax": 1700},
 		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
 		"set_yticks":{"ticks":[0,1000,2000]},		
 		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
 		"set_yticks":{"ticks":[0,200,400,600,800,1000]},		
+		"set_yticks":{"ticks":[0,400,800,1200,1600]},		
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
@@ -363,7 +358,7 @@ def postprocess(path,**kwargs):
 				slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5) # noise.long
 				slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
 				slices = list(range(2,14,2))#range(4,len(data[label['y']])-5) # noise.new.vectorv
-				# slices = list(range(2,12,1))#range(4,len(data[label['y']])-5) # noise.vectorq
+				slices = list(range(2,12,1))#range(4,len(data[label['y']])-5) # noise.vectorq
 
 				X = [array(data['%s'%(label['x'])][i]) for i in slices]
 				Y = [array(data['%s'%(label['y'])][i]) for i in slices]
@@ -578,7 +573,7 @@ def postprocess(path,**kwargs):
 									'y':Z[i],
 									'xerr':Yerr[i],
 									'yerr':Zerr[i],	
-									'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
+									'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)) if hasattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color']) else defaults[key[0]]['ax']['errorbar']['color'],	
 									'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
 									# 'marker':'o',
 									# 'linestyle':'',
@@ -609,6 +604,7 @@ def postprocess(path,**kwargs):
 									# 'yerr':[zerr[i] for i in indices],
 									# 'yerr':[(_Z[i]*(1 - (_Z[i]/(_Z[i]+_Zerr[i])))),_Zerr[i]],							
 									'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
+									# 'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)) if hasattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color']) else defaults[key[0]]['ax']['errorbar']['color'],	
 									'ecolor':'viridis',
 									'marker':'o',
 									'markersize':20,
@@ -636,7 +632,7 @@ def postprocess(path,**kwargs):
 									'x':_Y[i],
 									'y':_Z[i],
 									'yerr':_Zerr[i],
-									'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(indices)),	
+									'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(indices)) if hasattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color']) else defaults[key[0]]['ax']['fill_between']['color'],	
 									} for i in indices
 									],
 									]
@@ -735,7 +731,7 @@ def postprocess(path,**kwargs):
 									'xerr':xerr,
 									'yerr':yerr,
 									'legend':None,
-									'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0),	
+									'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0) if hasattr(plt.cm,defaults[name]['ax']['errorbar']['color']) else defaults[name]['ax']['errorbar']['color'],	
 									},
 									{
 									**settings['ax']['errorbar'],						
@@ -755,16 +751,16 @@ def postprocess(path,**kwargs):
 										# r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty_propagation(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
 										r'$%s$'%('r^2 = %s'%(scinotation(_other['r'],decimals=4,scilimits=[-1,4])))
 										),
-									'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(1),	
-								"alpha": 0.8,
-				                "marker": None,
-				                "markersize": 20,
-				                "linestyle": "--",
-				                "capsize": 10,
-				                "linewidth": 5,
-				                "elinewidth": 7,
-				                "color": "#481567ff",
-				                "zorder": -1
+									'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(1) if hasattr(plt.cm,defaults[name]['ax']['errorbar']['color']) else defaults[name]['ax']['errorbar']['color'],	
+									"alpha": 0.8,
+					                "marker": None,
+					                "markersize": 20,
+					                "linestyle": "--",
+					                "capsize": 10,
+					                "linewidth": 5,
+					                "elinewidth": 7,
+					                "color": "#481567ff",
+					                "zorder": -1
 									},												
 									],
 								'fill_between':{
@@ -772,7 +768,7 @@ def postprocess(path,**kwargs):
 									'x':_x,
 									'y':_y,
 									'yerr':_yerr,
-									'color': getattr(plt.cm,defaults[name]['ax']['fill_between']['color'])(0.25),	
+									'color': getattr(plt.cm,defaults[name]['ax']['fill_between']['color'])(0.25) if hasattr(plt.cm,defaults[name]['ax']['fill_between']['color']) else defaults[name]['ax']['errorbar']['fill_between'],	
 									}
 								},
 							}
@@ -871,7 +867,7 @@ def postprocess(path,**kwargs):
 										'markersize':7 if p==0 else 5,
 										'linestyle': '-' if p==0 else '--',
 										'linewidth': 5 if p==0 else 4,
-										'color': 'k' if p==0 else getattr(plt.cm,defaults[name]['ax']['plot']['color'])((p-1)/(len(params)-1)),
+										'color': 'k' if p==0 else getattr(plt.cm,defaults[name]['ax']['plot']['color'])((p-1)/(len(params)-1)) if hasattr(plt.cm,defaults[name]['ax']['plot']['color']) else defaults[name]['ax']['plot']['color'],
 										'zorder':3 if p==0 else 4,
 										}],
 									'set_xlabel': {

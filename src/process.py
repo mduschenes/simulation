@@ -172,6 +172,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		return data,settings,hyperparameters
 
 	for instance in list(settings):
+		
 		if (settings.get(instance) is None):
 			settings.pop(instance,None);
 			continue
@@ -819,6 +820,15 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 		# Get functions of data
 		apply(keys,data,settings,hyperparameters,verbose=verbose)
+
+
+
+	# Check settings
+	attr = 'instance'
+	for instance in list(settings):
+		if (not hyperparameters.get(attr,{}).get(instance)) or (not settings[instance]):
+				settings.pop(instance,None);
+				continue
 
 	
 	# Dump settings
