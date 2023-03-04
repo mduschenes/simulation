@@ -2642,7 +2642,7 @@ def conditions(booleans,op):
 	Compute multiple conditions with boolean operator
 	Args:
 		booleans (iterable[bool]): Boolean conditions
-		op (str,iterable[str]): Boolean operators, ['and','or','lt','gt','eq','le','ge','ne'] 
+		op (str,iterable[str]): Boolean operators, ['and','or','lt','gt','eq','le','ge','ne','in'] 
 	Returns:
 		out (bool): Boolean of conditions
 	'''
@@ -2654,8 +2654,14 @@ def conditions(booleans,op):
 		'<':'lt','<=':'le',
 		'>':'gt','ge':'ge',
 		'!=':'ne',
+		'isin':'in'
 		}
 
+	funcs = {
+		**{op: getattr(operator,'__%s__'%(op)) for op in ['and','or','lt','gt','eq','le','ge','ne']},
+		**{op: lambda a,b: onp.isin(a,b) for op in ['in']},
+		**{None: lambda a,b:a},
+	}
 
 	if isinstance(op,str):
 		ops = [op]*len(booleans)
@@ -2667,18 +2673,26 @@ def conditions(booleans,op):
 	op = ops[0] if ops else None
 	
 	if op is None:
-		out = False
+		out = None
 	elif op in ['or']:
 		out = False
 	elif op in ['and','lt','gt','eq','le','ge','ne']:
 		out = True
+	elif op in ['in']:		
+		out = booleans[0]
+		ops = ops[1:]
+		booleans = booleans[1:]
 
 	for op,boolean in zip(ops,booleans):
 		if boolean is None:
 			continue
-		out = getattr(operator,'__%s__'%(op))(out,boolean)
 		
+		func = funcs.get(op,funcs[None])
+		
+		out = func(out,boolean)
+	
 	return out
+
 
 
 @jit

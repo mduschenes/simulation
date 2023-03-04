@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,warnings
+import os,sys,itertools,warnings,traceback
 from copy import deepcopy
 import numpy as np
 import scipy as sp
@@ -9,14 +9,22 @@ import scipy.stats
 import scipy.special
 import pandas as pd
 from natsort import natsorted,realsorted
-import matplotlib.pyplot as plt
-
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
+from src.system	 import Logger
+name = __name__
+path = os.path.dirname(__file__) #os.getcwd()
+file = 'logging.conf'
+conf = os.path.join(path,file)
+file = None #'log.log'
+info = 100
+debug = 0
+logger = Logger(name,conf,file=file)
 
 from src.utils import argparser
 from src.utils import array,product,expand_dims,conditions
@@ -146,8 +154,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		}
 
 
-	if verbose:
-		print('Paths: pwd: %s , cwd: %s'%(pwd,cwd))
+	logger.log(info*verbose,'Paths: pwd: %s , cwd: %s'%(pwd,cwd))
 
 	# Load plot settings
 	path = join(settings,root=pwd) if isinstance(settings,str) else None
@@ -165,6 +172,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		return data,settings,hyperparameters
 
 	for instance in list(settings):
+		
 		if (settings.get(instance) is None):
 			settings.pop(instance,None);
 			continue
@@ -213,6 +221,11 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 	elif isinstance(hyperparameters.get(attr),list):
 		hyperparameters[attr] = {**{instance: False for instance in settings},**{instance: True for instance in hyperparameters[attr]}}
 	hyperparameters[attr] = {**{instance: True for instance in settings},**{instance: bool(hyperparameters[attr][instance]) for instance in hyperparameters[attr]}}
+
+	for instance in list(settings):
+		if (not hyperparameters.get(attr,{}).get(instance)) or (not settings[instance]):
+				settings.pop(instance,None);
+				continue
 
 	# Get plot fig and axes
 	fig,ax = hyperparameters.get('fig'),hyperparameters.get('ax')
@@ -280,6 +293,7 @@ def find(dictionary,verbose=None):
 				'analysis':{
 					# 'zscore':[{'attr':['objective'],'default':None,'kwargs':{'sigma':None}}],
 					# 'quantile':[{'attr':['objective'],'default':None,'kwargs':{'sigma':None}}]
+					# 'parse':[{'attr':{'__path__':'*','M':"<600<"},'default':None,'kwargs':{'sigma':None}}]
 					},
 				'axis':{'row':[],'col':[],'plot':['plot','group','func'],'axis':[-1]},
 				'settings':{},
@@ -346,6 +360,7 @@ def parse(key,value,data,verbose=None):
 			'@key,@' (data value), 
 			'#i,j,k,...#' (index value),
 			'%start,stop,step%' (slice value),
+			'*pattern,*' (regex pattern),
 			'<upper<' (exclusive upper bound value),
 			'>lower>' (exclusive lower bound value),
 			'<=upper<=' (inclusive upper bound value),
@@ -358,7 +373,7 @@ def parse(key,value,data,verbose=None):
 	Returns:
 		out (dataframe): Condition on data indices
 	'''
-	delimiters = ['$','@','#','%','<','>','<=','>=','==','!=']
+	delimiters = ['$','@','#','%','*','<','>','<=','>=','==','!=']
 	parserator = ';'
 	separator = ','
 
@@ -381,7 +396,7 @@ def parse(key,value,data,verbose=None):
 
 				if value.startswith(delimiter) and value.endswith(delimiter):
 				
-					values = value.replace(delimiter,'').split(separator)
+					values = value[len(delimiter):-len(delimiter)].split(separator)
 
 					if delimiter in ['$']: # Explicit value: value
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
@@ -423,6 +438,23 @@ def parse(key,value,data,verbose=None):
 								out = data[key].isin(data[key].unique()[slice(*values)])
 							except:
 								out = not default
+
+					elif delimiter in ['*']: # Regex value pattern
+						def parser(value):
+							replacements = {'.':r'\.','*':'.'}							
+							if not len(value):
+								return value
+							value = r'%s'%(to_str(value))
+							for replacement in replacements:
+								value = value.replace(replacement,replacements[replacement])
+							value = r'%s'%(value)
+							return value
+
+						values = [parser(value) for value in values if (value is not None)]
+						values = [value for value in values if (value is not None)]
+				
+						if values and (values is not null):
+							out = conditions([data[key].str.contains(r'%s'%(value)) for value in values],op='or')
 
 					elif delimiter in ['<']: # Bound value: upper (exclusive)
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
@@ -492,8 +524,8 @@ def analyse(data,analyses=None,verbose=None):
 	Args:
 		data (dataframe): data of attributes
 		analyses (dict[str,dict]): Processes to analyse of the form 
-			{analysis:[{'attr':[attr],'default':value,'kwargs':{kwarg:value}}]},
-			allowed analysis strings in ['zscore','quantile']
+			{analysis:[{'attr':{attr:value},[attr],'default':value,'kwargs':{kwarg:value}}]},
+			allowed analysis strings in ['zscore','quantile','parse']
 		verbose (bool): Verbosity			
 	Returns:
 		out (dataframe): Condition on data indices
@@ -506,17 +538,30 @@ def analyse(data,analyses=None,verbose=None):
 	if analyses is not None:
 		for analysis in analyses:
 			if analysis in ['zscore']:
-				def func(attr,data,default,**kwargs):
+				def func(attr,attrs,data,default,**kwargs):
+					reverse = kwargs.pop('reverse',None)					
 					function = sp.stats.zscore
 					sigma = kwargs.pop('sigma',None)
 					out = data[[attr]].apply(function,**kwargs)[attr]
 					out = (out < sigma) if sigma is not None else default
+					out = ~out if reverse else out
 					return out
 			elif analysis in ['quantile']:
-				def func(attr,data,default,**kwargs):
+				def func(attr,attrs,data,default,**kwargs):
+					reverse = kwargs.pop('reverse',None)					
 					sigma = kwargs.pop('sigma',None)
 					out = [data[attr].quantile(sigma),data[attr].quantile(1-sigma)] if sigma is not None else default
 					out = ((data[attr] > out[0]) & (data[attr] < out[1])) if sigma is not None else default
+					out = ~out if reverse else out					
+					return out
+			elif analysis in ['parse']:
+				def func(attr,attrs,data,default,**kwargs):
+					reverse = kwargs.pop('reverse',None)
+					out = [parse(attr,attrs[attr],data,verbose=verbose) for attr in attrs]
+					if reverse:
+						out = conditions([~i for i in out],op='or')
+					else:
+						out = conditions([i for i in out],op='and')
 					return out
 			else:
 				continue
@@ -527,11 +572,11 @@ def analyse(data,analyses=None,verbose=None):
 				args = analyses[analysis]
 
 			for arg in args:
-				attrs = arg.get('attr',[])
+				attrs = arg.get('attr',{})
 				default = arg.get('default',None)
 				kwargs = arg.get('kwargs',{})
 
-				value = [func(attr,data,default,**kwargs) for attr in attrs if attr in data]			
+				value = [func(attr,attrs,data,default,**kwargs) for attr in attrs if attr in data]			
 
 				out = conditions([out,*value],op='and')
 
@@ -540,7 +585,7 @@ def analyse(data,analyses=None,verbose=None):
 		out = data
 	else:
 		out = data[out]
-	
+
 	return out
 
 
@@ -576,6 +621,8 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 	for name in keys:
 
+		logger.log(info,"Processing : %r"%(name,))
+
 		if any((keys[name][axis] not in data) and (keys[name][axis] is not null) for axis in AXIS if axis in keys[name]):
 			key,value = name,None
 			setter(settings,{key:value},delimiter=delim,func=True)
@@ -602,9 +649,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		by = [*labels,*independent]
 
-		groupby = data[boolean].groupby(by=by,as_index=False)
+		groups = data[boolean].groupby(by=by,as_index=False)
 
-		groupby = groupby.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
+		groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
 		
 		agg = {
 			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] for attr in data},
@@ -615,7 +662,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		by = [*labels]
 		variables = [*independent,*dependent,*[subattr[0] for attr in dependent for subattr in agg[attr]]]
 
-		groups = groupby.agg(agg).droplevel(**droplevel)
+		groups = groups.agg(agg).droplevel(**droplevel)
 
 		if by:
 			groups = groups.groupby(by=by,as_index=False)
@@ -625,6 +672,8 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
 		for i,group in enumerate(groups.groups):
+
+			logger.log(info,"Group : %r %r"%(group,groups.get_group(group).shape))
 
 			for j,function in enumerate(funcs):
 
@@ -772,13 +821,21 @@ def loader(data,settings,hyperparameters,verbose=None):
 		# Get functions of data
 		apply(keys,data,settings,hyperparameters,verbose=verbose)
 
+
+
+	# Check settings
+	attr = 'instance'
+	for instance in list(settings):
+		if (not hyperparameters.get(attr,{}).get(instance)) or (not settings[instance]):
+				settings.pop(instance,None);
+				continue
+
 	
 	# Dump settings
 	if hyperparameters['dump']:
 		path = metadata
 		
 		dump(settings,metadata,verbose=verbose)
-
 
 	return
 
@@ -806,8 +863,12 @@ def plotter(settings,hyperparameters,verbose=None):
 
 	# Set layout
 	layout = {}
-	for instance in settings:
+	for instance in list(settings):
+
+		logger.log(info*verbose,"Setting : %s"%(instance))
+
 		for index,subinstance in enumerate(settings[instance]):
+		
 			sublayout = settings[instance][subinstance]['style']['layout']
 			if not layout.get(instance):
 				layout[instance] = sublayout
@@ -841,6 +902,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 	# Set data
 	for instance in list(settings):
+		
 		for subinstance in list(settings[instance]):
 
 			# variables
@@ -938,8 +1000,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							_values[plots][label] = values[plots][label]
 				values = _values
 			except KeyError as e:
-				# import traceback
-				# print(traceback.format_exc(),instance,subinstance)
+				# logger.log(debug,traceback.format_exc(),instance,subinstance)
 				settings[instance].pop(subinstance);
 				continue
 
@@ -973,7 +1034,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 						subvalue = subvalue if len(subvalue) >= 1 else None
 
-					value[-1][subattr] = subvalue
+						value[-1][subattr] = subvalue
 
 					subattr = 'set_%slabel'
 					subsubattr = '%slabel'
@@ -982,8 +1043,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						if subvalue is None:
 							continue
 						value[-1][subattr%(axis)][subsubattr%(axis)] = texify(
-							scinotation(subvalue.get(subsubattr%(axis)),
-								**values[plots][label]['attr']['scinotation']),
+							subvalue.get(subsubattr%(axis)),
 							texify=values[plots][label]['attr']['texify']) 
 
 					subattr = 'set_%sticks'
@@ -1025,9 +1085,12 @@ def plotter(settings,hyperparameters,verbose=None):
 								**values[plots][label]['attr']['scinotation']),
 							texify=values[plots][label]['attr']['texify']) for i in subvalue[subsubattr]]							
 
-					settings[instance][subinstance]['ax'][attr] = value
+					settings[instance][subinstance]['ax'][attr] = value[-1]
 
 					break
+
+				if not value:
+					settings[instance][subinstance]['ax'][attr] = None
 
 			# legend
 			attr = 'set_title'
@@ -1106,13 +1169,52 @@ def plotter(settings,hyperparameters,verbose=None):
 					if not data:
 						continue
 
+					slices = []
+					subslices = [data[OTHER][OTHER].get('slice'),data[OTHER][OTHER].get('labels')]
+					for subslice in subslices:
+						if subslice is None:
+							subslice = [slice(None)]
+						elif isinstance(subslice,dict):
+							subslice = {
+								axis if (axis in data) else [subaxis 
+										for subaxis in ALL if ((subaxis in data[OTHER]) and 
+											(data[OTHER][subaxis]['axis']==axis))][0]: 
+								subslice[axis] for axis in subslice if (
+								(not isinstance(subslice[axis],str)) or
+								((axis in data) or any(data[OTHER][subaxis]['axis']==axis 
+									for subaxis in data[OTHER] if (
+									(subaxis in ALL) and (subaxis in data[OTHER]))))
+								)
+								}
+
+							if subslice:
+								subslice = [
+									conditions([parse(axis,subslice[axis],{axis: np.array(data[axis])},verbose=verbose) 
+									for axis in subslice if isinstance(subslice[axis],str)],op='and'),
+									*[slice(*subslice[axis]) for axis in subslice 
+									 if not isinstance(subslice[axis],str)]
+									]
+							else:
+								subslice = [slice(None)]
+						else:
+							subslice = [slice(*subslice)]
+						
+						slices.extend(subslice)
+
+
+					slices = [
+						conditions([subslice for subslice in slices if not isinstance(subslice,slice)],op='and'),
+						*[subslice for subslice in slices if isinstance(subslice,slice)]
+						]
+					slices = [subslice if subslice is not None else slice(None) for subslice in slices]
+
 					for attr in data:
 						if (attr in ALL) and (data[attr] is not None):
+							
 							value = np.array([valify(value,valify=data[OTHER][OTHER].get('valify')) for value in data[attr]])
-
-							if data[OTHER][OTHER].get('slice') is not None:
-								slices = slice(*data[OTHER][OTHER].get('slice'))
-								value = value[slices]
+							
+							for subslice in slices:
+								value = value[subslice]
 
 							data[attr] = value
 
@@ -1131,7 +1233,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					attr = OTHER
 					if data[attr][attr].get('labels') is not None:
 						for label in data[attr][attr]['labels']:
-							if not parse(label,data[attr][attr]['labels'][label],data[attr],verbose=verbose):
+							if (label in data[attr]) and (label not in ALL) and not parse(label,data[attr][attr]['labels'][label],data[attr],verbose=verbose):
 								data.clear()
 								break
 
@@ -1206,16 +1308,10 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					data[attr] = value	
 
-
-
-
 	# Plot data
 	for instance in settings:
 
-		if (not hyperparameters.get('instance',{}).get(instance)) or (not settings[instance]):
-			continue
-
-		print("Plotting : %s"%(instance))
+		logger.log(info,"Plotting : %s"%(instance))
 
 		fig[instance],ax[instance] = plot(fig=fig[instance],ax=ax[instance],settings=settings[instance])
 

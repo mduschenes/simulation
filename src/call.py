@@ -1128,7 +1128,7 @@ def init(key,
 
 			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
-			msg = 'Job %s'%(key)
+			msg = 'Job : %s'%(key)
 			logger.log(info,msg)
 
 		return task
@@ -1168,7 +1168,13 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	Returns:
 		results (iterable[str]): Return of commands for each task
 	'''
+
 	keys = [None]
+	tasks = []
+	results = []
+	
+	if not jobs:
+		return results
 
 	if isinstance(jobs,str):
 		jobs = {key:jobs for key in keys}
@@ -1213,8 +1219,6 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	execution = True if execute == -1 else execute
 	execute = False if execute == -1 else execute
 
-	tasks = []
-	results = []
 	keys = {key:{} for key in keys}
 
 	iterable = [key for key in keys]
@@ -1243,6 +1247,8 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		if booleans(key,keys):
 			tasks.append(task)
 
+	msg = 'Jobs : %s'%(','.join([task['job'] for task in tasks]))
+	logger.log(info,msg)
 	
 	for task in tasks:
 
@@ -1312,6 +1318,6 @@ def launch(jobs={},wrapper=None):
 
 		results[name] = result
 
-	results = [result for name in results for result in results[name]]
+	results = [result for name in results for result in results[name] if results[name]]
 
 	return results

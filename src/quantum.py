@@ -1194,8 +1194,8 @@ class Callback(object):
 			'alpha':[],'beta':[],
 
 			'iteration.max':[],'iteration.min':[],
-			'variables':[],'variables.mean':[],'variables.relative':[],
-			'features':[],'features.mean':[],'features.relative':[],
+			'variables':[],'variables.relative':[],'variables.relative.mean':[],
+			'features':[],'features.relative':[],'features.relative.mean':[],
 			'objective.ideal.noise':[],'objective.diff.noise':[],'objective.rel.noise':[],
 			'objective.ideal.state':[],'objective.diff.state':[],'objective.rel.state':[],
 			'objective.ideal.operator':[],'objective.diff.operator':[],'objective.rel.operator':[],
@@ -1268,13 +1268,13 @@ class Callback(object):
 		updates = {
 			'iteration.max':True,
 			'iteration.min':True,
-			'parameters':False,'grad':False,'search':False,
+			'parameters':None,'grad':None,'search':None,
 			'variables':False,'features':False,
-			'variables.mean':False,'variables.relative.mean':False,'features.mean':False,'features.relative.mean':False,
+			'variables.relative':False,'variables.relative.mean':False,'features.relative':False,'features.relative.mean':False,
 			'objective.ideal.noise':False,'objective.diff.noise':False,'objective.rel.noise':False,
 			'objective.ideal.state':False,'objective.diff.state':False,'objective.rel.state':False,
 			'objective.ideal.operator':False,'objective.diff.operator':False,'objective.rel.operator':False,
-			'hessian':False,'fisher':False,'hessian.eigenvalues':False,'fisher.eigenvalues':False,
+			'hessian':None,'fisher':None,'hessian.eigenvalues':None,'fisher.eigenvalues':None,
 			'hessian.rank':False,'fisher.rank':False,
 			}
 
@@ -1282,7 +1282,7 @@ class Callback(object):
 		size = min(len(track[attr]) for attr in track)
 		default = nan
 
-		if ((not status) or done or init or other):
+		if ((status) or done or init or other):
 			
 			for attr in attrs:
 
@@ -1309,19 +1309,19 @@ class Callback(object):
 				elif attr in ['value']:
 					value = abs(attributes[attr][index])
 
-				elif attr in ['parameters','grad','search'] and not ((not status) or done or init):
+				elif attr in ['parameters','grad','search'] and ((status) and (not done)):
 					value = empty(track[attr][index].shape)
 
-				elif attr in ['parameters','grad','search'] and ((not status) or done or init):
+				elif attr in ['parameters','grad','search'] and not ((status) and (not done)):
 					value = attributes[attr][index]
 
-				elif attr in ['variables','features'] and not ((not status) or done or init):
+				elif attr in ['variables','features'] and ((status) and (not done)):
 					value = empty(track[attr][index].shape)
 
-				elif attr in ['variables.mean','variables.relative.mean','features.mean','features.relative.mean'] and not ((not status) or done or init):
+				elif attr in ['variables.relative','variables.relative.mean','features.relative','features.relative.mean'] and ((status) and (not done)):
 					value = default
 
-				elif attr in ['variables','variables.mean','variables.relative.mean','features','features.mean','features.relative.mean'] and ((not status) or done or init):
+				elif attr in ['variables','variables.relative','variables.relative.mean','features','features.relative','features.relative.mean'] and not ((status) and (not done)):
 
 					layer = attr.split(delim)[0]
 					prop = 'index'
@@ -1371,14 +1371,14 @@ class Callback(object):
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
-					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and not ((not status) or done or init):
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((status) and (not done)):
 					value = default
 
 
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
-					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((not status) or done or init):
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and not ((status) and (not done)):
 
 					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg,{}).get(prop) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
 					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
@@ -1413,16 +1413,16 @@ class Callback(object):
 					model.__functions__(**_restore)
 
 
-				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues'] and not ((not status) or done):
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues'] and ((status) and (not done)):
 					if attr in ['hessian','fisher']:
 						value = empty((*parameters.shape,)*2)
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
 						value = empty((*parameters.shape,)*1)
 
-				elif attr in ['hessian.rank','fisher.rank'] and not ((not status) or done):
+				elif attr in ['hessian.rank','fisher.rank'] and ((status) and (not done)):
 					value = default
 
-				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and ((not status) or done):
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and not ((status) and (not done)):
 					
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(jit(lambda parameters: metric(model(parameters))))
@@ -1434,7 +1434,7 @@ class Callback(object):
 
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
-						value = value/max(1,maximum(value))
+						value = value/maximum(value)
 					elif attr in ['hessian.rank','fisher.rank']:
 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
 						value = argmax(abs(difference(value)/value[:-1]))+1	
@@ -1451,9 +1451,7 @@ class Callback(object):
 				elif attr not in attributes and hasattrs(model,attr,delimiter=delim):
 					value = getattrs(model,attr,default=default,delimiter=delim)
 
-				
 				track[attr][-1] = value
-
 
 				if updates.get(attr) is not None:
 					update = updates[attr]
