@@ -1247,7 +1247,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		if booleans(key,keys):
 			tasks.append(task)
 
-	msg = 'Jobs : %s\n'%(','.join([task['job'] for task in tasks]))
+	msg = 'Jobs : %s'%(','.join([task['job'] for task in tasks]))
 	logger.log(info,msg)
 	
 	for task in tasks:
