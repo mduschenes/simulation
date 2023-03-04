@@ -39,8 +39,6 @@ from src.fit import fit
 from src.postprocess import postprocess
 from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
 
-
-
 DIM = 2
 
 class GroupBy(object):
@@ -222,6 +220,11 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 	elif isinstance(hyperparameters.get(attr),list):
 		hyperparameters[attr] = {**{instance: False for instance in settings},**{instance: True for instance in hyperparameters[attr]}}
 	hyperparameters[attr] = {**{instance: True for instance in settings},**{instance: bool(hyperparameters[attr][instance]) for instance in hyperparameters[attr]}}
+
+	for instance in list(settings):
+		if (not hyperparameters.get(attr,{}).get(instance)) or (not settings[instance]):
+				settings.pop(instance,None);
+				continue
 
 	# Get plot fig and axes
 	fig,ax = hyperparameters.get('fig'),hyperparameters.get('ax')
@@ -645,9 +648,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		by = [*labels,*independent]
 
-		groupby = data[boolean].groupby(by=by,as_index=False)
+		groups = data[boolean].groupby(by=by,as_index=False)
 
-		groupby = groupby.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
+		groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
 		
 		agg = {
 			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] for attr in data},
@@ -658,7 +661,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		by = [*labels]
 		variables = [*independent,*dependent,*[subattr[0] for attr in dependent for subattr in agg[attr]]]
 
-		groups = groupby.agg(agg).droplevel(**droplevel)
+		groups = groups.agg(agg).droplevel(**droplevel)
 
 		if by:
 			groups = groups.groupby(by=by,as_index=False)
@@ -851,10 +854,6 @@ def plotter(settings,hyperparameters,verbose=None):
 	# Set layout
 	layout = {}
 	for instance in list(settings):
-
-		if (not hyperparameters.get('instance',{}).get(instance)) or (not settings[instance]):
-			settings.pop(instance,None);
-			continue
 
 		logger.log(info*verbose,"Setting : %s"%(instance))
 
