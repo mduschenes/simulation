@@ -257,7 +257,10 @@
 		"execute":1,
 		"process":null,
 		"verbose":"info"
-		}
+		},
+	"preprocess":null,
+	"job":null,
+	"postprocess":null
 	},
 "process": {},
 "plot": {}
