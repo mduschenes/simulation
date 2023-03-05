@@ -215,7 +215,7 @@ class System(Dictionary):
 
 		if not isinstance(self.logger,Logger):
 			name = __name__
-			conf = join(self.conf,root=root)
+			conf = join(self.conf,root=root) if exists(join(self.conf,root)) else self.conf
 			file = join(self.logger,root=root)
 			cleanup = self.cleanup
 

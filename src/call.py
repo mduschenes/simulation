@@ -195,7 +195,6 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 			except (OSError,FileNotFoundError) as exception:
 				result = Popen((),stdin=stdin,stdout=stdout,stderr=stderr,env=env)
 				logger.log(verbose,exception)
-				logger.log(verbose,args)
 			return result
 
 
