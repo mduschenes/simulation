@@ -984,10 +984,14 @@ class Metric(System):
 		'''
 
 		if isinstance(self.metric,str) and self.label is not None:
-			if is_unitary(self.label) and self.metric in ['real','imag','norm']:
-				self.metric = 'abs2'
-			elif is_hermitian(self.label) and self.metric in ['abs2']:
-				self.metric = 'real'
+			if self.label.ndim == 1:
+				if self.metric in ['real','imag','norm','abs2']:
+					self.metric = 'abs2'
+			elif self.label.ndim == 2:
+				if is_unitary(self.label) and self.metric in ['real','imag','norm']:
+					self.metric = 'abs2'
+				elif is_hermitian(self.label) and self.metric in ['abs2']:
+					self.metric = 'real'
 
 		func,grad,grad_analytical = metrics(
 			metric=self.metric,shapes=self.shapes,
@@ -1134,7 +1138,7 @@ class Optimization(System):
 		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
-			search = search/norm(search) if self.kwargs.get('normalize') else search
+			# search = search/norm(search) if self.kwargs.get('normalize') else search
 			parameters = parameters + alpha*search
 			return parameters,search,alpha
 
@@ -1188,7 +1192,7 @@ class Optimization(System):
 		iteration += 1
 		size += 1
 
-		grad = grad/norm(grad) if self.kwargs.get('normalize') else grad
+		# grad = grad/norm(grad) if self.kwargs.get('normalize') else grad
 
 		self.attributes['iteration'].append(iteration)
 		self.attributes['parameters'].append(parameters)
@@ -1417,7 +1421,7 @@ class GradientDescent(Optimization):
 		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
-			search = search/norm(search) if self.kwargs.get('normalize') else search
+			# search = search/norm(search) if self.kwargs.get('normalize') else search
 			parameters = parameters + alpha*search
 			return parameters,search,alpha
 
@@ -1480,7 +1484,7 @@ class LineSearchDescent(Optimization):
 				optimizer.attributes['grad'],
 				optimizer.attributes['search']) if optimizer.size > 1 else optimizer.hyperparameters['alpha']
 			search = -grad
-			search = search/norm(search) if self.kwargs.get('normalize') else search			
+			# search = search/norm(search) if self.kwargs.get('normalize') else search			
 			parameters = parameters + alpha*search
 			return parameters,search,alpha
 
@@ -1536,7 +1540,7 @@ class HessianDescent(Optimization):
 		def update(iteration,parameters,value,grad,search,optimizer):
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
-			search = search/norm(search) if self.kwargs.get('normalize') else search			
+			# search = search/norm(search) if self.kwargs.get('normalize') else search			
 			hess = optimizer.hess(parameters)
 			parameters = parameters + alpha*lstsq(hess,search)
 			return parameters,search,alpha
@@ -1616,7 +1620,7 @@ class ConjugateGradient(Optimization):
 				optimizer.attributes['search'])
 
 			search = -grad + beta*search
-			search = search/norm(search) if self.kwargs.get('normalize') else search			
+			# search = search/norm(search) if self.kwargs.get('normalize') else search			
 
 			return parameters,search,alpha,beta
 
@@ -1626,7 +1630,7 @@ class ConjugateGradient(Optimization):
 			beta = self.hyperparameters['beta']
 			
 			search = -grad
-			search = search/norm(search) if self.kwargs.get('normalize') else search			
+			# search = search/norm(search) if self.kwargs.get('normalize') else search			
 			
 			return parameters,search,alpha,beta
 
@@ -1718,7 +1722,7 @@ class Adam(Optimization):
 
 			alpha = optimizer.hyperparameters['alpha']
 			search = -grad
-			search = search/norm(search) if self.kwargs.get('normalize') else search			
+			# search = search/norm(search) if self.kwargs.get('normalize') else search			
 			
 			state = self.opt_init(parameters)
 			state = self._opt_update(iteration,grad,state)

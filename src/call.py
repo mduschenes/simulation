@@ -326,7 +326,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 	outputs = stdout
 	errors = stderr
 
-	msg = '%s : %s'%(path,cmd) if path is not None else cmd
+	msg = '%s : $> %s'%(path,cmd) if path is not None else '$> %s'%(cmd)
 	logger.log(verbose,msg)
 
 	if file:
