@@ -1292,7 +1292,7 @@ class Optimization(System):
 		'''
 		Reset class attributes
 		Args:
-			clear (bool,str): clear attributes
+			clear (bool): clear attributes
 		'''
 		clear = self.clear if clear is None else clear
 
