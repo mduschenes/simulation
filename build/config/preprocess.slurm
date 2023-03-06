@@ -2,6 +2,8 @@
 
 ##SBATCH --account=mduschenes
 #SBATCH --job-name=output
+##SBATCH --output=/checkpoint/mduschen/%j/%x.%A.stdout
+##SBATCH --error=/checkpoint/mduschen/%j/%x.%A.stderr
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
@@ -16,11 +18,14 @@
 ##SBATCH --dependency=afterany:
 
 #SBATCH --parsable
+#SBATCH --get-user-env
 #SBATCH --cpus-per-task=1
 
 
-# Run Parallel tasks
+# Checkpointing
+# touch /checkpoint/${USER}/${SLURM_JOB_ID}/DELAYPURGE
 
+# Run Parallel tasks
 
 # Function
 function RUN(){
@@ -79,7 +84,6 @@ fi
 export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
 # Environment
-# source ~/.bashrc &>/dev/null 2>&1
 module purge &>/dev/null 2>&1
 # module load python/3.9.10 nccl_2.8.3-1+cuda11.0 cuda-11.3
 conda activate ${JOB_ENV} &>/dev/null 2>&1

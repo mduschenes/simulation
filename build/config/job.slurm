@@ -9,7 +9,7 @@
 
 #SBATCH --partition=cpu
 #SBATCH --time=01:00:00
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 
@@ -84,7 +84,6 @@ fi
 export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
 # Environment
-# source ~/.bashrc &>/dev/null 2>&1
 module purge &>/dev/null 2>&1
 # module load python/3.9.10 nccl_2.8.3-1+cuda11.0 cuda-11.3
 conda activate ${JOB_ENV} &>/dev/null 2>&1

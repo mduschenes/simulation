@@ -433,7 +433,7 @@ class Observable(System):
 			label = label
 		label = self.label(label)
 
-		shapes = (self.shape,self.label.shape)
+		shapes = (self.label.shape,self.label.shape)
 		self.shapes = shapes
 
 		# Operator functions
@@ -768,7 +768,7 @@ class Observable(System):
 		'''		
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
-				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','shapes','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
 			],
 			*['%s: %s'%(attr.split(delim)[0],'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
 				for attr in ['state.scale','noise.scale']
@@ -1488,8 +1488,8 @@ class Callback(object):
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'U\n%s\nV\n%s'%(
-				# # to_string(abs(model(parameters)).round(4)),
-				# # to_string(abs(model.label()).round(4))),
+				# to_string(abs(model(parameters)).round(4)),
+				# to_string(abs(model.label()).round(4))),
 				# to_string((model(parameters)).round(4)),
 				# to_string((model.label()).round(4))),
 				])

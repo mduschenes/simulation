@@ -301,8 +301,10 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 			path = os.path.join(*paths)
 	elif path is None and root is not None:
 		path = root
+	if path is not None:
+		path = os.path.expandvars(os.path.expanduser(path))
 	if path is not None and abspath:
-		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
+		path = os.path.abspath(path)
 	return path
 
 

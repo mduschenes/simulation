@@ -28,7 +28,7 @@ from src.utils import itg,dbl,flt,delim,Null,null,scalars
 from src.iterables import getter,setter
 from src.io import join,split,copy,rm,exists
 
-def config(name,conf=None,**kwargs):
+def config(name=None,conf=None,**kwargs):
 	'''
 	Configure logging
 	Args:
@@ -38,6 +38,8 @@ def config(name,conf=None,**kwargs):
 	Returns:
 		logger (logger): Configured logger
 	'''
+
+	name = __name__ if name is None else name
 
 	logger = logging.getLogger(name)
 
@@ -215,7 +217,7 @@ class System(Dictionary):
 
 		if not isinstance(self.logger,Logger):
 			name = __name__
-			conf = join(self.conf,root=root)
+			conf = join(self.conf,root=root) if exists(join(self.conf,root)) else self.conf
 			file = join(self.logger,root=root)
 			cleanup = self.cleanup
 
@@ -250,7 +252,7 @@ class System(Dictionary):
 
 
 class Logger(object):
-	def __init__(self,name,conf,file=None,cleanup=None,verbose=True,**kwargs):
+	def __init__(self,name=None,conf=None,file=None,cleanup=None,verbose=True,**kwargs):
 		'''
 		Logger class
 		Args:
@@ -262,11 +264,11 @@ class Logger(object):
 			kwargs (dict): Additional keyword arguments
 		'''
 
-		if isinstance(name,str):
+		if (name is None) or isinstance(name,str):
 			try:
-				self.logger = config(name,conf=conf,file=file,**kwargs)
+				self.logger = config(name=name,conf=conf,file=file,**kwargs)
 			except Exception as exception:
-				self.logger = logging.getLogger(name)
+					self.logger = logging.getLogger(name)
 		else:
 			self.logger = name
 
@@ -341,13 +343,14 @@ class Logger(object):
 
 
 class Object(System):
-	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
+	def __init__(self,data,shape,size=None,ndim=None,dims=None,system=None,**kwargs):
 		'''
 		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
 		Args:
 			data (dict,str,array,System): Data corresponding to class
 			shape (int,iterable[int]): Shape of each data
 			size (int,iterable[int]): Number of data
+			ndim (int): Number of dimensions of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional keyword arguments
@@ -367,7 +370,7 @@ class Object(System):
 		}
 
 		# Setup kwargs
-		setter(kwargs,dict(data=data,shape=shape,size=size,dims=dims,system=system),delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,shape=shape,size=size,ndim=ndim,dims=dims,system=system),delimiter=delim,func=False)
 		setter(kwargs,data,delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 		setter(kwargs,defaults,delimiter=delim,func=False)
@@ -382,7 +385,7 @@ class Object(System):
 			self.size = (self.size,)
 
 		# Dimension of data
-		self.ndim = len(self.shape) if self.shape is not None else None
+		self.ndim = len(self.shape) if (self.ndim is None) and (self.shape is not None) else self.ndim
 		self.length = len(self.size) if self.size is not None else None
 		self.n = min(self.shape)  if self.shape is not None else None
 
