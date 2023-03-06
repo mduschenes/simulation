@@ -1145,7 +1145,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 	'''
 	Get random array
 	Args:
-		shape (int,iterable): Size or Shape of random array
+		shape (int,iterable): Size or Shape of random arrayf
 		key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		bounds (iterable): Bounds on array
@@ -1182,7 +1182,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 			else:
 				bounds[i] = float(bounds)
 
-	subrandoms = ['haar','hermitian','symmetric']
+	subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
 	complex = is_complexdtype(dtype) and random not in subrandoms
 	_dtype = dtype
 	dtype = datatype(dtype)
@@ -1274,6 +1274,67 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 
 			return out
 
+	elif random in ['zero']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[0].set(1)
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out
+	elif random in ['one']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[-1].set(1)
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out			
+	elif random in ['plus']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[:].set(1)/sqrt(shape[-1])
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out	
+	elif random in ['minus']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[0::2].set(1)/sqrt(shape[-1])
+			out = out.at[1::2].set(-1)/sqrt(shape[-1])
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out				
 	elif random in ['zeros']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape,dtype=dtype)
@@ -1599,8 +1660,10 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	
 	if shapes:
 		size = sum(int(product(shape)**(1/len(shape))) for shape in shapes[:2] if shape is not None)//len(shapes[:2])
+		ndim = min([len(shape) for shape in shapes[:2] if shape is not None])
 	else:
 		size = 1
+		ndim = None
 
 	if callable(metric):
 			metric = metric
@@ -1655,11 +1718,33 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		func = inner_abs2
 		grad_analytical = gradient_inner_abs2
 
-		def wrapper_func(out,*operands):
-			return 1 - out/(operands[0].shape[-1]*operands[0].shape[-2])
+		if ndim is not None:
+			if ndim == 1:
+				def wrapper_func(out,*operands):
+					return 1 - out
 
-		def wrapper_grad(out,*operands):
-			return - out/(operands[0].shape[-1]*operands[0].shape[-2])
+				def wrapper_grad(out,*operands):
+					return - out
+
+			elif ndim == 2:
+				def wrapper_func(out,*operands):
+					return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+
+				def wrapper_grad(out,*operands):
+					return - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+			else:
+				def wrapper_func(out,*operands):
+					return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+
+				def wrapper_grad(out,*operands):
+					return - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+
+		else:
+			def wrapper_func(out,*operands):
+				return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]) if operands[0].ndim > 1 else 1)
+
+			def wrapper_grad(out,*operands):
+				return - out/((operands[0].shape[-1]*operands[0].shape[-2]) if operands[0].ndim > 1 else 1)
 
 	elif metric in ['real']:
 
@@ -5307,7 +5392,7 @@ def piecewises(func,shape,include=None,**kwargs):
 
 	def func(x,parameters):
 
-		bounds,parameterss = parameters[indices[0]],[parameters[index] for index in indices[1:]]
+		bounds,parameters = parameters[indices[0]],[parameters[index] for index in indices[1:]]
 		n = len(funcs)
 
 		func = [lambda x,parameters,i=i: funcs[i](x,parameters[i]) for i in range(n)]
