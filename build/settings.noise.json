@@ -10,9 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":7126138,
+	"seed":218271,
 	"size":24,
-	"reset":7126138,
+	"reset":218271,
 	"index":null
 	},
 "permutations":{
@@ -45,8 +45,8 @@
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
 
-		"jobs.job.cwd":["gobi/noise.5.1500"],
-		"jobs.postprocess.cwd":["gobi/noise.5.1500"],
+		"jobs.job.cwd":["gobi/noise.5.1500.v2"],
+		"jobs.postprocess.cwd":["gobi/noise.5.1500.v2"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
