@@ -8,7 +8,7 @@
 
 ##SBATCH --partition=cpu
 #SBATCH --time=01:00:00
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 
