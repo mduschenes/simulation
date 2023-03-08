@@ -615,7 +615,7 @@ def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,
 	isstring = isinstance(path,str)
 
 	if isstring:
-		path = [path]
+		path = list(glob(path))
 
 	path=' '.join(path)
 
@@ -1048,7 +1048,6 @@ def init(key,
 					split(files,directory=True),
 					pattern[0],ext=split(files,ext=True),
 					root=directory if (not split(files,directory=True)) else None)
-				files = glob(files)
 				files = nonempty(
 					path=files,
 					pattern=pattern[1],

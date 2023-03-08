@@ -318,7 +318,7 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		default (str): Default path to return
 		kwargs (dict): Additional glob keyword arguments
 	Returns:
-		paths (list[str]): Expanded, absolute path
+		path (generator[str]): Expanded, absolute paths
 	'''
 
 	if include in ['file']:
@@ -336,16 +336,15 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 
 	path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 
-	if include is not None:
-		paths = globber.glob(path,recursive=True,**kwargs)
-		paths = list(realsorted(filter(include,paths)))
+	if ('*' not in path) and (not exists(path)):
+		path = (path for path in [default])
 	else:
-		paths = list(globber.iglob(path,recursive=True,**kwargs))
+		path = globber.iglob(path,recursive=True,**kwargs)
+	
+	if include is not None:
+		path = list(realsorted(filter(include,path)))
 
-	if not paths:
-		paths = [default]
-
-	return paths
+	return path
 
 def edit(path,directory=None,file=None,ext=None,delimiter='.'):
 	'''
