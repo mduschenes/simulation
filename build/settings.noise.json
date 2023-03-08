@@ -10,9 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":218271,
+	"seed":671231,
 	"size":24,
-	"reset":218271,
+	"reset":671231,
 	"index":null
 	},
 "permutations":{
@@ -32,7 +32,7 @@
 			900,925,950,975,
 			1000,1100,1200,1300,1400,1500
 		],
-		"model.tau":[50e0],		
+		"model.tau":[75e0],		
 		"noise.scale":[1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],
 		"state.scale":[1],
 
@@ -45,8 +45,8 @@
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
 
-		"jobs.job.cwd":["gobi/noise.5.1500.v2"],
-		"jobs.postprocess.cwd":["gobi/noise.5.1500.v2"],
+		"jobs.job.cwd":["gobi/noise.5.1500/noise.5.1500.v3"],
+		"jobs.postprocess.cwd":["gobi/noise.5.1500/noise.5.1500.v3"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -88,7 +88,7 @@
 	"delta":null,
 	"M":5,
 	"T":null,
-	"tau":50e0,
+	"tau":75e0,
 	"P":2,
 	"space":"spin",
 	"time":"linear",
@@ -116,7 +116,7 @@
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
 	"eps":{"value":1e-16,"grad":1e-16,"value.difference":1e-16,"grad.difference":1e-18,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
-	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":100,"alpha":0,"beta":0},
+	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":50,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
@@ -177,10 +177,10 @@
 		"pad":"random",
 		"seed":null,	
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
-		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-20,20],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -191,10 +191,12 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-1e-2,0,1e-3,-5e-2,2e-3],
+		"parameters":[1,-1,0,-1,1],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["z"]],
 		"scale":1,
+		"scale":5.1e-3,
 		"initialization":"random",
 		"random":"uniform",
 		"pad":"random",
@@ -213,10 +215,11 @@
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],
 		"parameters":[1.1e-4,-0.8e-4,0.9e-4,1.4e-4,-1.5e-4,0.87e-4,1.4e-4,-0.7e-4,0.6e-4,-1.2e-4],
+		"parameters":[1,1,1,1,1,1,1,1,1,1],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],
-		"scale":1,
+		"scale":0.9e-4,
 		"initialization":"random",
 		"random":"uniform",	
 		"pad":"random",
