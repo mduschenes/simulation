@@ -313,7 +313,7 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 	Expand path
 	Args:
 		path (str): Path to expand
-		include (str): Type of paths to expand, allowed ['directory','file']
+		include (str,callable): Type of paths to expand, allowed ['directory','file'] or callable with signature include(path)
 		recursive (bool,str): Recursively find all included paths below path, or expander strings ['*','**']
 		default (str): Default path to return
 		kwargs (dict): Additional glob keyword arguments
@@ -321,14 +321,10 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		paths (list[str]): Expanded, absolute path
 	'''
 
-	if include is None:
-		include = lambda path:True
-	elif include in ['file']:
+	if include in ['file']:
 		include = os.path.isfile
 	elif include in ['directory']:
 		include = os.path.isdir
-	else:
-		include = lambda path:True
 
 	if not isinstance(recursive,str):
 		if recursive:
@@ -338,9 +334,13 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 
 	path = join(path,recursive)
 
-	paths = globber.glob(os.path.abspath(os.path.expandvars(os.path.expanduser(path))),recursive=True,**kwargs)
+	path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 
-	paths = list(realsorted(filter(include,paths)))
+	if include is not None:
+		paths = globber.glob(path,recursive=True,**kwargs)
+		paths = list(realsorted(filter(include,paths)))
+	else:
+		paths = list(globber.iglob(path,recursive=True,**kwargs))
 
 	if not paths:
 		paths = [default]
