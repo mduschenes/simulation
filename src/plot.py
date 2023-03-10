@@ -7,7 +7,7 @@ from math import prod
 import json,glob
 import numpy as np
 import pandas as pd
-from natsort import natsorted,realsorted
+from natsort import realsorted
 
 import matplotlib
 matplotlib.use('Agg')

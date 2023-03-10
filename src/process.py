@@ -8,7 +8,7 @@ import scipy as sp
 import scipy.stats
 import scipy.special
 import pandas as pd
-from natsort import natsorted,realsorted
+from natsort import realsorted
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
