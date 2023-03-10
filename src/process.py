@@ -8,7 +8,7 @@ import scipy as sp
 import scipy.stats
 import scipy.special
 import pandas as pd
-from natsort import natsorted
+from natsort import natsorted,realsorted
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -910,7 +910,7 @@ def plotter(settings,hyperparameters,verbose=None):
 				values = {
 					plots: {
 						label: {
-							'value': list(natsorted(set(
+							'value': list(realsorted(set(
 								data[OTHER][label] if (
 									(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
 								tuple(data[OTHER][label]) if (
@@ -922,7 +922,7 @@ def plotter(settings,hyperparameters,verbose=None):
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if (
 									((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
 								))),
-							'sort': list(natsorted(set(data[OTHER][OTHER][OTHER][label]
+							'sort': list(realsorted(set(data[OTHER][OTHER][OTHER][label]
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data) and (label in data[OTHER][OTHER][OTHER]))
 								))),
 							'label': any((
@@ -1030,7 +1030,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					subattr = 'values'
 					if isinstance(label,str):
-						subvalue = list(natsorted(set([i for i in values[plots][label]['value']])))
+						subvalue = list(realsorted(set([i for i in values[plots][label]['value']])))
 
 						subvalue = subvalue if len(subvalue) >= 1 else None
 
@@ -1054,7 +1054,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							continue
 						else:
 							if isinstance(subvalue.get(subsubattr),int):
-								subsubvalue = list(natsorted(set([i for i in values[plots][label]['value']])))
+								subsubvalue = list(realsorted(set([i for i in values[plots][label]['value']])))
 								subsubvalue = subsubvalue[::len(subsubvalue)//subvalue.get(subsubattr)]
 							else:
 								subsubvalue = subvalue.get(subsubattr)
@@ -1070,7 +1070,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							continue
 						else:
 							if isinstance(subvalue.get(subsubattr),int):
-								subsubvalue = list(natsorted(set([i for i in values[plots][label]['value']])))
+								subsubvalue = list(realsorted(set([i for i in values[plots][label]['value']])))
 								subsubvalue = subsubvalue[::len(subsubvalue)//subvalue.get(subsubattr)]
 							elif subvalue.get(subsubattr) is not None:
 								subsubvalue = subvalue.get(subsubattr)
