@@ -4,7 +4,7 @@
 import os,sys,itertools,copy,ast,operator
 
 from functools import partial,wraps
-from natsort import natsorted
+from natsort import realsorted
 import argparse
 
 import traceback
@@ -5089,7 +5089,7 @@ def relsort(iterable,relative):
 	'''
 
 	key = lambda item: list(relative).index(item) if item in relative else len(relative) + list(iterable).index(item)
-	sort = natsorted(iterable,key=key)
+	sort = realsorted(iterable,key=key)
 
 	if isinstance(iterable,dict):
 		sort = {item: iterable[item] for item in sort}
@@ -5112,12 +5112,12 @@ def union(*iterables,sort=False):
 	union = set().union(*iterables)
 
 	if sort is None:
-		iterables = tuple((tuple(natsorted(tuple(iterable)))
+		iterables = tuple((tuple(realsorted(tuple(iterable)))
 				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
 				for iterable in iterables)
-		union = natsorted(union,key=key,reverse=False)
+		union = realsorted(union,key=key,reverse=False)
 	elif sort is True:
 		union = sorted(union,key=lambda i: tuple(list(iterable).index(i) for iterable in iterables))
 
@@ -5138,12 +5138,12 @@ def intersection(*iterables,sort=False):
 		intersection = intersection.intersection(set(iterable))
 
 	if sort is None:
-		iterables = tuple((tuple(natsorted(tuple(iterable)))
+		iterables = tuple((tuple(realsorted(tuple(iterable)))
 				for iterable in iterables))
 		n = max(len(iterable) for iterable in iterables)
 		key = lambda i: min(iterable.index(i) if i in iterable else n
 				for iterable in iterables)
-		intersection = natsorted(intersection,key=key,reverse=False)
+		intersection = realsorted(intersection,key=key,reverse=False)
 	elif sort is True:
 		intersection = sorted(intersection,key=lambda i: tuple(list(iterable).index(i) for iterable in iterables))
 
