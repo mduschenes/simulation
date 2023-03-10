@@ -10,9 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":671231,
+	"seed":293023,
 	"size":24,
-	"reset":671231,
+	"reset":293023,
 	"index":null
 	},
 "permutations":{
@@ -42,8 +42,8 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"parameters.xy.method":["constrained"],
-		"system.architecture":["constrained"],
+		"parameters.xy.method":["unconstrained"],
+		"system.architecture":["unconstrained"],
 
 		"jobs.job.cwd":["gobi/noise.5.1500/noise.5.1500.v3"],
 		"jobs.postprocess.cwd":["gobi/noise.5.1500/noise.5.1500.v3"],
@@ -176,11 +176,11 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-20,20],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-20,-20]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -301,7 +301,7 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,
-		"resume":null,
+		"resume":true,
 		"pause":1,
 		"file":"job.sh",	
 		"process":null,
