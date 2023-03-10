@@ -5,7 +5,7 @@ import os,sys,warnings,itertools,inspect,traceback,datetime
 from functools import partial
 from copy import deepcopy
 import subprocess
-from natsort import realsorted
+from natsort import natsorted
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -632,7 +632,7 @@ def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-	stdout = list(realsorted([str(i) for i in stdout.split('\n')]))
+	stdout = list(natsorted([str(i) for i in stdout.split('\n')]))
 
 	return stdout
 

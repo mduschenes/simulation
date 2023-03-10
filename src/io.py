@@ -10,7 +10,7 @@ import json,jsonpickle,h5py,pickle,dill
 import numpy as np
 import pandas as pd
 
-from natsort import natsorted,realsorted
+from natsort import natsorted
 
 # Logging
 import logging,logging.config
@@ -342,7 +342,7 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		path = globber.iglob(path,recursive=True,**kwargs)
 	
 	if include is not None:
-		path = list(realsorted(filter(include,path)))
+		path = list(natsorted(filter(include,path)))
 
 	return path
 
@@ -737,7 +737,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	paths = {delim.join([name,str(path)]): path
 		for name in paths
-		for path in realsorted(glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name])))
+		for path in natsorted(glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name])))
 		}
 
 	data = {}
