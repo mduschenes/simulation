@@ -10,7 +10,7 @@ import json,jsonpickle,h5py,pickle,dill
 import numpy as np
 import pandas as pd
 
-from natsort import natsorted,realsorted
+from natsort import natsorted
 
 # Logging
 import logging,logging.config
@@ -313,22 +313,18 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 	Expand path
 	Args:
 		path (str): Path to expand
-		include (str): Type of paths to expand, allowed ['directory','file']
+		include (str,callable): Type of paths to expand, allowed ['directory','file'] or callable with signature include(path)
 		recursive (bool,str): Recursively find all included paths below path, or expander strings ['*','**']
 		default (str): Default path to return
 		kwargs (dict): Additional glob keyword arguments
 	Returns:
-		paths (list[str]): Expanded, absolute path
+		path (generator[str]): Expanded, absolute paths
 	'''
 
-	if include is None:
-		include = lambda path:True
-	elif include in ['file']:
+	if include in ['file']:
 		include = os.path.isfile
 	elif include in ['directory']:
 		include = os.path.isdir
-	else:
-		include = lambda path:True
 
 	if not isinstance(recursive,str):
 		if recursive:
@@ -338,14 +334,17 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 
 	path = join(path,recursive)
 
-	paths = globber.glob(os.path.abspath(os.path.expandvars(os.path.expanduser(path))),recursive=True,**kwargs)
+	path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 
-	paths = list(realsorted(filter(include,paths)))
+	if ('*' not in path) and (not exists(path)):
+		path = (path for path in [default])
+	else:
+		path = globber.iglob(path,recursive=True,**kwargs)
+	
+	if include is not None:
+		path = list(natsorted(filter(include,path)))
 
-	if not paths:
-		paths = [default]
-
-	return paths
+	return path
 
 def edit(path,directory=None,file=None,ext=None,delimiter='.'):
 	'''
@@ -736,9 +735,9 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	else:
 		paths = path
 
-	paths = {delim.join([name,str(path)]) if path != name else name: path
+	paths = {delim.join([name,str(path)]): path
 		for name in paths
-		for path in glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name]))
+		for path in natsorted(glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name])))
 		}
 
 	data = {}

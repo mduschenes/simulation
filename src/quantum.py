@@ -770,7 +770,10 @@ class Observable(System):
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
 				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','shapes','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
 			],
-			*['%s: %s'%(attr.split(delim)[0],'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
+			*['%s: %s'%(delim.join(attr.split(delim)[:2]),'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
+				for attr in ['parameters.%s.scale'%(i) for i in self.parameters.hyperparameters]
+			],
+			*['%s: %s'%(delim.join(attr.split(delim)[:1]),'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
 				for attr in ['state.scale','noise.scale']
 			],
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).__name__) 

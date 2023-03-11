@@ -979,7 +979,7 @@ def plotter(settings,hyperparameters,verbose=None):
 									for attr in ['scinotation']},
 								},
 							}
-						for label in list(realsorted(set(label
+						for label in list(natsorted(set(label
 						for data in flatten(settings[instance][subinstance]['ax'][plots])
 						if (data)
 						for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
@@ -1100,21 +1100,21 @@ def plotter(settings,hyperparameters,verbose=None):
 				value = [
 					[
 						*['%s'%(texify(label,texify=values[plots][label]['attr']['texify'])) 
-							for plots,label in realsorted(set((
+							for plots,label in natsorted(set((
 							(plots,label)
 							for plots in values 					
 							for label in values[plots] 
 							if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
 								not (values[plots][label]['other'])))))],
 						*['%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
-							for plots,label in realsorted(set((
+							for plots,label in natsorted(set((
 							(plots,label)
 							for plots in values 
 							for label in values[plots]
 							if (not ((values[plots][label]['label'])) and 
 								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))],
 						*['%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
-							for plots,label in realsorted(set((
+							for plots,label in natsorted(set((
 							(plots,label)
 							for plots in values 
 							for label in values[plots]
@@ -1127,7 +1127,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							',~'.join([texify(scinotation(value,**values[plots][label]['attr']['scinotation']),texify=values[plots][label]['attr']['texify']) 
 									for value in values[plots][label]['value']]))
 							for plots in values 
-							for label in realsorted(set((
+							for label in natsorted(set((
 							label 
 							for label in values[plots]
 							if (not ((values[plots][label]['label'])) and 
@@ -1137,7 +1137,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							',~'.join([texify(scinotation(value,**values[plots][label]['attr']['scinotation']),texify=values[plots][label]['attr']['texify']) 
 									for value in values[plots][label]['value']]))
 							for plots in values 
-							for label in realsorted(set((
+							for label in natsorted(set((
 							label 
 							for label in values[plots]
 							if (not ((values[plots][label]['label'])) and 
@@ -1283,21 +1283,21 @@ def plotter(settings,hyperparameters,verbose=None):
 						*[(texify(scinotation(data[OTHER][label],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
 							if values[plots][label]['label'] else texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
 							) 
-							for label in realsorted(set((
+							for label in natsorted(set((
 							label 
 							for label in values[plots] 
 							if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
 								not (values[plots][label]['other'])))))],
 						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
 							)
-							for label in realsorted(set((
+							for label in natsorted(set((
 							label 
 							for label in values[plots]
 							if (not ((values[plots][label]['label'])) and 
 								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))],
 						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
 							)
-							for label in realsorted(set((
+							for label in natsorted(set((
 							label 
 							for label in values[plots]
 							if (not ((values[plots][label]['label'])) and 
