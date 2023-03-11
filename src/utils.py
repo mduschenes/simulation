@@ -520,13 +520,13 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	'''
 	if mode in ['operator']:
 		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -out/operands[0].shape[0]]
+		wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
 	elif mode in ['state']:
 		subscripts = ['uai,vai->uv','uai,ai,vaj,aj->uv']
-		wrappers = [lambda out,*operands: out/operands[0].shape[1],lambda out,*operands: -out/operands[0].shape[1]]
+		wrappers = [lambda out,*operands: out,lambda out,*operands: -out]
 	else:
 		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -out/operands[0].shape[0]]
+		wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
 
 	if grad is None:
 		grad = gradient(func,mode='fwd',move=True)

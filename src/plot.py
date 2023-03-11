@@ -7,7 +7,7 @@ from math import prod
 import json,glob
 import numpy as np
 import pandas as pd
-from natsort import natsorted,realsorted
+from natsort import natsorted
 
 import matplotlib
 matplotlib.use('Agg')
@@ -918,7 +918,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						{'vmin':min(values,default=0),
 						 'vmax':max(values,default=1)})
 
-				values = list(realsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
+				values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
 				norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
 				
 				N = len(values)
@@ -1042,7 +1042,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									{'vmin':min(values,default=0),
 									 'vmax':max(values,default=1)})
 
-							values = list(realsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
+							values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
 							norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
 							
 							N = len(values)

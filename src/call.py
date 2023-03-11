@@ -602,7 +602,7 @@ def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
 	Returns:
-		stdout [str,iterable[str]]: Path that is not empty, modified with pattern
+		stdout [iterable[str]]: Path that is not empty, modified with pattern
 	'''
 	
 	if path is None:
@@ -612,12 +612,10 @@ def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,
 		stdout = []
 		return stdout
 
-	isstring = isinstance(path,str)
+	if isinstance(path,str):
+		path = glob(path)
 
-	if isstring:
-		path = [path]
-
-	path=' '.join(path)
+	path = ' '.join(path)
 
 	if pattern is None:
 		pattern = r'\(\):\1'
@@ -634,10 +632,7 @@ def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-	stdout = [str(i) for i in stdout.split('\n')]
-
-	if isstring:
-		stdout = stdout[-1]
+	stdout = list(natsorted([str(i) for i in stdout.split('\n')]))
 
 	return stdout
 
@@ -1048,7 +1043,6 @@ def init(key,
 					split(files,directory=True),
 					pattern[0],ext=split(files,ext=True),
 					root=directory if (not split(files,directory=True)) else None)
-				files = glob(files)
 				files = nonempty(
 					path=files,
 					pattern=pattern[1],
@@ -1248,7 +1242,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 	msg = 'Jobs : %s'%(','.join([task['job'] for task in tasks]))
 	logger.log(info,msg)
-	
+
 	for task in tasks:
 
 		job = task['job']
