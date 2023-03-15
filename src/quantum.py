@@ -766,12 +766,18 @@ class Observable(System):
 		Args:
 			verbose (int,str): Verbosity of message			
 		'''		
+
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
 				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','shapes','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
 			],
-			*['%s: %s'%(delim.join(attr.split(delim)[:2]),'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
-				for attr in ['parameters.%s.scale'%(i) for i in self.parameters.hyperparameters]
+			*['%s: %s'%(delim.join(attr.split(delim)[:2]),', '.join([
+				('%s' if (
+					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
+					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
+				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
+				for prop in ['category','method','scale']]))
+				for attr in ['parameters.%s'%(i) for i in self.parameters.hyperparameters]
 			],
 			*['%s: %s'%(delim.join(attr.split(delim)[:1]),'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
 				for attr in ['state.scale','noise.scale']
@@ -1490,11 +1496,9 @@ class Callback(object):
 					if attr in attributes and len(attributes[attr])>0
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
-				# 'U\n%s\nV\n%s'%(
-				# to_string(abs(model(parameters)).round(4)),
-				# to_string(abs(model.label()).round(4))),
-				# to_string((model(parameters)).round(4)),
-				# to_string((model.label()).round(4))),
+				'U\n%s\nV\n%s'%(
+					to_string((model(parameters)).round(4)),
+					to_string((model.label()).round(4))),
 				])
 
 

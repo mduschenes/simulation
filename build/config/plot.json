@@ -14,7 +14,7 @@
 			"y":"objective",
 			"label":{
 				"label":{
-					"N":null,"architecture":null,"M":null,"noise.scale":null
+					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
 				},
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
 			},
@@ -33,7 +33,7 @@
 			"y":"objective.ideal.state",
 			"label":{
 				"label":{
-					"N":null,"architecture":null,"M":null,"noise.scale":null
+					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
 				},
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
 			},			
@@ -52,7 +52,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"M":null,"noise.scale":null},
+			"label":{"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null},
 			"alpha":0.5,			
 			"color":"viridis"
 			}						
@@ -115,7 +115,7 @@
 			"label":{
 				"label": {
 					"N":null,
-					"architecture":null,
+					"parameters.xy.method":null,
 					"tau.noise.parameters":null,
 					"T.noise.parameters":null,
 					"noise.parameters":null
@@ -137,7 +137,7 @@
 			{
 			"x":"iteration",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"tau":null,"noise.parameters":null},
+			"label":{"N":null,"parameters.xy.method":null,"tau":null,"noise.parameters":null},
 			"alpha":0.5,			
 			"color":"viridis"
 			}						
@@ -200,7 +200,7 @@
 				"label": {
 					"label":{
 						"N": null,
-						"architecture": null,
+						"parameters.xy.method": null,
 						"M": null,
 						"iteration": "@iteration.min@"
 					},
@@ -222,7 +222,7 @@
 				"label": {
 					"label":{
 						"N": null,
-						"architecture": null,
+						"parameters.xy.method": null,
 						"M": null,
 						"iteration": "@iteration.min@"
 					},
@@ -315,7 +315,7 @@
 			{
 			"x":"noise.scale",
 			"y":"objective.diff.state",
-			"label":{"N":null,"architecture":null,"M":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"parameters.xy.method":null,"M":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -384,7 +384,7 @@
 			{
 			"x":"noise.parameters",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"T":null,"tau":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"parameters.xy.method":null,"T":null,"tau":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -453,7 +453,7 @@
 			{
 			"x":"noise.parameters",
 			"y":"objective.diff.state",
-			"label":{"N":null,"architecture":null,"T":null,"tau":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"parameters.xy.method":null,"T":null,"tau":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -522,7 +522,7 @@
 			{
 			"x":"M",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"parameters.xy.method":null,"noise.scale":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -605,7 +605,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"variables.relative.mean",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@"},			
+			"label":{"N":null,"parameters.xy.method":null,"noise.scale":null,"iteration":"@iteration.min@"},			
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -677,7 +677,7 @@
 		"errorbar":{
 			"x":"M",
 			"y":"iteration.min",
-			"label":{"N":null,"architecture":null,"noise.scale":null,"iteration":"@iteration.min@"},										
+			"label":{"N":null,"parameters.xy.method":null,"noise.scale":null,"iteration":"@iteration.min@"},										
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -736,7 +736,7 @@
 			{
 			"x":"tau.noise.parameters",
 			"y":"objective",
-			"label":{"N":null,"architecture":null,"noise.parameters":null,"T.noise.parameters":null,"parameters.zz.scale":null,"iteration":"@iteration.min@"},
+			"label":{"N":null,"parameters.xy.method":null,"noise.parameters":null,"T.noise.parameters":null,"parameters.zz.scale":null,"iteration":"@iteration.min@"},
 			"alpha":0.8,
 			"marker":"o",
 			"markersize":20,
@@ -806,7 +806,7 @@
 		"errorbar":{
 			"x":"tau",
 			"y":"iteration.min",
-			"label":{"N":null,"architecture":null,"noise.parameters":null,"iteration":"@iteration.min@"},										
+			"label":{"N":null,"parameters.xy.method":null,"noise.parameters":null,"iteration":"@iteration.min@"},										
 			"marker":"o",
 			"markersize":8,
 			"linewidth":4,
@@ -868,7 +868,7 @@
 			"label": {
 				"label":{
 					"N": null,
-					"architecture": null,
+					"parameters.xy.method": null,
 					"M": null,
 					"noise.scale": null,
 					"iteration": "@iteration.max@",
@@ -936,7 +936,7 @@
 			"label": {
 				"label":{
 					"N": null,
-					"architecture": null,
+					"parameters.xy.method": null,
 					"M": null,
 					"noise.scale": null,
 					"iteration": "@iteration.max@",
@@ -1004,7 +1004,7 @@
 			"label": {
 				"label":{
 					"N": null,
-					"architecture": null,
+					"parameters.xy.method": null,
 					"T":null,
 					"tau": null,
 					"noise.parameters": null,
@@ -1073,7 +1073,7 @@
 			"label": {
 				"label":{
 					"N": null,
-					"architecture": null,
+					"parameters.xy.method": null,
 					"T":null,
 					"tau": null,
 					"noise.par": null,
