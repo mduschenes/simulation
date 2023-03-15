@@ -231,7 +231,7 @@ def test_expmmc(*args,**kwargs):
 	return
 
 
-def test_gradient_expm():
+def test_gradient_expm(path=None,tol=None):
 
 	def func(*args,**kwargs):
 		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
@@ -358,7 +358,7 @@ def test_setter(path=None,tol=None):
 		value = elements[element]
 		setter(iterable,{element:value},delimiter=delim,func=True)
 		value = getter(iterable,element)
-		print(iterable)
+		# print(iterable)
 		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
 	
 	return
@@ -463,11 +463,10 @@ def test_norm(path=None,tol=None):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	# test_objective(path,tol)
-	# test_optimizer(path,tol)
-	# test_getter(path,tol)
-	# test_setter(path,tol)
-	# test_scinotation(path,tol)
-	# test_gradient(path,tol)
+	test_getter(path,tol)
+	test_setter(path,tol)
+	test_scinotation(path,tol)
+	test_gradient(path,tol)
+	test_gradient_expm(path,tol)
 	test_norm(path,tol)
 	
