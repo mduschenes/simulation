@@ -1,9 +1,6 @@
 import pytest
 import os
 
-import jax
-jax.config.update('jax_array', False)
-
 
 # Helper functions
 

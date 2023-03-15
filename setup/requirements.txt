@@ -25,11 +25,10 @@ parallel
 jax=0.3.14
 jaxlib=0.3.7
 equinox
+libgcc
 libstdcxx-ng
 
 notebook
 nb_conda_kernels
 jupyter
 jupyter_contrib_nbextensions
-
-libstdcxx-ng

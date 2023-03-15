@@ -11,10 +11,10 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.call import submit,command,call,cp,rm,echo,sed,sleep,touch
-from src.io import load,dump,dirname
+from src.call import submit,command,call,cp,rm,ls,echo,sed,sleep,touch
+from src.io import load,dump,glob,dirname
 
-def test_touch(path=None):
+def test_touch(path=None,tol=None):
 	path = '.tmp.tmp/tmp.sh'
 	args = ['./job.slurm . mkl ~/files/uw/research/code/simulation/code/src train.py 1 settings.json']
 	env = {'SLURM_VAR':10,"SLURM_FOO":"BAR"}
@@ -34,7 +34,7 @@ def test_touch(path=None):
 
 	return
 
-def test_cp(path=None):
+def test_cp(path=None,tol=None):
 	source = '.tmp.tmp/tmp.sh'
 	destination = '.tmp.tmp/new.sh'
 
@@ -58,7 +58,7 @@ def test_cp(path=None):
 	return
 
 
-def test_rm(path=None):
+def test_rm(path=None,tol=None):
 	path = '.tmp.tmp/tmp.sh'
 
 	process = None
@@ -75,7 +75,24 @@ def test_rm(path=None):
 
 	return
 
-def test_echo(path=None):
+
+def test_ls(path=None,tol=None):
+	path = '.'
+	args = ['-lht']
+
+	process = None
+	processes = None
+	device = None
+	execute = True
+	verbose = False
+	kwargs = {}
+
+
+	returns = ls(path,*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose,**kwargs)
+
+	return
+
+def test_echo(path=None,tol=None):
 	args = ['Hello','World']
 
 	process = None
@@ -88,7 +105,7 @@ def test_echo(path=None):
 	echo(*args,process=process,processes=processes,device=device,execute=execute,verbose=verbose,**kwargs)
 	return
 
-def test_sed(path=None):
+def test_sed(path=None,tol=None):
 
 	path = 'config/test.slurm'
 	patterns = {'nodes=.*':'nodes=4'}
@@ -109,7 +126,7 @@ def test_sed(path=None):
 	rm(destination,execute=True)
 	return
 
-def test_sleep(path=None):
+def test_sleep(path=None,tol=None):
 	pause = 3
 
 	process = None
@@ -123,8 +140,7 @@ def test_sleep(path=None):
 	return
 
 
-
-def test_call(path=None):
+def test_call(path=None,tol=None):
 
 	file = 'text.txt'
 	path = file
@@ -190,7 +206,22 @@ def test_call(path=None):
 	result = call(*args,wrapper=wrapper,process=process,device=device,execute=execute,verbose=verbose)
 	rm(destination,execute=True)
 
+	pause = 10
+	sleep(pause,execute=True,verbose=True)
+
 	path = file
 	rm(path,execute=True)
 
+	path = "output.*.std*"
+	path = glob(path)
+	rm(*path,execute=True,verbose=True)
+
 	return
+
+
+if __name__ == '__main__':
+	path = 'config/settings.json'
+	tol = 5e-8 
+
+	# test_ls(path,tol)
+	test_call(path,tol)

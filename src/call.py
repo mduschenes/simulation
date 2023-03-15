@@ -399,6 +399,33 @@ def rm(*paths,env=None,process=None,processes=None,device=None,execute=False,ver
 	return
 
 
+def ls(path,*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	List path
+	Args:
+		path (str): Path to list
+		args (iterable[str]): Args for list
+		env (dict[str,str]): Environmental variables for args		
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	Returns:
+		stdout (std): Stdout of list
+	'''
+
+	exe = ['ls']
+	flags = [*args]
+	cmd = [path]
+	options = []
+	env = [] if env is None else env
+	args = []
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return stdout
+
 
 def echo(*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
@@ -411,6 +438,8 @@ def echo(*args,env=None,process=None,processes=None,device=None,execute=False,ve
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
+	Returns:
+		stdout (std): Stdout of echo
 	'''
 
 	exe = ['echo']
@@ -422,7 +451,7 @@ def echo(*args,env=None,process=None,processes=None,device=None,execute=False,ve
 
 	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-	return
+	return stdout
 
 
 def run(file,path,*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
