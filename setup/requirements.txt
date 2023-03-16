@@ -24,6 +24,7 @@ parallel
 
 jax=0.3.14
 jaxlib=0.3.7
+jaxtyping=0.2.8
 equinox
 libgcc
 libstdcxx-ng

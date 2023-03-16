@@ -137,8 +137,8 @@ done
 rm ${requirements[@]} 
 
 # Pip packages
-# packages=(gnureadline)
-# pip install ${packages[@]}
+packages=(gnureadline)
+pip install ${packages[@]}
 
 # conda update --all
 

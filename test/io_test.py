@@ -37,6 +37,8 @@ def test_path(path='.tmp.tmp/data.hdf5'):
 
 def test_load(path=None):
 	
+	#TODO: Add data/ directory for test data to load 
+	return
 
 	kwargs = [
 		{

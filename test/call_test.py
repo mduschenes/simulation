@@ -213,8 +213,7 @@ def test_call(path=None,tol=None):
 	rm(path,execute=True)
 
 	path = "output.*.std*"
-	path = glob(path)
-	rm(*path,execute=True,verbose=True)
+	rm(path,execute=True,verbose=True)
 
 	return
 
