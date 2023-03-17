@@ -55,7 +55,7 @@
 		"state.scale":[1],
 
 
-		"optimize.iterations":[300],
+		"optimize.iterations":[10],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],

@@ -414,7 +414,7 @@ def parse(key,value,data,verbose=None):
 						values = [parser(value) for value in values]           
 					  
 						if values and (values is not null):
-							out = conditions([data[key]==data[value] for value in values],op='or')
+							out = conditions([data[key]==data[value] for value in values if value in data],op='or')
 
 					elif delimiter in ['#']: # Index value: i,j,k,...
 						parser = lambda value: (to_int(value) if len(value)>0 else null)
@@ -648,6 +648,11 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		boolean = conditions(boolean,op='and')
 
 		by = [*labels,*independent]
+
+		if not by:
+			key,value = name,None
+			setter(settings,{key:value},delimiter=delim,func=True)
+			continue
 
 		groups = data[boolean].groupby(by=by,as_index=False)
 
@@ -907,11 +912,26 @@ def plotter(settings,hyperparameters,verbose=None):
 
 			# variables
 			try:
-				values = {
-					plots: {
-						label: {
-							'value': list(realsorted(set(
-								data[OTHER][label] if (
+				values = {}
+				for plots in PLOTS:
+					
+					if plots not in settings[instance][subinstance]['ax']:
+						continue
+
+					labels = list(natsorted(set(label
+						for data in flatten(settings[instance][subinstance]['ax'][plots])
+						if (data)
+						for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
+						if ((data) and (label not in [*ALL,OTHER]) and (
+							((data[OTHER][OTHER].get('exclude') is None) or (label not in data[OTHER][OTHER]['exclude'])) and 
+							((data[OTHER][OTHER].get('include') is None) or (label in data[OTHER][OTHER]['include'])))  
+						))))
+
+					values[plots] = {}
+					for label in labels:
+						value = {}
+						value['value'] = list(realsorted(set(
+								(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else None) if (
 									(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
 								tuple(data[OTHER][label]) if (
 									(label in data[OTHER])) else 
@@ -921,33 +941,33 @@ def plotter(settings,hyperparameters,verbose=None):
 									data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if (
 									((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
-								))),
-							'sort': list(realsorted(set(data[OTHER][OTHER][OTHER][label]
+								)))
+						value['sort'] = list(realsorted(set(data[OTHER][OTHER][OTHER][label]
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data) and (label in data[OTHER][OTHER][OTHER]))
-								))),
-							'label': any((
+								)))
+						value['label'] = any((
 								(label in data[OTHER][OTHER][OTHER]) and 
 								(label in data[OTHER]) and (data[OTHER][OTHER][OTHER][label] is None))
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) 
 								if (data)
-								),
-							'other': any((
+								)
+						value['other'] = any((
 								(label not in data[OTHER]) and 
 								(label in data[OTHER][OTHER][OTHER]) and 
 								((data[OTHER][OTHER][OTHER].get(label) is not None) and
 								(data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])))
 								for data in flatten(settings[instance][subinstance]['ax'][plots])
 								if (data)
-								),
-							'legend': any((
+								)
+						value['legend'] = any((
 								(label not in data[OTHER]) and 
 								(label in data[OTHER][OTHER][OTHER]) and
 								((data[OTHER][OTHER][OTHER].get(label) is not None) and
 								(data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER])))
 								for data in flatten(settings[instance][subinstance]['ax'][plots])
 								if (data)
-								),
-							'attr': {
+								)
+						value['attr'] = {
 								**{attr: {string:  data[OTHER][OTHER][attr][string]
 									for data in flatten(settings[instance][subinstance]['ax'][plots]) 
 									if ((data) and attr in data[OTHER][OTHER])
@@ -977,30 +997,16 @@ def plotter(settings,hyperparameters,verbose=None):
 										for kwarg in ['one']},										
 									}
 									for attr in ['scinotation']},
-								},
-							}
-						for label in list(natsorted(set(label
-						for data in flatten(settings[instance][subinstance]['ax'][plots])
-						if (data)
-						for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
-						if ((data) and (label not in [*ALL,OTHER]) and (
-							((data[OTHER][OTHER].get('exclude') is None) or (label not in data[OTHER][OTHER]['exclude'])) and 
-							((data[OTHER][OTHER].get('include') is None) or (label in data[OTHER][OTHER]['include'])))  
-						))))
-						}
-						for plots in PLOTS 
-						if plots in settings[instance][subinstance]['ax']
-						}
-				_values = {}
-				for plots in list(values):
-					if plots not in _values:
-						_values[plots] = {}
+								}
+
+						values[plots][label] = value
+
 					for label in list(values[plots]):
-						if not any(label in _values[_plots] for _plots in _values):
-							_values[plots][label] = values[plots][label]
-				values = _values
+						if any(label in values[i] for i in values if i not in [plots]):
+							values[plots].pop(label);
+
 			except KeyError as e:
-				# logger.log(debug,traceback.format_exc(),instance,subinstance)
+				logger.log(verbose,'%s %s %s '%(traceback.format_exc(),instance,subinstance))
 				settings[instance].pop(subinstance);
 				continue
 

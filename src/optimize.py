@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,lstsq,inv,norm,metrics
-from src.utils import is_unitary,is_hermitian,is_naninf,product,sqrt,asarray
+from src.utils import is_array,is_unitary,is_hermitian,is_naninf,product,sqrt,asarray,asscalar
 from src.utils import scalars,delim,nan
 
 from src.iterables import setter
@@ -25,6 +25,14 @@ from src.io import dump,load,join,split,copy,exists
 
 from src.system import System
 
+from src.system	 import Logger
+name = __name__
+path = os.getcwd()
+file = 'logging.conf'
+conf = os.path.join(path,file)
+file = None #'log.log'
+info = 100
+logger = Logger(name,conf,file=file)
 
 
 class LineSearcher(System):
@@ -94,8 +102,9 @@ class LineSearcher(System):
 		Returns:
 			returns (dict): Dictionary of returned values of line search
 		'''
-		
 		returns = dict(zip(self.returns,returns))
+
+		return returns
 
 		attr = 'alpha'
 		if (returns[attr] is None) or (is_naninf(returns[attr])) or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):		
@@ -1167,7 +1176,9 @@ class Optimization(System):
 			search (array): Updated optimization search direction			
 			alpha (array): Search rate
 		'''
+		
 		optimizer = self
+
 		alpha = optimizer.alpha(
 				iteration,
 				parameters,
@@ -1657,6 +1668,7 @@ class ConjugateGradient(Optimization):
 			alpha (array): Search rate
 			beta (array): Conjugate rate
 		'''
+
 		optimizer = self
 
 		alpha = optimizer.alpha(
@@ -1731,6 +1743,12 @@ class ConjugateGradient(Optimization):
 		track = self.track
 		optimizer = self
 		self.status = self.callback(parameters,track,optimizer)
+
+		for attr in self.attributes:
+			logger.log(self.verbose,'attribute.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.attributes[attr]]))
+		for attr in self.track:
+			logger.log(self.verbose,'track.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.track[attr]]))
+		logger.log(self.verbose,'\n\n')
 
 		return state
 
