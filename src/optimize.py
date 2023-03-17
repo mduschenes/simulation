@@ -62,7 +62,7 @@ class LineSearcher(System):
 		self.system = system
 		self.defaults = defaults
 		self.returns = returns
-		
+
 		return
 
 	def __call__(self,iteration,parameters,alpha,value,grad,search):
@@ -128,8 +128,9 @@ class LineSearch(LineSearcher):
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
 		hyperparameters (dict): line search hyperparameters
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+		kwargs (dict): Additional system attributes
 	'''
-	def __new__(cls,func,grad,hyperparameters={},system=None):
+	def __new__(cls,func,grad,hyperparameters,system=None,**kwargs):
 	
 		defaults = {'search':{'alpha':None}}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
@@ -143,7 +144,7 @@ class LineSearch(LineSearcher):
 
 		line_search = hyperparameters.get('search',{}).get('alpha',defaults['search']['alpha'])
 		
-		self = line_searches.get(line_search,line_searches[None])(func,grad,hyperparameters,system=system)
+		self = line_searches.get(line_search,line_searches[None])(func,grad,hyperparameters,system=system,**kwargs)
 
 		return self
 
@@ -354,8 +355,9 @@ class GradSearch(GradSearcher):
 		grad (callable): gradient of function to optimize, with signature grad(parameters)
 		hyperparameters (dict): grad search hyperparameters
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+		kwargs (dict): Additional system attributes		
 	'''
-	def __new__(cls,func,grad,hyperparameters={},system=None):
+	def __new__(cls,func,grad,hyperparameters,system=None,**kwargs):
 	
 		defaults = {'search':{'beta':None}}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
@@ -370,7 +372,7 @@ class GradSearch(GradSearcher):
 
 		grad_search = hyperparameters.get('search',{}).get('beta',defaults['search']['beta'])
 		
-		self = grad_searches.get(grad_search,grad_searches[None])(func,grad,hyperparameters,system=system)
+		self = grad_searches.get(grad_search,grad_searches[None])(func,grad,hyperparameters,system=system,**kwargs)
 
 		return self
 
@@ -1152,6 +1154,13 @@ class Optimization(System):
 
 			self.dump(iteration,state)
 
+			if self.verbose:
+				for attr in self.attributes:
+					logger.log(self.verbose,'attribute.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.attributes[attr]]))
+				for attr in self.track:
+					logger.log(self.verbose,'track.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.track[attr]]))
+				logger.log(self.verbose,'\n\n')
+
 			if not self.status:
 				break
 
@@ -1442,8 +1451,9 @@ class Optimizer(Optimization):
 		callback (callable): callback function with signature callback(parameters,track,optimizer) and returns status of optimization
 		hyperparameters (dict): optimizer hyperparameters
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
+		kwargs (dict): Additional system attributes		
 	'''
-	def __new__(cls,func,grad=None,callback=None,hyperparameters={},system=None):
+	def __new__(cls,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
 	
 		defaults = {'optimizer':None}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
@@ -1452,7 +1462,7 @@ class Optimizer(Optimization):
 
 		optimizer = hyperparameters['optimizer']		
 		
-		self = optimizers.get(optimizer,optimizers[None])(func,grad,callback,hyperparameters=hyperparameters,system=system)
+		self = optimizers.get(optimizer,optimizers[None])(func,grad,callback,hyperparameters=hyperparameters,system=system,**kwargs)
 
 		return self
 	
@@ -1743,12 +1753,6 @@ class ConjugateGradient(Optimization):
 		track = self.track
 		optimizer = self
 		self.status = self.callback(parameters,track,optimizer)
-
-		for attr in self.attributes:
-			logger.log(self.verbose,'attribute.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.attributes[attr]]))
-		for attr in self.track:
-			logger.log(self.verbose,'track.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.track[attr]]))
-		logger.log(self.verbose,'\n\n')
 
 		return state
 

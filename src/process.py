@@ -1006,7 +1006,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							values[plots].pop(label);
 
 			except KeyError as e:
-				logger.log(verbose,'%s %s %s '%(traceback.format_exc(),instance,subinstance))
+				logger.log(debug,'%s %s %s '%(traceback.format_exc(),instance,subinstance))
 				settings[instance].pop(subinstance);
 				continue
 

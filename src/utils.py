@@ -872,7 +872,7 @@ class asscalar(onp.ndarray):
 	def __new__(self,a,*args,**kwargs):
 		try:
 			return a.item()#onp.asscalar(a,*args,**kwargs)
-		except AttributeError:
+		except (AttributeError,ValueError):
 			return a
 
 
