@@ -735,7 +735,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	else:
 		paths = path
 
-	paths = {delim.join([name,str(path)]): path
+	paths = {(delim*3).join([name,str(path)]): path
 		for name in paths
 		for path in natsorted(glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name])))
 		}

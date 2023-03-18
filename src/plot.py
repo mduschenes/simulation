@@ -925,10 +925,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				if isinstance(colors,str):
 					if hasattr(plt.cm,colors):
-						colors = [getattr(plt.cm,colors)((i/N) if (N > 1) else 0.5) for i in range(N)]
+						colors = [getattr(plt.cm,colors)(((i+0.5)/(N+0)) if (N > 1) else 0.5) for i in range(N)]
 					else:
 						colors = [colors for i in range(N)]
-				
+
 				if scale in ['linear',None]:
 					norm = matplotlib.colors.Normalize(**norm)  
 				elif scale in ['log']:
@@ -938,7 +938,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 				values = norm(values)
 
-				cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*10)  
+				cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*100)  
 				pos = obj.get_position()
 				
 				relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
@@ -1051,7 +1051,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							size = shape[-2] if len(shape)>2 else shape[0]							
 							N = size
 						
-						i = (to_position(index,shape)[-2 if len(shape)>2 else 0]+(N > size))/N if N>1 else 0.5
+						i = (to_position(index,shape)[-2 if len(shape)>2 else 0]+(N > size)+0.5)/(N+0) if N>1 else 0.5
 
 						_kwargs_[field] = getattr(plt.cm,value)(i)
 				

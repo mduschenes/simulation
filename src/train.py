@@ -71,7 +71,7 @@ def train(hyperparameters):
 		label = model.label()
 		hyperparams = hyperparameters['optimize']
 		system = hyperparameters['system']
-		kwargs = {}
+		kwargs = {attr: hyperparams.get(attr) for attr in system if attr in hyperparams}
 		func = [model.constraints]
 		callback = cls['callback']()
 

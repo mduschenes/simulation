@@ -159,7 +159,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 	return args,env
 
 
-def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,wrapper=None,pause=None,file=None,stdin=None,stdout=None,stderr=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,wrapper=None,pause=None,file=None,stdin=None,stdout=None,stderr=None,shell=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit call to command line of the form $> exe flags cmd args options
 	Args:
@@ -176,7 +176,8 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		file (str): Write command to file
 		stdin (file): Stdinput stream to command
 		stdout (file): Stdoutput to command
-		stderr (file): Stderro to command
+		stderr (file): Stderr to command
+		shell (bool) : Use shell subprocess
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command
 		device (str): Name of device to submit to
@@ -186,14 +187,15 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		result (object): Return of commands
 	'''
 
-	def caller(args,inputs=None,outputs=None,errors=None,env=None,device=None,verbose=None):
+	def caller(args,inputs=None,outputs=None,errors=None,env=None,shell=None,device=None,verbose=None):
 
-		def run(args,stdin=None,stdout=None,stderr=None,env=None):
+		def run(args,stdin=None,stdout=None,stderr=None,env=None,shell=None):
 			env = {**environ(),**env} if env is not None else None
+			args = [' '.join(args)] if shell else args
 			try:
-				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env)
+				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 			except (OSError,FileNotFoundError) as exception:
-				result = Popen((),stdin=stdin,stdout=stdout,stderr=stderr,env=env)
+				result = Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 				logger.log(verbose,exception)
 			return result
 
@@ -230,7 +232,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 			stdout = open(output,'w') if isinstance(output,str) else output if output is not None else stdout
 			stderr = open(error,'w') if isinstance(error,str) else error if error is not None else stderr
 
-			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr,env=env)
+			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 
 			if stdin is not None:
 				stdin.close()
@@ -271,7 +273,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 
 		return stdout,stderr,returncode
 
-	def wrapper(stdout,stderr,returncode,wrapper=wrapper,env=None,device=None,verbose=None):
+	def wrapper(stdout,stderr,returncode,wrapper=wrapper,env=None,shell=None,device=None,verbose=None):
 		try:
 			result = wrapper(stdout,stderr,returncode)
 		except:
@@ -336,7 +338,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 
 	if execute > 0:
 		with cd(path):
-			result = wrapper(*caller(args,inputs=inputs,outputs=outputs,errors=errors,env=env,device=device,verbose=verbose),env=env,device=device,verbose=verbose)
+			result = wrapper(*caller(args,inputs=inputs,outputs=outputs,errors=errors,env=env,shell=shell,device=device,verbose=verbose),env=env,shell=shell,device=device,verbose=verbose)
 
 	return result
 
@@ -368,8 +370,9 @@ def cp(source,destination,default=None,env=None,process=None,processes=None,devi
 	options = []
 	env = [] if env is None else env
 	args = []
+	shell = True
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -393,11 +396,44 @@ def rm(*paths,env=None,process=None,processes=None,device=None,execute=False,ver
 	options = []
 	env = [] if env is None else env
 	args = []
+	shell = True
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
+
+def ls(path,*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	List path
+	Args:
+		path (str,iterable[str]): Paths to list
+		args (iterable[str]): Args for list
+		env (dict[str,str]): Environmental variables for args		
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	Returns:
+		stdout (std): Stdout of list
+	'''
+	if isinstance(path,str):
+		paths = [path]
+	else:
+		paths = [i for i in path]
+
+	exe = ['ls']
+	flags = [*args]
+	cmd = [*paths]
+	options = []
+	env = [] if env is None else env
+	args = []
+	shell = True
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return stdout
 
 
 def echo(*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
@@ -411,6 +447,8 @@ def echo(*args,env=None,process=None,processes=None,device=None,execute=False,ve
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
+	Returns:
+		stdout (std): Stdout of echo
 	'''
 
 	exe = ['echo']
@@ -419,10 +457,11 @@ def echo(*args,env=None,process=None,processes=None,device=None,execute=False,ve
 	options = []
 	env = [] if env is None else env
 	args = []
+	shell = False
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-	return
+	return stdout
 
 
 def run(file,path,*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
@@ -446,8 +485,9 @@ def run(file,path,*args,env=None,process=None,processes=None,device=None,execute
 	options = []
 	env = [] if env is None else env	
 	args = [*args]
+	shell = False
 
-	stdout = call(*args,path=path,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,path=path,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -473,8 +513,9 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 	options = []
 	env = [] if env is None else env
 	args = []
+	shell = False
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,stdout=path,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,stdout=path,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	chmod(path,mod=mod,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
@@ -499,8 +540,9 @@ def cat(*paths,env=None,process=None,processes=None,device=None,execute=False,ve
 	options = []
 	env = [] if env is None else env
 	args = [*paths]
+	shell = True
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -524,8 +566,9 @@ def diff(*paths,env=None,process=None,processes=None,device=None,execute=False,v
 	options = []
 	env = [] if env is None else env
 	args = [*paths]
+	shell = True
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -555,8 +598,9 @@ def chmod(path,mod=None,env=None,process=None,processes=None,device=None,execute
 	options = []
 	env = [] if env is None else env
 	args = []
+	shell = True
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -583,8 +627,9 @@ def sleep(pause=None,env=None,process=None,processes=None,device=None,execute=Fa
 	options = []
 	env = [] if env is None else env	
 	args = []
+	shell = False
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -629,8 +674,10 @@ def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,
 	cmd = []
 	options = []
 	env = [] if env is None else env
+	args = [arg for arg in args]
+	shell = False
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	stdout = list(natsorted([str(i) for i in stdout.split('\n')]))
 
@@ -689,8 +736,9 @@ def sed(path,patterns,default=None,env=None,process=None,processes=None,device=N
 		options = [path]
 		env = [] if env is None else env
 		args = []
+		shell = False
 
-		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -749,8 +797,10 @@ def search(path,pattern,env=None,process=None,processes=None,device=None,execute
 	cmd = []
 	options = []
 	env = []
+	args = [arg for arg in args]
+	shell = False
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,wrapper=wrapper,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,wrapper=wrapper,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return stdout
 
@@ -825,7 +875,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 			else:
 				value = patterns[pattern]
 				value = '%s:%s'%(
-					':'.join(value.split(':')[:-1]) if isinstance(value,str) and value.count(':') > 0 else '',
+					':'.join(value.split(':')[:-1]) if isinstance(value,str) and value.count(':') > 0 else value if isinstance(value,str) else'',
 					','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]) if (
 						(kwargs.get('dependencies') is not None)) else ''
 					)
@@ -1261,7 +1311,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 
 		update(destination,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
-		result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+		result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,shell=None,execute=execute,verbose=verbose)
 
 		results.append(result)
 

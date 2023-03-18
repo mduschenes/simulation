@@ -12,16 +12,14 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,gradient,hessian,fisher
-from src.utils import array,ones,zeros,empty,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product,dot,dagger,conj,transpose,einsum
+from src.utils import array,empty,identity
+from src.utils import tensorprod,product,dagger,einsum
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
-from src.utils import trotter,gradient_trotter,gradient_expm,gradient_sigmoid
-from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
+from src.utils import trotter,gradient_trotter,gradient_expm
 from src.utils import eig
-from src.utils import maximum,minimum,argmax,argmin,difference,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
-from src.utils import concatenate,vstack,hstack,sort,relsort,norm,unique,allclose,isclose,is_array,is_naninf,to_key_value 
-from src.utils import initialize,parse,to_string,to_number,datatype,slice_size,intersection
+from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt
+from src.utils import sort,relsort,norm
+from src.utils import initialize,parse,to_string
 from src.utils import pi,e,nan,null,delim,scalars,nulls
 from src.utils import itg,flt,dbl
 
@@ -766,12 +764,18 @@ class Observable(System):
 		Args:
 			verbose (int,str): Verbosity of message			
 		'''		
+
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
-				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','shapes','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','shapes','dimensions','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
 			],
-			*['%s: %s'%(delim.join(attr.split(delim)[:2]),'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
-				for attr in ['parameters.%s.scale'%(i) for i in self.parameters.hyperparameters]
+			*['%s: %s'%(delim.join(attr.split(delim)[:2]),', '.join([
+				('%s' if (
+					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
+					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
+				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
+				for prop in ['category','method','scale']]))
+				for attr in ['parameters.%s'%(i) for i in self.parameters.hyperparameters]
 			],
 			*['%s: %s'%(delim.join(attr.split(delim)[:1]),'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
 				for attr in ['state.scale','noise.scale']
@@ -1271,19 +1275,26 @@ class Callback(object):
 		updates = {
 			'iteration.max':True,
 			'iteration.min':True,
-			'parameters':None,'grad':None,'search':None,
-			'variables':False,'features':False,
-			'variables.relative':False,'variables.relative.mean':False,'features.relative':False,'features.relative.mean':False,
+			'parameters':lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
+			'grad':lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
+			'search':lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
+			'variables':lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
+			'features':lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
+			'parameters.norm':None,'grad.norm':None,'search.norm':None,
+			'variables.norm':None,'features.norm':None,
+			'variables.relative': lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
+			'features.relative': lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
+			'variables.relative.mean':False, 'features.relative.mean':False,
 			'objective.ideal.noise':False,'objective.diff.noise':False,'objective.rel.noise':False,
 			'objective.ideal.state':False,'objective.diff.state':False,'objective.rel.state':False,
 			'objective.ideal.operator':False,'objective.diff.operator':False,'objective.rel.operator':False,
-			'hessian':None,'fisher':None,'hessian.eigenvalues':None,'fisher.eigenvalues':None,
+			'hessian':False,'fisher':False,
+			'hessian.eigenvalues':False,'fisher.eigenvalues':False,
 			'hessian.rank':False,'fisher.rank':False,
 			}
 
 		attrs = relsort(track,attributes)
 		size = min(len(track[attr]) for attr in track)
-		default = nan
 
 		if ((status) or done or init or other):
 			
@@ -1294,8 +1305,21 @@ class Callback(object):
 					):
 					_value = track[attr].pop(0)
 				
+
 				index = -1 if (not stop) else -2
 				parameters = attributes['parameters'][index]
+			
+				if attr in ['parameters','grad','search','variables','features']:
+					default = empty(parameters.shape)
+				elif attr in ['variables.relative','features.relative']:
+					default = empty(parameters.shape)
+				elif attr in ['hessian','fisher']:
+					default = empty((*parameters.shape,)*2)
+				elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
+					default = empty((*parameters.shape,)*1)
+				else:
+					default = nan
+
 				value = default
 
 				if attr in attributes:
@@ -1304,27 +1328,33 @@ class Callback(object):
 				track[attr].append(value)
 
 				if attr in ['iteration.max']:
-					value = track['iteration'][index]
+					value = int(track['iteration'][index])
 
 				elif attr in ['iteration.min']:
-					value = track['iteration'][argmin(abs(array(track['objective'])))]
+					value = int(track['iteration'][argmin(abs(array(track['objective'])))])
 
 				elif attr in ['value']:
 					value = abs(attributes[attr][index])
-
+				
 				elif attr in ['parameters','grad','search'] and ((status) and (not done)):
-					value = empty(track[attr][index].shape)
+					value = default
 
 				elif attr in ['parameters','grad','search'] and not ((status) and (not done)):
 					value = attributes[attr][index]
 
-				elif attr in ['variables','features'] and ((status) and (not done)):
-					value = empty(track[attr][index].shape)
+				elif attr in ['parameters.norm','grad.norm','search.norm']:
+					value = attr.split(delim)[0]
+					value = attributes[value][index]
+					value = norm(value)/(value.size)
 
-				elif attr in ['variables.relative','variables.relative.mean','features.relative','features.relative.mean'] and ((status) and (not done)):
+				elif attr in [
+					'variables.norm','variables.relative','variables.relative.mean',
+					'features.norm','features.relative','features.relative.mean'] and ((status) and (not done)):
 					value = default
 
-				elif attr in ['variables','variables.relative','variables.relative.mean','features','features.relative','features.relative.mean'] and not ((status) and (not done)):
+				elif attr in [
+					'variables','variables.norm','variables.relative','variables.relative.mean',
+					'features','features.norm','features.relative','features.relative.mean'] and not ((status) and (not done)):
 
 					layer = attr.split(delim)[0]
 					prop = 'index'
@@ -1355,7 +1385,9 @@ class Callback(object):
 
 					if attr in ['variables','features']:
 						value = model.__layers__(parameters,layer)[indices]
-					
+					elif attr in ['variables.norm','features.norm']:
+						value = model.__layers__(parameters,layer)[indices]
+						value = norm(value)/(value.size)
 					elif attr in ['variables.relative','features.relative']:
 						eps = 1e-20
 						value = model.__layers__(parameters,layer)[indices]
@@ -1417,10 +1449,8 @@ class Callback(object):
 
 
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues'] and ((status) and (not done)):
-					if attr in ['hessian','fisher']:
-						value = empty((*parameters.shape,)*2)
-					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
-						value = empty((*parameters.shape,)*1)
+					if attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues']:
+						value = default
 
 				elif attr in ['hessian.rank','fisher.rank'] and ((status) and (not done)):
 					value = default
@@ -1458,10 +1488,11 @@ class Callback(object):
 
 				if updates.get(attr) is not None:
 					update = updates[attr]
-					if not callable(update) and update:
-						update = lambda i,attr,track: track[attr][-1]
-					else:
-						update = lambda i,attr,track: default if i<(len(track[attr])-1) else track[attr][i]
+					if not callable(update):
+						if update:
+							update = lambda i,attr,track: (track[attr][-1])
+						else:
+							update = lambda i,attr,track: (default if i<(len(track[attr])-1) else track[attr][i])
 					for i in range(size+1):
 						track[attr][i] = update(i,attr,track)
 
@@ -1491,10 +1522,8 @@ class Callback(object):
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'U\n%s\nV\n%s'%(
-				# to_string(abs(model(parameters)).round(4)),
-				# to_string(abs(model.label()).round(4))),
-				# to_string((model(parameters)).round(4)),
-				# to_string((model.label()).round(4))),
+				# 	to_string((model(parameters)).round(4)),
+				# 	to_string((model.label()).round(4))),
 				])
 
 
