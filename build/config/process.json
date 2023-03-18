@@ -45,7 +45,7 @@
 		"parameters.xy.scale":"\\theta",
 		"parameters.z.scale":"\\nu",
 		"parameters.zz.scale":"J",
-		"parameters.xy.method": "\\textrm{Architecture}",
+		"parameters.xy.method": "\\textrm{Constraints}",
 		"optimize.c1":"c_{1}",
 		"optimize.c2":"c_{2}",
         "optimize.optimizer": "\\textrm{Optimizer}",

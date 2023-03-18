@@ -107,7 +107,7 @@ class LineSearcher(System):
 		attr = 'alpha'
 		if (returns[attr] is None) or (is_naninf(returns[attr])) or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):		
 			if len(alpha) > 1:
-				returns[attr] = alpha[-1]*grad[-1].dot(search[-1])/grad[-2].dot(search[-2])
+				returns[attr] = alpha[-1]#*grad[-1].dot(search[-1])/grad[-2].dot(search[-2])
 			else:
 				returns[attr] = alpha[-1]
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
@@ -1152,12 +1152,12 @@ class Optimization(System):
 
 			self.dump(iteration,state)
 
-			if self.verbose:
-				for attr in self.attributes:
-					logger.log(self.verbose,'attribute.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.attributes[attr]]))
-				for attr in self.track:
-					logger.log(self.verbose,'track.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.track[attr]]))
-				logger.log(self.verbose,'\n\n')
+			# if self.verbose:
+			# 	for attr in self.attributes:
+			# 		logger.log(self.verbose,'attribute.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.attributes[attr]]))
+			# 	for attr in self.track:
+			# 		logger.log(self.verbose,'track.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.track[attr]]))
+			# 	logger.log(self.verbose,'\n\n')
 
 			if not self.status:
 				break

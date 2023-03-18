@@ -84,7 +84,7 @@
 			"handlelength": 3,
 			"framealpha": 0.8,
 			"loc": [1.1,0.05],
-			"ncol": 4,
+			"ncol": 1,
 			"set_label":true,
 			"set_zorder":{"level":100},
 			"update":"%s \\textrm{Noisy}",
