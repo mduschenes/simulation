@@ -1074,10 +1074,24 @@ def init(key,
 
 		def updates(task):
 
+			attr = 'job'
+			value = task[attr]
+			job = join(split(value,directory=True),name,ext=split(value,ext=True))
+
 			attr = 'path'
 			subattr = {'serial':'path','parallel':'cwd','array':'cwd',None:'cwd'}.get(task['process'],'cwd')
 			value = task[subattr]
 			task[attr] = value
+
+			attr = 'source'
+			value = task[attr]		
+			value = join(task[attr],root=task['pwd'])
+			task[attr] = value
+
+			attr = 'destination'
+			value = task[attr]		
+			value = join(job,root=task['path'])
+			task[attr] = value			
 
 			attr = 'resume'
 			subattr = attr
@@ -1116,11 +1130,6 @@ def init(key,
 
 			task[attr] = value
 
-
-			attr = 'job'
-			value = task[attr]
-			job = join(split(value,directory=True),name,ext=split(value,ext=True))
-
 			attr = 'boolean'
 			subattr = {'serial':'mod','parallel':'mod','array':'index',None:'mod'}.get(task['process'],'mod')				
 			value = (task[subattr] in [0,None]) and all([*({
@@ -1133,15 +1142,7 @@ def init(key,
 
 			boolean = ((task['resume'] is None) or (task['id'] in task['resume'])) and (task['boolean'] or (task['size']>1))
 
-			attr = 'job'
-			value = task[attr]		
-			source = join(value,root=task['pwd'])
-			destination = join(job,root=task['path'])
-			default = job
-			files = dict(source=source,destination=destination,default=default)
-			task[attr] = destination
-
-			return job,boolean,files
+			return boolean,job
 
 		task = {
 			'key':key,
@@ -1150,6 +1151,8 @@ def init(key,
 			'pwd':pwd[key],
 			'cwd':cwd[key],
 			'job':jobs[key],
+			'source':jobs[key],
+			'destination':jobs[key],
 			'resume':resume[key],
 			'boolean':True,
 			'cmd':None,
@@ -1169,7 +1172,7 @@ def init(key,
 			'patterns':patterns[key],
 			'dependencies':dependencies[key],
 			}
-		job,boolean,files = updates(task)
+		boolean,job = updates(task)
 
 		exe = job
 		flags = []
@@ -1185,8 +1188,6 @@ def init(key,
 		if boolean:
 
 			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
-
-			cp(**files,execute=execution)
 
 			msg = 'Job : %s'%(key)
 			logger.log(info,msg)
@@ -1317,10 +1318,14 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 		cmd = task['cmd']
 		env = task['env']
 		path = task['path']
-		patterns = task['patterns']
+		patterns = task['patterns']		
+		source = task['source']
+		destination = task['destination']
 		kwargs = task
 
-		update(job,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
+		cp(source,destination,default=job,execute=execution)
+
+		update(destination,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
 		result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,shell=None,execute=execute,verbose=verbose)
 
