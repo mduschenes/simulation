@@ -1135,12 +1135,11 @@ def init(key,
 
 			attr = 'job'
 			value = task[attr]		
-			files = dict(
-				source=join(value,root=task['pwd']),
-				destination=join(job,root=task['path']),
-				default=job
-				)
-			task[attr] = job
+			source = join(value,root=task['pwd'])
+			destination = join(job,root=task['path'])
+			default = job
+			files = dict(source=source,destination=destination,default=default)
+			task[attr] = destination
 
 			return job,boolean,files
 
