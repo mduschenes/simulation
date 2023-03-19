@@ -10,7 +10,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,jit,allclose,delim
-from src.io import load
+from src.io import load,glob
 from src.optimize import Optimizer,Objective,Metric,Callback
 
 
@@ -30,65 +30,80 @@ def setup(hyperparameters):
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters,default=default)
 
-
 	return hyperparameters
 
 def train(hyperparameters):
 	'''
 	Train model
 	Args:
-		hyperparameters (dict,str): hyperparameters
+		hyperparameters (dict,str,iterable[str,dict]): hyperparameters
 	Returns:
 		model (object): Model instance
 	'''
+	if isinstance(hyperparameters,str):
+		models = list(glob(hyperparameters))
+	elif isinstance(hyperparameters,dict):
+		models = [hyperparameters]
 
-	hyperparameters = setup(hyperparameters)
+	models = {i: models[i] for i in range(len(models))}
+	parallel = len(models) > 1	
 
-	if not hyperparameters:
-		model = None
-		return model
+	for name in models:
+		
+		hyperparameters = models[name]
 
-	if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train']):
-		model = None
-		return model
+		hyperparameters = setup(hyperparameters)
 
-	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
+		if not hyperparameters:
+			model = None
+			return model
 
-	model = cls['model'](**hyperparameters['model'],
-			parameters=hyperparameters['parameters'],
-			state=hyperparameters['state'],
-			noise=hyperparameters['noise'],
-			label=hyperparameters['label'],
-			system=hyperparameters['system'])
+		if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train']):
+			model = None
+			return model
 
-	if hyperparameters['boolean'].get('load'):
-		model.load()
+		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
-	if hyperparameters['boolean'].get('train'):
+		model = cls['model'](**hyperparameters['model'],
+				parameters=hyperparameters['parameters'],
+				state=hyperparameters['state'],
+				noise=hyperparameters['noise'],
+				label=hyperparameters['label'],
+				system=hyperparameters['system'])
 
-		parameters = model.parameters()
-		shapes = model.shapes
-		label = model.label()
-		hyperparams = hyperparameters['optimize']
-		system = hyperparameters['system']
-		kwargs = {attr: hyperparams.get(attr) for attr in system if attr in hyperparams}
-		func = [model.constraints]
-		callback = cls['callback']()
+		if hyperparameters['boolean'].get('load'):
+			model.load()
 
-		metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system,**kwargs)
-		func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
-		callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
+		if hyperparameters['boolean'].get('train'):
 
-		optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system,**kwargs)
+			parameters = model.parameters()
+			shapes = model.shapes
+			label = model.label()
+			hyperparams = hyperparameters['optimize']
+			system = hyperparameters['system']
+			kwargs = {attr: hyperparams.get(attr) for attr in system if attr in hyperparams}
+			func = [model.constraints]
+			callback = cls['callback']()
 
-		parameters = optimizer(parameters)
+			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system,**kwargs)
+			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
+			callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
 
-		model.parameters(parameters)
+			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system,**kwargs)
+
+			parameters = optimizer(parameters)
+
+			model.parameters(parameters)
+		
+		if hyperparameters['boolean'].get('dump'):	
+			model.dump()
 	
-	if hyperparameters['boolean'].get('dump'):	
-		model.dump()
-	
-	return model
+		models[name] = model
+
+	if not parallel:
+		models = models[name]
+
+	return models
 
 
 def main(*args,**kwargs):
