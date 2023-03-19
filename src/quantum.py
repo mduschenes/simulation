@@ -17,7 +17,7 @@ from src.utils import tensorprod,product,dagger,einsum
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
 from src.utils import trotter,gradient_trotter,gradient_expm
 from src.utils import eig
-from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt
+from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log
 from src.utils import sort,relsort,norm
 from src.utils import initialize,parse,to_string
 from src.utils import pi,e,nan,null,delim,scalars,nulls
@@ -1497,12 +1497,12 @@ class Callback(object):
 						track[attr][i] = update(i,attr,track)
 
 
-		log = ((len(attributes['iteration']) == 1) or 
+		logging = ((len(attributes['iteration']) == 1) or 
 			(hyperparameters['modulo']['log'] is None) or 
 			(attributes['iteration'][-1]%hyperparameters['modulo']['log'] == 0)
 			)
 
-		if log:
+		if logging:
 
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
