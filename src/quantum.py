@@ -1248,8 +1248,8 @@ class Callback(object):
 			(
 			(abs(attributes['value'][-1]) > 
 				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
-			(abs(attributes['value'][-1] - attributes['value'][-2]) > 
-				(hyperparameters['eps']['value.difference']*attributes['value'][-2])) and
+			(log(abs(attributes['value'][-1] - attributes['value'][-2])) > 
+				(log(abs(hyperparameters['eps']['value.difference'])))) and
 			(norm(attributes['grad'][-1])/attributes['grad'][-1].size > 
 				  (hyperparameters['eps']['grad']*hyperparameters['value']['grad'])) and
 			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
@@ -1266,8 +1266,8 @@ class Callback(object):
 			((len(attributes['value']) > 1) and 
 			 (attributes['iteration'][-1] >= max(1,
 			 	hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and			
-			((attributes['value'][-1] - attributes['value'][-2]) > 
-			(hyperparameters['eps']['value.increase']*attributes['value'][-2]))
+			(log(abs(attributes['value'][-1] - attributes['value'][-2])) > 
+				(log(abs(hyperparameters['eps']['value.increase']))))			
 			)
 
 		status = (status) and (not stop)
