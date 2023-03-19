@@ -1004,15 +1004,16 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 
 def init(key,
 		keys=None,
-		jobs=None,args=None,paths=None,patterns=None,dependencies=None,
+		name=None,jobs=None,args=None,paths=None,patterns=None,dependencies=None,
 		pwd=None,cwd=None,pool=None,resume=None,pause=None,file=None,
 		env=None,process=None,processes=None,device=None,execute=None,verbose=None):
 		'''
 		Process job commands as tasks to command line
 		Args:
 			task (dict[str,str]): Job task
-			key (str): Name of job
+			key (str): Name of task
 			keys (dict[str,dict[str]]): Jobs with task names and arguments
+			name (str): Name of job
 			jobs (str,dict[str,str]): Submission script, or {key:job}
 			args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
 			paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
@@ -1072,6 +1073,7 @@ def init(key,
 
 
 		def updates(task):
+
 			attr = 'path'
 			subattr = {'serial':'path','parallel':'cwd','array':'cwd',None:'cwd'}.get(task['process'],'cwd')
 			value = task[subattr]
@@ -1114,6 +1116,11 @@ def init(key,
 
 			task[attr] = value
 
+
+			attr = 'job'
+			value = task[attr]
+			job = join(split(value,directory=True),name,ext=split(value,ext=True))
+
 			attr = 'boolean'
 			subattr = {'serial':'mod','parallel':'mod','array':'index',None:'mod'}.get(task['process'],'mod')				
 			value = (task[subattr] in [0,None]) and all([*({
@@ -1126,18 +1133,21 @@ def init(key,
 
 			boolean = ((task['resume'] is None) or (task['id'] in task['resume'])) and (task['boolean'] or (task['size']>1))
 
-			return boolean
+			attr = 'job'
+			value = task[attr]		
+			files = dict(
+				source=join(value,root=task['pwd']),
+				destination=join(job,root=task['path']),
+				default=job
+				)
+			task[attr] = job
 
-
-		exe = jobs[key]
-		flags = []
-		cmd = []
-		options = []
-		env = []
+			return job,boolean,files
 
 		task = {
 			'key':key,
 			'path':path,
+			'name':name,
 			'pwd':pwd[key],
 			'cwd':cwd[key],
 			'job':jobs[key],
@@ -1160,7 +1170,13 @@ def init(key,
 			'patterns':patterns[key],
 			'dependencies':dependencies[key],
 			}
-		boolean = updates(task)
+		job,boolean,files = updates(task)
+
+		exe = job
+		flags = []
+		cmd = []
+		options = []
+		env = []
 
 		cmd,env = command(args[key],task,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
@@ -1170,6 +1186,8 @@ def init(key,
 		if boolean:
 
 			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
+
+			cp(**files,execute=execution)
 
 			msg = 'Job : %s'%(key)
 			logger.log(info,msg)
@@ -1187,10 +1205,11 @@ def callback(task,key,keys):
 	keys[key] = task
 	return
 
-def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands as tasks to command line
 	Args:
+		name (str): Name of job
 		jobs (str,dict[str,str]): Submission script, or {key:job}
 		args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
 		paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
@@ -1267,7 +1286,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	iterable = [key for key in keys]
 	kwds = dict(
 		keys=keys,
-		jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
+		name=name,jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
 		pwd=pwd,cwd=cwd,pool=pool,resume=resume,pause=pause,file=file,
 		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose
 	)
@@ -1282,7 +1301,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		)
 
 	def booleans(key,keys):
-		boolean = keys[key]['boolean']
+		boolean = keys[key] and keys[key]['boolean']
 		return boolean		
 
 	for key in keys:
@@ -1299,17 +1318,10 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		cmd = task['cmd']
 		env = task['env']
 		path = task['path']
-		cwd = task['cwd']
-		pwd = task['pwd']
 		patterns = task['patterns']
 		kwargs = task
 
-		source = join(job,root=pwd)
-		destination = join(job,root=path)
-
-		cp(source,destination,default=job,execute=execution)
-
-		update(destination,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
+		update(job,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
 		result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,shell=None,execute=execute,verbose=verbose)
 
