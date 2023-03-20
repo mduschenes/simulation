@@ -17,7 +17,7 @@ from src.utils import tensorprod,product,dagger,einsum
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
 from src.utils import trotter,gradient_trotter,gradient_expm
 from src.utils import eig
-from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log
+from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log,sign
 from src.utils import sort,relsort,norm
 from src.utils import initialize,parse,to_string
 from src.utils import pi,e,nan,null,delim,scalars,nulls
@@ -1266,7 +1266,8 @@ class Callback(object):
 			((len(attributes['value']) > 1) and 
 			 (attributes['iteration'][-1] >= max(1,
 			 	hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and			
-			(log(abs(attributes['value'][-1] - attributes['value'][-2])) > 
+			(sign(attributes['value'][-1] - attributes['value'][-2])*
+			     log(abs(attributes['value'][-1] - attributes['value'][-2])) > 
 				(log(abs(hyperparameters['eps']['value.increase']))))			
 			)
 
