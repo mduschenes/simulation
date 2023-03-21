@@ -8,6 +8,8 @@
 	"useval":true,
 	"instance":{
 		"iteration.objective.M":1,
+		"grad.norm.objective.M":1,
+		"search.norm.objective.M":1,
 		"noise.scale.objective.M":1,
 		"noise.scale.objective.diff.M":0,
 		"noise.scale.objective.diff.M":0,
@@ -31,6 +33,8 @@
 	"texify":{
 		"iteration":"\\textrm{Iteration}",
 		"objective":"\\textrm{Infidelity}",
+		"grad.norm":"$\\abs{\\textrm{Gradient}}$",
+		"search.norm":"$\\abs{\\textrm{Search Direction}}$",
 		"rank": "r",
 		"None": "$0$",
 		"key":null,
