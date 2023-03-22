@@ -109,7 +109,7 @@ class LineSearcher(System):
 			if len(alpha) > 1:
 				returns[attr] = alpha[-1]#*grad[-1].dot(search[-1])/grad[-2].dot(search[-2])
 			else:
-				returns[attr] = alpha[-1]
+				returns[attr] = alpha[-1]		
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
 			if len(alpha) > 1:
 				returns[attr] = alpha[-1]
@@ -337,6 +337,8 @@ class GradSearcher(System):
 				returns[attr] = 0
 			else:
 				returns[attr] = beta[0]
+		elif (self.hyperparameters['eps'].get('grad.dot') is not None) and (len(grad)>1) and ((abs(grad[-1].dot(grad[-2]))/(grad[-1].dot(grad[-1]))) >= self.hyperparameters['eps']['grad.dot']):
+			returns[attr] = 0			
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
 			if len(beta) > 1:
 				returns[attr] = beta[0]
