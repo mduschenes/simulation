@@ -777,8 +777,13 @@ class Observable(System):
 				for prop in ['category','method','scale']]))
 				for attr in ['parameters.%s'%(i) for i in self.parameters.hyperparameters]
 			],
-			*['%s: %s'%(delim.join(attr.split(delim)[:1]),'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
-				for attr in ['state.scale','noise.scale']
+			*['%s: %s'%(delim.join(attr.split(delim)[:1]),', '.join([
+				('%s' if (
+					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
+					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
+				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
+				for prop in ['string','scale']]))
+				for attr in ['label','state','noise']
 			],
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).__name__) 
 				for attr in ['exponentiation']
@@ -1267,9 +1272,9 @@ class Callback(object):
 			((len(attributes['value']) > 1) and 
 			 (attributes['iteration'][-1] >= max(1,
 			 	hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and
-			 (attributes['value'][-1] > attributes['value'][-2]) and
-			((attributes['value'][-1] - attributes['value'][-2]) > 
-			 (abs(hyperparameters['eps']['value.increase'])))			
+			((attributes['value'][-1] > attributes['value'][-2]) and
+			(log10(attributes['value'][-1] - attributes['value'][-2]) > 
+			(log10(hyperparameters['eps']['value.increase']*attributes['value'][-1]))))
 			)
 
 		status = (status) and (not stop)

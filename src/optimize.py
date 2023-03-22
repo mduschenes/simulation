@@ -1033,9 +1033,9 @@ class Metric(System):
 				if self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'abs2'
 			elif self.label.ndim == 2:
-				if is_unitary(self.label) and self.metric in ['real','imag','norm']:
+				if is_unitary(self.label) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'abs2'
-				elif is_hermitian(self.label) and self.metric in ['abs2']:
+				elif is_hermitian(self.label) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
 
 		func,grad,grad_analytical = metrics(
