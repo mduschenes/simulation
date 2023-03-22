@@ -43,7 +43,7 @@ import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 
 configs = {
-	'jax_disable_jit':False,
+	'jax_disable_jit':True,
 	'jax_platforms':'cpu',
 	'jax_enable_x64': True
 	}
@@ -872,7 +872,7 @@ class asscalar(onp.ndarray):
 	def __new__(self,a,*args,**kwargs):
 		try:
 			return a.item()#onp.asscalar(a,*args,**kwargs)
-		except AttributeError:
+		except (AttributeError,ValueError):
 			return a
 
 
@@ -2314,8 +2314,6 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 		subscripts = '...ij,...ij->...'
 	
 	shapes = (shapes[0],shapes[1])
-
-
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 

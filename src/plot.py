@@ -16,10 +16,8 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Logging
-import logging,logging.config
-conf = os.path.join(os.path.dirname(__file__),'logging.conf')
-logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
-logger = logging.getLogger(__name__)
+from src.logger	import Logger
+logger = Logger()
 info = 100	
 debug = 100
 
@@ -925,10 +923,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				if isinstance(colors,str):
 					if hasattr(plt.cm,colors):
-						colors = [getattr(plt.cm,colors)((i/N) if (N > 1) else 0.5) for i in range(N)]
+						colors = [getattr(plt.cm,colors)(((i+0.5)/(N+0)) if (N > 1) else 0.5) for i in range(N)]
 					else:
 						colors = [colors for i in range(N)]
-				
+
 				if scale in ['linear',None]:
 					norm = matplotlib.colors.Normalize(**norm)  
 				elif scale in ['log']:
@@ -938,7 +936,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 				values = norm(values)
 
-				cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*10)  
+				cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*100)  
 				pos = obj.get_position()
 				
 				relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
@@ -1051,7 +1049,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							size = shape[-2] if len(shape)>2 else shape[0]							
 							N = size
 						
-						i = (to_position(index,shape)[-2 if len(shape)>2 else 0]+(N > size))/N if N>1 else 0.5
+						i = (to_position(index,shape)[-2 if len(shape)>2 else 0]+(N > size)+0.5)/(N+0) if N>1 else 0.5
 
 						_kwargs_[field] = getattr(plt.cm,value)(i)
 				
@@ -1070,7 +1068,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if args != []:
 					_attr = _obj(*args,**_kwargs_)
 				else:
-					_attr = _obj(**_kwargs_)
+					try:
+						_attr = _obj(**_kwargs_)
+					except:
+						_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
+						if _kwargs_:
+							_attr = _obj(**_kwargs_)
+						else:
+							_attr = None
+
 			except Exception as e:
 				_attr = None
 				if not isinstance(e,AttributeError):
