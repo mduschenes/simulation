@@ -25,14 +25,10 @@ from src.io import dump,load,join,split,copy,exists
 
 from src.system import System
 
-from src.system	 import Logger
-name = __name__
-path = os.getcwd()
-file = 'logging.conf'
-conf = os.path.join(path,file)
-file = None #'log.log'
-info = 100
-logger = Logger(name,conf,file=file)
+
+# Logging
+from src.logger	import Logger
+logger = Logger()
 
 
 class LineSearcher(System):

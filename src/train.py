@@ -12,7 +12,8 @@ for PATH in PATHS:
 from src.utils import argparser,jit,allclose,delim
 from src.io import load,glob
 from src.optimize import Optimizer,Objective,Metric,Callback
-
+from src.logger import Logger
+logger = Logger()
 
 def setup(hyperparameters):
 	'''

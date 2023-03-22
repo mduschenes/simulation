@@ -164,6 +164,7 @@
 
 			"iteration.max":[],
 			"iteration.min":[],
+			"grad.norm":[],"search.norm":[],			
 			"variables":false,"variables.relative":false,"variables.relative.mean":false,
 			"features":false,"features.relative":false,"features.relative.mean":false,			
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,

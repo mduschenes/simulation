@@ -16,10 +16,8 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Logging
-import logging,logging.config
-conf = os.path.join(os.path.dirname(__file__),'logging.conf')
-logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
-logger = logging.getLogger(__name__)
+from src.logger	import Logger
+logger = Logger()
 info = 100	
 debug = 100
 

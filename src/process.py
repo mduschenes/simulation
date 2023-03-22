@@ -16,16 +16,6 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.system	 import Logger
-name = __name__
-path = os.path.dirname(__file__) #os.getcwd()
-file = 'logging.conf'
-conf = os.path.join(path,file)
-file = None #'log.log'
-info = 100
-debug = 0
-logger = Logger(name,conf,file=file)
-
 from src.utils import argparser
 from src.utils import array,product,expand_dims,conditions
 from src.utils import asndarray,asscalar
@@ -38,6 +28,12 @@ from src.io import load,dump,join,split
 from src.fit import fit
 from src.postprocess import postprocess
 from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
+
+# Logging
+from src.logger	import Logger
+logger = Logger()
+info = 100
+debug = 0
 
 DIM = 2
 

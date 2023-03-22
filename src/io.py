@@ -12,14 +12,6 @@ import pandas as pd
 
 from natsort import natsorted
 
-# Logging
-import logging,logging.config
-conf = os.path.join(os.path.dirname(__file__),'logging.conf')
-logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
-logger = logging.getLogger(__name__)
-info = 100	
-debug = 0
-
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..']
@@ -30,6 +22,12 @@ from src.utils import array,is_array,is_ndarray,concatenate
 from src.utils import to_repr,to_eval
 from src.utils import returnargs
 from src.utils import scalars,nan,delim
+
+# Logging
+from src.logger	import Logger
+logger = Logger()
+info = 100	
+debug = 0
 
 
 class cd(object):
@@ -1013,12 +1011,12 @@ def setup(args,defaults=[]):
 	# 	return value		
 	# updates[field] = func
 
-	field = "logging"
-	def func(key,value):
-		import logging.config
-		logging.config.dictConfig({**value,**{"disable_existing_loggers":False}})
-		return value
-	updates[field] = func
+	# field = "logging"
+	# def func(key,value):
+	# 	import logging.config
+	# 	logging.config.dictConfig({**value,**{"disable_existing_loggers":False}})
+	# 	return value
+	# updates[field] = func
 
 
 	# Update defaults
