@@ -17,7 +17,7 @@ from src.utils import tensorprod,product,dagger,einsum
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
 from src.utils import trotter,gradient_trotter,gradient_expm
 from src.utils import eig
-from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log,sign
+from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log10,sign
 from src.utils import sort,relsort,norm
 from src.utils import initialize,parse,to_string
 from src.utils import pi,e,nan,null,delim,scalars,nulls
@@ -777,8 +777,13 @@ class Observable(System):
 				for prop in ['category','method','scale']]))
 				for attr in ['parameters.%s'%(i) for i in self.parameters.hyperparameters]
 			],
-			*['%s: %s'%(delim.join(attr.split(delim)[:1]),'%0.3e'%(getattrs(self,attr,delimiter=delim)) if getattrs(self,attr,delimiter=delim) is not None else getattrs(self,attr,delimiter=delim)) 
-				for attr in ['state.scale','noise.scale']
+			*['%s: %s'%(delim.join(attr.split(delim)[:1]),', '.join([
+				('%s' if (
+					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
+					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
+				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
+				for prop in ['string','scale']]))
+				for attr in ['label','state','noise']
 			],
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).__name__) 
 				for attr in ['exponentiation']
@@ -1248,14 +1253,15 @@ class Callback(object):
 			(
 			(abs(attributes['value'][-1]) > 
 				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
-			(log(abs(attributes['value'][-1] - attributes['value'][-2])) > 
-				(log(abs(hyperparameters['eps']['value.difference'])))) and
+			(log10(abs(attributes['value'][-1] - attributes['value'][-2])) > 
+				(log10(abs(hyperparameters['eps']['value.difference'])))) and
 			(norm(attributes['grad'][-1])/attributes['grad'][-1].size > 
 				  (hyperparameters['eps']['grad']*hyperparameters['value']['grad'])) and
 			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
 				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))
 			)
 			)
+
 
 		other = ((len(attributes['iteration']) == 1) or 
 			(hyperparameters['modulo']['track'] is None) or 
@@ -1265,10 +1271,10 @@ class Callback(object):
 			(hyperparameters['eps'].get('value.increase') is not None) and
 			((len(attributes['value']) > 1) and 
 			 (attributes['iteration'][-1] >= max(1,
-			 	hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and			
-			(sign(attributes['value'][-1] - attributes['value'][-2])*
-			     log(abs(attributes['value'][-1] - attributes['value'][-2])) > 
-				(log(abs(hyperparameters['eps']['value.increase']))))			
+			 	hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and
+			((attributes['value'][-1] > attributes['value'][-2]) and
+			(log10(attributes['value'][-1] - attributes['value'][-2]) > 
+			(log10(hyperparameters['eps']['value.increase']*attributes['value'][-1]))))
 			)
 
 		status = (status) and (not stop)
@@ -1326,10 +1332,11 @@ class Callback(object):
 				if attr in attributes:
 					value = attributes[attr][index]
 
-				track[attr].append(value)
+				if (not stop):
+					track[attr].append(value)
 
 				if attr in ['iteration.max']:
-					value = int(track['iteration'][index])
+					value = int(track['iteration'][-1])
 
 				elif attr in ['iteration.min']:
 					value = int(track['iteration'][argmin(abs(array(track['objective'])))])
@@ -1442,9 +1449,9 @@ class Callback(object):
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
 						value = abs(_metric(_model(parameters)))
 					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
-						value = abs((track['objective'][index] - _metric(_model(parameters))))
+						value = abs((track['objective'][-1] - _metric(_model(parameters))))
 					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
-						value = abs((track['objective'][index] - _metric(_model(parameters)))/(track['objective'][index]))
+						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
 
 					model.__functions__(**_restore)
 
@@ -1494,7 +1501,7 @@ class Callback(object):
 							update = lambda i,attr,track: (track[attr][-1])
 						else:
 							update = lambda i,attr,track: (default if i<(len(track[attr])-1) else track[attr][i])
-					for i in range(size+1):
+					for i in range(len(track[attr])):
 						track[attr][i] = update(i,attr,track)
 
 

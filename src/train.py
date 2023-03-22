@@ -12,7 +12,8 @@ for PATH in PATHS:
 from src.utils import argparser,jit,allclose,delim
 from src.io import load,glob
 from src.optimize import Optimizer,Objective,Metric,Callback
-
+from src.logger import Logger
+logger = Logger()
 
 def setup(hyperparameters):
 	'''
@@ -40,13 +41,14 @@ def train(hyperparameters):
 	Returns:
 		model (object): Model instance
 	'''
-	if isinstance(hyperparameters,str):
+	if hyperparameters is None:
+		models = []
+	elif isinstance(hyperparameters,str):
 		models = list(glob(hyperparameters))
 	elif isinstance(hyperparameters,dict):
 		models = [hyperparameters]
 
-	models = {i: models[i] for i in range(len(models))}
-	parallel = len(models) > 1	
+	models = {name: model for name,model in enumerate(models)}
 
 	for name in models:
 		
@@ -100,7 +102,7 @@ def train(hyperparameters):
 	
 		models[name] = model
 
-	if not parallel:
+	if len(models) == 1:
 		models = models[name]
 
 	return models

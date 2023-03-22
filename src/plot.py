@@ -16,10 +16,8 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Logging
-import logging,logging.config
-conf = os.path.join(os.path.dirname(__file__),'logging.conf')
-logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
-logger = logging.getLogger(__name__)
+from src.logger	import Logger
+logger = Logger()
 info = 100	
 debug = 100
 
@@ -1070,7 +1068,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if args != []:
 					_attr = _obj(*args,**_kwargs_)
 				else:
-					_attr = _obj(**_kwargs_)
+					try:
+						_attr = _obj(**_kwargs_)
+					except:
+						_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
+						if _kwargs_:
+							_attr = _obj(**_kwargs_)
+						else:
+							_attr = None
+
 			except Exception as e:
 				_attr = None
 				if not isinstance(e,AttributeError):

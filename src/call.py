@@ -13,20 +13,16 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.system	 import Logger
-name = __name__
-path = os.getcwd()
-file = 'logging.conf'
-conf = os.path.join(path,file)
-file = None #'log.log'
-info = 100
-logger = Logger(name,conf,file=file)
-
 from src.utils import intersection,scalars
 from src.io import cd,mkdir,join,split,load,dump,exists,environ,glob
 from src.iterables import setter
 from src.parallel import Parallelize,Pooler
 
+# Logging
+from src.logger	import Logger
+logger = Logger()
+info = 100
+debug = 0
 
 class Popen(object):
 	'''

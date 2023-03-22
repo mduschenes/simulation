@@ -25,14 +25,10 @@ from src.io import dump,load,join,split,copy,exists
 
 from src.system import System
 
-from src.system	 import Logger
-name = __name__
-path = os.getcwd()
-file = 'logging.conf'
-conf = os.path.join(path,file)
-file = None #'log.log'
-info = 100
-logger = Logger(name,conf,file=file)
+
+# Logging
+from src.logger	import Logger
+logger = Logger()
 
 
 class LineSearcher(System):
@@ -109,7 +105,7 @@ class LineSearcher(System):
 			if len(alpha) > 1:
 				returns[attr] = alpha[-1]#*grad[-1].dot(search[-1])/grad[-2].dot(search[-2])
 			else:
-				returns[attr] = alpha[-1]
+				returns[attr] = alpha[-1]		
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
 			if len(alpha) > 1:
 				returns[attr] = alpha[-1]
@@ -337,6 +333,8 @@ class GradSearcher(System):
 				returns[attr] = 0
 			else:
 				returns[attr] = beta[0]
+		elif (self.hyperparameters['eps'].get('grad.dot') is not None) and (len(grad)>1) and ((abs(grad[-1].dot(grad[-2]))/(grad[-1].dot(grad[-1]))) >= self.hyperparameters['eps']['grad.dot']):
+			returns[attr] = 0			
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
 			if len(beta) > 1:
 				returns[attr] = beta[0]
@@ -1035,9 +1033,9 @@ class Metric(System):
 				if self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'abs2'
 			elif self.label.ndim == 2:
-				if is_unitary(self.label) and self.metric in ['real','imag','norm']:
+				if is_unitary(self.label) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'abs2'
-				elif is_hermitian(self.label) and self.metric in ['abs2']:
+				elif is_hermitian(self.label) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
 
 		func,grad,grad_analytical = metrics(
