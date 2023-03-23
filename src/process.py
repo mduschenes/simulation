@@ -24,7 +24,7 @@ from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
 from src.iterables import brancher,getter,setter,flatten
 from src.parallel import Parallelize,Pooler
-from src.io import load,dump,join,split
+from src.io import load,dump,join,split,exists
 from src.fit import fit
 from src.postprocess import postprocess
 from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
@@ -868,9 +868,22 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 		# Load data
 		path = data
-		default = None
-		wrapper = 'df'
-		data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+		tmp = join(split(path,directory=-1),split(path,file=True),ext=split(path,ext=True))
+
+		if exists(tmp):
+			path = tmp
+			wrapper = None
+			default = None
+			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+		else:
+			path = data
+			wrapper = 'df'			
+			default = None
+			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+			
+		if tmp is not None:
+			path = tmp
+			dump(data,path,verbose=verbose)
 
 		# Get functions of data
 		apply(keys,data,settings,hyperparameters,verbose=verbose)
