@@ -872,7 +872,7 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 		if exists(tmp):
 			path = tmp
-			wrapper = None
+			wrapper = 'pd'
 			default = None
 			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
 		else:
@@ -883,7 +883,11 @@ def loader(data,settings,hyperparameters,verbose=None):
 			
 		if tmp is not None:
 			path = tmp
-			dump(data,path,verbose=verbose)
+			wrapper = 'pd'
+			dump(data,path,wrapper=wrapper,verbose=verbose)
+
+		print(data)
+		exit()
 
 		# Get functions of data
 		apply(keys,data,settings,hyperparameters,verbose=verbose)
