@@ -20,7 +20,7 @@
 	
 		"model.N":[4],		
 		"model.M":[10,50,100,200,500,1000,2000,5000,10000],
-		"model.tau":[5.4321],		
+		"model.tau":[241.241],
 
 		"system.unit":[1e6],
 		"parameters.xy.scale":[1],
