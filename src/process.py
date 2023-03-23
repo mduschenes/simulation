@@ -24,7 +24,7 @@ from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
 from src.iterables import brancher,getter,setter,flatten
 from src.parallel import Parallelize,Pooler
-from src.io import load,dump,join,split
+from src.io import load,dump,join,split,exists
 from src.fit import fit
 from src.postprocess import postprocess
 from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
@@ -191,6 +191,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 
 	# Set process hyperparameters
 	defaults = {
+		'path':{},
 		'load':None,
 		'dump':None,
 		'plot':None,
@@ -200,7 +201,13 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 	setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 	# Get paths
+	path = data if isinstance(data,str) else None
 	hyperparameters['file'],hyperparameters['directory'],hyperparameters['ext'] = {},{},{}
+	defaults = {
+		'data': join(cwd,join(split(path,file=True),ext='tmp'),ext='hdf5'),
+		'metadata': join(cwd,join(''.join(['meta',split(path,file=True)]),ext=None),ext='json'),
+	}
+	setter(hyperparameters['path'],defaults,delimiter=delim,func=False)
 	for attr in hyperparameters['path']:
 		hyperparameters['directory'][attr] = cwd
 		hyperparameters['file'][attr],hyperparameters['ext'][attr] = split(
@@ -868,9 +875,25 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 		# Load data
 		path = data
-		default = None
-		wrapper = 'df'
-		data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+		tmp = hyperparameters['path']['data']
+
+		try:
+			assert exists(tmp)
+			path = tmp
+			wrapper = 'pd'
+			default = None
+			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+		except Exception as exception:
+			path = data
+			wrapper = 'df'			
+			default = None
+			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+			
+		if tmp is not None:
+			path = tmp
+			wrapper = 'pd'
+			dump(data,path,wrapper=wrapper,verbose=verbose)
+
 
 		# Get functions of data
 		apply(keys,data,settings,hyperparameters,verbose=verbose)
