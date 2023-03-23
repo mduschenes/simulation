@@ -191,6 +191,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 
 	# Set process hyperparameters
 	defaults = {
+		'path':{},
 		'load':None,
 		'dump':None,
 		'plot':None,
@@ -200,7 +201,13 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 	setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 	# Get paths
+	path = data if isinstance(data,str) else None
 	hyperparameters['file'],hyperparameters['directory'],hyperparameters['ext'] = {},{},{}
+	defaults = {
+		'data': join(cwd,join(split(path,file=True),ext='tmp'),ext='hdf5'),
+		'metadata': join(cwd,join(''.join(['meta',split(path,file=True)]),ext=None),ext='json'),
+	}
+	setter(hyperparameters['path'],defaults,delimiter=delim,func=False)
 	for attr in hyperparameters['path']:
 		hyperparameters['directory'][attr] = cwd
 		hyperparameters['file'][attr],hyperparameters['ext'][attr] = split(
@@ -868,14 +875,15 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 		# Load data
 		path = data
-		tmp = join(split(path,directory=-1),split(path,file=True),ext=split(path,ext=True))
+		tmp = hyperparameters['path']['data']
 
-		if exists(tmp):
+		try:
+			assert exists(tmp)
 			path = tmp
 			wrapper = 'pd'
 			default = None
 			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
-		else:
+		except Exception as exception:
 			path = data
 			wrapper = 'df'			
 			default = None
