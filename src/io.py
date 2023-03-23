@@ -679,6 +679,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 
 	args = {'path':path,'wrapper':wrapper}
+	kwargs.update({'wrapper':wrapper})	
 
 	if path is None:
 		return
@@ -796,9 +797,9 @@ def _load(obj,wr,ext,**kwargs):
 	Returns:
 		data (object): Loaded object
 	'''	
+	wrapper = kwargs.pop('wrapper',None)
 	
 	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
-
 	try:
 		assert ext in exts, "Cannot load extension %s"%(ext)
 	except Exception as exception:
@@ -846,6 +847,7 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 	wrs = [wr,'w','wb']
 
 	args = {'path':path,'wrapper':wrapper}
+	kwargs.update({'wrapper':wrapper})
 
 	if path is None:
 		return
@@ -917,6 +919,8 @@ def _dump(data,obj,wr,ext,**kwargs):
 		wr (str): Write mode
 		kwargs (dict): Additional dumping keyword arguments
 	'''	
+
+	wrapper = kwargs.pop('wrapper',None)
 
 	exts = ['npy','npz','csv','txt','pickle','pkl','json','tex','hdf5','h5','ckpt','pdf']
 	assert ext in exts, "Cannot dump extension %s"%(ext)

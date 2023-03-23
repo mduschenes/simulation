@@ -12,6 +12,8 @@ scikit-learn
 scikit-learn-intelex
 h5py
 pandas
+pytables
+snappy
 
 matplotlib=3.5
 
