@@ -886,8 +886,6 @@ def loader(data,settings,hyperparameters,verbose=None):
 			wrapper = 'pd'
 			dump(data,path,wrapper=wrapper,verbose=verbose)
 
-		print(data)
-		exit()
 
 		# Get functions of data
 		apply(keys,data,settings,hyperparameters,verbose=verbose)
