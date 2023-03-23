@@ -702,6 +702,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
 		boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
 		boolean = conditions(boolean,op='and')
+		boolean = slice(None) if ((boolean is True) or (boolean is False) or (boolean is None)) else boolean
 
 		by = [*labels,*independent]
 
