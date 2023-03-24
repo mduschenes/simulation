@@ -59,7 +59,7 @@ then
 	
 	conda config --remove envs_dirs ${envs} &>/dev/null 2>&1
 	conda config --append envs_dirs ${envs} &>/dev/null 2>&1
-	conda config --set channel_priority true
+	conda config --set channel_priority flexible
 
 	conda remove --name ${env} --all
 
@@ -141,6 +141,10 @@ do
 done
 
 rm ${requirements[@]} 
+
+# Conda packages
+packages=(libgcc libstdcxx-ng=12)
+conda install -c conda-forge ${packages[@]}
 
 # Pip packages
 packages=(gnureadline)

@@ -4,9 +4,6 @@ intelpython
 mkl
 mkl-devel
 
-libgcc
-libstdcxx-ng
-
 numpy
 scipy
 scikit-learn
