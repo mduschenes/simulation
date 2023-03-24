@@ -19,30 +19,9 @@
 	"permutations":{	
 
 		"model.N":[3],		
-		"model.M":[null],		
-		"model.tau":[2e1],		
-		"model.T":[1e2],		
-		"noise.scale":[null],
-		"state.scale":[1],
-	
-		"model.N":[3],		
-		"model.M":[null],		
-		"model.tau":[2e1],		
-		"model.T":[1e2],		
-		"noise.scale":[null],
-		"state.scale":[1],
-
-		"optimize.iterations":[1],
-		"optimize.optimizer":["cg"],
-		"optimize.metric":["real"],
-		"optimize.search.alpha":["line_search"],
-		"optimize.search.beta":["hestenes_stiefel"],
-
-
-		"model.N":[3,2],		
-		"model.M":[1000],		
-		"model.tau":[null],
-		"model.T": [1e4],
+		"model.M":[50,100,500],
+		"model.tau":[1e2],
+		"model.T": [null],
 
 		"noise.parameters":[1e6],
 		"noise.initialization":["random"],
@@ -60,7 +39,6 @@
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
-		"optimize.kwargs.normalize":[true],
 
 		"parameters.xy.method":["constrained"],
 		"system.architecture":["constrained"],
