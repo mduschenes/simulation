@@ -42,7 +42,7 @@
 			{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
 		],			
 
-		"optimize.iterations":[10000],
+		"optimize.iterations":[[0,10000]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
