@@ -11,20 +11,20 @@
 	},
 "seed":{
 	"seed":891231,
-	"size":50,
+	"size":1,
 	"reset":891231,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[4],		
+		"model.N":[3],		
 		"model.M":[10,50,100,500,1000],
 		"model.tau":[200e0],		
 		"noise.scale":[null],
 		"state.scale":[null],
 
-		"optimize.iterations":[[0,500]],
+		"optimize.iterations":[[0,100]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
