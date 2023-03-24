@@ -151,7 +151,10 @@ def config(name=None,conf=None,**kwargs):
 		logger = logging.getLogger(name)
 
 
-	os.remove(conf)
+	try:
+		os.remove(conf)
+	except:
+		pass
 
 	return logger
 
@@ -237,7 +240,10 @@ class Logger(object):
 		loggers = list(set(loggers))
 
 		for logger in loggers:
-			rm(logger)
+			try:
+				os.remove(logger)
+			except:
+				pass
 
 		return
 
