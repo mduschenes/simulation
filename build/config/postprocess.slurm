@@ -99,7 +99,7 @@ JOBS=${JOB_PROCESSES:-1}
 # Executable
 EXE=()
 EXE+=(parallel)
-EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${PWD} --compress)
+EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${PWD})
 # EXE+=(--resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
 EXE+=(RUN {} ${CMD[@]} :::)
 
