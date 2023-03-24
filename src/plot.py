@@ -1080,7 +1080,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			except Exception as e:
 				_attr = None
 				if not isinstance(e,AttributeError):
-					logger.log(debug,e,_obj,attr,args,_kwargs_)
+					logger.log(debug,'%r %r %s %r %r'%(e,_obj,attr,args,_kwargs_))
 
 			for k in _kwds:
 				_attr_ = _attr
