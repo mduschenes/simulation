@@ -174,7 +174,7 @@ class Gate(Object):
 				string,local = str(string),(local if local else self.N-locality) if props[string]['locality'] is None else props[string]['locality']
 				strings[i] = string
 				locality += local
-				shapes[i] = [local**self.D]*self.ndim
+				shapes[i] = [self.D**local]*self.ndim
 		else:
 			strings = None
 			locality = self.N
