@@ -3,7 +3,6 @@
 # Import python modules
 import os,sys,itertools,functools,copy,datetime
 from functools import partial
-import jax
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -13,7 +12,7 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,lstsq,inv,norm,metrics
+from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,lstsq,inv,norm,metrics,optimizer_libraries
 from src.utils import is_array,is_unitary,is_hermitian,is_naninf,product,sqrt,asarray,asscalar
 from src.utils import scalars,delim,nan
 
@@ -1774,7 +1773,7 @@ class Adam(Optimization):
 		defaults = {}
 		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
 
-		self._optimizer = getattr(jax.example_libraries.optimizers,self.optimizer)
+		self._optimizer = getattr(optimizer_libraries,self.optimizer)
 
 		self._opt_init,self._opt_update,self._get_params = self._optimizer(self.hyperparameters['alpha'])
 
