@@ -3,6 +3,7 @@ intelpython
 
 mkl
 mkl-devel
+
 libgcc
 libstdcxx-ng
 
@@ -28,10 +29,9 @@ jax=0.3.14
 jaxlib=0.3.7
 jaxtyping=0.2.8
 equinox
-libgcc
-libstdcxx-ng
 
 notebook
+nbconvert<6
 nb_conda_kernels
 jupyter
 jupyter_contrib_nbextensions
