@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
 from src.utils import einsum,tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
-from src.utils import slice_slice,datatype,returnargs,is_array,allclose
+from src.utils import slice_slice,datatype,returnargs,is_array,is_unitary,is_hermitian,allclose
 from src.utils import pi,e,delim
 
 from src.system import Object,System
@@ -145,14 +145,16 @@ class Gate(Object):
 		self.length = len(self.size) if self.size is not None else None
 
 		# Delimiter for string
-		delimiter = '_'
+		delimiter = '.'
+		separator = '_'
 
 		# Properties for strings
 		props = {
-			**{string: {'func':rand,'locality':self.N} for string in ['random','U','haar']},
+			**{string: {'func':rand,'locality':None} for string in ['random','U','haar']},
 			**{string: {'func':hadamard,'locality':1} for string in ['hadamard','H']},
 			**{string: {'func':cnot,'locality':2} for string in ['cnot','CNOT','C']},
 			**{string: {'func':toffoli,'locality':3} for string in ['toffoli','TOFFOLI','T']},
+			**{string: {'func':id,'locality':None} for string in ['identity','i','I']},			
 			**{string: {'func':{1:id,2:cnot,3:toffoli}.get(self.N,id),'locality':self.N} for string in ['control']},
 			None: {'func':rand,'locality':self.N},
 			}
@@ -161,25 +163,35 @@ class Gate(Object):
 		if self.string is None:
 			strings = [self.string]
 			locality = self.N
-		elif all(string in props for string in self.string.split(delimiter)):
+			shapes = [self.shape]
+		elif isinstance(self.string,str):
 			strings = self.string.split(delimiter)
-			locality = sum(props[string]['locality'] for string in strings)
+			locality = 0
+			shapes = [self.shape]*len(strings)
+			for i,string in enumerate(strings):
+				string,local = string.split(separator)[0],len(string.split(separator)[1:])
+				assert (string in props), "Error : %s not allowed operator"%(self.string)
+				string,local = str(string),(local if local else self.N-locality) if props[string]['locality'] is None else props[string]['locality']
+				strings[i] = string
+				locality += local
+				shapes[i] = [local**self.D]*self.ndim
 		else:
 			strings = None
-			locality = self.N			
+			locality = self.N
+			shapes  = [self.shape]			
 
 
 		assert (self.N%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,self.N)
 
 		if self.string is not None:
 			data = tensorprod([
-				props[string]['func'](self.shape,
+				props[string]['func'](shape,
 					bounds=self.bounds,
 					random=self.random,
 					seed=self.seed,
 					dtype=self.dtype
 					)
-				for string in strings
+				for string,shape in zip(strings,shapes)
 				]*(self.N//locality)
 			)
 		else:

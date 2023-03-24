@@ -27,96 +27,7 @@ from src.utils import itg,dbl,flt,delim,Null,null,scalars
 
 from src.iterables import getter,setter
 from src.io import join,split,copy,rm,exists
-
-def config(name=None,conf=None,**kwargs):
-	'''
-	Configure logging
-	Args:
-		name (str): File name for logger
-		conf (str): Path for logging config
-		kwargs (dict): Additional keywork arguments to overwrite config
-	Returns:
-		logger (logger): Configured logger
-	'''
-
-	name = __name__ if name is None else name
-
-	logger = logging.getLogger(name)
-
-	default = 'logging.conf'
-	file = kwargs.get('file')
-	path = os.path.abspath(os.path.expandvars(os.path.expanduser(file))) if file is not None else None
-	ext = 'tmp'
-	existing = exists(conf)
-
-	if not existing:
-		source = join(split(__file__,directory=True,abspath=True),default)
-		destination = join(split(conf,directory=True,abspath=True),default,ext=ext)
-		copy(source,destination)
-		conf = destination
-	else:
-		source = conf
-		destination = join(conf,ext=ext)
-		copy(source,destination)
-		conf = destination
-
-
-	if conf is not None:
-		try:
-			config = configparser.ConfigParser()
-			config.read(conf)
-		
-			keys = ['formatter','keys','handlers']
-			values = ['file','stdout,file','stdout,file']
-			args = ['args','keys','handlers']
-			funcs = [
-				lambda config,**kwargs: '(%s)'%(','.join(['"%s"'%(kwargs.get('file')),*(config[1:-1].split(',')[1:] if not exists(kwargs.get('file')) else ['"a"'])])),
-				# lambda config,**kwargs: '(%s)'%(','.join(['"%s"'%(kwargs.get('file')),*(config[1:-1].split(',')[1:])])),# if not exists(kwargs.get('file')) else ['"a"'])])),
-				lambda config,**kwargs: 'stdout,file' if kwargs.get('file') else 'stdout',
-				lambda config,**kwargs: 'stdout,file' if kwargs.get('file') else 'stdout',
-				]
-
-			for key,value,arg,func in zip(keys,values,args,funcs):
-
-				for section in config:
-					if config[section].get(key) == value:
-
-						if config[section].get(arg) is None:
-							continue
-
-						if key in ['formatter'] and value in ['file']:
-							if path is not None:
-								directory = os.path.abspath(os.path.dirname(path))
-								if not os.path.exists(directory):
-									os.makedirs(directory)
-							else:
-								break
-
-							
-							kwds = {'file':path}
-
-						elif key in ['keys','handlers'] and value in ['stdout,file']:
-							kwds = {'file': path is not None}
-
-						config[section][arg] = func(config[section][arg],**kwds)
-
-
-			with open(conf, 'w') as configfile:
-				config.write(configfile)
-			
-			try:
-				logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
-			except KeyError:
-				pass
-
-		except Exception as exception:
-			pass
-
-		logger = logging.getLogger(name)
-
-	rm(conf)
-
-	return logger
+from src.logger import Logger
 
 
 class Dictionary(dict):
@@ -230,7 +141,7 @@ class System(Dictionary):
 		Log messages
 		Args:
 			msg (str): Message to log
-			verbose (int,str): Verbosity of message			
+			verbose (int,str,bool): Verbosity of message			
 		'''
 		if verbose is None:
 			verbose = self.verbose
@@ -249,97 +160,6 @@ class System(Dictionary):
 		msg = None
 		self.log(msg,verbose=verbose)
 		return
-
-
-class Logger(object):
-	def __init__(self,name=None,conf=None,file=None,cleanup=None,verbose=True,**kwargs):
-		'''
-		Logger class
-		Args:
-			name (str,logger): Name of logger or Python logging logger
-			conf (str): Path to configuration
-			file (str): Path to log file
-			cleanup (bool): Cleanup log files upon exit
-			verbose (int,str,bool): Verbosity
-			kwargs (dict): Additional keyword arguments
-		'''
-
-		if (name is None) or isinstance(name,str):
-			try:
-				self.logger = config(name=name,conf=conf,file=file,**kwargs)
-			except Exception as exception:
-					self.logger = logging.getLogger(name)
-		else:
-			self.logger = name
-
-		self.name = name
-		self.conf = conf
-		self.file = file
-
-		self.cleanup = cleanup
-		self.__clean__()
-
-		self.verbosity = {
-			'notset':0,'debug':10,'info':20,'warning':30,'error':40,'critical':50,
-			'Notset':0,'Debug':10,'Info':20,'Warning':30,'Error':40,'Critical':50,
-			'NOTSET':0,'DEBUG':10,'INFO':20,'WARNING':30,'ERROR':40,'CRITICAL':50,
-			10:10,20:20,30:30,40:40,50:50,
-			2:20,3:30,4:40,5:50,
-			-1:50,
-			True:20,False:0,None:0,
-			}
-		self.verbose = self.verbosity.get(verbose,verbose)
-		
-		return
-	
-	def log(self,verbose,msg):
-		'''
-		Log messages
-		Args:
-			verbose (int): Verbosity of message
-			msg (str): Message to log
-		'''
-		verbose = self.verbosity.get(verbose,self.verbose)
-		
-		self.logger.log(verbose,msg)
-		return
-
-	def __clean__(self,cleanup=None):
-		'''
-		Set cleanup state of class
-		Args:
-			cleanup (bool): Cleanup log files upon exit	
-		'''
-
-		cleanup = self.cleanup if cleanup is None else cleanup
-
-		if cleanup:
-			atexit.register(self.__atexit__)
-		else:
-			atexit.unregister(self.__atexit__)
-
-		return
-
-
-	def __atexit__(self):
-		'''
-		Cleanup log files upon class exit
-		'''
-
-		loggers = [logging.getLogger(),self.logger,*logging.Logger.manager.loggerDict.values()]
-		loggers = [handler.baseFilename for logger in loggers for handler in getattr(logger,'handlers',[]) if isinstance(handler,logging.FileHandler)]
-		loggers = list(set(loggers))
-
-		for logger in loggers:
-			rm(logger)
-
-		return
-
-	def __str__(self):
-		return str(self.file)
-
-	def __repr__(self):
-		return self.__str__()
 
 
 class Object(System):

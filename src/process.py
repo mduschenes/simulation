@@ -16,16 +16,6 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.system	 import Logger
-name = __name__
-path = os.path.dirname(__file__) #os.getcwd()
-file = 'logging.conf'
-conf = os.path.join(path,file)
-file = None #'log.log'
-info = 100
-debug = 0
-logger = Logger(name,conf,file=file)
-
 from src.utils import argparser
 from src.utils import array,product,expand_dims,conditions
 from src.utils import asndarray,asscalar
@@ -34,10 +24,16 @@ from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
 from src.iterables import brancher,getter,setter,flatten
 from src.parallel import Parallelize,Pooler
-from src.io import load,dump,join,split
+from src.io import load,dump,join,split,exists
 from src.fit import fit
 from src.postprocess import postprocess
 from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
+
+# Logging
+from src.logger	import Logger
+logger = Logger()
+info = 100
+debug = 0
 
 DIM = 2
 
@@ -195,6 +191,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 
 	# Set process hyperparameters
 	defaults = {
+		'path':{},
 		'load':None,
 		'dump':None,
 		'plot':None,
@@ -204,7 +201,13 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 	setter(hyperparameters,defaults,delimiter=delim,func=False)
 
 	# Get paths
+	path = data if isinstance(data,str) else None
 	hyperparameters['file'],hyperparameters['directory'],hyperparameters['ext'] = {},{},{}
+	defaults = {
+		'data': 	join(cwd,join(split(path,file=True),ext='tmp'),ext='hdf5'),
+		'metadata': join(cwd,join(split(path,file=True),ext=None),ext='json'),
+	}
+	setter(hyperparameters['path'],defaults,delimiter=delim,func=False)
 	for attr in hyperparameters['path']:
 		hyperparameters['directory'][attr] = cwd
 		hyperparameters['file'][attr],hyperparameters['ext'][attr] = split(
@@ -285,15 +288,15 @@ def find(dictionary,verbose=None):
 	separator = '='
 	defaults = {
 				'func':{'stat':{'':'mean','err':'sem'}}, 
-				'wrapper':{},
 				'include':None,
 				'exclude':None,
 				'slice':None,
 				'labels':None,
 				'analysis':{
-					# 'zscore':[{'attr':['objective'],'default':None,'kwargs':{'sigma':None}}],
-					# 'quantile':[{'attr':['objective'],'default':None,'kwargs':{'sigma':None}}]
-					# 'parse':[{'attr':{'__path__':'*','M':"<600<"},'default':None,'kwargs':{'sigma':None}}]
+					# 'zscore':[{'objective':0.5}],
+					# 'quantile':{'objective':None}
+					# 'parse':[{'__path__':'*','M':"<600<"}]
+					# 'abs':['alpha']
 					},
 				'axis':{'row':[],'col':[],'plot':['plot','group','func'],'axis':[-1]},
 				'settings':{},
@@ -373,6 +376,7 @@ def parse(key,value,data,verbose=None):
 	Returns:
 		out (dataframe): Condition on data indices
 	'''
+	negators = ['!','~']
 	delimiters = ['$','@','#','%','*','<','>','<=','>=','==','!=']
 	parserator = ';'
 	separator = ','
@@ -388,12 +392,21 @@ def parse(key,value,data,verbose=None):
 		pass
 	elif value is null:
 		pass
+	elif value is None:
+		pass
 	elif isinstance(value,str):
 		outs = [default]
 		for value in value.split(parserator):
 
-			for delimiter in delimiters:
+			negate = False
+			for negator in negators:
+				if value.startswith(negator) and value.endswith(negator):
+					negate = True
+					value = value[len(negator):-len(negator)]
+					break
 
+			for delimiter in delimiters:
+				
 				if value.startswith(delimiter) and value.endswith(delimiter):
 				
 					values = value[len(delimiter):-len(delimiter)].split(separator)
@@ -414,7 +427,7 @@ def parse(key,value,data,verbose=None):
 						values = [parser(value) for value in values]           
 					  
 						if values and (values is not null):
-							out = conditions([data[key]==data[value] for value in values],op='or')
+							out = conditions([data[key]==data[value] for value in values if value in data],op='or')
 
 					elif delimiter in ['#']: # Index value: i,j,k,...
 						parser = lambda value: (to_int(value) if len(value)>0 else null)
@@ -461,45 +474,48 @@ def parse(key,value,data,verbose=None):
 						values = [parser(value) for value in values]           
 					  
 						if values and (values is not null):
-							out = conditions([data[key] < value for value in values],op='and')
+							out = conditions([data[key] < value for value in values],op='or')
 
 					elif delimiter in ['<=']: # Bound value: upper (inclusive)
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
 						values = [parser(value) for value in values]           
 					  
 						if values and (values is not null):
-							out = conditions([data[key] <= value for value in values],op='and')
+							out = conditions([data[key] <= value for value in values],op='or')
 
 					elif delimiter in ['>']: # Bound value: lower (exclusive)
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
 						values = [parser(value) for value in values]           
 					  
 						if values and (values is not null):
-							out = conditions([data[key] > value for value in values],op='and')
+							out = conditions([data[key] > value for value in values],op='or')
 
 					elif delimiter in ['>=']: # Bound value: lower (inclusive)
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
 						values = [parser(value) for value in values]           
 					  
 						if values and (values is not null):
-							out = conditions([data[key] >= value for value in values],op='and')
+							out = conditions([data[key] >= value for value in values],op='or')
 
 					elif delimiter in ['==']: # Include value
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
 						values = [parser(value) for value in values]           
 						
 						if values and (values is not null):
-							out = conditions([data[key] == value for value in values],op='and')																												
+							out = conditions([data[key] == value for value in values],op='or')																												
 
 					elif delimiter in ['!=']: # Exclude value
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
 						values = [parser(value) for value in values]           
 
 						if values and (values is not null):
-							out = conditions([data[key] != value for value in values],op='and')																												
+							out = conditions([data[key] != value for value in values],op='or')																												
 
-	
+					if negate:
+						out = ~out
+
 					outs.append(out)
+				
 					break
 
 		out = conditions(outs,op='and')
@@ -523,12 +539,12 @@ def analyse(data,analyses=None,verbose=None):
 	Analyse data, cleaning data, removing outliers etc
 	Args:
 		data (dataframe): data of attributes
-		analyses (dict[str,dict]): Processes to analyse of the form 
-			{analysis:[{'attr':{attr:value},[attr],'default':value,'kwargs':{kwarg:value}}]},
-			allowed analysis strings in ['zscore','quantile','parse']
+		analyses (dict[str,iterable[iterable[dict]]]): Processes to analyse of the form 
+			{analysis:[({attr:value},kwargs)]},
+			allowed analysis strings in ['zscore','quantile','parse','abs','replace']
 		verbose (bool): Verbosity			
 	Returns:
-		out (dataframe): Condition on data indices
+		out (dataframe): Analysed data
 	'''
 
 	default = True
@@ -536,50 +552,89 @@ def analyse(data,analyses=None,verbose=None):
 	out = default
 
 	if analyses is not None:
+
 		for analysis in analyses:
 			if analysis in ['zscore']:
-				def func(attr,attrs,data,default,**kwargs):
-					reverse = kwargs.pop('reverse',None)					
+				def func(attrs,data):
 					function = sp.stats.zscore
-					sigma = kwargs.pop('sigma',None)
-					out = data[[attr]].apply(function,**kwargs)[attr]
-					out = (out < sigma) if sigma is not None else default
-					out = ~out if reverse else out
+					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
+					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
+					out = {attr: ((data[[attr]].apply(function,**kwargs[attr])[attr]) if value[attr] > 0 else 
+								  (data[[attr]].apply(function,**kwargs[attr])[attr] >= -value[attr]))
+							if ((len(data)>1) and (value[attr] is not None)) else True for attr in attrs}
+					out = conditions([out[attr] for attr in attrs],op='and')
 					return out
 			elif analysis in ['quantile']:
-				def func(attr,attrs,data,default,**kwargs):
-					reverse = kwargs.pop('reverse',None)					
-					sigma = kwargs.pop('sigma',None)
-					out = [data[attr].quantile(sigma),data[attr].quantile(1-sigma)] if sigma is not None else default
-					out = ((data[attr] > out[0]) & (data[attr] < out[1])) if sigma is not None else default
-					out = ~out if reverse else out					
+				def func(attrs,data):
+					function = analysis
+					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
+					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
+					out = {attr: (((data[attr] > getattr(data[attr],function)(value[attr])) if value[attr] > 0 else 
+								   (data[attr] <= getattr(data[attr],function)(-value[attr]))) &
+								  ((data[attr] < getattr(data[attr],function)(1-value[attr])) if value[attr] > 0 else 
+								   (data[attr] >= getattr(data[attr],function)(1+value[attr]))))
+							if ((len(data)>1) and (value[attr] is not None)) else True for attr in attrs}
+					out = conditions([out[attr] for attr in attrs],op='and')
 					return out
 			elif analysis in ['parse']:
-				def func(attr,attrs,data,default,**kwargs):
-					reverse = kwargs.pop('reverse',None)
-					out = [parse(attr,attrs[attr],data,verbose=verbose) for attr in attrs]
-					if reverse:
-						out = conditions([~i for i in out],op='or')
-					else:
-						out = conditions([i for i in out],op='and')
+				def func(attrs,data):
+					function = parse
+					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
+					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
+					out = [function(attr,value[attr],data,verbose=verbose) for attr in attrs]
+					out = conditions(out,op='and')
 					return out
+			elif analysis in ['abs']:
+				def func(attrs,data):
+					function = analysis
+					out = data
+					for attr in attrs:
+						out[attr] = getattr(out[attr],function)()
+					return out
+			elif analysis in ['replace']:
+				def func(attrs,data):
+					function = lambda a,b: a==b
+					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
+					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
+					out = data
+					for attr in attrs:
+						for kwarg in kwargs[attr]:
+							value = kwargs[attr][kwarg]
+							if kwarg in [None,'nan','none','None','NaN']:
+								kwarg = nan
+							elif isinstance(kwarg,str) and is_number(kwarg):
+								kwarg = to_number(kwarg)
+							if value in [None,'nan','none','None','NaN']:
+								value = nan
+							elif isinstance(value,str) and is_number(value):
+								value = to_number(value)
+							out[attr][function(out[attr],kwarg)] = value
+					return out					
 			else:
 				continue
 
 			if isinstance(analyses[analysis],dict):
 				args = [analyses[analysis]]
+			elif isinstance(analyses[analysis],(list,tuple)) and all(isinstance(i,dict) for i in analyses[analysis]):
+				args = [i for i in analyses[analysis]]
+			elif isinstance(analyses[analysis],(list,tuple)) and all(isinstance(i,(list,tuple)) for i in analyses[analysis]):
+				args = [{j:{} for j in i} for i in analyses[analysis]]
+			elif isinstance(analyses[analysis],(list,tuple)) and all(isinstance(i,(str)) for i in analyses[analysis]):
+				args = [{i:{}} for i in analyses[analysis]]
+			elif isinstance(analyses[analysis],str):
+				args = [{analyses[analysis]:{}}]
 			else:
-				args = analyses[analysis]
+				args = []
 
-			for arg in args:
-				attrs = arg.get('attr',{})
-				default = arg.get('default',None)
-				kwargs = arg.get('kwargs',{})
+			args = deepcopy(args)
 
-				value = [func(attr,attrs,data,default,**kwargs) for attr in attrs if attr in data]			
+			for attrs in args:
 
-				out = conditions([out,*value],op='and')
-
+				if analysis in ['zscore','quantile','parse']:
+					value = func(attrs,data)
+					out = conditions([out,value],op='and')
+				elif analysis in ['abs','replace']:
+					data = func(attrs,data)
 
 	if out is True:
 		out = data
@@ -587,6 +642,7 @@ def analyse(data,analyses=None,verbose=None):
 		out = data[out]
 
 	return out
+
 
 
 def apply(keys,data,settings,hyperparameters,verbose=None):
@@ -607,13 +663,13 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		return
 
 	def mean(obj):
-		out = np.array(list(obj))
-		out = tuple(out.mean(0))
+		obj = np.array(list(obj))
+		obj = tuple(obj.mean(0))
 		return out
 	def sem(obj):
-		out = np.array(list(obj))
-		out = tuple(out.std(0)/np.sqrt(out.shape[0]))
-		return out		
+		obj = np.array(list(obj))
+		obj = tuple(obj.std(0)/np.sqrt(obj.shape[0]))
+		return obj		
 
 	functions = {}			
 	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 
@@ -646,8 +702,14 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
 		boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
 		boolean = conditions(boolean,op='and')
+		boolean = slice(None) if ((boolean is True) or (boolean is False) or (boolean is None)) else boolean
 
 		by = [*labels,*independent]
+
+		if not by:
+			key,value = name,None
+			setter(settings,{key:value},delimiter=delim,func=True)
+			continue
 
 		groups = data[boolean].groupby(by=by,as_index=False)
 
@@ -814,9 +876,25 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 		# Load data
 		path = data
-		default = None
-		wrapper = 'df'
-		data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+		tmp = hyperparameters['path']['data']
+
+		try:
+			assert exists(tmp)
+			path = tmp
+			wrapper = 'pd'
+			default = None
+			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+		except Exception as exception:
+			path = data
+			wrapper = 'df'			
+			default = None
+			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
+			
+		if tmp is not None:
+			path = tmp
+			wrapper = 'pd'
+			dump(data,path,wrapper=wrapper,verbose=verbose)
+
 
 		# Get functions of data
 		apply(keys,data,settings,hyperparameters,verbose=verbose)
@@ -907,11 +985,26 @@ def plotter(settings,hyperparameters,verbose=None):
 
 			# variables
 			try:
-				values = {
-					plots: {
-						label: {
-							'value': list(realsorted(set(
-								data[OTHER][label] if (
+				values = {}
+				for plots in PLOTS:
+					
+					if plots not in settings[instance][subinstance]['ax']:
+						continue
+
+					labels = list(natsorted(set(label
+						for data in flatten(settings[instance][subinstance]['ax'][plots])
+						if (data)
+						for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
+						if ((data) and (label not in [*ALL,OTHER]) and (
+							((data[OTHER][OTHER].get('exclude') is None) or (label not in data[OTHER][OTHER]['exclude'])) and 
+							((data[OTHER][OTHER].get('include') is None) or (label in data[OTHER][OTHER]['include'])))  
+						))))
+
+					values[plots] = {}
+					for label in labels:
+						value = {}
+						value['value'] = list(realsorted(set(
+								(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else None) if (
 									(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
 								tuple(data[OTHER][label]) if (
 									(label in data[OTHER])) else 
@@ -921,33 +1014,33 @@ def plotter(settings,hyperparameters,verbose=None):
 									data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if (
 									((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
-								))),
-							'sort': list(realsorted(set(data[OTHER][OTHER][OTHER][label]
+								)))
+						value['sort'] = list(realsorted(set(data[OTHER][OTHER][OTHER][label]
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data) and (label in data[OTHER][OTHER][OTHER]))
-								))),
-							'label': any((
+								)))
+						value['label'] = any((
 								(label in data[OTHER][OTHER][OTHER]) and 
 								(label in data[OTHER]) and (data[OTHER][OTHER][OTHER][label] is None))
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) 
 								if (data)
-								),
-							'other': any((
+								)
+						value['other'] = any((
 								(label not in data[OTHER]) and 
 								(label in data[OTHER][OTHER][OTHER]) and 
 								((data[OTHER][OTHER][OTHER].get(label) is not None) and
 								(data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])))
 								for data in flatten(settings[instance][subinstance]['ax'][plots])
 								if (data)
-								),
-							'legend': any((
+								)
+						value['legend'] = any((
 								(label not in data[OTHER]) and 
 								(label in data[OTHER][OTHER][OTHER]) and
 								((data[OTHER][OTHER][OTHER].get(label) is not None) and
 								(data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER])))
 								for data in flatten(settings[instance][subinstance]['ax'][plots])
 								if (data)
-								),
-							'attr': {
+								)
+						value['attr'] = {
 								**{attr: {string:  data[OTHER][OTHER][attr][string]
 									for data in flatten(settings[instance][subinstance]['ax'][plots]) 
 									if ((data) and attr in data[OTHER][OTHER])
@@ -977,30 +1070,16 @@ def plotter(settings,hyperparameters,verbose=None):
 										for kwarg in ['one']},										
 									}
 									for attr in ['scinotation']},
-								},
-							}
-						for label in list(natsorted(set(label
-						for data in flatten(settings[instance][subinstance]['ax'][plots])
-						if (data)
-						for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
-						if ((data) and (label not in [*ALL,OTHER]) and (
-							((data[OTHER][OTHER].get('exclude') is None) or (label not in data[OTHER][OTHER]['exclude'])) and 
-							((data[OTHER][OTHER].get('include') is None) or (label in data[OTHER][OTHER]['include'])))  
-						))))
-						}
-						for plots in PLOTS 
-						if plots in settings[instance][subinstance]['ax']
-						}
-				_values = {}
-				for plots in list(values):
-					if plots not in _values:
-						_values[plots] = {}
+								}
+
+						values[plots][label] = value
+
 					for label in list(values[plots]):
-						if not any(label in _values[_plots] for _plots in _values):
-							_values[plots][label] = values[plots][label]
-				values = _values
+						if any(label in values[i] for i in values if i not in [plots]):
+							values[plots].pop(label);
+
 			except KeyError as e:
-				# logger.log(debug,traceback.format_exc(),instance,subinstance)
+				logger.log(debug,'%s %s %s '%(traceback.format_exc(),instance,subinstance))
 				settings[instance].pop(subinstance);
 				continue
 
@@ -1318,7 +1397,7 @@ def plotter(settings,hyperparameters,verbose=None):
 	return
 
 
-def postprocessor(hyperparameters,pwd=None,cwd=None,verbose=None):
+def postprocesser(hyperparameters,pwd=None,cwd=None,verbose=None):
 	'''
 	Postprocess data
 	Args:
@@ -1406,7 +1485,7 @@ def process(data,settings,hyperparameters,pwd=None,cwd=None,verbose=True):
 	plotter(settings,hyperparameters,verbose=verbose)
 
 	# Post process data
-	postprocessor(hyperparameters,pwd,cwd,verbose=verbose)
+	postprocesser(hyperparameters,pwd,cwd,verbose=verbose)
 
 	return
 
@@ -1459,6 +1538,7 @@ if __name__ == '__main__':
 	wrappers = {
 		'pwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
 		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'data':lambda kwarg,wrappers,kwargs: kwargs['data'][-1] if len(kwargs['data']) ==1 else kwargs['data'],
 	}
 
 	args = argparser(arguments,wrappers)

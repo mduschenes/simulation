@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 
 import numpy as onp
 import scipy as osp
+import pandas as pd
 import jax
 import jax.numpy as np
 import jax.scipy as sp
@@ -43,7 +44,7 @@ import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 
 configs = {
-	'jax_disable_jit':False,
+	'jax_disable_jit':True,
 	'jax_platforms':'cpu',
 	'jax_enable_x64': True
 	}
@@ -51,7 +52,9 @@ for name in configs:
 	jax.config.update(name,configs[name])
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
-
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 # Constants
 pi = np.pi
@@ -61,6 +64,8 @@ inf = np.inf
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
+
+optimizer_libraries = jax.example_libraries.optimizers
 
 class Null(object):
 	def __str__(self):
@@ -872,7 +877,7 @@ class asscalar(onp.ndarray):
 	def __new__(self,a,*args,**kwargs):
 		try:
 			return a.item()#onp.asscalar(a,*args,**kwargs)
-		except AttributeError:
+		except (AttributeError,ValueError):
 			return a
 
 
@@ -2314,8 +2319,6 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 		subscripts = '...ij,...ij->...'
 	
 	shapes = (shapes[0],shapes[1])
-
-
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
