@@ -1,4 +1,5 @@
 **/__pycache__
+**/.pytest_cache
 **/*.pdf
 **/*.log
 **/*.o
@@ -24,7 +25,4 @@ build/constrained.py
 build/unconstrained.py
 build/new
 build/plots
-keep
-**/*test.json
 setup/requirements.txt.*.*
-src/wip
