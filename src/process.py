@@ -204,8 +204,8 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 	path = data if isinstance(data,str) else None
 	hyperparameters['file'],hyperparameters['directory'],hyperparameters['ext'] = {},{},{}
 	defaults = {
-		'data': join(cwd,join(split(path,file=True),ext='tmp'),ext='hdf5'),
-		'metadata': join(cwd,join(''.join(['meta',split(path,file=True)]),ext=None),ext='json'),
+		'data': 	join(cwd,join(split(path,file=True),ext='tmp'),ext='hdf5'),
+		'metadata': join(cwd,join(split(path,file=True),ext=None),ext='json'),
 	}
 	setter(hyperparameters['path'],defaults,delimiter=delim,func=False)
 	for attr in hyperparameters['path']:
@@ -1538,6 +1538,7 @@ if __name__ == '__main__':
 	wrappers = {
 		'pwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
 		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'data':lambda kwarg,wrappers,kwargs: kwargs['data'][-1] if len(kwargs['data']) ==1 else kwargs['data'],
 	}
 
 	args = argparser(arguments,wrappers)

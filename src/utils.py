@@ -65,6 +65,8 @@ scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
 
+optimizer_libraries = jax.example_libraries.optimizers
+
 class Null(object):
 	def __str__(self):
 		return 'Null'
