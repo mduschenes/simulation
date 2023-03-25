@@ -2,7 +2,16 @@
 
 
 # Path
-export PATH="$PATH:~/.local/bin"
+add_to_path() {
+  for ARG in "$@"
+  do
+    if [ -d "$ARG" ] && [[ ":$PATH:" != *":$ARG:"* ]]; then
+        PATH="${PATH:+"$PATH:"}$ARG"
+    fi
+  done
+  export PATH="${PATH}"
+}
+add_to_path ~/.local/bin
 
 
 # Aliases
@@ -16,11 +25,10 @@ alias njob="bjob | wc -l"
 alias scr="/scratch/gobi3/${USER}"
 
 # SSH
-{
-	eval $(ssh-agent -s);
-	ssh-add ~/.ssh/id_25519;
-} &>/dev/null 2>&1
-
+# keys=($(find ~/.ssh -type f -regextype egrep -regex '.*/id_[^.]+$'))
+# eval `keychain --quiet --eval ${keys[@]}`
+{ eval "$(ssh-agent -s)"; } &>/dev/null
+find ~/.ssh -type f -regextype egrep -regex '.*/id_[^.]+$' | xargs ssh-add {} &>/dev/null;
 
 # Functions
 
@@ -104,6 +112,16 @@ function bint(){
 	return 0
 }
 
+
+function balloc(){
+	time=${1:-01:00:00}
+	mem=${2:-15G}
+	partition=${3:-cpu}
+	salloc --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --partition=${partition}
+	return 0
+}
+
+
 function bctl(){
 	job=${1}
 	time=${2}
@@ -127,16 +145,6 @@ function bctl(){
 	return 0
 }
 
-
-function balloc(){
-	time=${1:-01:00:00}
-	mem=${2:-15G}
-	partition=${3:-cpu}
-	salloc --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --partition=${partition}
-	return 0
-}
-
-
 function catls(){
 	files=(${@})
 	files=($(ls ${files[@]} | sort -V))
@@ -147,6 +155,27 @@ function catls(){
 		echo
 	done
 
+}
+
+function idkeys(){
+	encryption=${1:-ed25519}
+	shift 1;
+	hosts=(${@:-$(grep -P "^Host ([^*]+)$" $HOME/.ssh/config | sed 's/Host //')})
+	for host in ${hosts[@]}
+	do
+		file=~/.ssh/id_${encryption}_${host}
+		private=${file}
+		public=${file}.pub
+		if [ -f ${file} ]
+		then
+			continue
+		fi
+		echo ${host}
+		ssh-add -D ${public} ${private}
+		ssh-keygen -t ${encryption} -f ${file} -C "${host}" -N ""
+		ssh-copy-id -i ${public} ${host}
+		echo
+	done
 }
 
 
@@ -188,26 +217,26 @@ export HISTCONTROL=ignoreboth:erasedups
 
 # Color Setup
 
-# set a fancy prompt (non-color, unless we know we "want" color)
-case "$TERM" in
-    xterm-color|*-256color) color_prompt=yes;;
-esac
+# # set a fancy prompt (non-color, unless we know we "want" color)
+# case "$TERM" in
+#     xterm-color|*-256color) color_prompt=yes;;
+# esac
 
-# uncomment for a colored prompt, if the terminal has the capability; turned
-# off by default to not distract the user: the focus in a terminal window
-# should be on the output of commands, not on the prompt
-#force_color_prompt=yes
+# # uncomment for a colored prompt, if the terminal has the capability; turned
+# # off by default to not distract the user: the focus in a terminal window
+# # should be on the output of commands, not on the prompt
+# #force_color_prompt=yes
 
-if [ -n "$force_color_prompt" ]; then
-    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-	# We have color support; assume it's compliant with Ecma-48
-	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-	# a case would tend to support setf rather than setaf.)
-	color_prompt=yes
-    else
-	color_prompt=
-    fi
-fi
+# if [ -n "$force_color_prompt" ]; then
+#     if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+# 	# We have color support; assume it's compliant with Ecma-48
+# 	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+# 	# a case would tend to support setf rather than setaf.)
+# 	color_prompt=yes
+#     else
+# 	color_prompt=
+#     fi
+# fi
 
 # if [ "$color_prompt" = yes ]; then
 #     PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
@@ -227,7 +256,12 @@ fi
 #     ;;
 # esac
 
-PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+# # Prompt
+PS1='${debian_chroot:+($debian_chroot)}[\t]\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\W\[\033[00m\]\$ '
+# #PROMPT_COMMAND="echo -ne \"\033]0;${PWD}\007\"; $PROMPT_COMMAND" ###*/
+unset PROMPT_COMMAND
+PROMPT_COMMAND='echo -ne """\033]0;${USER/"${HOME}"/\~}@${HOSTNAME%%.*}:${PWD}\007"""'
+
 
 
 # enable color support of ls and also add handy aliases
@@ -244,3 +278,4 @@ fi
 
 # colored GCC warnings and errors
 #export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+parallel --record-env
