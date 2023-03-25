@@ -25,11 +25,10 @@ alias njob="bjob | wc -l"
 alias scr="/scratch/gobi3/${USER}"
 
 # SSH
-{
-	eval $(ssh-agent -s);
-	ssh-add ~/.ssh/id_25519;
-} &>/dev/null 2>&1
-
+# keys=($(find ~/.ssh -type f -regextype egrep -regex '.*/id_[^.]+$'))
+# eval `keychain --quiet --eval ${keys[@]}`
+{ eval "$(ssh-agent -s)"; } &>/dev/null
+find ~/.ssh -type f -regextype egrep -regex '.*/id_[^.]+$' | xargs ssh-add {} &>/dev/null;
 
 # Functions
 
@@ -158,7 +157,26 @@ function catls(){
 
 }
 
-
+function idkeys(){
+	encryption=${1:-ed25519}
+	shift 1;
+	hosts=(${@:-$(grep -P "^Host ([^*]+)$" $HOME/.ssh/config | sed 's/Host //')})
+	for host in ${hosts[@]}
+	do
+		file=~/.ssh/id_${encryption}_${host}
+		private=${file}
+		public=${file}.pub
+		if [ -f ${file} ]
+		then
+			continue
+		fi
+		echo ${host}
+		ssh-add -D ${public} ${private}
+		ssh-keygen -t ${encryption} -f ${file} -C "${host}" -N ""
+		ssh-copy-id -i ${public} ${host}
+		echo
+	done
+}
 
 
 # Conda
