@@ -31,11 +31,10 @@ module load anaconda3
 
 
 # SSH
-{
-	eval $(ssh-agent -s);
-	ssh-add ~/.ssh/id_25519;
-} &>/dev/null 2>&1
-
+# keys=($(find ~/.ssh -type f -regextype egrep -regex '.*/id_[^.]+$'))
+# eval `keychain --quiet --eval ${keys[@]}`
+{ eval "$(ssh-agent -s)"; } &>/dev/null
+find ~/.ssh -type f -regextype egrep -regex '.*/id_[^.]+$' | xargs ssh-add {} &>/dev/null;
 
 # Functions
 
@@ -114,7 +113,7 @@ function bkill(){
 function bint(){
 	time=${1:-01:00:00}
 	mem=${2:-15G}
-	partition=${3:-defq}
+	partition=${3:-cpu}
 	srun --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --pty bash -i
 	return 0
 }
@@ -123,11 +122,34 @@ function bint(){
 function balloc(){
 	time=${1:-01:00:00}
 	mem=${2:-15G}
-	partition=${3:-defq}
+	partition=${3:-cpu}
 	salloc --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --partition=${partition}
 	return 0
 }
 
+
+function bctl(){
+	job=${1}
+	time=${2}
+	mem=${3}
+
+	if [ -z ${job} ]
+	then
+		return 0
+	fi
+
+	if [ ! -z ${time} ]
+	then
+		scontrol update job=${job} TimeLimit=${time}
+	fi
+
+	if [ ! -z ${time} ]
+	then
+		scontrol update job=${job} MinMemoryNode=${mem}
+	fi
+
+	return 0
+}
 
 function catls(){
 	files=(${@})
@@ -139,6 +161,26 @@ function catls(){
 		echo
 	done
 
+
+function idkeys(){
+	encryption=${1:-ed25519}
+	shift 1;
+	hosts=(${@:-$(grep -P "^Host ([^*]+)$" $HOME/.ssh/config | sed 's/Host //')})
+	for host in ${hosts[@]}
+	do
+		file=~/.ssh/id_${encryption}_${host}
+		private=${file}
+		public=${file}.pub
+		if [ -f ${file} ]
+		then
+			continue
+		fi
+		echo ${host}
+		ssh-add -D ${public} ${private}
+		ssh-keygen -t ${encryption} -f ${file} -C "${host}" -N ""
+		ssh-copy-id -i ${public} ${host}
+		echo
+	done
 }
 
 

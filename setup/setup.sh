@@ -8,37 +8,36 @@ env=${1:-jax}
 # Install Type ["install","reinstall","uninstall"]
 install=${2:-"reinstall"}
 
-# Silent yes to all commands ["yes","no"]
-yes=${3}
+# Type of env (env,intel)
+type=${3:-intel}
 
-# pkgs=${HOME}/miniconda3
-# envs=${HOME}/miniconda/envs
+# Silent yes to all commands ["yes","no"]
+yes=${4:-no}
+
+
+# Paths
+pkgs=${HOME}/miniconda3
+envs=${HOME}/miniconda3/envs
+env_vars=env_vars.sh
+>>>>>>> dev
 
 pkgs=/cm/shared/apps/anaconda3/anaconda3-2020.11
 envs=${HOME}/env
 
-channels=(intel conda-forge)
-requirements=requirements.txt
-
-
-# Setup paths
 mkdir -p ${envs}
 
-if [[ -z $(grep ${pkgs}/bin <<< ${PATH}) ]] && ( [[ -f ${pkgs}/bin ]] || [[ -d ${pkgs}/bin ]] )
+if [ ${type} == "intel" ]
 then
-	export PATH=${pkgs}/bin:${PATH}
-fi
-
-if [[ -z $(grep ${pkgs}/lib <<< ${PATH}) ]] && ( [[ -f ${pkgs}/lib ]] || [[ -d ${pkgs}/lib ]] )
+	channels=(intel conda-forge)
+	requirements=requirements.txt
+elif [ ${type} == "env" ]
 then
-	export LD_LIBRARY_PATH=${pkgs}/lib:${LD_LIBRARY_PATH}
+	channels=(conda-forge)
+	requirements=requirements.txt	
+else
+	channels=(intel conda-forge)
+	requirements=requirements.txt	
 fi
-
-if [[ -z $(grep ${envs}/${env} <<< ${PYTHONPATH}) ]] && ( [[ -f ${envs}/${env} ]] || [[ -d ${envs}/${env} ]] )
-then
-	export PYTHONPATH=${envs}/${env}:$PYTHONPATH
-fi
-
 
 # Setup conda
 __conda_setup="$('${pkgs}/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
@@ -61,8 +60,11 @@ then
 	
 	conda config --remove envs_dirs ${envs} &>/dev/null 2>&1
 	conda config --append envs_dirs ${envs} &>/dev/null 2>&1
+	conda config --set channel_priority flexible
 
 	conda remove --name ${env} --all
+
+	conda clean --all --verbose
 
 	conda create --prefix ${envs}/${env}
 
@@ -71,14 +73,45 @@ then
 	conda deactivate
 
 	conda remove --name ${env} --all
+
+	conda clean --all --verbose
+	exit
 fi
 
-
 # Setup activation scripts
-source=conda
+source=${env_vars}
 destination=${envs}/${env}/etc/conda/activate.d
+
 mkdir -p ${destination}
-cp -r ${source}/* ${destination}/
+
+cp ${source} ${destination}/
+
+sed -i "s%env=.*%env=${env}%g" ${destination}/${env_vars}
+source ${destination}/${env_vars}
+
+
+# Setup environment variables
+
+if [[ -z $(grep ${pkgs}/bin <<< ${PATH}) ]] && ( [[ -f ${pkgs}/bin ]] || [[ -d ${pkgs}/bin ]] )
+then
+	export PATH=${pkgs}/bin:${PATH}
+fi
+
+if [[ -z $(grep ${pkgs}/lib <<< ${PATH}) ]] && ( [[ -f ${pkgs}/lib ]] || [[ -d ${pkgs}/lib ]] )
+then
+	export LD_LIBRARY_PATH=${pkgs}/lib:${LD_LIBRARY_PATH}
+fi
+
+# # Setup activation scripts
+# source=conda
+# destination=${envs}/${env}/etc/conda/activate.d
+# mkdir -p ${destination}
+# cp -r ${source}/* ${destination}/
+# =======
+# if [[ -z $(grep ${envs}/${env} <<< ${PYTHONPATH}) ]] && ( [[ -f ${envs}/${env} ]] || [[ -d ${envs}/${env} ]] )
+# then
+# 	export PYTHONPATH=${envs}/${env}:$PYTHONPATH
+# fi
 
 
 # Activate environment
@@ -88,6 +121,7 @@ source activate ${envs}/${env}
 # Install packages
 
 # Get line-break separated groups of requirements to install individually
+rm -rf ${requirements}.tmp.*
 awk -v requirements="${requirements}" -v RS= '{print > (requirements".tmp." NR "")}' ${requirements}
 requirements=(${requirements}.tmp.*)
 
@@ -104,6 +138,8 @@ if [ ! -z ${yes} ] && [ ${yes} == "yes" ]
 then
 	options+=("--yes")
 fi
+# options+=(--strict-channel-priority)
+options+=()
 
 # Install packages
 for file in ${requirements[@]}
@@ -113,7 +149,18 @@ done
 
 rm ${requirements[@]} 
 
+# Conda packages
+packages=(libgcc libstdcxx-ng=12)
+conda install -c conda-forge ${packages[@]}
+
+# Pip packages
+packages=(gnureadline)
+pip install ${packages[@]}
+
 # conda update --all
+
+# Test Installation
+pytest -rA
 
 # Install rmate (from https://stackoverflow.com/questions/37458814/how-to-open-remote-files-in-sublime-text-3)
 # path=${HOME}/.local/bin/rmate

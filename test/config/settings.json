@@ -61,9 +61,9 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":null,
-	"T":1e3,
-	"tau":200,
+	"M":10,
+	"T":null,
+	"tau":1,
 	"P":2,
 	"space":"spin",
 	"time":"linear",
@@ -152,7 +152,7 @@
 		"interpolation":3,
 		"smoothness":2,
 		"pad":"random",
-		"seed":123456,	
+		"seed":81239,	
 		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
@@ -168,10 +168,12 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-1e-2,0,1e-3,5e-3,2e-3],
+		"parameters":[1,0,1,-1,1],		
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["z"]],
 		"scale":1,
+		"scale":1e-2,		
 		"initialization":"random",
 		"random":"uniform",
 		"pad":"random",
@@ -188,15 +190,13 @@
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-<<<<<<< HEAD
 		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],		
-=======
-		"parameters":[7.24e-4,-1.3e-6,5e-5,8e-4,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
->>>>>>> dev
+		"parameters":[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],																
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],
 		"scale":1,
+		"scale":1e-4,
 		"initialization":"random",
 		"random":"uniform",	
 		"pad":"random",
@@ -254,7 +254,7 @@
 		"jobs":"job.slurm",
 		"args":{
 			"JOB_CWD":".",					
-			"JOB_ENV":"mkl",
+			"JOB_ENV":"jax",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
 			"JOB_PROCESSES":1,
@@ -287,11 +287,11 @@
 		"jobs":"postprocess.slurm",
 		"args":{
 			"JOB_CWD":".",
-			"JOB_ENV":"mkl",
+			"JOB_ENV":"jax",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--pwd=.","--cwd=."]
 			},
 		"paths":{
 			"plot":"plot.json",
@@ -308,13 +308,8 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,		
-<<<<<<< HEAD
-		"pause":1,
-		"file":"postprocess.sh",	
-=======
 		"pause":1,	
 		"file":"postprocess.sh",
->>>>>>> dev
 		"process":null,
 		"processes":null,
 		"device":"pc",

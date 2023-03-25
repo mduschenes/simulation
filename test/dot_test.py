@@ -46,7 +46,7 @@ def _setup(args,kwargs):
 
 
 
-def test_dot():
+def test_dot(path=None,tol=None):
 
 	def func(*args,**kwargs):
 
@@ -157,3 +157,8 @@ def test_dot():
    
 
 	return
+
+if __name__ == '__main__':
+	path = 'config/settings.json'
+	tol = 5e-8 
+	test_dot(path,tol)	

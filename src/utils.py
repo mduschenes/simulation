@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 
 import numpy as onp
 import scipy as osp
+import pandas as pd
 import jax
 import jax.numpy as np
 import jax.scipy as sp
@@ -43,7 +44,7 @@ import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 
 configs = {
-	'jax_disable_jit':False,
+	'jax_disable_jit':True,
 	'jax_platforms':'cpu',
 	'jax_enable_x64': True
 	}
@@ -51,7 +52,9 @@ for name in configs:
 	jax.config.update(name,configs[name])
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
-
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 # Constants
 pi = np.pi
@@ -61,6 +64,8 @@ inf = np.inf
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
+
+optimizer_libraries = jax.example_libraries.optimizers
 
 class Null(object):
 	def __str__(self):
@@ -151,6 +156,10 @@ class argparser(argparse.ArgumentParser):
 			'action':action
 		}
 
+		nulls = {
+			'action':['type','nargs','default']
+		}
+
 		if arguments is None:
 			arguments = '--args'
 		if isinstance(arguments,str):
@@ -173,18 +182,36 @@ class argparser(argparse.ArgumentParser):
 
 		for i,argument in enumerate(arguments):
 
+
 			name = '%s'%(argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
-			options.update({option: options.get(option,defaults[option]) for option in defaults})
-			options.update({'nargs':'?' if options.get('nargs') not in ['*','+'] or i>0 else '*','default':argparse.SUPPRESS})
-			self.add_argument(name,**options)
+
+			if options.get('action') is None:
+				for null in nulls:
+					if null in options:
+						for option in nulls[null]:
+							options.pop(option,None);
+
+				options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
+				options.update({
+					**{option:'?' if options.get(option) not in ['*','+'] or i>0 else '*' for option in ['nargs'] if option in options},
+					**{option: argparse.SUPPRESS for option in ['default'] if option in options}
+					})
+				names = [name]
+				self.add_argument(*names,**options)
 
 			name = '--%s'%(argument.replace('--',''))
 			options = {option: arguments[argument][option] for option in arguments[argument]}
-			options.update({option: options.get(option,defaults[option]) for option in defaults})
+			
+			for null in nulls:
+				if null in options:
+					for option in nulls[null]:
+						options.pop(option,None);
+
+			options.update({option: options.get(option,defaults[option]) for option in defaults if option not in options})
 			options.update({'dest':options.get('dest',argument.replace('--',''))})
-			names = [argument,argument.replace('--','')]
-			self.add_argument(name,**options)
+			names = [name]
+			self.add_argument(*names,**options)
 
 		kwargs,args = self.parse_known_args()
 
@@ -498,13 +525,13 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	'''
 	if mode in ['operator']:
 		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -out/operands[0].shape[0]]
+		wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
 	elif mode in ['state']:
 		subscripts = ['uai,vai->uv','uai,ai,vaj,aj->uv']
-		wrappers = [lambda out,*operands: out/operands[0].shape[1],lambda out,*operands: -out/operands[0].shape[1]]
+		wrappers = [lambda out,*operands: out,lambda out,*operands: -out]
 	else:
 		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -out/operands[0].shape[0]]
+		wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
 
 	if grad is None:
 		grad = gradient(func,mode='fwd',move=True)
@@ -850,7 +877,7 @@ class asscalar(onp.ndarray):
 	def __new__(self,a,*args,**kwargs):
 		try:
 			return a.item()#onp.asscalar(a,*args,**kwargs)
-		except AttributeError:
+		except (AttributeError,ValueError):
 			return a
 
 
@@ -1123,7 +1150,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 	'''
 	Get random array
 	Args:
-		shape (int,iterable): Size or Shape of random array
+		shape (int,iterable): Size or Shape of random arrayf
 		key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		bounds (iterable): Bounds on array
@@ -1160,7 +1187,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 			else:
 				bounds[i] = float(bounds)
 
-	subrandoms = ['haar','hermitian','symmetric']
+	subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
 	complex = is_complexdtype(dtype) and random not in subrandoms
 	_dtype = dtype
 	dtype = datatype(dtype)
@@ -1252,6 +1279,67 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 
 			return out
 
+	elif random in ['zero']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[0].set(1)
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out
+	elif random in ['one']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[-1].set(1)
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out			
+	elif random in ['plus']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[:].set(1)/sqrt(shape[-1])
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out	
+	elif random in ['minus']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[0::2].set(1)/sqrt(shape[-1])
+			out = out.at[1::2].set(-1)/sqrt(shape[-1])
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out				
 	elif random in ['zeros']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape,dtype=dtype)
@@ -1577,8 +1665,10 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	
 	if shapes:
 		size = sum(int(product(shape)**(1/len(shape))) for shape in shapes[:2] if shape is not None)//len(shapes[:2])
+		ndim = min([len(shape) for shape in shapes[:2] if shape is not None])
 	else:
 		size = 1
+		ndim = None
 
 	if callable(metric):
 			metric = metric
@@ -1633,11 +1723,33 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		func = inner_abs2
 		grad_analytical = gradient_inner_abs2
 
-		def wrapper_func(out,*operands):
-			return 1 - out/(operands[0].shape[-1]*operands[0].shape[-2])
+		if ndim is not None:
+			if ndim == 1:
+				def wrapper_func(out,*operands):
+					return 1 - out
 
-		def wrapper_grad(out,*operands):
-			return - out/(operands[0].shape[-1]*operands[0].shape[-2])
+				def wrapper_grad(out,*operands):
+					return - out
+
+			elif ndim == 2:
+				def wrapper_func(out,*operands):
+					return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+
+				def wrapper_grad(out,*operands):
+					return - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+			else:
+				def wrapper_func(out,*operands):
+					return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+
+				def wrapper_grad(out,*operands):
+					return - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+
+		else:
+			def wrapper_func(out,*operands):
+				return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]) if operands[0].ndim > 1 else 1)
+
+			def wrapper_grad(out,*operands):
+				return - out/((operands[0].shape[-1]*operands[0].shape[-2]) if operands[0].ndim > 1 else 1)
 
 	elif metric in ['real']:
 
@@ -2208,8 +2320,6 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 	
 	shapes = (shapes[0],shapes[1])
 
-
-
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
 	@jit
@@ -2620,7 +2730,7 @@ def conditions(booleans,op):
 	Compute multiple conditions with boolean operator
 	Args:
 		booleans (iterable[bool]): Boolean conditions
-		op (str,iterable[str]): Boolean operators, ['and','or','lt','gt','eq','le','ge','ne'] 
+		op (str,iterable[str]): Boolean operators, ['and','or','lt','gt','eq','le','ge','ne','in'] 
 	Returns:
 		out (bool): Boolean of conditions
 	'''
@@ -2632,8 +2742,14 @@ def conditions(booleans,op):
 		'<':'lt','<=':'le',
 		'>':'gt','ge':'ge',
 		'!=':'ne',
+		'isin':'in'
 		}
 
+	funcs = {
+		**{op: getattr(operator,'__%s__'%(op)) for op in ['and','or','lt','gt','eq','le','ge','ne']},
+		**{op: lambda a,b: onp.isin(a,b) for op in ['in']},
+		**{None: lambda a,b:a},
+	}
 
 	if isinstance(op,str):
 		ops = [op]*len(booleans)
@@ -2645,18 +2761,26 @@ def conditions(booleans,op):
 	op = ops[0] if ops else None
 	
 	if op is None:
-		out = False
+		out = None
 	elif op in ['or']:
 		out = False
 	elif op in ['and','lt','gt','eq','le','ge','ne']:
 		out = True
+	elif op in ['in']:		
+		out = booleans[0]
+		ops = ops[1:]
+		booleans = booleans[1:]
 
 	for op,boolean in zip(ops,booleans):
 		if boolean is None:
 			continue
-		out = getattr(operator,'__%s__'%(op))(out,boolean)
 		
+		func = funcs.get(op,funcs[None])
+		
+		out = func(out,boolean)
+	
 	return out
+
 
 
 @jit
@@ -5190,7 +5314,7 @@ def interp(x,y,**kwargs):
 		
 		if n == 1:
 			k = None
-		elif n < kinds.get(kind,n+1):
+		elif n <= kinds.get(kind):
 			k = [kinds[k] for k in kinds if kinds[k]==(n-1)][-1]
 		else:
 			k = kinds.get(kind)
@@ -5201,7 +5325,6 @@ def interp(x,y,**kwargs):
 		if n == 1:
 			_func = lambda x,y=y: onp.linspace(abs(y.min()),abs(y.max()),x.size)
 			def func(x,y=y,_func=_func):
-				print('func',x,_func(x))
 				return _func(x)
 		elif der:
 			spline = osp.interpolate.splrep(x,y,k=k,s=s)
@@ -5272,7 +5395,7 @@ def piecewises(func,shape,include=None,**kwargs):
 
 	def func(x,parameters):
 
-		bounds,parameterss = parameters[indices[0]],[parameters[index] for index in indices[1:]]
+		bounds,parameters = parameters[indices[0]],[parameters[index] for index in indices[1:]]
 		n = len(funcs)
 
 		func = [lambda x,parameters,i=i: funcs[i](x,parameters[i]) for i in range(n)]
@@ -5747,13 +5870,39 @@ def to_key_value(string,delimiter='=',default=None,**kwargs):
 				value = value
 	return key,value
 
+def to_position(index,shape):
+	'''
+	Convert linear index to dimensional position
+	Args:
+		index (int): Linear index
+		shape (iterable[int]): Dimensions of positions
+	Returns:
+		position (iterable[int]): Dimensional positions
+	'''
+	from math import prod
+	position = [index//(prod(shape[i+1:]))%(shape[i]) for i in range(len(shape))]
+	return position
+
+def to_index(position,shape):
+	'''
+	Convert dimensional position to linear index
+	Args:
+		position (iterable[int]): Dimensional positions
+		shape (iterable[int]): Dimensions of positions
+	Returns:
+		index (int): Linear index
+	'''	
+	from math import prod
+	index = sum((position[i]*(prod(shape[i+1:])) for i in range(len(shape))))
+	return index
+
 
 def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
 	'''
 	Put number into scientific notation string
 	Args:
 		number (str,int,float): Number to be processed
-		decimals (int): Number of decimals in base part of number (including leading digit)
+		decimals (int): Number of decimals in base part of number (including leading ones digit)
 		base (int): Base of scientific notation
 		order (int): Max power of number allowed for rounding
 		zero (bool): Make numbers that equal 0 be the int representation
@@ -5817,8 +5966,8 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 			string = r'%s%%s%%s%%s'%(flt)
 		else:
 			string = r'%s%s%s%%s%%s%%s'%('%0.*f'%(decimals-1,float(flt)) if (one or (float(flt) != 1.0)) else '',
-				r'\cdot' if (one or (float(flt) != 1.0)) else '',
-				'%d^{%s}'%(base,exp) if exp!= '0' else ''
+				r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
+				'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
 				)
 	
 		if error is not None and not isinstance(error,str):
@@ -5827,8 +5976,8 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 			else:
 				error = r'%s%s%s'%(
 					'%0.*f'%(decimals-1,float(error)/(base**(int(exp)))),
-					r'\cdot' if (one or (float(flt) != 1.0)) else '',
-					'%d^{%s}'%(base,exp) if exp!= '0' else ''
+					r'\cdot' if ((one or (float(flt) != 1.0)) and (int(exp)!=0)) else '',
+					'%d^{%s}'%(base,exp) if (int(exp)!=0) else ''
 					)
 
 	if error is None:

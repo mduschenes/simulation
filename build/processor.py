@@ -9,23 +9,63 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.io import join
+from src.io import join,split
+from src.utils import argparser
 from src.process import process
 
 def main(args):
 
-	kwargs = {
-		'data':'**/data.hdf5',
-		'settings':join(args[0] if len(args)>0 else 'config','plot.json'),
-		'hyperparameters':join(args[0] if len(args)>0 else 'config','process.json'),
-		'cwd':args[0] if len(args)>0 else None,
-		'pwd':args[4] if len(args)>4 else args[0] if len(args) > 0 else 'config',
+	arguments = {
+		'--data':{
+			'help':'Process data files',
+			'type':str,
+			'default':[],
+			'nargs':'*'
+		},
+		'--settings':{
+			'help':'Process plot settings',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--hyperparameters':{
+			'help':'Process process settings',
+			'type':str,
+			'default':None,
+			'nargs':'?'
+		},
+		'--pwd':{
+			'help':'Process pwd',
+			'type':str,
+			'default':None,
+			'nargs':'?',
+		},		
+		'--cwd':{
+			'help':'Process cwd',
+			'type':str,
+			'default':None,
+			'nargs':'?',
+		},						
+		'--verbose':{
+			'help':'Verbosity',
+			'action':'store_true'
+		},												
+
 	}
 
-	kwargs.update({kwarg: join(arg,kwargs[kwarg]) if (kwargs[kwarg] is None or kwargs[kwarg].startswith('*')) and not arg.startswith("*") else arg 
-		for arg,kwarg in zip(args,kwargs)})
+	wrappers = {
+		'settings':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**',''),'plot.json') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'hyperparameters':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**',''),'process.json') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'pwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
+		'verbose': lambda kwarg,wrappers,kwargs: kwargs.get(kwarg),
+		'data':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**',''),'**/data.hdf5'),
+	}
 
-	process(**kwargs)
+
+	args = argparser(arguments,wrappers)
+
+	process(*args,**args)
 
 	return
 

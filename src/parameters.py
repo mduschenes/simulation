@@ -18,7 +18,7 @@ from src.utils import tensorprod,trace,asscalar,broadcast_to,padding,expand_dims
 from src.utils import slice_slice,datatype,returnargs,is_array
 from src.utils import pi,itg,scalars,delim
 
-from src.system import Object
+from src.system import System,Object
 from src.io import load,dump,join,split
 
 
@@ -273,7 +273,7 @@ def setup(hyperparameters,cls=None):
 
 
 class Parameters(Object):
-	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
+	def __init__(self,data,shape,size=None,ndim=None,dims=None,system=None,**kwargs):
 		'''
 		Initialize data of shapes of parameters based on shape of data. Initializes attributes of
 			data (dict,array,Parameters): Dictionary of parameter hyperparameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
@@ -302,6 +302,7 @@ class Parameters(Object):
 				'constants':dict[str,iterable[dict[str,iterable]]] : dictionary of constant indices and values of each axis of each parameter layer {'layer':[{'slice':[indices_axis],'value':[values_axis]}]}
 			shape (iterable[int]): Shape of data
 			size (int,iterable[int]): Number of data
+			ndim (int): Number of dimensions of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			cls (dict): Class attributes
@@ -399,7 +400,7 @@ class Parameters(Object):
 		# The other ('take,put',<type>) indexes involve summing all shapes corresponding to the keys that are within the type group, 
 		# plus subtracting shapes corresponding with boundaries and constants
 
-		super().__init__(data,shape,size=size,dims=dims,system=system,**kwargs)
+		super().__init__(data,shape,size=size,ndim=ndim,dims=dims,system=system,**kwargs)
 
 		return
 
@@ -417,6 +418,7 @@ class Parameters(Object):
 
 		# Get number of dimensions of data
 		ndim = len(self.shape)
+		self.ndim = ndim
 
 		# Size of data
 		size = None
@@ -426,6 +428,11 @@ class Parameters(Object):
 		# Get datatype of data
 		dtype = datatype(self.dtype)
 		self.dtype = dtype
+
+		# Get parameters
+		for parameter in hyperparameters:
+			setattr(self,parameter,System(**hyperparameters[parameter]))
+
 
 		# Get seed
 		seed = [hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
@@ -480,6 +487,8 @@ class Parameters(Object):
 						)
 					except Exception as exception:
 						hyperparameters[parameter][prop][group] = jit(hyperparameters[parameter][prop][group])
+
+
 
 		# Get attributes
 		attributes = ['ndim','locality','size','indices','boundaries','constants','shape','slice','parameters','features','variables','values','constraints']

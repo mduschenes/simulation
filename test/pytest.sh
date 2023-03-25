@@ -5,6 +5,8 @@ options=("-s" "-rA" "--durations=0" "-W ignore::DeprecationWarning" "--show-capt
 # options=("-s" "-rA" "--durations=0" "-k dump")
 
 cmd=()
+# cmd+=("conda" "run" "-n" "jax")
+cmd+=("python" -m)
 cmd+=("pytest")
 cmd+=(${files[@]})
 cmd+=(${options[@]})

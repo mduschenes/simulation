@@ -6,19 +6,29 @@ mkl-devel
 
 numpy
 scipy
+scikit-learn
 scikit-learn-intelex
+h5py
+pandas
+pytables
+snappy
+
 matplotlib=3.5
 
-jax=0.3.14
-jaxlib=0.3.7
-equinox
-
-libgcc
-pandas
-h5py
 pyaml
 pytest
 dill
 jsonpickle
 natsort
 parallel
+
+jax=0.3.14
+jaxlib=0.3.7
+jaxtyping=0.2.8
+equinox
+
+notebook
+nbconvert<6
+nb_conda_kernels
+jupyter
+jupyter_contrib_nbextensions

@@ -1,14 +1,11 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools,inspect,traceback
+import os,sys,warnings,itertools,inspect,traceback,datetime
 from functools import partial
 from copy import deepcopy
 import subprocess
 from natsort import natsorted
-
-# Logging
-import logging
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -16,19 +13,16 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.system	 import Logger
-name = __name__
-path = os.getcwd()
-file = 'logging.conf'
-conf = os.path.join(path,file)
-file = None #'log.log'
-logger = Logger(name,conf,file=file)
-
 from src.utils import intersection,scalars
-from src.io import cd,mkdir,join,split,load,dump,exists,environ
+from src.io import cd,mkdir,join,split,load,dump,exists,environ,glob
 from src.iterables import setter
 from src.parallel import Parallelize,Pooler
 
+# Logging
+from src.logger	import Logger
+logger = Logger()
+info = 100
+debug = 0
 
 class Popen(object):
 	'''
@@ -161,7 +155,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 	return args,env
 
 
-def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,wrapper=None,pause=None,file=None,stdin=None,stdout=None,stderr=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,wrapper=None,pause=None,file=None,stdin=None,stdout=None,stderr=None,shell=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit call to command line of the form $> exe flags cmd args options
 	Args:
@@ -178,7 +172,8 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		file (str): Write command to file
 		stdin (file): Stdinput stream to command
 		stdout (file): Stdoutput to command
-		stderr (file): Stderro to command
+		stderr (file): Stderr to command
+		shell (bool) : Use shell subprocess
 		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
 		processes (int): Number of processes per command
 		device (str): Name of device to submit to
@@ -188,16 +183,16 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 		result (object): Return of commands
 	'''
 
-	def caller(args,inputs=None,outputs=None,errors=None,env=None,device=None,verbose=None):
+	def caller(args,inputs=None,outputs=None,errors=None,env=None,shell=None,device=None,verbose=None):
 
-		def run(args,stdin=None,stdout=None,stderr=None,env=None):
+		def run(args,stdin=None,stdout=None,stderr=None,env=None,shell=None):
 			env = {**environ(),**env} if env is not None else None
+			args = [' '.join(args)] if shell else args
 			try:
-				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env)
+				result = subprocess.Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 			except (OSError,FileNotFoundError) as exception:
-				result = Popen((),stdin=stdin,stdout=stdout,stderr=stderr,env=env)
+				result = Popen(args,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 				logger.log(verbose,exception)
-				logger.log(verbose,args)
 			return result
 
 
@@ -233,7 +228,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 			stdout = open(output,'w') if isinstance(output,str) else output if output is not None else stdout
 			stderr = open(error,'w') if isinstance(error,str) else error if error is not None else stderr
 
-			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr,env=env)
+			result = run(arg,stdin=stdin,stdout=stdout,stderr=stderr,env=env,shell=shell)
 
 			if stdin is not None:
 				stdin.close()
@@ -274,7 +269,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 
 		return stdout,stderr,returncode
 
-	def wrapper(stdout,stderr,returncode,wrapper=wrapper,env=None,device=None,verbose=None):
+	def wrapper(stdout,stderr,returncode,wrapper=wrapper,env=None,shell=None,device=None,verbose=None):
 		try:
 			result = wrapper(stdout,stderr,returncode)
 		except:
@@ -329,7 +324,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 	outputs = stdout
 	errors = stderr
 
-	msg = '%s : %s'%(path,cmd) if path is not None else cmd
+	msg = '%s : $> %s'%(path,cmd) if path is not None else '$> %s'%(cmd)
 	logger.log(verbose,msg)
 
 	if file:
@@ -339,7 +334,7 @@ def call(*args,path=None,kwargs=None,exe=None,flags=None,cmd=None,options=None,e
 
 	if execute > 0:
 		with cd(path):
-			result = wrapper(*caller(args,inputs=inputs,outputs=outputs,errors=errors,env=env,device=device,verbose=verbose),env=env,device=device,verbose=verbose)
+			result = wrapper(*caller(args,inputs=inputs,outputs=outputs,errors=errors,env=env,shell=shell,device=device,verbose=verbose),env=env,shell=shell,device=device,verbose=verbose)
 
 	return result
 
@@ -371,8 +366,9 @@ def cp(source,destination,default=None,env=None,process=None,processes=None,devi
 	options = []
 	env = [] if env is None else env
 	args = []
+	shell = True
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -396,11 +392,44 @@ def rm(*paths,env=None,process=None,processes=None,device=None,execute=False,ver
 	options = []
 	env = [] if env is None else env
 	args = []
+	shell = True
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
+
+def ls(path,*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	List path
+	Args:
+		path (str,iterable[str]): Paths to list
+		args (iterable[str]): Args for list
+		env (dict[str,str]): Environmental variables for args		
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	Returns:
+		stdout (std): Stdout of list
+	'''
+	if isinstance(path,str):
+		paths = [path]
+	else:
+		paths = [i for i in path]
+
+	exe = ['ls']
+	flags = [*args]
+	cmd = [*paths]
+	options = []
+	env = [] if env is None else env
+	args = []
+	shell = True
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	return stdout
 
 
 def echo(*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
@@ -414,6 +443,8 @@ def echo(*args,env=None,process=None,processes=None,device=None,execute=False,ve
 		device (str): Name of device to submit to
 		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
 		verbose (int,str,bool): Verbosity
+	Returns:
+		stdout (std): Stdout of echo
 	'''
 
 	exe = ['echo']
@@ -422,10 +453,11 @@ def echo(*args,env=None,process=None,processes=None,device=None,execute=False,ve
 	options = []
 	env = [] if env is None else env
 	args = []
+	shell = False
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
-	return
+	return stdout
 
 
 def run(file,path,*args,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
@@ -449,8 +481,9 @@ def run(file,path,*args,env=None,process=None,processes=None,device=None,execute
 	options = []
 	env = [] if env is None else env	
 	args = [*args]
+	shell = False
 
-	stdout = call(*args,path=path,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,path=path,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -476,8 +509,9 @@ def touch(path,*args,mod=None,env=None,process=None,processes=None,device=None,e
 	options = []
 	env = [] if env is None else env
 	args = []
+	shell = False
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,stdout=path,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,stdout=path,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	chmod(path,mod=mod,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
@@ -502,8 +536,9 @@ def cat(*paths,env=None,process=None,processes=None,device=None,execute=False,ve
 	options = []
 	env = [] if env is None else env
 	args = [*paths]
+	shell = True
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -527,8 +562,9 @@ def diff(*paths,env=None,process=None,processes=None,device=None,execute=False,v
 	options = []
 	env = [] if env is None else env
 	args = [*paths]
+	shell = True
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -558,8 +594,9 @@ def chmod(path,mod=None,env=None,process=None,processes=None,device=None,execute
 	options = []
 	env = [] if env is None else env
 	args = []
+	shell = True
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -586,10 +623,61 @@ def sleep(pause=None,env=None,process=None,processes=None,device=None,execute=Fa
 	options = []
 	env = [] if env is None else env	
 	args = []
+	shell = False
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
+
+
+def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Check if path is not empty
+	Args:
+		path (str,iterable[str]): Path of file
+		pattern (str): Pattern of path to return if not empty
+		env (dict[str,str]): Environmental variables for args
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']		
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	Returns:
+		stdout [iterable[str]]: Path that is not empty, modified with pattern
+	'''
+	
+	if path is None:
+		stdout = None
+		return stdout
+	elif any(i is None for i in path):
+		stdout = []
+		return stdout
+
+	if isinstance(path,str):
+		path = glob(path)
+
+	path = ' '.join(path)
+
+	if pattern is None:
+		pattern = r'\(\):\1'
+
+	args = [
+		r'bash',r'-c',r"for file in %s; do if [[ -s ${file} ]]; then echo $(echo ${file} | sed 's:%s:');fi;done;"%(path,pattern),
+	]
+
+	exe = []
+	flags = []
+	cmd = []
+	options = []
+	env = [] if env is None else env
+	args = [arg for arg in args]
+	shell = False
+
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+
+	stdout = list(natsorted([str(i) for i in stdout.split('\n')]))
+
+	return stdout
 
 
 def sed(path,patterns,default=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
@@ -644,8 +732,9 @@ def sed(path,patterns,default=None,env=None,process=None,processes=None,device=N
 		options = [path]
 		env = [] if env is None else env
 		args = []
+		shell = False
 
-		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+		stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return
 
@@ -704,8 +793,10 @@ def search(path,pattern,env=None,process=None,processes=None,device=None,execute
 	cmd = []
 	options = []
 	env = []
+	args = [arg for arg in args]
+	shell = False
 
-	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,wrapper=wrapper,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
+	stdout = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,wrapper=wrapper,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	return stdout
 
@@ -726,7 +817,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 	'''
 
 	def wrapper(kwargs,string='.*'):
-		_wrapper = lambda pattern,string=string: str(pattern) if pattern is not None else string
+		_wrapper = lambda pattern,string=string: str(pattern) if pattern is not None else ''
 		_defaults = {
 			'pattern':'.*',
 			'value':'.*',
@@ -742,7 +833,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 	if path is None or patterns is None:
 		return
 
-	patterns = {str(pattern): str(patterns[pattern]) for pattern in patterns}
+	patterns = {str(pattern): str(patterns[pattern]) if patterns[pattern] is not None else None for pattern in patterns}
 	kwargs = {} if not isinstance(kwargs,dict) else kwargs
 
 	if device in ['pc']:
@@ -772,29 +863,61 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 			value = join(value)
 		
 		elif pattern in ['dependency']:
-			value = '%s:%s'%(
-				':'.join(value.split(':')[:-1]) if isinstance(value,str) and value.count(':') > 0 else '',
-				','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]) if kwargs.get('dependencies') is not None else ''
-				)
+			value = kwargs.get('dependencies')
+			if value is None:
+				value is None
+			elif all(i is None for i in value):
+				value = None
+			else:
+				value = patterns[pattern]
+				value = '%s:%s'%(
+					':'.join(value.split(':')[:-1]) if isinstance(value,str) and value.count(':') > 0 else value if isinstance(value,str) else'',
+					','.join([str(i) for i in kwargs.get('dependencies',[]) if i is not None]) if (
+						(kwargs.get('dependencies') is not None)) else ''
+					)
 		
 		elif pattern in ['array']:
-			# pattern = int(value.split('-')[:].split(':')[0].split('%')[0])
+
+			resume = kwargs.get('resume') if kwargs.get('resume') is not None else None
 			count = kwargs.get('count') if kwargs.get('count') is not None else 1
 			step = kwargs.get('step') if kwargs.get('step') is not None else 1
 			min = kwargs.get('min') if kwargs.get('min') is not None else 0
 			max = kwargs.get('max') if kwargs.get('max') is not None else min + count - 1
 			simultaneous = kwargs.get('simultaneous') if kwargs.get('simultaneous') is not None else int(value.split('%')[-1]) if isinstance(value,str) and value.count('%') > 0 else 100
-			value = '%d-%d:%d%%%d'%(min,max,step,simultaneous)
+			
+			if resume is None:
+				iterations='%d-%d'%(min,max)
+				step = ':%d'%(step)
+			else:
+				iterations = list(set(resume))
+				iterations = [i for i in iterations if (i is not None) and ((i)>=min) and ((i)<=max)]
+				if len(iterations) > 1:
+					iterations = ','.join(['%d'%(i) for i in iterations])
+					step = ''										
+				elif len(iterations) == 1:
+					iterations = '%d'%(iterations[-1])
+					step = ''				
+				else:
+					iterations = None
+					step = None
+
+			if (iterations is not None) and (step is not None):
+				value = '%s%s%%%d'%(iterations,step,simultaneous)
+			else:
+				value = None
+
 		
 		elif pattern in ['output','error']:
 			value = join(split(value,directory_file=True) if value is not None else '%x.%A.%a',
 					ext=(split(value,ext=True) if value is not None else 
 						{'output':'stdout','error':'stderr'}.get(pattern,'log')),
 					root=None)
+			value = value.replace('.%a','') if ((kwargs['count'] is None)) else value
 		else:
 			value = value
 
 		patterns[pattern] = value
+
 
 	if process in ['serial']:
 		nulls = ['chdir','array']
@@ -809,24 +932,24 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 		nulls = ['chdir','array']
 		patterns.update({})
 
+	nulls.extend([pattern for pattern in patterns if patterns[pattern] is None])
+
 	patterns.update({
 		string(pattern=pattern,default=default): 
 		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='',default=default)
 		for pattern in list(patterns)
-		if pattern not in nulls
+		if (pattern not in nulls) and (patterns.get(pattern) is not None)
 		})
 
 	patterns.update({
 		string(pattern=pattern,default=default): 
 		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='#',default=default)
-		for pattern in list(nulls)
+		for pattern in [*list(nulls),*[pattern for pattern in patterns if patterns[pattern] is None]]
 		if search(path,string(pattern=pattern,default=default),execute=True,verbose=verbose) >= 0
 		})
 
-
 	for pattern in nulls:
 		patterns.pop(pattern,None)
-
 
 	sed(path,patterns,default=default,env=env,execute=execute,verbose=verbose)
 
@@ -877,15 +1000,16 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 
 def init(key,
 		keys=None,
-		jobs=None,args=None,paths=None,patterns=None,dependencies=None,
-		pwd=None,cwd=None,pool=None,pause=None,file=None,
+		name=None,jobs=None,args=None,paths=None,patterns=None,dependencies=None,
+		pwd=None,cwd=None,pool=None,resume=None,pause=None,file=None,
 		env=None,process=None,processes=None,device=None,execute=None,verbose=None):
 		'''
 		Process job commands as tasks to command line
 		Args:
 			task (dict[str,str]): Job task
-			key (str): Name of job
+			key (str): Name of task
 			keys (dict[str,dict[str]]): Jobs with task names and arguments
+			name (str): Name of job
 			jobs (str,dict[str,str]): Submission script, or {key:job}
 			args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
 			paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
@@ -894,6 +1018,7 @@ def init(key,
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+			resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file		
 			process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
@@ -942,21 +1067,93 @@ def init(key,
 
 		path = join(path,root=cwd[key])
 
-		exe = jobs[key]
-		flags = []
-		cmd = []
-		options = []
-		env = []
 
+		def updates(task):
+
+			attr = 'job'
+			value = task[attr]
+			job = join(split(value,directory=True),name,ext=split(value,ext=True))
+
+			attr = 'path'
+			subattr = {'serial':'path','parallel':'cwd','array':'cwd',None:'cwd'}.get(task['process'],'cwd')
+			value = task[subattr]
+			task[attr] = value
+
+			attr = 'source'
+			value = task[attr]		
+			value = join(task[attr],root=task['pwd'])
+			task[attr] = value
+
+			attr = 'destination'
+			value = task[attr]		
+			value = join(job,root=task['path'])
+			task[attr] = value			
+
+			attr = 'resume'
+			subattr = attr
+			value = task[subattr]
+			if value is None:
+				value = None
+			elif isinstance(value,(bool)) and value:
+				subattr = {'serial':'path','parallel':'cwd','array':'cwd',None:'cwd'}.get(task['process'],'cwd')
+				files = task['patterns'].get('error')
+				directory = task[subattr]
+				pattern = [
+					'*.*.*' if (task['count'] is not None) else '*.*',
+					r'.*\.[^.]*\.\([^.]*\)\.[^.]*$:\1' if (task['count'] is not None) else r'.*\.\([^.]*\)\.[^.]*$:\1']
+				files = join(
+					split(files,directory=True),
+					pattern[0],ext=split(files,ext=True),
+					root=directory if (not split(files,directory=True)) else None)
+				files = nonempty(
+					path=files,
+					pattern=pattern[1],
+					execute=True
+					)
+				if (task['count'] is None) and files:
+					value = None
+				else:
+					value = files
+			elif isinstance(value,(bool)) and not value:
+				value = []
+			else:
+				value = [i for i in value]
+				
+			try:
+				value = [int(i) for i in value if (task['count'] is None) or (int(i) < task['count'])] if value is not None else value
+			except:
+				value = []			
+
+			task[attr] = value
+
+			attr = 'boolean'
+			subattr = {'serial':'mod','parallel':'mod','array':'index',None:'mod'}.get(task['process'],'mod')				
+			value = (task[subattr] in [0,None]) and all([*({
+					'array': ((task['process'] not in ['array']) or (task['resume'] is None) or (task['resume'])),
+					'dependency': ((task['dependencies'] is None) or (task['patterns'].get('dependency') is None) or
+						(task['dependencies'] and all(i is not None for i in task['dependencies']))),
+				}.get(pattern,True) for pattern in task['patterns']),
+				])
+			task[attr] = value
+
+			boolean = ((task['resume'] is None) or (task['id'] in task['resume'])) and (task['boolean'] or (task['size']>1))
+
+			return boolean,job
 
 		task = {
 			'key':key,
 			'path':path,
+			'name':name,
 			'pwd':pwd[key],
 			'cwd':cwd[key],
 			'job':jobs[key],
+			'source':jobs[key],
+			'destination':jobs[key],
+			'resume':resume[key],
+			'boolean':True,
 			'cmd':None,
 			'env':None,
+			'process':process,
 			'pool':pool,
 			'size':size,
 			'index': index,
@@ -971,35 +1168,44 @@ def init(key,
 			'patterns':patterns[key],
 			'dependencies':dependencies[key],
 			}
+		boolean,job = updates(task)
+
+		exe = job
+		flags = []
+		cmd = []
+		options = []
+		env = []
 
 		cmd,env = command(args[key],task,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
-
-		configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 
 		task['cmd'] = cmd
 		task['env'] = env
 
-		msg = 'Job %s'%(key)
-		logger.log(verbose,msg)
-		print(msg)
+		if boolean:
+
+			configure(paths[key],pwd=pwd[key],cwd=path,patterns=patterns[key],env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
+
+			msg = 'Job : %s'%(key)
+			logger.log(info,msg)
 
 		return task
 
-def callback(value,key,values):
+def callback(task,key,keys):
 	'''
 	Callback for task processing
 	Args:
-		value (dict): Task arguments
+		task (dict): Task arguments
 		key (str): Task name
-		values (dict): Tasks
+		keys (dict): Tasks
 	'''
-	values[key] = value
+	keys[key] = task
 	return
 
-def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Submit job commands as tasks to command line
 	Args:
+		name (str): Name of job
 		jobs (str,dict[str,str]): Submission script, or {key:job}
 		args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
 		paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
@@ -1008,7 +1214,7 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
-		resume (bool): Resume jobs
+		resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 		pause (int,str): Time to sleep after call		
 		file (str): Write command to file		
 		env (dict[str,str]): Environmental variables for args		
@@ -1020,7 +1226,13 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	Returns:
 		results (iterable[str]): Return of commands for each task
 	'''
+
 	keys = [None]
+	tasks = []
+	results = []
+	
+	if not jobs:
+		return results
 
 	if isinstance(jobs,str):
 		jobs = {key:jobs for key in keys}
@@ -1055,31 +1267,26 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 	if isinstance(cwd,str):
 		cwd = {key:cwd for key in keys}
 
-	keys = intersection(keys,cwd,sort=None)
+	keys = intersection(keys,cwd)
+
+	if not isinstance(resume,dict):
+		resume = {key: resume for key in keys}
+
+	keys = intersection(keys,resume,sort=None)
 
 	execution = True if execute == -1 else execute
 	execute = False if execute == -1 else execute
-	
-	tasks = []
-	results = []
-	keys = {key:{} for key in keys}
 
-	if resume:
-		directories = set((cwd[key] for key in cwd))
-		for directory in directories:
-			if exists(join(directory,file)):
-				result = run(file,path=directory,process=None,processes=None,device=None,execute=execute,verbose=verbose)
-				results.append(result)
-				return results
+	keys = {key:{} for key in keys}
 
 	iterable = [key for key in keys]
 	kwds = dict(
 		keys=keys,
-		jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
-		pwd=pwd,cwd=cwd,pool=pool,pause=pause,file=file,
+		name=name,jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
+		pwd=pwd,cwd=cwd,pool=pool,resume=resume,pause=pause,file=file,
 		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose
 	)
-	callback_kwds = {'values':keys}
+	callback_kwds = {'keys':keys}
 
 	parallelize = Pooler(processes)
 
@@ -1089,51 +1296,17 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		kwds=kwds,callback_kwds=callback_kwds
 		)
 
-	if process in ['serial']:
-		def boolean(task,tasks):
-			value = task['mod'] in [0,None]
-			return value
-		def updates(task,tasks):
-			attr = 'path'
-			value = task['path']
-			task[attr] = value
-			return
-
-	elif process in ['parallel']:
-		def boolean(task,tasks):
-			value = task['mod'] in [0,None]
-			return value
-		def updates(task,tasks):
-			attr = 'path'
-			value = task['cwd']
-			task[attr] = value
-			return
-
-	elif process in ['array']:
-		def boolean(task,tasks):
-			value = task['index'] in [0,None]			
-			return value
-		def updates(task,tasks):
-			attr = 'path'			
-			value = task['cwd']
-			task[attr] = value
-			return
-
-	else:
-		def boolean(task,tasks):
-			value = task['mod'] in [0,None]			
-			return value
-		def updates(task,tasks):
-			attr = 'path'
-			value = task['cwd']
-			task[attr] = value
-			return
+	def booleans(key,keys):
+		boolean = keys[key] and keys[key]['boolean']
+		return boolean		
 
 	for key in keys:
 		task = keys[key]
-		if boolean(task,tasks):
-			updates(task,tasks)
+		if booleans(key,keys):
 			tasks.append(task)
+
+	msg = 'Jobs : %s'%(','.join([task['job'] for task in tasks]))
+	logger.log(info,msg)
 
 	for task in tasks:
 
@@ -1141,19 +1314,16 @@ def submit(jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',
 		cmd = task['cmd']
 		env = task['env']
 		path = task['path']
-		cwd = task['cwd']
-		pwd = task['pwd']
-		patterns = task['patterns']
+		patterns = task['patterns']		
+		source = task['source']
+		destination = task['destination']
 		kwargs = task
-
-		source = join(job,root=pwd)
-		destination = join(job,root=path)
 
 		cp(source,destination,default=job,execute=execution)
 
 		update(destination,patterns,kwargs,process=process,processes=processes,device=device,execute=execution,verbose=False)
 
-		result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,execute=execute,verbose=verbose)
+		result = call(*cmd,env=env,path=path,pause=pause,file=file,process=None,processes=None,device=None,shell=None,execute=execute,verbose=verbose)
 
 		results.append(result)
 
@@ -1172,7 +1342,7 @@ def launch(jobs={},wrapper=None):
 			pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
 			cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
 			pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
-			resume (bool): Resume jobs		
+			resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
 			pause (int,str): Time to sleep after call		
 			file (str): Write command to file			
 			env (dict[str,str]): Environmental variables for args		
@@ -1203,6 +1373,6 @@ def launch(jobs={},wrapper=None):
 
 		results[name] = result
 
-	results = [result for name in results for result in results[name]]
+	results = [result for name in results for result in results[name] if results[name]]
 
 	return results
