@@ -113,8 +113,8 @@ function bkill(){
 
 function bint(){
 	time=${1:-01:00:00}
-	mem=${2:-15G}
-	partition=${3:-defq}
+	mem=${2:-8G}
+	partition=${3:-debugq}
 	srun --nodes=1 --ntasks-per-node=1 --time=${time} --mem=${mem} --pty bash -i
 	return 0
 }
@@ -148,14 +148,15 @@ function catls(){
 module load anaconda3
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/pkgs/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+pkgs=/cm/shared/apps/anaconda3/anaconda3-2020.11
+__conda_setup="$('${pkgs}/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
 if [ $? -eq 0 ]; then
     eval "$__conda_setup"
 else
-    if [ -f "/pkgs/anaconda3/etc/profile.d/conda.sh" ]; then
-        . "/pkgs/anaconda3/etc/profile.d/conda.sh"
+    if [ -f "${pkgs}/etc/profile.d/conda.sh" ]; then
+        . "${pkgs}/etc/profile.d/conda.sh"
     else
-        export PATH="/pkgs/anaconda3/bin:$PATH"
+        export PATH="${pkgs}/bin:$PATH"
     fi
 fi
 unset __conda_setup

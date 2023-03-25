@@ -14,7 +14,7 @@ yes=${3}
 # pkgs=${HOME}/miniconda3
 # envs=${HOME}/miniconda/envs
 
-pkgs=/pkgs/anaconda3
+pkgs=/cm/shared/apps/anaconda3/anaconda3-2020.11
 envs=${HOME}/env
 
 channels=(intel conda-forge)
@@ -76,9 +76,9 @@ fi
 
 # Setup activation scripts
 source=conda
-destination=${envs}/env/etc/conda/activate.d
-
-cp ${scripts}/* ${destination}/
+destination=${envs}/${env}/etc/conda/activate.d
+mkdir -p ${destination}
+cp -r ${source}/* ${destination}/
 
 
 # Activate environment
@@ -152,7 +152,7 @@ rm ${requirements[@]}
 
 # Copy .bashrc
 # source=.bashrc
-# destination=${HOME}
+# destination=${HOME}/.bash_aliases
 
 # cp ${source} ${destination}
 

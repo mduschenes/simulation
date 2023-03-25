@@ -1,0 +1,8 @@
+envs_dirs:
+  - /home/mduschenes1/env
+channels:
+  - defaults
+  - intel
+  - conda-forge
+
+changeps1: False
