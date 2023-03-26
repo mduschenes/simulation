@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":982727,
-	"size":1,
+	"size":2,
 	"reset":982727,
 	"index":null
 	},
@@ -34,7 +34,7 @@
 		"state.scale":[1],
 
 
-		"optimize.iterations":[10],
+		"optimize.iterations":[30],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
@@ -55,7 +55,7 @@
 		"jobs.job.pool":[1],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
-		"jobs.postprocess.execute":[1],	
+		"jobs.postprocess.execute":[0],	
 		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
@@ -132,8 +132,8 @@
 		},
 	"track":{
 			"iteration":[],
-			"parameters":false,
-			"grad":false,
+			"parameters":[],
+			"grad":[],
 			"search":false,
 			"value":[],
 			"objective":[],
@@ -143,8 +143,8 @@
 			"iteration.max":[],
 			"iteration.min":[],
 			"grad.norm":[],"search.norm":[],			
-			"variables":false,"variables.relative":false,"variables.relative.mean":false,
-			"features":false,"features.relative":false,"features.relative.mean":false,			
+			"variables":[],"variables.relative":[],"variables.relative.mean":[],
+			"features":[],"features.relative":[],"features.relative.mean":[],			
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
 			"objective.ideal.state":true,"objective.diff.state":false,"objective.rel.state":false,
 			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,

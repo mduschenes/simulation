@@ -975,6 +975,9 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 	if paths is None:
 		return
 
+	if not execute:
+		return
+
 	if patterns is None:
 		patterns = {}
 
@@ -988,7 +991,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		destination = join(path,root=cwd)
 
 		# Update and Dump files
-		if isinstance(data,dict):
+		if isinstance(data,dict) and execute:
 			data,source,destination = load(source),deepcopy(data),destination
 			setter(source,data,func=False)
 			dump(source,destination)					

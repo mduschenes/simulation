@@ -1280,24 +1280,25 @@ class Callback(object):
 		status = (status) and (not stop)
 
 		updates = {
-			'iteration.max':True,
-			'iteration.min':True,
-			'parameters':lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
-			'grad':lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
-			'search':lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
-			'variables':lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
-			'features':lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
-			'parameters.norm':None,'grad.norm':None,'search.norm':None,
-			'variables.norm':None,'features.norm':None,
-			'variables.relative': lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
-			'features.relative': lambda i,attr,track: (empty(track[attr][-1].shape) if i<(len(track[attr])-1) else track[attr][i]),
-			'variables.relative.mean':False, 'features.relative.mean':False,
-			'objective.ideal.noise':False,'objective.diff.noise':False,'objective.rel.noise':False,
-			'objective.ideal.state':False,'objective.diff.state':False,'objective.rel.state':False,
-			'objective.ideal.operator':False,'objective.diff.operator':False,'objective.rel.operator':False,
-			'hessian':False,'fisher':False,
-			'hessian.eigenvalues':False,'fisher.eigenvalues':False,
-			'hessian.rank':False,'fisher.rank':False,
+			**{attr: lambda i,attr,track,default: (track[attr][-1]) for attr in ['iteration.max','iteration.min']},
+			**{attr: lambda i,attr,track,default: (empty(track[attr][-1].shape) if ((i>0) and i<(len(track[attr])-1)) else track[attr][i])
+				for attr in [
+					'parameters','grad','search',
+					'variables','features',
+					'variables.relative','features.relative',
+					'hessian','fisher',
+					'hessian.eigenvalues','fisher.eigenvalues']},
+			**{attr: None for attr in [
+				'parameters.norm','grad.norm','search.norm',
+				'variables.norm','features.norm'
+				]},
+			**{attr: lambda i,attr,track,default: (default if i<(len(track[attr])-1) else track[attr][i])
+				for attr in [
+				'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
+				'objective.ideal.state','objective.diff.state','objective.rel.state',
+				'objective.ideal.operator','objective.diff.operator','objective.rel.operator',
+				'hessian.rank','fisher.rank']
+			},
 			}
 
 		attrs = relsort(track,attributes)
@@ -1316,14 +1317,13 @@ class Callback(object):
 				index = -1 if (not stop) else -2
 				parameters = attributes['parameters'][index]
 			
-				if attr in ['parameters','grad','search','variables','features']:
-					default = empty(parameters.shape)
-				elif attr in ['variables.relative','features.relative']:
-					default = empty(parameters.shape)
-				elif attr in ['hessian','fisher']:
-					default = empty((*parameters.shape,)*2)
-				elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
-					default = empty((*parameters.shape,)*1)
+				if attr in [
+					'parameters','grad','search',
+					'variables','features',
+					'variables.relative','features.relative',
+					'hessian','fisher',
+					'hessian.eigenvalues','fisher.eigenvalues']:
+					default = empty(track[attr][-1].shape) if (len(track[attr])>0) else nan
 				else:
 					default = nan
 
@@ -1344,10 +1344,10 @@ class Callback(object):
 				elif attr in ['value']:
 					value = abs(attributes[attr][index])
 				
-				elif attr in ['parameters','grad','search'] and ((status) and (not done)):
+				elif attr in ['parameters','grad','search'] and (((status) and (not done)) and (not init)):
 					value = default
 
-				elif attr in ['parameters','grad','search'] and not ((status) and (not done)):
+				elif attr in ['parameters','grad','search'] and ((not ((status) and (not done))) or (init)):
 					value = attributes[attr][index]
 
 				elif attr in ['parameters.norm','grad.norm','search.norm']:
@@ -1357,12 +1357,12 @@ class Callback(object):
 
 				elif attr in [
 					'variables.norm','variables.relative','variables.relative.mean',
-					'features.norm','features.relative','features.relative.mean'] and ((status) and (not done)):
+					'features.norm','features.relative','features.relative.mean'] and ((status) and (not done) and (not init)):
 					value = default
 
 				elif attr in [
 					'variables','variables.norm','variables.relative','variables.relative.mean',
-					'features','features.norm','features.relative','features.relative.mean'] and not ((status) and (not done)):
+					'features','features.norm','features.relative','features.relative.mean'] and not ((status) and (not done) and (not init)):
 
 					layer = attr.split(delim)[0]
 					prop = 'index'
@@ -1456,14 +1456,13 @@ class Callback(object):
 					model.__functions__(**_restore)
 
 
-				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues'] and ((status) and (not done)):
-					if attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues']:
-						value = default
-
-				elif attr in ['hessian.rank','fisher.rank'] and ((status) and (not done)):
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues'] and ((status) and (not done) and (not init)):
 					value = default
 
-				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and not ((status) and (not done)):
+				elif attr in ['hessian.rank','fisher.rank'] and ((status) and (not done) and (not init)):
+					value = default
+
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and not ((status) and (not done) and (not init)):
 					
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(jit(lambda parameters: metric(model(parameters))))
@@ -1495,14 +1494,8 @@ class Callback(object):
 				track[attr][-1] = value
 
 				if updates.get(attr) is not None:
-					update = updates[attr]
-					if not callable(update):
-						if update:
-							update = lambda i,attr,track: (track[attr][-1])
-						else:
-							update = lambda i,attr,track: (default if i<(len(track[attr])-1) else track[attr][i])
 					for i in range(len(track[attr])):
-						track[attr][i] = update(i,attr,track)
+						track[attr][i] = updates[attr](i,attr,track,default)
 
 
 		logging = ((len(attributes['iteration']) == 1) or 

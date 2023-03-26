@@ -298,7 +298,7 @@ def find(dictionary,verbose=None):
 					# 'parse':[{'__path__':'*','M':"<600<"}]
 					# 'abs':['alpha']
 					},
-				'axis':{'row':[],'col':[],'plot':['plot','group','func'],'axis':[-1]},
+				'axis':{'row':[],'col':[],'plot':['group','func','label'],'transpose':[],'reshape':[]},
 				'settings':{},
 				'texify':{},
 				'valify': {},		
@@ -645,145 +645,6 @@ def analyse(data,analyses=None,verbose=None):
 
 
 
-def apply(keys,data,settings,hyperparameters,verbose=None):
-	'''
-	Apply functions based on keys to data
-	Args:
-		keys (dict): Keys of functions to apply
-		data (dataframe): dataframe
-		settings (dict): settings
-		hyperparameters (dict): hyperparameters
-		verbose (bool): Verbosity		
-	'''
-
-	if (keys is None) or (data is None) or (settings is None) or (hyperparameters is None):
-		return
-
-	if not hyperparameters['process']:
-		return
-
-	def mean(obj):
-		obj = np.array(list(obj))
-		obj = tuple(obj.mean(0))
-		return out
-	def sem(obj):
-		obj = np.array(list(obj))
-		obj = tuple(obj.std(0)/np.sqrt(obj.shape[0]))
-		return obj		
-
-	functions = {}			
-	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 
-				for attr in data}
-
-	for name in keys:
-
-		logger.log(info,"Processing : %r"%(name,))
-
-		if any((keys[name][axis] not in data) and (keys[name][axis] is not null) for axis in AXIS if axis in keys[name]):
-			key,value = name,None
-			setter(settings,{key:value},delimiter=delim,func=True)
-			continue
-
-		axes = [axis for axis in AXIS if axis in keys[name]]
-		other = OTHER
-		label = keys[name][other].get(other,{})
-		include = keys[name][other].get('include')
-		exclude = keys[name][other].get('exclude')
-		funcs = keys[name][other].get('func',{})
-		analyses = keys[name][other].get('analysis',{})
-
-		if not funcs:
-			funcs = {'stat':{'':'mean','err':'sem'}}
-
-		funcs = {function : {func: functions.get(funcs[function][func],funcs[function][func]) for func in funcs[function]} for function in funcs}
-
-		independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in data]
-		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in data]
-		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
-		boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
-		boolean = conditions(boolean,op='and')
-		boolean = slice(None) if ((boolean is True) or (boolean is False) or (boolean is None)) else boolean
-
-		by = [*labels,*independent]
-
-		if not by:
-			key,value = name,None
-			setter(settings,{key:value},delimiter=delim,func=True)
-			continue
-
-		groups = data[boolean].groupby(by=by,as_index=False)
-
-		groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
-		
-		agg = {
-			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] for attr in data},
-			**{attr : [(delim.join(((attr,function,func))),{'array':{'':mean,'err':sem}[func],'object':'first','dtype':funcs[function][func]}[dtypes[attr]]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
-		}
-
-		droplevel = dict(level=0,axis=1)
-		by = [*labels]
-		variables = [*independent,*dependent,*[subattr[0] for attr in dependent for subattr in agg[attr]]]
-
-		groups = groups.agg(agg).droplevel(**droplevel)
-
-		if by:
-			groups = groups.groupby(by=by,as_index=False)
-		else:
-			groups = GroupBy(groups,by=by)
-
-		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
-
-		for i,group in enumerate(groups.groups):
-
-			logger.log(info,"Group : %r %r"%(group,groups.get_group(group).shape))
-
-			for j,function in enumerate(funcs):
-
-				grouping = groups.get_group(group)
-				
-				key = (*name[:-2],i,j)
-				value = deepcopy(getter(settings,name,delimiter=delim))
-
-				source = [attr for attr in data if attr not in variables]
-				destination = other
-				value[destination] = {
-					**{attr: grouping[attr].to_list()[0] for attr in source},
-					**{'%s%s'%(axis,func) if keys[name][axis] in dependent else axis: 
-						{'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],'func':[j,function],'axis':keys[name][axis] if keys[name][axis] is not null else None} 
-						for axis in axes for func in funcs[function]},
-					**{other: {attr: {subattr: keys[name][other][attr][subattr] 
-						if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
-						if isinstance(keys[name][other][attr],dict) else keys[name][other][attr] for attr in keys[name][other]}},
-					}
-
-				for func in funcs[function]:	
-					for axis in axes:
-						
-						attr = keys[name][axis]
-
-						source = delim.join(((attr,function,func))) if attr in dependent else attr
-						destination = '%s%s'%(axis,func) if attr in dependent else axis
-
-						if grouping.shape[0]:
-							if source in grouping:
-								if dtypes[attr] in ['array']:
-									value[destination] = np.array(grouping[source].iloc[0])
-								else:
-									value[destination] = grouping[source].to_numpy()
-							elif source is null:
-								source = delim.join(((dependent[-1],function,func)))
-								value[destination] = np.arange(len(grouping[source].iloc[0]))
-							else:
-								value[destination] = grouping.reset_index().index.to_numpy()
-
-						else:
-							value[destination] = None
-
-
-				setter(settings,{key:value},delimiter=delim,func=True)
-
-	return
-
 def loader(data,settings,hyperparameters,verbose=None):
 	'''
 	Load data from settings and hyperparameters
@@ -917,6 +778,158 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 	return
 
+
+def apply(keys,data,settings,hyperparameters,verbose=None):
+	'''
+	Apply functions based on keys to data
+	Args:
+		keys (dict): Keys of functions to apply
+		data (dataframe): dataframe
+		settings (dict): settings
+		hyperparameters (dict): hyperparameters
+		verbose (bool): Verbosity		
+	'''
+
+	if (keys is None) or (data is None) or (settings is None) or (hyperparameters is None):
+		return
+
+	if not hyperparameters['process']:
+		return
+
+	def mean(obj):
+		obj = np.array(list(obj))
+		obj = tuple(obj.mean(0))
+		return obj
+	def sem(obj):
+		obj = np.array(list(obj))
+		obj = tuple(obj.std(0)/np.sqrt(obj.shape[0]))
+		return obj		
+
+	functions = {}			
+	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 
+				for attr in data}
+
+	for name in keys:
+
+		logger.log(info,"Processing : %r"%(name,))
+
+		if any((keys[name][axis] not in data) and (keys[name][axis] is not null) for axis in AXIS if axis in keys[name]):
+			key,value = name,None
+			setter(settings,{key:value},delimiter=delim,func=True)
+			continue
+
+		axes = [axis for axis in AXIS if axis in keys[name]]
+		other = OTHER
+		label = keys[name][other].get(other,{})
+		include = keys[name][other].get('include')
+		exclude = keys[name][other].get('exclude')
+		funcs = keys[name][other].get('func',{})
+		analyses = keys[name][other].get('analysis',{})
+
+		if not funcs:
+			funcs = {'stat':{'':'mean','err':'sem'}}
+
+		funcs = {function : {func: functions.get(funcs[function][func],funcs[function][func]) for func in funcs[function]} for function in funcs}
+
+		independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in data]
+		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in data]
+		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
+		boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
+		boolean = conditions(boolean,op='and')
+		boolean = slice(None) if ((boolean is True) or (boolean is False) or (boolean is None)) else boolean
+
+		by = [*labels,*independent]
+
+		if not by:
+			key,value = name,None
+			setter(settings,{key:value},delimiter=delim,func=True)
+			continue
+
+		groups = data[boolean].groupby(by=by,as_index=False)
+
+		shapes = {group[:-len(independent)] if isinstance(group,tuple) else group: groups.get_group(group).shape for group in groups.groups}
+
+		groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
+		
+		agg = {
+			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] for attr in data},
+			**{attr : [(delim.join(((attr,function,func))),{'array':{'':mean,'err':sem}[func],'object':'first','dtype':funcs[function][func]}[dtypes[attr]]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
+		}
+
+		droplevel = dict(level=0,axis=1)
+		by = [*labels]
+		variables = [*independent,*dependent,*[subattr[0] for attr in dependent for subattr in agg[attr]]]
+
+		groups = groups.agg(agg).droplevel(**droplevel)
+
+		if by:
+			groups = groups.groupby(by=by,as_index=False)
+		else:
+			groups = GroupBy(groups,by=by)
+
+		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
+
+		for i,group in enumerate(groups.groups):
+
+			logger.log(info,"Group : %r %r -> %r"%(group,shapes[group],groups.get_group(group).shape))
+			# find CWD -name metadata.json -exec sed -i '/\(\"both\"\|\"major\"\|\"minor\"\|\"x\"\|\"y\"\|\"z\"\)/! s/\"axis\":\ \(".*"\)/\"label\":\ \1/g' {} \;
+			# grep '"axis"' CWD/metadata.json
+
+			for j,function in enumerate(funcs):
+
+				grouping = groups.get_group(group)
+				
+				key = (*name[:-2],i,j)
+				value = deepcopy(getter(settings,name,delimiter=delim))
+
+				source = [attr for attr in data if attr not in variables]
+				destination = other
+				value[destination] = {
+					**{attr: grouping[attr].to_list()[0] for attr in source},
+					**{'%s%s'%(axis,func) if keys[name][axis] in dependent else axis: 
+						{
+						'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
+						'func':[j,function],
+						'label':keys[name][axis] if keys[name][axis] is not null else None
+						} 
+						for axis in axes for func in funcs[function]
+						},
+					**{other: {attr: {subattr: keys[name][other][attr][subattr] 
+						if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
+						if isinstance(keys[name][other][attr],dict) else keys[name][other][attr] 
+						for attr in keys[name][other]}
+						},
+					}
+
+				for func in funcs[function]:	
+					for axis in axes:
+						
+						attr = keys[name][axis]
+
+						source = delim.join(((attr,function,func))) if attr in dependent else attr
+						destination = '%s%s'%(axis,func) if attr in dependent else axis
+
+						if grouping.shape[0]:
+							if source in grouping:
+								if dtypes[attr] in ['array']:
+									value[destination] = np.array(grouping[source].iloc[0])
+								else:
+									value[destination] = grouping[source].to_numpy()
+							elif source is null:
+								source = delim.join(((dependent[-1],function,func)))
+								value[destination] = np.arange(len(grouping[source].iloc[0]))
+							else:
+								value[destination] = grouping.reset_index().index.to_numpy()
+
+						else:
+							value[destination] = None
+
+
+				setter(settings,{key:value},delimiter=delim,func=True)
+
+	return
+
+
 def plotter(settings,hyperparameters,verbose=None):
 	'''
 	Plot data based plot settings, process hyperparameters
@@ -940,10 +953,37 @@ def plotter(settings,hyperparameters,verbose=None):
 	valify = hyperparameters['valify']
 
 	# Set layout
+	shape = {}
+	for instance in settings:
+		for subinstance in settings[instance]:
+			for plots in PLOTS:
+				if plots not in settings[instance][subinstance].get('ax',{}):
+					continue
+				
+				if not shape.get(instance):
+					shape[instance] = {}
+				if not shape[instance].get(subinstance):
+					shape[instance][subinstance] = []
+
+				data = settings[instance][subinstance]['ax'][plots]
+				
+				subshape = []
+				if isinstance(data,dict):
+					subshape.append(1)
+				
+				while (data) and (not isinstance(data,dict)):
+					subshape.append(len(data))
+					data = data[0]
+
+				if subshape:
+					if shape[instance][subinstance]:
+						shape[instance][subinstance] = [max(shape[instance][subinstance][i],subshape[i]) 
+							for i in range(min(len(shape[instance][subinstance]),len(subshape)))]
+					else:
+						shape[instance][subinstance] = [subshape[i] for i in range(len(subshape))]
+
 	layout = {}
 	for instance in list(settings):
-
-		logger.log(info*verbose,"Setting : %s"%(instance))
 
 		for index,subinstance in enumerate(settings[instance]):
 		
@@ -977,10 +1017,20 @@ def plotter(settings,hyperparameters,verbose=None):
 
 			settings[instance][subinstance]['style']['layout'] = sublayout
 
+	for instance in settings:
+		for subinstance in settings[instance]:
+			print(instance,subinstance)
+			print(shape[instance][subinstance])
+			print(layout[instance])
+			print()
+
+	exit()
 
 	# Set data
 	for instance in list(settings):
-		
+	
+		logger.log(info*verbose,"Setting : %s"%(instance))
+
 		for subinstance in list(settings[instance]):
 
 			# variables
@@ -1257,10 +1307,10 @@ def plotter(settings,hyperparameters,verbose=None):
 							subslice = {
 								axis if (axis in data) else [subaxis 
 										for subaxis in ALL if ((subaxis in data[OTHER]) and 
-											(data[OTHER][subaxis]['axis']==axis))][0]: 
+											(data[OTHER][subaxis]['label']==axis))][0]: 
 								subslice[axis] for axis in subslice if (
 								(not isinstance(subslice[axis],str)) or
-								((axis in data) or any(data[OTHER][subaxis]['axis']==axis 
+								((axis in data) or any(data[OTHER][subaxis]['label']==axis 
 									for subaxis in data[OTHER] if (
 									(subaxis in ALL) and (subaxis in data[OTHER]))))
 								)
@@ -1335,7 +1385,7 @@ def plotter(settings,hyperparameters,verbose=None):
 								continue
 
 							if settings[instance][subinstance]['ax'].get(attr,{}).get('%slabel'%(axis)) is None:
-								value = data[OTHER][axis]['axis']
+								value = data[OTHER][axis]['label']
 							else:
 								value = settings[instance][subinstance]['ax'].get(attr,{}).get('%slabel'%(axis))
 
