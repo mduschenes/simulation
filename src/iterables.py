@@ -163,7 +163,19 @@ def clone(iterable,twin,copy=False):
 			twin[key] = copier(key,iterable[key],copy)
 	return
 
-
+def slicer(iterable,shape):
+	"""	
+	Slice nested iterable
+	Args:
+		iterable (iterable): Iterable to slice
+		shape (iterable[int]): Shape to slice
+	Returns:
+		iterable (iterable): Sliced iterable
+	"""
+	if not shape:
+		return iterable
+	else:
+		return [slicer(i,shape[1:]) for i in iterable[:shape[0]]]
 
 
 def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,func=None):

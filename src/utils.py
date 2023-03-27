@@ -5759,10 +5759,23 @@ def to_list(a,dtype=None,**kwargs):
 		return a.tolist()
 	except:
 		try:
-			return list(a)
+			return [to_list(i,dtype=dtype,**kwargs) for i in a]
 		except TypeError:
 			return a
 
+def to_tuple(a,dtype=None,**kwargs):
+	'''
+	Convert iterable to tuple
+	Args:
+		a (iterable): Iterable to convert to list
+		dtype (data_type): Datatype of number
+	Returns:
+		out (tuple): List representation of iterable
+	'''
+	try:
+		return tuple(to_tuple(i,dtype=dtype,**kwargs) for i in a)
+	except:
+		return a
 
 def to_number(a,dtype=None,**kwargs):
 	'''

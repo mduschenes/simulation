@@ -41,6 +41,7 @@ AXES = ['colorbar']
 PLOTS = ['plot','scatter','errorbar','histogram','fill_between','axvline','axhline','vlines','hlines','plot_surface']
 LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
 NULLLAYOUT = ['index','pad']
+DIM = 2
 AXISDIM = 3
 LAYOUTDIM = 2
 PATHS = {
@@ -570,15 +571,23 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'set_title':[OTHER],
 				'suptitle':['t'],
 				'annotate':['s'],
-				'legend':['handles','labels','title','set_title']},
-		}					
-		if ((attr in attrs) and (attr in share) and (kwarg in attrs[attr]) and (kwarg in share[attr])):
-			share = share[attr][kwarg]
+				'legend':['handles','labels','title','set_title']
+				},
+			}
+
+		if ((attr in attrs) and (kwarg not in attrs[attr])):
+			return value
+
+		if ((attr in attrs) and (attr in share) and (share.get(attr) is not None) and (isinstance(share.get(attr),(bool,str))) or ((kwarg in attrs.get(attr,[])) and (kwarg in share.get(attr,[])))):
+			if isinstance(share[attr],dict):
+				share = share[attr][kwarg]
+			else:
+				share = share[attr]
 			if ((share is None) or 
 				(not all([(k in kwargs and kwargs[k] is not None) 
 					for k in ['layout']]))):
 				return value
-			elif isinstance(share,bool) and (not share) and (share is not None):
+			if isinstance(share,bool) and (not share) and (share is not None):
 				if isinstance(value,list):
 					return []
 				else:
@@ -676,6 +685,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if kwargs.get('multiline') is True:
 					pass
 
+				if ('handles' in kwargs[attr]) and (not kwargs[attr]['handles']):
+					handles = []
+				if ('labels' in kwargs[attr]) and (not kwargs[attr]['labels']):
+					labels = []
 				kwargs[attr].update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map])))
 
 				_kwds.update({
@@ -690,7 +703,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 				call = (not (
-					((kwargs[attr]['handles'] == [] or kwargs[attr]['labels'] == []) or 
+					(( (not kwargs[attr]['handles']) or (not kwargs[attr]['labels'])) or 
 					(all([kwargs[attr][k] is None for k in kwargs[attr]]))) or
 					((min(len(kwargs[attr]['handles']),len(kwargs[attr]['labels']))>=1) and
 					(('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is False)))
@@ -1122,11 +1135,15 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			return
 
-		_wrapper = lambda kwarg,attr,kwargs,settings,index:{
-			**kwarg,
-			attr: {k: attr_share(attr_texify(kwarg[attr][k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg[attr]},
-			(attr,index):settings[attr],
-			}
+		def _wrapper(kwarg,attr,kwargs,settings,index):
+			kwarg[attr].update({'legend': {'handles':True,'labels':True}}.get(attr,{}) if attr in kwargs.get('share',{}) else {})
+			return {
+				**kwarg,
+				attr: {
+					**{k: attr_share(attr_texify(kwarg[attr][k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg[attr]},
+					},
+				(attr,index):settings[attr],
+				}
 
 		# Convert settings (dict,nested lists of dict) to list of dicts
 		if not isinstance(settings[attr],(dict,list)):
@@ -1154,8 +1171,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			'texify':settings[key]['style'].get('texify'),
 			'share':settings[key]['style'].get('share',{}).get(attr,{}),
 			'layout':_layout(settings[key]['style'].get('layout',{})),
-			}	
-		
+			}
+
 		matplotlib.rcParams.update(settings[key]['style'].get('rcParams',{}))
 
 		objs = lambda attr,key,fig,ax: {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in AXES}}[attr]

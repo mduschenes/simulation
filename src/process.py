@@ -9,6 +9,7 @@ import scipy.stats
 import scipy.special
 import pandas as pd
 from natsort import natsorted,realsorted
+from math import prod
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -17,17 +18,17 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import array,product,expand_dims,conditions
+from src.utils import array,expand_dims,conditions
 from src.utils import asndarray,asscalar
-from src.utils import to_key_value,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
+from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
-from src.iterables import brancher,getter,setter,flatten
+from src.iterables import brancher,getter,setter,flatten,slicer
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
 from src.postprocess import postprocess
-from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
+from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS,DIM,LAYOUTDIM
 
 # Logging
 from src.logger	import Logger
@@ -36,6 +37,7 @@ info = 100
 debug = 0
 
 DIM = 2
+LAYOUTDIM = 2
 
 class GroupBy(object):
 	def __init__(self,df,by=[]):
@@ -298,7 +300,8 @@ def find(dictionary,verbose=None):
 					# 'parse':[{'__path__':'*','M':"<600<"}]
 					# 'abs':['alpha']
 					},
-				'axis':{'row':[],'col':[],'plot':['group','func','label'],'transpose':[],'reshape':[]},
+				'axis':None,
+					#{'shape': {'row':[],'col':[],'axis':[]},'reshape':[],'transpose':[]},
 				'settings':{},
 				'texify':{},
 				'valify': {},		
@@ -665,9 +668,8 @@ def loader(data,settings,hyperparameters,verbose=None):
 	metadata = hyperparameters['path']['metadata']
 	
 	def func(key_iterable,key_elements,iterable,elements):
-
 		if (
-			(key_iterable == key_elements) and 
+			(key_iterable.split(delim)[0] == key_elements) and 
 			(key_iterable in PLOTS) and (key_elements in PLOTS) and 
 			isinstance(iterable.get(key_iterable),list) and	isinstance(elements.get(key_elements),list)
 			):
@@ -683,6 +685,11 @@ def loader(data,settings,hyperparameters,verbose=None):
 			default = None
 			separator = '='
 
+			shape = []
+			data = elements.get(key_elements)
+			while (data) and (not isinstance(data,dict)) and (len(shape) < 1):
+				shape.append(len(data))
+				data = data[0]
 
 			for index,data in enumerate(flatten(elements.get(key_elements))):
 				if index >= len(iterable.get(key_iterable)):
@@ -692,6 +699,7 @@ def loader(data,settings,hyperparameters,verbose=None):
 					if not datum:
 						continue
 					datum.update({attr: data[attr] for attr in data if attr not in [*ALL,OTHER]})
+					datum.update({attr: np.array(datum[attr]) for attr in datum if attr in [*ALL] and not isinstance(datum[attr],str)})
 
 					attr = OTHER
 
@@ -717,7 +725,11 @@ def loader(data,settings,hyperparameters,verbose=None):
 						else:
 							datum[attr][attr] = {prop: None for prop in data[attr]}
 
+			
+
 			out = iterable.get(key_iterable)
+			if (not isinstance(out,dict)):
+				out = slicer(out,shape)
 		else:
 			out = elements.get(key_elements)
 		return out	
@@ -798,11 +810,11 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 	def mean(obj):
 		obj = np.array(list(obj))
-		obj = tuple(obj.mean(0))
+		obj = to_tuple(obj.mean(0))
 		return obj
 	def sem(obj):
 		obj = np.array(list(obj))
-		obj = tuple(obj.std(0)/np.sqrt(obj.shape[0]))
+		obj = to_tuple(obj.std(0)/np.sqrt(obj.shape[0]))
 		return obj		
 
 	functions = {}			
@@ -833,7 +845,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in data]
 		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in data]
-		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
+		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((label[attr] is null) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
 		boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
 		boolean = conditions(boolean,op='and')
 		boolean = slice(None) if ((boolean is True) or (boolean is False) or (boolean is None)) else boolean
@@ -847,7 +859,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		groups = data[boolean].groupby(by=by,as_index=False)
 
-		shapes = {group[:-len(independent)] if isinstance(group,tuple) else group: groups.get_group(group).shape for group in groups.groups}
+		shapes = {group[:-len(independent)] if (independent) and isinstance(group,tuple) else group: groups.get_group(group).shape for group in groups.groups}
 
 		groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
 		
@@ -856,11 +868,13 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 			**{attr : [(delim.join(((attr,function,func))),{'array':{'':mean,'err':sem}[func],'object':'first','dtype':funcs[function][func]}[dtypes[attr]]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
 		}
 
+		dtype = {attr: data[attr].dtype for attr in agg if attr in label}
+
 		droplevel = dict(level=0,axis=1)
 		by = [*labels]
 		variables = [*independent,*dependent,*[subattr[0] for attr in dependent for subattr in agg[attr]]]
 
-		groups = groups.agg(agg).droplevel(**droplevel)
+		groups = groups.agg(agg).droplevel(**droplevel).astype(dtype)
 
 		if by:
 			groups = groups.groupby(by=by,as_index=False)
@@ -953,6 +967,42 @@ def plotter(settings,hyperparameters,verbose=None):
 	valify = hyperparameters['valify']
 
 	# Set layout
+	layout = {}
+	for instance in list(settings):
+
+		for index,subinstance in enumerate(settings[instance]):
+		
+			sublayout = settings[instance][subinstance]['style']['layout']
+			if not layout.get(instance):
+				layout[instance] = sublayout
+			layout[instance].update({
+				**layout[instance],
+				**{attr: max(sublayout[attr],layout[instance][attr]) 
+					if (sublayout[attr] is not None) and (layout[instance][attr] is not None) else None
+					for attr in ['nrows','ncols']},
+				**{attr: None for attr in ['index']},
+				})
+		for index,subinstance in enumerate(settings[instance]):
+			sublayout = deepcopy(layout[instance])
+
+			indx = sublayout['index']-1	if sublayout['index'] is not None else index
+			nrow = (indx - indx%sublayout['ncols'])//sublayout['ncols']
+			ncol = indx%sublayout['ncols']
+
+			sublayout.update({
+				**{'index':None},
+				**{
+					'top':1 - (nrow)/sublayout['nrows'] if sublayout['top'] and sublayout['nrows']>1 else None,
+					'bottom':1 - (nrow+1)/sublayout['nrows'] if sublayout['bottom'] and sublayout['nrows']>1 else None,
+					'right':(ncol+1)/sublayout['ncols'] if sublayout['right'] and sublayout['ncols']>1 else None,
+					'left':(ncol)/sublayout['ncols'] if sublayout['left'] and sublayout['ncols']>1 else None,											
+					}
+				})
+
+
+			settings[instance][subinstance]['style']['layout'] = sublayout
+
+	# set shape
 	shape = {}
 	for instance in settings:
 		for subinstance in settings[instance]:
@@ -982,6 +1032,136 @@ def plotter(settings,hyperparameters,verbose=None):
 					else:
 						shape[instance][subinstance] = [subshape[i] for i in range(len(subshape))]
 
+
+	# set axis
+	shape = {}
+	for instance in list(settings):
+		for subinstance in list(settings[instance]):
+			if shape.get(instance) is None:
+				shape[instance] = {}
+			if shape[instance].get(subinstance) is None:
+				shape[instance][subinstance] = [*[1 for i in range(LAYOUTDIM)],-1]
+
+			for plots in PLOTS:
+				if plots not in settings[instance][subinstance].get('ax',{}):
+					continue
+				for data in flatten(settings[instance][subinstance]['ax'][plots]):
+
+					sublayout = data[OTHER][OTHER].get('axis')
+					props = ['row','col','axis']
+
+					for axis in ALL:
+						if axis[0] not in AXIS[DIM-1:]:
+							continue
+						if axis not in data:
+							continue
+						if sublayout:
+
+							subshape = sublayout.get('shape')
+							reshape = sublayout.get('reshape')
+							transpose = sublayout.get('transpose')
+							index = sublayout.get('index')
+
+							if transpose:
+								transpose = [transpose] if isinstance(transpose,int) else transpose
+								transpose = [data[axis].ndim + i if i < 0 else i for i in transpose]
+								transpose = [*transpose,*[i for i in range(data[axis].ndim) if i not in transpose]]
+								data[axis] = data[axis].transpose(transpose)
+
+							if reshape:
+								reshape = [reshape] if isinstance(reshape,(int,str)) else reshape
+								reshape = [i if isinstance(i,int) else int(data[OTHER].get(i)) for i in reshape]
+								data[axis] = data[axis].reshape(reshape)
+							
+							if subshape:
+								subshape = {prop: [subshape[prop]] if isinstance(subshape.get(prop),int) else subshape.get(prop) if subshape.get(prop) is not None else [] for prop in props}
+								subshape = {prop: [data[axis].ndim + i if i < 0 else i for i in subshape[prop]] for prop in props}
+								subshape = {prop:{
+									**{prop: subshape[prop] for prop in props if subshape.get(prop)},
+									**{prop: [i for i in range(data[axis].ndim) if not any(i in subshape[prop] for prop in props if subshape.get(prop))] for prop in props if not subshape.get(prop)}
+									}[prop] for prop in props
+									}
+
+								transpose = [i for prop in props for i in subshape[prop]]
+								if transpose:
+									data[axis] = data[axis].transpose(transpose)
+								
+								reshape = [max(1,prod(data[axis].shape[i] for i in subshape[prop])) for prop in props]
+								if reshape:
+									data[axis] = data[axis].reshape(reshape)
+							else:
+								reshape = [*[1 for i in range(LAYOUTDIM)],data[axis].size]
+								if reshape:
+									data[axis] = data[axis].reshape(reshape)
+
+							if index:
+								if not isinstance(index,dict):
+									
+									index = dict(zip(props,index)) 
+
+								data[axis] = data[axis][index['row'],:,:] if index.get('row') else data[axis]
+								data[axis] = data[axis][:,index['col'],:] if index.get('col') else data[axis]
+								data[axis] = data[axis][:,:,index['axis']] if index.get('axis') else data[axis]
+						else:
+							reshape = [*[1 for i in range(LAYOUTDIM)],data[axis].size]
+							if reshape:
+								data[axis] = data[axis].reshape(reshape)
+
+						shape[instance][subinstance] = [
+							max(1,max(shape[instance][subinstance][i],data[axis].shape[i]))
+							for i in range(len(shape[instance][subinstance]))]
+
+					if sublayout:
+						for axis in AXIS[:DIM-1]:
+							if axis in data:
+								reshape = (1,1,data[AXIS[DIM-1]].shape[-1])
+								data[axis] = np.arange(reshape[-1]).reshape(reshape)
+
+
+
+	for instance in list(settings):
+		for subinstance in list(settings[instance]):
+			setting = settings[instance].pop(subinstance)
+			subshape = shape[instance].pop(subinstance)
+			for i in itertools.product(*(range(i) for i in subshape[:LAYOUTDIM])):
+				
+				key = delim.join([subinstance,*[str(j) for j in i]])
+				value = deepcopy(setting)
+
+				for plots in PLOTS:
+					if plots not in value.get('ax',{}):
+						continue
+					for data in flatten(value['ax'][plots]):
+						for axis in ALL:
+							
+							if axis not in data:
+								continue
+
+							if data[axis].ndim == 1:
+								continue
+
+							j = tuple([min(data[axis].shape[k]-1,i[k]) for k in range(min(data[axis].ndim,LAYOUTDIM))])
+							data[axis] = data[axis][j]
+
+
+				settings[instance][key] = value
+				shape[instance][key] = subshape
+
+	for instance in settings:
+		for subinstance in settings[instance]:
+			for plots in PLOTS:
+				if plots not in settings[instance][subinstance].get('ax',{}):
+					continue
+				for data in flatten(settings[instance][subinstance]['ax'][plots]):
+					for axis in ALL:
+						if axis not in data:
+							continue
+
+						data[axis] = data[axis].tolist()
+
+
+	# set layout
+	# TODO: Check edge cases of settings containing multiple nrows,ncols + additional reshaped axis induced rows and columns
 	layout = {}
 	for instance in list(settings):
 
@@ -992,9 +1172,9 @@ def plotter(settings,hyperparameters,verbose=None):
 				layout[instance] = sublayout
 			layout[instance].update({
 				**layout[instance],
-				**{attr: max(sublayout[attr],layout[instance][attr]) 
+				**{attr: max(sublayout[attr]*shape[instance][subinstance][i],layout[instance][attr])
 					if (sublayout[attr] is not None) and (layout[instance][attr] is not None) else None
-					for attr in ['nrows','ncols']},
+					for i,attr in enumerate(['nrows','ncols'])},
 				**{attr: None for attr in ['index']},
 				})
 		for index,subinstance in enumerate(settings[instance]):
@@ -1017,14 +1197,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 			settings[instance][subinstance]['style']['layout'] = sublayout
 
-	for instance in settings:
-		for subinstance in settings[instance]:
-			print(instance,subinstance)
-			print(shape[instance][subinstance])
-			print(layout[instance])
-			print()
 
-	exit()
 
 	# Set data
 	for instance in list(settings):
@@ -1045,10 +1218,8 @@ def plotter(settings,hyperparameters,verbose=None):
 						for data in flatten(settings[instance][subinstance]['ax'][plots])
 						if (data)
 						for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
-						if ((data) and (label not in [*ALL,OTHER]) and (
-							((data[OTHER][OTHER].get('exclude') is None) or (label not in data[OTHER][OTHER]['exclude'])) and 
-							((data[OTHER][OTHER].get('include') is None) or (label in data[OTHER][OTHER]['include'])))  
-						))))
+						if ((data) and (label not in [*ALL,OTHER]))
+						)))
 
 					values[plots] = {}
 					for label in labels:
@@ -1056,7 +1227,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						value['value'] = list(realsorted(set(
 								(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else None) if (
 									(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
-								tuple(data[OTHER][label]) if (
+								to_tuple(data[OTHER][label]) if (
 									(label in data[OTHER])) else 
 								data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (
 									(label in data[OTHER][OTHER][OTHER] and 
@@ -1070,7 +1241,7 @@ def plotter(settings,hyperparameters,verbose=None):
 								)))
 						value['label'] = any((
 								(label in data[OTHER][OTHER][OTHER]) and 
-								(label in data[OTHER]) and (data[OTHER][OTHER][OTHER][label] is None))
+								(label in data[OTHER]))# and (data[OTHER][OTHER][OTHER][label] is None))
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) 
 								if (data)
 								)
@@ -1227,31 +1398,31 @@ def plotter(settings,hyperparameters,verbose=None):
 
 			if data is not None:
 				value = [
-					[
-						*['%s'%(texify(label,texify=values[plots][label]['attr']['texify'])) 
+					{
+						**{(plots,label):'%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
+							for plots,label in natsorted(set((
+							(plots,label)
+							for plots in values 
+							for label in values[plots]
+							if (not ((values[plots][label]['label'])) and 
+								(values[plots][label]['legend']) and (len(values[plots][label]['value'])>1)))))},
+						**{(plots,label):'%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
+							for plots,label in natsorted(set((
+							(plots,label)
+							for plots in values 
+							for label in values[plots]
+							if (not ((values[plots][label]['label'])) and 
+								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))},
+						**{(plots,label):'%s'%(texify(label,texify=values[plots][label]['attr']['texify'])) 
 							for plots,label in natsorted(set((
 							(plots,label)
 							for plots in values 					
 							for label in values[plots] 
 							if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
-								not (values[plots][label]['other'])))))],
-						*['%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
-							for plots,label in natsorted(set((
-							(plots,label)
-							for plots in values 
-							for label in values[plots]
-							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))],
-						*['%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
-							for plots,label in natsorted(set((
-							(plots,label)
-							for plots in values 
-							for label in values[plots]
-							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['legend']) and (len(values[plots][label]['value'])>1)))))],
-						],
-					[
-						*['%s%s%s'%(
+								not (values[plots][label]['other'])))))},
+					},					
+					{
+						**{(plots,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
 							',~'.join([texify(scinotation(value,**values[plots][label]['attr']['scinotation']),texify=values[plots][label]['attr']['texify']) 
 									for value in values[plots][label]['value']]))
@@ -1260,8 +1431,8 @@ def plotter(settings,hyperparameters,verbose=None):
 							label 
 							for label in values[plots]
 							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['other']) and (len(values[plots][label]['value'])==1)))))],
-						*['%s%s%s'%(
+								(values[plots][label]['legend']) and (len(values[plots][label]['value'])==1)))))},
+						**{(plots,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
 							',~'.join([texify(scinotation(value,**values[plots][label]['attr']['scinotation']),texify=values[plots][label]['attr']['texify']) 
 									for value in values[plots][label]['value']]))
@@ -1270,8 +1441,8 @@ def plotter(settings,hyperparameters,verbose=None):
 							label 
 							for label in values[plots]
 							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['legend']) and (len(values[plots][label]['value'])==1)))))],
-						],
+								(values[plots][label]['other']) and (len(values[plots][label]['value'])==1)))))},
+					},
 					]
 
 
@@ -1280,7 +1451,7 @@ def plotter(settings,hyperparameters,verbose=None):
 				else:
 					separator = '~,~'
 
-				value = separator.join(['~,~'.join(i).replace('$','') for i in value if i])
+				value = separator.join(['~,~'.join([i[k] for k in realsorted(set(i))]).replace('$','') for i in value if i])
 
 				if isinstance(data.get(attr),str) and data[attr].count('%s'):
 					data[attr] = data[attr]%(value)
@@ -1348,6 +1519,43 @@ def plotter(settings,hyperparameters,verbose=None):
 							data[attr] = value
 
 
+			# plot kwargs
+			for plots in PLOTS:
+
+				if settings[instance][subinstance]['ax'].get(plots) is None:
+					continue
+
+				for index,data in enumerate(flatten(settings[instance][subinstance]['ax'][plots])):
+
+					if not data:
+						continue
+
+					attrs = ['alpha','zorder','linestyle']
+					for attr in attrs:
+						value = data.get(attr)
+						if value is None:
+							continue
+						elif isinstance(value,str):
+							if value.count('@'):
+								value = value.replace('@','')
+								if value in values.get(plots,{}) and value in data[OTHER]:
+									value = values.get(plots,{}).get(value,{}).get('value',[]).index(data[OTHER][value])/len(values.get(plots,{}).get(value,{}).get('value',[]))
+
+							else:
+								continue
+
+							if attr in ['alpha']:
+								value = 0.2 if value < 0.5 else 0.9 if not isinstance(value,str) else 1
+							elif attr in ['zorder']:
+								value = 1000 if value < 0.5 else 1 if not isinstance(value,str) else 1
+							elif attr in ['linestyle']:
+								value = '-' if value < 1/3 else '--' if value < 2/3 else '---' if not isinstance(value,str) else '--'
+							else:
+								value = data[attr]
+						else:
+							pass
+						data[attr] = value
+
 			# include labels
 			for plots in PLOTS:
 
@@ -1408,30 +1616,45 @@ def plotter(settings,hyperparameters,verbose=None):
 						continue
 
 					attr = OTHER
-					value = ',~'.join([
-						*[(texify(scinotation(data[OTHER][label],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
-							if values[plots][label]['label'] else texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
+					value = {
+						**{label: (texify(
+							scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
+							if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
+								data[OTHER][OTHER][OTHER][label].replace('$',''),
+								**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
+							)
+							for label in natsorted(set((
+							label 
+							for label in values[plots]
+							if (not ((values[plots][label]['label'])) and 
+								(values[plots][label]['legend']) and (len(values[plots][label]['value'])>1)))))},
+						**{label: (texify(
+							scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
+								if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
+								data[OTHER][OTHER][OTHER][label].replace('$',''),
+								**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
+							)
+							for label in natsorted(set((
+							label 
+							for label in values[plots]
+							if (not ((values[plots][label]['label'])) and 
+								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))},
+						**{label: (texify(scinotation(data[OTHER][label],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
+							if values[plots][label]['label'] else texify(
+								scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] 
+									if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
+									data[OTHER][OTHER][OTHER][label].replace('$',''),
+									**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
 							) 
 							for label in natsorted(set((
 							label 
 							for label in values[plots] 
 							if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
-								not (values[plots][label]['other'])))))],
-						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
-							)
-							for label in natsorted(set((
-							label 
-							for label in values[plots]
-							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))],
-						*[(texify(scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
-							)
-							for label in natsorted(set((
-							label 
-							for label in values[plots]
-							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['legend']) and (len(values[plots][label]['value'])>1)))))],
-						])
+								not (values[plots][label]['other'])))))},							
+						
+						}
+
+					value = ',~'.join([value[k] for k in realsorted(set(value))])
 
 					value = value if value else None
 
