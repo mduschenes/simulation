@@ -11,16 +11,16 @@
 	},
 "seed":{
 	"seed":982727,
-	"size":2,
+	"size":3,
 	"reset":982727,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 
-		"model.N":[3],		
+		"model.N":[4],		
 		"model.M":[50,100,500],
-		"model.tau":[1e2],
+		"model.tau":[3e2],
 		"model.T": [null],
 
 		"noise.parameters":[1e6],
@@ -31,17 +31,17 @@
 		"parameters.z.scale":[1e-2],
 		"parameters.zz.scale":[1e-4],
 		"noise.scale":[null],
-		"state.scale":[1],
+		"state.scale":[null],
 
 
-		"optimize.iterations":[30],
+		"optimize.iterations":[100],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"parameters.xy.method":["constrained"],
-		"system.architecture":["constrained"],
+		"parameters.xy.method":["unconstrained"],
+		"system.architecture":["unconstrained"],
 
 		"jobs.job.cwd":["test"],
 		"jobs.postprocess.cwd":["test"],		
@@ -55,7 +55,7 @@
 		"jobs.job.pool":[1],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
-		"jobs.postprocess.execute":[0],	
+		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],

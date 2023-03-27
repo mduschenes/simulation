@@ -1114,8 +1114,14 @@ def plotter(settings,hyperparameters,verbose=None):
 					if sublayout:
 						for axis in AXIS[:DIM-1]:
 							if axis in data:
-								reshape = (1,1,data[AXIS[DIM-1]].shape[-1])
-								data[axis] = np.arange(reshape[-1]).reshape(reshape)
+								reshape = [*[1 for i in range(LAYOUTDIM)],data[AXIS[DIM-1]].shape[-1]]
+								if reshape:
+									data[axis] = np.arange(reshape[-1]).reshape(reshape)
+
+								normalize = sublayout.get('normalize')
+								normalize = [normalize] if isinstance(normalize,str) else normalize if normalize else []
+								if axis in normalize:
+									data[axis] = data[axis]/data[axis].size
 
 
 
@@ -1205,6 +1211,8 @@ def plotter(settings,hyperparameters,verbose=None):
 		logger.log(info*verbose,"Setting : %s"%(instance))
 
 		for subinstance in list(settings[instance]):
+			
+			index = [int(i) for i in subinstance.split(delim)[1:]]
 
 			# variables
 			try:
@@ -1224,7 +1232,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					values[plots] = {}
 					for label in labels:
 						value = {}
-						value['value'] = list(realsorted(set(
+						value['all'] = list(realsorted(set(
 								(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else None) if (
 									(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
 								to_tuple(data[OTHER][label]) if (
@@ -1236,6 +1244,10 @@ def plotter(settings,hyperparameters,verbose=None):
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if (
 									((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
 								)))
+						value['value'] = value['all'] if (any(((not data[OTHER][OTHER].get('exclude')) or 
+																 (label not in data[OTHER][OTHER].get('exclude'))) 
+														for data in flatten(settings[instance][subinstance]['ax'][plots]) if
+														((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))) else []
 						value['sort'] = list(realsorted(set(data[OTHER][OTHER][OTHER][label]
 								for data in flatten(settings[instance][subinstance]['ax'][plots]) if ((data) and (label in data[OTHER][OTHER][OTHER]))
 								)))
@@ -1330,7 +1342,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					subattr = 'values'
 					if isinstance(label,str):
-						subvalue = list(realsorted(set([i for i in values[plots][label]['value']])))
+						subvalue = list(realsorted(set([i for i in values[plots][label]['all']])))
 
 						subvalue = subvalue if len(subvalue) >= 1 else None
 
@@ -1354,7 +1366,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							continue
 						else:
 							if isinstance(subvalue.get(subsubattr),int):
-								subsubvalue = list(realsorted(set([i for i in values[plots][label]['value']])))
+								subsubvalue = list(realsorted(set([i for i in values[plots][label]['all']])))
 								subsubvalue = subsubvalue[::len(subsubvalue)//subvalue.get(subsubattr)]
 							else:
 								subsubvalue = subvalue.get(subsubattr)
@@ -1370,7 +1382,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							continue
 						else:
 							if isinstance(subvalue.get(subsubattr),int):
-								subsubvalue = list(realsorted(set([i for i in values[plots][label]['value']])))
+								subsubvalue = list(realsorted(set([i for i in values[plots][label]['all']])))
 								subsubvalue = subsubvalue[::len(subsubvalue)//subvalue.get(subsubattr)]
 							elif subvalue.get(subsubattr) is not None:
 								subsubvalue = subvalue.get(subsubattr)
@@ -1525,7 +1537,7 @@ def plotter(settings,hyperparameters,verbose=None):
 				if settings[instance][subinstance]['ax'].get(plots) is None:
 					continue
 
-				for index,data in enumerate(flatten(settings[instance][subinstance]['ax'][plots])):
+				for data in flatten(settings[instance][subinstance]['ax'][plots]):
 
 					if not data:
 						continue
@@ -1539,15 +1551,14 @@ def plotter(settings,hyperparameters,verbose=None):
 							if value.count('@'):
 								value = value.replace('@','')
 								if value in values.get(plots,{}) and value in data[OTHER]:
-									value = values.get(plots,{}).get(value,{}).get('value',[]).index(data[OTHER][value])/len(values.get(plots,{}).get(value,{}).get('value',[]))
-
+									value = values.get(plots,{}).get(value,{}).get('all',[]).index(data[OTHER][value])/len(values.get(plots,{}).get(value,{}).get('all',[]))
 							else:
 								continue
 
 							if attr in ['alpha']:
-								value = 0.2 if value < 0.5 else 0.9 if not isinstance(value,str) else 1
+								value = value
 							elif attr in ['zorder']:
-								value = 1000 if value < 0.5 else 1 if not isinstance(value,str) else 1
+								value = 1000*value
 							elif attr in ['linestyle']:
 								value = '-' if value < 1/3 else '--' if value < 2/3 else '---' if not isinstance(value,str) else '--'
 							else:
@@ -1589,20 +1600,54 @@ def plotter(settings,hyperparameters,verbose=None):
 							if not data:
 								continue
 
-							if attr not in ['set_%slabel'%(axis)] or (not settings[instance][subinstance]['ax'].get(attr)):
+							kwarg = 'set_%slabel'%(axis)
+							if attr not in [kwarg] or (not settings[instance][subinstance]['ax'].get(attr)):
 								continue
 
-							if settings[instance][subinstance]['ax'].get(attr,{}).get('%slabel'%(axis)) is None:
+							kwarg = '%slabel'%(axis)
+							value = settings[instance][subinstance]['ax'].get(attr,{}).get(kwarg)
+
+							if value is None:
 								value = data[OTHER][axis]['label']
+							elif isinstance(value,list):
+								if not all(isinstance(i,list) for i in value):
+									value = [[i] for i in value]
+								value = value[index[0]%len(value)][index[1]%len(value[index[0]%len(value)])]
 							else:
-								value = settings[instance][subinstance]['ax'].get(attr,{}).get('%slabel'%(axis))
+								pass
+
+							if (value is not None) and value.count('%d'):
+								value = value%(tuple(i for i in index[:value.count('%d')]))
 
 							value = texify(value,texify=data[OTHER][OTHER].get('texify'))
 
-							settings[instance][subinstance]['ax'][attr]['%slabel'%(axis)] = value
+							settings[instance][subinstance]['ax'][attr][kwarg] = value
 
-							break
+			
+			# title
+			for attr in settings[instance][subinstance]['ax']:
 
+				for plots in PLOTS:
+
+					if settings[instance][subinstance]['ax'].get(plots) is None:
+						continue
+
+					for data in flatten(settings[instance][subinstance]['ax'][plots]):
+
+						kwarg = 'set_title'
+						if attr not in [kwarg] or (not settings[instance][subinstance]['ax'].get(attr)):
+							continue
+
+						kwarg = 'label'
+						value = settings[instance][subinstance]['ax'].get(attr,{}).get(kwarg)
+
+						if (value is not None) and value.count('%d'):
+							value%([i for i in index[:value.count('%d')]])
+
+
+						value = texify(value,texify=data[OTHER][OTHER].get('texify'))
+
+						settings[instance][subinstance]['ax'][attr][kwarg] = value
 
 			# label
 			for plots in PLOTS:

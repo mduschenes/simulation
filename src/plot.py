@@ -1135,15 +1135,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			return
 
-		def _wrapper(kwarg,attr,kwargs,settings,index):
-			kwarg[attr].update({'legend': {'handles':True,'labels':True}}.get(attr,{}) if attr in kwargs.get('share',{}) else {})
-			return {
+		def attr_kwargs(kwarg,attr,kwargs,settings,index):
+			updates = {}
+			if attr in kwargs.get('share',{}):
+				updates.update({'legend': {'handles':True,'labels':True}}.get(attr,{}))
+			kwarg[attr].update(updates)
+			kwargs = {
 				**kwarg,
 				attr: {
 					**{k: attr_share(attr_texify(kwarg[attr][k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg[attr]},
 					},
 				(attr,index):settings[attr],
 				}
+			return kwargs 
 
 		# Convert settings (dict,nested lists of dict) to list of dicts
 		if not isinstance(settings[attr],(dict,list)):
@@ -1162,16 +1166,18 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		for index,_kwarg in enumerate(_kwargs):
 			if not _kwarg:
 				continue
-			attrs(obj,attr,objs,index,shape,kwargs,_wrapper(_kwarg,attr,kwargs,settings,index))
+			attrs(obj,attr,objs,index,shape,kwargs,attr_kwargs(_kwarg,attr,kwargs,settings,index))
 
 		return
 
 	def obj_wrap(attr,key,fig,ax,settings):
-		attr_kwargs = lambda attr,key,settings:{
-			'texify':settings[key]['style'].get('texify'),
-			'share':settings[key]['style'].get('share',{}).get(attr,{}),
-			'layout':_layout(settings[key]['style'].get('layout',{})),
-			}
+		def attr_kwargs(attr,key,settings):
+			kwargs = {
+				'texify':settings[key]['style'].get('texify'),
+				'share':settings[key]['style'].get('share',{}).get(attr,{}),
+				'layout':_layout(settings[key]['style'].get('layout',{})),
+				}
+			return kwargs
 
 		matplotlib.rcParams.update(settings[key]['style'].get('rcParams',{}))
 
