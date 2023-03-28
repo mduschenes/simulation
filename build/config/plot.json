@@ -27,26 +27,7 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			},
-			{
-			"x":"iteration",
-			"y":"objective.ideal.state",
-			"label":{
-				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
-				},
-				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
-			},			
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}										
+			}									
 			],	
 		"fill_between":[
 			{
@@ -1204,13 +1185,12 @@
                         "label": {
                             "N": null,
                             "parameters.xy.method": null,
-                            "M": "<=100<=",
+                            "M": null,
                             "noise.scale": null,
                             "iteration":"$0$",
                             "$\\textrm{Iteration}$":"\\textrm{Initial},~\\textrm{Final}"
                         },
-                        "include":["M"],
-                        "exclude":["iteration"],
+                        "null":["iteration"],
                         "axis": {
                             "shape": {
                                 "row":[0],
@@ -1230,8 +1210,8 @@
                             "one": false
                         }
                     },
-                    "alpha": "@iteration@",
-                    "zorder": "@iteration@",
+                    "alpha": 0.5,
+                    "zorder": 1000,
                     "marker": "o",
                     "markersize": 12,
                     "linestyle": "--",
@@ -1249,12 +1229,10 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "M": "<=100<=",
                             "noise.scale": null,
                             "iteration":"@iteration.min@"
                         },
-                        "include":["M"],               
-                        "exclude":["iteration"],                                 
+                        "null":["iteration"],
                         "axis": {
                             "shape": {
                                 "row":[0],
@@ -1274,7 +1252,8 @@
                             "one": false
                         }
                     },
-                    "alpha": "@iteration@",
+                    "alpha": 0.9,
+                    "zorder": 0,
                     "marker": "o",
                     "markersize": 12,
                     "linestyle": "--",
@@ -1286,7 +1265,7 @@
                 }                
             ],
             "set_ylabel": {
-                "ylabel": [["$\\theta^{x}_{%d}$","$\\theta^{y}_{%d}$"]]
+                "ylabel": [["$\\theta^{x}_{%s}$","$\\theta^{y}_{%s}$"]]
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Index}$"
@@ -1416,10 +1395,7 @@
                             "noise.scale": null,
                             "iteration": "@iteration.min@"
                         },
-                        "include": [
-                            "M"
-                        ],
-                        "exclude": [
+                        "null": [
                             "iteration"
                         ],
                         "axis": {
@@ -1471,8 +1447,8 @@
             "set_ylabel": {
                 "ylabel": [
                     [
-                        "$\\theta^{x}_{%d}$",
-                        "$\\theta^{y}_{%d}$"
+                        "$\\theta^{x}_{%s}$",
+                        "$\\theta^{y}_{%s}$"
                     ]
                 ]
             },
@@ -1550,7 +1526,7 @@
                     0.05
                 ],
                 "ncol": 1,
-                "join": 2,
+                "join": null,
                 "set_label": true,
                 "set_zorder": {
                     "level": 100

@@ -12,6 +12,7 @@
 		"iteration.search.norm.M":1,
 		"iteration.alpha.M":1,
 		"iteration.beta.M":1,
+		"iteration.variables.M":0,
 		"None.variables.iteration.M": 1,		
 		"noise.scale.objective.M":1,
 		"noise.scale.objective.diff.M":0,

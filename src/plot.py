@@ -176,49 +176,30 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 	return default
 
 
-def flatten(iterable,types=(list,)):
-	'''	
-	Flatten nested iterable
+
+def search(iterable,index=[],shape=[],types=(list,),exceptions=()):
+	'''
+	Search of iterable, returning elements and indices of elements
 	Args:
 		iterable (iterable): Nested iterable
-		types (type,tuple[type]): Allowed types to be flattened
+		index (iterable[int]): Index of element
+		shape (iterable[int]): Shape of iterable
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched
 	Yields:
-		elements (object): Flattened iterable elements
+		index (iterable[int]): Index of item
+		shape (iterable[iterable[int]]): Shape of iterable at index
+		item (iterable): Iterable element
 	'''
-	if not isinstance(iterable,types):
-		yield iterable
+	kwargs = (dict,)
+	if isinstance(iterable,types) and not isinstance(iterable,exceptions):
+		for i,item in enumerate(iterable):
+			if isinstance(iterable,kwargs):
+				i,item = item,iterable[item]
+			yield from search(item,index=[*index,i],shape=[*shape,len(iterable)],types=types,exceptions=exceptions)
 	else:
-		for element in iterable:
-			if isinstance(iterable,dict):
-				element = iterable[element]
-			yield from flatten(element,types=types)
+		yield (index,shape,iterable)
 
-	return
-
-
-def to_position(index,shape):
-	'''
-	Convert linear index to dimensional position
-	Args:
-		index (int): Linear index
-		shape (iterable[int]): Dimensions of positions
-	Returns:
-		position (iterable[int]): Dimensional positions
-	'''
-	position = [index//(prod(shape[i+1:]))%(shape[i]) for i in range(len(shape))]
-	return position
-
-def to_index(position,shape):
-	'''
-	Convert dimensional position to linear index
-	Args:
-		position (iterable[int]): Dimensional positions
-		shape (iterable[int]): Dimensions of positions
-	Returns:
-		index (int): Linear index
-	'''	
-	index = sum((position[i]*(prod(shape[i+1:])) for i in range(len(shape))))
-	return index
 
 # Load from path
 def load(path):
@@ -1062,7 +1043,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							size = shape[-2] if len(shape)>2 else shape[0]							
 							N = size
 						
-						i = (to_position(index,shape)[-2 if len(shape)>2 else 0]+(N > size)+0.5)/(N+0) if N>1 else 0.5
+						i = (index[-2 if len(shape)>2 else 0]+(N > size)+0.5)/(N+0) if N>1 else 0.5
 
 						_kwargs_[field] = getattr(plt.cm,value)(i)
 				
@@ -1145,7 +1126,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				attr: {
 					**{k: attr_share(attr_texify(kwarg[attr][k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg[attr]},
 					},
-				(attr,index):settings[attr],
+				(attr,*index):settings[attr],
 				}
 			return kwargs 
 
@@ -1153,20 +1134,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if not isinstance(settings[attr],(dict,list)):
 			return
 
-		_kwargs = [{**settings,attr:setting} if setting else None for setting in flatten(settings[attr],types=(list,))]
+		finds = [(index,[1] if not shape else shape,{**settings,attr:setting} if setting else None) for index,shape,setting in search(settings[attr],types=(list,))]
 
-		shape = []
-		_setting = settings[attr]
-		if isinstance(_setting,dict):
-			shape.append(1)
-		while (_setting) and (not isinstance(_setting,dict)):
-			shape.append(len(_setting))
-			_setting = _setting[0]
-
-		for index,_kwarg in enumerate(_kwargs):
-			if not _kwarg:
+		for index,shape,kwarg in finds:
+			if not kwarg:
 				continue
-			attrs(obj,attr,objs,index,shape,kwargs,attr_kwargs(_kwarg,attr,kwargs,settings,index))
+			attrs(obj,attr,objs,index,shape,kwargs,attr_kwargs(kwarg,attr,kwargs,settings,index))
 
 		return
 

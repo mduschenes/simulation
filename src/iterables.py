@@ -163,20 +163,6 @@ def clone(iterable,twin,copy=False):
 			twin[key] = copier(key,iterable[key],copy)
 	return
 
-def slicer(iterable,shape):
-	"""	
-	Slice nested iterable
-	Args:
-		iterable (iterable): Iterable to slice
-		shape (iterable[int]): Shape to slice
-	Returns:
-		iterable (iterable): Sliced iterable
-	"""
-	if not shape:
-		return iterable
-	else:
-		return [slicer(i,shape[1:]) for i in iterable[:shape[0]]]
-
 
 def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,func=None):
 	'''
@@ -219,7 +205,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 	# Set nested elements
 	for element in elements:
 
- 		# Get iterable, and index of tuple of nested element key
+		# Get iterable, and index of tuple of nested element key
 		i = iterable
 		index = 0
 
@@ -483,66 +469,6 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 	return dictionaries
 
 
-
-def finder(iterable,key):
-	'''
-	Find and yield key in nested iterable
-
-	Args:
-		iterable (dict): dictionary to search
-		key (object): key to find in iterable dictionary
-
-	Yields:
-		value (object): Found values with key in iterable
-	'''	
-
-	# Recursively find and yield value associated with key in iterable		
-	try:
-		if not isinstance(iterable,dict):
-			raise
-		for k in iterable:
-			if k == key:
-				yield iterable[k]
-			for v in finder(iterable[k],key):
-				yield v
-	except:
-		pass
-	return
-				
-def replacer(iterable,key,replacement,append=False,copy=True,values=False):
-	'''
-	Find and replace key in-place in iterable with replacement key
-
-	Args:
-		iterable (dict): dictionary to be searched
-		key (object): key to be replaced with replacement key
-		replacement (object): dictionary key to replace key
-		append (bool): boolean on whether to append replacement key to dictionary with value associated with key
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
-		values (bool): boolean of whether to replace any values that equal key with replacement in the iterable 
-	'''	
-
-	# Recursively find where nested iterable keys exist, and replace or append in-place with replacement key
-
-	try:
-		keys = list(iterable)
-		for k in keys:
-			if k == key:
-				if append:
-					iterable[replacement] = copier(replacement,iterable.get(key),copy)
-					k = replacement
-				else:
-					iterable[replacement] = copier(replacement,iterable.pop(key),copy)
-					k = replacement  
-			if values and iterable[k] == key:
-				iterable[k] = copier(k,replacement,copy)
-			replacer(iterable[k],key,replacement,append=append,copy=copy,values=values)
-	except Exception as e:
-		pass
-	return
-
-
-
 def equalizer(a,b,types=(dict,),exceptions=None):
 	'''
 	Check if nested iterables have equal keys and values
@@ -578,77 +504,164 @@ def equalizer(a,b,types=(dict,),exceptions=None):
 	return
 
 
-def brancher(iterable,keys,types=(dict,list,tuple,),exceptions=(str,),include=True):
-    '''
-    Find and yield branch of set of keys at same depth in nested iterable
-    Args:
-        iterable (iterable): Iterable of nested keys
-        keys (iterable[object],object): Keys in iterable
-        types (tuple[type]): Allowed nested types of iterable values		
-        exceptions (tuple[type]): Exceptional iterable key types to exclude		
-        include (bool): Include leaf value
-    Yields:
-        value (tuple[object]): Found path of branch in iterable
-    '''	
-
-    if isinstance(keys,exceptions):
-    	keys = [keys]
-
-    assert isiterable(keys,exceptions=exceptions)
-
-    try:
-        if not isinstance(iterable,types):
-            raise
-
-        if all(key in iterable for key in keys):
-            if isinstance(iterable,dict):
-                values = (iterable[key] for key in keys)
-            else:
-                values = keys
-
-            yield (tuple(((key,value) if include else (key,) for key,value in zip(keys,values))),)
-                
-        for index,item in enumerate(iterable):
-            if isinstance(iterable,dict):
-                value = iterable[item]
-                index = item
-            else:
-                value = item
-                index = index
-            for values in brancher(value,keys,types=types,exceptions=exceptions,include=include):
-                yield (index,*values)
-
-    except:
-        pass
-
-    return
-
-
-def flatten(iterable,types=(list,)):
+def brancher(iterable,keys,types=(dict,list,tuple,),exceptions=()):
+	'''
+	Find and yield branch of set of keys at same depth in nested iterable
+	Args:
+		iterable (iterable): Iterable of nested keys
+		keys (iterable[object],object): Keys in iterable
+		types (tuple[type]): Allowed nested types of iterable values		
+		exceptions (tuple[type]): Exceptional iterable key types to exclude		
+	Yields:
+		value (tuple[object]): Found path of branch in iterable
 	'''	
-	Flatten nested iterable
+
+	kwargs = (dict,)
+
+	if isinstance(keys,scalars):
+		keys = [keys]
+
+	try:
+		if not isinstance(iterable,types):
+			raise
+
+		if all(key in iterable for key in keys):
+			if isinstance(iterable,kwargs):
+				values = (iterable[key] for key in keys)
+			else:
+				values = keys
+
+			yield (tuple(zip(keys,values)),)
+				
+		for index,item in enumerate(iterable):
+			if isinstance(iterable,kwargs):
+				value = iterable[item]
+				index = item
+			else:
+				value = item
+				index = index
+			for values in brancher(value,keys,types=types,exceptions=exceptions):
+				yield (index,*values)
+
+	except:
+		pass
+
+	return
+
+
+def search(iterable,index=[],shape=[],returns=None,types=(list,),exceptions=()):
+	'''
+	Search of iterable, returning elements and indices of elements
 	Args:
 		iterable (iterable): Nested iterable
-		types (type,tuple[type]): Allowed types to be flattened
+		index (iterable[int]): Index of element
+		shape (iterable[int]): Shape of iterable
+		returns (bool,str): Returns of search, 
+			None returns item, True returns index,shape,item, False returns None, 
+			allowed strings (.delimited) for combinations of ['index','shape','item']
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched
 	Yields:
-		elements (object): Flattened iterable elements
+		index (iterable[int]): Index of item
+		shape (iterable[iterable[int]]): Shape of iterable at index
+		item (iterable): Iterable element
 	'''
-	if not isinstance(iterable,types):
+	kwargs = (dict,)
+	if isinstance(iterable,types) and not isinstance(iterable,exceptions):
+		for i,item in enumerate(iterable):
+			if isinstance(iterable,kwargs):
+				i,item = item,iterable[item]
+			yield from search(item,index=[*index,i],shape=[*shape,len(iterable)],returns=returns,types=types,exceptions=exceptions)
+	else:
+		if returns is None:
+			yield iterable
+		elif returns is True:
+			yield (index,shape,iterable)
+		elif returns is False:
+			return None
+		elif returns in ['index']:
+			yield index
+		elif returns in ['shape']:
+			yield shape
+		elif returns in ['item']:
+			yield iterable
+		elif returns in ['index.shape']:
+			yield (index,shape)
+		elif returns in ['index.item']:
+			yield (index,iterable)
+		elif returns in ['shape.item']:
+			yield (shape,iterable)
+		elif returns in ['index.shape.item']:
+			yield (index,shape,iterable)
+
+def indexer(item,iterable,returns=None,types=(list,),exceptions=()):
+	'''
+	Search for index of item in iterable
+	Args:
+		item (object): Item to search
+		iterable (iterable): Nested iterable
+		returns (bool): Returns of search, 
+			None or False returns index,shape,item, True yields item
+		yielder (bool): Yield all indices of items, otherwise return first
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched
+	Returns:
+		index (iterable[int]): Index of item
+	'''	
+	for index,shape,element in search(iterable,types=types,exceptions=exceptions):
+		if element == item:
+			if returns:
+				yield index
+			else:
+				return index
+	return None
+
+def inserter(index,item,iterable,types=(list,),exceptions=()):
+	'''
+	Insert item at index into iterable
+	Args:
+		index (iterable): Index of item
+		item (object): Item to search
+		iterable (iterable): Nested iterable
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched
+	'''
+	kwargs = (dict,)
+
+	if isinstance(index,scalars):
+		index = [index]
+
+	for j,i in enumerate(index):
+		default = None if (j==(len(index)-1)) else {} if isinstance(index[j+1],str) else []
+		if isinstance(iterable,kwargs) and i not in iterable:
+			iterable[i] = default
+		elif not isinstance(iterable,kwargs) and isinstance(i,int) and (len(iterable) <= i):
+			iterable.extend((default for j in range(i+1-len(iterable))))
+		
+		if j < (len(index)-1):
+			iterable = iterable[i]
+		else:
+			iterable[i] = item
+
+	return
+
+
+def slicer(iterable,slices):
+	"""	
+	Slice nested iterable
+	Args:
+		iterable (iterable): Iterable to slice
+		slices (iterable[int],slice): Shape to slice
+	Yields:
+		iterable (iterable): Sliced iterable
+	"""
+	if not slices:
 		yield iterable
 	else:
-		# try:
-		for element in iterable:
-			if isinstance(iterable,dict):
-				element = iterable[element]
-			yield from flatten(element,types=types)
-		
-		# except:
-		# 	try:
-		# 		yield iterable
-		# 	except GeneratorExit as exception:
-		# 		raise exception
-				
-	return
+		if isinstance(slices[0],int):
+			slices[0] = slice(slices[0])
+		for item in iterable[slices[0]]:
+			yield from slicer(item,slices[1:])
 
 
 

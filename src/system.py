@@ -63,6 +63,7 @@ class System(Dictionary):
 	def __init__(self,*args,**kwargs):
 
 		defaults = {
+			'string':__name__,
 			'dtype':'float',
 			'format':'array',
 			'device':'cpu',
@@ -94,6 +95,12 @@ class System(Dictionary):
 		self.__clean__()
 
 		return
+
+	def __str__(self):
+		return str(self.string)
+
+	def __repr__(self):
+		return self.__str__()
 
 	def __clean__(self,cleanup=None):
 		'''
@@ -213,7 +220,7 @@ class Object(System):
 		self.N,self.D = self.dims[:2] if self.dims is not None else [1,self.n]
 
 		# Set data
-		if (not self.init) or (not self.shape) or (not self.scale):
+		if (not self.init) or (self.shape is None) or (self.scale is None):
 			self.data = None
 		
 		if is_array(self.data):

@@ -705,10 +705,10 @@ def sed(path,patterns,default=None,env=None,process=None,processes=None,device=N
 
 		cmd = None
 		
-		result = search(path,pattern,execute=True,verbose=verbose)
+		result = contains(path,pattern,execute=True,verbose=verbose)
 
 		if result == -1:
-			result = search(path,default,execute=True,verbose=verbose)
+			result = contains(path,default,execute=True,verbose=verbose)
 			if result == -1:					
 				cmd = None
 			else:
@@ -738,7 +738,7 @@ def sed(path,patterns,default=None,env=None,process=None,processes=None,device=N
 
 	return
 
-def search(path,pattern,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def contains(path,pattern,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Search for pattern in file
 	Args:
@@ -945,7 +945,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 		string(pattern=pattern,default=default): 
 		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='#',default=default)
 		for pattern in [*list(nulls),*[pattern for pattern in patterns if patterns[pattern] is None]]
-		if search(path,string(pattern=pattern,default=default),execute=True,verbose=verbose) >= 0
+		if contains(path,string(pattern=pattern,default=default),execute=True,verbose=verbose) >= 0
 		})
 
 	for pattern in nulls:

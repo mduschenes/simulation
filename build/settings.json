@@ -11,16 +11,16 @@
 	},
 "seed":{
 	"seed":982727,
-	"size":3,
+	"size":5,
 	"reset":982727,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 
-		"model.N":[4],		
-		"model.M":[50,100,500],
-		"model.tau":[3e2],
+		"model.N":[1],		
+		"model.M":[1],
+		"model.tau":[1e2],
 		"model.T": [null],
 
 		"noise.parameters":[1e6],
@@ -192,7 +192,7 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-1e-2,0,1e-3,-5e-2,2e-3],
-		"parameters":[-1,0,1,-1,1],
+		"parameters":[0,1,1,-1,-1,1],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["z"]],
@@ -233,16 +233,16 @@
 		}
 	},
 "label": {
-	"string":"random",
+	"string":"pauli",
 	"init":true,	
 	"category":"constant",
 	"method":null,
 	"parameters":null,
 	"shape":[-1,-1],
 	"size":null,
-	"scale":1,
+	"scale":0.5,
 	"initialization":"random",
-	"random":"haar",
+	"random":"X",
 	"seed":null,
 	"bounds":[-1,1]
 	},

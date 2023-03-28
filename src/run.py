@@ -109,7 +109,7 @@ def setup(settings):
 	# Find keys of seeds in hyperparameters
 	keys = ['seed']
 	exclude = ['seed','seed.seed','system.seed']
-	seedlings = brancher(hyperparameters,keys=keys,include=True)
+	seedlings = brancher(hyperparameters,keys)
 
 	seedlings = [delim.join(tuple((*seedling[:-1],seed[0]))) for seedling in seedlings for seed in seedling[-1] if seed[1] is None]
 	seedlings = [seedling for seedling in seedlings if seedling not in exclude]

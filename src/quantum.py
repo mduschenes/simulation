@@ -357,10 +357,10 @@ class Observable(System):
 		dims = None
 		cls = {attr: getattr(self,attr) for attr in self if isinstance(getattr(self,attr),scalars)}
 		check = lambda group,index,axis,site=self.site,string=self.string: (
+			any(g in group for s in string for i in site for g in [s,'_'.join([s,''.join(['%d'%j for j in i])])]) and (
 			(axis != 0) or 
-			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])]))
+			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])])))
 		system = self.system
-
 		parameters = Parameters(parameters,shape,dims=dims,cls=cls,check=check,initialize=initialize,system=system)
 
 		# Get coefficients
@@ -1344,10 +1344,10 @@ class Callback(object):
 				elif attr in ['value']:
 					value = abs(attributes[attr][index])
 				
-				elif attr in ['parameters','grad','search'] and (((status) and (not done)) and (not init)):
+				elif attr in ['parameters','grad','search'] and (False and ((status) and (not done) and (not init))):
 					value = default
 
-				elif attr in ['parameters','grad','search'] and ((not ((status) and (not done))) or (init)):
+				elif attr in ['parameters','grad','search'] and (True or (not ((status) and (not done) and (not init)))):
 					value = attributes[attr][index]
 
 				elif attr in ['parameters.norm','grad.norm','search.norm']:
@@ -1357,12 +1357,12 @@ class Callback(object):
 
 				elif attr in [
 					'variables.norm','variables.relative','variables.relative.mean',
-					'features.norm','features.relative','features.relative.mean'] and ((status) and (not done) and (not init)):
+					'features.norm','features.relative','features.relative.mean'] and (False and ((status) and (not done) and (not init))):
 					value = default
 
 				elif attr in [
 					'variables','variables.norm','variables.relative','variables.relative.mean',
-					'features','features.norm','features.relative','features.relative.mean'] and not ((status) and (not done) and (not init)):
+					'features','features.norm','features.relative','features.relative.mean'] and (True or (not ((status) and (not done) and (not init)))):
 
 					layer = attr.split(delim)[0]
 					prop = 'index'
@@ -1421,7 +1421,7 @@ class Callback(object):
 				elif attr in [
 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
-					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and not ((status) and (not done)):
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and (not ((status) and (not done))):
 
 					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg,{}).get(prop) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
 					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
@@ -1462,7 +1462,7 @@ class Callback(object):
 				elif attr in ['hessian.rank','fisher.rank'] and ((status) and (not done) and (not init)):
 					value = default
 
-				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and not ((status) and (not done) and (not init)):
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (not ((status) and (not done) and (not init))):
 					
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(jit(lambda parameters: metric(model(parameters))))
@@ -1521,10 +1521,11 @@ class Callback(object):
 					for attr in ['alpha','beta']
 					if attr in attributes and len(attributes[attr])>0
 					]),
-				# 'x\n%s'%(to_string(parameters.round(4))),
-				# 'U\n%s\nV\n%s'%(
-				# 	to_string((model(parameters)).round(4)),
-				# 	to_string((model.label()).round(4))),
+				'x\n%s'%(to_string(parameters.round(4))),
+				'theta\n%s'%(to_string(model.__layers__(parameters,'variables').flatten().round(4))),
+				'U\n%s\nV\n%s'%(
+					to_string((model(parameters)).round(4)),
+					to_string((model.label()).round(4))),
 				])
 
 

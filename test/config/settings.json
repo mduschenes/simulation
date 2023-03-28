@@ -56,7 +56,7 @@
 		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 		},
-	"N":3,
+	"N":4,
 	"D":2,
 	"d":1,
 	"L":1,

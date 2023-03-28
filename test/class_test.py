@@ -64,6 +64,8 @@ def test_parameters(path,tol):
 	parameters = model.parameters()
 	variables = model.__parameters__(parameters)
 
+	print(model.data)
+	print(model.parameters)
 
 	# Get parameters in shape (P*K,M)
 	M,N = model.M,model.N

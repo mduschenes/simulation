@@ -430,9 +430,18 @@ class Parameters(Object):
 		self.dtype = dtype
 
 		# Get parameters
-		for parameter in hyperparameters:
+		for parameter in list(hyperparameters):
+			if (self.check is not None) and not any(self.check(group,i,axis) 
+				for group in hyperparameters[parameter].get('group',[]) 
+				for axis in range(self.ndim) 
+				for i in range(self.shape[axis])): 
+				hyperparameters.pop(parameter)
+				continue
+
 			setattr(self,parameter,System(**hyperparameters[parameter]))
 
+		# Get string
+		self.string = ' '.join([str(getattr(self,parameter)) for parameter in hyperparameters])
 
 		# Get seed
 		seed = [hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
