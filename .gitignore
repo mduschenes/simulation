@@ -18,6 +18,7 @@
 **/ckpt
 **/build/test
 **/*test.json
+**/tmp.*
 tmp
 keep
 examples/**
