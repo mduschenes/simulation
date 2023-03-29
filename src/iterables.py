@@ -504,52 +504,7 @@ def equalizer(a,b,types=(dict,),exceptions=None):
 	return
 
 
-def brancher(iterable,keys,types=(dict,list,tuple,),exceptions=()):
-	'''
-	Find and yield branch of set of keys at same depth in nested iterable
-	Args:
-		iterable (iterable): Iterable of nested keys
-		keys (iterable[object],object): Keys in iterable
-		types (tuple[type]): Allowed nested types of iterable values		
-		exceptions (tuple[type]): Exceptional iterable key types to exclude		
-	Yields:
-		value (tuple[object]): Found path of branch in iterable
-	'''	
-
-	kwargs = (dict,)
-
-	if isinstance(keys,scalars):
-		keys = [keys]
-
-	try:
-		if not isinstance(iterable,types):
-			raise
-
-		if all(key in iterable for key in keys):
-			if isinstance(iterable,kwargs):
-				values = (iterable[key] for key in keys)
-			else:
-				values = keys
-
-			yield (tuple(zip(keys,values)),)
-				
-		for index,item in enumerate(iterable):
-			if isinstance(iterable,kwargs):
-				value = iterable[item]
-				index = item
-			else:
-				value = item
-				index = index
-			for values in brancher(value,keys,types=types,exceptions=exceptions):
-				yield (index,*values)
-
-	except:
-		pass
-
-	return
-
-
-def search(iterable,index=[],shape=[],returns=None,types=(list,),exceptions=()):
+def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exceptions=()):
 	'''
 	Search of iterable, returning elements and indices of elements
 	Args:
@@ -559,6 +514,7 @@ def search(iterable,index=[],shape=[],returns=None,types=(list,),exceptions=()):
 		returns (bool,str): Returns of search, 
 			None returns item, True returns index,shape,item, False returns None, 
 			allowed strings (.delimited) for combinations of ['index','shape','item']
+		find (iterable): 
 		types (type,tuple[type]): Allowed types to be searched
 		exceptions (type,tuple[type]): Disallowed types to be searched
 	Yields:
@@ -566,17 +522,11 @@ def search(iterable,index=[],shape=[],returns=None,types=(list,),exceptions=()):
 		shape (iterable[iterable[int]]): Shape of iterable at index
 		item (iterable): Iterable element
 	'''
-	kwargs = (dict,)
-	if isinstance(iterable,types) and not isinstance(iterable,exceptions):
-		for i,item in enumerate(iterable):
-			if isinstance(iterable,kwargs):
-				i,item = item,iterable[item]
-			yield from search(item,index=[*index,i],shape=[*shape,len(iterable)],returns=returns,types=types,exceptions=exceptions)
-	else:
+	def returner(index,shape,item,returns=None):
 		if returns is None:
-			yield iterable
+			yield item
 		elif returns is True:
-			yield (index,shape,iterable)
+			yield (index,shape,item)
 		elif returns is False:
 			return None
 		elif returns in ['index']:
@@ -584,15 +534,38 @@ def search(iterable,index=[],shape=[],returns=None,types=(list,),exceptions=()):
 		elif returns in ['shape']:
 			yield shape
 		elif returns in ['item']:
-			yield iterable
+			yield item
 		elif returns in ['index.shape']:
 			yield (index,shape)
 		elif returns in ['index.item']:
-			yield (index,iterable)
+			yield (index,item)
 		elif returns in ['shape.item']:
-			yield (shape,iterable)
+			yield (shape,item)
 		elif returns in ['index.shape.item']:
-			yield (index,shape,iterable)
+			yield (index,shape,item)
+
+	kwargs = (dict,)
+	items = [items] if (items is not None) and isinstance(items,scalars) else items
+	if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)) or (items and isinstance(iterable,types) and all(item in iterable for item in items)):
+		
+		if items:
+			if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)):
+				return
+			elif isinstance(iterable,kwargs):
+				item = [iterable[item] for item in items]
+			else:
+				item = items
+		else:
+			item = iterable
+
+		yield from returner(index,shape,item,returns=returns)
+
+
+	if (isinstance(iterable,types)) and (not isinstance(iterable,exceptions)):
+		for i,item in enumerate(iterable):
+			if isinstance(iterable,kwargs):
+				i,item = item,iterable[item]
+			yield from search(item,index=[*index,i],shape=[*shape,len(iterable)],returns=returns,items=items,types=types,exceptions=exceptions)
 
 def indexer(item,iterable,returns=None,types=(list,),exceptions=()):
 	'''
@@ -608,7 +581,7 @@ def indexer(item,iterable,returns=None,types=(list,),exceptions=()):
 	Returns:
 		index (iterable[int]): Index of item
 	'''	
-	for index,shape,element in search(iterable,types=types,exceptions=exceptions):
+	for index,shape,element in search(iterable,returns=True,types=types,exceptions=exceptions):
 		if element == item:
 			if returns:
 				yield index
@@ -616,7 +589,7 @@ def indexer(item,iterable,returns=None,types=(list,),exceptions=()):
 				return index
 	return None
 
-def inserter(index,item,iterable,types=(list,),exceptions=()):
+def insert(index,item,iterable,types=(list,),exceptions=()):
 	'''
 	Insert item at index into iterable
 	Args:

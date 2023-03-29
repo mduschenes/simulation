@@ -1249,7 +1249,7 @@ class Callback(object):
 		status = (
 			((len(attributes['value']) >= 1) and 
 			 (attributes['iteration'][-1] <= max(1,
-			 	hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) or
+				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) or
 			(
 			(abs(attributes['value'][-1]) > 
 				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
@@ -1271,11 +1271,12 @@ class Callback(object):
 			(hyperparameters['eps'].get('value.increase') is not None) and
 			((len(attributes['value']) > 1) and 
 			 (attributes['iteration'][-1] >= max(1,
-			 	hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and
+				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and
 			((attributes['value'][-1] > attributes['value'][-2]) and
 			(log10(attributes['value'][-1] - attributes['value'][-2]) > 
 			(log10(hyperparameters['eps']['value.increase']*attributes['value'][-1]))))
 			)
+
 
 		status = (status) and (not stop)
 
@@ -1303,6 +1304,7 @@ class Callback(object):
 
 		attrs = relsort(track,attributes)
 		size = min(len(track[attr]) for attr in track)
+		does = {**{attr: False for attr in attrs},**hyperparameters.get('do',{})}
 
 		if ((status) or done or init or other):
 			
@@ -1327,6 +1329,8 @@ class Callback(object):
 				else:
 					default = nan
 
+				do = (not ((status) and (not done) and (not init))) or does[attr]
+
 				value = default
 
 				if attr in attributes:
@@ -1344,10 +1348,10 @@ class Callback(object):
 				elif attr in ['value']:
 					value = abs(attributes[attr][index])
 				
-				elif attr in ['parameters','grad','search'] and (False and ((status) and (not done) and (not init))):
+				elif attr in ['parameters','grad','search'] and (not do):
 					value = default
 
-				elif attr in ['parameters','grad','search'] and (True or (not ((status) and (not done) and (not init)))):
+				elif attr in ['parameters','grad','search'] and (do):
 					value = attributes[attr][index]
 
 				elif attr in ['parameters.norm','grad.norm','search.norm']:
@@ -1357,12 +1361,12 @@ class Callback(object):
 
 				elif attr in [
 					'variables.norm','variables.relative','variables.relative.mean',
-					'features.norm','features.relative','features.relative.mean'] and (False and ((status) and (not done) and (not init))):
+					'features.norm','features.relative','features.relative.mean'] and (not do):
 					value = default
 
 				elif attr in [
 					'variables','variables.norm','variables.relative','variables.relative.mean',
-					'features','features.norm','features.relative','features.relative.mean'] and (True or (not ((status) and (not done) and (not init)))):
+					'features','features.norm','features.relative','features.relative.mean'] and (do):
 
 					layer = attr.split(delim)[0]
 					prop = 'index'
@@ -1456,13 +1460,10 @@ class Callback(object):
 					model.__functions__(**_restore)
 
 
-				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues'] and ((status) and (not done) and (not init)):
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (not do):
 					value = default
 
-				elif attr in ['hessian.rank','fisher.rank'] and ((status) and (not done) and (not init)):
-					value = default
-
-				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (not ((status) and (not done) and (not init))):
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (do):
 					
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(jit(lambda parameters: metric(model(parameters))))
@@ -1493,7 +1494,7 @@ class Callback(object):
 
 				track[attr][-1] = value
 
-				if updates.get(attr) is not None:
+				if (not does[attr]) and (updates.get(attr) is not None):
 					for i in range(len(track[attr])):
 						track[attr][i] = updates[attr](i,attr,track,default)
 

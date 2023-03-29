@@ -10,17 +10,18 @@
 	"dump":0
 	},
 "seed":{
-	"seed":982727,
-	"size":5,
-	"reset":982727,
+	"seed":1313,
+	"size":1,
+	"reset":6131,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 
-		"model.N":[1],		
-		"model.M":[1],
-		"model.tau":[1e2],
+		"model.N":[2],		
+		"model.M":[4],
+		"model.P":[1],
+		"model.tau":[100],
 		"model.T": [null],
 
 		"noise.parameters":[1e6],
@@ -34,17 +35,17 @@
 		"state.scale":[null],
 
 
-		"optimize.iterations":[100],
+		"optimize.iterations":[50],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"parameters.xy.method":["unconstrained"],
-		"system.architecture":["unconstrained"],
+		"parameters.xy.method":["constrained"],
+		"parameters.xy.kwargs.lambda":[[0]],
 
-		"jobs.job.cwd":["test"],
-		"jobs.postprocess.cwd":["test"],		
+		"jobs.job.cwd":["tmp.2"],
+		"jobs.postprocess.cwd":["tmp.2"],		
 	
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -71,7 +72,7 @@
 		"jobs.postprocess.patterns.cpus-per-task":[1]
 
 		},
-	"groups":[["parameters.xy.method","system.architecture"]],
+	"groups":null,
 	"index":null
 	},
 "model":{
@@ -125,6 +126,13 @@
 	"alpha":1e-4,"beta":1e-4,
 	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
 	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
+	"do":{
+		"parameters":true,
+		"grad":true,
+		"search":true,
+		"variables":true,"variables.relative":true,"variables.relative.mean":true,
+		"features":true,"features.relative":true,"features.relative.mean":true
+	},
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
@@ -149,8 +157,8 @@
 			"objective.ideal.state":true,"objective.diff.state":false,"objective.rel.state":false,
 			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
-			"hessian.rank":false,"fisher.rank":false,
+			"hessian.eigenvalues":true,"fisher.eigenvalues":true,
+			"hessian.rank":true,"fisher.rank":true,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
@@ -242,7 +250,7 @@
 	"size":null,
 	"scale":0.5,
 	"initialization":"random",
-	"random":"X",
+	"random":"X.Y",
 	"seed":null,
 	"bounds":[-1,1]
 	},

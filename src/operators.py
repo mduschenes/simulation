@@ -253,12 +253,16 @@ class Gate(Object):
 
 
 		# Assert data is unitary
+		tmp = eye(self.n,dtype=self.dtype)
+
+		assert (tmp.shape == data.shape), "Incorrect operator size %r != %r"%(tmp.shape,data.shape)
+
 		if data.ndim == 2:
 			normalization = einsum('...ij,...kj->...ik',data.conj(),data)
 		else:
 			normalization = einsum('...ij,...kj->...ik',data.conj(),data)
 
-		assert allclose(eye(self.n,dtype=self.dtype),normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
+		assert allclose(tmp,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
 
 		self.data = data
 		self.shape = self.data.shape if self.data is not None else None

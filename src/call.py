@@ -1277,9 +1277,6 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 
 	keys = intersection(keys,resume,sort=None)
 
-	execution = True if execute == -1 else execute
-	execute = False if execute == -1 else execute
-
 	keys = {key:{} for key in keys}
 
 	iterable = [key for key in keys]
@@ -1310,6 +1307,9 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 
 	msg = 'Jobs : %s'%(','.join([task['job'] for task in tasks]))
 	logger.log(info,msg)
+
+	execution = True if execute == -1 else execute
+	execute = False if execute == -1 else execute
 
 	for task in tasks:
 

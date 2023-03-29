@@ -134,6 +134,32 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 	return
 
 
+
+def to_position(index,shape):
+	'''
+	Convert linear index to dimensional position
+	Args:
+		index (int): Linear index
+		shape (iterable[int]): Dimensions of positions
+	Returns:
+		position (iterable[int]): Dimensional positions
+	'''
+	position = [index//(prod(shape[i+1:]))%(shape[i]) for i in range(len(shape))]
+	return position
+
+def to_index(position,shape):
+	'''
+	Convert dimensional position to linear index
+	Args:
+		position (iterable[int]): Dimensional positions
+		shape (iterable[int]): Dimensions of positions
+	Returns:
+		index (int): Linear index
+	'''	
+	index = sum((position[i]*(prod(shape[i+1:])) for i in range(len(shape))))
+	return index
+
+
 def getter(iterable,elements,default=None,delimiter=False,copy=False):
 	'''
 	Get nested value in iterable with nested elements keys
@@ -552,6 +578,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'set_title':[OTHER],
 				'suptitle':['t'],
 				'annotate':['s'],
+				'set_colorbar':['values','colors'],
 				'legend':['handles','labels','title','set_title']
 				},
 			}
@@ -892,7 +919,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				scale = kwargs[attr].get('set_scale',{}).get('value',
 						kwargs[attr].get('set_yscale',{}).get('value',
 						kwargs[attr].get('set_xscale',{}).get('value')))
-				size = shape[-2] if len(shape)>2 else shape[0]
+				size = prod(shape[-2:])
 				for axis in ['',*AXIS]:
 					field = 'set_%slabel'%(axis)
 					subfield = '%slabel'%(axis)
@@ -1024,7 +1051,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						if kwargs.get(subattr) is not None:
 							values = kwargs[subattr].get('values',None)
 							norm = kwargs[subattr].get('norm',None)
-							size = shape[-2] if len(shape)>2 else shape[0]
+							size = prod(shape[-2:])
 							values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
 							norm = ({**norm,**{
 									 'vmin':norm.get('vmin',min(values,default=0)),
@@ -1040,10 +1067,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							N = len(values)
 
 						else:
-							size = shape[-2] if len(shape)>2 else shape[0]							
+							size = prod(shape[-2:])
 							N = size
 						
-						i = (index[-2 if len(shape)>2 else 0]+(N > size)+0.5)/(N+0) if N>1 else 0.5
+						i = to_index(index[-2:],shape[-2:])/(N+0) if N>1 else 0.5
+						print(attr,field,i,index,shape)
 
 						_kwargs_[field] = getattr(plt.cm,value)(i)
 				

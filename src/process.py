@@ -23,7 +23,7 @@ from src.utils import asndarray,asscalar
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
-from src.iterables import brancher,getter,setter,search,inserter
+from src.iterables import getter,setter,search,insert
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
@@ -308,11 +308,11 @@ def find(dictionary,verbose=None):
 				'scinotation':{'scilimits':[0,2],'decimals':0,'one':False},
 	}
 
-	elements = [*axes,*other]
-	keys = brancher(dictionary,elements)
+	items = [*axes,*other]
+	types = (list,dict,)
+	keys = search(dictionary,items=items,returns=True,types=types)
 	
-	keys = {name[:-1]:dict(zip(elements,[value[-1] for value in name[-1]])) for name in keys}
-
+	keys = {tuple(index): dict(zip(items,item)) for index,shape,item in keys}
 
 	for name in keys:
 		for attr in keys[name]:
@@ -685,11 +685,11 @@ def loader(data,settings,hyperparameters,verbose=None):
 			default = None
 			separator = '='
 
-			for index,data in enumerate(search(elements.get(key_elements))):
-				if index >= len(iterable.get(key_iterable)):
+			for i,data in enumerate(search(elements.get(key_elements))):
+				if i >= len(iterable.get(key_iterable)):
 					# iterable[key_iterable].append(deepcopy(data))
 					continue
-				for subindex,datum in enumerate(search(iterable.get(key_iterable)[index])):
+				for subindex,datum in enumerate(search(iterable.get(key_iterable)[i])):
 					if not datum:
 						continue
 					datum.update({attr: data[attr] for attr in data if attr not in [*ALL,OTHER]})
@@ -918,7 +918,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 						if grouping.shape[0]:
 							if source in grouping:
 								if dtypes[attr] in ['array']:
-									value[destination] = np.array(grouping[source].iloc[0])
+									value[destination] = np.array([np.array(i) for i in grouping[source]])
 								else:
 									value[destination] = grouping[source].to_numpy()
 							elif source is null:
@@ -962,7 +962,7 @@ def plotter(settings,hyperparameters,verbose=None):
 	layout = {}
 	for instance in list(settings):
 
-		for index,subinstance in enumerate(settings[instance]):
+		for i,subinstance in enumerate(settings[instance]):
 		
 			sublayout = settings[instance][subinstance]['style']['layout']
 			if not layout.get(instance):
@@ -974,10 +974,10 @@ def plotter(settings,hyperparameters,verbose=None):
 					for attr in ['nrows','ncols']},
 				**{attr: None for attr in ['index']},
 				})
-		for index,subinstance in enumerate(settings[instance]):
+		for i,subinstance in enumerate(settings[instance]):
 			sublayout = deepcopy(layout[instance])
 
-			indx = sublayout['index']-1	if sublayout['index'] is not None else index
+			indx = sublayout['index']-1	if sublayout['index'] is not None else i
 			nrow = (indx - indx%sublayout['ncols'])//sublayout['ncols']
 			ncol = indx%sublayout['ncols']
 
@@ -994,69 +994,41 @@ def plotter(settings,hyperparameters,verbose=None):
 
 			settings[instance][subinstance]['style']['layout'] = sublayout
 
-	# set shape
-	shape = {}
-	for instance in settings:
-		for subinstance in settings[instance]:
-			for plots in PLOTS:
-				if plots not in settings[instance][subinstance].get('ax',{}):
-					continue
-				
-				if not shape.get(instance):
-					shape[instance] = {}
-				if not shape[instance].get(subinstance):
-					shape[instance][subinstance] = []
-
-				data = settings[instance][subinstance]['ax'][plots]
-				
-				subshape = []
-				if isinstance(data,dict):
-					subshape.append(1)
-				
-				while (data) and (not isinstance(data,dict)):
-					subshape.append(len(data))
-					data = data[0]
-
-				if subshape:
-					if shape[instance][subinstance]:
-						shape[instance][subinstance] = [max(shape[instance][subinstance][i],subshape[i]) 
-							for i in range(min(len(shape[instance][subinstance]),len(subshape)))]
-					else:
-						shape[instance][subinstance] = [subshape[i] for i in range(len(subshape))]
-
-
 	# set axis
-	shape = {}
+	grid = {}
 	props = ['row','col','label','axis']
-	props = ['row','col','axis']
+	# props = ['row','col','axis']
 	PLOTDIM = len(props) - LAYOUTDIM
 	for instance in list(settings):
 		for subinstance in list(settings[instance]):
-			if shape.get(instance) is None:
-				shape[instance] = {}
-			if shape[instance].get(subinstance) is None:
-				shape[instance][subinstance] = [*[1 for i in range(LAYOUTDIM)],*[1 for i in range(PLOTDIM-1)],-1]
+			if grid.get(instance) is None:
+				grid[instance] = {}
+			if grid[instance].get(subinstance) is None:
+				grid[instance][subinstance] = [*[1 for i in range(LAYOUTDIM)],*[1 for i in range(PLOTDIM-1)],-1]
 
 			for plots in PLOTS:
 				if plots not in settings[instance][subinstance].get('ax',{}):
 					continue
 				for data in search(settings[instance][subinstance]['ax'][plots]):
 
+					if not data.get(OTHER) or not data[OTHER].get(OTHER):
+						continue
+
 					sublayout = data[OTHER][OTHER].get('axis')
 
 					for axis in ALL:
 						if axis[0] not in AXIS[DIM-1:]:
 							continue
-						if axis not in data:
+						if axis not in data or isinstance(data[axis],scalars):
 							continue
+
 						if sublayout:
 
-							subshape = sublayout.get('shape')
+							shape = sublayout.get('shape')
 							slices = sublayout.get('slices')
-							reshape = sublayout.get('reshape')
 							transpose = sublayout.get('transpose')
-							index = sublayout.get('index')
-
+							reshape = sublayout.get('reshape')
+							indices = sublayout.get('indices')
 							if slices:
 								if not isinstance(slices,dict):
 									slices = dict(zip(props,slices)) 
@@ -1064,10 +1036,10 @@ def plotter(settings,hyperparameters,verbose=None):
 								for i,prop in enumerate(props):
 									if not slices[prop]:
 										continue
-									indices = [slice(None)]*len(props)
-									indices[i] = slices[prop]
-									indices = tuple(indices)
-									data[axis] = data[axis][indices]
+									indexes = [slice(None)]*len(props)
+									indexes[i] = slices[prop]
+									indexes = tuple(indexes)
+									data[axis] = data[axis][indexes]
 
 							if transpose:
 								transpose = [transpose] if isinstance(transpose,int) else transpose
@@ -1077,23 +1049,24 @@ def plotter(settings,hyperparameters,verbose=None):
 
 							if reshape:
 								reshape = [reshape] if isinstance(reshape,(int,str)) else reshape
-								reshape = [i if isinstance(i,int) else int(data[OTHER].get(i)) for i in reshape]
+								reshape = [i if isinstance(i,int) else int(data[OTHER].get(i)) if i is not None else data[axis].shape[reshape.index(i)] for i in reshape]
 								data[axis] = data[axis].reshape(reshape)
 							
-							if subshape:
-								subshape = {prop: [subshape[prop]] if isinstance(subshape.get(prop),int) else subshape.get(prop) if subshape.get(prop) is not None else [] for prop in props}
-								subshape = {prop: [data[axis].ndim + i if i < 0 else i for i in subshape[prop]] for prop in props}
-								subshape = {prop:{
-									**{prop: subshape[prop] for prop in props if subshape.get(prop)},
-									**{prop: [i for i in range(data[axis].ndim) if not any(i in subshape[prop] for prop in props if subshape.get(prop))] for prop in props if not subshape.get(prop)}
+							if shape:
+								shape = {prop: [shape[prop]] if isinstance(shape.get(prop),int) else shape.get(prop) if shape.get(prop) is not None else [] for prop in props}
+								shape = {prop: [data[axis].ndim + i if i < 0 else i for i in shape[prop]] for prop in props}
+								shape = {prop:{
+									**{prop: shape[prop] for prop in props if shape.get(prop)},
+									**{prop: [i for i in range(data[axis].ndim) if not any(i in shape[prop] for prop in props if shape.get(prop))] for prop in props if not shape.get(prop)}
 									}[prop] for prop in props
 									}
 
-								transpose = [i for prop in props for i in subshape[prop]]
+								transpose = [i for prop in props for i in shape[prop]]
+								reshape = [max(1,prod(data[axis].shape[i] for i in shape[prop])) for prop in props]
+
 								if transpose:
 									data[axis] = data[axis].transpose(transpose)
 								
-								reshape = [max(1,prod(data[axis].shape[i] for i in subshape[prop])) for prop in props]
 								if reshape:
 									data[axis] = data[axis].reshape(reshape)
 							else:
@@ -1101,17 +1074,17 @@ def plotter(settings,hyperparameters,verbose=None):
 								if reshape:
 									data[axis] = data[axis].reshape(reshape)
 						
-							if index:
-								if not isinstance(index,dict):
-									index = dict(zip(props,index)) 
+							if indices:
+								if not isinstance(indices,dict):
+									indices = dict(zip(props,indices)) 
 
 								for i,prop in enumerate(props):
-									if not index[prop]:
+									if not indices[prop]:
 										continue
-									indices = [slice(None)]*len(props)
-									indices[i] = index[prop]
-									indices = tuple(indices)
-									data[axis] = data[axis][indices]
+									indexes = [slice(None)]*len(props)
+									indexes[i] = indices[prop]
+									indexes = tuple(indexes)
+									data[axis] = data[axis][indexes]
 
 
 						else:
@@ -1119,9 +1092,9 @@ def plotter(settings,hyperparameters,verbose=None):
 							if reshape:
 								data[axis] = data[axis].reshape(reshape)
 
-						shape[instance][subinstance] = [
-							max(1,max(shape[instance][subinstance][i],data[axis].shape[i]))
-							for i in range(len(shape[instance][subinstance]))]
+						grid[instance][subinstance] = [
+							max(1,max(grid[instance][subinstance][i],data[axis].shape[i]))
+							for i in range(len(grid[instance][subinstance]))]
 
 					if sublayout:
 						for axis in AXIS[:DIM-1]:
@@ -1144,73 +1117,77 @@ def plotter(settings,hyperparameters,verbose=None):
 	for instance in list(settings):
 		for subinstance in list(settings[instance]):
 			setting = settings[instance].pop(subinstance)
-			subshape = shape[instance].pop(subinstance)
-			for index in itertools.product(*(range(i) for i in subshape[:LAYOUTDIM])):
+			subgrid = grid[instance].pop(subinstance)
+			print(instance,subinstance,subgrid)
+			for position in itertools.product(*(range(i) for i in subgrid[:LAYOUTDIM])):
 				
-				key = delim.join([subinstance,*[str(i) for i in index]])
+				key = delim.join([subinstance,*[str(i) for i in position]])
 				value = deepcopy(setting)
 
-				for plots in PLOTS:
-					
-					if plots not in value.get('ax',{}):
-						continue
-					
-					for j,(i,s,data) in enumerate(search(value['ax'][plots],returns=True)):
+				for label in itertools.product(*(range(i) for i in subgrid[LAYOUTDIM:LAYOUTDIM+PLOTDIM-1])):
+
+					for plots in PLOTS:
 						
-						# data = deepcopy(data)
-
-						for axis in ALL:
+						if plots not in setting.get('ax',{}):
+							continue
+						
+						for index,shape,data in search(deepcopy(setting['ax'][plots]),returns=True):
 							
-							if axis not in data:
-								continue
+							for axis in ALL:
+								
+								if axis not in data or isinstance(data[axis],scalars):
+									continue
 
-							print(instance,data[axis].shape)
+								if data[axis].ndim == 1:
+									continue
 
-							if data[axis].ndim == 1:
-								continue
+								slices = tuple([
+									*[min(data[axis].shape[i]-1,position[i]) for i in range(min(data[axis].ndim,LAYOUTDIM))],
+									*[min(data[axis].shape[i]-1,label[i-LAYOUTDIM]) for i in range(LAYOUTDIM,min(data[axis].ndim,LAYOUTDIM+PLOTDIM-1))],
+									])
 
-							# TODO: Update ax.plot iterable with data slice for 'plot'
-							slices = tuple([min(data[axis].shape[i]-1,index[i]) for i in range(min(data[axis].ndim,LAYOUTDIM))])
+								data[axis] = data[axis][slices]
+								data[axis] = data[axis].tolist()
 
-							data[axis] = data[axis][slices]
-							data[axis] = data[axis].tolist()
+							index = [*index[:-len(label)],*label]
+							item = data
+							iterable = value['ax'][plots]
+							insert(index,item,iterable)
 
-							# k = [*i[:-1],s[-1] if i[-1] else i[-1]]
-							# inserter(data,k,value['ax'][plots])
 
-
-				key = delim.join([subinstance,*[str(i) for i in index]])
+				key = delim.join([subinstance,*[str(i) for i in position]])
+				value = deepcopy(value)
 				setter(settings[instance],{key:value},delimiter=None,func=True)
 
-				key = delim.join([subinstance,*[str(i) for i in index]])
-				shape[instance][key] = subshape
+				key = delim.join([subinstance,*[str(i) for i in position]])
+				grid[instance][key] = subgrid
 
 	# set layout
-	# TODO: Check edge cases of settings containing multiple nrows,ncols + additional reshaped axis induced rows and columns
+	# TODO: Check cases of settings containing multiple nrows,ncols + additional reshaped axis induced rows and columns
 	layout = {}
 	for instance in list(settings):
 
-		for index,subinstance in enumerate(settings[instance]):
+		for i,subinstance in enumerate(settings[instance]):
 		
 			sublayout = settings[instance][subinstance]['style']['layout']
 			if not layout.get(instance):
 				layout[instance] = sublayout
 			layout[instance].update({
 				**layout[instance],
-				**{attr: max(sublayout[attr]*shape[instance][subinstance][i],layout[instance][attr])
+				**{attr: max(sublayout[attr]*grid[instance][subinstance][i],layout[instance][attr])
 					if (sublayout[attr] is not None) and (layout[instance][attr] is not None) else None
 					for i,attr in enumerate(['nrows','ncols'])},
 				**{attr: None for attr in ['index']},
 				})
-		for index,subinstance in enumerate(settings[instance]):
+		for i,subinstance in enumerate(settings[instance]):
 			sublayout = deepcopy(layout[instance])
 
-			indx = sublayout['index']-1	if sublayout['index'] is not None else index
+			indx = sublayout['index']-1	if sublayout['index'] is not None else i
 			nrow = (indx - indx%sublayout['ncols'])//sublayout['ncols']
 			ncol = indx%sublayout['ncols']
 
 			sublayout.update({
-				**{'index':index+1},
+				**{'index':indx+1},
 				**{
 					'top':1 - (nrow)/sublayout['nrows'] if sublayout['top'] and sublayout['nrows']>1 else None,
 					'bottom':1 - (nrow+1)/sublayout['nrows'] if sublayout['bottom'] and sublayout['nrows']>1 else None,
@@ -1231,8 +1208,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 		for subinstance in list(settings[instance]):
 			
-			index = [int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
-			indexes = [max(int(subinstance.split(delim)[-LAYOUTDIM+i]) for subinstance in settings[instance]) for i in range(LAYOUTDIM)]
+			position = [int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
 
 			# variables
 			try:
@@ -1355,10 +1331,13 @@ def plotter(settings,hyperparameters,verbose=None):
 
 				for plots in values:
 
-					if label not in values[plots]:
+					if (label is not None) and (label not in values[plots]):
 						continue
 					else:
 						value.append(deepcopy(data))
+
+					tex = values[plots][label]['attr']['texify'] if label in values[plots] else None
+
 
 					subattr = 'values'
 					if isinstance(label,str):
@@ -1366,7 +1345,10 @@ def plotter(settings,hyperparameters,verbose=None):
 
 						subvalue = subvalue if len(subvalue) >= 1 else None
 
-						value[-1][subattr] = subvalue
+					else:
+						subvalue = list(range(grid[instance][subinstance][-2]))
+
+					value[-1][subattr] = subvalue
 
 					subattr = 'set_%slabel'
 					subsubattr = '%slabel'
@@ -1376,7 +1358,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							continue
 						value[-1][subattr%(axis)][subsubattr%(axis)] = texify(
 							subvalue.get(subsubattr%(axis)),
-							texify=values[plots][label]['attr']['texify']) 
+							texify=tex) 
 
 					subattr = 'set_%sticks'
 					subsubattr = 'ticks'
@@ -1415,7 +1397,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							texify(
 							scinotation(i,
 								**values[plots][label]['attr']['scinotation']),
-							texify=values[plots][label]['attr']['texify']) for i in subvalue[subsubattr]]							
+							texify=tex) for i in subvalue[subsubattr]]							
 
 					settings[instance][subinstance]['ax'][attr] = value[-1]
 
@@ -1632,12 +1614,12 @@ def plotter(settings,hyperparameters,verbose=None):
 							elif isinstance(value,list):
 								if not all(isinstance(i,list) for i in value):
 									value = [[i] for i in value]
-								value = value[index[0]%len(value)][index[1]%len(value[index[0]%len(value)])]
+								value = value[position[0]%len(value)][position[1]%len(value[position[0]%len(value)])]
 							else:
 								pass
 
 							if (value is not None) and value.count('%s'):
-								value = value%(tuple(str(i) if j>1 else '' for i,j in zip(index[:value.count('%s')],indexes)))
+								value = value%(tuple(str(i) if j>1 else '' for i,j in zip(position[:value.count('%s')],grid[instance][subinstance])))
 
 							value = texify(value,texify=data[OTHER][OTHER].get('texify'))
 
@@ -1662,7 +1644,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						value = settings[instance][subinstance]['ax'].get(attr,{}).get(kwarg)
 
 						if (value is not None) and value.count('%d'):
-							value%([i for i in index[:value.count('%d')]])
+							value%([i for i in position[:value.count('%d')]])
 
 
 						value = texify(value,texify=data[OTHER][OTHER].get('texify'))

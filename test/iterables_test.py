@@ -15,6 +15,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import is_array,is_ndarray
+from src.io import load,dump
 from src.iterables import getter,setter,permuter,equalizer
 from src.iterables import search,indexer,inserter
 
@@ -43,17 +44,42 @@ def test_search(path=None,tol=None):
 	types = (list,dict,)
 
 	print(iterable)
-	for index,shape,item in search(iterable,types=types):
+	for index,shape,item in search(iterable,returns=True,types=types):
 		print(index,shape,item)
 
+	print()
+
 	item = -1
-	index = indexer(item,iterable,yielder=True,types=types)
+	index = indexer(item,iterable,returns=True,types=types)
 	print(item,list(index))
+
+	print()
 
 	index = [0,2,'goodbye',2,'label','axis',1]
 	item = -2
 	inserter(index,item,iterable,types=types)
 	print(iterable)
+
+	print()
+
+	path = 'config/settings.json'
+	iterable = load(path)
+	items = ['seed']
+	types = (list,dict)
+	for index,shape,item in search(iterable,returns=True,items=items,types=types):
+		print(index,shape,item)
+
+	print()
+
+	path = 'config/plot.json'
+	iterable = load(path)
+	items = ['x','y','label']
+	types = (list,dict)
+	for index,shape,item in search(iterable,returns=True,items=items,types=types):
+		print(index,shape)
+		print(item)
+		print()
+
 
 	return
 
