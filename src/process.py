@@ -1116,9 +1116,10 @@ def plotter(settings,hyperparameters,verbose=None):
 
 	for instance in list(settings):
 		for subinstance in list(settings[instance]):
+
 			setting = settings[instance].pop(subinstance)
 			subgrid = grid[instance].pop(subinstance)
-			print(instance,subinstance,subgrid)
+
 			for position in itertools.product(*(range(i) for i in subgrid[:LAYOUTDIM])):
 				
 				key = delim.join([subinstance,*[str(i) for i in position]])
@@ -1368,7 +1369,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							continue
 						else:
 							if isinstance(subvalue.get(subsubattr),int):
-								subsubvalue = list(realsorted(set([i for i in values[plots][label]['all']])))
+								subsubvalue = value[-1]['values']
 								subsubvalue = subsubvalue[::len(subsubvalue)//subvalue.get(subsubattr)]
 							else:
 								subsubvalue = subvalue.get(subsubattr)

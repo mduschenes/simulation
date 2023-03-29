@@ -910,12 +910,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# 	call = False
 
 			elif attr in ['set_colorbar']:
-				values = kwargs[attr].get('values',None)
-				colors = kwargs[attr].get('colors',None)
+				values = kwargs[attr].get('values',[])
+				colors = kwargs[attr].get('colors',[])
 				norm = kwargs[attr].get('norm',None)
 				padding = kwargs[attr].get('pad',0.05)
 				sizing = kwargs[attr].get('size','5%')
 				orientation = kwargs[attr].get('orientation','vertical')
+				position = kwargs[attr].get('position','right')
 				scale = kwargs[attr].get('set_scale',{}).get('value',
 						kwargs[attr].get('set_yscale',{}).get('value',
 						kwargs[attr].get('set_xscale',{}).get('value')))
@@ -926,74 +927,76 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if field in kwargs[attr]:
 						kwargs[attr][field][subfield] = attr_texify(kwargs[attr][field][subfield],field,subfield)
 
-				nullkwargs.extend(['values','colors','norm','size','orientation','set_scale','set_yscale','set_xscale','normed_values'])
+				nullkwargs.extend(['values','colors','norm','size','orientation','position','set_scale','set_yscale','set_xscale','normed_values'])
+
+				if values is not None and colors is not None:
 				
-				values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
-				norm = ({**norm,**{
-						 'vmin':norm.get('vmin',min(values,default=0)),
-						 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
-						{'vmin':norm[0],
-						 'vmax':norm[1]} if norm is not None else
-						{'vmin':min(values,default=0),
-						 'vmax':max(values,default=1)})
+					values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
+					norm = ({**norm,**{
+							 'vmin':norm.get('vmin',min(values,default=0)),
+							 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
+							{'vmin':norm[0],
+							 'vmax':norm[1]} if norm is not None else
+							{'vmin':min(values,default=0),
+							 'vmax':max(values,default=1)})
 
-				values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
-				norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
-				
-				N = len(values)
+					values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
+					norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
+					
+					N = len(values)
 
-				if isinstance(colors,str):
-					if hasattr(plt.cm,colors):
-						colors = [getattr(plt.cm,colors)(((i+0.5)/(N+0)) if (N > 1) else 0.5) for i in range(N)]
-					else:
-						colors = [colors for i in range(N)]
-
-				if scale in ['linear',None]:
-					norm = matplotlib.colors.Normalize(**norm)  
-				elif scale in ['log']:
-					norm = matplotlib.colors.LogNorm(**norm)  
-				else:
-					norm = matplotlib.colors.Normalize(**norm)
-			
-				values = norm(values)
-
-				cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*100)  
-				pos = obj.get_position()
-				
-				relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
-
-				if N > 1:
-					# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
-					# cax = plt.add_axes()
-					# cax.set_position(pos)
-					divider = make_axes_locatable(obj)
-					cax = divider.append_axes('right',size=sizing,pad=padding)
-					colorbar = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm, orientation=orientation)
-					obj = colorbar	
-					for kwarg in kwargs[attr]:
-						
-						if kwarg in nullkwargs:
-							continue
-
-						_obj = obj
-						
-						for _kwarg in kwarg.split('.'):
-							try:
-								_obj = getattr(_obj,_kwarg)
-							except Exception as exception:
-								break									
-						if isinstance(kwargs[attr][kwarg],dict):
-							try:
-								if _kwarg.startswith('get_'):
-									for i in _obj():
-										getattr(i,_kwarg)(kwargs[attr][kwarg])
-								else:
-									_obj(**kwargs[attr][kwarg])
-							except Exception as exception:
-								continue
+					if isinstance(colors,str):
+						if hasattr(plt.cm,colors):
+							colors = [getattr(plt.cm,colors)(((i+0.5)/(N+0)) if (N > 1) else 0.5) for i in range(N)]
 						else:
-							continue
+							colors = [colors for i in range(N)]
+
+					if scale in ['linear',None]:
+						norm = matplotlib.colors.Normalize(**norm)  
+					elif scale in ['log']:
+						norm = matplotlib.colors.LogNorm(**norm)  
+					else:
+						norm = matplotlib.colors.Normalize(**norm)
 				
+					values = norm(values)
+
+					cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*100)  
+					pos = obj.get_position()
+					
+					relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
+
+					if N > 1:
+						# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
+						# cax = plt.add_axes()
+						# cax.set_position(pos)
+						divider = make_axes_locatable(obj)
+						cax = divider.append_axes(position,size=sizing,pad=padding)
+						colorbar = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm, orientation=orientation)
+						obj = colorbar	
+						for kwarg in kwargs[attr]:
+							
+							if kwarg in nullkwargs:
+								continue
+
+							_obj = obj
+							
+							for _kwarg in kwarg.split('.'):
+								try:
+									_obj = getattr(_obj,_kwarg)
+								except Exception as exception:
+									break									
+							if isinstance(kwargs[attr][kwarg],dict):
+								try:
+									if _kwarg.startswith('get_'):
+										for i in _obj():
+											getattr(i,_kwarg)(kwargs[attr][kwarg])
+									else:
+										_obj(**kwargs[attr][kwarg])
+								except Exception as exception:
+									continue
+							else:
+								continue
+					
 				call = False
 
 
@@ -1071,7 +1074,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							N = size
 						
 						i = to_index(index[-2:],shape[-2:])/(N+0) if N>1 else 0.5
-						print(attr,field,i,index,shape)
 
 						_kwargs_[field] = getattr(plt.cm,value)(i)
 				
