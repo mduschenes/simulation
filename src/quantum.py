@@ -357,7 +357,7 @@ class Observable(System):
 		dims = None
 		cls = {attr: getattr(self,attr) for attr in self if isinstance(getattr(self,attr),scalars)}
 		check = lambda group,index,axis,site=self.site,string=self.string: (
-			any(g in group for s in string for i in site for g in [s,'_'.join([s,''.join(['%d'%j for j in i])])]) and (
+			((not site and not string)) or any(g in group for s in string for i in site for g in [s,'_'.join([s,''.join(['%d'%j for j in i])])]) and (
 			(axis != 0) or 
 			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])])))
 		system = self.system

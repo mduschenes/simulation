@@ -5592,7 +5592,7 @@ def bound(a,kwargs):
 	Returns:
 		out (array): Bounded array
 	'''
-	return sigmoid(a,kwargs['sigmoid'])
+	return 2*sigmoid(a,kwargs['sigmoid']) - 1
 
 
 @jit

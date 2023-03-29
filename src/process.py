@@ -1370,7 +1370,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						else:
 							if isinstance(subvalue.get(subsubattr),int):
 								subsubvalue = value[-1]['values']
-								subsubvalue = subsubvalue[::len(subsubvalue)//subvalue.get(subsubattr)]
+								subsubvalue = subsubvalue[::max(1,len(subsubvalue)//subvalue.get(subsubattr))]
 							else:
 								subsubvalue = subvalue.get(subsubattr)
 							subvalue[subsubattr] = subsubvalue

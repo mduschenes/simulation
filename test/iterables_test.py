@@ -17,7 +17,7 @@ for PATH in PATHS:
 from src.utils import is_array,is_ndarray
 from src.io import load,dump
 from src.iterables import getter,setter,permuter,equalizer
-from src.iterables import search,indexer,inserter
+from src.iterables import search,indexer,insert
 
 def test_equalizer(path=None,tol=None):
 	a = {1:{2:[3,4],3:lambda x:x,4:{1:[],2:[{4:np.array([])}]}}}
@@ -57,7 +57,7 @@ def test_search(path=None,tol=None):
 
 	index = [0,2,'goodbye',2,'label','axis',1]
 	item = -2
-	inserter(index,item,iterable,types=types)
+	insert(index,item,iterable,types=types)
 	print(iterable)
 
 	print()

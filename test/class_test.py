@@ -72,6 +72,9 @@ def test_parameters(path,tol):
 	parameters = parameters.reshape(-1,model.dims[0])
 	variables = variables.reshape(model.dims[0],-1).T
 
+	print(parameters.round(3))
+	print(variables.round(6))
+
 	shape = parameters.shape
 	slices = tuple((slice(size) for size in shape))
 	parameter = 'xy'	
@@ -429,10 +432,10 @@ if __name__ == '__main__':
 	tol = 5e-8 
 
 	test_parameters(path,tol)
-	test_call(path,tol)
-	test_data(path,tol)
-	test_logger(path,tol)
-	test_class(path,tol)
-	test_model(path,tol)
-	test_normalization(path,tol)
-	test_fisher(path,tol)
+	# test_call(path,tol)
+	# test_data(path,tol)
+	# test_logger(path,tol)
+	# test_class(path,tol)
+	# test_model(path,tol)
+	# test_normalization(path,tol)
+	# test_fisher(path,tol)
