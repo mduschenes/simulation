@@ -475,7 +475,6 @@ class Observable(System):
 			self.hermitian = False
 
 
-
 		# Functions
 		self.gradient = gradient(self,mode='fwd',move=True)
 

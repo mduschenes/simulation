@@ -89,7 +89,7 @@ def _features(hyperparameters,parameter,group):
 	method = hyperparameters[parameter]['method']
 	size = len(hyperparameters[parameter]['group'])
 
-	if method in ['constrained']:
+	if method in ['constrained','bound']:
 		wrapper = bound
 	elif method in ['unconstrained']:
 		wrapper = nullbound

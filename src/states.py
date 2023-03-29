@@ -112,7 +112,11 @@ class State(Object):
 		else:
 			normalization = einsum('...ii->...',data)
 
-		assert allclose(ones(normalization.shape,dtype=normalization.dtype),normalization), "Incorrect normalization %r : %r"%(data.shape,normalization)
+		eps = ones(normalization.shape,dtype=self.dtype)
+
+		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
+
+		assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
 
 		self.data = data
 		self.shape = self.data.shape if self.data is not None else None

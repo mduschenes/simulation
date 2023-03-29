@@ -44,7 +44,7 @@ import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 
 configs = {
-	'jax_disable_jit':True,
+	'jax_disable_jit':False,
 	'jax_platforms':'cpu',
 	'jax_enable_x64': True
 	}

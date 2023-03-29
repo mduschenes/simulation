@@ -1073,7 +1073,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							size = prod(shape[-2:])
 							N = size
 						
-						i = to_index(index[-2:],shape[-2:])/(N+0) if N>1 else 0.5
+						i = (to_index(index[-2:],shape[-2:])+0.5)/(N+0) if N>1 else 0.5
 
 						_kwargs_[field] = getattr(plt.cm,value)(i)
 				

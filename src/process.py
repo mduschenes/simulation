@@ -1007,11 +1007,13 @@ def plotter(settings,hyperparameters,verbose=None):
 				grid[instance][subinstance] = [*[1 for i in range(LAYOUTDIM)],*[1 for i in range(PLOTDIM-1)],-1]
 
 			for plots in PLOTS:
+				
 				if plots not in settings[instance][subinstance].get('ax',{}):
 					continue
+				
 				for data in search(settings[instance][subinstance]['ax'][plots]):
 
-					if not data.get(OTHER) or not data[OTHER].get(OTHER):
+					if not data or not data.get(OTHER) or not data[OTHER].get(OTHER):
 						continue
 
 					sublayout = data[OTHER][OTHER].get('axis')
@@ -1133,7 +1135,10 @@ def plotter(settings,hyperparameters,verbose=None):
 							continue
 						
 						for index,shape,data in search(deepcopy(setting['ax'][plots]),returns=True):
-							
+						
+							if not data:
+								continue
+
 							for axis in ALL:
 								
 								if axis not in data or isinstance(data[axis],scalars):
@@ -1637,6 +1642,9 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					for data in search(settings[instance][subinstance]['ax'][plots]):
 
+						if not data or not data.get(OTHER) or not data[OTHER].get(OTHER):
+							continue
+
 						kwarg = 'set_title'
 						if attr not in [kwarg] or (not settings[instance][subinstance]['ax'].get(attr)):
 							continue
@@ -1660,7 +1668,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 				for data in search(settings[instance][subinstance]['ax'][plots]):
 
-					if not data:
+					if not data or not data.get(OTHER) or not data[OTHER].get(OTHER):
 						continue
 
 					attr = OTHER
