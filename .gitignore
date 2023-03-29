@@ -27,11 +27,7 @@ build/constrained.py
 build/unconstrained.py
 build/new
 build/plots
-<<<<<<< HEAD
 keep
 **/*test.json
 setup/requirements.txt.*.*
 src/wip
-=======
-setup/requirements.txt.*.*
->>>>>>> dev
