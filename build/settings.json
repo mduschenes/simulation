@@ -3,99 +3,76 @@
 	"model":"src.quantum.Unitary",
 	"callback":"src.quantum.Callback"
 	},
-"hyperparameters":null, 
+"hyperparameters":null,
 "boolean":{
 	"train":1,
 	"load":0,
 	"dump":0
 	},
 "seed":{
-	"seed":5576,
+	"seed":1313,
 	"size":1,
-	"reset":5576,
+	"reset":6131,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
-	
-		"model.N":[4],		
-		
-		"model.M":[null],		
-		"model.tau":[2e1],	
-		"model.T": [1e2],
-		"noise.parameters":[2e12],
-		"noise.initialization":["time"],
-		"noise.scale":[1],
-		"state.scale":[1],
 
-
-		"model.M":[400],	
-		"model.tau":[2e1],				
+		"model.N":[2],		
+		"model.M":[4],
+		"model.P":[1],
+		"model.tau":[100],
 		"model.T": [null],
-		"noise.parameters":[null],
-		"noise.initialization":["random"],
-		"noise.scale":[1e-1],
-		"state.scale":[1],
 
-
-		"model.N":[4],		
-		"model.M":[100,500,1000],		
-
-		"model.tau":[5e1],
-		"model.T": [null],
-		"noise.parameters":[1],
-		"noise.initialization":["random"],
-
-		"parameters.xy.scale":[1],
-		"parameters.z.scale":[1],
-		"parameters.zz.scale":[1],
-		"noise.scale":[null],
-		"state.scale":[1],	
-
-
-		"model.N":[3],		
-		"model.M":[null],		
-
-		"model.tau":[1e-5],
-		"model.T": [1e-3],
-		"noise.parameters":[1],
+		"noise.parameters":[1e6],
 		"noise.initialization":["random"],
 
 		"system.unit":[1e6],
 		"parameters.xy.scale":[1],
-		"parameters.z.scale":[1e-3],
-		"parameters.zz.scale":[1e-4,2e-4,5e-4],
+		"parameters.z.scale":[1e-2],
+		"parameters.zz.scale":[1e-4],
 		"noise.scale":[null],
-		"state.scale":[1],
+		"state.scale":[null],
 
-		
-		"optimize.iterations":[200],
+
+		"optimize.iterations":[50],
 		"optimize.optimizer":["cg"],
-		"optimize.metric":["abs2"],
+		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"parameters.xy.method":["unconstrained"],
-		"system.architecture":["unconstrained"],
+		"parameters.xy.method":["constrained"],
+		"parameters.xy.kwargs.lambda":[[0]],
 
-		"jobs.job.cwd":["gobi/check"],	
-		"jobs.postprocess.cwd":["gobi/check"],
-
-		"jobs.job.device":["pc"],
-		"jobs.postprocess.device":["pc"],
-		"jobs.job.process":[null],
+		"jobs.job.cwd":["tmp.2"],
+		"jobs.postprocess.cwd":["tmp.2"],		
+	
+		"jobs.job.device":["slurm"],
+		"jobs.postprocess.device":["slurm"],
+		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
+		"jobs.job.processes":[1],
+		"jobs.postprocess.processes":[1],
 		"jobs.job.pool":[1],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
+		"jobs.job.verbose":[1],	
 		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.postprocess.args.JOB_PROCESSES":[1]
+		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.postprocess.args.JOB_PROCESSES":[1],
+		"jobs.job.patterns.time":["1:00:00"],
+		"jobs.postprocess.patterns.time":["1:00:00"],
+		"jobs.job.patterns.mem":["16GB"],
+		"jobs.postprocess.patterns.mem":["16GB"],
+		"jobs.job.patterns.cpus-per-task":[1],
+		"jobs.job.patterns.account":[null],
+		"jobs.postprocess.patterns.cpus-per-task":[1]
 
 		},
-	"groups":[["parameters.xy.method","system.architecture"]],
+	"groups":null,
 	"index":null
 	},
 "model":{
@@ -112,7 +89,7 @@
 	"delta":null,
 	"M":5,
 	"T":null,
-	"tau":100e0,
+	"tau":50e0,
 	"P":2,
 	"space":"spin",
 	"time":"linear",
@@ -135,7 +112,7 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":40,
+	"iterations":5,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
@@ -149,6 +126,13 @@
 	"alpha":1e-4,"beta":1e-4,
 	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
 	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
+	"do":{
+		"parameters":true,
+		"grad":true,
+		"search":true,
+		"variables":true,"variables.relative":true,"variables.relative.mean":true,
+		"features":true,"features.relative":true,"features.relative.mean":true
+	},
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
@@ -156,8 +140,8 @@
 		},
 	"track":{
 			"iteration":[],
-			"parameters":false,
-			"grad":false,
+			"parameters":[],
+			"grad":[],
 			"search":false,
 			"value":[],
 			"objective":[],
@@ -166,27 +150,28 @@
 
 			"iteration.max":[],
 			"iteration.min":[],
-			"variables":false,"variables.relative":false,"variables.relative.mean":[],
-			"features":false,"features.relative":false,"features.relative.mean":[],
-			"objective.ideal.noise":0,"objective.diff.noise":0,"objective.rel.noise":0,
-			"objective.ideal.state":0,"objective.diff.state":0,"objective.rel.state":0,
-			"objective.ideal.operator":0,"objective.diff.operator":0,"objective.rel.operator":0,
+			"grad.norm":[],"search.norm":[],			
+			"variables":[],"variables.relative":[],"variables.relative.mean":[],
+			"features":[],"features.relative":[],"features.relative.mean":[],			
+			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
+			"objective.ideal.state":true,"objective.diff.state":false,"objective.rel.state":false,
+			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":0,"fisher.eigenvalues":0,
-			"hessian.rank":0,"fisher.rank":0,
+			"hessian.eigenvalues":true,"fisher.eigenvalues":true,
+			"hessian.rank":true,"fisher.rank":true,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
 
-			"noise.scale":[],"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
+			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
 		}	
 	},
 "parameters":{
 	"xy": {
 		"string":"xy",
-		"init":true,
+		"init":true,		
 		"category":"variable",
-		"method":"unconstrained",
+		"method":"constrained",
 		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
 		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
 		"parameters":null,
@@ -200,13 +185,13 @@
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-50,50],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[0,0]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
-		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
+		"kwargs":{"sigmoid":1,"lambda":[1e10,5e-2,1.5e-4]}
 		},
 	"z": {
 		"string":"z",
@@ -215,12 +200,12 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-1e-2,0,1e-3,-5e-2,2e-3],
-		"parameters":[-1e-3,0,1e-3,-1e-3,1e-3],
-		"parameters":[-1,0,1,-1,1],
+		"parameters":[0,1,1,-1,-1,1],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["z"]],
 		"scale":1,
+		"scale":1e-2,
 		"initialization":"random",
 		"random":"uniform",
 		"pad":"random",
@@ -237,14 +222,13 @@
 		"category":"constant",
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[7.24e-2,-1.3e-3,5e-2,8e-2,2e-3,2e-2,-3e-2,6e-2,9e-3,-6e-3],								
 		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],
-		"parameters":[1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4,1e-4],	
-		"parameters":[1,1,1,1,1,1,1,1,1,1],
+		"parameters":[1,1,1,1,1,1,1,1,1,1],								
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],
 		"scale":1,
+		"scale":1e-4,
 		"initialization":"random",
 		"random":"uniform",	
 		"pad":"random",
@@ -257,16 +241,16 @@
 		}
 	},
 "label": {
-	"string":"random",
+	"string":"pauli",
 	"init":true,	
 	"category":"constant",
 	"method":null,
 	"parameters":null,
 	"shape":[-1,-1],
 	"size":null,
-	"scale":1,
+	"scale":0.5,
 	"initialization":"random",
-	"random":"haar",
+	"random":"X.Y",
 	"seed":null,
 	"bounds":[-1,1]
 	},
@@ -274,11 +258,11 @@
 	"string":"random",
 	"init":true,	
 	"category":"constant",
-	"method":null,	
+	"method":null,
 	"parameters":null,
 	"shape":[-1,-1],
 	"size":[1,1],
-	"scale":null,
+	"scale":1,
 	"initialization":"random",
 	"random":"haar",
 	"seed":null,
@@ -288,11 +272,11 @@
 	"string":"phase",
 	"init":true,	
 	"category":"constant",
-	"method":null,	
+	"method":null,
 	"parameters":null,
 	"shape":[-1,-1],
 	"size":null,
-	"scale":null,
+	"scale":1e-12,
 	"initialization":"random",
 	"random":"gaussian",
 	"seed":null,
@@ -304,7 +288,7 @@
 		"jobs":"job.slurm",
 		"args":{
 			"JOB_CWD":".",					
-			"JOB_ENV":"jax",
+			"JOB_ENV":"env",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"train.py",
 			"JOB_PROCESSES":1,
@@ -326,6 +310,7 @@
 		"pwd":"config",
 		"cwd":"test",
 		"pool":null,
+		"resume":null,
 		"pause":1,
 		"file":"job.sh",	
 		"process":null,
@@ -338,11 +323,11 @@
 		"jobs":"postprocess.slurm",
 		"args":{
 			"JOB_CWD":".",
-			"JOB_ENV":"jax",
+			"JOB_ENV":"env",
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--pwd=.","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--pwd=.","--cwd=.","--verbose"]
 			},
 		"paths":{
 			"plot":"plot.json",

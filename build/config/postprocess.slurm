@@ -16,6 +16,7 @@
 ##SBATCH --dependency=afterany:
 
 #SBATCH --parsable
+#SBATCH --get-user-env
 #SBATCH --cpus-per-task=1
 
 
@@ -79,10 +80,9 @@ fi
 export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
 # Environment
-# source ~/.bashrc &>/dev/null 2>&1
 module purge &>/dev/null 2>&1
-conda activate ${JOB_ENV} &>/dev/null 2>&1
-# source activate ${JOB_ENV} &>/dev/null 2>&1
+# conda activate ${JOB_ENV} &>/dev/null 2>&1
+source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
 CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
@@ -95,7 +95,7 @@ JOBS=${JOB_PROCESSES:-1}
 # Executable
 EXE=()
 EXE+=(parallel)
-EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${PWD} --compress)
+EXE+=(--jobs ${JOBS} --env _ --linebuffer --tmpdir ${PWD})
 # EXE+=(--resume-failed --joblog ${JOB_NAME:-job}.${JOB_ID:-id}.${JOB_TASK:-task}.parallel)
 EXE+=(RUN {} ${CMD[@]} :::)
 

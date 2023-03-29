@@ -1,4 +1,5 @@
 **/__pycache__
+**/.pytest_cache
 **/*.pdf
 **/*.log
 **/*.o
@@ -12,17 +13,25 @@
 **/data
 **/templates
 **/backup
-build/constrained.py
-build/unconstrained.py
-examples/nmr_decomposition
+**/errors
 **/gobi
 **/ckpt
-tmp
 **/build/test
+**/*test.json
+**/tmp.*
+tmp
+keep
 examples/**
+build/config/test.slurm
+build/constrained.py
+build/unconstrained.py
 build/new
 build/plots
+<<<<<<< HEAD
 keep
 **/*test.json
 setup/requirements.txt.*.*
 src/wip
+=======
+setup/requirements.txt.*.*
+>>>>>>> dev

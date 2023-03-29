@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 
 import numpy as onp
 import scipy as osp
+import pandas as pd
 import jax
 import jax.numpy as np
 import jax.scipy as sp
@@ -51,7 +52,9 @@ for name in configs:
 	jax.config.update(name,configs[name])
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
-
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 # Constants
 pi = np.pi
@@ -61,6 +64,8 @@ inf = np.inf
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
+
+optimizer_libraries = jax.example_libraries.optimizers
 
 class Null(object):
 	def __str__(self):
@@ -520,13 +525,13 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	'''
 	if mode in ['operator']:
 		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -out/operands[0].shape[0]]
+		wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
 	elif mode in ['state']:
 		subscripts = ['uai,vai->uv','uai,ai,vaj,aj->uv']
-		wrappers = [lambda out,*operands: out/operands[0].shape[1],lambda out,*operands: -out/operands[0].shape[1]]
+		wrappers = [lambda out,*operands: out,lambda out,*operands: -out]
 	else:
 		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -out/operands[0].shape[0]]
+		wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
 
 	if grad is None:
 		grad = gradient(func,mode='fwd',move=True)
@@ -872,7 +877,7 @@ class asscalar(onp.ndarray):
 	def __new__(self,a,*args,**kwargs):
 		try:
 			return a.item()#onp.asscalar(a,*args,**kwargs)
-		except AttributeError:
+		except (AttributeError,ValueError):
 			return a
 
 
@@ -1141,17 +1146,18 @@ def PRNGKey(seed=None,size=False,reset=None):
 	return key
 
 
-def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,dtype=None):
+def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,dtype=None,**kwargs):
 	'''
 	Get random array
 	Args:
-		shape (int,iterable): Size or Shape of random array
+		shape (int,iterable): Size or Shape of random arrayf
 		key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
 		mesh (int): Get meshgrid of array for mesh dimensions
 		dtype (data_type): Datatype of array		
+		kwargs (dict): Additional keyword arguments for random
 	Returns:
 		out (array): Random array
 	'''	
@@ -1182,7 +1188,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 			else:
 				bounds[i] = float(bounds)
 
-	subrandoms = ['haar','hermitian','symmetric']
+	subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
 	complex = is_complexdtype(dtype) and random not in subrandoms
 	_dtype = dtype
 	dtype = datatype(dtype)
@@ -1213,7 +1219,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 			if ndim < 2:
 				shape = [*shape]*2
 
-			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)
+			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
 
 			if ndim < 4:
 				reshape = (*(1,)*(4-out.ndim),*out.shape)
@@ -1264,7 +1270,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 				shape = [*shape]*2
 				ndim = len(shape)
 
-			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)	
+			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)	
 
 			out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
 
@@ -1274,6 +1280,67 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 
 			return out
 
+	elif random in ['zero']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[0].set(1)
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out
+	elif random in ['one']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[-1].set(1)
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out			
+	elif random in ['plus']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[:].set(1)/sqrt(shape[-1])
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out	
+	elif random in ['minus']:
+		def func(key,shape,bounds,dtype):
+			out = zeros(shape[-1],dtype=dtype)
+			out = out.at[0::2].set(1)/sqrt(shape[-1])
+			out = out.at[1::2].set(-1)/sqrt(shape[-1])
+			ndim = len(shape)
+			if ndim == 1:
+				pass
+			elif ndim == 2:
+				out = outer(out,out)
+			elif ndim == 3:
+				out = array([[out]*shape[1]]*shape[0])
+			elif ndim == 4:
+				out = outer(out,out)
+				out = array([[out]*shape[1]]*shape[0])
+			return out				
 	elif random in ['zeros']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape,dtype=dtype)
@@ -1302,6 +1369,9 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 	else:
 		out = func(key,shape,bounds,dtype)
 
+
+	if scale is not None:
+		out = out*scale
 
 	if complex:
 		out = out[0] + 1j*out[1]
@@ -1599,8 +1669,10 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	
 	if shapes:
 		size = sum(int(product(shape)**(1/len(shape))) for shape in shapes[:2] if shape is not None)//len(shapes[:2])
+		ndim = min([len(shape) for shape in shapes[:2] if shape is not None])
 	else:
 		size = 1
+		ndim = None
 
 	if callable(metric):
 			metric = metric
@@ -1655,11 +1727,33 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		func = inner_abs2
 		grad_analytical = gradient_inner_abs2
 
-		def wrapper_func(out,*operands):
-			return 1 - out/(operands[0].shape[-1]*operands[0].shape[-2])
+		if ndim is not None:
+			if ndim == 1:
+				def wrapper_func(out,*operands):
+					return 1 - out
 
-		def wrapper_grad(out,*operands):
-			return - out/(operands[0].shape[-1]*operands[0].shape[-2])
+				def wrapper_grad(out,*operands):
+					return - out
+
+			elif ndim == 2:
+				def wrapper_func(out,*operands):
+					return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+
+				def wrapper_grad(out,*operands):
+					return - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+			else:
+				def wrapper_func(out,*operands):
+					return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+
+				def wrapper_grad(out,*operands):
+					return - out/((operands[0].shape[-1]*operands[0].shape[-2]))
+
+		else:
+			def wrapper_func(out,*operands):
+				return 1 - out/((operands[0].shape[-1]*operands[0].shape[-2]) if operands[0].ndim > 1 else 1)
+
+			def wrapper_grad(out,*operands):
+				return - out/((operands[0].shape[-1]*operands[0].shape[-2]) if operands[0].ndim > 1 else 1)
 
 	elif metric in ['real']:
 
@@ -2229,8 +2323,6 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 		subscripts = '...ij,...ij->...'
 	
 	shapes = (shapes[0],shapes[1])
-
-
 
 	einsummation = einsum(subscripts,*shapes,optimize=optimize,wrapper=None)
 
@@ -4907,39 +4999,6 @@ def is_listtuple(a,*args,**kwargs):
 	'''
 	return is_list(a) or is_tuple(a)
 
-
-def flattener(iterable,notiterable=(str,)):
-	'''
-	Flatten iterable up to layer layers deep into list
-	Args:
-		iterable (iterable): object to flatten
-		notiterable (tuple): object types not to flatten
-	Returns:
-		flat (generator): generator of flattened iterable
-	'''
-	for i in iterable:
-		if isiterable(i) and not isinstance(i,notiterable):
-			for j in flattener(i,notiterable):
-				yield j
-		else:
-			yield i
-
-
-def flatten(iterable,cls=list,notiterable=(str,),unique=False):
-	'''
-	Flatten iterable into cls object
-	Args:
-		iterable (iterable): object to flatten
-		cls (class): Class to initialize with flattened iterable
-		notiterable (tuple): object types not to flatten		
-		unique (bool): Return only unique elements from flattened iterable
-	Returns:
-		flat (cls): instance of flattened iterable
-	'''	
-	uniquecls = set if unique else list
-	return cls(list(uniquecls(flattener(iterable,notiterable))))	
-
-
 def parse(string,dtype):
 	'''
 	Parse string as numerical type
@@ -5307,7 +5366,7 @@ def piecewises(func,shape,include=None,**kwargs):
 
 	def func(x,parameters):
 
-		bounds,parameterss = parameters[indices[0]],[parameters[index] for index in indices[1:]]
+		bounds,parameters = parameters[indices[0]],[parameters[index] for index in indices[1:]]
 		n = len(funcs)
 
 		func = [lambda x,parameters,i=i: funcs[i](x,parameters[i]) for i in range(n)]
@@ -5533,7 +5592,7 @@ def bound(a,kwargs):
 	Returns:
 		out (array): Bounded array
 	'''
-	return sigmoid(a,kwargs['sigmoid'])
+	return 2*sigmoid(a,kwargs['sigmoid']) - 1
 
 
 @jit
@@ -5671,10 +5730,23 @@ def to_list(a,dtype=None,**kwargs):
 		return a.tolist()
 	except:
 		try:
-			return list(a)
+			return [to_list(i,dtype=dtype,**kwargs) for i in a]
 		except TypeError:
 			return a
 
+def to_tuple(a,dtype=None,**kwargs):
+	'''
+	Convert iterable to tuple
+	Args:
+		a (iterable): Iterable to convert to list
+		dtype (data_type): Datatype of number
+	Returns:
+		out (tuple): List representation of iterable
+	'''
+	try:
+		return tuple(to_tuple(i,dtype=dtype,**kwargs) for i in a)
+	except:
+		return a
 
 def to_number(a,dtype=None,**kwargs):
 	'''

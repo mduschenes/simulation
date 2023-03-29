@@ -23,19 +23,20 @@ from src.io import load,dump,join,split
 
 
 class State(Object):
-	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
+	def __init__(self,data,shape,size=None,ndim=None,dims=None,system=None,**kwargs):
 		'''
 		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
 		Args:
 			data (dict,str,array,Noise): Data corresponding to noise
 			shape (int,iterable[int]): Shape of each data
 			size (int,iterable[int]): Number of data
+			ndim (int): Number of dimensions of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		super().__init__(data,shape,size=size,dims=dims,system=system,**kwargs)
+		super().__init__(data,shape,size=size,ndim=ndim,dims=dims,system=system,**kwargs)
 
 		if self.ndim == 1:
 			self.data /= sqrt(einsum('...i,...i->...',self.data,self.data.conj()).real)
@@ -60,23 +61,17 @@ class State(Object):
 		self.length = len(self.size) if self.size is not None else None
 
 		if self.shape is not None:
-			shape = [*self.size,*self.shape]
+			shape = [*self.size,*self.shape[:self.ndim]]
 		else:
 			shape = self.shape
 		self.shape = shape
-
-		if self.random in ['haar']:
-			random = self.random
-		else:
-			random = 'haar'
-		self.random = random
 
 		# Delimiter for string
 		delimiter = '_'
 
 		# Properties for strings
 		props = {
-			**{string: {'func':rand,'locality':self.N} for string in ['random','U','haar']},
+			**{string: {'func':rand,'locality':self.N} for string in ['random','U','haar','zero','one','plus','minus']},
 			None: {'func':rand,'locality':self.N},
 			}
 
@@ -110,15 +105,21 @@ class State(Object):
 						)
 			else:
 				data = array(load(self.string))
-		
+
 		# Assert data is normalized
-		if data.ndim == 2:
+		if self.ndim == 1:
 			normalization = einsum('...i,...i->...',data,data.conj())
 		else:
 			normalization = einsum('...ii->...',data)
 
-		assert allclose(ones(normalization.shape,dtype=normalization.dtype),normalization), "Incorrect normalization %r : %r"%(data.shape,normalization)
+		eps = ones(normalization.shape,dtype=self.dtype)
+
+		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
+
+		assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
 
 		self.data = data
+		self.shape = self.data.shape if self.data is not None else None
+		self.ndim = self.data.ndim if self.data is not None else None
 
 		return

@@ -54,7 +54,10 @@ from src.system import Logger
 
 def test_class(path,tol):
 
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = load(hyperparameters['class']['model'])
 
@@ -98,6 +101,8 @@ def test_class(path,tol):
 
 	assert(allclose(initial,final)), "Incorrect class re-initialization"
 
+	print("Parameters set")
+
 	return
 
 
@@ -105,7 +110,10 @@ def test_class(path,tol):
 def test_load_dump(path,tol):
 
 	# Set instance
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = load(hyperparameters['class']['model'])
 
@@ -127,7 +135,10 @@ def test_load_dump(path,tol):
 	model.dump()
 
 	# Set instance
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 	new = cls(**hyperparameters['model'],
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
@@ -149,7 +160,10 @@ def test_load_dump(path,tol):
 
 def test_grad(path,tol):
 
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = load(hyperparameters['class']['model'])
 
@@ -177,7 +191,10 @@ def test_grad(path,tol):
 
 def test_metric(path,tol):
 
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = load(hyperparameters['class']['model'])
 
@@ -205,7 +222,10 @@ def test_metric(path,tol):
 
 def test_objective(path,tol):
 
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = load(hyperparameters['class']['model'])
 
@@ -237,8 +257,8 @@ def test_objective(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	# test_class(path,tol)
+	test_class(path,tol)
 	# test_data(path,tol)
 	# test_grad(path,tol)
 	# test_metric(path,tol)
-	test_objective(path,tol)
+	# test_objective(path,tol)

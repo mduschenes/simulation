@@ -29,7 +29,10 @@ from src.io import load,dump,exists
 
 def test_model(path,tol):
 
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = load(hyperparameters['class']['model'])
 
@@ -44,7 +47,10 @@ def test_model(path,tol):
 
 def test_parameters(path,tol):
 
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = load(hyperparameters['class']['model'])
 
@@ -58,11 +64,16 @@ def test_parameters(path,tol):
 	parameters = model.parameters()
 	variables = model.__parameters__(parameters)
 
+	print(model.data)
+	print(model.parameters)
 
 	# Get parameters in shape (P*K,M)
 	M,N = model.M,model.N
 	parameters = parameters.reshape(-1,model.dims[0])
 	variables = variables.reshape(model.dims[0],-1).T
+
+	print(parameters.round(3))
+	print(variables.round(6))
 
 	shape = parameters.shape
 	slices = tuple((slice(size) for size in shape))
@@ -115,7 +126,10 @@ def test_logger(path,tol):
 
 def test_data(path,tol):
 
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = load(hyperparameters['class']['model'])
 
@@ -168,7 +182,10 @@ def test_data(path,tol):
 
 def test_class(path,tol):
 
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = load(hyperparameters['class']['model'])
 
@@ -227,7 +244,10 @@ def test_class(path,tol):
 
 def test_normalization(path,tol):
 
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	classes = {'state':'src.states.State','noise':'src.noise.Noise','label':'src.operators.Gate'}
 
@@ -338,7 +358,10 @@ def test_normalization(path,tol):
 
 def test_call(path,tol):
 
-	hyperparameters = load(path)
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = load(hyperparameters['class']['model'])
 
@@ -370,7 +393,11 @@ def test_call(path,tol):
 	return 
 
 def test_fisher(path,tol):
-	hyperparameters = load(path)
+	
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
 
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
@@ -404,11 +431,11 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
-	# test_parameters(path,tol)
+	test_parameters(path,tol)
 	# test_call(path,tol)
 	# test_data(path,tol)
 	# test_logger(path,tol)
 	# test_class(path,tol)
 	# test_model(path,tol)
-	test_normalization(path,tol)
+	# test_normalization(path,tol)
 	# test_fisher(path,tol)

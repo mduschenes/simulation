@@ -3,7 +3,7 @@
 # Setup variables
 
 # Environment Name
-env=${1:-env}
+env=${1:-jax}
 
 # Install Type ["install","reinstall","uninstall"]
 install=${2:-"reinstall"}
@@ -59,8 +59,11 @@ then
 	
 	conda config --remove envs_dirs ${envs} &>/dev/null 2>&1
 	conda config --append envs_dirs ${envs} &>/dev/null 2>&1
+	conda config --set channel_priority flexible
 
 	conda remove --name ${env} --all
+
+	conda clean --all --verbose
 
 	conda create --prefix ${envs}/${env}
 
@@ -69,6 +72,9 @@ then
 	conda deactivate
 
 	conda remove --name ${env} --all
+
+	conda clean --all --verbose
+	exit
 fi
 
 # Setup activation scripts
@@ -136,11 +142,18 @@ done
 
 rm ${requirements[@]} 
 
+# Conda packages
+packages=(libgcc libstdcxx-ng=12)
+conda install -c conda-forge ${packages[@]}
+
 # Pip packages
-# packages=(gnureadline)
-# pip install ${packages[@]}
+packages=(gnureadline)
+pip install ${packages[@]}
 
 # conda update --all
+
+# Test Installation
+pytest -rA
 
 # Install rmate (from https://stackoverflow.com/questions/37458814/how-to-open-remote-files-in-sublime-text-3)
 # path=${HOME}/.local/bin/rmate

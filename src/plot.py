@@ -7,7 +7,7 @@ from math import prod
 import json,glob
 import numpy as np
 import pandas as pd
-from natsort import natsorted,realsorted
+from natsort import natsorted
 
 import matplotlib
 matplotlib.use('Agg')
@@ -16,10 +16,8 @@ import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Logging
-import logging,logging.config
-conf = os.path.join(os.path.dirname(__file__),'logging.conf')
-logging.config.fileConfig(conf,disable_existing_loggers=False,defaults={'__name__':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f')}) 	
-logger = logging.getLogger(__name__)
+from src.logger	import Logger
+logger = Logger()
 info = 100	
 debug = 100
 
@@ -43,6 +41,7 @@ AXES = ['colorbar']
 PLOTS = ['plot','scatter','errorbar','histogram','fill_between','axvline','axhline','vlines','hlines','plot_surface']
 LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
 NULLLAYOUT = ['index','pad']
+DIM = 2
 AXISDIM = 3
 LAYOUTDIM = 2
 PATHS = {
@@ -135,6 +134,32 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 	return
 
 
+
+def to_position(index,shape):
+	'''
+	Convert linear index to dimensional position
+	Args:
+		index (int): Linear index
+		shape (iterable[int]): Dimensions of positions
+	Returns:
+		position (iterable[int]): Dimensional positions
+	'''
+	position = [index//(prod(shape[i+1:]))%(shape[i]) for i in range(len(shape))]
+	return position
+
+def to_index(position,shape):
+	'''
+	Convert dimensional position to linear index
+	Args:
+		position (iterable[int]): Dimensional positions
+		shape (iterable[int]): Dimensions of positions
+	Returns:
+		index (int): Linear index
+	'''	
+	index = sum((position[i]*(prod(shape[i+1:])) for i in range(len(shape))))
+	return index
+
+
 def getter(iterable,elements,default=None,delimiter=False,copy=False):
 	'''
 	Get nested value in iterable with nested elements keys
@@ -177,49 +202,30 @@ def getter(iterable,elements,default=None,delimiter=False,copy=False):
 	return default
 
 
-def flatten(iterable,types=(list,)):
-	'''	
-	Flatten nested iterable
+
+def search(iterable,index=[],shape=[],types=(list,),exceptions=()):
+	'''
+	Search of iterable, returning elements and indices of elements
 	Args:
 		iterable (iterable): Nested iterable
-		types (type,tuple[type]): Allowed types to be flattened
+		index (iterable[int]): Index of element
+		shape (iterable[int]): Shape of iterable
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched
 	Yields:
-		elements (object): Flattened iterable elements
+		index (iterable[int]): Index of item
+		shape (iterable[iterable[int]]): Shape of iterable at index
+		item (iterable): Iterable element
 	'''
-	if not isinstance(iterable,types):
-		yield iterable
+	kwargs = (dict,)
+	if isinstance(iterable,types) and not isinstance(iterable,exceptions):
+		for i,item in enumerate(iterable):
+			if isinstance(iterable,kwargs):
+				i,item = item,iterable[item]
+			yield from search(item,index=[*index,i],shape=[*shape,len(iterable)],types=types,exceptions=exceptions)
 	else:
-		for element in iterable:
-			if isinstance(iterable,dict):
-				element = iterable[element]
-			yield from flatten(element,types=types)
+		yield (index,shape,iterable)
 
-	return
-
-
-def to_position(index,shape):
-	'''
-	Convert linear index to dimensional position
-	Args:
-		index (int): Linear index
-		shape (iterable[int]): Dimensions of positions
-	Returns:
-		position (iterable[int]): Dimensional positions
-	'''
-	position = [index//(prod(shape[i+1:]))%(shape[i]) for i in range(len(shape))]
-	return position
-
-def to_index(position,shape):
-	'''
-	Convert dimensional position to linear index
-	Args:
-		position (iterable[int]): Dimensional positions
-		shape (iterable[int]): Dimensions of positions
-	Returns:
-		index (int): Linear index
-	'''	
-	index = sum((position[i]*(prod(shape[i+1:])) for i in range(len(shape))))
-	return index
 
 # Load from path
 def load(path):
@@ -572,15 +578,24 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'set_title':[OTHER],
 				'suptitle':['t'],
 				'annotate':['s'],
-				'legend':['handles','labels','title','set_title']},
-		}					
-		if ((attr in attrs) and (attr in share) and (kwarg in attrs[attr]) and (kwarg in share[attr])):
-			share = share[attr][kwarg]
+				'set_colorbar':['values','colors'],
+				'legend':['handles','labels','title','set_title']
+				},
+			}
+
+		if ((attr in attrs) and (kwarg not in attrs[attr])):
+			return value
+
+		if ((attr in attrs) and (attr in share) and (share.get(attr) is not None) and (isinstance(share.get(attr),(bool,str))) or ((kwarg in attrs.get(attr,[])) and (kwarg in share.get(attr,[])))):
+			if isinstance(share[attr],dict):
+				share = share[attr][kwarg]
+			else:
+				share = share[attr]
 			if ((share is None) or 
 				(not all([(k in kwargs and kwargs[k] is not None) 
 					for k in ['layout']]))):
 				return value
-			elif isinstance(share,bool) and (not share) and (share is not None):
+			if isinstance(share,bool) and (not share) and (share is not None):
 				if isinstance(value,list):
 					return []
 				else:
@@ -678,6 +693,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if kwargs.get('multiline') is True:
 					pass
 
+				if ('handles' in kwargs[attr]) and (not kwargs[attr]['handles']):
+					handles = []
+				if ('labels' in kwargs[attr]) and (not kwargs[attr]['labels']):
+					labels = []
 				kwargs[attr].update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map])))
 
 				_kwds.update({
@@ -692,7 +711,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 				call = (not (
-					((kwargs[attr]['handles'] == [] or kwargs[attr]['labels'] == []) or 
+					(( (not kwargs[attr]['handles']) or (not kwargs[attr]['labels'])) or 
 					(all([kwargs[attr][k] is None for k in kwargs[attr]]))) or
 					((min(len(kwargs[attr]['handles']),len(kwargs[attr]['labels']))>=1) and
 					(('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is False)))
@@ -891,90 +910,93 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# 	call = False
 
 			elif attr in ['set_colorbar']:
-				values = kwargs[attr].get('values',None)
-				colors = kwargs[attr].get('colors',None)
+				values = kwargs[attr].get('values',[])
+				colors = kwargs[attr].get('colors',[])
 				norm = kwargs[attr].get('norm',None)
 				padding = kwargs[attr].get('pad',0.05)
 				sizing = kwargs[attr].get('size','5%')
 				orientation = kwargs[attr].get('orientation','vertical')
+				position = kwargs[attr].get('position','right')
 				scale = kwargs[attr].get('set_scale',{}).get('value',
 						kwargs[attr].get('set_yscale',{}).get('value',
 						kwargs[attr].get('set_xscale',{}).get('value')))
-				size = shape[-2] if len(shape)>2 else shape[0]
+				size = prod(shape[-2:])
 				for axis in ['',*AXIS]:
 					field = 'set_%slabel'%(axis)
 					subfield = '%slabel'%(axis)
 					if field in kwargs[attr]:
 						kwargs[attr][field][subfield] = attr_texify(kwargs[attr][field][subfield],field,subfield)
 
-				nullkwargs.extend(['values','colors','norm','size','orientation','set_scale','set_yscale','set_xscale','normed_values'])
+				nullkwargs.extend(['values','colors','norm','size','orientation','position','set_scale','set_yscale','set_xscale','normed_values'])
+
+				if values is not None and colors is not None:
 				
-				values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
-				norm = ({**norm,**{
-						 'vmin':norm.get('vmin',min(values,default=0)),
-						 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
-						{'vmin':norm[0],
-						 'vmax':norm[1]} if norm is not None else
-						{'vmin':min(values,default=0),
-						 'vmax':max(values,default=1)})
+					values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
+					norm = ({**norm,**{
+							 'vmin':norm.get('vmin',min(values,default=0)),
+							 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
+							{'vmin':norm[0],
+							 'vmax':norm[1]} if norm is not None else
+							{'vmin':min(values,default=0),
+							 'vmax':max(values,default=1)})
 
-				values = list(realsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
-				norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
-				
-				N = len(values)
+					values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
+					norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
+					
+					N = len(values)
 
-				if isinstance(colors,str):
-					if hasattr(plt.cm,colors):
-						colors = [getattr(plt.cm,colors)((i/N) if (N > 1) else 0.5) for i in range(N)]
-					else:
-						colors = [colors for i in range(N)]
-				
-				if scale in ['linear',None]:
-					norm = matplotlib.colors.Normalize(**norm)  
-				elif scale in ['log']:
-					norm = matplotlib.colors.LogNorm(**norm)  
-				else:
-					norm = matplotlib.colors.Normalize(**norm)
-			
-				values = norm(values)
-
-				cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*10)  
-				pos = obj.get_position()
-				
-				relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
-
-				if N > 1:
-					# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
-					# cax = plt.add_axes()
-					# cax.set_position(pos)
-					divider = make_axes_locatable(obj)
-					cax = divider.append_axes('right',size=sizing,pad=padding)
-					colorbar = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm, orientation=orientation)
-					obj = colorbar	
-					for kwarg in kwargs[attr]:
-						
-						if kwarg in nullkwargs:
-							continue
-
-						_obj = obj
-						
-						for _kwarg in kwarg.split('.'):
-							try:
-								_obj = getattr(_obj,_kwarg)
-							except Exception as exception:
-								break									
-						if isinstance(kwargs[attr][kwarg],dict):
-							try:
-								if _kwarg.startswith('get_'):
-									for i in _obj():
-										getattr(i,_kwarg)(kwargs[attr][kwarg])
-								else:
-									_obj(**kwargs[attr][kwarg])
-							except Exception as exception:
-								continue
+					if isinstance(colors,str):
+						if hasattr(plt.cm,colors):
+							colors = [getattr(plt.cm,colors)(((i+0.5)/(N+0)) if (N > 1) else 0.5) for i in range(N)]
 						else:
-							continue
+							colors = [colors for i in range(N)]
+
+					if scale in ['linear',None]:
+						norm = matplotlib.colors.Normalize(**norm)  
+					elif scale in ['log']:
+						norm = matplotlib.colors.LogNorm(**norm)  
+					else:
+						norm = matplotlib.colors.Normalize(**norm)
 				
+					values = norm(values)
+
+					cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*100)  
+					pos = obj.get_position()
+					
+					relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
+
+					if N > 1:
+						# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
+						# cax = plt.add_axes()
+						# cax.set_position(pos)
+						divider = make_axes_locatable(obj)
+						cax = divider.append_axes(position,size=sizing,pad=padding)
+						colorbar = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm, orientation=orientation)
+						obj = colorbar	
+						for kwarg in kwargs[attr]:
+							
+							if kwarg in nullkwargs:
+								continue
+
+							_obj = obj
+							
+							for _kwarg in kwarg.split('.'):
+								try:
+									_obj = getattr(_obj,_kwarg)
+								except Exception as exception:
+									break									
+							if isinstance(kwargs[attr][kwarg],dict):
+								try:
+									if _kwarg.startswith('get_'):
+										for i in _obj():
+											getattr(i,_kwarg)(kwargs[attr][kwarg])
+									else:
+										_obj(**kwargs[attr][kwarg])
+								except Exception as exception:
+									continue
+							else:
+								continue
+					
 				call = False
 
 
@@ -1032,7 +1054,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						if kwargs.get(subattr) is not None:
 							values = kwargs[subattr].get('values',None)
 							norm = kwargs[subattr].get('norm',None)
-							size = shape[-2] if len(shape)>2 else shape[0]
+							size = prod(shape[-2:])
 							values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
 							norm = ({**norm,**{
 									 'vmin':norm.get('vmin',min(values,default=0)),
@@ -1042,16 +1064,16 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									{'vmin':min(values,default=0),
 									 'vmax':max(values,default=1)})
 
-							values = list(realsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
+							values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
 							norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
 							
 							N = len(values)
 
 						else:
-							size = shape[-2] if len(shape)>2 else shape[0]							
+							size = prod(shape[-2:])
 							N = size
 						
-						i = (to_position(index,shape)[-2 if len(shape)>2 else 0]+(N > size))/N if N>1 else 0.5
+						i = (to_index(index[-2:],shape[-2:])+0.5)/(N+0) if N>1 else 0.5
 
 						_kwargs_[field] = getattr(plt.cm,value)(i)
 				
@@ -1070,11 +1092,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if args != []:
 					_attr = _obj(*args,**_kwargs_)
 				else:
-					_attr = _obj(**_kwargs_)
+					try:
+						_attr = _obj(**_kwargs_)
+					except:
+						_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
+						if _kwargs_:
+							_attr = _obj(**_kwargs_)
+						else:
+							_attr = None
+
 			except Exception as e:
 				_attr = None
 				if not isinstance(e,AttributeError):
-					logger.log(debug,e,_obj,attr,args,_kwargs_)
+					logger.log(debug,'%r %r %s %r %r'%(e,_obj,attr,args,_kwargs_))
 
 			for k in _kwds:
 				_attr_ = _attr
@@ -1116,40 +1146,42 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			return
 
-		_wrapper = lambda kwarg,attr,kwargs,settings,index:{
-			**kwarg,
-			attr: {k: attr_share(attr_texify(kwarg[attr][k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg[attr]},
-			(attr,index):settings[attr],
-			}
+		def attr_kwargs(kwarg,attr,kwargs,settings,index):
+			updates = {}
+			if attr in kwargs.get('share',{}):
+				updates.update({'legend': {'handles':True,'labels':True}}.get(attr,{}))
+			kwarg[attr].update(updates)
+			kwargs = {
+				**kwarg,
+				attr: {
+					**{k: attr_share(attr_texify(kwarg[attr][k],attr,k,**kwargs),attr,k,**kwargs) for k in kwarg[attr]},
+					},
+				(attr,*index):settings[attr],
+				}
+			return kwargs 
 
 		# Convert settings (dict,nested lists of dict) to list of dicts
 		if not isinstance(settings[attr],(dict,list)):
 			return
 
-		_kwargs = [{**settings,attr:setting} if setting else None for setting in flatten(settings[attr],types=(list,))]
+		finds = [(index,[1] if not shape else shape,{**settings,attr:setting} if setting else None) for index,shape,setting in search(settings[attr],types=(list,))]
 
-		shape = []
-		_setting = settings[attr]
-		if isinstance(_setting,dict):
-			shape.append(1)
-		while (_setting) and (not isinstance(_setting,dict)):
-			shape.append(len(_setting))
-			_setting = _setting[0]
-
-		for index,_kwarg in enumerate(_kwargs):
-			if not _kwarg:
+		for index,shape,kwarg in finds:
+			if not kwarg:
 				continue
-			attrs(obj,attr,objs,index,shape,kwargs,_wrapper(_kwarg,attr,kwargs,settings,index))
+			attrs(obj,attr,objs,index,shape,kwargs,attr_kwargs(kwarg,attr,kwargs,settings,index))
 
 		return
 
 	def obj_wrap(attr,key,fig,ax,settings):
-		attr_kwargs = lambda attr,key,settings:{
-			'texify':settings[key]['style'].get('texify'),
-			'share':settings[key]['style'].get('share',{}).get(attr,{}),
-			'layout':_layout(settings[key]['style'].get('layout',{})),
-			}	
-		
+		def attr_kwargs(attr,key,settings):
+			kwargs = {
+				'texify':settings[key]['style'].get('texify'),
+				'share':settings[key]['style'].get('share',{}).get(attr,{}),
+				'layout':_layout(settings[key]['style'].get('layout',{})),
+				}
+			return kwargs
+
 		matplotlib.rcParams.update(settings[key]['style'].get('rcParams',{}))
 
 		objs = lambda attr,key,fig,ax: {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in AXES}}[attr]

@@ -89,7 +89,7 @@ def _features(hyperparameters,parameter,group):
 	method = hyperparameters[parameter]['method']
 	size = len(hyperparameters[parameter]['group'])
 
-	if method in ['constrained']:
+	if method in ['constrained','bound']:
 		wrapper = bound
 	elif method in ['unconstrained']:
 		wrapper = nullbound
@@ -273,7 +273,7 @@ def setup(hyperparameters,cls=None):
 
 
 class Parameters(Object):
-	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
+	def __init__(self,data,shape,size=None,ndim=None,dims=None,system=None,**kwargs):
 		'''
 		Initialize data of shapes of parameters based on shape of data. Initializes attributes of
 			data (dict,array,Parameters): Dictionary of parameter hyperparameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
@@ -302,6 +302,7 @@ class Parameters(Object):
 				'constants':dict[str,iterable[dict[str,iterable]]] : dictionary of constant indices and values of each axis of each parameter layer {'layer':[{'slice':[indices_axis],'value':[values_axis]}]}
 			shape (iterable[int]): Shape of data
 			size (int,iterable[int]): Number of data
+			ndim (int): Number of dimensions of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			cls (dict): Class attributes
@@ -399,7 +400,7 @@ class Parameters(Object):
 		# The other ('take,put',<type>) indexes involve summing all shapes corresponding to the keys that are within the type group, 
 		# plus subtracting shapes corresponding with boundaries and constants
 
-		super().__init__(data,shape,size=size,dims=dims,system=system,**kwargs)
+		super().__init__(data,shape,size=size,ndim=ndim,dims=dims,system=system,**kwargs)
 
 		return
 
@@ -412,11 +413,12 @@ class Parameters(Object):
 		'''
 
 		# Get Hyperparameters data
-		hyperparameters = self.data
+		hyperparameters = deepcopy(self.data)
 		setup(hyperparameters,cls=self.cls)
 
 		# Get number of dimensions of data
 		ndim = len(self.shape)
+		self.ndim = ndim
 
 		# Size of data
 		size = None
@@ -428,13 +430,40 @@ class Parameters(Object):
 		self.dtype = dtype
 
 		# Get parameters
+
+		# Remove not used parameters of hyperparameters
+		for parameter in list(hyperparameters):
+			if (((self.check is not None) and not any(self.check(group,i,axis) 
+				for group in hyperparameters[parameter].get('group',[]) 
+				for axis in range(self.ndim) 
+				for i in range(self.shape[axis]))) or 
+				(hyperparameters[parameter].get('use') is False)):
+
+				hyperparameters.pop(parameter) 
+
+		# Set parameters
+		for parameter in list(hyperparameters):
+			if hyperparameters[parameter].get('use') is False:
+				hyperparameters.pop(parameter)
+				continue
+
 		for parameter in hyperparameters:
 			setattr(self,parameter,System(**hyperparameters[parameter]))
 
 
+		if not hyperparameters:
+			self.data = None
+			self.dimensions = None
+			self.attributes = {}
+			self.hyperparameters = {}
+			return
+ 
+		# Get string
+		self.string = ' '.join([str(getattr(self,parameter)) for parameter in hyperparameters])
+
 		# Get seed
-		seed = [hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
-				for parameter in hyperparameters][0]
+		seed = [self.seed,*[hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
+				for parameter in hyperparameters]][-1]
 
 		# Get properties of hyperparameters
 		properties = ['category','group','shape','locality','boundaries','constants','parameters']
@@ -442,11 +471,6 @@ class Parameters(Object):
 			for prop in properties) 
 			for parameter in hyperparameters), 'hyperparameters missing properties'
 
-
-		# Remove not used parameters of hyperparameters
-		for parameter in list(hyperparameters):
-			if hyperparameters[parameter].get('use') is False:
-				hyperparameters.pop(parameter)
 
 		# Update properties of hyperparameters
 		attrs = {

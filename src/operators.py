@@ -11,23 +11,35 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt
+from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt,cos,sin
 from src.utils import einsum,tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
-from src.utils import slice_slice,datatype,returnargs,is_array,allclose
+from src.utils import slice_slice,datatype,returnargs,is_array,is_unitary,is_hermitian,allclose
 from src.utils import pi,e,delim
 
 from src.system import Object,System
 from src.io import load,dump,join,split
 
 
+basis = {
+	'I': array([[1,0],[0,1]]),
+	'X': array([[0,1],[1,0]]),
+	'Y': array([[0,-1j],[1j,0]]),
+	'Z': array([[1,0],[0,-1]]),
+	'00':array([[1,0],[0,0]]),
+	'01':array([[0,1],[0,0]]),
+	'10':array([[0,0],[1,0]]),
+	'11':array([[0,0],[0,1]]),
+}
 
-def id(shape,bounds=None,random=None,seed=None,dtype=None,):
+
+def id(shape,bounds=None,random=None,scale=None,seed=None,dtype=None):
 	'''
 	Initialize identity unitary operator
 	Args:
 		shape (int,iterable[int]): Shape of operator
 		bounds (iterable): Bounds on operator value
 		random (str): Type of random value
+		scale (float): Scale of operator
 		seed (int,key): Seed for random number generator
 		dtype (data_type): Data type of operator
 	Returns:
@@ -40,13 +52,47 @@ def id(shape,bounds=None,random=None,seed=None,dtype=None,):
 
 	return data
 
-def cnot(shape,bounds=None,random=None,seed=None,dtype=None,):
+def pauli(shape,bounds=None,random=None,scale=None,seed=None,dtype=None):
+	'''
+	Initialize Pauli rotation unitary operator
+	Args:
+		shape (int,iterable[int]): Shape of operator
+		bounds (iterable): Bounds on operator value
+		random (str): Type of random value
+		scale (float): Scale of operator
+		seed (int,key): Seed for random number generator
+		dtype (data_type): Data type of operator
+	Returns:
+		data (array): Array of operator
+	'''
+	coefficients = 2*pi/2
+
+	operators = random.split(delim)
+	I = tensorprod([basis['I'] for i in operators])
+	G = tensorprod([basis[i] for i in operators])
+
+	assert all(i in basis for i in random.split(delim))
+
+	if scale is None:
+		scale = coefficients/2
+	else:
+		scale = scale*coefficients
+
+	data = cos(scale)*I -1j*sin(scale)*G
+
+	data = data.astype(dtype)
+
+	return data
+
+
+def cnot(shape,bounds=None,random=None,scale=None,seed=None,dtype=None,):
 	'''
 	Initialize cnot unitary operator
 	Args:
 		shape (int,iterable[int]): Shape of operator
 		bounds (iterable): Bounds on operator value
 		random (str): Type of random value
+		scale (float): Scale of operator		
 		seed (int,key): Seed for random number generator
 		dtype (data_type): Data type of operator
 	Returns:
@@ -64,13 +110,14 @@ def cnot(shape,bounds=None,random=None,seed=None,dtype=None,):
 	return data
 
 
-def hadamard(shape,bounds=None,random=None,seed=None,dtype=None,):
+def hadamard(shape,bounds=None,random=None,scale=None,seed=None,dtype=None,):
 	'''
 	Initialize hadamard unitary operator
 	Args:
 		shape (int,iterable[int]): Shape of operator
 		bounds (iterable): Bounds on operator value
 		random (str): Type of random value
+		scale (float): Scale of operator		
 		seed (int,key): Seed for random number generator
 		dtype (data_type): Data type of operator
 	Returns:
@@ -86,13 +133,14 @@ def hadamard(shape,bounds=None,random=None,seed=None,dtype=None,):
 	return data	
 
 
-def toffoli(shape,bounds=None,random=None,seed=None,dtype=None,):
+def toffoli(shape,bounds=None,random=None,scale=None,seed=None,dtype=None,):
 	'''
 	Initialize toffoli unitary operator
 	Args:
 		shape (int,iterable[int]): Shape of operator
 		bounds (iterable): Bounds on operator value
 		random (str): Type of random value
+		scale (float): Scale of operator		
 		seed (int,key): Seed for random number generator
 		dtype (data_type): Data type of operator
 	Returns:
@@ -115,19 +163,20 @@ def toffoli(shape,bounds=None,random=None,seed=None,dtype=None,):
 
 
 class Gate(Object):
-	def __init__(self,data,shape,size=None,dims=None,system=None,**kwargs):
+	def __init__(self,data,shape,size=None,ndim=None,dims=None,system=None,**kwargs):
 		'''
 		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
 		Args:
 			data (dict,str,array,Noise): Data corresponding to noise
 			shape (int,iterable[int]): Shape of each data
 			size (int,iterable[int]): Number of data
+			ndim (int): Number of dimensions of data
 			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		super().__init__(data,shape,size=size,dims=dims,system=system,**kwargs)
+		super().__init__(data,shape,size=size,ndim=ndim,dims=dims,system=system,**kwargs)
 
 		return
 
@@ -143,15 +192,22 @@ class Gate(Object):
 		self.size = size
 		self.length = len(self.size) if self.size is not None else None
 
+		# Scale
+		scale = self.scale
+		self.scale = scale
+
 		# Delimiter for string
-		delimiter = '_'
+		delimiter = '.'
+		separator = '_'
 
 		# Properties for strings
 		props = {
-			**{string: {'func':rand,'locality':self.N} for string in ['random','U','haar']},
+			**{string: {'func':rand,'locality':None} for string in ['random','U','haar']},
 			**{string: {'func':hadamard,'locality':1} for string in ['hadamard','H']},
 			**{string: {'func':cnot,'locality':2} for string in ['cnot','CNOT','C']},
 			**{string: {'func':toffoli,'locality':3} for string in ['toffoli','TOFFOLI','T']},
+			**{string: {'func':id,'locality':None} for string in ['identity','i','I']},			
+			**{string: {'func':pauli,'locality':None} for string in ['r','R','pauli','PAULI']},			
 			**{string: {'func':{1:id,2:cnot,3:toffoli}.get(self.N,id),'locality':self.N} for string in ['control']},
 			None: {'func':rand,'locality':self.N},
 			}
@@ -160,25 +216,36 @@ class Gate(Object):
 		if self.string is None:
 			strings = [self.string]
 			locality = self.N
-		elif all(string in props for string in self.string.split(delimiter)):
+			shapes = [self.shape]
+		elif isinstance(self.string,str):
 			strings = self.string.split(delimiter)
-			locality = sum(props[string]['locality'] for string in strings)
+			locality = 0
+			shapes = [self.shape]*len(strings)
+			for i,string in enumerate(strings):
+				string,local = string.split(separator)[0],len(string.split(separator)[1:])
+				assert (string in props), "Error : %s not allowed operator"%(self.string)
+				string,local = str(string),(local if local else self.N-locality) if props[string]['locality'] is None else props[string]['locality']
+				strings[i] = string
+				locality += local
+				shapes[i] = [self.D**local]*self.ndim
 		else:
 			strings = None
-			locality = self.N			
+			locality = self.N
+			shapes  = [self.shape]			
 
 
 		assert (self.N%locality == 0), 'Incorrect operator with locality %d !%% size %d'%(locality,self.N)
 
 		if self.string is not None:
 			data = tensorprod([
-				props[string]['func'](self.shape,
+				props[string]['func'](shape,
 					bounds=self.bounds,
 					random=self.random,
+					scale=self.scale,
 					seed=self.seed,
 					dtype=self.dtype
 					)
-				for string in strings
+				for string,shape in zip(strings,shapes)
 				]*(self.N//locality)
 			)
 		else:
@@ -190,10 +257,16 @@ class Gate(Object):
 			normalization = einsum('...ij,...kj->...ik',data.conj(),data)
 		else:
 			normalization = einsum('...ij,...kj->...ik',data.conj(),data)
+		
+		eps = eye(self.n,dtype=self.dtype)
 
-		assert allclose(eye(self.n,dtype=self.dtype),normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
+		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
+
+		assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
 
 		self.data = data
+		self.shape = self.data.shape if self.data is not None else None
+		self.ndim = self.data.ndim if self.data is not None else None
 
 		return
 
