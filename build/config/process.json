@@ -43,7 +43,7 @@
 		"beta":"$\\textrm{Conjugate Rate}",
 		"rank": "r",
 		"None": "$0$",
-		"key":null,
+		"key":"\\textrm{Sample}",
 		"tau":"\\delta",
 		"tau.noise.parameters":"\\delta/T_{\\gamma}",
 		"T.noise.parameters":"T/T_{\\gamma}",

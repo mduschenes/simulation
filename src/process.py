@@ -1674,10 +1674,11 @@ def plotter(settings,hyperparameters,verbose=None):
 					attr = OTHER
 					value = {
 						**{label: (texify(
-							scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
+							scinotation((data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
 							if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
-								data[OTHER][OTHER][OTHER][label].replace('$',''),
-								**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
+								data[OTHER][OTHER][OTHER][label].replace('$','')) if label in data[OTHER][OTHER][OTHER] else data[OTHER][OTHER].get('legend',{}).get(label)),
+								**data[OTHER][OTHER].get('scinotation',{}),
+								texify=data[OTHER][OTHER].get('texify'))
 							)
 							for label in natsorted(set((
 							label 
@@ -1685,23 +1686,27 @@ def plotter(settings,hyperparameters,verbose=None):
 							if (not ((values[plots][label]['label'])) and 
 								(values[plots][label]['legend']) and (len(values[plots][label]['value'])>1)))))},
 						**{label: (texify(
-							scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
+							scinotation((data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
 								if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
-								data[OTHER][OTHER][OTHER][label].replace('$',''),
-								**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
+								data[OTHER][OTHER][OTHER][label].replace('$','')) if label in data[OTHER][OTHER][OTHER] else data[OTHER][OTHER].get('legend',{}).get(label) ,
+								**data[OTHER][OTHER].get('scinotation',{})),
+								texify=data[OTHER][OTHER].get('texify'))
 							)
 							for label in natsorted(set((
 							label 
 							for label in values[plots]
 							if (not ((values[plots][label]['label'])) and 
 								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))},
-						**{label: (texify(scinotation(data[OTHER][label],**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
+						**{label: (texify(scinotation(data[OTHER][label],
+							**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
 							if values[plots][label]['label'] else texify(
 								scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] 
 									if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
 									data[OTHER][OTHER][OTHER][label].replace('$',''),
-									**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify'))
-							) 
+									**data[OTHER][OTHER].get('scinotation',{})),
+								texify=data[OTHER][OTHER].get('texify'))
+							) if label in data[OTHER][OTHER][OTHER] else texify(scinotation(data[OTHER][OTHER].get('legend',{}).get(label) ,
+																			**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
 							for label in natsorted(set((
 							label 
 							for label in values[plots] 

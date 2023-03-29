@@ -14,7 +14,7 @@
 			"y":"objective",
 			"label":{
 				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
+					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null,"key":null
 				},
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
 			},
@@ -27,15 +27,35 @@
 			"capsize":3,
 			"color":"viridis",
 			"ecolor":"viridis"
-			}									
+			},
+			{
+			"x":"iteration",
+			"y":"objective",
+			"label":{
+				"label":{
+					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
+				},
+				"legend": {"key":"\\textrm{Avg}"},
+				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
+			},
+			"alpha":0.8,
+			"marker":"o",
+			"markersize":12,
+			"linestyle":"-",
+			"linewidth":4,
+			"elinewidth":2,
+			"capsize":3,
+			"color":"k",
+			"ecolor":"k"
+			}												
 			],	
 		"fill_between":[
 			{
 			"x":"iteration",
 			"y":"objective",
 			"label":{"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null},
-			"alpha":0.5,			
-			"color":"viridis"
+			"alpha":0.4,			
+			"color":"k"
 			}						
 			],			
 		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
@@ -43,9 +63,9 @@
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":6},
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -124,9 +144,9 @@
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":6},
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -205,9 +225,9 @@
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":6},
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -290,9 +310,9 @@
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":6},
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -378,9 +398,9 @@
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":6},
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -466,9 +486,9 @@
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
 		"set_xnbins":{"nbins":6},
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -583,12 +603,10 @@
 		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},		
 		"set_xticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0]},		
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
 		"set_ylim":{"ymin":5e-7,"ymax":2e0},
-		"set_ylim":{"ymin":1e-13,"ymax":2e0},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
-		"set_yticks":{"ticks":[1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -656,9 +674,9 @@
 		"set_xnbins":{"nbins":6},
 		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},		
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -725,9 +743,9 @@
 		"set_xnbins":{"nbins":3},
 		"set_xticks":{"ticks":[1e2,1e4,1e6,1e8,1e10]},		
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -794,9 +812,9 @@
 		"set_xnbins":{"nbins":6},
 		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},		
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -877,9 +895,10 @@
 		"set_xticks":{"ticks":[0,400,800,1200,1600]},		
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim":{"ymin":1e-13,"ymax":2e0},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
 		"set_yticks":{"ticks":[1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -1079,9 +1098,9 @@
 		"set_xticks":{"ticks":[0,200,400,600,800,1000]},		
 		"set_xticks":{"ticks":[1e-6,1e-4,1e-2,1e0]},		
 		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-15,"ymax":1e1},
+		"set_ylim":{"ymin":1e-21,"ymax":1e1},
 		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
+		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -1242,7 +1261,7 @@
 				"ax.tick_params":{"labelsize":30,"which":"major","size":10,"length":8,"width":1}
 				},	
             "set_ylabel": {
-                "ylabel": [["$\\theta^{x}_{%s}$","$\\theta^{y}_{%s}$"]]
+                "ylabel": [["$\\theta^{x}_{%s}/\\pi$","$\\theta^{y}_{%s}/\\pi$"]]
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Iteration}$"
