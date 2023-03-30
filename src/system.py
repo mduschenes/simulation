@@ -67,7 +67,7 @@ class System(Dictionary):
 			'dtype':'float',
 			'format':'array',
 			'device':'cpu',
-			'backend':'jax',
+			'backend':None,
 			'architecture':None,
 			'unit':1,			
 			'seed':None,
