@@ -29,7 +29,7 @@ autograd
 equinox
 
 notebook
-nbconvert>6.5
+nbconvert
 nb_conda_kernels
 jupyter
 jupyter_contrib_nbextensions
