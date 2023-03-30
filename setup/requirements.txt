@@ -28,7 +28,7 @@ jaxtyping=0.2.8
 equinox
 
 notebook
-nbconvert<6
+nbconvert
 nb_conda_kernels
 jupyter
 jupyter_contrib_nbextensions
