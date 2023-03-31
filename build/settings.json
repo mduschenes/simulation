@@ -107,6 +107,7 @@
 	"architecture":null,
 	"seed":null,
 	"key":null,
+	"instance":null,
 	"cwd":".",
 	"path":null,
 	"path":"data.hdf5",
@@ -165,7 +166,7 @@
 			"hessian.rank":false,"fisher.rank":false,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],"instance":[],
 
 			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
 		}	

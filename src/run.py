@@ -126,7 +126,7 @@ def setup(settings):
 	else:
 		seeds = []
 
-	other = [{'system.key':None,'system.seed':seed}]
+	other = [{'system.key':None,'system.instance':None,'system.seed':seed}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	if size:
@@ -160,6 +160,8 @@ def setup(settings):
 
 					if attr in ['system.key']:
 						keys[key][attr] = key
+					elif attr in ['system.instance']:
+						keys[key][attr] = key.split(delim)[-1] if key is not None else None
 
 	# Set settings with key and seed instances
 	settings = {key: deepcopy(settings) for key in keys}
