@@ -11,7 +11,7 @@
 	},
 "seed":{
 	"seed":12931,
-	"size":5,
+	"size":3,
 	"reset":131,
 	"index":null
 	},
@@ -19,7 +19,7 @@
 	"permutations":{	
 
 		"model.N":[1],		
-		"model.M":[2],
+		"model.M":[2,4,6],
 		"model.P":[1],
 		"model.tau":[1],
 		"model.T": [null],
@@ -39,7 +39,7 @@
 		"state.scale":[null],
 
 
-		"optimize.iterations":[150],
+		"optimize.iterations":[50],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],

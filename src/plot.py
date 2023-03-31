@@ -49,7 +49,6 @@ PATHS = {
 	'mplstyle':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.mplstyle'),		
 	'mplstyle.notex':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.notex.mplstyle'),
 	}
-DELIMITER='__'
 
 def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,func=None):
 	'''
@@ -945,11 +944,34 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					
 					N = len(values)
 
+					print(colors)
+					
 					if isinstance(colors,str):
-						if hasattr(plt.cm,colors):
-							colors = [getattr(plt.cm,colors)(((i+0.5)/(N+0)) if (N > 1) else 0.5) for i in range(N)]
-						else:
-							colors = [colors for i in range(N)]
+						
+						delimiter = '_'
+						color,options = colors.split(delimiter)[0],colors.split(delimiter)[1:]
+						options = list(set(options))
+						reverse = 'r' in options
+						value = [float(i) for i in options if i != 'r']
+						value = None if not value else value
+
+						color = delimiter.join([color,'r']) if reverse else color
+						
+						def colorer(i,N,color=color,value=value):
+							if value is None:
+								i = ((i+0.5)/(N+0)) if (N > 1) else 0.5
+							elif not isinstance(value,list):
+								i = value
+							else:
+								i = value[i%len(value)] 
+
+							if hasattr(plt.cm,color):
+								color = getattr(plt.cm,color)(i)
+
+							return color
+
+						colors = [colorer(i,N) for i in range(N)]
+
 
 					if scale in ['linear',None]:
 						norm = matplotlib.colors.Normalize(**norm)  
@@ -1031,7 +1053,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			fields = ['color','ecolor']
 			for field in fields:
-				if _kwargs_.get(field) == '__cycle__':
+				value = _kwargs_.get(field)
+
+				if value == '__cycle__':
 					try:
 						_obj = objs[-1][-1]
 					except:
@@ -1042,13 +1066,39 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					values = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)
 					_kwargs_[field] = values[-1]
 				
-				elif _kwargs_.get(field) == '__lines__':
+				elif value == '__lines__':
 					_obj = getattr(obj,'get_lines')()[-1]
 					_kwargs_[field] = getattr(_obj,'get_%s'%(field))()
 			
-				elif isinstance(_kwargs_.get(field),str):
-					if hasattr(plt.cm,_kwargs_.get(field)):
-						value = _kwargs_.get(field)
+				elif isinstance(value,str):
+					colors = value
+
+					delimiter = '_'
+					color,options = colors.split(delimiter)[0],colors.split(delimiter)[1:]
+					options = list(set(options))
+					reverse = 'r' in options
+					value = [float(i) for i in options if i != 'r']
+					value = None if not value else value
+					
+					color = delimiter.join([color,'r']) if reverse else color
+
+					def colorer(i,N,color=color,value=value):
+						if value is None:
+							i = ((i+0.5)/(N+0)) if (N > 1) else 0.5
+						elif not isinstance(value,list):
+							i = value
+						else:
+							i = value[i%len(value)] 
+
+
+						if hasattr(plt.cm,color):
+							color = getattr(plt.cm,color)(i)
+
+						return color	
+
+
+					if hasattr(plt.cm,color):
+						value = color
 
 						subattr = 'set_colorbar'
 						if kwargs.get(subattr) is not None:
@@ -1072,10 +1122,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						else:
 							size = prod(shape[-2:])
 							N = size
-						
-						i = (to_index(index[-2:],shape[-2:])+0.5)/(N+0) if N>1 else 0.5
 
-						_kwargs_[field] = getattr(plt.cm,value)(i)
+						i = to_index(index[-2:],shape[-2:])
+
+						_kwargs_[field] = colorer(i,N)
 				
 				else:
 					continue

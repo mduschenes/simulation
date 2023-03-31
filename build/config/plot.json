@@ -14,19 +14,19 @@
 			"y":"objective",
 			"label":{
 				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null,"key":null
+					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null,"instance":null
 				},
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
 			},
-			"alpha":0.8,
+			"alpha":"@instance@",
 			"marker":"o",
 			"markersize":12,
 			"linestyle":"--",
 			"linewidth":4,
 			"elinewidth":2,
 			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
+			"color":{"@M@":"viridis"},
+			"ecolor":{"@M@":"viridis"}
 			},
 			{
 			"x":"iteration",
@@ -35,7 +35,7 @@
 				"label":{
 					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
 				},
-				"legend": {"key":"\\textrm{Avg}"},
+				"legend": {"instance":"\\textrm{Avg}"},
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
 			},
 			"alpha":0.8,
