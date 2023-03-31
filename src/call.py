@@ -705,10 +705,10 @@ def sed(path,patterns,default=None,env=None,process=None,processes=None,device=N
 
 		cmd = None
 		
-		result = search(path,pattern,execute=True,verbose=verbose)
+		result = contains(path,pattern,execute=True,verbose=verbose)
 
 		if result == -1:
-			result = search(path,default,execute=True,verbose=verbose)
+			result = contains(path,default,execute=True,verbose=verbose)
 			if result == -1:					
 				cmd = None
 			else:
@@ -738,7 +738,7 @@ def sed(path,patterns,default=None,env=None,process=None,processes=None,device=N
 
 	return
 
-def search(path,pattern,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+def contains(path,pattern,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
 	'''
 	Search for pattern in file
 	Args:
@@ -945,7 +945,7 @@ def update(path,patterns,kwargs=None,env=None,process=None,processes=None,device
 		string(pattern=pattern,default=default): 
 		string(pattern=pattern,value=patterns.pop(pattern,None),prefix='#',default=default)
 		for pattern in [*list(nulls),*[pattern for pattern in patterns if patterns[pattern] is None]]
-		if search(path,string(pattern=pattern,default=default),execute=True,verbose=verbose) >= 0
+		if contains(path,string(pattern=pattern,default=default),execute=True,verbose=verbose) >= 0
 		})
 
 	for pattern in nulls:
@@ -975,6 +975,9 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 	if paths is None:
 		return
 
+	if not execute:
+		return
+
 	if patterns is None:
 		patterns = {}
 
@@ -988,7 +991,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		destination = join(path,root=cwd)
 
 		# Update and Dump files
-		if isinstance(data,dict):
+		if isinstance(data,dict) and execute:
 			data,source,destination = load(source),deepcopy(data),destination
 			setter(source,data,func=False)
 			dump(source,destination)					
@@ -1274,9 +1277,6 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 
 	keys = intersection(keys,resume,sort=None)
 
-	execution = True if execute == -1 else execute
-	execute = False if execute == -1 else execute
-
 	keys = {key:{} for key in keys}
 
 	iterable = [key for key in keys]
@@ -1307,6 +1307,9 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 
 	msg = 'Jobs : %s'%(','.join([task['job'] for task in tasks]))
 	logger.log(info,msg)
+
+	execution = True if execute == -1 else execute
+	execute = False if execute == -1 else execute
 
 	for task in tasks:
 

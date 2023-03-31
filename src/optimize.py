@@ -1149,13 +1149,6 @@ class Optimization(System):
 
 			self.dump(iteration,state)
 
-			# if self.verbose:
-			# 	for attr in self.attributes:
-			# 		logger.log(self.verbose,'attribute.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.attributes[attr]]))
-			# 	for attr in self.track:
-			# 		logger.log(self.verbose,'track.%s %r'%(attr,[i.shape if (is_array(i) and i.size>1) else asscalar(i) for i in self.track[attr]]))
-			# 	logger.log(self.verbose,'\n\n')
-
 			if not self.status:
 				break
 
@@ -1428,12 +1421,19 @@ class Optimization(System):
 			*['%s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']
 			],
+			*['dtype: %s'%(', '.join(['%s: %s'%(attr,value.dtype if value is not None else None) for attr,value in {
+				**{attr: getattr(self.func.model,attr)() for attr in ['parameters','label','state','noise'] if hasattr(self.func.model,attr)},
+				**{attr:self.func.model(self.func.model.parameters()) for attr in ['model'] if getattr(self.func.model,'parameters')},
+				**{attr:self.func.metric(self.func.model.label()) for attr in ['metric'] if hasattr(self.func.model,'label')},
+				**{attr:self.func(self.func.model.parameters()) for attr in ['cls'] if hasattr(self.func.model,'parameters')},
+				}.items()]))],
 			*['%s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
 				for attr in ['track','attributes']
 				if any(getattr(self,attr).get(key) for key in getattr(self,attr))
 			],			
 			]
 			))
+
 		self.log(msg,verbose=verbose)
 		return
 
