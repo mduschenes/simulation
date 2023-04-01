@@ -25,7 +25,7 @@ from src.iterables import setter,getter,search
 from src.fit import fit
 from src.io import load,dump,join,split,glob,cd,cwd,exists,dirname
 
-from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
+from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,OTHER,PLOTS
 
 from src.quantum import Unitary
 
@@ -336,7 +336,7 @@ def postprocess(path,**kwargs):
 				
 				key = ['M.objective.noise.scale','None','ax','errorbar']
 				label = {'x':'noise.scale','y':'M','z':'objective'}
-				axes = AXIS
+				axes = AXES
 				other = OTHER
 				values = list(search(getter(hyperparameters,key)))
 				slices = slice(None,None,None)

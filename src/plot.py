@@ -30,20 +30,21 @@ warnings.simplefilter('ignore', (UserWarning,DeprecationWarning,FutureWarning))
 
 
 # Global Variables
-AXIS = ['x','y','z']
+DIM = 2
+LAYOUTDIM = 2
+AXES = ['x','y','z']
 VARIANTS = ['','err','1','2']
 FORMATS = ['lower','upper']
-ALL = ['%s%s'%(getattr(axis,fmt)(),variant) for axis in AXIS for variant in VARIANTS for fmt in FORMATS]
+ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for axes in AXES for variant in VARIANTS for fmt in FORMATS]
+DEPENDENT = [axes for axes in ALL if any(axes.lower().startswith(i.lower()) for i in AXES[DIM-1:])]
+INDEPENDENT = [axes for axes in AXES if any(axes.lower().startswith(i.lower()) for i in AXES[:DIM-1])]
 OTHER = 'label'
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
-AXES = ['colorbar']
+CAXES = ['colorbar']
 PLOTS = ['plot','scatter','errorbar','histogram','fill_between','axvline','axhline','vlines','hlines','plot_surface']
 LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
 NULLLAYOUT = ['index','pad']
-DIM = 2
-AXISDIM = 3
-LAYOUTDIM = 2
 PATHS = {
 	'plot':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.json'),
 	'mplstyle':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.mplstyle'),		
@@ -460,7 +461,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			return
 		_layout_ = _layout(settings[key]['style']['layout'])
 		add_subplot = True and (_layout_ != {})
-		other = {'%s_%s'%(key,k):settings[key]['style'].get(k) for k in AXES if isinstance(settings[key]['style'].get(k),dict)}
+		other = {'%s_%s'%(key,k):settings[key]['style'].get(k) for k in CAXES if isinstance(settings[key]['style'].get(k),dict)}
 		for k in ax:
 			__layout__ = _layout(settings.get(k,{}).get('style',{}).get('layout',ax[k].get_geometry()))
 			if all([_layout_[kwarg]==__layout__[kwarg] for kwarg in _layout_]):
@@ -522,12 +523,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				substring = substring.replace('$','')
 			return substring
 		attrs = {
-			**{'set_%slabel'%(axis):['%slabel'%(axis)]
-				for axis in AXIS},
-			# **{'set_%sticks'%(axis):['ticks']
-			# 	for axis in AXIS},				
-			**{'set_%sticklabels'%(axis):['labels']
-				for axis in AXIS},	
+			**{'set_%slabel'%(axes):['%slabel'%(axes)]
+				for axes in AXES},
+			# **{'set_%sticks'%(axes):['ticks']
+			# 	for axes in AXES},				
+			**{'set_%sticklabels'%(axes):['labels']
+				for axes in AXES},	
 			**{k:[OTHER] for k in PLOTS},								
 			**{'set_title':[OTHER],'suptitle':['t'],
 			'annotate':['s'],
@@ -546,7 +547,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if ((attr in attrs) and 
 			((isinstance(attrs[attr],list) and (kwarg in attrs[attr])) or 
 			 (isinstance(attrs[attr],dict) and (kwarg in attrs[attr])))):
-			if attr in ['set_%sticklabels'%(axis) for axis in AXIS]:
+			if attr in ['set_%sticklabels'%(axes) for axes in AXES]:
 				string = [scinotation(substring,decimals=1,usetex=True) for substring in string]
 			elif isinstance(string,(str,tuple,int,float,np.integer,np.floating)):
 				string = texify(string)
@@ -568,10 +569,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		
 		attrs = {
 			**{'set_%s'%(key):['%s'%(label)]
-				for axis in AXIS 
-				for key,label in [('%slabel'%(axis),'%slabel'%(axis)),
-								  ('%sticks'%(axis),'ticks'),
-								  ('%sticklabels'%(axis),'labels')]},
+				for axes in AXES 
+				for key,label in [('%slabel'%(axes),'%slabel'%(axes)),
+								  ('%sticks'%(axes),'ticks'),
+								  ('%sticklabels'%(axes),'labels')]},
 			**{k:[OTHER] for k in PLOTS},	
 			**{
 				'set_title':[OTHER],
@@ -720,9 +721,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
 
 				call = len(args)>0			
 
@@ -733,10 +734,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				subattrs = 'set_%sscale'
 				props ='%s'
 				subprops = '%serr'
-				for axis in AXIS[:dim]:
-					prop = props%(axis)
-					subprop = subprops%(axis)
-					subattr = subattrs%(axis)
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subprop = subprops%(axes)
+					subattr = subattrs%(axes)
 
 					if (
 						(kwargs[attr].get(prop) is not None) and (kwargs[attr].get(subprop) is not None) and 
@@ -765,9 +766,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr][subprop] = np.abs(kwargs[attr][subprop])
 					
 
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
 				
 				call = len(args)>0			
 
@@ -778,10 +779,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				subattrs = 'set_%sscale'
 				props ='%s'
 				subprops = '%serr'
-				for axis in AXIS[:dim]:
-					prop = props%(axis)
-					subprop = subprops%(axis)
-					subattr = subattrs%(axis)
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subprop = subprops%(axes)
+					subattr = subattrs%(axes)
 
 					if (
 						(kwargs[attr].get(prop) is not None) and (kwargs[attr].get(subprop) is not None) and 
@@ -826,23 +827,23 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				else:
 					args.extend([])
 					call = False
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS for k in AXIS],*[OTHER]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS for k in AXES],*[OTHER]])
 
 			elif attr in ['scatter']:
 
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
 
 				call = True
 
 			elif attr in ['plot_surface','contour','contourf']:
 
 				dim = 3
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
-				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
+				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
 
 				call = True
 
@@ -850,29 +851,29 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['imshow']:
 				dim = 2
 
-				fields = [*['%s%s'%(k.upper(),s) for s in VARIANTS[:1] for k in AXIS[:1]],*AXIS[:dim][::-1]]
+				fields = [*['%s%s'%(k.upper(),s) for s in VARIANTS[:1] for k in AXES[:1]],*AXES[:dim][::-1]]
 				for field in fields:
 					if field in kwargs[attr]:
 						args.append(kwargs[attr].get(field))
 						break
 
-				nullkwargs.extend([*['%s%s'%(k.upper(),s) for s in VARIANTS[:2] for k in AXIS[:1]],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*[]])
+				nullkwargs.extend([*['%s%s'%(k.upper(),s) for s in VARIANTS[:2] for k in AXES[:1]],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
 
 				call = True
 
 
-			elif attr in ['%saxis.set_%s_%s'%(axis,which,formatter) for axis in AXIS for which in WHICH for formatter in FORMATTER]:
-				axis = attr.split('.')[0].replace('axis','')
+			elif attr in ['%saxis.set_%s_%s'%(axes,which,formatter) for axes in AXES for which in WHICH for formatter in FORMATTER]:
+				axes = attr.split('.')[0].replace('axes','')
 				which = attr.split('.')[1].replace('set_','').replace('_%s'%(attr.split('_')[-1]),'')
 				formatter = attr.split('_')[-1]
 				for k in kwargs[attr]:
 					for a in kwargs[attr][k]:
-						getattr(getattr(obj,'%saxis'%(axis)),'set_%s_%s'%(which,formatter))(
+						getattr(getattr(obj,'%saxis'%(axes)),'set_%s_%s'%(which,formatter))(
 							getattr(getattr(matplotlib,k),a)(**kwargs[attr][k][a]))					
 				call = False
 
 
-			elif attr in ['set_%sbreak'%(axis) for axis in AXIS]:
+			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
 
 				fields = ['transform']
 				for field in fields:
@@ -880,32 +881,32 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr][field] = getattr(obj,kwargs[attr].get(field))
 
 				dim = 2
-				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXIS[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
+				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
-				nullkwargs.extend([*[],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXIS],*['transform']])
+				nullkwargs.extend([*[],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*['transform']])
 
 				attr_ = 'plot'
 
 				call = len(args)>0		
 
-			elif attr in ['set_%snbins'%(axis) for axis in AXIS]:
-				axis = attr.replace('set_','').replace('nbins','')
+			elif attr in ['set_%snbins'%(axes) for axes in AXES]:
+				axes = attr.replace('set_','').replace('nbins','')
 				which = 'major'
 				formatter = 'locator'
 				k = 'ticker'
 				try:
 					a = 'MaxNLocator'
-					getattr(getattr(obj,'%saxis'%(axis)),'set_%s_%s'%(which,formatter))(
+					getattr(getattr(obj,'%saxis'%(axes)),'set_%s_%s'%(which,formatter))(
 							getattr(getattr(matplotlib,k),a)(**kwargs[attr]))
 				except:
 					a = 'LogLocator'
-					getattr(getattr(obj,'%saxis'%(axis)),'set_%s_%s'%(which,formatter))(
+					getattr(getattr(obj,'%saxis'%(axes)),'set_%s_%s'%(which,formatter))(
 							getattr(getattr(matplotlib,k),a)(**kwargs[attr]))
 				call = False
 
-			# elif attr in ['%saxis.offsetText.set_fontsize'%(axis) for axis in AXIS]:
-			# 	axis = attr.split('.')[0].replace('axis','')
-			# 	getattr(getattr(getattr(obj,'%saxis'%(axis)),'offsetText'),'set_fontsize')(**kwargs[attr])
+			# elif attr in ['%saxis.offsetText.set_fontsize'%(axes) for axes in AXES]:
+			# 	axes = attr.split('.')[0].replace('axes','')
+			# 	getattr(getattr(getattr(obj,'%saxis'%(axes)),'offsetText'),'set_fontsize')(**kwargs[attr])
 			# 	call = False
 
 			elif attr in ['set_colorbar']:
@@ -920,9 +921,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						kwargs[attr].get('set_yscale',{}).get('value',
 						kwargs[attr].get('set_xscale',{}).get('value')))
 				size = prod(shape[-2:])
-				for axis in ['',*AXIS]:
-					field = 'set_%slabel'%(axis)
-					subfield = '%slabel'%(axis)
+				for axes in ['',*AXES]:
+					field = 'set_%slabel'%(axes)
+					subfield = '%slabel'%(axes)
 					if field in kwargs[attr]:
 						kwargs[attr][field][subfield] = attr_texify(kwargs[attr][field][subfield],field,subfield)
 
@@ -945,7 +946,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					N = len(values)
 
 					print(colors)
-					
+
 					if isinstance(colors,str):
 						
 						delimiter = '_'
@@ -1234,7 +1235,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 		matplotlib.rcParams.update(settings[key]['style'].get('rcParams',{}))
 
-		objs = lambda attr,key,fig,ax: {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in AXES}}[attr]
+		objs = lambda attr,key,fig,ax: {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in CAXES}}[attr]
 		obj = objs(attr,key,fig,ax)
 
 		ordering = {'close':-1,'savefig':-2}
@@ -1263,7 +1264,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		with matplotlib.style.context(mplstyle):
 			settings,fig,ax = setup(x,y,z,settings,fig,ax,mplstyle,texify)
 			for key in settings:
-				for attr in ['ax',*['%s_%s'%('ax',k) for k in AXES],'fig']:
+				for attr in ['ax',*['%s_%s'%('ax',k) for k in CAXES],'fig']:
 					obj_wrap(attr,key,fig,ax,settings)
 
 		return fig,ax
@@ -1425,7 +1426,7 @@ if __name__ == '__main__':
 
 
 	df = pd.concat([pd.read_csv(d) for d in glob.glob(data)],
-					axis=0,ignore_index=True)
+					axes=0,ignore_index=True)
 
 	_settings = load(settings)
 
