@@ -19,7 +19,7 @@
 	"permutations":{	
 
 		"model.N":[1],		
-		"model.M":[2,4,6],
+		"model.M":[2,4,6,8],
 		"model.P":[1],
 		"model.tau":[1],
 		"model.T": [null],
@@ -34,12 +34,12 @@
 		"parameters.xy.kwargs.lambda":[[0]],		
 		"label.string":["pauli"],
 		"label.random":["Z"],
-		"label.scale":[0.5],
+		"label.scale":[0.25],
 		"noise.scale":[null],
 		"state.scale":[null],
 
 
-		"optimize.iterations":[50],
+		"optimize.iterations":[100],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
@@ -48,8 +48,8 @@
 		"parameters.xy.method":["bound"],
 		"parameters.xy.kwargs.lambda":[[0]],
 
-		"jobs.job.cwd":["test"],
-		"jobs.postprocess.cwd":["test"],		
+		"jobs.job.cwd":["check"],
+		"jobs.postprocess.cwd":["check"],		
 	
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -162,12 +162,14 @@
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
 			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
-			"hessian.rank":false,"fisher.rank":false,
+			"hessian.eigenvalues":true,"fisher.eigenvalues":true,
+			"hessian.rank":true,"fisher.rank":true,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],"instance":[],
-
+			"parameters.xy.scale":[],"parameters.xy.method":[],
+			"parameters.z.scale":[],"parameters.z.method":[],
+			"parameters.zz.scale":[],"parameters.zz.method":[],
 			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
 		}	
 	},

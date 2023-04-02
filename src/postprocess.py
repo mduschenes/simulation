@@ -326,7 +326,7 @@ def postprocess(path,**kwargs):
 
 			with cd(path):
 
-				file = 'metadata.json'
+				file = 'data.json'
 				hyperparameters = load(file)
 					
 				if hyperparameters is None:
@@ -372,7 +372,7 @@ def postprocess(path,**kwargs):
 				_X,_Y,_Z = [],[],[]
 				_Xerr,_Yerr,_Zerr = [],[],[]
 
-				_path = 'metadata.data.json'
+				_path = 'data.data.json'
 				_settings = load(_path,default=None)
 
 				if _settings is not None:
@@ -666,7 +666,7 @@ def postprocess(path,**kwargs):
 						y = _y[slices]
 
 				
-				_path = 'metadata.fit.json'
+				_path = 'data.fit.json'
 				_settings = load(_path,default=None)
 
 				if _settings is not None:
