@@ -1,12 +1,11 @@
 #!/bin/bash
 
-#SBATCH --account=def-carrasqu
-##SBATCH --account=def-raymond
+##SBATCH --account=mduschenes
 #SBATCH --job-name=output
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
-##SBATCH --partition=cpu
+#SBATCH --partition=cpu
 #SBATCH --time=01:00:00
 #SBATCH --mem=32G
 #SBATCH --nodes=1
@@ -22,7 +21,7 @@
 
 
 # Run Parallel tasks
-parallel --record-env &>/dev/null 2>&1
+
 
 # Function
 function RUN(){
@@ -81,12 +80,9 @@ fi
 export JOB_SRC=$(echo ${JOB_SRC/\~/"${HOME}"} | envsubst)
 
 # Environment
-# source ~/.bashrc &>/dev/null 2>&1
 module purge &>/dev/null 2>&1
-module load python/3.8 &>/dev/null 2>&1
-source ${HOME}/env/${JOB_ENV}/bin/activate &>/dev/null 2>&1
-#conda activate ${JOB_ENV} &>/dev/null 2>&1
-#source activate ${JOB_ENV} &>/dev/null 2>&1
+# conda activate ${JOB_ENV} &>/dev/null 2>&1
+source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
 CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
@@ -108,4 +104,6 @@ echo $(pwd) ${EXE[@]} ${TASKS[@]}
 ${EXE[@]} ${TASKS[@]}
 
 # Status
-squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
+# squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
+# sacct -j ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
+scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
