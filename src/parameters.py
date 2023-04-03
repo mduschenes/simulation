@@ -1538,14 +1538,14 @@ class Parameters(Object):
 							index = ('put','category','variable')
 							slices = data[attr][category][parameter][group][reflayer][index]
 
-							data[attribute][category][layer] = data[attribute][category][layer].at[slices].set(values)
+							data[attribute][category][layer][slices] = values
 
 							attr = 'slice'
 							reflayer = layer						
 							index = ('put','layer','variable')
 							slices = data[attr][category][parameter][group][reflayer][index]
 
-							data[attribute][layer] = data[attribute][layer].at[slices].set(values)
+							data[attribute][layer][slices] = values
 
 						elif layer in ['features']:
 
@@ -1575,14 +1575,14 @@ class Parameters(Object):
 							index = ('put','category','variable')
 							slices = data[attr][category][parameter][group][reflayer][index]
 
-							data[attribute][category][layer] = data[attribute][category][layer].at[slices].set(values)
+							data[attribute][category][layer][slices] = values
 
 							attr = 'slice'
 							reflayer = layer						
 							index = ('put','layer','variable')
 							slices = data[attr][category][parameter][group][reflayer][index]
 
-							data[attribute][layer] = data[attribute][layer].at[slices].set(values)						
+							data[attribute][layer][slices] = values						
 
 
 						elif layer in ['variables']:
@@ -1613,14 +1613,14 @@ class Parameters(Object):
 							index = ('put','category','variable')
 							slices = data[attr][category][parameter][group][reflayer][index]
 
-							data[attribute][category][layer] = data[attribute][category][layer].at[slices].set(values)
+							data[attribute][category][layer][slices] = values
 
 							attr = 'slice'
 							reflayer = layer						
 							index = ('put','layer','variable')
 							slices = data[attr][category][parameter][group][reflayer][index]
 
-							data[attribute][layer] = data[attribute][layer].at[slices].set(values)						
+							data[attribute][layer][slices] = values						
 
 						# Boundaries and constants of the form [{i:value} for axis in axes]
 						attrs = ['boundaries','constants']
@@ -1650,14 +1650,14 @@ class Parameters(Object):
 								slices = data[attr][category][parameter][group][layer][index]
 
 								try:
-									data[attribute][category][layer] = data[attribute][category][layer].at[slices].set(values[axis])
+									data[attribute][category][layer][slices] = values[axis]
 								except:
 									for k,i in enumerate(slices[axis]):
 
 										refslices = tuple([slices[ax] if ax != axis else i for ax in range(ndim)])
 										refindices = tuple([slice(None) if ax != axis else k for ax in range(ndim)])
 
-										data[attribute][category][layer] = data[attribute][category][layer].at[refslices].set(values[axis][refindices])
+										data[attribute][category][layer][refslices] = values[axis][refindices]
 
 
 								attr = 'slice'
@@ -1665,14 +1665,14 @@ class Parameters(Object):
 								slices = data[attr][category][parameter][group][layer][index]
 
 								try:
-									data[attribute][layer] = data[attribute][layer].at[slices].set(values[axis])
+									data[attribute][layer][slices] = values[axis]
 								except:
 									for k,i in enumerate(slices[axis]):
 
 										refslices = tuple([slices[ax] if ax != axis else i for ax in range(ndim)])
 										refindices = tuple([slice(None) if ax != axis else k for ax in range(ndim)])
 
-										data[attribute][layer] = data[attribute][layer].at[refslices].set(values[axis][refindices])
+										data[attribute][layer][refslices] = values[axis][refindices]
 
 						attr = 'shape'
 						index = ('take','layer','variable')
@@ -1858,9 +1858,10 @@ class Parameters(Object):
 				funcs = [data[attr][category][parameter][group][layer] for attr in ['features']]
 
 				def func(parameters,values,slices,indices,funcs=funcs):
-					return values.at[indices].set(funcs[0](parameters[slices]))
+					values[indices] = funcs[0](parameters[slices])
+					return values
 				func = jit(partial(func,slices=slices,indices=indices,funcs=funcs))
-				# func = lambda parameters,values,slices,indices,funcs=funcs: values.at[indices].set(funcs[0](parameters[slices]))
+				# func[indices] = funcs[0](parameters[slices])
 
 				values = func(parameters,values)
 
@@ -1943,9 +1944,10 @@ class Parameters(Object):
 
 
 				def func(parameters,values,slices,indices,funcs=funcs):
-					return values.at[indices].set(funcs[1](funcs[0](parameters[slices])))
+					values[indices] = funcs[1](funcs[0](parameters[slices]))
+					return values
 				func = jit(partial(func,slices=slices,indices=indices,funcs=funcs))				
-				# func = lambda parameters,values,slices,indices,funcs=funcs: values.at[indices].set(funcs[1](funcs[0](parameters[slices])))
+				# func[indices] = funcs[1](funcs[0](parameters[slices]))
 
 				values = func(parameters,values)
 

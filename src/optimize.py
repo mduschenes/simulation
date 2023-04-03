@@ -1453,7 +1453,8 @@ class Optimizer(Optimization):
 		defaults = {'optimizer':None}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
-		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
+		# optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
+		optimizers = {'adam':GradientDescent,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
 
 		optimizer = hyperparameters['optimizer']		
 		
