@@ -1,1197 +1,3074 @@
 {
-"iteration.objective.M":{
-	"fig":{
-		"set_size_inches":{"w":32,"h":20},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"iteration",
-			"y":"objective",
-			"label":{
-				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null,"instance":null
-				},
-				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
-			},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			},
-			{
-			"x":"iteration",
-			"y":"objective",
-			"label":{
-				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
-				},
-				"legend": {"instance":"\\textrm{Avg}"},
-				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
-			},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"-",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"k",
-			"ecolor":"k"
-			}												
-			],	
-		"fill_between":[
-			{
-			"x":"iteration",
-			"y":"objective",
-			"label":{"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null},
-			"alpha":0.4,			
-			"color":"k"
-			}						
-			],			
-		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
-		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":6},
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [1.1,0.05],
-			"ncol": 1,
-			"set_label":true,
-			"set_zorder":{"level":100},
-			"update":"%s \\textrm{Noisy}",
-			"update":null
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},
-"iteration.grad.norm.M":{
-	"fig":{
-		"set_size_inches":{"w":32,"h":20},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"iteration",
-			"y":"grad.norm",
-			"label":{
-				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
-				},
-				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
-			},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}								
-			],	
-		"fill_between":[
-			{
-			"x":"iteration",
-			"y":"grad.norm",
-			"label":{"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null},
-			"alpha":0.5,			
-			"color":"viridis"
-			}						
-			],			
-		"set_ylabel":{"ylabel":null},		
-		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":6},
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [1.1,0.05],
-			"ncol": 1,
-			"set_label":true,
-			"set_zorder":{"level":100},
-			"update":"%s \\textrm{Noisy}",
-			"update":null
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},
-"iteration.search.norm.M":{
-	"fig":{
-		"set_size_inches":{"w":32,"h":20},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"iteration",
-			"y":"search.norm",
-			"label":{
-				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
-				},
-				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
-			},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}									
-			],	
-		"fill_between":[
-			{
-			"x":"iteration",
-			"y":"search.norm",
-			"label":{"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null},
-			"alpha":0.5,			
-			"color":"viridis"
-			}						
-			],			
-		"set_ylabel":{"ylabel":null},
-		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":6},
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [1.1,0.05],
-			"ncol": 1,
-			"set_label":true,
-			"set_zorder":{"level":100},
-			"update":"%s \\textrm{Noisy}",
-			"update":null
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},	
-"iteration.objective.tau":{
-	"fig":{
-		"set_size_inches":{"w":32,"h":20},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"iteration",
-			"y":"objective",
-			"label":{
-				"label": {
-					"N":null,
-					"parameters.xy.method":null,
-					"tau.noise.parameters":null,
-					"T.noise.parameters":null,
-					"noise.parameters":null
-				},
-				"scinotation":{"scilimits":[0,4],"decimals":0}
-			},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}							
-			],	
-		"fill_between":[
-			{
-			"x":"iteration",
-			"y":"objective",
-			"label":{"N":null,"parameters.xy.method":null,"tau":null,"noise.parameters":null},
-			"alpha":0.5,			
-			"color":"viridis"
-			}						
-			],			
-		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
-		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":6},
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center","linespacing":2},
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [1.1,0.65],
-			"ncol": 1,
-			"set_label":true,
-			"set_zorder":{"level":100},
-			"update":"%s \\textrm{Noisy}",
-			"update":null
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},	
-"iteration.alpha.M":{
-	"fig":{
-		"set_size_inches":{"w":32,"h":20},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"iteration",
-			"y":"alpha",
-			"label":{
-				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
-				},
-				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
-				"analysis":{"abs":"alpha","replace":{"alpha":{"0":null}}}				
-			},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}									
-			],	
-		"fill_between":[
-			{
-			"x":"iteration",
-			"y":"alpha",
-			"label":{
-				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
-				},
-				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
-				"analysis":{"abs":"alpha","replace":{"alpha":{"0":null}}}				
-			},
-			"alpha":0.5,			
-			"color":"viridis"
-			}						
-			],			
-		"set_ylabel":{"ylabel":null},
-		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":6},
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [1.1,0.05],
-			"ncol": 1,
-			"set_label":true,
-			"set_zorder":{"level":100},
-			"update":"%s \\textrm{Noisy}",
-			"update":null
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},	
-"iteration.beta.M":{
-	"fig":{
-		"set_size_inches":{"w":32,"h":20},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"iteration",
-			"y":"beta",
-			"label":{
-				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
-				},
-				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
-				"analysis":{"abs":"beta","replace":{"beta":{"0":null}}}
-			},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":12,
-			"linestyle":"--",
-			"linewidth":4,
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}									
-			],	
-		"fill_between":[
-			{
-			"x":"iteration",
-			"y":"beta",
-			"label":{
-				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
-				},
-				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false},
-				"analysis":{"abs":"beta","replace":{"beta":{"0":null}}}
-			},
-			"alpha":0.5,			
-			"color":"viridis"
-			}						
-			],			
-		"set_ylabel":{"ylabel":null},
-		"set_xlabel":{"xlabel":"$\\textrm{Iteration}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":6},
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [1.1,0.05],
-			"ncol": 1,
-			"set_label":true,
-			"set_zorder":{"level":100},
-			"update":"%s \\textrm{Noisy}",
-			"update":null
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},		
-"noise.scale.objective.M":{
-	"fig":{
-		"set_size_inches":{"w":24,"h":18},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar": [
-			{
-				"x": "noise.scale",
-				"y": "objective",
-				"label": {
-					"label":{
-						"N": null,
-						"parameters.xy.method": null,
-						"M": null,
-						"iteration": "@iteration.min@"
-					},
-					"scinotation":{"scilimits":[0,4],"decimals":0}					
-				},
-				"alpha": 0.8,
-				"marker": "o",
-				"markersize": 20,
-				"linestyle": "-",
-				"linewidth": 10,
-				"elinewidth": 7,
-				"capsize": 10,
-				"color": "viridis",
-				"ecolor": "viridis"
-			},
-			{
-				"x": "noise.scale",
-				"y": "objective.ideal.state",
-				"label": {
-					"label":{
-						"N": null,
-						"parameters.xy.method": null,
-						"M": null,
-						"iteration": "@iteration.min@"
-					},
-					"scinotation":{"scilimits":[0,4],"decimals":0}
-				},
-				"alpha": 0.8,
-				"marker": "o",
-				"markersize": 20,
-				"linestyle": "--",
-				"linewidth": 10,
-				"elinewidth": 7,
-				"capsize": 10,
-				"color": "viridis",
-				"ecolor": "viridis"
-			}				
-		],			
-		"set_colorbar":{
-			"values":"M",
-			"colors":"viridis",
-			"size":"3%",
-			"pad":0.1,
-			"norm":[0,1600],
-			"set_scale":{"value":"linear"},			
-			"set_label":{"label":"M","labelpad":10,"size":30},
-			"set_ticks":{"ticks":[0,400,800,1200,1600],"size":50},
-			"ax.yaxis.set_tick_params":{"pad":5},                
-			"ax.tick_params":{"labelsize":30,"which":"major","size":10,"length":8,"width":1}
-			},		
-		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
-		"set_xlabel":{"xlabel":"$\\gamma$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"log","base":10},
-		"set_xscale":{"value":"symlog","base":10,"linthresh":1e-20},
-		"set_xlim":{"xmin":5e-21,"xmax":1e2},
-		"set_xlim":{"xmin":5e-17,"xmax":2e0},
-		"set_xnbins":{"nbins":3},
-		"set_xticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},		
-		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},		
-		"set_xticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0]},		
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":5e-7,"ymax":2e0},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 40,
-			"fontsize":40,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 40},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [0.74,0.02],
-			"ncol": 1,
-			"set_zorder":{"level":100}
-			},
-		"legend":null
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},
-"noise.scale.objective.diff.M":{
-	"fig":{
-		"set_size_inches":{"w":18,"h":18},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"noise.scale",
-			"y":"objective.diff.state",
-			"label":{"N":null,"parameters.xy.method":null,"M":null,"iteration":"@iteration.min@"},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":20,
-			"linestyle":"--",
-			"linewidth":10,
-			"elinewidth":7,
-			"capsize":10,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}	
-		],
-		"set_ylabel":{"ylabel":"$\\textrm{Infidelity Difference}$"},
-		"set_xlabel":{"xlabel":"$\\gamma$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"log","base":10},
-		"set_xscale":{"value":"symlog","base":10,"linthresh":1e-20},
-		"set_xlim":{"xmin":5e-12,"xmax":1e0},
-		"set_xnbins":{"nbins":6},
-		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},		
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 40,
-			"fontsize":40,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 40},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [0.72,0.02],
-			"ncol": 1,
-			"set_zorder":{"level":100}
-			}	
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},
-"noise.parameters.objective.tau":{
-	"fig":{
-		"set_size_inches":{"w":28,"h":18},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"noise.parameters",
-			"y":"objective",
-			"label":{"N":null,"parameters.xy.method":null,"T":null,"tau":null,"iteration":"@iteration.min@"},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":20,
-			"linestyle":"--",
-			"linewidth":10,
-			"elinewidth":7,
-			"capsize":10,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}	
-		],			
-		"set_ylabel":{"ylabel":null},
-		"set_xlabel":{"xlabel":null},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"log","base":10},
-		"set_xscale":{"value":"symlog","base":10,"linthresh":1e-20},
-		"set_xlim":{"xmin":5e1,"xmax":5e10},
-		"set_xnbins":{"nbins":3},
-		"set_xticks":{"ticks":[1e2,1e4,1e6,1e8,1e10]},		
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 40,
-			"fontsize":40,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 40},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [0.74,0.02],
-			"ncol": 1,
-			"set_zorder":{"level":100}
-			}
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},
-"noise.parameters.objective.diff.tau":{
-	"fig":{
-		"set_size_inches":{"w":18,"h":18},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"noise.parameters",
-			"y":"objective.diff.state",
-			"label":{"N":null,"parameters.xy.method":null,"T":null,"tau":null,"iteration":"@iteration.min@"},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":20,
-			"linestyle":"--",
-			"linewidth":10,
-			"elinewidth":7,
-			"capsize":10,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}	
-		],
-		"set_ylabel":{"ylabel":"$\\textrm{Infidelity Difference}$"},
-		"set_xlabel":{"xlabel":null},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"log","base":10},
-		"set_xscale":{"value":"symlog","base":10,"linthresh":1e-20},
-		"set_xlim":{"xmin":5e-12,"xmax":1e0},
-		"set_xnbins":{"nbins":6},
-		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},		
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 40,
-			"fontsize":40,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 40},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [0.72,0.02],
-			"ncol": 1,
-			"set_zorder":{"level":100}
-			}	
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},
-"M.objective.noise.scale":{
-	"fig":{
-		"set_size_inches":{"w":24,"h":18},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"M",
-			"y":"objective",
-			"label":{"N":null,"parameters.xy.method":null,"noise.scale":null,"iteration":"@iteration.min@"},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":20,
-			"linestyle":"--",
-			"linewidth":10,
-			"elinewidth":7,
-			"capsize":10,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}				
-		],		
-		"set_colorbar":{
-			"values":"noise.scale",
-			"colors":"viridis",
-			"size":"3%",
-			"pad":0.1,
-			"norm":[1e-16,1e0],
-			"set_scale":{"value":"log"},
-			"set_label":{"label":"noise.scale","labelpad":10,"size":30},
-			"set_ticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0],"labelsize":50},                
-			"ax.yaxis.set_tick_params":{"pad":5},                
-			"ax.tick_params":{"labelsize":30,"which":"major","size":10,"length":8,"width":1}
-			},				
-		"set_ylabel":{"ylabel":"$\\textrm{Infidelity}$"},
-		"set_xlabel":{"xlabel":"$M$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"linear"},
-		"set_xlim":{"xmin":0,"xmax":6100},
-		"set_xlim":{"xmin":-50,"xmax":1650},
-		"set_xnbins":{"nbins":6},
-		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},		
-		"set_xticks":{"ticks":[0,400,800,1200,1600]},		
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-13,"ymax":2e0},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 40,
-			"fontsize":40,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 40},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [0.02,0.02],
-			"ncol": 1,
-			"set_zorder":{"level":100}
-			},
-		"legend":null			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},	
-"M.variables.relative.mean.N.iteration":{
-	"fig":{
-		"set_size_inches":{"w":8,"h":16},
-		"subplots_adjust":{"hspace":0.5},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":{
-			"x":"M",
-			"y":"variables.relative.mean",
-			"label":{"N":null,"parameters.xy.method":null,"noise.scale":null,"iteration":"@iteration.min@"},			
-			"marker":"o",
-			"markersize":8,
-			"linewidth":4,
-			"linestyle":"-",
-			"elinewidth":2,
-			"capsize":3,						
-			"color":"viridis",
-			"ecolor":"viridis"
-			},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [1.1,0.6],
-			"ncol": 1,
-			"set_zorder":{"level":100}
-			},			
-		"set_ylabel":{
-			"ylabel":[
-				["$\\abs{({\\alpha}^{(i)}_{} - {\\alpha}^{(0)}_{})/{\\alpha}^{(0)}_{}}$"],
-				["$\\abs{({\\phi}^{(i)}_{} - {\\phi}^{(0)}_{})/{\\phi}^{(0)}_{}}$"]
-				],
-			"ylabel":"$\\abs{({\\theta}^{*}_{} - {\\tilde{\\theta}^{}_{}})/{\\tilde{\\theta}^{}_{}}}$"
-			},		
-		"set_xlabel":{"xlabel":"$M$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xlim":{"xmin":0,"xmax":1100},
-		"set_xlim":{"xmin":0,"xmax":6100},
-		"set_xnbins":{"nbins":6},
-		"set_xticks":{"ticks":[0,200,400,600,800,1000]},		
-		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},				
-		"set_ylim":{"ymin":1e-5,"ymax":1e-1},
-		"set_ylim":{"ymin":1e-8,"ymax":1e2},
-		"set_ynbins":{"nbins":3},		
-		"set_ynbins":{"nbins":3},		
-		"set_yscale":{"value":"log","base":10},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"}
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":36},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},
-"M.iteration.min.N":{
-	"fig":{
-		"set_size_inches":{"w":8,"h":8},
-		"subplots_adjust":{"hspace":0.5},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":{
-			"x":"M",
-			"y":"iteration.min",
-			"label":{"N":null,"parameters.xy.method":null,"noise.scale":null,"iteration":"@iteration.min@"},										
-			"marker":"o",
-			"markersize":8,
-			"linewidth":4,
-			"linestyle":"-",
-			"elinewidth":2,
-			"capsize":3,						
-			"color":"viridis",
-			"ecolor":"viridis"
-			},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [1.1,0.6],
-			"ncol": 1,
-			"set_zorder":{"level":100}
-			},
-		"set_ylabel":{"ylabel":"$\\textrm{Number of Iterations}$"},
-		"set_xlabel":{"xlabel":"$M$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},
-		"set_xlim":{"xmin":0,"xmax":200},		
-		"set_xnbins":{"nbins":7},
-		"set_ylim":{"ymin":0,"ymax":600},
-		"set_ynbins":{"nbins":7},		
-		"set_yscale":{"value":"linear"},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"}
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":36},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},
-"tau.objective.noise.parameters":{
-	"fig":{
-		"set_size_inches":{"w":18,"h":18},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":[
-			{
-			"x":"tau.noise.parameters",
-			"y":"objective",
-			"label":{"N":null,"parameters.xy.method":null,"noise.parameters":null,"T.noise.parameters":null,"parameters.zz.scale":null,"iteration":"@iteration.min@"},
-			"alpha":0.8,
-			"marker":"o",
-			"markersize":20,
-			"linestyle":"--",
-			"linewidth":10,
-			"elinewidth":7,
-			"capsize":10,
-			"color":"viridis",
-			"ecolor":"viridis"
-			}				
-		],			
-		"set_ylabel":{"ylabel":null},
-		"set_xlabel":{"xlabel":null},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"linear"},
-		"set_xscale":{"value":"log"},
-		"set_xlim":{"xmin":0,"xmax":1100},
-		"set_xlim":{"xmin":5e-7,"xmax":2e0},
-		"set_xnbins":{"nbins":6},
-		"set_xticks":{"ticks":[0,200,400,600,800,1000]},		
-		"set_xticks":{"ticks":[1e-6,1e-4,1e-2,1e0]},		
-		"set_yscale":{"value":"log","base":10},
-		"set_ylim":{"ymin":1e-21,"ymax":1e1},
-		"set_ynbins":{"nbins":6},		
-		"set_yticks":{"ticks":[1e-20,1e-18,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},		
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 40,
-			"fontsize":40,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 40},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [0.02,0.02],
-			"ncol": 1,
-			"set_zorder":{"level":100}
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},	
-"tau.iteration.min.N":{
-	"fig":{
-		"set_size_inches":{"w":8,"h":8},
-		"subplots_adjust":{"hspace":0.5},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":{
-			"x":"tau",
-			"y":"iteration.min",
-			"label":{"N":null,"parameters.xy.method":null,"noise.parameters":null,"iteration":"@iteration.min@"},										
-			"marker":"o",
-			"markersize":8,
-			"linewidth":4,
-			"linestyle":"-",
-			"elinewidth":2,
-			"capsize":3,						
-			"color":"viridis",
-			"ecolor":"viridis"
-			},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": [1.1,0.6],
-			"ncol": 1,
-			"set_zorder":{"level":100}
-			},
-		"set_ylabel":{"ylabel":"$\\textrm{Number of Iterations}$"},
-		"set_xlabel":{"xlabel":null},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},
-		"set_xlim":{"xmin":0,"xmax":1100},
-		"set_xnbins":{"nbins":6},
-		"set_xticks":{"ticks":[0,200,400,600,800,1000]},				
-		"set_ylim":{"ymin":0,"ymax":600},
-		"set_ynbins":{"nbins":7},		
-		"set_yscale":{"value":"linear"},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"}
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":36},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},
-"iteration.variables.M": {
+    "iteration.objective.M": {
+        "fig": {
+            "set_size_inches": {
+                "w": 32,
+                "h": 20
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "iteration",
+                    "y": "objective",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "noise.scale": null,
+                            "instance": null
+                        },
+                        "include":["M"],
+                        "legend": {
+                            "label":{},
+                            "exclude":["M","instance"]
+                        },                        
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        }
+                    },
+                    "alpha":0.3,
+                    "marker": "o",
+                    "markersize": 12,
+                    "linestyle": "--",
+                    "linewidth": 4,
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}
+                },
+                {
+                    "x": "iteration",
+                    "y": "objective",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "noise.scale": null
+                        },
+                        "legend": {
+                            "label":{"instance": "\\textrm{Avg}"},
+                            "exclude":["instance"]
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        }
+                    },
+                    "marker": "o",
+                    "markersize": 12,
+                    "linestyle": "-",
+                    "linewidth": 4,
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}
+                }
+            ],
+            "fill_between": [
+                {
+                    "x": "iteration",
+                    "y": "objective",
+                    "label": {
+                        "label":{
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "noise.scale": null
+                            },
+                        "legend": {
+                            "label":{},
+                            "exclude":["M","instance"]
+                        }
+                    },
+                    "alpha": 0.4,
+                    "color":{"@M@":"viridis"}
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": "$\\textrm{Infidelity}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Iteration}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    0.85,
+                    0.75
+                ],
+                "ncol": 1,
+                "set_label": true,
+                "set_zorder": {
+                    "level": 100
+                },
+                "update": null
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "iteration.grad.norm.M": {
+        "fig": {
+            "set_size_inches": {
+                "w": 32,
+                "h": 20
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "iteration",
+                    "y": "grad.norm",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "noise.scale": null
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        }
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 12,
+                    "linestyle": "--",
+                    "linewidth": 4,
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}
+                }
+            ],
+            "fill_between": [
+                {
+                    "x": "iteration",
+                    "y": "grad.norm",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "M": null,
+                        "noise.scale": null
+                    },
+                    "alpha": 0.5,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": null
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Iteration}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    1.1,
+                    0.05
+                ],
+                "ncol": 1,
+                "set_label": true,
+                "set_zorder": {
+                    "level": 100
+                },
+                "update": null
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "iteration.search.norm.M": {
+        "fig": {
+            "set_size_inches": {
+                "w": 32,
+                "h": 20
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "iteration",
+                    "y": "search.norm",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "noise.scale": null
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        }
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 12,
+                    "linestyle": "--",
+                    "linewidth": 4,
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
+                }
+            ],
+            "fill_between": [
+                {
+                    "x": "iteration",
+                    "y": "search.norm",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "M": null,
+                        "noise.scale": null
+                    },
+                    "alpha": 0.5,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": null
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Iteration}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    1.1,
+                    0.05
+                ],
+                "ncol": 1,
+                "set_label": true,
+                "set_zorder": {
+                    "level": 100
+                },
+                "update": null
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "iteration.objective.tau": {
+        "fig": {
+            "set_size_inches": {
+                "w": 32,
+                "h": 20
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "iteration",
+                    "y": "objective",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "tau.noise.parameters": null,
+                            "T.noise.parameters": null,
+                            "noise.parameters": null
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0
+                        }
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 12,
+                    "linestyle": "--",
+                    "linewidth": 4,
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color":{"@tau.noise.parameters@":"viridis"},
+                    "ecolor":{"@tau.noise.parameters@":"viridis"}                    
+                }
+            ],
+            "fill_between": [
+                {
+                    "x": "iteration",
+                    "y": "objective",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "tau": null,
+                        "noise.parameters": null
+                    },
+                    "alpha": 0.5,
+                    "color":{"@tau.noise.parameters@":"viridis"},
+                    "ecolor":{"@tau.noise.parameters@":"viridis"}                    
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": "$\\textrm{Infidelity}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Iteration}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center",
+                    "linespacing": 2
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    1.1,
+                    0.65
+                ],
+                "ncol": 1,
+                "set_label": true,
+                "set_zorder": {
+                    "level": 100
+                },
+                "update": null
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "iteration.alpha.M": {
+        "fig": {
+            "set_size_inches": {
+                "w": 32,
+                "h": 20
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "iteration",
+                    "y": "alpha",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "noise.scale": null
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "analysis": {
+                            "abs": "alpha",
+                            "replace": {
+                                "alpha": {
+                                    "0": null
+                                }
+                            }
+                        }
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 12,
+                    "linestyle": "--",
+                    "linewidth": 4,
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
+                }
+            ],
+            "fill_between": [
+                {
+                    "x": "iteration",
+                    "y": "alpha",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "noise.scale": null
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "analysis": {
+                            "abs": "alpha",
+                            "replace": {
+                                "alpha": {
+                                    "0": null
+                                }
+                            }
+                        }
+                    },
+                    "alpha": 0.5,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": null
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Iteration}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    1.1,
+                    0.05
+                ],
+                "ncol": 1,
+                "set_label": true,
+                "set_zorder": {
+                    "level": 100
+                },
+                "update": null
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "iteration.beta.M": {
+        "fig": {
+            "set_size_inches": {
+                "w": 32,
+                "h": 20
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "iteration",
+                    "y": "beta",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "noise.scale": null
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "analysis": {
+                            "abs": "beta",
+                            "replace": {
+                                "beta": {
+                                    "0": null
+                                }
+                            }
+                        }
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 12,
+                    "linestyle": "--",
+                    "linewidth": 4,
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
+                }
+            ],
+            "fill_between": [
+                {
+                    "x": "iteration",
+                    "y": "beta",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "noise.scale": null
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        },
+                        "analysis": {
+                            "abs": "beta",
+                            "replace": {
+                                "beta": {
+                                    "0": null
+                                }
+                            }
+                        }
+                    },
+                    "alpha": 0.5,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": null
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Iteration}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    1.1,
+                    0.05
+                ],
+                "ncol": 1,
+                "set_label": true,
+                "set_zorder": {
+                    "level": 100
+                },
+                "update": null
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "noise.scale.objective.M": {
+        "fig": {
+            "set_size_inches": {
+                "w": 24,
+                "h": 18
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "noise.scale",
+                    "y": "objective",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "iteration": "@iteration.min@"
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0
+                        }
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 20,
+                    "linestyle": "-",
+                    "linewidth": 10,
+                    "elinewidth": 7,
+                    "capsize": 10,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
+                },
+                {
+                    "x": "noise.scale",
+                    "y": "objective.ideal.state",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "iteration": "@iteration.min@"
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0
+                        }
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 20,
+                    "linestyle": "--",
+                    "linewidth": 10,
+                    "elinewidth": 7,
+                    "capsize": 10,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
+                }
+            ],
+            "set_colorbar": {
+                "values": "@M@",
+                "colors": "viridis",
+                "size": "3%",
+                "pad": 0.1,
+                "norm": [
+                    0,
+                    1
+                ],
+                "set_scale": {
+                    "value": "linear"
+                },
+                "set_label": {
+                    "label": "M",
+                    "labelpad": 10,
+                    "size": 30
+                },
+                "set_ticks": {
+                    "ticks": 5,
+                    "size": 50
+                },
+                "set_ticklabels": {
+                    "ticklabels": [
+                        0,2,4,6,8
+                    ],
+                    "size": 50
+                },                
+                "ax.yaxis.set_tick_params": {
+                    "pad": 5
+                },
+                "ax.tick_params": {
+                    "labelsize": 30,
+                    "which": "major",
+                    "size": 10,
+                    "length": 8,
+                    "width": 1
+                }
+            },
+            "set_ylabel": {
+                "ylabel": "$\\textrm{Infidelity}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$\\gamma$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xscale": {
+                "value": "symlog",
+                "base": 10,
+                "linthresh": 1e-20
+            },
+            "set_xlim": {
+                "xmin": 5e-17,
+                "xmax": 2.0
+            },
+            "set_xnbins": {
+                "nbins": 3
+            },
+            "set_xticks": {
+                "ticks": [
+                    1e-16,
+                    1e-12,
+                    1e-08,
+                    0.0001,
+                    1.0
+                ]
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": null
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "noise.scale.objective.diff.M": {
+        "fig": {
+            "set_size_inches": {
+                "w": 18,
+                "h": 18
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "noise.scale",
+                    "y": "objective.diff.state",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "M": null,
+                        "iteration": "@iteration.min@"
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 20,
+                    "linestyle": "--",
+                    "linewidth": 10,
+                    "elinewidth": 7,
+                    "capsize": 10,
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": "$\\textrm{Infidelity Difference}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$\\gamma$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xscale": {
+                "value": "symlog",
+                "base": 10,
+                "linthresh": 1e-20
+            },
+            "set_xlim": {
+                "xmin": 5e-12,
+                "xmax": 1.0
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_xticks": {
+                "ticks": [
+                    1e-12,
+                    1e-08,
+                    0.0001,
+                    1.0
+                ]
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 40,
+                "fontsize": 40,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 40
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    0.72,
+                    0.02
+                ],
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                }
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "noise.parameters.objective.tau": {
+        "fig": {
+            "set_size_inches": {
+                "w": 28,
+                "h": 18
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "noise.parameters",
+                    "y": "objective",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "T": null,
+                        "tau": null,
+                        "iteration": "@iteration.min@"
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 20,
+                    "linestyle": "--",
+                    "linewidth": 10,
+                    "elinewidth": 7,
+                    "capsize": 10,
+                    "color":{"@tau@":"viridis"},
+                    "ecolor":{"@tau@":"viridis"}                    
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": null
+            },
+            "set_xlabel": {
+                "xlabel": null
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xscale": {
+                "value": "symlog",
+                "base": 10,
+                "linthresh": 1e-20
+            },
+            "set_xlim": {
+                "xmin": 50.0,
+                "xmax": 50000000000.0
+            },
+            "set_xnbins": {
+                "nbins": 3
+            },
+            "set_xticks": {
+                "ticks": [
+                    100.0,
+                    10000.0,
+                    1000000.0,
+                    100000000.0,
+                    10000000000.0
+                ]
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 40,
+                "fontsize": 40,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 40
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    0.74,
+                    0.02
+                ],
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                }
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "noise.parameters.objective.diff.tau": {
+        "fig": {
+            "set_size_inches": {
+                "w": 18,
+                "h": 18
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "noise.parameters",
+                    "y": "objective.diff.state",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "T": null,
+                        "tau": null,
+                        "iteration": "@iteration.min@"
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 20,
+                    "linestyle": "--",
+                    "linewidth": 10,
+                    "elinewidth": 7,
+                    "capsize": 10,
+                    "color":{"@tau@":"viridis"},
+                    "ecolor":{"@tau@":"viridis"}                    
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": "$\\textrm{Infidelity Difference}$"
+            },
+            "set_xlabel": {
+                "xlabel": null
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xscale": {
+                "value": "symlog",
+                "base": 10,
+                "linthresh": 1e-20
+            },
+            "set_xlim": {
+                "xmin": 5e-12,
+                "xmax": 1.0
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_xticks": {
+                "ticks": [
+                    1e-12,
+                    1e-08,
+                    0.0001,
+                    1.0
+                ]
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 40,
+                "fontsize": 40,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 40
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    0.72,
+                    0.02
+                ],
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                }
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "M.objective.noise.scale": {
+        "fig": {
+            "set_size_inches": {
+                "w": 24,
+                "h": 18
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "M",
+                    "y": "objective",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "noise.scale": null,
+                        "iteration": "@iteration.min@"
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 20,
+                    "linestyle": "--",
+                    "linewidth": 10,
+                    "elinewidth": 7,
+                    "capsize": 10,
+                    "color":{"@noise.scale@":"viridis"},
+                    "ecolor":{"@noise.scale@":"viridis"}                    
+                }
+            ],
+            "set_colorbar": {
+                "values": "@noise.scale@",
+                "colors": "viridis",
+                "size": "3%",
+                "pad": 0.1,
+                "set_scale": {
+                    "value": "linear"
+                },
+                "set_label": {
+                    "label": "noise.scale",
+                    "labelpad": 10,
+                    "size": 30
+                },
+                "set_ticks": {
+                    "ticks": 5,
+                    "labelsize": 50
+                },
+                "set_ticklabels": {
+                    "ticklabels": [
+                        1e-16,
+                        1e-12,
+                        1e-08,
+                        0.0001,
+                        1.0
+                    ],
+                    "size": 50
+                },                 
+                "ax.yaxis.set_tick_params": {
+                    "pad": 5
+                },
+                "ax.tick_params": {
+                    "labelsize": 30,
+                    "which": "major",
+                    "size": 10,
+                    "length": 8,
+                    "width": 1
+                }
+            },
+            "set_ylabel": {
+                "ylabel": "$\\textrm{Infidelity}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$M$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xscale": {
+                "value": "linear"
+            },
+            "set_xlim": {
+                "xmin": -50,
+                "xmax": 1650
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_xticks": {
+                "ticks": [
+                    0,
+                    400,
+                    800,
+                    1200,
+                    1600
+                ]
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": null
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "M.variables.relative.mean.N.iteration": {
+        "fig": {
+            "set_size_inches": {
+                "w": 8,
+                "h": 16
+            },
+            "subplots_adjust": {
+                "hspace": 0.5
+            },
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [{
+                "x": "M",
+                "y": "variables.relative.mean",
+                "label": {
+                    "N": null,
+                    "parameters.xy.method": null,
+                    "noise.scale": null,
+                    "iteration": "@iteration.min@"
+                },
+                "marker": "o",
+                "markersize": 8,
+                "linewidth": 4,
+                "linestyle": "-",
+                "elinewidth": 2,
+                "capsize": 3,
+                "color":{"@noise.scale@":"viridis"},
+                "ecolor":{"@noise.scale@":"viridis"}                
+            }],
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    1.1,
+                    0.6
+                ],
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                }
+            },
+            "set_ylabel": {
+                "ylabel": "$\\abs{({\\theta}^{*}_{} - {\\tilde{\\theta}^{}_{}})/{\\tilde{\\theta}^{}_{}}}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$M$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xlim": {
+                "xmin": 0,
+                "xmax": 6100
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_xticks": {
+                "ticks": [
+                    0,
+                    1000,
+                    2000,
+                    3000,
+                    4000,
+                    5000,
+                    6000
+                ]
+            },
+            "set_ylim": {
+                "ymin": 1e-08,
+                "ymax": 100.0
+            },
+            "set_ynbins": {
+                "nbins": 3
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 36
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "M.iteration.min.N": {
+        "fig": {
+            "set_size_inches": {
+                "w": 8,
+                "h": 8
+            },
+            "subplots_adjust": {
+                "hspace": 0.5
+            },
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [{
+                "x": "M",
+                "y": "iteration.min",
+                "label": {
+                    "N": null,
+                    "parameters.xy.method": null,
+                    "noise.scale": null,
+                    "iteration": "@iteration.min@"
+                },
+                "marker": "o",
+                "markersize": 8,
+                "linewidth": 4,
+                "linestyle": "-",
+                "elinewidth": 2,
+                "capsize": 3,
+                "color":{"@noise.scale@":"viridis"},
+                "ecolor":{"@noise.scale@":"viridis"}
+            }],
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    1.1,
+                    0.6
+                ],
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                }
+            },
+            "set_ylabel": {
+                "ylabel": "$\\textrm{Number of Iterations}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$M$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xlim": {
+                "xmin": 0,
+                "xmax": 200
+            },
+            "set_xnbins": {
+                "nbins": 7
+            },
+            "set_ylim": {
+                "ymin": 0,
+                "ymax": 600
+            },
+            "set_ynbins": {
+                "nbins": 7
+            },
+            "set_yscale": {
+                "value": "linear"
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 36
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "tau.objective.noise.parameters": {
+        "fig": {
+            "set_size_inches": {
+                "w": 18,
+                "h": 18
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [
+                {
+                    "x": "tau.noise.parameters",
+                    "y": "objective",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "noise.parameters": null,
+                        "T.noise.parameters": null,
+                        "parameters.zz.scale": null,
+                        "iteration": "@iteration.min@"
+                    },
+                    "alpha": 0.8,
+                    "marker": "o",
+                    "markersize": 20,
+                    "linestyle": "--",
+                    "linewidth": 10,
+                    "elinewidth": 7,
+                    "capsize": 10,
+                    "color":{"@noise.parameters@":"viridis"},
+                    "ecolor":{"@noise.parameters@":"viridis"}                    
+                }
+            ],
+            "set_ylabel": {
+                "ylabel": null
+            },
+            "set_xlabel": {
+                "xlabel": null
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xscale": {
+                "value": "log"
+            },
+            "set_xlim": {
+                "xmin": 5e-07,
+                "xmax": 2.0
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_xticks": {
+                "ticks": [
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "set_ylim": {
+                "ymin": 1e-21,
+                "ymax": 10.0
+            },
+            "set_ynbins": {
+                "nbins": 6
+            },
+            "set_yticks": {
+                "ticks": [
+                    1e-20,
+                    1e-18,
+                    1e-16,
+                    1e-14,
+                    1e-12,
+                    1e-10,
+                    1e-08,
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
+                ]
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 40,
+                "fontsize": 40,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 40
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    0.02,
+                    0.02
+                ],
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                }
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "tau.iteration.min.N": {
+        "fig": {
+            "set_size_inches": {
+                "w": 8,
+                "h": 8
+            },
+            "subplots_adjust": {
+                "hspace": 0.5
+            },
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [{
+                "x": "tau",
+                "y": "iteration.min",
+                "label": {
+                    "N": null,
+                    "parameters.xy.method": null,
+                    "noise.parameters": null,
+                    "iteration": "@iteration.min@"
+                },
+                "marker": "o",
+                "markersize": 8,
+                "linewidth": 4,
+                "linestyle": "-",
+                "elinewidth": 2,
+                "capsize": 3,
+                "color":{"@noise.parameters@":"viridis"},
+                "ecolor":{"@noise.parameters@":"viridis"}                
+            }],
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    1.1,
+                    0.6
+                ],
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                }
+            },
+            "set_ylabel": {
+                "ylabel": "$\\textrm{Number of Iterations}$"
+            },
+            "set_xlabel": {
+                "xlabel": null
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xlim": {
+                "xmin": 0,
+                "xmax": 1100
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_xticks": {
+                "ticks": [
+                    0,
+                    200,
+                    400,
+                    600,
+                    800,
+                    1000
+                ]
+            },
+            "set_ylim": {
+                "ymin": 0,
+                "ymax": 600
+            },
+            "set_ynbins": {
+                "nbins": 7
+            },
+            "set_yscale": {
+                "value": "linear"
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 36
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "iteration.variables.M": {
         "fig": {
             "set_size_inches": {
                 "w": 32,
@@ -1218,14 +3095,30 @@
                             "M": null,
                             "noise.scale": null
                         },
-                        "axis": {
+                        "shape": {
                             "shape": {
-                                "row":[1],
-                                "col":[2],
-                                "label":[3],
-                                "axis":[0]
+                                "row": [
+                                    1
+                                ],
+                                "col": [
+                                    2
+                                ],
+                                "axis": [
+                                    3
+                                ],
+                                "axes": [
+                                    0
+                                ]
                             },
-                            "reshape":[null,"N",-1,"M"]
+                            "reshape": [
+                                null,
+                                "N",
+                                -1,
+                                "M"
+                            ]
+                        },
+                        "legend":{
+                            "exclude":null
                         },
                         "scinotation": {
                             "scilimits": [
@@ -1236,7 +3129,7 @@
                             "one": false
                         }
                     },
-                    "alpha": 0.5,
+                    "alpha": {"__axis__":0.5},
                     "zorder": 1000,
                     "marker": "o",
                     "markersize": 12,
@@ -1244,23 +3137,49 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color": "viridis",
-                    "ecolor": "viridis"
-                }               
+                    "color": {"@M@":"viridis"},
+                    "ecolor": {"@M@":"viridis"}
+                }
             ],
-            "set_colorbar":{
-				"values":null,
-				"colors":"viridis",
-				"size":"3%",
-				"pad":0.1,
-				"set_scale":{"value":"linear"},			
-				"set_label":{"label":"$\\lambda$","labelpad":10,"size":30},
-				"set_ticks":{"ticks":4,"size":50},			
-				"ax.yaxis.set_tick_params":{"pad":5},                
-				"ax.tick_params":{"labelsize":30,"which":"major","size":10,"length":8,"width":1}
-				},	
+            "set_colorbar": {
+                "values": "__axis__",
+                "colors": "viridis_alpha_0.5",
+                "size": "3%",
+                "pad": 0.1,
+                "set_scale": {
+                    "value": "linear"
+                },
+                "set_label": {
+                    "label": "$\\lambda$",
+                    "labelpad": 10,
+                    "size": 30
+                },
+                "set_ticks": {
+                    "ticks": 3,
+                    "size": 50
+                },
+                "set_ticklabels": {
+                    "ticklabels": 3,
+                    "size": 50
+                },                
+                "ax.yaxis.set_tick_params": {
+                    "pad": 5
+                },
+                "ax.tick_params": {
+                    "labelsize": 30,
+                    "which": "major",
+                    "size": 10,
+                    "length": 8,
+                    "width": 1
+                }
+            },
             "set_ylabel": {
-                "ylabel": [["$\\theta^{x}_{%s}/\\pi$","$\\theta^{y}_{%s}/\\pi$"]]
+                "ylabel": [
+                    [
+                        "$\\theta^{x}_{%s}/\\pi$",
+                        "$\\theta^{y}_{%s}/\\pi$"
+                    ]
+                ]
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Iteration}$"
@@ -1282,8 +3201,14 @@
                 "nbins": 5
             },
             "set_yticks": {
-                "ticks": [-1,-0.5,0,0.5,1]
-            },          
+                "ticks": [
+                    -1,
+                    -0.5,
+                    0,
+                    0.5,
+                    1
+                ]
+            },
             "tick_params": [
                 {
                     "axis": "y",
@@ -1335,6 +3260,8 @@
                 ],
                 "ncol": 1,
                 "join": null,
+                "keep":"last",
+                "alpha":1,
                 "set_label": true,
                 "set_zorder": {
                     "level": 100
@@ -1352,19 +3279,19 @@
                 "nrows": 1,
                 "ncols": 1,
                 "index": 1,
-                "pad":1
+                "pad": 1
             },
             "share": {
-                "ax":{
+                "ax": {
                     "legend": "top_right",
-                    "set_xlabel":"bottom",
-                    "set_ylabel":true,
-                    "set_colorbar":"right"
+                    "set_xlabel": "bottom",
+                    "set_ylabel": true,
+                    "set_colorbar": "right"
                 }
             }
         }
-    },	
-"None.variables.iteration.M": {
+    },
+    "None.variables.iteration.M": {
         "fig": {
             "set_size_inches": {
                 "w": 32,
@@ -1390,20 +3317,38 @@
                             "parameters.xy.method": null,
                             "M": null,
                             "noise.scale": null,
-                            "iteration":"$0$",
-                            "$\\textrm{Iteration}$":"\\textrm{Initial},~\\textrm{Final}"
+                            "iteration": "$0$",
+                            "$\\textrm{Iteration}$": "\\textrm{Initial},~\\textrm{Final}"
                         },
-                        "null":["iteration"],
-                        "axis": {
+                        "legend": {
+                            "label":{},
+                            "exclude":["iteration"]
+                        },                        
+                        "shape": {
                             "shape": {
-                                "row":[0],
-                                "col":[1],
-                                "axis":[-1]
+                                "row": [
+                                    0
+                                ],
+                                "col": [
+                                    1
+                                ],
+                                "axes": [
+                                    -1
+                                ]
                             },
-                            "normalize":["x"],                            
-                            "transpose":[0,-1],
-                            "reshape":["N",-1,"M"]
+                            "transpose": [
+                                0,
+                                -1
+                            ],
+                            "reshape": [
+                                "N",
+                                -1,
+                                "M"
+                            ]
                         },
+                        "normalize": {
+                                "x":"size"
+                            },
                         "scinotation": {
                             "scilimits": [
                                 0,
@@ -1421,8 +3366,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color": "viridis",
-                    "ecolor": "viridis"
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
                 },
                 {
                     "x": null,
@@ -1433,19 +3378,37 @@
                             "parameters.xy.method": null,
                             "M": null,
                             "noise.scale": null,
-                            "iteration":"@iteration.min@"
+                            "iteration": "@iteration.min@"
                         },
-                        "null":["iteration"],
-                        "axis": {
+                        "legend": {
+                            "label":{},
+                            "exclude":["iteration"]
+                        },                        
+                        "shape": {
                             "shape": {
-                                "row":[0],
-                                "col":[1],
-                                "axis":[-1]
+                                "row": [
+                                    0
+                                ],
+                                "col": [
+                                    1
+                                ],
+                                "axes": [
+                                    -1
+                                ]
                             },
-                            "normalize":["x"],
-                            "transpose":[0,-1],
-                            "reshape":["N",-1,"M"]
+                            "transpose": [
+                                0,
+                                -1
+                            ],
+                            "reshape": [
+                                "N",
+                                -1,
+                                "M"
+                            ]
                         },
+                        "normalize": {
+                                "x":"size"
+                            },
                         "scinotation": {
                             "scilimits": [
                                 0,
@@ -1463,12 +3426,17 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color": "viridis",
-                    "ecolor": "viridis"
-                }                
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
+                }
             ],
             "set_ylabel": {
-                "ylabel": [["$\\theta^{x}_{%s}$","$\\theta^{y}_{%s}$"]]
+                "ylabel": [
+                    [
+                        "$\\theta^{x}_{%s}$",
+                        "$\\theta^{y}_{%s}$"
+                    ]
+                ]
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Index}$"
@@ -1476,9 +3444,16 @@
             "yaxis.offsetText.set_fontsize": {
                 "fontsize": 20
             },
+            "set_xscale": {
+                "value": "linear"
+            },
+            "set_xlim": {
+                "xmin": -0.1,
+                "xmax": 1.1
+            },
             "set_xnbins": {
                 "nbins": 6
-            },
+            },           
             "set_yscale": {
                 "value": "linear"
             },
@@ -1490,8 +3465,14 @@
                 "nbins": 5
             },
             "set_yticks": {
-                "ticks": [-1,-0.5,0,0.5,1]
-            },          
+                "ticks": [
+                    -1,
+                    -0.5,
+                    0,
+                    0.5,
+                    1
+                ]
+            },
             "tick_params": [
                 {
                     "axis": "y",
@@ -1562,15 +3543,15 @@
                 "index": 1
             },
             "share": {
-                "ax":{
+                "ax": {
                     "legend": "top_right",
-                    "set_xlabel":"bottom",
-                    "set_ylabel":true
+                    "set_xlabel": "bottom",
+                    "set_ylabel": true
                 }
             }
         }
     },
- "None.variables.relative.iteration.M": {
+    "None.variables.relative.iteration.M": {
         "fig": {
             "set_size_inches": {
                 "w": 32,
@@ -1598,10 +3579,11 @@
                             "noise.scale": null,
                             "iteration": "@iteration.min@"
                         },
-                        "null": [
-                            "iteration"
-                        ],
-                        "axis": {
+                        "legend": {
+                            "label":{},
+                            "exclude":["iteration"]
+                        },                        
+                        "shape": {
                             "shape": {
                                 "row": [
                                     0
@@ -1609,23 +3591,23 @@
                                 "col": [
                                     1
                                 ],
-                                "axis": [
+                                "axes": [
                                     -1
                                 ]
                             },
-                            "normalize": [
-                                "x"
-                            ],
-							"transpose": [
+                            "transpose": [
                                 0,
                                 -1
-                            ],                            
+                            ],
                             "reshape": [
                                 "N",
                                 -1,
                                 "M"
-                            ]                            
+                            ]
                         },
+                        "normalize": {
+                                "x":"size"
+                            },
                         "scinotation": {
                             "scilimits": [
                                 0,
@@ -1643,8 +3625,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color": "viridis",
-                    "ecolor": "viridis"
+                    "color":{"@M@":"viridis"},
+                    "ecolor":{"@M@":"viridis"}                    
                 }
             ],
             "set_ylabel": {
@@ -1661,22 +3643,33 @@
             "yaxis.offsetText.set_fontsize": {
                 "fontsize": 20
             },
+            "set_xscale": { 
+                "value": "linear"
+            },
+            "set_xlim": {
+                "xmin": -0.1,
+                "xmax": 1.1
+            },            
             "set_xnbins": {
                 "nbins": 6
             },
             "set_yscale": {
                 "value": "log",
-                "base":10
+                "base": 10
             },
             "set_ylim": {
-                "ymin": 5e-7,
-                "ymax": 1e1
+                "ymin": 5e-07,
+                "ymax": 10.0
             },
             "set_ynbins": {
                 "nbins": 5
             },
             "set_yticks": {
-                "ticks": [1e-6,1e-4,1e-2,1e0
+                "ticks": [
+                    1e-06,
+                    0.0001,
+                    0.01,
+                    1.0
                 ]
             },
             "tick_params": [
@@ -1756,283 +3749,675 @@
                 }
             }
         }
-    },     	
-"None.hessian.eigenvalues.M":{
-	"fig":{
-		"set_size_inches":{"w":8,"h":8},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":{
-			"x":null,
-			"y":"hessian.eigenvalues",
-			"label": {
-				"label":{
-					"N": null,
-					"parameters.xy.method": null,
-					"M": null,
-					"noise.scale": null,
-					"iteration": "@iteration.max@",
-					"rank": "hessian.rank"
-				},
-				"null":["iteration"],				
-				"slice":[0,1000,null]
-			},		
-			"marker":"o",
-			"linestyle":"--",
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			},
-		"set_ylabel":{"ylabel":"$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"},
-		"set_xlabel":{"xlabel":"$\\textrm{Index}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":6},
-		"set_ynbins":{"nbins":4},		
-		"set_yscale":{"value":"log","base":10},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},	
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": "lower right",
-			"ncol": 1,
-			"set_zorder":{"level":100},
-			"set_label":true
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},	
-"None.fisher.eigenvalues.M":{
-	"fig":{
-		"set_size_inches":{"w":8,"h":8},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":{
-			"x":null,
-			"y":"fisher.eigenvalues",
-			"label": {
-				"label":{
-					"N": null,
-					"parameters.xy.method": null,
-					"M": null,
-					"noise.scale": null,
-					"iteration": "@iteration.max@",
-					"rank": "fisher.rank"
-				},
-				"null":["iteration"],
-				"slice":[0,1000,null]
-			},			
-			"marker":"o",
-			"linestyle":"--",
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			},
-		"set_ylabel":{"ylabel":"$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"},
-		"set_xlabel":{"xlabel":"$\\textrm{Index}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":6},
-		"set_ynbins":{"nbins":4},		
-		"set_yscale":{"value":"log","base":10},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},	
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": "lower right",
-			"ncol": 1,
-			"set_zorder":{"level":100},
-			"set_label":true			
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},
-"None.hessian.eigenvalues.tau":{
-	"fig":{
-		"set_size_inches":{"w":8,"h":8},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":{
-			"x":null,
-			"y":"hessian.eigenvalues",
-			"label": {
-				"label":{
-					"N": null,
-					"parameters.xy.method": null,
-					"T":null,
-					"tau": null,
-					"noise.parameters": null,
-					"iteration": "@iteration.max@",
-					"rank": "hessian.rank"
-				},
-				"null":["iteration"],				
-				"slice":[0,1000,null]
-			},		
-			"marker":"o",
-			"linestyle":"--",
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			},
-		"set_ylabel":{"ylabel":"$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"},
-		"set_xlabel":{"xlabel":"$\\textrm{Index}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":6},
-		"set_ynbins":{"nbins":4},		
-		"set_yscale":{"value":"log","base":10},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},	
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": "lower right",
-			"ncol": 1,
-			"set_zorder":{"level":100},
-			"set_label":true
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	},	
-"None.fisher.eigenvalues.tau":{
-	"fig":{
-		"set_size_inches":{"w":8,"h":8},
-		"subplots_adjust":{},
-		"tight_layout":{},
-		"savefig":{"fname":null,"bbox_inches":"tight","pad_inches":0.2},
-		"close":{}
-		},
-	"ax":{
-		"errorbar":{
-			"x":null,
-			"y":"fisher.eigenvalues",
-			"label": {
-				"label":{
-					"N": null,
-					"parameters.xy.method": null,
-					"T":null,
-					"tau": null,
-					"noise.par": null,
-					"iteration": "@iteration.max@",
-					"rank": "fisher.rank"
-				},
-				"null":["iteration"],				
-				"slice":[0,1000,null]
-			},			
-			"marker":"o",
-			"linestyle":"--",
-			"elinewidth":2,
-			"capsize":3,
-			"color":"viridis",
-			"ecolor":"viridis"
-			},
-		"set_ylabel":{"ylabel":"$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"},
-		"set_xlabel":{"xlabel":"$\\textrm{Index}$"},
-		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xnbins":{"nbins":6},
-		"set_ynbins":{"nbins":4},		
-		"set_yscale":{"value":"log","base":10},
-		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
-		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
-		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"tick_params":[
-			{"axis":"y","which":"major","length":8,"width":1},
-			{"axis":"y","which":"minor","length":4,"width":0.5},
-			{"axis":"x","which":"major","length":8,"width":1},
-			{"axis":"x","which":"minor","length":4,"width":0.5}
-			],
-		"set_aspect":{"aspect":"auto"},
-		"grid":{"visible":true,"which":"both","axis":"both"},
-		"legend":{
-			"title_fontsize": 20,
-			"get_title":{"ha":"center"},	
-			"prop": {"size": 20},
-			"markerscale": 1.2,
-			"handlelength": 3,
-			"framealpha": 0.8,
-			"loc": "lower right",
-			"ncol": 1,
-			"set_zorder":{"level":100},
-			"set_label":true			
-			}			
-		},
-	"style":{
-		"texify":null,
-		"mplstyle":"plot.mplstyle",	
-		"rcParams":{"font.size":25},
-		"layout":{"nrows":1,"ncols":1,"index":1},
-		"share": {"ax":{"legend":{"title":true,"handles":true,"labels":true}}}
-		}
-	}				
+    },
+    "None.hessian.eigenvalues.M": {
+        "fig": {
+            "set_size_inches": {
+                "w": 8,
+                "h": 8
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [{
+                "x": null,
+                "y": "hessian.eigenvalues",
+                "label": {
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "M": null,
+                        "noise.scale": null,
+                        "iteration": "@iteration.max@",
+                        "rank": "hessian.rank"
+                    },
+                    "legend": {
+                        "label":{},
+                        "exclude":["iteration"]
+                    },                        
+                    "slice": [
+                        0,
+                        1000,
+                        null
+                    ]
+                },
+                "marker": "o",
+                "linestyle": "--",
+                "elinewidth": 2,
+                "capsize": 3,
+                "color":{"@M@":"viridis"},
+                "ecolor":{"@M@":"viridis"}                
+            }],
+            "set_ylabel": {
+                "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Index}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_ynbins": {
+                "nbins": 4
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": "lower right",
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                },
+                "set_label": true
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "None.fisher.eigenvalues.M": {
+        "fig": {
+            "set_size_inches": {
+                "w": 8,
+                "h": 8
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [{
+                "x": null,
+                "y": "fisher.eigenvalues",
+                "label": {
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "M": null,
+                        "noise.scale": null,
+                        "iteration": "@iteration.max@",
+                        "rank": "fisher.rank"
+                    },
+                    "legend": {
+                        "label":{},
+                        "exclude":["iteration"]
+                    },                        
+                    "slice": [
+                        0,
+                        1000,
+                        null
+                    ]
+                },
+                "marker": "o",
+                "linestyle": "--",
+                "elinewidth": 2,
+                "capsize": 3,
+                "color":{"@M@":"viridis"},
+                "ecolor":{"@M@":"viridis"}                
+            }],
+            "set_ylabel": {
+                "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Index}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_ynbins": {
+                "nbins": 4
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": "lower right",
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                },
+                "set_label": true
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "None.hessian.eigenvalues.tau": {
+        "fig": {
+            "set_size_inches": {
+                "w": 8,
+                "h": 8
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [{
+                "x": null,
+                "y": "hessian.eigenvalues",
+                "label": {
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "T": null,
+                        "tau": null,
+                        "noise.parameters": null,
+                        "iteration": "@iteration.max@",
+                        "rank": "hessian.rank"
+                    },
+                    "legend": {
+                        "label":{},
+                        "exclude":["iteration"]
+                    },                        
+                    "slice": [
+                        0,
+                        1000,
+                        null
+                    ]
+                },
+                "marker": "o",
+                "linestyle": "--",
+                "elinewidth": 2,
+                "capsize": 3,
+                "color":{"@tau@":"viridis"},
+                "ecolor":{"@tau@":"viridis"}                
+            }],
+            "set_ylabel": {
+                "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Index}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_ynbins": {
+                "nbins": 4
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": "lower right",
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                },
+                "set_label": true
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    },
+    "None.fisher.eigenvalues.tau": {
+        "fig": {
+            "set_size_inches": {
+                "w": 8,
+                "h": 8
+            },
+            "subplots_adjust": {},
+            "tight_layout": {},
+            "savefig": {
+                "fname": null,
+                "bbox_inches": "tight",
+                "pad_inches": 0.2
+            },
+            "close": {}
+        },
+        "ax": {
+            "errorbar": [{
+                "x": null,
+                "y": "fisher.eigenvalues",
+                "label": {
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "T": null,
+                        "tau": null,
+                        "noise.par": null,
+                        "iteration": "@iteration.max@",
+                        "rank": "fisher.rank"
+                    },
+                    "legend": {
+                        "label":{},
+                        "exclude":["iteration"]
+                    },                        
+                    "slice": [
+                        0,
+                        1000,
+                        null
+                    ]
+                },
+                "marker": "o",
+                "linestyle": "--",
+                "elinewidth": 2,
+                "capsize": 3,
+                "color":{"@tau@":"viridis"},
+                "ecolor":{"@tau@":"viridis"}                
+            }],
+            "set_ylabel": {
+                "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
+            },
+            "set_xlabel": {
+                "xlabel": "$\\textrm{Index}$"
+            },
+            "yaxis.offsetText.set_fontsize": {
+                "fontsize": 20
+            },
+            "set_xnbins": {
+                "nbins": 6
+            },
+            "set_ynbins": {
+                "nbins": 4
+            },
+            "set_yscale": {
+                "value": "log",
+                "base": 10
+            },
+            "yaxis.set_major_formatter": {
+                "ticker": {
+                    "LogFormatterMathtext": {}
+                }
+            },
+            "yaxis.set_minor_locator": {
+                "ticker": {
+                    "LogLocator": {
+                        "base": 10.0,
+                        "subs": [
+                            0.2,
+                            0.3,
+                            0.4,
+                            0.5,
+                            0.6,
+                            0.7,
+                            0.8,
+                            0.9
+                        ],
+                        "numticks": 100
+                    }
+                }
+            },
+            "yaxis.set_minor_formatter": {
+                "ticker": {
+                    "NullFormatter": {}
+                }
+            },
+            "tick_params": [
+                {
+                    "axis": "y",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "y",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                },
+                {
+                    "axis": "x",
+                    "which": "major",
+                    "length": 8,
+                    "width": 1
+                },
+                {
+                    "axis": "x",
+                    "which": "minor",
+                    "length": 4,
+                    "width": 0.5
+                }
+            ],
+            "set_aspect": {
+                "aspect": "auto"
+            },
+            "grid": {
+                "visible": true,
+                "which": "both",
+                "axis": "both"
+            },
+            "legend": {
+                "title_fontsize": 20,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 20
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": "lower right",
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                },
+                "set_label": true
+            }
+        },
+        "style": {
+            "texify": null,
+            "mplstyle": "plot.mplstyle",
+            "rcParams": {
+                "font.size": 25
+            },
+            "layout": {
+                "nrows": 1,
+                "ncols": 1,
+                "index": 1
+            },
+            "share": {
+                "ax": {
+                    "legend": {
+                        "title": true,
+                        "handles": true,
+                        "labels": true
+                    }
+                }
+            }
+        }
+    }
 }

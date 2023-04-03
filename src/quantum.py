@@ -1521,11 +1521,11 @@ class Callback(object):
 					for attr in ['alpha','beta']
 					if attr in attributes and len(attributes[attr])>0
 					]),
-				'x\n%s'%(to_string(parameters.round(4))),
-				'theta\n%s'%(to_string(model.__layers__(parameters,'variables').flatten().round(4))),
-				'U\n%s\nV\n%s'%(
-					to_string((model(parameters)).round(4)),
-					to_string((model.label()).round(4))),
+				# 'x\n%s'%(to_string(parameters.round(4))),
+				# 'theta\n%s'%(to_string(model.__layers__(parameters,'variables').flatten().round(4))),
+				# 'U\n%s\nV\n%s'%(
+				# 	to_string((model(parameters)).round(4)),
+				# 	to_string((model.label()).round(4))),
 				])
 
 

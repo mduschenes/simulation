@@ -23,21 +23,28 @@ from src.utils import asndarray,asscalar
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
-from src.iterables import getter,setter,search,insert
+from src.iterables import getter,setter,search,insert,indexer,nullshape
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
 from src.postprocess import postprocess
-from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS,DIM,LAYOUTDIM
+from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,OTHER,DEPENDENT,INDEPENDENT,PLOTS,DIM,LAYOUTDIM
 
 # Logging
 from src.logger	import Logger
 logger = Logger()
 info = 100
-debug = 0
+debug = 100
 
-DIM = 2
-LAYOUTDIM = 2
+LAYOUT = ['row','col']
+GRID = [*LAYOUT,'axis','axes']
+INDEXES = ['variable','label','func','axis'] 
+
+AXESDIM = min(2,DIM)
+LAYOUTDIM = len(LAYOUT)
+GRIDDIM = len(GRID)
+INDEXDIM = len(INDEXES)
+AXISDIM = GRIDDIM - 1 - LAYOUTDIM
 
 class GroupBy(object):
 	def __init__(self,df,by=[]):
@@ -79,18 +86,19 @@ def Texify(string,texify={},usetex=True):
 	if not isinstance(string,str) and string is not None:
 		string = str(string)
 
-	try:
-		default = '\n'.join(['$%s$'%(strings.get(substring,substring).replace('$','')) for substring in string.split('\n')])
+	if string is not None:
+		try:
+			default = '\n'.join(['$%s$'%(strings.get(substring,substring).replace('$','')) for substring in string.split('\n')])
 
-		if string in strings:
-			string = '$%s$'%(strings.get(string).replace('$',''))
-		else:
-			string = default
+			if string in strings:
+				string = '$%s$'%(strings.get(string).replace('$',''))
+			else:
+				string = default
 
-		if not usetex or len(string) == 0:
-			string = string.replace('$','')
-	except AttributeError:
-		string = None
+			if not usetex or len(string) == 0:
+				string = string.replace('$','')
+		except AttributeError:
+			string = None
 
 	return string
 
@@ -165,6 +173,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 	default = None if isinstance(hyperparameters,str) else hyperparameters
 	wrapper = None
 	hyperparameters = load(path,default=default,wrapper=wrapper,verbose=verbose)
+	obj = 'ax'
 
 	if (settings is None) or (hyperparameters is None):
 		return data,settings,hyperparameters
@@ -176,20 +185,23 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 			continue
 
 		if all(subinstance in defaults for subinstance in settings[instance]):
-			settings[instance] = {"None": settings[instance]}
+			settings[instance] = {str(None): settings[instance]}
+
 		for subinstance in settings[instance]:
+			
 			setter(settings[instance][subinstance],defaults,delimiter=delim,func=False)
 
-			prop = 'ax'
-			for plots in PLOTS:
-				if not settings[instance][subinstance][prop].get(plots):
+			if not settings[instance][subinstance].get(obj):
+				continue
+			for prop in PLOTS:
+				if not settings[instance][subinstance][obj].get(prop):
 					continue
-				elif isinstance(settings[instance][subinstance][prop][plots],dict):
-					settings[instance][subinstance][prop][plots] = [[[settings[instance][subinstance][prop][plots]]]]
-				elif all(isinstance(subplots,dict) for subplots in settings[instance][subinstance][prop][plots]):
-					settings[instance][subinstance][prop][plots] = [[[subplots]] for subplots in settings[instance][subinstance][prop][plots]]
-				elif all(isinstance(subsubplots,dict) for subplots in settings[instance][subinstance][prop][plots] for subsubplots in subplots):
-					settings[instance][subinstance][prop][plots] = [[[subsubplots] for subsubplots in subplots] for subplots in settings[instance][subinstance][prop][plots]]
+				tmp = []
+				for index,shape,item in search(settings[instance][subinstance][obj][prop],returns=True):
+					index = [*index,*[0]*(INDEXDIM-len(shape))]
+					insert(index,item,tmp)
+				settings[instance][subinstance][obj][prop] = tmp
+
 
 	# Set process hyperparameters
 	defaults = {
@@ -229,8 +241,8 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 
 	for instance in list(settings):
 		if (not hyperparameters.get(attr,{}).get(instance)) or (not settings[instance]):
-				settings.pop(instance,None);
-				continue
+			settings.pop(instance,None);
+			continue
 
 	# Get plot fig and axes
 	fig,ax = hyperparameters.get('fig'),hyperparameters.get('ax')
@@ -275,7 +287,7 @@ def find(dictionary,verbose=None):
 		keys (dict[dict]): Formatted keys based on found keys of the form {name: {prop:attr} or {prop:{attr:value}}}
 	'''
 
-	axes = AXIS[:DIM]
+	dimensions = AXES[:AXESDIM]
 	other = [OTHER]
 
 	def parser(string,separator,default):
@@ -300,15 +312,17 @@ def find(dictionary,verbose=None):
 					# 'parse':[{'__path__':'*','M':"<600<"}]
 					# 'abs':['alpha']
 					},
-				'axis':None,
-					#{'shape': {'row':[],'col':[],'label':[],'axis':[]},'reshape':[],'transpose':[]},
-				'settings':{},
+				'shape':None,
+					#{'shape': {'row':[],'col':[],'axis':[],'axes':[]},'reshape':[],'transpose':[]},
+				'legend': {
+					'label':{},'include':None,'exclude':None
+				},
 				'texify':{},
 				'valify': {},		
 				'scinotation':{'scilimits':[0,2],'decimals':0,'one':False},
 	}
 
-	items = [*axes,*other]
+	items = [*dimensions,*other]
 	types = (list,dict,)
 	keys = search(dictionary,items=items,returns=True,types=types)
 	
@@ -346,11 +360,11 @@ def find(dictionary,verbose=None):
 				if not keys[name][attr]:
 					keys[name][attr] = default
 				elif isinstance(keys[name][attr],dict):
-					keys[name][attr] = keys[name][attr][list(keys[name][attr])[-1]]
+					keys[name][attr] = keys[name][attr][list(keys[name][attr])[0]]
 				elif isinstance(keys[name][attr],str):
 					keys[name][attr] = keys[name][attr] if keys[name][attr] not in [''] else default
 				else:
-					keys[name][attr] = keys[name][attr][-1]
+					keys[name][attr] = keys[name][attr][0]
 
 	return keys
 
@@ -632,7 +646,6 @@ def analyse(data,analyses=None,verbose=None):
 			args = deepcopy(args)
 
 			for attrs in args:
-
 				if analysis in ['zscore','quantile','parse']:
 					value = func(attrs,data)
 					out = conditions([out,value],op='and')
@@ -669,9 +682,9 @@ def loader(data,settings,hyperparameters,verbose=None):
 	
 	def func(key_iterable,key_elements,iterable,elements):
 		if (
-			(key_iterable.split(delim)[0] == key_elements) and 
+			(key_iterable == key_elements) and 
 			(key_iterable in PLOTS) and (key_elements in PLOTS) and 
-			isinstance(iterable.get(key_iterable),list) and	isinstance(elements.get(key_elements),list)
+			isinstance(iterable.get(key_iterable),list)
 			):
 
 			def parser(string,separator,default):
@@ -685,9 +698,11 @@ def loader(data,settings,hyperparameters,verbose=None):
 			default = None
 			separator = '='
 
-			for i,data in enumerate(search(elements.get(key_elements))):
-				if i >= len(iterable.get(key_iterable)):
-					# iterable[key_iterable].append(deepcopy(data))
+			if not isinstance(elements.get(key_elements),list):
+				elements[key_elements] = [elements.get(key_elements)]
+
+			for i,(item,shape,data) in enumerate(search(elements.get(key_elements),returns=True)):
+				if (not iterable.get(key_iterable)) or i >= len(iterable.get(key_iterable)):
 					continue
 				for subindex,datum in enumerate(search(iterable.get(key_iterable)[i])):
 					if not datum:
@@ -719,8 +734,16 @@ def loader(data,settings,hyperparameters,verbose=None):
 						else:
 							datum[attr][attr] = {prop: None for prop in data[attr]}
 
-
 			out = iterable.get(key_iterable)
+
+			tmp = []
+			for index,shape,item in search(out,returns=True):
+				i = index
+				index = [*index,*[0]*(INDEXDIM-len(shape))]
+				insert(index,item,tmp)
+			for i in range(len(tmp)):
+				out[i] = tmp[i]
+
 
 		else:
 			out = elements.get(key_elements)
@@ -742,7 +765,6 @@ def loader(data,settings,hyperparameters,verbose=None):
 		# Load data
 		path = data
 		tmp = hyperparameters['path']['data']
-
 		try:
 			assert exists(tmp)
 			path = tmp
@@ -777,7 +799,6 @@ def loader(data,settings,hyperparameters,verbose=None):
 	# Dump settings
 	if hyperparameters['dump']:
 		path = metadata
-		
 		dump(settings,metadata,verbose=verbose)
 
 	return
@@ -817,12 +838,12 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		logger.log(info,"Processing : %r"%(name,))
 
-		if any((keys[name][axis] not in data) and (keys[name][axis] is not null) for axis in AXIS if axis in keys[name]):
+		if any((keys[name][axes] not in data) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
 			key,value = name,None
 			setter(settings,{key:value},delimiter=delim,func=True)
 			continue
 
-		axes = [axis for axis in AXIS if axis in keys[name]]
+		dimensions = [axes for axes in AXES if axes in keys[name]]
 		other = OTHER
 		label = keys[name][other].get(other,{})
 		include = keys[name][other].get('include')
@@ -835,8 +856,8 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		funcs = {function : {func: functions.get(funcs[function][func],funcs[function][func]) for func in funcs[function]} for function in funcs}
 
-		independent = [keys[name][axis] for axis in axes[:-1] if keys[name][axis] in data]
-		dependent = [keys[name][axis] for axis in axes[-1:] if keys[name][axis] in data]
+		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in data]
+		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in data]
 		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((label[attr] is null) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
 		boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
 		boolean = conditions(boolean,op='and')
@@ -851,10 +872,10 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		groups = data[boolean].groupby(by=by,as_index=False)
 
+		groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
+
 		shapes = {group[:-len(independent)] if (independent) and isinstance(group,tuple) else group: groups.get_group(group).shape for group in groups.groups}
 
-		groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
-		
 		agg = {
 			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] for attr in data},
 			**{attr : [(delim.join(((attr,function,func))),{'array':{'':mean,'err':sem}[func],'object':'first','dtype':funcs[function][func]}[dtypes[attr]]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
@@ -878,27 +899,26 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		for i,group in enumerate(groups.groups):
 
 			logger.log(info,"Group : %r %r -> %r"%(group,shapes[group],groups.get_group(group).shape))
-			# find CWD -name metadata.json -exec sed -i '/\(\"both\"\|\"major\"\|\"minor\"\|\"x\"\|\"y\"\|\"z\"\)/! s/\"axis\":\ \(".*"\)/\"label\":\ \1/g' {} \;
-			# grep '"axis"' CWD/metadata.json
 
 			for j,function in enumerate(funcs):
 
 				grouping = groups.get_group(group)
 				
-				key = (*name[:-2],i,j)
+				key = (*name[:-3],i,j,*name[-1:])
 				value = deepcopy(getter(settings,name,delimiter=delim))
 
 				source = [attr for attr in data if attr not in variables]
 				destination = other
 				value[destination] = {
 					**{attr: grouping[attr].to_list()[0] for attr in source},
-					**{'%s%s'%(axis,func) if keys[name][axis] in dependent else axis: 
+					**{'%s%s'%(axes,func) if keys[name][axes] in dependent else axes: 
 						{
 						'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
 						'func':[j,function],
-						'label':keys[name][axis] if keys[name][axis] is not null else None
+						'label':keys[name][axes] if keys[name][axes] is not null else None
 						} 
-						for axis in axes for func in funcs[function]
+						for axes in dimensions 
+						for func in funcs[function]
 						},
 					**{other: {attr: {subattr: keys[name][other][attr][subattr] 
 						if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
@@ -908,12 +928,12 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 					}
 
 				for func in funcs[function]:	
-					for axis in axes:
+					for axes in dimensions:
 						
-						attr = keys[name][axis]
+						attr = keys[name][axes]
 
 						source = delim.join(((attr,function,func))) if attr in dependent else attr
-						destination = '%s%s'%(axis,func) if attr in dependent else axis
+						destination = '%s%s'%(axes,func) if attr in dependent else axes
 
 						if grouping.shape[0]:
 							if source in grouping:
@@ -957,243 +977,225 @@ def plotter(settings,hyperparameters,verbose=None):
 	ax = hyperparameters['ax']
 	texify = hyperparameters['texify']
 	valify = hyperparameters['valify']
-
-	# Set layout
-	layout = {}
-	for instance in list(settings):
-
-		for i,subinstance in enumerate(settings[instance]):
-		
-			sublayout = settings[instance][subinstance]['style']['layout']
-			if not layout.get(instance):
-				layout[instance] = sublayout
-			layout[instance].update({
-				**layout[instance],
-				**{attr: max(sublayout[attr],layout[instance][attr]) 
-					if (sublayout[attr] is not None) and (layout[instance][attr] is not None) else None
-					for attr in ['nrows','ncols']},
-				**{attr: None for attr in ['index']},
-				})
-		for i,subinstance in enumerate(settings[instance]):
-			sublayout = deepcopy(layout[instance])
-
-			indx = sublayout['index']-1	if sublayout['index'] is not None else i
-			nrow = (indx - indx%sublayout['ncols'])//sublayout['ncols']
-			ncol = indx%sublayout['ncols']
-
-			sublayout.update({
-				**{'index':None},
-				**{
-					'top':1 - (nrow)/sublayout['nrows'] if sublayout['top'] and sublayout['nrows']>1 else None,
-					'bottom':1 - (nrow+1)/sublayout['nrows'] if sublayout['bottom'] and sublayout['nrows']>1 else None,
-					'right':(ncol+1)/sublayout['ncols'] if sublayout['right'] and sublayout['ncols']>1 else None,
-					'left':(ncol)/sublayout['ncols'] if sublayout['left'] and sublayout['ncols']>1 else None,											
-					}
-				})
+	obj = 'ax'
 
 
-			settings[instance][subinstance]['style']['layout'] = sublayout
-
-	# set axis
-	grid = {}
-	props = ['row','col','label','axis']
-	# props = ['row','col','axis']
-	PLOTDIM = len(props) - LAYOUTDIM
+	# Check data
 	for instance in list(settings):
 		for subinstance in list(settings[instance]):
+			for prop in settings[instance][subinstance][obj]:
+
+				if isinstance(settings[instance][subinstance][obj].get(prop),dict):
+					settings[instance][subinstance][obj][prop] = [settings[instance][subinstance][obj][prop]]
+				
+				if prop in PLOTS:
+					for data in search(settings[instance][subinstance][obj][prop]):
+						if data is None:
+							continue
+						elif any(((data.get(attr) is None) or isinstance(data.get(attr),str)) for attr in ALL if attr in data and attr not in INDEPENDENT):
+							data.clear()
+
+		if all((not data) for prop in PLOTS if prop in settings[instance][subinstance][obj] for data in search(settings[instance][subinstance][obj][prop])):
+			settings[instance].pop(subinstance);
+
+	for instance in list(settings):
+		if not settings[instance]:
+			settings.pop(instance);
+
+	# Set grid layout based on GRID
+	grid = {}
+	for instance in list(settings):
+		for subinstance in list(settings[instance]):
+			
+			if not settings[instance][subinstance].get(obj):
+				continue
+
 			if grid.get(instance) is None:
 				grid[instance] = {}
+			
 			if grid[instance].get(subinstance) is None:
-				grid[instance][subinstance] = [*[1 for i in range(LAYOUTDIM)],*[1 for i in range(PLOTDIM-1)],-1]
+				grid[instance][subinstance] = [*[1]*LAYOUTDIM,*[1]*AXISDIM,*[-1]*(GRIDDIM-LAYOUTDIM-AXISDIM)]
 
-			for plots in PLOTS:
+			for prop in PLOTS:
 				
-				if plots not in settings[instance][subinstance].get('ax',{}):
+				if prop not in settings[instance][subinstance][obj]:
 					continue
 				
-				for data in search(settings[instance][subinstance]['ax'][plots]):
+				for data in search(settings[instance][subinstance][obj][prop]):
 
 					if not data or not data.get(OTHER) or not data[OTHER].get(OTHER):
 						continue
 
-					sublayout = data[OTHER][OTHER].get('axis')
+					shapes = data[OTHER][OTHER].get('shape')
 
-					for axis in ALL:
-						if axis[0] not in AXIS[DIM-1:]:
+					for axes in ALL:
+						
+						if axes not in data or isinstance(data[axes],scalars):
 							continue
-						if axis not in data or isinstance(data[axis],scalars):
-							continue
 
-						if sublayout:
+						if shapes and (axes not in INDEPENDENT):
 
-							shape = sublayout.get('shape')
-							slices = sublayout.get('slices')
-							transpose = sublayout.get('transpose')
-							reshape = sublayout.get('reshape')
-							indices = sublayout.get('indices')
+							shape = shapes.get('shape')
+							slices = shapes.get('slices')
+							transpose = shapes.get('transpose')
+							reshape = shapes.get('reshape')
+							indices = shapes.get('indices')
+
 							if slices:
 								if not isinstance(slices,dict):
-									slices = dict(zip(props,slices)) 
+									slices = dict(zip(GRID,slices)) 
 
-								for i,prop in enumerate(props):
+								for i,prop in enumerate(GRID):
 									if not slices[prop]:
 										continue
-									indexes = [slice(None)]*len(props)
+									indexes = [slice(None)]*GRIDDIM
 									indexes[i] = slices[prop]
 									indexes = tuple(indexes)
-									data[axis] = data[axis][indexes]
+									data[axes] = data[axes][indexes]
 
 							if transpose:
 								transpose = [transpose] if isinstance(transpose,int) else transpose
-								transpose = [data[axis].ndim + i if i < 0 else i for i in transpose]
-								transpose = [*transpose,*[i for i in range(data[axis].ndim) if i not in transpose]]
-								data[axis] = data[axis].transpose(transpose)
+								transpose = [data[axes].ndim + i if i < 0 else i for i in transpose]
+								transpose = [*transpose,*[i for i in range(data[axes].ndim) if i not in transpose]]
+								data[axes] = data[axes].transpose(transpose)
 
 							if reshape:
 								reshape = [reshape] if isinstance(reshape,(int,str)) else reshape
-								reshape = [i if isinstance(i,int) else int(data[OTHER].get(i)) if i is not None else data[axis].shape[reshape.index(i)] for i in reshape]
-								data[axis] = data[axis].reshape(reshape)
+								reshape = [i if isinstance(i,int) else int(data[OTHER].get(i)) if i is not None else data[axes].shape[reshape.index(i)] for i in reshape]
+								data[axes] = data[axes].reshape(reshape)
 							
 							if shape:
-								shape = {prop: [shape[prop]] if isinstance(shape.get(prop),int) else shape.get(prop) if shape.get(prop) is not None else [] for prop in props}
-								shape = {prop: [data[axis].ndim + i if i < 0 else i for i in shape[prop]] for prop in props}
+								shape = {prop: [shape[prop]] if isinstance(shape.get(prop),int) else shape.get(prop) if shape.get(prop) is not None else [] for prop in GRID}
+								shape = {prop: [data[axes].ndim + i if i < 0 else i for i in shape[prop]] for prop in GRID}
 								shape = {prop:{
-									**{prop: shape[prop] for prop in props if shape.get(prop)},
-									**{prop: [i for i in range(data[axis].ndim) if not any(i in shape[prop] for prop in props if shape.get(prop))] for prop in props if not shape.get(prop)}
-									}[prop] for prop in props
+									**{prop: shape[prop] for prop in GRID if shape.get(prop)},
+									**{prop: [i for i in range(data[axes].ndim) if not any(i in shape[prop] for prop in GRID if shape.get(prop))] for prop in GRID if not shape.get(prop)}
+									}[prop] for prop in GRID
 									}
 
-								transpose = [i for prop in props for i in shape[prop]]
-								reshape = [max(1,prod(data[axis].shape[i] for i in shape[prop])) for prop in props]
+								transpose = [i for prop in GRID for i in shape[prop]]
+								reshape = [max(1,prod(data[axes].shape[i] for i in shape[prop])) for prop in GRID]
 
 								if transpose:
-									data[axis] = data[axis].transpose(transpose)
+									data[axes] = data[axes].transpose(transpose)
 								
 								if reshape:
-									data[axis] = data[axis].reshape(reshape)
+									data[axes] = data[axes].reshape(reshape)
 							else:
-								reshape = [*[1 for i in range(LAYOUTDIM)],*[1 for i in range(PLOTDIM-1)],data[axis].size]
+								reshape = [*[1]*LAYOUTDIM,*[1]*AXISDIM,data[axes].size]
 								if reshape:
-									data[axis] = data[axis].reshape(reshape)
+									data[axes] = data[axes].reshape(reshape)
 						
 							if indices:
 								if not isinstance(indices,dict):
-									indices = dict(zip(props,indices)) 
+									indices = dict(zip(GRID,indices)) 
 
-								for i,prop in enumerate(props):
-									if not indices[prop]:
+								for i,prop in enumerate(GRID):
+									if not indices.get(prop):
 										continue
-									indexes = [slice(None)]*len(props)
+									indexes = [slice(None)]*GRIDDIM
 									indexes[i] = indices[prop]
 									indexes = tuple(indexes)
-									data[axis] = data[axis][indexes]
+									data[axes] = data[axes][indexes]
 
 
 						else:
-							reshape = [*[1 for i in range(LAYOUTDIM)],*[1 for i in range(PLOTDIM-1)],data[axis].size]
+							reshape = [*[1]*LAYOUTDIM,*[1]*AXISDIM,data[axes].size]
 							if reshape:
-								data[axis] = data[axis].reshape(reshape)
+								data[axes] = data[axes].reshape(reshape)
 
 						grid[instance][subinstance] = [
-							max(1,max(grid[instance][subinstance][i],data[axis].shape[i]))
+							max(1,max(grid[instance][subinstance][i],data[axes].shape[i]))
 							for i in range(len(grid[instance][subinstance]))]
 
-					if sublayout:
-						for axis in AXIS[:DIM-1]:
-							if axis in data:
-								size = data[AXIS[DIM-1]].shape[-1]
-								if data[axis].size != size:
-									data[axis] = np.arange(reshape[-1])
-								reshape = [*[1 for i in range(LAYOUTDIM)],*[1 for i in range(PLOTDIM-1)],data[AXIS[DIM-1]].shape[-1]]
-								if reshape:
-									data[axis] = data[axis].reshape(reshape)
+					
+					for axes in ALL:
+						
+						if axes not in data or isinstance(data[axes],scalars):
+							continue
 
-								normalize = sublayout.get('normalize')
-								normalize = [normalize] if isinstance(normalize,str) else normalize if normalize else []
-								if axis in normalize:
-									data[axis] = data[axis]/max(1,data[axis].size-1)
+						if shapes and (axes in INDEPENDENT):
 
-
+							data[axes] = data[AXES[AXESDIM-1]].copy()
+							data[axes][...,:] = np.arange(data[AXES[AXESDIM-1]].shape[-1])
 
 
 	for instance in list(settings):
 		for subinstance in list(settings[instance]):
+			
+			if not settings[instance][subinstance].get(obj):
+				continue
 
-			setting = settings[instance].pop(subinstance)
-			subgrid = grid[instance].pop(subinstance)
-
-			for position in itertools.product(*(range(i) for i in subgrid[:LAYOUTDIM])):
+			for position in itertools.product(*(range(i) for i in grid[instance][subinstance][:LAYOUTDIM])):
 				
 				key = delim.join([subinstance,*[str(i) for i in position]])
-				value = deepcopy(setting)
+				
+				settings[instance][key] = deepcopy(settings[instance][subinstance])
+				grid[instance][key] = deepcopy(grid[instance][subinstance])[:LAYOUTDIM]
 
-				for label in itertools.product(*(range(i) for i in subgrid[LAYOUTDIM:LAYOUTDIM+PLOTDIM-1])):
+				for axis in itertools.product(*(range(i) for i in grid[instance][subinstance][LAYOUTDIM:LAYOUTDIM+AXISDIM])):
 
-					for plots in PLOTS:
+					for prop in PLOTS:
 						
-						if plots not in setting.get('ax',{}):
+						if prop not in settings[instance][subinstance][obj]:
 							continue
 						
-						for index,shape,data in search(deepcopy(setting['ax'][plots]),returns=True):
+						for index,shape,data in search(deepcopy(settings[instance][subinstance][obj][prop]),returns=True):
 						
 							if not data:
 								continue
 
-							for axis in ALL:
+							for axes in ALL:
 								
-								if axis not in data or isinstance(data[axis],scalars):
+								if (axes not in data) or isinstance(data[axes],scalars):
 									continue
 
-								if data[axis].ndim == 1:
-									continue
+								if (any(position[i]>=data[axes].shape[i] for i in range(min(data[axes].ndim-1,LAYOUTDIM))) or 
+									any(axis[i-LAYOUTDIM]>=data[axes].shape[i] for i in range(LAYOUTDIM,min(data[axes].ndim-1,LAYOUTDIM+AXISDIM)))):
+									data[axes] = None
+								else:
+									slices = tuple((*position,*axis))
 
-								slices = tuple([
-									*[min(data[axis].shape[i]-1,position[i]) for i in range(min(data[axis].ndim,LAYOUTDIM))],
-									*[min(data[axis].shape[i]-1,label[i-LAYOUTDIM]) for i in range(LAYOUTDIM,min(data[axis].ndim,LAYOUTDIM+PLOTDIM-1))],
-									])
+									data[axes] = data[axes][slices]
+									data[axes] = data[axes].tolist()
 
-								data[axis] = data[axis][slices]
-								data[axis] = data[axis].tolist()
-
-							index = [*index[:-len(label)],*label]
-							item = data
-							iterable = value['ax'][plots]
+							index = [*index[:-len(axis)],*axis]
+							item = data if any(data[axes] is not None for axes in ALL if axes in data) else None
+							iterable = settings[instance][key][obj][prop]
 							insert(index,item,iterable)
-
-
-				key = delim.join([subinstance,*[str(i) for i in position]])
-				value = deepcopy(value)
-				setter(settings[instance],{key:value},delimiter=None,func=True)
-
-				key = delim.join([subinstance,*[str(i) for i in position]])
-				grid[instance][key] = subgrid
+							
+			settings[instance].pop(subinstance);
+			grid[instance].pop(subinstance);
 
 	# set layout
-	# TODO: Check cases of settings containing multiple nrows,ncols + additional reshaped axis induced rows and columns
+	# TODO: Check cases of settings containing multiple nrows,ncols + additional reshaped axes induced rows and columns
 	layout = {}
-	for instance in list(settings):
+	for instance in settings:
 
-		for i,subinstance in enumerate(settings[instance]):
-		
+		for index,subinstance in enumerate(settings[instance]):		
+			
 			sublayout = settings[instance][subinstance]['style']['layout']
+			
 			if not layout.get(instance):
 				layout[instance] = sublayout
 			layout[instance].update({
 				**layout[instance],
-				**{attr: max(sublayout[attr]*grid[instance][subinstance][i],layout[instance][attr])
+				**{attr: max(sublayout[attr]*grid[instance][subinstance][GRID.index(attr[1:-1])],layout[instance][attr])
 					if (sublayout[attr] is not None) and (layout[instance][attr] is not None) else None
-					for i,attr in enumerate(['nrows','ncols'])},
+					for attr in ['nrows','ncols']},
 				**{attr: None for attr in ['index']},
 				})
-		for i,subinstance in enumerate(settings[instance]):
+
+		for index,subinstance in enumerate(settings[instance]):
+			
 			sublayout = deepcopy(layout[instance])
 
-			indx = sublayout['index']-1	if sublayout['index'] is not None else i
-			nrow = (indx - indx%sublayout['ncols'])//sublayout['ncols']
-			ncol = indx%sublayout['ncols']
+			index = sublayout['index']-1 if sublayout['index'] is not None else index
+			nrow = (index - index%sublayout['ncols'])//sublayout['ncols']
+			ncol = index%sublayout['ncols']
 
 			sublayout.update({
-				**{'index':indx+1},
+				**{'index':index+1},
 				**{
 					'top':1 - (nrow)/sublayout['nrows'] if sublayout['top'] and sublayout['nrows']>1 else None,
 					'bottom':1 - (nrow+1)/sublayout['nrows'] if sublayout['bottom'] and sublayout['nrows']>1 else None,
@@ -1205,263 +1207,335 @@ def plotter(settings,hyperparameters,verbose=None):
 
 			settings[instance][subinstance]['style']['layout'] = sublayout
 
+			grid[instance][subinstance] = [sublayout['n%ss'%(GRID[i])] for i in range(LAYOUTDIM)]
 
-
-	# Set data
+	# Set kwargs
 	for instance in list(settings):
 	
 		logger.log(info*verbose,"Setting : %s"%(instance))
 
 		for subinstance in list(settings[instance]):
 			
-			position = [int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
-
-			# variables
-			try:
-				values = {}
-				for plots in PLOTS:
-					
-					if plots not in settings[instance][subinstance]['ax']:
-						continue
-
-					labels = list(natsorted(set(label
-						for data in search(settings[instance][subinstance]['ax'][plots])
-						if (data)
-						for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
-						if ((data) and (label not in [*ALL,OTHER]))
-						)))
-
-					values[plots] = {}
-					for label in labels:
-						value = {}
-						value['all'] = list(realsorted(set(
-								(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else None) if (
-									(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
-								to_tuple(data[OTHER][label]) if (
-									(label in data[OTHER])) else 
-								data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (
-									(label in data[OTHER][OTHER][OTHER] and 
-									(data[OTHER][OTHER][OTHER].get(label) is not None) and
-									data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
-								for data in search(settings[instance][subinstance]['ax'][plots]) if (
-									((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
-								)))
-						value['value'] = value['all'] if (any(((not data[OTHER][OTHER].get('null')) or 
-																 (label not in data[OTHER][OTHER].get('null'))) 
-														for data in search(settings[instance][subinstance]['ax'][plots]) if
-														((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))) else []
-						value['sort'] = list(realsorted(set(data[OTHER][OTHER][OTHER][label]
-								for data in search(settings[instance][subinstance]['ax'][plots]) if ((data) and (label in data[OTHER][OTHER][OTHER]))
-								)))
-						value['label'] = any((
-								(label in data[OTHER][OTHER][OTHER]) and 
-								(label in data[OTHER]))# and (data[OTHER][OTHER][OTHER][label] is None))
-								for data in search(settings[instance][subinstance]['ax'][plots]) 
-								if (data)
-								)
-						value['other'] = any((
-								(label not in data[OTHER]) and 
-								(label in data[OTHER][OTHER][OTHER]) and 
-								((data[OTHER][OTHER][OTHER].get(label) is not None) and
-								(data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])))
-								for data in search(settings[instance][subinstance]['ax'][plots])
-								if (data)
-								)
-						value['legend'] = any((
-								(label not in data[OTHER]) and 
-								(label in data[OTHER][OTHER][OTHER]) and
-								((data[OTHER][OTHER][OTHER].get(label) is not None) and
-								(data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER])))
-								for data in search(settings[instance][subinstance]['ax'][plots])
-								if (data)
-								)
-						value['attr'] = {
-								**{attr: {string:  data[OTHER][OTHER][attr][string]
-									for data in search(settings[instance][subinstance]['ax'][plots]) 
-									if ((data) and attr in data[OTHER][OTHER])
-									for string in data[OTHER][OTHER][attr]}
-									for attr in ['texify','valify']},
-								**{attr: {
-									**{kwarg:[
-									min((data[OTHER][OTHER][attr][kwarg][0]
-										for data in search(settings[instance][subinstance]['ax'][plots]) 
-										if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
-										default=0),
-									max((data[OTHER][OTHER][attr][kwarg][1]
-										for data in search(settings[instance][subinstance]['ax'][plots]) 
-										if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
-										default=0),											
-									] for kwarg in ['scilimits']},
-									**{kwarg: 
-										max((data[OTHER][OTHER][attr][kwarg]
-										for data in search(settings[instance][subinstance]['ax'][plots]) 
-										if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
-										default=0) 
-										for kwarg in ['decimals']},
-									**{kwarg: 
-										any((data[OTHER][OTHER][attr][kwarg]
-										for data in search(settings[instance][subinstance]['ax'][plots]) 
-										if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))))
-										for kwarg in ['one']},										
-									}
-									for attr in ['scinotation']},
-								}
-
-						values[plots][label] = value
-
-					for label in list(values[plots]):
-						if any(label in values[i] for i in values if i not in [plots]):
-							values[plots].pop(label);
-
-			except KeyError as e:
-				logger.log(debug,'%s %s %s '%(traceback.format_exc(),instance,subinstance))
-				settings[instance].pop(subinstance);
+			if not settings[instance][subinstance].get(obj):
 				continue
 
-			# savefig
-			attr = 'fname'
-			data = settings[instance][subinstance]['fig'].get('savefig',{})
-			value = join(delim.join([split(path,directory_file=True),instance]),ext=split(path,ext=True))
-			data[attr] = value
+			position = [int(i) for i in subinstance.split(delim)[-LAYOUTDIM:]]
 
 
-			# colorbar
-			attr = 'set_colorbar'
-			data = settings[instance][subinstance]['ax'].get(attr)
-			if data is not None:
+			# variables
 
-				subattr = 'values'
-				label = data.get(subattr)
+			values = {}
+			for prop in PLOTS:
+				
+				if prop not in settings[instance][subinstance][obj]:
+					continue
 
-				value = []
+				labels = list(natsorted(set(label
+					for data in search(settings[instance][subinstance][obj][prop])
+					if (data)
+					for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
+					if ((data) and (label not in [*ALL,OTHER]))
+					)))
 
-				for plots in values:
+				values[prop] = {}
+			
+				for label in labels:
+					value = {}
+					value['value'] = list(realsorted(set(
+							(data[OTHER][label] if not isinstance(data[OTHER][label],tuple) else None) if (
+								(label in data[OTHER]) and not isinstance(data[OTHER][label],list)) else 
+							to_tuple(data[OTHER][label]) if (
+								(label in data[OTHER])) else 
+							data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] if (
+								(label in data[OTHER][OTHER][OTHER] and 
+								(data[OTHER][OTHER][OTHER].get(label) is not None) and
+								data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
+							for data in search(settings[instance][subinstance][obj][prop]) if (
+								((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
+							)))					
+					value['include'] = any((
+							(((not data[OTHER][OTHER]['legend']['include']) and (not data[OTHER][OTHER]['legend']['exclude']))) or
+							(((not data[OTHER][OTHER]['legend']['include']) or (label in data[OTHER][OTHER]['legend']['include'])) and
+							 ((not data[OTHER][OTHER]['legend']['exclude']) or (label not in data[OTHER][OTHER]['legend']['exclude']))
+							)
+							)
+							for i in PLOTS
+							if i in settings[instance][subinstance][obj]
+							for data in search(settings[instance][subinstance][obj][i])
+							if (data) 
+							)
+					value['label'] = any((
+							(label in data[OTHER][OTHER][OTHER]) and 
+							(label in data[OTHER]))# and (data[OTHER][OTHER][OTHER][label] is None))
+							for data in search(settings[instance][subinstance][obj][prop]) 
+							if (data)
+							)
+					value['other'] = any((
+							(label in data[OTHER][OTHER][OTHER]) and 
+							(label not in data[OTHER]) and 
+							((data[OTHER][OTHER][OTHER].get(label) is not None) and
+							(data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])))
+							for data in search(settings[instance][subinstance][obj][prop])
+							if (data)
+							)
+					value['legend'] = any((
+							(label in data[OTHER][OTHER][OTHER]) and 
+							(label not in data[OTHER]) and 
+							((data[OTHER][OTHER][OTHER].get(label) is not None) and
+							(data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER])))
+							for data in search(settings[instance][subinstance][obj][prop])
+							if (data)
+							)
+					value['attr'] = {
+							**{attr: {string:  data[OTHER][OTHER][attr][string]
+								for data in search(settings[instance][subinstance][obj][prop]) 
+								if ((data) and attr in data[OTHER][OTHER])
+								for string in data[OTHER][OTHER][attr]}
+								for attr in ['texify','valify']},
+							**{attr: {
+								**{kwarg:[
+								min((data[OTHER][OTHER][attr][kwarg][0]
+									for data in search(settings[instance][subinstance][obj][prop]) 
+									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									default=0),
+								max((data[OTHER][OTHER][attr][kwarg][1]
+									for data in search(settings[instance][subinstance][obj][prop]) 
+									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									default=0),											
+								] for kwarg in ['scilimits']},
+								**{kwarg: 
+									max((data[OTHER][OTHER][attr][kwarg]
+									for data in search(settings[instance][subinstance][obj][prop]) 
+									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									default=0) 
+									for kwarg in ['decimals']},
+								**{kwarg: 
+									any((data[OTHER][OTHER][attr][kwarg]
+									for data in search(settings[instance][subinstance][obj][prop]) 
+									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))))
+									for kwarg in ['one']},										
+								}
+								for attr in ['scinotation']},
+							}
 
-					if (label is not None) and (label not in values[plots]):
+					values[prop][label] = value
+
+				for label in list(values[prop]):
+					if any(label in values[i] for i in values if i not in [prop]):
+						values[prop].pop(label);
+
+			# setup values based attrs
+			delimiters = ['@','__']
+			for prop in settings[instance][subinstance][obj]:
+
+				if not settings[instance][subinstance][obj].get(prop):
+					continue
+				
+				for index,shape,data in search(settings[instance][subinstance][obj][prop],returns=True):
+					
+					if not data:
+						continue
+
+					for attr in data:
+
+						if (prop in PLOTS) and (attr in [*ALL,OTHER]):
+							continue
+
+						value = deepcopy(data[attr])
+
+						if value is None:
+							continue
+						elif isinstance(value,str) and any((value.startswith(delimiter) and value.endswith(delimiter)) for delimiter in delimiters):
+							label,value = value,None
+							value = {label:value}
+						elif isinstance(value,dict) and any((label.startswith(delimiter) and label.endswith(delimiter)) for label in value for delimiter in delimiters):
+							value = {label: value[label] for label in value}
+						else:
+							continue
+
+						for label in list(value):
+							for delimiter in delimiters:
+								
+								if not (label.startswith(delimiter) and label.endswith(delimiter)):
+									continue
+
+								label,val = label.replace(delimiter,''),value.pop(label)
+								
+								if delimiter in ['@']:
+									if not any(label in values[prop] for prop in values):
+										continue
+									if prop in PLOTS:
+										if label not in data[OTHER]:
+											continue
+										else:
+											value[label] = {
+												'__item__': data[OTHER][label],
+												'__items__': [values[prop][label]['value'] for prop in values if label in values[prop]][0],
+												'__value__': val
+												}
+									else:
+										value[label] = {
+											'__item__': None,
+											'__items__': [values[prop][label]['value'] for prop in values if label in values[prop]][0],
+											'__value__': val
+											}
+								
+								elif delimiter in ['__']:
+									if label not in [*GRID[:LAYOUTDIM],*INDEXES]:
+										continue
+									if label in GRID[:LAYOUTDIM]:
+										value[label] = {
+											'__item__': position[GRID.index(label)],
+											'__items__':list(range(grid[instance][subinstance][GRID.index(label)])),
+											'__value__': val
+											}
+									elif label in INDEXES:
+										if prop in PLOTS:
+											value[label] = {
+												'__item__': index[INDEXES.index(label)],
+												'__items__':list(range(shape[INDEXES.index(label)])),
+												'__value__': val
+												}	
+										else:
+											value[label] = {
+												'__item__': None,
+												'__items__':[list(range(shape[INDEXES.index(label)])) 
+													for prop in PLOTS if prop in settings[instance][subinstance][obj] 
+													for item,shape,data in search(settings[instance][subinstance][obj][prop],returns=True) if data][0],
+												'__value__': val
+												}			
+
+						if not value:
+							value = None
+						else:
+							labels = list(value)
+							value['__item__'] = tuple(value[label]['__item__'] for label in labels) if all(value[label]['__item__'] in value[label]['__items__'] for label in labels) else None
+							value['__items__'] = list(realsorted(itertools.product(*(value[label]['__items__'] for label in labels))))
+							value['__value__'] = [value[label]['__value__'] for label in labels][0]
+							value['__index__'] = value['__items__'].index(value['__item__']) if value['__item__'] in value['__items__'] else None
+							value['__size__'] = len(value['__items__'])
+
+							for label in labels:
+								value.pop(label);
+
+						data[attr] = value
+
+
+			# set colorbar
+			prop = 'set_colorbar'
+			for data in search(settings[instance][subinstance][obj].get(prop)):
+
+				if not data:
+					continue
+
+				value = deepcopy(data)
+
+				delimiter = '__'
+				for attr in data:
+					if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
+						if attr in ['colors']:
+							data[attr] = ['_'.join([data[attr]['__value__'],str(data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1))]) for i in data[attr]['__items__']]
+						else:
+							data[attr] = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
+
+				attr = 'values'
+				if (data.get(attr) is None):
+					continue
+
+				attr = 'set_%slabel'
+				kwarg = '%slabel'
+				for axes in ['',*AXES]:
+					if data.get(attr%(axes)) is None:
+						continue
+					data[attr%(axes)][kwarg%(axes)] = texify(data[attr%(axes)][kwarg%(axes)])
+
+				attr = 'set_%sticks'
+				kwarg = 'ticks'
+				for axes in ['',*AXES]:
+					if data.get(attr%(axes)) is None:
 						continue
 					else:
-						value.append(deepcopy(data))
+						if isinstance(data[attr%(axes)].get(kwarg),int):
+							if data[attr%(axes)][kwarg] == 1:
+								data[attr%(axes)][kwarg] = [(max(data['values'],default=1) + min(data['values'],default=1))/2]
+							else:
+								data[attr%(axes)][kwarg] = np.linspace(
+									min(0,min(data['values'],default=0)),
+									max(1,max(data['values'],default=1)),
+									data[attr%(axes)][kwarg]).tolist()
 
-					tex = values[plots][label]['attr']['texify'] if label in values[plots] else None
-
-
-					subattr = 'values'
-					if isinstance(label,str):
-						subvalue = list(realsorted(set([i for i in values[plots][label]['all']])))
-
-						subvalue = subvalue if len(subvalue) >= 1 else None
-
+				attr = 'set_%sticklabels'
+				kwarg = 'ticklabels'
+				for axes in ['',*AXES]:
+					if data.get(attr%(axes)) is None:
+						continue
 					else:
-						subvalue = list(range(grid[instance][subinstance][-2]))
-
-					value[-1][subattr] = subvalue
-
-					subattr = 'set_%slabel'
-					subsubattr = '%slabel'
-					for axis in ['',*AXIS]:
-						subvalue = value[-1].get(subattr%(axis))
-						if subvalue is None:
-							continue
-						value[-1][subattr%(axis)][subsubattr%(axis)] = texify(
-							subvalue.get(subsubattr%(axis)),
-							texify=tex) 
-
-					subattr = 'set_%sticks'
-					subsubattr = 'ticks'
-					for axis in ['',*AXIS]:
-						subvalue = value[-1].get(subattr%(axis))
-						if subvalue is None:
-							continue
-						else:
-							if isinstance(subvalue.get(subsubattr),int):
-								subsubvalue = value[-1]['values']
-								subsubvalue = subsubvalue[::max(1,len(subsubvalue)//subvalue.get(subsubattr))]
+						if isinstance(data[attr%(axes)].get(kwarg),int):
+							if data[attr%(axes)][kwarg] == 1:
+								data[attr%(axes)][kwarg] = [(max(data['values'],default=1) + min(data['values'],default=1))/2]
 							else:
-								subsubvalue = subvalue.get(subsubattr)
-							subvalue[subsubattr] = subsubvalue
+								data[attr%(axes)][kwarg] = np.linspace(
+									min(data['values'],default=0),
+									max(data['values'],default=1),
+									min(len(data['values']),data[attr%(axes)][kwarg])).tolist()
+						elif data[attr%(axes)].get(kwarg) is None:
+							data[attr%(axes)][kwarg] = data.get('set_%sticks'%(axes),{}).get('ticks')
 
-						value[-1][subattr%(axis)][subsubattr] = [i for i in subvalue[subsubattr]]
+					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=2)) for i in data[attr%(axes)][kwarg]]
 
-					subattr = 'set_%sticklabels'
-					subsubattr = 'labels'
-					for axis in ['',*AXIS]:
-						subvalue = value[-1].get(subattr%(axis))
-						if subvalue is None:
-							continue
-						else:
-							if isinstance(subvalue.get(subsubattr),int):
-								subsubvalue = list(realsorted(set([i for i in values[plots][label]['all']])))
-								subsubvalue = subsubvalue[::len(subsubvalue)//subvalue.get(subsubattr)]
-							elif subvalue.get(subsubattr) is not None:
-								subsubvalue = subvalue.get(subsubattr)
-							else:
-								subsubvalue = value[-1].get('set_%sticks'%(axis),{}).get('ticks')
-
-							subvalue[subsubattr] = subsubvalue
-
-						value[-1][subattr%(axis)][subsubattr] = [
-							texify(
-							scinotation(i,
-								**values[plots][label]['attr']['scinotation']),
-							texify=tex) for i in subvalue[subsubattr]]							
-
-					settings[instance][subinstance]['ax'][attr] = value[-1]
-
-					break
-
-				if not value:
-					settings[instance][subinstance]['ax'][attr] = None
-
-			# legend
+			# set legend
+			prop = 'legend'
 			attr = 'set_title'
-			data = settings[instance][subinstance]['ax'].get('legend')
+			for data in search(settings[instance][subinstance][obj].get(prop)):
+				
+				if not data:
+					continue
 
-			if data is not None:
 				value = [
 					{
-						**{(plots,label):'%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
-							for plots,label in natsorted(set((
-							(plots,label)
-							for plots in values 
-							for label in values[plots]
-							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['legend']) and (len(values[plots][label]['value'])>1)))))},
-						**{(plots,label):'%s'%(texify(label,texify=values[plots][label]['attr']['texify']))
-							for plots,label in natsorted(set((
-							(plots,label)
-							for plots in values 
-							for label in values[plots]
-							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))},
-						**{(plots,label):'%s'%(texify(label,texify=values[plots][label]['attr']['texify'])) 
-							for plots,label in natsorted(set((
-							(plots,label)
-							for plots in values 					
-							for label in values[plots] 
-							if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
-								not (values[plots][label]['other'])))))},
+						**{(prop,label):'%s'%(texify(label,texify=values[prop][label]['attr']['texify']))
+							for prop,label in natsorted(set((
+							(prop,label)
+							for prop in values 
+							for label in values[prop]
+							if ((values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+								(values[prop][label]['legend']) and (len(values[prop][label]['value'])>1))))))},
+						**{(prop,label):'%s'%(texify(label,texify=values[prop][label]['attr']['texify']))
+							for prop,label in natsorted(set((
+							(prop,label)
+							for prop in values 
+							for label in values[prop]
+							if ((values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+								(values[prop][label]['other']) and (len(values[prop][label]['value'])>1))))))},
+						**{(prop,label):'%s'%(texify(label,texify=values[prop][label]['attr']['texify'])) 
+							for prop,label in natsorted(set((
+							(prop,label)
+							for prop in values 					
+							for label in values[prop] 
+							if (((values[prop][label]['include']) and (values[prop][label]['label']) and (len(values[prop][label]['value'])>1)) and 
+								not (values[prop][label]['other'])))))},
 					},					
 					{
-						**{(plots,label):'%s%s%s'%(
+						**{(prop,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
-							',~'.join([texify(scinotation(value,**values[plots][label]['attr']['scinotation']),texify=values[plots][label]['attr']['texify']) 
-									for value in values[plots][label]['value']]))
-							for plots in values 
+							',~'.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify=values[prop][label]['attr']['texify']) 
+									for value in values[prop][label]['value']]))
+							for prop in values 
 							for label in natsorted(set((
 							label 
-							for label in values[plots]
-							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['legend']) and (len(values[plots][label]['value'])==1)))))},
-						**{(plots,label):'%s%s%s'%(
+							for label in values[prop]
+							if ((values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+								(values[prop][label]['legend']) and (len(values[prop][label]['value'])==1))))))},
+						**{(prop,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
-							',~'.join([texify(scinotation(value,**values[plots][label]['attr']['scinotation']),texify=values[plots][label]['attr']['texify']) 
-									for value in values[plots][label]['value']]))
-							for plots in values 
+							',~'.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify=values[prop][label]['attr']['texify']) 
+									for value in values[prop][label]['value']]))
+							for prop in values 
 							for label in natsorted(set((
 							label 
-							for label in values[plots]
-							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['other']) and (len(values[plots][label]['value'])==1)))))},
+							for label in values[prop]
+							if ((values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+								(values[prop][label]['other']) and (len(values[prop][label]['value'])==1))))))},
 					},
 					]
 
@@ -1475,16 +1549,19 @@ def plotter(settings,hyperparameters,verbose=None):
 
 				if isinstance(data.get(attr),str) and data[attr].count('%s'):
 					data[attr] = data[attr]%(value)
-				else:
+				elif value:
 					data[attr] = value
+				else:
+					data[attr] = None
 
-			# data
-			for plots in PLOTS:
 
-				if settings[instance][subinstance]['ax'].get(plots) is None:
+			# set kwargs data
+			for prop in PLOTS:
+
+				if not settings[instance][subinstance][obj].get(prop):
 					continue
 
-				for data in search(settings[instance][subinstance]['ax'][plots]):
+				for index,shape,data in search(settings[instance][subinstance][obj][prop],returns=True):
 
 					if not data:
 						continue
@@ -1496,12 +1573,12 @@ def plotter(settings,hyperparameters,verbose=None):
 							subslice = [slice(None)]
 						elif isinstance(subslice,dict):
 							subslice = {
-								axis if (axis in data) else [subaxis 
+								axes if (axes in data) else [subaxis 
 										for subaxis in ALL if ((subaxis in data[OTHER]) and 
-											(data[OTHER][subaxis]['label']==axis))][0]: 
-								subslice[axis] for axis in subslice if (
-								(not isinstance(subslice[axis],str)) or
-								((axis in data) or any(data[OTHER][subaxis]['label']==axis 
+											(data[OTHER][subaxis]['label']==axes))][0]: 
+								subslice[axes] for axes in subslice if (
+								(not isinstance(subslice[axes],str)) or
+								((axes in data) or any(data[OTHER][subaxis]['label']==axes 
 									for subaxis in data[OTHER] if (
 									(subaxis in ALL) and (subaxis in data[OTHER]))))
 								)
@@ -1509,10 +1586,10 @@ def plotter(settings,hyperparameters,verbose=None):
 
 							if subslice:
 								subslice = [
-									conditions([parse(axis,subslice[axis],{axis: np.array(data[axis])},verbose=verbose) 
-									for axis in subslice if isinstance(subslice[axis],str)],op='and'),
-									*[slice(*subslice[axis]) for axis in subslice 
-									 if not isinstance(subslice[axis],str)]
+									conditions([parse(axes,subslice[axes],{axes: np.array(data[axes])},verbose=verbose) 
+									for axes in subslice if isinstance(subslice[axes],str)],op='and'),
+									*[slice(*subslice[axes]) for axes in subslice 
+									 if not isinstance(subslice[axes],str)]
 									]
 							else:
 								subslice = [slice(None)]
@@ -1528,198 +1605,164 @@ def plotter(settings,hyperparameters,verbose=None):
 						]
 					slices = [subslice if subslice is not None else slice(None) for subslice in slices]
 
+					normalize = data[OTHER][OTHER].get('normalize')
+					normalizations = {
+						'size': (lambda axes,data: (np.array(data[axes])/(len(data[axes])-1)).tolist() if (len(data[axes])>1) else 0.5),
+						None: (lambda axes,data: data[axes]),
+					}
+					if not normalize:
+						normalize = {}
+					elif not isinstance(normalize,dict):
+						normalize = {
+							axes: normalizations['size']
+							for axes in normalize
+						}
+					else:
+						normalize = {
+							axes: normalizations.get(normalize[axes],normalizations[None])
+							for axes in normalize
+						}
+
+
 					for attr in data:
-						if (attr in ALL) and (data[attr] is not None):
+						
+						if data.get(attr) is None:
+							continue
+
+						if attr in [OTHER]:
+						
+							if data[attr][OTHER].get('labels') is not None:
+								for label in data[attr][OTHER]['labels']:
+									if (label in data[attr]) and (label not in ALL) and not parse(label,data[attr][OTHER]['labels'][label],data[attr],verbose=verbose):
+										data.clear()
+										break
+						
+						elif attr in ALL:
 							
-							value = np.array([valify(value,valify=data[OTHER][OTHER].get('valify')) for value in data[attr]])
+							if isinstance(data.get(attr),scalars):
+								continue							
 							
+							if normalize.get(attr):
+								data[attr] = normalize[attr](attr,data)
+
 							for subslice in slices:
-								value = value[subslice]
+								data[attr] = data[attr][subslice]
 
-							data[attr] = value
+							data[attr] = np.array([valify(i,valify=data[OTHER][OTHER].get('valify')) for i in data[attr]])
 
-
-			# plot kwargs
-			for plots in PLOTS:
-
-				if settings[instance][subinstance]['ax'].get(plots) is None:
-					continue
-
-				for data in search(settings[instance][subinstance]['ax'][plots]):
-
-					if not data:
-						continue
-
-					attrs = ['alpha','zorder','linestyle']
-					for attr in attrs:
-						value = data.get(attr)
-						if value is None:
-							continue
-						elif isinstance(value,str):
-							if value.count('@'):
-								value = value.replace('@','')
-								if value in values.get(plots,{}) and value in data[OTHER]:
-									value = values.get(plots,{}).get(value,{}).get('all',[]).index(data[OTHER][value])/len(values.get(plots,{}).get(value,{}).get('all',[]))
-							else:
-								continue
-
-							if attr in ['alpha']:
-								value = value
-							elif attr in ['zorder']:
-								value = 1000*value
-							elif attr in ['linestyle']:
-								value = '-' if value < 1/3 else '--' if value < 2/3 else '---' if not isinstance(value,str) else '--'
-							else:
-								value = data[attr]
 						else:
-							pass
-						data[attr] = value
+							
+							delimiter = '__'
+							if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
+								if attr in ['color','ecolor']:
+									data[attr] = '_'.join([data[attr]['__value__'],str(data[attr]['__index__']/max(1,data[attr]['__size__']))])
+								elif attr in ['alpha']:
+									data[attr] = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
+								elif attr in ['zorder']:
+									data[attr] = 1000*data[attr]['__index__']
+								elif attr in ['linestyle']:
+									data[attr] = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
+									data[attr] = '-' if data[attr] < 1/3 else '--' if data[attr] < 2/3 else '---'
+					
 
-			# include labels
-			for plots in PLOTS:
-
-				if settings[instance][subinstance]['ax'].get(plots) is None:
-					continue
-
-				for data in search(settings[instance][subinstance]['ax'][plots]):
+			# set title and axes label
+			prop = 'set_%slabel'
+			attr = '%slabel'
+			for axes in ['',*AXES]:
+				prop = 'set_%slabel' if axes in AXES else 'set_%stitle'
+				for data in search(settings[instance][subinstance][obj].get(prop%(axes))):
 
 					if not data:
 						continue
 
-					attr = OTHER
-					if data[attr][attr].get('labels') is not None:
-						for label in data[attr][attr]['labels']:
-							if (label in data[attr]) and (label not in ALL) and not parse(label,data[attr][attr]['labels'][label],data[attr],verbose=verbose):
-								data.clear()
-								break
+					if data.get(attr%(axes)) is None:
+						if axes in AXES:
+							data[attr%(axes)] = [data[OTHER][axes]['label'] for prop in PLOTS if prop in settings[instance][subinstance][obj] for data in search(settings[instance][subinstance][obj][prop]) if OTHER in data]
 
-			# axis label
-			for attr in settings[instance][subinstance]['ax']:
+							data[attr%(axes)] = data[attr%(axes)][0] if data[attr%(axes)] else None
+					
+					if isinstance(data[attr%(axes)],list):
+						if not all(isinstance(i,list) for i in data[attr%(axes)]):
+							data[attr%(axes)] = [[i] for i in data[attr%(axes)]]
+						data[attr%(axes)] = data[attr%(axes)][position[0]%len(data[attr%(axes)])][position[1]%len(data[attr%(axes)][position[0]%len(data[attr%(axes)])])]
 
-				for plots in PLOTS:
+					if isinstance(data[attr%(axes)],str):
+						data[attr%(axes)] = data[attr%(axes)]%(tuple(str(position[i]) if grid[instance][subinstance][i]>1 else '' for i in range(data[attr%(axes)].count('%s'))))
 
-					if settings[instance][subinstance]['ax'].get(plots) is None:
-						continue
-
-					for axis in AXIS:
-
-						for data in search(settings[instance][subinstance]['ax'][plots]):
-
-							if not data:
-								continue
-
-							kwarg = 'set_%slabel'%(axis)
-							if attr not in [kwarg] or (not settings[instance][subinstance]['ax'].get(attr)):
-								continue
-
-							kwarg = '%slabel'%(axis)
-							value = settings[instance][subinstance]['ax'].get(attr,{}).get(kwarg)
-
-							if value is None:
-								value = data[OTHER][axis]['label']
-							elif isinstance(value,list):
-								if not all(isinstance(i,list) for i in value):
-									value = [[i] for i in value]
-								value = value[position[0]%len(value)][position[1]%len(value[position[0]%len(value)])]
-							else:
-								pass
-
-							if (value is not None) and value.count('%s'):
-								value = value%(tuple(str(i) if j>1 else '' for i,j in zip(position[:value.count('%s')],grid[instance][subinstance])))
-
-							value = texify(value,texify=data[OTHER][OTHER].get('texify'))
-
-							settings[instance][subinstance]['ax'][attr][kwarg] = value
-
-			
-			# title
-			for attr in settings[instance][subinstance]['ax']:
-
-				for plots in PLOTS:
-
-					if settings[instance][subinstance]['ax'].get(plots) is None:
-						continue
-
-					for data in search(settings[instance][subinstance]['ax'][plots]):
-
-						if not data or not data.get(OTHER) or not data[OTHER].get(OTHER):
-							continue
-
-						kwarg = 'set_title'
-						if attr not in [kwarg] or (not settings[instance][subinstance]['ax'].get(attr)):
-							continue
-
-						kwarg = 'label'
-						value = settings[instance][subinstance]['ax'].get(attr,{}).get(kwarg)
-
-						if (value is not None) and value.count('%d'):
-							value%([i for i in position[:value.count('%d')]])
+					data[attr%(axes)] = texify(data[attr%(axes)])
 
 
-						value = texify(value,texify=data[OTHER][OTHER].get('texify'))
+			# set label
+			attr = 'label'
+			for prop in PLOTS:
 
-						settings[instance][subinstance]['ax'][attr][kwarg] = value
-
-			# label
-			for plots in PLOTS:
-
-				if settings[instance][subinstance]['ax'].get(plots) is None:
+				if not settings[instance][subinstance][obj].get(prop):
 					continue
 
-				for data in search(settings[instance][subinstance]['ax'][plots]):
+				for data in search(settings[instance][subinstance][obj][prop]):
 
 					if not data or not data.get(OTHER) or not data[OTHER].get(OTHER):
 						continue
 
-					attr = OTHER
 					value = {
 						**{label: (texify(
 							scinotation((data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
 							if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
-								data[OTHER][OTHER][OTHER][label].replace('$','')) if label in data[OTHER][OTHER][OTHER] else data[OTHER][OTHER].get('legend',{}).get(label)),
+								data[OTHER][OTHER][OTHER][label].replace('$','')) if label in data[OTHER][OTHER][OTHER] else data[OTHER][OTHER]['legend']['label'].get(label)),
 								**data[OTHER][OTHER].get('scinotation',{}),
 								texify=data[OTHER][OTHER].get('texify'))
 							)
 							for label in natsorted(set((
 							label 
-							for label in values[plots]
-							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['legend']) and (len(values[plots][label]['value'])>1)))))},
+							for label in values[prop]
+							if ((not ((values[prop][label]['label'])) and 
+								(values[prop][label]['legend']) and (len(values[prop][label]['value'])>1))))))},
 						**{label: (texify(
 							scinotation((data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
 								if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
-								data[OTHER][OTHER][OTHER][label].replace('$','')) if label in data[OTHER][OTHER][OTHER] else data[OTHER][OTHER].get('legend',{}).get(label) ,
+								data[OTHER][OTHER][OTHER][label].replace('$','')) if label in data[OTHER][OTHER][OTHER] else data[OTHER][OTHER]['legend']['label'].get(label) ,
 								**data[OTHER][OTHER].get('scinotation',{})),
 								texify=data[OTHER][OTHER].get('texify'))
 							)
 							for label in natsorted(set((
 							label 
-							for label in values[plots]
-							if (not ((values[plots][label]['label'])) and 
-								(values[plots][label]['other']) and (len(values[plots][label]['value'])>1)))))},
+							for label in values[prop]
+							if ((not ((values[prop][label]['label'])) and 
+								(values[prop][label]['other']) and (len(values[prop][label]['value'])>1))))))},
 						**{label: (texify(scinotation(data[OTHER][label],
 							**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
-							if values[plots][label]['label'] else texify(
+							if values[prop][label]['label'] else texify(
 								scinotation(data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')] 
 									if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
 									data[OTHER][OTHER][OTHER][label].replace('$',''),
 									**data[OTHER][OTHER].get('scinotation',{})),
 								texify=data[OTHER][OTHER].get('texify'))
-							) if label in data[OTHER][OTHER][OTHER] else texify(scinotation(data[OTHER][OTHER].get('legend',{}).get(label) ,
+							) if label in data[OTHER][OTHER][OTHER] else texify(scinotation(data[OTHER][OTHER]['legend']['label'].get(label) ,
 																			**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
 							for label in natsorted(set((
 							label 
-							for label in values[plots] 
-							if (((values[plots][label]['label']) and (len(values[plots][label]['value'])>1)) and 
-								not (values[plots][label]['other'])))))},							
+							for label in values[prop] 
+							if ((((values[prop][label]['label']) and (len(values[prop][label]['value'])>1)) and 
+								not (values[prop][label]['other']))))))},							
 						
 						}
 
-					value = ',~'.join([value[k] for k in realsorted(set(value))])
+
+					value = ',~'.join([value[label] for label in realsorted(set(value)) if 
+								(((not data[OTHER][OTHER]['legend']['include']) or (label in data[OTHER][OTHER]['legend']['include'])) and
+								 ((not data[OTHER][OTHER]['legend']['exclude']) or (label not in data[OTHER][OTHER]['legend']['exclude'])))
+								])
 
 					value = value if value else None
 
 					data[attr] = value	
+
+			
+			# savefig
+			prop = 'savefig'
+			attr = 'fname'
+			for data in search(settings[instance][subinstance]['fig'].get(prop)):
+				data[attr] = join(delim.join([split(path,directory_file=True),instance]),ext=split(path,ext=True))
 
 	# Plot data
 	for instance in settings:
@@ -1773,7 +1816,6 @@ def process(data,settings,hyperparameters,pwd=None,cwd=None,verbose=True):
 	- Assign new labels for functions with label.function 
 	- Regroup with non-null labels
 	
-	- Reshape each data into axes for [plot.type,plot.row,plot.col,plot.line=(plot.group,plot.function),plot.axis]
 	- Adjust settings based on data
 	
 	- Plot data
@@ -1878,3 +1920,7 @@ if __name__ == '__main__':
 	args = argparser(arguments,wrappers)
 
 	main(*args,**args)
+
+	# mv metadata.json data.json
+	# find CWD -name metadata.json -exec sed -i '/\(\"both\"\|\"major\"\|\"minor\"\|\"x\"\|\"y\"\|\"z\"\)/! s/\"axis\":\ \(".*"\)/\"label\":\ \1/g' {} \;
+	# grep '"axis"' CWD/metadata.json

@@ -19,6 +19,7 @@
 **/build/test
 **/*test.json
 **/tmp.*
+**/check
 tmp
 keep
 examples/**
