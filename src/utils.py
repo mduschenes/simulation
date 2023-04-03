@@ -44,7 +44,7 @@ import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 
 configs = {
-	'jax_disable_jit':True,
+	'jax_disable_jit':False,
 	'jax_platforms':'cpu',
 	'jax_enable_x64': True
 	}
@@ -1146,7 +1146,7 @@ def PRNGKey(seed=None,size=False,reset=None):
 	return key
 
 
-def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,dtype=None):
+def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,dtype=None,**kwargs):
 	'''
 	Get random array
 	Args:
@@ -1157,6 +1157,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 		random (str): Type of random distribution
 		mesh (int): Get meshgrid of array for mesh dimensions
 		dtype (data_type): Datatype of array		
+		kwargs (dict): Additional keyword arguments for random
 	Returns:
 		out (array): Random array
 	'''	
@@ -1218,7 +1219,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 			if ndim < 2:
 				shape = [*shape]*2
 
-			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)
+			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
 
 			if ndim < 4:
 				reshape = (*(1,)*(4-out.ndim),*out.shape)
@@ -1269,7 +1270,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 				shape = [*shape]*2
 				ndim = len(shape)
 
-			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype)	
+			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)	
 
 			out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
 
@@ -1368,6 +1369,9 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',mesh=None,d
 	else:
 		out = func(key,shape,bounds,dtype)
 
+
+	if scale is not None:
+		out = out*scale
 
 	if complex:
 		out = out[0] + 1j*out[1]
@@ -4995,39 +4999,6 @@ def is_listtuple(a,*args,**kwargs):
 	'''
 	return is_list(a) or is_tuple(a)
 
-
-def flattener(iterable,notiterable=(str,)):
-	'''
-	Flatten iterable up to layer layers deep into list
-	Args:
-		iterable (iterable): object to flatten
-		notiterable (tuple): object types not to flatten
-	Returns:
-		flat (generator): generator of flattened iterable
-	'''
-	for i in iterable:
-		if isiterable(i) and not isinstance(i,notiterable):
-			for j in flattener(i,notiterable):
-				yield j
-		else:
-			yield i
-
-
-def flatten(iterable,cls=list,notiterable=(str,),unique=False):
-	'''
-	Flatten iterable into cls object
-	Args:
-		iterable (iterable): object to flatten
-		cls (class): Class to initialize with flattened iterable
-		notiterable (tuple): object types not to flatten		
-		unique (bool): Return only unique elements from flattened iterable
-	Returns:
-		flat (cls): instance of flattened iterable
-	'''	
-	uniquecls = set if unique else list
-	return cls(list(uniquecls(flattener(iterable,notiterable))))	
-
-
 def parse(string,dtype):
 	'''
 	Parse string as numerical type
@@ -5621,7 +5592,7 @@ def bound(a,kwargs):
 	Returns:
 		out (array): Bounded array
 	'''
-	return sigmoid(a,kwargs['sigmoid'])
+	return 2*sigmoid(a,kwargs['sigmoid']) - 1
 
 
 @jit
@@ -5759,10 +5730,23 @@ def to_list(a,dtype=None,**kwargs):
 		return a.tolist()
 	except:
 		try:
-			return list(a)
+			return [to_list(i,dtype=dtype,**kwargs) for i in a]
 		except TypeError:
 			return a
 
+def to_tuple(a,dtype=None,**kwargs):
+	'''
+	Convert iterable to tuple
+	Args:
+		a (iterable): Iterable to convert to list
+		dtype (data_type): Datatype of number
+	Returns:
+		out (tuple): List representation of iterable
+	'''
+	try:
+		return tuple(to_tuple(i,dtype=dtype,**kwargs) for i in a)
+	except:
+		return a
 
 def to_number(a,dtype=None,**kwargs):
 	'''
@@ -5915,6 +5899,9 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		String with scientific notation format for number
 
 	'''
+
+	if decimals is None:
+		decimals = 1
 
 	if scilimits is None:
 		scilimits = [-1,1]

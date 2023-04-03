@@ -11,7 +11,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import PRNGKey,delim,union,is_equal
-from src.iterables import getter,setter,permuter,brancher
+from src.iterables import getter,setter,permuter,search
 from src.io import load,dump,join,split
 from src.call import launch
 
@@ -107,12 +107,13 @@ def setup(settings):
 	reset = reset if reset is not None else None
 
 	# Find keys of seeds in hyperparameters
-	keys = ['seed']
+	items = ['seed']
+	types = (list,dict,)
 	exclude = ['seed','seed.seed','system.seed']
-	seedlings = brancher(hyperparameters,keys=keys,include=True)
+	seedlings = search(hyperparameters,items=items,returns=True,types=types)
 
-	seedlings = [delim.join(tuple((*seedling[:-1],seed[0]))) for seedling in seedlings for seed in seedling[-1] if seed[1] is None]
-	seedlings = [seedling for seedling in seedlings if seedling not in exclude]
+	seedlings = {delim.join([*index,element]):obj for index,shape,item in seedlings for element,obj in zip(items,item)}
+	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
 
 	count = len(seedlings)
 	
@@ -125,7 +126,7 @@ def setup(settings):
 	else:
 		seeds = []
 
-	other = [{'system.key':None,'system.seed':seed}]
+	other = [{'system.key':None,'system.instance':None,'system.seed':seed}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	if size:
@@ -159,6 +160,8 @@ def setup(settings):
 
 					if attr in ['system.key']:
 						keys[key][attr] = key
+					elif attr in ['system.instance']:
+						keys[key][attr] = key.split(delim)[-1] if key is not None else None
 
 	# Set settings with key and seed instances
 	settings = {key: deepcopy(settings) for key in keys}

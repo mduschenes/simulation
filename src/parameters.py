@@ -89,7 +89,7 @@ def _features(hyperparameters,parameter,group):
 	method = hyperparameters[parameter]['method']
 	size = len(hyperparameters[parameter]['group'])
 
-	if method in ['constrained']:
+	if method in ['constrained','bound']:
 		wrapper = bound
 	elif method in ['unconstrained']:
 		wrapper = nullbound
@@ -413,7 +413,7 @@ class Parameters(Object):
 		'''
 
 		# Get Hyperparameters data
-		hyperparameters = self.data
+		hyperparameters = deepcopy(self.data)
 		setup(hyperparameters,cls=self.cls)
 
 		# Get number of dimensions of data
@@ -430,13 +430,40 @@ class Parameters(Object):
 		self.dtype = dtype
 
 		# Get parameters
+
+		# Remove not used parameters of hyperparameters
+		for parameter in list(hyperparameters):
+			if (((self.check is not None) and not any(self.check(group,i,axis) 
+				for group in hyperparameters[parameter].get('group',[]) 
+				for axis in range(self.ndim) 
+				for i in range(self.shape[axis]))) or 
+				(hyperparameters[parameter].get('use') is False)):
+
+				hyperparameters.pop(parameter) 
+
+		# Set parameters
+		for parameter in list(hyperparameters):
+			if hyperparameters[parameter].get('use') is False:
+				hyperparameters.pop(parameter)
+				continue
+
 		for parameter in hyperparameters:
 			setattr(self,parameter,System(**hyperparameters[parameter]))
 
 
+		if not hyperparameters:
+			self.data = None
+			self.dimensions = None
+			self.attributes = {}
+			self.hyperparameters = {}
+			return
+ 
+		# Get string
+		self.string = ' '.join([str(getattr(self,parameter)) for parameter in hyperparameters])
+
 		# Get seed
-		seed = [hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
-				for parameter in hyperparameters][0]
+		seed = [self.seed,*[hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
+				for parameter in hyperparameters]][-1]
 
 		# Get properties of hyperparameters
 		properties = ['category','group','shape','locality','boundaries','constants','parameters']
@@ -444,11 +471,6 @@ class Parameters(Object):
 			for prop in properties) 
 			for parameter in hyperparameters), 'hyperparameters missing properties'
 
-
-		# Remove not used parameters of hyperparameters
-		for parameter in list(hyperparameters):
-			if hyperparameters[parameter].get('use') is False:
-				hyperparameters.pop(parameter)
 
 		# Update properties of hyperparameters
 		attrs = {

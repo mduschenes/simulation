@@ -191,7 +191,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			xerr = abs((1/jac)*xerr)
 		else:
 			jac = invgrad[i][i]
-			xerr = lstsq(jac.T,lstsq(jax,xerr).T).T
+			xerr = lstsq(jac.T,lstsq(jac,xerr).T).T
 
 	if yerr is not None:
 		i = 1
@@ -200,7 +200,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			yerr = abs((1/jac)*yerr)
 		else:
 			jac = invgrad[i][i]
-			yerr = lstsq(jac.T,lstsq(jax,yerr).T).T
+			yerr = lstsq(jac.T,lstsq(jac,yerr).T).T
 			
 	_invgrad = gradtransform(x,y,parameters)
 	if _xerr is not None:
@@ -210,7 +210,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_xerr = abs((1/_jac)*_xerr)
 		else:
 			_jac = invgrad[i][i]
-			_xerr = lstsq(_jac.T,lstsq(_jax,_xerr).T).T
+			_xerr = lstsq(_jac.T,lstsq(_jac,_xerr).T).T
 
 	if _yerr is not None:
 		i = 1
@@ -219,7 +219,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_yerr = abs((1/_jac)*_yerr)
 		else:
 			_jac = invgrad[i][i]
-			_yerr = lstsq(_jac.T,lstsq(_jax,_yerr).T).T
+			_yerr = lstsq(_jac.T,lstsq(_jac,_yerr).T).T
 
 	if func is None or (isinstance(func,str) and func in ['lstsq','mse']):
 
