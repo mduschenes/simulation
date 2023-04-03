@@ -106,3 +106,6 @@ EXE+=(RUN {} ${CMD[@]} :::)
 # Run
 echo $(pwd) ${EXE[@]} ${TASKS[@]}
 ${EXE[@]} ${TASKS[@]}
+
+# Status
+squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
