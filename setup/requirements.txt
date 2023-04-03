@@ -12,5 +12,8 @@ jsonpickle
 natsort
 
 h5py
+tables
 equinox
 pytest
+
+gnureadline
