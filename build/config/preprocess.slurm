@@ -1,6 +1,6 @@
 #!/bin/bash
 
-##SBATCH --account=mduschenes
+#SBATCH --account=def-carrasqu
 #SBATCH --job-name=output
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
@@ -106,4 +106,4 @@ ${EXE[@]} ${TASKS[@]}
 # Status
 # squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
 # sacct -j ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
-scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
+scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}  2>/dev/null
