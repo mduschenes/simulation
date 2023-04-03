@@ -14,7 +14,7 @@
 			"y":"objective",
 			"label":{
 				"label":{
-					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null,"key":null
+					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null,"instance":null
 				},
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
 			},
@@ -35,7 +35,7 @@
 				"label":{
 					"N":null,"parameters.xy.method":null,"M":null,"noise.scale":null
 				},
-				"legend": {"key":"\\textrm{Avg}"},
+				"legend": {"instance":"\\textrm{Avg}"},
 				"scinotation":{"scilimits":[0,4],"decimals":0,"one":false}
 			},
 			"alpha":0.8,

@@ -23,6 +23,7 @@
 		"model.tau":[241.241],
 
 		"system.unit":[1e6],
+		"system.dtype":["complex128"],
 		"parameters.xy.scale":[1],
 		"parameters.z.scale":[1.230231e-2],
 		"parameters.zz.scale":[1.42117230231e-4],
@@ -42,14 +43,14 @@
 			{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
 		],			
 
-		"optimize.iterations":[[0,10000]],
+		"optimize.iterations":[[0,2000]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/unconstrained.long.1"],
-		"jobs.postprocess.cwd":["gobi/unconstrained.long.1"],
+		"jobs.job.cwd":["gobi/unconstrained.long.128"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.long.128"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -62,7 +63,7 @@
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],
-		"jobs.job.resume":[true],
+		"jobs.job.resume":[null],
 		"jobs.postprocess.resume":[true],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
@@ -163,7 +164,7 @@
 			"hessian.rank":false,"fisher.rank":false,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],"instance":[],"dtype":[],
 
 			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
 		}	
