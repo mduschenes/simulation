@@ -10,9 +10,10 @@
 	"dump":0
 	},
 "seed":{
-	"seed":1291,
+	"seed":68219,
 	"size":30,
-	"reset":1291,
+	"size":1,
+	"reset":68219,
 	"index":null
 	},
 "permutations":{
@@ -20,6 +21,7 @@
 	
 		"model.N":[4],		
 		"model.M":[10,50,100,200,500,1000,2000,5000,10000],
+		"model.M":[10],
 		"model.tau":[241.241],
 
 		"system.unit":[1e6],
@@ -49,8 +51,8 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/unconstrained.long.128"],
-		"jobs.postprocess.cwd":["gobi/unconstrained.long.128"],
+		"jobs.job.cwd":["gobi/unconstrained.128"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.128"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -64,7 +66,7 @@
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],
 		"jobs.job.resume":[null],
-		"jobs.postprocess.resume":[true],
+		"jobs.postprocess.resume":[null],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
@@ -165,7 +167,9 @@
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],"instance":[],"dtype":[],
-
+			"parameters.xy.scale":[],"parameters.xy.method":[],
+			"parameters.z.scale":[],"parameters.z.method":[],
+			"parameters.zz.scale":[],"parameters.zz.method":[],
 			"noise.scale":[],"optimize.c1":false,"optimize.c2":false
 		}	
 	},
