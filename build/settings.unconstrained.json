@@ -23,7 +23,7 @@
 		"model.tau":[241.241],
 
 		"system.unit":[1e6],
-		"system.dtype":["complex128"],
+		"system.dtype":["complex64"],
 		"parameters.xy.scale":[1],
 		"parameters.z.scale":[1.230231e-2],
 		"parameters.zz.scale":[1.42117230231e-4],
@@ -49,8 +49,8 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/unconstrained.128"],
-		"jobs.postprocess.cwd":["gobi/unconstrained.128"],
+		"jobs.job.cwd":["gobi/unconstrained.64"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.64"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -78,7 +78,7 @@
 		"jobs.job.patterns.account":["def-raymond"],
 		"jobs.postprocess.patterns.account":["def-raymond"],
 		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"]
+		"jobs.postprocess.patterns.account":["def-carrasqu"]		
 		},
 	"groups":null,
 	"index":null
