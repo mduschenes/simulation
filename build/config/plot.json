@@ -65,7 +65,6 @@
                             "label":{"instance": "\\textrm{Avg}"},
                             "exclude":["instance"]
                         },
-                        "analysis":{"quantile":{"objective":0.4}},
                         "scinotation": {
                             "scilimits": [
                                 0,
@@ -96,7 +95,6 @@
                             "M": null,
                             "noise.scale": null
                             },
-                        "analysis":{"quantile":{"objective":0.4}},                            
                         "legend": {
                             "label":{},
                             "exclude":["M","instance"]
