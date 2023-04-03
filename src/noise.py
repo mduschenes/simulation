@@ -99,7 +99,11 @@ class Noise(Object):
 		else:
 			normalization = einsum('...uji,...ujk->...ik',data.conj(),data)
 
-		assert allclose(eye(self.n),normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
+		eps = eye(self.n,dtype=self.dtype)
+
+		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
+
+		assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(eps.shape,normalization)
 
 		self.data = data
 		self.shape = self.data.shape if self.data is not None else None

@@ -21,11 +21,11 @@ from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,wh
 from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,uncertainty_propagation,exp,exp10,log,log10,sqrt
 from src.utils import is_naninf
 from src.utils import nan,delim,null
-from src.iterables import setter,getter,flatten
+from src.iterables import setter,getter,search
 from src.fit import fit
 from src.io import load,dump,join,split,glob,cd,cwd,exists,dirname
 
-from src.plot import plot,AXIS,VARIANTS,FORMATS,ALL,OTHER,PLOTS
+from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,OTHER,PLOTS
 
 from src.quantum import Unitary
 
@@ -326,7 +326,7 @@ def postprocess(path,**kwargs):
 
 			with cd(path):
 
-				file = 'metadata.json'
+				file = 'data.json'
 				hyperparameters = load(file)
 					
 				if hyperparameters is None:
@@ -336,9 +336,9 @@ def postprocess(path,**kwargs):
 				
 				key = ['M.objective.noise.scale','None','ax','errorbar']
 				label = {'x':'noise.scale','y':'M','z':'objective'}
-				axes = AXIS
+				axes = AXES
 				other = OTHER
-				values = list(flatten(getter(hyperparameters,key)))
+				values = list(search(getter(hyperparameters,key)))
 				slices = slice(None,None,None)
 
 				for axis in label:
@@ -372,7 +372,7 @@ def postprocess(path,**kwargs):
 				_X,_Y,_Z = [],[],[]
 				_Xerr,_Yerr,_Zerr = [],[],[]
 
-				_path = 'metadata.data.json'
+				_path = 'data.data.json'
 				_settings = load(_path,default=None)
 
 				if _settings is not None:
@@ -666,7 +666,7 @@ def postprocess(path,**kwargs):
 						y = _y[slices]
 
 				
-				_path = 'metadata.fit.json'
+				_path = 'data.fit.json'
 				_settings = load(_path,default=None)
 
 				if _settings is not None:

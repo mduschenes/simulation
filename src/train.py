@@ -31,6 +31,7 @@ def setup(hyperparameters):
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters,default=default)
 
+
 	return hyperparameters
 
 def train(hyperparameters):
@@ -63,6 +64,10 @@ def train(hyperparameters):
 		if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train']):
 			model = None
 			return model
+
+		backend = hyperparameters.get('backend')
+		if backend is not None:
+			backend = __import__(backend)
 
 		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 

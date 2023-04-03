@@ -13,10 +13,13 @@
 **/data
 **/templates
 **/backup
+**/errors
 **/gobi
 **/ckpt
 **/build/test
 **/*test.json
+**/tmp.*
+**/check
 tmp
 keep
 examples/**

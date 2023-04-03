@@ -101,6 +101,8 @@ def test_class(path,tol):
 
 	assert(allclose(initial,final)), "Incorrect class re-initialization"
 
+	print("Parameters set")
+
 	return
 
 
@@ -255,8 +257,8 @@ def test_objective(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	# test_class(path,tol)
+	test_class(path,tol)
 	# test_data(path,tol)
 	# test_grad(path,tol)
 	# test_metric(path,tol)
-	test_objective(path,tol)
+	# test_objective(path,tol)
