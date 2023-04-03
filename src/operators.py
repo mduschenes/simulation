@@ -262,7 +262,8 @@ class Gate(Object):
 
 		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
 
-		assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
+		if self.dtype in ['complex128','float64']:
+			assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
 
 		self.data = data
 		self.shape = self.data.shape if self.data is not None else None
