@@ -5,12 +5,12 @@ scikit-learn
 matplotlib>=3.5
 jax
 jaxlib
+absl-py
 pandas
 pyaml
 dill
 jsonpickle
 natsort
-
 h5py
 tables
 equinox
