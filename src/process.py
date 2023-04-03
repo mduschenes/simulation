@@ -23,7 +23,7 @@ from src.utils import asndarray,asscalar
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
-from src.iterables import getter,setter,search,insert,indexer
+from src.iterables import getter,setter,search,insert,indexer,nullshape
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
@@ -1223,7 +1223,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 
 			# variables
-			# try:
+
 			values = {}
 			for prop in PLOTS:
 				
@@ -1238,6 +1238,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					)))
 
 				values[prop] = {}
+			
 				for label in labels:
 					value = {}
 					value['value'] = list(realsorted(set(
@@ -1251,10 +1252,7 @@ def plotter(settings,hyperparameters,verbose=None):
 								data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
 							for data in search(settings[instance][subinstance][obj][prop]) if (
 								((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
-							)))						
-					value['sort'] = list(realsorted(set(data[OTHER][OTHER][OTHER][label]
-							for data in search(settings[instance][subinstance][obj][prop]) if ((data) and (label in data[OTHER][OTHER][OTHER]))
-							)))
+							)))					
 					value['include'] = any((
 							(((not data[OTHER][OTHER]['legend']['include']) and (not data[OTHER][OTHER]['legend']['exclude']))) or
 							(((not data[OTHER][OTHER]['legend']['include']) or (label in data[OTHER][OTHER]['legend']['include'])) and
@@ -1273,16 +1271,16 @@ def plotter(settings,hyperparameters,verbose=None):
 							if (data)
 							)
 					value['other'] = any((
-							(label not in data[OTHER]) and 
 							(label in data[OTHER][OTHER][OTHER]) and 
+							(label not in data[OTHER]) and 
 							((data[OTHER][OTHER][OTHER].get(label) is not None) and
 							(data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])))
 							for data in search(settings[instance][subinstance][obj][prop])
 							if (data)
 							)
 					value['legend'] = any((
+							(label in data[OTHER][OTHER][OTHER]) and 
 							(label not in data[OTHER]) and 
-							(label in data[OTHER][OTHER][OTHER]) and
 							((data[OTHER][OTHER][OTHER].get(label) is not None) and
 							(data[OTHER][OTHER][OTHER][label].replace('@','') not in data[OTHER])))
 							for data in search(settings[instance][subinstance][obj][prop])
@@ -1422,10 +1420,6 @@ def plotter(settings,hyperparameters,verbose=None):
 
 						data[attr] = value
 
-			# except KeyError as e:
-			# 	logger.log(debug,'%s %s %s '%(traceback.format_exc(),instance,subinstance))
-			# 	settings[instance].pop(subinstance);
-			# 	continue
 
 			# set colorbar
 			prop = 'set_colorbar'
@@ -1439,7 +1433,6 @@ def plotter(settings,hyperparameters,verbose=None):
 				delimiter = '__'
 				for attr in data:
 					if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
-
 						if attr in ['colors']:
 							data[attr] = ['_'.join([data[attr]['__value__'],str(data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1))]) for i in data[attr]['__items__']]
 						else:
@@ -1450,45 +1443,45 @@ def plotter(settings,hyperparameters,verbose=None):
 					continue
 
 				attr = 'set_%slabel'
-				subsubattr = '%slabel'
+				kwarg = '%slabel'
 				for axes in ['',*AXES]:
 					if data.get(attr%(axes)) is None:
 						continue
-					data[attr%(axes)][subsubattr%(axes)] = texify(data[attr%(axes)][subsubattr%(axes)])
+					data[attr%(axes)][kwarg%(axes)] = texify(data[attr%(axes)][kwarg%(axes)])
 
 				attr = 'set_%sticks'
-				subsubattr = 'ticks'
+				kwarg = 'ticks'
 				for axes in ['',*AXES]:
 					if data.get(attr%(axes)) is None:
 						continue
 					else:
-						if isinstance(data[attr%(axes)].get(subsubattr),int):
-							if data[attr%(axes)][subsubattr] == 1:
-								data[attr%(axes)][subsubattr] = [(max(data['values'],default=1) + min(data['values'],default=1))/2]
+						if isinstance(data[attr%(axes)].get(kwarg),int):
+							if data[attr%(axes)][kwarg] == 1:
+								data[attr%(axes)][kwarg] = [(max(data['values'],default=1) + min(data['values'],default=1))/2]
 							else:
-								data[attr%(axes)][subsubattr] = np.linspace(
+								data[attr%(axes)][kwarg] = np.linspace(
 									min(0,min(data['values'],default=0)),
 									max(1,max(data['values'],default=1)),
-									data[attr%(axes)][subsubattr]).tolist()
-								print(data[attr%(axes)][subsubattr])
+									data[attr%(axes)][kwarg]).tolist()
+
 				attr = 'set_%sticklabels'
-				subsubattr = 'ticklabels'
+				kwarg = 'ticklabels'
 				for axes in ['',*AXES]:
 					if data.get(attr%(axes)) is None:
 						continue
 					else:
-						if isinstance(data[attr%(axes)].get(subsubattr),int):
-							if data[attr%(axes)][subsubattr] == 1:
-								data[attr%(axes)][subsubattr] = [(max(data['values'],default=1) + min(data['values'],default=1))/2]
+						if isinstance(data[attr%(axes)].get(kwarg),int):
+							if data[attr%(axes)][kwarg] == 1:
+								data[attr%(axes)][kwarg] = [(max(data['values'],default=1) + min(data['values'],default=1))/2]
 							else:
-								data[attr%(axes)][subsubattr] = np.linspace(
+								data[attr%(axes)][kwarg] = np.linspace(
 									min(data['values'],default=0),
 									max(data['values'],default=1),
-									data[attr%(axes)][subsubattr]).tolist()
-						elif data[attr%(axes)].get(subsubattr) is None:
-							data[attr%(axes)][subsubattr] = data.get('set_%sticks'%(axes),{}).get('ticks')
+									min(len(data['values']),data[attr%(axes)][kwarg])).tolist()
+						elif data[attr%(axes)].get(kwarg) is None:
+							data[attr%(axes)][kwarg] = data.get('set_%sticks'%(axes),{}).get('ticks')
 
-					data[attr%(axes)][subsubattr] = [texify(scinotation(i)) for i in data[attr%(axes)][subsubattr]]
+					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=2)) for i in data[attr%(axes)][kwarg]]
 
 			# set legend
 			prop = 'legend'
@@ -1561,13 +1554,14 @@ def plotter(settings,hyperparameters,verbose=None):
 				else:
 					data[attr] = None
 
-			# set data
+
+			# set kwargs data
 			for prop in PLOTS:
 
 				if not settings[instance][subinstance][obj].get(prop):
 					continue
 
-				for data in search(settings[instance][subinstance][obj][prop]):
+				for index,shape,data in search(settings[instance][subinstance][obj][prop],returns=True):
 
 					if not data:
 						continue
@@ -1628,31 +1622,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							axes: normalizations.get(normalize[axes],normalizations[None])
 							for axes in normalize
 						}
-					for axes in ALL:
-						
-						if isinstance(data.get(axes),scalars):
-							continue							
-						
-						if normalize.get(axes):
-							data[axes] = normalize[axes](axes,data)
 
-						for subslice in slices:
-							data[axes] = data[axes][subslice]
-
-						data[axes] = np.array([valify(i,valify=data[OTHER][OTHER].get('valify')) for i in data[axes]])
-
-
-
-			# set kwargs
-			for prop in PLOTS:
-
-				if not settings[instance][subinstance][obj].get(prop):
-					continue
-
-				for index,shape,data in search(settings[instance][subinstance][obj][prop],returns=True):
-
-					if not data:
-						continue
 
 					for attr in data:
 						
@@ -1660,20 +1630,32 @@ def plotter(settings,hyperparameters,verbose=None):
 							continue
 
 						if attr in [OTHER]:
+						
 							if data[attr][OTHER].get('labels') is not None:
 								for label in data[attr][OTHER]['labels']:
 									if (label in data[attr]) and (label not in ALL) and not parse(label,data[attr][OTHER]['labels'][label],data[attr],verbose=verbose):
 										data.clear()
 										break
-						elif attr in ALL:
-							continue
 						
+						elif attr in ALL:
+							
+							if isinstance(data.get(attr),scalars):
+								continue							
+							
+							if normalize.get(attr):
+								data[attr] = normalize[attr](attr,data)
+
+							for subslice in slices:
+								data[attr] = data[attr][subslice]
+
+							data[attr] = np.array([valify(i,valify=data[OTHER][OTHER].get('valify')) for i in data[attr]])
+
 						else:
+							
 							delimiter = '__'
 							if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
 								if attr in ['color','ecolor']:
-									data[attr] = '_'.join([data[attr]['__value__'],str(data[attr]['__index__']/max(1,data[attr]['__size__']-1))])
-									print(data[attr])
+									data[attr] = '_'.join([data[attr]['__value__'],str(data[attr]['__index__']/max(1,data[attr]['__size__']))])
 								elif attr in ['alpha']:
 									data[attr] = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
 								elif attr in ['zorder']:

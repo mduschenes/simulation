@@ -51,6 +51,8 @@ PATHS = {
 	'mplstyle.notex':os.path.join(os.path.dirname(os.path.abspath(__file__)),'plot.notex.mplstyle'),
 	}
 
+scalars = (int,np.integer,float,np.floating,str,type(None))
+
 def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,func=None):
 	'''
 	Set nested value in iterable with nested elements keys
@@ -690,6 +692,28 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					flip = lambda items,n: list(itertools.chain(*[items[i::n] for i in range(n)]))
 					handles,labels = flip(handles,ncol),flip(labels,ncol)
 
+				if kwargs[attr].get('keep') is not None:
+					keep = kwargs[attr]['keep']
+					unique = list(sorted(set(labels),key=lambda i: labels.index(i)))
+					indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
+					if keep in ['first']:
+						index = [0]*len(indexes)
+					elif keep in ['last']:
+						index = [-1]*len(indexes)
+					elif isinstance(keep,int):
+						index = [index]*len(indexes)
+					else:
+						index = [i for i in index]
+
+					if index is not None:
+						labels,handles = [labels[i[j]] for i,j in zip(indexes,index)],[handles[i[j]] for i,j in zip(indexes,index)]
+
+				if kwargs[attr].get('alpha') is not None:
+					alpha = kwargs[attr]['alpha']
+					alpha = [alpha]*len(handles) if isinstance(alpha,scalars) else alpha
+				else:
+					alpha = None
+
 				if kwargs[attr].get('multiline') is True:
 					pass
 
@@ -707,6 +731,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							} 
 									if 'set_title' in kwargs[attr] or 'title' in kwargs[attr] else {'title':None})},
 					**{subattr: {**kwargs[attr].get(subattr,{})} for subattr in ['get_title','get_texts']},
+					**({'legendHandles': {'alpha': alpha}} if alpha is not None else {}),
 					})
 
 
@@ -717,8 +742,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					(('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is False)))
 					))
 
-				nullkwargs.extend(['prop','join','flip','update','multiline','handlers','set_zorder','get_zorder','set_title','title','get_title','get_texts','set_label'])
-			
+				nullkwargs.extend(['prop','join','flip','update','keep','alpha','multiline','handlers','set_zorder','get_zorder','set_title','title','get_title','get_texts','set_label'])
+
+
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
@@ -946,34 +972,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
 					norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
-					
-					N = len(values)
-
-					if isinstance(colors,str):
-						
-						delimiter = '_'
-						color,options = colors.split(delimiter)[0],colors.split(delimiter)[1:]
-						options = list(set(options))
-						reverse = 'r' in options
-						value = [float(i) for i in options if i != 'r']
-						value = None if not value else value
-
-						color = delimiter.join([color,'r']) if reverse else color
-						
-						def colorer(i,N,color=color,value=value):
-							if value is None:
-								i = ((i+0.5)/(N+0)) if (N > 1) else 0.5
-							elif not isinstance(value,list):
-								i = value
-							else:
-								i = value[i%len(value)] 
-
-							if hasattr(plt.cm,color):
-								color = getattr(plt.cm,color)(i)
-
-							return color
-
-						colors = [colorer(i,N) for i in range(N)]
 
 					if scale in ['linear',None]:
 						norm = matplotlib.colors.Normalize(**norm)  
@@ -983,11 +981,50 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							norm.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])))
 						norm = matplotlib.colors.LogNorm(**norm)  
 					else:
-						norm = matplotlib.colors.Normalize(**norm)
-				
-					
+						norm = matplotlib.colors.Normalize(**norm)					
+
 					values = norm(values)
-					print(values)
+
+					N = len(values)
+
+					if isinstance(colors,str):
+						
+						delimiter = '_'
+						separator = '-'						
+						color,options = colors.split(delimiter)[0],colors.split(delimiter)[1:]
+						options = list(set(options))
+						reverse = 'r' in options
+						alpha = 'alpha' in options
+						options = [(float(i.split(separator)[0]),float(i.split(separator)[1])) if i.count(separator) else float(i) for i in options if i not in ['r','alpha']]
+						if alpha:
+							value = [(options[0],i) if not isinstance(i,tuple) else i for i in (options[1:] if options[1:] else values)]
+						else:
+							value = [(i,1) if not isinstance(i,tuple) else i for i in (options[:] if options[:] else values)]
+
+						value = None if not value else value
+
+						color = delimiter.join([color,'r']) if reverse else color
+
+						def colorer(i,N,color=color,value=value):
+							if value is None:
+								i = (((i+0.5)/(N+0)) if (N > 1) else 0.5,1)
+							elif not isinstance(value,list):
+								i = value[0]
+							else:
+								i = value[i%len(value)] 
+
+							i,alpha = i[0],i[1]
+							if hasattr(plt.cm,color):
+								color = getattr(plt.cm,color)(i)
+								color = list(color)
+								color[-1] = alpha
+								color = tuple(color)
+
+							return color
+
+						colors = [colorer(i,N) for i in range(N)]
+
+			
 					cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*100)  
 					pos = obj.get_position()
 					
@@ -1104,30 +1141,41 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						colors = value
 
 						delimiter = '_'
+						separator = '-'
 						color,options = colors.split(delimiter)[0],colors.split(delimiter)[1:]
 						options = list(set(options))
 						reverse = 'r' in options
-						value = [float(i) for i in options if i != 'r']
+						alpha = 'alpha' in options
+						options = [(float(i.split(separator)[0]),float(i.split(separator)[1])) if i.count(separator) else float(i) for i in options if i not in ['r','alpha']]
+						if alpha:
+							value = [(options[0],i) if not isinstance(i,tuple) else i for i in options[1:]]
+						else:
+							value = [(i,1) if not isinstance(i,tuple) else i for i in options[:]]
+
 						value = None if not value else value
-						
+
 						color = delimiter.join([color,'r']) if reverse else color
 
 						if hasattr(plt.cm,color):
-							value = None
+							value = value
 							attribute = color
 							def fielder(i,N,attribute=attribute,value=value):
 								if value is None:
-									i = ((i+0.5)/(N+0)) if (N > 1) else 0.5
+									i = (((i+0.5)/(N+0)) if (N > 1) else 0.5,1)
 								elif not isinstance(value,list):
-									i = value
+									i = value[0]
 								else:
 									i = value[i%len(value)] 
 
+								i,alpha = i[0],i[1]
+
 								if hasattr(plt.cm,attribute):
 									value = getattr(plt.cm,attribute)(i)
+									value = list(value)
+									value[-1] = alpha
+									value = tuple(value)
 
-								return value	
-
+								return value
 
 							subattr = 'set_colorbar'
 							if kwargs.get(subattr) is not None:
@@ -1222,8 +1270,21 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								for _subattr_ in getattr(_attr_,a)():
 									for l in _kwds[k]:
 										getattr(_subattr_,l)(**_kwds[k][l])
-							except Exception as exception:
-								pass
+							except:
+								try:
+									for _subattr_ in getattr(_attr_,a):
+										for i,l in enumerate(_kwds[k]):
+											if _kwds[k][l] is not None:
+												v = getattr(_subattr_,'get_%s'%(l))()
+												v = _kwds[k][l][i]
+												getattr(_subattr_,'set_%s'%(l))(v)
+											else:
+												pass
+									else:
+										pass
+								except Exception as exception:
+									pass	
+								pass							
 				
 
 			# except:

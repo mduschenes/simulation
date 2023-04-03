@@ -2,7 +2,7 @@
 
 # Import python modules
 import os,sys,warnings,itertools
-import copy as copying
+from copy import deepcopy
 import traceback
 
 import numpy as np
@@ -139,7 +139,7 @@ def copier(key,value,copy):
 	if ((not copy) or (isinstance(copy,dict) and (not copy.get(key)))):
 		return value
 	else:
-		return copying.deepcopy(value)
+		return deepcopy(value)
 
 
 
@@ -391,7 +391,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 		'''
 		Get lists of values for each group of keys in groups
 		'''
-		groups = copying.deepcopy(groups)
+		groups = deepcopy(groups)
 		if groups is not None:
 			inds = [[keys.index(k) for k in g if k in keys] for g in groups]
 		else:
@@ -544,14 +544,14 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 		elif returns in ['index.shape.item']:
 			yield (index,shape,item)
 
-	kwargs = (dict,)
+	dictionaries = (dict,)
 	items = [items] if (items is not None) and isinstance(items,scalars) else items
 	if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)) or (items and isinstance(iterable,types) and all(item in iterable for item in items)):
 		
 		if items:
 			if (not isinstance(iterable,types)) or (isinstance(iterable,exceptions)):
 				return
-			elif isinstance(iterable,kwargs):
+			elif isinstance(iterable,dictionaries):
 				item = [iterable[item] for item in items]
 			else:
 				item = items
@@ -563,9 +563,11 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 
 	if (isinstance(iterable,types)) and (not isinstance(iterable,exceptions)):
 		for i,item in enumerate(iterable):
-			if isinstance(iterable,kwargs):
+			if isinstance(iterable,dictionaries):
 				i,item = item,iterable[item]
-			yield from search(item,index=[*index,i],shape=[*shape,len(iterable)],returns=returns,items=items,types=types,exceptions=exceptions)
+			size = len(iterable)					
+			yield from search(item,index=[*index,i],shape=[*shape,size],
+				returns=returns,items=items,types=types,exceptions=exceptions)
 
 def indexer(item,iterable,returns=None,types=(list,),exceptions=()):
 	'''
@@ -599,16 +601,16 @@ def insert(index,item,iterable,types=(list,),exceptions=()):
 		types (type,tuple[type]): Allowed types to be searched
 		exceptions (type,tuple[type]): Disallowed types to be searched
 	'''
-	kwargs = (dict,)
+	dictionaries = (dict,)
 
 	if isinstance(index,scalars):
 		index = [index]
 
 	for j,i in enumerate(index):
 		default = None if (j==(len(index)-1)) else {} if isinstance(index[j+1],str) else []
-		if isinstance(iterable,kwargs) and i not in iterable:
+		if isinstance(iterable,dictionaries) and i not in iterable:
 			iterable[i] = default
-		elif not isinstance(iterable,kwargs) and isinstance(i,int) and (len(iterable) <= i):
+		elif not isinstance(iterable,dictionaries) and isinstance(i,int) and (len(iterable) <= i):
 			iterable.extend((default for j in range(i+1-len(iterable))))
 		
 		if j < (len(index)-1):
@@ -617,6 +619,39 @@ def insert(index,item,iterable,types=(list,),exceptions=()):
 			iterable[i] = item
 
 	return
+
+
+def nullshape(index,shape,iterable,exclude=[]):
+	'''
+	Modify shape and index of iterable, excluding items
+	Args:
+		index (iterable): Index of item
+		shape (iterable[int]): Shape of iterable		
+		iterable (iterable): Nested iterable
+		exclude (object,iterable[object]): Disallowed items to be counted
+	Returns:
+		index (iterable): Index of item
+		shape (iterable[int]): Shape of iterable		
+	'''	
+	dictionaries = (dict,)
+	exclude = [exclude] if isinstance(exclude,scalars) else exclude
+	size = len(index)
+	index,shape = deepcopy(index),deepcopy(shape)
+	tmp = iterable
+	for i in range(size):
+		value = tmp[index[i]]
+		if isinstance(tmp,dictionaries):
+			tmp = {i:tmp[i] for i in tmp if not any(tmp[i] is j for j in exclude)}
+			index[i] = index[i]
+		else:
+			tmp = [i for i in tmp if not any(i is j for j in exclude)]
+			index[i] = tmp.index(value)
+
+		shape[i] = len(tmp)
+
+		tmp = tmp[index[i]]
+
+	return index,shape
 
 
 def slicer(iterable,slices):

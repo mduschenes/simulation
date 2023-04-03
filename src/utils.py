@@ -5900,6 +5900,9 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 
 	'''
 
+	if decimals is None:
+		decimals = 1
+
 	if scilimits is None:
 		scilimits = [-1,1]
 
