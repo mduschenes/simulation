@@ -448,7 +448,7 @@ class Parameters(Object):
 				continue
 
 		for parameter in hyperparameters:
-			setattr(self,parameter,System(**hyperparameters[parameter]))
+			setattr(self,parameter,Object(**hyperparameters[parameter]))
 
 
 		if not hyperparameters:
@@ -460,6 +460,65 @@ class Parameters(Object):
  
 		# Get string
 		self.string = ' '.join([str(getattr(self,parameter)) for parameter in hyperparameters])
+
+		# Get initialize
+		if self.initialize is None:
+			initialize = lambda parameters,shape,hyperparameters,**kwargs: parameters
+		else:
+			initialize = self.initialize
+
+		# Get data
+		for parameter in hyperparameters:
+			layer = 'parameters'
+			data = hyperparameters[parameter]['parameters']
+			shape = hyperparameters[parameter]['shape'][layer]
+			groups = [i for group in hyperparameters[parameter][group][layer] for i in group]
+			ndim = len(shape)
+			dtype = self.dtype
+			indices = {group: [
+				[i for i in range(self.shape[axis]) if check(group,i,axis)] for axis in range(self.ndim)]
+				for group in groups
+				}
+			shape = {(group,i): 
+				[shape[axis]*len(indices[group][axis]) if shape[axis]<0 else shape[axis] for axis in range(self.ndim)] 
+				for group in indices for i in indices[groups]}
+			slices = {(group,i): 
+				[shape[axis]*len(indices[group][axis]) if shape[axis]<0 else shape[axis] for axis in range(self.ndim)] 
+				for group in indices for i in indices[groups]}
+
+			if data is None:
+				data = zeros(shape,dtype=dtype)
+			else:
+				data = array(data,dtype=dtype)
+
+			data = padding(data,shape)
+
+			data = initialize(data,shape,hyperparameters,slices=slices,shapes=shapes,layer=layer,dtype=dtype)
+
+			getattr(self,parameter)(data=data)
+
+			# TODO:
+				# Decide how to split up parameters or index parameters from large array for each operator
+				# Decide how to include info about operators/lattice in parameter initialization
+				# Initialize parameters for each operator (group?) (padding for constants vs interpolation for variables)
+				# Decide how to have mix of variable + constant parameters and feed them to each operator
+				# Decide on mix of dicts of classes (one for each parameter group or operator?), 
+					# and how parameters are initialized for each function call
+				# Decide how parameters attributes/slices are accessible in callback()
+				# Decide on shape,ndim,slices,dimensions attributes for parent (quantum.unitary) class
+				# Decide how parameters are indexed/sliced in Operator() class for exp() calls
+				# Decide whether to spend time on grouping constant operators/precalculate parts of trotter step, 
+					# to minimize matmuls
+
+		data = {parameter: getattr(self,parameter) for parameter in hyperparameters}
+
+		self.data = data
+		self.dimensions = sum(data[parameter]().size for parameter in data)
+		self.attributes = {}
+		self.hyperparameters = hyperparameters
+
+		return
+
 
 		# Get seed
 		seed = [self.seed,*[hyperparameters[parameter].get('seed',self.seed) if hyperparameters[parameter].get('seed',self.seed) is not None else self.seed 
@@ -1451,11 +1510,6 @@ class Parameters(Object):
 		# Initialize values parameters for each category,parameter,group,layer
 		# reshape, bound, impose boundary conditions accordingly, and assign category parameters
 
-		if self.initialize is None:
-			initialize = lambda parameters,shape,hyperparameters,**kwargs: parameters
-		else:
-			initialize = self.initialize
-
 		attribute = 'values'
 
 		data[attribute].update({**{category:{layer:None for layer in layers} for category in categories},**{layer:None for layer in layers}})
@@ -2076,4 +2130,8 @@ class Parameters(Object):
 		Returns:
 			data (array): Data
 		'''
-		return self.data
+		if data is not None:
+			self.data = data
+			self.dimensions = sum(self.data[parameter]().size for parameter in self.data)
+
+		return {parameter: self.data[parameter]() for parameter in self.data}

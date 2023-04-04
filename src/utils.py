@@ -4523,7 +4523,7 @@ def expand_dims(a,axis):
 
 
 
-def padding(a,shape,key=None,bounds=[0,1],random='zeros'):
+def padding(a,shape,key=None,bounds=[0,1],random=None):
 	'''
 	Ensure array is shape and pad with values
 	Args:
@@ -6171,7 +6171,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 	bounds = [to_number(i,dtype) for i in bounds]
 
 	# Add random padding of values if parameters not reset
-	if not reset:
+	if (reset is not None) and (not reset):
 		parameters = padding(parameters,shape,key=key,bounds=bounds,random=pad)
 	else:
 		if initialization in ['interpolation']:
