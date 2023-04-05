@@ -23,7 +23,7 @@
 		"model.tau":[80],
 
 		"system.unit":[1e6],
-		"system.dtype":["complex128"],
+		"system.dtype":["complex256"],
 		"parameters.xy.scale":[1],
 		"parameters.z.scale":[1.230231e-2],
 		"parameters.zz.scale":[1.42117230231e-4],
@@ -49,8 +49,8 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/unconstrained.2.128.short.tau.80"],
-		"jobs.postprocess.cwd":["gobi/unconstrained.2.128.short.tau.80"],
+		"jobs.job.cwd":["gobi/unconstrained.4.256"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.4.256"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
