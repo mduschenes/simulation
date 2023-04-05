@@ -704,6 +704,36 @@ def loader(data,settings,hyperparameters,verbose=None):
 			for i,(item,shape,data) in enumerate(search(elements.get(key_elements),returns=True)):
 				if (not iterable.get(key_iterable)) or i >= len(iterable.get(key_iterable)):
 					continue
+
+				i = None
+				axes = {attr: data[attr] for attr in data if attr in ALL}
+				if data.get(OTHER) is None:
+					continue
+				if isinstance(data[OTHER],str):
+					labels = {data[OTHER]:None}
+				elif isinstance(data[OTHER],dict):
+					if OTHER in data[OTHER]:
+						labels = {attr: data[OTHER][OTHER][attr] for attr in data[OTHER][OTHER]}
+					else:
+						labels = {attr: data[OTHER][attr] for attr in data[OTHER]}
+				else:
+					labels = {attr: None for attr in data[OTHER]}
+
+				for j in range(len(iterable.get(key_iterable))):
+					if all((
+						all(datum[OTHER][attr]['label']==axes[attr] for attr in axes) and 
+						(len(datum[OTHER][OTHER][OTHER]) == len(labels)) and
+						all(datum[OTHER][OTHER][OTHER][attr]==labels[attr] for attr in labels)
+						)
+						for datum in search(iterable.get(key_iterable)[j]) if datum):
+						print(i,j)
+						i = j
+						break
+
+
+				if i is None:
+					continue
+
 				for subindex,datum in enumerate(search(iterable.get(key_iterable)[i])):
 					if not datum:
 						continue
