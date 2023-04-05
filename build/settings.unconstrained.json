@@ -10,17 +10,17 @@
 	"dump":0
 	},
 "seed":{
-	"seed":12931,
-	"size":30,
-	"reset":12931,
+	"seed":1821,
+	"size":20,
+	"reset":1821,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[4],		
-		"model.M":[10,50,100,200,500,1000,2000,5000,10000],
-		"model.tau":[241.241],
+		"model.N":[2],		
+		"model.M":[5,10,20,50,100,200,500,1000,2000,5000,1000],
+		"model.tau":[80],
 
 		"system.unit":[1e6],
 		"system.dtype":["complex128"],
@@ -43,14 +43,14 @@
 			{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
 		],			
 
-		"optimize.iterations":[[0,2000]],
+		"optimize.iterations":[[0,1000]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/unconstrained.128"],
-		"jobs.postprocess.cwd":["gobi/unconstrained.128"],
+		"jobs.job.cwd":["gobi/unconstrained.2.128.short.tau.80"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.2.128.short.tau.80"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -63,7 +63,7 @@
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],
-		"jobs.job.resume":[true],
+		"jobs.job.resume":[null],
 		"jobs.postprocess.resume":[null],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
@@ -75,10 +75,10 @@
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
-		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"],
 		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"]		
+		"jobs.postprocess.patterns.account":["def-carrasqu"],
+		"jobs.job.patterns.account":["def-raymond"],
+		"jobs.postprocess.patterns.account":["def-raymond"]
 		},
 	"groups":null,
 	"index":null
