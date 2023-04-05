@@ -13,17 +13,17 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient,hessian,fisher
 from src.utils import array,empty,identity
-from src.utils import tensorprod,product,dagger,einsum
+from src.utils import tensorprod,product,dagger,einsum,dot
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
 from src.utils import trotter,gradient_trotter,gradient_expm
 from src.utils import eig
-from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log10,sign,cos,sin
+from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log10,sign,cosh,sinh
 from src.utils import sort,relsort,norm
 from src.utils import initialize,parse,to_string
 from src.utils import pi,e,nan,null,delim,scalars,nulls
 from src.utils import itg,flt,dbl
 
-from src.iterables import setter,getter,getattrs,hasattrs
+from src.iterables import setter,getter,getattrs,hasattrs,indexer,inserter
 
 from src.parameters import Parameters
 from src.operators import Gate
@@ -45,16 +45,13 @@ class Operator(System):
 		site (iterable[int]): site of local operators
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		hyperparameters (dict): hyperparamters for operators
 		N (int): Number of qudits
 		D (int): Dimension of qudits
-		parameters (str,dict,Parameters): Type of parameters	
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''		
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None,
-		N=None,D=None,parameters=None,system=None,**kwargs):
-
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+		N=None,D=None,index=None,system=None,**kwargs):
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -65,18 +62,21 @@ class Operator(System):
 		self.site = site
 		self.string = string
 		self.interaction = interaction
-		self.hyperparameters = hyperparameters
 
 		self.N = N
 		self.D = D
-		self.parameters = parameters
+		self.index = index
 		self.system = system
 
-		self.__setup__(data,operator,site,string,interaction,hyperparameters)
+		self.identity = None
+		self.dimensions = 1
+		self.coefficients = 1
+
+		self.__setup__(data,operator,site,string,interaction)
 
 		return
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup operator
 		Args:
@@ -85,7 +85,6 @@ class Operator(System):
 			site (iterable[int]): site of local operators
 			string (str): string labels of operators
 			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
-			hyperparameters (dict): hyperparameters for operators			
 		'''
 
 		basis = {
@@ -101,7 +100,6 @@ class Operator(System):
 		site = self.site if site is None else site
 		string = self.string if string is None else string
 		interaction = self.interaction if interaction is None else interaction
-		hyperparameters = self.hyperparameters if hyperparameters is None else hyperparameters
 
 		if operator is None:
 			operator = [default]*self.N
@@ -112,11 +110,10 @@ class Operator(System):
 		else:
 			operator = [i for i in operator]
 
-		data = operator
-		data = tensorprod([basis.get(i,basis[default]) for i in data])
+		data = tensorprod([basis.get(i,basis[default]) for i in operator])
 		data = data.astype(self.dtype)
 
-		identity = tensorprod([basis.get(default) for i in data])
+		identity = tensorprod([basis.get(default) for i in operator])
 		identity = identity.astype(self.dtype)
 
 		self.data = data
@@ -124,9 +121,9 @@ class Operator(System):
 		self.site = site
 		self.string = string
 		self.interaction = interaction
-		self.hyperparameters = hyperparameters
 
 		self.identity = identity
+		self.dimensions = 1
 
 		return
 
@@ -141,16 +138,20 @@ class Operator(System):
 
 		return self.data
 
-	def exp(self.parameters=None):
+	def exp(self,parameters=None,time=None):
 		'''
 		Call exponential of operator
 		Args:
 			parameters (array): parameters
+			time (array): time
 		Returns:
 			operator (array): operator
 		'''
 
-		return cos(parameters)*self.identity + sin(parameters)self.data
+		if parameters:
+			parameters = indexer(self.index,parameters)[time:time+1]
+
+		return cosh(self.coefficients*parameters)*self.identity + sinh(self.coefficients*parameters)*self.data
 
 	def __str__(self):
 		return delim.join(self.operator)
@@ -223,7 +224,6 @@ class Observable(System):
 		self.string = []
 		self.interaction = []
 		self.hyperparameters = []
-		self.indices = []
 
 		self.n = None
 		self.g = None
@@ -358,8 +358,8 @@ class Observable(System):
 			index = len(self.data)
 
 		if not isinstance(data,Operator):
-			data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
-							N=self.N,D=self.D,system=self.system)
+			data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,
+							N=self.N,D=self.D,system=self.system,**hyperparameters)
 
 		self.data.insert(index,data)
 		self.operator.insert(index,operator)
@@ -385,11 +385,8 @@ class Observable(System):
 		parameters = self.parameters.hyperparameters if isinstance(self.parameters,Parameters) else self.parameters
 		shape = (len(self.data),self.M)
 		dims = None
-		cls = {attr: getattr(self,attr) for attr in self if isinstance(getattr(self,attr),scalars)}
-		check = lambda group,index,axis,site=self.site,string=self.string: (
-			((not site and not string)) or any(g in group for s in string for i in site for g in [s,'_'.join([s,''.join(['%d'%j for j in i])])]) and (
-			(axis != 0) or 
-			any(g in group for g in [string[index],'_'.join([string[index],''.join(['%d'%j for j in site[index]])])])))
+		cls = self #{attr: getattr(self,attr) for attr in self if attr not in ['parameters','state','noise','label']}
+		check = lambda data,group: any(i in group for i in [data.string,'_'.join([data.string,''.join((str(i) for i in data.site))])])
 		system = self.system
 		parameters = Parameters(parameters,shape,dims=dims,cls=cls,check=check,initialize=initialize,system=system)
 
@@ -400,6 +397,16 @@ class Observable(System):
 		self.parameters = parameters
 		self.coefficients = coefficients
 		self.dimensions = parameters.dimensions
+
+
+		for parameter in self.parameters:
+			for data in self.data:
+				for index,group in enumerate(self.parameters[parameter].group):
+					if not any(i in [data.string,'_'.join([data.string,''.join((str(i) for i in data.site))])] for i in group):
+						continue
+					data.index = [parameter,index,data.index]
+					data.coefficients = self.parameters[parameter].scale*coefficients if self.parameters[parameter].scale is not None else coefficients
+
 
 		return
 
@@ -424,7 +431,8 @@ class Observable(System):
 		shape = self.shape
 		dims = [self.N,self.D]
 		system = self.system
-		cls = {attr: getattr(self,attr) for attr in self if isinstance(getattr(self,attr),scalars)}
+		cls = {attr: getattr(self,attr) for attr in self if attr not in ['parameters','state','noise','label']}
+
 
 		# Get state
 		kwargs.clear()
@@ -520,7 +528,10 @@ class Observable(System):
 			out (array): Return of function
 		'''		
 		parameters = self.__parameters__(parameters)
-		return self.summation(parameters)
+
+		data = sum(data(self.parameters) for data in self.data)
+
+		return data
 
 	#@partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
@@ -600,48 +611,9 @@ class Observable(System):
 		Returns:
 			parameters (array): parameters
 		'''
-		self.parameters(parameters)
+		parameters = self.parameters(parameters)
 		return parameters
 
-
-	# @partial(jit,static_argnums=(0,2))
-	def __layers__(self,parameters,layer='variables'):
-		''' 
-		Setup layer
-		Args:
-			parameters (array): parameters
-			layer (str): layer
-		Returns:
-			values (array): values
-		'''
-
-		# Get class attributes
-		self.parameters(parameters)		
-
-		parameters = array([parameters.reshape(-1,self.M)])
-
-		# Get class attributes
-		self.parameters(parameters)
-		attributes = self.parameters.attributes
-
-		attribute = 'shape'
-		layr = 'parameters'
-		parameters = parameters.reshape(attributes[attribute][layr])
-
-		attribute = 'values'
-		values = attributes[attribute][layer]
-
-
-		# Get values
-		attribute = 'slice'
-		for parameter in attributes[attribute][layer]:
-			for group in attributes[attribute][layer][parameter]:
-
-				func = attributes[layer][layer][parameter][group]
-				
-				values = func(parameters,values)
-
-		return values
 
 	# @partial(jit,static_argnums=(0,))
 	def __constraints__(self,parameters):
@@ -652,8 +624,7 @@ class Observable(System):
 		Returns:
 			constraints (array): constraints
 		'''		
-		layer = 'constraints'
-		return self.__layers__(parameters,layer)
+		return 0
 
 
 	def __shape__(self,data=None,N=None,D=None,M=None):
@@ -706,7 +677,7 @@ class Observable(System):
 		self.g = self.space.g
 
 		self.__shape__()
-		
+
 		self.identity = Operator(N=self.N,D=self.D,system=self.system)
 
 		return
@@ -934,7 +905,7 @@ class Hamiltonian(Observable):
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
 				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
-		
+
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
 				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
@@ -951,8 +922,12 @@ class Hamiltonian(Observable):
 		Returns
 			operator (array): Parameterized operator
 		'''		
+
 		parameters = self.__parameters__(parameters)
-		return self.summation(parameters)
+
+		data = sum(data(self.parameters) for data in self.data)
+
+		return data
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None):
 		'''
@@ -970,7 +945,6 @@ class Hamiltonian(Observable):
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 			hyperparameters (iterable[dict]): hyperparameters for operators
 		'''
-
 		# Get operator,site,string,interaction,hyperparameters from data
 		objs = {
 			'operator':operator,'site':site,'string':string,
@@ -995,27 +969,35 @@ class Hamiltonian(Observable):
 		indices = {'i': ['i'],'<ij>':['i','j'],'i<j':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
 
 		# Get number of operators
-		size = min(len(objs[obj]) for obj in obs)
+		size = min(len(objs[obj]) for obj in objs)
 		
 		# Get all indices from symbolic indices
-		for i in range(size):
+		for index in range(size):
+			
+			size -= 1
+			
 			_objs = {}
 			for obj in objs:
 				value = deepcopy(objs[obj].pop(0))
 				if obj in ['site']:
 					if isinstance(value,str):
 						value = indices[value]
+				elif obj in ['hyperparameters']:
+					if not isinstance(value,dict):
+						value = {}
 				_objs[obj] = value
 
-			if any(j in indices[_objs['interaction']] for j in _objs['site']):
-				for s in sites[_objs['interaction']]:
+			if any(i in indices[_objs['interaction']] for i in _objs['site']):
+				for i,s in enumerate(sites[_objs['interaction']]):
 					for obj in objs:
 						if obj in ['site']:
 							value = [dict(zip(
 								indices[_objs['interaction']],
 								s if not isinstance(s,int) else [s])
-							).get(j,parse(j,int)) 
-							for j in _objs['site']]
+							).get(i,parse(i,int)) 
+							for i in _objs['site']]
+						elif obj in ['hyperparameters']:
+							value = {**_objs[obj],'index':i}
 						else:
 							value = _objs[obj]
 
@@ -1032,10 +1014,8 @@ class Hamiltonian(Observable):
 					objs[obj].append(value)	
 
 
-		print(objs)
-		exit()
 		# Set class attributes
-		self.__extend__(data=data,**objs)
+		self.__extend__(**objs)
 
 		# Set parameters
 		self.__initialize__()
@@ -1044,30 +1024,6 @@ class Hamiltonian(Observable):
 		self.__functions__()
 
 		return
-
-
-	# @partial(jit,static_argnums=(0,))
-	def __parameters__(self,parameters):
-		''' 
-		Setup parameters
-		Args:
-			parameters (array): parameters
-		Returns:
-			parameters (array): parameters
-		'''		
-
-		layer = 'variables'
-		parameters = self.__layers__(parameters,layer)
-
-		# Get Trotterized order of copies of parameters
-		P = self.P
-		parameters = array(trotter(parameters,P))
-
-		# Get reshaped parameters (transpose for shape (K,M) to (M,K) and reshape to (MK,) with periodicity of data)
-		# Get reshaped parameters (transpose for shape (K,M) to (M,K))
-		parameters = parameters.T
-
-		return parameters
 
 
 
@@ -1127,16 +1083,16 @@ class Unitary(Hamiltonian):
 		'''		
 
 		parameters = self.__parameters__(parameters)
+
+		data = self.identity()
 		
-		out = self.identity
 		for i in range(self.M):
-			for i,data in enumerate(self.data):
+			for j in trotter([data.exp(self.parameters,i) for data in self.data],self.P):
+				data = dot(j,data)
+		
+		return data
 
-
-
-
-
-		return self.exponentiation(self.coefficients*parameters)
+		# return self.exponentiation(self.coefficients*parameters)
 
 	#@partial(jit,static_argnums=(0,))
 	def __grad_analytical__(self,parameters):
@@ -1149,13 +1105,10 @@ class Unitary(Hamiltonian):
 		'''	
 
 		# Get class attributes
-		attributes = self.parameters.attributes
+		parameters = self.parameters(parameters)
+		shape = indexer(self.parameters.index,self.parameters).shape
 
-		# Get shape and indices of variable parameters for gradient
-		attribute = 'shape'
-		layer = 'variables'
-		shape = attributes[attribute][layer]
-
+		attributes = None
 
 		# Get data
 		data = self.data
@@ -1405,48 +1358,20 @@ class Callback(object):
 					'variables','variables.norm','variables.relative','variables.relative.mean',
 					'features','features.norm','features.relative','features.relative.mean'] and (do):
 
-					layer = attr.split(delim)[0]
-					prop = 'index'
-					indices = model.parameters.attributes[prop][layer]
-					indices = tuple([(
-						slice(
-						min(indices[parameter][group][axis].start
-							for parameter in indices 
-							for group in indices[parameter]),
-						max(indices[parameter][group][axis].stop
-							for parameter in indices 
-							for group in indices[parameter]),
-						min(indices[parameter][group][axis].step
-							for parameter in indices 
-							for group in indices[parameter]))
-						if all(isinstance(indices[parameter][group][axis],slice)
-							for parameter in indices 
-							for group in indices[parameter]) else
-						list(set(i 
-							for parameter in indices 
-							for group in indices[parameter] 
-							for i in indices[parameter][group][axis]))
-						)
-							for axis in range(min(len(indices[parameter][group]) 
-											for parameter in indices 
-											for group in indices[parameter]))
-						])
-
 					if attr in ['variables','features']:
-						value = model.__layers__(parameters,layer)[indices]
+						value = model.parameters(parameters)
 					elif attr in ['variables.norm','features.norm']:
-						value = model.__layers__(parameters,layer)[indices]
+						value = model.parameters(parameters)
 						value = norm(value)/(value.size)
 					elif attr in ['variables.relative','features.relative']:
 						eps = 1e-20
-						value = model.__layers__(parameters,layer)[indices]
-						_value = model.__layers__(attributes['parameters'][0],layer)[indices]
+						value = model.parameters(parameters)
+						_value = model.parameters(attributes['parameters'][0])
 						value = abs((value - _value + eps)/(_value + eps))
-					
 					elif attr in ['variables.relative.mean','features.relative.mean']:
 						eps = 1e-20
-						value = model.__layers__(parameters,layer)[indices]
-						_value = model.__layers__(attributes['parameters'][0],layer)[indices]						
+						value = model.parameters(parameters)
+						_value = model.parameters(attributes['parameters'][0])
 						value = abs((value - _value + eps)/(_value + eps)).mean()
 
 				elif attr in ['objective']:
@@ -1560,7 +1485,7 @@ class Callback(object):
 					if attr in attributes and len(attributes[attr])>0
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
-				# 'theta\n%s'%(to_string(model.__layers__(parameters,'variables').flatten().round(4))),
+				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
 				# 'U\n%s\nV\n%s'%(
 				# 	to_string((model(parameters)).round(4)),
 				# 	to_string((model.label()).round(4))),

@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,lstsq,inv,norm,metrics,optimizer_libraries
+from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
 from src.utils import is_array,is_unitary,is_hermitian,is_naninf,product,sqrt,asarray,asscalar
 from src.utils import scalars,delim,nan
 
@@ -102,7 +102,7 @@ class LineSearcher(System):
 		attr = 'alpha'
 		if (returns[attr] is None) or (is_naninf(returns[attr])) or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):		
 			if len(alpha) > 1:
-				returns[attr] = alpha[-1]#*grad[-1].dot(search[-1])/grad[-2].dot(search[-2])
+				returns[attr] = alpha[-1]#*dot(grad[-1],search[-1])/dot(grad[-2],search[-2])
 			else:
 				returns[attr] = alpha[-1]		
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
@@ -332,7 +332,7 @@ class GradSearcher(System):
 				returns[attr] = 0
 			else:
 				returns[attr] = beta[0]
-		elif (self.hyperparameters['eps'].get('grad.dot') is not None) and (len(grad)>1) and ((abs(grad[-1].dot(grad[-2]))/(grad[-1].dot(grad[-1]))) >= self.hyperparameters['eps']['grad.dot']):
+		elif (self.hyperparameters['eps'].get('grad.dot') is not None) and (len(grad)>1) and ((abs(dot(grad[-1],grad[-2]))/(dot(grad[-1],grad[-1]))) >= self.hyperparameters['eps']['grad.dot']):
 			returns[attr] = 0			
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
 			if len(beta) > 1:
@@ -399,7 +399,7 @@ class Fletcher_Reeves(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = (grad[-1].dot(grad[-1]))/(grad[-2].dot(grad[-2])) # Fletcher-Reeves
+		_beta = (dot(grad[-1],grad[-1]))/(dot(grad[-2],grad[-2])) # Fletcher-Reeves
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
@@ -437,7 +437,7 @@ class Polak_Ribiere(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = max(0,(grad[-1].dot(grad[-1]-grad[-2]))/grad[-2].dot(grad[-2]))  # Polak-Ribiere
+		_beta = max(0,(dot(grad[-1],grad[-1]-grad[-2]))/(dot(grad[-2],grad[-2])))  # Polak-Ribiere
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
@@ -475,7 +475,7 @@ class Polak_Ribiere_Fletcher_Reeves(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = [(grad[-1].dot(grad[-1]))/(grad[-2].dot(grad[-2])),max(0,(grad[-1].dot(grad[-1]-grad[-2]))/grad[-2].dot(grad[-2]))] # Polak-Ribiere-Fletcher-Reeves
+		_beta = [(dot(grad[-1],grad[-1]))/(dot(grad[-2],grad[-2])),max(0,(dot(grad[-1],grad[-1]-grad[-2]))/(dot(grad[-2],grad[-2])))] # Polak-Ribiere-Fletcher-Reeves
 		_beta = -_beta[0] if _beta[1] < -_beta[0] else _beta[1] if abs(_beta[1]) <= _beta[0] else _beta[0]
 		returns = (_beta,)
 
@@ -514,7 +514,7 @@ class Hestenes_Stiefel(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = (grad[-1].dot(grad[-1]-grad[-2]))/(search[-1].dot(grad[-1]-grad[-2])) # Hestenes-Stiefel
+		_beta = (dot(grad[-1],grad[-1]-grad[-2]))/(dot(search[-1],grad[-1]-grad[-2])) # Hestenes-Stiefel
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
@@ -551,7 +551,7 @@ class Dai_Yuan(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = (grad[-1].dot(grad[-1]))/(search[-1].dot(grad[-1]-grad[-2])) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
+		_beta = (dot(grad[-1],grad[-1]))/(dot(search[-1],grad[-1]-grad[-2])) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
@@ -589,7 +589,7 @@ class Hager_Zhang(GradSearcher):
 			beta (array): Returned search value
 		'''
 		_beta = grad[-1]-grad[-2]
-		_beta = (_beta - 2*((_beta.dot(_beta))/(_beta.dot(search[-1])))*search[-1]).dot(grad[-1]/(_beta.dot(search[-1]))) # Hager-Zhang https://doi.org/10.1137/030601880
+		_beta = dot((_beta - 2*((dot(_beta,_beta))/(dot(_beta,search[-1])))*search[-1]),grad[-1]/(dot(_beta,search[-1]))) # Hager-Zhang https://doi.org/10.1137/030601880
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)

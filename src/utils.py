@@ -71,7 +71,7 @@ pi = np.pi
 e = np.exp(1)
 nan = np.nan
 inf = np.inf
-scalars = (int,np.integer,float,np.floating,str,type(None))
+scalars = (int,np.integer,float,np.floating,onp.int,onp.integer,onp.float,onp.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
 
@@ -548,7 +548,12 @@ def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		grad (callable): Hessian of function
 	'''
 	# grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
-	grad = jit(autograd.hessian(func,argnums=argnums,holomorphic=holomorphic))
+	
+	argnum = argnums
+	if holomorphic:
+		grad = jit(autograd.hessian(func,argnum=argnum))
+	else:
+		grad = jit(autograd.hessian(func,argnum=argnum))	
 
 	return grad
 
@@ -1281,7 +1286,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 					R = diag(R)
 					R = diag(R/abs(R))
 					
-					out[i,j] = Q.dot(R)
+					out[i,j] = dot(Q,R)
 
 			out = out.reshape(shape)
 
@@ -2287,7 +2292,7 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = einsummation(abs2(operands[0]-operands[1].conj()).real)
+		out = einsummation(abs2(operands[0]-operands[1].conj()))
 		return wrapper(out,*operands)
 	
 	if arrays:
@@ -2375,7 +2380,7 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = abs2(einsummation(*operands)).real
+		out = abs2(einsummation(*operands))
 		return wrapper(out,*operands)
 	
 	if arrays:
@@ -4523,7 +4528,7 @@ def expand_dims(a,axis):
 
 
 
-def padding(a,shape,key=None,bounds=[0,1],random=None):
+def padding(a,shape,key=None,bounds=[0,1],random=None,dtype=None):
 	'''
 	Ensure array is shape and pad with values
 	Args:
@@ -4532,9 +4537,15 @@ def padding(a,shape,key=None,bounds=[0,1],random=None):
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
+		dtype (data_type): Datatype of array		
 	Returns:
 		out (array): Padded array
 	'''
+
+	if a is None:
+		a = zeros(shape,dtype=dtype)
+	else:
+		a = array(a,dtype=dtype)
 
 	if isinstance(shape,int):
 		shape = [shape]
@@ -5633,7 +5644,7 @@ def sigmoid(a,scale=1):
 	# return sp.special.expit(scale*a)
 
 @jit
-def bound(a,kwargs):
+def bound(a,kwargs={}):
 	'''
 	Bound array
 	Args:
@@ -5642,7 +5653,7 @@ def bound(a,kwargs):
 	Returns:
 		out (array): Bounded array
 	'''
-	return 2*sigmoid(a,kwargs['sigmoid']) - 1
+	return 2*sigmoid(a,kwargs.get('sigmoid',1)) - 1
 
 
 @jit
@@ -6127,15 +6138,13 @@ def padder(strings,padding=' ',delimiter=None,justification='left'):
 	return padded
 
 
-def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=None,shapes=None,dtype=None):
+def initialize(parameters,shape,hyperparameters,slices=None,shapes=None,dtype=None):
 	'''
 	Initialize parameters
 	Args:
 		parameters (array): parameters array
 		shape (iterable): shape of parameters
 		hyperparameters (dict): hyperparameters for initialization
-		reset (bool): Overwrite existing parameters
-		layer (str): Layer type of parameters
 		slices (iterable): slices of array within containing array
 		shapes (iterable): shape of containing array of parameters
 		dtype (str,datatype): data type of parameters		
@@ -6144,9 +6153,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 	'''	
 
 	# Initialization hyperparameters
-	layer = 'parameters' if layer is None else layer
-	bounds = hyperparameters['bounds'][layer]
-	constant = hyperparameters['constants'][layer]	
+	bounds = hyperparameters['bounds']
 	initialization = hyperparameters['initialization']
 	random = hyperparameters['random']
 	pad = hyperparameters['pad']
@@ -6171,47 +6178,32 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 	bounds = [to_number(i,dtype) for i in bounds]
 
 	# Add random padding of values if parameters not reset
-	if (reset is not None) and (not reset):
-		parameters = padding(parameters,shape,key=key,bounds=bounds,random=pad)
-	else:
-		if initialization in ['interpolation']:
-			# Parameters are initialized as interpolated random values between bounds
-			interpolation = hyperparameters['interpolation']
-			smoothness = max(1,min(shape[-1]//2,hyperparameters['smoothness']))
-			shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
-			pts_interp = smoothness*arange(shape_interp[-1])
-			pts = arange(shape[-1])
+	parameters = padding(parameters,shape,key=key,bounds=bounds,random=pad,dtype=dtype)
 
-			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
-			for axis in range(ndim):
-				for i,value in zip(constant[axis].get('slice',[]),constant[axis].get('value',[])):
-					j = shapes[axis] + i if i < 0 else i
-					if j >= slices[axis].start and j < slices[axis].stop:
-						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-						parameters_interp[indices] = value
+	if initialization in ['interpolation']:
+		# Parameters are initialized as interpolated random values between bounds
+		interpolation = hyperparameters['interpolation']
+		smoothness = max(1,min(shape[-1]//2,hyperparameters['smoothness']))
+		shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
+		pts_interp = smoothness*arange(shape_interp[-1])
+		pts = arange(shape[-1])
 
-			try:
-				parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
-			except:
-				parameters = rand(shape,key=key,bounds=bounds,random=random)
+		parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random,dtype=dtype)
+		try:
+			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
+		except:
+			parameters = rand(shape,key=key,bounds=bounds,random=random,dtype=dtype)
 
-			for axis in range(ndim):
-				for i,value in zip(constant[axis].get('slice',[]),constant[axis].get('value',[])):
-					j = shapes[axis] + i if i < 0 else i
-					if j >= slices[axis].start and j < slices[axis].stop:
-						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-						parameters[indices] = value
+		parameters = minimums(bounds[1],maximums(bounds[0],parameters))
 
-			parameters = minimums(bounds[1],maximums(bounds[0],parameters))
+	elif initialization in ['uniform']:
+		parameters = ((bounds[0]+bounds[1])/2)*ones(shape,dtype=dtype)
+	elif initialization in ['random']:
+		parameters = rand(shape,key=key,bounds=bounds,random=random,dtype=dtype)
+	elif initialization in ['zero']:
+		parameters = zeros(shape,dtype=dtype)
 
-		elif initialization in ['uniform']:
-			parameters = ((bounds[0]+bounds[1])/2)*ones(shape)
-		elif initialization in ['random']:
-			parameters = rand(shape,key=key,bounds=bounds,random=random)
-		elif initialization in ['zero']:
-			parameters = zeros(shape)
-		else:
-			parameters = rand(shape,key=key,bounds=bounds,random=random)		
+	parameters = parameters.astype(dtype)
 
 	return parameters
 

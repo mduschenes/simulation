@@ -18,7 +18,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,gradient
-from src.utils import array,arange,eye,rand,einsum,prod
+from src.utils import array,arange,eye,rand,einsum,dot,prod
 from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt,is_array,datatype
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
@@ -222,24 +222,20 @@ class Object(System):
 		# Set data
 		if (not self.init) or (self.shape is None) or (self.scale is None):
 			self.data = None
-		
+		elif self.data is not None and not isinstance(self.data,(str,dict)):
+			self.data = array(self.data,dtype=self.dtype)
+
 		if is_array(self.data):
 			self.data = self.data
 			self.size = None
 		elif self.data is None:
 			self.data = self.data
-			self.shape = None
-			self.ndim = None
 			self.size = None
-			self.string = None
-			self.scale = None
 		else:
 			if isinstance(self.data,str):
 				self.string = self.data
 			self.__setup__(**kwargs)
 
-		if self.data is not None:
-			self.data = self.data.astype(dtype=self.dtype)
 
 		# Set samples
 		if self.size is not None:
@@ -253,7 +249,10 @@ class Object(System):
 			if (self.data.ndim>=self.length) and all(self.data.shape[i] == self.size[i] for i in range(self.length)):
 				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.length]),)*2),self.data,self.samples)
 
-		self.data = self(self.data)
+		try:
+			self.data = self(self.data)
+		except:
+			pass
 
 		return
 
@@ -268,9 +267,29 @@ class Object(System):
 		'''
 		if not isinstance(data,Null):
 			self.data = data
-			self.shape = self.data.shape if self.data is not None else None
-			self.ndim = self.data.ndim if self.data is not None else None
+			if is_array(self.data):
+				self.shape = self.data.shape if self.data is not None else None
+				self.ndim = self.data.ndim if self.data is not None else None
+			elif isinstance(self.data,dict):
+				self.shape = tuple((max(i) for i in zip(*(self.data[i].shape for i in self.data if self.data[i]))))
+				self.ndim = max(self.data[i].ndim for i in self.data)
+			else:
+				self.shape = None
+				self.ndim = None
 		return self.data
+
+	def __iter__(self):
+		yield from self.data
+
+	def __getitem__(self,index):
+		return self.data[index]
+
+	def __setitem__(self,index,item):
+		self.data[index] = item
+		return
+
+	def __len__(self):
+		return len(self.data)
 
 	def __setup__(self,**kwargs):
 		'''
@@ -661,7 +680,7 @@ class Lattice(System):
 		if is1d:
 			position = array([position])
 		
-		site = position.dot(self.n_i).astype(self.dtype)
+		site = dot(position,self.n_i).astype(self.dtype)
 
 		if is1d:
 			return site[0]
