@@ -11,16 +11,16 @@
 	},
 "seed":{
 	"seed":1821,
-	"size":20,
+	"size":5,
 	"reset":1821,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[2],		
+		"model.N":[4],		
 		"model.M":[5,10,20,50,100,200,500,1000,2000,5000,1000],
-		"model.tau":[80],
+		"model.tau":[240],
 
 		"system.unit":[1e6],
 		"system.dtype":["complex256"],
@@ -41,7 +41,20 @@
 		],
 		"parameters.xy.constants":[
 			{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
-		],			
+		],	
+
+		"parameters.xy.method":[
+			"unconstrained"
+		],
+		"parameters.xy.locality":[
+			null
+		],
+		"parameters.xy.bounds":[
+			[-1,1]
+		],
+		"parameters.xy.constants":[
+			null
+		],					
 
 		"optimize.iterations":[[0,1000]],
 		"optimize.optimizer":["cg"],
@@ -195,6 +208,10 @@
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"shape":[-1,-1],
+		"bounds":[-1,1],
+		"locality":null,
+		"constants":null,
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -217,6 +234,10 @@
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"shape":[-1,-1],
+		"bounds":[-1,1],
+		"locality":null,		
+		"constants":null,
 		"args":[],
 		"kwargs":{}
 		},
@@ -239,6 +260,10 @@
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
+		"shape":[-1,-1],
+		"bounds":[-1,1],
+		"locality":null,
+		"constants":null,
 		"args":[],
 		"kwargs":{}
 		}

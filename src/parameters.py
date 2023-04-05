@@ -419,9 +419,10 @@ class Parameters(Object):
 		if data is None:
 			data = self.parameters()
 
-		data = bound(data.reshape(indexer(self.index,self.data).shape))
-		inserter(self.index,data,self.data)
-		data = indexer(self.index,self.data).ravel()
+		# data = bound(data.reshape(indexer(self.index,self.data).shape))
+		# data = data.reshape(indexer(self.index,self.data).shape)
+		inserter(self.index,data.reshape(indexer(self.index,self.data).shape),self.data)
+		# data = indexer(self.index,self.data).ravel()
 
 		return data
 
