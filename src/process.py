@@ -726,13 +726,17 @@ def loader(data,settings,hyperparameters,verbose=None):
 						all(datum[OTHER][OTHER][OTHER][attr]==labels[attr] for attr in labels)
 						)
 						for datum in search(iterable.get(key_iterable)[j]) if datum):
-						print(i,j)
 						i = j
 						break
 
 
 				if i is None:
 					continue
+
+				for j in range(i):
+					iterable.get(key_iterable).pop(j);
+
+				i = 0					
 
 				for subindex,datum in enumerate(search(iterable.get(key_iterable)[i])):
 					if not datum:
@@ -765,7 +769,6 @@ def loader(data,settings,hyperparameters,verbose=None):
 							datum[attr][attr] = {prop: None for prop in data[attr]}
 
 			out = iterable.get(key_iterable)
-
 			tmp = []
 			for index,shape,item in search(out,returns=True):
 				i = index
