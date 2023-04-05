@@ -51,7 +51,7 @@ class Operator(System):
 		kwargs (dict): Additional system keyword arguments	
 	'''		
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
-		N=None,D=None,index=None,system=None,**kwargs):
+		N=None,D=None,system=None,**kwargs):
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -65,12 +65,10 @@ class Operator(System):
 
 		self.N = N
 		self.D = D
-		self.index = index
 		self.system = system
 
 		self.identity = None
 		self.dimensions = 1
-		self.coefficients = 1
 
 		self.__setup__(data,operator,site,string,interaction)
 
@@ -100,6 +98,11 @@ class Operator(System):
 		site = self.site if site is None else site
 		string = self.string if string is None else string
 		interaction = self.interaction if interaction is None else interaction
+
+		if isinstance(data,Operator):
+			for attr in data:
+				setattr(self,attr,getattr(data,attr))
+			return
 
 		if operator is None:
 			operator = [default]*self.N
@@ -138,20 +141,16 @@ class Operator(System):
 
 		return self.data
 
-	def exp(self,parameters=None,time=None):
+	def exp(self,parameters=None):
 		'''
 		Call exponential of operator
 		Args:
 			parameters (array): parameters
-			time (array): time
 		Returns:
 			operator (array): operator
 		'''
 
-		if parameters:
-			parameters = indexer(self.index,parameters)[time:time+1]
-
-		return cosh(self.coefficients*parameters)*self.identity + sinh(self.coefficients*parameters)*self.data
+		return cosh(parameters)*self.identity + sinh(parameters)*self.data
 
 	def __str__(self):
 		return delim.join(self.operator)
@@ -167,17 +166,15 @@ class Observable(System):
 	'''
 	Class for Observable
 	Args:
-		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction,hyperparameters dictionary for operator
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (dict): hyperparameters for operators						
 		operator (iterable[str]): string names of operators
 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		hyperparameters (iterable[dict]): hyperparameters for operators			
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -198,7 +195,7 @@ class Observable(System):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None,
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
 		space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
 
@@ -223,7 +220,6 @@ class Observable(System):
 		self.site = []
 		self.string = []
 		self.interaction = []
-		self.hyperparameters = []
 
 		self.n = None
 		self.g = None
@@ -248,50 +244,46 @@ class Observable(System):
 		self.__space__()
 		self.__lattice__()
 
-		self.__setup__(data,operator,site,string,interaction,hyperparameters)
+		self.__setup__(data,operator,site,string,interaction)
 
 		self.info()
 
 		return	
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup class
 		Args:
-			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction,hyperparameters dictionary for operator
+			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 				operator (iterable[str]): string names of operators
 				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 				string (iterable[str]): string labels of operators
 				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-				hyperparameters (dict): hyperparameters for operators							
 			operator (iterable[str]): string names of operators
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (iterable[dict]): hyperparameters for operators			
 		'''
 
-		# Update data
-		if operator is None:
-			operator = []
-		if site is None:
-			site = []
-		if string is None:
-			string = []
-		if interaction is None:
-			interaction = []
+		# Get operator,site,string,interaction from data
+		objs = {'operator':operator,'site':site,'string':string,'interaction':interaction}
 
+		for obj in objs:
+			objs[obj] = [] if objs[obj] is None else objs[obj]
 
-		if not isinstance(data,dict):
+		if data is None:
+			data = {}
+		elif all(isinstance(datum,Operator) for datum in data):
 			data = {datum.timestamp: datum for datum in data}
+		
+		assert isinstance(data,dict), 'Incorrect data format %r'%(type(data))			
 
-		operator.extend([data[name]['operator'] for name in data])
-		site.extend([data[name]['site'] for name in data])
-		string.extend([data[name]['string'] for name in data])
-		interaction.extend([data[name]['interaction'] for name in data])
+		if all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
+			for obj in objs:
+				objs[obj].extend([data[name][obj] for name in data])
 
 		# Set class attributes
-		self.__extend__(operator=operator,site=site,string=string,interaction=interaction)
+		self.__extend__(**objs)
 
 		# Set parameters
 		self.__initialize__()
@@ -302,7 +294,7 @@ class Observable(System):
 		return
 
 
-	def __append__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None):
+	def __append__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Append to class
 		Args:
@@ -311,13 +303,12 @@ class Observable(System):
 			site (int): site of local operator
 			string (str): string label of operator
 			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (dict): hyperparameters for operator			
 		'''
 		index = -1
-		self.__insert__(index,data,operator,site,string,interaction,hyperparameters)
+		self.__insert__(index,data,operator,site,string,interaction)
 		return
 
-	def __extend__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None):
+	def __extend__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup class
 		Args:
@@ -326,22 +317,21 @@ class Observable(System):
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (iterable[dict]): hyperparameters for operators			
 		'''
-		if all(i is None for i in [operator,site,string,interaction,hyperparameters]):
+		if all(i is None for i in [operator,site,string,interaction]):
 			return
 
 		if data is None:
-			size = min([len(i) for i in [operator,site,string,interaction,hyperparameters]])
+			size = min([len(i) for i in [operator,site,string,interaction]])
 			data = [None]*size
 
-		for _data,_operator,_site,_string,_interaction,_hyperparameter in zip(data,operator,site,string,interaction,hyperparameters):
+		for _data,_operator,_site,_string,_interaction,_hyperparameter in zip(data,operator,site,string,interaction):
 			self.__append__(_data,_operator,_site,_string,_interaction,_hyperparameter)
 
 		return
 
 
-	def __insert__(self,index,data,operator,site,string,interaction,hyperparameters):
+	def __insert__(self,index,data,operator,site,string,interaction):
 		'''
 		Insert to class
 		Args:
@@ -351,22 +341,19 @@ class Observable(System):
 			site (int): site of local operator
 			string (str): string label of operator
 			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (dict): hyperparameters for operator			
 		'''
 
 		if index == -1:
 			index = len(self.data)
 
-		if not isinstance(data,Operator):
-			data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,
-							N=self.N,D=self.D,system=self.system,**hyperparameters)
+		data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,
+						N=self.N,D=self.D,system=self.system)
 
 		self.data.insert(index,data)
 		self.operator.insert(index,operator)
 		self.site.insert(index,site)
 		self.string.insert(index,string)
 		self.interaction.insert(index,interaction)
-		self.hyperparameters.insert(index,hyperparameters)
 
 		self.__shape__()
 
@@ -382,12 +369,17 @@ class Observable(System):
 		'''
 
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
-		parameters = self.parameters.hyperparameters if isinstance(self.parameters,Parameters) else self.parameters
+		parameters = self.parameters
 		shape = (len(self.data),self.M)
 		dims = None
 		cls = self #{attr: getattr(self,attr) for attr in self if attr not in ['parameters','state','noise','label']}
 		check = lambda data,group: any(i in group for i in [data.string,'_'.join([data.string,''.join((str(i) for i in data.site))])])
 		system = self.system
+		
+		indexes = sorted(((data.string,*data.site) for data in self.data))
+		set(self.string)
+		indexes = {(string,:}
+
 		parameters = Parameters(parameters,shape,dims=dims,cls=cls,check=check,initialize=initialize,system=system)
 
 		# Get coefficients
@@ -396,7 +388,7 @@ class Observable(System):
 		# Update class attributes
 		self.parameters = parameters
 		self.coefficients = coefficients
-		self.dimensions = parameters.dimensions
+		self.dimensions = parameters.size
 
 
 		for parameter in self.parameters:
@@ -527,7 +519,7 @@ class Observable(System):
 		Returns
 			out (array): Return of function
 		'''		
-		parameters = self.__parameters__(parameters)
+		parameters = self.parameters(parameters)
 
 		data = sum(data(self.parameters) for data in self.data)
 
@@ -592,31 +584,6 @@ class Observable(System):
 
 	# @partial(jit,static_argnums=(0,))
 	def constraints(self,parameters):
-		''' 
-		Setup constraints
-		Args:
-			parameters (array): parameters
-		Returns:
-			constraints (array): constraints
-		'''		
-		return self.__constraints__(parameters)
-
-
-	# @partial(jit,static_argnums=(0,))
-	def __parameters__(self,parameters):
-		''' 
-		Setup parameters
-		Args:
-			parameters (array): parameters
-		Returns:
-			parameters (array): parameters
-		'''
-		parameters = self.parameters(parameters)
-		return parameters
-
-
-	# @partial(jit,static_argnums=(0,))
-	def __constraints__(self,parameters):
 		''' 
 		Setup constraints
 		Args:
@@ -871,17 +838,15 @@ class Hamiltonian(Observable):
 	'''
 	Hamiltonian class of Operators
 	Args:
-		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction,hyperparameters dictionary for operator
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (iterable[dict]): hyperparameters for operators			
 		operator (iterable[str]): string names of operators
 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 		string (iterable[str]): string labels of operators
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		hyperparameters (iterable[dict]): hyperparameters for operators			
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -902,7 +867,7 @@ class Hamiltonian(Observable):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None,
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
 				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
 
@@ -923,33 +888,28 @@ class Hamiltonian(Observable):
 			operator (array): Parameterized operator
 		'''		
 
-		parameters = self.__parameters__(parameters)
+		parameters = self.parameters(parameters)
 
 		data = sum(data(self.parameters) for data in self.data)
 
 		return data
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup class
 		Args:
-			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction,hyperparameters dictionary for operator
+			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 				operator (iterable[str]): string names of operators
 				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 				string (iterable[str]): string labels of operators
 				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-				hyperparameters (iterable[dict]): hyperparameters for operators			
 			operator (iterable[str]): string names of operators
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (iterable[dict]): hyperparameters for operators
 		'''
-		# Get operator,site,string,interaction,hyperparameters from data
-		objs = {
-			'operator':operator,'site':site,'string':string,
-			'interaction':interaction,'hyperparameters':hyperparameters
-			}
+		# Get operator,site,string,interaction from data
+		objs = {'operator':operator,'site':site,'string':string,'interaction':interaction}
 
 		for obj in objs:
 			objs[obj] = [] if objs[obj] is None else objs[obj]
@@ -961,8 +921,9 @@ class Hamiltonian(Observable):
 		
 		assert isinstance(data,dict), 'Incorrect data format %r'%(type(data))			
 
-		for obj in objs:
-			objs[obj].extend([data[name][obj] for name in data])
+		if all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
+			for obj in objs:
+				objs[obj].extend([data[name][obj] for name in data])
 
 		# Lattice sites
 		sites = {site: self.lattice(site) for site in ['i','i<j','<ij>','i...j']}	# sites types on lattice
@@ -982,9 +943,6 @@ class Hamiltonian(Observable):
 				if obj in ['site']:
 					if isinstance(value,str):
 						value = indices[value]
-				elif obj in ['hyperparameters']:
-					if not isinstance(value,dict):
-						value = {}
 				_objs[obj] = value
 
 			if any(i in indices[_objs['interaction']] for i in _objs['site']):
@@ -996,8 +954,6 @@ class Hamiltonian(Observable):
 								s if not isinstance(s,int) else [s])
 							).get(i,parse(i,int)) 
 							for i in _objs['site']]
-						elif obj in ['hyperparameters']:
-							value = {**_objs[obj],'index':i}
 						else:
 							value = _objs[obj]
 
@@ -1031,16 +987,14 @@ class Unitary(Hamiltonian):
 	'''
 	Unitary class of Operators
 	Args:
-		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction,hyperparameters dictionary for operator
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
 			operator (iterable[str]): string names of operators
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 			string (iterable[str]): string labels of operators
 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-			hyperparameters (iterable[dict]): hyperparameters for operators			
 		operator (iterable[str]): string names of operators
 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
 		string (iterable[str]): string labels of operators
-		hyperparameters (iterable[dict]): hyperparameters for operators					
 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		N (int): Number of qudits
 		D (int): Dimension of qudits
@@ -1062,11 +1016,11 @@ class Unitary(Hamiltonian):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,hyperparameters=None,
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
 				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
 		
-		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,hyperparameters=hyperparameters,
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
 				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
 
@@ -1082,13 +1036,13 @@ class Unitary(Hamiltonian):
 			operator (array): Parameterized operator
 		'''		
 
-		parameters = self.__parameters__(parameters)
+		parameters = self.parameters(parameters)
 
 		data = self.identity()
 		
 		for i in range(self.M):
-			for j in trotter([data.exp(self.parameters,i) for data in self.data],self.P):
-				data = dot(j,data)
+			for operator in trotter([data.exp(indexer([*self.parameters.index[j],i],self.parameters)) for j,data in enumerate(self.data)],self.P):
+				data = dot(operator,data)
 		
 		return data
 
@@ -1145,7 +1099,7 @@ class Unitary(Hamiltonian):
 		])
 
 		# Calculate parameters and gradient
-		parameters = self.__parameters__(parameters)
+		parameters = self.parameters(parameters)
 
 		coefficients = self.coefficients
 		data = array(trotter([datum() for datum in data],P))

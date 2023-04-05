@@ -8,6 +8,7 @@ import scipy as sp
 import scipy.stats
 import scipy.special
 import pandas as pd
+from pandas.api.types import is_float_dtype
 from natsort import natsorted,realsorted
 from math import prod
 
@@ -865,7 +866,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 	functions = {}
 
-	dtype = {attr: 'float' for attr in data if pd.api.types.is_float_dtype(data[attr].dtype) }
+	dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype) }
 	data = data.astype(dtype)
 
 	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 
