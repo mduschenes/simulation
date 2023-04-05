@@ -4,6 +4,7 @@
 import os,sys,itertools,functools
 from copy import deepcopy
 from functools import partial
+from math import prod
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -11,7 +12,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt,cos,sin
+from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,sigmoid,abs,qr,sqrt,cos,sin,log
 from src.utils import einsum,tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer
 from src.utils import slice_slice,datatype,returnargs,is_array,is_unitary,is_hermitian,allclose
 from src.utils import pi,e,delim
@@ -30,6 +31,7 @@ basis = {
 	'10':array([[0,0],[1,0]]),
 	'11':array([[0,0],[0,1]]),
 }
+d = 2
 
 
 def id(shape,bounds=None,random=None,scale=None,seed=None,dtype=None):
@@ -67,7 +69,13 @@ def pauli(shape,bounds=None,random=None,scale=None,seed=None,dtype=None):
 	'''
 	coefficients = 2*pi/2
 
-	operators = random.split(delim)
+	n = int(log(prod(shape))/len(shape)/log(d))
+
+	if (not random.count(delim)) and (random in basis):
+		random = delim.join([random]*n)
+
+	operators = random.split(delim)[:n]
+	
 	I = tensorprod([basis['I'] for i in operators])
 	G = tensorprod([basis[i] for i in operators])
 

@@ -84,6 +84,7 @@ def train(hyperparameters):
 		if hyperparameters['boolean'].get('train'):
 
 			parameters = model.parameters()
+
 			shapes = model.shapes
 			label = model.label()
 			hyperparams = hyperparameters['optimize']

@@ -15,6 +15,9 @@
 
 ##SBATCH --dependency=afterany:
 
+##--nodelist=cpu[0-10]
+##--exclude=cpu[0-10]
+
 #SBATCH --parsable
 #SBATCH --get-user-env
 #SBATCH --cpus-per-task=1

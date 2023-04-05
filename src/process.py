@@ -23,7 +23,7 @@ from src.utils import asndarray,asscalar
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
-from src.iterables import getter,setter,search,insert,indexer,nullshape
+from src.iterables import getter,setter,search,inserter,indexer,nullshape
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
@@ -199,7 +199,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 				tmp = []
 				for index,shape,item in search(settings[instance][subinstance][obj][prop],returns=True):
 					index = [*index,*[0]*(INDEXDIM-len(shape))]
-					insert(index,item,tmp)
+					inserter(index,item,tmp)
 				settings[instance][subinstance][obj][prop] = tmp
 
 
@@ -704,6 +704,36 @@ def loader(data,settings,hyperparameters,verbose=None):
 			for i,(item,shape,data) in enumerate(search(elements.get(key_elements),returns=True)):
 				if (not iterable.get(key_iterable)) or i >= len(iterable.get(key_iterable)):
 					continue
+
+				i = None
+				axes = {attr: data[attr] for attr in data if attr in ALL}
+				if data.get(OTHER) is None:
+					continue
+				if isinstance(data[OTHER],str):
+					labels = {data[OTHER]:None}
+				elif isinstance(data[OTHER],dict):
+					if OTHER in data[OTHER]:
+						labels = {attr: data[OTHER][OTHER][attr] for attr in data[OTHER][OTHER]}
+					else:
+						labels = {attr: data[OTHER][attr] for attr in data[OTHER]}
+				else:
+					labels = {attr: None for attr in data[OTHER]}
+
+				for j in range(len(iterable.get(key_iterable))):
+					if all((
+						all(datum[OTHER][attr]['label']==axes[attr] for attr in axes) and 
+						(len(datum[OTHER][OTHER][OTHER]) == len(labels)) and
+						all(datum[OTHER][OTHER][OTHER][attr]==labels[attr] for attr in labels)
+						)
+						for datum in search(iterable.get(key_iterable)[j]) if datum):
+						print(i,j)
+						i = j
+						break
+
+
+				if i is None:
+					continue
+
 				for subindex,datum in enumerate(search(iterable.get(key_iterable)[i])):
 					if not datum:
 						continue
@@ -740,7 +770,7 @@ def loader(data,settings,hyperparameters,verbose=None):
 			for index,shape,item in search(out,returns=True):
 				i = index
 				index = [*index,*[0]*(INDEXDIM-len(shape))]
-				insert(index,item,tmp)
+				inserter(index,item,tmp)
 			for i in range(len(tmp)):
 				out[i] = tmp[i]
 
@@ -830,7 +860,11 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		obj = to_tuple(obj.std(0)/np.sqrt(obj.shape[0]))
 		return obj		
 
-	functions = {}			
+	functions = {}
+
+	dtype = {attr: 'float' for attr in data if pd.api.types.is_float_dtype(data[attr].dtype) }
+	data = data.astype(dtype)
+
 	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 
 				for attr in data}
 
@@ -872,7 +906,8 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		groups = data[boolean].groupby(by=by,as_index=False)
 
-		groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
+		if analyses:
+			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
 
 		shapes = {group[:-len(independent)] if (independent) and isinstance(group,tuple) else group: groups.get_group(group).shape for group in groups.groups}
 
@@ -1162,7 +1197,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							index = [*index[:-len(axis)],*axis]
 							item = data if any(data[axes] is not None for axes in ALL if axes in data) else None
 							iterable = settings[instance][key][obj][prop]
-							insert(index,item,iterable)
+							inserter(index,item,iterable)
 							
 			settings[instance].pop(subinstance);
 			grid[instance].pop(subinstance);
@@ -1603,11 +1638,11 @@ def plotter(settings,hyperparameters,verbose=None):
 						conditions([subslice for subslice in slices if not isinstance(subslice,slice)],op='and'),
 						*[subslice for subslice in slices if isinstance(subslice,slice)]
 						]
-					slices = [subslice if subslice is not None else slice(None) for subslice in slices]
+					slices = [subslice for subslice in slices if subslice is not None]
 
 					normalize = data[OTHER][OTHER].get('normalize')
 					normalizations = {
-						'size': (lambda axes,data: (np.array(data[axes])/(len(data[axes])-1)).tolist() if (len(data[axes])>1) else 0.5),
+						'size': (lambda axes,data: (data[axes]/(len(data[axes])-1)) if (len(data[axes])>1) else np.array([0.5])),
 						None: (lambda axes,data: data[axes]),
 					}
 					if not normalize:
@@ -1629,6 +1664,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						if data.get(attr) is None:
 							continue
 
+
 						if attr in [OTHER]:
 						
 							if data[attr][OTHER].get('labels') is not None:
@@ -1641,7 +1677,9 @@ def plotter(settings,hyperparameters,verbose=None):
 							
 							if isinstance(data.get(attr),scalars):
 								continue							
-							
+
+							data[attr] = np.array(data[attr])
+
 							if normalize.get(attr):
 								data[attr] = normalize[attr](attr,data)
 

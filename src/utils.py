@@ -32,24 +32,34 @@ import matplotlib.pyplot as plt
 import numpy as onp
 import scipy as osp
 import pandas as pd
-import jax
-import jax.numpy as np
-import jax.scipy as sp
-import jax.example_libraries.optimizers
-from jax._src import prng as jaxprng
-from jax.tree_util import register_pytree_node_class as tree_register
-from jax.tree_util import tree_map as tree_map
 
-import absl.logging
-absl.logging.set_verbosity(absl.logging.INFO)
+# import jax
+# import jax.numpy as np
+# import jax.scipy as sp
+# import jax.example_libraries.optimizers
+# from jax._src import prng as jaxprng
+# from jax.tree_util import register_pytree_node_class as tree_register
+# from jax.tree_util import tree_map as tree_map
 
-configs = {
-	'jax_disable_jit':False,
-	'jax_platforms':'cpu',
-	'jax_enable_x64': True
-	}
-for name in configs:
-	jax.config.update(name,configs[name])
+import autograd
+import autograd.numpy as np
+import autograd.scipy as sp
+
+
+
+# (.*) = (.*)\.at\[(.*)\]\.set\((.*)\)
+# \1\[\3\] = \4
+
+# import absl.logging
+# absl.logging.set_verbosity(absl.logging.INFO)
+
+# configs = {
+# 	'jax_disable_jit':False,
+# 	'jax_platforms':'cpu',
+# 	'jax_enable_x64': True
+# 	}
+# for name in configs:
+# 	jax.config.update(name,configs[name])
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 pd.set_option('display.max_rows', 500)
@@ -61,11 +71,12 @@ pi = np.pi
 e = np.exp(1)
 nan = np.nan
 inf = np.inf
-scalars = (int,np.integer,float,np.floating,str,type(None))
+scalars = (int,np.integer,float,np.floating,onp.int,onp.integer,onp.float,onp.floating,str,type(None))
 nulls = ('',None)
 delim = '.'
 
-optimizer_libraries = jax.example_libraries.optimizers
+# optimizer_libraries = jax.example_libraries.optimizers
+optimizer_libraries = []
 
 class Null(object):
 	def __str__(self):
@@ -253,7 +264,8 @@ def jit(func,*,static_argnums=None,**kwargs):
 	Returns:
 		func (callable): Compiled function
 	'''
-	return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+	# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+	return wraps(func)(partial(func,**kwargs))
 
 # @partial(jit,static_argnums=(2,))	
 def vmap(func,in_axes=0,out_axes=0,axes_name=None):	
@@ -268,7 +280,16 @@ def vmap(func,in_axes=0,out_axes=0,axes_name=None):
 	Returns:
 		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
 	'''
-	return jax.vmap(func,in_axes,out_axes,axes_name)
+	in_axes = [in_axes] if in_axes is None or isinstance(in_axes,int) else in_axes
+	out_axes = [out_axes] if out_axes is None or isinstance(out_axes,int) else out_axes
+	axes_name = [axes_name] if axes_name is None or isinstance(axes_name,int) else axes_name
+
+	def vmapper(*args,**kwargs):
+		args = itertools.product(*(arg if (i in in_axes) and ((len(in_axes)<len(args)) or (in_axes[i] is not None)) else [arg] for i,arg in enumerate(args)))
+		# TODO arbitrary in_axes, out_axes
+		return np.array([func(*arg,**kwargs) for arg in args])
+
+	return vmapper
 
 
 # @partial(jit,static_argnums=(2,))	
@@ -283,9 +304,12 @@ def forloop(start,end,func,out):
 	Returns:
 		out (array): Return of loop
 	'''
-	if (end-start) <= 0:
-		return out
-	return jax.lax.fori_loop(start,end,func,out)
+	# if (end-start) <= 0:
+	# 	return out
+	# return jax.lax.fori_loop(start,end,func,out)
+	for i in range(start,end):
+		out = func(i,out)
+	return out
 
 
 # @partial(jit,static_argnums=(2,))
@@ -325,7 +349,8 @@ def value_and_gradient(func,grad=None,returns=False):
 
 	if grad is None:
 		grad = gradient(func)
-		value_and_grad = jit(jax.value_and_grad(func))
+		# value_and_grad = jit(jax.value_and_grad(func))
+		value_and_grad = _value_and_grad(func,grad)
 	else:
 		value_and_grad = _value_and_grad(func,grad)
 
@@ -430,7 +455,12 @@ def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 	Returns:
 		grad (callable): Gradient of function
 	'''
-	_grad = jit(jax.grad(func,argnums=argnums,holomorphic=holomorphic))
+
+	argnum = argnums
+	if holomorphic:
+		_grad = jit(autograd.grad(func,argnum=argnum))
+	else:
+		_grad = jit(autograd.grad(func,argnum=argnum))
 
 	if move:
 		grad = _grad
@@ -452,7 +482,12 @@ def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
+	# _grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
+	argnum = argnums
+	if holomorphic:
+		_grad = jit(autograd.jacobian(func,argnum=argnum))
+	else:
+		_grad = jit(autograd.jacobian(func,argnum=argnum))
 
 	if move:
 		@jit
@@ -478,7 +513,12 @@ def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
+	# _grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
+	argnum = argnums
+	if holomorphic:
+		_grad = jit(autograd.grad(func,argnum=argnum))
+	else:
+		_grad = jit(autograd.grad(func,argnum=argnum))	
 
 	if move:
 		@jit
@@ -507,7 +547,14 @@ def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	Returns:
 		grad (callable): Hessian of function
 	'''
-	grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
+	# grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
+	
+	argnum = argnums
+	if holomorphic:
+		grad = jit(autograd.hessian(func,argnum=argnum))
+	else:
+		grad = jit(autograd.hessian(func,argnum=argnum))	
+
 	return grad
 
 
@@ -722,84 +769,84 @@ class String(str):
 
 
 
-@tree_register
-class Parameters(dict):
-	'''
-	Class for pytree subclassed dict dictionary of parameters, with children and auxiliary keys
-	Args:
-		parameters (dict): Dictionary of parameters
-		children (iterable): Iterable of tree leaf children keys
-		auxiliary (iterable): Iterable of tree leaf auxiliary keys
-	'''
-	def __init__(self,parameters,children=None,auxiliary=None):
-		super().__init__(parameters)
+# @tree_register
+# class Parameters(dict):
+# 	'''
+# 	Class for pytree subclassed dict dictionary of parameters, with children and auxiliary keys
+# 	Args:
+# 		parameters (dict): Dictionary of parameters
+# 		children (iterable): Iterable of tree leaf children keys
+# 		auxiliary (iterable): Iterable of tree leaf auxiliary keys
+# 	'''
+# 	def __init__(self,parameters,children=None,auxiliary=None):
+# 		super().__init__(parameters)
 
-		if children is None:
-			children = [parameter for parameter in parameters]
-		if auxiliary is None:
-			auxiliary = []
-		else:
-			auxiliary = [parameter for parameter in parameters if parameters not in children]
+# 		if children is None:
+# 			children = [parameter for parameter in parameters]
+# 		if auxiliary is None:
+# 			auxiliary = []
+# 		else:
+# 			auxiliary = [parameter for parameter in parameters if parameters not in children]
 
-		self.children = children
-		self.auxiliary = auxiliary
-		return
+# 		self.children = children
+# 		self.auxiliary = auxiliary
+# 		return
 
-	def tree_flatten(self):
-		keys = (self.children,self.auxiliary,)
-		children = (*(self[parameter] for parameter in self.children),)
-		auxiliary = (*keys,*(self[parameter] for parameter in self.auxiliary),)
-		return (children,auxiliary)
+# 	def tree_flatten(self):
+# 		keys = (self.children,self.auxiliary,)
+# 		children = (*(self[parameter] for parameter in self.children),)
+# 		auxiliary = (*keys,*(self[parameter] for parameter in self.auxiliary),)
+# 		return (children,auxiliary)
 
-	@classmethod
-	def tree_unflatten(cls,auxiliary,children):
-		keys,auxiliary = auxiliary[:2],auxiliary[2:]
-		parameters = {
-			**dict(zip(keys[0],children)),
-			**dict(zip(keys[1],auxiliary))
-			}
-		return cls(parameters)
+# 	@classmethod
+# 	def tree_unflatten(cls,auxiliary,children):
+# 		keys,auxiliary = auxiliary[:2],auxiliary[2:]
+# 		parameters = {
+# 			**dict(zip(keys[0],children)),
+# 			**dict(zip(keys[1],auxiliary))
+# 			}
+# 		return cls(parameters)
 
-def tree_func(func):
-	'''
-	Perform binary function on trees a and b
-	Args:
-		func (callable): Callable function with signature func(*args,**kwargs)
-	Returns:
-		tree_func (callable): Function that returns tree_map pytree of function call with signature tree_func(*args,**kwargs)
-	'''
-	@jit
-	def tree_func(*args,**kwargs):
-		return tree_map(func,*args,**kwargs)
-	return tree_func
+# def tree_func(func):
+# 	'''
+# 	Perform binary function on trees a and b
+# 	Args:
+# 		func (callable): Callable function with signature func(*args,**kwargs)
+# 	Returns:
+# 		tree_func (callable): Function that returns tree_map pytree of function call with signature tree_func(*args,**kwargs)
+# 	'''
+# 	@jit
+# 	def tree_func(*args,**kwargs):
+# 		return tree_map(func,*args,**kwargs)
+# 	return tree_func
 
 
 
-@tree_func
-@jit
-def tree_dot(a,b):
-	'''
-	Perform dot product function on trees a and b
-	Args:
-		a (pytree): Pytree object to perform function
-		b (pytree): Pytree object to perform function
-	Returns:
-		tree_map (pytree): Return pytree of function call
-	'''	
-	return dot(a.ravel(),b.ravel())
+# @tree_func
+# @jit
+# def tree_dot(a,b):
+# 	'''
+# 	Perform dot product function on trees a and b
+# 	Args:
+# 		a (pytree): Pytree object to perform function
+# 		b (pytree): Pytree object to perform function
+# 	Returns:
+# 		tree_map (pytree): Return pytree of function call
+# 	'''	
+# 	return dot(a.ravel(),b.ravel())
 
-@tree_func
-@jit
-def tree_add(a,b):
-	'''
-	Perform add function on trees a and b
-	Args:
-		a (pytree): Pytree object to perform function
-		b (pytree): Pytree object to perform function
-	Returns:
-		tree_map (pytree): Return pytree of function call
-	'''
-	return add(a,b)
+# @tree_func
+# @jit
+# def tree_add(a,b):
+# 	'''
+# 	Perform add function on trees a and b
+# 	Args:
+# 		a (pytree): Pytree object to perform function
+# 		b (pytree): Pytree object to perform function
+# 	Returns:
+# 		tree_map (pytree): Return pytree of function call
+# 	'''
+# 	return add(a,b)
 
 
 def decorator(*args,**kwargs):
@@ -1108,40 +1155,40 @@ def PRNGKey(seed=None,size=False,reset=None):
 	Returns:
 		key (key,list[key]): Random key
 	'''	
-	def default_prng_impl():
+	# def default_prng_impl():
 		
-		'''
-		Get the default PRNG implementation.
+	# 	'''
+	# 	Get the default PRNG implementation.
 
-		The default implementation is determined by ``config.jax_default_prng_impl``,
-		which specifies it by name. This function returns the corresponding
-		``jax.prng.PRNGImpl`` instance.
-		'''
+	# 	The default implementation is determined by ``config.jax_default_prng_impl``,
+	# 	which specifies it by name. This function returns the corresponding
+	# 	``jax.prng.PRNGImpl`` instance.
+	# 	'''
 
-		PRNG_IMPLS = {
-			'threefry2x32': jaxprng.threefry_prng_impl,
-			'rbg': jaxprng.rbg_prng_impl,
-			'unsafe_rbg': jaxprng.unsafe_rbg_prng_impl,
-			}
+	# 	PRNG_IMPLS = {
+	# 		'threefry2x32': jaxprng.threefry_prng_impl,
+	# 		'rbg': jaxprng.rbg_prng_impl,
+	# 		'unsafe_rbg': jaxprng.unsafe_rbg_prng_impl,
+	# 		}
 
-		impl_name = jaxconfig.jax_default_prng_impl
-		assert impl_name in PRNG_IMPLS, impl_name
-		return PRNG_IMPLS[impl_name]
+	# 	impl_name = jaxconfig.jax_default_prng_impl
+	# 	assert impl_name in PRNG_IMPLS, impl_name
+	# 	return PRNG_IMPLS[impl_name]
 
 
 	if reset is not None:
-		onp.random.seed(reset)
+		np.random.seed(reset)
 
 	if seed is None:
-		seed = onp.random.randint(1e12)
+		seed = np.random.randint(1e12)
 
 	if isinstance(seed,(int)):
-		key = jax.random.PRNGKey(seed)
+		key = np.random.randint(1e12)
 	else:
 		key = asndarray(seed,dtype=np.uint32)
 
 	if size:
-		key = jax.random.split(key,num=size)
+		key = np.random.randint(1e12,size=size)
 
 	return key
 
@@ -1198,15 +1245,18 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 
 	if random in ['uniform','rand']:
 		def func(key,shape,bounds,dtype):
-			out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+			# out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+			out = np.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
 			return out
 	elif random in ['randint']:
 		def func(key,shape,bounds,dtype):		
-			out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+			# out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+			out = np.random.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype)		
 			return out
 	elif random in ['gaussian','normal']:
 		def func(key,shape,bounds,dtype):
-			out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
+			# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
+			out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*np.random.normal(size=shape).astype(dtype)				
 			return out
 	elif random in ['haar']:
 		def func(key,shape,bounds,dtype):
@@ -1226,6 +1276,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 			else:
 				reshape = out.shape
 
+
 			out = out.reshape(reshape)
 
 			for i in range(out.shape[0]):
@@ -1235,7 +1286,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 					R = diag(R)
 					R = diag(R/abs(R))
 					
-					out = out.at[i,j].set(Q.dot(R))
+					out[i,j] = dot(Q,R)
 
 			out = out.reshape(shape)
 
@@ -1283,7 +1334,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 	elif random in ['zero']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape[-1],dtype=dtype)
-			out = out.at[0].set(1)
+			out[0] = 1
 			ndim = len(shape)
 			if ndim == 1:
 				pass
@@ -1298,7 +1349,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 	elif random in ['one']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape[-1],dtype=dtype)
-			out = out.at[-1].set(1)
+			out[-1] = 1
 			ndim = len(shape)
 			if ndim == 1:
 				pass
@@ -1313,7 +1364,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 	elif random in ['plus']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape[-1],dtype=dtype)
-			out = out.at[:].set(1)/sqrt(shape[-1])
+			out[:] = 1/sqrt(shape[-1])
 			ndim = len(shape)
 			if ndim == 1:
 				pass
@@ -1328,8 +1379,8 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 	elif random in ['minus']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape[-1],dtype=dtype)
-			out = out.at[0::2].set(1)/sqrt(shape[-1])
-			out = out.at[1::2].set(-1)/sqrt(shape[-1])
+			out[0::2] = 1/sqrt(shape[-1])
+			out[1::2] = -1/sqrt(shape[-1])
 			ndim = len(shape)
 			if ndim == 1:
 				pass
@@ -1361,7 +1412,8 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 			return out								
 	else:
 		def func(key,shape,bounds,dtype):
-			out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+			# out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+			out = np.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
 			return out
 
 	if mesh is not None:
@@ -2240,7 +2292,7 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = einsummation(abs2(operands[0]-operands[1].conj()).real)
+		out = einsummation(abs2(operands[0]-operands[1].conj()))
 		return wrapper(out,*operands)
 	
 	if arrays:
@@ -2328,7 +2380,7 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = abs2(einsummation(*operands)).real
+		out = abs2(einsummation(*operands))
 		return wrapper(out,*operands)
 	
 	if arrays:
@@ -3297,7 +3349,8 @@ def slicing(a,start,size):
 	Returns:
 		a (array): Sliced array
 	'''
-	return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
+	# return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
+	return a[start:start+size]
 
 
 def slice_size(*slices):
@@ -4367,7 +4420,7 @@ def repeats(a,repeats,axis):
 		repeats = (repeats,)
 	if isinstance(axis,int):
 		axis = (axis,)		
-	a = expand_dims(a,range(a.ndim,max(axis)+1))
+	a = expand_dims(a,list(range(a.ndim,max(axis)+1)))
 	for rep,ax in zip(repeats,axis):
 		a = repeat(a,rep,ax)
 	return a
@@ -4475,7 +4528,7 @@ def expand_dims(a,axis):
 
 
 
-def padding(a,shape,key=None,bounds=[0,1],random='zeros'):
+def padding(a,shape,key=None,bounds=[0,1],random=None,dtype=None):
 	'''
 	Ensure array is shape and pad with values
 	Args:
@@ -4484,9 +4537,15 @@ def padding(a,shape,key=None,bounds=[0,1],random='zeros'):
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
+		dtype (data_type): Datatype of array		
 	Returns:
 		out (array): Padded array
 	'''
+
+	if a is None:
+		a = zeros(shape,dtype=dtype)
+	else:
+		a = array(a,dtype=dtype)
 
 	if isinstance(shape,int):
 		shape = [shape]
@@ -4494,7 +4553,7 @@ def padding(a,shape,key=None,bounds=[0,1],random='zeros'):
 	ndim = len(shape)
 
 	if a.ndim < ndim:
-		a = expand_dims(a,range(a.ndim,ndim))
+		a = expand_dims(a,list(range(a.ndim,ndim)))
 
 	a = take(a,shape,range(ndim))
 
@@ -4543,7 +4602,8 @@ def randomstring(K,N,D=2):
 	else:
 		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
 
-	alpha = jax.random.uniform(key,(K*N,d))
+	# alpha = jax.random.uniform(key,(K*N,d))
+	alpha = np.random.uniform(size=(K*N,d))
 	
 	string = vtensordot(alpha,basis,1)
 	string = string.reshape((K,N,D,D))
@@ -4576,7 +4636,8 @@ def paulistring(string,N,K,D=2):
 	else:
 		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
 
-	alpha = jax.random.uniform(key,(K*N,d))
+	# alpha = jax.random.uniform(key,(K*N,d))
+	alpha = np.random.uniform(size=(K*N,d))
 	
 	string = vtensordot(alpha,basis,1)
 	string = string.reshape((K,N,D,D))
@@ -5583,7 +5644,7 @@ def sigmoid(a,scale=1):
 	# return sp.special.expit(scale*a)
 
 @jit
-def bound(a,kwargs):
+def bound(a,kwargs={}):
 	'''
 	Bound array
 	Args:
@@ -5592,7 +5653,7 @@ def bound(a,kwargs):
 	Returns:
 		out (array): Bounded array
 	'''
-	return 2*sigmoid(a,kwargs['sigmoid']) - 1
+	return 2*sigmoid(a,kwargs.get('sigmoid',1)) - 1
 
 
 @jit
@@ -6077,15 +6138,13 @@ def padder(strings,padding=' ',delimiter=None,justification='left'):
 	return padded
 
 
-def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=None,shapes=None,dtype=None):
+def initialize(parameters,shape,hyperparameters,slices=None,shapes=None,dtype=None):
 	'''
 	Initialize parameters
 	Args:
 		parameters (array): parameters array
 		shape (iterable): shape of parameters
 		hyperparameters (dict): hyperparameters for initialization
-		reset (bool): Overwrite existing parameters
-		layer (str): Layer type of parameters
 		slices (iterable): slices of array within containing array
 		shapes (iterable): shape of containing array of parameters
 		dtype (str,datatype): data type of parameters		
@@ -6094,9 +6153,7 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 	'''	
 
 	# Initialization hyperparameters
-	layer = 'parameters' if layer is None else layer
-	bounds = hyperparameters['bounds'][layer]
-	constant = hyperparameters['constants'][layer]	
+	bounds = hyperparameters['bounds']
 	initialization = hyperparameters['initialization']
 	random = hyperparameters['random']
 	pad = hyperparameters['pad']
@@ -6121,47 +6178,32 @@ def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=Non
 	bounds = [to_number(i,dtype) for i in bounds]
 
 	# Add random padding of values if parameters not reset
-	if not reset:
-		parameters = padding(parameters,shape,key=key,bounds=bounds,random=pad)
-	else:
-		if initialization in ['interpolation']:
-			# Parameters are initialized as interpolated random values between bounds
-			interpolation = hyperparameters['interpolation']
-			smoothness = max(1,min(shape[-1]//2,hyperparameters['smoothness']))
-			shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
-			pts_interp = smoothness*arange(shape_interp[-1])
-			pts = arange(shape[-1])
+	parameters = padding(parameters,shape,key=key,bounds=bounds,random=pad,dtype=dtype)
 
-			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
-			for axis in range(ndim):
-				for i,value in zip(constant[axis].get('slice',[]),constant[axis].get('value',[])):
-					j = shapes[axis] + i if i < 0 else i
-					if j >= slices[axis].start and j < slices[axis].stop:
-						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-						parameters_interp = parameters_interp.at[indices].set(value)
+	if initialization in ['interpolation']:
+		# Parameters are initialized as interpolated random values between bounds
+		interpolation = hyperparameters['interpolation']
+		smoothness = max(1,min(shape[-1]//2,hyperparameters['smoothness']))
+		shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
+		pts_interp = smoothness*arange(shape_interp[-1])
+		pts = arange(shape[-1])
 
-			try:
-				parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
-			except:
-				parameters = rand(shape,key=key,bounds=bounds,random=random)
+		parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random,dtype=dtype)
+		try:
+			parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
+		except:
+			parameters = rand(shape,key=key,bounds=bounds,random=random,dtype=dtype)
 
-			for axis in range(ndim):
-				for i,value in zip(constant[axis].get('slice',[]),constant[axis].get('value',[])):
-					j = shapes[axis] + i if i < 0 else i
-					if j >= slices[axis].start and j < slices[axis].stop:
-						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-						parameters = parameters.at[indices].set(value)
+		parameters = minimums(bounds[1],maximums(bounds[0],parameters))
 
-			parameters = minimums(bounds[1],maximums(bounds[0],parameters))
+	elif initialization in ['uniform']:
+		parameters = ((bounds[0]+bounds[1])/2)*ones(shape,dtype=dtype)
+	elif initialization in ['random']:
+		parameters = rand(shape,key=key,bounds=bounds,random=random,dtype=dtype)
+	elif initialization in ['zero']:
+		parameters = zeros(shape,dtype=dtype)
 
-		elif initialization in ['uniform']:
-			parameters = ((bounds[0]+bounds[1])/2)*ones(shape)
-		elif initialization in ['random']:
-			parameters = rand(shape,key=key,bounds=bounds,random=random)
-		elif initialization in ['zero']:
-			parameters = zeros(shape)
-		else:
-			parameters = rand(shape,key=key,bounds=bounds,random=random)		
+	parameters = parameters.astype(dtype)
 
 	return parameters
 
