@@ -30,31 +30,10 @@
 		"noise.scale":[null],
 		"state.scale":[null],
 
-		"parameters.xy.method":[
-			"unconstrained"
-		],
-		"parameters.xy.locality":[
-			{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]}
-		],
-		"parameters.xy.bounds":[
-			{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]}
-		],
-		"parameters.xy.constants":[
-			{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]}
-		],	
-
-		"parameters.xy.method":[
-			"unconstrained"
-		],
-		"parameters.xy.locality":[
-			null
-		],
-		"parameters.xy.bounds":[
-			[-1,1]
-		],
-		"parameters.xy.constants":[
-			null
-		],					
+		"parameters.xy.method":["unconstrained"],
+		"parameters.xy.locality":[null],
+		"parameters.xy.bounds":[[-1,1]],
+		"parameters.xy.constants":[null],					
 
 		"optimize.iterations":[[0,1000]],
 		"optimize.optimizer":["cg"],
@@ -190,28 +169,20 @@
 		"init":true,
 		"category":"variable",
 		"method":"constrained",
-		"locality":{"parameters":["local","local"],"features":["local","local","local"],"variables":["local","local"]},
-		"locality":{"parameters":["global","local"],"features":["local","global","local"],"variables":["global","local"]},
-		"parameters":null,
-		"shape":{"parameters":[-2,-1],"features":[2,-1,-1],"variables":[-1,-1]},
+		"data":null,
+		"shape":[-2,-1],
 		"size":[-1,-1],
-		"group":[["x"],["y"]],
 		"scale":1,
+		"group":[["x"],["y"]],
+		"bounds":[-1,1],
+		"locality":null,
+		"constants":null,
 		"initialization":"interpolation",
 		"random":"uniform",
 		"interpolation":3,
 		"smoothness":2,
 		"pad":"random",
 		"seed":null,	
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
-		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
-		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
-		"shape":[-1,-1],
-		"bounds":[-1,1],
-		"locality":null,
-		"constants":null,
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -219,25 +190,19 @@
 		"string":"z",
 		"init":true,
 		"category":"constant",
-		"method":null,		
-		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
-		"parameters":[-1e-2,0,1e-3,-5e-2,2e-3],
-		"parameters":[-1,0,1,-1,1],
-		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
+		"method":null,	
+		"data":[0,1,-1,1,1,-1],	
+		"shape":[-1,-1],
 		"size":[-1,-1],
-		"group":[["z"]],
 		"scale":1,
+		"group":[["z"]],
+		"bounds":[-1,1],
+		"locality":null,
+		"constants":null,
 		"initialization":"random",
 		"random":"uniform",
 		"pad":"random",
 		"seed":null,
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
-		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"shape":[-1,-1],
-		"bounds":[-1,1],
-		"locality":null,		
-		"constants":null,
 		"args":[],
 		"kwargs":{}
 		},
@@ -246,24 +211,18 @@
 		"init":true,
 		"category":"constant",
 		"method":null,		
-		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
-		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],
-		"parameters":[1,1,1,1,1,1,1,1,1,1],
-		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
+		"data":[1,1,1,1,1,1,1],	
+		"shape":[-1,-1],
 		"size":[-1,-1],
-		"group":[["zz"]],
 		"scale":1,
+		"group":[["zz"]],
+		"bounds":[-1,1],
+		"locality":null,
+		"constants":null,
 		"initialization":"random",
 		"random":"uniform",	
 		"pad":"random",
 		"seed":null,
-		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
-		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"shape":[-1,-1],
-		"bounds":[-1,1],
-		"locality":null,
-		"constants":null,
 		"args":[],
 		"kwargs":{}
 		}
