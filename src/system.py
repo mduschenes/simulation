@@ -42,7 +42,6 @@ class Dictionary(dict):
 		self.__dict__ = self
 		return
 
-
 class System(Dictionary):
 	'''
 	System attributes (dtype,format,device,seed,verbose,...)
@@ -169,6 +168,32 @@ class System(Dictionary):
 		return
 
 
+class Data(System):
+	def __iter__(self):
+		return self.__iterdata__()
+	def __setattr__(self,key,value):
+		super().__setattr__(key,value)
+		self.__setdata__(key,value)
+		return
+	def __setitem__(self,key,value):
+		super().__setitem__(key,value)
+		self.__setdata__(key,value)
+		return
+	def __delattr__(self,key):
+		super().__delattr__(key)
+		self.__deldata__(key)
+		return
+	def __iterdata__(self):
+		return self.data.__iter__()
+	def __setdata__(self,key,value):
+		if key in self.data:
+			self.data[key] = value
+		return
+	def __deldata__(self,key):
+		if key in self.data:
+			self.data.pop(key)
+		return
+
 class Object(System):
 	def __init__(self,data,shape,size=None,ndim=None,dims=None,system=None,**kwargs):
 		'''
@@ -222,14 +247,9 @@ class Object(System):
 		# Set data
 		if (not self.init) or (self.shape is None) or (self.scale is None):
 			self.data = None
+			self.size = None
 		elif self.data is not None and not isinstance(self.data,(str,dict)):
 			self.data = array(self.data,dtype=self.dtype)
-
-		if is_array(self.data):
-			self.data = self.data
-			self.size = None
-		elif self.data is None:
-			self.data = self.data
 			self.size = None
 		else:
 			if isinstance(self.data,str):
@@ -265,31 +285,12 @@ class Object(System):
 		Returns:
 			data (array): Data
 		'''
-		if not isinstance(data,Null):
+		if data is not null:
 			self.data = data
-			if is_array(self.data):
-				self.shape = self.data.shape if self.data is not None else None
-				self.ndim = self.data.ndim if self.data is not None else None
-			elif isinstance(self.data,dict):
-				self.shape = tuple((max(i) for i in zip(*(self.data[i].shape for i in self.data if self.data[i]))))
-				self.ndim = max(self.data[i].ndim for i in self.data)
-			else:
-				self.shape = None
-				self.ndim = None
+			self.shape = self.data.shape if self.data is not None else None
+			self.ndim = self.data.ndim if self.data is not None else None
+
 		return self.data
-
-	def __iter__(self):
-		yield from self.data
-
-	def __getitem__(self,index):
-		return self.data[index]
-
-	def __setitem__(self,index,item):
-		self.data[index] = item
-		return
-
-	def __len__(self):
-		return len(self.data)
 
 	def __setup__(self,**kwargs):
 		'''
@@ -297,7 +298,6 @@ class Object(System):
 		Args:
 			kwargs (dict): Additional keyword arguments
 		'''
-
 		return
 
 

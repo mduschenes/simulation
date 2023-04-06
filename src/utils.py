@@ -254,6 +254,20 @@ class argparser(argparse.ArgumentParser):
 		return self.kwargs.values()
 
 
+def setitem(obj,index,item):
+	'''
+	Set item at index of object
+	Args:
+		obj (object): Object to set
+		index (object): Index to set item
+		item (object): Item to set
+	Returns:
+		obj (object): Object with set item at index
+	'''
+	obj[index] = item
+	# obj = obj.at[index].set(item)
+	return obj
+
 def jit(func,*,static_argnums=None,**kwargs):
 	'''
 	Just-in-time compile function
@@ -1286,7 +1300,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 					R = diag(R)
 					R = diag(R/abs(R))
 					
-					out[i,j] = dot(Q,R)
+					out = setitem(out,(i,j),dot(Q,R))
 
 			out = out.reshape(shape)
 
@@ -1334,7 +1348,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 	elif random in ['zero']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape[-1],dtype=dtype)
-			out[0] = 1
+			out = setitem(out,0,1)
 			ndim = len(shape)
 			if ndim == 1:
 				pass
@@ -1349,7 +1363,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 	elif random in ['one']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape[-1],dtype=dtype)
-			out[-1] = 1
+			out = setitem(out,-1,1)
 			ndim = len(shape)
 			if ndim == 1:
 				pass
@@ -1364,7 +1378,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 	elif random in ['plus']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape[-1],dtype=dtype)
-			out[:] = 1/sqrt(shape[-1])
+			out = setitem(out,slice(None),1/sqrt(shape[-1]))
 			ndim = len(shape)
 			if ndim == 1:
 				pass
@@ -1379,8 +1393,8 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 	elif random in ['minus']:
 		def func(key,shape,bounds,dtype):
 			out = zeros(shape[-1],dtype=dtype)
-			out[0::2] = 1/sqrt(shape[-1])
-			out[1::2] = -1/sqrt(shape[-1])
+			out = setitem(out,slice(0,None,2),1/sqrt(shape[-1]))
+			out = setitem(out,slice(1,None,2),-1/sqrt(shape[-1]))
 			ndim = len(shape)
 			if ndim == 1:
 				pass

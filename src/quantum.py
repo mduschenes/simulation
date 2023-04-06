@@ -67,9 +67,6 @@ class Operator(System):
 		self.D = D
 		self.system = system
 
-		self.identity = None
-		self.dimensions = 1
-
 		self.__setup__(data,operator,site,string,interaction)
 
 		return
@@ -126,7 +123,9 @@ class Operator(System):
 		self.interaction = interaction
 
 		self.identity = identity
-		self.dimensions = 1
+		self.shape = self.data.shape
+		self.size = self.data.size
+		self.ndim = self.data.ndim
 
 		return
 
@@ -149,7 +148,6 @@ class Operator(System):
 		Returns:
 			operator (array): operator
 		'''
-
 		return cosh(parameters)*self.identity + sinh(parameters)*self.data
 
 	def __str__(self):
@@ -231,7 +229,6 @@ class Observable(System):
 		self.identity = None
 		self.constants = None
 		self.coefficients = None
-		self.dimensions = None	
 
 		self.summation = None
 		self.exponentiation = None 
@@ -370,17 +367,11 @@ class Observable(System):
 
 		# Get attributes data of parameters of the form {attribute:{parameter:{group:{layer:[]}}}
 		parameters = self.parameters
-		shape = (len(self.data),self.M)
-		dims = None
-		cls = self #{attr: getattr(self,attr) for attr in self if attr not in ['parameters','state','noise','label']}
-		check = lambda data,group: any(i in group for i in [data.string,'_'.join([data.string,''.join((str(i) for i in data.site))])])
 		system = self.system
 		
-		indexes = sorted(((data.string,*data.site) for data in self.data))
-		set(self.string)
-		indexes = {(string,:}
-
-		parameters = Parameters(parameters,shape,dims=dims,cls=cls,check=check,initialize=initialize,system=system)
+		strings = set(self.string)
+		index = {string: [[(*data.site) for data in self.data if data.string==string],self.M] for string in strings}
+		parameters = Parameters(parameters,index,system=system)
 
 		# Get coefficients
 		coefficients = -1j*2*pi/2*self.tau/self.P
@@ -388,8 +379,6 @@ class Observable(System):
 		# Update class attributes
 		self.parameters = parameters
 		self.coefficients = coefficients
-		self.dimensions = parameters.size
-
 
 		for parameter in self.parameters:
 			for data in self.data:
@@ -739,15 +728,15 @@ class Observable(System):
 
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
-				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','shapes','dimensions','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','shapes','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
 			],
 			*['%s: %s'%(delim.join(attr.split(delim)[:2]),', '.join([
 				('%s' if (
 					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
 					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
 				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
-				for prop in ['category','method','scale']]))
-				for attr in ['parameters.%s'%(i) for i in self.parameters.data]
+				for prop in ['category','method','shape','scale']]))
+				for attr in ['parameters.%s'%(i) for i in self.parameters]
 			],
 			*['%s: %s'%(delim.join(attr.split(delim)[:1]),', '.join([
 				('%s' if (
@@ -1384,7 +1373,7 @@ class Callback(object):
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(jit(lambda parameters: metric(model(parameters))))
 					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
-						function = fisher(model,model.grad,shapes=(model.shape,(*model.dimensions,*model.shape)))
+						function = fisher(model,model.grad,shapes=(model.shape,(parameters.size,*model.shape)))
 
 					if attr in ['hessian','fisher']:
 						value = function(parameters)
