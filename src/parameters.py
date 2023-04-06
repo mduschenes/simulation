@@ -100,19 +100,35 @@ class Parameters(Data):
 		# Get index
 		index = {i: [list(j) if not isinstance(j,int) else list(range(j)) for j in self.index[i]] for i in self.index}
 
-		# Get parameters
-		for parameter in self:
-			self[parameter] = Object(**self[parameter],system=self.system)
-		
+		# Todo
+			# Sort out how to split up parameters into dictionary for each operator, 
+			#	but initially as arrays, that must be split up, but then indexed back into parameters for each operator
+			#	Sort out indexing of parameters at operators/data level
+			# Fix analytical indices for gradients
+			# Run tests of parameters and variables
+			# Run test of gradients
+			# Run all tests	
+
+		# Get data
 		for parameter in list(self):
+
+			self[parameter] = Object(**self[parameter],system=self.system)
+
+			index = {(*group,): [[k for k in (j if not isinstance(j,int) else range(j)) if k in [i,'%s_%s'%(str(i),''.join([str(k) for k in (j if not isinstance(j,int) else range(j))]))]] for j in self.index[i]]
+				for group in self[parameter].group if }
+
+			if not any(index[group] for group in index):
+				delattr(self,parameter)
+				continue
+
 			if any(any(j in group for j in [i,*['%s_%s'%(str(i),''.join([str(k) for k in j])) for j in index[i]]]) 
 				for group in self[parameter].group for i in index):
 				delattr(self,parameter)
 
-		# Get data
-		for parameter in self:
+
 			data = self[parameter].data
 			groups = [tuple(group) for group in self[parameter].group]
+			shape = {}
 			shape = {group: [
 					  *[sum(check(self.cls.data[j],group) for j in range(i)) for i in self.shape[:1]],
 					  *[i for i in self.shape[1:]],
