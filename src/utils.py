@@ -1208,7 +1208,7 @@ def PRNGKey(seed=None,size=False,reset=None):
 	return key
 
 
-def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,dtype=None,**kwargs):
+def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
 	'''
 	Get random array
 	Args:
@@ -1218,6 +1218,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
 		mesh (int): Get meshgrid of array for mesh dimensions
+		reset (bool,int): Reset seed		
 		dtype (data_type): Datatype of array		
 		kwargs (dict): Additional keyword arguments for random
 	Returns:
@@ -1231,7 +1232,8 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 
 	if seed is not None:
 		key = seed
-	key = PRNGKey(key)
+	
+	key = PRNGKey(key,reset=reset)
 
 	if bounds is None:
 		bounds = ["-inf","inf"]

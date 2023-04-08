@@ -13,13 +13,13 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid,pi
+from src.utils import jit,array,einsum,tensorprod,allclose,is_array,is_hermitian,is_unitary,delim,cos,sin,sigmoid,pi
 from src.utils import norm,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
 from src.utils import pi,delim
 from src.iterables import getter,setter
 from src.io import load,dump,exists
 
-from src.quantum import Object,Operator,Pauli,Gate
+from src.quantum import Object,Operator,Pauli,Gate,Haar,Noise
 
 # Logging
 # from src.system import Logger
@@ -31,110 +31,77 @@ from src.quantum import Object,Operator,Pauli,Gate
 # logger = Logger(name,conf,file=file)
 
 def test_object(path,tol):
+	bases = {'Pauli':Pauli,'Gate':Gate,'Haar':Haar,'Noise':Noise}
+	arguments = {
+		'Gate': {
+			'basis':'Gate',
+			'kwargs':dict(
+				data=delim.join(['I','CNOT']),operator=None,site=[0,1,2],string='CX',interaction='i',
+				kwargs=dict(N=3,D=2,ndim=2),
+			),
+		},
+		'Haar':{
+			'basis':'Haar',
+			'kwargs': dict(
+				data=delim.join(['haar']),operator=None,site=[0,1,2],string='U',interaction='i',
+				kwargs=dict(N=3,D=2,ndim=2,seed=1,reset=1),
+			),
+		},
+		'Psi':{
+			'basis':'Gate',
+			'kwargs': dict(
+				data=delim.join(['minus']),operator=None,site=[0,1],string='-',interaction='i',
+				kwargs=dict(N=2,D=2,ndim=1,seed=1,reset=1),
+			),
+		},
+		'Noise':{
+			'basis':'Noise',
+			'kwargs': dict(
+				data=delim.join(['phase']),operator=None,site=[0,1],string='K',interaction='i',
+				kwargs=dict(N=2,D=2,ndim=3,parameters=0.25),
+			),
+		},
+	}
 
-	data = delim.join(['I','CNOT'])
+	for name in arguments:
+		base = bases[arguments[name]['basis']]
+		args = arguments[name]['kwargs']
+		kwargs = args.pop('kwargs',{})
 
-	operator = None
-	site = [0,1,2]
-	string = 'x'
-	interaction = 'i'
 
-	kwargs = dict(
-		N = 3,
-		D = 2,
-		ndim = 2
-	)
+		operator = Operator(**args,**kwargs)
+
+		assert operator.string == args['string'], "Operator.string = %s != %s"%(operator.string,args['string'])
+		assert ((arguments[name]['basis'] in ['Haar','Gate','Noise']) or allclose(operator(),
+			tensorprod([base.basis[i]() for i in args['data'].split(delim)]))), "Operator.data != %r"%(operator())
+		assert tuple(operator.operator) == tuple(args['data'].split(delim))
+
+		for attr in kwargs:
+			assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
+
+
+
+		other = operator.copy()
+		for attr in other:
+			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not is_array(operator[attr]) else allclose(operator[attr],other[attr])), "Incorrect Copying %s %r != %r"%(attr,operator[attr],other[attr])
+
+		assert allclose(operator(),other())
+
+
+		other = base(**args,**kwargs)
+
+		for attr in other:
+			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not is_array(operator[attr]) else allclose(operator[attr],other[attr])), "Incorrect reinitialization %s %r != %r"%(attr,operator[attr],other[attr])
+		assert allclose(operator(),other())
+		
+		args.update(dict(data=None))
+		operator = base(**args,**kwargs)
+		assert operator() is None
+
+		args.update(dict(data=None,operator=None))
+		operator = base(**args,**kwargs)
+		assert operator() is None
 	
-	operator = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
-
-	assert operator.string == string
-	assert allclose(operator(),tensorprod([(Pauli.basis[i]() if i in Pauli.basis else Gate.basis[i]()) for i in data.split(delim)]))
-	assert tuple(operator.operator) == tuple(data.split(delim))
-
-
-	for attr in kwargs:
-		assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
-
-
-	data = delim.join(['haar'])
-
-	operator = None
-	site = [0,1,2]
-	string = 'x'
-	interaction = 'i'
-
-	kwargs = dict(
-		N = 3,
-		D = 2,
-		ndim = 1
-	)
-	
-	operator = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
-
-	assert operator.string == string
-	assert tuple(operator.operator) == tuple(data.split(delim))
-
-	for attr in kwargs:
-		assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
-
-	
-	data = delim.join(['minus'])
-
-	operator = None
-	site = None
-	string = '-'
-	interaction = 'i'
-
-	kwargs = dict(
-		N = 2,
-		D = 2,
-		ndim = 1
-	)
-	
-	operator = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
-
-	assert operator.string == string
-	
-	for attr in kwargs:
-		assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
-
-	print(operator())
-	for attr in operator:
-		print(attr,operator[attr])
-
-	print()
-	print()
-	print()
-	print()
-	data = delim.join(['phase'])
-
-	operator = None
-	site = [0,1]
-	string = 'K'
-	interaction = 'i'
-
-	kwargs = dict(
-		N = 2,
-		D = 2,
-		ndim = 3,
-		parameters=0,
-	)
-	
-	operator = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
-
-	assert operator.string == string
-	assert tuple(operator.operator) == tuple(data.split(delim))
-
-	for attr in kwargs:
-		assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
-
-	print(operator())
-	for attr in operator:
-		print(attr,operator[attr])
-
-	operator = Operator()
-
-	assert operator is None
 
 	return
 
@@ -148,12 +115,7 @@ def test_model(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
+	model = cls(**hyperparameters['model'],system=hyperparameters['system'])
 
 	return 
 

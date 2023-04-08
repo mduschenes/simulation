@@ -26,14 +26,11 @@ from src.utils import itg,flt,dbl
 
 from src.iterables import setter,getter,getattrs,hasattrs,indexer,inserter
 
-# from src.parameters import Parameters
-# from src.operators import Gate
-# from src.states import State
-# from src.noise import Noise
-
 from src.io import load,dump,join,split
 
 from src.system import System,Space,Time,Lattice
+
+from src.parameters import Parameters
 
 from src.optimize import Objective,Metric
 
@@ -60,9 +57,14 @@ class Object(System):
 
 		super().__init__(**kwargs)
 
-		if isinstance(data,Object):
-			for attr in data:
-				setattr(self,attr,getattr(data,attr))
+		if isinstance(data,Object) or isinstance(operator,Object):
+			if isinstance(data,Object):
+				for attr in data:
+					setattr(self,attr,getattr(data,attr))
+			if isinstance(operator,Object):
+				for attr in operator:
+					setattr(self,attr,getattr(operator,attr))					
+
 			return
 
 		N = max(getattr(self,'N',(max(site if not isinstance(site,int) else [site])+1) if site is not None else 0),(max(site if not isinstance(site,int) else [site])+1) if site is not None else 0)
@@ -152,23 +154,24 @@ class Object(System):
 
 		
 		# Assert data is normalized
-		if self.ndim > 3:
-			normalization = einsum('...uij,...ukj->...ik',self.data.conj(),self.data)
-			eps = array([identity(self.shape[-2:],dtype=self.dtype)]*(normalization.ndim-2),dtype=self.dtype)
-		elif self.ndim == 3:
-			normalization = einsum('uij,ukj->ik',self.data.conj(),self.data)
-			eps = identity(self.shape[-2:],dtype=self.dtype)
-		elif self.ndim == 2:
-			normalization = einsum('ij,kj->ik',self.data.conj(),self.data)
-			eps = identity(self.shape[-2:],dtype=self.dtype)
-		else:
-			normalization = einsum('i,i->',self.data.conj(),self.data)
-			eps = ones(shape=(),dtype=self.dtype)
+		if self.data is not None:
+			if self.ndim > 3:
+				normalization = einsum('...uij,...ukj->...ik',self.data.conj(),self.data)
+				eps = array([identity(self.shape[-2:],dtype=self.dtype)]*(normalization.ndim-2),dtype=self.dtype)
+			elif self.ndim == 3:
+				normalization = einsum('uij,ukj->ik',self.data.conj(),self.data)
+				eps = identity(self.shape[-2:],dtype=self.dtype)
+			elif self.ndim == 2:
+				normalization = einsum('ij,kj->ik',self.data.conj(),self.data)
+				eps = identity(self.shape[-2:],dtype=self.dtype)
+			else:
+				normalization = einsum('i,i->',self.data.conj(),self.data)
+				eps = ones(shape=(),dtype=self.dtype)
 
-		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
+			assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
 
-		if self.dtype in ['complex128','float64']:
-			assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
+			if self.dtype in ['complex128','float64']:
+				assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
 
 		return
 
@@ -192,6 +195,7 @@ class Object(System):
 		Returns:
 			operator (array): operator
 		'''
+		parameters = self.parameters if parameters is None else parameters
 		return self.data
 
 	def __str__(self):
@@ -202,8 +206,20 @@ class Object(System):
 	
 	def __len__(self):
 		return len(self.operator)
-	
 
+	def __copy__(self):
+		new = self.__class__(**self)
+		return new
+
+	def __deepcopy__(self):
+		return self.__class__(**deepcopy(dict(self)))
+
+	def copy(self,deep=True):
+		if deep:
+			return self.__deepcopy__()
+		else:
+			return self.__copy__()
+	
 class Operator(Object):
 	'''
 	Class for Operator
@@ -273,7 +289,6 @@ class Pauli(Object):
 			operator (array): operator
 		'''
 		parameters = self.parameters if parameters is None else parameters
-
 		if parameters is None:
 			return self.data
 		else:
@@ -327,7 +342,6 @@ class Gate(Object):
 			operator (array): operator
 		'''
 		parameters = self.parameters if parameters is None else parameters
-
 		return self.data
 	
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
@@ -393,13 +407,17 @@ class Haar(Object):
 			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
 		'''
 
+		if ((self.data is None) and (self.operator is None)) or (is_array(self.data)):
+			return
+
 		shape = (self.D**self.N,)*self.ndim
 		size = prod(shape)	
 		random = getattr(self,'random','haar')
 		seed = getattr(self,'seed',None)
+		reset = getattr(self,'reset',None)
 		dtype = self.dtype
 
-		data = rand(shape=shape,random=random,seed=seed,dtype=dtype)
+		data = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
 
 		self.data = data
 
@@ -414,7 +432,6 @@ class Haar(Object):
 			operator (array): operator
 		'''
 		parameters = self.parameters if parameters is None else parameters
-
 		return self.data
 
 
@@ -455,6 +472,8 @@ class Noise(Object):
 			string (str): string labels of operators
 			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
 		'''
+		if ((self.data is None) and (self.operator is None)) or (is_array(self.data)):
+			return
 
 		if (getattr(self,'scale',None) is not None):
 			if (getattr(self,'initialization',None) in ['time']):
@@ -504,7 +523,6 @@ class Noise(Object):
 			operator (array): operator
 		'''
 		parameters = self.parameters if parameters is None else parameters
-
 		return self.data
 
 

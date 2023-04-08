@@ -68,7 +68,7 @@ class System(Dictionary):
 			'device':'cpu',
 			'backend':None,
 			'architecture':None,
-			'unit':1,			
+			'unit':None,			
 			'seed':None,
 			'key':None,
 			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),

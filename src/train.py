@@ -78,20 +78,22 @@ def train(hyperparameters):
 
 		if hyperparameters['boolean'].get('train'):
 
-			parameters = cls['parameters'](hyperparameters['parameters'],model=model,system=hyperparameters['system'])
-			state = cls['state'](hyperparameters['state'],model=model,system=hyperparameters['system'])
-			noise = cls['noise'](hyperparameters['noise'],model=model,system=hyperparameters['system'])
-			label = cls['label'](hyperparameters['label'],model=model,system=hyperparameters['system'])
-			callback = cls['callback'](model=model,system=hyperparameters['system'])
+			kwargs = {**model,**hyperparameters['parameters'],**dict(system=hyperparameters['system'])}
 			
+			hyperparams = hyperparameters['optimize']		
 			system = hyperparameters['system']
-			hyperparams = hyperparameters['optimize']
 			kwargs = {attr: hyperparams.get(attr) for attr in system if attr in hyperparams}
+
+			args = {arg: cls[arg](**{**model,**hyperparameters.get(arg,{})},system=system) for arg in cls if arg not in ['model','callback']}
+
+			parameters = args['parameters']
+			label = args['label']
+			callback = cls['callback'](model=model,system=hyperparameters['system'])
+
+			model.__initialize__(**args)
+
 			shapes = [label.shape]
 			func = [parameters.constraints]
-
-			model.__initialize__(parameters=parameters,state=state,noise=noise,label=label)
-
 			parameters = parameters()
 			label = label()
 
