@@ -151,7 +151,7 @@ class Object(System):
 			setattr(self,attr,max(getattr(self,attr,0),int(log(self.size)/self.ndim/log(self.D)))) if self.data is not None else None
 
 		
-		# Assert data is unitary
+		# Assert data is normalized
 		if self.ndim > 3:
 			normalization = einsum('...uij,...ukj->...ik',self.data.conj(),self.data)
 			eps = array([identity(self.shape[-2:],dtype=self.dtype)]*(normalization.ndim-2),dtype=self.dtype)
