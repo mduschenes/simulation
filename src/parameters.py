@@ -16,7 +16,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos,minimum,maximum,bound
-from src.utils import tensorprod,trace,asscalar,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
+from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
 from src.utils import initialize,slice_slice,datatype,returnargs,is_array
 from src.utils import pi,itg,scalars,delim
 
@@ -26,7 +26,7 @@ from src.system import Data,Object
 from src.io import load,dump,join,split
 
 class Parameters(Data):
-	def __init__(self,data,index,system=None,**kwargs):
+	def __init__(self,data,shape,system=None,**kwargs):
 		'''
 		Initialize data of parameters
 		Args:
@@ -37,9 +37,9 @@ class Parameters(Data):
 				'boundaries' (interable[dict[int,object]]) : dictionary of boundary indices and values
 				'constants' (interable[dict[int,object]]) : dictionary of constant indices and values
 				'seed': (int, key): Random seed for initialization
-				'scale': (object): Scale of data
+				'parameters': (object): Parameters of data
 				'bounds': (iterable[object]): Bounds of data
-			index (dict[str,iterable[iterable[int]]]): Indexes of parameters for each group
+			shape (dict[str,iterable[int,iterable[int]]]): Shapes or indices of parameters for each group
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
@@ -50,7 +50,6 @@ class Parameters(Data):
 			'category':None,
 			'method':None,
 			'parameters':None,
-			'scale':1,
 			'samples':None,
 			'initialization':'random',
 			'random':'random',
@@ -83,7 +82,9 @@ class Parameters(Data):
 		else:
 			inserter(self.index,data.reshape(indexer(self.index,self).shape),self)
 
-		data = data.ravel()
+		parameters = self.parameters if self.parameters is not None else 1
+
+		data = parameters*data.ravel()
 
 		return data
 
@@ -97,24 +98,14 @@ class Parameters(Data):
 		# Get datatype of data
 		dtype = datatype(self.dtype)
 
-		# Get index
-		index = {i: [list(j) if not isinstance(j,int) else list(range(j)) for j in self.index[i]] for i in self.index}
-
-		# Todo
-			# Sort out how to split up parameters into dictionary for each operator, 
-			#	but initially as arrays, that must be split up, but then indexed back into parameters for each operator
-			#	Sort out indexing of parameters at operators/data level
-			# Fix analytical indices for gradients
-			# Run tests of parameters and variables
-			# Run test of gradients
-			# Run all tests	
-
 		# Get data
 		for parameter in list(self):
 
 			self[parameter] = Object(**self[parameter],system=self.system)
 
-			index = {(*group,): [[k for k in (j if not isinstance(j,int) else range(j)) if k in [i,'%s_%s'%(str(i),''.join([str(k) for k in (j if not isinstance(j,int) else range(j))]))]] for j in self.index[i]]
+			index = {(*group,): [
+			[k for k in (j if not isinstance(j,int) else range(j)) if k in [i,'%s_%s'%(str(i),''.join([str(k) for k in (j if not isinstance(j,int) else range(j))]))]] for j in self.index[i]
+			]
 				for group in self[parameter].group if }
 
 			if not any(index[group] for group in index):

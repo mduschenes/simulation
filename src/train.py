@@ -71,27 +71,29 @@ def train(hyperparameters):
 
 		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
-		model = cls['model'](**hyperparameters['model'],
-				parameters=hyperparameters['parameters'],
-				state=hyperparameters['state'],
-				noise=hyperparameters['noise'],
-				label=hyperparameters['label'],
-				system=hyperparameters['system'])
+		model = cls['model'](**hyperparameters['model'],system=hyperparameters['system'])
 
 		if hyperparameters['boolean'].get('load'):
 			model.load()
 
 		if hyperparameters['boolean'].get('train'):
 
-			parameters = model.parameters()
-
-			shapes = model.shapes
-			label = model.label()
-			hyperparams = hyperparameters['optimize']
+			parameters = cls['parameters'](hyperparameters['parameters'],model=model,system=hyperparameters['system'])
+			state = cls['state'](hyperparameters['state'],model=model,system=hyperparameters['system'])
+			noise = cls['noise'](hyperparameters['noise'],model=model,system=hyperparameters['system'])
+			label = cls['label'](hyperparameters['label'],model=model,system=hyperparameters['system'])
+			callback = cls['callback'](model=model,system=hyperparameters['system'])
+			
 			system = hyperparameters['system']
+			hyperparams = hyperparameters['optimize']
 			kwargs = {attr: hyperparams.get(attr) for attr in system if attr in hyperparams}
-			func = [model.constraints]
-			callback = cls['callback']()
+			shapes = [label.shape]
+			func = [parameters.constraints]
+
+			model.__initialize__(parameters=parameters,state=state,noise=noise,label=label)
+
+			parameters = parameters()
+			label = label()
 
 			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system,**kwargs)
 			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)

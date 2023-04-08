@@ -20,7 +20,6 @@ for PATH in PATHS:
 
 from src.utils import argparser
 from src.utils import array,expand_dims,conditions
-from src.utils import asndarray,asscalar
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation

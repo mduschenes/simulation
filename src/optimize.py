@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
-from src.utils import is_array,is_unitary,is_hermitian,is_naninf,product,sqrt,asarray,asscalar
+from src.utils import is_array,is_unitary,is_hermitian,is_naninf,product,sqrt
 from src.utils import scalars,delim,nan
 
 from src.iterables import setter
@@ -1036,6 +1036,9 @@ class Metric(System):
 					self.metric = 'abs2'
 				elif is_hermitian(self.label) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
+		
+		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
+			self.shapes = [self.shapes,]*2
 
 		func,grad,grad_analytical = metrics(
 			metric=self.metric,shapes=self.shapes,
@@ -1883,6 +1886,9 @@ class Covariance(System):
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
+
+		if all(isinstance(i,int) for i in shapes) or (len(shapes) == 1):
+			shapes = [shapes]*2
 
 		if label is None:
 			shapes = (*shapes[:1],*shapes[2:])				

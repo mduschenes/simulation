@@ -888,7 +888,7 @@ class array(np.ndarray):
 	'''
 	def __new__(self,*args,**kwargs):
 		return np.array(*args,**kwargs)
-
+		# return super().__init__(self,*args,**kwargs)
 
 class nparray(onp.ndarray):
 	'''
@@ -901,6 +901,7 @@ class nparray(onp.ndarray):
 	'''
 	def __new__(self,*args,**kwargs):
 		return onp.array(*args,**kwargs)
+		# return super().__init__(self,*args,**kwargs)
 
 class asndarray(onp.ndarray):
 	'''

@@ -261,7 +261,7 @@ class Gate(Object):
 
 
 		# Assert data is unitary
-		if data.ndim == 2:
+		if data.ndim >= 2:
 			normalization = einsum('...ij,...kj->...ik',data.conj(),data)
 		else:
 			normalization = einsum('...ij,...kj->...ik',data.conj(),data)

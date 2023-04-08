@@ -63,7 +63,7 @@ class System(Dictionary):
 
 		defaults = {
 			'string':__name__,
-			'dtype':'float',
+			'dtype':'complex',
 			'format':'array',
 			'device':'cpu',
 			'backend':None,

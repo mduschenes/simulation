@@ -15,8 +15,11 @@ for PATH in PATHS:
 
 from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid,pi
 from src.utils import norm,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
+from src.utils import pi,delim
 from src.iterables import getter,setter
 from src.io import load,dump,exists
+
+from src.quantum import Object,Operator,Pauli,Gate
 
 # Logging
 # from src.system import Logger
@@ -26,6 +29,115 @@ from src.io import load,dump,exists
 # conf = os.path.join(path,file)
 # file = None #'log.log'
 # logger = Logger(name,conf,file=file)
+
+def test_object(path,tol):
+
+	data = delim.join(['I','CNOT'])
+
+	operator = None
+	site = [0,1,2]
+	string = 'x'
+	interaction = 'i'
+
+	kwargs = dict(
+		N = 3,
+		D = 2,
+		ndim = 2
+	)
+	
+	operator = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
+
+	assert operator.string == string
+	assert allclose(operator(),tensorprod([(Pauli.basis[i]() if i in Pauli.basis else Gate.basis[i]()) for i in data.split(delim)]))
+	assert tuple(operator.operator) == tuple(data.split(delim))
+
+
+	for attr in kwargs:
+		assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
+
+
+	data = delim.join(['haar'])
+
+	operator = None
+	site = [0,1,2]
+	string = 'x'
+	interaction = 'i'
+
+	kwargs = dict(
+		N = 3,
+		D = 2,
+		ndim = 1
+	)
+	
+	operator = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
+
+	assert operator.string == string
+	assert tuple(operator.operator) == tuple(data.split(delim))
+
+	for attr in kwargs:
+		assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
+
+	
+	data = delim.join(['minus'])
+
+	operator = None
+	site = None
+	string = '-'
+	interaction = 'i'
+
+	kwargs = dict(
+		N = 2,
+		D = 2,
+		ndim = 1
+	)
+	
+	operator = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
+
+	assert operator.string == string
+	
+	for attr in kwargs:
+		assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
+
+	print(operator())
+	for attr in operator:
+		print(attr,operator[attr])
+
+	print()
+	print()
+	print()
+	print()
+	data = delim.join(['phase'])
+
+	operator = None
+	site = [0,1]
+	string = 'K'
+	interaction = 'i'
+
+	kwargs = dict(
+		N = 2,
+		D = 2,
+		ndim = 3,
+		parameters=0,
+	)
+	
+	operator = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
+
+	assert operator.string == string
+	assert tuple(operator.operator) == tuple(data.split(delim))
+
+	for attr in kwargs:
+		assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
+
+	print(operator())
+	for attr in operator:
+		print(attr,operator[attr])
+
+	operator = Operator()
+
+	assert operator is None
+
+	return
+
 
 def test_model(path,tol):
 
@@ -431,7 +543,8 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
-	test_parameters(path,tol)
+	test_object(path,tol)
+	# test_parameters(path,tol)
 	# test_call(path,tol)
 	# test_data(path,tol)
 	# test_logger(path,tol)
