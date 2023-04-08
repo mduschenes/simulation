@@ -11,6 +11,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,allclose,delim
 from src.io import load,glob
+from src.optimize import System
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 logger = Logger()
@@ -71,37 +72,32 @@ def train(hyperparameters):
 
 		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
-		model = cls['model'](**hyperparameters['model'],system=hyperparameters['system'])
+		model = cls.pop('model')(**hyperparameters['model'],system=hyperparameters['system'])
+		callback = cls.pop('callback')()
 
 		if hyperparameters['boolean'].get('load'):
 			model.load()
 
 		if hyperparameters['boolean'].get('train'):
 
-			kwargs = {**model,**hyperparameters['parameters'],**dict(system=hyperparameters['system'])}
-			
 			hyperparams = hyperparameters['optimize']		
 			system = hyperparameters['system']
-			kwargs = {attr: hyperparams.get(attr) for attr in system if attr in hyperparams}
 
-			args = {arg: cls[arg](**{**model,**hyperparameters.get(arg,{})},system=system) for arg in cls if arg not in ['model','callback']}
-
-			parameters = args['parameters']
-			label = args['label']
-			callback = cls['callback'](model=model,system=hyperparameters['system'])
+			sys = System(**{arg: cls[arg](**{**model,**hyperparameters.get(arg,{})},system=system) for arg in cls})
 
 			model.__initialize__(**args)
 
-			shapes = [label.shape]
-			func = [parameters.constraints]
-			parameters = parameters()
-			label = label()
+			shapes = [sys.label.shape]
+			func = [sys.parameters.constraints]
+			
+			parameters = sys.parameters()
+			label = sys.label()
 
-			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system,**kwargs)
-			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
-			callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
+			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
+			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
+			callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 
-			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system,**kwargs)
+			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system)
 
 			parameters = optimizer(parameters)
 

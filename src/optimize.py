@@ -632,6 +632,8 @@ class Function(System):
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 			kwargs (dict): Additional system attributes
 		'''
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -891,6 +893,8 @@ class Metric(System):
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 			kwargs (dict): Additional system attributes
 		'''
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -1067,6 +1071,9 @@ class Optimization(System):
 		kwargs (dict): Additional system attributes
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
+
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -1882,6 +1889,9 @@ class Covariance(System):
 		Returns:
 			cov (callable): Covariance of function
 		'''
+
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
