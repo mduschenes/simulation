@@ -72,10 +72,10 @@ def train(hyperparameters):
 		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
 		system = hyperparameters.get('system',{})
 
-		model = cls.pop('model')(**{**hyperparameters.get('model',{})},system=system)
-		parameters = cls.pop('parameters')(**{**model,**hyperparameters.get('parameters',{})},system=system)
-		label = cls.pop('label')(**{**model,**hyperparameters.get('label',{})},system=system)
-		callback = cls.pop('callback')(**{**model,**hyperparameters.get('callback',{})},system=system)
+		model = cls.pop('model')(**{**hyperparameters.get('model',{}),**dict(system=system)})
+		parameters = cls.pop('parameters')(**{**model,**hyperparameters.get('parameters',{}),**dict(system=system)})
+		label = cls.pop('label')(**{**model,**hyperparameters.get('label',{}),**dict(system=system)})
+		callback = cls.pop('callback')(**{**model,**hyperparameters.get('callback',{}),**dict(system=system)})
 
 		if hyperparameters['boolean'].get('load'):
 			model.load()
@@ -84,7 +84,7 @@ def train(hyperparameters):
 
 			hyperparams = hyperparameters['optimize']		
 
-			kwargs = {arg: cls[arg](**{**model,**hyperparameters.get(arg,{})},system=system) for arg in cls}
+			kwargs = {arg: cls[arg](**{**model,**hyperparameters.get(arg,{}),**dict(system=system)}) for arg in cls}
 
 			model.__initialize__(**kwargs)
 

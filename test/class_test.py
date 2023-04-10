@@ -21,15 +21,6 @@ from src.io import load,dump,exists
 
 from src.quantum import Object,Operator,Pauli,Gate,Haar,Noise
 
-# Logging
-# from src.system import Logger
-# name = __name__
-# path = os.getcwd()
-# file = 'logging.conf'
-# conf = os.path.join(path,file)
-# file = None #'log.log'
-# logger = Logger(name,conf,file=file)
-
 def test_object(path,tol):
 	bases = {'Pauli':Pauli,'Gate':Gate,'Haar':Haar,'Noise':Noise}
 	arguments = {
@@ -37,7 +28,7 @@ def test_object(path,tol):
 			'basis':'Pauli',
 			'kwargs':dict(
 				data=delim.join(['X','Y','Z']),operator=None,site=[0,1,2],string='XYZ',interaction='i',
-				kwargs=dict(N=3,D=2,ndim=2,parameters=None),
+				kwargs=dict(N=3,D=2,ndim=2,parameters=None,verbose=True),
 			),
 		},
 		'Gate': {
@@ -135,7 +126,7 @@ def test_model(path,tol):
 
 	cls = load(hyperparameters['class']['model'])
 
-	model = cls(**hyperparameters['model'],system=hyperparameters['system'])
+	model = cls(**{**hyperparameters.get('model',{}),**dict(system=system)})
 
 	return 
 
@@ -146,8 +137,14 @@ def test_parameters(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	cls = load(hyperparameters['class']['parameters'])
 
+	model = hyperparameters['model']
+	system = hyperparameters['system']
+
+	parameters = cls(**{**model,**hyperparameters.get('parameters',{}),**dict(system=system)})
+
+	return
 	model = cls(**hyperparameters['model'],
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],

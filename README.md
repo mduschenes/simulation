@@ -13,7 +13,11 @@ The hierarchy of inheritance of classes is as follows
 
 `State,Noise,Gate <- Object <- System <- Dictionary`
 
-`Parameters <- Data <- System <- Dictionary`
+`Label <- Operator <- Object <- System <- Dictionary`
+
+`Parameters <- System <- Dictionary`
+
+`Parameter <- System <- Dictionary`
 
 `Space,Time,Lattice <- System <- Dictionary`
 

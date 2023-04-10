@@ -19,11 +19,11 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient
 from src.utils import array,arange,eye,rand,einsum,dot,prod
-from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt,is_array,datatype
+from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt,datatype
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
-from src.utils import itg,dbl,flt,delim,Null,null,scalars
+from src.utils import itg,dbl,flt,delim,Null,null,scalars,arrays
 
 from src.iterables import getter,setter
 from src.io import join,split,copy,rm,exists
@@ -166,151 +166,6 @@ class System(Dictionary):
 		msg = None
 		self.log(msg,verbose=verbose)
 		return
-
-
-class Data(System):
-	def __iter__(self):
-		return self.__iterdata__()
-	def __setattr__(self,key,value):
-		super().__setattr__(key,value)
-		self.__setdata__(key,value)
-		return
-	def __setitem__(self,key,value):
-		super().__setitem__(key,value)
-		self.__setdata__(key,value)
-		return
-	def __delattr__(self,key):
-		super().__delattr__(key)
-		self.__deldata__(key)
-		return
-	def __iterdata__(self):
-		return self.data.__iter__()
-	def __setdata__(self,key,value):
-		if key in self.data:
-			self.data[key] = value
-		return
-	def __deldata__(self,key):
-		if key in self.data:
-			self.data.pop(key)
-		return
-
-class Object(System):
-	def __init__(self,data,shape,size=None,ndim=None,dims=None,system=None,**kwargs):
-		'''
-		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
-		Args:
-			data (dict,str,array,System): Data corresponding to class
-			shape (int,iterable[int]): Shape of each data
-			size (int,iterable[int]): Number of data
-			ndim (int): Number of dimensions of data
-			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
-			kwargs (dict): Additional keyword arguments
-		'''
-		defaults = {
-			'string':None,
-			'init':True,
-			'category':None,
-			'method':None,
-			'parameters':None,
-			'scale':1,
-			'samples':None,
-			'initialization':'random',
-			'random':'random',
-			'seed':None,
-			'bounds':[-1,1],
-		}
-
-		# Setup kwargs
-		setter(kwargs,dict(data=data,shape=shape,size=size,ndim=ndim,dims=dims,system=system),delimiter=delim,func=False)
-		setter(kwargs,data,delimiter=delim,func=False)
-		setter(kwargs,system,delimiter=delim,func=False)
-		setter(kwargs,defaults,delimiter=delim,func=False)
-		super().__init__(**kwargs)
-
-		# Ensure shape is iterable
-		if isinstance(self.shape,int):
-			self.shape = (self.shape,)
-
-		# Ensure size is iterable
-		if isinstance(self.size,int):
-			self.size = (self.size,)
-
-		# Dimension of data
-		self.ndim = len(self.shape) if (self.ndim is None) and (self.shape is not None) else self.ndim
-		self.length = len(self.size) if self.size is not None else None
-		self.n = min(self.shape)  if self.shape is not None else None
-
-		# Number of sites and dimension of sites
-		self.N,self.D = self.dims[:2] if self.dims is not None else [1,self.n]
-
-		# Set data
-		if (not self.init) or (self.shape is None) or (self.scale is None):
-			self.data = None
-			self.size = None
-		elif self.data is not None and not isinstance(self.data,(str,dict)):
-			self.data = array(self.data,dtype=self.dtype)
-			self.size = None
-		else:
-			if isinstance(self.data,str):
-				self.string = self.data
-			self.__setup__(**kwargs)
-
-
-		# Set samples
-		if self.size is not None:
-			if not is_array(self.samples):
-				self.samples = rand(self.size,bounds=[0,1],seed=self.seed,dtype=datatype(self.dtype))
-				self.samples /= self.samples.sum()
-		else:
-			self.samples = None
-
-		if self.samples is not None:
-			if (self.data.ndim>=self.length) and all(self.data.shape[i] == self.size[i] for i in range(self.length)):
-				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.length]),)*2),self.data,self.samples)
-
-		try:
-			self.data = self(self.data)
-		except:
-			pass
-
-		return
-
-
-	def __call__(self,data=null):
-		'''
-		Class data
-		Args:
-			data (array): Data
-		Returns:
-			data (array): Data
-		'''
-		if data is not null:
-			self.data = data
-			self.shape = self.data.shape if self.data is not None else None
-			self.ndim = self.data.ndim if self.data is not None else None
-
-		return self.data
-
-	def __setup__(self,**kwargs):
-		'''
-		Setup attribute
-		Args:
-			kwargs (dict): Additional keyword arguments
-		'''
-		return
-
-
-	def info(self,verbose=None):
-		'''
-		Log class information
-		Args:
-			verbose (int,str): Verbosity of message			
-		'''
-		msg = '\n'.join(['%s : %s'%(attr,self[attr]) for attr in self])
-		self.log(msg,verbose=verbose)
-		return
-
 
 class Space(System):
 	'''

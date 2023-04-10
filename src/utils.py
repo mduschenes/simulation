@@ -73,6 +73,7 @@ nan = np.nan
 inf = np.inf
 scalars = (int,np.integer,float,np.floating,onp.int,onp.integer,onp.float,onp.floating,str,type(None))
 arrays = (np.ndarray,onp.ndarray)
+iterables = (*arrays,list,tuple,set)
 nulls = ('',None)
 delim = '.'
 
@@ -6171,14 +6172,25 @@ def initialize(parameters,shape,hyperparameters,slices=None,shapes=None,dtype=No
 	'''	
 
 	# Initialization hyperparameters
-	bounds = hyperparameters['bounds']
-	initialization = hyperparameters['initialization']
-	random = hyperparameters['random']
-	pad = hyperparameters['pad']
-	seed = hyperparameters['seed']
-	key = seed
 
-	# Parameters shape and bounds
+	defaults = {
+		'bounds':None,
+		'random':None,
+		'seed':None,
+		'initialize':None,
+		'pad':None
+	}
+
+	hyperparameters.update({kwarg: hyperparameters.get(kwarg,defaults[kwarg]) for kwarg in hyperparameters})
+
+	bounds = hyperparameters['bounds']
+	initialization = hyperparameters['initialize']
+	random = hyperparameters['random']
+	seed = hyperparameters['seed']
+	pad = hyperparameters['pad']
+
+	# Parameters key, shape and bounds
+	key = seed
 	shape = shape
 	ndim = len(shape)
 
@@ -6198,10 +6210,12 @@ def initialize(parameters,shape,hyperparameters,slices=None,shapes=None,dtype=No
 	# Add random padding of values if parameters not reset
 	parameters = padding(parameters,shape,key=key,bounds=bounds,random=pad,dtype=dtype)
 
-	if initialization in ['interpolation']:
+	if initialization is None or not isinstance(initialization,dict):
+		pass
+	elif initialization['method'] in ['interpolation']:
 		# Parameters are initialized as interpolated random values between bounds
-		interpolation = hyperparameters['interpolation']
-		smoothness = max(1,min(shape[-1]//2,hyperparameters['smoothness']))
+		interpolation = initialization['interpolation']
+		smoothness = max(1,min(shape[-1]//2,initialization['smoothness']))
 		shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
 		pts_interp = smoothness*arange(shape_interp[-1])
 		pts = arange(shape[-1])
@@ -6214,11 +6228,13 @@ def initialize(parameters,shape,hyperparameters,slices=None,shapes=None,dtype=No
 
 		parameters = minimums(bounds[1],maximums(bounds[0],parameters))
 
-	elif initialization in ['uniform']:
+	elif initialization['method'] in ['uniform']:
 		parameters = ((bounds[0]+bounds[1])/2)*ones(shape,dtype=dtype)
-	elif initialization in ['random']:
+	
+	elif initialization['method'] in ['random']:
 		parameters = rand(shape,key=key,bounds=bounds,random=random,dtype=dtype)
-	elif initialization in ['zero']:
+	
+	elif initialization['method'] in ['zero']:
 		parameters = zeros(shape,dtype=dtype)
 
 	parameters = parameters.astype(dtype)

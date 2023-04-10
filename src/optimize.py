@@ -998,18 +998,6 @@ class Metric(System):
 		'''		
 		return self.__grad_analytical__(*operands)	
 
-	def __str__(self):
-		'''
-		Class string
-		'''
-		return self.string
-
-	def __repr__(self):
-		'''
-		Class representation
-		'''
-		return self.__str__()
-
 	def info(self,verbose=None):
 		'''
 		Log class information
@@ -1017,7 +1005,7 @@ class Metric(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
+			*['Metric %s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['metric']
 			],
 			]
@@ -1428,16 +1416,16 @@ class Optimization(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
+			*['Optimizer %s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']
 			],
-			*['dtype: %s'%(', '.join(['%s: %s'%(attr,value.dtype if value is not None else None) for attr,value in {
+			*['Optimizer dtype: %s'%(', '.join(['%s: %s'%(attr,value.dtype if value is not None else None) for attr,value in {
 				**{attr: getattr(self.func.model,attr)() for attr in ['parameters','label','state','noise'] if hasattr(self.func.model,attr)},
 				**{attr:self.func.model(self.func.model.parameters()) for attr in ['model'] if getattr(self.func.model,'parameters')},
 				**{attr:self.func.metric(self.func.model.label()) for attr in ['metric'] if hasattr(self.func.model,'label')},
 				**{attr:self.func(self.func.model.parameters()) for attr in ['cls'] if hasattr(self.func.model,'parameters')},
 				}.items()]))],
-			*['%s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
+			*['Optimizer %s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
 				for attr in ['track','attributes']
 				if any(getattr(self,attr).get(key) for key in getattr(self,attr))
 			],			
@@ -1938,18 +1926,6 @@ class Covariance(System):
 	def __call__(self,parameters,*args,**kwargs):
 		return inv(self.hess(parameters,*args,**kwargs))
 
-	def __str__(self):
-		'''
-		Class string
-		'''
-		return self.string
-
-	def __repr__(self):
-		'''
-		Class representation
-		'''
-		return self.__str__()
-
 	def info(self,verbose=None):
 		'''
 		Log class information
@@ -1957,7 +1933,7 @@ class Covariance(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
+			*['Covariance %s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['metric']
 			],
 			]

@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient,hessian,fisher
 from src.utils import array,empty,identity,ones,zeros,arange,rand,setitem
-from src.utils import tensorprod,product,dagger,einsum,dot
+from src.utils import tensorprod,dagger,einsum,dot
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
 from src.utils import trotter,gradient_trotter,gradient_expm
 from src.utils import eig
@@ -44,6 +44,7 @@ class Object(System):
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		parameters (object): parameters of operators
+		state (object): state of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -52,9 +53,12 @@ class Object(System):
 	default = None
 	dim = None
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,system=None,**kwargs):		
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
 
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,system=system),delimiter=delim,func=False)
+		defaults = dict(N=None,D=None,n=None,shape=None,size=None,ndim=None,samples=None,identity=None,locality=None)
+
+		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
@@ -104,38 +108,18 @@ class Object(System):
 		elif not isinstance(interaction,str):
 			interaction = str(interaction)
 	
-		try:
-			if site is not None:
-				N = max(site)+1
-			else:
-				N = 0
-			N = max(N,self.N)
-		except AttributeError:
-			if site is not None:
-				N = max(site)+1
-			else:
-				N = 0
 
-		try:
-			D = self.D
-		except AttributeError:
-			if self.dim:
-				D = self.dim
-			elif isinstance(data,arrays):
-				D = data.size**(1/(data.ndim*N))
-			else:
-				D = 1
-		try:
-			ndim = self.ndim
-		except AttributeError:
-			if isinstance(data,arrays):
-				ndim = data.ndim
-			else:
-				ndim = 2
-		
+		N = max(self.N,max(site)+1 if site is not None else self.N) if self.N is not None else max(site)+1 if site is not None else 0
+		D = self.D if self.D is not None else self.dim if self.dim is not None else data.size**(1/(data.ndim*N)) if isinstance(data,arrays) else 1
+		n = D**N if (N is not None) and (D is not None) else None
+
+		shape = self.shape if self.shape is not None else data.shape if isinstance(data,arrays) else None
+		size = self.size if self.size is not None else data.size if isinstance(data,arrays) else None
+		ndim = self.ndim if self.ndim is not None else else data.ndim if isinstance(data,arrays) else None
+
 		if isinstance(operator,str):
 			operator = [operator]*N
-		if operator is None:
+		if operator is None or isinstance(operator,arrays):
 			pass
 		elif len(operator) == N:
 			site = list(range(N))
@@ -155,14 +139,11 @@ class Object(System):
 
 		self.N = N
 		self.D = D
-		self.ndim = ndim
-		self.n = self.D**self.N if (self.D is not None) and (self.N is not None) else None
+		self.n = n
 
-		for attr in ['identity','index','parameters']:
-			setattr(self,attr,getattr(self,attr,None))
-		
-		for attr in ['shape','size','ndim']:
-			setattr(self,attr,getattr(self.data,attr,getattr(self,attr,None)) if self.data is not None else getattr(self,attr,None))
+		self.shape = shape
+		self.size = size
+		self.ndim = ndim
 		
 		if not (((self.data is None) and (self.operator is None)) or (isinstance(self.data,arrays))):
 			self.__setup__(data,operator,site,string,interaction)
@@ -178,28 +159,33 @@ class Object(System):
 
 		self.data = self.data.astype(self.dtype) if self.data is not None else None
 
-		self.operator = list((i for i in self.operator)) if self.operator is not None else None
-		self.site = list((i for i in self.site)) if self.site is not None else None
-		self.string = str(self.string) if self.string is not None else None
-		self.interaction = str(self.interaction) if self.interaction is not None else None
+		self.operator = list((i for i in self.operator)) if self.operator is not None and not isinstance(self.operator,arrays) else self.operator
+		self.site = list((i for i in self.site)) if self.site is not None else self.site
+		self.string = str(self.string) if self.string is not None else self.string
+		self.interaction = str(self.interaction) if self.interaction is not None else self.interaction
 
 		self.identity = tensorprod([self.basis.get(self.default)() for i in range(self.N)]) if (self.default in self.basis) else None
 		self.identity = self.identity.astype(self.dtype) if self.identity is not None else None
 
-		for attr in ['shape','size','ndim']:
-			setattr(self,attr,getattr(self.data,attr,getattr(self,attr,None)) if self.data is not None else getattr(self,attr,None))
+		self.shape = self.data.shape if isinstance(self.data,arrays) else self.shape
+		self.size = self.data.size if isinstance(self.data,arrays) else self.size
+		self.ndim = self.data.ndim if isinstance(self.data,arrays) else self.ndim
 
-		for attr in ['locality']:
-			setattr(self,attr,getattr(self,attr,len(self.site) if self.site is not None else None))
+		self.locality = max(self.locality if self.locality is not None else 0,len(self.site) if self.site is not None else 0)
 
-		for attr in ['D']:
-			setattr(self,attr,max(getattr(self,attr,self.dim),self.dim)) if self.dim is not None else None
+		if (self.samples is True) and (self.size is not None):
+			self.samples = rand(self.size,bounds=[0,1],seed=self.seed,dtype=datatype(self.dtype))
+			self.samples /= self.samples.sum()
+		elif not isinstance(self.samples,arrays)
+			self.samples = None
 
-		for attr in ['N']:
-			setattr(self,attr,max(getattr(self,attr,0),int(log(self.size)/self.ndim/log(self.D)))) if self.data is not None else None
-
+		if self.samples is not None:
+			if (self.data.ndim>=self.length) and all(self.data.shape[i] == self.size[i] for i in range(self.length)):
+				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.length]),)*2),self.data,self.samples)
 
 		self.norm()
+
+		self.info()
 
 		return
 
@@ -215,18 +201,22 @@ class Object(System):
 		'''
 		return
 
-	def __call__(self,parameters=None):
+	def __call__(self,parameters=None,state=None):
 		'''
 		Call operator
 		Args:
 			parameters (array): parameters
+			state (object): state
 		Returns:
-			operator (array): operator
+			data (array): data
 		'''
 		return self.data
 
 	def __str__(self):
-		return delim.join(self.operator) if self.operator else self.__class__.__name__
+		string = self.__class__.__name__ if not self.string else self.string
+		if self.operator is not None and not isinstance(self.operator,arrays):
+			string = '%s_%s'%(string,delim.join(self.operator))
+		return string
 
 	def __repr__(self):
 		return self.__str__()
@@ -247,7 +237,31 @@ class Object(System):
 		else:
 			return self.__copy__()
 	
+	def grad(self,parameters=None,state=None):
+		'''
+		Call gradient
+		Args:
+			parameters (array): parameters
+			state (object): state
+		Returns:
+			data (array): data
+		'''
+		return 0
 
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = '%s'%('\n'.join([
+			*['Label %s %s: %s'%(self,attr,getattr(self,attr)) 
+				for attr in ['shape']
+			],
+			]
+			))
+		self.log(msg,verbose=verbose)
+		return
 	def norm(self):
 		'''
 		Normalize object
@@ -323,6 +337,7 @@ class Operator(Object):
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		parameters (object): parameters of operators		
+		state (object): state of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -333,13 +348,13 @@ class Operator(Object):
 	default = 'I'
 	dim = 2
 
-	def __new__(cls,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,system=None,**kwargs):		
+	def __new__(cls,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
 
 		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
 
 		self = None
 
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,system=system),delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 
 		classes = [Gate,Pauli,Haar,Noise]
 		for cls in classes:
@@ -366,6 +381,7 @@ class Pauli(Object):
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		parameters (object): parameters of operators				
+		state (object): state of operators				
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -379,19 +395,31 @@ class Pauli(Object):
 	default = 'I'
 	dim = 2 
 
-	def __call__(self,parameters=None):
+	def __call__(self,parameters=None,state=None):
 		'''
 		Call operator
 		Args:
 			parameters (array): parameters
+			state (object): state		
 		Returns:
-			operator (array): operator
+			data (array): data
 		'''
 		parameters = self.parameters if parameters is None else parameters
 		if parameters is None:
 			return self.data
 		else:
 			return cos(parameters*pi)*self.identity + -1j*sin(parameters*pi)*self.data
+
+	def grad(self,parameters=None,state=None):
+		'''
+		Call gradient
+		Args:
+			parameters (array): parameters
+			state (object): state
+		Returns:
+			data (array): data
+		'''
+		return -pi*sin(parameters*pi)*self.identity + -1j*pi*cos(parameters*pi)*self.data
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
@@ -415,6 +443,7 @@ class Gate(Object):
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		parameters (object): parameters of operators				
+		state (object): state of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -433,15 +462,6 @@ class Gate(Object):
 	default = 'I'
 	dim = 2 
 
-	def __call__(self,parameters=None):
-		'''
-		Call operator
-		Args:
-			parameters (array): parameters
-		Returns:
-			operator (array): operator
-		'''
-		return self.data
 	
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
@@ -485,6 +505,7 @@ class Haar(Object):
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		parameters (object): parameters of operators		
+		state (object): state of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -520,17 +541,6 @@ class Haar(Object):
 
 		return
 
-	def __call__(self,parameters=None):
-		'''
-		Call operator
-		Args:
-			parameters (array): parameters
-		Returns:
-			operator (array): operator
-		'''
-		return self.data
-
-
 class Noise(Object):
 	'''
 	Noise class for Quantum Objects
@@ -541,6 +551,7 @@ class Noise(Object):
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		parameters (object): parameters of operators		
+		state (object): state of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -606,983 +617,854 @@ class Noise(Object):
 
 		return
 
-	def __call__(self,parameters=None):
-		'''
-		Call operator
-		Args:
-			parameters (array): parameters
-		Returns:
-			operator (array): operator
-		'''
-		return self.data
 
 
 def compute(data,identity,state,noise,n,m,p):
 	'''
-	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
+	Calculate operators
 	Args:
-		data (array): Array of data to matrix exponentiate of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
-		noise (array): Array of noise to act of shape (n,n) or (k,n,n)
+		data (iterable[Operator]): Array of data to matrix exponentiate of shape (d,n,n)
+		identity (Operator): Array of data identity of shape (n,n)
+		state (Operator): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
+		noise (Operator): Array of noise to act of shape (n,n) or (k,n,n)
 		n (int): Size of array
 		m (int): Number of steps
 		p (int): number of trotterizations
 	Returns:
-		out (array): Matrix exponential of data of shape (n,n)
+		func (callable): Function to compute operators, with signature func(parameters), where parameters is a Parameters instance
+		grad (callable): Gradient to compute operators, with signature func(parameters), where parameters is a Parameters instance
 	'''		
 
-	def matmat(parameters):
+	d = len(data)*p
+
+	def matmat_func(parameters):
 		out = identity
-	
 		for i in range(m):
-			operators = trotter([data(parameters,i) for data in self.data],p)
+			operators = [data(indexer([*data.index,i],parameters)) for data in self.data]
+			operators = trotter(operators,p)
 			for operator in operators:
 				out = dot(operator,out)
-
-	# Operator functions
-	if state is None and noise is None:
-
-		self.summation = jit(summation,data=data,identity=identity)
-		self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	elif state is not None and noise is None:
-		if state.ndim == 1:
-			self.summation = jit(summationv,data=data,identity=identity,state=state)
-			self.exponentiation = jit(exponentiationv,data=data,identity=identity,state=state)
-		elif state.ndim == 2:
-			self.summation = jit(summationm,data=data,identity=identity,state=state)
-			self.exponentiation = jit(exponentiationm,data=data,identity=identity,state=state)
-		else:
-			self.summation = jit(summation,data=data,identity=identity)
-			self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	elif state is None and noise is not None:
-		self.summation = jit(summation,data=data,identity=identity)
-		self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	elif state is not None and noise is not None:
-		if state.ndim == 1:
-			self.summation = jit(summationmvc,data=data,identity=identity,state=state,constants=noise)
-			self.exponentiation = jit(exponentiationmvc,data=data,identity=identity,state=state,constants=noise)
-		elif state.ndim == 2:
-			self.summation = jit(summationmmc,data=data,identity=identity,state=state,constants=noise)
-			self.exponentiation = jit(exponentiationmmc,data=data,identity=identity,state=state,constants=noise)
-		else:
-			self.summation = jit(summation,data=data,identity=identity)
-			self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	else:
-		self.summation = jit(summation,data=data,identity=identity)
-		self.exponentiation = jit(exponentiation,data=data,identity=identity)
-
-
-
-
-	parameters = self.parameters(parameters)
-
+		return out
 	
-	
-	return data
+	def matmat_grad(parameters):
+		return 0
+		# out = []
+		# for i in range(m):
+		# 	for j in range(m):
+		# 		for k in range(d)
+		# 		tmp = identity
+
+		# 	operators = [data(indexer([*data.index,i],parameters))*(1 if) for data in self.data]
+		# 	operators = trotter(operators,p)
+		# 	for operator in operators:
+		# 		out = dot(operator,out)
+		# return out		
+
+	func,grad = matmul_func,matmul_grad
+	return func,grad
+
+	# if state is None and noise is None:
+	# 	self.summation = jit(summation,data=data,identity=identity)
+	# 	self.exponentiation = jit(exponentiation,data=data,identity=identity)
+	# elif state is not None and noise is None:
+	# 	if state.ndim == 1:
+	# 		self.summation = jit(summationv,data=data,identity=identity,state=state)
+	# 		self.exponentiation = jit(exponentiationv,data=data,identity=identity,state=state)
+	# 	elif state.ndim == 2:
+	# 		self.summation = jit(summationm,data=data,identity=identity,state=state)
+	# 		self.exponentiation = jit(exponentiationm,data=data,identity=identity,state=state)
+	# 	else:
+	# 		self.summation = jit(summation,data=data,identity=identity)
+	# 		self.exponentiation = jit(exponentiation,data=data,identity=identity)
+	# elif state is None and noise is not None:
+	# 	self.summation = jit(summation,data=data,identity=identity)
+	# 	self.exponentiation = jit(exponentiation,data=data,identity=identity)
+	# elif state is not None and noise is not None:
+	# 	if state.ndim == 1:
+	# 		self.summation = jit(summationmvc,data=data,identity=identity,state=state,constants=noise)
+	# 		self.exponentiation = jit(exponentiationmvc,data=data,identity=identity,state=state,constants=noise)
+	# 	elif state.ndim == 2:
+	# 		self.summation = jit(summationmmc,data=data,identity=identity,state=state,constants=noise)
+	# 		self.exponentiation = jit(exponentiationmmc,data=data,identity=identity,state=state,constants=noise)
+	# 	else:
+	# 		self.summation = jit(summation,data=data,identity=identity)
+	# 		self.exponentiation = jit(exponentiation,data=data,identity=identity)
+	# else:
+	# 	self.summation = jit(summation,data=data,identity=identity)
+	# 	self.exponentiation = jit(exponentiation,data=data,identity=identity)
 
 
 
-# class Operators(Object):
-# 	'''
-# 	Class for Operators
-# 	Args:
-# 		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
-# 			operator (iterable[str]): string names of operators
-# 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 			string (iterable[str]): string labels of operators
-# 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		operator (iterable[str]): string names of operators
-# 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 		string (iterable[str]): string labels of operators
-# 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		N (int): Number of qudits
-# 		D (int): Dimension of qudits
-# 		d (int): Spatial dimension
-# 		L (int,float): Scale in system
-# 		delta (float): Simulation length scale		
-# 		M (int): Number of time steps
-# 		T (int): Simulation Time
-# 		tau (float): Simulation time scale		
-# 		P (int): Trotter order		
-# 		space (str,Space): Type of local space
-# 		time (str,Time): Type of Time evolution space						
-# 		lattice (str,Lattice): Type of lattice	
-# 		parameters (str,dict,Parameters): Type of parameters	
-# 		state (str,dict,State): Type of state	
-# 		noise (str,dict,Noise): Type of noise
-# 		label (str,dict,Gate): Type of label	
-# 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-# 		kwargs (dict): Additional system keyword arguments	
-# 	'''
+class Operators(Object):
+	'''
+	Class for Operators
+	Args:
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+			operator (iterable[str]): string names of operators
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			string (iterable[str]): string labels of operators
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		operator (iterable[str]): string names of operators
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+		string (iterable[str]): string labels of operators
+		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		N (int): Number of qudits
+		D (int): Dimension of qudits
+		d (int): Spatial dimension
+		L (int,float): Scale in system
+		delta (float): Simulation length scale		
+		M (int): Number of time steps
+		T (int): Simulation Time
+		tau (float): Simulation time scale		
+		P (int): Trotter order		
+		space (str,Space): Type of local space
+		time (str,Time): Type of Time evolution space						
+		lattice (str,Lattice): Type of lattice	
+		parameters (str,dict,Parameters): Type of parameters	
+		state (str,dict,State): Type of state	
+		noise (str,dict,Noise): Type of noise
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
 
-# 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
-# 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
-# 		space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
+		space=None,time=None,lattice=None,parameters=None,state=None,noise=None,system=None,**kwargs):
 
-# 		setter(kwargs,system,delimiter=delim,func=False)
-# 		super().__init__(**kwargs)
+		setter(kwargs,system,delimiter=delim,func=False)
+		super().__init__(**kwargs)
 
-# 		self.N = N
-# 		self.D = D
-# 		self.d = d
-# 		self.L = L
-# 		self.delta = delta
-# 		self.M = M
-# 		self.T = T
-# 		self.tau = tau
-# 		self.P = P
-# 		self.space = space
-# 		self.time = time
-# 		self.lattice = lattice
+		self.N = N
+		self.D = D
+		self.d = d
+		self.L = L
+		self.delta = delta
+		self.M = M
+		self.T = T
+		self.tau = tau
+		self.P = P
+		self.space = space
+		self.time = time
+		self.lattice = lattice
 
-# 		self.data = []
+		self.data = []
 
-# 		self.n = None
-# 		self.g = None
+		self.n = None
+		self.g = None
 		
-# 		self.parameters = parameters
-# 		self.state = state
-# 		self.noise = noise
-# 		self.label = label
-# 		self.identity = None
-# 		self.constants = None
-# 		self.coefficients = None
-# 		self.index = None
+		self.parameters = parameters
+		self.state = state
+		self.noise = noise
+		self.identity = None
+		self.coefficients = None
 
-# 		self.summation = None
-# 		self.exponentiation = None 
+		self.compute = None
 
-# 		self.system = system
+		self.system = system
 
-# 		self.__shape__()
-# 		self.__time__()
-# 		self.__space__()
-# 		self.__lattice__()
+		self.__time__()
+		self.__space__()
+		self.__lattice__()
 
-# 		self.__setup__(data,operator,site,string,interaction)
+		self.identity = Operator([Operator.default],N=self.N,D=self.D,system=self.system)
+		self.shape = () if self.n is None else (self.n,self.n)
+		self.size = prod(self.shape)
+		self.ndim = len(self.shape)
+		self.coefficients = self.tau/self.P
 
-# 		self.info()
+		self.__setup__(data,operator,site,string,interaction)
 
-# 		return	
+		self.info()
 
-# 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
-# 		'''
-# 		Setup class
-# 		Args:
-# 			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
-# 				operator (iterable[str]): string names of operators
-# 				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 				string (iterable[str]): string labels of operators
-# 				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 			operator (iterable[str]): string names of operators
-# 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 			string (iterable[str]): string labels of operators
-# 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		'''
+		return	
 
-# 		# Get operator,site,string,interaction from data
-# 		objs = {'operator':operator,'site':site,'string':string,'interaction':interaction}
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+		'''
+		Setup class
+		Args:
+			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+				operator (iterable[str]): string names of operators
+				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+				string (iterable[str]): string labels of operators
+				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			operator (iterable[str]): string names of operators
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			string (iterable[str]): string labels of operators
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		'''
 
-# 		for obj in objs:
-# 			objs[obj] = [] if objs[obj] is None else objs[obj]
+		# Get operator,site,string,interaction from data
+		objs = {'operator':operator,'site':site,'string':string,'interaction':interaction}
 
-# 		if data is None:
-# 			data = {}
-# 		elif all(isinstance(datum,Operator) for datum in data):
-# 			data = {datum.timestamp: datum for datum in data}
+		for obj in objs:
+			objs[obj] = [] if objs[obj] is None else objs[obj]
+
+		if data is None:
+			data = {}
+		elif all(isinstance(datum,Operator) for datum in data):
+			data = {datum.timestamp: datum for datum in data}
 		
-# 		assert isinstance(data,dict), 'Incorrect data format %r'%(type(data))			
+		assert isinstance(data,dict), 'Incorrect data format %r'%(type(data))			
 
-# 		if all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
-# 			for obj in objs:
-# 				objs[obj].extend([data[name][obj] for name in data])
+		if all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
+			for obj in objs:
+				objs[obj].extend([data[name][obj] for name in data])
 
-# 		# Set class attributes
-# 		self.__extend__(**objs)
+		# Set class attributes
+		self.__extend__(**objs)
 
-# 		return
-
-
-# 	def __append__(self,data=None,operator=None,site=None,string=None,interaction=None):
-# 		'''
-# 		Append to class
-# 		Args:
-# 			data (str,Operator): data of operator
-# 			operator (str): string name of operator
-# 			site (int): site of local operator
-# 			string (str): string label of operator
-# 			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		'''
-# 		index = -1
-# 		self.__insert__(index,data,operator,site,string,interaction)
-# 		return
-
-# 	def __extend__(self,data=None,operator=None,site=None,string=None,interaction=None):
-# 		'''
-# 		Setup class
-# 		Args:
-# 			data (iterable[str,Operator]): data of operator
-# 			operator (iterable[str]): string names of operators
-# 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 			string (iterable[str]): string labels of operators
-# 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		'''
-# 		if all(i is None for i in [operator,site,string,interaction]):
-# 			return
-
-# 		if data is None:
-# 			size = min([len(i) for i in [operator,site,string,interaction]])
-# 			data = [None]*size
-
-# 		for _data,_operator,_site,_string,_interaction,_hyperparameter in zip(data,operator,site,string,interaction):
-# 			self.__append__(_data,_operator,_site,_string,_interaction,_hyperparameter)
-
-# 		return
+		return
 
 
-# 	def __insert__(self,index,data,operator,site,string,interaction):
-# 		'''
-# 		Insert to class
-# 		Args:
-# 			index (int): index to insert operator
-# 			data (str,Operator): data of operator
-# 			operator (str): string name of operator
-# 			site (int): site of local operator
-# 			string (str): string label of operator
-# 			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		'''
+	def __append__(self,data=None,operator=None,site=None,string=None,interaction=None):
+		'''
+		Append to class
+		Args:
+			data (str,Operator): data of operator
+			operator (str): string name of operator
+			site (int): site of local operator
+			string (str): string label of operator
+			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		'''
+		index = -1
+		self.__insert__(index,data,operator,site,string,interaction)
+		return
 
-# 		if index == -1:
-# 			index = len(self.data)
+	def __extend__(self,data=None,operator=None,site=None,string=None,interaction=None):
+		'''
+		Setup class
+		Args:
+			data (iterable[str,Operator]): data of operator
+			operator (iterable[str]): string names of operators
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			string (iterable[str]): string labels of operators
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		'''
+		if all(i is None for i in [operator,site,string,interaction]):
+			return
 
-# 		kwargs = dict(N=self.N,D=self.D,system=self.system)
+		if data is None:
+			size = min([len(i) for i in [operator,site,string,interaction]])
+			data = [None]*size
 
-# 		data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
+		for _data,_operator,_site,_string,_interaction,_hyperparameter in zip(data,operator,site,string,interaction):
+			self.__append__(_data,_operator,_site,_string,_interaction,_hyperparameter)
 
-# 		self.data.insert(index,data)
-
-# 		self.__shape__()
-
-# 		return
-
-# 	def __initialize__(self,parameters=None,state=None,noise=None,label=None):
-# 		''' 
-# 		Setup class functions
-# 		Args:
-# 			parameters (bool,dict,array,Parameters): Class parameters
-# 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters, or boolean to choose self.state or None
-# 			noise (bool,dict,array,Noise): Noise to act on with class of shape (-1,self.shape), or class hyperparameters, or boolean to choose self.noise or None
-# 			label (bool,dict,array,Gate): Label of class of shape self.shape, or class hyperparameters, or boolean to choose self.label or None
-# 		'''
-
-# 		# Get parameters
-# 		parameters = self.parameters if parameters is None or parameters is True else parameters if parameters is not False else None
-# 		system = self.system
-# 		index = {string: [[(*data.site) for data in self.data if data.string==string],self.M] for string in set((data.string for data in self.data))}
-
-# 		self.parameters = Parameters(parameters,index,system=system)
-# 		parameters = self.parameters()
-
-# 		# Get coefficients
-# 		coefficients = self.tau/self.P
-
-# 		for data in self.data:
-# 			data.index = [data.string,*[i.index((*data.site)) for i in parameters.index[data.string][:-1]]]
-
-# 		exit()
+		return
 
 
-# 		# Function arguments
-# 		data = array(trotter([data() for data in self.data],self.P))
-# 		identity = self.identity()
-# 		state = self.state if state is None or state is True else state if state is not False else None
-# 		noise = self.noise if noise is None or noise is True else noise if noise is not False else None
-# 		label = self.label if label is None or label is True else label if label is not False else None
+	def __insert__(self,index,data,operator,site,string,interaction):
+		'''
+		Insert to class
+		Args:
+			index (int): index to insert operator
+			data (str,Operator): data of operator
+			operator (str): string name of operator
+			site (int): site of local operator
+			string (str): string label of operator
+			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		'''
 
-# 		# Class arguments
-# 		kwargs = {}
-# 		shape = self.shape
-# 		dims = [self.N,self.D]
-# 		system = self.system
-# 		cls = {attr: getattr(self,attr) for attr in self if attr not in ['parameters','state','noise','label']}
+		if index == -1:
+			index = len(self)
 
+		kwargs = dict(N=self.N,D=self.D,system=self.system)
 
-# 		# Get state
-# 		kwargs.clear()
-# 		setter(kwargs,self.state)
-# 		setter(kwargs,state)
-# 		setter(kwargs,dict(data=state,shape=shape,dims=dims,cls=cls,system=system))
-# 		self.state = State(**kwargs)
-# 		state = self.state()
+		data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
 
-# 		# Get noise
-# 		kwargs.clear()
-# 		setter(kwargs,self.noise)
-# 		setter(kwargs,noise)
-# 		setter(kwargs,dict(data=noise,shape=shape,dims=dims,cls=cls,system=system))
-# 		self.noise = Noise(**kwargs)
-# 		noise = self.noise()
+		self.data.insert(index,data)
 
-# 		# Get label
-# 		kwargs.clear()
-# 		setter(kwargs,self.label)
-# 		setter(kwargs,label)
-# 		setter(kwargs,dict(data=label,shape=shape,dims=dims,cls=cls,system=system))
-# 		self.label = Gate(**kwargs)
-# 		label = self.label()
+		return
 
-# 		# Attribute values
-# 		if state is None:
-# 			label = label
-# 		elif state.ndim == 1:
-# 			label = einsum('ij,j->i',label,state)
-# 		elif state.ndim == 2:
-# 			label = einsum('ij,jk,kl->il',label,state,dagger(label))
-# 		else:
-# 			label = label
-# 		label = self.label(label)
+	def __initialize__(self,parameters=None,state=None,noise=None):
+		''' 
+		Setup class functions
+		Args:
+			parameters (bool,dict,array,Parameters): Class parameters
+			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters, or boolean to choose self.state or None
+			noise (bool,dict,array,Noise): Noise to act on with class of shape (-1,self.shape), or class hyperparameters, or boolean to choose self.noise or None
+		'''
 
-# 		# Operator functions
-# 		if state is None and noise is None:
-# 			self.summation = jit(summation,data=data,identity=identity)
-# 			self.exponentiation = jit(exponentiation,data=data,identity=identity)
-# 		elif state is not None and noise is None:
-# 			if state.ndim == 1:
-# 				self.summation = jit(summationv,data=data,identity=identity,state=state)
-# 				self.exponentiation = jit(exponentiationv,data=data,identity=identity,state=state)
-# 			elif state.ndim == 2:
-# 				self.summation = jit(summationm,data=data,identity=identity,state=state)
-# 				self.exponentiation = jit(exponentiationm,data=data,identity=identity,state=state)
-# 			else:
-# 				self.summation = jit(summation,data=data,identity=identity)
-# 				self.exponentiation = jit(exponentiation,data=data,identity=identity)
-# 		elif state is None and noise is not None:
-# 			self.summation = jit(summation,data=data,identity=identity)
-# 			self.exponentiation = jit(exponentiation,data=data,identity=identity)
-# 		elif state is not None and noise is not None:
-# 			if state.ndim == 1:
-# 				self.summation = jit(summationmvc,data=data,identity=identity,state=state,constants=noise)
-# 				self.exponentiation = jit(exponentiationmvc,data=data,identity=identity,state=state,constants=noise)
-# 			elif state.ndim == 2:
-# 				self.summation = jit(summationmmc,data=data,identity=identity,state=state,constants=noise)
-# 				self.exponentiation = jit(exponentiationmmc,data=data,identity=identity,state=state,constants=noise)
-# 			else:
-# 				self.summation = jit(summation,data=data,identity=identity)
-# 				self.exponentiation = jit(exponentiation,data=data,identity=identity)
-# 		else:
-# 			self.summation = jit(summation,data=data,identity=identity)
-# 			self.exponentiation = jit(exponentiation,data=data,identity=identity)
+		# Get parameters
+		parameters = self.parameters if parameters is None or parameters is True else parameters if parameters is not False else None
+		system = self.system
+		shape = (len(self),self.M)
+		index = {string: [[(*data.site) for data in self.data if data.string==string],self.M] for string in set((data.string for data in self.data))}
+
+		self.parameters = Parameters(parameters,shape,system=system)
+		parameters = self.parameters()
+
+		for data in self.data:
+			data.index = [data.string,*[i.index((*data.site)) for i in parameters.index[data.string][:-1]]]
+
+		exit()
 
 
-# 		# Update class attributes
-# 		self.gradient = gradient(self,mode='fwd',move=True)
-# 		self.parameters = parameters
-# 		self.coefficients = coefficients
-# 		self.index = index
+		# Function arguments
+		data = array(trotter([data() for data in self.data],self.P))
+		identity = self.identity()
+		state = self.state if state is None or state is True else state if state is not False else None
+		noise = self.noise if noise is None or noise is True else noise if noise is not False else None
 
-# 		self.identity = Operator([Operator.default],N=self.N,D=self.D,system=self.system)
-
-# 		return
-
-# 	#@partial(jit,static_argnums=(0,))
-# 	def __call__(self,parameters):
-# 		'''
-# 		Class function
-# 		Args:
-# 			parameters (array): parameters		
-# 		Returns
-# 			out (array): Return of function
-# 		'''		
-# 		parameters = self.parameters(parameters)
-
-# 		data = sum(data(self.parameters) for data in self.data)
-
-# 		return data
-
-# 	#@partial(jit,static_argnums=(0,))
-# 	def __grad__(self,parameters):
-# 		''' 
-# 		Class gradient
-# 		Args:
-# 			parameters (array): parameters
-# 		Returns:
-# 			out (array): Return of function
-# 		'''	
-# 		return self.gradient(parameters)
+		# Class arguments
+		kwargs = {}
+		shape = self.shape
+		dims = [self.N,self.D]
+		system = self.system
+		cls = {attr: getattr(self,attr) for attr in self if attr not in ['parameters','state','noise']}
 
 
-# 	# @partial(jit,static_argnums=(0,))
-# 	def __value_and_grad__(self,parameters):
-# 		'''
-# 		Class function and gradient
-# 		Args:
-# 			parameters (array): parameters		
-# 		Returns
-# 			out (array): Return of function and gradient
-# 		'''	
-# 		return self.value_and_gradient(parameters)
+		# Get state
+		kwargs.clear()
+		setter(kwargs,self.state)
+		setter(kwargs,state)
+		setter(kwargs,dict(data=state,shape=shape,dims=dims,cls=cls,system=system))
+		self.state = State(**kwargs)
+		state = self.state()
+
+		# Get noise
+		kwargs.clear()
+		setter(kwargs,self.noise)
+		setter(kwargs,noise)
+		setter(kwargs,dict(data=noise,shape=shape,dims=dims,cls=cls,system=system))
+		self.noise = Noise(**kwargs)
+		noise = self.noise()
+
+		# Operator functions
+		n = self.n
+		m = self.M
+		p = self.P
+		self.compute = compute(data,identity,state,noise,n,m,p)
+
+		# Update class attributes
+		self.gradient = gradient(self,mode='fwd',move=True)
+
+		return
+
+	#@partial(jit,static_argnums=(0,))
+	def __call__(self,parameters):
+		'''
+		Class function
+		Args:
+			parameters (array): parameters		
+		Returns
+			out (array): Return of function
+		'''		
+		return self.compute(self.parameters(parameters))
+
+	#@partial(jit,static_argnums=(0,))
+	def __grad__(self,parameters):
+		''' 
+		Class gradient
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (array): Return of function
+		'''	
+		return self.gradient(parameters)
 
 
-# 	#@partial(jit,static_argnums=(0,))
-# 	def func(self,parameters):
-# 		'''
-# 		Class function
-# 		Args:
-# 			parameters (array): parameters		
-# 		Returns
-# 			out (array): Return of function
-# 		'''
-# 		return self.__call__(parameters)
-
-# 	#@partial(jit,static_argnums=(0,))
-# 	def grad(self,parameters):
-# 		''' 
-# 		Class gradient
-# 		Args:
-# 			parameters (array): parameters
-# 		Returns:
-# 			out (array): Return of function
-# 		'''		
-# 		return self.__grad__(parameters)
-
-# 	# @partial(jit,static_argnums=(0,))
-# 	def value_and_grad(self,parameters):
-# 		'''
-# 		Class function and gradient
-# 		Args:
-# 			parameters (array): parameters		
-# 		Returns
-# 			out (array): Return of function and gradient
-# 		'''	
-# 		return self.__value_and_gradient__(parameters)
+	# @partial(jit,static_argnums=(0,))
+	def __value_and_grad__(self,parameters):
+		'''
+		Class function and gradient
+		Args:
+			parameters (array): parameters		
+		Returns
+			out (array): Return of function and gradient
+		'''	
+		return self.value_and_gradient(parameters)
 
 
-# 	def __shape__(self,data=None,N=None,D=None,M=None):
-# 		'''
-# 		Set shape attributes
-# 		Args:
-# 			data (iterable[Operator]): Class data
-# 			N (int): Number of qudits
-# 			D (int): Dimension of qudits
-# 			M (int): Number of time steps
-# 		'''
+	#@partial(jit,static_argnums=(0,))
+	def func(self,parameters):
+		'''
+		Class function
+		Args:
+			parameters (array): parameters		
+		Returns
+			out (array): Return of function
+		'''
+		return self.__call__(parameters)
 
-# 		if (data is not None):
-# 			self.__append__(data)
-# 		if (N is not None) and (D is not None):
-# 			self.__space__(N=N,D=D)
-# 		if (M is not None):
-# 			self.__time__(M=M)
+	#@partial(jit,static_argnums=(0,))
+	def grad(self,parameters):
+		''' 
+		Class gradient
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (array): Return of function
+		'''		
+		return self.__grad__(parameters)
 
-# 		self.shape = () if self.n is None else (self.n,self.n)
-# 		self.size = int(product(self.shape))
-# 		self.ndim = len(self.shape)
-# 		self.dims = (self.M,len(self.data),*self.shape)
-# 		self.length = int(product(self.dims))
-# 		self.ndims = len(self.dims)
+	# @partial(jit,static_argnums=(0,))
+	def value_and_grad(self,parameters):
+		'''
+		Class function and gradient
+		Args:
+			parameters (array): parameters		
+		Returns
+			out (array): Return of function and gradient
+		'''	
+		return self.__value_and_gradient__(parameters)
 
-# 		return
+	def __len__(self):
+		return len(self.data)
 
-# 	def __space__(self,N=None,D=None,space=None,system=None):
-# 		'''
-# 		Set space attributes
-# 		Args:
-# 			N (int): Number of qudits
-# 			D (int): Dimension of qudits
-# 			space (str,Space): Type of local space
-# 			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
-# 		'''
+	def __space__(self,N=None,D=None,space=None,system=None):
+		'''
+		Set space attributes
+		Args:
+			N (int): Number of qudits
+			D (int): Dimension of qudits
+			space (str,Space): Type of local space
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+		'''
 
-# 		N = self.N if N is None else N
-# 		D = self.D if D is None else D
-# 		space = self.space if space is None else space
-# 		system = self.system if system is None else system
+		N = self.N if N is None else N
+		D = self.D if D is None else D
+		space = self.space if space is None else space
+		system = self.system if system is None else system
 
-# 		self.space = Space(N,D,space,system=system)
+		self.space = Space(N,D,space,system=system)
 
-# 		self.N = self.space.N
-# 		self.D = self.space.D		
-# 		self.n = self.space.n
-# 		self.g = self.space.g
+		self.N = self.space.N
+		self.D = self.space.D		
+		self.n = self.space.n
+		self.g = self.space.g
 
-# 		self.__shape__()
-
-# 		return
+		return
 
 
-# 	def __time__(self,M=None,T=None,tau=None,P=None,time=None,system=None):
-# 		'''
-# 		Set time attributes
-# 		Args:
-# 			M (int): Number of time steps
-# 			T (int): Simulation Time
-# 			tau (float): Simulation time scale
-# 			P (int): Trotter order		
-# 			time (str,Time): Type of Time evolution space						
-# 			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
-# 		'''
-# 		M = self.M if M is None else M
-# 		T = self.T if T is None else T
-# 		tau = self.tau if tau is None else tau
-# 		P = self.P if P is None else P
-# 		time = self.time if time is None else time
-# 		system = self.system if system is None else system
+	def __time__(self,M=None,T=None,tau=None,P=None,time=None,system=None):
+		'''
+		Set time attributes
+		Args:
+			M (int): Number of time steps
+			T (int): Simulation Time
+			tau (float): Simulation time scale
+			P (int): Trotter order		
+			time (str,Time): Type of Time evolution space						
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+		'''
+		M = self.M if M is None else M
+		T = self.T if T is None else T
+		tau = self.tau if tau is None else tau
+		P = self.P if P is None else P
+		time = self.time if time is None else time
+		system = self.system if system is None else system
 
-# 		self.time = Time(M,T,tau,P,time,system=system)	
+		self.time = Time(M,T,tau,P,time,system=system)	
 
-# 		self.M = self.time.M
-# 		self.T = self.time.T
-# 		self.P = self.time.P
-# 		self.tau = self.time.tau
+		self.M = self.time.M
+		self.T = self.time.T
+		self.P = self.time.P
+		self.tau = self.time.tau
 		
-# 		self.__shape__()
-
-# 		return
+		return
 
 
-# 	def __lattice__(self,N=None,D=None,d=None,L=None,delta=None,lattice=None,system=None):
-# 		'''
-# 		Set space attributes
-# 		Args:
-# 			N (int): Number of qudits
-# 			D (int): Dimension of qudits
-# 			d (int): Spatial dimension
-# 			L (int,float): Scale in system
-# 			delta (float): Simulation length scale		
-# 			lattice (str,Lattice): Type of lattice		
-# 			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
-# 		'''		
-# 		N = self.N if N is None else N
-# 		D = self.D if D is None else D
-# 		d = self.d if d is None else d
-# 		L = self.L if L is None else L
-# 		delta = self.delta if delta is None else delta
-# 		lattice = self.lattice if lattice is None else lattice
-# 		system = self.system if system is None else system
+	def __lattice__(self,N=None,D=None,d=None,L=None,delta=None,lattice=None,system=None):
+		'''
+		Set space attributes
+		Args:
+			N (int): Number of qudits
+			D (int): Dimension of qudits
+			d (int): Spatial dimension
+			L (int,float): Scale in system
+			delta (float): Simulation length scale		
+			lattice (str,Lattice): Type of lattice		
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
+		'''		
+		N = self.N if N is None else N
+		D = self.D if D is None else D
+		d = self.d if d is None else d
+		L = self.L if L is None else L
+		delta = self.delta if delta is None else delta
+		lattice = self.lattice if lattice is None else lattice
+		system = self.system if system is None else system
 
-# 		self.lattice = Lattice(N,d,L,delta,lattice,system=system)	
+		self.lattice = Lattice(N,d,L,delta,lattice,system=system)	
 
-# 		self.N = self.lattice.N
-# 		self.d = self.lattice.d
-# 		self.L = self.lattice.L
-# 		self.delta = self.lattice.delta
+		self.N = self.lattice.N
+		self.d = self.lattice.d
+		self.L = self.lattice.L
+		self.delta = self.lattice.delta
 
-# 		return
+		return
 
-# 	def __str__(self):
-# 		size = len(self.data)
-# 		delimiter = ' '
-# 		multiple_time = (self.M>1) if self.M is not None else None
-# 		multiple_space = [size>1 and False for i in range(size)]
-# 		return '%s%s%s%s'%(
-# 				'{' if multiple_time else '',
-# 				delimiter.join(['%s%s%s'%(
-# 					'(' if multiple_space[i] else '',
-# 					self.data[i].string,
-# 					')' if multiple_space[i] else '',
-# 					) for i in range(size)]),
-# 				'}' if multiple_time else '',
-# 				'%s'%('^%s'%(self.M) if multiple_time else '') if multiple_time else '')
+	def __str__(self):
+		size = len(self)
+		delimiter = ' '
+		multiple_time = (self.M>1) if self.M is not None else None
+		multiple_space = [size>1 and False for i in range(size)]
+		return '%s%s%s%s'%(
+				'{' if multiple_time else '',
+				delimiter.join(['%s%s%s'%(
+					'(' if multiple_space[i] else '',
+					self.data[i].string,
+					')' if multiple_space[i] else '',
+					) for i in range(size)]),
+				'}' if multiple_time else '',
+				'%s'%('^%s'%(self.M) if multiple_time else '') if multiple_time else '')
 
-# 	def info(self,verbose=None):
-# 		'''
-# 		Log class information
-# 		Args:
-# 			verbose (int,str): Verbosity of message			
-# 		'''		
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
 
-# 		msg = '%s'%('\n'.join([
-# 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
-# 				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
-# 			],
-# 			*['%s: %s'%(delim.join(attr.split(delim)[:2]),', '.join([
-# 				('%s' if (
-# 					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
-# 					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
-# 				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
-# 				for prop in ['category','method','shape','parameters']]))
-# 				for attr in ['parameters.%s'%(i) for i in self.parameters]
-# 			],
-# 			*['%s: %s'%(delim.join(attr.split(delim)[:1]),', '.join([
-# 				('%s' if (
-# 					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
-# 					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
-# 				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
-# 				for prop in ['string','parameters']]))
-# 				for attr in ['label','state','noise']
-# 			],
-# 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).__name__) 
-# 				for attr in ['exponentiation']
-# 			],			
-# 			]
-# 			))
-# 		self.log(msg,verbose=verbose)
+		msg = '%s'%('\n'.join([
+			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
+				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
+			],
+			*['%s: %s'%(delim.join(attr.split(delim)[:2]),', '.join([
+				('%s' if (
+					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
+					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
+				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
+				for prop in ['category','method','shape','parameters']]))
+				for attr in ['parameters.%s'%(i) for i in self.parameters]
+			],
+			*['%s: %s'%(delim.join(attr.split(delim)[:1]),', '.join([
+				('%s' if (
+					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
+					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
+				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
+				for prop in ['string','parameters']]))
+				for attr in ['state','noise']
+			],
+			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).__name__) 
+				for attr in ['exponentiation']
+			],			
+			]
+			))
+		self.log(msg,verbose=verbose)
 
-# 		return
+		return
 
 
-# 	def dump(self,path=None):
-# 		'''
-# 		Save class data		
-# 		Args:
-# 			path (str,dict[str,(str,bool)]): Path to dump class data, either path or boolean to dump			
-# 		'''
+	def dump(self,path=None):
+		'''
+		Save class data		
+		Args:
+			path (str,dict[str,(str,bool)]): Path to dump class data, either path or boolean to dump			
+		'''
 
-# 		# Set data
-# 		data = {}
+		# Set data
+		data = {}
 
-# 		# Set path
-# 		paths = {}
-# 		if path is None:
-# 			paths.update({attr: True for attr in data})			
-# 		elif not isinstance(path,dict):
-# 			paths.update({attr: path for attr in data if path})
-# 		else:
-# 			paths.update({attr: path[attr] for attr in path if path[attr]})
+		# Set path
+		paths = {}
+		if path is None:
+			paths.update({attr: True for attr in data})			
+		elif not isinstance(path,dict):
+			paths.update({attr: path for attr in data if path})
+		else:
+			paths.update({attr: path[attr] for attr in path if path[attr]})
 
-# 		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
+		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
 
-# 		# Dump data
-# 		for attr in paths:
-# 			root,file = split(paths[attr],directory=True,file_ext=True)
-# 			file = file if file is not None else self.path
-# 			path = join(file,root=root)
-# 			dump(data[attr],path)
+		# Dump data
+		for attr in paths:
+			root,file = split(paths[attr],directory=True,file_ext=True)
+			file = file if file is not None else self.path
+			path = join(file,root=root)
+			dump(data[attr],path)
 		
-# 		return
+		return
 
-# 	def load(self,path=None):
-# 		'''
-# 		Load class data		
-# 		Args:
-# 			path (str,dict[str,(str,bool)]): Path to load class data, either path or boolean to load
-# 		'''
+	def load(self,path=None):
+		'''
+		Load class data		
+		Args:
+			path (str,dict[str,(str,bool)]): Path to load class data, either path or boolean to load
+		'''
 
-# 		# TODO: Determine dump/load model (.pkl?)
+		# TODO: Determine dump/load model (.pkl?)
 
-# 		# Set data
-# 		data = {}
+		# Set data
+		data = {}
 
-# 		# Set path
-# 		paths = {}
-# 		if path is None:
-# 			paths.update({attr: True for attr in data})			
-# 		elif not isinstance(path,dict):
-# 			paths.update({attr: path for attr in data if path})
-# 		else:
-# 			paths.update({attr: path[attr] for attr in path if path[attr]})
+		# Set path
+		paths = {}
+		if path is None:
+			paths.update({attr: True for attr in data})			
+		elif not isinstance(path,dict):
+			paths.update({attr: path for attr in data if path})
+		else:
+			paths.update({attr: path[attr] for attr in path if path[attr]})
 
-# 		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
+		paths.update({attr: paths.get(attr) if isinstance(paths.get(attr),str) else self.cwd for attr in data if paths.get(attr)})			
 
-# 		# Load data
-# 		for attr in paths:
-# 			root,file = split(paths[attr],directory=True,file_ext=True)
-# 			file = file if file is not None else self.path
-# 			path = join(file,root=root)
-# 			func = (list,)
-# 			default = data[attr]
-# 			data[attr] = load(path,default=default)
-# 			setter(default,data[attr],func=func)
+		# Load data
+		for attr in paths:
+			root,file = split(paths[attr],directory=True,file_ext=True)
+			file = file if file is not None else self.path
+			path = join(file,root=root)
+			func = (list,)
+			default = data[attr]
+			data[attr] = load(path,default=default)
+			setter(default,data[attr],func=func)
 
-# 		return
+		return
 
 
 
-# class Hamiltonian(Operators):
-# 	'''
-# 	Hamiltonian class of Operators
-# 	Args:
-# 		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
-# 			operator (iterable[str]): string names of operators
-# 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 			string (iterable[str]): string labels of operators
-# 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		operator (iterable[str]): string names of operators
-# 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 		string (iterable[str]): string labels of operators
-# 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		N (int): Number of qudits
-# 		D (int): Dimension of qudits
-# 		d (int): Spatial dimension
-# 		L (int,float): Scale in system
-# 		delta (float): Simulation length scale		
-# 		M (int): Number of time steps
-# 		T (int): Simulation time
-# 		tau (float): Simulation time scale
-# 		P (int): Trotter order		
-# 		space (str,Space): Type of local space
-# 		time (str,Time): Type of Time evolution space						
-# 		lattice (str,Lattice): Type of lattice		
-# 		parameters (str,dict,Parameters): Type of parameters	
-# 		state (str,dict,State): Type of state	
-# 		noise (str,dict,Noise): Type of noise
-# 		label (str,dict,Gate): Type of label
-# 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-# 		kwargs (dict): Additional system keyword arguments	
-# 	'''
+class Hamiltonian(Operators):
+	'''
+	Hamiltonian class of Operators
+	Args:
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+			operator (iterable[str]): string names of operators
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			string (iterable[str]): string labels of operators
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		operator (iterable[str]): string names of operators
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+		string (iterable[str]): string labels of operators
+		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		N (int): Number of qudits
+		D (int): Dimension of qudits
+		d (int): Spatial dimension
+		L (int,float): Scale in system
+		delta (float): Simulation length scale		
+		M (int): Number of time steps
+		T (int): Simulation time
+		tau (float): Simulation time scale
+		P (int): Trotter order		
+		space (str,Space): Type of local space
+		time (str,Time): Type of Time evolution space						
+		lattice (str,Lattice): Type of lattice		
+		parameters (str,dict,Parameters): Type of parameters	
+		state (str,dict,State): Type of state	
+		noise (str,dict,Noise): Type of noise
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
 
-# 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
-# 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
-# 				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
+				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,system=None,**kwargs):
 
-# 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
-# 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
-# 				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
+				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
 		
-# 		return
+		return
 
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+		'''
+		Setup class
+		Args:
+			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+				operator (iterable[str]): string names of operators
+				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+				string (iterable[str]): string labels of operators
+				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			operator (iterable[str]): string names of operators
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			string (iterable[str]): string labels of operators
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		'''
+		# Get operator,site,string,interaction from data
+		objs = {'operator':operator,'site':site,'string':string,'interaction':interaction}
 
-# 	#@partial(jit,static_argnums=(0,))
-# 	def __call__(self,parameters):
-# 		'''
-# 		Return parameterized operator sum(parameters*data)
-# 		Args:
-# 			parameters (array): Parameters to parameterize operator			
-# 		Returns
-# 			operator (array): Parameterized operator
-# 		'''		
+		for obj in objs:
+			objs[obj] = [] if objs[obj] is None else objs[obj]
 
-# 		parameters = self.parameters(parameters)
-
-# 		data = sum(data(self.parameters) for data in self.data)
-
-# 		return data
-
-# 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
-# 		'''
-# 		Setup class
-# 		Args:
-# 			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
-# 				operator (iterable[str]): string names of operators
-# 				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 				string (iterable[str]): string labels of operators
-# 				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 			operator (iterable[str]): string names of operators
-# 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 			string (iterable[str]): string labels of operators
-# 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		'''
-# 		# Get operator,site,string,interaction from data
-# 		objs = {'operator':operator,'site':site,'string':string,'interaction':interaction}
-
-# 		for obj in objs:
-# 			objs[obj] = [] if objs[obj] is None else objs[obj]
-
-# 		if data is None:
-# 			data = {}
-# 		elif all(isinstance(datum,Operator) for datum in data):
-# 			data = {datum.timestamp: datum for datum in data}
+		if data is None:
+			data = {}
+		elif all(isinstance(datum,Operator) for datum in data):
+			data = {datum.timestamp: datum for datum in data}
 		
-# 		assert isinstance(data,dict), 'Incorrect data format %r'%(type(data))			
+		assert isinstance(data,dict), 'Incorrect data format %r'%(type(data))			
 
-# 		if all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
-# 			for obj in objs:
-# 				objs[obj].extend([data[name][obj] for name in data])
+		if all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
+			for obj in objs:
+				objs[obj].extend([data[name][obj] for name in data])
 
-# 		# Lattice sites
-# 		sites = {site: self.lattice(site) for site in ['i','i<j','<ij>','i...j']}	# sites types on lattice
-# 		indices = {'i': ['i'],'<ij>':['i','j'],'i<j':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
+		# Lattice sites
+		sites = {site: self.lattice(site) for site in ['i','i<j','<ij>','i...j']}	# sites types on lattice
+		indices = {'i': ['i'],'<ij>':['i','j'],'i<j':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
 
-# 		# Get number of operators
-# 		size = min(len(objs[obj]) for obj in objs)
+		# Get number of operators
+		size = min(len(objs[obj]) for obj in objs)
 		
-# 		# Get all indices from symbolic indices
-# 		for index in range(size):
+		# Get all indices from symbolic indices
+		for index in range(size):
 			
-# 			size -= 1
+			size -= 1
 			
-# 			_objs = {}
-# 			for obj in objs:
-# 				value = deepcopy(objs[obj].pop(0))
-# 				if obj in ['site']:
-# 					if isinstance(value,str):
-# 						value = indices[value]
-# 				_objs[obj] = value
+			_objs = {}
+			for obj in objs:
+				value = deepcopy(objs[obj].pop(0))
+				if obj in ['site']:
+					if isinstance(value,str):
+						value = indices[value]
+				_objs[obj] = value
 
-# 			if any(i in indices[_objs['interaction']] for i in _objs['site']):
-# 				for i,s in enumerate(sites[_objs['interaction']]):
-# 					for obj in objs:
-# 						if obj in ['site']:
-# 							value = [dict(zip(
-# 								indices[_objs['interaction']],
-# 								s if not isinstance(s,int) else [s])
-# 							).get(i,parse(i,int)) 
-# 							for i in _objs['site']]
-# 						else:
-# 							value = _objs[obj]
+			if any(i in indices[_objs['interaction']] for i in _objs['site']):
+				for i,s in enumerate(sites[_objs['interaction']]):
+					for obj in objs:
+						if obj in ['site']:
+							value = [dict(zip(
+								indices[_objs['interaction']],
+								s if not isinstance(s,int) else [s])
+							).get(i,parse(i,int)) 
+							for i in _objs['site']]
+						else:
+							value = _objs[obj]
 
-# 						objs[obj].append(value)			
+						objs[obj].append(value)			
 
-# 			elif len(_objs['operator']) == len(_objs['site']):
-# 				for obj in objs:
-# 					value = _objs[obj]
-# 					objs[obj].append(value)					
+			elif len(_objs['operator']) == len(_objs['site']):
+				for obj in objs:
+					value = _objs[obj]
+					objs[obj].append(value)					
 
-# 			else:
-# 				for obj in objs:
-# 					value = _objs[obj]
-# 					objs[obj].append(value)	
-
-
-# 		# Set class attributes
-# 		self.__extend__(**objs)
-
-# 		return
+			else:
+				for obj in objs:
+					value = _objs[obj]
+					objs[obj].append(value)	
 
 
+		# Set class attributes
+		self.__extend__(**objs)
 
-# class Unitary(Hamiltonian):
-# 	'''
-# 	Unitary class of Operators
-# 	Args:
-# 		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
-# 			operator (iterable[str]): string names of operators
-# 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 			string (iterable[str]): string labels of operators
-# 			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		operator (iterable[str]): string names of operators
-# 		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
-# 		string (iterable[str]): string labels of operators
-# 		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-# 		N (int): Number of qudits
-# 		D (int): Dimension of qudits
-# 		d (int): Spatial dimension
-# 		L (int,float): Scale in system
-# 		delta (float): Simulation length scale				
-# 		M (int): Number of time steps
-# 		T (int): Simulation Time
-# 		tau (float): Simulation time scale		
-# 		P (int): Trotter order		
-# 		space (str,Space): Type of local space
-# 		time (str,Time): Type of Time evolution space
-# 		lattice (str,Lattice): Type of lattice
-# 		parameters (str,dict,Parameters): Type of parameters	
-# 		state (str,dict,State): Type of state	
-# 		noise (str,dict,Noise): Type of noise
-# 		label (str,dict,Gate): Type of label
-# 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-# 		kwargs (dict): Additional system keyword arguments	
-# 	'''
+		return
 
-# 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
-# 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
-# 				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,label=None,system=None,**kwargs):
+
+
+class Unitary(Hamiltonian):
+	'''
+	Unitary class of Operators
+	Args:
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+			operator (iterable[str]): string names of operators
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			string (iterable[str]): string labels of operators
+			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		operator (iterable[str]): string names of operators
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+		string (iterable[str]): string labels of operators
+		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		N (int): Number of qudits
+		D (int): Dimension of qudits
+		d (int): Spatial dimension
+		L (int,float): Scale in system
+		delta (float): Simulation length scale				
+		M (int): Number of time steps
+		T (int): Simulation Time
+		tau (float): Simulation time scale		
+		P (int): Trotter order		
+		space (str,Space): Type of local space
+		time (str,Time): Type of Time evolution space
+		lattice (str,Lattice): Type of lattice
+		parameters (str,dict,Parameters): Type of parameters	
+		state (str,dict,State): Type of state	
+		noise (str,dict,Noise): Type of noise
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
+
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
+				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,system=None,**kwargs):
 		
-# 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
-# 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
-# 				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
+		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
+				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
 
-# 		return
+		return
 
-# 	#@partial(jit,static_argnums=(0,))
-# 	def __call__(self,parameters):
-# 		'''
-# 		Return parameterized operator expm(parameters*data)
-# 		Args:
-# 			parameters (array): Parameters to parameterize operator
-# 		Returns
-# 			operator (array): Parameterized operator
-# 		'''		
+	#@partial(jit,static_argnums=(0,))
+	def __grad_analytical__(self,parameters):
+		'''
+		Class gradient
+		Args:
+			parameters (array): parameters		
+		Returns
+			out (array): Return of function
+		'''	
 
-# 		parameters = self.parameters(parameters)
+		# Get class attributes
+		parameters = self.parameters(parameters)
+		shape = indexer(self.parameters.index,self.parameters).shape
 
-# 		data = self.identity()
-		
-# 		for i in range(self.M):
-# 			operators = trotter([data(self.parameters,i) for data in self.data],self.P)
-# 			for operator in operators:
-# 				data = dot(operator,data)
-		
-# 		return data
+		attributes = None
 
-# 		# return self.exponentiation(self.coefficients*parameters)
+		# Get data
+		data = self.data
+		dtype = self.dtype
 
-# 	#@partial(jit,static_argnums=(0,))
-# 	def __grad_analytical__(self,parameters):
-# 		'''
-# 		Class gradient
-# 		Args:
-# 			parameters (array): parameters		
-# 		Returns
-# 			out (array): Return of function
-# 		'''	
+		# Get trotterized shape
+		P = self.P
+		shape = list(shape[::-1])
 
-# 		# Get class attributes
-# 		parameters = self.parameters(parameters)
-# 		shape = indexer(self.parameters.index,self.parameters).shape
+		shape[-1] *= P
 
-# 		attributes = None
+		ndim = len(shape)
 
-# 		# Get data
-# 		data = self.data
-# 		dtype = self.dtype
+		attribute = 'slice'
+		layer = 'variables'
+		slices = attributes[attribute][layer]		
 
-# 		# Get trotterized shape
-# 		P = self.P
-# 		shape = list(shape[::-1])
+		attribute = 'index'
+		layer = 'variables'
+		indices = attributes[attribute][layer]		
 
-# 		shape[-1] *= P
+		slices = tuple([
+			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
+				for axis in range(0,1)],
+			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
+				for axis in range(1,ndim)]
+		])
 
-# 		ndim = len(shape)
+		indices = tuple([
+			*[[i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]]
+				for axis in range(0,1)],
+			*[[indices[parameter][group][axis] for parameter in indices for group in indices[parameter]][0]
+				for axis in range(1,ndim)]
+		])
 
-# 		attribute = 'slice'
-# 		layer = 'variables'
-# 		slices = attributes[attribute][layer]		
+		# Calculate parameters and gradient
+		parameters = self.parameters(parameters)
 
-# 		attribute = 'index'
-# 		layer = 'variables'
-# 		indices = attributes[attribute][layer]		
+		coefficients = self.coefficients
+		data = array(trotter([datum() for datum in data],P))
+		identity = self.identity()
 
-# 		slices = tuple([
-# 			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
-# 				for axis in range(0,1)],
-# 			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
-# 				for axis in range(1,ndim)]
-# 		])
+		grad = gradient_expm(coefficients*parameters,data,identity)
+		grad *= coefficients
 
-# 		indices = tuple([
-# 			*[[i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]]
-# 				for axis in range(0,1)],
-# 			*[[indices[parameter][group][axis] for parameter in indices for group in indices[parameter]][0]
-# 				for axis in range(1,ndim)]
-# 		])
+		# Reshape gradient
+		axis = 1
 
-# 		# Calculate parameters and gradient
-# 		parameters = self.parameters(parameters)
+		grad = grad.reshape((*shape,*grad.shape[axis:]))
 
-# 		coefficients = self.coefficients
-# 		data = array(trotter([datum() for datum in data],P))
-# 		identity = self.identity()
+		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
 
-# 		grad = gradient_expm(coefficients*parameters,data,identity)
-# 		grad *= coefficients
+		grad = array(gradient_trotter(grad,P))
 
-# 		# Reshape gradient
-# 		axis = 1
+		grad = grad[indices]
 
-# 		grad = grad.reshape((*shape,*grad.shape[axis:]))
+		grad = grad.reshape((-1,*grad.shape[axis+1:]))
 
-# 		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
+		return grad
 
-# 		grad = array(gradient_trotter(grad,P))
-
-# 		grad = grad[indices]
-
-# 		grad = grad.reshape((-1,*grad.shape[axis+1:]))
-
-# 		return grad
-
-# 	#@partial(jit,static_argnums=(0,))
-# 	def grad_analytical(self,parameters):
-# 		'''
-# 		Class gradient
-# 		Args:
-# 			parameters (array): parameters		
-# 		Returns
-# 			out (array): Return of function
-# 		'''	
-# 		return self.__grad_analytical__(parameters)
+	#@partial(jit,static_argnums=(0,))
+	def grad_analytical(self,parameters):
+		'''
+		Class gradient
+		Args:
+			parameters (array): parameters		
+		Returns
+			out (array): Return of function
+		'''	
+		return self.__grad_analytical__(parameters)
 
 
 class Label(Operator):
@@ -1836,8 +1718,8 @@ class Callback(object):
 						_metric = 'abs2'
 
 					_model = model
-					_shapes = model.shapes
-					_label = model.label()
+					_label = Label()
+					_shapes = _label.shape
 					_optimize = None
 					_hyperparameters = hyperparameters
 					_system = model.system
