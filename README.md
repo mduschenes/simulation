@@ -5,9 +5,11 @@ Pre-processing, hyperparameter searches, and inter-dependent, parallelized job s
 
 The hierarchy of inheritance of classes is as follows
 
-`Unitary <- Hamiltonian <- Observable <- System <- Dictionary`
+`Unitary <- Hamiltonian <- Operators <- Object <- System <- Dictionary`
 
-`Operator <- System <- Dictionary`
+`Operators <- Object <- System <- Dictionary`
+
+`Operator <- Object <- System <- Dictionary`
 
 `State,Noise,Gate <- Object <- System <- Dictionary`
 

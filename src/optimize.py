@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
-from src.utils import is_array,is_unitary,is_hermitian,is_naninf,product,sqrt
+from src.utils import is_unitary,is_hermitian,is_naninf,product,sqrt
 from src.utils import scalars,delim,nan
 
 from src.iterables import setter

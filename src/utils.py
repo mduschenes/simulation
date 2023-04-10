@@ -72,6 +72,7 @@ e = np.exp(1)
 nan = np.nan
 inf = np.inf
 scalars = (int,np.integer,float,np.floating,onp.int,onp.integer,onp.float,onp.floating,str,type(None))
+arrays = (np.ndarray,onp.ndarray)
 nulls = ('',None)
 delim = '.'
 
@@ -1939,10 +1940,10 @@ def mse(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2002,7 +2003,7 @@ def mse(*operands,optimize=True,wrapper=None):
 		out = einsummation(out,out,*operands[2:]).real
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2019,10 +2020,10 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2095,7 +2096,7 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 			out = einsummation(operands[2],out).real
 			return wrapper(out,*operands)			
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2114,10 +2115,10 @@ def inner(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2176,7 +2177,7 @@ def inner(*operands,optimize=True,wrapper=None):
 		out = einsummation(*operands[:length]).real
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2193,10 +2194,10 @@ def gradient_inner(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2267,7 +2268,7 @@ def gradient_inner(*operands,optimize=True,wrapper=None):
 			out = einsummation(operands[2],operands[1]).real
 			return wrapper(out,*operands)			
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2286,10 +2287,10 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2312,7 +2313,7 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 		out = einsummation(abs2(operands[0]-operands[1].conj()))
 		return wrapper(out,*operands)
 	
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2329,10 +2330,10 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2356,7 +2357,7 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 		out = 2*einsummation(operands[2],out).real
 		return wrapper(out,*operands)
 	
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2374,10 +2375,10 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2400,7 +2401,7 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 		out = abs2(einsummation(*operands))
 		return wrapper(out,*operands)
 	
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2419,10 +2420,10 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2456,7 +2457,7 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 		out = (2*(einsummation_func(operands[0],operands[1]).conj()*einsummation_grad(operands[2],operands[1])).real)
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2474,10 +2475,10 @@ def inner_real(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2500,7 +2501,7 @@ def inner_real(*operands,optimize=True,wrapper=None):
 		out = einsummation(*operands).real
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2518,10 +2519,10 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2544,7 +2545,7 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 		out = einsummation(operands[2],operands[1]).real
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2562,10 +2563,10 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2588,7 +2589,7 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 		out = einsummation(*operands).imag
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2606,10 +2607,10 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2632,7 +2633,7 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 		out = einsummation(operands[2],operands[1]).imag
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -3030,7 +3031,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	noperands = subscripts.count(',')+1
 	operands = operands[:noperands]
 
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 
 	if wrapper is None:
 		@jit
@@ -3039,7 +3040,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	else:
 		wrapper = jit(wrapper)
 
-	if arrays:
+	if isarray:
 		shapes = [tuple(operand.shape) for operand in operands]
 	else:
 		shapes = [tuple(operand) for operand in operands if operand is not None]
@@ -3050,7 +3051,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
 		return wrapper(np.einsum(subscripts,*operands,optimize=optimize),*operands)
 
-	if arrays:
+	if isarray:
 		return einsummation(*operands)
 	else:
 		return einsummation
@@ -4824,7 +4825,7 @@ def is_scalar(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is scalar
 	'''
-	return (not is_array(a) and not islisttuple(a)) or (is_array(a) and (a.ndim<1) and (a.size<2))
+	return isinstance(a,scalars) or (not isinstance(a,arrays) and not is_listtuple(a)) or (isinstance(a,arrays) and (a.ndim<1) and (a.size<2))
 
 
 def is_int(a,*args,**kwargs):

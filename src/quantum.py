@@ -20,8 +20,8 @@ from src.utils import trotter,gradient_trotter,gradient_expm
 from src.utils import eig
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log,log10,sign,sin,cos
 from src.utils import sort,relsort,norm
-from src.utils import initialize,parse,to_string,is_array
-from src.utils import pi,e,nan,null,delim,scalars,nulls
+from src.utils import initialize,parse,to_string
+from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls
 from src.utils import itg,flt,dbl
 
 from src.iterables import setter,getter,getattrs,hasattrs,indexer,inserter
@@ -30,7 +30,7 @@ from src.io import load,dump,join,split
 
 from src.system import System,Space,Time,Lattice
 
-from src.parameters import Parameters
+# from src.parameters import Parameters
 
 from src.optimize import Objective,Metric
 
@@ -43,6 +43,7 @@ class Object(System):
 		site (iterable[int]): site of local operators
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		parameters (object): parameters of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -51,8 +52,9 @@ class Object(System):
 	default = None
 	dim = None
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,system=None,**kwargs):		
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,system=None,**kwargs):		
 
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
@@ -66,19 +68,23 @@ class Object(System):
 					setattr(self,attr,getattr(operator,attr))					
 
 			return
+		
+		elif (data is None) and (operator is None):
+			return
+		
+		elif isinstance(data,dict):
+			return
+		
+		default = self.default	
 
-		N = max(getattr(self,'N',(max(site if not isinstance(site,int) else [site])+1) if site is not None else 0),(max(site if not isinstance(site,int) else [site])+1) if site is not None else 0)
-		D = min(getattr(self,'D',self.dim),self.dim) if self.dim is not None else getattr(self,'D',data.size**(1/(data.ndim*N))) if data is not None else None
-		default = self.default			
-
-		if not operator:
-			operator = data			
+		if operator is None:
+			operator = data
 		
 		if operator is None:
 			pass
-		elif isinstance(operator,str):
+		elif isinstance(operator,str) and operator not in [default]:
 			operator = [i for i in operator.split(delim)]
-		elif not is_array(operator):
+		elif not isinstance(operator,str) and not isinstance(operator,arrays):
 			operator = [j for i in operator for j in (i.split(delim) if isinstance(i,str) else i)]
 
 		if site is None:
@@ -97,9 +103,38 @@ class Object(System):
 			pass
 		elif not isinstance(interaction,str):
 			interaction = str(interaction)
-		
-		
+	
+		try:
+			if site is not None:
+				N = max(site)+1
+			else:
+				N = 0
+			N = max(N,self.N)
+		except AttributeError:
+			if site is not None:
+				N = max(site)+1
+			else:
+				N = 0
 
+		try:
+			D = self.D
+		except AttributeError:
+			if self.dim:
+				D = self.dim
+			elif isinstance(data,arrays):
+				D = data.size**(1/(data.ndim*N))
+			else:
+				D = 1
+		try:
+			ndim = self.ndim
+		except AttributeError:
+			if isinstance(data,arrays):
+				ndim = data.ndim
+			else:
+				ndim = 2
+		
+		if isinstance(operator,str):
+			operator = [operator]*N
 		if operator is None:
 			pass
 		elif len(operator) == N:
@@ -107,7 +142,7 @@ class Object(System):
 			operator = list((operator[i] for i in range(N)))
 		elif site is not None and len(operator) == len(site):
 			site = list(range(N)) if site is None else site
-			operator = list((operator[site.index(i)%len(operator)] if i in site else default for i in range(N) if (i not in site) or (site.index(i)<len(operator))))
+			operator = list((operator[site.index(i)%len(operator)] if i in site else default for i in range(N)))
 		else:
 			site = list(range(N)) if site is None else site
 
@@ -120,6 +155,8 @@ class Object(System):
 
 		self.N = N
 		self.D = D
+		self.ndim = ndim
+		self.n = self.D**self.N if (self.D is not None) and (self.N is not None) else None
 
 		for attr in ['identity','index','parameters']:
 			setattr(self,attr,getattr(self,attr,None))
@@ -127,9 +164,18 @@ class Object(System):
 		for attr in ['shape','size','ndim']:
 			setattr(self,attr,getattr(self.data,attr,getattr(self,attr,None)) if self.data is not None else getattr(self,attr,None))
 		
-		self.__setup__(data,operator,site,string,interaction)
+		if not (((self.data is None) and (self.operator is None)) or (isinstance(self.data,arrays))):
+			self.__setup__(data,operator,site,string,interaction)
 
-		self.data = self.data if is_array(self.data) else tensorprod([self.basis.get(i,self.basis.get(self.default))() for i in self.operator]) if (self.operator is not None) and (not is_array(self.operator)) else self.operator if self.operator is not None else None
+		if isinstance(self.operator,arrays):
+			self.data = self.operator
+		elif isinstance(self.data,arrays):
+			pass
+		elif self.operator is None:
+			self.data = None
+		else:
+			self.data = tensorprod([self.basis.get(i,self.basis.get(self.default))() for i in self.operator])
+
 		self.data = self.data.astype(self.dtype) if self.data is not None else None
 
 		self.operator = list((i for i in self.operator)) if self.operator is not None else None
@@ -152,26 +198,8 @@ class Object(System):
 		for attr in ['N']:
 			setattr(self,attr,max(getattr(self,attr,0),int(log(self.size)/self.ndim/log(self.D)))) if self.data is not None else None
 
-		
-		# Assert data is normalized
-		if self.data is not None:
-			if self.ndim > 3:
-				normalization = einsum('...uij,...ukj->...ik',self.data.conj(),self.data)
-				eps = array([identity(self.shape[-2:],dtype=self.dtype)]*(normalization.ndim-2),dtype=self.dtype)
-			elif self.ndim == 3:
-				normalization = einsum('uij,ukj->ik',self.data.conj(),self.data)
-				eps = identity(self.shape[-2:],dtype=self.dtype)
-			elif self.ndim == 2:
-				normalization = einsum('ij,kj->ik',self.data.conj(),self.data)
-				eps = identity(self.shape[-2:],dtype=self.dtype)
-			else:
-				normalization = einsum('i,i->',self.data.conj(),self.data)
-				eps = ones(shape=(),dtype=self.dtype)
 
-			assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
-
-			if self.dtype in ['complex128','float64']:
-				assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
+		self.norm()
 
 		return
 
@@ -195,11 +223,10 @@ class Object(System):
 		Returns:
 			operator (array): operator
 		'''
-		parameters = self.parameters if parameters is None else parameters
 		return self.data
 
 	def __str__(self):
-		return delim.join(self.operator)
+		return delim.join(self.operator) if self.operator else self.__class__.__name__
 
 	def __repr__(self):
 		return self.__str__()
@@ -220,6 +247,72 @@ class Object(System):
 		else:
 			return self.__copy__()
 	
+
+	def norm(self):
+		'''
+		Normalize object
+		'''
+
+		if self.data is None:
+			return
+		if self.ndim > 3:
+			normalization = einsum('...uij,...ukj->...ik',self.data.conj(),self.data)
+			eps = array([identity(self.shape[-2:],dtype=self.dtype)]*(normalization.ndim-2),dtype=self.dtype)
+		elif self.ndim == 3:
+			normalization = einsum('uij,ukj->ik',self.data.conj(),self.data)
+			eps = identity(self.shape[-2:],dtype=self.dtype)
+		elif self.ndim == 2:
+			normalization = einsum('ij,kj->ik',self.data.conj(),self.data)
+			eps = identity(self.shape[-2:],dtype=self.dtype)
+		else:
+			normalization = einsum('i,i->',self.data.conj(),self.data)
+			eps = ones(shape=(),dtype=self.dtype)
+
+		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
+
+		if self.dtype in ['complex128','float64']:
+			assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
+
+		return
+
+	def swap(self,i,j):
+		'''	
+		Swap indices of object
+		Args:
+			i (int): Index to swap
+			j (int): Index to swap
+		'''
+
+		if (self.data is None) or (self.n is None) or (self.N is None) or (self.D is None) or (i == j) or (abs(i) >= self.N) or (abs(j) >= self.N):
+			return
+
+		data = self.data
+		N = self.N
+		D = self.D
+		shape = self.shape
+		ndim = self.shape
+
+		i = i if i >= 0 else N + i
+		j = j if j >= 0 else N + j
+
+		i,j = min(i,j),max(i,j)
+
+		ndims = 1
+		dims = shape[:-ndims]
+		dim = ndim - ndims
+
+		data = data.reshape((*dims,*[D]*(ndims*N)))
+		data = data.transpose(*range(dim),*range(dim,dim+i),j,*range(dim+i+1,dim+j),i,*range(dim+j+1,dim+N))
+		data = data.reshape(shape)
+
+		self.data = data
+		self.shape = data.shape
+		self.size = data.size
+		self.ndim = data.ndim
+
+		return
+
+
 class Operator(Object):
 	'''
 	Class for Operator
@@ -229,21 +322,26 @@ class Operator(Object):
 		site (iterable[int]): site of local operators
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		parameters (object): parameters of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
-	def __new__(cls,data=None,operator=None,site=None,string=None,interaction=None,system=None,**kwargs):		
+	
+	basis = {
+		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1) for attr in ['I','i']},
+			}
+	default = 'I'
+	dim = 2
 
-		# TODO: Allow multiple different classes to be part of one operator
+	def __new__(cls,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,system=None,**kwargs):		
+
+		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
 
 		self = None
 
-		if (data is None) and (operator is None):
-			return self
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,system=system),delimiter=delim,func=False)
 
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,system=system),delimiter=delim,func=False)
-
-		classes = [Pauli,Gate,Haar,Noise]
+		classes = [Gate,Pauli,Haar,Noise]
 		for cls in classes:
 			if not all(j in cls.basis for obj in [data,operator] if obj is not None for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in cls.basis else k.split(delim))):
 				continue
@@ -267,6 +365,7 @@ class Pauli(Object):
 		site (iterable[int]): site of local operators
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		parameters (object): parameters of operators				
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -315,6 +414,7 @@ class Gate(Object):
 		site (iterable[int]): site of local operators
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		parameters (object): parameters of operators				
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -341,7 +441,6 @@ class Gate(Object):
 		Returns:
 			operator (array): operator
 		'''
-		parameters = self.parameters if parameters is None else parameters
 		return self.data
 	
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
@@ -373,7 +472,7 @@ class Gate(Object):
 			data = self.data
 		
 		self.data = data
-		
+
 		return
 
 class Haar(Object):
@@ -385,6 +484,7 @@ class Haar(Object):
 		site (iterable[int]): site of local operators
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		parameters (object): parameters of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -407,9 +507,6 @@ class Haar(Object):
 			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
 		'''
 
-		if ((self.data is None) and (self.operator is None)) or (is_array(self.data)):
-			return
-
 		shape = (self.D**self.N,)*self.ndim
 		size = prod(shape)	
 		random = getattr(self,'random','haar')
@@ -431,7 +528,6 @@ class Haar(Object):
 		Returns:
 			operator (array): operator
 		'''
-		parameters = self.parameters if parameters is None else parameters
 		return self.data
 
 
@@ -444,6 +540,7 @@ class Noise(Object):
 		site (iterable[int]): site of local operators
 		string (str): string labels of operators
 		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		parameters (object): parameters of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -472,8 +569,6 @@ class Noise(Object):
 			string (str): string labels of operators
 			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
 		'''
-		if ((self.data is None) and (self.operator is None)) or (is_array(self.data)):
-			return
 
 		if (getattr(self,'scale',None) is not None):
 			if (getattr(self,'initialization',None) in ['time']):
@@ -505,10 +600,7 @@ class Noise(Object):
 			data = [self.basis['I']()]
 	
 
-		data = array([
-			tensorprod(i)
-			for i in itertools.product(data,repeat=self.N)
-			],dtype=self.dtype)
+		data = array([tensorprod(i)	for i in itertools.product(data,repeat=self.N)],dtype=self.dtype)
 
 		self.data = data
 
@@ -522,11 +614,76 @@ class Noise(Object):
 		Returns:
 			operator (array): operator
 		'''
-		parameters = self.parameters if parameters is None else parameters
 		return self.data
 
 
-# class Operators(Operator):
+def compute(data,identity,state,noise,n,m,p):
+	'''
+	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
+	Args:
+		data (array): Array of data to matrix exponentiate of shape (d,n,n)
+		identity (array): Array of data identity
+		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
+		noise (array): Array of noise to act of shape (n,n) or (k,n,n)
+		n (int): Size of array
+		m (int): Number of steps
+		p (int): number of trotterizations
+	Returns:
+		out (array): Matrix exponential of data of shape (n,n)
+	'''		
+
+	def matmat(parameters):
+		out = identity
+	
+		for i in range(m):
+			operators = trotter([data(parameters,i) for data in self.data],p)
+			for operator in operators:
+				out = dot(operator,out)
+
+	# Operator functions
+	if state is None and noise is None:
+
+		self.summation = jit(summation,data=data,identity=identity)
+		self.exponentiation = jit(exponentiation,data=data,identity=identity)
+	elif state is not None and noise is None:
+		if state.ndim == 1:
+			self.summation = jit(summationv,data=data,identity=identity,state=state)
+			self.exponentiation = jit(exponentiationv,data=data,identity=identity,state=state)
+		elif state.ndim == 2:
+			self.summation = jit(summationm,data=data,identity=identity,state=state)
+			self.exponentiation = jit(exponentiationm,data=data,identity=identity,state=state)
+		else:
+			self.summation = jit(summation,data=data,identity=identity)
+			self.exponentiation = jit(exponentiation,data=data,identity=identity)
+	elif state is None and noise is not None:
+		self.summation = jit(summation,data=data,identity=identity)
+		self.exponentiation = jit(exponentiation,data=data,identity=identity)
+	elif state is not None and noise is not None:
+		if state.ndim == 1:
+			self.summation = jit(summationmvc,data=data,identity=identity,state=state,constants=noise)
+			self.exponentiation = jit(exponentiationmvc,data=data,identity=identity,state=state,constants=noise)
+		elif state.ndim == 2:
+			self.summation = jit(summationmmc,data=data,identity=identity,state=state,constants=noise)
+			self.exponentiation = jit(exponentiationmmc,data=data,identity=identity,state=state,constants=noise)
+		else:
+			self.summation = jit(summation,data=data,identity=identity)
+			self.exponentiation = jit(exponentiation,data=data,identity=identity)
+	else:
+		self.summation = jit(summation,data=data,identity=identity)
+		self.exponentiation = jit(exponentiation,data=data,identity=identity)
+
+
+
+
+	parameters = self.parameters(parameters)
+
+	
+	
+	return data
+
+
+
+# class Operators(Object):
 # 	'''
 # 	Class for Operators
 # 	Args:
@@ -580,10 +737,6 @@ class Noise(Object):
 # 		self.lattice = lattice
 
 # 		self.data = []
-# 		self.operator = []
-# 		self.site = []
-# 		self.string = []
-# 		self.interaction = []
 
 # 		self.n = None
 # 		self.g = None
@@ -599,7 +752,6 @@ class Noise(Object):
 
 # 		self.summation = None
 # 		self.exponentiation = None 
-# 		self.hermitian = False
 
 # 		self.system = system
 
@@ -704,14 +856,11 @@ class Noise(Object):
 # 		if index == -1:
 # 			index = len(self.data)
 
-# 		data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,
-# 						N=self.N,D=self.D,system=self.system)
+# 		kwargs = dict(N=self.N,D=self.D,system=self.system)
+
+# 		data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
 
 # 		self.data.insert(index,data)
-# 		self.operator.insert(index,operator)
-# 		self.site.insert(index,site)
-# 		self.string.insert(index,string)
-# 		self.interaction.insert(index,interaction)
 
 # 		self.__shape__()
 
@@ -730,7 +879,7 @@ class Noise(Object):
 # 		# Get parameters
 # 		parameters = self.parameters if parameters is None or parameters is True else parameters if parameters is not False else None
 # 		system = self.system
-# 		index = {string: [[(*data.site) for data in self.data if data.string==string],self.M] for string in set(self.string)}
+# 		index = {string: [[(*data.site) for data in self.data if data.string==string],self.M] for string in set((data.string for data in self.data))}
 
 # 		self.parameters = Parameters(parameters,index,system=system)
 # 		parameters = self.parameters()
@@ -798,41 +947,32 @@ class Noise(Object):
 # 		if state is None and noise is None:
 # 			self.summation = jit(summation,data=data,identity=identity)
 # 			self.exponentiation = jit(exponentiation,data=data,identity=identity)
-# 			self.hermitian = False
 # 		elif state is not None and noise is None:
 # 			if state.ndim == 1:
 # 				self.summation = jit(summationv,data=data,identity=identity,state=state)
 # 				self.exponentiation = jit(exponentiationv,data=data,identity=identity,state=state)
-# 				self.hermitian = True
 # 			elif state.ndim == 2:
 # 				self.summation = jit(summationm,data=data,identity=identity,state=state)
 # 				self.exponentiation = jit(exponentiationm,data=data,identity=identity,state=state)
-# 				self.hermitian = True
 # 			else:
 # 				self.summation = jit(summation,data=data,identity=identity)
 # 				self.exponentiation = jit(exponentiation,data=data,identity=identity)
-# 				self.hermitian = False
 # 		elif state is None and noise is not None:
 # 			self.summation = jit(summation,data=data,identity=identity)
 # 			self.exponentiation = jit(exponentiation,data=data,identity=identity)
-# 			self.hermitian = False
 # 		elif state is not None and noise is not None:
 # 			if state.ndim == 1:
 # 				self.summation = jit(summationmvc,data=data,identity=identity,state=state,constants=noise)
 # 				self.exponentiation = jit(exponentiationmvc,data=data,identity=identity,state=state,constants=noise)
-# 				self.hermitian = True
 # 			elif state.ndim == 2:
 # 				self.summation = jit(summationmmc,data=data,identity=identity,state=state,constants=noise)
 # 				self.exponentiation = jit(exponentiationmmc,data=data,identity=identity,state=state,constants=noise)
-# 				self.hermitian = True
 # 			else:
 # 				self.summation = jit(summation,data=data,identity=identity)
 # 				self.exponentiation = jit(exponentiation,data=data,identity=identity)
-# 				self.hermitian = False
 # 		else:
 # 			self.summation = jit(summation,data=data,identity=identity)
 # 			self.exponentiation = jit(exponentiation,data=data,identity=identity)
-# 			self.hermitian = False
 
 
 # 		# Update class attributes
@@ -840,6 +980,8 @@ class Noise(Object):
 # 		self.parameters = parameters
 # 		self.coefficients = coefficients
 # 		self.index = index
+
+# 		self.identity = Operator([Operator.default],N=self.N,D=self.D,system=self.system)
 
 # 		return
 
@@ -966,8 +1108,6 @@ class Noise(Object):
 
 # 		self.__shape__()
 
-# 		self.identity = Operator(N=self.N,D=self.D,system=self.system)
-
 # 		return
 
 
@@ -1039,7 +1179,7 @@ class Noise(Object):
 # 				'{' if multiple_time else '',
 # 				delimiter.join(['%s%s%s'%(
 # 					'(' if multiple_space[i] else '',
-# 					self.string[i],
+# 					self.data[i].string,
 # 					')' if multiple_space[i] else '',
 # 					) for i in range(size)]),
 # 				'}' if multiple_time else '',
@@ -1445,322 +1585,351 @@ class Noise(Object):
 # 		return self.__grad_analytical__(parameters)
 
 
-# class Callback(object):
-# 	def __init__(self,*args,**kwargs):
-# 		'''	
-# 		Class for callback
-# 		Args:
-# 			args (tuple): Class arguments
-# 			kwargs (dict): Class keyword arguments
-# 		'''
+class Label(Operator):
+	
+	def __init__(self,*args,**kwargs):
+		'''	
+		Class for label
+		Args:
+			args (tuple): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''	
 
-# 		self.defaults = {
-# 			'iteration':[],
-# 			'parameters':[],'grad':[],'search':[],
-# 			'value':[],'objective':[],
-# 			'alpha':[],'beta':[],
+		super().__init__(*args,**kwargs)
 
-# 			'iteration.max':[],'iteration.min':[],
-# 			'variables':[],'variables.relative':[],'variables.relative.mean':[],
-# 			'features':[],'features.relative':[],'features.relative.mean':[],
-# 			'objective.ideal.noise':[],'objective.diff.noise':[],'objective.rel.noise':[],
-# 			'objective.ideal.state':[],'objective.diff.state':[],'objective.rel.state':[],
-# 			'objective.ideal.operator':[],'objective.diff.operator':[],'objective.rel.operator':[],
-# 			'hessian':[],'fisher':[],
-# 			'hessian.eigenvalues':[],'fisher.eigenvalues':[],
-# 			'hessian.rank':[],'fisher.rank':[],
+		data = self.data
+		state = self.state
 
-# 			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
-# 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
-
-# 			'noise.scale':[],'optimize.c1':[],'optimize.c2':[],
-
-# 		}
-
-# 		return
-
-# 	def __call__(self,parameters,track,optimizer,model,metric,func,grad):
-# 		''' 
-# 		Callback
-# 		Args:
-# 			parameters (array): parameters
-# 			track (dict): callback tracking
-# 			optimizer (Optimizer): callback optimizer
-# 			model (object): Model instance
-# 			metric (str,callable): Callback metric
-# 			func (callable): Objective function with signature func(parameters)
-# 			grad (callable): Objective gradient with signature grad(parameters)
-# 		Returns:
-# 			status (int): status of callback
-# 		'''
-# 		attributes = optimizer.attributes
-# 		iterations = optimizer.iterations
-# 		hyperparameters = optimizer.hyperparameters
-
-# 		init = (len(attributes['iteration'])==1) and ((attributes['iteration'][-1]==0) or (attributes['iteration'][-1] != (iterations.stop)))
+		if state is None:
+			pass
+		elif state.ndim == 1:
+			data = einsum('ij,j->i',data,state)
+		elif state.ndim == 2:
+			data = einsum('ij,jk,kl->il',data,state,dagger(data))
 		
-# 		done = (len(attributes['iteration'])>1) and (attributes['iteration'][-1] == (iterations.stop))
+		self.data = data
+		self.shape = data.shape
+		self.size = data.size
+		self.ndim = data.ndim
+
+		return
+
+class Callback(object):
+	def __init__(self,*args,**kwargs):
+		'''	
+		Class for callback
+		Args:
+			args (tuple): Class arguments
+			kwargs (dict): Class keyword arguments
+		'''
+
+		self.defaults = {
+			'iteration':[],
+			'parameters':[],'grad':[],'search':[],
+			'value':[],'objective':[],
+			'alpha':[],'beta':[],
+
+			'iteration.max':[],'iteration.min':[],
+			'variables':[],'variables.relative':[],'variables.relative.mean':[],
+			'features':[],'features.relative':[],'features.relative.mean':[],
+			'objective.ideal.noise':[],'objective.diff.noise':[],'objective.rel.noise':[],
+			'objective.ideal.state':[],'objective.diff.state':[],'objective.rel.state':[],
+			'objective.ideal.operator':[],'objective.diff.operator':[],'objective.rel.operator':[],
+			'hessian':[],'fisher':[],
+			'hessian.eigenvalues':[],'fisher.eigenvalues':[],
+			'hessian.rank':[],'fisher.rank':[],
+
+			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
+			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
+
+			'noise.scale':[],'optimize.c1':[],'optimize.c2':[],
+
+		}
+
+		return
+
+	def __call__(self,parameters,track,optimizer,model,metric,func,grad):
+		''' 
+		Callback
+		Args:
+			parameters (array): parameters
+			track (dict): callback tracking
+			optimizer (Optimizer): callback optimizer
+			model (object): Model instance
+			metric (str,callable): Callback metric
+			func (callable): Objective function with signature func(parameters)
+			grad (callable): Objective gradient with signature grad(parameters)
+		Returns:
+			status (int): status of callback
+		'''
+		attributes = optimizer.attributes
+		iterations = optimizer.iterations
+		hyperparameters = optimizer.hyperparameters
+
+		init = (len(attributes['iteration'])==1) and ((attributes['iteration'][-1]==0) or (attributes['iteration'][-1] != (iterations.stop)))
 		
-# 		status = (
-# 			((len(attributes['value']) >= 1) and 
-# 			 (attributes['iteration'][-1] <= max(1,
-# 				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) or
-# 			(
-# 			(abs(attributes['value'][-1]) > 
-# 				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
-# 			(log10(abs(attributes['value'][-1] - attributes['value'][-2])) > 
-# 				(log10(abs(hyperparameters['eps']['value.difference'])))) and
-# 			(norm(attributes['grad'][-1])/attributes['grad'][-1].size > 
-# 				  (hyperparameters['eps']['grad']*hyperparameters['value']['grad'])) and
-# 			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
-# 				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))
-# 			)
-# 			)
+		done = (len(attributes['iteration'])>1) and (attributes['iteration'][-1] == (iterations.stop))
+		
+		status = (
+			((len(attributes['value']) >= 1) and 
+			 (attributes['iteration'][-1] <= max(1,
+				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) or
+			(
+			(abs(attributes['value'][-1]) > 
+				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
+			(log10(abs(attributes['value'][-1] - attributes['value'][-2])) > 
+				(log10(abs(hyperparameters['eps']['value.difference'])))) and
+			(norm(attributes['grad'][-1])/attributes['grad'][-1].size > 
+				  (hyperparameters['eps']['grad']*hyperparameters['value']['grad'])) and
+			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
+				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))
+			)
+			)
 
 
-# 		other = ((len(attributes['iteration']) == 1) or 
-# 			(hyperparameters['modulo']['track'] is None) or 
-# 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
+		other = ((len(attributes['iteration']) == 1) or 
+			(hyperparameters['modulo']['track'] is None) or 
+			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 
-# 		stop = (
-# 			(hyperparameters['eps'].get('value.increase') is not None) and
-# 			((len(attributes['value']) > 1) and 
-# 			 (attributes['iteration'][-1] >= max(1,
-# 				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and
-# 			((attributes['value'][-1] > attributes['value'][-2]) and
-# 			(log10(attributes['value'][-1] - attributes['value'][-2]) > 
-# 			(log10(hyperparameters['eps']['value.increase']*attributes['value'][-1]))))
-# 			)
+		stop = (
+			(hyperparameters['eps'].get('value.increase') is not None) and
+			((len(attributes['value']) > 1) and 
+			 (attributes['iteration'][-1] >= max(1,
+				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and
+			((attributes['value'][-1] > attributes['value'][-2]) and
+			(log10(attributes['value'][-1] - attributes['value'][-2]) > 
+			(log10(hyperparameters['eps']['value.increase']*attributes['value'][-1]))))
+			)
 
 
-# 		status = (status) and (not stop)
+		status = (status) and (not stop)
 
-# 		updates = {
-# 			**{attr: lambda i,attr,track,default: (track[attr][-1]) for attr in ['iteration.max','iteration.min']},
-# 			**{attr: lambda i,attr,track,default: (empty(track[attr][-1].shape) if ((i>0) and i<(len(track[attr])-1)) else track[attr][i])
-# 				for attr in [
-# 					'parameters','grad','search',
-# 					'variables','features',
-# 					'variables.relative','features.relative',
-# 					'hessian','fisher',
-# 					'hessian.eigenvalues','fisher.eigenvalues']},
-# 			**{attr: None for attr in [
-# 				'parameters.norm','grad.norm','search.norm',
-# 				'variables.norm','features.norm'
-# 				]},
-# 			**{attr: lambda i,attr,track,default: (default if i<(len(track[attr])-1) else track[attr][i])
-# 				for attr in [
-# 				'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
-# 				'objective.ideal.state','objective.diff.state','objective.rel.state',
-# 				'objective.ideal.operator','objective.diff.operator','objective.rel.operator',
-# 				'hessian.rank','fisher.rank']
-# 			},
-# 			}
+		updates = {
+			**{attr: lambda i,attr,track,default: (track[attr][-1]) for attr in ['iteration.max','iteration.min']},
+			**{attr: lambda i,attr,track,default: (empty(track[attr][-1].shape) if ((i>0) and i<(len(track[attr])-1)) else track[attr][i])
+				for attr in [
+					'parameters','grad','search',
+					'variables','features',
+					'variables.relative','features.relative',
+					'hessian','fisher',
+					'hessian.eigenvalues','fisher.eigenvalues']},
+			**{attr: None for attr in [
+				'parameters.norm','grad.norm','search.norm',
+				'variables.norm','features.norm'
+				]},
+			**{attr: lambda i,attr,track,default: (default if i<(len(track[attr])-1) else track[attr][i])
+				for attr in [
+				'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
+				'objective.ideal.state','objective.diff.state','objective.rel.state',
+				'objective.ideal.operator','objective.diff.operator','objective.rel.operator',
+				'hessian.rank','fisher.rank']
+			},
+			}
 
-# 		attrs = relsort(track,attributes)
-# 		size = min(len(track[attr]) for attr in track)
-# 		does = {**{attr: False for attr in attrs},**hyperparameters.get('do',{})}
+		attrs = relsort(track,attributes)
+		size = min(len(track[attr]) for attr in track)
+		does = {**{attr: False for attr in attrs},**hyperparameters.get('do',{})}
 
-# 		if ((status) or done or init or other):
+		if ((status) or done or init or other):
 			
-# 			for attr in attrs:
+			for attr in attrs:
 
-# 				if ((hyperparameters['length']['track'] is not None) and 
-# 					(len(track[attr]) > hyperparameters['length']['track'])
-# 					):
-# 					_value = track[attr].pop(0)
+				if ((hyperparameters['length']['track'] is not None) and 
+					(len(track[attr]) > hyperparameters['length']['track'])
+					):
+					_value = track[attr].pop(0)
 				
 
-# 				index = -1 if (not stop) else -2
-# 				parameters = attributes['parameters'][index]
+				index = -1 if (not stop) else -2
+				parameters = attributes['parameters'][index]
 			
-# 				if attr in [
-# 					'parameters','grad','search',
-# 					'variables','features',
-# 					'variables.relative','features.relative',
-# 					'hessian','fisher',
-# 					'hessian.eigenvalues','fisher.eigenvalues']:
-# 					default = empty(track[attr][-1].shape) if (len(track[attr])>0) else nan
-# 				else:
-# 					default = nan
+				if attr in [
+					'parameters','grad','search',
+					'variables','features',
+					'variables.relative','features.relative',
+					'hessian','fisher',
+					'hessian.eigenvalues','fisher.eigenvalues']:
+					default = empty(track[attr][-1].shape) if (len(track[attr])>0) else nan
+				else:
+					default = nan
 
-# 				do = (not ((status) and (not done) and (not init))) or does[attr]
+				do = (not ((status) and (not done) and (not init))) or does[attr]
 
-# 				value = default
+				value = default
 
-# 				if attr in attributes:
-# 					value = attributes[attr][index]
+				if attr in attributes:
+					value = attributes[attr][index]
 
-# 				if (not stop):
-# 					track[attr].append(value)
+				if (not stop):
+					track[attr].append(value)
 
-# 				if attr in ['iteration.max']:
-# 					value = int(track['iteration'][-1])
+				if attr in ['iteration.max']:
+					value = int(track['iteration'][-1])
 
-# 				elif attr in ['iteration.min']:
-# 					value = int(track['iteration'][argmin(abs(array(track['objective'])))])
+				elif attr in ['iteration.min']:
+					value = int(track['iteration'][argmin(abs(array(track['objective'])))])
 
-# 				elif attr in ['value']:
-# 					value = abs(attributes[attr][index])
+				elif attr in ['value']:
+					value = abs(attributes[attr][index])
 				
-# 				elif attr in ['parameters','grad','search'] and (not do):
-# 					value = default
+				elif attr in ['parameters','grad','search'] and (not do):
+					value = default
 
-# 				elif attr in ['parameters','grad','search'] and (do):
-# 					value = attributes[attr][index]
+				elif attr in ['parameters','grad','search'] and (do):
+					value = attributes[attr][index]
 
-# 				elif attr in ['parameters.norm','grad.norm','search.norm']:
-# 					value = attr.split(delim)[0]
-# 					value = attributes[value][index]
-# 					value = norm(value)/(value.size)
+				elif attr in ['parameters.norm','grad.norm','search.norm']:
+					value = attr.split(delim)[0]
+					value = attributes[value][index]
+					value = norm(value)/(value.size)
 
-# 				elif attr in [
-# 					'variables.norm','variables.relative','variables.relative.mean',
-# 					'features.norm','features.relative','features.relative.mean'] and (not do):
-# 					value = default
+				elif attr in [
+					'variables.norm','variables.relative','variables.relative.mean',
+					'features.norm','features.relative','features.relative.mean'] and (not do):
+					value = default
 
-# 				elif attr in [
-# 					'variables','variables.norm','variables.relative','variables.relative.mean',
-# 					'features','features.norm','features.relative','features.relative.mean'] and (do):
+				elif attr in [
+					'variables','variables.norm','variables.relative','variables.relative.mean',
+					'features','features.norm','features.relative','features.relative.mean'] and (do):
 
-# 					if attr in ['variables','features']:
-# 						value = model.parameters(parameters)
-# 					elif attr in ['variables.norm','features.norm']:
-# 						value = model.parameters(parameters)
-# 						value = norm(value)/(value.size)
-# 					elif attr in ['variables.relative','features.relative']:
-# 						eps = 1e-20
-# 						value = model.parameters(parameters)
-# 						_value = model.parameters(attributes['parameters'][0])
-# 						value = abs((value - _value + eps)/(_value + eps))
-# 					elif attr in ['variables.relative.mean','features.relative.mean']:
-# 						eps = 1e-20
-# 						value = model.parameters(parameters)
-# 						_value = model.parameters(attributes['parameters'][0])
-# 						value = abs((value - _value + eps)/(_value + eps)).mean()
+					if attr in ['variables','features']:
+						value = model.parameters(parameters)
+					elif attr in ['variables.norm','features.norm']:
+						value = model.parameters(parameters)
+						value = norm(value)/(value.size)
+					elif attr in ['variables.relative','features.relative']:
+						eps = 1e-20
+						value = model.parameters(parameters)
+						_value = model.parameters(attributes['parameters'][0])
+						value = abs((value - _value + eps)/(_value + eps))
+					elif attr in ['variables.relative.mean','features.relative.mean']:
+						eps = 1e-20
+						value = model.parameters(parameters)
+						_value = model.parameters(attributes['parameters'][0])
+						value = abs((value - _value + eps)/(_value + eps)).mean()
 
-# 				elif attr in ['objective']:
-# 					value = abs(metric(model(parameters)))
+				elif attr in ['objective']:
+					value = abs(metric(model(parameters)))
 				
-# 				elif attr in [
-# 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
-# 					'objective.ideal.state','objective.diff.state','objective.rel.state',
-# 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((status) and (not done)):
-# 					value = default
+				elif attr in [
+					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
+					'objective.ideal.state','objective.diff.state','objective.rel.state',
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and ((status) and (not done)):
+					value = default
 
 
-# 				elif attr in [
-# 					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
-# 					'objective.ideal.state','objective.diff.state','objective.rel.state',
-# 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and (not ((status) and (not done))):
+				elif attr in [
+					'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
+					'objective.ideal.state','objective.diff.state','objective.rel.state',
+					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and (not ((status) and (not done))):
 
-# 					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg,{}).get(prop) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
-# 					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
-# 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
-# 						_kwargs = {kwarg: False if kwarg in [] else _kwargs[kwarg] for kwarg in _kwargs}
-# 						_metric = 'real'
-# 					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
-# 						_kwargs = {kwarg: False if kwarg in ['noise'] else _kwargs[kwarg] for kwarg in _kwargs}
-# 						_metric = 'real'
-# 					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
-# 						_kwargs = {kwarg: False if kwarg in ['noise','state'] else _kwargs[kwarg] for kwarg in _kwargs}
-# 						_metric = 'abs2'
+					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg,{}).get(prop) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
+					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
+					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
+						_kwargs = {kwarg: False if kwarg in [] else _kwargs[kwarg] for kwarg in _kwargs}
+						_metric = 'real'
+					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
+						_kwargs = {kwarg: False if kwarg in ['noise'] else _kwargs[kwarg] for kwarg in _kwargs}
+						_metric = 'real'
+					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
+						_kwargs = {kwarg: False if kwarg in ['noise','state'] else _kwargs[kwarg] for kwarg in _kwargs}
+						_metric = 'abs2'
 
-# 					_model = model
-# 					_shapes = model.shapes
-# 					_label = model.label()
-# 					_optimize = None
-# 					_hyperparameters = hyperparameters
-# 					_system = model.system
-# 					_restore = {kwarg: deepcopy(getattr(model,kwarg)) for kwarg in _kwargs}
+					_model = model
+					_shapes = model.shapes
+					_label = model.label()
+					_optimize = None
+					_hyperparameters = hyperparameters
+					_system = model.system
+					_restore = {kwarg: deepcopy(getattr(model,kwarg)) for kwarg in _kwargs}
 
-# 					_model.__initialize__(**_kwargs)
-# 					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters,system=_system,verbose=False)
+					_model.__initialize__(**_kwargs)
+					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters,system=_system,verbose=False)
 
-# 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
-# 						value = abs(_metric(_model(parameters)))
-# 					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
-# 						value = abs((track['objective'][-1] - _metric(_model(parameters))))
-# 					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
-# 						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
+					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
+						value = abs(_metric(_model(parameters)))
+					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
+						value = abs((track['objective'][-1] - _metric(_model(parameters))))
+					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
+						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
 
-# 					model.__initialize__(**_restore)
+					model.__initialize__(**_restore)
 
 
-# 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (not do):
-# 					value = default
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (not do):
+					value = default
 
-# 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (do):
+				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (do):
 					
-# 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
-# 						function = hessian(jit(lambda parameters: metric(model(parameters))))
-# 					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
-# 						function = fisher(model,model.grad,shapes=(model.shape,(parameters.size,*model.shape)))
+					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
+						function = hessian(jit(lambda parameters: metric(model(parameters))))
+					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
+						function = fisher(model,model.grad,shapes=(model.shape,(parameters.size,*model.shape)))
 
-# 					if attr in ['hessian','fisher']:
-# 						value = function(parameters)
+					if attr in ['hessian','fisher']:
+						value = function(parameters)
 
-# 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
-# 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
-# 						value = value/maximum(value)
-# 					elif attr in ['hessian.rank','fisher.rank']:
-# 						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
-# 						value = argmax(abs(difference(value)/value[:-1]))+1	
-# 						value = value.size if (value==value.size-1) else value
+					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
+						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
+						value = value/maximum(value)
+					elif attr in ['hessian.rank','fisher.rank']:
+						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
+						value = argmax(abs(difference(value)/value[:-1]))+1	
+						value = value.size if (value==value.size-1) else value
 
-# 				elif attr in ['tau.noise.parameters','T.noise.parameters']:
-# 					value = [attr.split(delim)[0],delim.join(attr.split(delim)[1:])]
-# 					value = [getattrs(model,i,default=default,delimiter=delim) for i in value]
-# 					value = value[0]/value[1] if value[1] else value[0]
+				elif attr in ['tau.noise.parameters','T.noise.parameters']:
+					value = [attr.split(delim)[0],delim.join(attr.split(delim)[1:])]
+					value = [getattrs(model,i,default=default,delimiter=delim) for i in value]
+					value = value[0]/value[1] if value[1] else value[0]
 
-# 				elif attr not in attributes and not (getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null,delimiter=delim) is null):
-# 					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)
+				elif attr not in attributes and not (getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null,delimiter=delim) is null):
+					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)
 
-# 				elif attr not in attributes and hasattrs(model,attr,delimiter=delim):
-# 					value = getattrs(model,attr,default=default,delimiter=delim)
+				elif attr not in attributes and hasattrs(model,attr,delimiter=delim):
+					value = getattrs(model,attr,default=default,delimiter=delim)
 
-# 				track[attr][-1] = value
+				track[attr][-1] = value
 
-# 				if (not does[attr]) and (updates.get(attr) is not None):
-# 					for i in range(len(track[attr])):
-# 						track[attr][i] = updates[attr](i,attr,track,default)
-
-
-# 		logging = ((len(attributes['iteration']) == 1) or 
-# 			(hyperparameters['modulo']['log'] is None) or 
-# 			(attributes['iteration'][-1]%hyperparameters['modulo']['log'] == 0)
-# 			)
-
-# 		if logging:
-
-# 			msg = '\n'.join([
-# 				'%d f(x) = %0.4e'%(
-# 					attributes['iteration'][-1],
-# 					track['objective'][-1],
-# 				),
-# 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
-# 					norm(attributes['parameters'][-1])/
-# 						 (attributes['parameters'][-1].size),
-# 					norm(attributes['grad'][-1])/
-# 						 (attributes['grad'][-1].size),
-# 				),
-# 				'\t\t'.join([
-# 					'%s = %0.4e'%(attr,attributes[attr][-1])
-# 					for attr in ['alpha','beta']
-# 					if attr in attributes and len(attributes[attr])>0
-# 					]),
-# 				# 'x\n%s'%(to_string(parameters.round(4))),
-# 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-# 				# 'U\n%s\nV\n%s'%(
-# 				# 	to_string((model(parameters)).round(4)),
-# 				# 	to_string((model.label()).round(4))),
-# 				])
+				if (not does[attr]) and (updates.get(attr) is not None):
+					for i in range(len(track[attr])):
+						track[attr][i] = updates[attr](i,attr,track,default)
 
 
-# 			model.log(msg)
+		logging = ((len(attributes['iteration']) == 1) or 
+			(hyperparameters['modulo']['log'] is None) or 
+			(attributes['iteration'][-1]%hyperparameters['modulo']['log'] == 0)
+			)
+
+		if logging:
+
+			msg = '\n'.join([
+				'%d f(x) = %0.4e'%(
+					attributes['iteration'][-1],
+					track['objective'][-1],
+				),
+				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
+					norm(attributes['parameters'][-1])/
+						 (attributes['parameters'][-1].size),
+					norm(attributes['grad'][-1])/
+						 (attributes['grad'][-1].size),
+				),
+				'\t\t'.join([
+					'%s = %0.4e'%(attr,attributes[attr][-1])
+					for attr in ['alpha','beta']
+					if attr in attributes and len(attributes[attr])>0
+					]),
+				# 'x\n%s'%(to_string(parameters.round(4))),
+				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
+				# 'U\n%s\nV\n%s'%(
+				# 	to_string((model(parameters)).round(4)),
+				# 	to_string((model.label()).round(4))),
+				])
 
 
-# 		return status
+			model.log(msg)
+
+
+		return status
 
 
 

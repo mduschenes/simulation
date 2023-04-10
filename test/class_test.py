@@ -13,9 +13,9 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,array,einsum,tensorprod,allclose,is_array,is_hermitian,is_unitary,delim,cos,sin,sigmoid,pi
+from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid,pi
 from src.utils import norm,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
-from src.utils import pi,delim
+from src.utils import pi,delim,arrays,scalars
 from src.iterables import getter,setter
 from src.io import load,dump,exists
 
@@ -33,6 +33,13 @@ from src.quantum import Object,Operator,Pauli,Gate,Haar,Noise
 def test_object(path,tol):
 	bases = {'Pauli':Pauli,'Gate':Gate,'Haar':Haar,'Noise':Noise}
 	arguments = {
+		'Pauli': {
+			'basis':'Pauli',
+			'kwargs':dict(
+				data=delim.join(['X','Y','Z']),operator=None,site=[0,1,2],string='XYZ',interaction='i',
+				kwargs=dict(N=3,D=2,ndim=2,parameters=None),
+			),
+		},
 		'Gate': {
 			'basis':'Gate',
 			'kwargs':dict(
@@ -64,6 +71,10 @@ def test_object(path,tol):
 	}
 
 	for name in arguments:
+	
+		print(name)
+	
+
 		base = bases[arguments[name]['basis']]
 		args = arguments[name]['kwargs']
 		kwargs = args.pop('kwargs',{})
@@ -79,11 +90,13 @@ def test_object(path,tol):
 		for attr in kwargs:
 			assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
 
-
+		for attr in operator:
+			print(attr,operator[attr])
+		print()
 
 		other = operator.copy()
 		for attr in other:
-			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not is_array(operator[attr]) else allclose(operator[attr],other[attr])), "Incorrect Copying %s %r != %r"%(attr,operator[attr],other[attr])
+			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not isinstance(operator[attr],arrays) else allclose(operator[attr],other[attr])), "Incorrect Copying %s %r != %r"%(attr,operator[attr],other[attr])
 
 		assert allclose(operator(),other())
 
@@ -91,7 +104,7 @@ def test_object(path,tol):
 		other = base(**args,**kwargs)
 
 		for attr in other:
-			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not is_array(operator[attr]) else allclose(operator[attr],other[attr])), "Incorrect reinitialization %s %r != %r"%(attr,operator[attr],other[attr])
+			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not isinstance(operator[attr],arrays) else allclose(operator[attr],other[attr])), "Incorrect reinitialization %s %r != %r"%(attr,operator[attr],other[attr])
 		assert allclose(operator(),other())
 		
 		args.update(dict(data=None))
@@ -102,6 +115,13 @@ def test_object(path,tol):
 		operator = base(**args,**kwargs)
 		assert operator() is None
 	
+
+	operator = Operator()
+	print(type(operator),operator,operator(),operator.operator,operator.site,operator.string,operator.interaction,operator.parameters,operator)
+
+	operator = Operator('I',N=3)
+	print(type(operator),operator,operator(),operator.operator,operator.site,operator.string,operator.interaction,operator.parameters,operator.shape)
+
 
 	return
 

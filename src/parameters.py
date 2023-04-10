@@ -17,7 +17,7 @@ for PATH in PATHS:
 
 from src.utils import jit,array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos,minimum,maximum,bound
 from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
-from src.utils import initialize,slice_slice,datatype,returnargs,is_array
+from src.utils import initialize,slice_slice,datatype,returnargs
 from src.utils import pi,itg,scalars,delim
 
 from src.iterables import indexer,inserter,setter,getter

@@ -11,7 +11,6 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,allclose,delim
 from src.io import load,glob
-from src.optimize import System
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 logger = Logger()
@@ -70,10 +69,13 @@ def train(hyperparameters):
 		if backend is not None:
 			backend = __import__(backend)
 
-		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
+		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
+		system = hyperparameters.get('system',{})
 
-		model = cls.pop('model')(**hyperparameters['model'],system=hyperparameters['system'])
-		callback = cls.pop('callback')()
+		model = cls.pop('model')(**{**hyperparameters.get('model',{})},system=system)
+		parameters = cls.pop('parameters')(**{**model,**hyperparameters.get('parameters',{})},system=system)
+		label = cls.pop('label')(**{**model,**hyperparameters.get('label',{})},system=system)
+		callback = cls.pop('callback')(**{**model,**hyperparameters.get('callback',{})},system=system)
 
 		if hyperparameters['boolean'].get('load'):
 			model.load()
@@ -81,17 +83,16 @@ def train(hyperparameters):
 		if hyperparameters['boolean'].get('train'):
 
 			hyperparams = hyperparameters['optimize']		
-			system = hyperparameters['system']
 
-			sys = System(**{arg: cls[arg](**{**model,**hyperparameters.get(arg,{})},system=system) for arg in cls})
+			kwargs = {arg: cls[arg](**{**model,**hyperparameters.get(arg,{})},system=system) for arg in cls}
 
-			model.__initialize__(**args)
+			model.__initialize__(**kwargs)
 
-			shapes = [sys.label.shape]
-			func = [sys.parameters.constraints]
+			shapes = label.shape
+			func = [parameters.constraints]
 			
-			parameters = sys.parameters()
-			label = sys.label()
+			parameters = parameters()
+			label = label()
 
 			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
 			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
