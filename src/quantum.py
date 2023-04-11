@@ -21,7 +21,7 @@ from src.utils import eig
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log,log10,sign,sin,cos
 from src.utils import sort,relsort,norm
 from src.utils import initialize,parse,to_string,allclose
-from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls
+from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,namespace
 from src.utils import itg,flt,dbl
 
 from src.iterables import setter,getter,getattrs,hasattrs,indexer,inserter
@@ -52,6 +52,9 @@ class Object(System):
 	basis = {}
 	default = None
 	dim = None
+
+	hermitian = False
+	unitary = False
 
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
 
@@ -990,16 +993,26 @@ class Operators(Object):
 
 		# Get functions
 		for obj in objs:
+			print(obj)
 			data,cls = objs[obj],classes[obj]
 			data = getattr(self,obj,None) if data is None or data is True else data if data is not False else None
 			if not isinstance(data,cls):
 				kwargs = {}
-				setter(kwargs,{**dict(data=None),**data} if isinstance(data,dict) else dict(data=data),func=False)		
-				setter(kwargs,dict(**self,model=self),func=False)
-				setter(kwargs,dict(verbose=False),func=True)
-				setattr(self,obj,cls(**kwargs))
 
+				args = {**dict(data=None),**data} if isinstance(data,dict) else dict(data=data)
+				setter(kwargs,args,func=False)
 
+				args = dict(**namespace(cls,self),model=self)
+				setter(kwargs,args,func=False)
+
+				args = dict(verbose=False)
+				setter(kwargs,args,func=True)
+
+				instance = cls(**kwargs)
+
+				setattr(self,obj,instance)
+
+				
 		# Set functions
 		data = self.data
 		identity = self.identity()
@@ -1196,18 +1209,18 @@ class Operators(Object):
 				for attr in ['string','key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
 			],
 			*['%s: %s'%(delim.join(attr.split(delim)[:2]),', '.join([
-				('%s' if (
+				('%s: %s' if (
 					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
 					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),(str,int,list,tuple))) 
-				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
+				else '%s: %0.3e')%(prop,getattrs(self,delim.join([attr,prop]),delimiter=delim))
 				for prop in ['category','method','shape','parameters']]))
 				for attr in ['parameters.%s'%(i) for i in (self.parameters if self.parameters is not None else [])]
 			],
 			*['%s: %s'%(delim.join(attr.split(delim)[:1]),', '.join([
-				((('%s' if (
+				((('%s: %s' if (
 					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
 					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),(str,int,list,tuple))) 
-				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim),)) 
+				else '%0.3e')%(prop,getattrs(self,delim.join([attr,prop]),delimiter=delim),)) 
 				if prop is not None else str(getattrs(self,attr,delimiter=delim,default=None)))
 				for prop in [None,'shape','parameters']]))
 				for attr in ['state','noise']

@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim
+from src.utils import argparser,jit,allclose,delim,namespace
 from src.io import load,glob
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
@@ -72,10 +72,12 @@ def train(hyperparameters):
 		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
 		system = hyperparameters.get('system',{})
 
-		model = cls.pop('model')(**{**hyperparameters.get('model',{}),**dict(system=system)})
-		parameters = cls.pop('parameters')(**{**model,**hyperparameters.get('parameters',{}),**dict(model=model,system=system)})
-		label = cls.pop('label')(**{**model,**hyperparameters.get('label',{}),**dict(model=model,system=system)})
-		callback = cls.pop('callback')(**{**model,**hyperparameters.get('callback',{}),**dict(model=model,system=system)})
+		model,parameters,label,callback = cls.pop('model'),cls.pop('parameters'),cls.pop('label'),cls.pop('callback')
+
+		model = model(**{**hyperparameters.get('model',{}),**dict(system=system)})
+		parameters = parameters(**{**namespace(parameters,model),**hyperparameters.get('parameters',{}),**dict(model=model,system=system)})
+		label = label(**{**namespace(label,model),**hyperparameters.get('label',{}),**dict(model=model,system=system)})
+		callback = callback(**{**namespace(callback,model),**hyperparameters.get('callback',{}),**dict(model=model,system=system)})
 
 		if hyperparameters['boolean'].get('load'):
 			model.load()
@@ -86,7 +88,7 @@ def train(hyperparameters):
 
 			kwargs = {
 				**dict(parameters=parameters),
-				**{arg: cls[arg](**{**model,**hyperparameters.get(arg,{}),**dict(system=system)}) for arg in cls}
+				**{arg: cls[arg](**{**namespace(cls[arg],model),**hyperparameters.get(arg,{}),**dict(system=system)}) for arg in cls}
 				}
 
 			model.__initialize__(**kwargs)

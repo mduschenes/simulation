@@ -93,7 +93,7 @@
 		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 		},
-	"N":3,
+	"N":1,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -107,10 +107,10 @@
 	"lattice":"square"
 	},
 "system":{
-	"dtype":"complex128",
+	"dtype":"complex256",
 	"format":"array",
 	"device":"cpu",
-	"backend":"jax",
+	"backend":"np",
 	"architecture":null,
 	"seed":123,
 	"key":null,
@@ -243,7 +243,7 @@
 	"operator":"X.Y",
 	"site":null,
 	"string":"U",
-	"interaction":"i",
+	"interaction":"i...j",
 	"parameters":0.5,
 	"ndim":2,
 	"seed":123
@@ -252,8 +252,8 @@
 	"operator":"haar",
 	"site":null,
 	"string":"U",
-	"interaction":"i",
-	"parameters":false,
+	"interaction":"i...j",
+	"parameters":true,
 	"ndim":1,
 	"samples":1,
 	"seed":123
@@ -263,7 +263,7 @@
 	"site":null,
 	"string":"K",
 	"interaction":"i",
-	"parameters":false,
+	"parameters":true,
 	"ndim":3,
 	"seed":123
 	},

@@ -255,6 +255,24 @@ class argparser(argparse.ArgumentParser):
 		return self.kwargs.values()
 
 
+def namespace(cls,signature=None,**kwargs):
+	'''
+	Get namespace of attributes of class instance
+	Args:
+		cls (class): Class to get attributes
+		signature (dict): Dictionary to get only attributes in cls
+		kwargs (dict): Additional keyword arguments for cls
+	Returns:
+		attrs (iterable,dict): Attributes of cls
+	'''
+	
+	instance = cls(**kwargs)
+
+	if kwargs is None:
+		return dir(instance)
+	else:
+		return {attr: signature[attr] for attr in signature if attr in dir(instance)}
+
 def setitem(obj,index,item):
 	'''
 	Set item at index of object

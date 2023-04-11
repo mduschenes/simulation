@@ -49,17 +49,17 @@ class Parameter(System):
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		defaults = dict(parameters=1)
+		defaults = dict(string=None,parameters=1)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
 
 		super().__init__(*args,**kwargs)
 		
-		self.data = array(data)
+		self.data = array(data) if data is not None else None
 
-		self.shape = self.data.shape
-		self.size = self.data.size
-		self.ndim = self.data.ndim
+		self.shape = self.data.shape if self.data is not None else None
+		self.size = self.data.size if self.data is not None else None
+		self.ndim = self.data.ndim if self.data is not None else None
 
 		return
 
@@ -76,13 +76,16 @@ class Parameter(System):
 		data = self.data if data is None else data
 		parameters = self.parameters if parameters is None else parameters
 
-		data = parameters*data
+		data = parameters*data if ((parameters is not None) and (data is not None)) else None
 
 		return data	
 
+	def __str__(self):
+		return str(self.string)
+
 
 class Parameters(System):
-	def __init__(self,data,system=None,**kwargs):
+	def __init__(self,data=None,system=None,**kwargs):
 		'''
 		Initialize data of parameters
 		Args:
@@ -105,7 +108,7 @@ class Parameters(System):
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		defaults = dict(model={})
+		defaults = dict(model=None)
 
 		if data is None:
 			data = {}
@@ -140,6 +143,8 @@ class Parameters(System):
 
 		return data
 
+
+
 	def __setup__(self,**kwargs):
 		'''
 		Setup attribute
@@ -163,23 +168,27 @@ class Parameters(System):
 		# Get data
 		for parameter in list(self):
 
-			self[parameter] = Parameter(**{**self[parameter],**dict(system=self.system)})
-			continue
+			args = {**self[parameter],**dict(system=self.system)}
+			self[parameter] = Parameter(**args)
+
 			index = {(*group,): [
 				i for string in indexes 
 				if any(i in group 
 					for i in (string,*('%s_%s'%(string,str(i)) 
-					for i in range(len(len(index[string]))))))
-				for i in indexes[string]] 
+					for i in range(len(indexes[string])))))
+				for i in indexes[string]]
 				for group in self[parameter].group}
 
-			print(parameter,index)
-			exit()
+			if not any(index[group] for group in index):
+				delattr(self,parameter)
+				continue
 
+			index = {group: [i,list(range(len(index[group])))] for i,group in enumerate(index)}
 
-		# 	if not any(index[group] for group in index):
-		# 		delattr(self,parameter)
-		# 		continue
+			print(parameter,self[parameter](),index)
+
+		print(self)
+
 
 		# 	data = self[parameter].data
 		# 	groups = [tuple(group) for group in self[parameter].group]
@@ -233,7 +242,10 @@ class Parameters(System):
 	def __deldata__(self,key):
 		if key in self.data:
 			self.data.pop(key)
-		return	
+		return
+
+	def __str__(self):
+		return ' '.join([str(self.data[parameter]) for parameter in self.data])
 
 	def info(self,verbose=None):
 		'''

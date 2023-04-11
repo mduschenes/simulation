@@ -15,7 +15,7 @@ for PATH in PATHS:
 
 from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid,pi
 from src.utils import norm,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
-from src.utils import pi,delim,arrays,scalars
+from src.utils import pi,delim,arrays,scalars,namespace
 from src.iterables import getter,setter
 from src.io import load,dump,exists
 
@@ -127,10 +127,11 @@ def test_model(path,tol):
 
 	system = hyperparameters['system']
 
-	model = cls.pop('model')(**{**hyperparameters.get('model',{}),**dict(state=hyperparameters['state'],noise=hyperparameters['noise'],system=system)})
+	model = cls.pop('model')
+	model = model(**{**hyperparameters.get('model',{}),**dict(state=hyperparameters['state'],noise=hyperparameters['noise'],system=system)})
 
-	exit()
-	parameters = cls.pop('parameters')(**{**model,**hyperparameters.get('parameters',{}),**dict(model=model,system=system)})
+	parameters = cls.pop('parameters')
+	parameters = parameters(**{**namespace(parameters,model),**hyperparameters.get('parameters',{}),**dict(model=model,system=system)})
 
 	return 
 
