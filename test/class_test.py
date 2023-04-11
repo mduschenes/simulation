@@ -19,10 +19,10 @@ from src.utils import pi,delim,arrays,scalars
 from src.iterables import getter,setter
 from src.io import load,dump,exists
 
-from src.quantum import Object,Operator,Pauli,Gate,Haar,Noise
+from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise
 
 def test_object(path,tol):
-	bases = {'Pauli':Pauli,'Gate':Gate,'Haar':Haar,'Noise':Noise}
+	bases = {'Pauli':Pauli,'State':State,'Gate':Gate,'Haar':Haar,'Noise':Noise}
 	arguments = {
 		'Pauli': {
 			'basis':'Pauli',
@@ -46,7 +46,7 @@ def test_object(path,tol):
 			),
 		},
 		'Psi':{
-			'basis':'Gate',
+			'basis':'State',
 			'kwargs': dict(
 				data=delim.join(['minus']),operator=None,site=[0,1],string='-',interaction='i',
 				kwargs=dict(N=2,D=2,ndim=1,seed=1,reset=1),
@@ -70,11 +70,10 @@ def test_object(path,tol):
 		args = arguments[name]['kwargs']
 		kwargs = args.pop('kwargs',{})
 
-
 		operator = Operator(**args,**kwargs)
 
 		assert operator.string == args['string'], "Operator.string = %s != %s"%(operator.string,args['string'])
-		assert ((arguments[name]['basis'] in ['Haar','Gate','Noise']) or allclose(operator(),
+		assert ((arguments[name]['basis'] in ['Haar','State','Gate','Noise']) or allclose(operator(),
 			tensorprod([base.basis[i]() for i in args['data'].split(delim)]))), "Operator.data != %r"%(operator())
 		assert tuple(operator.operator) == tuple(args['data'].split(delim))
 
@@ -124,9 +123,14 @@ def test_model(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
 
-	model = cls(**{**hyperparameters.get('model',{}),**dict(system=system)})
+	system = hyperparameters['system']
+
+	model = cls.pop('model')(**{**hyperparameters.get('model',{}),**dict(state=hyperparameters['state'],noise=hyperparameters['noise'],system=system)})
+
+	exit()
+	parameters = cls.pop('parameters')(**{**model,**hyperparameters.get('parameters',{}),**dict(model=model,system=system)})
 
 	return 
 
@@ -141,6 +145,7 @@ def test_parameters(path,tol):
 
 	model = hyperparameters['model']
 	system = hyperparameters['system']
+
 
 	parameters = cls(**{**model,**hyperparameters.get('parameters',{}),**dict(system=system)})
 
@@ -522,12 +527,12 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
-	test_object(path,tol)
+	# test_object(path,tol)
+	test_model(path,tol)
 	# test_parameters(path,tol)
 	# test_call(path,tol)
 	# test_data(path,tol)
 	# test_logger(path,tol)
 	# test_class(path,tol)
-	# test_model(path,tol)
 	# test_normalization(path,tol)
 	# test_fisher(path,tol)

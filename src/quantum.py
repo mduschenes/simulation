@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient,hessian,fisher
 from src.utils import array,empty,identity,ones,zeros,arange,rand,setitem
-from src.utils import tensorprod,dagger,einsum,dot
+from src.utils import tensorprod,dagger,conj,einsum,dot
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
 from src.utils import trotter,gradient_trotter,gradient_expm
 from src.utils import eig
@@ -30,7 +30,7 @@ from src.io import load,dump,join,split
 
 from src.system import System,Space,Time,Lattice
 
-# from src.parameters import Parameters
+from src.parameters import Parameters
 
 from src.optimize import Objective,Metric
 
@@ -55,7 +55,7 @@ class Object(System):
 
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
 
-		defaults = dict(N=None,D=None,n=None,shape=None,size=None,ndim=None,samples=None,identity=None,locality=None)
+		defaults = dict(N=None,D=None,n=None,shape=None,size=None,ndim=None,samples=None,identity=None,locality=None,index=None)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
@@ -115,7 +115,7 @@ class Object(System):
 
 		shape = self.shape if self.shape is not None else data.shape if isinstance(data,arrays) else None
 		size = self.size if self.size is not None else data.size if isinstance(data,arrays) else None
-		ndim = self.ndim if self.ndim is not None else else data.ndim if isinstance(data,arrays) else None
+		ndim = self.ndim if self.ndim is not None else data.ndim if isinstance(data,arrays) else None
 
 		if isinstance(operator,str):
 			operator = [operator]*N
@@ -155,7 +155,7 @@ class Object(System):
 		elif self.operator is None:
 			self.data = None
 		else:
-			self.data = tensorprod([self.basis.get(i,self.basis.get(self.default))() for i in self.operator])
+			self.data = tensorprod([self.basis.get(i)() for i in self.operator]) if all(i in self.basis for i in self.operator) else None
 
 		self.data = self.data.astype(self.dtype) if self.data is not None else None
 
@@ -172,11 +172,12 @@ class Object(System):
 		self.ndim = self.data.ndim if isinstance(self.data,arrays) else self.ndim
 
 		self.locality = max(self.locality if self.locality is not None else 0,len(self.site) if self.site is not None else 0)
+		self.index = self.index if self.index is not None else None
 
 		if (self.samples is True) and (self.size is not None):
 			self.samples = rand(self.size,bounds=[0,1],seed=self.seed,dtype=datatype(self.dtype))
 			self.samples /= self.samples.sum()
-		elif not isinstance(self.samples,arrays)
+		elif not isinstance(self.samples,arrays):
 			self.samples = None
 
 		if self.samples is not None:
@@ -215,7 +216,7 @@ class Object(System):
 	def __str__(self):
 		string = self.__class__.__name__ if not self.string else self.string
 		if self.operator is not None and not isinstance(self.operator,arrays):
-			string = '%s_%s'%(string,delim.join(self.operator))
+			string = '%s'%(delim.join(self.operator))
 		return string
 
 	def __repr__(self):
@@ -262,6 +263,7 @@ class Object(System):
 			))
 		self.log(msg,verbose=verbose)
 		return
+
 	def norm(self):
 		'''
 		Normalize object
@@ -270,16 +272,16 @@ class Object(System):
 		if self.data is None:
 			return
 		if self.ndim > 3:
-			normalization = einsum('...uij,...ukj->...ik',self.data.conj(),self.data)
+			normalization = einsum('...uij,...ukj->...ik',conj(self.data),self.data)
 			eps = array([identity(self.shape[-2:],dtype=self.dtype)]*(normalization.ndim-2),dtype=self.dtype)
 		elif self.ndim == 3:
-			normalization = einsum('uij,ukj->ik',self.data.conj(),self.data)
+			normalization = einsum('uij,ukj->ik',conj(self.data),self.data)
 			eps = identity(self.shape[-2:],dtype=self.dtype)
 		elif self.ndim == 2:
-			normalization = einsum('ij,kj->ik',self.data.conj(),self.data)
+			normalization = einsum('ij,kj->ik',conj(self.data),self.data)
 			eps = identity(self.shape[-2:],dtype=self.dtype)
 		else:
-			normalization = einsum('i,i->',self.data.conj(),self.data)
+			normalization = einsum('i,i->',conj(self.data),self.data)
 			eps = ones(shape=(),dtype=self.dtype)
 
 		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
@@ -356,7 +358,7 @@ class Operator(Object):
 
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 
-		classes = [Gate,Pauli,Haar,Noise]
+		classes = [Gate,Pauli,Haar,State,Noise]
 		for cls in classes:
 			if not all(j in cls.basis for obj in [data,operator] if obj is not None for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in cls.basis else k.split(delim))):
 				continue
@@ -450,14 +452,10 @@ class Gate(Object):
 
 	basis = {
 		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1) for attr in ['I']},
-		**{attr: Object(data=array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]),dim=2,locality=2) for attr in ['CNOT','C']},
+		**{attr: Object(data=array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]),dim=2,locality=2) for attr in ['CNOT','C','cnot']},
 		**{attr: Object(data=array([[1,1,],[1,-1]])/sqrt(2),dim=2,locality=1) for attr in ['HADAMARD','H']},
 		**{attr: Object(data=array([[1,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,1,0,0,0,0,0],[0,0,0,1,0,0,0,0],
-						  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]]),dim=2,locality=3) for attr in ['TOFFOLI','T']},
-		**{attr: Object(data=array([1,0,]),dim=2,locality=1) for attr in ['zeros','0']},
-		**{attr: Object(data=array([0,1,]),dim=2,locality=1) for attr in ['ones','1']},
-		**{attr: Object(data=array([1,1,])/sqrt(2),dim=2,locality=1) for attr in ['plus','+']},
-		**{attr: Object(data=array([1,-1,])/sqrt(2),dim=2,locality=1) for attr in ['minus','-']},
+						  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]]),dim=2,locality=3) for attr in ['TOFFOLI','T','toffoli']},
 		}
 	default = 'I'
 	dim = 2 
@@ -473,26 +471,6 @@ class Gate(Object):
 			string (str): string labels of operators
 			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
 		'''
-		shape = (self.D**self.N,)*self.ndim
-		size = prod(shape)
-		dtype = self.dtype
-		
-		data = zeros(shape=shape,dtype=dtype)
-		operator = operator[0] if operator else None
-
-		if operator in ['zeros','0']:
-			setitem(data,0,1)
-		elif operator in ['ones','1']:
-			setitem(data,-1,1)			
-		elif operator in ['plus','+']:
-			setitem(data,slice(None),1/sqrt(size))			
-		elif operator in ['minus','-']:
-			setitem(data,slice(None),(-1)**arange(size)/sqrt(size))
-		else:
-			data = self.data
-		
-		self.data = data
-
 		return
 
 class Haar(Object):
@@ -529,17 +507,93 @@ class Haar(Object):
 		'''
 
 		shape = (self.D**self.N,)*self.ndim
-		size = prod(shape)	
+		size = prod(shape)
 		random = getattr(self,'random','haar')
 		seed = getattr(self,'seed',None)
 		reset = getattr(self,'reset',None)
 		dtype = self.dtype
 
-		data = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
+		data = zeros(shape=shape,dtype=dtype)
+		operator = operator[0] if operator else None
+
+		if operator in ['random','U','haar']:
+			data = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
+		else:
+			data = self.data		
+		
+		self.data = data
+
+		return
+
+
+class State(Object):
+	'''
+	State class for Quantum Objects
+	Args:
+		data (iterable[str]): data for operator
+		operator (iterable[str]): string names of operators		
+		site (iterable[int]): site of local operators
+		string (str): string labels of operators
+		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		parameters (object): parameters of operators		
+		state (object): state of operators		
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
+
+	basis = {
+		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1) for attr in ['I']},
+		**{attr: Object(data=rand(shape=(2,),random='haar',dtype='complex'),dim=2,locality=1) for attr in ['random','psi','haar']},
+		**{attr: Object(data=array([1,0,]),dim=2,locality=1) for attr in ['zeros','0']},
+		**{attr: Object(data=array([0,1,]),dim=2,locality=1) for attr in ['ones','1']},
+		**{attr: Object(data=array([1,1,])/sqrt(2),dim=2,locality=1) for attr in ['plus','+']},
+		**{attr: Object(data=array([1,-1,])/sqrt(2),dim=2,locality=1) for attr in ['minus','-']},
+		}
+	default = 'I'
+	dim = 1
+
+	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+		'''
+		Setup operator
+		Args:
+			data (iterable[str]): data for operator
+			operator (iterable[str]): string names of operators			
+			site (iterable[int]): site of local operators
+			string (str): string labels of operators
+			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
+		'''
+
+		operator = operator[0] if operator else None
+		ndim = self.ndim-1 if operator in ['zeros','0','ones','1','plus','+','minus','-'] else self.ndim
+		shape = (self.D**self.N,)*ndim
+		size = prod(shape)
+		random = getattr(self,'random','haar')
+		seed = getattr(self,'seed',None)
+		reset = getattr(self,'reset',None)
+		dtype = self.dtype
+
+		data = zeros(shape=shape,dtype=dtype)
+
+		if operator in ['zeros','0']:
+			setitem(data,0,1)
+		elif operator in ['ones','1']:
+			setitem(data,-1,1)			
+		elif operator in ['plus','+']:
+			setitem(data,slice(None),1/sqrt(size))			
+		elif operator in ['minus','-']:
+			setitem(data,slice(None),(-1)**arange(size)/sqrt(size))
+		elif operator in ['random','psi','haar']:
+			data = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
+		else:
+			data = self.data
+
+		if (data is not None) and (data.ndim < self.ndim):
+			data = einsum('...i,...j->...ij',data,conj(data))
 
 		self.data = data
 
 		return
+
 
 class Noise(Object):
 	'''
@@ -583,8 +637,8 @@ class Noise(Object):
 
 		if (getattr(self,'scale',None) is not None):
 			if (getattr(self,'initialization',None) in ['time']):
-				if (getattr(self,'model',{}).get('tau') is not None):
-					self.parameters = (1 - exp(-self.model.tau/self.scale))/2
+				if (getattr(self,'tau') is not None):
+					self.parameters = (1 - exp(-self.tau/self.scale))/2
 
 		assert (self.parameters >= 0) and (self.parameters <= 1), "Noise scale %r not in [0,1]"%(self.parameters)
 	
@@ -610,7 +664,6 @@ class Noise(Object):
 		else:
 			data = [self.basis['I']()]
 	
-
 		data = array([tensorprod(i)	for i in itertools.product(data,repeat=self.N)],dtype=self.dtype)
 
 		self.data = data
@@ -619,7 +672,7 @@ class Noise(Object):
 
 
 
-def compute(data,identity,state,noise,n,m,p):
+def Compute(data,identity,state,noise,n,m,p):
 	'''
 	Calculate operators
 	Args:
@@ -637,7 +690,7 @@ def compute(data,identity,state,noise,n,m,p):
 
 	d = len(data)*p
 
-	def matmat_func(parameters):
+	def func(parameters):
 		out = identity
 		for i in range(m):
 			operators = [data(indexer([*data.index,i],parameters)) for data in self.data]
@@ -646,7 +699,7 @@ def compute(data,identity,state,noise,n,m,p):
 				out = dot(operator,out)
 		return out
 	
-	def matmat_grad(parameters):
+	def grad(parameters):
 		return 0
 		# out = []
 		# for i in range(m):
@@ -660,7 +713,6 @@ def compute(data,identity,state,noise,n,m,p):
 		# 		out = dot(operator,out)
 		# return out		
 
-	func,grad = matmul_func,matmul_grad
 	return func,grad
 
 	# if state is None and noise is None:
@@ -757,7 +809,7 @@ class Operators(Object):
 		self.noise = noise
 		self.identity = None
 		self.coefficients = None
-
+		self.index = None
 		self.compute = None
 
 		self.system = system
@@ -766,7 +818,7 @@ class Operators(Object):
 		self.__space__()
 		self.__lattice__()
 
-		self.identity = Operator([Operator.default],N=self.N,D=self.D,system=self.system)
+		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
 		self.shape = () if self.n is None else (self.n,self.n)
 		self.size = prod(self.shape)
 		self.ndim = len(self.shape)
@@ -813,6 +865,9 @@ class Operators(Object):
 		# Set class attributes
 		self.__extend__(**objs)
 
+		# Set class functions
+		self.__initialize__()
+
 		return
 
 
@@ -847,8 +902,8 @@ class Operators(Object):
 			size = min([len(i) for i in [operator,site,string,interaction]])
 			data = [None]*size
 
-		for _data,_operator,_site,_string,_interaction,_hyperparameter in zip(data,operator,site,string,interaction):
-			self.__append__(_data,_operator,_site,_string,_interaction,_hyperparameter)
+		for _data,_operator,_site,_string,_interaction in zip(data,operator,site,string,interaction):
+			self.__append__(_data,_operator,_site,_string,_interaction)
 
 		return
 
@@ -868,7 +923,7 @@ class Operators(Object):
 		if index == -1:
 			index = len(self)
 
-		kwargs = dict(N=self.N,D=self.D,system=self.system)
+		kwargs = dict(N=self.N,D=self.D,system=self.system,verbose=False)
 
 		data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
 
@@ -885,56 +940,31 @@ class Operators(Object):
 			noise (bool,dict,array,Noise): Noise to act on with class of shape (-1,self.shape), or class hyperparameters, or boolean to choose self.noise or None
 		'''
 
-		# Get parameters
-		parameters = self.parameters if parameters is None or parameters is True else parameters if parameters is not False else None
-		system = self.system
-		shape = (len(self),self.M)
-		index = {string: [[(*data.site) for data in self.data if data.string==string],self.M] for string in set((data.string for data in self.data))}
+		objs = {'parameters':parameters,'state':state,'noise':noise}
+		classes = {'parameters':Parameters,'state':State,'noise':Noise}
 
-		self.parameters = Parameters(parameters,shape,system=system)
-		parameters = self.parameters()
+		# Get functions
+		for obj in objs:
+			data,cls = objs[obj],classes[obj]
+			data = getattr(self,obj,None) if data is None or data is True else data if data is not False else None
+			if not isinstance(data,cls):
+				kwargs = {}
+				setter(kwargs,{**dict(data=None),**data} if isinstance(data,dict) else dict(data=data),func=False)		
+				setter(kwargs,dict(**self,model=self),func=False)
+				setter(kwargs,dict(verbose=False),func=True)
+				setattr(self,obj,cls(**kwargs))
 
-		for data in self.data:
-			data.index = [data.string,*[i.index((*data.site)) for i in parameters.index[data.string][:-1]]]
 
-		exit()
-
-
-		# Function arguments
-		data = array(trotter([data() for data in self.data],self.P))
+		# Set functions
+		data = self.data
 		identity = self.identity()
-		state = self.state if state is None or state is True else state if state is not False else None
-		noise = self.noise if noise is None or noise is True else noise if noise is not False else None
-
-		# Class arguments
-		kwargs = {}
-		shape = self.shape
-		dims = [self.N,self.D]
-		system = self.system
-		cls = {attr: getattr(self,attr) for attr in self if attr not in ['parameters','state','noise']}
-
-
-		# Get state
-		kwargs.clear()
-		setter(kwargs,self.state)
-		setter(kwargs,state)
-		setter(kwargs,dict(data=state,shape=shape,dims=dims,cls=cls,system=system))
-		self.state = State(**kwargs)
+		parameters = self.parameters()
 		state = self.state()
-
-		# Get noise
-		kwargs.clear()
-		setter(kwargs,self.noise)
-		setter(kwargs,noise)
-		setter(kwargs,dict(data=noise,shape=shape,dims=dims,cls=cls,system=system))
-		self.noise = Noise(**kwargs)
 		noise = self.noise()
-
-		# Operator functions
 		n = self.n
 		m = self.M
 		p = self.P
-		self.compute = compute(data,identity,state,noise,n,m,p)
+		self.compute = Compute(data,identity,state,noise,n,m,p)
 
 		# Update class attributes
 		self.gradient = gradient(self,mode='fwd',move=True)
@@ -1118,26 +1148,28 @@ class Operators(Object):
 
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
-				for attr in ['key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','dims','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
+				for attr in ['string','key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
 			],
 			*['%s: %s'%(delim.join(attr.split(delim)[:2]),', '.join([
 				('%s' if (
 					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
-					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
+					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),(str,list,tuple))) 
 				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
 				for prop in ['category','method','shape','parameters']]))
-				for attr in ['parameters.%s'%(i) for i in self.parameters]
+				for attr in ['parameters.%s'%(i) for i in (self.parameters if self.parameters is not None else [])]
 			],
 			*['%s: %s'%(delim.join(attr.split(delim)[:1]),', '.join([
-				('%s' if (
+				((('%s' if (
 					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
-					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),str)) 
-				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
-				for prop in ['string','parameters']]))
+					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),(str,list,tuple))) 
+				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))) 
+				if prop is not None else str(getattrs(self,attr,delimiter=delim,default=None)))
+				for prop in [None,'parameters']]))
 				for attr in ['state','noise']
 			],
-			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).__name__) 
-				for attr in ['exponentiation']
+			*['%s:\n%s'%(delim.join(attr.split(delim)[:1]),
+				to_string(getattrs(self,attr,default=lambda:None)()))
+				for attr in ['state','noise']
 			],			
 			]
 			))
@@ -1251,7 +1283,7 @@ class Hamiltonian(Operators):
 
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
-				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
+				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,system=system,**kwargs)
 		
 		return
 
@@ -1334,6 +1366,9 @@ class Hamiltonian(Operators):
 		# Set class attributes
 		self.__extend__(**objs)
 
+		# Set class functions
+		self.__initialize__()
+
 		return
 
 
@@ -1376,7 +1411,7 @@ class Unitary(Hamiltonian):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
-				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,label=label,system=system,**kwargs)
+				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,system=system,**kwargs)
 
 		return
 

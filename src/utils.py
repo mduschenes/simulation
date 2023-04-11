@@ -37,7 +37,6 @@ import pandas as pd
 # import jax.numpy as np
 # import jax.scipy as sp
 # import jax.example_libraries.optimizers
-# from jax._src import prng as jaxprng
 # from jax.tree_util import register_pytree_node_class as tree_register
 # from jax.tree_util import tree_map as tree_map
 
@@ -1172,40 +1171,25 @@ def PRNGKey(seed=None,size=False,reset=None):
 	Returns:
 		key (key,list[key]): Random key
 	'''	
-	# def default_prng_impl():
-		
-	# 	'''
-	# 	Get the default PRNG implementation.
 
-	# 	The default implementation is determined by ``config.jax_default_prng_impl``,
-	# 	which specifies it by name. This function returns the corresponding
-	# 	``jax.prng.PRNGImpl`` instance.
-	# 	'''
+	# TODO merge random seeding for different numpy backends (jax vs autograd)
 
-	# 	PRNG_IMPLS = {
-	# 		'threefry2x32': jaxprng.threefry_prng_impl,
-	# 		'rbg': jaxprng.rbg_prng_impl,
-	# 		'unsafe_rbg': jaxprng.unsafe_rbg_prng_impl,
-	# 		}
-
-	# 	impl_name = jaxconfig.jax_default_prng_impl
-	# 	assert impl_name in PRNG_IMPLS, impl_name
-	# 	return PRNG_IMPLS[impl_name]
-
+	bounds = [0,2**32]
 
 	if reset is not None:
 		np.random.seed(reset)
 
 	if seed is None:
-		seed = np.random.randint(1e12)
+		seed = np.random.randint(*bounds)
 
 	if isinstance(seed,(int)):
-		key = np.random.randint(1e12)
+		# key = np.random.randint(*bounds)
+		key = np.random.seed(seed)
 	else:
 		key = asndarray(seed,dtype=np.uint32)
 
 	if size:
-		key = np.random.randint(1e12,size=size)
+		key = np.random.randint(*bounds,size=size)
 
 	return key
 
@@ -5899,7 +5883,10 @@ def to_string(a,**kwargs):
 		string (str): String representation of array
 	'''
 
-	string = np.array_str(a,**kwargs).replace('[[',' [').replace(']]','] ')
+	if a is not None:
+		string = np.array_str(a,**kwargs).replace('[[',' [').replace(']]','] ')
+	else:
+		string = None
 
 	return string
 

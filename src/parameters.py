@@ -105,19 +105,12 @@ class Parameters(System):
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		defaults = {
-			'string':None,
-			'category':None,
-			'method':None,
-			'parameters':None,
-			'initialize':None,			
-			'random':None,
-			'seed':None,
-			'bounds':[-1,1],
-		}
+		defaults = dict(model={})
 
-		# Setup kwargs
-		setter(kwargs,dict(data=data,shape=shape,system=system),delimiter=delim,func=False)
+		if data is None:
+			data = {}
+
+		setter(kwargs,dict(data=data,system=system),delimiter=delim,func=False)
 		setter(kwargs,data,delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 		setter(kwargs,defaults,delimiter=delim,func=False)
@@ -136,14 +129,14 @@ class Parameters(System):
 			data (array): Data
 		'''
 
-		if data is None:
-			data = indexer(self.index,self).ravel()
-		else:
-			inserter(self.index,data.reshape(indexer(self.index,self).shape),self)
+		# if data is None:
+		# 	data = indexer(self.index,self).ravel()
+		# else:
+		# 	inserter(self.index,data.reshape(indexer(self.index,self).shape),self)
 
-		parameters = self.parameters if self.parameters is not None else 1
+		# parameters = self.parameters if self.parameters is not None else 1
 
-		data = parameters*data.ravel()
+		# data = parameters*data.ravel()
 
 		return data
 
@@ -154,46 +147,61 @@ class Parameters(System):
 			kwargs (dict): Additional keyword arguments
 		'''
 
-		# Get datatype of data
+		if self.model is None:
+			return
+
+		# Get model
+		strings = list(set(data.string for data in self.model.data))
+		indexes = {string: [i for i,data in enumerate(self.model.data) if data.string == string] for string in strings}
+		variables = ['variable']
+		constants = ['constant']
+
+		# Get datatype
 		self.dtype = datatype(self.dtype)
+
+
 
 		# Get data
 		for parameter in list(self):
 
-			self[parameter] = Parameter(**{self[parameter],**dict(system=self.system)})
-
+			self[parameter] = Parameter(**{**self[parameter],**dict(system=self.system)})
+			continue
 			index = {(*group,): [
-			[k for k in (j if not isinstance(j,int) else range(j)) if k in [i,'%s_%s'%(str(i),''.join([str(k) for k in (j if not isinstance(j,int) else range(j))]))]] for j in self.index[i]
-			]
-				for group in self[parameter].group if }
+				i for string in indexes 
+				if any(i in group 
+					for i in (string,*('%s_%s'%(string,str(i)) 
+					for i in range(len(len(index[string]))))))
+				for i in indexes[string]] 
+				for group in self[parameter].group}
 
-			if not any(index[group] for group in index):
-				delattr(self,parameter)
-				continue
-
-			if any(any(j in group for j in [i,*['%s_%s'%(str(i),''.join([str(k) for k in j])) for j in index[i]]]) 
-				for group in self[parameter].group for i in index):
-				delattr(self,parameter)
+			print(parameter,index)
+			exit()
 
 
-			data = self[parameter].data
-			groups = [tuple(group) for group in self[parameter].group]
-			shape = {}
-			shape = {group: [
-					  *[sum(check(self.cls.data[j],group) for j in range(i)) for i in self.shape[:1]],
-					  *[i for i in self.shape[1:]],
-					  ] for group in groups}
+		# 	if not any(index[group] for group in index):
+		# 		delattr(self,parameter)
+		# 		continue
 
-			shape = [len(shape),*[max(i) for i in zip(*(shape[group] for group in shape))]]
+		# 	data = self[parameter].data
+		# 	groups = [tuple(group) for group in self[parameter].group]
+		# 	shape = {}
+		# 	shape = {group: [
+		# 			  *[sum(check(self.cls.data[j],group) for j in range(i)) for i in self.shape[:1]],
+		# 			  *[i for i in self.shape[1:]],
+		# 			  ] for group in groups}
 
-			data = array([[data[:shape[1]]]*shape[2]]*shape[0],dtype=self.dtype).transpose(0,2,1) if data is not None else data
-			data = initialize(data,shape,self[parameter],dtype=self.dtype)
-			getattr(self,parameter)(data=data)
+		# 	shape = [len(shape),*[max(i) for i in zip(*(shape[group] for group in shape))]]
 
-		self.index = index
-		self.shape = [max(i) for i in zip(*self[parameter]().shape for parameter in self if self[parameter].category in ['variable'])]
-		self.size = prod(self.shape)
-		self.string = ' '.join([str(getattr(self,parameter)) for parameter in self])
+		# 	data = array([[data[:shape[1]]]*shape[2]]*shape[0],dtype=self.dtype).transpose(0,2,1) if data is not None else data
+		# 	data = initialize(data,shape,self[parameter],dtype=self.dtype)
+		# 	getattr(self,parameter)(data=data)
+
+		# self.index = index
+		# self.shape = [max(i) for i in zip(*self[parameter]().shape for parameter in self if self[parameter].category in ['variable'])]
+		# self.size = prod(self.shape)
+		# self.string = ' '.join([str(getattr(self,parameter)) for parameter in self])
+
+		# self.info()
 
 		return
 
@@ -226,14 +234,19 @@ class Parameters(System):
 	def __deldata__(self,key):
 		if key in self.data:
 			self.data.pop(key)
-		return
+		return	
 
-	def __call__(self,data=None):
+	def info(self,verbose=None):
 		'''
-		Class data
+		Log class information
 		Args:
-			data (array): Data
-		Returns:
-			data (array): Data
-		'''
-		return self.data		
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = '%s'%('\n'.join([
+			*['Parameters %s %s: %s'%(self,attr,getattr(self,attr)) 
+				for attr in ['string','shape']
+			],
+			]
+			))
+		self.log(msg,verbose=verbose)
+		return		

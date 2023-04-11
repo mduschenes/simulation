@@ -93,7 +93,7 @@
 		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 		},
-	"N":2,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -112,7 +112,7 @@
 	"device":"cpu",
 	"backend":"jax",
 	"architecture":null,
-	"seed":null,
+	"seed":123,
 	"key":null,
 	"instance":null,
 	"cwd":".",
@@ -181,60 +181,62 @@
 		}	
 	},
 "parameters":{
-	"xy": {
-		"string":"xy",
-		"category":"variable",
-		"method":"bound",
-		"group":[["x"],["y"]],
-		"data":null,
-		"parameters":1,
-		"bounds":[-1,1],
-		"locality":null,
-		"constants":null,
-		"seed":null,	
-		"random":"uniform",
-		"initialization":{
-			"method":"interpolation",
-			"interpolation":3,
-			"smoothness":2
+	"data":{
+		"xy": {
+			"string":"xy",
+			"category":"variable",
+			"method":"bound",
+			"group":[["x"],["y"]],
+			"data":null,
+			"parameters":1,
+			"bounds":[-1,1],
+			"locality":null,
+			"constants":null,
+			"seed":123,	
+			"random":"uniform",
+			"initialization":{
+				"method":"interpolation",
+				"interpolation":3,
+				"smoothness":2
+				},
+			"args":[],
+			"kwargs":{"sigmoid":1,"lambda":[5e2,5e-2,1.5e-4]}
 			},
-		"args":[],
-		"kwargs":{"sigmoid":1,"lambda":[5e2,5e-2,1.5e-4]}
-		},
-	"z": {
-		"string":"z",
-		"category":"constant",
-		"method":null,		
-		"group":[["z"]],
-		"data":[0,1,1,-1,-1,1],
-		"parameters":1,
-		"bounds":[-1,1],
-		"locality":null,
-		"constants":null,
-		"seed":null,
-		"random":"uniform",
-		"initialization":null,
-		"pad":"random",
-		"args":[],
-		"kwargs":{}
-		},
-	"zz": {
-		"string":"zz",
-		"init":true,		
-		"category":"constant",
-		"method":null,		
-		"group":[["zz"]],
-		"data":[1,1,1,1,1,1,1,1,1,1],								
-		"parameters":1,
-		"bounds":[-1,1],
-		"locality":null,
-		"constants":null,
-		"seed":null,
-		"random":"uniform",	
-		"initialization":"random",
-		"pad":"random",
-		"args":[],
-		"kwargs":{}
+		"z": {
+			"string":"z",
+			"category":"constant",
+			"method":null,		
+			"group":[["z"]],
+			"data":[0,1,1,-1,-1,1],
+			"parameters":1,
+			"bounds":[-1,1],
+			"locality":null,
+			"constants":null,
+			"seed":123,
+			"random":"uniform",
+			"initialization":null,
+			"pad":"random",
+			"args":[],
+			"kwargs":{}
+			},
+		"zz": {
+			"string":"zz",
+			"init":true,		
+			"category":"constant",
+			"method":null,		
+			"group":[["zz"]],
+			"data":[1,1,1,1,1,1,1,1,1,1],								
+			"parameters":1,
+			"bounds":[-1,1],
+			"locality":null,
+			"constants":null,
+			"seed":123,
+			"random":"uniform",	
+			"initialization":"random",
+			"pad":"random",
+			"args":[],
+			"kwargs":{}
+			}
 		}
 	},
 "label": {
@@ -244,25 +246,25 @@
 	"interaction":"i",
 	"parameters":0.5,
 	"ndim":2,
-	"seed":null
+	"seed":123
 	},
 "state": {
-	"operator":null,
+	"operator":"haar",
 	"site":null,
 	"string":"U",
 	"interaction":"i",
 	"parameters":0.5,
-	"ndim":1,
-	"seed":null
+	"ndim":3,
+	"seed":123
 	},	
-"label": {
+"noise": {
 	"operator":"phase",
 	"site":null,
 	"string":"K",
 	"interaction":"i",
 	"parameters":0.5,
 	"ndim":3,
-	"seed":null
+	"seed":123
 	},
 "jobs":{
 	"preprocess":null,
