@@ -20,7 +20,7 @@ from src.utils import trotter,gradient_trotter,gradient_expm
 from src.utils import eig
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log,log10,sign,sin,cos
 from src.utils import sort,relsort,norm
-from src.utils import initialize,parse,to_string
+from src.utils import initialize,parse,to_string,allclose
 from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls
 from src.utils import itg,flt,dbl
 
@@ -55,7 +55,11 @@ class Object(System):
 
 	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
 
-		defaults = dict(N=None,D=None,n=None,shape=None,size=None,ndim=None,samples=None,identity=None,locality=None,index=None)
+		defaults = dict(
+			N=None,D=None,n=None,
+			shape=None,size=None,ndim=None,
+			samples=None,identity=None,locality=None,index=None
+			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
@@ -130,7 +134,7 @@ class Object(System):
 		else:
 			site = list(range(N)) if site is None else site
 
-		self.data = data if data is not None else None
+		self.data = data if data is not None else operator if operator is not None else None
 		self.operator = operator if operator is not None else None
 		self.site = site if site is not None else None
 		self.string = string if string is not None else None
@@ -148,13 +152,15 @@ class Object(System):
 		if not (((self.data is None) and (self.operator is None)) or (isinstance(self.data,arrays))):
 			self.__setup__(data,operator,site,string,interaction)
 
-		if isinstance(self.operator,arrays):
+		if self.parameters is False:
+			self.data = None
+		elif isinstance(self.operator,arrays):
 			self.data = self.operator
 		elif isinstance(self.data,arrays):
 			pass
 		elif self.operator is None:
 			self.data = None
-		else:
+		elif self.data is not None:
 			self.data = tensorprod([self.basis.get(i)() for i in self.operator]) if all(i in self.basis for i in self.operator) else None
 
 		self.data = self.data.astype(self.dtype) if self.data is not None else None
@@ -167,22 +173,22 @@ class Object(System):
 		self.identity = tensorprod([self.basis.get(self.default)() for i in range(self.N)]) if (self.default in self.basis) else None
 		self.identity = self.identity.astype(self.dtype) if self.identity is not None else None
 
-		self.shape = self.data.shape if isinstance(self.data,arrays) else self.shape
-		self.size = self.data.size if isinstance(self.data,arrays) else self.size
-		self.ndim = self.data.ndim if isinstance(self.data,arrays) else self.ndim
-
 		self.locality = max(self.locality if self.locality is not None else 0,len(self.site) if self.site is not None else 0)
 		self.index = self.index if self.index is not None else None
-
+		
 		if (self.samples is True) and (self.size is not None):
 			self.samples = rand(self.size,bounds=[0,1],seed=self.seed,dtype=datatype(self.dtype))
 			self.samples /= self.samples.sum()
 		elif not isinstance(self.samples,arrays):
 			self.samples = None
 
-		if self.samples is not None:
-			if (self.data.ndim>=self.length) and all(self.data.shape[i] == self.size[i] for i in range(self.length)):
-				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.length]),)*2),self.data,self.samples)
+		if isinstance(self.data,arrays) and (self.samples is not None) and (self.ndim is not None):
+			if (self.data.ndim>self.ndim):
+				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.data.ndim-self.ndim]),)*2),self.samples,self.data)
+
+		self.shape = self.data.shape if isinstance(self.data,arrays) else self.shape
+		self.size = self.data.size if isinstance(self.data,arrays) else self.size
+		self.ndim = self.data.ndim if isinstance(self.data,arrays) else self.ndim
 
 		self.norm()
 
@@ -266,28 +272,48 @@ class Object(System):
 
 	def norm(self):
 		'''
-		Normalize object
+		Normalize class
+		Args:
+			data (array): Data to normalize			
 		'''
 
 		if self.data is None:
 			return
-		if self.ndim > 3:
-			normalization = einsum('...uij,...ukj->...ik',conj(self.data),self.data)
-			eps = array([identity(self.shape[-2:],dtype=self.dtype)]*(normalization.ndim-2),dtype=self.dtype)
-		elif self.ndim == 3:
-			normalization = einsum('uij,ukj->ik',conj(self.data),self.data)
-			eps = identity(self.shape[-2:],dtype=self.dtype)
-		elif self.ndim == 2:
-			normalization = einsum('ij,kj->ik',conj(self.data),self.data)
-			eps = identity(self.shape[-2:],dtype=self.dtype)
+
+		data = self.data
+		shape = data.shape
+		ndim = data.ndim
+		dtype = data.dtype
+		hermitian = self.hermitian		
+		unitary = self.unitary		
+
+		if ndim > 3:
+			normalization = einsum('...uij,...ukj->...ik',conj(data),data)
+			eps = array([identity(shape[-2:],dtype=dtype)]*(normalization.ndim-2),dtype=dtype)
+		elif ndim == 3:
+			normalization = einsum('uij,ukj->ik',conj(data),data)
+			eps = identity(shape[-2:],dtype=dtype)
+		elif ndim == 2:
+			if hermitian and not unitary:
+				normalization = einsum('ii->',data)
+				eps = ones(shape[:-2],dtype=dtype)
+			elif not hermitian and unitary:
+				normalization = einsum('ij,kj->ik',conj(data),data)
+				eps = identity(shape[-2:],dtype=dtype)							
+			else:
+				normalization = None
+				eps = None
 		else:
-			normalization = einsum('i,i->',conj(self.data),self.data)
-			eps = ones(shape=(),dtype=self.dtype)
+			normalization = einsum('i,i->',conj(data),data)
+			eps = ones(shape=(),dtype=dtype)
+
+		if normalization is None or eps is None:
+			return
 
 		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
 
-		if self.dtype in ['complex128','float64']:
-			assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(data.shape,normalization)
+		if dtype not in ['complex256','float128']:
+			assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(eps.shape,normalization)
 
 		return
 
@@ -345,7 +371,7 @@ class Operator(Object):
 	'''
 	
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1) for attr in ['I','i']},
+		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['I','i']},
 			}
 	default = 'I'
 	dim = 2
@@ -389,13 +415,16 @@ class Pauli(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1) for attr in ['I','i']},
-		**{attr: Object(data=array([[0,1],[1,0]]),dim=2,locality=1) for attr in ['X','x']},
-		**{attr: Object(data=array([[0,-1j],[1j,0]]),dim=2,locality=1) for attr in ['Y','y']},
-		**{attr: Object(data=array([[1,0],[0,-1]]),dim=2,locality=1) for attr in ['Z','z']},
+		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['I','i']},
+		**{attr: Object(data=array([[0,1],[1,0]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['X','x']},
+		**{attr: Object(data=array([[0,-1j],[1j,0]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['Y','y']},
+		**{attr: Object(data=array([[1,0],[0,-1]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['Z','z']},
 			}
 	default = 'I'
 	dim = 2 
+
+	hermitian = True
+	unitary = True
 
 	def __call__(self,parameters=None,state=None):
 		'''
@@ -451,15 +480,17 @@ class Gate(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1) for attr in ['I']},
-		**{attr: Object(data=array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]),dim=2,locality=2) for attr in ['CNOT','C','cnot']},
-		**{attr: Object(data=array([[1,1,],[1,-1]])/sqrt(2),dim=2,locality=1) for attr in ['HADAMARD','H']},
+		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['I']},
+		**{attr: Object(data=array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]),dim=2,locality=2,hermitian=True,unitary=True) for attr in ['CNOT','C','cnot']},
+		**{attr: Object(data=array([[1,1,],[1,-1]])/sqrt(2),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['HADAMARD','H']},
 		**{attr: Object(data=array([[1,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,1,0,0,0,0,0],[0,0,0,1,0,0,0,0],
-						  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]]),dim=2,locality=3) for attr in ['TOFFOLI','T','toffoli']},
+						  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]]),dim=2,locality=3,hermitian=True,unitary=True) for attr in ['TOFFOLI','T','toffoli']},
 		}
 	default = 'I'
 	dim = 2 
-
+	
+	hermitian = False
+	unitary = True
 	
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
@@ -489,11 +520,14 @@ class Haar(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1) for attr in ['I']},
-		**{attr: Object(data=rand(shape=(2,2),random='haar',dtype='complex'),dim=2,locality=1) for attr in ['random','U','haar']},
+		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['I']},
+		**{attr: Object(data=rand(shape=(2,2),random='haar',dtype='complex'),dim=2,locality=1,hermitian=False,unitary=True) for attr in ['random','U','haar']},
 		}
 	default = 'I'
 	dim = 2
+
+	hermitian = False
+	unitary = True
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
@@ -542,15 +576,18 @@ class State(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1) for attr in ['I']},
-		**{attr: Object(data=rand(shape=(2,),random='haar',dtype='complex'),dim=2,locality=1) for attr in ['random','psi','haar']},
-		**{attr: Object(data=array([1,0,]),dim=2,locality=1) for attr in ['zeros','0']},
-		**{attr: Object(data=array([0,1,]),dim=2,locality=1) for attr in ['ones','1']},
-		**{attr: Object(data=array([1,1,])/sqrt(2),dim=2,locality=1) for attr in ['plus','+']},
-		**{attr: Object(data=array([1,-1,])/sqrt(2),dim=2,locality=1) for attr in ['minus','-']},
+		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['I']},
+		**{attr: Object(data=rand(shape=(2,),random='haar',dtype='complex'),dim=2,locality=1,hermitian=True,unitary=False) for attr in ['random','psi','haar']},
+		**{attr: Object(data=array([1,0,]),dim=2,locality=1,hermitian=True,unitary=False) for attr in ['zeros','0']},
+		**{attr: Object(data=array([0,1,]),dim=2,locality=1,hermitian=True,unitary=False) for attr in ['ones','1']},
+		**{attr: Object(data=array([1,1,])/sqrt(2),dim=2,locality=1,hermitian=True,unitary=False) for attr in ['plus','+']},
+		**{attr: Object(data=array([1,-1,])/sqrt(2),dim=2,locality=1,hermitian=True,unitary=False) for attr in ['minus','-']},
 		}
 	default = 'I'
 	dim = 1
+
+	hermitian = True
+	unitary = False
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
@@ -563,16 +600,18 @@ class State(Object):
 			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
 		'''
 
-		operator = operator[0] if operator else None
-		ndim = self.ndim-1 if operator in ['zeros','0','ones','1','plus','+','minus','-'] else self.ndim
-		shape = (self.D**self.N,)*ndim
-		size = prod(shape)
+		shape = (self.D**self.N,)*self.ndim
+		if isinstance(self.samples,int):
+			shape = (self.samples,*shape)
+		ndim = len(shape)
+		size = prod(shape[-self.ndim:])
 		random = getattr(self,'random','haar')
 		seed = getattr(self,'seed',None)
 		reset = getattr(self,'reset',None)
 		dtype = self.dtype
 
 		data = zeros(shape=shape,dtype=dtype)
+		operator = operator[0] if operator else None
 
 		if operator in ['zeros','0']:
 			setitem(data,0,1)
@@ -587,7 +626,7 @@ class State(Object):
 		else:
 			data = self.data
 
-		if (data is not None) and (data.ndim < self.ndim):
+		if (data is not None) and (ndim < self.ndim):
 			data = einsum('...i,...j->...ij',data,conj(data))
 
 		self.data = data
@@ -611,18 +650,21 @@ class Noise(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1) for attr in ['I','i']},
-		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1) for attr in ['D','depolarize']},
-		**{attr: Object(data=array([[0,1],[1,0]]),dim=2,locality=1) for attr in ['X','x','amplitude']},
-		**{attr: Object(data=array([[1,0],[0,0]]),dim=2,locality=1) for attr in ['00']},
-		**{attr: Object(data=array([[0,1],[0,0]]),dim=2,locality=1) for attr in ['01']},
-		**{attr: Object(data=array([[0,0],[1,0]]),dim=2,locality=1) for attr in ['10']},
-		**{attr: Object(data=array([[0,0],[0,1]]),dim=2,locality=1) for attr in ['11']},
-		**{attr: Object(data=array([[0,-1j],[1j,0]]),dim=2,locality=1) for attr in ['Y','y','amplitude_phase']},
-		**{attr: Object(data=array([[1,0],[0,-1]]),dim=2,locality=1) for attr in ['Z','z','phase']},
+		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['I','i']},
+		**{attr: Object(data=array([[1,0],[0,1]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['D','depolarize']},
+		**{attr: Object(data=array([[0,1],[1,0]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['X','x','amplitude']},
+		**{attr: Object(data=array([[1,0],[0,0]]),dim=2,locality=1,hermitian=True,unitary=False) for attr in ['00']},
+		**{attr: Object(data=array([[0,1],[0,0]]),dim=2,locality=1,hermitian=False,unitary=False) for attr in ['01']},
+		**{attr: Object(data=array([[0,0],[1,0]]),dim=2,locality=1,hermitian=False,unitary=False) for attr in ['10']},
+		**{attr: Object(data=array([[0,0],[0,1]]),dim=2,locality=1,hermitian=True,unitary=False) for attr in ['11']},
+		**{attr: Object(data=array([[0,-1j],[1j,0]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['Y','y','amplitude_phase']},
+		**{attr: Object(data=array([[1,0],[0,-1]]),dim=2,locality=1,hermitian=True,unitary=True) for attr in ['Z','z','phase']},
 		}
 	default = 'I'
 	dim = 2 
+	
+	hermitian = False
+	unitary = False
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
@@ -639,6 +681,10 @@ class Noise(Object):
 			if (getattr(self,'initialization',None) in ['time']):
 				if (getattr(self,'tau') is not None):
 					self.parameters = (1 - exp(-self.tau/self.scale))/2
+
+		if (self.parameters is None) or (self.parameters is False) or (self.parameters is True):
+			self.data = None
+			return
 
 		assert (self.parameters >= 0) and (self.parameters <= 1), "Noise scale %r not in [0,1]"%(self.parameters)
 	
@@ -669,7 +715,6 @@ class Noise(Object):
 		self.data = data
 
 		return
-
 
 
 def Compute(data,identity,state,noise,n,m,p):
@@ -1153,7 +1198,7 @@ class Operators(Object):
 			*['%s: %s'%(delim.join(attr.split(delim)[:2]),', '.join([
 				('%s' if (
 					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
-					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),(str,list,tuple))) 
+					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),(str,int,list,tuple))) 
 				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))
 				for prop in ['category','method','shape','parameters']]))
 				for attr in ['parameters.%s'%(i) for i in (self.parameters if self.parameters is not None else [])]
@@ -1161,10 +1206,10 @@ class Operators(Object):
 			*['%s: %s'%(delim.join(attr.split(delim)[:1]),', '.join([
 				((('%s' if (
 					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
-					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),(str,list,tuple))) 
-				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim))) 
+					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),(str,int,list,tuple))) 
+				else '%0.3e')%(getattrs(self,delim.join([attr,prop]),delimiter=delim),)) 
 				if prop is not None else str(getattrs(self,attr,delimiter=delim,default=None)))
-				for prop in [None,'parameters']]))
+				for prop in [None,'shape','parameters']]))
 				for attr in ['state','noise']
 			],
 			*['%s:\n%s'%(delim.join(attr.split(delim)[:1]),

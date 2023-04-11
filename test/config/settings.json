@@ -107,7 +107,7 @@
 	"lattice":"square"
 	},
 "system":{
-	"dtype":"complex",
+	"dtype":"complex128",
 	"format":"array",
 	"device":"cpu",
 	"backend":"jax",
@@ -253,16 +253,17 @@
 	"site":null,
 	"string":"U",
 	"interaction":"i",
-	"parameters":0.5,
-	"ndim":3,
+	"parameters":false,
+	"ndim":1,
+	"samples":1,
 	"seed":123
 	},	
 "noise": {
-	"operator":"phase",
+	"data":"phase",
 	"site":null,
 	"string":"K",
 	"interaction":"i",
-	"parameters":0.5,
+	"parameters":false,
 	"ndim":3,
 	"seed":123
 	},

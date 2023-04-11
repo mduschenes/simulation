@@ -1268,13 +1268,17 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 			subrandom = 'gaussian'
 			subdtype = 'complex'
 			ndim = len(shape)
+			shapes = shape
 
 			if ndim < 2:
 				shape = [*shape]*2
+			elif ndim >= 2:
+				if shape[-2] != shape[-1]:
+					shape = (*shape[:-1],*shape[-1:]*2)
 
 			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
 
-			if ndim < 4:
+			if out.ndim < 4:
 				reshape = (*(1,)*(4-out.ndim),*out.shape)
 			else:
 				reshape = out.shape
@@ -1296,17 +1300,32 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 			assert allclose(1,einsum('...ij,...ij->...',out,out.conj()).real/out.shape[-1])
 
 			# Create random matrices versus vectors
+			shape = shapes
 			if ndim == 1: # Random vector
 				out = out[...,0] 
-			elif ndim == 2: # Random matrix
-				out = out[:,:]
-			elif ndim == 3: # Samples of random vectors
+			elif ndim == 2: # Random vector or matrix
+				if shape[-2] != shape[-1]:
+					out = out[...,0]
+					weights = rand(out.shape[0],key=key,dtype=_dtype)
+					out = einsum('u,...ui->...i',weights,out)
+					weights = sqrt(einsum('...i,...i->...',out.conj(),out))
+					out = out/weights
+				else:
+					out = out[:,:]
+			elif ndim == 3: # Sum of samples of random rank-1 matrices (vectors)
 				out = out[...,0]
-			elif ndim == 4: # Samples of random rank-1 matrices
+				weights = rand(out.shape[0],key=key,dtype=_dtype)
+				out = einsum('u,...ui,...uj->...ij',weights,out,out.conj())
+				weights = einsum('...ii->...',out)
+				out = out/weights				
 
+			elif ndim >= 4: # Samples of random matrices
+				# TODO: Implement random density matrices
+				raise NotImplementedError
 				out = out[...,0]
-
-				out = einsum('...i,...j->...ij',out,out.conj())
+				weights = rand(out.shape[0],key=key,dtype=dtype)
+				weights = weights/weights.sum()
+				out = einsum('u,...ui,...uj->...ij',weights,out,out.conj())
 
 
 			return out

@@ -160,7 +160,6 @@ class Parameters(System):
 		self.dtype = datatype(self.dtype)
 
 
-
 		# Get data
 		for parameter in list(self):
 
