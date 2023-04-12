@@ -189,9 +189,9 @@ class Object(System):
 			if (self.data.ndim>self.ndim):
 				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.data.ndim-self.ndim]),)*2),self.samples,self.data)
 
-		self.shape = self.data.shape if isinstance(self.data,arrays) else self.shape
-		self.size = self.data.size if isinstance(self.data,arrays) else self.size
-		self.ndim = self.data.ndim if isinstance(self.data,arrays) else self.ndim
+		self.shape = self.data.shape if isinstance(self.data,arrays) else None
+		self.size = self.data.size if isinstance(self.data,arrays) else None
+		self.ndim = self.data.ndim if isinstance(self.data,arrays) else None
 
 		self.norm()
 

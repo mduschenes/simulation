@@ -69,9 +69,9 @@ class Parameter(System):
 
 		self.__setup__()
 
-		assert self.indices, "Zero-size data, No indices for parameter"
-
 		self.__initialize__()
+
+		assert self.indices, "Zero-size data, No indices for parameter"
 
 		return
 
@@ -88,9 +88,9 @@ class Parameter(System):
 			data = self.data.ravel() if self.data is not None else None
 			return data
 
-		data = data.reshape(self.shape)
+		data = self.parameters*data.reshape(self.shape)
 		data = self.func(data)
-		data = self.parameters*data
+		data = data
 
 		return data	
 
@@ -217,7 +217,13 @@ class Parameter(System):
 		'''
 		self.data = data if data is not None else self.data
 		self.shape = shape if shape is not None else self.shape
+		self.size = prod(shape) if shape is not None else self.size
+		self.ndim = len(shape) if shape is not None else self.ndim
 		self.dtype = dtype if dtype is not None else self.dtype
+
+		if self.data is not None:
+			if self.ndim > self.data.ndim:
+				self.data = self.data.reshape(1,*self.data.shape,*(1,)*max(self.ndim-1-self.data.ndim,0))
 
 		self.data = initialize(self.data,self.shape,self,dtype=self.dtype)
 
@@ -290,6 +296,13 @@ class Parameters(System):
 		super().__init__(**kwargs)
 
 		self.__setup__()
+
+		for parameter in self:
+			print(parameter)
+			print(self[parameter].indices)
+			print(self[parameter]())
+			print(self[parameter](self[parameter]()))
+			print()
 
 		return
 

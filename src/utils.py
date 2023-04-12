@@ -4461,7 +4461,7 @@ def repeats(a,repeats,axis):
 		repeats = (repeats,)
 	if isinstance(axis,int):
 		axis = (axis,)		
-	a = expand_dims(a,list(range(a.ndim,max(axis)+1)))
+	a = expand_dims(a,range(a.ndim,max(axis)+1))
 	for rep,ax in zip(repeats,axis):
 		a = repeat(a,rep,ax)
 	return a
@@ -4564,7 +4564,8 @@ def expand_dims(a,axis):
 	Returns:
 		out (array): Array with expanded axes
 	'''
-
+	if isinstance(axis,range):
+		axis = list(axis)
 	return np.expand_dims(a,axis)
 
 
@@ -4597,12 +4598,16 @@ def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
 
 	ndim = len(shape)
 
-	diff = max(0,ndim - a.ndim + 1)
+	diff = max(0,ndim - a.ndim)
 	reshape = a.shape
 
 	a = a.reshape(*a.shape,*(1,)*diff)
+	print(a.shape)
 	for axis in range(ndim-diff,ndim):
+		print(axis,a.shape[axis],shape[axis])
 		a = repeat(a,shape[axis],axis)	
+
+	print(a.shape,shape)
 
 	a = take(a,shape,range(ndim))
 
