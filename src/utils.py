@@ -75,6 +75,7 @@ arrays = (np.ndarray,onp.ndarray)
 iterables = (*arrays,list,tuple,set)
 nulls = ('',None)
 delim = '.'
+separ = '_'
 
 # optimizer_libraries = jax.example_libraries.optimizers
 optimizer_libraries = []
@@ -4601,7 +4602,8 @@ def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
 
 	a = a.reshape(*a.shape,*(1,)*diff)
 	for axis in range(ndim-diff,ndim):
-		a = repeat(a,shape[axis],axis)		
+		a = repeat(a,shape[axis],axis)	
+
 	a = take(a,shape,range(ndim))
 
 	if random is not None:
@@ -5881,7 +5883,7 @@ def to_number(a,dtype=None,**kwargs):
 		elif is_float(a):
 			dtype = float
 		if is_number(a):
-			number = dtype(coefficient*a)
+			number = coefficient*float(a)
 	return number
 
 def to_int(a,**kwargs):
@@ -6208,14 +6210,18 @@ def initialize(parameters,shape,hyperparameters,slices=None,shapes=None,dtype=No
 		'bounds':None,
 		'random':None,
 		'seed':None,
-		'initialize':None,
+		'initialization':None,
+		'boundary':None,
+		'constraint':None,
 		'pad':None
 	}
 
-	hyperparameters.update({kwarg: hyperparameters.get(kwarg,defaults[kwarg]) for kwarg in hyperparameters})
+	hyperparameters.update({kwarg: hyperparameters.get(kwarg,defaults[kwarg]) for kwarg in defaults})
 
 	bounds = hyperparameters['bounds']
-	initialization = hyperparameters['initialize']
+	initialization = hyperparameters['initialization']
+	boundary = hyperparameters['boundary']	
+	constraint = hyperparameters['constraint']	
 	random = hyperparameters['random']
 	seed = hyperparameters['seed']
 	pad = hyperparameters['pad']
@@ -6267,6 +6273,11 @@ def initialize(parameters,shape,hyperparameters,slices=None,shapes=None,dtype=No
 	
 	elif initialization['method'] in ['zero']:
 		parameters = zeros(shape,dtype=dtype)
+
+	if boundary is not None:
+		for i in boundary:
+			i,value = (*(slice(None),)*(parameters.ndim-1),int(i)),boundary[i]
+			parameters = setitem(parameters,i,value)
 
 	parameters = parameters.astype(dtype)
 

@@ -125,13 +125,11 @@ def test_model(path,tol):
 
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
 
-	system = hyperparameters['system']
-
 	model = cls.pop('model')
-	model = model(**{**hyperparameters.get('model',{}),**dict(state=hyperparameters['state'],noise=hyperparameters['noise'],system=system)})
+	model = model(**{**hyperparameters.get('model',{}),**{attr:hyperparameters[attr] for attr in ['parameters','state','noise','system']}})
 
-	parameters = cls.pop('parameters')
-	parameters = parameters(**{**namespace(parameters,model),**hyperparameters.get('parameters',{}),**dict(model=model,system=system)})
+	# parameters = cls.pop('parameters')
+	# parameters = parameters(**{**namespace(parameters,model),**hyperparameters.get('parameters',{}),**dict(model=model,system=system)})
 
 	return 
 

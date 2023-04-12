@@ -93,12 +93,12 @@
 		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 		},
-	"N":3,
+	"N":4,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":5,
+	"M":5000,
 	"T":null,
 	"tau":50e0,
 	"P":2,
@@ -191,6 +191,7 @@
 			"parameters":1,
 			"bounds":[-1,1],
 			"locality":null,
+			"dims":["M"],			
 			"seed":123,	
 			"random":"uniform",
 			"initialization":{
@@ -198,8 +199,9 @@
 				"interpolation":3,
 				"smoothness":2
 				},
+			"constraint":{"0":0,"-1":0},"boundary":{"0":0,"-1":0},
 			"args":[],
-			"kwargs":{"sigmoid":1,"lambda":5e2,"constraints":{"0":0,"-1":0}}
+			"kwargs":{"sigmoid":1,"lambda":5e2}
 			},
 		"z": {
 			"string":"z",
@@ -210,6 +212,7 @@
 			"parameters":1,
 			"bounds":[-1,1],
 			"locality":null,
+			"dims":["M"],
 			"seed":123,
 			"random":"uniform",
 			"initialization":null,
@@ -226,6 +229,7 @@
 			"parameters":1,
 			"bounds":[-1,1],
 			"locality":null,
+			"dims":["M"],			
 			"seed":123,
 			"random":"uniform",	
 			"initialization":null,
