@@ -720,7 +720,7 @@ class Noise(Object):
 		return
 
 
-def Compute(data,identity,state,noise,n,m,p):
+def Compute(data,identity,state,noise,coefficients,n,d,m,p):
 	'''
 	Calculate operators
 	Args:
@@ -728,7 +728,9 @@ def Compute(data,identity,state,noise,n,m,p):
 		identity (Operator): Array of data identity of shape (n,n)
 		state (Operator): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
 		noise (Operator): Array of noise to act of shape (n,n) or (k,n,n)
+		coefficients (arrray): Array of coefficients of shape (1,) or (d,)
 		n (int): Size of array
+		d (int): Number of data
 		m (int): Number of steps
 		p (int): number of trotterizations
 	Returns:
@@ -736,19 +738,31 @@ def Compute(data,identity,state,noise,n,m,p):
 		grad (callable): Gradient to compute operators, with signature func(parameters), where parameters is a Parameters instance
 	'''		
 
-	d = len(data)*p
+	if coefficients is None:
+		coefficients = 1
+	if isinstance(coefficients,scalars):
+		coefficients = [coefficients]*d
 
 	def func(parameters):
 		out = identity
-		for i in range(m):
-			operators = [data(indexer([*data.index,i],parameters)) for data in self.data]
+		for j in range(m):
+			operators = [data[i](coefficients[i]*parameters[i][j]) for i in range(d)]
 			operators = trotter(operators,p)
 			for operator in operators:
 				out = dot(operator,out)
 		return out
 	
-	def grad(parameters):
-		return 0
+	# def grad(parameters):
+	# 	out = 0
+		# grad = []
+		# for j in range(m):
+		# 	for k in range(d*p):
+		# 	for i in range(m):
+		# 		operators = [data[i](coefficients[i]*parameter[i]) for i in range(d)]
+		# 		operators = trotter(operators,p)
+		# 		for operator in operators:
+		# 			out = dot(operator,out)
+		# return out	
 		# out = []
 		# for i in range(m):
 		# 	for j in range(m):
@@ -761,7 +775,7 @@ def Compute(data,identity,state,noise,n,m,p):
 		# 		out = dot(operator,out)
 		# return out		
 
-	return func,grad
+	return func
 
 	# if state is None and noise is None:
 	# 	self.summation = jit(summation,data=data,identity=identity)
@@ -993,7 +1007,6 @@ class Operators(Object):
 
 		# Get functions
 		for obj in objs:
-			print(obj)
 			data,cls = objs[obj],classes[obj]
 			data = getattr(self,obj,None) if data is None or data is True else data if data is not False else None
 			if not isinstance(data,cls):
@@ -1019,10 +1032,12 @@ class Operators(Object):
 		parameters = self.parameters()
 		state = self.state()
 		noise = self.noise()
+		coefficients = self.coefficients
 		n = self.n
+		d = len(self.data)
 		m = self.M
 		p = self.P
-		self.compute = Compute(data,identity,state,noise,n,m,p)
+		self.compute = Compute(data,identity,state,noise,coefficients,n,d,m,p)
 
 		# Update class attributes
 		self.gradient = gradient(self,mode='fwd',move=True)
@@ -1038,7 +1053,9 @@ class Operators(Object):
 		Returns
 			out (array): Return of function
 		'''		
-		return self.compute(self.parameters(parameters))
+		parameters = self.parameters(parameters)
+
+		return self.compute(parameters)
 
 	#@partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
@@ -1227,7 +1244,7 @@ class Operators(Object):
 			],
 			*['%s:\n%s'%(delim.join(attr.split(delim)[:1]),
 				to_string(getattrs(self,attr,default=lambda:None)()))
-				for attr in ['state','noise']
+				for attr in ['state','noise'] if getattrs(self,attr,default=lambda:None)() is not None
 			],			
 			]
 			))
@@ -1845,10 +1862,10 @@ class Callback(object):
 						value = function(parameters)
 
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
-						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
+						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
 						value = value/maximum(value)
 					elif attr in ['hessian.rank','fisher.rank']:
-						value = sort(abs(eig(function(parameters),compute_v=False,hermitian=True)))[::-1]
+						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
 						value = argmax(abs(difference(value)/value[:-1]))+1	
 						value = value.size if (value==value.size-1) else value
 

@@ -35,7 +35,7 @@
 		"parameters.xy.parameters":[1],
 		"parameters.z.parameters":[1e-2],
 		"parameters.zz.parameters":[1e-4],
-		"parameters.xy.kwargs.lambda":[[0]],		
+		"parameters.xy.kwargs.lambda":[0],		
 		"label.string":["pauli"],
 		"label.random":["Z"],
 		"label.parameters":[0.25],
@@ -50,7 +50,7 @@
 		"optimize.search.beta":["hestenes_stiefel"],
 
 		"parameters.xy.method":["bound"],
-		"parameters.xy.kwargs.lambda":[[0]],
+		"parameters.xy.kwargs.lambda":[0],
 
 		"jobs.job.cwd":["check"],
 		"jobs.postprocess.cwd":["check"],		
@@ -93,7 +93,7 @@
 		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 		},
-	"N":1,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -191,7 +191,6 @@
 			"parameters":1,
 			"bounds":[-1,1],
 			"locality":null,
-			"constants":null,
 			"seed":123,	
 			"random":"uniform",
 			"initialization":{
@@ -200,7 +199,7 @@
 				"smoothness":2
 				},
 			"args":[],
-			"kwargs":{"sigmoid":1,"lambda":[5e2,5e-2,1.5e-4]}
+			"kwargs":{"sigmoid":1,"lambda":5e2,"constraints":{"0":0,"-1":0}}
 			},
 		"z": {
 			"string":"z",
@@ -211,11 +210,9 @@
 			"parameters":1,
 			"bounds":[-1,1],
 			"locality":null,
-			"constants":null,
 			"seed":123,
 			"random":"uniform",
 			"initialization":null,
-			"pad":"random",
 			"args":[],
 			"kwargs":{}
 			},
@@ -229,11 +226,9 @@
 			"parameters":1,
 			"bounds":[-1,1],
 			"locality":null,
-			"constants":null,
 			"seed":123,
 			"random":"uniform",	
-			"initialization":"random",
-			"pad":"random",
+			"initialization":null,
 			"args":[],
 			"kwargs":{}
 			}
@@ -253,7 +248,7 @@
 	"site":null,
 	"string":"U",
 	"interaction":"i...j",
-	"parameters":true,
+	"parameters":false,
 	"ndim":1,
 	"samples":1,
 	"seed":123
@@ -263,7 +258,7 @@
 	"site":null,
 	"string":"K",
 	"interaction":"i",
-	"parameters":true,
+	"parameters":false,
 	"ndim":3,
 	"seed":123
 	},

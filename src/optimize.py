@@ -640,6 +640,7 @@ class Function(System):
 		if func is None:
 			func = []
 		if not callable(func):
+			func = [i for i in func if i is not None]
 			if len(func) == 1:
 				function = func[0]
 			elif func:
@@ -656,6 +657,7 @@ class Function(System):
 		if grad is None:
 			gradient = None
 		elif not callable(grad):
+			grad = [i for i in grad if i is not None]
 			if len(grad) == 1:
 				gradient = grad[0]
 			elif grad:

@@ -4568,12 +4568,13 @@ def expand_dims(a,axis):
 
 
 
-def padding(a,shape,key=None,bounds=[0,1],random=None,dtype=None):
+def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
 	'''
 	Ensure array is shape and pad with values
 	Args:
 		a (array): Array to be padded
 		shape (int,iterable[int]): Size or shape of array
+		axis (int,iterable[int]): axis of a to retain
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
@@ -4590,11 +4591,17 @@ def padding(a,shape,key=None,bounds=[0,1],random=None,dtype=None):
 	if isinstance(shape,int):
 		shape = [shape]
 
+	if isinstance(axis,int):
+		axis = [axis]
+
 	ndim = len(shape)
 
-	if a.ndim < ndim:
-		a = expand_dims(a,list(range(a.ndim,ndim)))
+	diff = max(0,ndim - a.ndim + 1)
+	reshape = a.shape
 
+	a = a.reshape(*a.shape,*(1,)*diff)
+	for axis in range(ndim-diff,ndim):
+		a = repeat(a,shape[axis],axis)		
 	a = take(a,shape,range(ndim))
 
 	if random is not None:
