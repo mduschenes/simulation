@@ -12,11 +12,11 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient,hessian,fisher
+from src.utils import jit,vmap,switch,gradient,hessian,fisher
 from src.utils import array,empty,identity,ones,zeros,arange,rand,setitem
 from src.utils import tensorprod,dagger,conj,einsum,dot
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
-from src.utils import trotter,gradient_trotter,gradient_expm
+from src.utils import forloop,trotter,gradient_trotter,gradient_expm
 from src.utils import eig
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log,log10,sign,sin,cos
 from src.utils import sort,relsort,norm
@@ -151,7 +151,7 @@ class Object(System):
 		self.shape = shape
 		self.size = size
 		self.ndim = ndim
-		
+
 		if not (((self.data is None) and (self.operator is None)) or (isinstance(self.data,arrays))):
 			self.__setup__(data,operator,site,string,interaction)
 
@@ -298,6 +298,10 @@ class Object(System):
 			data (array): Data to normalize			
 		'''
 
+		# TODO: Efficient norm calculation
+
+		return
+
 		data = self()
 		# dataH = self(conj=True)
 		dataH = conj(data) if data is not None else None
@@ -377,7 +381,6 @@ class Object(System):
 		self.ndim = data.ndim
 
 		return
-
 
 class Operator(Object):
 	'''
@@ -460,11 +463,7 @@ class Pauli(Object):
 		Returns:
 			data (array): data
 		'''
-		parameters = self.parameters if parameters is None else parameters
-		if parameters is None:
-			return self.data
-		else:
-			return cos(parameters*pi)*self.identity + -1j*sin(parameters*pi)*self.data
+		return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
 
 	def grad(self,parameters=None,state=None,conj=None):
 		'''
@@ -476,7 +475,7 @@ class Pauli(Object):
 		Returns:
 			data (array): data
 		'''
-		return -pi*sin(parameters*pi)*self.identity + -1j*pi*cos(parameters*pi)*self.data
+		return -pi*sin(pi*parameters)*self.identity + -1j*pi*cos(pi*parameters)*self.data
 
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
@@ -762,28 +761,62 @@ def Compute(data,identity,state,noise,coefficients,n,d,m,p):
 		grad (callable): Gradient to compute operators, with signature grad(parameters,state,conj), where parameters[i][j] is a nested iterable for each operator i and time step j
 	'''		
 
-	if coefficients is None:
-		coefficients = 1
-	if isinstance(coefficients,scalars):
-		coefficients = [coefficients]*d
 
+	from src.utils import cos,sin
 
-	def func(parameters,state=None,conj=None):
-		if conj:
-			sign = -1
-			slices = slice(None,None,-1)
-			indices = range(m-1,-1,-1)
-		else:
-			sign = 1
-			slices = slice(None,None,1)
-			indices = range(0,m,1)
-		out = identity
-		for j in indices:
-			operators = [data[i](sign*coefficients[i]*parameters[i][j],conj=True) for i in range(d)]
-			operators = trotter(operators,p)[slices]
-			for operator in operators:
+	dtype = coefficients.dtype
+
+	# datas = array([i.data for i in data],dtype=dtype)
+	# identities = array([i.identity for i in data],dtype=dtype)
+
+	# expm = jit(lambda x,a,i: cos(pi*x)*i + -1j*sin(pi*x)*a)
+
+	# functions = jit(vmap(expm))
+
+	index = arange(d)
+	functions = [jit(i) for i in data]
+	operators = vmap(lambda j,parameters: switch(j,functions,coefficients*parameters))
+
+	def func(parameters=None,state=None,conj=None):
+
+		def function(i,out):
+			# operators = [data[j](coefficients[j]*parameters[j][i]) for j in range(d)]
+
+			# operators = vmap(lambda j,parameters: switch(j,functions,coefficients*parameters[i])) (index,parameters)
+			# operators = lambda index,parameters: [functions[j](coefficients*parameters[j][i]) for j in index]
+			
+			# operators = vmap()
+
+			# operators = functions(parameters[:,i],datas,identities)
+
+			for operator in trotter(operators(index,parameters[:,i]),p):
 				out = dot(operator,out)
+			return out
+
+		out = identity
+		out = forloop(0,m,function,out)
 		return out
+
+
+
+	# def func(parameters=None,state=None,conj=None):
+	# 	if conj:
+	# 		sign = -1
+	# 		slices = slice(None,None,-1)
+	# 		indices = range(m-1,-1,-1)
+	# 	else:
+	# 		sign = 1
+	# 		slices = slice(None,None,1)
+	# 		indices = range(0,m,1)
+	# 	out = identity
+	# 	for j in indices:
+	# 		operators = [data[i](sign*coefficients[i]*parameters[i][j],conj=True) for i in range(d)]
+	# 		operators = trotter(operators,p)[slices]
+	# 		for operator in operators:
+	# 			out = dot(operator,out)
+	# 	return out
+
+	# func = jit(func)
 
 	return func
 	
@@ -893,7 +926,7 @@ class Operators(Object):
 		self.size = prod(self.shape)
 		self.ndim = len(self.shape)
 		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
-		self.coefficients = self.tau/self.P
+		self.coefficients = array(self.tau/self.P,dtype=self.dtype)
 
 		self.__setup__(data,operator,site,string,interaction)
 
@@ -1037,10 +1070,12 @@ class Operators(Object):
 				
 		# Set functions
 		data = self.data
-		identity = self.identity()
-		parameters = self.parameters()
-		state = self.state()
-		noise = self.noise()
+		# identity = self.identity()
+		identity = self.identity.data
+		# state = self.state()
+		state = self.state.data
+		# noise = self.noise()
+		noise = self.noise.data
 		coefficients = self.coefficients
 		n = self.n
 		d = len(self.data)
@@ -1053,7 +1088,6 @@ class Operators(Object):
 
 		return
 
-	#@partial(jit,static_argnums=(0,))
 	def __call__(self,parameters=None,state=None,conj=None):
 		'''
 		Class function
@@ -1065,15 +1099,15 @@ class Operators(Object):
 			out (array): Return of function
 		'''
 
-		if parameters is None:
-			parameters = self.parameters()
+		# if parameters is None:
+		# 	parameters = self.parameters.data
+
 
 		parameters = self.parameters(parameters)
 
-		return self.compute(parameters,state=state,conj=conj)
+		return self.compute(parameters)#,state=state,conj=conj)
 
-	#@partial(jit,static_argnums=(0,))
-	def __grad__(self,parameters,state=None,conj=None):
+	def __grad__(self,parameters=None,state=None,conj=None):
 		''' 
 		Class gradient
 		Args:
@@ -1083,11 +1117,10 @@ class Operators(Object):
 		Returns:
 			out (array): Return of function
 		'''	
-		return self.gradient(parameters,state=state,conj=conj)
+		return self.gradient(parameters=parameters,state=state,conj=conj)
 
 
-	# @partial(jit,static_argnums=(0,))
-	def __value_and_grad__(self,parameters,state=None,conj=None):
+	def __value_and_grad__(self,parameters=None,state=None,conj=None):
 		'''
 		Class function and gradient
 		Args:
@@ -1095,10 +1128,9 @@ class Operators(Object):
 		Returns
 			out (array): Return of function and gradient
 		'''	
-		return self.value_and_gradient(parameters,state=None,conj=None)
+		return self.value_and_gradient(parameters=parameters,state=None,conj=None)
 
 
-	#@partial(jit,static_argnums=(0,))
 	def func(self,parameters=None,state=None,conj=None):
 		'''
 		Class function
@@ -1109,10 +1141,9 @@ class Operators(Object):
 		Returns
 			out (array): Return of function
 		'''
-		return self.__call__(parameters,state=state,conj=conj)
+		return self.__call__(parameters=parameters,state=state,conj=conj)
 
-	#@partial(jit,static_argnums=(0,))
-	def grad(self,parameters,state=None,conj=None):
+	def grad(self,parameters=None,state=None,conj=None):
 		''' 
 		Class gradient
 		Args:
@@ -1122,10 +1153,9 @@ class Operators(Object):
 		Returns:
 			out (array): Return of function
 		'''		
-		return self.__grad__(parameters,state=state,conj=conj)
+		return self.__grad__(parameters=parameters,state=state,conj=conj)
 
-	# @partial(jit,static_argnums=(0,))
-	def value_and_grad(self,parameters,state=None,conj=None):
+	def value_and_grad(self,parameters=None,state=None,conj=None):
 		'''
 		Class function and gradient
 		Args:
@@ -1135,7 +1165,7 @@ class Operators(Object):
 		Returns
 			out (array): Return of function and gradient
 		'''	
-		return self.__value_and_gradient__(parameters,state=state,conj=conj)
+		return self.__value_and_gradient__(parameters=parameters,state=state,conj=conj)
 
 	def __len__(self):
 		return len(self.data)
@@ -1461,17 +1491,11 @@ class Hamiltonian(Operators):
 					objs[obj].append(value)	
 
 
-		print('Data set')
-
 		# Set class attributes
 		self.__extend__(**objs)
 
-		print('Data extended')
-
 		# Set class functions
 		self.__initialize__()
-
-		print('Functions set')
 
 		return
 
@@ -1524,8 +1548,7 @@ class Unitary(Hamiltonian):
 
 		return
 
-	#@partial(jit,static_argnums=(0,))
-	def __grad_analytical__(self,parameters,state=None,conj=None):
+	def __grad_analytical__(self,parameters=None,state=None,conj=None):
 		'''
 		Class gradient
 		Args:
@@ -1601,8 +1624,7 @@ class Unitary(Hamiltonian):
 
 		return grad
 
-	#@partial(jit,static_argnums=(0,))
-	def grad_analytical(self,parameters,state=None,conj=None):
+	def grad_analytical(self,parameters=None,state=None,conj=None):
 		'''
 		Class gradient
 		Args:
@@ -1612,7 +1634,7 @@ class Unitary(Hamiltonian):
 		Returns
 			out (array): Return of function
 		'''	
-		return self.__grad_analytical__(parameters,state=state,conj=conj)
+		return self.__grad_analytical__(parameters=parameters,state=state,conj=conj)
 
 
 class Label(Operator):

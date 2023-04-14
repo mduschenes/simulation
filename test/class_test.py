@@ -135,24 +135,18 @@ def test_model(path,tol):
 
 	parameters = model.parameters()
 
-	print('Model Loaded')
+	# parameters = array([i for parameter in model.parameters for i in model.parameters[parameter].data])
 
-	obj = model(parameters)
+	for i in range(10):
+		obj = model(parameters)
+		print(i)
 
-	print('Obj called')
-
-	objH = model(parameters,conj=True)
-
-	print('ObjH called')
+	objH = model(parameters).conj().T#,conj=True)
 
 	eps = (obj.dot(obj.conj().T))
 	epsH = obj.dot(objH)
 
-	print(eps)
-	print(epsH)
-	print(allclose(eps,epsH))
-	print(allclose(obj.conj().T,objH))
-
+	print(allclose(eps,epsH) and allclose(obj.conj().T,objH))
 
 	return 
 
@@ -545,12 +539,40 @@ def test_fisher(path,tol):
 	return
 
 
+def profile(func,*args,**kwargs):
+	import cProfile, pstats
+	import snakeviz.cli
+	
+	sort = ['cumtime']
+	lines = 100
+	file = 'stats.profile'
+
+	profiler = cProfile.Profile()
+	profiler.enable()
+
+	func(*args,**kwargs)
+
+	profiler.disable()
+
+	stats = pstats.Stats(profiler).sort_stats(*sort)
+	stats.print_stats(lines)
+	stats.dump_stats(filename=file)
+
+	# snakeviz.cli.main([file])
+
+	return
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
+	func = test_model
+	args = ()
+	kwargs = dict(path=path,tol=tol)
+	profile(func,*args,**kwargs)
+
 	# test_object(path,tol)
-	test_model(path,tol)
+	# test_model(path,tol)
 	# test_parameters(path,tol)
 	# test_call(path,tol)
 	# test_data(path,tol)

@@ -304,21 +304,24 @@ def jit(func,*,static_argnums=None,**kwargs):
 	# return wraps(func)(partial(func,**kwargs))
 
 # @partial(jit,static_argnums=(2,))	
-def vmap(func,in_axes=0,out_axes=0,axes_name=None):	
+def vmap(func,in_axes=0,out_axes=0,axis_name=None):	
 	'''
 	Vectorize function over input axis of iterables
 	Args:
 		func (callable): Function that acts on single elements of iterables
 		in_axes (int,iterable): Input axis of iterables
 		out_axes (int,interable): Output axis of func return
-		axes_names (object): hashable Python object used to identify the mapped
+		axis_names (object): hashable Python object used to identify the mapped
 			axis so that parallel collectives can be applied.
 	Returns:
 		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
 	'''
+
+	return jax.vmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
 	in_axes = [in_axes] if in_axes is None or isinstance(in_axes,int) else in_axes
 	out_axes = [out_axes] if out_axes is None or isinstance(out_axes,int) else out_axes
-	axes_name = [axes_name] if axes_name is None or isinstance(axes_name,int) else axes_name
+	axis_name = [axis_name] if axis_name is None or isinstance(axis_name,int) else axis_name
 
 	def vmapper(*args,**kwargs):
 		args = itertools.product(*(arg if (i in in_axes) and ((len(in_axes)<len(args)) or (in_axes[i] is not None)) else [arg] for i,arg in enumerate(args)))
@@ -326,6 +329,23 @@ def vmap(func,in_axes=0,out_axes=0,axes_name=None):
 		return np.array([func(*arg,**kwargs) for arg in args])
 
 	return vmapper
+
+
+# @partial(jit,static_argnums=(2,))	
+def pmap(func,in_axes=0,out_axes=0,axis_name=None):	
+	'''
+	Vectorize function over input axis of iterables
+	Args:
+		func (callable): Function that acts on single elements of iterables
+		in_axes (int,iterable): Input axis of iterables
+		out_axes (int,interable): Output axis of func return
+		axis_names (object): hashable Python object used to identify the mapped
+			axis so that parallel collectives can be applied.
+	Returns:
+		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+	'''
+
+	return jax.pmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
 
 
 # @partial(jit,static_argnums=(2,))	
@@ -365,6 +385,8 @@ def vfunc(funcs,index):
 	func = lambda index,x: array([funcs[i](x[i]) for i in index])
 	return lambda x,func=func,index=index: func(index,x)
 
+def switch(i,func,*args):
+	return jax.lax.switch(i,func,*args)
 
 def value_and_gradient(func,grad=None,returns=False):
 	'''
@@ -1203,7 +1225,7 @@ def PRNGKey(seed=None,size=False,reset=None):
 		onp.random.seed(reset)
 
 	if seed is None:
-		seed = onp.random.randint(1e12)
+		seed = onp.random.randint(*bounds)
 
 	if isinstance(seed,(int)):
 		key = jax.random.PRNGKey(seed)
@@ -4503,12 +4525,12 @@ def take(a,indices,axis):
 	return a
 
 
-def put(a,b,indices,axis):
+def put(a,values,indices,axis):
 	'''
 	Put array to slices array
 	Args:
 		a (array): Array to put
-		b (array): Array to take
+		values (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
 		axis (int,interable[int]): Axis or axis corresponding to indices to slice
 	Returns:
@@ -4517,41 +4539,39 @@ def put(a,b,indices,axis):
 	if isinstance(axis,int):
 		axis = [axis]
 		indices = [indices]
-		b = [b]
+		values = [values]
 
-	for axis,indices,b in zip(axis,indices,b):
+	# TODO merge put_along_axis for different numpy backends (jax vs autograd)
+
+	for axis,indices,values in zip(axis,indices,values):
 
 		axis = axis % a.ndim
 		indices = array(indices)
 
-		if b.ndim < a.ndim:
-			b = b.reshape(*(1,)*(axis),*b.shape,*(1,)*(a.ndim-b.ndim-axis))
-		if indices.ndim < a.ndim:
-			indices = indices.reshape(*(1,)*(axis),*indices.shape,*(1,)*(a.ndim-indices.ndim-axis))
+		# if values.ndim < a.ndim:
+		# 	values = values.reshape(*(1,)*(axis),*values.shape,*(1,)*(a.ndim-values.ndim-axis))
+		# if indices.ndim < a.ndim:
+		# 	indices = indices.reshape(*(1,)*(axis),*indices.shape,*(1,)*(a.ndim-indices.ndim-axis))
 
+		# np.put_along_axis(a,indices,values,axis=axis)
 
-		try:
-			np.put_along_axis(a,indices,b,axis=axis)
-		
-		except NotImplementedError:
+		if axis in [0]:
+			a = setitem(a,(indices),values)
+		elif axis in [a.ndim-1]:
+			a = setitem(a,(Ellipsis,indices),values)
+		else:
+			raise ValueError("Not Implemented for axis %d"%(axis))
 
-			assert axis in [0,a.ndim-1], "Not Implemented for axis != [0,-1]"
-			
-			if axis in [0]:
-				a = setitem(a,(indices),values)
-			elif axis in [a.ndim]:
-				a = setitem(a,(Ellipsis,indices),values)
+		# Ni, M, Nk = a.shape[:axis], a.shape[axis], a.shape[axis+1:]
+		# size = indices.shape[axis]
 
-			# Ni, M, Nk = a.shape[:axis], a.shape[axis], a.shape[axis+1:]
-			# size = indices.shape[axis]
-
-			# for i in np.ndindex(Ni):
-			# 	for k in np.ndindex(Nk):
-			# 		a_1d = a[i + np.s_[:,] + k]
-			# 		indices_1d = indices[i + np.s_[:,] + k]
-			# 		values_1d  = values[i + np.s_[:,] + k]
-			# 		for j in range(size):
-			# 			a_1d[indices_1d[j]] = values_1d[j]
+		# for i in np.ndindex(Ni):
+		# 	for k in np.ndindex(Nk):
+		# 		a_1d = a[i + np.s_[:,] + k]
+		# 		indices_1d = indices[i + np.s_[:,] + k]
+		# 		values_1d  = values[i + np.s_[:,] + k]
+		# 		for j in range(size):
+		# 			a_1d[indices_1d[j]] = values_1d[j]
 
 	return a
 

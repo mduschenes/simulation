@@ -1203,7 +1203,7 @@ def PRNGKey(seed=None,size=False,reset=None):
 		onp.random.seed(reset)
 
 	if seed is None:
-		seed = onp.random.randint(1e12)
+		seed = onp.random.randint(*bounds)
 
 	if isinstance(seed,(int)):
 		key = jax.random.PRNGKey(seed)
@@ -4503,12 +4503,12 @@ def take(a,indices,axis):
 	return a
 
 
-def put(a,b,indices,axis):
+def put(a,values,indices,axis):
 	'''
 	Put array to slices array
 	Args:
 		a (array): Array to put
-		b (array): Array to take
+		values (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
 		axis (int,interable[int]): Axis or axis corresponding to indices to slice
 	Returns:
@@ -4517,41 +4517,39 @@ def put(a,b,indices,axis):
 	if isinstance(axis,int):
 		axis = [axis]
 		indices = [indices]
-		b = [b]
+		values = [values]
 
-	for axis,indices,b in zip(axis,indices,b):
+	# TODO merge put_along_axis for different numpy backends (jax vs autograd)
+
+	for axis,indices,values in zip(axis,indices,values):
 
 		axis = axis % a.ndim
 		indices = array(indices)
 
-		if b.ndim < a.ndim:
-			b = b.reshape(*(1,)*(axis),*b.shape,*(1,)*(a.ndim-b.ndim-axis))
-		if indices.ndim < a.ndim:
-			indices = indices.reshape(*(1,)*(axis),*indices.shape,*(1,)*(a.ndim-indices.ndim-axis))
+		# if values.ndim < a.ndim:
+		# 	values = values.reshape(*(1,)*(axis),*values.shape,*(1,)*(a.ndim-values.ndim-axis))
+		# if indices.ndim < a.ndim:
+		# 	indices = indices.reshape(*(1,)*(axis),*indices.shape,*(1,)*(a.ndim-indices.ndim-axis))
 
+		# np.put_along_axis(a,indices,values,axis=axis)
 
-		try:
-			np.put_along_axis(a,indices,b,axis=axis)
-		
-		except NotImplementedError:
+		if axis in [0]:
+			a = setitem(a,(indices),values)
+		elif axis in [a.ndim-1]:
+			a = setitem(a,(Ellipsis,indices),values)
+		else:
+			raise ValueError("Not Implemented for axis %d"%(axis))
 
-			assert axis in [0,a.ndim-1], "Not Implemented for axis != [0,-1]"
-			
-			if axis in [0]:
-				a = setitem(a,(indices),values)
-			elif axis in [a.ndim]:
-				a = setitem(a,(Ellipsis,indices),values)
+		# Ni, M, Nk = a.shape[:axis], a.shape[axis], a.shape[axis+1:]
+		# size = indices.shape[axis]
 
-			# Ni, M, Nk = a.shape[:axis], a.shape[axis], a.shape[axis+1:]
-			# size = indices.shape[axis]
-
-			# for i in np.ndindex(Ni):
-			# 	for k in np.ndindex(Nk):
-			# 		a_1d = a[i + np.s_[:,] + k]
-			# 		indices_1d = indices[i + np.s_[:,] + k]
-			# 		values_1d  = values[i + np.s_[:,] + k]
-			# 		for j in range(size):
-			# 			a_1d[indices_1d[j]] = values_1d[j]
+		# for i in np.ndindex(Ni):
+		# 	for k in np.ndindex(Nk):
+		# 		a_1d = a[i + np.s_[:,] + k]
+		# 		indices_1d = indices[i + np.s_[:,] + k]
+		# 		values_1d  = values[i + np.s_[:,] + k]
+		# 		for j in range(size):
+		# 			a_1d[indices_1d[j]] = values_1d[j]
 
 	return a
 
