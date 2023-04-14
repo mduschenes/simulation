@@ -33,13 +33,13 @@ import numpy as onp
 import scipy as osp
 import pandas as pd
 
-import jax
-import jax.numpy as np
-import jax.scipy as sp
+# import jax
+# import jax.numpy as np
+# import jax.scipy as sp
 
-import jax.example_libraries.optimizers
-from jax.tree_util import register_pytree_node_class as tree_register
-from jax.tree_util import tree_map as tree_map
+# import jax.example_libraries.optimizers
+# from jax.tree_util import register_pytree_node_class as tree_register
+# from jax.tree_util import tree_map as tree_map
 
 import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
@@ -53,9 +53,9 @@ for name in configs:
 	jax.config.update(name,configs[name])
 
 
-# import autograd
-# import autograd.numpy as np
-# import autograd.scipy as sp
+import autograd
+import autograd.numpy as np
+import autograd.scipy as sp
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 pd.set_option('display.max_rows', 500)
@@ -283,8 +283,8 @@ def setitem(obj,index,item):
 	'''
 	# TODO merge indexing for different numpy backends (jax vs autograd)
 
-	# obj[index] = item
-	obj = obj.at[index].set(item)
+	obj[index] = item
+	# obj = obj.at[index].set(item)
 	return obj
 
 def jit(func,*,static_argnums=None,**kwargs):
@@ -297,11 +297,11 @@ def jit(func,*,static_argnums=None,**kwargs):
 	Returns:
 		func (callable): Compiled function
 	'''
-
+	
 	# TODO merge jit for different numpy backends (jax vs autograd)
 
-	return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
-	# return wraps(func)(partial(func,**kwargs))
+	# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+	return wraps(func)(partial(func,**kwargs))
 
 # @partial(jit,static_argnums=(2,))	
 def vmap(func,in_axes=0,out_axes=0,axes_name=None):	
@@ -492,12 +492,12 @@ def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.grad(func,argnums=argnums,holomorphic=holomorphic))
-	# argnum = argnums
-	# if holomorphic:
-	# 	_grad = jit(autograd.grad(func,argnum=argnum))
-	# else:
-	# 	_grad = jit(autograd.grad(func,argnum=argnum))
+	# _grad = jit(jax.grad(func,argnums=argnums,holomorphic=holomorphic))
+	argnum = argnums
+	if holomorphic:
+		_grad = jit(autograd.grad(func,argnum=argnum))
+	else:
+		_grad = jit(autograd.grad(func,argnum=argnum))
 
 	if move:
 		grad = _grad
@@ -519,12 +519,12 @@ def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
-	# argnum = argnums
-	# if holomorphic:
-	# 	_grad = jit(autograd.jacobian(func,argnum=argnum))
-	# else:
-	# 	_grad = jit(autograd.jacobian(func,argnum=argnum))
+	# _grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
+	argnum = argnums
+	if holomorphic:
+		_grad = jit(autograd.jacobian(func,argnum=argnum))
+	else:
+		_grad = jit(autograd.jacobian(func,argnum=argnum))
 
 	if move:
 		@jit
@@ -550,12 +550,12 @@ def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		grad (callable): Gradient of function
 	'''
 
-	_grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
-	# argnum = argnums
-	# if holomorphic:
-	# 	_grad = jit(autograd.grad(func,argnum=argnum))
-	# else:
-	# 	_grad = jit(autograd.grad(func,argnum=argnum))	
+	# _grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
+	argnum = argnums
+	if holomorphic:
+		_grad = jit(autograd.grad(func,argnum=argnum))
+	else:
+		_grad = jit(autograd.grad(func,argnum=argnum))	
 
 	if move:
 		@jit
@@ -584,13 +584,13 @@ def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	Returns:
 		grad (callable): Hessian of function
 	'''
+	# grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
 	
-	grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
-	# argnum = argnums
-	# if holomorphic:
-	# 	grad = jit(autograd.hessian(func,argnum=argnum))
-	# else:
-	# 	grad = jit(autograd.hessian(func,argnum=argnum))	
+	argnum = argnums
+	if holomorphic:
+		grad = jit(autograd.hessian(func,argnum=argnum))
+	else:
+		grad = jit(autograd.hessian(func,argnum=argnum))	
 
 	return grad
 
@@ -1206,17 +1206,16 @@ def PRNGKey(seed=None,size=False,reset=None):
 		seed = onp.random.randint(1e12)
 
 	if isinstance(seed,(int)):
-		key = jax.random.PRNGKey(seed)
-		# key = np.random.seed(seed)		
+		# key = jax.random.PRNGKey(seed)
+		key = np.random.seed(seed)		
 	else:
 		key = asndarray(seed,dtype=np.uint32)
 
 	if size:
-		key = jax.random.split(key,num=size)
-		# key = np.random.randint(*bounds,size=size)
+		# key = jax.random.split(key,num=size)
+		key = np.random.randint(*bounds,size=size)
 
 	return key
-
 
 
 def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
@@ -1275,18 +1274,18 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 
 	if random in ['uniform','rand']:
 		def func(key,shape,bounds,dtype):
-			out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
-			# out = np.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
+			# out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+			out = np.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
 			return out
 	elif random in ['randint']:
 		def func(key,shape,bounds,dtype):		
-			out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
-			# out = np.random.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype)		
+			# out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+			out = np.random.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype)		
 			return out
 	elif random in ['gaussian','normal']:
 		def func(key,shape,bounds,dtype):
-			out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
-			# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*np.random.normal(size=shape).astype(dtype)				
+			# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
+			out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*np.random.normal(size=shape).astype(dtype)				
 			return out
 	elif random in ['haar']:
 		def func(key,shape,bounds,dtype):
@@ -1461,8 +1460,8 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 			return out								
 	else:
 		def func(key,shape,bounds,dtype):
-			out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
-			# out = np.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
+			# out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+			out = np.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
 			return out
 
 	if mesh is not None:
@@ -4681,8 +4680,8 @@ def randomstring(K,N,D=2):
 	else:
 		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
 
-	alpha = jax.random.uniform(key,(K*N,d))
-	# alpha = np.random.uniform(size=(K*N,d))
+	# alpha = jax.random.uniform(key,(K*N,d))
+	alpha = np.random.uniform(size=(K*N,d))
 	
 	string = vtensordot(alpha,basis,1)
 	string = string.reshape((K,N,D,D))
@@ -4715,8 +4714,8 @@ def paulistring(string,N,K,D=2):
 	else:
 		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
 
-	alpha = jax.random.uniform(key,(K*N,d))
-	# alpha = np.random.uniform(size=(K*N,d))
+	# alpha = jax.random.uniform(key,(K*N,d))
+	alpha = np.random.uniform(size=(K*N,d))
 	
 	string = vtensordot(alpha,basis,1)
 	string = string.reshape((K,N,D,D))

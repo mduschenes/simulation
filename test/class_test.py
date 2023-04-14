@@ -126,10 +126,33 @@ def test_model(path,tol):
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
 
 	model = cls.pop('model')
-	model = model(**{**hyperparameters.get('model',{}),**{attr:hyperparameters[attr] for attr in ['parameters','state','noise','system']}})
+	kwargs = {
+		**hyperparameters.get('model',{}),
+		**{attr:hyperparameters[attr] for attr in ['parameters','state','noise','system']}
+		}
 
-	# parameters = cls.pop('parameters')
-	# parameters = parameters(**{**namespace(parameters,model),**hyperparameters.get('parameters',{}),**dict(model=model,system=system)})
+	model = model(**kwargs)
+
+	parameters = model.parameters()
+
+	print('Model Loaded')
+
+	obj = model(parameters)
+
+	print('Obj called')
+
+	objH = model(parameters,conj=True)
+
+	print('ObjH called')
+
+	eps = (obj.dot(obj.conj().T))
+	epsH = obj.dot(objH)
+
+	print(eps)
+	print(epsH)
+	print(allclose(eps,epsH))
+	print(allclose(obj.conj().T,objH))
+
 
 	return 
 
@@ -157,7 +180,7 @@ def test_parameters(path,tol):
 		system=hyperparameters['system'])
 
 	parameters = model.parameters()
-	variables = model.__parameters__(parameters)
+	variables = model.parameters(parameters)
 
 	print(model.data)
 	print(model.parameters)

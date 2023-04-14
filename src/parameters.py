@@ -40,12 +40,12 @@ class Parameter(System):
 			locality (str): locality of parameter across groups, allowed strings in ['shared']
 			bounds (iterable[object]): Bounds of parameters
 			dims (iterable[str]): Model attributes for additional dimensions of parameter
+			axis (int,iterable[int]): Axis of input parameter data to insert into class data
 			parameters (iterable): parameters of parameter
 			seed (int, key): Random seed for initialization
 			random (str): Random type for initialization
 			initialization (dict): Keyword arguments for initialization
-			boundary (dict[str,object]): Boundary indices and values of parameters, along last axis
-			constraint (dict[str,object]): Constraint indices and values of parameters, along last axis
+			constant (dict[dict[str,object]]): constant indices and values of parameters, along axis, of the form {'axis':{'index':value}}			
 			args (iterable): Additional arguments for parameter
 			model (object): Model with additional attributes for initialization
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
@@ -54,10 +54,10 @@ class Parameter(System):
 
 		defaults = dict(
 			string=None,category=None,method=None,
-			group=None,locality=None,bounds=None,dims=None,
+			group=None,locality=None,bounds=None,dims=None,axis=None,
 			parameters=None,
-			seed=None,random=None,initialization=None,
-			indices=None,func=None,constraints=None,
+			seed=None,random=None,initialization=None,constant=None,
+			indices=None,func=None,constraint=None,
 			args=(),kwargs={}
 			)
 
@@ -75,24 +75,49 @@ class Parameter(System):
 
 		return
 
-	def __call__(self,data=None):
+	def __call__(self,parameters=None):
 		'''
 		Class data
 		Args:
-			data (array): data
+			parameters (array): parameters
 		Returns:
-			data (array): data
+			parameters (array): parameters
 		'''
 
-		if data is None:
-			data = self.data.ravel() if self.data is not None else None
-			return data
+		if parameters is None:
+			
+			parameters = self.data
+			
+			return parameters
 
-		data = self.parameters*data.reshape(self.shape)
-		data = self.func(data)
-		data = data
+		elif parameters is True:
+			
+			parameters = self.data
 
-		return data	
+		self.data = parameters
+
+		parameters = self.data.reshape(self.shape)
+		
+		parameters = self.func(parameters)
+
+		return parameters	
+
+	def __str__(self):
+		return str(self.string)
+
+	def constraints(self,parameters=None):
+		'''
+		Class constraints
+		Args:
+			parameters (array): parameters
+		Returns:
+			constraints (array): constraints
+		'''
+
+		constraints = self.constraint(parameters)
+
+		return constraints
+
 
 	def __setup__(self,data=None,model=None):
 		'''
@@ -104,9 +129,10 @@ class Parameter(System):
 
 		self.data = data if data is not None else self.data
 		self.model = model if model is not None else self.model
+		self.dtype = datatype(self.dtype)
 
 		# Get data
-		self.data = array(self.data,dtype=datatype(self.dtype)) if self.data is not None else None
+		self.data = array(self.data,dtype=self.dtype) if self.data is not None else None
 
 		self.shape = self.data.shape if self.data is not None else None
 		self.size = self.data.size if self.data is not None else None
@@ -121,18 +147,19 @@ class Parameter(System):
 		method = self.method if self.method is not None else None
 		locality = self.locality if self.locality is not None else None
 		group = self.group if self.group is not None else []
-		model = self.model if self.model is not None else System(data={})
+		model = self.model if self.model is not None else None
 		dims = self.dims if self.dims is not None else []
 		kwargs = self.kwargs if self.kwargs is not None else {}
 		dtype = self.dtype
 
 		# Get strings
 		strings = {}
-		for data in self.model.data:
-			string = data.string
-			if string in strings:
-				continue
-			strings[string] = [i for i,data in enumerate(self.model.data) if data.string == string]
+		if self.model is not None:
+			for data in self.model.data:
+				string = data.string
+				if string in strings:
+					continue
+				strings[string] = [i for i,data in enumerate(self.model.data) if data.string == string]
 		
 		# Get groups
 		groups = {subgroup: [strings[string][j] 
@@ -159,7 +186,7 @@ class Parameter(System):
 					indices[i] = index
 
 		# Get shape
-		ndim = max(len(indices[i]) if not isinstance(indices[i],int) else 1 for i in indices)
+		ndim = max(len(indices[i]) if not isinstance(indices[i],int) else 1 for i in indices) if indices else 0
 		shapes = [
 			[max(indices[i][j] if not isinstance(indices[i],int) else indices[i] for i in indices)+1 for j in range(ndim)],
 			[getattr(model,attr) for attr in dims]
@@ -173,37 +200,68 @@ class Parameter(System):
 		self.ndim = len(shape)
 
 		# Set functions
-		defaults = {'indices':indices}
-		kwargs.update(defaults)
-		def func(parameters,kwargs=kwargs):
-			return {i: parameters[kwargs['indices'][i]] for i in kwargs['indices']}
-		def constraints(parameters,kwargs=kwargs):
-			return default
+		defaults = {'parameters':self.parameters,'indices':self.indices,'constant':self.constant,'default':0,'lambda':0,'scale':1}
+		kwargs = deepcopy(kwargs)
+		kwargs.update({attr: kwargs.get(attr,defaults[attr]) for attr in defaults})
+		kwargs = deepcopy(kwargs)
+		for attr in kwargs:
+			
+			if attr in ['lambda','scale']:
+				kwargs[attr] = array(kwargs[attr],dtype=self.dtype)
+			
+			elif attr in ['constant']:
+				
+				if kwargs[attr] is None:
+					continue
+
+				if not all(isinstance(kwargs[attr][i],dict) for i in kwargs[attr]):
+					axis = -1
+					kwargs[attr] = {axis:kwargs[attr]}
+				for axis in list(kwargs[attr]):
+					constants = kwargs[attr].pop(axis)
+					indices = array([int(i) for i in constants])
+					values = array([constants[i] for i in constants],dtype=self.dtype)
+					axis = int(axis) % self.ndim
+					indices = (*(slice(None),)*(axis-1),indices)
+					kwargs[attr][axis] = {'indices':indices,'values':values}
+
+		def func(parameters,kwargs):
+			return {i: kwargs['parameters']*parameters[kwargs['indices'][i]] for i in kwargs['indices']}
+		
+		def constraint(parameters,kwargs):
+			return kwargs['default']
+		
 		if method in ['constrained']:
-			defaults = {'lambda':0,'constraint':{},'boundary':{}}
-			funcs = [cos,sin]
-			kwargs.update(defaults)
-			kwargs['lambda'] = array(kwargs['lambda'])
-			kwargs['constraint'] = [array([int(i) for i in self.constraint]),array([self.constraint[i] for i in self.constraint])]
-			kwargs['boundary'] = [array([int(i) for i in self.boundary]),array([self.boundary[i] for i in self.boundary])]
-			def func(parameters,kwargs=kwargs):
-				parameters = bound(parameters)
-				return {i: (parameters[(0,*kwargs['indices'][i][1:])]*
-						   funcs[kwargs['indices'][i][0]%len(funcs)](pi*parameters[(1,*kwargs['indices'][i][1:])]))
+			def func(parameters,kwargs):
+				funcs = [cos,sin]
+				parameters = bound(parameters,kwargs)
+				return {i: kwargs['parameters']*(
+						   parameters[(0,*kwargs['indices'][i][1:])]*
+						   funcs[kwargs['indices'][i][0]%len(funcs)](
+						   pi*parameters[(1,*kwargs['indices'][i][1:])]))
 						for i in kwargs['indices']}
-			def constraints(parameters,kwargs=kwargs):
-				return kwargs['lambda']*((parameters[...,kwargs['constraint'][0]] - kwargs['constraint'][1])**2).sum()
+			
+			def constraint(parameters,kwargs):
+				return kwargs['lambda']*sum(
+					((parameters[kwargs['constant'][axis]['indices']] - kwargs['constant'][axis]['values'])**2).sum()
+					for axis in kwargs['constant'])
+		
 		elif method in ['unconstrained']:
 			pass	
+		
 		elif method in ['bounded']:
-			def func(parameters,kwargs=kwargs):
-				parameters = bound(parameters,kwargs=kwargs)
+			def func(parameters,kwargs):
+				parameters = bound(parameters,kwargs)
 				return {i: parameters[kwargs['indices'][i]] for i in kwargs['indices']}
+		
 		else:
 			pass
 
+		func = jit(func,kwargs=kwargs)
+		constraint = jit(constraint,kwargs=kwargs)
+
 		self.func = func
-		self.constraints = constraints
+		self.constraint = constraint
 
 		return
 
@@ -221,11 +279,8 @@ class Parameter(System):
 		self.ndim = len(shape) if shape is not None else self.ndim
 		self.dtype = dtype if dtype is not None else self.dtype
 
-		if self.data is not None:
-			if self.ndim > self.data.ndim:
-				self.data = self.data.reshape(1,*self.data.shape,*(1,)*max(self.ndim-1-self.data.ndim,0))
-
-		self.data = initialize(self.data,self.shape,self,dtype=self.dtype)
+		kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
+		self.data = initialize(**kwargs)
 
 		self.shape = self.data.shape if self.data is not None else None
 		self.size = self.data.size if self.data is not None else None
@@ -234,8 +289,6 @@ class Parameter(System):
 
 		return
 
-	def __str__(self):
-		return str(self.string)
 
 class Parameters(System):
 	def __init__(self,data=None,model=None,system=None,**kwargs):
@@ -258,7 +311,6 @@ class Parameters(System):
 			where index_i = [index_group_i,index_parameter_i,index_axis_i] for each data of model
 		v) Parameters(parameters) returns iterable of parameters for each data in model [parameter_i]
 		
-
 		Args:
 			data (dict): Dictionary of data corresponding to parameters groups, with dictionary values with properties:
 				data (iterable): data of parameter
@@ -269,12 +321,12 @@ class Parameters(System):
 				locality (str): locality of parameter across groups, allowed strings in ['shared']
 				bounds (iterable[object]): Bounds of parameters
 				dims (iterable[str]): Model attributes for additional dimensions of parameter
+				axis (int,iterable[int]): Axis of input parameter data to insert into class data
 				parameters (iterable): parameters of parameter
 				seed (int, key): Random seed for initialization
 				random (str): Random type for initialization
 				initialization (dict): Keyword arguments for initialization
-				boundary (dict[str,object]): Boundary indices and values of parameters, along last axis
-				constraint (dict[str,object]): Constraint indices and values of parameters, along last axis
+				constant (dict[dict[str,object]]): constant indices and values of parameters, along axis, of the form {'axis':{'index':value}}
 				args (iterable): Additional arguments for parameter
 				system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 				model (object): Model with additional attributes for initialization
@@ -284,7 +336,7 @@ class Parameters(System):
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		defaults = dict(indices=None)
+		defaults = dict(indices={},shape=None,size=None,ndim=None,dtype=None)
 
 		if data is None:
 			data = {}
@@ -297,38 +349,42 @@ class Parameters(System):
 
 		self.__setup__()
 
-		for parameter in self:
-			print(parameter)
-			print(self[parameter].indices)
-			print(self[parameter]())
-			print(self[parameter](self[parameter]()))
-			print()
-
 		return
 
-	def __call__(self,data=None):
+	def __call__(self,parameters=None):
 		'''
 		Class data
 		Args:
-			data (array): data
+			parameters (array): parameters
 		Returns:
-			data (array,dict): data
+			parameters (array,dict): parameters
 		'''
 
-		if data is None:
+		if parameters is None:
 			data = []
 			for parameter in self.indices:
-				parameters = self[parameter]()
-				if parameters is not None:
-					data.extend(parameters.ravel())
-			data = array(data).ravel()
-		else:
-			data = {}
-			for parameter in self:
-				parameters = self[parameter](data[self.indices[parameter]])
-				if parameters is not None:
-					data.update(parameters)
-		return data
+				parameter = self[parameter]()
+				if parameter is not None:
+					data.extend(parameter.ravel())
+			parameters = array(data,dtype=self.dtype).ravel()
+		
+			return parameters
+		
+		elif parameters is True:
+		
+			parameters = self()
+
+		data = {}
+		for parameter in self:
+			if parameter in self.indices:
+				parameter = self[parameter](parameters=parameters[self.indices[parameter]])
+			else:
+				parameter = self[parameter](parameters=True)
+			if parameter is not None:
+				data.update(parameter)
+		parameters = data
+
+		return parameters
 
 	def __setup__(self,data=None,model=None):
 		'''
@@ -340,9 +396,10 @@ class Parameters(System):
 
 		self.data = data if data is not None else self.data
 		self.model = model if model is not None else self.model
+		self.dtype = datatype(self.dtype)
 
-		if (not len(self)) or (self.model is None):
-			return
+		# if (not len(self)) or (self.model is None):
+			# return
 
 		# Set data
 		for parameter in list(self):
@@ -357,9 +414,18 @@ class Parameters(System):
 		indices = {}
 		for parameter in self:
 			if self[parameter].category in ['variable']:
-				indices[parameter] = sum(indices[parameter] for parameter in indices) + self[parameter].size
+				index = max(indices[parameter].stop for parameter in indices) if indices else 0
+				size = self[parameter].size
+				indices[parameter] = slice(index,index+size)
 
 		self.indices = indices
+
+		# Get attributes
+		data = self()
+		self.shape = data.shape if data is not None else None
+		self.size = data.size if data is not None else None
+		self.ndim = data.ndim if data is not None else None
+		self.dtype = data.dtype if data is not None else None
 
 		return
 
