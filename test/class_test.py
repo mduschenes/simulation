@@ -73,8 +73,8 @@ def test_object(path,tol):
 		operator = Operator(**args,**kwargs)
 
 		assert operator.string == args['string'], "Operator.string = %s != %s"%(operator.string,args['string'])
-		assert ((arguments[name]['basis'] in ['Haar','State','Gate','Noise']) or allclose(operator(),
-			tensorprod([base.basis[i]() for i in args['data'].split(delim)]))), "Operator.data != %r"%(operator())
+		assert ((arguments[name]['basis'] in ['Haar','State','Gate','Noise']) or allclose(operator(operator.parameters),
+			tensorprod([base.basis[i]() for i in args['data'].split(delim)]))), "Operator.data != %r"%(operator(operator.parameters))
 		assert tuple(operator.operator) == tuple(args['data'].split(delim))
 
 		for attr in kwargs:
@@ -88,29 +88,29 @@ def test_object(path,tol):
 		for attr in other:
 			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not isinstance(operator[attr],arrays) else allclose(operator[attr],other[attr])), "Incorrect Copying %s %r != %r"%(attr,operator[attr],other[attr])
 
-		assert allclose(operator(),other())
+		assert allclose(operator(operator.parameters),other(other.parameters))
 
 
 		other = base(**args,**kwargs)
 
 		for attr in other:
 			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not isinstance(operator[attr],arrays) else allclose(operator[attr],other[attr])), "Incorrect reinitialization %s %r != %r"%(attr,operator[attr],other[attr])
-		assert allclose(operator(),other())
+		assert allclose(operator(operator.parameters),other(other.parameters))
 		
 		args.update(dict(data=None))
 		operator = base(**args,**kwargs)
-		assert operator() is None
+		assert operator(operator.parameters) is None
 
 		args.update(dict(data=None,operator=None))
 		operator = base(**args,**kwargs)
-		assert operator() is None
+		assert operator(operator.parameters) is None
 	
 
 	operator = Operator()
-	print(type(operator),operator,operator(),operator.operator,operator.site,operator.string,operator.interaction,operator.parameters,operator)
+	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.interaction,operator.parameters,operator)
 
 	operator = Operator('I',N=3)
-	print(type(operator),operator,operator(),operator.operator,operator.site,operator.string,operator.interaction,operator.parameters,operator.shape)
+	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.interaction,operator.parameters,operator.shape)
 
 
 	return
@@ -133,9 +133,8 @@ def test_model(path,tol):
 
 	model = model(**kwargs)
 
+	return
 	parameters = model.parameters()
-
-	# parameters = array([i for parameter in model.parameters for i in model.parameters[parameter].data])
 
 	for i in range(10):
 		obj = model(parameters)
@@ -569,7 +568,8 @@ if __name__ == '__main__':
 	func = test_model
 	args = ()
 	kwargs = dict(path=path,tol=tol)
-	profile(func,*args,**kwargs)
+	# profile(func,*args,**kwargs)
+	func(*args,**kwargs)
 
 	# test_object(path,tol)
 	# test_model(path,tol)

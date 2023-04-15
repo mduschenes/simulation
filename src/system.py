@@ -430,7 +430,7 @@ class Lattice(System):
 		Args:
 			site (str,int): Type of sites, either int for unique site-length list of vertices, or string in allowed ['i','i,j','i<j']
 		Returns:
-			sites (list): List of site-length lists of lattice
+			sites (generator): Generator of site-length lists of lattice
 		'''
 
 		# Unique site-length lists if site is int
@@ -440,35 +440,36 @@ class Lattice(System):
 			sites = self.iterable(k,conditions)
 		elif isinstance(site,(str)):
 			if site in ['i']:
-				sites = [[i] for i in self.vertices]
+				sites = ([i] for i in self.vertices)
 			elif site in ['i,j']:
-				sites = [[i,j] for i in self.vertices for j in self.vertices]
+				sites = ([i,j] for i in self.vertices for j in self.vertices)
 			elif site in ['i<j']:
 				k = 2
 				conditions = lambda i,k: all([i[j]<i[j+1] for j in range(k-1)])	
 				sites = self.iterable(k,conditions)
 			elif site in ['<ij>']:
 				if self.z > self.N:
-					sites = []
+					sites = ()
 				elif self.z > 0:
-					sites = [i for i in unique(
+					sites = (i for i in unique(
 						sort(
 							vstack([
 								repeat(arange(self.N),self.z,0),
 								self.nearestneighbours(r=1)[0].ravel()
 							]),
 						axis=0),
-						axis=1).T]
+						axis=1).T)
 				else:
-					sites = []
+					sites = ()
 
 			elif site in ['i...j']:
-				sites = [range(self.N) for i in range(self.N)]
+				sites = (range(self.N) for i in range(self.N))
 		else:
 			k = 2
 			conditions = None
 			sites = self.iterable(k,conditions)
-		sites = [list(map(int,i)) for i in sites]
+
+		sites = (list(map(int,i)) for i in sites)
 		return sites
 
 
@@ -586,5 +587,5 @@ class Lattice(System):
 
 		default = lambda i,k: any([i[j] != i[l] for j in range(k) for l in range(k) if j!=l])
 		conditions = default if conditions is None else conditions
-		iterable =  [list(i) for i in itertools.product(self.vertices,repeat=k) if conditions(i,k)]
+		iterable =  (list(i) for i in itertools.product(self.vertices,repeat=k) if conditions(i,k))
 		return iterable

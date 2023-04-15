@@ -323,12 +323,12 @@ def vmap(func,in_axes=0,out_axes=0,axis_name=None):
 	out_axes = [out_axes] if out_axes is None or isinstance(out_axes,int) else out_axes
 	axis_name = [axis_name] if axis_name is None or isinstance(axis_name,int) else axis_name
 
-	def vmapper(*args,**kwargs):
+	def vfunc(*args,**kwargs):
 		args = itertools.product(*(arg if (i in in_axes) and ((len(in_axes)<len(args)) or (in_axes[i] is not None)) else [arg] for i,arg in enumerate(args)))
 		# TODO arbitrary in_axes, out_axes
-		return np.array([func(*arg,**kwargs) for arg in args])
+		return array([func(*arg,**kwargs) for arg in args])
 
-	return vmapper
+	return vfunc
 
 
 # @partial(jit,static_argnums=(2,))	
@@ -347,6 +347,41 @@ def pmap(func,in_axes=0,out_axes=0,axis_name=None):
 
 	return jax.pmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
 
+
+# @partial(jit,static_argnums=(2,))
+def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None):	
+	'''
+	Vectorize indexed functions over operands
+	Args:
+		funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
+		in_axes (int,iterable): Input axis of iterables
+		out_axes (int,interable): Output axis of func return
+		axis_names (object): hashable Python object used to identify the mapped
+			axis so that parallel collectives can be applied.
+	Returns:
+		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+	'''
+
+	func = lambda index,*args,funcs=funcs: switch(index,funcs,*args)
+	vfunc = vmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
+	# func = lambda index,*args,funcs=funcs: switch(index,funcs,*args[index])
+	# vfunc = lambda *args,funcs: array([func(index,*args) for index in range(len(funcs))])
+
+	return vfunc
+
+def switch(index,funcs,*args):
+	'''
+	Switch between indexed functions over operands
+	Args:
+		index (int): Index for function
+		funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
+		args (tuple): Arguments for function
+	Returns:
+		out (object): Return of function
+	'''	
+	return jax.lax.switch(index,func,*args)
+	# return funcs[index](*args)
 
 # @partial(jit,static_argnums=(2,))	
 def forloop(start,end,func,out):	
@@ -367,26 +402,6 @@ def forloop(start,end,func,out):
 		out = func(i,out)
 	return out
 
-
-# @partial(jit,static_argnums=(2,))
-def vfunc(funcs,index):	
-	'''
-	Vectorize indexed functions over operands
-	Args:
-		funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
-		index (iterable[int]): Iterable of indices of functions to call
-	Returns:
-		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
-	'''
-	# def vfunc(*iterables):
-	# 	return array(list(map(lambda i,*x:funcs[i](*x),*[index,*iterables])))
-	# return vfunc
-	# func = jit(vmap(lambda i,x,funcs=funcs: jax.lax.switch(i,funcs,x)))
-	func = lambda index,x: array([funcs[i](x[i]) for i in index])
-	return lambda x,func=func,index=index: func(index,x)
-
-def switch(i,func,*args):
-	return jax.lax.switch(i,func,*args)
 
 def value_and_gradient(func,grad=None,returns=False):
 	'''
@@ -4633,6 +4648,10 @@ def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
 		out (array): Padded array
 	'''
 
+	if shape is None:
+		out = a
+		return out
+
 	if a is None:
 		a = zeros(shape,dtype=dtype)
 	else:
@@ -6272,7 +6291,7 @@ def initialize(data,shape,dtype=None,**kwargs):
 	seed = kwargs['seed']
 	axis = kwargs['axis']
 
-	ndim = len(shape) if not isinstance(shape,int) else 0
+	ndim = None if shape is None else 0 if isinstance(shape,int) else len(shape)
 	key = seed
 
 	# pad data

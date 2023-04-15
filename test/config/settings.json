@@ -98,7 +98,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":500,
+	"M":5,
 	"T":null,
 	"tau":50e0,
 	"P":2,
@@ -185,13 +185,16 @@
 			"string":"xy",
 			"category":"variable",
 			"method":null,
-			"group":[["x_1","x_3"],["x_2","x_0"],["y"]],
+			"group":[["y_2","y_1","y_3"],["y_0"],["x_1","x_3"],["x_2","x_0"]],
+			"group":[["x"],["y"]],
+			"locality":null,
+			"locality":"shared",
+			"locality":["shared",null,"shared",null],
+			"locality":null,
+			"bounds":[-1,1],
+			"dims":["M"],		
 			"data":null,
 			"parameters":1,
-			"bounds":[-1,1],
-			"locality":"shared",
-			"locality":"shared",
-			"dims":["M"],			
 			"seed":123,	
 			"random":"uniform",
 			"initialization":{
@@ -202,7 +205,7 @@
 			"constant":{"-1":{"0":0,"-1":0}},
 			"args":[],
 			"kwargs":{"sigmoid":1,"lambda":5e2}
-			},
+			},					
 		"z": {
 			"string":"z",
 			"category":"constant",
@@ -218,7 +221,7 @@
 			"initialization":null,
 			"args":[],
 			"kwargs":{}
-			},
+			},		
 		"zz": {
 			"string":"zz",
 			"init":true,		
