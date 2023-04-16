@@ -13,8 +13,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid,pi
-from src.utils import norm,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
+from src.utils import jit,array,eye,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid
+from src.utils import norm,conj,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
 from src.utils import pi,delim,arrays,scalars,namespace
 from src.iterables import getter,setter
 from src.io import load,dump,exists
@@ -133,19 +133,23 @@ def test_model(path,tol):
 
 	model = model(**kwargs)
 
-	return
 	parameters = model.parameters()
 
-	for i in range(10):
-		obj = model(parameters)
+	obj = model(parameters)
+
+	for i in range(100):
+		obj = model(parameters).block_until_ready()
 		print(i)
 
-	objH = model(parameters).conj().T#,conj=True)
+	# # objH = model(parameters,conj=True)
+	# objH = dagger(obj)
 
-	eps = (obj.dot(obj.conj().T))
-	epsH = obj.dot(objH)
+	# eps = (obj.dot(dagger(obj)))
+	# eps = (eye(model.n))
+	# epsH = obj.dot(objH)
 
-	print(allclose(eps,epsH) and allclose(obj.conj().T,objH))
+
+	# print(allclose(eps,epsH) , allclose(dagger(obj),objH))
 
 	return 
 
@@ -538,10 +542,14 @@ def test_fisher(path,tol):
 	return
 
 
-def profile(func,*args,**kwargs):
+def profile(func,*args,profile=True,**kwargs):
 	import cProfile, pstats
 	import snakeviz.cli
 	
+	if not profile:
+		func(*args,**kwargs)
+		return
+
 	sort = ['cumtime']
 	lines = 100
 	file = 'stats.profile'
@@ -567,9 +575,8 @@ if __name__ == '__main__':
 
 	func = test_model
 	args = ()
-	kwargs = dict(path=path,tol=tol)
-	# profile(func,*args,**kwargs)
-	func(*args,**kwargs)
+	kwargs = dict(path=path,tol=tol,profile=False)
+	profile(func,*args,**kwargs)
 
 	# test_object(path,tol)
 	# test_model(path,tol)

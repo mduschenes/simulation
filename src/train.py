@@ -91,6 +91,7 @@ def train(hyperparameters):
 				**{arg: cls[arg](**{**namespace(cls[arg],model),**hyperparameters.get(arg,{}),**dict(system=system)}) for arg in cls}
 				}
 
+			exit()
 			model.__initialize__(**kwargs)
 
 			shapes = label.shape
@@ -107,8 +108,6 @@ def train(hyperparameters):
 
 			parameters = optimizer(parameters)
 
-			model.parameters(parameters)
-		
 		if hyperparameters['boolean'].get('dump'):	
 			model.dump()
 	

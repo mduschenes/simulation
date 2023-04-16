@@ -12,7 +12,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vmap,vfunc,gradient,hessian,fisher
+from src.utils import jit,vmap,vfunc,switch,gradient,hessian,fisher
 from src.utils import array,empty,identity,ones,zeros,arange,rand,setitem
 from src.utils import tensorprod,dagger,conj,einsum,dot
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
@@ -89,6 +89,7 @@ class Object(System):
 		
 		basis = self.basis
 		default = self.default
+		locality = self.locality if self.locality is not None else self.N
 		N = self.N	
 		D = self.D	
 		n = self.n
@@ -96,19 +97,17 @@ class Object(System):
 		if operator is None:
 			operator = data
 		
-		s = site
 		if operator is None:
 			pass
 		elif isinstance(operator,str):
 			if operator not in [default]:
-				site = list(range(sum(basis[i].locality for i in operator.split(delim) if i in basis))) if site is None else site
+				site = list(range(max(locality if locality is not None else 0,sum(basis[i].locality for i in operator.split(delim) if i in basis)))) if site is None else site
 				operator = [i for i in operator.split(delim)]
 			elif operator in [default]:
 				site = list(range(basis[operator].locality if N is None else N)) if site is None else site
 				operator = operator
 		elif not isinstance(operator,str) and not isinstance(operator,arrays):
 			operator = [j for i in operator for j in (i.split(delim) if isinstance(i,str) else i)]
-
 
 		if site is None:
 			pass
@@ -126,7 +125,7 @@ class Object(System):
 			pass
 		elif not isinstance(interaction,str):
 			interaction = str(interaction)
-	
+
 		N = max(self.N,max(site)+1 if site is not None else self.N) if self.N is not None else max(site)+1 if site is not None else 0
 		D = self.D if self.D is not None else data.size**(1/(data.ndim*N)) if isinstance(data,arrays) else 1
 		n = D**N if (N is not None) and (D is not None) else None
@@ -236,6 +235,10 @@ class Object(System):
 		Returns:
 			data (array): data
 		'''
+		if conj:
+			return dagger(self.data)
+		else:
+			return self.data
 		return self.data
 
 	def grad(self,parameters=None,state=None,conj=None):
@@ -294,7 +297,7 @@ class Object(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['Label %s %s: %s'%(self,attr,getattr(self,attr)) 
+			*['%s %s %s: %s'%(self.__class__.__name__.capitalize(),self,attr,getattr(self,attr)) 
 				for attr in ['shape']
 			],
 			]
@@ -412,7 +415,9 @@ class Operator(Object):
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
 			}
 	default = 'I'
-	D=2
+	D = 2
+	N = None
+	n = None
 
 	def __new__(cls,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
 
@@ -459,7 +464,9 @@ class Pauli(Object):
 		**{attr: Object(data=array([[1,0],[0,-1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Z','z']},
 			}
 	default = 'I'
-	D=2 
+	D = 2
+	N = None
+	n = None
 
 	hermitian = True
 	unitary = True
@@ -475,7 +482,15 @@ class Pauli(Object):
 			data (array): data
 		'''
 		if parameters is None:
+			data = self.data
+			if conj:
+				return dagger(data)
+			else:
+				return data
 			return self.data
+
+		if conj:
+			parameters = -parameters
 
 		return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
 
@@ -527,11 +542,28 @@ class Gate(Object):
 						  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]]),D=2,locality=3,hermitian=True,unitary=True,string=attr) for attr in ['TOFFOLI','T','toffoli']},
 		}
 	default = 'I'
-	D=2 
+	D = 2 
+	N = None
+	n = None
 	
 	hermitian = False
 	unitary = True
 	
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
+
+		defaults = dict(			
+			shape=None,size=None,ndim=None,
+			samples=None,identity=None,locality=None,index=None
+			)
+
+		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
+
+		return
+
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
 		Setup operator
@@ -564,10 +596,27 @@ class Haar(Object):
 		**{attr: Object(data=rand(shape=(2,2),random='haar',dtype='complex'),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['random','U','haar']},
 		}
 	default = 'I'
-	D=2
+	D = 2
+	N = None
+	n = None
 
 	hermitian = False
 	unitary = True
+
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
+
+		defaults = dict(			
+			shape=None,size=None,ndim=None,
+			samples=None,identity=None,locality=None,index=None
+			)
+
+		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
+
+		return
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
@@ -625,9 +674,27 @@ class State(Object):
 		}
 	default = 'I'
 	D = 2
+	N = None
+	n = None
 
 	hermitian = True
 	unitary = False
+
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
+
+		defaults = dict(			
+			shape=None,size=None,ndim=None,
+			samples=None,identity=None,locality=None,index=None
+			)
+
+
+		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
+
+		return
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
@@ -701,10 +768,28 @@ class Noise(Object):
 		**{attr: Object(data=array([[1,0],[0,-1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Z','z','phase']},
 		}
 	default = 'I'
-	D=2 
+	D = 2
+	N = None
+	n = None
 	
 	hermitian = False
 	unitary = False
+
+
+	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
+
+		defaults = dict(			
+			shape=None,size=None,ndim=None,
+			samples=None,identity=None,locality=None,index=None
+			)
+
+		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,func=False)
+
+		super().__init__(**kwargs)
+
+		return
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
 		'''
@@ -776,20 +861,30 @@ def Compute(data,identity,state,noise,coefficients,n,d,m,p):
 	'''	
 
 	index = arange(d)
-	funcs = vfunc(data)
 
 	if p == 1:
-		trotterization = index
+		slices = index
 	elif p == 2:
-		trotterization = array([*index[::1],*index[::-1]])
+		slices = array([*index[::1],*index[::-1]])
 	else:
 		raise NotImplementedError("Trotterization p = %d not implemented for p>2"%(p))
 
-	@jit
-	def trotter(iterable):
-		return iterable[trotterization]
 
-	@jit
+	# @jit
+	# def trotter(iterable):
+	# 	return iterable[slices]
+
+	def trotter(iterable):
+		return iterable[slices]
+
+	data = [jit(i) for i in data]
+	data = [data[i] for i in slices]
+	funcs = jit(lambda i,parameters: switch(i,data,parameters))
+
+	# funcs = vfunc(data)#,conj=conj)
+
+
+	# @jit
 	def func(parameters=None,state=None,conj=None):
 		'''
 		Compute operator
@@ -798,6 +893,8 @@ def Compute(data,identity,state,noise,coefficients,n,d,m,p):
 			state (object): state
 			conj (bool): conjugate
 		'''
+
+		parameters = trotter(parameters).T.ravel()
 
 		# @jit
 		# def func(parameters):
@@ -814,14 +911,35 @@ def Compute(data,identity,state,noise,coefficients,n,d,m,p):
 		
 		# out = forloop(0,size,func,out)
 		
+		@jit
 		def function(i,out):
-			for operator in trotter(funcs(index,parameters[:,i]),p):
-				out = dot(operator,out)
-			return out
+			return dot(funcs(i%d,parameters[i]),out)
 
 		out = identity
 		
-		out = forloop(0,m,function,out)
+		out = forloop(0,m*d,function,out)
+
+		# if not conj:
+		# 	@jit
+		# 	def function(i,out):
+		# 		for operator in trotter(funcs(index,parameters[:,i])):
+		# 			out = dot(operator,out)
+		# 		return out
+
+		# 	out = identity
+			
+		# 	out = forloop(0,m,function,out)
+
+		# else:
+		# 	@jit
+		# 	def function(i,out):
+		# 		for operator in trotter(funcs(index,parameters[:,i]))[::-1]:
+		# 			out = dot(operator,out)
+		# 		return out
+
+		# 	out = identity
+			
+		# 	out = forloop(m-1,-1,function,out)			
 		
 		return out
 
@@ -1093,20 +1211,13 @@ class Operators(Object):
 
 				setattr(self,obj,instance)
 
-				if obj in ['parameters']:
-					import jax
-					print(jax.make_jaxpr(instance.__call__)(instance.data))
-					exit()
-
 				
 		# Set functions
 		data = self.data
-		# identity = self.identity()
-		identity = self.identity.data
-		# state = self.state()
-		state = self.state.data
-		# noise = self.noise()
-		noise = self.noise.data
+		identity = self.identity()
+		state = self.state()
+		noise = self.noise()
+		parameters = self.parameters(self.parameters())
 		coefficients = self.coefficients
 		n = self.n
 		d = len(self.data)
@@ -1115,6 +1226,7 @@ class Operators(Object):
 		self.compute = Compute(data,identity,state,noise,coefficients,n,d,m,p)
 
 		# Update class attributes
+		self.params = parameters
 		self.gradient = gradient(self,mode='fwd',move=True)
 
 		return
@@ -1135,6 +1247,7 @@ class Operators(Object):
 
 
 		parameters = self.parameters(parameters)
+		# parameters = self.params
 
 		return self.compute(parameters)#,state=state,conj=conj)
 
@@ -1671,7 +1784,16 @@ class Unitary(Hamiltonian):
 
 class Label(Operator):
 	
-	def __init__(self,*args,**kwargs):
+	basis = {}
+	default = None
+	D = None
+	N = None
+	n = None
+
+	hermitian = False
+	unitary = False
+
+	def __new__(cls,*args,**kwargs):
 		'''	
 		Class for label
 		Args:
@@ -1679,7 +1801,7 @@ class Label(Operator):
 			kwargs (dict): Class keyword arguments
 		'''	
 
-		super().__init__(*args,**kwargs)
+		self = super().__new__(cls,*args,**kwargs)
 
 		data = self.data
 		state = self.state
@@ -1696,9 +1818,9 @@ class Label(Operator):
 		self.size = data.size
 		self.ndim = data.ndim
 
-		return
+		return self
 
-class Callback(object):
+class Callback(System):
 	def __init__(self,*args,**kwargs):
 		'''	
 		Class for callback
@@ -1706,6 +1828,8 @@ class Callback(object):
 			args (tuple): Class arguments
 			kwargs (dict): Class keyword arguments
 		'''
+
+		super().__init__(*args,**kwargs)
 
 		self.defaults = {
 			'iteration':[],
