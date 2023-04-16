@@ -93,12 +93,12 @@
 		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
 		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 		},
-	"N":2,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":5,
+	"M":10,
 	"T":null,
 	"tau":50e0,
 	"P":2,
@@ -218,6 +218,7 @@
 			"seed":123,
 			"random":null,
 			"initialization":null,
+			"initialization":"zero",			
 			"args":[],
 			"kwargs":{}
 			},				
@@ -234,6 +235,7 @@
 			"seed":123,
 			"random":null,	
 			"initialization":null,
+			"initialization":"zero",
 			"args":[],
 			"kwargs":{}
 			}

@@ -13,8 +13,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,array,eye,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid
-from src.utils import norm,conj,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
+from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid
+from src.utils import norm,conj,dagger,dot,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
 from src.utils import pi,delim,arrays,scalars,namespace
 from src.iterables import getter,setter
 from src.io import load,dump,exists
@@ -137,9 +137,43 @@ def test_model(path,tol):
 
 	obj = model(parameters)
 
-	for i in range(100):
-		obj = model(parameters).block_until_ready()
-		print(i)
+
+	m,d,p = model.M,len(model),model.P
+	identity = model.identity()
+	parameters = rand(parameters.shape)
+	out = model(parameters)
+
+	slices = [slice(None,None,1),slice(None,None,-1)][:p]
+	data = [i for s in slices for i in model.data[s]]
+
+	slices = array([i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in list(range(d))[s]])
+	parameters = model.coefficients*(model.parameters(parameters)[slices].T.ravel())
+
+
+	tmp = model.identity()
+	for i in range(m*d*p):
+		f = data[i%(d*p)]
+		# print(i,data[i%(d*p)].string)
+		tmp = dot(f(parameters[i]),tmp)
+
+	assert allclose(out,tmp), "Incorrect model() from data()"
+
+
+	tmp = model.identity()
+	for i in range(m*d*p):
+		f = lambda x: cos(pi*x)*identity + -1j*sin(pi*x)*data[i%(d*p)].data
+		# print(i,data[i%(d*p)].string)
+		tmp = dot(f(parameters[i]),tmp)
+
+	assert allclose(out,tmp), "Incorrect model() from func()"
+
+	# for i in range(100):
+	# 	# parameters = parameters + rand(parameters.shape)
+	# 	parameters = zeros(parameters.shape)
+	# 	obj = model(parameters).block_until_ready()
+	# 	print(i)
+	# 	print(obj)
+	# 	print()
 
 	# # objH = model(parameters,conj=True)
 	# objH = dagger(obj)

@@ -842,11 +842,12 @@ class Noise(Object):
 		return
 
 
-def Compute(data,identity,state,noise,coefficients,n,d,m,p):
+def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
 	'''
 	Calculate operators
 	Args:
 		data (iterable[Operator]): Array of data to matrix exponentiate of shape (d,n,n)
+		parameters (Array): Array of parameters of shape (d,m)
 		identity (Operator): Array of data identity of shape (n,n)
 		state (Operator): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
 		noise (Operator): Array of noise to act of shape (n,n) or (k,n,n)
@@ -881,6 +882,7 @@ def Compute(data,identity,state,noise,coefficients,n,d,m,p):
 	data = [data[i] for i in slices]
 	funcs = jit(lambda i,parameters: switch(i,data,parameters))
 
+	
 	# funcs = vfunc(data)#,conj=conj)
 
 
@@ -894,7 +896,7 @@ def Compute(data,identity,state,noise,coefficients,n,d,m,p):
 			conj (bool): conjugate
 		'''
 
-		parameters = trotter(parameters).T.ravel()
+		parameters = coefficients*trotter(parameters).T.ravel()
 
 		# @jit
 		# def func(parameters):
@@ -913,11 +915,9 @@ def Compute(data,identity,state,noise,coefficients,n,d,m,p):
 		
 		@jit
 		def function(i,out):
-			return dot(funcs(i%d,parameters[i]),out)
+			return dot(funcs(i%(d*p),parameters[i]),out)
 
-		out = identity
-		
-		out = forloop(0,m*d,function,out)
+		out = forloop(0,m*d*p,function,identity)
 
 		# if not conj:
 		# 	@jit
@@ -1223,10 +1223,9 @@ class Operators(Object):
 		d = len(self.data)
 		m = self.M
 		p = self.P
-		self.compute = Compute(data,identity,state,noise,coefficients,n,d,m,p)
+		self.compute = Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p)
 
 		# Update class attributes
-		self.params = parameters
 		self.gradient = gradient(self,mode='fwd',move=True)
 
 		return
@@ -1242,12 +1241,10 @@ class Operators(Object):
 			out (array): Return of function
 		'''
 
-		# if parameters is None:
-		# 	parameters = self.parameters.data
-
+		if parameters is None:
+			parameters = self.parameters()
 
 		parameters = self.parameters(parameters)
-		# parameters = self.params
 
 		return self.compute(parameters)#,state=state,conj=conj)
 
