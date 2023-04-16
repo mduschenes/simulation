@@ -430,10 +430,10 @@ class Operator(Object):
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 
 		classes = [Gate,Pauli,Haar,State,Noise]
-		for cls in classes:
-			if not all(j in cls.basis for obj in [data,operator] if obj is not None for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in cls.basis else k.split(delim))):
+		for subclass in classes:
+			if not all(j in subclass.basis for obj in [data,operator] if obj is not None for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
 				continue
-			self = cls(**kwargs)
+			self = subclass(cls,**kwargs)
 			break
 
 		assert (self is not None) or (self is None and data is None and operator is None), "TODO: All operators not in same class %r"%([
@@ -1789,7 +1789,7 @@ class Unitary(Hamiltonian):
 		return self.__grad_analytical__(parameters=parameters,state=state,conj=conj)
 
 
-class Label(Operator):
+class Label(Object):
 	
 	basis = {}
 	default = None
@@ -1800,15 +1800,30 @@ class Label(Operator):
 	hermitian = False
 	unitary = False
 
-	def __new__(cls,*args,**kwargs):
-		'''	
-		Class for label
-		Args:
-			args (tuple): Class arguments
-			kwargs (dict): Class keyword arguments
-		'''	
 
-		self = super().__new__(cls,*args,**kwargs)
+
+	# def __new__(cls,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
+	def __new__(cls,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
+
+		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
+
+		self = None
+
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
+
+		classes = [Gate,Pauli,Haar,State,Noise]
+		for subclass in classes:
+			if not all(j in subclass.basis for obj in [data,operator] if obj is not None for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
+				continue
+			self = super(subclass,cls).__new__(cls,**kwargs)
+			break
+
+		assert (self is not None) or (self is None and data is None and operator is None), "TODO: All operators not in same class %r"%([
+			*((data if not isinstance(data,str) else [data]) if data is not None else []),
+			*((operator if not isinstance(operator,str) else [operator]) if operator is not None else [])
+			])
+
+		print('type',cls,type(self))
 
 		data = self.data
 		state = self.state
@@ -1825,7 +1840,54 @@ class Label(Operator):
 		self.size = data.size
 		self.ndim = data.ndim
 
-		return self
+
+
+		return self	
+
+
+	# def __new__(cls,*args,**kwargs):
+
+	# 	# TODO: Allow multiple different classes to be part of one operator, and swap around localities
+
+	# 	# self = None
+
+	# 	# setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
+
+	# 	# classes = [Gate,Pauli,Haar,State,Noise]
+	# 	# for subclass in classes:
+	# 	# 	if not all(j in subclass.basis for obj in [data,operator] if obj is not None for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
+	# 	# 		continue
+	# 	# 	self = subclass.__new__(cls,**kwargs)
+	# 	# 	break
+
+	# 	# assert (self is not None) or (self is None and data is None and operator is None), "TODO: All operators not in same class %r"%([
+	# 	# 	*((data if not isinstance(data,str) else [data]) if data is not None else []),
+	# 	# 	*((operator if not isinstance(operator,str) else [operator]) if operator is not None else [])
+	# 	# 	])
+
+	# 	self = Operator.__new__(cls,*args,**kwargs)
+
+	# 	print('type',cls,type(self))
+
+	# 	data = self.data
+	# 	state = self.state
+
+	# 	if state is None:
+	# 		pass
+	# 	elif state.ndim == 1:
+	# 		data = einsum('ij,j->i',data,state)
+	# 	elif state.ndim == 2:
+	# 		data = einsum('ij,jk,kl->il',data,state,dagger(data))
+		
+	# 	self.data = data
+	# 	self.shape = data.shape
+	# 	self.size = data.size
+	# 	self.ndim = data.ndim
+
+	# 	return self
+
+
+		
 
 class Callback(System):
 	def __init__(self,*args,**kwargs):
