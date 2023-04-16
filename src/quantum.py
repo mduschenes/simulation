@@ -252,7 +252,7 @@ class Object(System):
 		Returns:
 			data (array): data
 		'''
-		return zeros(parameters.size,dtype=parameters.dtype) if parameters is not None else None
+		return zeros(parameters.size,dtype=parameters.dtype)
 
 	def __str__(self):
 		string = self.__class__.__name__ if not self.string else self.string
@@ -483,6 +483,10 @@ class Pauli(Object):
 		Returns:
 			data (array): data
 		'''
+		
+		if parameters is None:
+			return self.data
+
 		# if parameters is None:
 		# 	data = self.data
 		# 	if conj:
@@ -871,15 +875,16 @@ def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
 	else:
 		raise NotImplementedError("Trotterization p = %d not implemented for p>2"%(p))
 
-	@jit
+	# @jit
 	def trotter(iterable):
 		return iterable[slices]
 
-	def trotter(iterable):
-		return iterable[slices]
+	# data = [jit(data[i]) for i in slices]
+	# funcs = jit(lambda i,parameters: switch(i,data,parameters))
 
-	data = [jit(data[i]) for i in slices]
-	funcs = jit(lambda i,parameters: switch(i,data,parameters))
+	data = [data[i] for i in slices]
+	funcs = lambda i,parameters: data[i](parameters)
+
 
 	# @jit
 	def func(parameters=None,state=None,conj=None):
@@ -892,7 +897,7 @@ def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
 		'''
 		parameters = coefficients*trotter(parameters).T.ravel()
 
-		@jit
+		# @jit
 		def function(i,out):
 			return dot(funcs(i%(d*p),parameters[i]),out)
 
@@ -915,11 +920,11 @@ def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
 		
 		# out = forloop(0,size,func,out)
 		
-		@jit
-		def function(i,out):
-			return dot(funcs(i%(d*p),parameters[i]),out)
+		# @jit
+		# def function(i,out):
+		# 	return dot(funcs(i%(d*p),parameters[i]),out)
 
-		out = forloop(0,m*d*p,function,identity)
+		# out = forloop(0,m*d*p,function,identity)
 
 		# if not conj:
 		# 	@jit
@@ -1246,8 +1251,8 @@ class Operators(Object):
 			out (array): Return of function
 		'''
 
-		# if parameters is None:
-		# 	parameters = self.parameters()
+		if parameters is None:
+			parameters = self.parameters()
 
 		parameters = self.parameters(parameters)
 

@@ -83,8 +83,8 @@ class Parameter(System):
 			parameters (array): parameters
 		'''
 
-		# if parameters is None:
-		# 	return self.data
+		if parameters is None:
+			return self.data
 
 		parameters = parameters.reshape(-1,*self.shape[1:])
 		
@@ -315,8 +315,11 @@ class Parameter(System):
 		# else:
 		# 	pass
 
-		func = jit(func,self=self)
-		constraint = jit(constraint,self=self)
+		# func = jit(func,self=self)
+		# constraint = jit(constraint,self=self)
+
+		func = partial(func,self=self)
+		constraint = partial(constraint,self=self)
 
 		self.func = func
 		self.constraint = constraint
@@ -495,8 +498,8 @@ class Parameters(System):
 			constraints.append(self[parameter].constraints)
 
 
-		funcs = [jit(func) for func in funcs]
-		constraints = [jit(func) for func in constraints]
+		# funcs = [jit(func) for func in funcs]
+		# constraints = [jit(func) for func in constraints]
 
 		# func = vfunc(func,in_axes=[0,0,None])
 		# def func(parameters,index=index,slices=slices,func=func):
@@ -522,8 +525,8 @@ class Parameters(System):
 		# func = jit(func,index=index,slices=slices,function=funcs)
 		# constraint = jit(constraint,index=index,slices=slices,function=constraints)
 
-		func = jit(func)
-		constraint = jit(constraint)
+		# func = jit(func)
+		# constraint = jit(constraint)
 
 
 		self.indices = indices
@@ -536,8 +539,8 @@ class Parameters(System):
 		for parameter in self:
 			if self[parameter].category not in ['variable']:
 				continue
-			parameter = self[parameter].data#()
-			# parameter = self[parameter]()
+			# parameter = self[parameter].data#()
+			parameter = self[parameter]()
 			if parameter is None:
 				continue
 			data.extend(parameter.reshape(-1))

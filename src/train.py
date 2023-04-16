@@ -94,9 +94,11 @@ def train(hyperparameters):
 			model.__initialize__(**kwargs)
 
 			shapes = label.shape
-			func = [parameters.constraints]
+			# func = [parameters.constraints]
+			func = []
 			
-			parameters = parameters.data
+			# parameters = parameters.data
+			parameters = parameters()
 			label = label(label.parameters)
 
 			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
