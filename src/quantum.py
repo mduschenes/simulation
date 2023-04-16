@@ -411,6 +411,7 @@ class Operator(Object):
 		parameters (object): parameters of operators		
 		state (object): state of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		inherit (boolean): Inherit super class when initialized
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	
@@ -422,7 +423,7 @@ class Operator(Object):
 	N = None
 	n = None
 
-	def __new__(cls,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
+	def __new__(cls,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,inherit=False,**kwargs):		
 
 		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
 
@@ -435,15 +436,16 @@ class Operator(Object):
 		for subclass in classes:
 			if not all(j in subclass.basis for obj in [data,operator] if (obj is not None and not isinstance(obj,arrays)) for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
 				continue
-			self = subclass(**kwargs)
-			# self = subclass.__new__(cls,**kwargs)
-			# subclass.__init__(self,**kwargs)
+			if inherit:
+				for attr in subclass.__dict__:
+					setattr(cls,attr,getattr(subclass,attr))
+				self = subclass.__new__(cls,**kwargs)
+				subclass.__init__(self,**kwargs)
+			else:
+				self = subclass(**kwargs)
 			break
 
-		assert (self is not None) or (self is None and data is None and operator is None), "TODO: All operators not in same class %r"%([
-			*((data if not isinstance(data,str) else [data]) if data is not None else []),
-			*((operator if not isinstance(operator,str) else [operator]) if operator is not None else [])
-			])
+		assert (self is not None),"TODO: All operators not in same class"
 
 		return self
 
@@ -1809,28 +1811,7 @@ class Label(Operator):
 
 		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
 
-		defaults = dict(data=None,operator=None)
-
-		setter(kwargs,defaults,delimiter=delim,func=False)
-
-		self = None
-
-		classes = [Gate,Pauli,Haar,State,Noise]
-		data,operator = kwargs['data'],kwargs['operator']
-
-		for subclass in classes:
-			if not all(j in subclass.basis for obj in [data,operator] if (obj is not None and not isinstance(obj,arrays)) for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
-				continue
-			for attr in subclass.__dict__:
-				setattr(cls,attr,getattr(subclass,attr))
-			self = subclass.__new__(cls,**kwargs)
-			subclass.__init__(self,**kwargs)
-			break
-
-		assert (self is not None) or (self is None and data is None and operator is None), "TODO: All operators not in same class %r"%([
-			*((data if not isinstance(data,str) else [data]) if data is not None else []),
-			*((operator if not isinstance(operator,str) else [operator]) if operator is not None else [])
-			])
+		self = super().__new__(cls,*args,**kwargs,inherit=True)
 
 		data = self(self.parameters)
 		state = self.state
