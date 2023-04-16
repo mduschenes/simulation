@@ -436,6 +436,8 @@ class Operator(Object):
 			if not all(j in subclass.basis for obj in [data,operator] if (obj is not None and not isinstance(obj,arrays)) for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
 				continue
 			self = subclass(**kwargs)
+			# self = subclass.__new__(cls,**kwargs)
+			# subclass.__init__(self,**kwargs)
 			break
 
 		assert (self is not None) or (self is None and data is None and operator is None), "TODO: All operators not in same class %r"%([
