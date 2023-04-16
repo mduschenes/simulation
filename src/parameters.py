@@ -479,8 +479,8 @@ class Parameters(System):
 			slices.append(slc)
 			indices.extend(index)
 
-		slices = array([[*i] for i in slices])
-		indices = array([indices.index(i) for i in range(len(indices))])
+		# slices = array([[*i] for i in slices])
+		# indices = array([indices.index(i) for i in range(len(indices))])
 
 		# Set func and constraint
 		funcs = []
@@ -498,16 +498,29 @@ class Parameters(System):
 		# def func(parameters,index=index,slices=slices,func=func):
 		# 	return concatenate(func(index,slices,parameters))
 
-		def func(parameters,index=index,slices=slices,function=funcs):
-			# return concatenate([switch(i,function,slicing(parameters,*s)) for i,s in zip(index,slices)])
-			return concatenate([function[i](slicing(parameters,*s)) for i,s in zip(index,slices)])
+		size = min(len(funcs),len(slices),len(indices))
 
-		def constraint(parameters,index=index,slices=slices,function=constraints):
+		slices = [[*i] for i in slices]
+		indices = array([indices.index(i) for i in range(len(indices))])
+		
+		def func(parameters):#,index=index,slices=slices,function=funcs):
+			
+			# return concatenate([switch(i,function,slicing(parameters,*s)) for i,s in zip(index,slices)])
+			# return concatenate([function[0](slicing(parameters,*s[0])) for i,s,f in zip(index,slices,function)])
+			return concatenate([funcs[i](slicing(parameters,*slices[i])) for i in range(size)])
+
+		def constraint(parameters):#,index=index,slices=slices,function=constraints):
 			# return addition(array([switch(i,function,slicing(parameters,*s)) for i,s in zip(index,slices)]))
-			return addition(array([function[i](slicing(parameters,*s)) for i,s in zip(index,slices)]))
+			# return addition(array([f(slicing(parameters,*s)) for i,s,f in zip(index,slices,constraints)]))
+			return addition(array([constraints[i](slicing(parameters,*slices[i])) for i in range(size)]))
  
-		# func = partial(func,index=index,slices=slices,function=funcs)
-		# constraint = partial(func,index=index,slices=slices,function=constraints)
+
+		# func = jit(func,index=index,slices=slices,function=funcs)
+		# constraint = jit(constraint,index=index,slices=slices,function=constraints)
+
+		func = jit(func)
+		constraint = jit(constraint)
+
 
 		self.indices = indices
 		self.slices = slices

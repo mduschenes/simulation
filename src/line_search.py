@@ -19,9 +19,9 @@ import jax
 import jax.numpy as np
 import jax.scipy as sp
 
-import autograd
-import autograd.numpy as np
-import autograd.scipy as sp
+# import autograd
+# import autograd.numpy as np
+# import autograd.scipy as sp
 
 
 import scipy.optimize
@@ -41,8 +41,8 @@ def setitem(obj,index,item):
 	Returns:
 		obj (object): Object with set item at index
 	'''
-	obj[index] = item
-	# obj = obj.at[index].set(item)
+	# obj[index] = item
+	obj = obj.at[index].set(item)
 	return obj
 
 class LineSearchWarning(RuntimeWarning):
@@ -105,13 +105,14 @@ def line_search_wolfe1(f, fprime, xk, pk, gfk=None,
 	gc = [0]
 	fc = [0]
 
+
 	def phi(s):
 		fc[0] += 1
 		return f(xk + s*pk, *args)
 
 	def derphi(s):
-		gval = setitem(gval,0,fprime(xk + s*pk, *args))
-		gc = setitem(gc,0,gc[0]+1)
+		gval[0] = fprime(xk + s*pk, *args)
+		gc[0] += 1
 		return np.dot(gval[0], pk)
 
 	derphi0 = np.dot(gfk, pk)
@@ -309,9 +310,9 @@ def line_search_wolfe2(f, myfprime, xk, pk, gfk=None, old_fval=None,
 	fprime = myfprime
 
 	def derphi(alpha):
-		gc = setitem(gc,0,gc[0]+1)
-		gval = setitem(gval,0,fprime(xk + alpha * pk, *args))
-		gval_alpha = setitem(gval_alpha,0,alpha)
+		gc[0] += 1
+		gval[0] = fprime(xk + alpha * pk, *args)  # store for later use
+		gval_alpha[0] = alpha
 		return np.dot(gval[0], pk)
 
 	if gfk is None:
@@ -509,6 +510,7 @@ def _cubicmin(a, fa, fpa, b, fb, c, fc):
 		denom = (db * dc) ** 2 * (db - dc)
 		d1 = np.empty((2, 2))
 	
+		d1 = setitem(d1,(0,0),dc ** 2)
 		d1 = setitem(d1,(0,1),-db ** 2)
 		d1 = setitem(d1,(1,0),-dc ** 3)
 		d1 = setitem(d1,(1,1),db ** 3)

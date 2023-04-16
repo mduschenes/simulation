@@ -153,7 +153,7 @@ def test_model(path,tol):
 	tmp = model.identity()
 	for i in range(m*d*p):
 		f = data[i%(d*p)]
-		# print(i,data[i%(d*p)].string)
+		print(i,data[i%(d*p)].string)
 		tmp = dot(f(parameters[i]),tmp)
 
 	assert allclose(out,tmp), "Incorrect model() from data()"
@@ -162,7 +162,7 @@ def test_model(path,tol):
 	tmp = model.identity()
 	for i in range(m*d*p):
 		f = lambda x: cos(pi*x)*identity + -1j*sin(pi*x)*data[i%(d*p)].data
-		# print(i,data[i%(d*p)].string)
+		print(i,data[i%(d*p)].string)
 		tmp = dot(f(parameters[i]),tmp)
 
 	assert allclose(out,tmp), "Incorrect model() from func()"

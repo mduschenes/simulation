@@ -862,7 +862,6 @@ def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
 	'''	
 
 	index = arange(d)
-
 	if p == 1:
 		slices = index
 	elif p == 2:
@@ -870,21 +869,15 @@ def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
 	else:
 		raise NotImplementedError("Trotterization p = %d not implemented for p>2"%(p))
 
-
-	# @jit
-	# def trotter(iterable):
-	# 	return iterable[slices]
+	@jit
+	def trotter(iterable):
+		return iterable[slices]
 
 	def trotter(iterable):
 		return iterable[slices]
 
-	data = [jit(i) for i in data]
-	data = [data[i] for i in slices]
+	data = [jit(data[i]) for i in slices]
 	funcs = jit(lambda i,parameters: switch(i,data,parameters))
-
-	
-	# funcs = vfunc(data)#,conj=conj)
-
 
 	# @jit
 	def func(parameters=None,state=None,conj=None):
@@ -895,8 +888,15 @@ def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
 			state (object): state
 			conj (bool): conjugate
 		'''
-
 		parameters = coefficients*trotter(parameters).T.ravel()
+
+		@jit
+		def function(i,out):
+			return dot(funcs(i%(d*p),parameters[i]),out)
+
+		out = forloop(0,m*d*p,function,identity)
+
+		return out
 
 		# @jit
 		# def func(parameters):
@@ -941,7 +941,7 @@ def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
 			
 		# 	out = forloop(m-1,-1,function,out)			
 		
-		return out
+		# return out
 
 
 
@@ -1191,6 +1191,7 @@ class Operators(Object):
 		objs = {'parameters':parameters,'state':state,'noise':noise}
 		classes = {'parameters':Parameters,'state':State,'noise':Noise}
 
+
 		# Get functions
 		for obj in objs:
 			data,cls = objs[obj],classes[obj]
@@ -1209,8 +1210,11 @@ class Operators(Object):
 
 				instance = cls(**kwargs)
 
-				setattr(self,obj,instance)
+			else:
 
+				instance = data
+
+			setattr(self,obj,instance)
 				
 		# Set functions
 		data = self.data
@@ -1931,6 +1935,7 @@ class Callback(System):
 		attrs = relsort(track,attributes)
 		size = min(len(track[attr]) for attr in track)
 		does = {**{attr: False for attr in attrs},**hyperparameters.get('do',{})}
+
 
 		if ((status) or done or init or other):
 			

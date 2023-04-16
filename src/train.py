@@ -91,7 +91,6 @@ def train(hyperparameters):
 				**{arg: cls[arg](**{**namespace(cls[arg],model),**hyperparameters.get(arg,{}),**dict(system=system)}) for arg in cls}
 				}
 
-			exit()
 			model.__initialize__(**kwargs)
 
 			shapes = label.shape
