@@ -608,6 +608,7 @@ if __name__ == '__main__':
 	tol = 5e-8 
 
 	func = test_model
+	func = test_object
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

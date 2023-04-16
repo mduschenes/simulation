@@ -206,6 +206,7 @@ class Object(System):
 		self.shape = self.data.shape if isinstance(self.data,arrays) else None
 		self.size = self.data.size if isinstance(self.data,arrays) else None
 		self.ndim = self.data.ndim if isinstance(self.data,arrays) else None
+		self.dtype = self.data.dtype if isinstance(self.data,arrays) else None
 
 		self.norm()
 
@@ -235,10 +236,10 @@ class Object(System):
 		Returns:
 			data (array): data
 		'''
-		if conj:
-			return dagger(self.data)
-		else:
-			return self.data
+		# if conj:
+		# 	return dagger(self.data)
+		# else:
+		# 	return self.data
 		return self.data
 
 	def grad(self,parameters=None,state=None,conj=None):
@@ -314,9 +315,10 @@ class Object(System):
 
 		# TODO: Efficient norm calculation
 
-		return
-
-		data = self()
+		try:
+			data = self()
+		except:
+			return
 		# dataH = self(conj=True)
 		dataH = conj(data) if data is not None else None
 
@@ -481,16 +483,16 @@ class Pauli(Object):
 		Returns:
 			data (array): data
 		'''
-		if parameters is None:
-			data = self.data
-			if conj:
-				return dagger(data)
-			else:
-				return data
-			return self.data
+		# if parameters is None:
+		# 	data = self.data
+		# 	if conj:
+		# 		return dagger(data)
+		# 	else:
+		# 		return data
+		# 	return self.data
 
-		if conj:
-			parameters = -parameters
+		# if conj:
+		# 	parameters = -parameters
 
 		return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
 
@@ -721,13 +723,13 @@ class State(Object):
 		operator = operator[0] if operator else None
 
 		if operator in ['zeros','0']:
-			setitem(data,0,1)
+			data = setitem(data,0,1)
 		elif operator in ['ones','1']:
-			setitem(data,-1,1)			
+			data = setitem(data,-1,1)			
 		elif operator in ['plus','+']:
-			setitem(data,slice(None),1/sqrt(size))			
+			data = setitem(data,slice(None),1/sqrt(size))			
 		elif operator in ['minus','-']:
-			setitem(data,slice(None),(-1)**arange(size)/sqrt(size))
+			data = setitem(data,slice(None),(-1)**arange(size)/sqrt(size))
 		elif operator in ['random','psi','haar']:
 			data = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
 		else:
@@ -1221,7 +1223,6 @@ class Operators(Object):
 		identity = self.identity()
 		state = self.state()
 		noise = self.noise()
-		parameters = self.parameters(self.parameters())
 		coefficients = self.coefficients
 		n = self.n
 		d = len(self.data)
@@ -1245,8 +1246,8 @@ class Operators(Object):
 			out (array): Return of function
 		'''
 
-		if parameters is None:
-			parameters = self.parameters()
+		# if parameters is None:
+		# 	parameters = self.parameters()
 
 		parameters = self.parameters(parameters)
 
@@ -1438,7 +1439,7 @@ class Operators(Object):
 				else '%0.3e')%(prop,getattrs(self,delim.join([attr,prop]),delimiter=delim),)) 
 				if prop is not None else str(getattrs(self,attr,delimiter=delim,default=None)))
 				for prop in [None,'shape','parameters']]))
-				for attr in ['state','noise']
+				for attr in ['state','noise'] if getattrs(self,attr,default=lambda:None)() is not None
 			],
 			*['%s:\n%s'%(delim.join(attr.split(delim)[:1]),
 				to_string(getattrs(self,attr,default=lambda:None)()))
@@ -1996,21 +1997,21 @@ class Callback(System):
 				elif attr in [
 					'variables','variables.norm','variables.relative','variables.relative.mean',
 					] and (do):
-
+					size = model.parameters.size//model.M
 					if attr in ['variables']:
-						value = model.parameters(parameters)
+						value = model.parameters(parameters)[:size]
 					elif attr in ['variables.norm']:
-						value = model.parameters(parameters)
+						value = model.parameters(parameters)[:size]
 						value = norm(value)/(value.size)
 					elif attr in ['variables.relative']:
 						eps = 1e-20
-						value = model.parameters(parameters)
-						_value = model.parameters(attributes['parameters'][0])
+						value = model.parameters(parameters)[:size]
+						_value = model.parameters(attributes['parameters'][0])[:size]
 						value = abs((value - _value + eps)/(_value + eps))
 					elif attr in ['variables.relative.mean']:
 						eps = 1e-20
-						value = model.parameters(parameters)
-						_value = model.parameters(attributes['parameters'][0])
+						value = model.parameters(parameters)[:size]
+						_value = model.parameters(attributes['parameters'][0])[:size]
 						value = abs((value - _value + eps)/(_value + eps)).mean()
 
 				elif attr in ['objective']:
@@ -2123,11 +2124,11 @@ class Callback(System):
 					for attr in ['alpha','beta']
 					if attr in attributes and len(attributes[attr])>0
 					]),
-				# 'x\n%s'%(to_string(parameters.round(4))),
-				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				# 'U\n%s\nV\n%s'%(
-				# 	to_string((model(parameters)).round(4)),
-				# 	to_string((model.label()).round(4))),
+				'x\n%s'%(to_string(parameters.round(4))),
+				'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
+				'U\n%s\nV\n%s'%(
+					to_string((model(parameters)).round(4)),
+					to_string((metric.label).round(4))),
 				])
 
 

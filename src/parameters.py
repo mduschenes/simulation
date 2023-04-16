@@ -83,8 +83,8 @@ class Parameter(System):
 			parameters (array): parameters
 		'''
 
-		if parameters is None:
-			return self.data
+		# if parameters is None:
+		# 	return self.data
 
 		parameters = parameters.reshape(-1,*self.shape[1:])
 		
@@ -285,6 +285,10 @@ class Parameter(System):
 		def constraint(parameters,self):
 			return 0
 		
+		if self.method in ['bounded']:
+			def func(parameters,self):
+				return self.parameters*bound(parameters[self.slices])
+
 		# if self.method in ['constrained']:
 		# 	def func(parameters,self):
 		# 		funcs = [cos,sin]
@@ -532,8 +536,8 @@ class Parameters(System):
 		for parameter in self:
 			if self[parameter].category not in ['variable']:
 				continue
-			# parameter = self[parameter].data#()
-			parameter = self[parameter]()
+			parameter = self[parameter].data#()
+			# parameter = self[parameter]()
 			if parameter is None:
 				continue
 			data.extend(parameter.reshape(-1))

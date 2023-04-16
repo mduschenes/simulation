@@ -871,6 +871,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 
 				for attr in data}
 
+
 	for name in keys:
 
 		logger.log(info,"Processing : %r"%(name,))

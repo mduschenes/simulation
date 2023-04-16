@@ -96,8 +96,8 @@ def train(hyperparameters):
 			shapes = label.shape
 			func = [parameters.constraints]
 			
-			parameters = parameters()
-			label = label()
+			parameters = parameters.data
+			label = label(label.parameters)
 
 			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
 			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
