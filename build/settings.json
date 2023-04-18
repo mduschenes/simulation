@@ -99,7 +99,7 @@
 				"attributes":["M"],		
 				"data":null,
 				"parameters":1,
-				"seed":123,	
+				"seed":null,	
 				"random":"uniform",
 				"initialization":{
 					"method":"interpolation",
@@ -110,7 +110,8 @@
 				"constant":null,
 				"args":[],
 				"kwargs":{"sigmoid":1,"lambda":5e2}
-				}
+				},
+			"parameters":null								
 			},
 		"y":{"operator":["Y"],"site":"i","string":"y",
 			"parameters": {
@@ -122,7 +123,7 @@
 				"attributes":["M"],		
 				"data":null,
 				"parameters":1,
-				"seed":123,	
+				"seed":null,	
 				"random":"uniform",
 				"initialization":{
 					"method":"interpolation",
@@ -147,7 +148,7 @@
 				"bounds":[-1,1],
 				"locality":null,
 				"attributes":["M"],
-				"seed":123,
+				"seed":null,
 				"random":null,
 				"initialization":null,
 				"args":[],
@@ -166,7 +167,7 @@
 				"bounds":[-1,1],
 				"locality":null,
 				"attributes":["M"],
-				"seed":123,
+				"seed":null,
 				"random":null,	
 				"initialization":null,
 				"args":[],
@@ -194,7 +195,7 @@
 	"device":"cpu",
 	"backend":"np",
 	"architecture":null,
-	"seed":123,
+	"seed":null,
 	"key":null,
 	"instance":null,
 	"cwd":".",
@@ -272,7 +273,7 @@
 			"attributes":["M"],		
 			"data":null,
 			"parameters":1,
-			"seed":123,	
+			"seed":null,	
 			"random":"uniform",
 			"initialization":{
 				"method":"interpolation",
@@ -294,7 +295,7 @@
 			"bounds":[-1,1],
 			"locality":null,
 			"attributes":["M"],
-			"seed":123,
+			"seed":null,
 			"random":null,
 			"initialization":null,
 			"args":[],
@@ -310,7 +311,7 @@
 			"bounds":[-1,1],
 			"locality":null,
 			"attributes":["M"],
-			"seed":123,
+			"seed":null,
 			"random":null,	
 			"initialization":null,
 			"args":[],
@@ -325,7 +326,7 @@
 	"interaction":"i...j",
 	"parameters":0.5,
 	"ndim":2,
-	"seed":123
+	"seed":null
 	},
 "state": {
 	"operator":"haar",
@@ -335,7 +336,7 @@
 	"parameters":false,
 	"ndim":1,
 	"samples":1,
-	"seed":123
+	"seed":null
 	},	
 "noise": {
 	"data":"phase",
@@ -344,7 +345,7 @@
 	"interaction":"i",
 	"parameters":false,
 	"ndim":3,
-	"seed":123
+	"seed":null
 	},
 "jobs":{
 	"preprocess":null,
