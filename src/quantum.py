@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,vmap,vfunc,switch,gradient,hessian,fisher
-from src.utils import array,empty,identity,ones,zeros,arange,rand,setitem
+from src.utils import array,asarray,empty,identity,ones,zeros,arange,rand,setitem
 from src.utils import tensorprod,dagger,conj,einsum,dot
 from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
 from src.utils import forloop,trotter,gradient_trotter,gradient_expm
@@ -38,12 +38,11 @@ class Object(System):
 	'''
 	Base class for Quantum Objects
 	Args:
-		data (iterable[str]): data for operator
+		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators
-		string (str): string labels of operators
-		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		parameters (object): parameters of operators
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+		string (str): string label of operator
+		parameters (object): parameter of operator
 		state (object): state of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -58,7 +57,7 @@ class Object(System):
 	hermitian = False
 	unitary = False
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
+	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,state=None,system=None,**kwargs):		
 
 		defaults = dict(			
 			shape=None,size=None,ndim=None,
@@ -66,16 +65,16 @@ class Object(System):
 			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
 
-		if isinstance(data,Object) or isinstance(operator,Object):
-			if isinstance(data,Object):
+		if isinstance(data,self.__class__) or isinstance(operator,self.__class__):
+			if isinstance(data,self.__class__):
 				for attr in data:
 					setattr(self,attr,getattr(data,attr))
-			if isinstance(operator,Object):
+			if isinstance(operator,self.__class__):
 				for attr in operator:
 					setattr(self,attr,getattr(operator,attr))					
 
@@ -102,7 +101,7 @@ class Object(System):
 			pass
 		elif isinstance(operator,str):
 			if operator not in [default]:
-				site = list(range(max(locality if locality is not None else 0,sum(basis[i].locality for i in operator.split(delim) if i in basis)))) if site is None else site
+				site = list(range(max(locality if locality is not None else 0,sum(basis[i].locality for i in operator.split(delim) if i in basis and basis[i].locality is not None),N))) if site is None else site
 				operator = [i for i in operator.split(delim)]
 			elif operator in [default]:
 				site = list(range(basis[operator].locality if N is None else N)) if site is None else site
@@ -122,18 +121,18 @@ class Object(System):
 		elif not isinstance(string,str):
 			string = str(string)
 
-		if interaction is None:
+		if parameters is None:
 			pass
-		elif not isinstance(interaction,str):
-			interaction = str(interaction)
 
 		N = max(self.N,max(site)+1 if site is not None else self.N) if self.N is not None else max(site)+1 if site is not None else 0
 		D = self.D if self.D is not None else data.size**(1/(data.ndim*N)) if isinstance(data,arrays) else 1
 		n = D**N if (N is not None) and (D is not None) else None
 
+
 		shape = self.shape if self.shape is not None else data.shape if isinstance(data,arrays) else None
 		size = self.size if self.size is not None else data.size if isinstance(data,arrays) else None
 		ndim = self.ndim if self.ndim is not None else data.ndim if isinstance(data,arrays) else None
+		dtype = self.dtype if self.dtype is not None else data.dtype if isinstance(data,arrays) else None
 
 		if isinstance(operator,str):
 			operator = [operator]*N
@@ -152,7 +151,6 @@ class Object(System):
 		self.operator = operator if operator is not None else None
 		self.site = site if site is not None else None
 		self.string = string if string is not None else None
-		self.interaction = interaction if interaction is not None else None
 		self.system = system
 
 		self.N = N
@@ -162,14 +160,16 @@ class Object(System):
 		self.shape = shape
 		self.size = size
 		self.ndim = ndim
+		self.dtype = dtype
 
-		if not (self.parameters is False) and not (((self.data is None) and (self.operator is None)) or (isinstance(self.data,arrays))):
-			self.__setup__(data,operator,site,string,interaction)
+		if not (self.parameters is False) and (((self.data is not None) or (self.operator is not None)) and (not isinstance(self.data,arrays))):
+			self.__setup__(data,operator,site,string,parameters)
 
 		if self.parameters is False:
 			self.data = None
 		elif isinstance(self.operator,arrays):
 			self.data = self.operator
+			self.operator = [self.string]
 		elif isinstance(self.data,arrays):
 			pass
 		elif self.operator is None:
@@ -177,32 +177,28 @@ class Object(System):
 		elif self.operator is not None:
 			self.data = tensorprod([self.basis.get(i)() for i in self.operator]) if all(i in self.basis for i in self.operator) else None
 
-		self.data = self.data.astype(self.dtype) if self.data is not None else None
-
 		self.operator = list((i for i in self.operator)) if self.operator is not None and not isinstance(self.operator,arrays) else self.operator
 		self.site = list((i for i in self.site)) if self.site is not None else self.site
 		self.string = str(self.string) if self.string is not None else self.string
-		self.interaction = str(self.interaction) if self.interaction is not None else self.interaction
+		self.parameters = self.parameters if self.parameters is not None else self.parameters
 
 		self.identity = tensorprod([self.basis.get(self.default)() for i in range(self.N)]) if (self.default in self.basis) else None
-		self.identity = self.identity.astype(self.dtype) if self.identity is not None else None
-
+		
 		self.locality = max(self.locality if self.locality is not None else 0,len(self.site) if self.site is not None else 0)
 		self.index = self.index if self.index is not None else None
 		
 		if (self.samples is True) and (self.size is not None):
-			shape = self.size
-			bounds = [0,1]
-			seed = self.seed
-			dtype = datatype(self.dtype)
-			self.samples = rand(size,bounds=bounds,seed=seed,dtype=dtype)
-			self.samples /= self.samples.sum()
+			shape,bounds,scale,seed,dtype = self.size, [0,1], 'normalize', self.seed, datatype(self.dtype)
+			self.samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
 		elif not isinstance(self.samples,arrays):
 			self.samples = None
 
 		if isinstance(self.data,arrays) and (self.samples is not None) and (self.ndim is not None):
 			if (self.data.ndim>self.ndim):
 				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.data.ndim-self.ndim]),)*2),self.samples,self.data)
+
+		self.data = self.data.astype(self.dtype) if self.data is not None else None
+		self.identity = self.identity.astype(self.dtype) if self.identity is not None else None
 
 		self.shape = self.data.shape if isinstance(self.data,arrays) else None
 		self.size = self.data.size if isinstance(self.data,arrays) else None
@@ -215,18 +211,6 @@ class Object(System):
 
 		return
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
-		'''
-		Setup operator
-		Args:
-			data (iterable[str]): data for operator
-			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators
-			string (str): string labels of operators
-			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
-		'''
-		return
-
 	def __call__(self,parameters=None,state=None,conj=None):
 		'''
 		Call operator
@@ -237,10 +221,10 @@ class Object(System):
 		Returns:
 			data (array): data
 		'''
-		# if conj:
-		# 	return dagger(self.data)
-		# else:
-		# 	return self.data
+
+		if parameters is None:
+			parameters = self.parameters
+
 		return self.data
 
 	def grad(self,parameters=None,state=None,conj=None):
@@ -267,18 +251,18 @@ class Object(System):
 	def __len__(self):
 		return len(self.operator)
 
-	def __copy__(self):
-		new = self.__class__(**self)
-		return new
-
-	def __deepcopy__(self):
-		return self.__class__(**deepcopy(dict(self)))
-
-	def copy(self,deep=True):
-		if deep:
-			return self.__deepcopy__()
-		else:
-			return self.__copy__()
+	def __key__(self):
+		attrs = [self.string,self.operator,self.site]
+		key = []
+		for attr in attrs:
+			if attr is None:
+				continue
+			if isinstance(attr,scalars):
+				key.append(attr)
+			else:
+				key.extend(attr)
+		key = tuple(key)
+		return key
 	
 	def grad(self,parameters=None,state=None,conj=None):
 		'''
@@ -318,13 +302,14 @@ class Object(System):
 
 		try:
 			data = self()
+			if data is None:
+				raise
 		except:
 			return
-		# dataH = self(conj=True)
-		dataH = conj(data) if data is not None else None
 
-		if data is None:
-			return
+		# dataH = self(conj=True)
+		dataH = conj(data)
+
 
 		shape = self.shape
 		ndim = self.ndim
@@ -403,18 +388,18 @@ class Operator(Object):
 	'''
 	Class for Operator
 	Args:
-		data (iterable[str]): data for operator
+		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators
-		string (str): string labels of operators
-		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		parameters (object): parameters of operators		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+		string (str): string label of operator
+		parameters (object): parameter of operator		
 		state (object): state of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		inherit (boolean): Inherit super class when initialized
 		kwargs (dict): Additional system keyword arguments	
 	'''
-	
+	qualname = __qualname__
+
 	basis = {
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
 			}
@@ -423,26 +408,33 @@ class Operator(Object):
 	N = None
 	n = None
 
-	def __new__(cls,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,inherit=False,**kwargs):		
+	def __new__(cls,data=None,operator=None,site=None,string=None,parameters=None,state=None,system=None,inherit=False,**kwargs):		
 
 		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
 
 		self = None
 
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 
 		classes = [Gate,Pauli,Haar,State,Noise]
 
 		for subclass in classes:
+			
 			if not all(j in subclass.basis for obj in [data,operator] if (obj is not None and not isinstance(obj,arrays)) for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
 				continue
-			if inherit:
+			
+			if cls is Operator:
+			
+				self = subclass(**kwargs)
+			
+			else:
+		
 				for attr in subclass.__dict__:
 					setattr(cls,attr,getattr(subclass,attr))
+
 				self = subclass.__new__(cls,**kwargs)
 				subclass.__init__(self,**kwargs)
-			else:
-				self = subclass(**kwargs)
+
 			break
 
 		assert (self is not None),"TODO: All operators not in same class"
@@ -454,12 +446,11 @@ class Pauli(Object):
 	'''
 	Pauli class for Quantum Objects
 	Args:
-		data (iterable[str]): data for operator
+		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators
-		string (str): string labels of operators
-		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		parameters (object): parameters of operators				
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+		string (str): string label of operator
+		parameters (object): parameter of operator				
 		state (object): state of operators				
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -489,20 +480,10 @@ class Pauli(Object):
 		Returns:
 			data (array): data
 		'''
-		
+		if parameters is None:
+			parameters = self.parameters
 		if parameters is None:
 			return self.data
-
-		# if parameters is None:
-		# 	data = self.data
-		# 	if conj:
-		# 		return dagger(data)
-		# 	else:
-		# 		return data
-		# 	return self.data
-
-		# if conj:
-		# 	parameters = -parameters
 
 		return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
 
@@ -519,15 +500,15 @@ class Pauli(Object):
 		return -pi*sin(pi*parameters)*self.identity + -1j*pi*cos(pi*parameters)*self.data
 
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data for operator
+			data (iterable[str]): data of operator
 			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators
-			string (str): string labels of operators
-			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+			string (str): string label of operator
+			parameters (object): parameter of operator			
 		'''
 		return
 
@@ -535,12 +516,11 @@ class Gate(Object):
 	'''
 	Gate class for Quantum Objects
 	Args:
-		data (iterable[str]): data for operator
+		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators
-		string (str): string labels of operators
-		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		parameters (object): parameters of operators				
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+		string (str): string label of operator
+		parameters (object): parameter of operator				
 		state (object): state of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -561,30 +541,15 @@ class Gate(Object):
 	hermitian = False
 	unitary = True
 	
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
-
-		defaults = dict(			
-			shape=None,size=None,ndim=None,
-			samples=None,identity=None,locality=None,index=None
-			)
-
-		setter(kwargs,defaults,delimiter=delim,func=False)
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
-		setter(kwargs,system,delimiter=delim,func=False)
-
-		super().__init__(**kwargs)
-
-		return
-
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data for operator
+			data (iterable[str]): data of operator
 			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators
-			string (str): string labels of operators
-			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+			string (str): string label of operator
+			parameters (object): parameter of operator			
 		'''
 		return
 
@@ -592,12 +557,11 @@ class Haar(Object):
 	'''
 	Haar class for Quantum Objects
 	Args:
-		data (iterable[str]): data for operator
+		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators
-		string (str): string labels of operators
-		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		parameters (object): parameters of operators		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+		string (str): string label of operator
+		parameters (object): parameter of operator		
 		state (object): state of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -615,30 +579,15 @@ class Haar(Object):
 	hermitian = False
 	unitary = True
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
-
-		defaults = dict(			
-			shape=None,size=None,ndim=None,
-			samples=None,identity=None,locality=None,index=None
-			)
-
-		setter(kwargs,defaults,delimiter=delim,func=False)
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
-		setter(kwargs,system,delimiter=delim,func=False)
-
-		super().__init__(**kwargs)
-
-		return
-
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data for operator
+			data (iterable[str]): data of operator
 			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators
-			string (str): string labels of operators
-			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+			string (str): string label of operator
+			parameters (object): parameter of operator			
 		'''
 
 		shape = (self.D**self.N,)*self.ndim
@@ -665,12 +614,11 @@ class State(Object):
 	'''
 	State class for Quantum Objects
 	Args:
-		data (iterable[str]): data for operator
+		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators
-		string (str): string labels of operators
-		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		parameters (object): parameters of operators		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+		string (str): string label of operator
+		parameters (object): parameter of operator		
 		state (object): state of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -692,31 +640,15 @@ class State(Object):
 	hermitian = True
 	unitary = False
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
-
-		defaults = dict(			
-			shape=None,size=None,ndim=None,
-			samples=None,identity=None,locality=None,index=None
-			)
-
-
-		setter(kwargs,defaults,delimiter=delim,func=False)
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
-		setter(kwargs,system,delimiter=delim,func=False)
-
-		super().__init__(**kwargs)
-
-		return
-
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data for operator
+			data (iterable[str]): data of operator
 			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators
-			string (str): string labels of operators
-			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+			string (str): string label of operator
+			parameters (object): parameter of operator			
 		'''
 
 		shape = (self.D**self.N,)*self.ndim
@@ -757,12 +689,11 @@ class Noise(Object):
 	'''
 	Noise class for Quantum Objects
 	Args:
-		data (iterable[str]): data for operator
+		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators
-		string (str): string labels of operators
-		interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
-		parameters (object): parameters of operators		
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+		string (str): string label of operator
+		parameters (object): parameter of operator		
 		state (object): state of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
@@ -788,7 +719,7 @@ class Noise(Object):
 	unitary = False
 
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,parameters=None,state=None,system=None,**kwargs):		
+	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,state=None,system=None,**kwargs):		
 
 		defaults = dict(			
 			shape=None,size=None,ndim=None,
@@ -796,22 +727,22 @@ class Noise(Object):
 			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,interaction=interaction,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
 
 		return
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
 		Setup operator
 		Args:
-			data (iterable[str]): data for operator
+			data (iterable[str]): data of operator
 			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators
-			string (str): string labels of operators
-			interaction (str): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']	
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','i,j','ij','i<j','i...j']
+			string (str): string label of operator
+			parameters (object): parameter of operator			
 		'''
 
 		if (getattr(self,'scale',None) is not None):
@@ -859,7 +790,7 @@ def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
 	Calculate operators
 	Args:
 		data (iterable[Operator]): Array of data to matrix exponentiate of shape (d,n,n)
-		parameters (Array): Array of parameters of shape (d,m)
+		parameters (Parameters): Array of parameters of shape (d,m)
 		identity (Operator): Array of data identity of shape (n,n)
 		state (Operator): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
 		noise (Operator): Array of noise to act of shape (n,n) or (k,n,n)
@@ -873,43 +804,121 @@ def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
 		grad (callable): Gradient to compute operators, with signature grad(parameters,state,conj), where parameters[i][j] is a nested iterable for each operator i and time step j
 	'''	
 
-	index = arange(d)
-	if p == 1:
-		slices = index
-	elif p == 2:
-		slices = array([*index[::1],*index[::-1]])
-	else:
+	if parameters is None:
+		return lambda *args,**kwargs: None
+
+	if p > 2:	
 		raise NotImplementedError("Trotterization p = %d not implemented for p>2"%(p))
 
-	# @jit
-	def trotter(iterable):
-		return iterable[slices]
+	trotterize = lambda iterable,p: [i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in iterable[s]]
 
-	# data = [jit(data[i]) for i in slices]
+	indices = array(trotterize(arange(d),p))
+
+	@jit
+	def trotter(iterable):
+		return iterable[indices]
+
+	data = trotterize(data,p)
+
+	funcs = lambda i,parameters: data[i%(d*p)](parameters[i])
+
+
+	I = identity
+	A = array([i() for i in data])
+
+	def func(x,A,I,state=None,conj=None):
+		'''
+		Calculate matrix exponential of parameters times data
+		Args:
+			x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+			A (array): Array of data to matrix exponentiate of shape (d,n,n)
+			I (array): Array of data identity
+		Returns:
+			out (array): Matrix exponential of A of shape (n,n)
+		'''	
+
+		x = trotter(x).T.ravel()
+
+		m = x.size
+		d,shape = A.shape[0],A.shape[1:]
+
+		# subscripts = 'ij,jk->ik'
+		# shapes = (shape,shape)
+		# einsummation = einsum #(subscripts,shapes)
+
+		# def func(i,out):
+		# 	U = cos(x[i]*pi)*I + -1j*sin(x[i]*pi)*A[i%(d)]
+		# 	return einsummation(subscripts,U,out)
+
+		# return forloop(0,m,func,I)
+
+		if conj:
+			def func(i,out):
+				U = cos(x[i]*pi)*I + 1j*sin(x[i]*pi)*A[i%(d)]
+				return dot(U,out)#subscripts,U,out)
+
+			return forloop(m-1,-1,func,I)		
+		
+		else:
+			def func(i,out):
+				U = cos(x[i]*pi)*I + -1j*sin(x[i]*pi)*A[i%(d)]
+				return dot(U,out)#subscripts,U,out)
+
+			return forloop(0,m,func,I)		
+
+		# out = I
+		# for i in range(0,m):
+		# 	U = cos(x[i]*pi)*I + -1j*sin(x[i]*pi)*A[i%(d)]			
+		# 	out = dot(U,out)
+	
+		# return out
+
+	func = jit(func,A=A,I=I)
+
+	# data = [jit(i) for i in data]#data[i]) for i in indices]
 	# funcs = jit(lambda i,parameters: switch(i,data,parameters))
 
-	data = [data[i] for i in slices]
-	funcs = lambda i,parameters: data[i](parameters)
+	# # @jit
+	# def func(parameters=None,state=None,conj=None):
+	# 	'''
+	# 	Compute operator
+	# 	Args:
+	# 		parameters (array): parameters of shape (d,m,...)
+	# 		state (object): state
+	# 		conj (bool): conjugate
+	# 	'''
+	# 	parameters = coefficients*trotter(parameters).T.ravel()
+
+	# 	@jit
+	# 	def function(i,out):
+	# 		return dot(funcs(i%(d*p),parameters[i]),out)
+
+	# 	out = forloop(0,m*d*p,function,identity)
+
+	# 	return out
 
 
-	# @jit
-	def func(parameters=None,state=None,conj=None):
-		'''
-		Compute operator
-		Args:
-			parameters (array): parameters of shape (d,m,...)
-			state (object): state
-			conj (bool): conjugate
-		'''
-		parameters = coefficients*trotter(parameters).T.ravel()
 
-		# @jit
-		def function(i,out):
-			return dot(funcs(i%(d*p),parameters[i]),out)
 
-		out = forloop(0,m*d*p,function,identity)
+	# # @jit
+	# def func(parameters):#=None,state=None,conj=None):
+	# 	'''
+	# 	Compute operator
+	# 	Args:
+	# 		parameters (array): parameters of shape (d,m,...)
+	# 		state (object): state
+	# 		conj (bool): conjugate
+	# 	'''
+	# 	parameters = coefficients*trotter(parameters).T.ravel()
 
-		return out
+	# 	@jit
+	# 	def function(i,out):
+	# 		return dot(switch(i%(d*p),data,parameters[i]),out)
+	# 		# return dot(data[i%(d*p)](parameters[i]),out)
+
+	# 	out = forloop(0,m*d*p,function,identity)
+
+	# 	return out
 
 		# @jit
 		# def func(parameters):
@@ -1013,15 +1022,15 @@ class Operators(Object):
 	'''
 	Class for Operators
 	Args:
-		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			parameters (iterable[object]): parameters of operators
 		operator (iterable[str]): string names of operators
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 		string (iterable[str]): string labels of operators
-		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		parameters (iterable[str],dict,Parameters): parameters of operators		
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -1034,16 +1043,15 @@ class Operators(Object):
 		space (str,Space): Type of local space
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice	
-		parameters (str,dict,Parameters): Type of parameters	
 		state (str,dict,State): Type of state	
 		noise (str,dict,Noise): Type of noise
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
-		space=None,time=None,lattice=None,parameters=None,state=None,noise=None,system=None,**kwargs):
+		space=None,time=None,lattice=None,state=None,noise=None,system=None,**kwargs):
 
 		setter(kwargs,system,delimiter=delim,func=False)
 		super().__init__(**kwargs)
@@ -1062,11 +1070,11 @@ class Operators(Object):
 		self.lattice = lattice
 
 		self.data = []
+		self.parameters = parameters
 
 		self.n = None
 		self.g = None
 		
-		self.parameters = parameters
 		self.state = state
 		self.noise = noise
 		self.identity = None
@@ -1085,29 +1093,31 @@ class Operators(Object):
 		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
 		self.coefficients = array(self.tau/self.P,dtype=self.dtype)
 
-		self.__setup__(data,operator,site,string,interaction)
+		# self.__setup__(data,operator,site,string,parameters)
 
 		self.info()
 
+		exit()
+
 		return	
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
 		Setup class
 		Args:
-			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 				operator (iterable[str]): string names of operators
-				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 				string (iterable[str]): string labels of operators
-				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+				parameters (iterable[object]): parameters of operators
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			parameters (iterable[object]): parameters of operators
 		'''
 
-		# Get operator,site,string,interaction from data
-		objs = {'operator':operator,'site':site,'string':string,'interaction':interaction}
+		# Get operator,site,string from data
+		objs = {'operator':operator,'site':site,'string':string,'parameters':parameters}
 
 		for obj in objs:
 			objs[obj] = [] if objs[obj] is None else objs[obj]
@@ -1132,7 +1142,7 @@ class Operators(Object):
 		return
 
 
-	def __append__(self,data=None,operator=None,site=None,string=None,interaction=None):
+	def __append__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
 		Append to class
 		Args:
@@ -1140,36 +1150,46 @@ class Operators(Object):
 			operator (str): string name of operator
 			site (int): site of local operator
 			string (str): string label of operator
-			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			parameters (object): parameter of operator			
 		'''
 		index = -1
-		self.__insert__(index,data,operator,site,string,interaction)
+		self.__insert__(index,data,operator,site,string,parameters)
 		return
 
-	def __extend__(self,data=None,operator=None,site=None,string=None,interaction=None):
+	def __extend__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
 		Setup class
 		Args:
 			data (iterable[str,Operator]): data of operator
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			parameters (iterable[object]): parameters of operators
 		'''
-		if all(i is None for i in [operator,site,string,interaction]):
+
+		size = min([len(i) for i in [data,operator,site,string,parameters] if i is not None],default=0)
+
+		if not size:
 			return
 
 		if data is None:
-			size = min([len(i) for i in [operator,site,string,interaction]])
 			data = [None]*size
+		if operator is None:
+			operator = [None]*size
+		if site is None:
+			site = [None]*size
+		if string is None:
+			string = [None]*size						
+		if parameters is None:
+			parameters = [None]*size			
 
-		for _data,_operator,_site,_string,_interaction in zip(data,operator,site,string,interaction):
-			self.__append__(_data,_operator,_site,_string,_interaction)
+		for _data,_operator,_site,_string,_parameters in zip(data,operator,site,string,parameters):
+			self.__append__(_data,_operator,_site,_string,_parameters)
 
 		return
 
 
-	def __insert__(self,index,data,operator,site,string,interaction):
+	def __insert__(self,index,data,operator,site,string,parameters):
 		'''
 		Insert to class
 		Args:
@@ -1178,7 +1198,7 @@ class Operators(Object):
 			operator (str): string name of operator
 			site (int): site of local operator
 			string (str): string label of operator
-			interaction (str): interaction type of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			parameters (object): parameter of operator			
 		'''
 
 		if index == -1:
@@ -1186,8 +1206,7 @@ class Operators(Object):
 
 		kwargs = dict(N=self.N,D=self.D,system=self.system,verbose=False)
 
-		data = Operator(data=data,operator=operator,site=site,string=string,interaction=interaction,**kwargs)
-
+		data = Operator(data=data,operator=operator,site=site,string=string,parameters=parameters,**kwargs)
 		self.data.insert(index,data)
 
 		return
@@ -1200,6 +1219,10 @@ class Operators(Object):
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters, or boolean to choose self.state or None
 			noise (bool,dict,array,Noise): Noise to act on with class of shape (-1,self.shape), or class hyperparameters, or boolean to choose self.noise or None
 		'''
+
+		parameters = self.parameters if parameters is None else parameters
+		state = self.state if state is None else state
+		noise = self.noise if noise is None else noise
 
 		objs = {'parameters':parameters,'state':state,'noise':noise}
 		classes = {'parameters':Parameters,'state':State,'noise':Noise}
@@ -1232,6 +1255,7 @@ class Operators(Object):
 		# Set functions
 		data = self.data
 		identity = self.identity()
+		parameters = self.parameters()
 		state = self.state()
 		noise = self.noise()
 		coefficients = self.coefficients
@@ -1239,6 +1263,7 @@ class Operators(Object):
 		d = len(self.data)
 		m = self.M
 		p = self.P
+
 		self.compute = Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p)
 
 		# Update class attributes
@@ -1260,9 +1285,9 @@ class Operators(Object):
 		if parameters is None:
 			parameters = self.parameters()
 
-		parameters = self.parameters(parameters)
+		parameters = self.coefficients*self.parameters(parameters)
 
-		return self.compute(parameters)#,state=state,conj=conj)
+		return self.compute(parameters,state=state,conj=conj)
 
 	def __grad__(self,parameters=None,state=None,conj=None):
 		''' 
@@ -1433,7 +1458,7 @@ class Operators(Object):
 
 		msg = '%s'%('\n'.join([
 			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
-				for attr in ['string','key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','shape','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
+				for attr in ['string','key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','data','shape','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
 			],
 			*['%s: %s'%(delim.join(attr.split(delim)[:2]),', '.join([
 				('%s: %s' if (
@@ -1450,12 +1475,12 @@ class Operators(Object):
 				else '%0.3e')%(prop,getattrs(self,delim.join([attr,prop]),delimiter=delim),)) 
 				if prop is not None else str(getattrs(self,attr,delimiter=delim,default=None)))
 				for prop in [None,'shape','parameters']]))
-				for attr in ['state','noise'] if getattrs(self,attr,default=lambda:None)() is not None
+				for attr in ['parameters','state','noise'] if callable(getattrs(self,attr,default=None)) and getattrs(self,attr)() is not None
 			],
-			*['%s:\n%s'%(delim.join(attr.split(delim)[:1]),
-				to_string(getattrs(self,attr,default=lambda:None)()))
-				for attr in ['state','noise'] if getattrs(self,attr,default=lambda:None)() is not None
-			],			
+			# *['%s:\n%s'%(delim.join(attr.split(delim)[:1]),
+			# 	to_string(getattrs(self,attr,default=lambda:None)()))
+			# 	for attr in ['parameters','state','noise'] if callable(getattrs(self,attr,default=None)) and getattrs(self,attr)() is not None
+			# ],			
 			]
 			))
 		self.log(msg,verbose=verbose)
@@ -1534,15 +1559,15 @@ class Hamiltonian(Operators):
 	'''
 	Hamiltonian class of Operators
 	Args:
-		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			parameters (iterable[object]): parameters of operators
 		operator (iterable[str]): string names of operators
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 		string (iterable[str]): string labels of operators
-		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+		parameters (iterable[object]): parameters of operators
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -1562,36 +1587,42 @@ class Hamiltonian(Operators):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
-				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,system=None,**kwargs):
+				space=None,time=None,lattice=None,state=None,noise=None,system=None,**kwargs):
 
-		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
+		super().__init__(data=data,operator=operator,site=site,string=string,parameters=parameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
-				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,system=system,**kwargs)
+				space=space,time=time,lattice=lattice,state=state,noise=noise,system=system,**kwargs)
 		
 		return
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,interaction=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
 		Setup class
 		Args:
-			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 				operator (iterable[str]): string names of operators
-				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 				string (iterable[str]): string labels of operators
-				interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+				parameters (iterable[object]): parameters of operators
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			parameters (iterable[object]): parameters of operators
 		'''
-		# Get operator,site,string,interaction from data
-		objs = {'operator':operator,'site':site,'string':string,'interaction':interaction}
+
+		# Get operator,site,string,parameters from data
+		objs = {'operator':operator,'site':site,'string':string,'parameters':parameters}
 
 		for obj in objs:
 			objs[obj] = [] if objs[obj] is None else objs[obj]
 
+		# Set attributes
+		attr = 'parameters'
+		objs.pop(attr);
+
+		# Get data
 		if data is None:
 			data = {}
 		elif all(isinstance(datum,Operator) for datum in data):
@@ -1599,54 +1630,63 @@ class Hamiltonian(Operators):
 		
 		assert isinstance(data,dict), 'Incorrect data format %r'%(type(data))			
 
-		if all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
+		if all(isinstance(data[name],dict) and (obj in data[name]) and (data[name][obj] is not None) for name in data for obj in objs):
 			for obj in objs:
 				objs[obj].extend([data[name][obj] for name in data])
 
 		# Lattice sites
 		sites = self.lattice # sites types on lattice
-		indices = {'i': ['i'],'<ij>':['i','j'],'i<j':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
+		indices = {'i': ['i'],'<ij>':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
 
 		# Get number of operators
 		size = min(len(objs[obj]) for obj in objs)
 		
-		# Get all indices from symbolic indices
-		for index in range(size):
-			
-			size -= 1
-			
-			_objs = {}
-			for obj in objs:
-				value = deepcopy(objs[obj].pop(0))
-				if obj in ['site']:
-					if isinstance(value,str):
-						value = indices[value]
-				_objs[obj] = value
+		# Get attribute of symbolic indices
+		attr = 'site'
 
-			if any(i in indices[_objs['interaction']] for i in _objs['site']):
-				for i,s in enumerate(sites(_objs['interaction'])):
+		# Get data
+		for index in range(size):
+
+			key = None
+			tmp = {obj: deepcopy(objs[obj].pop(0)) for obj in objs}
+
+			if isinstance(tmp[attr],scalars) and tmp[attr] in indices:
+				key = tmp[attr]
+				tmp[attr] = indices[tmp[attr]]
+			elif isinstance(tmp[attr],scalars):
+				tmp[attr] = [tmp[attr]]
+			elif not isinstance(tmp[attr],scalars):
+				for i in tmp[attr]:
+					if i in indices:
+						key = i
+						tmp[attr][tmp[attr].index(i)] = indices[i][tmp[attr].index(i)]
+
+			if key is not None:
+				for i,s in enumerate(sites(key)):
+					value = {}
 					for obj in objs:
-						if obj in ['site']:
-							value = [dict(zip(
-								indices[_objs['interaction']],
+						if obj in [attr]:
+							value[obj] = [dict(zip(
+								indices[key],
 								s if not isinstance(s,int) else [s])
 							).get(i,parse(i,int)) 
-							for i in _objs['site']]
+							for i in tmp[attr]]
 						else:
-							value = _objs[obj]
+							value[obj] = tmp[obj]
 
-						objs[obj].append(value)			
+					exists = [[i if value[obj] == item else None for i,item in enumerate(objs[obj])] 
+						for obj in objs]
+					
+					if any(len(set(i))==1 for i in zip(*exists) if any(j is not None for j in i)):
+						continue
 
-			elif len(_objs['operator']) == len(_objs['site']):
-				for obj in objs:
-					value = _objs[obj]
-					objs[obj].append(value)					
+					for obj in objs:
+						objs[obj].append(value[obj])			
 
 			else:
 				for obj in objs:
-					value = _objs[obj]
+					value = tmp[obj]
 					objs[obj].append(value)	
-
 
 
 		# Set class attributes
@@ -1663,15 +1703,14 @@ class Unitary(Hamiltonian):
 	'''
 	Unitary class of Operators
 	Args:
-		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,interaction dictionary for operator
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 			string (iterable[str]): string labels of operators
-			interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
+			parameters (iterable[object]): parameters of operators
 		operator (iterable[str]): string names of operators
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','i<j','i...j']
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
 		string (iterable[str]): string labels of operators
-		interaction (iterable[str]): interaction types of operators type of interaction, i.e) nearest neighbour, allowed values in ['i','i,j','i<j','i...j']
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
@@ -1691,13 +1730,13 @@ class Unitary(Hamiltonian):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	def __init__(self,data=None,operator=None,site=None,string=None,interaction=None,
+	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
-				space=None,time=None,lattice=None,parameters=None,state=None,noise=None,system=None,**kwargs):
+				space=None,time=None,lattice=None,state=None,noise=None,system=None,**kwargs):
 		
-		super().__init__(data=data,operator=operator,site=site,string=string,interaction=interaction,
+		super().__init__(data=data,operator=operator,site=site,string=string,parameters=parameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
-				space=space,time=time,lattice=lattice,parameters=parameters,state=state,noise=noise,system=system,**kwargs)
+				space=space,time=time,lattice=lattice,state=state,noise=noise,system=system,**kwargs)
 
 		self.hermitian = False
 		self.unitary = True
@@ -1809,14 +1848,15 @@ class Label(Operator):
 
 	def __new__(cls,*args,**kwargs):
 
-		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
+		self = super().__new__(cls,*args,**kwargs)
+		
+		data = asarray(self(self.parameters))
+		state = asarray(self.state)
 
-		self = super().__new__(cls,*args,**kwargs,inherit=True)
 
-		data = self(self.parameters)
-		state = self.state
-
-		if state is None:
+		if data is None:
+			pass
+		elif state is None:
 			pass
 		elif state.ndim == 1:
 			data = einsum('ij,j->i',data,state)
@@ -1843,7 +1883,6 @@ class Label(Operator):
 		Returns:
 			data (array): data
 		'''
-		
 		return self.data
 
 		
@@ -1897,6 +1936,7 @@ class Callback(System):
 		Returns:
 			status (int): status of callback
 		'''
+
 		attributes = optimizer.attributes
 		iterations = optimizer.iterations
 		hyperparameters = optimizer.hyperparameters
@@ -2150,8 +2190,8 @@ class Callback(System):
 					for attr in ['alpha','beta']
 					if attr in attributes and len(attributes[attr])>0
 					]),
-				'x\n%s'%(to_string(parameters.round(4))),
-				'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
+				# 'x\n%s'%(to_string(parameters.round(4))),
+				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
 				'U\n%s\nV\n%s'%(
 					to_string((model(parameters)).round(4)),
 					to_string((metric.label).round(4))),

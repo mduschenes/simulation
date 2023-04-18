@@ -18,12 +18,12 @@ def warn_with_traceback(message, category, filename, lineno, file=None, line=Non
 	return
 warnings.showwarning = warn_with_traceback
 
-envs = {
-	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
+# envs = {
+# 	'JAX_PLATFORM_NAME':'cpu',
+# 	'TF_CPP_MIN_LOG_LEVEL':5
+# }
+# for var in envs:
+# 	os.environ[var] = str(envs[var])
 
 
 import matplotlib
@@ -253,23 +253,27 @@ class argparser(argparse.ArgumentParser):
 		return self.kwargs.values()
 
 
-def namespace(cls,signature=None,**kwargs):
+def namespace(cls,signature=None,init=False,**kwargs):
 	'''
 	Get namespace of attributes of class instance
 	Args:
 		cls (class): Class to get attributes
 		signature (dict): Dictionary to get only attributes in cls
+		init (bool): Initialize class for all attributes
 		kwargs (dict): Additional keyword arguments for cls
 	Returns:
 		attrs (iterable,dict): Attributes of cls
 	'''
 	
-	instance = cls(**kwargs)
-
-	if kwargs is None:
-		return dir(instance)
+	if init:
+		attrs = dir(cls(**kwargs))
 	else:
-		return {attr: signature[attr] for attr in signature if attr in dir(instance)}
+		attrs = cls.__dict__
+
+	if signature is None:
+		return attrs
+	else:
+		return {attr: signature[attr] for attr in signature if attr in attrs}
 
 def setitem(obj,index,item):
 	'''
@@ -297,36 +301,109 @@ def jit(func,*,static_argnums=None,**kwargs):
 	Returns:
 		func (callable): Compiled function
 	'''
-	
+
 	# TODO merge jit for different numpy backends (jax vs autograd)
 
 	# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
 	return wraps(func)(partial(func,**kwargs))
 
 # @partial(jit,static_argnums=(2,))	
-def vmap(func,in_axes=0,out_axes=0,axes_name=None):	
+def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
 	'''
 	Vectorize function over input axis of iterables
 	Args:
 		func (callable): Function that acts on single elements of iterables
 		in_axes (int,iterable): Input axis of iterables
 		out_axes (int,interable): Output axis of func return
-		axes_names (object): hashable Python object used to identify the mapped
+		axis_names (object): hashable Python object used to identify the mapped
 			axis so that parallel collectives can be applied.
+		kwargs (dict): Additional keyword arguments for func
 	Returns:
 		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
 	'''
+
+	# TODO merge vmap for different numpy backends (jax vs autograd)
+
+	# func = jit(func,**kwargs)
+
+	# vfunc = jax.vmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
+	# return vfunc
+
 	in_axes = [in_axes] if in_axes is None or isinstance(in_axes,int) else in_axes
 	out_axes = [out_axes] if out_axes is None or isinstance(out_axes,int) else out_axes
-	axes_name = [axes_name] if axes_name is None or isinstance(axes_name,int) else axes_name
+	axis_name = [axis_name] if axis_name is None or isinstance(axis_name,int) else axis_name
 
-	def vmapper(*args,**kwargs):
+	def vfunc(*args,**kwargs):
 		args = itertools.product(*(arg if (i in in_axes) and ((len(in_axes)<len(args)) or (in_axes[i] is not None)) else [arg] for i,arg in enumerate(args)))
 		# TODO arbitrary in_axes, out_axes
-		return np.array([func(*arg,**kwargs) for arg in args])
+		return array([func(*arg,**kwargs) for arg in args])
 
-	return vmapper
+	return vfunc
 
+
+# @partial(jit,static_argnums=(2,))	
+def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+	'''
+	Vectorize function over input axis of iterables
+	Args:
+		func (callable): Function that acts on single elements of iterables
+		in_axes (int,iterable): Input axis of iterables
+		out_axes (int,interable): Output axis of func return
+		axis_names (object): hashable Python object used to identify the mapped
+			axis so that parallel collectives can be applied.
+		kwargs (dict): Additional keyword arguments for func
+	Returns:
+		pfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+	'''
+
+	# TODO merge pmap for different numpy backends (jax vs autograd)
+
+
+	func = jit(func,**kwargs)
+
+	pfunc = jax.pmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
+	return pfunc
+
+
+# @partial(jit,static_argnums=(2,))
+def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+	'''
+	Vectorize indexed functions over operands
+	Args:
+		funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
+		in_axes (int,iterable): Input axis of iterables
+		out_axes (int,interable): Output axis of func return
+		axis_names (object): hashable Python object used to identify the mapped
+			axis so that parallel collectives can be applied.
+		kwargs (dict): Additional keyword arguments for func	
+	Returns:
+		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+	'''
+
+	funcs = [jit(func,**kwargs) for func in funcs]
+
+	func = lambda index,*args: switch(index,funcs,*args)
+	vfunc = vmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
+	# func = lambda index,*args,funcs=funcs: switch(index,funcs,*args[index])
+	# vfunc = lambda *args,funcs: array([func(index,*args) for index in range(len(funcs))])
+
+	return vfunc
+
+def switch(index,funcs,*args):
+	'''
+	Switch between indexed functions over operands
+	Args:
+		index (int): Index for function
+		funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
+		args (tuple): Arguments for function
+	Returns:
+		out (object): Return of function
+	'''	
+	return jax.lax.switch(index,funcs,*args)
+	# return funcs[index](*args)
 
 # @partial(jit,static_argnums=(2,))	
 def forloop(start,end,func,out):	
@@ -346,24 +423,6 @@ def forloop(start,end,func,out):
 	for i in range(start,end):
 		out = func(i,out)
 	return out
-
-
-# @partial(jit,static_argnums=(2,))
-def vfunc(funcs,index):	
-	'''
-	Vectorize indexed functions over operands
-	Args:
-		funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
-		index (iterable[int]): Iterable of indices of functions to call
-	Returns:
-		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
-	'''
-	# def vfunc(*iterables):
-	# 	return array(list(map(lambda i,*x:funcs[i](*x),*[index,*iterables])))
-	# return vfunc
-	# func = jit(vmap(lambda i,x,funcs=funcs: jax.lax.switch(i,funcs,x)))
-	func = lambda index,x: array([funcs[i](x[i]) for i in index])
-	return lambda x,func=func,index=index: func(index,x)
 
 
 def value_and_gradient(func,grad=None,returns=False):
@@ -492,6 +551,8 @@ def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		grad (callable): Gradient of function
 	'''
 
+	# TODO merge grad for different numpy backends (jax vs autograd)
+
 	# _grad = jit(jax.grad(func,argnums=argnums,holomorphic=holomorphic))
 	argnum = argnums
 	if holomorphic:
@@ -518,6 +579,8 @@ def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 	Returns:
 		grad (callable): Gradient of function
 	'''
+
+	# TODO merge grad for different numpy backends (jax vs autograd)
 
 	# _grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
 	argnum = argnums
@@ -549,6 +612,8 @@ def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 	Returns:
 		grad (callable): Gradient of function
 	'''
+
+	# TODO merge grad for different numpy backends (jax vs autograd)
 
 	# _grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
 	argnum = argnums
@@ -584,8 +649,10 @@ def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 	Returns:
 		grad (callable): Hessian of function
 	'''
-	# grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
 	
+	# TODO merge grad for different numpy backends (jax vs autograd)
+	
+	# grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
 	argnum = argnums
 	if holomorphic:
 		grad = jit(autograd.hessian(func,argnum=argnum))
@@ -886,18 +953,44 @@ class String(str):
 # 	return add(a,b)
 
 
-def decorator(*args,**kwargs):
+def decorator(*arguments,function=None,**keywords):
 	'''
 	Wrap function with args and kwargs
+	Args:
+		arguments (iterable): Decorator arguments
+		keywords (dict): Decorator keyword arguments
+
 	'''
 	def wrapper(func):
 		@wraps
-		def wrapped(*_args,**_kwargs):
-			arg = (*_args,*args)
-			kwarg = {**kwargs,**_kwargs}
-			return func(*arg,**kwarg)
+		def wrapped(*args,**kwargs):
+			args = (*args,*arguments)
+			kwargs = {**keywords,**kwargs}
+			return func(*args,**kwargs)
 		return wrapped
-	return wrapper
+	return wrapper	
+
+
+def wrapper(function,*arguments,**keywords):
+	'''
+	Wrap func args and kwargs with function
+	Args:
+		function (callable): Function to wrap arguments with signature function(args,kwargs,*arguments,**keywords) -> args,kwargs
+		arguments (iterable): Function arguments
+		keywords (dict): Function keyword arguments
+
+	'''
+	if function is None:
+		def function(args,kwargs,*arguments,**keywords):
+			return args,kwargs
+	function = partial(function,*arguments,**keywords)
+	def wrapper(func):
+		@wraps
+		def wrapped(*args,**kwargs):
+			args,kwargs = function(args,kwargs)
+			return func(*args,**kwargs)
+		return wrapped
+	return wrapper	
 
 
 class array(np.ndarray):
@@ -1218,6 +1311,7 @@ def PRNGKey(seed=None,size=False,reset=None):
 	return key
 
 
+
 def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
 	'''
 	Get random array
@@ -1227,6 +1321,7 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 		seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
+		scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 		mesh (int): Get meshgrid of array for mesh dimensions
 		reset (bool,int): Reset seed		
 		dtype (data_type): Datatype of array		
@@ -1470,7 +1565,13 @@ def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,
 		out = func(key,shape,bounds,dtype)
 
 
-	if scale is not None:
+	if scale in ['normalize']:
+		out = out/out.sum()
+	elif scale in ['1']:
+		out = out/out.sum()
+	elif scale in ['2']:
+		out = out/sqrt(sqr(out).sum())
+	elif scale is not None:
 		out = out*scale
 
 	if complex:
@@ -2802,7 +2903,7 @@ def addition(a):
 		out (ndarray) if out argument is not None
 	'''
 	# return forloop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
-	return a.sum(0)
+	return np.sum(a,axis=0)
 
 def product(a):
 	'''
@@ -3397,6 +3498,9 @@ def slicing(a,start,size):
 	Returns:
 		a (array): Sliced array
 	'''
+
+	# TODO merge slicing for different numpy backends (jax vs autograd)
+
 	# return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
 	return a[start:start+size]
 
@@ -3765,6 +3869,17 @@ def sqrt(a):
 	return np.sqrt(a)
 
 @jit
+def sqr(a):
+	'''
+	Calculate square of array a
+	Args:
+		a (array): Array to compute square root
+	Returns:
+		out (array): Square root of array
+	'''
+	return a**2
+
+@jit
 def log10(a):
 	'''
 	Calculate log base 10 of array a
@@ -3858,8 +3973,6 @@ def gradient_expm(x,A,I):
 	Returns:
 		out (array): Gradient of matrix exponential of A of shape (m,n,n)
 	'''			
-
-	# TODO: Check jittable vmap of index dependent slices of x for faster gradient in terms of expm()
 
 	m = x.shape[0]
 	d,shape = A.shape[0],A.shape[1:]
@@ -4344,7 +4457,7 @@ def argsort(a,axis=0):
 
 
 @partial(jit,static_argnums=(1,))
-def concatenate(a,axis):
+def concatenate(a,axis=0):
 	'''
 	Concatenate iterables along axis
 	Args:
@@ -4525,19 +4638,19 @@ def put(a,values,indices,axis):
 		axis = axis % a.ndim
 		indices = array(indices)
 
-		if values.ndim < a.ndim:
-			values = values.reshape(*(1,)*(axis),*values.shape,*(1,)*(a.ndim-values.ndim-axis))
-		if indices.ndim < a.ndim:
-			indices = indices.reshape(*(1,)*(axis),*indices.shape,*(1,)*(a.ndim-indices.ndim-axis))
+		# if values.ndim < a.ndim:
+		# 	values = values.reshape(*(1,)*(axis),*values.shape,*(1,)*(a.ndim-values.ndim-axis))
+		# if indices.ndim < a.ndim:
+		# 	indices = indices.reshape(*(1,)*(axis),*indices.shape,*(1,)*(a.ndim-indices.ndim-axis))
 
-		np.put_along_axis(a,indices,values,axis=axis)
+		# np.put_along_axis(a,indices,values,axis=axis)
 
-		# if axis in [0]:
-		# 	a = setitem(a,(indices),values)
-		# elif axis in [a.ndim-1]:
-		# 	a = setitem(a,(Ellipsis,indices),values)
-		# else:
-		# 	raise ValueError("Not Implemented for axis %d"%(axis))
+		if axis in [0]:
+			a = setitem(a,(indices),values)
+		elif axis in [a.ndim-1]:
+			a = setitem(a,(Ellipsis,indices),values)
+		else:
+			raise ValueError("Not Implemented for axis %d"%(axis))
 
 		# Ni, M, Nk = a.shape[:axis], a.shape[axis], a.shape[axis+1:]
 		# size = indices.shape[axis]
@@ -4610,6 +4723,10 @@ def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
 		out (array): Padded array
 	'''
 
+	if shape is None:
+		out = a
+		return out
+
 	if a is None:
 		a = zeros(shape,dtype=dtype)
 	else:
@@ -4678,8 +4795,8 @@ def randomstring(K,N,D=2):
 	else:
 		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
 
-	# alpha = jax.random.uniform(key,(K*N,d))
-	alpha = np.random.uniform(size=(K*N,d))
+	alpha = jax.random.uniform(key,(K*N,d))
+	# alpha = np.random.uniform(size=(K*N,d))
 	
 	string = vtensordot(alpha,basis,1)
 	string = string.reshape((K,N,D,D))
@@ -4712,8 +4829,8 @@ def paulistring(string,N,K,D=2):
 	else:
 		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
 
-	# alpha = jax.random.uniform(key,(K*N,d))
-	alpha = np.random.uniform(size=(K*N,d))
+	alpha = jax.random.uniform(key,(K*N,d))
+	# alpha = np.random.uniform(size=(K*N,d))
 	
 	string = vtensordot(alpha,basis,1)
 	string = string.reshape((K,N,D,D))
@@ -6249,7 +6366,7 @@ def initialize(data,shape,dtype=None,**kwargs):
 	seed = kwargs['seed']
 	axis = kwargs['axis']
 
-	ndim = len(shape) if not isinstance(shape,int) else 0
+	ndim = None if shape is None else 0 if isinstance(shape,int) else len(shape)
 	key = seed
 
 	# pad data

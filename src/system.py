@@ -428,12 +428,13 @@ class Lattice(System):
 		'''
 		Get list of lists of sites of lattice
 		Args:
-			site (str,int): Type of sites, either int for unique site-length list of vertices, or string in allowed ['i','i,j','i<j']
+			site (str,int): Type of sites, either int for unique site-length list of vertices, or string in allowed ['i','i,j','ij','i<j','i...j']
 		Returns:
 			sites (generator): Generator of site-length lists of lattice
 		'''
 
 		# Unique site-length lists if site is int
+		sites = None
 		if isinstance(site,(int,itg)):
 			k = site
 			conditions = None
@@ -441,7 +442,7 @@ class Lattice(System):
 		elif isinstance(site,(str)):
 			if site in ['i']:
 				sites = ([i] for i in self.vertices)
-			elif site in ['i,j']:
+			elif site in ['i,j','ij','i...j']:
 				sites = ([i,j] for i in self.vertices for j in self.vertices)
 			elif site in ['i<j']:
 				k = 2
@@ -468,7 +469,8 @@ class Lattice(System):
 			k = 2
 			conditions = None
 			sites = self.iterable(k,conditions)
-
+		if sites is None:
+			sites = ()
 		sites = (list(map(int,i)) for i in sites)
 		return sites
 

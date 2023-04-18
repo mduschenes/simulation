@@ -4,24 +4,24 @@ Jax Numpy API version of https://github.com/scipy/scipy/blob/v1.8.1/scipy/optimi
 import os
 from warnings import warn
 
-envs = {
-	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
+# envs = {
+# 	'JAX_PLATFORM_NAME':'cpu',
+# 	'TF_CPP_MIN_LOG_LEVEL':5
+# }
+# for var in envs:
+# 	os.environ[var] = str(envs[var])
 
 
 import numpy as onp
 import scipy as osp
 
-import jax
-import jax.numpy as np
-import jax.scipy as sp
+# import jax
+# import jax.numpy as np
+# import jax.scipy as sp
 
-# import autograd
-# import autograd.numpy as np
-# import autograd.scipy as sp
+import autograd
+import autograd.numpy as np
+import autograd.scipy as sp
 
 
 import scipy.optimize
@@ -41,8 +41,8 @@ def setitem(obj,index,item):
 	Returns:
 		obj (object): Object with set item at index
 	'''
-	# obj[index] = item
-	obj = obj.at[index].set(item)
+	obj[index] = item
+	# obj = obj.at[index].set(item)
 	return obj
 
 class LineSearchWarning(RuntimeWarning):

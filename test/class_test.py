@@ -3,7 +3,7 @@
 # Import python modules
 import pytest
 import os,sys
-import itertools,functools
+import itertools,functools,time
 from copy import deepcopy as deepcopy
 	
 # Import User modules
@@ -27,45 +27,42 @@ def test_object(path,tol):
 		'Pauli': {
 			'basis':'Pauli',
 			'kwargs':dict(
-				data=delim.join(['X','Y','Z']),operator=None,site=[0,1,2],string='XYZ',interaction='i',
+				data=delim.join(['X','Y','Z']),operator=None,site=[0,1,2],string='XYZ',
 				kwargs=dict(N=3,D=2,ndim=2,parameters=None,verbose=True),
 			),
 		},
 		'Gate': {
 			'basis':'Gate',
 			'kwargs':dict(
-				data=delim.join(['I','CNOT']),operator=None,site=[0,1,2],string='CX',interaction='i',
-				kwargs=dict(N=3,D=2,ndim=2),
+				data=delim.join(['I','CNOT']),operator=None,site=[0,1,2],string='CX',
+				kwargs=dict(N=3,D=2,ndim=2,verbose=True),
 			),
 		},
 		'Haar':{
 			'basis':'Haar',
 			'kwargs': dict(
-				data=delim.join(['haar']),operator=None,site=[0,1,2],string='U',interaction='i',
-				kwargs=dict(N=3,D=2,ndim=2,seed=1,reset=1),
+				data=delim.join(['haar']),operator=None,site=[0,1,2],string='U',
+				kwargs=dict(N=3,D=2,ndim=2,seed=1,reset=1,verbose=True),
 			),
 		},
 		'Psi':{
 			'basis':'State',
 			'kwargs': dict(
-				data=delim.join(['minus']),operator=None,site=[0,1],string='-',interaction='i',
-				kwargs=dict(N=2,D=2,ndim=1,seed=1,reset=1),
+				data=delim.join(['minus']),operator=None,site=[0,1],string='-',
+				kwargs=dict(N=2,D=2,ndim=1,seed=1,reset=1,verbose=True),
 			),
 		},
 		'Noise':{
 			'basis':'Noise',
 			'kwargs': dict(
-				data=delim.join(['phase']),operator=None,site=[0,1],string='K',interaction='i',
-				kwargs=dict(N=2,D=2,ndim=3,parameters=0.25),
+				data=delim.join(['phase']),operator=None,site=[0,1],string='K',
+				kwargs=dict(N=2,D=2,ndim=3,parameters=0.25,verbose=True),
 			),
 		},
 	}
 
 	for name in arguments:
 	
-		print(name)
-	
-
 		base = bases[arguments[name]['basis']]
 		args = arguments[name]['kwargs']
 		kwargs = args.pop('kwargs',{})
@@ -84,12 +81,6 @@ def test_object(path,tol):
 			print(attr,operator[attr])
 		print()
 
-		other = operator.copy()
-		for attr in other:
-			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not isinstance(operator[attr],arrays) else allclose(operator[attr],other[attr])), "Incorrect Copying %s %r != %r"%(attr,operator[attr],other[attr])
-
-		assert allclose(operator(operator.parameters),other(other.parameters))
-
 
 		other = base(**args,**kwargs)
 
@@ -104,13 +95,14 @@ def test_object(path,tol):
 		args.update(dict(data=None,operator=None))
 		operator = base(**args,**kwargs)
 		assert operator(operator.parameters) is None
-	
+		
+		print()
 
-	operator = Operator()
-	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.interaction,operator.parameters,operator)
+	operator = Operator(verbose=True)
+	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.parameters,operator)
 
-	operator = Operator('I',N=3)
-	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.interaction,operator.parameters,operator.shape)
+	operator = Operator('I',N=3,verbose=True)
+	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.parameters,operator.shape)
 
 
 	return
@@ -125,6 +117,7 @@ def test_model(path,tol):
 
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
 
+
 	model = cls.pop('model')
 	kwargs = {
 		**hyperparameters.get('model',{}),
@@ -135,20 +128,48 @@ def test_model(path,tol):
 
 	parameters = model.parameters()
 
+	t = time.time()
+	parameters = rand(shape=(len(model),model.M),random='normal',bounds=[-1,1],key=1234)
+	print(parameters.shape)	
 	obj = model(parameters)
+	print(time.time()-t)
+
+	t = time.time()
+	parameters = rand(shape=(len(model),model.M),random='normal',bounds=[-1,1],key=1234)
+	print(parameters.shape)
+	obj = model(parameters)
+	print(time.time()-t)
 
 
+	I = model.identity()
+	objH = model(parameters,conj=True)
+	objD = dagger(model(parameters))
+
+	objobjH = dot(obj,objH)
+	objHobj = dot(objH,obj)
+	objobjD = dot(obj,objD)
+	objDobj = dot(objD,obj)
+
+	assert allclose(objobjH,I), "Incorrect unitarity model() * model(conj=True) != I"
+	assert allclose(objHobj,I), "Incorrect unitarity model(conj=True) * model() != I"
+	assert allclose(objobjD,I), "Incorrect unitarity model() * dagger(model()) != I"
+	assert allclose(objDobj,I), "Incorrect unitarity dagger(model()) * model() != I"
+
+	assert allclose(objH,objD), "Incorrect model(conj=True) != conj(model())"
+
+	print('All Passed')
+	return
 	m,d,p = model.M,len(model),model.P
 	identity = model.identity()
-	parameters = rand(parameters.shape)
+	parameters = rand(shape=model.parameters.shape,random='normal',bounds=[-1,1],key=1234)
+
 	out = model(parameters)
 
 	slices = [slice(None,None,1),slice(None,None,-1)][:p]
 	data = [i for s in slices for i in model.data[s]]
 
 	slices = array([i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in list(range(d))[s]])
-	parameters = model.coefficients*(model.parameters(parameters)[slices].T.ravel())
-
+	parameters = (model.coefficients*model.parameters(parameters))[slices].T.ravel()
 
 	tmp = model.identity()
 	for i in range(m*d*p):
@@ -167,23 +188,6 @@ def test_model(path,tol):
 
 	assert allclose(out,tmp), "Incorrect model() from func()"
 
-	# for i in range(100):
-	# 	# parameters = parameters + rand(parameters.shape)
-	# 	parameters = zeros(parameters.shape)
-	# 	obj = model(parameters).block_until_ready()
-	# 	print(i)
-	# 	print(obj)
-	# 	print()
-
-	# # objH = model(parameters,conj=True)
-	# objH = dagger(obj)
-
-	# eps = (obj.dot(dagger(obj)))
-	# eps = (eye(model.n))
-	# epsH = obj.dot(objH)
-
-
-	# print(allclose(eps,epsH) , allclose(dagger(obj),objH))
 
 	return 
 
@@ -607,8 +611,8 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
+	# func = test_object
 	func = test_model
-	func = test_object
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

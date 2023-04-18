@@ -276,50 +276,28 @@ class Parameter(System):
 		# 			kwargs[attr][axis] = {'indices':indices,'values':values}
 
 		if self.category in ['variable']:
-			def func(parameters,self):
-				return self.parameters*parameters[self.slices]
+
+			if self.method in ['bounded']:
+				def func(parameters):
+					return self.parameters*bound(parameters[self.slices])
+
+				def constraint(parameters):
+					return 0					
+
+			else:
+				def func(parameters):
+					return self.parameters*parameters[self.slices]
+			
+				def constraint(parameters):
+					return 0
+
 		else:
-			def func(parameters,self):
+			def func(parameters):
 				return self.parameters*self.data[self.slices]
 		
-		def constraint(parameters,self):
-			return 0
+			def constraint(parameters):
+				return 0
 		
-		if self.method in ['bounded']:
-			def func(parameters,self):
-				return self.parameters*bound(parameters[self.slices])
-
-		# if self.method in ['constrained']:
-		# 	def func(parameters,self):
-		# 		funcs = [cos,sin]
-		# 		parameters = bound(self,parameters)
-		# 		return {i: self.parameters*(
-		# 				   parameters[(0,*self.slices[i][1:])]*
-		# 				   funcs[self.slices[i][0]%len(funcs)](
-		# 				   pi*parameters[(1,*self.slices[i][1:])]))
-		# 				for i in self.slices}
-			
-		# 	def constraint(parameters,self):
-		# 		return kwargs['lambda']*sum(
-		# 			((parameters[kwargs['constant'][axis]['slices']] - kwargs['constant'][axis]['values'])**2).sum()
-		# 			for axis in kwargs['constant'])
-		
-		# elif self.method in ['unconstrained']:
-		# 	pass	
-		
-		# elif self.method in ['bounded']:
-		# 	def func(parameters,self):
-		# 		parameters = bound(self,parameters)
-		# 		return {i: parameters[self.slices[i]] for i in self.slices}
-		# 
-		# else:
-		# 	pass
-
-		# func = jit(func,self=self)
-		# constraint = jit(constraint,self=self)
-
-		func = partial(func,self=self)
-		constraint = partial(constraint,self=self)
 
 		self.func = func
 		self.constraint = constraint
@@ -486,48 +464,25 @@ class Parameters(System):
 			slices.append(slc)
 			indices.extend(index)
 
-		# slices = array([[*i] for i in slices])
-		# indices = array([indices.index(i) for i in range(len(indices))])
+		slices = [[*i] for i in slices]
+		indices = array([indices.index(i) for i in range(len(indices))])
 
 		# Set func and constraint
 		funcs = []
 		constraints = []
-		index = arange(len(self))
 		for parameter in self:
-			funcs.append(self[parameter])
-			constraints.append(self[parameter].constraints)
 
+			func = self[parameter]
+			funcs.append(func)
 
-		# funcs = [jit(func) for func in funcs]
-		# constraints = [jit(func) for func in constraints]
+			func = self[parameter].constraints
+			constraints.append(func)
 
-		# func = vfunc(func,in_axes=[0,0,None])
-		# def func(parameters,index=index,slices=slices,func=func):
-		# 	return concatenate(func(index,slices,parameters))
+		def func(parameters,slices=slices,funcs=funcs):
+			return concatenate([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)])
 
-		size = min(len(funcs),len(slices),len(indices))
-
-		slices = [[*i] for i in slices]
-		indices = array([indices.index(i) for i in range(len(indices))])
-		
-		def func(parameters):#,index=index,slices=slices,function=funcs):
-			
-			# return concatenate([switch(i,function,slicing(parameters,*s)) for i,s in zip(index,slices)])
-			# return concatenate([function[0](slicing(parameters,*s[0])) for i,s,f in zip(index,slices,function)])
-			return concatenate([funcs[i](slicing(parameters,*slices[i])) for i in range(size)])
-
-		def constraint(parameters):#,index=index,slices=slices,function=constraints):
-			# return addition(array([switch(i,function,slicing(parameters,*s)) for i,s in zip(index,slices)]))
-			# return addition(array([f(slicing(parameters,*s)) for i,s,f in zip(index,slices,constraints)]))
-			return addition(array([constraints[i](slicing(parameters,*slices[i])) for i in range(size)]))
- 
-
-		# func = jit(func,index=index,slices=slices,function=funcs)
-		# constraint = jit(constraint,index=index,slices=slices,function=constraints)
-
-		# func = jit(func)
-		# constraint = jit(constraint)
-
+		def constraint(parameters,slices=slices,funcs=constraints):
+			return addition(array([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)]))
 
 		self.indices = indices
 		self.slices = slices
@@ -539,11 +494,9 @@ class Parameters(System):
 		for parameter in self:
 			if self[parameter].category not in ['variable']:
 				continue
-			# parameter = self[parameter].data#()
 			parameter = self[parameter]()
-			if parameter is None:
-				continue
-			data.extend(parameter.reshape(-1))
+			data.extend(parameter)
+
 		data = array(data,dtype=self.dtype).reshape(-1) if data else None
 
 		# Set attributes

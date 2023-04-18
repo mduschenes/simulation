@@ -1,6 +1,6 @@
 {
-    "load": 1,
-    "dump": 0,
+    "load": 0,
+    "dump": 1,
     "plot": 1,
     "process": 1,
     "postprocess": 0,

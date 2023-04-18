@@ -1,8 +1,7 @@
 {
 "class":{
 	"model":"src.quantum.Unitary",
-	"parameters":"src.parameters.Parameters",
-	"label":"src.quantum.Gate",
+	"label":"src.quantum.Label",
 	"noise":"src.quantum.Noise",
 	"state":"src.quantum.State",
 	"callback":"src.quantum.Callback"
@@ -88,19 +87,101 @@
 	},
 "model":{
 	"data":{
-		"x":{"operator":["X"],"site":["i"],"string":"x","interaction":"i"},
-		"y":{"operator":["Y"],"site":["i"],"string":"y","interaction":"i"},
-		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
-		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
+		"x":{
+			"operator":["X"],"site":"i","string":"x",
+			"parameters": {
+				"string":"x",
+				"category":"variable",
+				"method":"bounded",
+				"locality":null,
+				"bounds":[-1,1],
+				"attributes":["M"],		
+				"data":null,
+				"parameters":1,
+				"seed":123,	
+				"random":"uniform",
+				"initialization":{
+					"method":"interpolation",
+					"interpolation":3,
+					"smoothness":2
+					},
+				"constant":{"-1":{"0":0,"-1":0}},
+				"constant":null,
+				"args":[],
+				"kwargs":{"sigmoid":1,"lambda":5e2}
+				}
+			},
+		"y":{"operator":["Y"],"site":"i","string":"y",
+			"parameters": {
+				"string":"y",
+				"category":"variable",
+				"method":"bounded",
+				"locality":null,
+				"bounds":[-1,1],
+				"attributes":["M"],		
+				"data":null,
+				"parameters":1,
+				"seed":123,	
+				"random":"uniform",
+				"initialization":{
+					"method":"interpolation",
+					"interpolation":3,
+					"smoothness":2
+					},
+				"constant":{"-1":{"0":0,"-1":0}},
+				"constant":null,
+				"args":[],
+				"kwargs":{"sigmoid":1,"lambda":5e2}
+				},
+			"parameters":null				
+			},
+		"z":{"operator":["Z"],"site":"i","string":"z",
+			"parameters": {
+				"string":"z",
+				"category":"constant",
+				"method":null,		
+				"group":[["z"]],
+				"data":[0,1,1,-1,-1,1],
+				"parameters":1e-2,
+				"bounds":[-1,1],
+				"locality":null,
+				"attributes":["M"],
+				"seed":123,
+				"random":null,
+				"initialization":null,
+				"args":[],
+				"kwargs":{}
+				},
+			"parameters":null				
+			},
+		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz",
+			"parameters": {
+				"string":"zz",
+				"category":"constant",
+				"method":null,		
+				"group":[["zz"]],
+				"data":[1,2,1,0.5,0.1,3,1,1,1,1],								
+				"parameters":1e-4,
+				"bounds":[-1,1],
+				"locality":null,
+				"attributes":["M"],
+				"seed":123,
+				"random":null,	
+				"initialization":null,
+				"args":[],
+				"kwargs":{}
+				},
+			"parameters":null								
+			}
 		},
-	"N":2,
+	"N":4,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":100,
+	"M":500,
 	"T":null,
-	"tau":50e0,
+	"tau":1,
 	"P":2,
 	"space":"spin",
 	"time":"linear",
@@ -125,7 +206,7 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":5,
+	"iterations":20,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
@@ -163,13 +244,13 @@
 			"iteration.max":[],
 			"iteration.min":[],
 			"grad.norm":[],"search.norm":[],			
-			"variables":[],"variables.relative":[],"variables.relative.mean":[],
+			"variables":true,"variables.relative":true,"variables.relative.mean":true,
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
 			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":true,"fisher.eigenvalues":true,
-			"hessian.rank":true,"fisher.rank":true,
+			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
+			"hessian.rank":false,"fisher.rank":false,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],"instance":[],
@@ -184,11 +265,8 @@
 		"xy": {
 			"string":"xy",
 			"category":"variable",
-			"method":null,
-			"group":[["y_2","y_1","y_3"],["y_0"],["x_1","x_3"],["x_2","x_0"]],
+			"method":"bounded",
 			"group":[["x"],["y"]],
-			"locality":["shared",null,"shared",null],
-			"locality":"shared",
 			"locality":null,
 			"bounds":[-1,1],
 			"attributes":["M"],		
@@ -202,6 +280,7 @@
 				"smoothness":2
 				},
 			"constant":{"-1":{"0":0,"-1":0}},
+			"constant":null,
 			"args":[],
 			"kwargs":{"sigmoid":1,"lambda":5e2}
 			},			
@@ -218,7 +297,6 @@
 			"seed":123,
 			"random":null,
 			"initialization":null,
-			"initialization":"zero",			
 			"args":[],
 			"kwargs":{}
 			},				
@@ -235,14 +313,13 @@
 			"seed":123,
 			"random":null,	
 			"initialization":null,
-			"initialization":"zero",
 			"args":[],
 			"kwargs":{}
 			}
 		}
 	},
 "label": {
-	"operator":"X.Y",
+	"operator":"Z.Z.Z",
 	"site":null,
 	"string":"U",
 	"interaction":"i...j",
