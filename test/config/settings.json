@@ -1,6 +1,7 @@
 {
 "class":{
 	"model":"src.quantum.Unitary",
+	"parameters":"src.parameters.Parameters",
 	"label":"src.quantum.Label",
 	"noise":"src.quantum.Noise",
 	"state":"src.quantum.State",
@@ -19,162 +20,18 @@
 	"index":null
 	},
 "permutations":{
-	"permutations":{	
-
-		"model.N":[1],		
-		"model.M":[2,4,6,8],
-		"model.P":[1],
-		"model.tau":[1],
-		"model.T": [null],
-
-		"noise.parameters":[1e6],
-		"noise.initialization":["random"],
-
-		"system.unit":[1e6],
-		"parameters.xy.parameters":[1],
-		"parameters.z.parameters":[1e-2],
-		"parameters.zz.parameters":[1e-4],
-		"parameters.xy.kwargs.lambda":[0],		
-		"label.string":["pauli"],
-		"label.random":["Z"],
-		"label.parameters":[0.25],
-		"noise.parameters":[null],
-		"state.parameters":[null],
-
-
-		"optimize.iterations":[100],
-		"optimize.optimizer":["cg"],
-		"optimize.metric":["real"],
-		"optimize.search.alpha":["line_search"],
-		"optimize.search.beta":["hestenes_stiefel"],
-
-		"parameters.xy.method":["bound"],
-		"parameters.xy.kwargs.lambda":[0],
-
-		"jobs.job.cwd":["check"],
-		"jobs.postprocess.cwd":["check"],		
-	
-		"jobs.job.device":["slurm"],
-		"jobs.postprocess.device":["slurm"],
-		"jobs.job.process":["array"],
-		"jobs.postprocess.process":[null],
-		"jobs.job.processes":[1],
-		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[1],
-		"jobs.postprocess.pool":[1],
-		"jobs.job.execute":[1],	
-		"jobs.postprocess.execute":[1],	
-		"jobs.job.resume":[null],	
-		"jobs.postprocess.resume":[null],			
-		"jobs.job.verbose":[1],	
-		"jobs.postprocess.verbose":[1],	
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["1:00:00"],
-		"jobs.postprocess.patterns.time":["1:00:00"],
-		"jobs.job.patterns.mem":["16GB"],
-		"jobs.postprocess.patterns.mem":["16GB"],
-		"jobs.job.patterns.cpus-per-task":[1],
-		"jobs.job.patterns.account":[null],
-		"jobs.postprocess.patterns.cpus-per-task":[1]
-
-		},
+	"permutations":{},
 	"groups":null,
 	"index":null
 	},
 "model":{
 	"data":{
-		"x":{
-			"operator":["X"],"site":"i","string":"x",
-			"parameters": {
-				"string":"x",
-				"category":"variable",
-				"method":"bounded",
-				"locality":null,
-				"bounds":[-1,1],
-				"attributes":["M"],		
-				"data":null,
-				"parameters":1,
-				"seed":123,	
-				"random":"uniform",
-				"initialization":{
-					"method":"interpolation",
-					"interpolation":3,
-					"smoothness":2
-					},
-				"constant":{"-1":{"0":0,"-1":0}},
-				"constant":null,
-				"args":[],
-				"kwargs":{"sigmoid":1,"lambda":5e2}
-				}
-			},
-		"y":{"operator":["Y"],"site":"i","string":"y",
-			"parameters": {
-				"string":"y",
-				"category":"variable",
-				"method":"bounded",
-				"locality":null,
-				"bounds":[-1,1],
-				"attributes":["M"],		
-				"data":null,
-				"parameters":1,
-				"seed":123,	
-				"random":"uniform",
-				"initialization":{
-					"method":"interpolation",
-					"interpolation":3,
-					"smoothness":2
-					},
-				"constant":{"-1":{"0":0,"-1":0}},
-				"constant":null,
-				"args":[],
-				"kwargs":{"sigmoid":1,"lambda":5e2}
-				},
-			"parameters":null				
-			},
-		"z":{"operator":["Z"],"site":"i","string":"z",
-			"parameters": {
-				"string":"z",
-				"category":"constant",
-				"method":null,		
-				"group":[["z"]],
-				"data":[0,1,1,-1,-1,1],
-				"parameters":1e-2,
-				"bounds":[-1,1],
-				"locality":null,
-				"attributes":["M"],
-				"seed":123,
-				"random":null,
-				"initialization":null,
-				"args":[],
-				"kwargs":{}
-				},
-			"parameters":null				
-			},
-		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz",
-			"parameters": {
-				"string":"zz",
-				"category":"constant",
-				"method":null,		
-				"group":[["zz"]],
-				"data":[1,2,1,0.5,0.1,3,1,1,1,1],								
-				"parameters":1e-4,
-				"bounds":[-1,1],
-				"locality":null,
-				"attributes":["M"],
-				"seed":123,
-				"random":null,	
-				"initialization":null,
-				"args":[],
-				"kwargs":{}
-				},
-			"parameters":null								
-			}
+		"x":{"operator":["X"],"site":"i","string":"x","parameters":null},
+		"y":{"operator":["Y"],"site":"i","string":"y","parameters":null},
+		"z":{"operator":["Z"],"site":"i","string":"z","parameters":null},
+		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz","parameters":null}
 		},
-	"N":4,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -189,7 +46,6 @@
 	},
 "system":{
 	"dtype":"complex256",
-	"dtype":"complex",
 	"format":"array",
 	"device":"cpu",
 	"backend":"np",
@@ -206,19 +62,19 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":20,
+	"iterations":100,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
 	"eps":{"value":1e-16,"grad":1e-18,"value.difference":1e-18,"grad.difference":1e-18,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
-	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":100,"alpha":0,"beta":0},
+	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":10,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
 	"kwargs":{"noise":{"parameters":1e-3}},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
-	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
+	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":10},
 	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"do":{
 		"parameters":true,
@@ -290,7 +146,7 @@
 			"method":null,		
 			"group":[["z"]],
 			"data":[0,1,1,-1,-1,1],
-			"parameters":1e-2,
+			"parameters":1,
 			"bounds":[-1,1],
 			"locality":null,
 			"attributes":["M"],
@@ -305,8 +161,8 @@
 			"category":"constant",
 			"method":null,		
 			"group":[["zz"]],
-			"data":[1,2,1,0.5,0.1,3,1,1,1,1],								
-			"parameters":1e-4,
+			"data":[1,1,1,1,1,1,1,1],								
+			"parameters":1,
 			"bounds":[-1,1],
 			"locality":null,
 			"attributes":["M"],
@@ -319,7 +175,7 @@
 		}
 	},
 "label": {
-	"operator":"Z.Z.Z",
+	"operator":"I",
 	"site":null,
 	"string":"U",
 	"interaction":"i...j",
