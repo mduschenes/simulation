@@ -95,6 +95,7 @@ def config(name=None,conf=None,**kwargs):
 					prop = 'args'
 					config[section][prop] = '(%s)'%(','.join([
 						'"%s"'%(path),
+						# '"%s"'%('"a"'),
 						*(config[section][prop][1:-1].split(',')[1:] 
 						if not os.path.exists(path) else ['"a"'])]
 						))
@@ -135,7 +136,6 @@ def config(name=None,conf=None,**kwargs):
 					if not config[section][prop]:
 						config.pop(section);
 						break
-
 
 			with open(conf, 'w') as configfile:
 				config.write(configfile)

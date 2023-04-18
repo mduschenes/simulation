@@ -24,42 +24,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null,
-                            "instance": null
-                        },
-                        "include":["M"],
-                        "legend": {
-                            "label":{},
-                            "exclude":["M","instance"]
-                        },                        
-                        "scinotation": {
-                            "scilimits": [
-                                0,
-                                4
-                            ],
-                            "decimals": 0,
-                            "one": false
-                        }
-                    },
-                    "alpha":0.3,
-                    "marker": "o",
-                    "markersize": 12,
-                    "linestyle": "--",
-                    "linewidth": 4,
-                    "elinewidth": 2,
-                    "capsize": 3,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}
-                },
-                {
-                    "x": "iteration",
-                    "y": "objective",
-                    "label": {
-                        "label": {
-                            "N": null,
-                            "parameters.xy.method": null,
-                            "M": null,
-                            "noise.scale": null
+                            "noise.parameters": null
                         },
                         "legend": {
                             "label":{"instance": "\\textrm{Avg}"},
@@ -93,7 +58,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null
+                            "noise.parameters": null
                             },
                         "legend": {
                             "label":{},
@@ -274,7 +239,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null
+                            "noise.parameters": null
                         },
                         "scinotation": {
                             "scilimits": [
@@ -304,7 +269,7 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
-                        "noise.scale": null
+                        "noise.parameters": null
                     },
                     "alpha": 0.5,
                     "color":{"@M@":"viridis"},
@@ -481,7 +446,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null
+                            "noise.parameters": null
                         },
                         "scinotation": {
                             "scilimits": [
@@ -511,7 +476,7 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
-                        "noise.scale": null
+                        "noise.parameters": null
                     },
                     "alpha": 0.5,
                     "color":{"@M@":"viridis"},
@@ -687,9 +652,9 @@
                         "label": {
                             "N": null,
                             "parameters.xy.method": null,
-                            "tau.noise.parameters": null,
-                            "T.noise.parameters": null,
-                            "noise.parameters": null
+                            "tau.noise.scale": null,
+                            "T.noise.scale": null,
+                            "noise.scale": null
                         },
                         "scinotation": {
                             "scilimits": [
@@ -706,8 +671,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@tau.noise.parameters@":"viridis"},
-                    "ecolor":{"@tau.noise.parameters@":"viridis"}                    
+                    "color":{"@tau.noise.scale@":"viridis"},
+                    "ecolor":{"@tau.noise.scale@":"viridis"}                    
                 }
             ],
             "fill_between": [
@@ -718,11 +683,11 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "tau": null,
-                        "noise.parameters": null
+                        "noise.scale": null
                     },
                     "alpha": 0.5,
-                    "color":{"@tau.noise.parameters@":"viridis"},
-                    "ecolor":{"@tau.noise.parameters@":"viridis"}                    
+                    "color":{"@tau.noise.scale@":"viridis"},
+                    "ecolor":{"@tau.noise.scale@":"viridis"}                    
                 }
             ],
             "set_ylabel": {
@@ -896,7 +861,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null
+                            "noise.parameters": null
                         },
                         "scinotation": {
                             "scilimits": [
@@ -935,7 +900,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null
+                            "noise.parameters": null
                         },
                         "scinotation": {
                             "scilimits": [
@@ -1129,7 +1094,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null
+                            "noise.parameters": null
                         },
                         "scinotation": {
                             "scilimits": [
@@ -1168,7 +1133,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null
+                            "noise.parameters": null
                         },
                         "scinotation": {
                             "scilimits": [
@@ -1337,7 +1302,7 @@
             }
         }
     },
-    "noise.scale.objective.M": {
+    "noise.parameters.objective.M": {
         "fig": {
             "set_size_inches": {
                 "w": 24,
@@ -1355,7 +1320,7 @@
         "ax": {
             "errorbar": [
                 {
-                    "x": "noise.scale",
+                    "x": "noise.parameters",
                     "y": "objective",
                     "label": {
                         "label": {
@@ -1383,7 +1348,7 @@
                     "ecolor":{"@M@":"viridis"}                    
                 },
                 {
-                    "x": "noise.scale",
+                    "x": "noise.parameters",
                     "y": "objective.ideal.state",
                     "label": {
                         "label": {
@@ -1591,7 +1556,7 @@
             }
         }
     },
-    "noise.scale.objective.diff.M": {
+    "noise.parameters.objective.diff.M": {
         "fig": {
             "set_size_inches": {
                 "w": 18,
@@ -1609,7 +1574,7 @@
         "ax": {
             "errorbar": [
                 {
-                    "x": "noise.scale",
+                    "x": "noise.parameters",
                     "y": "objective.diff.state",
                     "label": {
                         "N": null,
@@ -1789,7 +1754,7 @@
             }
         }
     },
-    "noise.parameters.objective.tau": {
+    "noise.scale.objective.tau": {
         "fig": {
             "set_size_inches": {
                 "w": 28,
@@ -1807,7 +1772,7 @@
         "ax": {
             "errorbar": [
                 {
-                    "x": "noise.parameters",
+                    "x": "noise.scale",
                     "y": "objective",
                     "label": {
                         "N": null,
@@ -1989,7 +1954,7 @@
             }
         }
     },
-    "noise.parameters.objective.diff.tau": {
+    "noise.scale.objective.diff.tau": {
         "fig": {
             "set_size_inches": {
                 "w": 18,
@@ -2007,7 +1972,7 @@
         "ax": {
             "errorbar": [
                 {
-                    "x": "noise.parameters",
+                    "x": "noise.scale",
                     "y": "objective.diff.state",
                     "label": {
                         "N": null,
@@ -2188,7 +2153,7 @@
             }
         }
     },
-    "M.objective.noise.scale": {
+    "M.objective.noise.parameters": {
         "fig": {
             "set_size_inches": {
                 "w": 24,
@@ -2211,7 +2176,7 @@
                     "label": {
                         "N": null,
                         "parameters.xy.method": null,
-                        "noise.scale": null,
+                        "noise.parameters": null,
                         "iteration": "@iteration.min@"
                     },
                     "alpha": 0.8,
@@ -2221,12 +2186,12 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@noise.scale@":"viridis"},
-                    "ecolor":{"@noise.scale@":"viridis"}                    
+                    "color":{"@noise.parameters@":"viridis"},
+                    "ecolor":{"@noise.parameters@":"viridis"}                    
                 }
             ],
             "set_colorbar": {
-                "values": "@noise.scale@",
+                "values": "@noise.parameters@",
                 "colors": "viridis",
                 "size": "3%",
                 "pad": 0.1,
@@ -2234,7 +2199,7 @@
                     "value": "linear"
                 },
                 "set_label": {
-                    "label": "noise.scale",
+                    "label": "noise.parameters",
                     "labelpad": 10,
                     "size": 30
                 },
@@ -2427,7 +2392,7 @@
                 "label": {
                     "N": null,
                     "parameters.xy.method": null,
-                    "noise.scale": null,
+                    "noise.parameters": null,
                     "iteration": "@iteration.min@"
                 },
                 "marker": "o",
@@ -2436,8 +2401,8 @@
                 "linestyle": "-",
                 "elinewidth": 2,
                 "capsize": 3,
-                "color":{"@noise.scale@":"viridis"},
-                "ecolor":{"@noise.scale@":"viridis"}                
+                "color":{"@noise.parameters@":"viridis"},
+                "ecolor":{"@noise.parameters@":"viridis"}                
             }],
             "legend": {
                 "title_fontsize": 20,
@@ -2606,7 +2571,7 @@
                 "label": {
                     "N": null,
                     "parameters.xy.method": null,
-                    "noise.scale": null,
+                    "noise.parameters": null,
                     "iteration": "@iteration.min@"
                 },
                 "marker": "o",
@@ -2615,8 +2580,8 @@
                 "linestyle": "-",
                 "elinewidth": 2,
                 "capsize": 3,
-                "color":{"@noise.scale@":"viridis"},
-                "ecolor":{"@noise.scale@":"viridis"}
+                "color":{"@noise.parameters@":"viridis"},
+                "ecolor":{"@noise.parameters@":"viridis"}
             }],
             "legend": {
                 "title_fontsize": 20,
@@ -2721,7 +2686,7 @@
             }
         }
     },
-    "tau.objective.noise.parameters": {
+    "tau.objective.noise.scale": {
         "fig": {
             "set_size_inches": {
                 "w": 18,
@@ -2739,14 +2704,14 @@
         "ax": {
             "errorbar": [
                 {
-                    "x": "tau.noise.parameters",
+                    "x": "tau.noise.scale",
                     "y": "objective",
                     "label": {
                         "N": null,
                         "parameters.xy.method": null,
-                        "noise.parameters": null,
-                        "T.noise.parameters": null,
-                        "parameters.zz.scale": null,
+                        "noise.scale": null,
+                        "T.noise.scale": null,
+                        "parameters.zz.parameters": null,
                         "iteration": "@iteration.min@"
                     },
                     "alpha": 0.8,
@@ -2756,8 +2721,8 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@noise.parameters@":"viridis"},
-                    "ecolor":{"@noise.parameters@":"viridis"}                    
+                    "color":{"@noise.scale@":"viridis"},
+                    "ecolor":{"@noise.scale@":"viridis"}                    
                 }
             ],
             "set_ylabel": {
@@ -2943,7 +2908,7 @@
                 "label": {
                     "N": null,
                     "parameters.xy.method": null,
-                    "noise.parameters": null,
+                    "noise.scale": null,
                     "iteration": "@iteration.min@"
                 },
                 "marker": "o",
@@ -2952,8 +2917,8 @@
                 "linestyle": "-",
                 "elinewidth": 2,
                 "capsize": 3,
-                "color":{"@noise.parameters@":"viridis"},
-                "ecolor":{"@noise.parameters@":"viridis"}                
+                "color":{"@noise.scale@":"viridis"},
+                "ecolor":{"@noise.scale@":"viridis"}                
             }],
             "legend": {
                 "title_fontsize": 20,
@@ -3093,7 +3058,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null
+                            "noise.parameters": null
                         },
                         "shape": {
                             "shape": {
@@ -3316,7 +3281,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null,
+                            "noise.parameters": null,
                             "iteration": "$0$",
                             "$\\textrm{Iteration}$": "\\textrm{Initial},~\\textrm{Final}"
                         },
@@ -3377,7 +3342,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null,
+                            "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
                         "legend": {
@@ -3576,7 +3541,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "noise.scale": null,
+                            "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
                         "legend": {
@@ -3774,7 +3739,7 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
-                        "noise.scale": null,
+                        "noise.parameters": null,
                         "iteration": "@iteration.max@",
                         "rank": "hessian.rank"
                     },
@@ -3941,7 +3906,7 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
-                        "noise.scale": null,
+                        "noise.parameters": null,
                         "iteration": "@iteration.max@",
                         "rank": "fisher.rank"
                     },
@@ -4109,7 +4074,7 @@
                         "parameters.xy.method": null,
                         "T": null,
                         "tau": null,
-                        "noise.parameters": null,
+                        "noise.scale": null,
                         "iteration": "@iteration.max@",
                         "rank": "hessian.rank"
                     },

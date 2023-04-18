@@ -514,7 +514,6 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 		returns (bool,str): Returns of search, 
 			None returns item, True returns index,shape,item, False returns None, 
 			allowed strings (.delimited) for combinations of ['index','shape','item']
-		find (iterable): 
 		types (type,tuple[type]): Allowed types to be searched
 		exceptions (type,tuple[type]): Disallowed types to be searched
 	Yields:
@@ -569,15 +568,12 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 			yield from search(item,index=[*index,i],shape=[*shape,size],
 				returns=returns,items=items,types=types,exceptions=exceptions)
 
-def indexer(item,iterable,returns=None,types=(list,),exceptions=()):
+def find(item,iterable,types=(list,),exceptions=()):
 	'''
 	Search for index of item in iterable
 	Args:
 		item (object): Item to search
 		iterable (iterable): Nested iterable
-		returns (bool): Returns of search, 
-			None or False returns index,shape,item, True yields item
-		yielder (bool): Yield all indices of items, otherwise return first
 		types (type,tuple[type]): Allowed types to be searched
 		exceptions (type,tuple[type]): Disallowed types to be searched
 	Returns:
@@ -585,13 +581,28 @@ def indexer(item,iterable,returns=None,types=(list,),exceptions=()):
 	'''	
 	for index,shape,element in search(iterable,returns=True,types=types,exceptions=exceptions):
 		if element == item:
-			if returns:
-				yield index
-			else:
-				return index
+			return index
 	return None
 
-def insert(index,item,iterable,types=(list,),exceptions=()):
+def indexer(index,iterable,types=(list,),exceptions=()):
+	'''
+	Get item at index in iterable
+	Args:
+		index (iterable[int]): Index of element
+		iterable (iterable): Nested iterable
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched
+	Returns:
+		item (object): Item at index
+	'''	
+	item = iterable
+	for i in index:
+		item = item[i]
+
+	return item
+
+
+def inserter(index,item,iterable,types=(list,),exceptions=()):
 	'''
 	Insert item at index into iterable
 	Args:

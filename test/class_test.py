@@ -3,7 +3,7 @@
 # Import python modules
 import pytest
 import os,sys
-import itertools,functools
+import itertools,functools,time
 from copy import deepcopy as deepcopy
 	
 # Import User modules
@@ -13,19 +13,100 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid,pi
-from src.utils import norm,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
+from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid
+from src.utils import norm,conj,dagger,dot,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
+from src.utils import pi,delim,arrays,scalars,namespace
 from src.iterables import getter,setter
 from src.io import load,dump,exists
 
-# Logging
-# from src.system import Logger
-# name = __name__
-# path = os.getcwd()
-# file = 'logging.conf'
-# conf = os.path.join(path,file)
-# file = None #'log.log'
-# logger = Logger(name,conf,file=file)
+from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise
+
+def test_object(path,tol):
+	bases = {'Pauli':Pauli,'State':State,'Gate':Gate,'Haar':Haar,'Noise':Noise}
+	arguments = {
+		'Pauli': {
+			'basis':'Pauli',
+			'kwargs':dict(
+				data=delim.join(['X','Y','Z']),operator=None,site=[0,1,2],string='XYZ',
+				kwargs=dict(N=3,D=2,ndim=2,parameters=None,verbose=True),
+			),
+		},
+		'Gate': {
+			'basis':'Gate',
+			'kwargs':dict(
+				data=delim.join(['I','CNOT']),operator=None,site=[0,1,2],string='CX',
+				kwargs=dict(N=3,D=2,ndim=2,verbose=True),
+			),
+		},
+		'Haar':{
+			'basis':'Haar',
+			'kwargs': dict(
+				data=delim.join(['haar']),operator=None,site=[0,1,2],string='U',
+				kwargs=dict(N=3,D=2,ndim=2,seed=1,reset=1,verbose=True),
+			),
+		},
+		'Psi':{
+			'basis':'State',
+			'kwargs': dict(
+				data=delim.join(['minus']),operator=None,site=[0,1],string='-',
+				kwargs=dict(N=2,D=2,ndim=1,seed=1,reset=1,verbose=True),
+			),
+		},
+		'Noise':{
+			'basis':'Noise',
+			'kwargs': dict(
+				data=delim.join(['phase']),operator=None,site=[0,1],string='K',
+				kwargs=dict(N=2,D=2,ndim=3,parameters=0.25,verbose=True),
+			),
+		},
+	}
+
+	for name in arguments:
+	
+		base = bases[arguments[name]['basis']]
+		args = arguments[name]['kwargs']
+		kwargs = args.pop('kwargs',{})
+
+		operator = Operator(**args,**kwargs)
+
+		assert operator.string == args['string'], "Operator.string = %s != %s"%(operator.string,args['string'])
+		assert ((arguments[name]['basis'] in ['Haar','State','Gate','Noise']) or allclose(operator(operator.parameters),
+			tensorprod([base.basis[i]() for i in args['data'].split(delim)]))), "Operator.data != %r"%(operator(operator.parameters))
+		assert tuple(operator.operator) == tuple(args['data'].split(delim))
+
+		for attr in kwargs:
+			assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
+
+		for attr in operator:
+			print(attr,operator[attr])
+		print()
+
+
+		other = base(**args,**kwargs)
+
+		for attr in other:
+			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not isinstance(operator[attr],arrays) else allclose(operator[attr],other[attr])), "Incorrect reinitialization %s %r != %r"%(attr,operator[attr],other[attr])
+		assert allclose(operator(operator.parameters),other(other.parameters))
+		
+		args.update(dict(data=None))
+		operator = base(**args,**kwargs)
+		assert operator(operator.parameters) is None
+
+		args.update(dict(data=None,operator=None))
+		operator = base(**args,**kwargs)
+		assert operator(operator.parameters) is None
+		
+		print()
+
+	operator = Operator(verbose=True)
+	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.parameters,operator)
+
+	operator = Operator('I',N=3,verbose=True)
+	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.parameters,operator.shape)
+
+
+	return
+
 
 def test_model(path,tol):
 
@@ -34,14 +115,79 @@ def test_model(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
+
+	model = cls.pop('model')
+	kwargs = {
+		**hyperparameters.get('model',{}),
+		**{attr:hyperparameters[attr] for attr in ['parameters','state','noise','system']}
+		}
+
+	model = model(**kwargs)
+
+	parameters = model.parameters()
+
+	t = time.time()
+	parameters = rand(shape=(len(model),model.M),random='normal',bounds=[-1,1],key=1234)
+	print(parameters.shape)	
+	obj = model(parameters)
+	print(time.time()-t)
+
+	t = time.time()
+	parameters = rand(shape=(len(model),model.M),random='normal',bounds=[-1,1],key=1234)
+	print(parameters.shape)
+	obj = model(parameters)
+	print(time.time()-t)
+
+
+	I = model.identity()
+	objH = model(parameters,conj=True)
+	objD = dagger(model(parameters))
+
+	objobjH = dot(obj,objH)
+	objHobj = dot(objH,obj)
+	objobjD = dot(obj,objD)
+	objDobj = dot(objD,obj)
+
+	assert allclose(objobjH,I), "Incorrect unitarity model() * model(conj=True) != I"
+	assert allclose(objHobj,I), "Incorrect unitarity model(conj=True) * model() != I"
+	assert allclose(objobjD,I), "Incorrect unitarity model() * dagger(model()) != I"
+	assert allclose(objDobj,I), "Incorrect unitarity dagger(model()) * model() != I"
+
+	assert allclose(objH,objD), "Incorrect model(conj=True) != conj(model())"
+
+	print('All Passed')
+	return
+	m,d,p = model.M,len(model),model.P
+	identity = model.identity()
+	parameters = rand(shape=model.parameters.shape,random='normal',bounds=[-1,1],key=1234)
+
+	out = model(parameters)
+
+	slices = [slice(None,None,1),slice(None,None,-1)][:p]
+	data = [i for s in slices for i in model.data[s]]
+
+	slices = array([i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in list(range(d))[s]])
+	parameters = (model.coefficients*model.parameters(parameters))[slices].T.ravel()
+
+	tmp = model.identity()
+	for i in range(m*d*p):
+		f = data[i%(d*p)]
+		print(i,data[i%(d*p)].string)
+		tmp = dot(f(parameters[i]),tmp)
+
+	assert allclose(out,tmp), "Incorrect model() from data()"
+
+
+	tmp = model.identity()
+	for i in range(m*d*p):
+		f = lambda x: cos(pi*x)*identity + -1j*sin(pi*x)*data[i%(d*p)].data
+		print(i,data[i%(d*p)].string)
+		tmp = dot(f(parameters[i]),tmp)
+
+	assert allclose(out,tmp), "Incorrect model() from func()"
+
 
 	return 
 
@@ -52,8 +198,15 @@ def test_parameters(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	cls = load(hyperparameters['class']['parameters'])
 
+	model = hyperparameters['model']
+	system = hyperparameters['system']
+
+
+	parameters = cls(**{**model,**hyperparameters.get('parameters',{}),**dict(system=system)})
+
+	return
 	model = cls(**hyperparameters['model'],
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
@@ -62,7 +215,7 @@ def test_parameters(path,tol):
 		system=hyperparameters['system'])
 
 	parameters = model.parameters()
-	variables = model.__parameters__(parameters)
+	variables = model.parameters(parameters)
 
 	print(model.data)
 	print(model.parameters)
@@ -427,15 +580,49 @@ def test_fisher(path,tol):
 	return
 
 
+def profile(func,*args,profile=True,**kwargs):
+	import cProfile, pstats
+	import snakeviz.cli
+	
+	if not profile:
+		func(*args,**kwargs)
+		return
+
+	sort = ['cumtime']
+	lines = 100
+	file = 'stats.profile'
+
+	profiler = cProfile.Profile()
+	profiler.enable()
+
+	func(*args,**kwargs)
+
+	profiler.disable()
+
+	stats = pstats.Stats(profiler).sort_stats(*sort)
+	stats.print_stats(lines)
+	stats.dump_stats(filename=file)
+
+	# snakeviz.cli.main([file])
+
+	return
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
-	test_parameters(path,tol)
+	# func = test_object
+	func = test_model
+	args = ()
+	kwargs = dict(path=path,tol=tol,profile=False)
+	profile(func,*args,**kwargs)
+
+	# test_object(path,tol)
+	# test_model(path,tol)
+	# test_parameters(path,tol)
 	# test_call(path,tol)
 	# test_data(path,tol)
 	# test_logger(path,tol)
 	# test_class(path,tol)
-	# test_model(path,tol)
 	# test_normalization(path,tol)
 	# test_fisher(path,tol)

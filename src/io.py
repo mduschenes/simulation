@@ -18,10 +18,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,is_array,is_ndarray,concatenate
+from src.utils import array,concatenate
 from src.utils import to_repr,to_eval
 from src.utils import returnargs
-from src.utils import scalars,nan,delim
+from src.utils import arrays,scalars,nan,delim
 
 # Logging
 from src.logger	import Logger
@@ -459,7 +459,7 @@ def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 		obj (object): Serialized object
 	'''	
 
-	if is_array(obj) or is_ndarray(obj):
+	if isinstance(obj,arrays):
 		obj = obj.tolist()
 	return obj
 
@@ -694,7 +694,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
 			def convert(path,data):
 				for attr in data:
-					if any(is_ndarray(i) for i in data[attr]):
+					if any(isinstance(i,arrays) for i in data[attr]):
 						data[attr] = [tuple(i) for i in data[attr]]
 				size = max([len(data[attr]) for attr in data],default=0)
 				data['__path__'] = [path]*size
