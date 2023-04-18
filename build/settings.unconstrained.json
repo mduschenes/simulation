@@ -14,9 +14,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":12931,
-	"size":3,
-	"reset":131,
+	"seed":6237131,
+	"size":20,
+	"reset":923189,
 	"index":null
 	},
 "permutations":{
@@ -24,6 +24,7 @@
 	
 		"model.N":[4],		
 		"model.M":[5,10,20,50,100,200,500,1000,2000,5000],
+		"model.M":[1000,2000,5000],
 		"model.tau":[240],
 
 		"system.unit":[1e6],
@@ -34,19 +35,19 @@
 		"noise.scale":[null],
 		"state.scale":[null],
 
-		"parameters.xy.method":["unconstrained"],
+		"parameters.xy.method":[null],
 		"parameters.xy.locality":[null],
 		"parameters.xy.bounds":[[-1,1]],
 		"parameters.xy.constant":[null],					
 
-		"optimize.iterations":[[0,2000]],
+		"optimize.iterations":[[0,1000]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/unconstrained.ad.4.256"],
-		"jobs.postprocess.cwd":["gobi/unconstrained.ad.4.256"],
+		"jobs.job.cwd":["gobi/unconstrained.ad.4.256.1000.5000"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.ad.4.256.1000.5000"],
 		
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -65,108 +66,26 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["12:00:00"],
+		"jobs.job.patterns.time":["20:00:00"],
 		"jobs.postprocess.patterns.time":["6:00:00"],
 		"jobs.job.patterns.mem":["64GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
-		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"],
 		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"]
+		"jobs.postprocess.patterns.account":["def-raymond"],
+		"jobs.job.patterns.account":["def-carrasqu"],
+		"jobs.postprocess.patterns.account":["def-carrasqu"]
 		},
 	"groups":null,
 	"index":null
 	},
 "model":{
 	"data":{
-		"x":{
-			"operator":["X"],"site":"i","string":"x",
-			"parameters": {
-				"string":"x",
-				"category":"variable",
-				"method":"bounded",
-				"locality":null,
-				"bounds":[-1,1],
-				"attributes":["M"],		
-				"data":null,
-				"parameters":1,
-				"seed":null,	
-				"random":"uniform",
-				"initialization":{
-					"method":"interpolation",
-					"interpolation":3,
-					"smoothness":2
-					},
-				"constant":{"-1":{"0":0,"-1":0}},
-				"constant":null,
-				"args":[],
-				"kwargs":{"sigmoid":1,"lambda":5e2}
-				}
-			},
-		"y":{"operator":["Y"],"site":"i","string":"y",
-			"parameters": {
-				"string":"y",
-				"category":"variable",
-				"method":"bounded",
-				"locality":null,
-				"bounds":[-1,1],
-				"attributes":["M"],		
-				"data":null,
-				"parameters":1,
-				"seed":null,	
-				"random":"uniform",
-				"initialization":{
-					"method":"interpolation",
-					"interpolation":3,
-					"smoothness":2
-					},
-				"constant":{"-1":{"0":0,"-1":0}},
-				"constant":null,
-				"args":[],
-				"kwargs":{"sigmoid":1,"lambda":5e2}
-				},
-			"parameters":null				
-			},
-		"z":{"operator":["Z"],"site":"i","string":"z",
-			"parameters": {
-				"string":"z",
-				"category":"constant",
-				"method":null,		
-				"group":[["z"]],
-				"data":[0,1,1,-1,-1,1],
-				"parameters":1e-2,
-				"bounds":[-1,1],
-				"locality":null,
-				"attributes":["M"],
-				"seed":null,	
-				"random":null,
-				"initialization":null,
-				"args":[],
-				"kwargs":{}
-				},
-			"parameters":null				
-			},
-		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz",
-			"parameters": {
-				"string":"zz",
-				"category":"constant",
-				"method":null,		
-				"group":[["zz"]],
-				"data":[1,2,1,0.5,0.1,3,1,1,1,1],								
-				"parameters":1e-4,
-				"bounds":[-1,1],
-				"locality":null,
-				"attributes":["M"],
-				"seed":null,	
-				"random":null,	
-				"initialization":null,
-				"args":[],
-				"kwargs":{}
-				},
-			"parameters":null								
-			}
+		"x":{"operator":["X"],"site":"i","string":"x","parameters":null},
+		"x":{"operator":["Y"],"site":"i","string":"y","parameters":null},
+		"x":{"operator":["Z"],"site":"i","string":"z","parameters":null},
+		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz","parameters":null}
 		},
 	"N":2,
 	"D":2,
@@ -312,11 +231,11 @@
 		}
 	},
 "label": {
-	"operator":"I",
+	"operator":"haar",
 	"site":null,
 	"string":"U",
 	"interaction":"i...j",
-	"parameters":0.5,
+	"parameters":1,
 	"ndim":2,
 	"seed":null	
 	},
