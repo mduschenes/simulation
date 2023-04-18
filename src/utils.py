@@ -4808,8 +4808,8 @@ def randomstring(K,N,D=2):
 	else:
 		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
 
-	alpha = jax.random.uniform(key,(K*N,d))
-	# alpha = np.random.uniform(size=(K*N,d))
+	# alpha = jax.random.uniform(key,(K*N,d))
+	alpha = np.random.uniform(size=(K*N,d))
 	
 	string = vtensordot(alpha,basis,1)
 	string = string.reshape((K,N,D,D))
@@ -4842,8 +4842,8 @@ def paulistring(string,N,K,D=2):
 	else:
 		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
 
-	alpha = jax.random.uniform(key,(K*N,d))
-	# alpha = np.random.uniform(size=(K*N,d))
+	# alpha = jax.random.uniform(key,(K*N,d))
+	alpha = np.random.uniform(size=(K*N,d))
 	
 	string = vtensordot(alpha,basis,1)
 	string = string.reshape((K,N,D,D))

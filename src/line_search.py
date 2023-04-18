@@ -41,6 +41,9 @@ def setitem(obj,index,item):
 	Returns:
 		obj (object): Object with set item at index
 	'''
+
+	# TODO merge indexing for different numpy backends (jax vs autograd)
+
 	obj[index] = item
 	# obj = obj.at[index].set(item)
 	return obj

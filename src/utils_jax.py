@@ -322,6 +322,8 @@ def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):
 		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
 	'''
 
+	# TODO merge vmap for different numpy backends (jax vs autograd)
+
 	func = jit(func,**kwargs)
 
 	vfunc = jax.vmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
@@ -354,6 +356,10 @@ def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):
 	Returns:
 		pfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
 	'''
+
+	# TODO merge pmap for different numpy backends (jax vs autograd)
+
+
 	func = jit(func,**kwargs)
 
 	pfunc = jax.pmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
@@ -417,12 +423,16 @@ def forloop(start,end,func,out):
 
 	# TODO merge forloop for different numpy backends (jax vs autograd)
 
-	if (end-start) < 1:
+	if (end-start) <= 0:
 		return out
-
 	return jax.lax.fori_loop(start,end,func,out)
+	
+	# if end <= start:
+	# 	step = -1
+	# else:
+	# 	step = 1
 
-	# for i in range(start,end):
+	# for i in range(start,end,step):
 	# 	out = func(i,out)
 	# return out
 
@@ -3166,6 +3176,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 
+
 	if wrapper is None:
 		@jit
 		def wrapper(out,*operands):
@@ -3503,8 +3514,8 @@ def slicing(a,start,size):
 
 	# TODO merge slicing for different numpy backends (jax vs autograd)
 
-	return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
-	# return a[start:start+size]
+	# return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
+	return a[start:start+size]
 
 
 def slice_size(*slices):
@@ -3975,8 +3986,6 @@ def gradient_expm(x,A,I):
 	Returns:
 		out (array): Gradient of matrix exponential of A of shape (m,n,n)
 	'''			
-
-	# TODO: Check jittable vmap of index dependent slices of x for faster gradient in terms of expm()
 
 	m = x.shape[0]
 	d,shape = A.shape[0],A.shape[1:]
