@@ -8,6 +8,7 @@ import scipy as sp
 import scipy.stats
 import scipy.special
 import pandas as pd
+from pandas.api.types import is_float_dtype
 from natsort import natsorted,realsorted
 from math import prod
 
@@ -19,7 +20,6 @@ for PATH in PATHS:
 
 from src.utils import argparser
 from src.utils import array,expand_dims,conditions
-from src.utils import asndarray,asscalar
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
@@ -865,11 +865,12 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 	functions = {}
 
-	dtype = {attr: 'float' for attr in data if pd.api.types.is_float_dtype(data[attr].dtype) }
+	dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype) }
 	data = data.astype(dtype)
 
 	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 
 				for attr in data}
+
 
 	for name in keys:
 

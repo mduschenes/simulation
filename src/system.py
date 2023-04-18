@@ -19,11 +19,11 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient
 from src.utils import array,arange,eye,rand,einsum,dot,prod
-from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt,is_array,datatype
+from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt,datatype
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
-from src.utils import itg,dbl,flt,delim,Null,null,scalars
+from src.utils import itg,dbl,flt,delim,Null,null,scalars,arrays
 
 from src.iterables import getter,setter
 from src.io import join,split,copy,rm,exists
@@ -41,7 +41,6 @@ class Dictionary(dict):
 		super().__init__(*args,**kwargs)
 		self.__dict__ = self
 		return
-
 
 class System(Dictionary):
 	'''
@@ -64,12 +63,12 @@ class System(Dictionary):
 
 		defaults = {
 			'string':__name__,
-			'dtype':'float',
+			'dtype':'complex',
 			'format':'array',
 			'device':'cpu',
 			'backend':None,
 			'architecture':None,
-			'unit':1,			
+			'unit':None,			
 			'seed':None,
 			'key':None,
 			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
@@ -167,150 +166,6 @@ class System(Dictionary):
 		msg = None
 		self.log(msg,verbose=verbose)
 		return
-
-
-class Object(System):
-	def __init__(self,data,shape,size=None,ndim=None,dims=None,system=None,**kwargs):
-		'''
-		Initialize data of attribute based on shape, with highest priority of arguments of: kwargs,args,data,system
-		Args:
-			data (dict,str,array,System): Data corresponding to class
-			shape (int,iterable[int]): Shape of each data
-			size (int,iterable[int]): Number of data
-			ndim (int): Number of dimensions of data
-			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
-			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
-			kwargs (dict): Additional keyword arguments
-		'''
-		defaults = {
-			'string':None,
-			'init':True,
-			'category':None,
-			'method':None,
-			'parameters':None,
-			'scale':1,
-			'samples':None,
-			'initialization':'random',
-			'random':'random',
-			'seed':None,
-			'bounds':[-1,1],
-		}
-
-		# Setup kwargs
-		setter(kwargs,dict(data=data,shape=shape,size=size,ndim=ndim,dims=dims,system=system),delimiter=delim,func=False)
-		setter(kwargs,data,delimiter=delim,func=False)
-		setter(kwargs,system,delimiter=delim,func=False)
-		setter(kwargs,defaults,delimiter=delim,func=False)
-		super().__init__(**kwargs)
-
-		# Ensure shape is iterable
-		if isinstance(self.shape,int):
-			self.shape = (self.shape,)
-
-		# Ensure size is iterable
-		if isinstance(self.size,int):
-			self.size = (self.size,)
-
-		# Dimension of data
-		self.ndim = len(self.shape) if (self.ndim is None) and (self.shape is not None) else self.ndim
-		self.length = len(self.size) if self.size is not None else None
-		self.n = min(self.shape)  if self.shape is not None else None
-
-		# Number of sites and dimension of sites
-		self.N,self.D = self.dims[:2] if self.dims is not None else [1,self.n]
-
-		# Set data
-		if (not self.init) or (self.shape is None) or (self.scale is None):
-			self.data = None
-		elif self.data is not None and not isinstance(self.data,(str,dict)):
-			self.data = array(self.data,dtype=self.dtype)
-
-		if is_array(self.data):
-			self.data = self.data
-			self.size = None
-		elif self.data is None:
-			self.data = self.data
-			self.size = None
-		else:
-			if isinstance(self.data,str):
-				self.string = self.data
-			self.__setup__(**kwargs)
-
-
-		# Set samples
-		if self.size is not None:
-			if not is_array(self.samples):
-				self.samples = rand(self.size,bounds=[0,1],seed=self.seed,dtype=datatype(self.dtype))
-				self.samples /= self.samples.sum()
-		else:
-			self.samples = None
-
-		if self.samples is not None:
-			if (self.data.ndim>=self.length) and all(self.data.shape[i] == self.size[i] for i in range(self.length)):
-				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.length]),)*2),self.data,self.samples)
-
-		try:
-			self.data = self(self.data)
-		except:
-			pass
-
-		return
-
-
-	def __call__(self,data=null):
-		'''
-		Class data
-		Args:
-			data (array): Data
-		Returns:
-			data (array): Data
-		'''
-		if not isinstance(data,Null):
-			self.data = data
-			if is_array(self.data):
-				self.shape = self.data.shape if self.data is not None else None
-				self.ndim = self.data.ndim if self.data is not None else None
-			elif isinstance(self.data,dict):
-				self.shape = tuple((max(i) for i in zip(*(self.data[i].shape for i in self.data if self.data[i]))))
-				self.ndim = max(self.data[i].ndim for i in self.data)
-			else:
-				self.shape = None
-				self.ndim = None
-		return self.data
-
-	def __iter__(self):
-		yield from self.data
-
-	def __getitem__(self,index):
-		return self.data[index]
-
-	def __setitem__(self,index,item):
-		self.data[index] = item
-		return
-
-	def __len__(self):
-		return len(self.data)
-
-	def __setup__(self,**kwargs):
-		'''
-		Setup attribute
-		Args:
-			kwargs (dict): Additional keyword arguments
-		'''
-
-		return
-
-
-	def info(self,verbose=None):
-		'''
-		Log class information
-		Args:
-			verbose (int,str): Verbosity of message			
-		'''
-		msg = '\n'.join(['%s : %s'%(attr,self[attr]) for attr in self])
-		self.log(msg,verbose=verbose)
-		return
-
 
 class Space(System):
 	'''
@@ -573,47 +428,50 @@ class Lattice(System):
 		'''
 		Get list of lists of sites of lattice
 		Args:
-			site (str,int): Type of sites, either int for unique site-length list of vertices, or string in allowed ['i','i,j','i<j']
+			site (str,int): Type of sites, either int for unique site-length list of vertices, or string in allowed ['i','i,j','ij','i<j','i...j']
 		Returns:
-			sites (list): List of site-length lists of lattice
+			sites (generator): Generator of site-length lists of lattice
 		'''
 
 		# Unique site-length lists if site is int
+		sites = None
 		if isinstance(site,(int,itg)):
 			k = site
 			conditions = None
 			sites = self.iterable(k,conditions)
 		elif isinstance(site,(str)):
 			if site in ['i']:
-				sites = [[i] for i in self.vertices]
-			elif site in ['i,j']:
-				sites = [[i,j] for i in self.vertices for j in self.vertices]
+				sites = ([i] for i in self.vertices)
+			elif site in ['i,j','ij','i...j']:
+				sites = ([i,j] for i in self.vertices for j in self.vertices)
 			elif site in ['i<j']:
 				k = 2
 				conditions = lambda i,k: all([i[j]<i[j+1] for j in range(k-1)])	
 				sites = self.iterable(k,conditions)
 			elif site in ['<ij>']:
 				if self.z > self.N:
-					sites = []
+					sites = ()
 				elif self.z > 0:
-					sites = [i for i in unique(
+					sites = (i for i in unique(
 						sort(
 							vstack([
 								repeat(arange(self.N),self.z,0),
 								self.nearestneighbours(r=1)[0].ravel()
 							]),
 						axis=0),
-						axis=1).T]
+						axis=1).T)
 				else:
-					sites = []
+					sites = ()
 
 			elif site in ['i...j']:
-				sites = [range(self.N) for i in range(self.N)]
+				sites = (range(self.N) for i in range(self.N))
 		else:
 			k = 2
 			conditions = None
 			sites = self.iterable(k,conditions)
-		sites = [list(map(int,i)) for i in sites]
+		if sites is None:
+			sites = ()
+		sites = (list(map(int,i)) for i in sites)
 		return sites
 
 
@@ -731,5 +589,5 @@ class Lattice(System):
 
 		default = lambda i,k: any([i[j] != i[l] for j in range(k) for l in range(k) if j!=l])
 		conditions = default if conditions is None else conditions
-		iterable =  [list(i) for i in itertools.product(self.vertices,repeat=k) if conditions(i,k)]
+		iterable =  (list(i) for i in itertools.product(self.vertices,repeat=k) if conditions(i,k))
 		return iterable

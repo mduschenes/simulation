@@ -402,11 +402,8 @@ def switch(index,funcs,*args):
 	Returns:
 		out (object): Return of function
 	'''	
-
-	# TODO merge switch for different numpy backends (jax vs autograd)
-
-	# return jax.lax.switch(index,funcs,*args)
-	return funcs[index](*args)
+	return jax.lax.switch(index,funcs,*args)
+	# return funcs[index](*args)
 
 # @partial(jit,static_argnums=(2,))	
 def forloop(start,end,func,out):	
@@ -420,19 +417,10 @@ def forloop(start,end,func,out):
 	Returns:
 		out (array): Return of loop
 	'''
-
-	# TODO merge forloop for different numpy backends (jax vs autograd)
-
 	# if (end-start) <= 0:
 	# 	return out
 	# return jax.lax.fori_loop(start,end,func,out)
-	
-	if end <= start:
-		step = -1
-	else:
-		step = 1
-
-	for i in range(start,end,step):
+	for i in range(start,end):
 		out = func(i,out)
 	return out
 
@@ -3175,7 +3163,6 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	operands = operands[:noperands]
 
 	isarray = all(isinstance(operand,arrays) for operand in operands)
-
 
 	if wrapper is None:
 		@jit

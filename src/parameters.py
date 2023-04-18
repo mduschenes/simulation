@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,functools
+import os,sys
 from copy import deepcopy
-from functools import partial
-import time
-from time import time as timer
+from functools import partial,wraps
+from math import prod
+
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -13,492 +13,549 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey,bound,nullbound,sin,cos,minimum,maximum,bound
-from src.utils import tensorprod,trace,asscalar,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,to_list
-from src.utils import slice_slice,datatype,returnargs,is_array
-from src.utils import pi,itg,scalars,delim
+from src.utils import jit,vfunc,switch,array,arange,bound
+from src.utils import concatenate,addition
+from src.utils import initialize,slicing,datatype
+from src.utils import pi,itg,scalars,delim,separ
 
 from src.iterables import indexer,inserter,setter,getter
 
-from src.system import System,Object
+from src.system import System
 from src.io import load,dump,join,split
 
 
-def _variables(hyperparameters,parameter,group):
-	'''
-	Get variables from parameters
-	Args:
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for variables
-		group (str): Parameter group for variables
-	Returns:
-		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
-	'''
+class Parameter(System):
 
-	kwargs = hyperparameters[parameter]['kwargs']
-	method = hyperparameters[parameter]['method']
-	index = hyperparameters[parameter]['group'].index(group)
-
-	if method in ['constrained'] and parameter in ['xy']:
-		scale = [hyperparameters[parameter]['scale'],2*pi]
-	else:
-		scale = [hyperparameters[parameter]['scale']]*len(hyperparameters[parameter]['group'])
-
-	if parameter in ['zz'] and group in [('zz',)]:
-		scale[index] /= 1 #4*kwargs['min']*kwargs['tau']
-
-	# Parameters shape (G,K/G,M) -> (K/G,M)
-	if method in ['constrained']:
-		if parameter in ['xy'] and group in [('x',)]:
-			def func(parameters):
-				return scale[0]*parameters[0]*cos(scale[1]*parameters[1])
-		
-		elif parameter in ['xy'] and group in [('y',)]:
-			def func(parameters):
-				return scale[0]*parameters[0]*sin(scale[1]*parameters[1])
-		
-		elif parameter in ['z'] and group in [('z',)]:
-			def func(parameters):
-				return scale[index]*parameters[index]
-		
-		elif parameter in ['zz'] and group in [('zz',)]:
-			def func(parameters):
-				return scale[index]*parameters[index]
-
-	elif method in ['unconstrained']:
-		def func(parameters):
-			return scale[index]*parameters[index]	
-
-	else:
-		def func(parameters):
-			return scale[index]*parameters[index]		
-
-	return func
-
-
-def _features(hyperparameters,parameter,group):
-	'''
-	Get features from parameters
-	Args:
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for features
-		group (str): Parameter group for features
-	Returns:
-		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
-	'''
-
-	kwargs = hyperparameters[parameter]['kwargs']
-	method = hyperparameters[parameter]['method']
-	size = len(hyperparameters[parameter]['group'])
-
-	if method in ['constrained','bound']:
-		wrapper = bound
-	elif method in ['unconstrained']:
-		wrapper = nullbound
-	else:
-		wrapper = nullbound
-
-	# Parameters shape (K,M) -> (G,K/G,M)
-	def func(parameters):
-		shape = (size,parameters.shape[0]//size,*parameters.shape[1:])
-		return wrapper(parameters,kwargs).reshape(shape)
-	
-	return func
-
-
-def _parameters(hyperparameters,parameter,group):
-	'''
-	Get parameters from parameters
-	Args:
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for parameters
-		group (str): Parameter group for parameters
-	Returns:
-		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
-	'''
-	
-	def func(parameters):
-		return parameters
-
-	return func
-
-
-def _constraints(hyperparameters,parameter,group):
-	'''
-	Get constraints from parameters
-	Args:
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for constraints
-		group (str): Parameter group for constraints
-	Returns:
-		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
-	'''
-	kwargs = hyperparameters[parameter]['kwargs']
-	method = hyperparameters[parameter]['method']
-	scale = hyperparameters[parameter]['kwargs'].get('lambda',1)
-	constants = hyperparameters[parameter]['constants']['features'][-1]
-	if method in ['constrained']:
-		if parameter in ['xy'] and group in [('x',),('y',)]:
-			def func(parameters):
-				return scale[0]*((parameters[...,constants['slice']] - constants['value'])**2).sum()
-
-		elif parameter in ['z'] and group in [('z',)]:
-			def func(parameters):
-				return 0.
-
-		elif parameter in ['zz'] and group in [('zz',)]:
-			def func(parameters):
-				return 0.			
-
-	elif method in ['unconstrained']:
-		def func(parameters):
-			return 0.
-	else:
-		def func(parameters):
-			return 0.
-
-	return func
-
-
-def _gradient_constraints(hyperparameters,parameter,group):
-	'''
-	Get gradients of constraints from parameters
-	Args:
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for constraints
-		group (str): Parameter group for constraints
-	Returns:
-		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
-	'''
-
-	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
-	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
-
-	kwargs = hyperparameters[parameter]['kwargs']
-	method = hyperparameters[parameter]['method']
-	scale = hyperparameters[parameter]['kwargs'].get('lambda',1)
-
-	def func(parameters):
-		shape = parameters.shape
-		grad = zeros(shape)
-		grad = grad.ravel()
-		return grad
-
-	return func
-
-
-def _gradients(hyperparameters,parameter,group):
-	'''
-	Get gradient of variables from parameters
-	Args:
-		hyperparameters (dict): Hyperparameters for parameters
-		parameter (str): Parameter name for variables
-		group (str): Parameter group for variables
-	Returns:
-		func (callable): function with signature func(parameters), parameters (array): Array of parameters to compute constraints
-	'''	
-
-	#TODO (finish analytic derivatives for variables functions as a matrix of (k,l) shape for k output parameters and l parameters)
-	# ie) k = m*r for r = 2N, and l = m*q for q = 2,2*N input phases and amplitudes
-
-	method = hyperparameters[parameter]['method']
-	scale = [hyperparameters[parameter]['scale'],2*pi] if method in ['constrained'] else [hyperparameters[parameter]['scale']]*len(hyperparameters[parameter]['group'])
-
-	def func(parameters):
-		shape = parameters.shape
-		grad = zeros(shape)
-		return grad
-
-	return func
-
-
-def setup(hyperparameters,cls=None):
-	'''
-	Setup hyperparameters
-	Args:	
-		hyperparameters (dict): Hyperparameters
-		cls (dict): Class attributes
-	'''
-
-	# Update with checked values
-	updates = {
-		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: {kwarg: [{prop: array(i.get(prop,[]),dtype={'slice':int,'value':None}[prop]) for prop in ['slice','value']}
-				for i in hyperparameters[parameter][attr][kwarg]] 
-				for kwarg in hyperparameters[parameter][attr]}),
-			'default': (lambda parameter,hyperparameters: {}),
-			'conditions': (lambda parameter,hyperparameters: True)				
-			} for attr in ['boundaries','constants']
-		},
-		'group': {
-			'value': (lambda parameter,hyperparameters: [tuple(group) for group in hyperparameters[parameter]['group']]),
-			'default': (lambda parameter,hyperparameters: []),
-			'conditions': (lambda parameter,hyperparameters: True)				
-		},
-		**{attr: {
-			'value': (lambda parameter,hyperparameters,attr=attr: {
-				**hyperparameters[parameter][attr],
-				**({kwarg: cls[kwarg] for kwarg in cls
-					if isinstance(cls[kwarg],scalars) and not isinstance(cls[kwarg],str)
-					} if cls is not None else {}),
-				**{kwarg: {'min':minimum,'max':maximum}[kwarg](array(hyperparameters[parameter]['parameters'])) if hyperparameters[parameter].get('parameters') 
-						  else {'min':minimum,'max':maximum}[kwarg](array(hyperparameters[parameter]['bounds']['parameters']))
-					for kwarg in ['min','max']
-					}, 
-				}),
-			'default': (lambda parameter,hyperparameters,attr=attr: {}),
-			'conditions': (lambda parameter,hyperparameters,attr=attr: True)						
-			} for attr in ['kwargs']
-		},		
-	}
-	for parameter in hyperparameters:
-		for attr in updates:
-			hyperparameters[parameter][attr] = hyperparameters[parameter].get(attr,updates[attr]['default'](parameter,hyperparameters))
-			if updates[attr]['conditions'](parameter,hyperparameters):
-				if callable(updates[attr]['value'](parameter,hyperparameters)):
-					for group in hyperparameters[parameter]['group']:
-							group = tuple(group)
-							try:
-								hyperparameters[parameter][attr][group] = jit(
-									updates[attr]['value'](parameter,hyperparameters)(
-										hyperparameters=hyperparameters,parameter=parameter,group=group)
-									)
-							except:
-								hyperparameters[parameter][attr][group] = jit(
-									updates[attr]['value'](parameter,hyperparameters)
-									)
-				else:
-					hyperparameters[parameter][attr] = updates[attr]['value'](parameter,hyperparameters)
-
-
-	return 
-
-
-class Parameters(Object):
-	def __init__(self,data,shape,size=None,ndim=None,dims=None,system=None,**kwargs):
+	def __init__(self,data,*args,model=None,system=None,**kwargs):
 		'''
-		Initialize data of shapes of parameters based on shape of data. Initializes attributes of
-			data (dict,array,Parameters): Dictionary of parameter hyperparameter attributes ['shape','values','slice','index','parameters','features','variables','constraints']
-					for parameter,group keys and for layers ['parameters',features','variables','constraints']
-					Attributes are used to yield layer outputs, given input variable parameters, with layer functions acting on slices of parameters, yielding values at indices
-					
-					Attributes dictionaries are of the form :
-					
-					{attribute:{layer:{parameter:group:...}}} for attributes: 'slice','index',layers 
-					'slice' (tuple[slice]): slices along each axis of the input values to that layer for that parameter,group key
-					'index' (tuple[slice]): slices along each axis of the output values of that layer for that parameter,group key
-					layer (callable): Callable function with signature func(parameters,values,slices,indices) for input parameters[slices] that yields values[indices] for that layer
-
-					{attribute:{layer:...}} for attributes: 'shape','values'
-					'shape' (tuple[int]): shape of values for that layer
-					'values': (array): array of values for that layer with variable + boundary/constant values
-					'index' (tuple[slice]): slices along each axis of the output values of that layer for that parameter,group key
-					layer (callable): Callable function with signature func(parameters,values,slices,indices) for input parameters[slices] that yields values[indices] for that layer
+		Initialize data of parameter
 		Args:
-			data (dict): Dictionary of data corresponding to parameters groupings, with dictionary values with properties:
-				'category':str : category of parameter
-				'group':iterable[iterable[str]] : iterable of groups associated with parameter grouping
-				'shape':dict[str,iterable[int]] : dictionary of shape of each parameter layer
-				'locality':dict[str,iterable[str]] : dictionary of locality of each axis of each parameter layer
-				'boundaries':dict[str,iterable[dict[str,iterable]]] : dictionary of boundary indices and values of each axis of each parameter layer {'layer':[{'slice':[indices_axis],'value':[values_axis]}]}
-				'constants':dict[str,iterable[dict[str,iterable]]] : dictionary of constant indices and values of each axis of each parameter layer {'layer':[{'slice':[indices_axis],'value':[values_axis]}]}
-			shape (iterable[int]): Shape of data
-			size (int,iterable[int]): Number of data
-			ndim (int): Number of dimensions of data
-			dims (iterable[int]): Dimensions of N, D-dimensional sites [N,D]
+			data (iterable): data of parameter
+			string (str): Name of parameter
+			category (str): category of parameter, allowed strings in ['variable','constant']
+			method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded']
+			group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
+			locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['shared']
+			bounds (iterable[object]): Bounds of parameters
+			attributes (iterable[str]): Model attributes for additional dimensions of parameter
+			axis (int,iterable[int]): Axis of input parameter data to insert into class data
+			parameters (iterable): parameters of parameter
+			seed (int, key): Random seed for initialization
+			random (str): Random type for initialization
+			initialization (dict): Keyword arguments for initialization
+			constant (dict[dict[str,object]]): constant indices and values of parameters, along axis, of the form {'axis':{'index':value}}			
+			args (iterable): Additional arguments for parameter
+			model (object): Model with additional attributes for initialization
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
-			cls (dict): Class attributes
-			check (callable): Function with signature check(data,group) to data is part of group
-			initialize (callable): Function with signature initialize(parameters,shape,hyperparameters,reset=None,dtype=None) to initialize parameter values
 			kwargs (dict): Additional system keyword arguments
 		'''
-		
-		# Implicit parameterizations that interact with the data to produce the output are called variables x
-		# These variables are Parametersd by the explicit parameters theta such that x = x(theta)
-		# Variables have a shape x = S = (s_0,...s_{d-1})
-		
-		# Each category i of parameter (variable,constant,...) has parameters with shape theta^(i) = T = (T^(i)_0,...,T^(i)_{d^(i)-1})
-		# and each of these parameters yield subsets of the variables with indices I^(i) = (I^(i)_0,...,I^(i)_{d^(i)-1})
-		# such that the union of all the indices U_i I^(i) across the categories covers all variables.
-		
-		# Each category i of parameter has parameter key groupings that share values
-		# Each parameter key grouping has groups g^(i) that depend on a slices of theta^(i), and has shape T^(i)_g^(i) = (T^(i)_g^(i)_0,...,T^(i)_g^(i)_{d^(i)_g^(i)-1})
-		# and yield subsets of the variables with indices I^(i) = (I^(i)_g^(i)_0,...,I^(i)_g^(i)_{d^(i)_g^(i)-1})
 
-		# In between theta and x, there may be intermediate layers of values, such as features phi(theta), such that x = x(phi(theta))
-		# Each layer l has its own shape T_l
+		defaults = dict(
+			string=None,category=None,method=None,
+			group=None,locality=None,bounds=None,attributes=None,axis=None,
+			parameters=None,
+			seed=None,random=None,initialization=None,constant=None,
+			slices=None,indices=None,func=None,constraint=None,
+			shape=None,size=None,ndim=None,dtype=None,			
+			args=(),kwargs={}
+			)
 
-		# Parameters are described by the dictionary hyperparameters, with different parameter keys, 
-		# each with an associated category i,
-		# and groups of parameters g^(i) that use a subset of theta^(i)
+		setter(kwargs,dict(data=data,model=model,system=system),delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,defaults,delimiter=delim,func=False)
 
-		# Each set of values is described by keys of categories,parameters,groups,layers:
+		super().__init__(*args,**kwargs)
 
-		# data (dict): Dictionary of parameter data, with nested keys of categories,parameters,groups,layers, and data of
-		# 	'ndim': int : Number of dimensions of value corresponding to key
-		# 	'locality': iterable[int] : Locality of value for each axis of value corresponding to key
-		# 	'size': iterable[int] : Shape of multiplicative value of data shape for each axis of value corresponding to key
-		# 	'indices': iterable[iterable[int]]: Indices of data for each axis of value corresponding to key
-		# 	'boundaries': iterable[dict[int,float]]: Boundary indices and values for each axis of value corresponding to key
-		# 	'constants': iterable[dict[int,float]]: Boundary indices and values for each axis of value corresponding to key
-		# 	'shape': dict[str,tuple[int]]: Shape of value for different index types for each axis of value corresponding to key
-		# 	'slice': dict[str,tuple[slice]]: Slices of value for different index types for each axis of value corresponding to key
-		# 	layer (callable): Callable function with signature func(parameters) for input parameters that yields values for that layer
+		self.__setup__()
 
+		self.__initialize__()
 
-		# Shape of axes for keys of categories,parameters,groups,layers
-		# Shapes are based on indices of data, plus sizes multipliers from hyperparameters
-		# Sizes multipliers are either < 0 indicating multiplier of shape, or > 0 indicating fixed value
-		# Sizes with dimensions beyond (in front of) data shape have initial sizes assumed to be fixed values based on indices of [0] of fixed size 1 (for example features)
-		# (s assumed to be in general 1 for 'variables',)
-		# Shape of parameters and features are dependent on size of indices variables per group, which depends on shape of data and locality of parameter
-		# It is assumed that all parameters within a category have the same ndim number of dimensions, and shared number of dimensions except along the [0] axis
-
-		# Values have shapes and slices with index types of the form of tuples (<type>,<subtype>,<subtype>)
-
-		# with types of
-
-		# 'put': Shape - Full shape of array being assigned to, Slice: Slice of array being assigned to
-		# 'take': Shape - Shape of slice of array being taken, Slice of array being taken
-
-		# with subtypes of
-
-		# 'key': Shape,slice for key
-		# 'category': Shape,slice for key, within all keys associated with category
-		# 'layer': Shape,slice for key, within all keys associated with layer
-		
-		# with subsubtypes of 
-		
-		# 'all': Shape,slice including all values + including boundaries and constants
-		# 'variable': Shape,slice including all values + excluding boundaries and constants
-		# 'constant': Shape,slice excluding all values + including boundaries and constants
-
-		# For layers not in ['variables'], shapes and slices are shared along all axes amongst all groups for a given parameter, and so have all same shape and slice for these layers
-		# For layers in ['variables'],shapes and slices are individual along axes [0] amongst all groups for a given parameter and otherwise are shared
-		# Note that all parameter,group within a category or layer should have the same boundary and constant indices, so all 'category' or 'layer' values have same shape,
-		# otherwise parameter,group with more boundary/constant indices will have redundant points within the encompassing shape, depending how these boundary constant points are imposed
-
-		# Depending on locality, functions of 'take' indexed values that return to 'put' indexed values 
-		# should return either arrays of shape:
-		# locality in ['local']  exact shape of the 'put' indexed variables
-		# locality in ['global'] broadcastable (size 1) shape of the 'put' sliced variables
-		# For example if a function of 'take' sliced values of size (l,k,) and the 'put' sliced values are of size (k,), 
-		# then the function should roughly use the l values to return the correct shape (k,)
-
-		# For a given indices,locality,and sizes of category,parameter,group,layer and axis, 
-		
-		# The shapes and slices for each individual set of values ('take,put','key','all') for these keys are:
-		# s = sizes 
-		# k = len(indices) (k[axis=0 (parameters,variables), axis=1 (features)] = O(N) for data with datum on each of N sites, k[axis=1] = O(M) for M time steps)
-		# The shape of the values will be 
-		# shape['features','parameters','variables'][('put','key','all')] = -s*k if s < 0 else s
-		# shape['features','parameters','variables'][('take','key','all')] = -s*(k if local in ['local'] else 1) if s < 0 else s
-
-		# slice['variables'][('put','key','all')] = indices if axis == 0 else slice(0,shape[('put','key','all')],1)
-		# shape['variables'][('take','key','all')] = slice(0,shape['take_key_all'],1)
-		# shape['features','parameters'][('put','key','all')] = slice(0,shape[('put','key','all')],1)
-		# shape['features','parameters'][('take','key','all')] = slice(0,shape[('take','key','all')],1)
-
-		# The other ('take,put',<type>) indexes involve summing all shapes corresponding to the keys that are within the type group, 
-		# plus subtracting shapes corresponding with boundaries and constants
-
-		setter(kwargs,data,delimiter=delim,func=False)
-		super().__init__(data,shape,size=size,ndim=ndim,dims=dims,system=system,**kwargs)
+		assert (self.indices is not None), "Zero-size data, No indices for parameter"
 
 		return
 
-	def __call__(self,data=None):
+	def __call__(self,parameters=None):
 		'''
 		Class data
 		Args:
-			data (array): Data
+			parameters (array): parameters
 		Returns:
-			data (array): Data
+			parameters (array): parameters
 		'''
 
-		if data is None:
-			data = self.parameters()
+		if parameters is None:
+			return self.data
 
-		# data = bound(data.reshape(indexer(self.index,self.data).shape))
-		# data = data.reshape(indexer(self.index,self.data).shape)
-		inserter(self.index,data.reshape(indexer(self.index,self.data).shape),self.data)
-		# data = indexer(self.index,self.data).ravel()
+		parameters = parameters.reshape(-1,*self.shape[1:])
+		
+		parameters = self.func(parameters)
 
-		return data
+		return parameters	
+
+	def constraints(self,parameters=None):
+		'''
+		Class constraints
+		Args:
+			parameters (array): parameters
+		Returns:
+			constraints (array): constraints
+		'''
+		if parameters is None:
+			return 0
+
+		parameters = parameters.reshape(-1,*self.shape[1:])
+
+		constraints = self.constraint(parameters)
+
+		return constraints
 
 
-	def __setup__(self,**kwargs):
+	def __setup__(self,data=None,model=None):
+		'''
+		Setup class attributes
+		Args:
+			data (array): parameter data
+			model (object): Model with additional attributes for initialization
+		'''
+
+		self.data = data if data is not None else self.data
+		self.model = model if model is not None else self.model
+		self.dtype = datatype(self.dtype)
+
+		# Get data
+		self.data = array(self.data,dtype=self.dtype) if self.data is not None else None
+
+		self.shape = self.data.shape if self.data is not None else None
+		self.size = self.data.size if self.data is not None else None
+		self.ndim = self.data.ndim if self.data is not None else None
+
+		self.string = self.string if self.string is not None else None
+		self.category = self.category if self.category is not None else None
+		self.method = self.method if self.method is not None else None
+		self.group = (*((*group,) if not isinstance(group,str) else (group,) for group in self.group),)  if self.group is not None else ()
+		self.locality = {group: self.locality if isinstance(self.locality,str) else self.locality.get(subgroup) if isinstance(self.locality,dict) else self.locality[i] for i,group in enumerate(self.group)} if self.locality is not None else {}
+		self.model = self.model if self.model is not None else None
+		self.attributes = [attr for attr in self.attributes if getattr(self.model,attr,None) is not None] if self.attributes is not None else ()
+		self.kwargs = self.kwargs if self.kwargs is not None else {}
+
+		self.parameters = self.parameters if self.parameters is not None else 1
+		self.dtype = self.data.dtype if self.data is not None else None
+
+		# Set data
+		category = self.category
+		method = self.method
+		group = self.group
+		locality = self.locality
+		model = self.model
+		attributes = self.attributes
+		kwargs = self.kwargs
+		dtype = self.dtype
+
+		# Get strings (indices of data for each unique string)
+		strings = {i: data.string for i,data in enumerate(model.data)} if model is not None else {}
+		strings = {strings[i]: [j for j in strings if strings[j] == strings[i]] for i in strings}
+		strings = {i: {
+			'string':string,'label':separ.join((str(string),str(j))),
+			'indices':i,'slices':None,'group':None,
+			}
+			for string in strings for j,i in enumerate(strings[string])}
+		
+		# Get slices (indices of parameter for each data in each group (locality dependent) (sort parameters into order of indices of data))
+		# Get indices (indices of data for each parameter in each group (re-order/sort parameters from slices and func())		
+		# Get sizes (number of parameters per group for each group)
+		# Get size (number of parameters per group)
+		for i in list(strings):
+			for subgroup in group:
+				for attr in strings[i]:
+					if strings[i][attr] in subgroup:
+						strings[i]['slices'] = group.index(subgroup)
+						strings[i]['group'] = subgroup
+						break
+			if any(strings[i][attr] is None for attr in strings[i]):
+				strings.pop(i)
+
+		sizes = []
+		group = list(group)
+		for subgroup in list(group):
+			
+			if locality.get(subgroup) in ['shared']:
+				size = 1
+			else:
+				size = len([j for j in strings if strings[j]['group'] == subgroup])
+			
+			if not size:
+				group.remove(subgroup)
+				continue
+			
+			sizes.append(size)
+
+		for i in strings:
+		
+			strings[i]['sizes'] = sizes
+
+			strings[i]['size'] = strings[i]['sizes'][group.index(strings[i]['group'])]
+
+			if locality.get(strings[i]['group']) in ['shared']:
+				strings[i]['slices'] = sum(strings[i]['sizes'][:group.index(strings[i]['group'])])
+			else:
+				strings[i]['slices'] = sum(strings[i]['sizes'][:group.index(strings[i]['group'])]) + [j for j in strings if strings[j]['group'] == strings[i]['group']].index(i)
+
+
+		slices = array([strings[i]['slices'] for i in strings]) if strings else None
+		indices = array([strings[i]['indices'] for i in strings]) if strings else None
+		shape = [
+			sum(max(strings[i]['size'] for i in strings if strings[i]['group'] == subgroup) for subgroup in group),
+			*(getattr(model,attr) for attr in attributes)] if strings else None
+	
+		# Set attributes
+		self.slices = slices
+		self.indices = indices
+		self.shape = shape if shape is not None else None
+		self.size = prod(shape) if shape is not None else None
+		self.ndim = len(shape) if shape is not None else None
+
+		return
+
+	def __initialize__(self,data=None,shape=None,dtype=None):
+		'''
+		Initialize class data with shape
+		Args:
+			data (array): Data of data
+			shape (iterable[int]): Shape of data
+			dtype (datatype): Data type of data
+		'''
+
+		# Set data
+		self.data = data if data is not None else self.data
+		self.shape = shape if shape is not None else self.shape
+		self.size = prod(shape) if shape is not None else self.size
+		self.ndim = len(shape) if shape is not None else self.ndim
+		self.dtype = dtype if dtype is not None else self.dtype
+
+		kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
+		self.data = initialize(**kwargs)
+
+		self.shape = self.data.shape if self.data is not None else None
+		self.size = self.data.size if self.data is not None else None
+		self.ndim = self.data.ndim if self.data is not None else None
+		self.dtype = self.data.dtype if self.data is not None else None
+
+		self.data = self.data
+
+		# Set functions
+		# defaults = {
+		# 	'data':self.data,
+		# 	'parameters':self.parameters,
+		# 	'slices':self.slices,
+		# 	'constant':self.constant,'default':0,'lambda':0,'scale':1,'length':len(self.group)}
+		# category = self.category
+		# method = self.method
+		# kwargs = deepcopy(self.kwargs)
+		# kwargs.update({attr: kwargs.get(attr,defaults[attr]) for attr in defaults})
+		# kwargs = deepcopy(kwargs)
+		# for attr in kwargs:
+
+		# 	if kwargs[attr] is None:
+		# 		continue
+		
+		# 	if attr in ['lambda','scale']:
+				
+		# 		kwargs[attr] = array(kwargs[attr],dtype=self.dtype)
+			
+		# 	elif attr in ['constant']:
+				
+		# 		if not all(isinstance(kwargs[attr][i],dict) for i in kwargs[attr]):
+		# 			axis = -1
+		# 			kwargs[attr] = {axis:kwargs[attr]}
+		# 		for axis in list(kwargs[attr]):
+		# 			constants = kwargs[attr].pop(axis)
+		# 			indices = array([int(i) for i in constants])
+		# 			values = array([constants[i] for i in constants],dtype=self.dtype)
+		# 			axis = int(axis) % self.ndim
+		# 			indices = (*(slice(None),)*(axis-1),indices)
+		# 			kwargs[attr][axis] = {'indices':indices,'values':values}
+
+		if self.category in ['variable']:
+
+			if self.method in ['bounded']:
+				def func(parameters):
+					return self.parameters*bound(parameters[self.slices])
+
+				def constraint(parameters):
+					return 0					
+
+			else:
+				def func(parameters):
+					return self.parameters*parameters[self.slices]
+			
+				def constraint(parameters):
+					return 0
+
+		else:
+			def func(parameters):
+				return self.parameters*self.data[self.slices]
+		
+			def constraint(parameters):
+				return 0
+		
+
+		self.func = func
+		self.constraint = constraint
+
+
+		return
+
+	def __str__(self):
+		return str(self.string)
+
+
+class Parameters(System):
+	def __init__(self,data=None,model=None,system=None,**kwargs):
+		'''
+		Initialize data of parameters
+
+		Parameters are split into groups with names [parameter], and can be accessed as 
+		attributes Parameters.parameter, or items Parameters[parameter],
+		and are contained in Parameters.data = {parameter: Parameter()} as Parameter() instances
+
+		Setup parameters such that calling the Parameters(parameters) class with input parameters 
+		i) parameters array of size (G*P*D),
+			for G groups of P parameters, each of dimension D, 
+			for parameter groups with category in ['variable'],
+			P,D may be group dependent, and depend on Parameter.locality, Parameter.model and Parameter.attributes 
+		ii) parameters for each group are sliced with parameter slices (slice(P),slice(D)) and reshaped into shape (P,D)
+		iii) parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
+		iv) parameters for all groups are concatenated to [parameter_i = Parameters[slices_i]]
+			with slices Parameters.slices = [slices]
+		v) Parameters(parameters) returns iterable of parameters for each data in model [parameter_i]
+		
+		Args:
+			data (dict): Dictionary of data corresponding to parameters groups, with dictionary values with properties:
+				data (iterable): data of parameter
+				string (str): Name of parameter
+				category (str): category of parameter, allowed strings in ['variable','constant']
+				method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded']
+				group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
+				locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['shared']
+				bounds (iterable[object]): Bounds of parameters
+				attributes (iterable[str]): Model attributes for additional dimensions of parameter
+				axis (int,iterable[int]): Axis of input parameter data to insert into class data
+				parameters (iterable): parameters of parameter
+				seed (int, key): Random seed for initialization
+				random (str): Random type for initialization
+				initialization (dict): Keyword arguments for initialization
+				constant (dict[dict[str,object]]): constant indices and values of parameters, along axis, of the form {'axis':{'index':value}}
+				args (iterable): Additional arguments for parameter
+				system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
+				model (object): Model with additional attributes for initialization
+				kwargs (dict): Additional system keyword arguments
+			model (object): Model with additional attributes for initialization
+			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
+			kwargs (dict): Additional system keyword arguments
+		'''
+
+		defaults = dict(
+			data=None,__data__={},
+			slices=None,indices=None,func=None,constraint=None,
+			shape=None,size=None,ndim=None,dtype=None,
+			)
+
+		data = data if data is not None else None
+		__data__ = data if data is not None else {}
+
+		setter(kwargs,dict(data=data,model=model,system=system,__data__=__data__),delimiter=delim,func=False)
+		setter(kwargs,data,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,defaults,delimiter=delim,func=False)
+		super().__init__(**kwargs)
+
+		self.__setup__()
+
+		# for parameter in self:
+		# 	print(parameter)
+		# 	print(self[parameter].shape,self[parameter].slices,self[parameter].indices)
+		# 	# print(self[parameter].data)#())
+		# 	print(self[parameter]())
+		# 	# print(self[parameter](self[parameter].data))#()))
+		# 	print(self[parameter](self[parameter]()))
+		# 	print()
+
+		# if (self.data is not None) and (self.data.size > 0):
+		# 	print(self)
+		# 	print(self.slices,self.indices)
+		# 	# print(self.data)#())
+		# 	print(self())
+		# 	print()
+		# 	# print(self(self.data))#())
+		# 	print(self(self()))
+		# 	# print(self.constraints(self.data))#())
+		# 	print(self.constraints(self()))
+		# 	print('----------------')
+		return
+
+	def __call__(self,parameters=None):
+		'''
+		Class data
+		Args:
+			parameters (array): parameters
+		Returns:
+			parameters (array,dict): parameters
+		'''
+
+		if parameters is None:
+			return self.data
+
+		parameters = self.func(parameters)[self.indices]
+
+		return parameters
+
+	def constraints(self,parameters=None):
+		'''
+		Class constraints
+		Args:
+			parameters (array): parameters
+		Returns:
+			constraints (array): constraints
+		'''
+
+		constraints = self.constraint(parameters)
+
+		return constraints
+
+	def __setup__(self,data=None,model=None):
 		'''
 		Setup attribute
 		Args:
-			kwargs (dict): Additional keyword arguments
+			data (dict): Dictionary of data corresponding to parameters groups, with dictionary values with properties:
+			model (object): Model with additional attributes for initialization
 		'''
 
-		# Get number of dimensions of data
-		ndim = len(self.shape)
-		self.ndim = ndim
+		self.data = data if data is not None else self.data
+		self.model = model if model is not None else self.model
+		self.dtype = datatype(self.dtype)
+		self.__data__ = data if data is not None else self.__data__
 
-		# Size of data
-		size = None
-		self.size = size
-		self.length = len(self.size) if self.size is not None else None
-
-		# Get datatype of data
-		dtype = datatype(self.dtype)
-		self.dtype = dtype
-
-		# Get data
-		self.dimensions = None
-		self.attributes = {}
-
-		# Get initialize
-		if self.initialize is None:
-			initialize = lambda parameters,shape,hyperparameters,**kwargs: parameters
-		else:
-			initialize = self.initialize
-
-		# Get check
-		if self.check is None:
-			check = lambda data,group: True
-		else:
-			check = self.check
-
-
-		# Get parameters
-
-		# Remove not used parameters of data
+		# Set parameters
 		for parameter in list(self):
-			if not any(self.check(self.cls.data[i],group)
-				for i in range(self.shape[0])
-				for group in self.data[parameter].get('group',[])):
-				self.data.pop(parameter)
+			
+			args = {**getattr(self,parameter,{}),**dict(model=self.model,system=self.system)}
+			
+			try:
+				setattr(self,parameter,Parameter(**args))
+			except AssertionError:
 				delattr(self,parameter)
 
-		for parameter in self.data:
-			setattr(self,parameter,Object(**self.data[parameter],system=self.system))
+		
+		# Set indices and slices
+		slices = []
+		indices = []
+		for i,parameter in enumerate(self):
+			if self[parameter].category in ['variable']:
+				slc = self[parameter].size
+				index = self[parameter].indices
+			else:
+				slc = None
+				index = self[parameter].indices
 
-		# Get data
+
+			slc = [max((i[-1] for i in slices),default=0),slc] if slc is not None else [0,0]
+			index = [i for i in index]
+
+			slices.append(slc)
+			indices.extend(index)
+
+		slices = [[*i] for i in slices]
+		indices = array([indices.index(i) for i in range(len(indices))])
+
+		# Set func and constraint
+		funcs = []
+		constraints = []
 		for parameter in self:
-			layer = 'parameters'
-			data = self.data[parameter]['data']
-			groups = [tuple(group) for group in self.data[parameter]['group']]
-			shape = {group: [
-					  *[sum(check(self.cls.data[j],group) for j in range(i)) for i in self.shape[:1]],
-					  *[i for i in self.shape[1:]],
-					  ] for group in groups}
 
-			shape = [len(shape),*[max(i) for i in zip(*(shape[group] for group in shape))]]
+			func = self[parameter]
+			funcs.append(func)
 
-			data = array([[data[:shape[1]]]*shape[2]]*shape[0],dtype=dtype).transpose(0,2,1) if data is not None else data
-			data = initialize(data,shape,self.data[parameter],dtype=dtype)
-			getattr(self,parameter)(data=data)
+			func = self[parameter].constraints
+			constraints.append(func)
 
-			self[parameter] = getattr(self,parameter)
+		def func(parameters,slices=slices,funcs=funcs):
+			return concatenate([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)])
 
-		self.dimensions = (sum(self.data[parameter]().size for parameter in self.data if self.data[parameter].category in ['variable']),)
-		self.attributes = {}
-		self.string = ' '.join([str(getattr(self,parameter)) for parameter in self])
-		self.index = [parameter for parameter in self.data if self.data[parameter].category in ['variable']]
-		self.parameters = indexer(self.index,self)
+		def constraint(parameters,slices=slices,funcs=constraints):
+			return addition(array([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)]))
+
+		self.indices = indices
+		self.slices = slices
+		self.func = func
+		self.constraint = constraint
+
+		# Set data
+		data = []
+		for parameter in self:
+			if self[parameter].category not in ['variable']:
+				continue
+			parameter = self[parameter]()
+			data.extend(parameter)
+
+		data = array(data,dtype=self.dtype).reshape(-1) if data else None
+
+		# Set attributes
+		self.data = data
+		self.shape = self.data.shape if data is not None else None
+		self.size = self.data.size if data is not None else None
+		self.ndim = self.data.ndim if data is not None else None
+		self.dtype = self.data.dtype if data is not None else None
 
 		return
+
+	def __iter__(self):
+		return self.__iterdata__()
+
+	def __setattr__(self,key,value):
+		super().__setattr__(key,value)
+		self.__setdata__(key,value)
+		return
+
+	def __setitem__(self,key,value):
+		super().__setitem__(key,value)
+		self.__setdata__(key,value)
+		return
+
+	def __delattr__(self,key):
+		super().__delattr__(key)
+		self.__deldata__(key)
+		return
+
+	def __len__(self):
+		return self.__data__.__len__()
+
+	def __iterdata__(self):
+		return self.__data__.__iter__()
+
+	def __setdata__(self,key,value):
+		if key in self.__data__:
+			self.__data__[key] = value
+		return
+	
+	def __deldata__(self,key):
+		if key in self.__data__:
+			self.__data__.pop(key)
+		return
+
+	def __str__(self):
+		return ' '.join([str(self.__data__[parameter]) for parameter in self.__data__])
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = '%s'%('\n'.join([
+			*['Parameters %s %s: %s'%(self,attr,getattr(self,attr)) 
+				for attr in ['string','shape']
+			],
+			]
+			))
+		self.log(msg,verbose=verbose)
+		return		

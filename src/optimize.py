@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
-from src.utils import is_array,is_unitary,is_hermitian,is_naninf,product,sqrt,asarray,asscalar
+from src.utils import is_unitary,is_hermitian,is_naninf,product,sqrt
 from src.utils import scalars,delim,nan
 
 from src.iterables import setter
@@ -632,12 +632,15 @@ class Function(System):
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 			kwargs (dict): Additional system attributes
 		'''
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		if func is None:
 			func = []
 		if not callable(func):
+			func = [i for i in func if i is not None]
 			if len(func) == 1:
 				function = func[0]
 			elif func:
@@ -654,6 +657,7 @@ class Function(System):
 		if grad is None:
 			gradient = None
 		elif not callable(grad):
+			grad = [i for i in grad if i is not None]
 			if len(grad) == 1:
 				gradient = grad[0]
 			elif grad:
@@ -891,6 +895,8 @@ class Metric(System):
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 			kwargs (dict): Additional system attributes
 		'''
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -994,18 +1000,6 @@ class Metric(System):
 		'''		
 		return self.__grad_analytical__(*operands)	
 
-	def __str__(self):
-		'''
-		Class string
-		'''
-		return self.string
-
-	def __repr__(self):
-		'''
-		Class representation
-		'''
-		return self.__str__()
-
 	def info(self,verbose=None):
 		'''
 		Log class information
@@ -1013,7 +1007,7 @@ class Metric(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
+			*['Metric %s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['metric']
 			],
 			]
@@ -1036,6 +1030,9 @@ class Metric(System):
 					self.metric = 'abs2'
 				elif is_hermitian(self.label) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
+		
+		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
+			self.shapes = [self.shapes,]*2
 
 		func,grad,grad_analytical = metrics(
 			metric=self.metric,shapes=self.shapes,
@@ -1064,6 +1061,9 @@ class Optimization(System):
 		kwargs (dict): Additional system attributes
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
+
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -1418,16 +1418,16 @@ class Optimization(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
+			*['Optimizer %s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']
 			],
-			*['dtype: %s'%(', '.join(['%s: %s'%(attr,value.dtype if value is not None else None) for attr,value in {
+			*['Optimizer dtype: %s'%(', '.join(['%s: %s'%(attr,value.dtype if value is not None else None) for attr,value in {
 				**{attr: getattr(self.func.model,attr)() for attr in ['parameters','label','state','noise'] if hasattr(self.func.model,attr)},
 				**{attr:self.func.model(self.func.model.parameters()) for attr in ['model'] if getattr(self.func.model,'parameters')},
 				**{attr:self.func.metric(self.func.model.label()) for attr in ['metric'] if hasattr(self.func.model,'label')},
 				**{attr:self.func(self.func.model.parameters()) for attr in ['cls'] if hasattr(self.func.model,'parameters')},
 				}.items()]))],
-			*['%s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
+			*['Optimizer %s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
 				for attr in ['track','attributes']
 				if any(getattr(self,attr).get(key) for key in getattr(self,attr))
 			],			
@@ -1880,9 +1880,15 @@ class Covariance(System):
 			cov (callable): Covariance of function
 		'''
 
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
+
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
+
+		if all(isinstance(i,int) for i in shapes) or (len(shapes) == 1):
+			shapes = [shapes]*2
 
 		if label is None:
 			shapes = (*shapes[:1],*shapes[2:])				
@@ -1922,18 +1928,6 @@ class Covariance(System):
 	def __call__(self,parameters,*args,**kwargs):
 		return inv(self.hess(parameters,*args,**kwargs))
 
-	def __str__(self):
-		'''
-		Class string
-		'''
-		return self.string
-
-	def __repr__(self):
-		'''
-		Class representation
-		'''
-		return self.__str__()
-
 	def info(self,verbose=None):
 		'''
 		Log class information
@@ -1941,7 +1935,7 @@ class Covariance(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
+			*['Covariance %s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['metric']
 			],
 			]

@@ -4,20 +4,20 @@ Jax Numpy API version of https://github.com/scipy/scipy/blob/v1.8.1/scipy/optimi
 import os
 from warnings import warn
 
-envs = {
-	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
+# envs = {
+# 	'JAX_PLATFORM_NAME':'cpu',
+# 	'TF_CPP_MIN_LOG_LEVEL':5
+# }
+# for var in envs:
+# 	os.environ[var] = str(envs[var])
 
 
 import numpy as onp
 import scipy as osp
 
-import jax
-import jax.numpy as np
-import jax.scipy as sp
+# import jax
+# import jax.numpy as np
+# import jax.scipy as sp
 
 import autograd
 import autograd.numpy as np
@@ -30,6 +30,20 @@ from scipy.optimize import minpack2 as minpack2
 __all__ = ['LineSearchWarning', 'line_search_wolfe1', 'line_search_wolfe2',
 		   'scalar_search_wolfe1', 'scalar_search_wolfe2',
 		   'armijo']
+
+def setitem(obj,index,item):
+	'''
+	Set item at index of object
+	Args:
+		obj (object): Object to set
+		index (object): Index to set item
+		item (object): Item to set
+	Returns:
+		obj (object): Object with set item at index
+	'''
+	obj[index] = item
+	# obj = obj.at[index].set(item)
+	return obj
 
 class LineSearchWarning(RuntimeWarning):
 	pass
@@ -90,6 +104,7 @@ def line_search_wolfe1(f, fprime, xk, pk, gfk=None,
 	gval = [gfk]
 	gc = [0]
 	fc = [0]
+
 
 	def phi(s):
 		fc[0] += 1
@@ -494,10 +509,11 @@ def _cubicmin(a, fa, fpa, b, fb, c, fc):
 		dc = c - a
 		denom = (db * dc) ** 2 * (db - dc)
 		d1 = np.empty((2, 2))
-		
-		d1[0, 1] = -db ** 2
-		d1[1, 0] = -dc ** 3
-		d1[1, 1] = db ** 3
+	
+		d1 = setitem(d1,(0,0),dc ** 2)
+		d1 = setitem(d1,(0,1),-db ** 2)
+		d1 = setitem(d1,(1,0),-dc ** 3)
+		d1 = setitem(d1,(1,1),db ** 3)
 
 		[A, B] = np.dot(d1, np.asarray([fb - fa - C * db,
 										fc - fa - C * dc]).flatten())

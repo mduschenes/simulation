@@ -1,6 +1,10 @@
 {
 "class":{
 	"model":"src.quantum.Unitary",
+	"parameters":"src.parameters.Parameters",
+	"label":"src.operators.Gate",
+	"noise":"src.noise.Noise",
+	"state":"src.states.State",
 	"callback":"src.quantum.Callback"
 	},
 "hyperparameters":null,
@@ -28,15 +32,15 @@
 		"noise.initialization":["random"],
 
 		"system.unit":[1e6],
-		"parameters.xy.scale":[1],
-		"parameters.z.scale":[1e-2],
-		"parameters.zz.scale":[1e-4],
+		"parameters.xy.parameters":[1],
+		"parameters.z.parameters":[1e-2],
+		"parameters.zz.parameters":[1e-4],
 		"parameters.xy.kwargs.lambda":[[0]],		
 		"label.string":["pauli"],
 		"label.random":["Z"],
-		"label.scale":[0.25],
-		"noise.scale":[null],
-		"state.scale":[null],
+		"label.parameters":[0.25],
+		"noise.parameters":[null],
+		"state.parameters":[null],
 
 
 		"optimize.iterations":[100],
@@ -48,8 +52,8 @@
 		"parameters.xy.method":["bound"],
 		"parameters.xy.kwargs.lambda":[[0]],
 
-		"jobs.job.cwd":["test"],
-		"jobs.postprocess.cwd":["test"],		
+		"jobs.job.cwd":["check"],
+		"jobs.postprocess.cwd":["check"],		
 	
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -84,26 +88,26 @@
 	},
 "model":{
 	"data":{
-		"x":{"operator":["X"],"site":["i"],"string":"x","interaction":"i","hyperparameters":{"index":null}},
-		"y":{"operator":["Y"],"site":["i"],"string":"y","interaction":"i","hyperparameters":{"index":null}},
-		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i","hyperparameters":{"index":null}},
-		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j","hyperparameters":{"index":null}}
+		"x":{"operator":["X"],"site":["i"],"string":"x","interaction":"i"},
+		"y":{"operator":["Y"],"site":["i"],"string":"y","interaction":"i"},
+		"z":{"operator":["Z"],"site":["i"],"string":"z","interaction":"i"},
+		"zz":{"operator":["Z","Z"],"site":["i","j"],"string":"zz","interaction":"i<j"}
 		},
 	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":50,
+	"M":5,
 	"T":null,
-	"tau":1.2342e2,
-	"P":1,
+	"tau":50e0,
+	"P":2,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square"
 	},
 "system":{
-	"dtype":"complex256",
+	"dtype":"complex",
 	"format":"array",
 	"device":"cpu",
 	"backend":"jax",
@@ -120,7 +124,7 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":100,
+	"iterations":5,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
@@ -129,18 +133,52 @@
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
-	"kwargs":{"noise":{"scale":1e-3}},
+	"kwargs":{"noise":{"parameters":1e-3}},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
-	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":10},
+	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":100},
 	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
-	"do":{},
+	"do":{
+		"parameters":true,
+		"grad":true,
+		"search":true,
+		"variables":true,"variables.relative":true,"variables.relative.mean":true,
+		"features":true,"features.relative":true,"features.relative.mean":true
+	},
 	"attributes":{
 		"iteration":[],"parameters":[],
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},
-	"track":{}	
+	"track":{
+			"iteration":[],
+			"parameters":[],
+			"grad":[],
+			"search":false,
+			"value":[],
+			"objective":[],
+			"alpha":[],
+			"beta":[],
+
+			"iteration.max":[],
+			"iteration.min":[],
+			"grad.norm":[],"search.norm":[],			
+			"variables":[],"variables.relative":[],"variables.relative.mean":[],
+			"features":[],"features.relative":[],"features.relative.mean":[],			
+			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
+			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
+			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
+			"hessian":false,"fisher":false,
+			"hessian.eigenvalues":true,"fisher.eigenvalues":true,
+			"hessian.rank":true,"fisher.rank":true,
+
+			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],"instance":[],
+			"parameters.xy.parameters":[],"parameters.xy.method":[],
+			"parameters.z.parameters":[],"parameters.z.method":[],
+			"parameters.zz.parameters":[],"parameters.zz.method":[],
+			"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
+		}	
 	},
 "parameters":{
 	"xy": {
@@ -151,7 +189,7 @@
 		"data":null,
 		"shape":[-2,-1],
 		"size":[-1,-1],
-		"scale":1,
+		"parameters":1,
 		"group":[["x"],["y"]],
 		"bounds":[-1,1],
 		"locality":null,
@@ -173,11 +211,12 @@
 		"data":[0,1,1,-1,-1,1],
 		"shape":[-1,-1],
 		"size":[-1,-1],
-		"scale":1,
+		"parameters":1,
 		"group":[["z"]],
 		"bounds":[-1,1],
+		"locality":null,
 		"constants":null,
-		"initialization":null,
+		"initialization":"random",
 		"random":"uniform",
 		"pad":"random",
 		"seed":null,
@@ -192,11 +231,12 @@
 		"data":[1,1,1,1,1,1,1,1,1,1],								
 		"shape":[-1,-1],
 		"size":[-1,-1],
-		"scale":1,
+		"parameters":1,
 		"group":[["zz"]],
 		"bounds":[-1,1],
+		"locality":null,
 		"constants":null,
-		"initialization":null,
+		"initialization":"random",
 		"random":"uniform",	
 		"pad":"random",
 		"seed":null,
@@ -205,46 +245,31 @@
 		}
 	},
 "label": {
-	"string":"pauli",
-	"init":true,	
-	"category":"constant",
-	"method":null,
-	"parameters":null,
-	"shape":[-1,-1],
-	"size":null,
-	"scale":0.5,
-	"initialization":null,
-	"random":"Z.X",
-	"seed":null,
-	"bounds":[-1,1]
+	"operator":"X.Y",
+	"site":null,
+	"string":"U",
+	"interaction":"i",
+	"parameters":0.5,
+	"ndim":2,
+	"seed":null
 	},
 "state": {
-	"string":"random",
-	"init":true,	
-	"category":"constant",
-	"method":null,
-	"parameters":null,
-	"shape":[-1,-1],
-	"size":[1,1],
-	"scale":null,
-	"initialization":null,
-	"random":"haar",
-	"seed":null,
-	"bounds":[-1,1]
-	},
-"noise": {
-	"string":"phase",
-	"init":true,	
-	"category":"constant",
-	"method":null,
-	"parameters":null,
-	"shape":[-1,-1],
-	"size":null,
-	"scale":null,
-	"initialization":null,
-	"random":"gaussian",
-	"seed":null,
-	"bounds":[-1,1]
+	"operator":null,
+	"site":null,
+	"string":"U",
+	"interaction":"i",
+	"parameters":0.5,
+	"ndim":1,
+	"seed":null
+	},	
+"label": {
+	"operator":"phase",
+	"site":null,
+	"string":"K",
+	"interaction":"i",
+	"parameters":0.5,
+	"ndim":3,
+	"seed":null
 	},
 "jobs":{
 	"preprocess":null,
