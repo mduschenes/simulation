@@ -1093,11 +1093,9 @@ class Operators(Object):
 		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
 		self.coefficients = array(self.tau/self.P,dtype=self.dtype)
 
-		# self.__setup__(data,operator,site,string,parameters)
+		self.__setup__(data,operator,site,string,parameters)
 
 		self.info()
-
-		exit()
 
 		return	
 
