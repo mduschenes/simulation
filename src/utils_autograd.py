@@ -402,8 +402,11 @@ def switch(index,funcs,*args):
 	Returns:
 		out (object): Return of function
 	'''	
-	return jax.lax.switch(index,funcs,*args)
-	# return funcs[index](*args)
+
+	# TODO merge switch for different numpy backends (jax vs autograd)
+
+	# return jax.lax.switch(index,funcs,*args)
+	return funcs[index](*args)
 
 # @partial(jit,static_argnums=(2,))	
 def forloop(start,end,func,out):	
@@ -417,10 +420,19 @@ def forloop(start,end,func,out):
 	Returns:
 		out (array): Return of loop
 	'''
+
+	# TODO merge forloop for different numpy backends (jax vs autograd)
+
 	# if (end-start) <= 0:
 	# 	return out
 	# return jax.lax.fori_loop(start,end,func,out)
-	for i in range(start,end):
+	
+	if end <= start:
+		step = -1
+	else:
+		step = 1
+
+	for i in range(start,end,step):
 		out = func(i,out)
 	return out
 
@@ -3164,6 +3176,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 
 	isarray = all(isinstance(operand,arrays) for operand in operands)
 
+
 	if wrapper is None:
 		@jit
 		def wrapper(out,*operands):
@@ -4795,8 +4808,8 @@ def randomstring(K,N,D=2):
 	else:
 		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
 
-	alpha = jax.random.uniform(key,(K*N,d))
-	# alpha = np.random.uniform(size=(K*N,d))
+	# alpha = jax.random.uniform(key,(K*N,d))
+	alpha = np.random.uniform(size=(K*N,d))
 	
 	string = vtensordot(alpha,basis,1)
 	string = string.reshape((K,N,D,D))
@@ -4829,8 +4842,8 @@ def paulistring(string,N,K,D=2):
 	else:
 		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
 
-	alpha = jax.random.uniform(key,(K*N,d))
-	# alpha = np.random.uniform(size=(K*N,d))
+	# alpha = jax.random.uniform(key,(K*N,d))
+	alpha = np.random.uniform(size=(K*N,d))
 	
 	string = vtensordot(alpha,basis,1)
 	string = string.reshape((K,N,D,D))
