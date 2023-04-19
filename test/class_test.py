@@ -130,15 +130,13 @@ def test_model(path,tol):
 
 	t = time.time()
 	parameters = rand(shape=(len(model),model.M),random='normal',bounds=[-1,1],key=1234)
-	print(parameters.shape)	
 	obj = model(parameters)
-	print(time.time()-t)
+	print(parameters.shape,obj.shape,time.time()-t)
 
 	t = time.time()
 	parameters = rand(shape=(len(model),model.M),random='normal',bounds=[-1,1],key=1234)
-	print(parameters.shape)
 	obj = model(parameters)
-	print(time.time()-t)
+	print(parameters.shape,obj.shape,time.time()-t)
 
 
 	I = model.identity()
@@ -150,6 +148,26 @@ def test_model(path,tol):
 	objobjD = dot(obj,objD)
 	objDobj = dot(objD,obj)
 
+	print('model(conj=True) - dagger(model())',(objH-objH).min(),(objH-objH).max())
+	# print(objH-objH)
+	# print()
+
+	print('model() * model(conj=True) - I',(objobjH - I).min(),(objobjH - I).max())
+	# print(objobjH - I)
+	# print()
+
+	print('model(conj=True) * model() - I',(objHobj - I).min(),(objHobj - I).max())
+	# print(objHobj - I)
+	# print()
+
+	print('model() * dagger(model()) - I',(objobjD - I).min(),(objobjD - I).max())
+	# print(objobjD - I)
+	# print()
+
+	print('dagger(model()) * model() - I',(objDobj - I).min(),(objDobj - I).max())
+	# print(objDobj - I)
+	# print()
+
 	assert allclose(objobjH,I), "Incorrect unitarity model() * model(conj=True) != I"
 	assert allclose(objHobj,I), "Incorrect unitarity model(conj=True) * model() != I"
 	assert allclose(objobjD,I), "Incorrect unitarity model() * dagger(model()) != I"
@@ -157,7 +175,7 @@ def test_model(path,tol):
 
 	assert allclose(objH,objD), "Incorrect model(conj=True) != conj(model())"
 
-	print('All Passed')
+	print('Unitary Conditions Passed')
 	return
 	m,d,p = model.M,len(model),model.P
 	identity = model.identity()
@@ -607,12 +625,100 @@ def profile(func,*args,profile=True,**kwargs):
 
 	return
 
+
+def test_machine_precision(path,tol):
+	import matplotlib
+	import matplotlib.pyplot as plt
+	from mpl_toolkits.axes_grid1 import make_axes_locatable
+	import numpy as np
+
+	from src.utils import rand,dot,dagger,identity,norm,sqrt,abs,abs2,eig,diag,arctan,exp
+
+	norm = lambda A: sqrt(abs2(A).sum())
+
+	def alpha(n,a):
+		b = [0]
+		for i in range(n):
+			c = b[-1]
+			c = (1+a)*c + a
+			b.append(c)
+		return b[1:]
+
+	def beta(n,M,bits):
+		random = 'haar'
+		dtype = 'complex%d'%(bits)
+		A = rand((M,M),random=random,dtype=dtype)
+		I = identity(M)
+		L,V = eig(A,compute_v=True)
+		L = diag(exp(1j*arctan(L.imag,L.real)))
+		B = [I]
+		b = [0]
+		for i in range(1,n+1):
+			c = b[-1]
+			C = B[-1]
+			C = dot(A,C)
+			c = norm(C - dot(dot(V,L**i),dagger(V)))
+			b.append(c)
+			B.append(C)
+		return b[1:]		
+
+
+	M = 2**4
+	N = int(1e4)
+	K = 11
+	A = np.logspace(-20,-20+K-1,K)
+	B = [64,128,256]
+
+	mplstyle = 'config/plot.mplstyle'
+	with matplotlib.style.context(mplstyle):
+
+		fig,ax = plt.subplots()
+		plots = []
+		for a in A:
+			b = alpha(N,a)
+			n = list(range(1,N+1))
+			index = (np.log(a)-np.log(A.min()))/(np.log(A.max())-np.log(A.min()))
+			slope = (np.log(b[-1])-np.log(b[0]))/(np.log(n[-1])-np.log(n[0]))
+			intercept = np.log(b[0])/np.log(a)
+			plot = ax.plot(n,b,linewidth=4,label='$10^{-%d}$'%(int(-np.log10(a))),color=plt.cm.viridis(index))
+			plots.append(plot)
+
+		for bits in B:
+			b = [beta(N,M,bits) for a in range(100)]
+			n = list(range(1,N+1))
+			b,berr = np.mean(b,axis=0),np.std(b,axis=0)/sqrt(len(b)-1)
+			plot = ax.errorbar(n,b,yerr=berr,alpha=(B.index(bits)+1)/len(B),linewidth=4,linestyle='--',color='gray',label=r'$%d~\textrm{bit}$'%(bits//2))
+				
+		# ax.axhline(1e-8,color='k',linestyle='--');
+		# ax.axhline(1e-16,color='k',linestyle='--');
+		fig.set_size_inches(10,10)
+		ax.set_xlabel(r'$\textrm{Matmul Count}~n$')
+		ax.set_ylabel(r'$\textrm{Matmul Error}~ \epsilon_{n}$')
+		ax.set_yscale('log');
+		ax.set_xscale('log');
+		# ax.set_xlim(5e-1,5e6);
+		# ax.set_ylim(1e-21,1e-3);
+		# ax.set_xticks([1e0,1e2,1e4,1e6]);
+		# ax.set_yticks([1e-20,1e-16,1e-12,1e-8,1e-4]);
+		ax.minorticks_off();
+		ax.grid(True,alpha=0.3);
+		ax.set_title(r'$1 + \epsilon_{n+1} = \sum_{k}^{n} \binom{n}{k} \epsilon^{k} ~~\sim~~ 1 + n\epsilon$',pad=20)
+		legend = ax.legend(
+			title=r'$\textrm{Machine Precision} ~ \varepsilon$' + '\n' + r'$A^{n} \approx A^{n} + \epsilon_{n}\abs{A}^{n} \in \mathbb{C}^{N \times N}$' + '\n' + r'$~~~~\epsilon = N\varepsilon$',
+			loc=[1.1,-0.05],ncol=1);
+		legend.get_title().set_ha('center')
+		fig.savefig('matmul_error.pdf',bbox_inches="tight",pad_inches=0.2)
+
+	return
+
+
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
 	# func = test_object
 	func = test_model
+	func = test_machine_precision
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

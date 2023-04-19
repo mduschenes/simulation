@@ -56,6 +56,7 @@ import pandas as pd
 import autograd
 import autograd.numpy as np
 import autograd.scipy as sp
+import autograd.scipy.linalg
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 pd.set_option('display.max_rows', 500)
@@ -1647,7 +1648,7 @@ def eig(a,compute_v=False,hermitian=False):
 		if hermitian:
 			_eig = np.linalg.eigh
 		else:
-			_eig = np.linalg.eig
+			_eig = sp.linalg.eig
 	else:
 		if hermitian:
 			_eig = np.linalg.eigvalsh
