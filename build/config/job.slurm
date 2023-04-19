@@ -17,6 +17,9 @@
 
 ##SBATCH --dependency=afterany:
 
+##--nodelist=cpu[0-10]
+##--exclude=cpu[0-10]
+
 #SBATCH --parsable
 #SBATCH --get-user-env
 #SBATCH --cpus-per-task=1
@@ -107,3 +110,8 @@ EXE+=(RUN {} ${CMD[@]} :::)
 # Run
 echo $(pwd) ${EXE[@]} ${TASKS[@]}
 ${EXE[@]} ${TASKS[@]}
+
+# Status
+# squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
+# sacct -j ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
+scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}

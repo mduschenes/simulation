@@ -12,8 +12,8 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,lstsq,inv,norm,metrics,optimizer_libraries
-from src.utils import is_array,is_unitary,is_hermitian,is_naninf,product,sqrt,asarray,asscalar
+from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
+from src.utils import is_unitary,is_hermitian,is_naninf,product,sqrt
 from src.utils import scalars,delim,nan
 
 from src.iterables import setter
@@ -102,7 +102,7 @@ class LineSearcher(System):
 		attr = 'alpha'
 		if (returns[attr] is None) or (is_naninf(returns[attr])) or (returns[attr] < self.hyperparameters['bounds'][attr][0]) or (returns[attr] > self.hyperparameters['bounds'][attr][1]):		
 			if len(alpha) > 1:
-				returns[attr] = alpha[-1]#*grad[-1].dot(search[-1])/grad[-2].dot(search[-2])
+				returns[attr] = alpha[-1]#*dot(grad[-1],search[-1])/dot(grad[-2],search[-2])
 			else:
 				returns[attr] = alpha[-1]		
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
@@ -332,7 +332,7 @@ class GradSearcher(System):
 				returns[attr] = 0
 			else:
 				returns[attr] = beta[0]
-		elif (self.hyperparameters['eps'].get('grad.dot') is not None) and (len(grad)>1) and ((abs(grad[-1].dot(grad[-2]))/(grad[-1].dot(grad[-1]))) >= self.hyperparameters['eps']['grad.dot']):
+		elif (self.hyperparameters['eps'].get('grad.dot') is not None) and (len(grad)>1) and ((abs(dot(grad[-1],grad[-2]))/(dot(grad[-1],grad[-1]))) >= self.hyperparameters['eps']['grad.dot']):
 			returns[attr] = 0			
 		elif (self.hyperparameters['modulo'].get(attr) is not None) and ((iteration+1)%(self.hyperparameters['modulo'][attr]) == 0):
 			if len(beta) > 1:
@@ -399,7 +399,7 @@ class Fletcher_Reeves(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = (grad[-1].dot(grad[-1]))/(grad[-2].dot(grad[-2])) # Fletcher-Reeves
+		_beta = (dot(grad[-1],grad[-1]))/(dot(grad[-2],grad[-2])) # Fletcher-Reeves
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
@@ -437,7 +437,7 @@ class Polak_Ribiere(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = max(0,(grad[-1].dot(grad[-1]-grad[-2]))/grad[-2].dot(grad[-2]))  # Polak-Ribiere
+		_beta = max(0,(dot(grad[-1],grad[-1]-grad[-2]))/(dot(grad[-2],grad[-2])))  # Polak-Ribiere
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
@@ -475,7 +475,7 @@ class Polak_Ribiere_Fletcher_Reeves(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = [(grad[-1].dot(grad[-1]))/(grad[-2].dot(grad[-2])),max(0,(grad[-1].dot(grad[-1]-grad[-2]))/grad[-2].dot(grad[-2]))] # Polak-Ribiere-Fletcher-Reeves
+		_beta = [(dot(grad[-1],grad[-1]))/(dot(grad[-2],grad[-2])),max(0,(dot(grad[-1],grad[-1]-grad[-2]))/(dot(grad[-2],grad[-2])))] # Polak-Ribiere-Fletcher-Reeves
 		_beta = -_beta[0] if _beta[1] < -_beta[0] else _beta[1] if abs(_beta[1]) <= _beta[0] else _beta[0]
 		returns = (_beta,)
 
@@ -514,7 +514,7 @@ class Hestenes_Stiefel(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = (grad[-1].dot(grad[-1]-grad[-2]))/(search[-1].dot(grad[-1]-grad[-2])) # Hestenes-Stiefel
+		_beta = (dot(grad[-1],grad[-1]-grad[-2]))/(dot(search[-1],grad[-1]-grad[-2])) # Hestenes-Stiefel
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
@@ -551,7 +551,7 @@ class Dai_Yuan(GradSearcher):
 		Returns:
 			beta (array): Returned search value
 		'''
-		_beta = (grad[-1].dot(grad[-1]))/(search[-1].dot(grad[-1]-grad[-2])) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
+		_beta = (dot(grad[-1],grad[-1]))/(dot(search[-1],grad[-1]-grad[-2])) # Dai-Yuan https://doi.org/10.1137/S1052623497318992
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
@@ -589,7 +589,7 @@ class Hager_Zhang(GradSearcher):
 			beta (array): Returned search value
 		'''
 		_beta = grad[-1]-grad[-2]
-		_beta = (_beta - 2*((_beta.dot(_beta))/(_beta.dot(search[-1])))*search[-1]).dot(grad[-1]/(_beta.dot(search[-1]))) # Hager-Zhang https://doi.org/10.1137/030601880
+		_beta = dot((_beta - 2*((dot(_beta,_beta))/(dot(_beta,search[-1])))*search[-1]),grad[-1]/(dot(_beta,search[-1]))) # Hager-Zhang https://doi.org/10.1137/030601880
 		returns = (_beta,)
 
 		returns = self.__callback__(returns,iteration,parameters,beta,value,grad,search)
@@ -632,12 +632,15 @@ class Function(System):
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)
 			kwargs (dict): Additional system attributes
 		'''
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		if func is None:
 			func = []
 		if not callable(func):
+			func = [i for i in func if i is not None]
 			if len(func) == 1:
 				function = func[0]
 			elif func:
@@ -654,6 +657,7 @@ class Function(System):
 		if grad is None:
 			gradient = None
 		elif not callable(grad):
+			grad = [i for i in grad if i is not None]
 			if len(grad) == 1:
 				gradient = grad[0]
 			elif grad:
@@ -891,6 +895,8 @@ class Metric(System):
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,logconf,logging,cleanup,verbose)	
 			kwargs (dict): Additional system attributes
 		'''
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -994,18 +1000,6 @@ class Metric(System):
 		'''		
 		return self.__grad_analytical__(*operands)	
 
-	def __str__(self):
-		'''
-		Class string
-		'''
-		return self.string
-
-	def __repr__(self):
-		'''
-		Class representation
-		'''
-		return self.__str__()
-
 	def info(self,verbose=None):
 		'''
 		Log class information
@@ -1013,7 +1007,7 @@ class Metric(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
+			*['Metric %s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['metric']
 			],
 			]
@@ -1036,6 +1030,9 @@ class Metric(System):
 					self.metric = 'abs2'
 				elif is_hermitian(self.label) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
+		
+		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
+			self.shapes = [self.shapes,]*2
 
 		func,grad,grad_analytical = metrics(
 			metric=self.metric,shapes=self.shapes,
@@ -1064,6 +1061,9 @@ class Optimization(System):
 		kwargs (dict): Additional system attributes
 	'''
 	def __init__(self,func,grad=None,callback=None,hyperparameters={},system=None,**kwargs):
+
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -1418,16 +1418,16 @@ class Optimization(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
+			*['Optimizer %s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']
 			],
-			*['dtype: %s'%(', '.join(['%s: %s'%(attr,value.dtype if value is not None else None) for attr,value in {
+			*['Optimizer dtype: %s'%(', '.join(['%s: %s'%(attr,value.dtype if value is not None else None) for attr,value in {
 				**{attr: getattr(self.func.model,attr)() for attr in ['parameters','label','state','noise'] if hasattr(self.func.model,attr)},
 				**{attr:self.func.model(self.func.model.parameters()) for attr in ['model'] if getattr(self.func.model,'parameters')},
 				**{attr:self.func.metric(self.func.model.label()) for attr in ['metric'] if hasattr(self.func.model,'label')},
 				**{attr:self.func(self.func.model.parameters()) for attr in ['cls'] if hasattr(self.func.model,'parameters')},
 				}.items()]))],
-			*['%s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
+			*['Optimizer %s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
 				for attr in ['track','attributes']
 				if any(getattr(self,attr).get(key) for key in getattr(self,attr))
 			],			
@@ -1453,7 +1453,8 @@ class Optimizer(Optimization):
 		defaults = {'optimizer':None}
 		setter(hyperparameters,defaults,delimiter=delim,func=False)
 
-		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
+		# optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
+		optimizers = {'adam':GradientDescent,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
 
 		optimizer = hyperparameters['optimizer']		
 		
@@ -1879,9 +1880,15 @@ class Covariance(System):
 			cov (callable): Covariance of function
 		'''
 
+		if hyperparameters is not None and system is not None:
+			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
+
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
+
+		if all(isinstance(i,int) for i in shapes) or (len(shapes) == 1):
+			shapes = [shapes]*2
 
 		if label is None:
 			shapes = (*shapes[:1],*shapes[2:])				
@@ -1921,18 +1928,6 @@ class Covariance(System):
 	def __call__(self,parameters,*args,**kwargs):
 		return inv(self.hess(parameters,*args,**kwargs))
 
-	def __str__(self):
-		'''
-		Class string
-		'''
-		return self.string
-
-	def __repr__(self):
-		'''
-		Class representation
-		'''
-		return self.__str__()
-
 	def info(self,verbose=None):
 		'''
 		Log class information
@@ -1940,7 +1935,7 @@ class Covariance(System):
 			verbose (int,str): Verbosity of message			
 		'''		
 		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattr(self,attr)) 
+			*['Covariance %s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['metric']
 			],
 			]
