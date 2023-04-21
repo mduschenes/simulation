@@ -1259,7 +1259,7 @@ class Operators(Object):
 				else '%0.3e')%(prop,getattrs(self,delim.join([attr,prop]),delimiter=delim),)) 
 				if prop is not None else str(getattrs(self,attr,delimiter=delim,default=None)))
 				for prop in [None,'shape','parameters']]))
-				for attr in ['parameters','state','noise'] if callable(getattrs(self,attr,default=None)) and getattrs(self,attr)() is not None
+				for attr in ['parameters','state','noise']
 			],
 			# *['%s:\n%s'%(delim.join(attr.split(delim)[:1]),
 			# 	to_string(getattrs(self,attr,default=lambda:None)()))

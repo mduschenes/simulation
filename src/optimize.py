@@ -16,7 +16,7 @@ from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,dot,lstsq
 from src.utils import is_unitary,is_hermitian,is_naninf,product,sqrt
 from src.utils import scalars,delim,nan
 
-from src.iterables import setter
+from src.iterables import setter,getattrs
 
 from src.line_search import line_search,armijo
 
@@ -1421,12 +1421,8 @@ class Optimization(System):
 			*['Optimizer %s: %s'%(attr,getattr(self,attr)) 
 				for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']
 			],
-			*['Optimizer dtype: %s'%(', '.join(['%s: %s'%(attr,value.dtype if value is not None else None) for attr,value in {
-				**{attr: getattr(self.func.model,attr)() for attr in ['parameters','label','state','noise'] if hasattr(self.func.model,attr)},
-				**{attr:self.func.model(self.func.model.parameters()) for attr in ['model'] if getattr(self.func.model,'parameters')},
-				**{attr:self.func.metric(self.func.model.label()) for attr in ['metric'] if hasattr(self.func.model,'label')},
-				**{attr:self.func(self.func.model.parameters()) for attr in ['cls'] if hasattr(self.func.model,'parameters')},
-				}.items()]))],
+			*['Optimizer dtype: %s'%(', '.join(['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).dtype if	 getattrs(self,attr,delimiter=delim) is not None else None) 
+				for attr in ['func.model','func.metric','func.model.parameters','func.model.state','func.model.noise','func.metric.label']]))],
 			*['Optimizer %s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
 				for attr in ['track','attributes']
 				if any(getattr(self,attr).get(key) for key in getattr(self,attr))

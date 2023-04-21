@@ -100,8 +100,6 @@ class Parameter(System):
 		Returns:
 			constraints (array): constraints
 		'''
-		if parameters is None:
-			return 0
 
 		parameters = parameters.reshape(-1,*self.shape[1:])
 
@@ -254,39 +252,37 @@ class Parameter(System):
 
 		for attr in self.kwargs:
 
+			if self.kwargs.get(attr) is None:
+				continue
+
 			if attr in ['lambda','scale','shift']:
 				
-				if self.kwargs.get(attr) is not None:
-					self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
-				else:
-					self.kwargs[attr] = array(0,dtype=self.dtype)
-
+				self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
 			
 			elif attr in ['constant']:
 				
-				if self.kwargs.get(attr) is not None:
-					if not all(isinstance(self.kwargs[attr][i],dict) for i in self.kwargs[attr]):
-						axis = -1
-						self.kwargs[attr] = {axis:self.kwargs[attr]}
-					for axis in list(self.kwargs[attr]):
-						constants = self.kwargs[attr].pop(axis)
-						indices = array([int(i) for i in constants])
-						values = array([constants[i] for i in constants],dtype=self.dtype)
-						axis = int(axis)
-						indices = (*(slice(None),)*(axis % self.ndim-1),indices)
-						self.kwargs[attr][axis] = {'indices':indices,'values':values}
-				else:
+				if not all(isinstance(self.kwargs[attr][i],dict) for i in self.kwargs[attr]):
 					axis = -1
-					self.kwargs[attr] = {axis:{'indices':array([],dtype=int),'values':array([],dtype=self.dtype)}}
+					self.kwargs[attr] = {axis:self.kwargs[attr]}
+				for axis in list(self.kwargs[attr]):
+					constants = self.kwargs[attr].pop(axis)
+					indices = array([int(i) for i in constants])
+					values = array([constants[i] for i in constants],dtype=self.dtype)
+					axis = int(axis)
+					indices = (*(slice(None),)*(axis % self.ndim-1),indices)
+					self.kwargs[attr][axis] = {'indices':indices,'values':values}
+	
+		def func(parameters):
+			return self.parameters*self.data[self.slices]
+		
+		def constraint(parameters):
+			return 0
 
 		if self.category in ['variable']:
 
 			if self.method in ['bounded']:
 				def func(parameters):
 					return self.parameters*bound(parameters[self.slices])
-
-				def constraint(parameters):
-					return self.kwargs['default']
 
 			elif self.method in ['constrained']:					
 				def func(parameters):
@@ -297,22 +293,10 @@ class Parameter(System):
 					# parameters = parameters.reshape(*shape)
 					return parameters
 
+			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
 				def constraint(parameters):
 					return self.kwargs['lambda']*((parameters[...,self.kwargs['constant'][-1]['indices']] - self.kwargs['constant'][-1]['values'])**2).sum()
-			else:
-				def func(parameters):
-					return self.parameters*parameters[self.slices]
-			
-				def constraint(parameters):
-					return self.kwargs['default']
 
-		else:
-			def func(parameters):
-				return self.parameters*self.data[self.slices]
-		
-			def constraint(parameters):
-				return 0
-		
 
 		self.func = jit(func)
 		self.constraint = jit(constraint)
