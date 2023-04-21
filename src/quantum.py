@@ -12,17 +12,15 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vmap,vfunc,switch,gradient,hessian,fisher
-from src.utils import array,asarray,empty,identity,ones,zeros,arange,rand,setitem
-from src.utils import tensorprod,dagger,conj,einsum,dot
-from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
-from src.utils import forloop,trotter,gradient_trotter,gradient_expm
-from src.utils import eig
+from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
+from src.utils import array,asarray,empty,identity,ones,zeros,arange,rand,setitem,shift
+from src.utils import tensorprod,dagger,conj,einsum,dot,eig,sort,relsort,norm
+from src.utils import expm,expmc,expmv,expmm,expmvc,expmmc,expmmn,expmmcn
+from src.utils import gradient_expm
+from src.utils import trotter,gradient_trotter
 from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log,log10,sign,sin,cos
-from src.utils import sort,relsort,norm
-from src.utils import initialize,parse,to_string,allclose
-from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,namespace
-from src.utils import itg,flt,dbl
+from src.utils import to_string,allclose
+from src.utils import pi,e,nan,null,delim,scalars,arrays,namespace
 
 from src.iterables import setter,getter,getattrs,hasattrs,indexer,inserter
 
@@ -227,7 +225,7 @@ class Object(System):
 
 		return self.data
 
-	def grad(self,parameters=None,state=None,conj=None):
+	def grad(self,parameters=None,state=None):
 		'''
 		Call gradient
 		Args:
@@ -416,10 +414,17 @@ class Operator(Object):
 
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 
-		classes = [Gate,Pauli,Haar,State,Noise]
+		classes = [Gate,Pauli,Haar,State,Noise,Object]
+
 
 		for subclass in classes:
 			
+			if any(isinstance(obj,subclass) for obj in [data,operator]):
+
+				self = subclass(**kwargs)
+
+				break
+
 			if not all(j in subclass.basis for obj in [data,operator] if (obj is not None and not isinstance(obj,arrays)) for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
 				continue
 			
@@ -482,8 +487,6 @@ class Pauli(Object):
 		'''
 		if parameters is None:
 			parameters = self.parameters
-		if parameters is None:
-			return self.data
 
 		return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
 
@@ -785,239 +788,6 @@ class Noise(Object):
 		return
 
 
-def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
-	'''
-	Calculate operators
-	Args:
-		data (iterable[Operator]): Array of data to matrix exponentiate of shape (d,n,n)
-		parameters (Parameters): Array of parameters of shape (d,m)
-		identity (Operator): Array of data identity of shape (n,n)
-		state (Operator): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
-		noise (Operator): Array of noise to act of shape (n,n) or (k,n,n)
-		coefficients (arrray): Array of coefficients of shape (1,) or (d,)
-		n (int): Size of array
-		d (int): Number of data
-		m (int): Number of steps
-		p (int): Number of trotterizations
-	Returns:
-		func (callable): Function to compute operators, with signature func(parameters,state,conj), where parameters[i][j] is a nested iterable for each operator i and time step j
-		grad (callable): Gradient to compute operators, with signature grad(parameters,state,conj), where parameters[i][j] is a nested iterable for each operator i and time step j
-	'''	
-
-	if parameters is None:
-		return lambda *args,**kwargs: None
-
-	if p > 2:	
-		raise NotImplementedError("Trotterization p = %d not implemented for p>2"%(p))
-
-	trotterize = lambda iterable,p: [i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in iterable[s]]
-
-	indices = array(trotterize(arange(d),p))
-
-	@jit
-	def trotter(iterable):
-		return iterable[indices]
-
-	data = trotterize(data,p)
-
-	funcs = lambda i,parameters: data[i%(d*p)](parameters[i])
-
-
-	I = identity
-	A = array([i() for i in data])
-
-	def func(x,A,I,state=None,conj=None):
-		'''
-		Calculate matrix exponential of parameters times data
-		Args:
-			x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-			A (array): Array of data to matrix exponentiate of shape (d,n,n)
-			I (array): Array of data identity
-		Returns:
-			out (array): Matrix exponential of A of shape (n,n)
-		'''	
-
-		x = trotter(x).T.ravel()
-
-		m = x.size
-		d,shape = A.shape[0],A.shape[1:]
-
-		# subscripts = 'ij,jk->ik'
-		# shapes = (shape,shape)
-		# einsummation = einsum #(subscripts,shapes)
-
-		# def func(i,out):
-		# 	U = cos(x[i]*pi)*I + -1j*sin(x[i]*pi)*A[i%(d)]
-		# 	return einsummation(subscripts,U,out)
-
-		# return forloop(0,m,func,I)
-
-		if conj:
-			def func(i,out):
-				U = cos(x[i]*pi)*I + 1j*sin(x[i]*pi)*A[i%(d)]
-				return dot(U,out)#subscripts,U,out)
-
-			return forloop(m-1,-1,func,I)		
-		
-		else:
-			def func(i,out):
-				U = cos(x[i]*pi)*I + -1j*sin(x[i]*pi)*A[i%(d)]
-				return dot(U,out)#subscripts,U,out)
-
-			return forloop(0,m,func,I)		
-
-		# out = I
-		# for i in range(0,m):
-		# 	U = cos(x[i]*pi)*I + -1j*sin(x[i]*pi)*A[i%(d)]			
-		# 	out = dot(U,out)
-	
-		# return out
-
-	func = jit(func,A=A,I=I)
-
-	# data = [jit(i) for i in data]#data[i]) for i in indices]
-	# funcs = jit(lambda i,parameters: switch(i,data,parameters))
-
-	# # @jit
-	# def func(parameters=None,state=None,conj=None):
-	# 	'''
-	# 	Compute operator
-	# 	Args:
-	# 		parameters (array): parameters of shape (d,m,...)
-	# 		state (object): state
-	# 		conj (bool): conjugate
-	# 	'''
-	# 	parameters = coefficients*trotter(parameters).T.ravel()
-
-	# 	@jit
-	# 	def function(i,out):
-	# 		return dot(funcs(i%(d*p),parameters[i]),out)
-
-	# 	out = forloop(0,m*d*p,function,identity)
-
-	# 	return out
-
-
-
-
-	# # @jit
-	# def func(parameters):#=None,state=None,conj=None):
-	# 	'''
-	# 	Compute operator
-	# 	Args:
-	# 		parameters (array): parameters of shape (d,m,...)
-	# 		state (object): state
-	# 		conj (bool): conjugate
-	# 	'''
-	# 	parameters = coefficients*trotter(parameters).T.ravel()
-
-	# 	@jit
-	# 	def function(i,out):
-	# 		return dot(switch(i%(d*p),data,parameters[i]),out)
-	# 		# return dot(data[i%(d*p)](parameters[i]),out)
-
-	# 	out = forloop(0,m*d*p,function,identity)
-
-	# 	return out
-
-		# @jit
-		# def func(parameters):
-		# 	return trotter(funcs(index,parameters))
-
-		# def function(i,out):
-		# 	for operator in trotter(funcs(index,parameters[:,i])):
-		# 		out = dot(operator,out)
-		# 	return out
-
-		# out = identity
-		# parameters = parameters.T.ravel()
-		# size = parameters.size
-		
-		# out = forloop(0,size,func,out)
-		
-		# @jit
-		# def function(i,out):
-		# 	return dot(funcs(i%(d*p),parameters[i]),out)
-
-		# out = forloop(0,m*d*p,function,identity)
-
-		# if not conj:
-		# 	@jit
-		# 	def function(i,out):
-		# 		for operator in trotter(funcs(index,parameters[:,i])):
-		# 			out = dot(operator,out)
-		# 		return out
-
-		# 	out = identity
-			
-		# 	out = forloop(0,m,function,out)
-
-		# else:
-		# 	@jit
-		# 	def function(i,out):
-		# 		for operator in trotter(funcs(index,parameters[:,i]))[::-1]:
-		# 			out = dot(operator,out)
-		# 		return out
-
-		# 	out = identity
-			
-		# 	out = forloop(m-1,-1,function,out)			
-		
-		# return out
-
-
-
-	# def func(parameters=None,state=None,conj=None):
-	# 	if conj:
-	# 		sign = -1
-	# 		slices = slice(None,None,-1)
-	# 		indices = range(m-1,-1,-1)
-	# 	else:
-	# 		sign = 1
-	# 		slices = slice(None,None,1)
-	# 		indices = range(0,m,1)
-	# 	out = identity
-	# 	for j in indices:
-	# 		operators = [data[i](sign*coefficients[i]*parameters[i][j],conj=True) for i in range(d)]
-	# 		operators = trotter(operators,p)[slices]
-	# 		for operator in operators:
-	# 			out = dot(operator,out)
-	# 	return out
-
-	return func
-	
-	# if state is None and noise is None:
-	# 	self.summation = jit(summation,data=data,identity=identity)
-	# 	self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	# elif state is not None and noise is None:
-	# 	if state.ndim == 1:
-	# 		self.summation = jit(summationv,data=data,identity=identity,state=state)
-	# 		self.exponentiation = jit(exponentiationv,data=data,identity=identity,state=state)
-	# 	elif state.ndim == 2:
-	# 		self.summation = jit(summationm,data=data,identity=identity,state=state)
-	# 		self.exponentiation = jit(exponentiationm,data=data,identity=identity,state=state)
-	# 	else:
-	# 		self.summation = jit(summation,data=data,identity=identity)
-	# 		self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	# elif state is None and noise is not None:
-	# 	self.summation = jit(summation,data=data,identity=identity)
-	# 	self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	# elif state is not None and noise is not None:
-	# 	if state.ndim == 1:
-	# 		self.summation = jit(summationmvc,data=data,identity=identity,state=state,constants=noise)
-	# 		self.exponentiation = jit(exponentiationmvc,data=data,identity=identity,state=state,constants=noise)
-	# 	elif state.ndim == 2:
-	# 		self.summation = jit(summationmmc,data=data,identity=identity,state=state,constants=noise)
-	# 		self.exponentiation = jit(exponentiationmmc,data=data,identity=identity,state=state,constants=noise)
-	# 	else:
-	# 		self.summation = jit(summation,data=data,identity=identity)
-	# 		self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	# else:
-	# 	self.summation = jit(summation,data=data,identity=identity)
-	# 	self.exponentiation = jit(exponentiation,data=data,identity=identity)
-
-
-
 class Operators(Object):
 	'''
 	Class for Operators
@@ -1079,7 +849,9 @@ class Operators(Object):
 		self.noise = noise
 		self.identity = None
 		self.coefficients = None
+		self.constants = None
 		self.compute = None
+		self.trotterize = None
 
 		self.system = system
 
@@ -1251,18 +1023,32 @@ class Operators(Object):
 			setattr(self,obj,instance)
 				
 		# Set functions
-		data = self.data
 		identity = self.identity()
 		parameters = self.parameters()
 		state = self.state()
 		noise = self.noise()
+		constants = self.constants
 		coefficients = self.coefficients
-		n = self.n
-		d = len(self.data)
-		m = self.M
-		p = self.P
 
-		self.compute = Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p)
+		def trotter(iterable,p):
+			return [i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in iterable[s]]
+		
+		def trotterize(parameters,slices):
+			return parameters[slices].T.ravel()
+
+		slices = array(trotter(arange(len(self)),self.P))
+
+		data = trotter([jit(i) for i in self.data],self.P)
+
+		if state is None and noise is None:
+			compute = exponentiation
+		else:
+			raise NotImplementedError("state!=None, noise!=None Not Implemented")
+
+
+		self.compute = jit(compute,state=state,data=data,identity=identity,constants=constants,noise=noise)
+		self.trotterize = jit(trotterize,slices=slices)
+
 
 		# Update class attributes
 		self.gradient = gradient(self,mode='fwd',move=True)
@@ -1283,9 +1069,9 @@ class Operators(Object):
 		if parameters is None:
 			parameters = self.parameters()
 
-		parameters = self.coefficients*self.parameters(parameters)
+		parameters = self.trotterize(self.coefficients*self.parameters(parameters))
 
-		return self.compute(parameters,state=state,conj=conj)
+		return self.compute(parameters,conj=conj)
 
 	def __grad__(self,parameters=None,state=None,conj=None):
 		''' 
@@ -1667,7 +1453,7 @@ class Hamiltonian(Operators):
 							value[obj] = [dict(zip(
 								indices[key],
 								s if not isinstance(s,int) else [s])
-							).get(i,parse(i,int)) 
+							).get(i,int(i) if not isinstance(i,str) else i) 
 							for i in tmp[attr]]
 						else:
 							value[obj] = tmp[obj]
@@ -2093,20 +1879,17 @@ class Callback(System):
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and (not ((status) and (not done))):
 
-					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg,{}).get(prop) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
-					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
+					_defaults = {**{kwarg: getattr(model,kwarg) for kwarg in ['state','noise']},**{kwarg: deepcopy(getattr(metric,kwarg)) for kwarg in ['label']}}
+
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
-						_kwargs = {kwarg: False if kwarg in [] else _kwargs[kwarg] for kwarg in _kwargs}
-						_metric = 'real'
+						_kwargs = {kwarg: False if kwarg in [] else _defaults[kwarg] for kwarg in _defaults}
 					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
-						_kwargs = {kwarg: False if kwarg in ['noise'] else _kwargs[kwarg] for kwarg in _kwargs}
-						_metric = 'real'
+						_kwargs = {kwarg: False if kwarg in ['noise'] else _defaults[kwarg] for kwarg in _defaults}
 					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
-						_kwargs = {kwarg: False if kwarg in ['noise','state'] else _kwargs[kwarg] for kwarg in _kwargs}
-						_metric = 'abs2'
+						_kwargs = {kwarg: False if kwarg in ['noise','state'] else _defaults[kwarg] for kwarg in _defaults}
 
 					_model = model
-					_label = Label()
+					_label = _defaults['label'].__
 					_shapes = _label.shape
 					_optimize = None
 					_hyperparameters = hyperparameters
@@ -2114,6 +1897,7 @@ class Callback(System):
 					_restore = {kwarg: deepcopy(getattr(model,kwarg)) for kwarg in _kwargs}
 
 					_model.__initialize__(**_kwargs)
+					_label = _label(**_model)
 					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters,system=_system,verbose=False)
 
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
@@ -2203,3 +1987,225 @@ class Callback(System):
 
 
 
+def contraction(parameters,data,identity):
+	'''
+	Calculate matrix product of parameters times data
+	Args:
+		parameters (array): parameters of shape (m,)		
+		data (array): Array of data to matrix product of shape (d,n,n)
+		identity (array): Array of data identity
+	Returns:
+		out (array): Matrix product of data of shape (n,n)
+	'''	
+	return matmul(parameters*data)
+
+
+
+def multiplication(parameters,data,identity):
+	'''
+	Calculate tensor product of parameters times data
+	Args:
+		parameters (array): parameters of shape (m,)		
+		data (array): Array of data to tensor multiply of shape (d,n,n)
+		identity (array): Array of data identity
+	Returns:
+		out (array): Tensor product of data of shape (n,n)
+	'''		
+	return tensorprod(data)
+
+
+
+def summation(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Operator computation
+	Args:
+		parameters (array): parameters of shape (m,)		
+		state (array): Array of state to act on of shape (n,) or (n,n)
+		conj (bool): conjugate
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	return addition(data)
+
+
+
+def exponentiation(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Operator computation
+	Args:
+		parameters (array): parameters of shape (m,)		
+		state (array): Array of state to act on of shape (n,) or (n,n)
+		conj (bool): conjugate
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''
+
+	m = parameters.shape[0]
+	d = len(data)
+
+	subscripts = 'ij,jk->ik'
+	shapes = (identity.shape,identity.shape)
+	einsummation = einsum #(subscripts,shapes)
+
+	def func(i,out):
+		U = switch(i%d,data,parameters[i])
+		return einsummation(subscripts,U,out)
+
+	return forloop(0,m,func,identity)
+
+
+
+def gradient_exponentiation(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Operator computation
+	Args:
+		parameters (array): parameters of shape (m,)		
+		state (array): Array of state to act on of shape (n,) or (n,n)
+		conj (bool): conjugate
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''
+
+	m = parameters.shape[0]
+	d = len(data)
+
+	subscripts = 'ij,jk,kl->il'
+	shapes = (I.shape,I.shape,I.shape)
+	einsummation = einsum #(subscripts,shapes)
+
+	def func(i):
+		x = slicing(parameters,0,i)
+		y = slicing(parameters,i,m-i)
+		U = exponentiation(x,data,identity,state,constants,noise)
+		V = exponentiation(y,shift(data,-(i%d)),identity,state,constants,noise)
+		A = data[i%d](parameters[i])
+		return einsummation(subscripts,V,A,U)
+
+	return vmap(func)(arange(m))
+	# return array([grad(i) for i in range(m)])
+
+
+
+def exponentiationv(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Operator computation
+	Args:
+		parameters (array): parameters of shape (m,)		
+		state (array): Array of state to act on of shape (n,) or (n,n)
+		conj (bool): conjugate	
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''	
+	raise NotImplementedError	
+	return
+
+
+def exponentiationm(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Operator computation
+	Args:
+		parameters (array): parameters of shape (m,)		
+		state (array): Array of state to act on of shape (n,) or (n,n)
+		conj (bool): conjugate
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''		
+	raise NotImplementedError	
+	return
+
+
+
+def exponentiationc(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Operator computation
+	Args:
+		parameters (array): parameters of shape (m,)		
+		state (array): Array of state to act on of shape (n,) or (n,n)
+		conj (bool): conjugate
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''		
+	raise NotImplementedError	
+	return
+
+
+
+
+def exponentiationmc(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Operator computation
+	Args:
+		parameters (array): parameters of shape (m,)		
+		state (array): Array of state to act on of shape (n,) or (n,n)
+		conj (bool): conjugate
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''		
+	raise NotImplementedError	
+	return
+
+
+
+def exponentiationmvc(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Operator computation
+	Args:
+		parameters (array): parameters of shape (m,)		
+		state (array): Array of state to act on of shape (n,) or (n,n)
+		conj (bool): conjugate
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''		
+	raise NotImplementedError	
+	return
+
+
+
+def exponentiationmmc(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Operator computation
+	Args:
+		parameters (array): parameters of shape (m,)		
+		state (array): Array of state to act on of shape (n,) or (n,n)
+		conj (bool): conjugate
+		data (array): Array of data to matrix sum of shape (d,n,n)
+		identity (array): Array of data identity
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (k,n,n)
+	Returns:
+		out (array): Matrix sum of data of shape (n,n)
+	'''		
+	raise NotImplementedError	
+	return

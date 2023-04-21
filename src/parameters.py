@@ -13,10 +13,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vfunc,switch,array,arange,bound
+from src.utils import jit,vfunc,switch,array,arange,bound,setitem
 from src.utils import concatenate,addition
 from src.utils import initialize,slicing,datatype
-from src.utils import pi,itg,scalars,delim,separ
+from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin
 
 from src.iterables import indexer,inserter,setter,getter
 
@@ -243,37 +243,41 @@ class Parameter(System):
 		self.data = self.data
 
 		# Set functions
-		# defaults = {
-		# 	'data':self.data,
-		# 	'parameters':self.parameters,
-		# 	'slices':self.slices,
-		# 	'constant':self.constant,'default':0,'lambda':0,'scale':1,'length':len(self.group)}
-		# category = self.category
-		# method = self.method
-		# kwargs = deepcopy(self.kwargs)
-		# kwargs.update({attr: kwargs.get(attr,defaults[attr]) for attr in defaults})
-		# kwargs = deepcopy(kwargs)
-		# for attr in kwargs:
+		defaults = {
+			'constant':self.constant,
+			'lambda':0,
+			'scale':[self.parameters,2*pi],
+			'shift':[[0],[-pi/2]],
+			'default':0,
+			}
+		self.kwargs.update({attr: kwargs.get(attr,defaults[attr]) for attr in defaults})
 
-		# 	if kwargs[attr] is None:
-		# 		continue
-		
-		# 	if attr in ['lambda','scale']:
+		for attr in self.kwargs:
+
+			if attr in ['lambda','scale','shift']:
 				
-		# 		kwargs[attr] = array(kwargs[attr],dtype=self.dtype)
+				if self.kwargs.get(attr) is not None:
+					self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
+				else:
+					self.kwargs[attr] = array(0,dtype=self.dtype)
+
 			
-		# 	elif attr in ['constant']:
+			elif attr in ['constant']:
 				
-		# 		if not all(isinstance(kwargs[attr][i],dict) for i in kwargs[attr]):
-		# 			axis = -1
-		# 			kwargs[attr] = {axis:kwargs[attr]}
-		# 		for axis in list(kwargs[attr]):
-		# 			constants = kwargs[attr].pop(axis)
-		# 			indices = array([int(i) for i in constants])
-		# 			values = array([constants[i] for i in constants],dtype=self.dtype)
-		# 			axis = int(axis) % self.ndim
-		# 			indices = (*(slice(None),)*(axis-1),indices)
-		# 			kwargs[attr][axis] = {'indices':indices,'values':values}
+				if self.kwargs.get(attr) is not None:
+					if not all(isinstance(self.kwargs[attr][i],dict) for i in self.kwargs[attr]):
+						axis = -1
+						self.kwargs[attr] = {axis:self.kwargs[attr]}
+					for axis in list(self.kwargs[attr]):
+						constants = self.kwargs[attr].pop(axis)
+						indices = array([int(i) for i in constants])
+						values = array([constants[i] for i in constants],dtype=self.dtype)
+						axis = int(axis)
+						indices = (*(slice(None),)*(axis % self.ndim-1),indices)
+						self.kwargs[attr][axis] = {'indices':indices,'values':values}
+				else:
+					axis = -1
+					self.kwargs[attr] = {axis:{'indices':array([],dtype=int),'values':array([],dtype=self.dtype)}}
 
 		if self.category in ['variable']:
 
@@ -282,14 +286,25 @@ class Parameter(System):
 					return self.parameters*bound(parameters[self.slices])
 
 				def constraint(parameters):
-					return 0					
+					return self.kwargs['default']
 
+			elif self.method in ['constrained']:					
+				def func(parameters):
+					parameters = bound(parameters[self.slices])
+					# shape = parameters.shape
+					# parameters = parameters.reshape(2,-1)
+					# parameters = self.parameters*parameters[0]*cos(2*pi*parameters[1] + self.kwargs['shift'])
+					# parameters = parameters.reshape(*shape)
+					return parameters
+
+				def constraint(parameters):
+					return self.kwargs['lambda']*((parameters[...,self.kwargs['constant'][-1]['indices']] - self.kwargs['constant'][-1]['values'])**2).sum()
 			else:
 				def func(parameters):
 					return self.parameters*parameters[self.slices]
 			
 				def constraint(parameters):
-					return 0
+					return self.kwargs['default']
 
 		else:
 			def func(parameters):
@@ -299,8 +314,8 @@ class Parameter(System):
 				return 0
 		
 
-		self.func = func
-		self.constraint = constraint
+		self.func = jit(func)
+		self.constraint = jit(constraint)
 
 
 		return
@@ -371,26 +386,6 @@ class Parameters(System):
 
 		self.__setup__()
 
-		# for parameter in self:
-		# 	print(parameter)
-		# 	print(self[parameter].shape,self[parameter].slices,self[parameter].indices)
-		# 	# print(self[parameter].data)#())
-		# 	print(self[parameter]())
-		# 	# print(self[parameter](self[parameter].data))#()))
-		# 	print(self[parameter](self[parameter]()))
-		# 	print()
-
-		# if (self.data is not None) and (self.data.size > 0):
-		# 	print(self)
-		# 	print(self.slices,self.indices)
-		# 	# print(self.data)#())
-		# 	print(self())
-		# 	print()
-		# 	# print(self(self.data))#())
-		# 	print(self(self()))
-		# 	# print(self.constraints(self.data))#())
-		# 	print(self.constraints(self()))
-		# 	print('----------------')
 		return
 
 	def __call__(self,parameters=None):
@@ -466,6 +461,7 @@ class Parameters(System):
 
 		slices = [[*i] for i in slices]
 		indices = array([indices.index(i) for i in range(len(indices))])
+
 
 		# Set func and constraint
 		funcs = []

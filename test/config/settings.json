@@ -31,12 +31,12 @@
 		"z":{"operator":["Z"],"site":"i","string":"z","parameters":null},
 		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz","parameters":null}
 		},
-	"N":5,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":10000,
+	"M":5,
 	"T":null,
 	"tau":1,
 	"P":2,
@@ -46,6 +46,7 @@
 	},
 "system":{
 	"dtype":"complex256",
+	"dtype":"complex",
 	"format":"array",
 	"device":"cpu",
 	"backend":"np",
@@ -121,7 +122,10 @@
 		"xy": {
 			"string":"xy",
 			"category":"variable",
+			"method":null,
+			"method":"unconstrained",
 			"method":"bounded",
+			"method":"constrained",
 			"group":[["x"],["y"]],
 			"locality":null,
 			"bounds":[-1,1],
@@ -135,8 +139,8 @@
 				"interpolation":3,
 				"smoothness":2
 				},
-			"constant":{"-1":{"0":0,"-1":0}},
 			"constant":null,
+			"constant":{"-1":{"0":0,"-1":0}},
 			"args":[],
 			"kwargs":{"sigmoid":1,"lambda":5e2}
 			},			

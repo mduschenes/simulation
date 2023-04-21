@@ -72,10 +72,9 @@ def train(hyperparameters):
 		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
 		system = hyperparameters.get('system',{})
 
-		model,parameters,label,callback = cls.pop('model'),cls.pop('parameters'),cls.pop('label'),cls.pop('callback')
+		model,label,callback = cls.pop('model'),cls.pop('label'),cls.pop('callback')
 
-		model = model(**{**hyperparameters.get('model',{}),**dict(system=system)})
-		parameters = parameters(**{**namespace(parameters,model),**hyperparameters.get('parameters',{}),**dict(model=model,system=system)})
+		model = model(**{**hyperparameters.get('model',{}),**{attr: hyperparameters.get(attr) for attr in cls},**dict(system=system)})
 		label = label(**{**namespace(label,model),**hyperparameters.get('label',{}),**dict(model=model,system=system)})
 		callback = callback(**{**namespace(callback,model),**hyperparameters.get('callback',{}),**dict(model=model,system=system)})
 
@@ -86,18 +85,10 @@ def train(hyperparameters):
 
 			hyperparams = hyperparameters['optimize']		
 
-			kwargs = {
-				**dict(parameters=parameters),
-				**{arg: cls[arg](**{**namespace(cls[arg],model),**hyperparameters.get(arg,{}),**dict(system=system)}) for arg in cls}
-				}
-
-			model.__initialize__(**kwargs)
-
 			shapes = label.shape
-			func = [parameters.constraints]
+			func = [model.parameters.constraints]
 			
-			# parameters = parameters.data
-			parameters = parameters()
+			parameters = model.parameters()
 			label = label()
 
 			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
@@ -107,6 +98,8 @@ def train(hyperparameters):
 			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system)
 
 			parameters = optimizer(parameters)
+
+			model.parameters.data = parameters
 
 		if hyperparameters['boolean'].get('dump'):	
 			model.dump()
