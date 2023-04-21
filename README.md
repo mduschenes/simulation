@@ -44,11 +44,11 @@ To configure jobs scripts, plot and processing settings, that follow the matplot
 - `plot.json` : plots axes and figures 
 - `plot.mplstyle` : matplotlib style
 
-The numpy backend can be set with the environment variable
+The numpy backend can be set with the environment variable (with any case)
 
-`NP_BACKEND=<JAX,AUTOGRAD>`
+`NUMPY_BACKEND=<jax,autograd>`
 
-where the default is JAX
+where the default is jax.
 
 ## Run
 Under `build`, please run 

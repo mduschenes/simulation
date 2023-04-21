@@ -26,16 +26,16 @@ import scipy as osp
 import pandas as pd
 
 
-ENVIRON = 'NP_BACKEND'
-DEFAULT = 'JAX'
-BACKENDS = ['JAX','AUTOGRAD']
+ENVIRON = 'NUMPY_BACKEND'
+DEFAULT = 'jax'
+BACKENDS = ['jax','autograd']
 
-BACKEND = os.environ.get(ENVIRON,DEFAULT)
+BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
 
 assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 	
 	envs = {
 		'JAX_PLATFORM_NAME':'cpu',
@@ -64,7 +64,7 @@ if BACKEND in ['JAX']:
 	for name in configs:
 		jax.config.update(name,configs[name])
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	import autograd
 	import autograd.numpy as np
@@ -96,7 +96,7 @@ null = Null()
 # Types
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	itg = np.integer
 	flt = np.float32
@@ -116,7 +116,7 @@ if BACKEND in ['JAX']:
 	separ = '_'
 
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	itg = np.integer
 	flt = np.float32
@@ -319,7 +319,7 @@ def namespace(cls,signature=None,init=False,**kwargs):
 		return {attr: signature[attr] for attr in signature if attr in attrs}
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 	
 	def setitem(obj,index,item):
 		'''
@@ -338,7 +338,7 @@ if BACKEND in ['JAX']:
 		obj = obj.at[index].set(item)
 		return obj
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 	
 	def setitem(obj,index,item):
 		'''
@@ -358,7 +358,7 @@ elif BACKEND in ['AUTOGRAD']:
 		return obj
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	def jit(func,*,static_argnums=None,**kwargs):
 		'''
@@ -376,7 +376,7 @@ if BACKEND in ['JAX']:
 		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
 		# return wraps(func)(partial(func,**kwargs))
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	def jit(func,*,static_argnums=None,**kwargs):
 		'''
@@ -395,7 +395,7 @@ elif BACKEND in ['AUTOGRAD']:
 		return wraps(func)(partial(func,**kwargs))		
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -432,7 +432,7 @@ if BACKEND in ['JAX']:
 		# return vfunc
 
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -469,7 +469,7 @@ elif BACKEND in ['AUTOGRAD']:
 		return vfunc
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -494,7 +494,7 @@ if BACKEND in ['JAX']:
 
 		return pfunc
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -520,7 +520,7 @@ elif BACKEND in ['AUTOGRAD']:
 		return pfunc
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	# @partial(jit,static_argnums=(2,))
 	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -547,7 +547,7 @@ if BACKEND in ['JAX']:
 
 		return vfunc
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	# @partial(jit,static_argnums=(2,))
 	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -575,7 +575,7 @@ elif BACKEND in ['AUTOGRAD']:
 		return vfunc
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 	
 	def switch(index,funcs,*args):
 		'''
@@ -593,7 +593,7 @@ if BACKEND in ['JAX']:
 		return jax.lax.switch(index,funcs,*args)
 		# return funcs[index](*args)
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	def switch(index,funcs,*args):
 		'''
@@ -612,7 +612,7 @@ elif BACKEND in ['AUTOGRAD']:
 		return funcs[index](*args)
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 	
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
@@ -643,7 +643,7 @@ if BACKEND in ['JAX']:
 		# return out
 
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
@@ -787,7 +787,7 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 	return grad
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -818,7 +818,7 @@ if BACKEND in ['JAX']:
 
 		return grad
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -850,7 +850,7 @@ elif BACKEND in ['AUTOGRAD']:
 		return grad
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -886,7 +886,7 @@ if BACKEND in ['JAX']:
 		return grad
 
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -922,7 +922,7 @@ elif BACKEND in ['AUTOGRAD']:
 		return grad
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -958,7 +958,7 @@ if BACKEND in ['JAX']:
 		return grad
 
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -994,7 +994,7 @@ elif BACKEND in ['AUTOGRAD']:
 		return grad
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1025,7 +1025,7 @@ if BACKEND in ['JAX']:
 		return grad
 
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1671,7 +1671,7 @@ class toffoli(array):
 
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	def PRNGKey(seed=None,size=False,reset=None):
 		'''
@@ -1708,7 +1708,7 @@ if BACKEND in ['JAX']:
 		return key
 
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	def PRNGKey(seed=None,size=False,reset=None):
 		'''
@@ -1746,7 +1746,7 @@ elif BACKEND in ['AUTOGRAD']:
 
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
 		'''
@@ -2020,7 +2020,7 @@ if BACKEND in ['JAX']:
 		return out
 
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
 		'''
@@ -3958,7 +3958,7 @@ def swap(i,j,N,D):
 	return S
 
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	def slicing(a,start,size):
 		'''
@@ -3976,7 +3976,7 @@ if BACKEND in ['JAX']:
 		return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
 		# return a[start:start+size]
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	def slicing(a,start,size):
 		'''

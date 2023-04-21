@@ -8,16 +8,15 @@ from warnings import warn
 import numpy as onp
 import scipy as osp
 
-ENVIRON = 'NP_BACKEND'
-DEFAULT = 'JAX'
-BACKENDS = ['JAX','AUTOGRAD']
+ENVIRON = 'NUMPY_BACKEND'
+DEFAULT = 'jax'
+BACKENDS = ['jax','autograd']
 
-BACKEND = os.environ.get(ENVIRON,DEFAULT)
+BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
 
 assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
 
-
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	envs = {
 		'JAX_PLATFORM_NAME':'cpu',
@@ -34,7 +33,7 @@ if BACKEND in ['JAX']:
 	import scipy.optimize
 	from scipy.optimize import minpack2 as minpack2
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 	import autograd
 	import autograd.numpy as np
@@ -48,7 +47,7 @@ __all__ = ['LineSearchWarning', 'line_search_wolfe1', 'line_search_wolfe2',
 		   'scalar_search_wolfe1', 'scalar_search_wolfe2',
 		   'armijo']
 
-if BACKEND in ['JAX']:
+if BACKEND in ['jax']:
 
 	def setitem(obj,index,item):
 		'''
@@ -68,7 +67,7 @@ if BACKEND in ['JAX']:
 		return obj
 
 
-elif BACKEND in ['AUTOGRAD']:
+elif BACKEND in ['autograd']:
 
 
 	def setitem(obj,index,item):

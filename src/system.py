@@ -82,6 +82,7 @@ class System(Dictionary):
 
 		def updates(kwargs,defaults):
 			kwargs['unit'] = defaults.get('unit') if kwargs.get('unit',defaults.get('unit')) is None else kwargs.get('unit')
+			kwargs['backend'] = os.environ.get('NUMPY_BACKEND').lower() if kwargs.get('backend',defaults.get('backend')) is None else os.environ.get(kwargs.get('backend',defaults.get('backend')),kwargs.get('backend',defaults.get('backend'))).lower()
 			return
 
 		updates(kwargs,defaults)
