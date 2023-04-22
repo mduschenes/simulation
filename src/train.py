@@ -85,19 +85,16 @@ def train(hyperparameters):
 
 			hyperparams = hyperparameters['optimize']		
 
-			shapes = label.shape
 			func = [model.parameters.constraints]
 			
 			parameters = model.parameters()
-			label = label()
 
-			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
+			metric = Metric(label=label,hyperparameters=hyperparams,system=system)
 			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 			callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 
 			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system)
 
-			exit()
 			parameters = optimizer(parameters)
 
 			model.parameters.data = parameters

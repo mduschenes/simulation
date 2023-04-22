@@ -888,7 +888,7 @@ class Metric(System):
 			metric (str,Metric): Type of metric
 			shapes (iterable[tuple[int]]): Shapes of Operators
 			model (object): Model instance	
-			label (array): Label			
+			label (array,callable): Label			
 			weights (array): Weights
 			optimize (bool,str,iterable): Contraction type	
 			hyperparameters (dict): Metric hyperparameters
@@ -905,7 +905,7 @@ class Metric(System):
 		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
 		self.label = hyperparameters.get('label',label) if label is None else label
 		self.weights = hyperparameters.get('weights',weights) if weights is None else weights
-		self.shapes = shapes
+		self.shapes = getattr(label,'shape') if shapes is None else shapes
 		self.model = model
 		self.optimize = optimize
 		self.hyperparameters = hyperparameters
@@ -1029,9 +1029,9 @@ class Metric(System):
 				if self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'abs2'
 			elif self.label.ndim == 2:
-				if is_unitary(self.label) and self.metric in ['real','imag','norm','abs2']:
+				if (getattr(self.label,'unitary',None) or is_unitary(self.label)) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'abs2'
-				elif is_hermitian(self.label) and self.metric in ['real','imag','norm','abs2']:
+				elif (getattr(self.label,'hermitian',None) or is_hermitian(self.label)) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
 		
 		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
@@ -1104,7 +1104,6 @@ class Optimization(System):
 		if callback is None:
 			def callback(parameters,track,optimizer):
 				status = True
-				print(optimizer.iteration)
 				return status
 		self.callback = callback
 
@@ -1425,7 +1424,7 @@ class Optimization(System):
 		msg = []
 
 		for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']:
-			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
+			string = '%s %s: %s'%('Optimizer',attr,getattr(self,attr))
 			msg.append(string)
 
 		for attr in ['dtype']:
@@ -1437,10 +1436,12 @@ class Optimization(System):
 			msg.append(string)
 
 		for attr in ['track','attributes']:
-			string = '%s %s: %s'%(self.__class__.__name__,attr,
+			string = '%s %s: %s'%('Optimizer',attr,
 				{key: getattr(self,attr).get(key,[None])[-1] 
 				if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] 
-				for key in getattr(self,attr)})
+				for key in getattr(self,attr)
+				if any(getattr(self,attr).get(key) for key in getattr(self,attr))
+				})
 			msg.append(string)
 
 
@@ -1881,7 +1882,7 @@ class Covariance(System):
 			func (callable): Function to compute
 			grad (callable): Gradient to compute
 			shapes (iterable[tuple[int]]): Shapes of functions		
-			label (array): label data for function
+			label (array, callable): label data for function
 			weights (array): weights data for function
 			optimize (bool,str,iterable): Contraction type
 			metric (str,Metric): Type of distribution, allowed ['lstsq','mse','normal','gaussian']
@@ -1899,7 +1900,13 @@ class Covariance(System):
 
 		super().__init__(**kwargs)
 
-		if all(isinstance(i,int) for i in shapes) or (len(shapes) == 1):
+		if shapes is None:
+			try:
+				shapes = label.shape
+			except:
+				pass
+
+		elif all(isinstance(i,int) for i in shapes) or (len(shapes) == 1):
 			shapes = [shapes]*2
 
 		if label is None:

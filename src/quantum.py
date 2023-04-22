@@ -56,7 +56,8 @@ class Object(System):
 
 		defaults = dict(			
 			shape=None,size=None,ndim=None,
-			samples=None,identity=None,locality=None,index=None
+			samples=None,identity=None,locality=None,index=None,
+			func=None,
 			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
@@ -65,13 +66,21 @@ class Object(System):
 
 		super().__init__(**kwargs)
 
+		if self.func is None:
+			def func(parameters):
+				return self.data
+
+			self.func = func
+
 		if isinstance(data,self.__class__) or isinstance(operator,self.__class__):
 			if isinstance(data,self.__class__):
 				for attr in data:
-					setattr(self,attr,getattr(data,attr))
+					if attr not in kwargs:
+						setattr(self,attr,getattr(data,attr))
 			if isinstance(operator,self.__class__):
 				for attr in operator:
-					setattr(self,attr,getattr(operator,attr))					
+					if attr not in kwargs:
+						setattr(self,attr,getattr(operator,attr))					
 
 			return
 		
@@ -122,7 +131,6 @@ class Object(System):
 		N = max(self.N,max(site)+1 if site is not None else self.N) if self.N is not None else max(site)+1 if site is not None else 0
 		D = self.D if self.D is not None else data.size**(1/(data.ndim*N)) if isinstance(data,arrays) else 1
 		n = D**N if (N is not None) and (D is not None) else None
-
 
 		shape = self.shape if self.shape is not None else data.shape if isinstance(data,arrays) else None
 		size = self.size if self.size is not None else data.size if isinstance(data,arrays) else None
@@ -181,7 +189,7 @@ class Object(System):
 		
 		self.locality = max(self.locality if self.locality is not None else 0,len(self.site) if self.site is not None else 0)
 		self.index = self.index if self.index is not None else None
-		
+
 		if (self.samples is True) and (self.size is not None):
 			shape,bounds,scale,seed,dtype = self.size, [0,1], 'normalize', self.seed, datatype(self.dtype)
 			self.samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
@@ -220,19 +228,7 @@ class Object(System):
 		if parameters is None:
 			parameters = self.parameters
 
-		return self.data
-
-	def grad(self,parameters=None,state=None):
-		'''
-		Call gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate			
-		Returns:
-			data (array): data
-		'''
-		return zeros(parameters.size,dtype=parameters.dtype)
+		return self.func(parameters)
 
 	def __str__(self):
 		string = self.__class__.__name__ if not self.string else self.string
@@ -259,18 +255,6 @@ class Object(System):
 		key = tuple(key)
 		return key
 	
-	def grad(self,parameters=None,state=None,conj=None):
-		'''
-		Call gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate
-		Returns:
-			data (array): data
-		'''
-		return 0
-
 	def info(self,verbose=None):
 		'''
 		Log class information
@@ -338,7 +322,7 @@ class Object(System):
 		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
 
 		if dtype not in ['complex256','float128']:
-			assert allclose(eps,normalization), "Incorrect normalization data%r: %r (%r,%r)"%(eps.shape,normalization,hermitian,unitary)
+			assert allclose(eps,normalization), "Incorrect normalization data%r: %r (hermitian: %r, unitary : %r)"%(eps.shape,normalization,hermitian,unitary)
 
 		return
 
@@ -393,7 +377,6 @@ class Operator(Object):
 		inherit (boolean): Inherit super class when initialized
 		kwargs (dict): Additional system keyword arguments	
 	'''
-	qualname = __qualname__
 
 	basis = {
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
@@ -469,37 +452,9 @@ class Pauli(Object):
 	D = 2
 	N = None
 	n = None
-
+	
 	hermitian = False
 	unitary = True
-
-	def __call__(self,parameters=None,state=None,conj=None):
-		'''
-		Call operator
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate			
-		Returns:
-			data (array): data
-		'''
-		if parameters is None:
-			parameters = self.parameters
-
-		return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
-
-	def grad(self,parameters=None,state=None,conj=None):
-		'''
-		Call gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate			
-		Returns:
-			data (array): data
-		'''
-		return -pi*sin(pi*parameters)*self.identity + -1j*pi*cos(pi*parameters)*self.data
-
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
@@ -512,9 +467,13 @@ class Pauli(Object):
 			parameters (object): parameter of operator			
 		'''
 
+		def func(parameters):
+			return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
+
 		hermitian = False
 		unitary = True
 
+		self.func = func
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -746,7 +705,6 @@ class Noise(Object):
 	
 	hermitian = False
 	unitary = False
-
 
 	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,state=None,system=None,**kwargs):		
 
@@ -1315,7 +1273,7 @@ class Operators(Object):
 				elif substring is not None:
 					substring = '%0.4e'%(substring)
 				else:
-					continue
+					substring = str(substring)
 				substring = '%s : %s'%(subattr,substring)
 				
 				string.append(substring)
@@ -1337,7 +1295,7 @@ class Operators(Object):
 				elif substring is not None:
 					substring = '%0.4e'%(substring)
 				else:
-					continue
+					substring = str(substring)
 				substring = '%s : %s'%(subattr,substring)
 
 				string.append(substring)
@@ -1721,25 +1679,30 @@ class Label(Operator):
 	N = None
 	n = None
 
+	__data__ = None
+
 	hermitian = False
 	unitary = False
 
 	state = None
 
-
 	def __new__(cls,*args,**kwargs):
 
 		self = super().__new__(cls,*args,**kwargs)
-		
-		try:
-			data = self()
-		except:
-			data = None
+
+		if self.__data__ is not None:
+			data = self.__data__
+		else:
+			try:
+				data = self()
+			except:
+				data = None
 		try:
 			state = self.state()
 		except:
 			state = None
 
+		__data__ = data
 
 		if data is None:
 			data = None
@@ -1766,27 +1729,38 @@ class Label(Operator):
 		self.hermitian = hermitian
 		self.unitary = unitary
 
+		def func(parameters):
+			return self.data
 
-		attr = '__call__'
-		setattr(self,attr,lambda *args,**kwargs: self.data)
+		self.func = func
+
+		self.__data__ = __data__
 
 		return self
 
 	def __init__(self,*args,**kwargs):
 		return
 
-	def __call__(self,parameters=None,state=None,conj=None):
+	def info(self,verbose=None):
 		'''
-		Call operator
+		Log class information
 		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate			
-		Returns:
-			data (array): data
-		'''
-		return self.data
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = []
 
+		for attr in ['shape','parameters']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
+			msg.append(string)
+
+		for attr in ['data']:
+			string = '%s'%(to_string(self()))
+			msg.append(string)			
+
+		msg = '\n'.join(msg)
+		
+		self.log(msg,verbose=verbose)
+		return
 		
 
 class Callback(System):
@@ -1997,26 +1971,30 @@ class Callback(System):
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and (not ((status) and (not done))):
 
-					_defaults = {**{kwarg: getattr(model,kwarg) for kwarg in ['state','noise']},**{kwarg: deepcopy(getattr(metric,kwarg)) for kwarg in ['label']}}
+
+					_kwargs = ['state','noise']
+
+					_kwargs = {kwarg: getattr(model,kwarg) for kwarg in _kwargs}
+
+					_defaults = {kwarg: getattr(model,kwarg) for kwarg in _kwargs}
 
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
-						_kwargs = {kwarg: False if kwarg in [] else _defaults[kwarg] for kwarg in _defaults}
+						_kwargs.update({kwarg : False for kwarg in []})
 					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
-						_kwargs = {kwarg: False if kwarg in ['noise'] else _defaults[kwarg] for kwarg in _defaults}
+						_kwargs.update({kwarg : False for kwarg in ['noise']})
 					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
-						_kwargs = {kwarg: False if kwarg in ['noise','state'] else _defaults[kwarg] for kwarg in _defaults}
+						_kwargs.update({kwarg : False for kwarg in ['state','noise']})
 
 					_model = model
-					_label = _defaults['label'].__
-					_shapes = _label.shape
-					_optimize = None
-					_hyperparameters = hyperparameters
-					_system = model.system
-					_restore = {kwarg: deepcopy(getattr(model,kwarg)) for kwarg in _kwargs}
+					_metric = metric
+					_label = metric.label
 
 					_model.__initialize__(**_kwargs)
-					_label = _label(**_model)
-					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters,system=_system,verbose=False)
+
+					_label = Label(**dict(data=_label,state=_model.state,noise=_model.noise))
+
+					_metric = Metric(**{**_metric,**dict(label=_label,verbose=False)})
+
 
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
 						value = abs(_metric(_model(parameters)))
@@ -2025,7 +2003,8 @@ class Callback(System):
 					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
 						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
 
-					model.__initialize__(**_restore)
+
+					model.__initialize__(**_defaults)
 
 
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (not do):
@@ -2092,9 +2071,9 @@ class Callback(System):
 					]),
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				# 'U\n%s\nV\n%s'%(
-				# 	to_string((model(parameters)).round(4)),
-				# 	to_string((metric.label).round(4))),
+				'U\n%s\nV\n%s'%(
+					to_string((model(parameters)).round(4)),
+					to_string((metric.label()).round(4))),
 				])
 
 

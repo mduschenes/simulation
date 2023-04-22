@@ -1107,12 +1107,12 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	def fisher(*args,**kwargs):
 		f = func(*args,**kwargs)
 		g = grad(*args,**kwargs)
-		_f = f.conj()
-		_g = g.conj()
+		_f = conjugate(f)
+		_g = conjugate(g)
 		out = 0
 		for einsummation in einsummations:
 			out = out + einsummation(f,g,_f,_g)
-		out = out.real
+		out = real(out)
 		return out
 
 	return fisher
@@ -1156,7 +1156,7 @@ def datatype(dtype):
 		dtype (datatype): Underlying datatype
 	'''
 	
-	return array([],dtype=dtype).real.dtype
+	return real(array([],dtype=dtype)).dtype
 
 class Array(onp.ndarray):
 	'''
@@ -1859,7 +1859,7 @@ if BACKEND in ['jax']:
 
 				out = out.reshape(shape)
 
-				assert allclose(1,einsum('...ij,...ij->...',out,out.conj()).real/out.shape[-1])
+				assert allclose(1,real(einsum('...ij,...ij->...',out,conjugate(out)))/out.shape[-1])
 
 				# Create random matrices versus vectors
 				shape = shapes
@@ -1870,14 +1870,14 @@ if BACKEND in ['jax']:
 						out = out[...,0]
 						weights = rand(out.shape[0],key=key,dtype=_dtype)
 						out = einsum('u,...ui->...i',weights,out)
-						weights = sqrt(einsum('...i,...i->...',out.conj(),out))
+						weights = sqrt(einsum('...i,...i->...',conjugate(out),out))
 						out = out/weights
 					else:
 						out = out[:,:]
 				elif ndim == 3: # Sum of samples of random rank-1 matrices (vectors)
 					out = out[...,0]
 					weights = rand(out.shape[0],key=key,dtype=_dtype)
-					out = einsum('u,...ui,...uj->...ij',weights,out,out.conj())
+					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
 					weights = einsum('...ii->...',out)
 					out = out/weights				
 
@@ -1887,7 +1887,7 @@ if BACKEND in ['jax']:
 					out = out[...,0]
 					weights = rand(out.shape[0],key=key,dtype=dtype)
 					weights = weights/weights.sum()
-					out = einsum('u,...ui,...uj->...ij',weights,out,out.conj())
+					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
 
 
 				return out
@@ -1907,7 +1907,7 @@ if BACKEND in ['jax']:
 
 				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)	
 
-				out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
+				out = (out + conjugate(moveaxis(out,(-1,-2),(-2,-1))))/2
 
 
 				if ndim == 1:
@@ -2133,7 +2133,7 @@ elif BACKEND in ['autograd']:
 
 				out = out.reshape(shape)
 
-				assert allclose(1,einsum('...ij,...ij->...',out,out.conj()).real/out.shape[-1])
+				assert allclose(1,real(einsum('...ij,...ij->...',out,conjugate(out)))/out.shape[-1])
 
 				# Create random matrices versus vectors
 				shape = shapes
@@ -2144,14 +2144,14 @@ elif BACKEND in ['autograd']:
 						out = out[...,0]
 						weights = rand(out.shape[0],key=key,dtype=_dtype)
 						out = einsum('u,...ui->...i',weights,out)
-						weights = sqrt(einsum('...i,...i->...',out.conj(),out))
+						weights = sqrt(einsum('...i,...i->...',conjugate(out),out))
 						out = out/weights
 					else:
 						out = out[:,:]
 				elif ndim == 3: # Sum of samples of random rank-1 matrices (vectors)
 					out = out[...,0]
 					weights = rand(out.shape[0],key=key,dtype=_dtype)
-					out = einsum('u,...ui,...uj->...ij',weights,out,out.conj())
+					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
 					weights = einsum('...ii->...',out)
 					out = out/weights				
 
@@ -2161,7 +2161,7 @@ elif BACKEND in ['autograd']:
 					out = out[...,0]
 					weights = rand(out.shape[0],key=key,dtype=dtype)
 					weights = weights/weights.sum()
-					out = einsum('u,...ui,...uj->...ij',weights,out,out.conj())
+					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
 
 
 				return out
@@ -2181,7 +2181,7 @@ elif BACKEND in ['autograd']:
 
 				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)	
 
-				out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
+				out = (out + conjugate(moveaxis(out,(-1,-2),(-2,-1))))/2
 
 
 				if ndim == 1:
@@ -2573,7 +2573,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	Args:
 		metric (str,callable): Type of metric
 		shapes (iterable[tuple[int]]): Shapes of Operators
-		label (array): Label			
+		label (array,callable): Label			
 		weights (array): Weights
 		optimize (bool,str,iterable): Contraction type			
 		returns (bool): Return metric gradients
@@ -2732,6 +2732,9 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 
 	if (label is not None) and (weights is not None):
 
+		if callable(label):
+			label = label()
+
 		label = conjugate(label)
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
 
@@ -2743,6 +2746,9 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 			return func(*operands[:1],label,weights,*operands[1:])
 	
 	elif (label is not None):
+
+		if callable(label):
+			label = label()
 
 		label = conjugate(label)
 
@@ -2846,7 +2852,7 @@ def mse(*operands,optimize=True,wrapper=None):
 	@jit
 	def func(*operands):
 		out = operands[0]-operands[1]
-		out = einsummation(out,out,*operands[2:]).real
+		out = real(einsummation(out,out,*operands[2:]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -2927,19 +2933,19 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 		@jit
 		def func(*operands):
 			out = operands[0]-operands[1]
-			out = einsummation(operands[2],out).real
+			out = real(einsummation(operands[2],out))
 			return wrapper(out,*operands)
 	elif length == 4:
 		@jit
 		def func(*operands):
 			out = operands[0]-operands[1]			
-			out = einsummation(operands[3],out,operands[2]).real
+			out = real(einsummation(operands[3],out,operands[2]))
 			return wrapper(out,*operands)
 	else:
 		@jit
 		def func(*operands):
 			out = operands[0]-operands[1]
-			out = einsummation(operands[2],out).real
+			out = real(einsummation(operands[2],out))
 			return wrapper(out,*operands)			
 
 	if isarray:
@@ -3020,7 +3026,7 @@ def inner(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = einsummation(*operands[:length]).real
+		out = real(einsummation(*operands[:length]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -3101,17 +3107,17 @@ def gradient_inner(*operands,optimize=True,wrapper=None):
 	if length == 3:
 		@jit
 		def func(*operands):
-			out = einsummation(operands[2],operands[1]).real
+			out = real(einsummation(operands[2],operands[1]))
 			return wrapper(out,*operands)
 	elif length == 4:
 		@jit
 		def func(*operands):
-			out = einsummation(operands[3],operands[1],operands[2]).real
+			out = real(einsummation(operands[3],operands[1],operands[2]))
 			return wrapper(out,*operands)
 	else:
 		@jit
 		def func(*operands):
-			out = einsummation(operands[2],operands[1]).real
+			out = real(einsummation(operands[2],operands[1]))
 			return wrapper(out,*operands)			
 
 	if isarray:
@@ -3156,7 +3162,7 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = einsummation(abs2(operands[0]-operands[1].conj()))
+		out = einsummation(abs2(operands[0]-conjugate(operands[1])))
 		return wrapper(out,*operands)
 	
 	if isarray:
@@ -3199,8 +3205,8 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = (operands[0]-operands[1].conj()).conj()
-		out = 2*einsummation(operands[2],out).real
+		out = conjugate(operands[0])-operands[1]
+		out = 2*real(einsummation(operands[2],out))
 		return wrapper(out,*operands)
 	
 	if isarray:
@@ -3300,7 +3306,7 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = (2*(einsummation_func(operands[0],operands[1]).conj()*einsummation_grad(operands[2],operands[1])).real)
+		out = 2*real(conjugate(einsummation_func(operands[0],operands[1]))*einsummation_grad(operands[2],operands[1]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -3344,7 +3350,7 @@ def inner_real(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = einsummation(*operands).real
+		out = real(einsummation(*operands))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -3388,7 +3394,7 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = einsummation(operands[2],operands[1]).real
+		out = real(einsummation(operands[2],operands[1]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -3499,41 +3505,6 @@ def dot(a,b):
 		out (array): Dot product
 	'''	
 	return np.dot(a,b)
-
-@jit
-def transpose(a):
-	'''
-	Calculate transpose of array a
-	Args:
-		a (array): Array to calculate transpose
-	Returns:
-		out (array): Transpose
-	'''	
-	return a.T
-
-
-@jit
-def conjugate(a):
-	'''
-	Calculate conjugate of array a
-	Args:
-		a (array): Array to calculate conjugate
-	Returns:
-		out (array): Conjugate
-	'''	
-	return a.conj()
-
-@jit
-def dagger(a):
-	'''
-	Calculate conjugate transpose of array a
-	Args:
-		a (array): Array to calculate conjugate transpose
-	Returns:
-		out (array): Conjugate transpose
-	'''	
-	return conjugate(transpose(a))
-
 
 
 @jit
@@ -4327,7 +4298,7 @@ def real(a):
 	Returns:
 		out (array): Real value of array
 	'''	
-	return a.real
+	return np.real(a)
 
 
 @jit
@@ -4339,8 +4310,42 @@ def imag(a):
 	Returns:
 		out (array): Imaginary value of array
 	'''	
-	return a.imag
+	return np.imag(a)
 
+
+@jit
+def transpose(a):
+	'''
+	Calculate transpose of array a
+	Args:
+		a (array): Array to calculate transpose
+	Returns:
+		out (array): Transpose
+	'''	
+	return a.T
+
+
+@jit
+def conjugate(a):
+	'''
+	Calculate conjugate of array a
+	Args:
+		a (array): Array to calculate conjugate
+	Returns:
+		out (array): Conjugate
+	'''	
+	return np.conj(a)
+
+@jit
+def dagger(a):
+	'''
+	Calculate conjugate transpose of array a
+	Args:
+		a (array): Array to calculate conjugate transpose
+	Returns:
+		out (array): Conjugate transpose
+	'''	
+	return conjugate(transpose(a))
 
 @jit
 def sqrtm(a):
@@ -6932,14 +6937,14 @@ def bloch(state,path=None):
 		ndim = state.ndim
 
 		if ndim == 1:
-			state = einsum('i,aij,j->a',state.conj(),basis,state)
+			state = einsum('i,aij,j->a',conjugate(state),basis,state)
 		elif ndim == 2:
-			state = einsum('ui,aij,uj->ua',state.conj(),basis,state)
+			state = einsum('ui,aij,uj->ua',conjugate(state),basis,state)
 		elif ndim == 3:
-			state = einsum('uij,aij->ua',state,basis.conj())
+			state = einsum('uij,aij->ua',state,conjugate(basis))
 		else:
 			pass
-		state = state.real
+		state = real(state)
 		return state
 
 	root = os.path.dirname(os.path.abspath(__file__))

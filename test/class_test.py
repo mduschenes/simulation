@@ -14,12 +14,13 @@ for PATH in PATHS:
 
 
 from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cosh,sinh,cos,sin,bound
-from src.utils import norm,dagger,dot,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
+from src.utils import norm,conjugate,dagger,dot,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
 from src.utils import pi,delim,arrays,scalars,namespace
 from src.iterables import getter,setter
 from src.io import load,dump,exists
 
-from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise
+from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label
+from src.optimize import Optimizer,Objective,Metric,Callback
 
 def test_object(path,tol):
 	bases = {'Pauli':Pauli,'State':State,'Gate':Gate,'Haar':Haar,'Noise':Noise}
@@ -399,21 +400,106 @@ def test_initialization(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
-	model = cls(**hyperparameters['model'],
+	model = cls['model'](**hyperparameters['model'],
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
 		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
 		system=hyperparameters['system'])
 
-	parameters = model.parameters()
+	label = cls['label'](**{**namespace(cls['label'],model),**hyperparameters.get('label',{}),**dict(model=model,system=hyperparameters['system'])})
+	hyperparams = hyperparameters['optimize']	
+	system = hyperparameters['system']
+	
+	func = [model.parameters.constraints]
 
-	print(model.state())
-	model.__initialize__(parameters=False,state=True)
-	print(model.state())
-	exit()
+	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
+
+
+	_kwargs = ['state','noise']
+
+	_defaults = {kwarg: getattr(model,kwarg) for kwarg in _kwargs}
+
+	_kwargs = {kwarg: False for kwarg in _kwargs}
+
+
+	UpsiU = model()
+	K = model.noise()
+	VpsiV = metric.label()	
+	psi = metric.label.state()	
+	hermitian = model.hermitian
+	unitary = model.unitary
+
+	_model = model
+	_metric = metric
+	_label = metric.label
+
+	_model.__initialize__(**_kwargs)
+
+	_label = Label(**dict(data=_label,state=_model.state,noise=_model.noise))
+
+	_metric = Metric(**{**_metric,**dict(label=_label,verbose=False)})
+
+	_U = _model()
+	_V = _metric.label()
+
+
+	print('State model (hermitian: %s, unitary: %s)'%(hermitian,unitary))
+	print(UpsiU)
+
+	print('State label (hermitian: %s, unitary: %s)'%(metric.label.hermitian,metric.label.unitary))
+	print(VpsiV)
+
+	print('State state (hermitian: %s, unitary: %s)'%(metric.label.hermitian,metric.label.unitary))
+	print(psi)
+
+	print('Unitary model (hermitian: %s, unitary: %s)'%(_model.hermitian,_model.unitary))
+	print(_U)
+
+	print('Unitary label (hermitian: %s, unitary: %s)'%(_metric.label.hermitian,_metric.label.unitary))
+	print(_V)
+
+
+	print('--- NEW INFO ---')
+	_model.info()
+
+
+	model.__initialize__(**_defaults)
+
+	print('--- RESTORED INFO ---')
+	model.info()
+
+	_Upsi_U = einsum('ij,jk,lk',_U,psi,conjugate(_U))
+	_Vpsi_V = einsum('ij,jk,lk',_V,psi,conjugate(_V))
+
+
+	assert allclose(_Upsi_U,UpsiU), "Incorrect model() re-initialization"
+	assert allclose(_Vpsi_V,VpsiV), "Incorrect label() re-initialization"
+
+	print()
+
+	print('State Label')
+	print(metric.label())
+	print(metric.label.data)
+	print(metric.label.__data__)
+	
+	print()
+	
+	print('Unitary Label')
+	print(_metric.label())
+	print(_metric.label.data)
+	print(_metric.label.__data__)
+
+	return
+
+
+
+
+
+
+
+
 
 
 	copy = {attr: deepcopy(getattr(model,attr)) for attr in ['state','noise','label']}
@@ -672,6 +758,7 @@ if __name__ == '__main__':
 	# func = test_label
 	func = test_machine_precision
 	func = test_model
+	func = test_initialization
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)
