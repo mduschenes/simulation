@@ -137,8 +137,13 @@ elif BACKEND in ['autograd']:
 
 
 # Libraries
-# optimizer_libraries = jax.example_libraries.optimizers
-optimizer_libraries = []
+if BACKEND in ['jax']:
+
+	optimizer_libraries = jax.example_libraries.optimizers
+
+elif BACKEND in ['autograd']:
+
+	optimizer_libraries = []
 
 class mapping(dict):
 	def __init__(self,*args,**kwargs):
@@ -2551,13 +2556,13 @@ def norm2(a,b=None):
 		out (array): Norm of array
 	'''
 	if b is None:
-		out = dot(conj(a),a)
+		out = dot(conjugate(a),a)
 	elif b.ndim == 1:
-		out = dot(conj(a),a*b)
+		out = dot(conjugate(a),a*b)
 	elif b.ndim == 2:
-		out = dot(dot(conj(a),b),a)
+		out = dot(dot(conjugate(a),b),a)
 	else:
-		out = dot(conj(a),a)
+		out = dot(conjugate(a),a)
 
 	return out
 
@@ -2727,7 +2732,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 
 	if (label is not None) and (weights is not None):
 
-		label = conj(label)
+		label = conjugate(label)
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
 
 		def func(*operands,func=func,label=label,weights=weights):
@@ -2739,7 +2744,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	
 	elif (label is not None):
 
-		label = conj(label)
+		label = conjugate(label)
 
 		def func(*operands,func=func,label=label):
 			return func(*operands[:1],label,*operands[1:])
@@ -3508,7 +3513,7 @@ def transpose(a):
 
 
 @jit
-def conj(a):
+def conjugate(a):
 	'''
 	Calculate conjugate of array a
 	Args:
@@ -3527,7 +3532,7 @@ def dagger(a):
 	Returns:
 		out (array): Conjugate transpose
 	'''	
-	return conj(transpose(a))
+	return conjugate(transpose(a))
 
 
 
@@ -4558,7 +4563,7 @@ def expmm(x,A,I,v):
 
 	def func(i,out):
 		U = _expm(x[i],A[i%d],I)
-		return einsummation(subscripts,U,out,conj(U))
+		return einsummation(subscripts,U,out,conjugate(U))
 
 	return forloop(0,m,func,v)
 
@@ -4614,7 +4619,7 @@ def expmmc(x,A,I,v,B):
 	def func(i,out):
 		y = slicing(x,i*d,d)
 		U = expm(y,A,I)
-		return einsummation(subscripts,B,U,out,conj(U),conj(B))
+		return einsummation(subscripts,B,U,out,conjugate(U),conjugate(B))
 
 	return forloop(0,m//d,func,v)
 
@@ -4641,7 +4646,7 @@ def expmmn(x,A,I,v,B):
 	def func(i,out):
 		y = slicing(x,i*d,d)
 		U = expm(y,A,I)
-		return einsummation(subscripts,B,U,out,conj(U),conj(B))
+		return einsummation(subscripts,B,U,out,conjugate(U),conjugate(B))
 
 	return forloop(0,m//d,func,v)
 
@@ -4670,7 +4675,7 @@ def expmmcn(x,A,I,v,B,C):
 	def func(i,out):
 		y = slicing(x,i*d,d)
 		U = expm(y,A,I)
-		return einsummation(subscripts,C,B,U,out,conj(U),conj(B),conj(C))
+		return einsummation(subscripts,C,B,U,out,conjugate(U),conjugate(B),conjugate(C))
 
 	return forloop(0,m//d,func,v)
 
@@ -6534,7 +6539,7 @@ def to_string(a,**kwargs):
 	'''
 
 	if a is not None:
-		string = np.array_str(a,**kwargs).replace('[[',' [').replace(']]','] ')
+		string = np.array_str(a,**kwargs)#.replace('[[',' [').replace(']]','] ')
 	else:
 		string = None
 

@@ -12,7 +12,7 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
+from src.utils import jit,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
 from src.utils import is_unitary,is_hermitian,is_naninf,product,sqrt
 from src.utils import scalars,delim,nan
 
@@ -1006,12 +1006,15 @@ class Metric(System):
 		Args:
 			verbose (int,str): Verbosity of message			
 		'''		
-		msg = '%s'%('\n'.join([
-			*['Metric %s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['metric']
-			],
-			]
-			))
+
+		msg = []
+
+		for attr in ['metric']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
+			msg.append(string)
+
+		msg = '\n'.join(msg)
+
 		self.log(msg,verbose=verbose)
 		return
 
@@ -1101,6 +1104,7 @@ class Optimization(System):
 		if callback is None:
 			def callback(parameters,track,optimizer):
 				status = True
+				print(optimizer.iteration)
 				return status
 		self.callback = callback
 
@@ -1417,18 +1421,30 @@ class Optimization(System):
 		Args:
 			verbose (int,str): Verbosity of message			
 		'''		
-		msg = '%s'%('\n'.join([
-			*['Optimizer %s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']
-			],
-			*['Optimizer dtype: %s'%(', '.join(['%s: %s'%(attr,getattrs(self,attr,delimiter=delim).dtype if	 getattrs(self,attr,delimiter=delim) is not None else None) 
-				for attr in ['func.model','func.metric','func.model.parameters','func.model.state','func.model.noise','func.metric.label']]))],
-			*['Optimizer %s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
-				for attr in ['track','attributes']
-				if any(getattr(self,attr).get(key) for key in getattr(self,attr))
-			],			
-			]
-			))
+		
+		msg = []
+
+		for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
+			msg.append(string)
+
+		for attr in ['dtype']:
+			string = []
+			for subattr in ['func.model','func.metric','func.model.parameters','func.model.state','func.model.noise','func.metric.label']:
+				substring = '%s: %s'%(subattr,getattrs(self,delim.join([subattr,attr]),delimiter=delim) if getattrs(self,subattr,delimiter=delim) is not None else None)
+				string.append(substring)
+			string = ', '.join(string)
+			msg.append(string)
+
+		for attr in ['track','attributes']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,
+				{key: getattr(self,attr).get(key,[None])[-1] 
+				if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] 
+				for key in getattr(self,attr)})
+			msg.append(string)
+
+
+		msg = '\n'.join(msg)
 
 		self.log(msg,verbose=verbose)
 		return
@@ -1930,11 +1946,14 @@ class Covariance(System):
 		Args:
 			verbose (int,str): Verbosity of message			
 		'''		
-		msg = '%s'%('\n'.join([
-			*['Covariance %s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['metric']
-			],
-			]
-			))
+		
+		msg = []
+
+		for attr in ['metric']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
+			msg.append(string)
+
+		msg = '\n'.join(msg)
+		
 		self.log(msg,verbose=verbose)
 		return

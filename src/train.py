@@ -97,6 +97,7 @@ def train(hyperparameters):
 
 			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system)
 
+			exit()
 			parameters = optimizer(parameters)
 
 			model.parameters.data = parameters

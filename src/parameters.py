@@ -318,15 +318,14 @@ class Parameters(System):
 		and are contained in Parameters.data = {parameter: Parameter()} as Parameter() instances
 
 		Setup parameters such that calling the Parameters(parameters) class with input parameters 
-		i) parameters array of size (G*P*D),
-			for G groups of P parameters, each of dimension D, 
-			for parameter groups with category in ['variable'],
-			P,D may be group dependent, and depend on Parameter.locality, Parameter.model and Parameter.attributes 
-		ii) parameters for each group are sliced with parameter slices (slice(P),slice(D)) and reshaped into shape (P,D)
-		iii) parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
-		iv) parameters for all groups are concatenated to [parameter_i = Parameters[slices_i]]
-			with slices Parameters.slices = [slices]
-		v) Parameters(parameters) returns iterable of parameters for each data in model [parameter_i]
+		i) 		parameters array of size (G*P*D),
+					for G groups of P parameters, each of dimension D, 
+					for parameter groups with category in ['variable'],
+					P,D may be group dependent, and depend on Parameter.locality, Parameter.model and Parameter.attributes 
+		ii) 	parameters for each group are sliced with parameter slices (slice(P*D)) and reshaped into shape (P,D)
+		iii) 	parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
+		iv) 	parameters for all groups are concatenated to [parameter_i = Parameters[slices_i]][indices]
+					with slices Parameters.slices = [slices], and sorted with indices Parameters.indices = [indices]
 		
 		Args:
 			data (dict): Dictionary of data corresponding to parameters groups, with dictionary values with properties:
@@ -477,7 +476,7 @@ class Parameters(System):
 			parameter = self[parameter]()
 			data.extend(parameter)
 
-		data = array(data,dtype=self.dtype).reshape(-1) if data else None
+		data = array(data,dtype=self.dtype).ravel() if data else None
 
 		# Set attributes
 		self.data = data

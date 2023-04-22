@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 
 from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cosh,sinh,cos,sin,bound
-from src.utils import norm,conj,dagger,dot,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
+from src.utils import norm,dagger,dot,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
 from src.utils import pi,delim,arrays,scalars,namespace
 from src.iterables import getter,setter
 from src.io import load,dump,exists
