@@ -136,7 +136,7 @@ class Parameter(System):
 		self.attributes = [attr for attr in self.attributes if getattr(self.model,attr,None) is not None] if self.attributes is not None else ()
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
 
-		self.parameters = self.parameters if self.parameters is not None else 1
+		self.parameters = array(self.parameters if self.parameters is not None else 1,dtype=self.dtype)
 		self.dtype = self.data.dtype if self.data is not None else None
 
 		# Set data
@@ -309,6 +309,9 @@ class Parameter(System):
 
 
 class Parameters(System):
+
+	__data__ = {}
+
 	def __init__(self,data=None,model=None,system=None,**kwargs):
 		'''
 		Initialize data of parameters
@@ -353,8 +356,8 @@ class Parameters(System):
 		'''
 
 		defaults = dict(
-			data=None,__data__={},
-			slices=None,indices=None,func=None,constraint=None,
+			data=None,
+			slices=None,indices=None,func=None,constraint=None,parameters=None,
 			shape=None,size=None,ndim=None,dtype=None,
 			)
 
@@ -463,12 +466,7 @@ class Parameters(System):
 		def constraint(parameters,slices=slices,funcs=constraints):
 			return addition(array([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)]))
 
-		self.indices = indices
-		self.slices = slices
-		self.func = func
-		self.constraint = constraint
-
-		# Set data
+		# Get data
 		data = []
 		for parameter in self:
 			if self[parameter].category not in ['variable']:
@@ -478,8 +476,24 @@ class Parameters(System):
 
 		data = array(data,dtype=self.dtype).ravel() if data else None
 
+		# Get parameters
+		parameters = []
+		for parameter in self:
+			parameter = self[parameter].parameters
+			if parameter.size > 1:
+				parameters.extend(parameter)	
+			else:
+				parameters.append(parameter)	
+
+		parameters = array(parameters,dtype=self.dtype).ravel() if parameters else None
+
 		# Set attributes
 		self.data = data
+		self.indices = indices
+		self.slices = slices
+		self.func = func
+		self.constraint = constraint
+		self.parameters = parameters
 		self.shape = self.data.shape if data is not None else None
 		self.size = self.data.size if data is not None else None
 		self.ndim = self.data.ndim if data is not None else None

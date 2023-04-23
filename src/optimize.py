@@ -809,7 +809,7 @@ class Objective(Function):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.__call__(parameters)
+		return self.metric(self.model(parameters))
 
 	# @partial(jit,static_argnums=(0,))
 	def __grad__(self,parameters):
@@ -917,10 +917,25 @@ class Metric(System):
 
 		return
 
-	def __setup__(self):
+	def __setup__(self,metric=None,shapes=None,model=None,label=None,weights=None,optimize=None):
 		'''
 		Setup metric attributes metric,string
+		Args:
+			metric (str,Metric): Type of metric
+			shapes (iterable[tuple[int]]): Shapes of Operators
+			model (object): Model instance	
+			label (array,callable): Label			
+			weights (array): Weights
+			optimize (bool,str,iterable): Contraction type	
 		'''
+
+		self.metric = self.metric if metric is None else metric
+		self.shapes = self.shapes if shapes is None else shapes
+		self.model = self.model if model is None else model
+		self.label = self.label if label is None else label
+		self.weights = self.weights if weights is None else weights
+		self.optimize = self.optimize if optimize is None else optimize
+
 		if isinstance(self.metric,Metric):
 			self.metric = self.metric.metric
 		if self.metric is None:
@@ -928,7 +943,7 @@ class Metric(System):
 		if self.shapes is None:
 			self.shapes = ()
 
-		self.metrics()
+		self.__initialize__()
 
 		self.info()
 
@@ -1019,10 +1034,24 @@ class Metric(System):
 		return
 
 
-	def metrics(self):
+	def __initialize__(self,metric=None,shapes=None,model=None,label=None,weights=None,optimize=None):
 		'''
-		Setup metric	
+		Setup metric
+		Args:
+			metric (str,Metric): Type of metric
+			shapes (iterable[tuple[int]]): Shapes of Operators
+			model (object): Model instance	
+			label (array,callable): Label			
+			weights (array): Weights
+			optimize (bool,str,iterable): Contraction type	
 		'''
+
+		self.metric = self.metric if metric is None else metric
+		self.shapes = self.shapes if shapes is None else shapes
+		self.model = self.model if model is None else model
+		self.label = self.label if label is None else label
+		self.weights = self.weights if weights is None else weights
+		self.optimize = self.optimize if optimize is None else optimize
 
 		if isinstance(self.metric,str) and self.label is not None:
 			if self.label.ndim == 1:
@@ -1033,6 +1062,8 @@ class Metric(System):
 					self.metric = 'abs2'
 				elif (getattr(self.label,'hermitian',None) or is_hermitian(self.label)) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
+
+			self.shapes = self.label.shape
 		
 		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
 			self.shapes = [self.shapes,]*2

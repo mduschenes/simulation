@@ -21,6 +21,7 @@ from src.io import load,dump,exists
 
 from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label
 from src.optimize import Optimizer,Objective,Metric,Callback
+from src.system import Dictionary
 
 def test_object(path,tol):
 	bases = {'Pauli':Pauli,'State':State,'Gate':Gate,'Haar':Haar,'Noise':Noise}
@@ -402,95 +403,131 @@ def test_initialization(path,tol):
 
 	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
 
+	kwargs = dict(verbose=True)
+
 	model = cls['model'](**hyperparameters['model'],
 		parameters=hyperparameters['parameters'],
 		state=hyperparameters['state'],
 		noise=hyperparameters['noise'],
-		system=hyperparameters['system'])
+		system=hyperparameters['system'],
+		**kwargs)
 
-	label = cls['label'](**{**namespace(cls['label'],model),**hyperparameters.get('label',{}),**dict(model=model,system=hyperparameters['system'])})
+	label = cls['label'](**{**namespace(cls['label'],model),**hyperparameters.get('label',{}),**dict(model=model,system=hyperparameters['system']),**kwargs})
 	hyperparams = hyperparameters['optimize']	
 	system = hyperparameters['system']
 	
-	func = [model.parameters.constraints]
-
-	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
+	metric = Metric(label=label,hyperparameters=hyperparams,system=system,**kwargs)
 
 
-	_kwargs = ['state','noise']
+	def copier(model,metric):
 
-	_defaults = {kwarg: getattr(model,kwarg) for kwarg in _kwargs}
+		copy = Dictionary(
+			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=model.noise,info=model.info,hermitian=model.hermitian,unitary=model.unitary),
+			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.label.state,noise=model.noise,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
+			label=Dictionary(func=metric.label.__call__,data=metric.label(),state=metric.label.state,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
+			)
 
-	_kwargs = {kwarg: False for kwarg in _kwargs}
+		return copy
 
+	copy = copier(model,metric)
 
-	UpsiU = model()
-	K = model.noise()
-	VpsiV = metric.label()	
-	psi = metric.label.state()	
-	hermitian = model.hermitian
-	unitary = model.unitary
-
-	_model = model
-	_metric = metric
-	_label = metric.label
-
-	_model.__initialize__(**_kwargs)
-
-	_label = Label(**dict(data=_label,state=_model.state,noise=_model.noise))
-
-	_metric = Metric(**{**_metric,**dict(label=_label,verbose=False)})
-
-	_U = _model()
-	_V = _metric.label()
+	
+	defaults = Dictionary(state=model.state,noise=model.noise,label=metric.label)
 
 
-	print('State model (hermitian: %s, unitary: %s)'%(hermitian,unitary))
-	print(UpsiU)
+	tmp = Dictionary(state=False,noise=False,label=False)
 
-	print('State label (hermitian: %s, unitary: %s)'%(metric.label.hermitian,metric.label.unitary))
-	print(VpsiV)
+	
+	label = metric.label
 
-	print('State state (hermitian: %s, unitary: %s)'%(metric.label.hermitian,metric.label.unitary))
-	print(psi)
+	model.__initialize__(state=tmp.state,noise=tmp.noise)
 
-	print('Unitary model (hermitian: %s, unitary: %s)'%(_model.hermitian,_model.unitary))
-	print(_U)
+	label.__initialize__(state=model.state)
 
-	print('Unitary label (hermitian: %s, unitary: %s)'%(_metric.label.hermitian,_metric.label.unitary))
-	print(_V)
+	metric.__initialize__(model=model,label=label)
 
+	tmp = copier(model,metric)
+
+	model.__initialize__(state=defaults.state,noise=defaults.noise)
+
+	label.__initialize__(state=defaults.state)
+
+	metric.__initialize__(model=model,label=label)
+
+	
+	new = copier(model,metric)
+
+
+	
+	print('--- COPY INFO ---')
+	copy.model.info(verbose=True)
+	print()
+
+	print('--- TMP INFO ---')
+	tmp.model.info(verbose=True)
+	print()
 
 	print('--- NEW INFO ---')
-	_model.info()
-
-
-	model.__initialize__(**_defaults)
-
-	print('--- RESTORED INFO ---')
-	model.info()
-
-	_Upsi_U = einsum('ij,jk,lk',_U,psi,conjugate(_U))
-	_Vpsi_V = einsum('ij,jk,lk',_V,psi,conjugate(_V))
-
-
-	assert allclose(_Upsi_U,UpsiU), "Incorrect model() re-initialization"
-	assert allclose(_Vpsi_V,VpsiV), "Incorrect label() re-initialization"
-
+	new.model.info(verbose=True)
 	print()
 
-	print('State Label')
-	print(metric.label())
-	print(metric.label.data)
-	print(metric.label.__data__)
-	
-	print()
-	
-	print('Unitary Label')
-	print(_metric.label())
-	print(_metric.label.data)
-	print(_metric.label.__data__)
 
+	print('State model (hermitian: %s, unitary: %s)'%(copy.model.hermitian,copy.model.unitary))
+	print(copy.model.data)
+
+	print('State label (hermitian: %s, unitary: %s)'%(copy.label.hermitian,copy.label.unitary))
+	print(copy.label.data)
+
+	print('State state (hermitian: %s, unitary: %s)'%(copy.label.state.hermitian,copy.label.state.unitary))
+	print(copy.label.state())
+
+	print('Unitary model (hermitian: %s, unitary: %s)'%(tmp.model.hermitian,tmp.model.unitary))
+	print(tmp.model.data)
+
+	print('Unitary label (hermitian: %s, unitary: %s)'%(tmp.label.hermitian,tmp.label.unitary))
+	print(tmp.label.data)
+
+	print('State model (hermitian: %s, unitary: %s)'%(new.model.hermitian,new.model.unitary))
+	print(new.model.data)
+
+	print('State label (hermitian: %s, unitary: %s)'%(new.label.hermitian,new.label.unitary))
+	print(new.label.data)
+
+	print('State state (hermitian: %s, unitary: %s)'%(new.label.state.hermitian,new.label.state.unitary))
+	print(new.label.state())
+
+
+	UpsiU = copy.model.data
+	U = tmp.model.data
+	psi = copy.model.state()
+	K = copy.model.noise()
+	VpsiV = copy.label.data
+	V = tmp.label.data
+
+	if K is None:
+		if psi is None:
+			return
+		elif psi.ndim == 1:
+			UpsiUtmp = einsum('ij,j->i',U,psi,conjugate(U))
+			VpsiVtmp = einsum('ij,j->i',V,psi,conjugate(V))
+		elif psi.ndim == 2:
+			UpsiUtmp = einsum('ij,jk,lk->il',U,psi,conjugate(U))
+			VpsiVtmp = einsum('ij,jk,lk->il',V,psi,conjugate(V))		
+	elif K is not None:
+		return
+		if psi is None:
+			return
+		elif psi.ndim == 1:
+			return
+		elif psi.ndim == 2:
+			UpsiUtmp = einsum('uij,jk,kl,ml,unm->in',K,U,psi,conjugate(U),conjugate(K))
+			VpsiVtmp = einsum('ij,jk,lk->il',V,psi,conjugate(V))		
+
+
+	assert allclose(UpsiUtmp,UpsiU), "Incorrect model() re-initialization"
+	assert allclose(VpsiVtmp,VpsiV), "Incorrect label() re-initialization"
+	assert allclose(new.metric.data,copy.metric.data), "Incorrect metric() re-initialization"
+	
 	return
 
 

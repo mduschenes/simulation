@@ -2590,6 +2590,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		size = 1
 		ndim = None
 
+
 	if callable(metric):
 			metric = metric
 			func = jit(metric)
@@ -3889,7 +3890,7 @@ def einsum_path(subscripts,*shapes,optimize=True):
 	optimizers = {True:'optimal',False:'auto',None:'optimal'}
 	optimize = optimizers.get(optimize,optimize)
 
-	operands = (empty(shape) for shape in shapes)
+	operands = (zeros(shape) for shape in shapes)
 
 	optimize,string = np.einsum_path(subscripts,*operands,optimize=optimize)
 

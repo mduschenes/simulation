@@ -98,7 +98,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":50,
+	"M":5,
 	"T":null,
 	"tau":1,
 	"P":2,
@@ -238,10 +238,9 @@
 		}
 	},
 "label": {
-	"operator":"Z.Z",
+	"operator":"haar",
 	"site":null,
 	"string":"U",
-	"interaction":"i...j",
 	"parameters":0.25,
 	"ndim":2,
 	"seed":123
@@ -250,7 +249,6 @@
 	"operator":"haar",
 	"site":null,
 	"string":"U",
-	"interaction":"i...j",
 	"parameters":1,
 	"ndim":2,
 	"samples":1,
@@ -260,7 +258,6 @@
 	"data":"phase",
 	"site":null,
 	"string":"K",
-	"interaction":"i",
 	"parameters":false,
 	"ndim":3,
 	"seed":123

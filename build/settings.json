@@ -323,7 +323,6 @@
 	"operator":"I",
 	"site":null,
 	"string":"U",
-	"interaction":"i...j",
 	"parameters":0.5,
 	"ndim":2,
 	"seed":null
@@ -332,7 +331,6 @@
 	"operator":"haar",
 	"site":null,
 	"string":"U",
-	"interaction":"i...j",
 	"parameters":false,
 	"ndim":1,
 	"samples":1,
@@ -342,7 +340,6 @@
 	"data":"phase",
 	"site":null,
 	"string":"K",
-	"interaction":"i",
 	"parameters":false,
 	"ndim":3,
 	"seed":null
