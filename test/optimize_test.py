@@ -11,25 +11,21 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient,hessian
-from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
-from src.utils import summation,exponentiation
-from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import eig,qr,einsum
-from src.utils import maximum,minimum,difference,abs,argmax,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
-from src.utils import concatenate,vstack,hstack,sort,norm,unique,allclose
-from src.utils import parse,to_string,to_number,scinotation,datatype,slice_size
-from src.utils import trotter
-from src.utils import pi,e,delim
-from src.utils import itg,flt,dbl
+# from src.utils import jit,gradient,hessian
+# from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
+# from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
+# from src.utils import summation,exponentiation
+# from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
+# from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
+# from src.utils import eig,qr,einsum
+# from src.utils import maximum,minimum,difference,abs,argmax,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
+# from src.utils import concatenate,vstack,hstack,sort,norm,unique,allclose
+# from src.utils import parse,to_string,to_number,scinotation,datatype,slice_size
+# from src.utils import trotter
+# from src.utils import pi,e,delim
+# from src.utils import itg,flt,dbl
 
 from src.iterables import getter,setter,permuter,equalizer
-
-from src.parameters import Parameters
-from src.operators import Gate
-from src.states import State
 
 from src.io import load,dump,join,split
 from src.call import rm
@@ -64,15 +60,14 @@ def test_objective(path,tol):
 			label=hyperparameters['label'],
 			system=hyperparameters['system'])
 
-	func = [model.constraints]
-	shapes = model.shapes
+	func = [model.parameters.constraints]
 	label = model.label()
 	callback = cls['callback']()
 	hyperparams = hyperparameters['optimize']
 	system = model.system
 
 
-	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
+	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
 	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams,system=system)
 	callback = Callback(model,callback,func=func,metric=metric,hyperparameters=hyperparams,system=system)
 
@@ -107,7 +102,6 @@ def test_optimizer(path,tol):
 			system=hyperparameters['system'])
 
 	parameters = model.parameters()
-	shapes = model.shapes
 	label = model.label()
 	hyperparams = hyperparameters['optimize']
 	system = hyperparameters['system']
@@ -115,7 +109,7 @@ def test_optimizer(path,tol):
 	func = []
 	callback = cls['callback']()
 
-	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system,**kwargs)
+	metric = Metric(label=label,hyperparameters=hyperparams,system=system,**kwargs)
 	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
 	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
 
@@ -158,7 +152,6 @@ def test_hessian(path,tol):
 			system=hyperparameters['system'])
 
 	parameters = model.parameters()
-	shapes = model.shapes
 	label = model.label()
 	hyperparams = hyperparameters['optimize']
 	system = hyperparameters['system']
@@ -166,7 +159,7 @@ def test_hessian(path,tol):
 	func = []
 	callback = cls['callback']()
 
-	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system,**kwargs)
+	metric = Metric(label=label,hyperparameters=hyperparams,system=system,**kwargs)
 	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
 	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
 

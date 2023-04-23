@@ -15,7 +15,7 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient,hessian,einsum,dot,diag,partial,where
 from src.utils import array,ones,zeros,rand,eye
-from src.utils import norm,inv,lstsq,interp,piecewise
+from src.utils import norm,inv,lstsq,interp,piecewise,setitem
 from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,product,is_naninf,allclose
 from src.utils import nan,null,scalars,delim
 
@@ -115,9 +115,11 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 			)
 
 		_func[i] = returns[0]
-		_y[_condition[i]] = returns[1] 
+		# _y[_condition[i]] = returns[1]
+		_y = setitem(_y,_condition[i],returns[1] )
 		_parameters[i] = returns[2]
-		_yerr[_condition[i]] = returns[3]
+		# _yerr[_condition[i]] = returns[3]
+		_yerr = setitem(_yerr,_condition[i],returns[3])
 		_covariance[i] = returns[4]
 		_other[i] = returns[5]
 
@@ -346,7 +348,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_covariance = abs(_jac*_covariance)
 		else:
 			_jac = _invgrad[i][i]
-			_covariance = dot(dot(_jac,_covariance,_jac.T))
+			_covariance = dot(dot(_jac,_covariance),_jac.T)
 
 	x,y,parameters = invtransform(x,y,parameters)
 

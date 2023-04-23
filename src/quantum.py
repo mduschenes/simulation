@@ -917,7 +917,7 @@ class Operators(Object):
 		self.__lattice__()
 
 		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
-		self.coefficients = array(self.tau/self.P,dtype=self.dtype)
+		self.coefficients = self.tau/self.P
 
 		self.shape = () if self.n is None else (self.n,self.n)
 		self.size = prod(self.shape)
@@ -1095,7 +1095,7 @@ class Operators(Object):
 		if state is None and noise is None:
 			hermitian = False
 			unitary = True
-			shape = self.shape
+			shape = identity.shape
 		elif state.ndim == 1 and noise is None:
 			hermitian = True
 			unitary = False
@@ -1113,9 +1113,15 @@ class Operators(Object):
 
 		func = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 		
+		grad = gradient(self,mode='fwd',move=True)
+
+		grad_finite = gradient(self,mode='finite',move=True)
+		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
+
 		# Update class attributes
 		self.func = func
-		self.gradient = gradient(self,mode='fwd',move=True)
+		self.gradient = grad
+		self.gradient_analytical = grad_analytical
 		self.trotterize = trotterize
 		self.hermitian = hermitian
 		self.unitary = unitary
@@ -1123,6 +1129,26 @@ class Operators(Object):
 		self.shape = shape
 		self.size = prod(self.shape)
 		self.ndim = len(self.shape)
+
+		G = self.gradient(self.parameters())
+		print(G.shape)
+		H = grad_finite(self.parameters())
+		print(H.shape)
+		g = -1j*self.coefficients*self.gradient_analytical(trotterize(coefficients*self.parameters(parameters)))
+		# g = g.reshape(self.M,-1,self.n,self.n).transpose(1,0,2,3)[:self.parameters.size//self.M].reshape(-1,self.n,self.n)
+		print(g.shape)
+
+		print(G)
+		print()
+		print(H)
+		print()
+		print(g)
+		print()
+
+		print(allclose(G,H))
+		print(allclose(H,g))
+		print(allclose(G,g))
+		exit()
 
 		return
 
@@ -1951,7 +1977,7 @@ class Callback(System):
 					value = int(track['iteration'][-1])
 
 				elif attr in ['iteration.min']:
-					value = int(track['iteration'][argmin(abs(array(track['objective'])))])
+					value = int(track['iteration'][argmin(abs(array(track['objective'],dtype=model.dtype)))])
 
 				elif attr in ['value']:
 					value = abs(attributes[attr][index])
@@ -2348,44 +2374,55 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 	length = len(data)
 
 	subscripts = 'ij,jk,kl->il'
-	shapes = (I.shape,I.shape,I.shape)
-	einsummation = einsum #(subscripts,shapes)
+	shapes = (identity.shape,identity.shape,identity.shape)
+	einsummation = einsum(subscripts,*shapes)
+
+	if state is not None or noise is not None:
+
+		raise NotImplementedError("TODO: Implement gradients for non-unitary contraction")
 
 
-	def func(i):
+	def func(parameters=None,state=None,conj=None):
+		def func(i):
 
-		subparameters = slicing(parameters,0,i)
-		substate = None
-		subconj = conj
-		subdata = shift(data,-(i%length))
-		subidentity = identity
-		subconstants = constants
-		subnoise = None
+			subparameters = slicing(parameters,0,i)
+			substate = None
+			subconj = conj
+			subdata = data
+			subidentity = identity
+			subconstants = constants
+			subnoise = None
 
-		subscheme = scheme
+			subscheme = scheme
 
-		subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
+			subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
 
-		U = subfunc(subparameters,substate,subconj)
+			U = subfunc(subparameters,identity,subconj)
 
 
-		subparameters = slicing(parameters,i,size-i)
-		substate = None
-		subconj = conj
-		subdata = shift(data,-(i%length))
-		subidentity = identity
-		subconstants = constants
-		subnoise = None
+			subparameters = slicing(parameters,i,size-i)
+			substate = None
+			subconj = conj
+			subdata = shift(data,-(i%length))
+			subidentity = identity
+			subconstants = constants
+			subnoise = None
 
-		subscheme = scheme
+			subscheme = scheme
 
-		subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
+			subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
 
-		V = subfunc(subparameters,substate,subconj)
+			V = subfunc(subparameters,identity,subconj)
 
-		A = data[i%length](parameters[i])
+			# A = data[i%length](parameters[i] + pi/2)
+			A = 1j*data[i%length](pi/2)
 
-		return einsummation(subscripts,V,A,U)
+			return einsummation(V,A,U)
 
-	return vmap(func)(arange(size))
-	# return array([grad(i) for i in range(size)]
+		# return vmap(func)(arange(size))
+		return array([func(i) for i in range(size)])
+
+
+	# func = jit(func)
+
+	return func

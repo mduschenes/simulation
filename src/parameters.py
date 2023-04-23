@@ -272,19 +272,16 @@ class Parameter(System):
 					indices = (*(slice(None),)*(axis % self.ndim-1),indices)
 					self.kwargs[attr][axis] = {'indices':indices,'values':values}
 	
-		def func(parameters):
-			return self.parameters*self.data[self.slices]
-		
-		def constraint(parameters):
-			return 0
 
 		if self.category in ['variable']:
 
 			if self.method in ['bounded']:
+		
 				def func(parameters):
 					return self.parameters*bound(parameters[self.slices])
 
 			elif self.method in ['constrained']:					
+			
 				def func(parameters):
 					parameters = bound(parameters[self.slices])
 					# shape = parameters.shape
@@ -293,14 +290,33 @@ class Parameter(System):
 					# parameters = parameters.reshape(*shape)
 					return parameters
 
+			else:
+	
+				def func(parameters):
+					return self.parameters*parameters[self.slices]
+		
+	
+
 			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
 				def constraint(parameters):
 					return self.kwargs['lambda']*((parameters[...,self.kwargs['constant'][-1]['indices']] - self.kwargs['constant'][-1]['values'])**2).sum()
+			else:
+				def constraint(parameters):
+					return 0
+
+		else:
+		
+			def func(parameters):
+				return self.parameters*self.data[self.slices]
+
+			
+			def constraint(parameters):
+				return 0
 
 
 		self.func = jit(func)
+		
 		self.constraint = jit(constraint)
-
 
 		return
 

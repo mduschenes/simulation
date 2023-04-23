@@ -52,111 +52,6 @@ from src.system import Logger
 # logger = Logger(name,conf,file=file)
 
 
-def test_class(path,tol):
-
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
-
-	cls = load(hyperparameters['class']['model'])
-
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	out = model(model.parameters())
-
-	if model.hermitian:
-		assert is_hermitian(out), "model not hermitian"
-	else:
-		assert is_unitary(out), "model not unitary"
-
-
-	initial = model(model.parameters())
-
-	hyperparameters['model']['data'] = None
-	new = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	init  = new(new.parameters())
-
-	new.__setup__(model.data)
-	new.__initialize__()
-
-	new.info()
-
-	final = new(new.parameters())
-
-	print(initial)
-	print(init)
-	print(final)
-
-	assert(allclose(initial,final)), "Incorrect class re-initialization"
-
-	print("Parameters set")
-
-	return
-
-
-
-def test_load_dump(path,tol):
-
-	# Set instance
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
-
-	cls = load(hyperparameters['class']['model'])
-
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	# Set hyperparameters
-	hyperparameters['optimize']['track']['alpha'] = []
-	hyperparameters['optimize']['track']['alpha'].append(12345)
-	hyperparameters['optimize']['attributes']['search']
-	hyperparameters['optimize']['attributes']['search'].append([1,2,2,3])
-	
-
-	# Dump instance
-	model.dump()
-
-	# Set instance
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
-	new = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	new.load()
-
-	types = (dict,list,)
-	exceptions = lambda a,b: any(any(e(a) for e in exception) and any(e(b) for e in exception) 
-		for exception in [[callable],[lambda a: isinstance(a,arrays)],
-							[lambda a: isinstance(a,dict) and ((len(a)==0) or all(callable(a[item]) for item in a))]])
-	
-	equalizer(hyperparameters,hyperparameters,types=types,exceptions=exceptions)
-
-	return
-
 
 def test_grad(path,tol):
 
@@ -206,12 +101,11 @@ def test_metric(path,tol):
 		system=hyperparameters['system'])
 
 	func = []
-	shapes = model.shapes
 	label = model.label()
 	hyperparams = hyperparameters['optimize']
 	system = model.system
 
-	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
+	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
 
 	out = metric(label)
 
@@ -237,14 +131,13 @@ def test_objective(path,tol):
 		system=hyperparameters['system'])
 
 	parameters = model.parameters()
-	shapes = model.shapes
 	label = model(parameters)
 	func = []
 	callback = None
 	hyperparams = hyperparameters['optimize']
 	system = model.system
 
-	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
+	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
 	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams,system=system)
 
 	out = func(parameters)

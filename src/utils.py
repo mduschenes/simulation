@@ -2738,7 +2738,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 			label = label()
 
 		if metric in ['abs2']:
-			label = conjugate(label)	
+			label = conjugate(label)
 
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
 
@@ -4496,8 +4496,7 @@ def gradient_expm(x,A,I):
 		V = expm(z,roll(A,-(i%d)),I)
 		return einsummation(subscripts,V,A[i%d],U)		
 
-	return vmap(grad)(arange(m))
-	# return array([grad(i) for i in range(m)])
+	return array([grad(i) for i in range(m)])
 
 @jit
 def expmc(x,A,I,B):
@@ -5030,11 +5029,11 @@ def roll(a,shift,axis=0):
 	return np.roll(a,shift,axis=axis)
 
 
-def shift(a,shift,axis=None):
+def shift(iterable,shift,axis=None):
 	'''
 	Shift iterable along axis (periodically)
 	Args:
-		a (iterable): Iterable to shift
+		iterable (iterable): Iterable to shift
 		shift (int,iterable[int]): Shift along axis
 		axis (int,iterable[int]): Axis to shift along
 	Returns:

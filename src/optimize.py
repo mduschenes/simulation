@@ -798,7 +798,7 @@ class Objective(Function):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric(self.model(parameters)) + self.function(parameters)
+		return self.func(parameters) + self.function(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def func(self,parameters):
@@ -1063,7 +1063,10 @@ class Metric(System):
 				elif (getattr(self.label,'hermitian',None) or is_hermitian(self.label)) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
 
+		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
 			self.shapes = self.label.shape
+		else:
+			self.shapes = [self.label.shape]*len(self.shapes)
 		
 		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
 			self.shapes = [self.shapes,]*2
@@ -1937,7 +1940,7 @@ class Covariance(System):
 			except:
 				pass
 
-		elif all(isinstance(i,int) for i in shapes) or (len(shapes) == 1):
+		if all(isinstance(i,int) for i in shapes) or (len(shapes) == 1):
 			shapes = [shapes]*2
 
 		if label is None:

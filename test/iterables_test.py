@@ -50,7 +50,7 @@ def test_search(path=None,tol=None):
 	print()
 
 	item = -1
-	index = find(item,iterable,returns=True,types=types)
+	index = find(item,iterable,types=types)
 	print(item,list(index))
 
 	print()

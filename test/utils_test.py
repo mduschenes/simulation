@@ -20,7 +20,7 @@ from src.io import load,dump,join,split,edit
 from src.utils import array,zeros,rand,identity,datatype,allclose,sqrt,abs2
 from src.utils import gradient,rand,eye,diag,sin,cos
 from src.utils import einsum,norm,norm2,trace,mse
-from src.utils import expm,expmv,expmm,expmc,expmvc,expmmc,_expm
+from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
 
@@ -187,11 +187,11 @@ def test_expmm():
 	return
 
 
-def test_expmmc(*args,**kwargs):
+def test_expmmn(*args,**kwargs):
 
 	def func(*args,**kwargs):
 		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
-		out = expmmc(x,A,I,v,B)
+		out = expmmn(x,A,I,v,B)
 		return out
 
 	def _func(*args,**kwargs):
@@ -282,7 +282,7 @@ def test_expmi():
 
 		B = array([I,*[0*I]*(B.shape[0]-1)])
 
-		out = expmmc(x,A,I,v,B)
+		out = expmmn(x,A,I,v,B)
 
 		return out
 
@@ -463,10 +463,11 @@ def test_norm(path=None,tol=None):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_getter(path,tol)
-	test_setter(path,tol)
-	test_scinotation(path,tol)
-	test_gradient(path,tol)
-	test_gradient_expm(path,tol)
-	test_norm(path,tol)
+	# test_getter(path,tol)
+	# test_setter(path,tol)
+	# test_scinotation(path,tol)
+	# test_gradient(path,tol)
+	# test_gradient_expm(path,tol)
+	# test_norm(path,tol)
 	
+	test_expmi()	
