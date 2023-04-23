@@ -1,5 +1,5 @@
 {
-"class":{
+"cls":{
 	"model":"src.quantum.Unitary",
 	"parameters":"src.parameters.Parameters",
 	"label":"src.quantum.Label",
@@ -249,7 +249,7 @@
 	"operator":"haar",
 	"site":null,
 	"string":"U",
-	"parameters":1,
+	"parameters":false,
 	"ndim":2,
 	"samples":1,
 	"seed":123
@@ -332,6 +332,7 @@
 		"verbose":"info"
 		}
 	},
+"callback":{},
 "process": {},
 "plot": {}
 }

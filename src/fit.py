@@ -115,10 +115,8 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 			)
 
 		_func[i] = returns[0]
-		# _y[_condition[i]] = returns[1]
 		_y = setitem(_y,_condition[i],returns[1] )
 		_parameters[i] = returns[2]
-		# _yerr[_condition[i]] = returns[3]
 		_yerr = setitem(_yerr,_condition[i],returns[3])
 		_covariance[i] = returns[4]
 		_other[i] = returns[5]

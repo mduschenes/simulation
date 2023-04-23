@@ -1114,7 +1114,6 @@ class Operators(Object):
 		func = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 		
 		grad = gradient(self,mode='fwd',move=True)
-
 		grad_finite = gradient(self,mode='finite',move=True)
 		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 
@@ -1130,25 +1129,25 @@ class Operators(Object):
 		self.size = prod(self.shape)
 		self.ndim = len(self.shape)
 
-		G = self.gradient(self.parameters())
-		print(G.shape)
-		H = grad_finite(self.parameters())
-		print(H.shape)
-		g = -1j*self.coefficients*self.gradient_analytical(trotterize(coefficients*self.parameters(parameters)))
-		# g = g.reshape(self.M,-1,self.n,self.n).transpose(1,0,2,3)[:self.parameters.size//self.M].reshape(-1,self.n,self.n)
-		print(g.shape)
+		# G = self.gradient(self.parameters())
+		# print(G.shape)
+		# H = grad_finite(self.parameters())
+		# print(H.shape)
+		# g = -1j*self.coefficients*self.gradient_analytical(trotterize(coefficients*self.parameters(parameters)))
+		# # g = g.reshape(self.M,-1,self.n,self.n).transpose(1,0,2,3)[:self.parameters.size//self.M].reshape(-1,self.n,self.n)
+		# print(g.shape)
 
-		print(G)
-		print()
-		print(H)
-		print()
-		print(g)
-		print()
+		# print(G)
+		# print()
+		# print(H)
+		# print()
+		# print(g)
+		# print()
 
-		print(allclose(G,H))
-		print(allclose(H,g))
-		print(allclose(G,g))
-		exit()
+		# print(allclose(G,H))
+		# print(allclose(H,g))
+		# print(allclose(G,g))
+		# exit()
 
 		return
 
