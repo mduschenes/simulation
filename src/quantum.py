@@ -2218,6 +2218,7 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
 		
+	func = jit(func)	
 
 	return func
 
