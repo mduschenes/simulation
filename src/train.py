@@ -70,9 +70,11 @@ def train(hyperparameters):
 			backend = __import__(backend)
 
 		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
-		system = hyperparameters.get('system',{})
 
 		model,label,callback = cls.pop('model'),cls.pop('label'),cls.pop('callback')
+
+		hyperparams = hyperparameters.get('optimize',{})
+		system = hyperparameters.get('system',{})
 
 		model = model(**{**hyperparameters.get('model',{}),**{attr: hyperparameters.get(attr) for attr in cls},**dict(system=system)})
 		label = label(**{**namespace(label,model),**hyperparameters.get('label',{}),**dict(model=model,system=system)})
@@ -83,11 +85,8 @@ def train(hyperparameters):
 
 		if hyperparameters['boolean'].get('train'):
 
-			hyperparams = hyperparameters['optimize']		
-
-			func = [model.parameters.constraints]
-			
 			parameters = model.parameters()
+			func = model.parameters.constraints
 
 			metric = Metric(label=label,hyperparameters=hyperparams,system=system)
 			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)

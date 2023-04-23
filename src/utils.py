@@ -2597,6 +2597,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 			grad = jit(gradient(metric))
 			# grad = gradient(func,mode='fwd',holomorphic=True,move=True)			
 			grad_analytical = jit(gradient(metric))
+	
 	elif metric is None:
 
 		func = inner_norm
@@ -2736,7 +2737,9 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		if callable(label):
 			label = label()
 
-		label = conjugate(label)
+		if metric in ['abs2']:
+			label = conjugate(label)	
+
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
 
 		def func(*operands,func=func,label=label,weights=weights):
@@ -2751,7 +2754,8 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		if callable(label):
 			label = label()
 
-		label = conjugate(label)
+		if metric in ['abs2']:
+			label = conjugate(label)	
 
 		def func(*operands,func=func,label=label):
 			return func(*operands[:1],label,*operands[1:])
