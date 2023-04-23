@@ -11,7 +11,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,allclose,delim,namespace
 from src.io import load,glob
-from src.system import Dictionary
+from src.system import Dict
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 logger = Logger()
@@ -32,10 +32,7 @@ def setup(hyperparameters):
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters,default=default)
 
-	hyperparameters = Dictionary(**{
-		attr: Dictionary(**hyperparameters[attr]) 
-		if isinstance(hyperparameters[attr],dict) else hyperparameters[attr] 
-		for attr in hyperparameters})
+	hyperparameters = Dict(hyperparameters)
 
 	return hyperparameters
 
@@ -70,9 +67,9 @@ def train(hyperparameters):
 			model = None
 			return model
 
-		cls = Dictionary(**{attr: load(hyperparameters.cls[attr]) for attr in hyperparameters.cls})
-
-		model,label,callback = cls.model,cls.label,cls.callback
+		model = load(hyperparameters.cls.model)
+		label = load(hyperparameters.cls.label)
+		callback = load(hyperparameters.cls.callback)
 
 		hyperparams = hyperparameters.optimize
 		system = hyperparameters.system

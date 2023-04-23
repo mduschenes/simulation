@@ -22,6 +22,8 @@ from src.io import load,dump
 
 from src.optimize import Optimizer,Objective,Metric,Callback
 
+from src.system import Dict
+
 
 def test_metric(path,tol):
 
@@ -30,16 +32,18 @@ def test_metric(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
+	hyperparameters = Dict(hyperparameters)
 
-	model,label,callback = cls.pop('model'),cls.pop('label'),cls.pop('callback')
+	model = load(hyperparameters.cls.model)
+	label = load(hyperparameters.cls.label)
+	callback = load(hyperparameters.cls.callback)
 
-	hyperparams = hyperparameters.get('optimize',{})
-	system = hyperparameters.get('system',{})
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
 
-	model = model(**{**hyperparameters.get('model',{}),**{attr: hyperparameters.get(attr) for attr in cls},**dict(system=system)})
-	label = label(**{**namespace(label,model),**hyperparameters.get('label',{}),**dict(model=model,system=system)})
-	callback = callback(**{**namespace(callback,model),**hyperparameters.get('callback',{}),**dict(model=model,system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+	callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
 
 	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
 
@@ -57,20 +61,22 @@ def test_objective(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	hyperparameters = Dict(hyperparameters)
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		system=hyperparameters['system'])
+	model = load(hyperparameters.cls.model)
+
+	model = model(**hyperparameters.model,
+		parameters=hyperparameters.parameters,
+		state=hyperparameters.state,
+		noise=hyperparameters.noise,
+		system=hyperparameters.system)
 
 	parameters = model.parameters()
 	label = model(parameters)
 	func = []
 	callback = None
-	hyperparams = hyperparameters['optimize']
-	system = model.system
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
 
 	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
 	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams,system=system)
@@ -88,13 +94,16 @@ def test_grad(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	hyperparameters = Dict(hyperparameters)
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		system=hyperparameters['system'])
+	model = load(hyperparameters.cls.model)
+	label = load(hyperparameters.cls.label)
+	callback = load(hyperparameters.cls.callback)
+
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
 
 	func = model
 
@@ -115,6 +124,6 @@ def test_grad(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	# test_metric(path,tol)
-	# test_objective(path,tol)
-	test_grad(path,tol)
+	test_metric(path,tol)
+	test_objective(path,tol)
+	# test_grad(path,tol)

@@ -42,6 +42,26 @@ class Dictionary(dict):
 		self.__dict__ = self
 		return
 
+class Dict(Dictionary):
+	'''
+	Dictionary subclass with nested Dictionary elements
+	Args:
+		args (dict): Dictionary elements
+		kwargs (dict): Dictionary elements
+	'''	
+	def __init__(self,*args,**kwargs):
+		for arg in args:
+			if isinstance(arg,dict):
+				kwargs.update(arg)
+
+		for key in kwargs:
+			if isinstance(kwargs[key],dict):
+				kwargs[key] = Dict(kwargs[key])
+
+		super().__init__(**kwargs)
+
+		return
+
 class System(Dictionary):
 	'''
 	System attributes (dtype,format,device,seed,verbose,...)
