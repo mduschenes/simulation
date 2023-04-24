@@ -1,5 +1,5 @@
 {
-"class":{
+"cls":{
 	"model":"src.quantum.Unitary",
 	"callback":"src.quantum.Callback"
 	},
