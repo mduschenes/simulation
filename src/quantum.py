@@ -17,7 +17,7 @@ from src.utils import array,asarray,empty,identity,ones,zeros,arange,rand
 from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,sort,relsort
 from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos
 from src.utils import to_string,is_hermitian,is_unitary,allclose
-from src.utils import pi,e,nan,null,delim,scalars,arrays,namespace
+from src.utils import pi,e,nan,null,delim,scalars,arrays,namespace,datatype
 
 from src.iterables import setter,getter,getattrs,hasattrs,indexer,inserter
 
@@ -919,7 +919,7 @@ class Operators(Object):
 		self.__lattice__()
 
 		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
-		self.coefficients = self.tau/self.P
+		self.coefficients = array(self.tau/self.P,dtype=datatype(self.dtype))
 
 		self.shape = () if self.n is None else (self.n,self.n)
 		self.size = prod(self.shape)
@@ -1066,7 +1066,7 @@ class Operators(Object):
 				args = {**dict(data=None),**data} if isinstance(data,dict) else dict(data=data)
 				setter(kwargs,args,func=False)
 
-				args = dict(**namespace(cls,self),model=self)
+				args = dict(**namespace(cls,self),model=self,system=self.system)
 				setter(kwargs,args,func=False)
 
 				args = dict(verbose=False)
@@ -1085,15 +1085,15 @@ class Operators(Object):
 		parameters = self.parameters()
 		state = self.state()
 		noise = self.noise()
-		constants = self.constants
 		coefficients = self.coefficients
+		constants = self.constants
 		conj = self.conj
 
 		data = trotter([jit(i) for i in self.data],self.P)
 		slices = trotter(list(range(len(self))),self.P)
 		trotterize = jit(lambda parameters,slices: parameters[slices].T.ravel(),slices=array(slices))
 
-		parameters = trotterize(coefficients*self.parameters(parameters))
+		parameters = trotterize(self.coefficients*self.parameters(parameters))
 
 		if state is None and noise is None:
 			hermitian = False
@@ -1132,6 +1132,7 @@ class Operators(Object):
 		self.shape = shape
 		self.size = prod(self.shape)
 		self.ndim = len(self.shape)
+
 
 		return
 
@@ -2047,11 +2048,17 @@ class Callback(System):
 					for attr in ['alpha','beta']
 					if attr in attributes and len(attributes[attr])>0
 					]),
+				'attributes: \t %s'%({attr: attributes[attr][-1].dtype 
+					if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
+					for attr in attributes}),
+				'track: \t %s'%({attr: attributes[attr][-1].dtype 
+					if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
+					for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				'U\n%s\nV\n%s'%(
-					to_string((model(parameters)).round(4)),
-					to_string((metric.label()).round(4))),
+				# 'U\n%s\nV\n%s'%(
+				# 	to_string((model(parameters)).round(4)),
+				# 	to_string((metric.label()).round(4))),
 				])
 
 

@@ -214,6 +214,7 @@ class Space(System):
 		self.space = space
 		self.string = None		
 		self.default = 'spin'
+		self.dtype = datatype(self.dtype)
 		self.system = system
 
 		self.__setup__()
@@ -224,6 +225,8 @@ class Space(System):
 		'''
 		Setup space attributes space,string,n
 		'''
+
+		wrapper = lambda func: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=self.dtype))
 
 		funcs =  {
 			'spin':{
@@ -247,6 +250,7 @@ class Space(System):
 			self.space = self.default
 	
 		self.funcs = funcs.get(self.space,funcs[self.default])
+		self.funcs = {attr: wrapper(self.funcs[attr]) for attr in self.funcs}
 
 		self.__string__()
 		self.__size__()
@@ -300,6 +304,7 @@ class Time(System):
 		self.time = time
 		self.string = None				
 		self.default = 'linear'
+		self.dtype = datatype(self.dtype)
 		self.system = system
 
 		self.__setup__()
@@ -310,6 +315,8 @@ class Time(System):
 		'''
 		Setup time evolution attributes tau
 		'''
+
+		wrapper = lambda func: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=self.dtype))
 
 		funcs =  {
 			'linear':{
@@ -330,6 +337,7 @@ class Time(System):
 			self.time = self.default
 
 		self.funcs = funcs.get(self.time,funcs[self.default])
+		self.funcs = {attr: wrapper(self.funcs[attr]) for attr in self.funcs}
 		
 		self.__string__()
 		self.__size__()
@@ -378,6 +386,8 @@ class Lattice(System):
 		setter(kwargs,system,delimiter=delim,func=False)
 		super().__init__(**kwargs)
 
+		wrapper = lambda func: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=self.dtype))
+
 		funcs = {
 			'square': {
 				'L': (lambda N,d,L,delta,n,z,lattice: L if L is not None else float(N)),
@@ -403,10 +413,11 @@ class Lattice(System):
 		self.lattice = lattice	
 		self.string = None				
 		self.default = 'square'
+		self.dtype = datatype(self.dtype)		
 		self.system = system
 
 		# Check system
-		self.dtype = self.dtype if self.dtype in ['int','Int32','Int64'] else int
+		self.datatype = int
 
 		# Define linear size n and coordination number z	
 		if self.lattice is None:
@@ -428,6 +439,7 @@ class Lattice(System):
 		self.z = z
 
 		self.funcs = funcs.get(self.lattice,funcs[self.default])
+		self.funcs = {attr: wrapper(self.funcs[attr]) for attr in self.funcs}
 	
 		# Define attributes
 		self.__size__()
@@ -439,13 +451,13 @@ class Lattice(System):
 		
 		# n^i for i = 0:d-1 array
 		if isinstance(self.n,scalars):
-			self.n_i = self.n**arange(self.d,dtype=self.dtype)
+			self.n_i = self.n**arange(self.d,dtype=self.datatype)
 		else:
 			self.n_i = array([prod(self.n[i+1:]) for i in range(self.d)])
 		
 		# Arrays for finding coordinate and linear position in d dimensions
 		self.I = eye(self.d)
-		self.R = arange(1,max(2,ceil(self.n/2)),dtype=self.dtype)
+		self.R = arange(1,max(2,ceil(self.n/2)),dtype=self.datatype)
 
 		return
 
@@ -511,7 +523,6 @@ class Lattice(System):
 		self.L = self.funcs['L'](self.N,self.d,self.L,self.delta,self.n,self.z,self.lattice)
 		self.delta = self.funcs['delta'](self.N,self.d,self.L,self.delta,self.n,self.z,self.lattice)
 
-
 		return 
 
 	def __shape__(self):
@@ -541,7 +552,7 @@ class Lattice(System):
 		if isint:
 			site = array([site])
 		position = mod(((site[:,None]/self.n_i)).
-						astype(self.dtype),self.n)
+						astype(self.datatype),self.n)
 		if isint:
 			return position[0]
 		else:
@@ -563,7 +574,7 @@ class Lattice(System):
 		if is1d:
 			position = array([position])
 		
-		site = dot(position,self.n_i).astype(self.dtype)
+		site = dot(position,self.n_i).astype(self.datatype)
 
 		if is1d:
 			return site[0]
@@ -598,7 +609,7 @@ class Lattice(System):
 		return array([concatenate(
 							(self.site(mod(sitepos+R*self.I,self.n)),
 							 self.site(mod(sitepos-R*self.I,self.n))),axis=1)
-								for R in Rrange],dtype=self.dtype)                     
+								for R in Rrange],dtype=self.datatype)                     
 
 
 	def iterable(self,k,conditions=None):
