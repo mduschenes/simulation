@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --account=def-carrasqu
+##SBATCH --account=mduschenes
 #SBATCH --job-name=output
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
-##SBATCH --partition=cpu
+#SBATCH --partition=cpu
 #SBATCH --time=01:00:00
 #SBATCH --mem=32G
 #SBATCH --nodes=1
@@ -107,6 +107,6 @@ echo $(pwd) ${EXE[@]} ${TASKS[@]}
 ${EXE[@]} ${TASKS[@]}
 
 # Status
-# squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
-# sacct -j ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
-scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}  2>/dev/null
+# squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_TASK_ID:-${SLURM_JOB_ID}}
+# sacct -j ${SLURM_ARRAY_TASK_ID:-${SLURM_JOB_ID}}
+scontrol show job ${SLURM_ARRAY_TASK_ID:-${SLURM_JOB_ID}}
