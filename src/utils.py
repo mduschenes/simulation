@@ -2538,22 +2538,47 @@ def nansqrt(a):
 	return np.sqrt(a)
 
 
-@partial(jit,static_argnums=(1,2,3,))
-def norm(a,axis=None,ord=2,keepdims=False):
-	'''
-	Norm of array
-	Args:
-		a (array): array to be normalized
-		axis (int,iterable[int]): axis to normalize over. Flattens array if None.
-		ord (int,str): order of normalization
-		keepdims (bool): Keep axis of size 1 along normalization
-	Returns:
-		out (array): Norm of array
-	'''
+if BACKEND in ['jax']:
 
-	out = np.linalg.norm(a,axis=axis,ord=ord,keepdims=keepdims)
+	@partial(jit,static_argnums=(1,2,3,))
+	def norm(a,axis=None,ord=2,keepdims=False):
+		'''
+		Norm of array
+		Args:
+			a (array): array to be normalized
+			axis (int,iterable[int]): axis to normalize over. Flattens array if None.
+			ord (int,str): order of normalization
+			keepdims (bool): Keep axis of size 1 along normalization
+		Returns:
+			out (array): Norm of array
+		'''
 
-	return out
+		# TODO merge norm for different numpy backends (jax vs autograd)
+
+		out = np.linalg.norm(a,axis=axis,ord=ord,keepdims=keepdims)
+
+		return out
+
+elif BACKEND in ['autograd']:
+
+	@partial(jit,static_argnums=(1,2,3,))
+	def norm(a,axis=None,ord=2,keepdims=False):
+		'''
+		Norm of array
+		Args:
+			a (array): array to be normalized
+			axis (int,iterable[int]): axis to normalize over. Flattens array if None.
+			ord (int,str): order of normalization
+			keepdims (bool): Keep axis of size 1 along normalization
+		Returns:
+			out (array): Norm of array
+		'''
+
+		# TODO merge norm for different numpy backends (jax vs autograd)
+
+		out = addition(a**ord,axis=axis)**(1/ord)
+
+		return out		
 
 
 @jit
@@ -3596,7 +3621,7 @@ def _addition(a,b):
 	return np.add(a,b)
 
 @jit
-def addition(a):
+def addition(a,axis=None):
 	'''
 	Add list of arrays elementwise
 	Args:
@@ -3605,7 +3630,7 @@ def addition(a):
 		out (ndarray) if out argument is not None
 	'''
 	# return forloop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
-	return np.sum(a,axis=0)
+	return np.sum(a,axis=axis)
 
 def product(a):
 	'''
@@ -6164,7 +6189,7 @@ def piecewise(func,bounds,**kwargs):
 		n = len(bounds)-1
 		if x.ndim > 1:
 			axis,ord,r = 1,2,x.reshape(*x.shape[:1],-1)
-			r = norm(r,axis=axis,ord=axis)
+			r = norm(r,axis=axis,ord=ord)
 		else:
 			r = x
 		conditions = [(

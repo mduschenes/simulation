@@ -255,7 +255,7 @@ class Parameter(System):
 			if self.kwargs.get(attr) is None:
 				continue
 
-			if attr in ['lambda','scale','shift']:
+			if attr in ['lambda','scale','shift','default']:
 				
 				self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
 			
@@ -302,7 +302,7 @@ class Parameter(System):
 					return self.kwargs['lambda']*((parameters[...,self.kwargs['constant'][-1]['indices']] - self.kwargs['constant'][-1]['values'])**2).sum()
 			else:
 				def constraint(parameters):
-					return 0
+					return self.kwargs['default']
 
 		else:
 		
@@ -311,7 +311,7 @@ class Parameter(System):
 
 			
 			def constraint(parameters):
-				return 0
+				return self.kwargs['default']
 
 
 		self.func = jit(func)
@@ -443,6 +443,9 @@ class Parameters(System):
 				delattr(self,parameter)
 
 		
+		# Set dtype
+		dtype = datatype(self.dtype)
+
 		# Set indices and slices
 		slices = []
 		indices = []
@@ -476,10 +479,10 @@ class Parameters(System):
 			func = self[parameter].constraints
 			constraints.append(func)
 
-		def func(parameters,slices=slices,funcs=funcs):
+		def func(parameters,slices=slices,funcs=funcs,dtype=dtype):
 			return concatenate([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)])
 
-		def constraint(parameters,slices=slices,funcs=constraints):
+		def constraint(parameters,slices=slices,funcs=constraints,dtype=dtype):
 			return addition(array([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)]))
 
 		# Get data
