@@ -13,15 +13,16 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cosh,sinh,cos,sin,bound
-from src.utils import norm,conjugate,dagger,dot,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
+from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,cos,sin,bound
+from src.utils import gradient,hessian,fisher
+from src.utils import norm,conjugate,dagger,dot,eig,difference,maximum,argmax,abs,sort
 from src.utils import pi,delim,arrays,scalars,namespace
 from src.iterables import getter,setter
 from src.io import load,dump,exists
 
-from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label
+from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label,trotter
 from src.optimize import Optimizer,Objective,Metric,Callback
-from src.system import Dictionary
+from src.system import Dictionary,Dict
 
 def test_object(path,tol):
 	bases = {'Pauli':Pauli,'State':State,'Gate':Gate,'Haar':Haar,'Noise':Noise}
@@ -30,7 +31,7 @@ def test_object(path,tol):
 			'basis':'Pauli',
 			'kwargs':dict(
 				data=delim.join(['X','Y','Z']),operator=None,site=[0,1,2],string='XYZ',
-				kwargs=dict(N=3,D=2,ndim=2,parameters=None,verbose=True),
+				kwargs=dict(N=3,D=2,ndim=2,parameters=1,verbose=True),
 			),
 		},
 		'Gate': {
@@ -72,8 +73,8 @@ def test_object(path,tol):
 		operator = Operator(**args,**kwargs)
 
 		assert operator.string == args['string'], "Operator.string = %s != %s"%(operator.string,args['string'])
-		assert ((arguments[name]['basis'] in ['Haar','State','Gate','Noise']) or allclose(operator(operator.parameters),
-			tensorprod([base.basis[i]() for i in args['data'].split(delim)]))), "Operator.data != %r"%(operator(operator.parameters))
+		assert ((arguments[name]['basis'] in ['Haar','State','Gate','Noise']) or allclose(operator.data,
+			tensorprod([base.basis[i]() for i in args['data'].split(delim)]))), "Operator.data %s != %r"%(operator.string,operator(operator.parameters))
 		assert tuple(operator.operator) == tuple(args['data'].split(delim))
 
 		for attr in kwargs:
@@ -87,7 +88,7 @@ def test_object(path,tol):
 		other = base(**args,**kwargs)
 
 		for attr in other:
-			assert attr in ['timestamp','logger'] or ((operator[attr] == other[attr]) if not isinstance(operator[attr],arrays) else allclose(operator[attr],other[attr])), "Incorrect reinitialization %s %r != %r"%(attr,operator[attr],other[attr])
+			assert attr in ['timestamp','logger'] or callable(operator[attr]) or ((operator[attr] == other[attr]) if not isinstance(operator[attr],arrays) else allclose(operator[attr],other[attr])), "Incorrect reinitialization %s %r != %r"%(attr,operator[attr],other[attr])
 		assert allclose(operator(operator.parameters),other(other.parameters))
 		
 		args.update(dict(data=None))
@@ -117,16 +118,12 @@ def test_model(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
+	hyperparameters = Dict(hyperparameters)
 
+	model = load(hyperparameters.cls.model)
+	system = hyperparameters.system
 
-	model = cls.pop('model')
-	kwargs = {
-		**hyperparameters.get('model',{}),
-		**{attr:hyperparameters[attr] for attr in ['parameters','state','noise','system']}
-		}
-
-	model = model(**kwargs)
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
 
 	parameters = model.parameters()
 
@@ -202,7 +199,7 @@ def test_model(path,tol):
 
 	tmp = model.identity()
 	for i in range(m*d*p):
-		f = lambda x: cosh(pi*x)*identity + sinh(pi*x)*data[i%(d*p)].data
+		f = lambda x: cos(pi*x)*identity + -1j*sin(pi*x)*data[i%(d*p)].data
 		# print(i,data[i%(d*p)].string)
 		tmp = dot(f(parameters[i]),tmp)
 
@@ -219,13 +216,14 @@ def test_parameters(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
+	hyperparameters = Dict(hyperparameters)
+
+	model = load(hyperparameters.cls.model)
+
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
 
 	parameters = model.parameters()
 	variables = model.parameters(parameters)
@@ -318,14 +316,13 @@ def test_data(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	hyperparameters = Dict(hyperparameters)
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
+	model = load(hyperparameters.cls.model)
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+
 
 	basis = {
 		'I':array([[1,0],[0,1]],dtype=model.dtype),
@@ -366,34 +363,6 @@ def test_data(path,tol):
 
 	return
 
-def test_label(path,tol):
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
-
-
-	cls = load(hyperparameters['class']['model'])
-
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	cls = load(hyperparameters['class']['label'])	
-
-	label = cls(**{**namespace(cls,model),**hyperparameters.get('label',{}),**dict(model=model,system=hyperparameters['system'])})
-
-	print(label())
-
-	new = cls(data=label)
-
-	print(label())
-
-	return
-
 def test_initialization(path,tol):
 
 	default = None
@@ -401,21 +370,20 @@ def test_initialization(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
+	hyperparameters = Dict(hyperparameters)
 
+	model = load(hyperparameters.cls.model)
+	label = load(hyperparameters.cls.label)
+
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+
+	parameters = model.parameters()
 	kwargs = dict(verbose=True)
 
-	model = cls['model'](**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		system=hyperparameters['system'],
-		**kwargs)
-
-	label = cls['label'](**{**namespace(cls['label'],model),**hyperparameters.get('label',{}),**dict(model=model,system=hyperparameters['system']),**kwargs})
-	hyperparams = hyperparameters['optimize']	
-	system = hyperparameters['system']
-	
 	metric = Metric(label=label,hyperparameters=hyperparams,system=system,**kwargs)
 
 
@@ -530,116 +498,30 @@ def test_initialization(path,tol):
 	
 	return
 
-
-
-
-
-
-
-
-
-
-	copy = {attr: deepcopy(getattr(model,attr)) for attr in ['state','noise','label']}
-	attrs = ['noise.string','noise.parameters','state.parameters','exponentiation']
-	kwargs = {'initial':dict(),'noisy':dict(noise={'parameters':0.5},state={'parameters':0.5}),'noiseless':dict(noise=False,state=False),'restore':dict(copy)}
-	U = {}
-
-	for name in kwargs:
-
-		kwds = {}
-		setter(kwds,copy,func=True,copy=True)
-		setter(kwds,kwargs[name],func=True,copy=True)
-		model.__initialize__(**kwds)
-		func = jit(model)
-		u = func(parameters)
-		U[name] = u
-
-		if attrs:
-			print('---- %s ----'%(name))
-			print(u)
-		for attr in attrs:
-			print(attr,getter(model,attr,delimiter=delim))
-
-		if u.ndim == 1:
-			print('Normalized state')
-			assert is_unitary(u), "Non-normalized state"
-		elif u.ndim == 2:
-			if getter(model,'state',delimiter=delim)() is not None:
-				print('Hermitian noisy state')
-				assert is_hermitian(u), "Non-hermitian state"
-			else:
-				print('Unitary noiseless operator')
-				assert is_unitary(u), "Non-unitary operator"
-		else:
-			raise ValueError("ndim = %d != 1,2"%(u.ndim))	
-
-		if attrs:
-			print()
-
-	assert allclose(U['initial'],U['restore']),"Incorrect restored obj"
-
-	return
-
-
-
-def test_compute(path,tol):
-
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
-
-	cls = load(hyperparameters['class']['model'])
-
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	parameters = model.parameters()
-
-
-	parameters = model.parameters()
-	variables = model.parameters(parameters)
-	coefficients = model.coefficients
-	data = array(trotter([data.data for data in model.data],model.P))
-	identity = model.identity()
-
-	params = parameters.reshape(-1,model.M)
-	vars = variables.reshape(-1,model.M)
-
-	_out = expm(coefficients*variables,data,identity)
-
-	out = model(parameters)
-
-	assert allclose(_out,out), "Incorrect model function"
-
-	return 
-
-def test_fisher(path,tol):
-	raise(NotImplementedError)
-	return
+def test_hessian(path,tol):
 	
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
+	hyperparameters = Dict(hyperparameters)
 
-	model = cls['model'](**hyperparameters['model'],
-			parameters=hyperparameters['parameters'],
-			state=hyperparameters['state'],
-			noise=hyperparameters['noise'],
-			label=hyperparameters['label'],
-			system=hyperparameters['system'])
+	model = load(hyperparameters.cls.model)
+	label = load(hyperparameters.cls.label)
+
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
 	parameters = model.parameters()
+	kwargs = dict(verbose=True)
 
+	metric = Metric(label=label,hyperparameters=hyperparams,system=system,**kwargs)
 
-	func = fisher(model,shapes=(model.shape,(*model.dimensions,*model.shape)))
+	func = hessian(jit(lambda parameters: metric(model(parameters))))
 
 	out = func(parameters)
 
@@ -647,7 +529,41 @@ def test_fisher(path,tol):
 	eigs = eigs/max(1,maximum(eigs))
 
 	rank = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
-	rank = argmax(abs(difference(rank)/rank[:-1]))+1						
+	rank = min(rank.size,argmax(abs(difference(rank)/rank[:-1]))+1)
+
+	print(eigs)
+	print(rank)
+
+	return
+
+def test_fisher(path,tol):
+	
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise "Hyperparameters %s not loaded"%(path)
+
+	hyperparameters = Dict(hyperparameters)
+
+	model = load(hyperparameters.cls.model)
+	label = load(hyperparameters.cls.label)
+
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})	
+
+	parameters = model.parameters()
+
+	func = fisher(model,shapes=(model.shape,(*parameters.shape,*model.shape)))
+
+	out = func(parameters)
+
+	eigs = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
+	eigs = eigs/max(1,maximum(eigs))
+
+	rank = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
+	rank = min(rank.size,argmax(abs(difference(rank)/rank[:-1]))+1)
 
 	print(eigs)
 	print(rank)
@@ -688,7 +604,7 @@ def profile(funcs,*args,profile=True,**kwargs):
 	return
 
 
-def test_machine_precision(path,tol):
+def check_machine_precision(path,tol):
 	import matplotlib
 	import matplotlib.pyplot as plt
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -778,24 +694,8 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
-	func = [
-		test_object,
-		test_model,
-		test_parameters,
-		test_logger,
-		test_data,
-		test_initialization,
-		test_compute,
-		test_fisher,
-		test_machine_precision,
-		]
-	# func = test_model
-	func = test_parameters
-	func = test_initialization
-	# func = test_label
-	func = test_machine_precision
-	func = test_model
-	func = test_initialization
+	func = test_fisher
+	func = test_hessian
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

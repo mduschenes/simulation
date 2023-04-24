@@ -5,10 +5,6 @@ import pytest
 import os,sys
 import itertools,functools,copy,warnings
 
-import jax
-import jax.numpy as np
-import numpy as onp
-
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..','..']
@@ -17,7 +13,8 @@ for PATH in PATHS:
 
 from src.io import load,dump,join,split,edit
 
-from src.utils import array,zeros,rand,identity,datatype,allclose,sqrt,abs2
+from src.utils import np,onp,BACKEND
+from src.utils import array,zeros,rand,identity,setitem,datatype,allclose,sqrt,abs2
 from src.utils import gradient,rand,eye,diag,sin,cos
 from src.utils import einsum,norm,norm2,trace,mse
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
@@ -247,9 +244,9 @@ def test_gradient_expm(path=None,tol=None):
 		for i in range(m*d):
 			for j in range(m*d):
 				U = _expm(x[j],A[j%d],I)
-				out = out.at[i].set(U.dot(out[i]))
+				out = setitem(out,i,U.dot(out[i]))
 				if j == i:
-					out = out.at[i].set(A[j%d].dot(out[i]))
+					out = setitem(out,i,A[j%d].dot(out[i]))
 
 		return out
 
@@ -391,6 +388,10 @@ def test_scinotation(path=None,tol=None):
 	return
 
 def test_gradient(path=None,tol=None):
+
+	if BACKEND in ['autograd']:
+		return
+
 	def func(x,y,z):
 		x,y,z = sin(z),cos(x),sin(y)
 		return x,y

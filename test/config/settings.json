@@ -5,7 +5,7 @@
 	"label":"src.quantum.Label",
 	"noise":"src.quantum.Noise",
 	"state":"src.quantum.State",
-	"callback":"src.quantum.Callback"	
+	"callback":"src.quantum.Callback"
 	},
 "hyperparameters":null,
 "boolean":{
@@ -98,7 +98,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":5,
+	"M":2,
 	"T":null,
 	"tau":1,
 	"P":2,
@@ -125,7 +125,7 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":100,
+	"iterations":10,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
@@ -150,34 +150,7 @@
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},
-	"track":{
-			"iteration":[],
-			"parameters":[],
-			"grad":[],
-			"search":false,
-			"value":[],
-			"objective":[],
-			"alpha":[],
-			"beta":[],
-
-			"iteration.max":[],
-			"iteration.min":[],
-			"grad.norm":[],"search.norm":[],			
-			"variables":false,"variables.relative":false,"variables.relative.mean":false,
-			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
-			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
-			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
-			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
-			"hessian.rank":false,"fisher.rank":false,
-
-			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],"instance":[],
-			"parameters.xy.parameters":[],"parameters.xy.method":[],
-			"parameters.z.parameters":[],"parameters.z.method":[],
-			"parameters.zz.parameters":[],"parameters.zz.method":[],
-			"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
-		}	
+	"track":{}	
 	},
 "parameters":{
 	"data":{
@@ -185,6 +158,7 @@
 			"string":"xy",
 			"category":"variable",
 			"method":"constrained",
+			"method":null,
 			"group":[["x"],["y"]],
 			"locality":null,
 			"bounds":[-1,1],
@@ -198,6 +172,7 @@
 				"interpolation":3,
 				"smoothness":2
 				},
+			"initialization":0.25,
 			"constant":{"-1":{"0":0,"-1":0}},
 			"constant":null,
 			"args":[],

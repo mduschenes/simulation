@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 # Import user modules
 from src.utils import jit,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
-from src.utils import is_unitary,is_hermitian,is_naninf,product,sqrt
+from src.utils import is_unitary,is_hermitian,is_naninf
 from src.utils import scalars,delim,nan
 
 from src.iterables import setter,getattrs
@@ -698,7 +698,19 @@ class Function(System):
 		return self.function(parameters)
 
 	# @partial(jit,static_argnums=(0,))
-	def __grad__(self,parameters):
+	def func(self,parameters):
+		'''
+		Function call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__call__(parameters)
+
+
+	# @partial(jit,static_argnums=(0,))
+	def grad(self,parameters):
 		'''
 		Gradient call
 		Args:
@@ -709,7 +721,7 @@ class Function(System):
 		return self.gradient(parameters)
 
 	# @partial(jit,static_argnums=(0,))
-	def __value_and_grad__(self,parameters):
+	def value_and_grad(self,parameters):
 		'''
 		Function and gradient call
 		Args:
@@ -736,38 +748,6 @@ class Function(System):
 			func=self.func,grad=self.grad)
 		return status
 
-	# @partial(jit,static_argnums=(0,))
-	def func(self,parameters):
-		'''
-		Function call
-		Args:
-			parameters (array): parameters
-		Returns:
-			out (object): Return of function
-		'''
-		return self.__call__(parameters)
-
-	# @partial(jit,static_argnums=(0,))
-	def grad(self,parameters):
-		'''
-		Gradient call
-		Args:
-			parameters (array): parameters
-		Returns:
-			out (object): Return of function
-		'''
-		return self.__grad__(parameters)
-
-	# @partial(jit,static_argnums=(0,))
-	def value_and_grad(self,parameters):
-		'''
-		Function and gradient call
-		Args:
-			parameters (array): parameters
-		Returns:
-			out (object): Return of function
-		'''
-		return self.__value_and_gradient__(parameters)
 
 
 class Objective(Function):		
@@ -812,7 +792,7 @@ class Objective(Function):
 		return self.metric(self.model(parameters))
 
 	# @partial(jit,static_argnums=(0,))
-	def __grad__(self,parameters):
+	def grad(self,parameters):
 		'''
 		Gradient call
 		Args:
@@ -823,17 +803,6 @@ class Objective(Function):
 		return self.metric.grad(self.model(parameters),self.model.grad(parameters)) + self.gradient(parameters)	
 
 	# @partial(jit,static_argnums=(0,))
-	def __grad_analytical__(self,parameters):
-		'''
-		Gradient call
-		Args:
-			parameters (array): parameters
-		Returns:
-			out (object): Return of function
-		'''
-		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) + self.gradient(parameters)	
-
-	# @partial(jit,static_argnums=(0,))
 	def grad_analytical(self,parameters):
 		'''
 		Gradient call
@@ -842,7 +811,7 @@ class Objective(Function):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.__grad_analytical__(parameters)
+		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) + self.gradient(parameters)	
 
 
 class Callback(Function):
@@ -961,28 +930,6 @@ class Metric(System):
 		return self.function(*operands)
 
 	# @partial(jit,static_argnums=(0,))
-	def __grad__(self,*operands):
-		'''
-		Gradient call
-		Args:
-			operands (array): operands
-		Returns:
-			out (object): Return of function
-		'''		
-		return self.gradient(*operands)
-
-	# @partial(jit,static_argnums=(0,))
-	def __grad_analytical__(self,*operands):
-		'''
-		Gradient call
-		Args:
-			operands (array): operands
-		Returns:
-			out (object): Return of function
-		'''		
-		return self.gradient_analytical(*operands)
-
-	# @partial(jit,static_argnums=(0,))
 	def func(self,*operands):
 		'''
 		Function call
@@ -1002,7 +949,7 @@ class Metric(System):
 		Returns:
 			out (object): Return of function
 		'''		
-		return self.__grad__(*operands)	
+		return self.gradient(*operands)
 
 	# @partial(jit,static_argnums=(0,))
 	def grad_analytical(self,*operands):
@@ -1013,7 +960,7 @@ class Metric(System):
 		Returns:
 			out (object): Return of function
 		'''		
-		return self.__grad_analytical__(*operands)	
+		return self.gradient_analytical(*operands)
 
 	def info(self,verbose=None):
 		'''
@@ -1063,10 +1010,11 @@ class Metric(System):
 				elif (getattr(self.label,'hermitian',None) or is_hermitian(self.label)) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
 
-		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
-			self.shapes = self.label.shape
-		else:
-			self.shapes = [self.label.shape]*len(self.shapes)
+		if self.label is not None:
+			if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
+				self.shapes = self.label.shape
+			else:
+				self.shapes = [self.label.shape]*len(self.shapes)
 		
 		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
 			self.shapes = [self.shapes,]*2

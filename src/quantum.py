@@ -15,7 +15,7 @@ for PATH in PATHS:
 from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,empty,identity,ones,zeros,arange,rand
 from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,sort,relsort
-from src.utils import setitem,maximum,minimum,argmax,argmin,difference,shift,abs,sqrt,log,log10,sign,sin,cos
+from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos
 from src.utils import to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,null,delim,scalars,arrays,namespace
 
@@ -350,10 +350,10 @@ class Object(System):
 
 		try:
 			data = self()
-		except TypeError:
+		except TypeError as exception:
 			data = self.data
 
-		if data is None:
+		if not isinstance(data,arrays):
 			return
 
 		shape = self.shape
@@ -908,6 +908,8 @@ class Operators(Object):
 
 		self.func = None
 		self.gradient = None
+		self.gradient_finite = None
+		self.gradient_analytical = None
 		self.trotterize = None
 
 		self.system = system
@@ -1090,6 +1092,7 @@ class Operators(Object):
 		data = trotter([jit(i) for i in self.data],self.P)
 		slices = trotter(list(range(len(self))),self.P)
 		trotterize = jit(lambda parameters,slices: parameters[slices].T.ravel(),slices=array(slices))
+
 		parameters = trotterize(coefficients*self.parameters(parameters))
 
 		if state is None and noise is None:
@@ -1120,6 +1123,7 @@ class Operators(Object):
 		# Update class attributes
 		self.func = func
 		self.gradient = grad
+		self.gradient_finite = grad_finite
 		self.gradient_analytical = grad_analytical
 		self.trotterize = trotterize
 		self.hermitian = hermitian
@@ -1128,26 +1132,6 @@ class Operators(Object):
 		self.shape = shape
 		self.size = prod(self.shape)
 		self.ndim = len(self.shape)
-
-		# G = self.gradient(self.parameters())
-		# print(G.shape)
-		# H = grad_finite(self.parameters())
-		# print(H.shape)
-		# g = -1j*self.coefficients*self.gradient_analytical(trotterize(coefficients*self.parameters(parameters)))
-		# # g = g.reshape(self.M,-1,self.n,self.n).transpose(1,0,2,3)[:self.parameters.size//self.M].reshape(-1,self.n,self.n)
-		# print(g.shape)
-
-		# print(G)
-		# print()
-		# print(H)
-		# print()
-		# print(g)
-		# print()
-
-		# print(allclose(G,H))
-		# print(allclose(H,g))
-		# print(allclose(G,g))
-		# exit()
 
 		return
 
@@ -1165,45 +1149,12 @@ class Operators(Object):
 		if parameters is None:
 			parameters = self.parameters()
 
+		if state is None:
+			state = self.state()
+
 		parameters = self.trotterize(self.coefficients*self.parameters(parameters))
 
-		return self.func(parameters)
-
-	def __grad__(self,parameters=None,state=None,conj=None):
-		''' 
-		Class gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate			
-		Returns:
-			out (array): Return of function
-		'''	
-		return self.gradient(parameters)
-
-
-	def __value_and_grad__(self,parameters=None,state=None,conj=None):
-		'''
-		Class function and gradient
-		Args:
-			parameters (array): parameters		
-		Returns
-			out (array): Return of function and gradient
-		'''	
-		return self.value_and_gradient(parameters)
-
-
-	def value(self,parameters=None,state=None,conj=None):
-		'''
-		Class function
-		Args:
-			parameters (array): parameters		
-			state (obj): state
-			conj (bool): conjugate
-		Returns
-			out (array): Return of function
-		'''
-		return self.__call__(parameters)
+		return self.func(parameters,state,conj)
 
 	def grad(self,parameters=None,state=None,conj=None):
 		''' 
@@ -1215,19 +1166,32 @@ class Operators(Object):
 		Returns:
 			out (array): Return of function
 		'''		
-		return self.__grad__(parameters)
+		return self.gradient(parameters)
 
-	def value_and_grad(self,parameters=None,state=None,conj=None):
-		'''
-		Class function and gradient
+	def grad_finite(self,parameters=None,state=None,conj=None):
+		''' 
+		Class gradient
 		Args:
-			parameters (array): parameters		
+			parameters (array): parameters
 			state (obj): state
 			conj (bool): conjugate
-		Returns
-			out (array): Return of function and gradient
-		'''	
-		return self.__value_and_gradient__(parameters)
+		Returns:
+			out (array): Return of function
+		'''		
+		return self.gradient_finite(parameters)		
+
+	def grad_analytical(self,parameters=None,state=None,conj=None):
+		''' 
+		Class gradient
+		Args:
+			parameters (array): parameters
+			state (obj): state
+			conj (bool): conjugate
+		Returns:
+			out (array): Return of function
+		'''		
+		return self.gradient_analytical(parameters)
+
 
 	def __len__(self):
 		return len(self.data)
@@ -1660,82 +1624,6 @@ class Unitary(Hamiltonian):
 
 		return
 
-	def __grad_analytical__(self,parameters=None,state=None,conj=None):
-		'''
-		Class gradient
-		Args:
-			parameters (array): parameters		
-			state (obj): state
-			conj (bool): conjugate
-		Returns
-			out (array): Return of function
-		'''	
-
-		# Get class attributes
-		parameters = self.parameters(parameters)
-		shape = indexer(self.parameters.index,self.parameters).shape
-
-		attributes = None
-
-		# Get data
-		data = self.data
-		dtype = self.dtype
-
-		# Get trotterized shape
-		P = self.P
-		shape = list(shape[::-1])
-
-		shape[-1] *= P
-
-		ndim = len(shape)
-
-		attribute = 'slice'
-		layer = 'variables'
-		slices = attributes[attribute][layer]		
-
-		attribute = 'index'
-		layer = 'variables'
-		indices = attributes[attribute][layer]		
-
-		slices = tuple([
-			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
-				for axis in range(0,1)],
-			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
-				for axis in range(1,ndim)]
-		])
-
-		indices = tuple([
-			*[[i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]]
-				for axis in range(0,1)],
-			*[[indices[parameter][group][axis] for parameter in indices for group in indices[parameter]][0]
-				for axis in range(1,ndim)]
-		])
-
-		# Calculate parameters and gradient
-		parameters = self.parameters(parameters)
-
-		coefficients = self.coefficients
-		data = array(trotter([datum() for datum in data],P))
-		identity = self.identity()
-
-		grad = gradient_expm(coefficients*parameters,data,identity)
-		grad *= coefficients
-
-		# Reshape gradient
-		axis = 1
-
-		grad = grad.reshape((*shape,*grad.shape[axis:]))
-
-		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
-
-		grad = array(gradient_trotter(grad,P))
-
-		grad = grad[indices]
-
-		grad = grad.reshape((-1,*grad.shape[axis+1:]))
-
-		return grad
-
 	def grad_analytical(self,parameters=None,state=None,conj=None):
 		'''
 		Class gradient
@@ -1746,7 +1634,35 @@ class Unitary(Hamiltonian):
 		Returns
 			out (array): Return of function
 		'''	
-		return self.__grad_analytical__(parameters)
+
+		if parameters is None:
+			parameters = self.parameters()
+
+		if state is None:
+			state = self.state()
+
+		parameters = self.coefficients*self.parameters(parameters)
+
+		shape = parameters.shape
+		ndim = parameters.ndim
+		
+		parameters = self.trotterize(parameters)
+
+		gradient_trotterize = jit(lambda grad,P=self.P: gradient_trotter(grad,P))
+		slices = arange(self.parameters.size//prod(shape[1:]))
+		reshape = (*shape[1:],-1,*self.shape)
+		transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
+		shapes = (-1,*self.shape)
+
+		grad = self.coefficients*self.gradient_analytical(parameters)
+		grad = grad.reshape(reshape)
+		grad = grad.transpose(transpose)
+		grad = gradient_trotterize(grad)
+		grad = grad[slices]
+		grad = grad.reshape(*shapes)
+
+		return grad
+
 
 
 class Label(Operator):
@@ -2077,7 +1993,7 @@ class Callback(System):
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(jit(lambda parameters: metric(model(parameters))))
 					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
-						function = fisher(model,model.grad,shapes=(model.shape,(parameters.size,*model.shape)))
+						function = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)))
 
 					if attr in ['hessian','fisher']:
 						value = function(parameters)
@@ -2147,7 +2063,7 @@ class Callback(System):
 
 def trotter(iterable,p):
 	'''
-	Trotterize iterable with order p
+	Trotterized iterable with order p
 	Args:
 		iterable (iterable): Iterable
 		p (int): Order of trotterization
@@ -2163,6 +2079,30 @@ def trotter(iterable,p):
 
 	for indices in slices[:p]:
 		i += iterable[indices]
+	
+	return i
+
+
+def gradient_trotter(iterable,p):
+	'''
+	Gradient of trotterized iterable with order p
+	Args:
+		iterable (iterable): Iterable
+		p (int): Order of trotterization
+	Returns:
+		iterable (iterable): Gradient of trotterized iterable
+	'''	
+	slices = [slice(None,None,1),slice(None,None,-1)]
+
+	if p > len(slices):
+		raise NotImplementedError("p = %d Not Implemented"%(p))
+
+	n = len(iterable)//p
+
+	i = 0        
+
+	for indices in slices[:p]:
+		i += iterable[:n][indices] if indices.step > 0 else iterable[-n:][indices]
 	
 	return i
 
@@ -2279,8 +2219,8 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 					U = switch(i%length,data,parameters[i])
 					return contract(U,out,conj)
 
-				out = state
-				return forloop(0,size,func,out)				
+				out = identity
+				return forloop(0,parameters.size,func,out)				
 	
 		elif state.ndim == 1:
 			
@@ -2290,7 +2230,7 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 					return contract(U,out,conj)
 
 				out = state
-				return forloop(0,size,func,out)				
+				return forloop(0,parameters.size,func,out)				
 
 
 		elif state.ndim == 2:
@@ -2301,7 +2241,7 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 					return contract(U,out,conj)
 
 				out = state
-				return forloop(0,size,func,out)				
+				return forloop(0,parameters.size,func,out)				
 
 	elif constants is not None and noise is None:
 
@@ -2338,7 +2278,7 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 					return contract(U,out,conj)
 
 				out = state
-				return forloop(0,size//length,func,out)	
+				return forloop(0,parameters.size//length,func,out)	
 
 		else:
 			
@@ -2399,10 +2339,10 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 			U = subfunc(subparameters,identity,subconj)
 
 
-			subparameters = slicing(parameters,i,size-i)
+			subparameters = slicing(parameters,i+1,size-i-1)
 			substate = None
 			subconj = conj
-			subdata = shift(data,-(i%length))
+			subdata = shift(data,-((i+1)%length))
 			subidentity = identity
 			subconstants = constants
 			subnoise = None
@@ -2413,15 +2353,12 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 
 			V = subfunc(subparameters,identity,subconj)
 
-			# A = data[i%length](parameters[i] + pi/2)
-			A = 1j*data[i%length](pi/2)
+			A = pi*data[i%length](parameters[i] + 1/2)
 
 			return einsummation(V,A,U)
 
-		# return vmap(func)(arange(size))
-		return array([func(i) for i in range(size)])
+		return array([func(i) for i in range(parameters.size)])
 
-
-	# func = jit(func)
+	func = jit(func)
 
 	return func

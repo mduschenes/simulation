@@ -787,7 +787,7 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 		vectors = eye(size).reshape((size,*shape))
 		out = vmap(vmap(lambda v,s: s*func(x+pi/4/s*v),in_axes=(0,None)),in_axes=(None,0))(vectors,shifts).sum(0)
 		out = out.reshape((*shape,*out.shape[1:]))
-		return 
+		return out
 
 	return grad
 
@@ -905,15 +905,26 @@ elif BACKEND in ['autograd']:
 		Returns:
 			grad (callable): Gradient of function
 		'''
-
 		# TODO merge grad for different numpy backends (jax vs autograd)
 
 		# _grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
 		argnum = argnums
-		if holomorphic:
-			_grad = jit(autograd.jacobian(func,argnum=argnum))
+
+		if not isinstance(argnum,int):
+			
+			move = False
+			def _grad(*args,**kwargs):
+				grads = [[None for axis in argnum] for axis in argnum]
+				for i,axis in enumerate(argnum):
+					print(axis)
+					_grad = jit(autograd.jacobian(func,argnum=axis))
+					grads[i][i] = _grad(*args,**kwargs)
+				return grads
 		else:
-			_grad = jit(autograd.jacobian(func,argnum=argnum))
+			if holomorphic:
+				_grad = jit(autograd.jacobian(func,argnum=argnum))
+			else:
+				_grad = jit(autograd.jacobian(func,argnum=argnum))
 
 		if move:
 			@jit
@@ -5042,6 +5053,18 @@ def shift(iterable,shift,axis=None):
 	shift = shift % len(iterable)
 	return iterable[-shift:] + iterable[:-shift]
 
+def cumsum(a,axis=None):
+	'''
+	Cumulative sum along axis
+	Args:
+		a (array): iterable to sum
+		axis (int) : axis to sum
+	Returns:
+		out (array): Summed iterable
+	'''
+
+	return np.cumsum(asarray(a),axis=axis)
+
 
 @jit
 def diag(a):
@@ -5064,8 +5087,10 @@ def mod(a,b):
 	Returns:
 		out (array): Modular division of a mod b
 	'''
-	return np.mod(a,b)
-
+	try:
+		return np.mod(a,b)
+	except TypeError:
+		return mod(real(a),b) + 1j*mod(imag(a),b)
 
 # @partial(jit,static_argnums=(1,))
 def unique(a,axis=None):
@@ -6184,105 +6209,6 @@ def extrema(x,y,_x=None,**kwargs):
 
 
 
-# @partial(jit,static_argnums=(2,))
-# def trotter(A,U,p):
-# 	r'''
-# 	Perform p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
-# 	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
-# 	k internally commuting components {A_i} of the matrix A = \sum_i^k A_i .
-# 	For example, for {U_i = e^{A_i}} :
-# 		f_0 = e^{\sum_i A_i}
-# 		f_1 = \prod_i^k U_i
-# 		f_2 = \prod_i^k U_i^{1/2} \prod_k^i U_i^{1/2}
-# 	For p>0, it will be checked if A_i objects have a matrix exponential module for efficient exponentials,
-# 	otherwise the standard expm function will be used.
-
-# 	Args:
-# 		A (iterable): Array of shape (k,n,n) of k components of a square matrix of shape (n,n) A_i	
-# 		U (iterable): Array of shape (k,n,n) of k components of the matrix exponential of a square matrix of shape (n,n) expm(A_i/p)
-# 		p (int): Order of trotterization p>0
-# 	Returns:
-# 		U (array): Trotterized matrix exponential of shape (n,n)
-# 	'''
-# 	if p == 1:
-# 		U = matmul(U)
-# 	elif p == 2:
-# 		U = matmul(array([*U[::1],*U[::-1]]))
-# 	else:
-# 		U = matmul(U)
-# 	return U
-
-
-# @partial(jit,static_argnums=(2,))
-# def trottergrad(A,U,p):
-# 	r'''
-# 	Perform gradient of p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
-# 	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
-# 	k internally commuting components {A_i} of the matrix A = \sum_i^k A_i .
-# 	For example, for {U_i = e^{A_i}} :
-# 		f_0 = e^{\sum_i A_i}
-# 		f_1 = \prod_i^k U_i
-# 		f_2 = \prod_i^k U_i^{1/2} \prod_k^i U_i^{1/2}
-# 	For p>0, it will be checked if A_i objects have a matrix exponential module for efficient exponentials,
-# 	otherwise the standard expm function will be used.
-
-# 	Args:
-# 		A (iterable): Array of shape (k,n,n) of k components of a square matrix of shape (n,n) A_i
-# 		U (iterable): Array of shape (k,n,n) of k components of the matrix exponential of a square matrix of shape (n,n) expm(A_i/p)
-# 		p (int): Order of trotterization p>0
-# 	Returns:
-# 		U (array): Gradient of Trotterized matrix exponential of shape (k,n,n)
-# 	'''
-# 	m = len(U)
-# 	if p == 1:
-# 		U = array([matmul(array([*U[:i],A[i]/p,*slicing(U,i,k-i)])) for i in range(k)])
-# 	elif p == 2:
-# 		U = array([matmul(array([*slicing(U,0,i)[::1],A[i]/p,*slicing(U,i,k-i)[::1],*U[::-1]])) + 
-# 				matmul(array([*U[::1],*slicing(U,i,k-i)[::-1],A[i]/p,*slicing(U,0,i)[::-1]]))
-# 				for i in range(k)])
-# 	else:
-# 		U = array([matmul(array([*slicing(U,0,i),A[i]/p,*slicing(U,i,k-i)])) for i in range(k)])
-# 	return U
-
-def trotter(a,p):
-	'''
-	Calculate p-order trotter series of iterable
-	Args:
-		a (iterable): Iterable to calculate trotter series
-		p (int): Order of trotter series
-	Returns:
-		out (iterable): Trotter series of iterable
-	'''	
-	# return [v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u]	
-	return [u for i in [1,-1,1,-1][:p] for u in a[::i]]
-
-def gradient_trotter(da,p):
-	'''
-	Calculate gradient of p-order trotter series of iterable
-	Args:
-		da (iterable): Gradient of iterable to calculate trotter series		
-		p (int): Order of trotter series
-	Returns:
-		out (iterable): Gradient of trotter series of iterable
-	'''	
-	n = da.shape[0]//p
-	return sum([da[:n][::i] if i>0 else da[-n:][::i] for i in [1,-1,1,-1][:p]])
-
-
-def invtrotter(a,p):
-	'''
-	Calculate inverse of p-order trotter series of iterable
-	Args:
-		a (iterable): Iterable to calculate inverse trotter series
-		p (int): Order of trotter series
-	Returns:
-		out (iterable): Inverse trotter series of iterable
-	'''	
-	n = a.shape[0]//p
-	return a[:n]
-
-
-
 @jit
 def heaviside(a):
 	'''
@@ -6891,9 +6817,17 @@ def initialize(data,shape,dtype=None,**kwargs):
 		
 		elif initialization in ['random']:
 			data = rand(shape,key=key,bounds=bounds,random=random,dtype=dtype)
+
+		elif initialization in ['one','ones']:
+			data = ones(shape,dtype=dtype)
 		
-		elif initialization in ['zero']:
+		elif initialization in ['zero','zeros']:
 			data = zeros(shape,dtype=dtype)
+
+	elif initialization is not None: 
+		
+		if isinstance(initialization,scalars):
+			data = initialization*ones(shape,dtype=dtype)
 
 	if constant is not None:
 		if not all(isinstance(constant[i],dict) for i in constant):

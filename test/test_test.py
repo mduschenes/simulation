@@ -111,7 +111,7 @@ def test_grad(path,tol):
 
 	# grad of unitary
 	grad_jax = model.grad
-	grad_finite = gradient(model,mode='finite',tol=tol)
+	grad_finite = model.grad_finite
 	grad_analytical = model.grad_analytical
 
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
@@ -124,6 +124,6 @@ def test_grad(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_metric(path,tol)
-	test_objective(path,tol)
-	# test_grad(path,tol)
+	# test_metric(path,tol)
+	# test_objective(path,tol)
+	test_grad(path,tol)

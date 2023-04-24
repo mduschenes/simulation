@@ -1,5 +1,5 @@
 {
-"class":{
+"cls":{
 	"model":"src.quantum.Unitary",
 	"parameters":"src.parameters.Parameters",
 	"label":"src.quantum.Label",
@@ -20,7 +20,69 @@
 	"index":null
 	},
 "permutations":{
-	"permutations":{},
+	"permutations":{	
+
+		"model.N":[4],		
+		"model.M":[2,4,6,8],
+		"model.P":[1],
+		"model.tau":[1],
+		"model.T": [null],
+
+		"noise.parameters":[1e6],
+		"noise.initialization":["random"],
+
+		"system.unit":[1e6],
+		"parameters.xy.parameters":[1],
+		"parameters.z.parameters":[1e-2],
+		"parameters.zz.parameters":[1e-4],
+		"parameters.xy.kwargs.lambda":[0],		
+		"label.string":["label"],
+		"label.operator":["Z"],
+		"label.parameters":[0.25],
+		"noise.parameters":[false],
+		"state.parameters":[false],
+
+
+		"optimize.iterations":[100],
+		"optimize.optimizer":["cg"],
+		"optimize.metric":["real"],
+		"optimize.search.alpha":["line_search"],
+		"optimize.search.beta":["hestenes_stiefel"],
+
+		"parameters.xy.method":["bound"],
+		"parameters.xy.kwargs.lambda":[0],
+
+		"jobs.job.cwd":["tmp"],
+		"jobs.postprocess.cwd":["tmp"],		
+	
+		"jobs.job.device":["slurm"],
+		"jobs.postprocess.device":["slurm"],
+		"jobs.job.process":["array"],
+		"jobs.postprocess.process":[null],
+		"jobs.job.processes":[1],
+		"jobs.postprocess.processes":[1],
+		"jobs.job.pool":[1],
+		"jobs.postprocess.pool":[1],
+		"jobs.job.execute":[1],	
+		"jobs.postprocess.execute":[1],	
+		"jobs.job.resume":[null],	
+		"jobs.postprocess.resume":[null],			
+		"jobs.job.verbose":[1],	
+		"jobs.postprocess.verbose":[1],	
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.job.args.JOB_PROCESSES":[1],		
+		"jobs.postprocess.args.JOB_PROCESSES":[1],
+		"jobs.job.patterns.time":["1:00:00"],
+		"jobs.postprocess.patterns.time":["1:00:00"],
+		"jobs.job.patterns.mem":["16GB"],
+		"jobs.postprocess.patterns.mem":["16GB"],
+		"jobs.job.patterns.cpus-per-task":[1],
+		"jobs.job.patterns.account":[null],
+		"jobs.postprocess.patterns.cpus-per-task":[1]
+
+		},
 	"groups":null,
 	"index":null
 	},
@@ -36,7 +98,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":500,
+	"M":2,
 	"T":null,
 	"tau":1,
 	"P":2,
@@ -45,10 +107,10 @@
 	"lattice":"square"
 	},
 "system":{
-	"dtype":"complex256",
+	"dtype":"complex",
 	"format":"array",
 	"device":"cpu",
-	"backend":"np",
+	"backend":null,
 	"architecture":null,
 	"seed":null,
 	"key":null,
@@ -62,7 +124,7 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":100,
+	"iterations":10,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
@@ -71,10 +133,10 @@
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
-	"kwargs":{"noise":{"parameters":1e-3}},
+	"kwargs":{},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
-	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":10},
+	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":20},
 	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"do":{
 		"parameters":true,
@@ -87,41 +149,14 @@
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},
-	"track":{
-			"iteration":[],
-			"parameters":[],
-			"grad":[],
-			"search":false,
-			"value":[],
-			"objective":[],
-			"alpha":[],
-			"beta":[],
-
-			"iteration.max":[],
-			"iteration.min":[],
-			"grad.norm":[],"search.norm":[],			
-			"variables":true,"variables.relative":true,"variables.relative.mean":true,
-			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
-			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
-			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
-			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
-			"hessian.rank":false,"fisher.rank":false,
-
-			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],"instance":[],
-			"parameters.xy.parameters":[],"parameters.xy.method":[],
-			"parameters.z.parameters":[],"parameters.z.method":[],
-			"parameters.zz.parameters":[],"parameters.zz.method":[],
-			"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
-		}	
+	"track":{}	
 	},
 "parameters":{
 	"data":{
 		"xy": {
 			"string":"xy",
 			"category":"variable",
-			"method":"bounded",
+			"method":null,
 			"group":[["x"],["y"]],
 			"locality":null,
 			"bounds":[-1,1],
@@ -175,7 +210,7 @@
 		}
 	},
 "label": {
-	"operator":"I",
+	"operator":"Z",
 	"site":null,
 	"string":"U",
 	"parameters":0.5,
@@ -187,7 +222,7 @@
 	"site":null,
 	"string":"U",
 	"parameters":false,
-	"ndim":1,
+	"ndim":2,
 	"samples":1,
 	"seed":null
 	},	
@@ -269,6 +304,7 @@
 		"verbose":"info"
 		}
 	},
+"callback":{},
 "process": {},
 "plot": {}
 }
