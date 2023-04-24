@@ -4,49 +4,88 @@ Jax Numpy API version of https://github.com/scipy/scipy/blob/v1.8.1/scipy/optimi
 import os
 from warnings import warn
 
-# envs = {
-# 	'JAX_PLATFORM_NAME':'cpu',
-# 	'TF_CPP_MIN_LOG_LEVEL':5
-# }
-# for var in envs:
-# 	os.environ[var] = str(envs[var])
-
 
 import numpy as onp
 import scipy as osp
 
-# import jax
-# import jax.numpy as np
-# import jax.scipy as sp
+ENVIRON = 'NUMPY_BACKEND'
+DEFAULT = 'jax'
+BACKENDS = ['jax','autograd']
 
-import autograd
-import autograd.numpy as np
-import autograd.scipy as sp
+BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
+
+assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
+
+if BACKEND in ['jax']:
+
+	envs = {
+		'JAX_PLATFORM_NAME':'cpu',
+		'TF_CPP_MIN_LOG_LEVEL':5
+	}
+	for var in envs:
+		os.environ[var] = str(envs[var])
 
 
-import scipy.optimize
-from scipy.optimize import minpack2 as minpack2
+	import jax
+	import jax.numpy as np
+	import jax.scipy as sp
+	
+	import scipy.optimize
+	from scipy.optimize import minpack2 as minpack2
+
+elif BACKEND in ['autograd']:
+
+	import autograd
+	import autograd.numpy as np
+	import autograd.scipy as sp
+
+
+	import scipy.optimize
+	from scipy.optimize import minpack2 as minpack2
 
 __all__ = ['LineSearchWarning', 'line_search_wolfe1', 'line_search_wolfe2',
 		   'scalar_search_wolfe1', 'scalar_search_wolfe2',
 		   'armijo']
 
-def setitem(obj,index,item):
-	'''
-	Set item at index of object
-	Args:
-		obj (object): Object to set
-		index (object): Index to set item
-		item (object): Item to set
-	Returns:
-		obj (object): Object with set item at index
-	'''
+if BACKEND in ['jax']:
 
-	# TODO merge indexing for different numpy backends (jax vs autograd)
+	def setitem(obj,index,item):
+		'''
+		Set item at index of object
+		Args:
+			obj (object): Object to set
+			index (object): Index to set item
+			item (object): Item to set
+		Returns:
+			obj (object): Object with set item at index
+		'''
 
-	obj[index] = item
-	# obj = obj.at[index].set(item)
-	return obj
+		# TODO merge indexing for different numpy backends (jax vs autograd)
+
+		obj = obj.at[index].set(item)
+		# obj[index] = item
+		return obj
+
+
+elif BACKEND in ['autograd']:
+
+
+	def setitem(obj,index,item):
+		'''
+		Set item at index of object
+		Args:
+			obj (object): Object to set
+			index (object): Index to set item
+			item (object): Item to set
+		Returns:
+			obj (object): Object with set item at index
+		'''
+
+		# TODO merge indexing for different numpy backends (jax vs autograd)
+
+		# obj = obj.at[index].set(item)
+		obj[index] = item
+		return obj
 
 class LineSearchWarning(RuntimeWarning):
 	pass

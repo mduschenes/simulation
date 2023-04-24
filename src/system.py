@@ -42,6 +42,26 @@ class Dictionary(dict):
 		self.__dict__ = self
 		return
 
+class Dict(Dictionary):
+	'''
+	Dictionary subclass with nested Dictionary elements
+	Args:
+		args (dict): Dictionary elements
+		kwargs (dict): Dictionary elements
+	'''	
+	def __init__(self,*args,**kwargs):
+		for arg in args:
+			if isinstance(arg,dict):
+				kwargs.update(arg)
+
+		for key in kwargs:
+			if isinstance(kwargs[key],dict):
+				kwargs[key] = Dict(kwargs[key])
+
+		super().__init__(**kwargs)
+
+		return
+
 class System(Dictionary):
 	'''
 	System attributes (dtype,format,device,seed,verbose,...)
@@ -81,7 +101,12 @@ class System(Dictionary):
 		}
 
 		def updates(kwargs,defaults):
-			kwargs['unit'] = defaults.get('unit') if kwargs.get('unit',defaults.get('unit')) is None else kwargs.get('unit')
+			
+			attr = 'unit'
+			kwargs[attr] = defaults.get(attr) if kwargs.get(attr,defaults.get(attr)) is None else kwargs.get(attr)
+
+			attr = 'backend'
+			kwargs[attr] = os.environ.get('NUMPY_BACKEND',str(None)).lower() if kwargs.get(attr,defaults.get(attr)) is None else os.environ.get(kwargs.get(attr,defaults.get(attr)),kwargs.get(attr,defaults.get(attr))).lower()
 			return
 
 		updates(kwargs,defaults)
