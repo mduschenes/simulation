@@ -2048,12 +2048,12 @@ class Callback(System):
 					for attr in ['alpha','beta']
 					if attr in attributes and len(attributes[attr])>0
 					]),
-				'attributes: \t %s'%({attr: attributes[attr][-1].dtype 
-					if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
-					for attr in attributes}),
-				'track: \t %s'%({attr: attributes[attr][-1].dtype 
-					if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
-					for attr in attributes}),				
+				# 'attributes: \t %s'%({attr: attributes[attr][-1].dtype 
+				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
+				# 	for attr in attributes}),
+				# 'track: \t %s'%({attr: attributes[attr][-1].dtype 
+				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
+				# 	for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
 				# 'U\n%s\nV\n%s'%(
