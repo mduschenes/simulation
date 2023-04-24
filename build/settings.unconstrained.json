@@ -24,8 +24,8 @@
 	
 		"model.N":[4],		
 		"model.M":[5,10,20,50,100,200,500,1000,2000,5000],
-		"model.M":[5,10,20,50,100,200],		
 		"model.M":[500,1000,2000,5000],
+		"model.M":[5,10,20,50,100,200],
 		"model.tau":[240],
 
 		"system.unit":[1e6],
@@ -46,17 +46,16 @@
 		"parameters.xy.kwargs.lambda":[null],		
 
 		"optimize.iterations":[[0,1000]],
-		"optimize.iterations":[[0,10]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/unconstrained.ad.4.256.5.200"],
-		"jobs.postprocess.cwd":["gobi/unconstrained.ad.4.256.5.200"],
-
 		"jobs.job.cwd":["gobi/unconstrained.ad.4.256.500.5000"],
 		"jobs.postprocess.cwd":["gobi/unconstrained.ad.4.256.500.5000"],
+
+		"jobs.job.cwd":["gobi/unconstrained.ad.4.256.5.200"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.ad.4.256.5.200"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -76,17 +75,17 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["12:00:00"],
 		"jobs.job.patterns.time":["20:00:00"],
+		"jobs.job.patterns.time":["12:00:00"],
 		"jobs.postprocess.patterns.time":["6:00:00"],
 		"jobs.job.patterns.mem":["64GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
-		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"],
 		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"]
+		"jobs.postprocess.patterns.account":["def-carrasqu"],		
+		"jobs.job.patterns.account":["def-raymond"],
+		"jobs.postprocess.patterns.account":["def-raymond"]
 		},
 	"groups":null,
 	"index":null
