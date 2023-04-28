@@ -460,6 +460,43 @@ def test_norm(path=None,tol=None):
 	return
 
 
+def test_rand(path,tol):
+	from importlib import reload
+	import src.utils
+
+	kwargs = [
+		{'shape':(4,3),'random':'haar'},
+		{'shape':(100,),'random':'normal'},
+		{'shape':(2,5,2),'random':'rand'},
+		{'shape':(2,5,2),'random':'rand'},
+		{'shape':(2,5,2),'random':'rand'},
+		]
+	seed = 1234
+	size = len(kwargs)
+	a = [[] for i in range(size)]
+
+
+	os.environ['NUMPY_BACKEND'] = 'JAX.AUTOGRAD'
+	reload(src.utils)
+	from src.utils import array,rand,PRNGKey,BACKEND
+	keys = PRNGKey(seed,size=size)
+	for i in range(size):
+		kwargs[i]['key'] = keys[i]
+		a[i].append(rand(**kwargs[i]))
+
+	os.environ['NUMPY_BACKEND'] = 'AUTOGRAD'
+	reload(src.utils)
+	from src.utils import array,rand,PRNGKey,BACKEND
+	keys = PRNGKey(seed,size=size)
+	for i in range(size):
+		kwargs[i]['key'] = keys[i]
+		a[i].append(rand(**kwargs[i]))
+
+	assert all(allclose(*a[i]) for i in range(size)), "Incorrect Random Initialization"
+
+	return
+
+
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
@@ -470,5 +507,5 @@ if __name__ == '__main__':
 	# test_gradient(path,tol)
 	# test_gradient_expm(path,tol)
 	# test_norm(path,tol)
-	
-	test_expmi()	
+	# test_expmi()	
+	test_rand(path,tol)
