@@ -24,6 +24,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,
                             "noise.parameters": null
                         },
                         "legend": {
@@ -58,6 +59,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "noise.parameters": null
                             },
                         "legend": {
@@ -239,6 +241,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -269,6 +272,7 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
+                        "backend":null,                        
                         "noise.parameters": null
                     },
                     "alpha": 0.5,
@@ -446,6 +450,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -476,6 +481,7 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
+                        "backend":null,                        
                         "noise.parameters": null
                     },
                     "alpha": 0.5,
@@ -861,6 +867,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -900,6 +907,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -1094,6 +1102,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -1133,6 +1142,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -1327,6 +1337,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "iteration": "@iteration.min@"
                         },
                         "scinotation": {
@@ -1355,6 +1366,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "iteration": "@iteration.min@"
                         },
                         "scinotation": {
@@ -1580,6 +1592,7 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
+                        "backend":null,                        
                         "iteration": "@iteration.min@"
                     },
                     "alpha": 0.8,
@@ -3058,6 +3071,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,
                             "noise.parameters": null
                         },
                         "shape": {
@@ -3281,6 +3295,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "noise.parameters": null,
                             "iteration": "$0$",
                             "$\\textrm{Iteration}$": "\\textrm{Initial},~\\textrm{Final}"
@@ -3342,6 +3357,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
@@ -3541,6 +3557,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
+                            "backend":null,                            
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
@@ -3739,6 +3756,7 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
+                        "backend":null,                        
                         "noise.parameters": null,
                         "iteration": "@iteration.max@",
                         "rank": "hessian.rank"
@@ -3906,6 +3924,7 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
+                        "backend":null,                        
                         "noise.parameters": null,
                         "iteration": "@iteration.max@",
                         "rank": "fisher.rank"

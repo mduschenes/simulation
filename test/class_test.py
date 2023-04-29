@@ -608,64 +608,110 @@ def check_machine_precision(path,tol):
 	import matplotlib
 	import matplotlib.pyplot as plt
 	from mpl_toolkits.axes_grid1 import make_axes_locatable
-	import numpy as np
+	import autograd.numpy as np
+	import sympy as sp
 
-	from src.utils import rand,dot,dagger,identity,norm,sqrt,abs,abs2,eig,diag,arctan,exp
+	seed = 12931
+	maxbits = 256
+	maxdtype = 'float%d'%(maxbits//2)
+	np.random.seed(seed)
 
-	norm = lambda A: sqrt(abs2(A).sum())
+	def analytical(k,n,eps):
+		
+		error = np.zeros(k,dtype=maxdtype)
+		
+		for i in range(k):
+			# e = (np.array(n,dtype=dtype)**i)*((1 + np.sqrt(sum(((1+eps)**(j+1) - 1)**2 for j in range(n))))**(i+1) - 1)
+			# e = (n**(i+1))*
+			e = ((1+(n**(3/2))*eps)**(i+2) - 1)
+			# e = ((1+eps)**(i+2) - 1)
+			error[i] = e
+			print(i,e.dtype)
+		return error
 
-	def alpha(n,a):
-		b = [0]
-		for i in range(n):
-			c = b[-1]
-			c = (1+a)*c + a
-			b.append(c)
-		return b[1:]
-
-	def beta(n,M,bits):
+	def numerical(k,n,eps):
 		random = 'haar'
-		dtype = 'complex%d'%(bits)
-		A = rand((M,M),random=random,dtype=dtype)
-		I = identity(M)
-		L,V = eig(A,compute_v=True)
-		L = diag(exp(1j*arctan(L.imag,L.real)))
-		B = [I]
-		b = [0]
-		for i in range(1,n+1):
-			c = b[-1]
-			C = B[-1]
-			C = dot(A,C)
-			c = norm(C - dot(dot(V,L**i),dagger(V)))
-			b.append(c)
-			B.append(C)
-		return b[1:]		
+		bits = int(eps*np.log10(2))
+		dtype = 'complex%d'%(eps)
+		ftype = 'float%d'%(eps//2)
+		norm = lambda A,ord=2: (((np.abs(A)**ord).sum(dtype=maxdtype))**(1/ord)).real
+		
+		V = sp.Matrix([[sp.exp(sp.Mul(sp.I,2*sp.pi,sp.Rational(i*j,n))) for j in range(n)] for i in range(n)])/sp.sqrt(n)
+		S = [sp.Rational(np.random.randint(1,i) if i>1 else 0,i) for i in np.random.randint(1,n**2,size=n)]
+		D = lambda k=1: sp.diag(*(sp.exp(sp.Mul(sp.I,2*sp.pi,s,k)) for s in S))
+		W = lambda k=1: V*D(k)*V.H
+		N = lambda A: np.array(sp.N(A,2*maxbits),dtype=dtype)
 
+		A = N(W())
+		C = norm(A)
+		B = A
+		
+		error = np.zeros(k,dtype=ftype)
+		
+		for i in range(k):
+			B = np.dot(A,B)
+			e = norm(B - N(W(i+2)))/C
+			error[i] = e
+			print(i,e,B.dtype,error[i].dtype)
+		
+		return error		
 
-	M = 2**4
-	N = int(1e4)
-	K = 11
-	A = np.logspace(-20,-20+K-1,K)
-	B = [64,128]
+	def machine(k,n,eps):
+		bits = int(eps*np.log10(2))
+		dtype = 'float%d'%(eps//2)
+
+		N = lambda a: np.asscalar(np.array(sp.N(a,2*maxbits),dtype=dtype))
+
+		v = sp.Rational(np.random.randint(1,n),n)
+		a = N(v)
+		c = lambda b: N(sp.Mul(b*v))
+		b = N(a)
+
+		error = np.zeros(k,dtype=dtype)
+		
+		for i in range(k):
+			e = np.abs(a*b - c(b))/c(b)
+			b = a*b
+			error[i] = e
+			print(i,e)
+		
+		return error	
+
+	n = 2**2
+	k = int(1e2)
+	K = list(range(1,k+1))
+	L = 13
+	samples = 1
+	epsilon = np.logspace(-20,-20+L-1,L,dtype=maxdtype).tolist()
+	precision = [64,128,256]
 
 	mplstyle = 'config/plot.mplstyle'
 	with matplotlib.style.context(mplstyle):
 
 		fig,ax = plt.subplots()
 		plots = []
-		for a in A:
-			b = alpha(N,a)
-			n = list(range(1,N+1))
-			index = (np.log(a)-np.log(A.min()))/(np.log(A.max())-np.log(A.min()))
-			slope = (np.log(b[-1])-np.log(b[0]))/(np.log(n[-1])-np.log(n[0]))
-			intercept = np.log(b[0])/np.log(a)
-			plot = ax.plot(n,b,linewidth=4,label='$10^{-%d}$'%(int(-np.log10(a))),color=plt.cm.viridis(index))
+		for eps in epsilon:
+			error = analytical(k,n,eps)
+			plot = ax.plot(K,error,
+				linewidth=4,
+				label='$10^{-%d}$'%(np.round(-np.log10(eps))),
+				color=plt.cm.viridis((epsilon.index(eps)+1)/len(epsilon))
+				)
 			plots.append(plot)
 
-		for bits in B:
-			b = [beta(N,M,bits) for a in range(100)]
-			n = list(range(1,N+1))
-			b,berr = np.mean(b,axis=0),np.std(b,axis=0)/sqrt(len(b)-1)
-			plot = ax.errorbar(n,b,yerr=berr,alpha=(B.index(bits)+1)/len(B),linewidth=4,linestyle='--',color='gray',label=r'$%d~\textrm{bit}$'%(bits//2))
+		for bits in precision:
+			info = np.finfo('complex%d'%(bits))
+			eps = -np.floor(np.log10(info.eps))
+			print(info)
+			error = [numerical(k,n,bits) for i in range(samples)]
+			error,errorerr = np.mean(error,axis=0,dtype=maxdtype),np.std(error,axis=0,dtype=maxdtype)/np.sqrt(max(1,samples-1),dtype=maxdtype)
+			plot = ax.errorbar(K,error,yerr=errorerr,
+				alpha=0.7,#(precision.index(bits)+1)/len(precision),
+				linewidth=4,
+				linestyle='--',
+				color=['k','r','b'][precision.index(bits)],
+				label=r'$%d~\textrm{bit}~ (\varepsilon \sim 10^{-%d})$'%(bits//2,eps)
+				)
 				
 		# ax.axhline(1e-8,color='k',linestyle='--');
 		# ax.axhline(1e-16,color='k',linestyle='--');
@@ -675,15 +721,19 @@ def check_machine_precision(path,tol):
 		ax.set_yscale('log');
 		ax.set_xscale('log');
 		# ax.set_xlim(5e-1,5e6);
-		# ax.set_ylim(1e-21,1e-3);
+		# ax.set_xlim(5e-1,5e2);
+		ax.set_xlim(5e-1,2e4);
+		ax.set_ylim(1e-21,1e-3);
 		# ax.set_xticks([1e0,1e2,1e4,1e6]);
-		# ax.set_yticks([1e-20,1e-16,1e-12,1e-8,1e-4]);
+		# ax.set_xticks([1e0,1e1,1e2]);
+		ax.set_xticks([1e0,1e1,1e2,1e3,1e4]);
+		ax.set_yticks([1e-20,1e-16,1e-12,1e-8,1e-4]);
 		ax.minorticks_off();
 		ax.grid(True,alpha=0.3);
-		ax.set_title(r'$\norm{\widetilde{A^k} - A^k} = \epsilon_{k} = n^k\sum_{l>0}^{k} \binom{k}{l} \epsilon^{l} ~\sim~ k\epsilon$',pad=30)
+		ax.set_title(r'$\frac{\norm{\widetilde{A^k} - A^k}}{\norm{A^k}} \leq \epsilon_{k} = (1 + \epsilon)^{k} - 1 ~\sim~ k \epsilon$',pad=30)
 		legend = ax.legend(
-			title=r'$A \in \textrm{U}(n)$' + '\n' + r'$\textrm{Machine Precision} ~ \epsilon \sim \varepsilon ~ O(n)$',
-			loc=[1.1,-0.05],ncol=1);
+			title=r'$\textrm{Machine Precision} ~ \varepsilon$' + '\n' + r'$A \in \textrm{U}(n) ~,~ \epsilon \sim O(n^{3/2})\varepsilon$',
+			loc=[1.1,-0.1],ncol=1);
 		legend.get_title().set_ha('center')
 		fig.savefig('matmul_error.pdf',bbox_inches="tight",pad_inches=0.2)
 
@@ -696,6 +746,7 @@ if __name__ == '__main__':
 
 	func = test_fisher
 	func = test_hessian
+	func = check_machine_precision
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

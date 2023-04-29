@@ -28,14 +28,14 @@ import pandas as pd
 
 ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
-BACKENDS = ['jax','autograd']
+BACKENDS = ['jax','autograd','jax.autograd']
 
 BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
 
 assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 	
 	envs = {
 		'JAX_PLATFORM_NAME':'cpu',
@@ -96,7 +96,7 @@ null = Null()
 # Types
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	itg = np.integer
 	flt = np.float32
@@ -137,7 +137,7 @@ elif BACKEND in ['autograd']:
 
 
 # Libraries
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	optimizer_libraries = jax.example_libraries.optimizers
 
@@ -324,7 +324,7 @@ def namespace(cls,signature=None,init=False,**kwargs):
 		return {attr: signature[attr] for attr in signature if attr in attrs}
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 	
 	def setitem(obj,index,item):
 		'''
@@ -363,7 +363,7 @@ elif BACKEND in ['autograd']:
 		return obj
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	def jit(func,*,static_argnums=None,**kwargs):
 		'''
@@ -400,7 +400,7 @@ elif BACKEND in ['autograd']:
 		return wraps(func)(partial(func,**kwargs))		
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -474,7 +474,7 @@ elif BACKEND in ['autograd']:
 		return vfunc
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -525,7 +525,7 @@ elif BACKEND in ['autograd']:
 		return pfunc
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	# @partial(jit,static_argnums=(2,))
 	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -580,7 +580,7 @@ elif BACKEND in ['autograd']:
 		return vfunc
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 	
 	def switch(index,funcs,*args):
 		'''
@@ -617,7 +617,7 @@ elif BACKEND in ['autograd']:
 		return funcs[index](*args)
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 	
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
@@ -792,7 +792,7 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 	return grad
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -855,7 +855,7 @@ elif BACKEND in ['autograd']:
 		return grad
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -938,7 +938,7 @@ elif BACKEND in ['autograd']:
 		return grad
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1010,7 +1010,7 @@ elif BACKEND in ['autograd']:
 		return grad
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1685,9 +1685,42 @@ class toffoli(array):
 			out = toffoli(n-1,*args,**kwargs)
 			return array([[out,out],[out,-out]],*args,**kwargs)
 
-
-
 if BACKEND in ['jax']:
+
+	def PRNGKey(seed=None,size=False,reset=None):
+		'''
+		Generate PRNG key
+		Args:
+			seed (int,array): Seed for random number generation or random key for future seeding
+			size(bool,int): Number of splits of random key
+			reset (bool,int): Reset seed
+		Returns:
+			key (key,list[key]): Random key
+		'''	
+
+		# TODO merge random seeding for different numpy backends (jax vs autograd)
+
+		bounds = [0,2**32]
+
+		if reset is not None:
+			onp.random.seed(reset)
+
+		if seed is None:
+			seed = onp.random.randint(*bounds)
+
+		if isinstance(seed,(int)):
+			key = jax.random.PRNGKey(seed)
+			# key = onp.random.seed(seed)		
+		else:
+			key = asndarray(seed,dtype=np.uint32)
+
+		if size:
+			key = jax.random.split(key,num=size)
+			# key = onp.random.randint(*bounds,size=size)
+
+		return key
+
+elif BACKEND in ['jax.autograd']:
 
 	def PRNGKey(seed=None,size=False,reset=None):
 		'''
@@ -1712,14 +1745,16 @@ if BACKEND in ['jax']:
 			seed = onp.random.randint(*bounds)
 
 		if isinstance(seed,(int)):
-			key = jax.random.PRNGKey(seed)
-			# key = np.random.seed(seed)		
+			# key = jax.random.PRNGKey(seed)
+			key = onp.random.seed(seed)		
 		else:
 			key = asndarray(seed,dtype=np.uint32)
 
+		key = onp.random.seed(seed)		
+
 		if size:
-			key = jax.random.split(key,num=size)
-			# key = np.random.randint(*bounds,size=size)
+			# key = jax.random.split(key,num=size)
+			key = onp.random.randint(*bounds,size=size)
 
 		return key
 
@@ -1750,17 +1785,17 @@ elif BACKEND in ['autograd']:
 
 		if isinstance(seed,(int)):
 			# key = jax.random.PRNGKey(seed)
-			key = np.random.seed(seed)		
+			key = onp.random.seed(seed)		
 		else:
 			key = asndarray(seed,dtype=np.uint32)
+
+		key = onp.random.seed(seed)		
 
 		if size:
 			# key = jax.random.split(key,num=size)
 			key = np.random.randint(*bounds,size=size)
 
 		return key		
-
-
 
 if BACKEND in ['jax']:
 
@@ -1822,17 +1857,17 @@ if BACKEND in ['jax']:
 		if random in ['uniform','rand']:
 			def func(key,shape,bounds,dtype):
 				out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
-				# out = np.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
+				# out = asarray(onp.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)
 				return out
 		elif random in ['randint']:
 			def func(key,shape,bounds,dtype):		
 				out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
-				# out = np.random.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype)		
+				# out = asarray(onp.random.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)		
 				return out
 		elif random in ['gaussian','normal']:
 			def func(key,shape,bounds,dtype):
 				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
-				# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*np.random.normal(size=shape).astype(dtype)				
+				# out = asarray((bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*onp.random.normal(size=shape).astype(dtype),dtype=dtype)
 				return out
 		elif random in ['haar']:
 			def func(key,shape,bounds,dtype):
@@ -2008,7 +2043,281 @@ if BACKEND in ['jax']:
 		else:
 			def func(key,shape,bounds,dtype):
 				out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
-				# out = np.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
+				# out = asarray(onp.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)
+				return out
+
+		if mesh is not None:
+			out = array([out.reshape(-1) for out in np.meshgrid(*[func(key,shape,bounds,dtype) for i in range(mesh)])])
+		else:
+			out = func(key,shape,bounds,dtype)
+
+
+		if scale in ['normalize']:
+			out = out/out.sum()
+		elif scale in ['1']:
+			out = out/out.sum()
+		elif scale in ['2']:
+			out = out/sqrt(sqr(out).sum())
+		elif scale is not None:
+			out = out*scale
+
+		if complex:
+			out = out[0] + 1j*out[1]
+
+		dtype = _dtype if _dtype is not None else out.dtype
+
+		out = out.astype(dtype)
+
+		return out
+
+
+elif BACKEND in ['jax.autograd']:
+
+	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
+		'''
+		Get random array
+		Args:
+			shape (int,iterable): Size or Shape of random arrayf
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			bounds (iterable): Bounds on array
+			random (str): Type of random distribution
+			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
+			mesh (int): Get meshgrid of array for mesh dimensions
+			reset (bool,int): Reset seed		
+			dtype (data_type): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random
+		Returns:
+			out (array): Random array
+		'''	
+
+		# TODO merge random seeding for different numpy backends (jax vs autograd)
+
+		if shape is None:
+			shape = 1
+		if isinstance(shape,int):
+			shape = (shape,)
+
+		if seed is not None:
+			key = seed
+		
+		key = PRNGKey(key,reset=reset)
+
+		if bounds is None:
+			bounds = ["-inf","inf"]
+		elif isinstance(bounds,scalars):
+			bounds = [0,bounds]
+		elif len(bounds)==0:
+			bounds = ["-inf","inf"]
+
+		bounds = [to_number(i,dtype) for i in bounds]
+
+		b = len(bounds)
+		for i in range(b):
+			if isinstance(bounds[i],str):
+				if random in ['gaussian','normal']:
+					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
+				else:
+					bounds[i] = float(bounds)
+
+		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
+		complex = is_complexdtype(dtype) and random not in subrandoms
+		_dtype = dtype
+		dtype = datatype(dtype)
+
+		if complex:
+			shape = (2,*shape)
+
+		if random in ['uniform','rand']:
+			def func(key,shape,bounds,dtype):
+				# out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+				out = asarray(onp.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)
+				return out
+		elif random in ['randint']:
+			def func(key,shape,bounds,dtype):		
+				# out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+				out = asarray(onp.random.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)		
+				return out
+		elif random in ['gaussian','normal']:
+			def func(key,shape,bounds,dtype):
+				# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
+				out = asarray((bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*onp.random.normal(size=shape).astype(dtype),dtype=dtype)
+				return out
+		elif random in ['haar']:
+			def func(key,shape,bounds,dtype):
+
+				bounds = [-1,1]
+				subrandom = 'gaussian'
+				subdtype = 'complex'
+				ndim = len(shape)
+				shapes = shape
+
+				if ndim < 2:
+					shape = [*shape]*2
+				elif ndim >= 2:
+					if shape[-2] != shape[-1]:
+						shape = (*shape[:-1],*shape[-1:]*2)
+
+				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
+
+				if out.ndim < 4:
+					reshape = (*(1,)*(4-out.ndim),*out.shape)
+				else:
+					reshape = out.shape
+
+
+				out = out.reshape(reshape)
+
+				for i in range(out.shape[0]):
+					for j in range(out.shape[1]):
+
+						Q,R = qr(out[i,j])
+						R = diag(R)
+						R = diag(R/abs(R))
+						
+						out = setitem(out,(i,j),dot(Q,R))
+
+				out = out.reshape(shape)
+
+				assert allclose(1,real(einsum('...ij,...ij->...',out,conjugate(out)))/out.shape[-1])
+
+				# Create random matrices versus vectors
+				shape = shapes
+				if ndim == 1: # Random vector
+					out = out[...,0] 
+				elif ndim == 2: # Random vector or matrix
+					if shape[-2] != shape[-1]:
+						out = out[...,0]
+						weights = rand(out.shape[0],key=key,dtype=_dtype)
+						out = einsum('u,...ui->...i',weights,out)
+						weights = sqrt(einsum('...i,...i->...',conjugate(out),out))
+						out = out/weights
+					else:
+						out = out[:,:]
+				elif ndim == 3: # Sum of samples of random rank-1 matrices (vectors)
+					out = out[...,0]
+					weights = rand(out.shape[0],key=key,dtype=_dtype)
+					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
+					weights = einsum('...ii->...',out)
+					out = out/weights				
+
+				elif ndim >= 4: # Samples of random matrices
+					# TODO: Implement random density matrices
+					raise NotImplementedError
+					out = out[...,0]
+					weights = rand(out.shape[0],key=key,dtype=dtype)
+					weights = weights/weights.sum()
+					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
+
+
+				return out
+
+
+		elif random in ['hermitian','symmetric']:
+			def func(key,shape,bounds,dtype):
+			
+				bounds = [-1,1]
+				subrandom = 'gaussian'
+				subdtype = 'complex'
+				ndim = len(shape)
+
+				if ndim == 1:
+					shape = [*shape]*2
+					ndim = len(shape)
+
+				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)	
+
+				out = (out + conjugate(moveaxis(out,(-1,-2),(-2,-1))))/2
+
+
+				if ndim == 1:
+					out = diag(out)
+
+				return out
+
+		elif random in ['zero']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,0,1)
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out
+		elif random in ['one']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,-1,1)
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out			
+		elif random in ['plus']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,slice(None),1/sqrt(shape[-1]))
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out	
+		elif random in ['minus']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,slice(0,None,2),1/sqrt(shape[-1]))
+				out = setitem(out,slice(1,None,2),-1/sqrt(shape[-1]))
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out				
+		elif random in ['zeros']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape,dtype=dtype)
+				return out
+		elif random in ['ones']:
+			def func(key,shape,bounds,dtype):
+				out = ones(shape,dtype=dtype)
+				return out	
+		elif random in ['linspace']:
+			def func(key,shape,bounds,dtype):
+				num = shape[0] if not isinstance(shape,int) else shape
+				out = linspace(*bounds,num,dtype=dtype)
+				return out					
+		elif random in ['logspace']:
+			def func(key,shape,bounds,dtype):
+				num = shape[0] if not isinstance(shape,int) else shape
+				out = logspace(*bounds,num,dtype=dtype)
+				return out								
+		else:
+			def func(key,shape,bounds,dtype):
+				# out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+				out = asarray(onp.random.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)
 				return out
 
 		if mesh is not None:
@@ -2538,7 +2847,7 @@ def nansqrt(a):
 	return np.sqrt(a)
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	@partial(jit,static_argnums=(1,2,3,))
 	def norm(a,axis=None,ord=2,keepdims=False):
@@ -3975,7 +4284,7 @@ def swap(i,j,N,D):
 	return S
 
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	def slicing(a,start,size):
 		'''
@@ -5363,7 +5672,7 @@ def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
 
 
 
-@partial(jit,static_argnums=(2,3,4,))
+# @partial(jit,static_argnums=(2,3,4,))
 def allclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
 	'''
 	Check if arrays a and b are all close within tolerance
