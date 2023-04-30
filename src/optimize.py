@@ -12,11 +12,11 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,hessian,conj,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
-from src.utils import is_unitary,is_hermitian,is_naninf,product,sqrt
+from src.utils import jit,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
+from src.utils import is_unitary,is_hermitian,is_naninf
 from src.utils import scalars,delim,nan
 
-from src.iterables import setter
+from src.iterables import setter,getattrs
 
 from src.line_search import line_search,armijo
 
@@ -698,7 +698,19 @@ class Function(System):
 		return self.function(parameters)
 
 	# @partial(jit,static_argnums=(0,))
-	def __grad__(self,parameters):
+	def func(self,parameters):
+		'''
+		Function call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.__call__(parameters)
+
+
+	# @partial(jit,static_argnums=(0,))
+	def grad(self,parameters):
 		'''
 		Gradient call
 		Args:
@@ -709,7 +721,7 @@ class Function(System):
 		return self.gradient(parameters)
 
 	# @partial(jit,static_argnums=(0,))
-	def __value_and_grad__(self,parameters):
+	def value_and_grad(self,parameters):
 		'''
 		Function and gradient call
 		Args:
@@ -736,38 +748,6 @@ class Function(System):
 			func=self.func,grad=self.grad)
 		return status
 
-	# @partial(jit,static_argnums=(0,))
-	def func(self,parameters):
-		'''
-		Function call
-		Args:
-			parameters (array): parameters
-		Returns:
-			out (object): Return of function
-		'''
-		return self.__call__(parameters)
-
-	# @partial(jit,static_argnums=(0,))
-	def grad(self,parameters):
-		'''
-		Gradient call
-		Args:
-			parameters (array): parameters
-		Returns:
-			out (object): Return of function
-		'''
-		return self.__grad__(parameters)
-
-	# @partial(jit,static_argnums=(0,))
-	def value_and_grad(self,parameters):
-		'''
-		Function and gradient call
-		Args:
-			parameters (array): parameters
-		Returns:
-			out (object): Return of function
-		'''
-		return self.__value_and_gradient__(parameters)
 
 
 class Objective(Function):		
@@ -798,7 +778,7 @@ class Objective(Function):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.metric(self.model(parameters)) + self.function(parameters)
+		return self.func(parameters) + self.function(parameters)
 
 	# @partial(jit,static_argnums=(0,))
 	def func(self,parameters):
@@ -809,10 +789,10 @@ class Objective(Function):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.__call__(parameters)
+		return self.metric(self.model(parameters))
 
 	# @partial(jit,static_argnums=(0,))
-	def __grad__(self,parameters):
+	def grad(self,parameters):
 		'''
 		Gradient call
 		Args:
@@ -823,17 +803,6 @@ class Objective(Function):
 		return self.metric.grad(self.model(parameters),self.model.grad(parameters)) + self.gradient(parameters)	
 
 	# @partial(jit,static_argnums=(0,))
-	def __grad_analytical__(self,parameters):
-		'''
-		Gradient call
-		Args:
-			parameters (array): parameters
-		Returns:
-			out (object): Return of function
-		'''
-		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) + self.gradient(parameters)	
-
-	# @partial(jit,static_argnums=(0,))
 	def grad_analytical(self,parameters):
 		'''
 		Gradient call
@@ -842,7 +811,7 @@ class Objective(Function):
 		Returns:
 			out (object): Return of function
 		'''
-		return self.__grad_analytical__(parameters)
+		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) + self.gradient(parameters)	
 
 
 class Callback(Function):
@@ -888,7 +857,7 @@ class Metric(System):
 			metric (str,Metric): Type of metric
 			shapes (iterable[tuple[int]]): Shapes of Operators
 			model (object): Model instance	
-			label (array): Label			
+			label (array,callable): Label			
 			weights (array): Weights
 			optimize (bool,str,iterable): Contraction type	
 			hyperparameters (dict): Metric hyperparameters
@@ -905,7 +874,7 @@ class Metric(System):
 		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
 		self.label = hyperparameters.get('label',label) if label is None else label
 		self.weights = hyperparameters.get('weights',weights) if weights is None else weights
-		self.shapes = shapes
+		self.shapes = getattr(label,'shape') if shapes is None else shapes
 		self.model = model
 		self.optimize = optimize
 		self.hyperparameters = hyperparameters
@@ -917,10 +886,25 @@ class Metric(System):
 
 		return
 
-	def __setup__(self):
+	def __setup__(self,metric=None,shapes=None,model=None,label=None,weights=None,optimize=None):
 		'''
 		Setup metric attributes metric,string
+		Args:
+			metric (str,Metric): Type of metric
+			shapes (iterable[tuple[int]]): Shapes of Operators
+			model (object): Model instance	
+			label (array,callable): Label			
+			weights (array): Weights
+			optimize (bool,str,iterable): Contraction type	
 		'''
+
+		self.metric = self.metric if metric is None else metric
+		self.shapes = self.shapes if shapes is None else shapes
+		self.model = self.model if model is None else model
+		self.label = self.label if label is None else label
+		self.weights = self.weights if weights is None else weights
+		self.optimize = self.optimize if optimize is None else optimize
+
 		if isinstance(self.metric,Metric):
 			self.metric = self.metric.metric
 		if self.metric is None:
@@ -928,7 +912,7 @@ class Metric(System):
 		if self.shapes is None:
 			self.shapes = ()
 
-		self.metrics()
+		self.__initialize__()
 
 		self.info()
 
@@ -944,28 +928,6 @@ class Metric(System):
 			out (object): Return of function
 		'''
 		return self.function(*operands)
-
-	# @partial(jit,static_argnums=(0,))
-	def __grad__(self,*operands):
-		'''
-		Gradient call
-		Args:
-			operands (array): operands
-		Returns:
-			out (object): Return of function
-		'''		
-		return self.gradient(*operands)
-
-	# @partial(jit,static_argnums=(0,))
-	def __grad_analytical__(self,*operands):
-		'''
-		Gradient call
-		Args:
-			operands (array): operands
-		Returns:
-			out (object): Return of function
-		'''		
-		return self.gradient_analytical(*operands)
 
 	# @partial(jit,static_argnums=(0,))
 	def func(self,*operands):
@@ -987,7 +949,7 @@ class Metric(System):
 		Returns:
 			out (object): Return of function
 		'''		
-		return self.__grad__(*operands)	
+		return self.gradient(*operands)
 
 	# @partial(jit,static_argnums=(0,))
 	def grad_analytical(self,*operands):
@@ -998,7 +960,7 @@ class Metric(System):
 		Returns:
 			out (object): Return of function
 		'''		
-		return self.__grad_analytical__(*operands)	
+		return self.gradient_analytical(*operands)
 
 	def info(self,verbose=None):
 		'''
@@ -1006,30 +968,53 @@ class Metric(System):
 		Args:
 			verbose (int,str): Verbosity of message			
 		'''		
-		msg = '%s'%('\n'.join([
-			*['Metric %s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['metric']
-			],
-			]
-			))
+
+		msg = []
+
+		for attr in ['metric']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
+			msg.append(string)
+
+		msg = '\n'.join(msg)
+
 		self.log(msg,verbose=verbose)
 		return
 
 
-	def metrics(self):
+	def __initialize__(self,metric=None,shapes=None,model=None,label=None,weights=None,optimize=None):
 		'''
-		Setup metric	
+		Setup metric
+		Args:
+			metric (str,Metric): Type of metric
+			shapes (iterable[tuple[int]]): Shapes of Operators
+			model (object): Model instance	
+			label (array,callable): Label			
+			weights (array): Weights
+			optimize (bool,str,iterable): Contraction type	
 		'''
+
+		self.metric = self.metric if metric is None else metric
+		self.shapes = self.shapes if shapes is None else shapes
+		self.model = self.model if model is None else model
+		self.label = self.label if label is None else label
+		self.weights = self.weights if weights is None else weights
+		self.optimize = self.optimize if optimize is None else optimize
 
 		if isinstance(self.metric,str) and self.label is not None:
 			if self.label.ndim == 1:
 				if self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'abs2'
 			elif self.label.ndim == 2:
-				if is_unitary(self.label) and self.metric in ['real','imag','norm','abs2']:
+				if (getattr(self.label,'unitary',None) or is_unitary(self.label)) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'abs2'
-				elif is_hermitian(self.label) and self.metric in ['real','imag','norm','abs2']:
+				elif (getattr(self.label,'hermitian',None) or is_hermitian(self.label)) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
+
+		if self.label is not None:
+			if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
+				self.shapes = self.label.shape
+			else:
+				self.shapes = [self.label.shape]*len(self.shapes)
 		
 		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
 			self.shapes = [self.shapes,]*2
@@ -1417,22 +1402,32 @@ class Optimization(System):
 		Args:
 			verbose (int,str): Verbosity of message			
 		'''		
-		msg = '%s'%('\n'.join([
-			*['Optimizer %s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']
-			],
-			*['Optimizer dtype: %s'%(', '.join(['%s: %s'%(attr,value.dtype if value is not None else None) for attr,value in {
-				**{attr: getattr(self.func.model,attr)() for attr in ['parameters','label','state','noise'] if hasattr(self.func.model,attr)},
-				**{attr:self.func.model(self.func.model.parameters()) for attr in ['model'] if getattr(self.func.model,'parameters')},
-				**{attr:self.func.metric(self.func.model.label()) for attr in ['metric'] if hasattr(self.func.model,'label')},
-				**{attr:self.func(self.func.model.parameters()) for attr in ['cls'] if hasattr(self.func.model,'parameters')},
-				}.items()]))],
-			*['Optimizer %s: %s'%(attr,{key: getattr(self,attr).get(key,[None])[-1] if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] for key in getattr(self,attr)})
-				for attr in ['track','attributes']
+		
+		msg = []
+
+		for attr in ['optimizer','iterations','size','search','eps','modulo','kwargs']:
+			string = '%s %s: %s'%('Optimizer',attr,getattr(self,attr))
+			msg.append(string)
+
+		for attr in ['dtype']:
+			string = []
+			for subattr in ['func.model','func.metric','func.model.parameters','func.model.state','func.model.noise','func.metric.label']:
+				substring = '%s: %s'%(subattr,getattrs(self,delim.join([subattr,attr]),delimiter=delim) if getattrs(self,subattr,delimiter=delim) is not None else None)
+				string.append(substring)
+			string = ', '.join(string)
+			msg.append(string)
+
+		for attr in ['track','attributes']:
+			string = '%s %s: %s'%('Optimizer',attr,
+				{key: getattr(self,attr).get(key,[None])[-1] 
+				if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] 
+				for key in getattr(self,attr)
 				if any(getattr(self,attr).get(key) for key in getattr(self,attr))
-			],			
-			]
-			))
+				})
+			msg.append(string)
+
+
+		msg = '\n'.join(msg)
 
 		self.log(msg,verbose=verbose)
 		return
@@ -1869,7 +1864,7 @@ class Covariance(System):
 			func (callable): Function to compute
 			grad (callable): Gradient to compute
 			shapes (iterable[tuple[int]]): Shapes of functions		
-			label (array): label data for function
+			label (array, callable): label data for function
 			weights (array): weights data for function
 			optimize (bool,str,iterable): Contraction type
 			metric (str,Metric): Type of distribution, allowed ['lstsq','mse','normal','gaussian']
@@ -1886,6 +1881,12 @@ class Covariance(System):
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
+
+		if shapes is None:
+			try:
+				shapes = label.shape
+			except:
+				pass
 
 		if all(isinstance(i,int) for i in shapes) or (len(shapes) == 1):
 			shapes = [shapes]*2
@@ -1934,11 +1935,14 @@ class Covariance(System):
 		Args:
 			verbose (int,str): Verbosity of message			
 		'''		
-		msg = '%s'%('\n'.join([
-			*['Covariance %s: %s'%(attr,getattr(self,attr)) 
-				for attr in ['metric']
-			],
-			]
-			))
+		
+		msg = []
+
+		for attr in ['metric']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
+			msg.append(string)
+
+		msg = '\n'.join(msg)
+		
 		self.log(msg,verbose=verbose)
 		return

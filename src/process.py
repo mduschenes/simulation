@@ -865,7 +865,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 	functions = {}
 
-	dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype) }
+	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
+	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
+	dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype)}	
 	data = data.astype(dtype)
 
 	dtypes = {attr: ('array' if any(isinstance(i,tuple) for i in data[attr]) else 'object' if data[attr].dtype.kind in ['O'] else 'dtype') 

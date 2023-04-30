@@ -761,13 +761,13 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			try:
 				datum = _load(path,wr=wr,ext=ext,**kwargs)
 				break
-			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError) as exception:			
+			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
 				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						datum = _load(obj,wr=wr,ext=ext,**kwargs)
 						break
-				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError) as exception:
+				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 					pass
 
@@ -904,13 +904,13 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 			try:
 				_dump(data,path,wr=wr,ext=ext,**kwargs)
 				break
-			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError) as exception:
+			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						_dump(data,obj,wr=wr,ext=ext,**kwargs)
 					break
-				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError) as exception:
+				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 					pass
 		

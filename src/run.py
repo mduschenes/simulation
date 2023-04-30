@@ -221,10 +221,12 @@ def setup(settings):
 					pass
 				elif name in ['postprocess']:
 					jobs[name][attr] = value
+				else:
+					jobs[name][attr] = value
 
 			attrs = {'name':name}
 			jobs[name].update({attr: attrs[attr] for attr in attrs if attr not in jobs[name]})
-	
+
 	return jobs
 
 

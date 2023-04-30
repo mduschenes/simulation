@@ -12,23 +12,18 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vmap,vfunc,switch,gradient,hessian,fisher
-from src.utils import array,asarray,empty,identity,ones,zeros,arange,rand,setitem
-from src.utils import tensorprod,dagger,conj,einsum,dot
-from src.utils import summation,exponentiation,summationv,exponentiationv,summationm,exponentiationm,summationmvc,exponentiationmvc,summationmmc,exponentiationmmc
-from src.utils import forloop,trotter,gradient_trotter,gradient_expm
-from src.utils import eig
-from src.utils import maximum,minimum,argmax,argmin,difference,abs,sqrt,log,log10,sign,sin,cos
-from src.utils import sort,relsort,norm
-from src.utils import initialize,parse,to_string,allclose
-from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,namespace
-from src.utils import itg,flt,dbl
+from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
+from src.utils import array,asarray,empty,identity,ones,zeros,arange,rand,diag
+from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,sort,relsort
+from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos
+from src.utils import to_string,is_hermitian,is_unitary,allclose
+from src.utils import pi,e,nan,null,delim,scalars,arrays,namespace,datatype
 
 from src.iterables import setter,getter,getattrs,hasattrs,indexer,inserter
 
 from src.io import load,dump,join,split
 
-from src.system import System,Space,Time,Lattice
+from src.system import Dictionary,System,Space,Time,Lattice
 
 from src.parameters import Parameters
 
@@ -54,14 +49,15 @@ class Object(System):
 	N = None
 	n = None
 
-	hermitian = False
-	unitary = False
+	hermitian = None
+	unitary = None
 
 	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,state=None,system=None,**kwargs):		
 
 		defaults = dict(			
 			shape=None,size=None,ndim=None,
-			samples=None,identity=None,locality=None,index=None
+			samples=None,identity=None,locality=None,index=None,
+			conj=None,func=None
 			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
@@ -70,22 +66,33 @@ class Object(System):
 
 		super().__init__(**kwargs)
 
+		if self.func is None:
+			
+			def func(parameters=None,state=None,conj=None):
+				return self.data
+
+			self.func = func
+
 		if isinstance(data,self.__class__) or isinstance(operator,self.__class__):
 			if isinstance(data,self.__class__):
 				for attr in data:
-					setattr(self,attr,getattr(data,attr))
+					if attr not in kwargs:
+						setattr(self,attr,getattr(data,attr))
 			if isinstance(operator,self.__class__):
 				for attr in operator:
-					setattr(self,attr,getattr(operator,attr))					
+					if attr not in kwargs:
+						setattr(self,attr,getattr(operator,attr))					
 
 			return
 		
 		elif (data is None) and (operator is None):
 			return
 		
-		elif isinstance(data,dict):
+		elif isinstance(data,(dict)):
 			return
-		
+
+		elif (data is not None) and all(isinstance(i,Object) for i in data):
+			return
 
 		basis = self.basis
 		default = self.default
@@ -101,13 +108,13 @@ class Object(System):
 			pass
 		elif isinstance(operator,str):
 			if operator not in [default]:
-				site = list(range(max(locality if locality is not None else 0,sum(basis[i].locality for i in operator.split(delim) if i in basis and basis[i].locality is not None),N))) if site is None else site
-				operator = [i for i in operator.split(delim)]
+				site = list(range(min(max(locality if locality is not None else 0,sum(basis[i].locality for i in operator.split(delim) if i in basis and basis[i].locality is not None)),N))) if site is None else site
+				operator = [i for i in operator.split(delim)][:len(site)]
 			elif operator in [default]:
 				site = list(range(basis[operator].locality if N is None else N)) if site is None else site
 				operator = operator
 		elif not isinstance(operator,str) and not isinstance(operator,arrays):
-			operator = [j for i in operator for j in (i.split(delim) if isinstance(i,str) else i)]
+			operator = [j for i in operator for j in (i.split(delim) if isinstance(i,str) else i)][:len(site)]
 
 		if site is None:
 			pass
@@ -127,7 +134,6 @@ class Object(System):
 		N = max(self.N,max(site)+1 if site is not None else self.N) if self.N is not None else max(site)+1 if site is not None else 0
 		D = self.D if self.D is not None else data.size**(1/(data.ndim*N)) if isinstance(data,arrays) else 1
 		n = D**N if (N is not None) and (D is not None) else None
-
 
 		shape = self.shape if self.shape is not None else data.shape if isinstance(data,arrays) else None
 		size = self.size if self.size is not None else data.size if isinstance(data,arrays) else None
@@ -186,7 +192,7 @@ class Object(System):
 		
 		self.locality = max(self.locality if self.locality is not None else 0,len(self.site) if self.site is not None else 0)
 		self.index = self.index if self.index is not None else None
-		
+
 		if (self.samples is True) and (self.size is not None):
 			shape,bounds,scale,seed,dtype = self.size, [0,1], 'normalize', self.seed, datatype(self.dtype)
 			self.samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
@@ -200,16 +206,82 @@ class Object(System):
 		self.data = self.data.astype(self.dtype) if self.data is not None else None
 		self.identity = self.identity.astype(self.dtype) if self.identity is not None else None
 
-		self.shape = self.data.shape if isinstance(self.data,arrays) else None
-		self.size = self.data.size if isinstance(self.data,arrays) else None
-		self.ndim = self.data.ndim if isinstance(self.data,arrays) else None
-		self.dtype = self.data.dtype if isinstance(self.data,arrays) else None
-
+		self.__initialize__()
+		
 		self.norm()
 
 		self.info()
 
 		return
+
+	def __initialize__(self,data=None,parameters=None,state=None,conj=None):
+		'''
+		Initialize operator
+		Args:
+			data (array): data
+			parameters (array): parameters
+			state (array): state
+			conj (bool): conjugate
+		'''
+
+		if data is None:
+			data = self.data
+		elif data is False:
+			data = None
+
+		if parameters is None:
+			parameters = self.parameters
+
+		if state is None:
+			state = self.state
+
+		if conj is None:
+			conj = self.conj
+		
+		hermitian = self.hermitian
+		unitary = self.unitary
+
+
+		self.data = data
+		self.parameters = parameters			
+		self.state = state
+		self.conj = conj
+
+
+		try:
+			state = state()
+			data = self(parameters,state,conj)
+		except TypeError:
+			state = None
+			data = self.data
+
+		if not hermitian and not unitary:
+			hermitian = hermitian
+			unitary = unitary
+		elif data is None:
+			hermitian = False
+			unitary = False
+		elif state is None:
+			data = data
+			hermitian = is_hermitian(data)
+			unitary = is_unitary(data)
+		elif state.ndim == 1:
+			hermitian = False
+			unitary = True
+		elif state.ndim == 2:
+			hermitian = True
+			unitary = False
+
+		self.shape = data.shape if isinstance(data,arrays) else None
+		self.size = data.size if isinstance(data,arrays) else None
+		self.ndim = data.ndim if isinstance(data,arrays) else None
+		self.dtype = data.dtype if isinstance(data,arrays) else None
+
+		self.hermitian = hermitian
+		self.unitary = unitary
+
+		return
+
 
 	def __call__(self,parameters=None,state=None,conj=None):
 		'''
@@ -225,19 +297,7 @@ class Object(System):
 		if parameters is None:
 			parameters = self.parameters
 
-		return self.data
-
-	def grad(self,parameters=None,state=None,conj=None):
-		'''
-		Call gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate			
-		Returns:
-			data (array): data
-		'''
-		return zeros(parameters.size,dtype=parameters.dtype)
+		return self.func(parameters,state,conj)
 
 	def __str__(self):
 		string = self.__class__.__name__ if not self.string else self.string
@@ -264,30 +324,20 @@ class Object(System):
 		key = tuple(key)
 		return key
 	
-	def grad(self,parameters=None,state=None,conj=None):
-		'''
-		Call gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate
-		Returns:
-			data (array): data
-		'''
-		return 0
-
 	def info(self,verbose=None):
 		'''
 		Log class information
 		Args:
 			verbose (int,str): Verbosity of message			
 		'''		
-		msg = '%s'%('\n'.join([
-			*['%s %s %s: %s'%(self.__class__.__name__.capitalize(),self,attr,getattr(self,attr)) 
-				for attr in ['shape']
-			],
-			]
-			))
+		msg = []
+
+		for attr in ['shape']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
+			msg.append(string)
+
+		msg = '\n'.join(msg)
+		
 		self.log(msg,verbose=verbose)
 		return
 
@@ -298,18 +348,13 @@ class Object(System):
 			data (array): Data to normalize			
 		'''
 
-		# TODO: Efficient norm calculation
-
 		try:
 			data = self()
-			if data is None:
-				raise
-		except:
+		except TypeError as exception:
+			data = self.data
+
+		if not isinstance(data,arrays):
 			return
-
-		# dataH = self(conj=True)
-		dataH = conj(data)
-
 
 		shape = self.shape
 		ndim = self.ndim
@@ -318,32 +363,46 @@ class Object(System):
 		unitary = self.unitary	
 
 		if ndim > 3:
-			normalization = einsum('...uij,...ukj->...ik',dataH,data)
-			eps = array([identity(shape[-2:],dtype=dtype)]*(normalization.ndim-2),dtype=dtype)
-		elif ndim == 3:
-			normalization = einsum('uij,ukj->ik',dataH,data)
-			eps = identity(shape[-2:],dtype=dtype)
-		elif ndim == 2:
 			if hermitian and not unitary:
-				normalization = einsum('ii->',data)
-				eps = ones(shape[:-2],dtype=dtype)
+				norm = None
+				eps = None
 			elif not hermitian and unitary:
-				normalization = einsum('ij,kj->ik',dataH,data)
+				norm = einsum('...uij,...ukj->...ik',conjugate(data),data)
+				eps = array([identity(shape[-2:],dtype=dtype)]*(norm.ndim-2),dtype=dtype)
+			else:
+				norm = None
+				eps = None
+		elif ndim == 3:
+			if hermitian and unitary:
+				norm = None
+				eps = None
+			elif not hermitian and unitary:
+				norm = einsum('uij,ukj->ik',conjugate(data),data)
 				eps = identity(shape[-2:],dtype=dtype)
 			else:
-				normalization = None
+				norm = None
+				eps = None
+		elif ndim == 2:
+			if hermitian and not unitary:
+				norm = einsum('ii->',data)
+				eps = ones(shape[:-2],dtype=dtype)
+			elif not hermitian and unitary:
+				norm = einsum('ij,kj->ik',conjugate(data),data)
+				eps = identity(shape[-2:],dtype=dtype)
+			else:
+				norm = None
 				eps = None
 		else:
-			normalization = einsum('i,i->',dataH,data)
+			norm = einsum('i,i->',conjugate(data),data)
 			eps = ones(shape=(),dtype=dtype)
 
-		if normalization is None or eps is None:
+		if norm is None or eps is None:
 			return
 
-		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
+		assert (eps.shape == norm.shape), "Incorrect operator shape %r != %r"%(eps.shape,norm.shape)
 
 		if dtype not in ['complex256','float128']:
-			assert allclose(eps,normalization), "Incorrect normalization data%r: %r"%(eps.shape,normalization)
+			assert allclose(eps,norm), "Incorrect norm data%r: %r (hermitian: %r, unitary : %r)"%(eps.shape,norm,hermitian,unitary)
 
 		return
 
@@ -398,7 +457,6 @@ class Operator(Object):
 		inherit (boolean): Inherit super class when initialized
 		kwargs (dict): Additional system keyword arguments	
 	'''
-	qualname = __qualname__
 
 	basis = {
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
@@ -416,10 +474,17 @@ class Operator(Object):
 
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 
-		classes = [Gate,Pauli,Haar,State,Noise]
+		classes = [Gate,Pauli,Haar,State,Noise,Object]
+
 
 		for subclass in classes:
 			
+			if any(isinstance(obj,subclass) for obj in [data,operator]):
+
+				self = subclass(**kwargs)
+
+				break
+
 			if not all(j in subclass.basis for obj in [data,operator] if (obj is not None and not isinstance(obj,arrays)) for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
 				continue
 			
@@ -433,6 +498,7 @@ class Operator(Object):
 					setattr(cls,attr,getattr(subclass,attr))
 
 				self = subclass.__new__(cls,**kwargs)
+
 				subclass.__init__(self,**kwargs)
 
 			break
@@ -466,39 +532,9 @@ class Pauli(Object):
 	D = 2
 	N = None
 	n = None
-
-	hermitian = True
-	unitary = True
-
-	def __call__(self,parameters=None,state=None,conj=None):
-		'''
-		Call operator
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate			
-		Returns:
-			data (array): data
-		'''
-		if parameters is None:
-			parameters = self.parameters
-		if parameters is None:
-			return self.data
-
-		return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
-
-	def grad(self,parameters=None,state=None,conj=None):
-		'''
-		Call gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate			
-		Returns:
-			data (array): data
-		'''
-		return -pi*sin(pi*parameters)*self.identity + -1j*pi*cos(pi*parameters)*self.data
-
+	
+	hermitian = None
+	unitary = None
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
@@ -510,6 +546,17 @@ class Pauli(Object):
 			string (str): string label of operator
 			parameters (object): parameter of operator			
 		'''
+
+		def func(parameters=None,state=None,conj=None):
+			return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
+
+		hermitian = False
+		unitary = True
+
+		self.func = func
+		self.hermitian = hermitian
+		self.unitary = unitary
+
 		return
 
 class Gate(Object):
@@ -538,8 +585,8 @@ class Gate(Object):
 	N = None
 	n = None
 	
-	hermitian = False
-	unitary = True
+	hermitian = None
+	unitary = None
 	
 	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
@@ -551,6 +598,13 @@ class Gate(Object):
 			string (str): string label of operator
 			parameters (object): parameter of operator			
 		'''
+		
+		hermitian = False
+		unitary = True
+
+		self.hermitian = hermitian
+		self.unitary = unitary
+		
 		return
 
 class Haar(Object):
@@ -576,8 +630,8 @@ class Haar(Object):
 	N = None
 	n = None
 
-	hermitian = False
-	unitary = True
+	hermitian = None
+	unitary = None
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
@@ -605,7 +659,12 @@ class Haar(Object):
 		else:
 			data = self.data		
 		
+		hermitian = False
+		unitary = True
+
 		self.data = data
+		self.hermitian = hermitian
+		self.unitary = unitary
 
 		return
 
@@ -637,8 +696,8 @@ class State(Object):
 	N = None
 	n = None
 
-	hermitian = True
-	unitary = False
+	hermitian = None
+	unitary = None
 
 	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
 		'''
@@ -678,9 +737,18 @@ class State(Object):
 			data = self.data
 
 		if (data is not None) and (ndim < self.ndim):
-			data = einsum('...i,...j->...ij',data,conj(data))
+			data = einsum('...i,...j->...ij',data,conjugate(data))
+
+		if ndim == 1:
+			hermitian = False
+			unitary = True
+		else:
+			hermitian = True
+			unitary = False
 
 		self.data = data
+		self.hermitian = hermitian
+		self.unitary = unitary
 
 		return
 
@@ -701,12 +769,13 @@ class Noise(Object):
 
 	basis = {
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
+		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['E','eps']},
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['D','depolarize']},
 		**{attr: Object(data=array([[0,1],[1,0]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['X','x','amplitude']},
-		**{attr: Object(data=array([[1,0],[0,0]]),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['00']},
+		**{attr: Object(data=array([[1,0],[0,0]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['00']},
 		**{attr: Object(data=array([[0,1],[0,0]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['01']},
 		**{attr: Object(data=array([[0,0],[1,0]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['10']},
-		**{attr: Object(data=array([[0,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['11']},
+		**{attr: Object(data=array([[0,0],[0,1]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['11']},
 		**{attr: Object(data=array([[0,-1j],[1j,0]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Y','y','amplitude_phase']},
 		**{attr: Object(data=array([[1,0],[0,-1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Z','z','phase']},
 		}
@@ -715,9 +784,8 @@ class Noise(Object):
 	N = None
 	n = None
 	
-	hermitian = False
-	unitary = False
-
+	hermitian = None
+	unitary = None
 
 	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,state=None,system=None,**kwargs):		
 
@@ -750,14 +818,18 @@ class Noise(Object):
 				if (getattr(self,'tau') is not None):
 					self.parameters = (1 - exp(-self.tau/self.scale))/2
 
-		if (self.parameters is None) or (self.parameters is True):
+		if (self.parameters is None):
 			self.data = None
+			self.operator = None
 			return
 
 		assert (self.parameters >= 0) and (self.parameters <= 1), "Noise scale %r not in [0,1]"%(self.parameters)
-	
+
 		parameters = self.parameters
-		operator = operator[0] if operator else None
+		operator = delim.join(self.operator) if self.operator else None
+
+		hermitian = True
+		unitary = False
 
 		if parameters > 0:
 			if operator is None:
@@ -773,249 +845,24 @@ class Noise(Object):
 						sqrt(parameters/3)*self.basis['X'](),
 						sqrt(parameters/3)*self.basis['Y'](),
 						sqrt(parameters/3)*self.basis['Z']()]
+			elif operator in ['eps']:
+				data = array([identity(self.n),diag((1+parameters)*(arange(self.n)+1) - 1)])
+				hermitian = False
+				unitary = False
 			else:
 				data = [self.basis['I']()]
 		else:
 			data = [self.basis['I']()]
-	
-		data = array([tensorprod(i)	for i in itertools.product(data,repeat=self.N)],dtype=self.dtype)
+
+		if not isinstance(data,arrays):
+			data = array([tensorprod(i)	for i in itertools.product(data,repeat=self.N)],dtype=self.dtype)
+
 
 		self.data = data
+		self.hermitian = hermitian
+		self.unitary = unitary
 
 		return
-
-
-def Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p):
-	'''
-	Calculate operators
-	Args:
-		data (iterable[Operator]): Array of data to matrix exponentiate of shape (d,n,n)
-		parameters (Parameters): Array of parameters of shape (d,m)
-		identity (Operator): Array of data identity of shape (n,n)
-		state (Operator): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
-		noise (Operator): Array of noise to act of shape (n,n) or (k,n,n)
-		coefficients (arrray): Array of coefficients of shape (1,) or (d,)
-		n (int): Size of array
-		d (int): Number of data
-		m (int): Number of steps
-		p (int): Number of trotterizations
-	Returns:
-		func (callable): Function to compute operators, with signature func(parameters,state,conj), where parameters[i][j] is a nested iterable for each operator i and time step j
-		grad (callable): Gradient to compute operators, with signature grad(parameters,state,conj), where parameters[i][j] is a nested iterable for each operator i and time step j
-	'''	
-
-	if parameters is None:
-		return lambda *args,**kwargs: None
-
-	if p > 2:	
-		raise NotImplementedError("Trotterization p = %d not implemented for p>2"%(p))
-
-	trotterize = lambda iterable,p: [i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in iterable[s]]
-
-	indices = array(trotterize(arange(d),p))
-
-	@jit
-	def trotter(iterable):
-		return iterable[indices]
-
-	data = trotterize(data,p)
-
-	funcs = lambda i,parameters: data[i%(d*p)](parameters[i])
-
-
-	I = identity
-	A = array([i() for i in data])
-
-	def func(x,A,I,state=None,conj=None):
-		'''
-		Calculate matrix exponential of parameters times data
-		Args:
-			x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-			A (array): Array of data to matrix exponentiate of shape (d,n,n)
-			I (array): Array of data identity
-		Returns:
-			out (array): Matrix exponential of A of shape (n,n)
-		'''	
-
-		x = trotter(x).T.ravel()
-
-		m = x.size
-		d,shape = A.shape[0],A.shape[1:]
-
-		# subscripts = 'ij,jk->ik'
-		# shapes = (shape,shape)
-		# einsummation = einsum #(subscripts,shapes)
-
-		# def func(i,out):
-		# 	U = cos(x[i]*pi)*I + -1j*sin(x[i]*pi)*A[i%(d)]
-		# 	return einsummation(subscripts,U,out)
-
-		# return forloop(0,m,func,I)
-
-		if conj:
-			def func(i,out):
-				U = cos(x[i]*pi)*I + 1j*sin(x[i]*pi)*A[i%(d)]
-				return dot(U,out)#subscripts,U,out)
-
-			return forloop(m-1,-1,func,I)		
-		
-		else:
-			def func(i,out):
-				U = cos(x[i]*pi)*I + -1j*sin(x[i]*pi)*A[i%(d)]
-				return dot(U,out)#subscripts,U,out)
-
-			return forloop(0,m,func,I)		
-
-		# out = I
-		# for i in range(0,m):
-		# 	U = cos(x[i]*pi)*I + -1j*sin(x[i]*pi)*A[i%(d)]			
-		# 	out = dot(U,out)
-	
-		# return out
-
-	func = jit(func,A=A,I=I)
-
-	# data = [jit(i) for i in data]#data[i]) for i in indices]
-	# funcs = jit(lambda i,parameters: switch(i,data,parameters))
-
-	# # @jit
-	# def func(parameters=None,state=None,conj=None):
-	# 	'''
-	# 	Compute operator
-	# 	Args:
-	# 		parameters (array): parameters of shape (d,m,...)
-	# 		state (object): state
-	# 		conj (bool): conjugate
-	# 	'''
-	# 	parameters = coefficients*trotter(parameters).T.ravel()
-
-	# 	@jit
-	# 	def function(i,out):
-	# 		return dot(funcs(i%(d*p),parameters[i]),out)
-
-	# 	out = forloop(0,m*d*p,function,identity)
-
-	# 	return out
-
-
-
-
-	# # @jit
-	# def func(parameters):#=None,state=None,conj=None):
-	# 	'''
-	# 	Compute operator
-	# 	Args:
-	# 		parameters (array): parameters of shape (d,m,...)
-	# 		state (object): state
-	# 		conj (bool): conjugate
-	# 	'''
-	# 	parameters = coefficients*trotter(parameters).T.ravel()
-
-	# 	@jit
-	# 	def function(i,out):
-	# 		return dot(switch(i%(d*p),data,parameters[i]),out)
-	# 		# return dot(data[i%(d*p)](parameters[i]),out)
-
-	# 	out = forloop(0,m*d*p,function,identity)
-
-	# 	return out
-
-		# @jit
-		# def func(parameters):
-		# 	return trotter(funcs(index,parameters))
-
-		# def function(i,out):
-		# 	for operator in trotter(funcs(index,parameters[:,i])):
-		# 		out = dot(operator,out)
-		# 	return out
-
-		# out = identity
-		# parameters = parameters.T.ravel()
-		# size = parameters.size
-		
-		# out = forloop(0,size,func,out)
-		
-		# @jit
-		# def function(i,out):
-		# 	return dot(funcs(i%(d*p),parameters[i]),out)
-
-		# out = forloop(0,m*d*p,function,identity)
-
-		# if not conj:
-		# 	@jit
-		# 	def function(i,out):
-		# 		for operator in trotter(funcs(index,parameters[:,i])):
-		# 			out = dot(operator,out)
-		# 		return out
-
-		# 	out = identity
-			
-		# 	out = forloop(0,m,function,out)
-
-		# else:
-		# 	@jit
-		# 	def function(i,out):
-		# 		for operator in trotter(funcs(index,parameters[:,i]))[::-1]:
-		# 			out = dot(operator,out)
-		# 		return out
-
-		# 	out = identity
-			
-		# 	out = forloop(m-1,-1,function,out)			
-		
-		# return out
-
-
-
-	# def func(parameters=None,state=None,conj=None):
-	# 	if conj:
-	# 		sign = -1
-	# 		slices = slice(None,None,-1)
-	# 		indices = range(m-1,-1,-1)
-	# 	else:
-	# 		sign = 1
-	# 		slices = slice(None,None,1)
-	# 		indices = range(0,m,1)
-	# 	out = identity
-	# 	for j in indices:
-	# 		operators = [data[i](sign*coefficients[i]*parameters[i][j],conj=True) for i in range(d)]
-	# 		operators = trotter(operators,p)[slices]
-	# 		for operator in operators:
-	# 			out = dot(operator,out)
-	# 	return out
-
-	return func
-	
-	# if state is None and noise is None:
-	# 	self.summation = jit(summation,data=data,identity=identity)
-	# 	self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	# elif state is not None and noise is None:
-	# 	if state.ndim == 1:
-	# 		self.summation = jit(summationv,data=data,identity=identity,state=state)
-	# 		self.exponentiation = jit(exponentiationv,data=data,identity=identity,state=state)
-	# 	elif state.ndim == 2:
-	# 		self.summation = jit(summationm,data=data,identity=identity,state=state)
-	# 		self.exponentiation = jit(exponentiationm,data=data,identity=identity,state=state)
-	# 	else:
-	# 		self.summation = jit(summation,data=data,identity=identity)
-	# 		self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	# elif state is None and noise is not None:
-	# 	self.summation = jit(summation,data=data,identity=identity)
-	# 	self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	# elif state is not None and noise is not None:
-	# 	if state.ndim == 1:
-	# 		self.summation = jit(summationmvc,data=data,identity=identity,state=state,constants=noise)
-	# 		self.exponentiation = jit(exponentiationmvc,data=data,identity=identity,state=state,constants=noise)
-	# 	elif state.ndim == 2:
-	# 		self.summation = jit(summationmmc,data=data,identity=identity,state=state,constants=noise)
-	# 		self.exponentiation = jit(exponentiationmmc,data=data,identity=identity,state=state,constants=noise)
-	# 	else:
-	# 		self.summation = jit(summation,data=data,identity=identity)
-	# 		self.exponentiation = jit(exponentiation,data=data,identity=identity)
-	# else:
-	# 	self.summation = jit(summation,data=data,identity=identity)
-	# 	self.exponentiation = jit(exponentiation,data=data,identity=identity)
-
 
 
 class Operators(Object):
@@ -1079,7 +926,14 @@ class Operators(Object):
 		self.noise = noise
 		self.identity = None
 		self.coefficients = None
-		self.compute = None
+		self.constants = None
+		self.conj = None
+
+		self.func = None
+		self.gradient = None
+		self.gradient_finite = None
+		self.gradient_analytical = None
+		self.trotterize = None
 
 		self.system = system
 
@@ -1087,13 +941,16 @@ class Operators(Object):
 		self.__space__()
 		self.__lattice__()
 
+		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
+		self.coefficients = array(self.tau/self.P,dtype=datatype(self.dtype))
+
 		self.shape = () if self.n is None else (self.n,self.n)
 		self.size = prod(self.shape)
 		self.ndim = len(self.shape)
-		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
-		self.coefficients = array(self.tau/self.P,dtype=self.dtype)
 
 		self.__setup__(data,operator,site,string,parameters)
+
+		self.__initialize__()
 
 		self.info()
 
@@ -1121,21 +978,17 @@ class Operators(Object):
 			objs[obj] = [] if objs[obj] is None else objs[obj]
 
 		if data is None:
-			data = {}
-		elif all(isinstance(datum,Operator) for datum in data):
-			data = {datum.timestamp: datum for datum in data}
-		
-		assert isinstance(data,dict), 'Incorrect data format %r'%(type(data))			
-
-		if all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
+			data = None
+		elif all(isinstance(datum,Object) for datum in data):
+			for obj in objs:
+				objs[obj] = None
+		elif isinstance(data,dict) and all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
 			for obj in objs:
 				objs[obj].extend([data[name][obj] for name in data])
+			data = None
 
 		# Set class attributes
-		self.__extend__(**objs)
-
-		# Set class functions
-		self.__initialize__()
+		self.__extend__(data=data,**objs)
 
 		return
 
@@ -1236,7 +1089,7 @@ class Operators(Object):
 				args = {**dict(data=None),**data} if isinstance(data,dict) else dict(data=data)
 				setter(kwargs,args,func=False)
 
-				args = dict(**namespace(cls,self),model=self)
+				args = dict(**namespace(cls,self),model=self,system=self.system)
 				setter(kwargs,args,func=False)
 
 				args = dict(verbose=False)
@@ -1251,21 +1104,58 @@ class Operators(Object):
 			setattr(self,obj,instance)
 				
 		# Set functions
-		data = self.data
 		identity = self.identity()
 		parameters = self.parameters()
 		state = self.state()
 		noise = self.noise()
 		coefficients = self.coefficients
-		n = self.n
-		d = len(self.data)
-		m = self.M
-		p = self.P
+		constants = self.constants
+		conj = self.conj
 
-		self.compute = Compute(data,parameters,identity,state,noise,coefficients,n,d,m,p)
+		data = trotter([jit(i) for i in self.data],self.P)
+		slices = trotter(list(range(len(self))),self.P)
+		trotterize = jit(lambda parameters,slices: parameters[slices].T.ravel(),slices=array(slices))
+
+		parameters = trotterize(self.coefficients*self.parameters(parameters))
+
+		if state is None and noise is None:
+			hermitian = False
+			unitary = True
+			shape = identity.shape
+		elif state is None and noise is not None:
+			hermitian = False
+			unitary = False
+			shape = identity.shape
+		elif state.ndim == 1:
+			hermitian = True
+			unitary = False
+			shape = state.shape
+		elif state.ndim == 2:
+			hermitian = True
+			unitary = False
+			shape = state.shape
+		else:
+			raise NotImplementedError
+
+		func = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
+		
+		grad = gradient(self,mode='fwd',move=True)
+		grad_finite = gradient(self,mode='finite',move=True)
+		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 
 		# Update class attributes
-		self.gradient = gradient(self,mode='fwd',move=True)
+		self.func = func
+		self.gradient = grad
+		self.gradient_finite = grad_finite
+		self.gradient_analytical = grad_analytical
+		self.trotterize = trotterize
+		self.hermitian = hermitian
+		self.unitary = unitary
+
+		self.shape = shape
+		self.size = prod(self.shape)
+		self.ndim = len(self.shape)
+
 
 		return
 
@@ -1283,45 +1173,12 @@ class Operators(Object):
 		if parameters is None:
 			parameters = self.parameters()
 
-		parameters = self.coefficients*self.parameters(parameters)
+		if state is None:
+			state = self.state()
 
-		return self.compute(parameters,state=state,conj=conj)
+		parameters = self.trotterize(self.coefficients*self.parameters(parameters))
 
-	def __grad__(self,parameters=None,state=None,conj=None):
-		''' 
-		Class gradient
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate			
-		Returns:
-			out (array): Return of function
-		'''	
-		return self.gradient(parameters=parameters,state=state,conj=conj)
-
-
-	def __value_and_grad__(self,parameters=None,state=None,conj=None):
-		'''
-		Class function and gradient
-		Args:
-			parameters (array): parameters		
-		Returns
-			out (array): Return of function and gradient
-		'''	
-		return self.value_and_gradient(parameters=parameters,state=None,conj=None)
-
-
-	def func(self,parameters=None,state=None,conj=None):
-		'''
-		Class function
-		Args:
-			parameters (array): parameters		
-			state (obj): state
-			conj (bool): conjugate
-		Returns
-			out (array): Return of function
-		'''
-		return self.__call__(parameters=parameters,state=state,conj=conj)
+		return self.func(parameters,state,conj)
 
 	def grad(self,parameters=None,state=None,conj=None):
 		''' 
@@ -1333,19 +1190,32 @@ class Operators(Object):
 		Returns:
 			out (array): Return of function
 		'''		
-		return self.__grad__(parameters=parameters,state=state,conj=conj)
+		return self.gradient(parameters)
 
-	def value_and_grad(self,parameters=None,state=None,conj=None):
-		'''
-		Class function and gradient
+	def grad_finite(self,parameters=None,state=None,conj=None):
+		''' 
+		Class gradient
 		Args:
-			parameters (array): parameters		
+			parameters (array): parameters
 			state (obj): state
 			conj (bool): conjugate
-		Returns
-			out (array): Return of function and gradient
-		'''	
-		return self.__value_and_gradient__(parameters=parameters,state=state,conj=conj)
+		Returns:
+			out (array): Return of function
+		'''		
+		return self.gradient_finite(parameters)		
+
+	def grad_analytical(self,parameters=None,state=None,conj=None):
+		''' 
+		Class gradient
+		Args:
+			parameters (array): parameters
+			state (obj): state
+			conj (bool): conjugate
+		Returns:
+			out (array): Return of function
+		'''		
+		return self.gradient_analytical(parameters)
+
 
 	def __len__(self):
 		return len(self.data)
@@ -1454,33 +1324,75 @@ class Operators(Object):
 			verbose (int,str): Verbosity of message			
 		'''		
 
-		msg = '%s'%('\n'.join([
-			*['%s: %s'%(attr,getattrs(self,attr,delimiter=delim)) 
-				for attr in ['string','key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','data','shape','cwd','path','dtype','backend','architecture','conf','logger','cleanup']
-			],
-			*['%s: %s'%(delim.join(attr.split(delim)[:2]),', '.join([
-				('%s: %s' if (
-					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
-					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),(str,int,list,tuple))) 
-				else '%s: %0.3e')%(prop,getattrs(self,delim.join([attr,prop]),delimiter=delim))
-				for prop in ['category','method','shape','parameters']]))
-				for attr in ['parameters.%s'%(i) for i in (self.parameters if self.parameters is not None else [])]
-			],
-			*['%s: %s'%(delim.join(attr.split(delim)[:1]),', '.join([
-				((('%s: %s' if (
-					(getattrs(self,delim.join([attr,prop]),delimiter=delim) is None) or 
-					isinstance(getattrs(self,delim.join([attr,prop]),delimiter=delim),(str,int,list,tuple))) 
-				else '%0.3e')%(prop,getattrs(self,delim.join([attr,prop]),delimiter=delim),)) 
-				if prop is not None else str(getattrs(self,attr,delimiter=delim,default=None)))
-				for prop in [None,'shape','parameters']]))
-				for attr in ['parameters','state','noise'] if callable(getattrs(self,attr,default=None)) and getattrs(self,attr)() is not None
-			],
-			# *['%s:\n%s'%(delim.join(attr.split(delim)[:1]),
-			# 	to_string(getattrs(self,attr,default=lambda:None)()))
-			# 	for attr in ['parameters','state','noise'] if callable(getattrs(self,attr,default=None)) and getattrs(self,attr)() is not None
-			# ],			
-			]
-			))
+		msg = []
+
+		for attr in ['string','key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
+			string = '%s: %s'%(attr,getattrs(self,attr,delimiter=delim,default=None))
+			msg.append(string)
+
+		for attr in ['func.__name__']:
+			string = '%s: %s'%(delim.join(attr.split(delim)[:1]),getattrs(self,attr,delimiter=delim,default=None))
+			msg.append(string)
+
+		for attr in ['parameters.%s'%(i) for i in (self.parameters if self.parameters is not None else [])]:
+			string = []
+			for subattr in ['category','method','shape','parameters']:
+				substring = getattrs(self,delim.join([attr,subattr]),delimiter=delim,default=None)
+				if isinstance(substring,(str,int,list,tuple,*arrays)):
+					substring = '%s'%(substring,)
+				elif substring is not None:
+					substring = '%0.4e'%(substring)
+				else:
+					substring = str(substring)
+				substring = '%s : %s'%(subattr,substring)
+				
+				string.append(substring)
+
+			string = '%s %s'%(delim.join(attr.split(delim)[:2]),', '.join(string))
+
+			msg.append(string)
+
+		for attr in ['parameters','state','noise']:
+			string = []
+			for subattr in [None,'shape','parameters']:
+				if subattr is None:
+					subattr = attr
+					substring = str(getattrs(self,attr,delimiter=delim,default=None))
+				else:
+					substring = getattrs(self,delim.join([attr,subattr]),delimiter=delim,default=None)
+				if isinstance(substring,(str,int,list,tuple,*arrays)):
+					substring = '%s'%(substring,)
+				elif substring is not None:
+					substring = '%0.4e'%(substring)
+				else:
+					substring = str(substring)
+				substring = '%s : %s'%(subattr,substring)
+
+				string.append(substring)
+
+			string = ', '.join(string)
+
+			msg.append(string)			
+
+
+		# for attr in ['model']:
+		# 	string = '%s :\n%s'%(delim.join(attr.split(delim)[:1]),to_string(self()))
+
+		# 	msg.append(string)			
+
+		# for attr in ['parameters','state','noise']:
+		# 	string = getattrs(self,attr,default=None)
+		# 	if callable(string) and string() is not None:
+		# 		string = '%s :\n%s'%(delim.join(attr.split(delim)[:1]),to_string(string()))
+		# 	else:
+		# 		string = '%s : %s'%(delim.join(attr.split(delim)[:1]),string())
+
+		# 	msg.append(string)						
+
+
+		msg = '\n'.join(msg)
+
+		
 		self.log(msg,verbose=verbose)
 
 		return
@@ -1622,22 +1534,21 @@ class Hamiltonian(Operators):
 
 		# Get data
 		if data is None:
-			data = {}
-		elif all(isinstance(datum,Operator) for datum in data):
-			data = {datum.timestamp: datum for datum in data}
-		
-		assert isinstance(data,dict), 'Incorrect data format %r'%(type(data))			
-
-		if all(isinstance(data[name],dict) and (obj in data[name]) and (data[name][obj] is not None) for name in data for obj in objs):
+			data = None
+		elif all(isinstance(datum,Object) for datum in data):
+			for obj in objs:
+				objs[obj] = None
+		elif isinstance(data,dict) and all(isinstance(data[name],dict) and (obj in data[name]) and (data[name][obj] is not None) for name in data for obj in objs):
 			for obj in objs:
 				objs[obj].extend([data[name][obj] for name in data])
+			data = None
 
 		# Lattice sites
 		sites = self.lattice # sites types on lattice
 		indices = {'i': ['i'],'<ij>':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
 
 		# Get number of operators
-		size = min(len(objs[obj]) for obj in objs)
+		size = min([len(objs[obj]) for obj in objs if objs[obj] is not None],default=0)
 		
 		# Get attribute of symbolic indices
 		attr = 'site'
@@ -1667,7 +1578,7 @@ class Hamiltonian(Operators):
 							value[obj] = [dict(zip(
 								indices[key],
 								s if not isinstance(s,int) else [s])
-							).get(i,parse(i,int)) 
+							).get(i,int(i) if not isinstance(i,str) else i) 
 							for i in tmp[attr]]
 						else:
 							value[obj] = tmp[obj]
@@ -1688,10 +1599,7 @@ class Hamiltonian(Operators):
 
 
 		# Set class attributes
-		self.__extend__(**objs)
-
-		# Set class functions
-		self.__initialize__()
+		self.__extend__(data=data,**objs)
 
 		return
 
@@ -1736,88 +1644,9 @@ class Unitary(Hamiltonian):
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
 				space=space,time=time,lattice=lattice,state=state,noise=noise,system=system,**kwargs)
 
-		self.hermitian = False
-		self.unitary = True
-
 		self.norm()
 
 		return
-
-	def __grad_analytical__(self,parameters=None,state=None,conj=None):
-		'''
-		Class gradient
-		Args:
-			parameters (array): parameters		
-			state (obj): state
-			conj (bool): conjugate
-		Returns
-			out (array): Return of function
-		'''	
-
-		# Get class attributes
-		parameters = self.parameters(parameters)
-		shape = indexer(self.parameters.index,self.parameters).shape
-
-		attributes = None
-
-		# Get data
-		data = self.data
-		dtype = self.dtype
-
-		# Get trotterized shape
-		P = self.P
-		shape = list(shape[::-1])
-
-		shape[-1] *= P
-
-		ndim = len(shape)
-
-		attribute = 'slice'
-		layer = 'variables'
-		slices = attributes[attribute][layer]		
-
-		attribute = 'index'
-		layer = 'variables'
-		indices = attributes[attribute][layer]		
-
-		slices = tuple([
-			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
-				for axis in range(0,1)],
-			*[[slices[parameter][group][axis] for parameter in slices for group in slices[parameter]][0]
-				for axis in range(1,ndim)]
-		])
-
-		indices = tuple([
-			*[[i for parameter in indices for group in indices[parameter] for i in indices[parameter][group][axis]]
-				for axis in range(0,1)],
-			*[[indices[parameter][group][axis] for parameter in indices for group in indices[parameter]][0]
-				for axis in range(1,ndim)]
-		])
-
-		# Calculate parameters and gradient
-		parameters = self.parameters(parameters)
-
-		coefficients = self.coefficients
-		data = array(trotter([datum() for datum in data],P))
-		identity = self.identity()
-
-		grad = gradient_expm(coefficients*parameters,data,identity)
-		grad *= coefficients
-
-		# Reshape gradient
-		axis = 1
-
-		grad = grad.reshape((*shape,*grad.shape[axis:]))
-
-		grad = grad.transpose(axis,0,*[i for i in range(grad.ndim) if i not in [0,axis]])
-
-		grad = array(gradient_trotter(grad,P))
-
-		grad = grad[indices]
-
-		grad = grad.reshape((-1,*grad.shape[axis+1:]))
-
-		return grad
 
 	def grad_analytical(self,parameters=None,state=None,conj=None):
 		'''
@@ -1829,7 +1658,35 @@ class Unitary(Hamiltonian):
 		Returns
 			out (array): Return of function
 		'''	
-		return self.__grad_analytical__(parameters=parameters,state=state,conj=conj)
+
+		if parameters is None:
+			parameters = self.parameters()
+
+		if state is None:
+			state = self.state()
+
+		parameters = self.coefficients*self.parameters(parameters)
+
+		shape = parameters.shape
+		ndim = parameters.ndim
+		
+		parameters = self.trotterize(parameters)
+
+		gradient_trotterize = jit(lambda grad,P=self.P: gradient_trotter(grad,P))
+		slices = arange(self.parameters.size//prod(shape[1:]))
+		reshape = (*shape[1:],-1,*self.shape)
+		transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
+		shapes = (-1,*self.shape)
+
+		grad = self.coefficients*self.gradient_analytical(parameters)
+		grad = grad.reshape(reshape)
+		grad = grad.transpose(transpose)
+		grad = gradient_trotterize(grad)
+		grad = grad[slices]
+		grad = grad.reshape(*shapes)
+
+		return grad
+
 
 
 class Label(Operator):
@@ -1840,35 +1697,39 @@ class Label(Operator):
 	N = None
 	n = None
 
-	hermitian = False
-	unitary = False
+	hermitian = None
+	unitary = None
 
+	state = None
 
 	def __new__(cls,*args,**kwargs):
 
 		self = super().__new__(cls,*args,**kwargs)
-		
-		data = asarray(self(self.parameters))
-		state = asarray(self.state)
-
-
-		if data is None:
-			pass
-		elif state is None:
-			pass
-		elif state.ndim == 1:
-			data = einsum('ij,j->i',data,state)
-		elif state.ndim == 2:
-			data = einsum('ij,jk,kl->il',data,state,dagger(data))
-		
-		self.data = data
-		self.shape = data.shape
-		self.size = data.size
-		self.ndim = data.ndim
 
 		return self
 
 	def __init__(self,*args,**kwargs):
+		return
+
+	def info(self,verbose=None):
+		'''
+		Log class information
+		Args:
+			verbose (int,str): Verbosity of message			
+		'''		
+		msg = []
+
+		for attr in ['shape','parameters']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
+			msg.append(string)
+
+		# for attr in ['data']:
+		# 	string = '%s'%(to_string(self()))
+		# 	msg.append(string)			
+
+		msg = '\n'.join(msg)
+		
+		self.log(msg,verbose=verbose)
 		return
 
 	def __call__(self,parameters=None,state=None,conj=None):
@@ -1881,8 +1742,25 @@ class Label(Operator):
 		Returns:
 			data (array): data
 		'''
-		return self.data
 
+		if parameters is None:
+			parameters = self.parameters
+
+		if state is None and self.state is not None:
+			state = self.state()
+
+		data = self.func(parameters,state,conj)
+
+		if data is None:
+			data = None
+		elif state is None:
+			data = data
+		elif state.ndim == 1:
+			data = einsum('ij,j->i',data,state)
+		elif state.ndim == 2:
+			data = einsum('ij,jk,lk->il',data,state,conjugate(data))
+
+		return data
 		
 
 class Callback(System):
@@ -2038,7 +1916,7 @@ class Callback(System):
 					value = int(track['iteration'][-1])
 
 				elif attr in ['iteration.min']:
-					value = int(track['iteration'][argmin(abs(array(track['objective'])))])
+					value = int(track['iteration'][argmin(abs(array(track['objective'],dtype=model.dtype)))])
 
 				elif attr in ['value']:
 					value = abs(attributes[attr][index])
@@ -2093,39 +1971,44 @@ class Callback(System):
 					'objective.ideal.state','objective.diff.state','objective.rel.state',
 					'objective.ideal.operator','objective.diff.operator','objective.rel.operator'] and (not ((status) and (not done))):
 
-					_kwargs = {kwarg: {prop: hyperparameters.get('kwargs',{}).get(kwarg,{}).get(prop) if kwarg in ['noise'] else None for prop in ['scale']} for kwarg in ['state','noise','label']}
-					_kwargs = {kwarg: {prop: getattrs(model,[kwarg,prop],delimiter=delim,default=_kwargs[kwarg][prop]) for prop in _kwargs[kwarg]} for kwarg in ['state','noise','label']}
+
+					defaults = Dictionary(state=model.state,noise=model.noise,label=metric.label)
+
+					tmp = Dictionary(state=model.state,noise=model.noise,label=metric.label)
+
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
-						_kwargs = {kwarg: False if kwarg in [] else _kwargs[kwarg] for kwarg in _kwargs}
-						_metric = 'real'
+						tmp.update(dict())
 					elif attr in ['objective.ideal.state','objective.diff.state','objective.rel.state']:						
-						_kwargs = {kwarg: False if kwarg in ['noise'] else _kwargs[kwarg] for kwarg in _kwargs}
-						_metric = 'real'
+						tmp.update(dict(noise=False))
 					elif attr in ['objective.ideal.operator','objective.diff.operator','objective.rel.operator']:
-						_kwargs = {kwarg: False if kwarg in ['noise','state'] else _kwargs[kwarg] for kwarg in _kwargs}
-						_metric = 'abs2'
+						tmp.update(dict(state=False,noise=False))
+						tmp.update({kwarg : False for kwarg in ['state','noise']})
 
-					_model = model
-					_label = Label()
-					_shapes = _label.shape
-					_optimize = None
-					_hyperparameters = hyperparameters
-					_system = model.system
-					_restore = {kwarg: deepcopy(getattr(model,kwarg)) for kwarg in _kwargs}
+				
+					label = metric.label
 
-					_model.__initialize__(**_kwargs)
-					_metric = Metric(_metric,shapes=_shapes,label=_label,optimize=_optimize,hyperparameters=_hyperparameters,system=_system,verbose=False)
+					model.__initialize__(state=tmp.state,noise=tmp.noise)
 
+					label.__initialize__(state=model.state)
+
+					metric.__initialize__(model=model,label=label)
+
+					
 					if attr in ['objective.ideal.noise','objective.ideal.state','objective.ideal.operator']:
-						value = abs(_metric(_model(parameters)))
+						value = abs(metric(model(parameters)))
 					elif attr in ['objective.diff.noise','objective.diff.state','objective.diff.operator']:
-						value = abs((track['objective'][-1] - _metric(_model(parameters))))
+						value = abs((track['objective'][-1] - metric(model(parameters))))
 					elif attr in ['objective.rel.noise','objective.rel.state','objective.rel.operator']:
-						value = abs((track['objective'][-1] - _metric(_model(parameters)))/(track['objective'][-1]))
-
-					model.__initialize__(**_restore)
+						value = abs((track['objective'][-1] - metric(model(parameters)))/(track['objective'][-1]))
 
 
+					model.__initialize__(state=defaults.state,noise=defaults.noise)
+
+					label.__initialize__(state=defaults.state)
+
+					metric.__initialize__(model=model,label=label)
+
+					
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (not do):
 					value = default
 
@@ -2134,7 +2017,7 @@ class Callback(System):
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(jit(lambda parameters: metric(model(parameters))))
 					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
-						function = fisher(model,model.grad,shapes=(model.shape,(parameters.size,*model.shape)))
+						function = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)))
 
 					if attr in ['hessian','fisher']:
 						value = function(parameters)
@@ -2188,11 +2071,17 @@ class Callback(System):
 					for attr in ['alpha','beta']
 					if attr in attributes and len(attributes[attr])>0
 					]),
+				# 'attributes: \t %s'%({attr: attributes[attr][-1].dtype 
+				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
+				# 	for attr in attributes}),
+				# 'track: \t %s'%({attr: attributes[attr][-1].dtype 
+				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
+				# 	for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
 				# 'U\n%s\nV\n%s'%(
 				# 	to_string((model(parameters)).round(4)),
-				# 	to_string((metric.label).round(4))),
+				# 	to_string((metric.label()).round(4))),
 				])
 
 
@@ -2202,4 +2091,321 @@ class Callback(System):
 		return status
 
 
+def trotter(iterable,p):
+	'''
+	Trotterized iterable with order p
+	Args:
+		iterable (iterable): Iterable
+		p (int): Order of trotterization
+	Returns:
+		iterable (iterable): Trotterized iterable
+	'''
+	slices = [slice(None,None,1),slice(None,None,-1)]
 
+	if p > len(slices):
+		raise NotImplementedError("p = %d Not Implemented"%(p))
+
+	i = []        
+
+	for indices in slices[:p]:
+		i += iterable[indices]
+	
+	return i
+
+
+def gradient_trotter(iterable,p):
+	'''
+	Gradient of trotterized iterable with order p
+	Args:
+		iterable (iterable): Iterable
+		p (int): Order of trotterization
+	Returns:
+		iterable (iterable): Gradient of trotterized iterable
+	'''	
+	slices = [slice(None,None,1),slice(None,None,-1)]
+
+	if p > len(slices):
+		raise NotImplementedError("p = %d Not Implemented"%(p))
+
+	n = len(iterable)//p
+
+	i = 0        
+
+	for indices in slices[:p]:
+		i += iterable[:n][indices] if indices.step > 0 else iterable[-n:][indices]
+	
+	return i
+
+
+def contraction(data,state=None,conj=None,constants=None,noise=None):
+	'''
+	Contract data and state
+	Args:
+		data (array): Array of data of shape (n,n)
+		state (array): state of shape (n,) or (n,n)
+		conj (bool): conjugate
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (...,n,n)
+	Returns:
+		func (callable): contracted data and state with signature func(data,state,conj)
+	'''
+
+	if constants is None and noise is None:
+		
+		if state is None:
+			
+			state = data
+
+			subscripts = 'ij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state,conj):
+				return einsummation(data,state)
+
+		elif state.ndim == 1:
+			
+			subscripts = 'ij,j->i'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state,conj):
+				return einsummation(data,state)
+
+		elif state.ndim == 2:
+			
+			subscripts = 'ij,jk,lk->il'
+			shapes = (data.shape,state.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state,conj):
+				return einsummation(data,state,conjugate(data))
+
+	elif constants is not None and noise is None:
+
+		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise == None scheme")
+		
+	elif constants is None and noise is not None:
+
+		if state is None:
+
+			state = data
+
+			subscripts = 'uij,jk,kl->il'
+			shapes = (noise.shape,data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state,conj):
+				return einsummation(noise,data,state)	
+
+		elif state.ndim == 1:
+		
+			subscripts = 'uij,jk,k->i'
+			shapes = (noise.shape,data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state,conj):
+				return einsummation(noise,data,state)	
+
+		elif state.ndim == 2:
+
+			subscripts = 'uij,jk,kl,ml,unm->in'
+			shapes = (noise.shape,data.shape,state.shape,data.shape,noise.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state,conj):
+				return einsummation(noise,data,state,conjugate(data),conjugate(noise))	
+
+	elif constants is not None and noise is not None:
+
+		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
+		
+	func = jit(func)	
+
+	return func
+
+
+def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Contract data and state
+	Args:
+		parameters (array): parameters of shape (size,)
+		state (array): state of shape (n,) or (n,n)
+		conj (bool): conjugate
+		data (array): data of shape (length,)
+		identity (array): Array of data identity of shape (n,n)
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (...,n,n)
+	Returns:
+		func (callable): contracted data(parameters) and state with signature func(parameters,state,conj)
+	'''
+
+	size = parameters.shape[0] if parameters is not None else 1
+	length = len(data) if data is not None else 1
+
+	contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
+
+	if constants is None and noise is None:
+		
+		if state is None:
+			
+			state = identity
+
+			def func(parameters,state=state,conj=conj,contract=contract):
+				def func(i,out):
+					U = switch(i%length,data,parameters[i])
+					return contract(U,out,conj)
+
+				out = identity
+				return forloop(0,parameters.size,func,out)				
+	
+		elif state.ndim == 1:
+			
+			def func(parameters,state=state,conj=conj,contract=contract):
+				def func(i,out):
+					U = switch(i%length,data,parameters[i])
+					return contract(U,out,conj)
+
+				out = state
+				return forloop(0,parameters.size,func,out)				
+
+
+		elif state.ndim == 2:
+			
+			def func(parameters,state=state,conj=conj,contract=contract):
+				def func(i,out):
+					U = switch(i%length,data,parameters[i])
+					return contract(U,out,conj)
+
+				out = state
+				return forloop(0,parameters.size,func,out)				
+
+	elif constants is not None and noise is None:
+
+		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise == None scheme")
+
+	elif constants is None and noise is not None:
+
+		if state is None:
+
+			state = identity
+
+			def func(parameters,state=state,conj=conj,contract=contract):
+				def func(i,out):
+					U = switch(i%length,data,parameters[i])
+					return contract(U,out,conj)
+
+				out = identity
+				return forloop(0,parameters.size,func,out)	
+
+		elif state.ndim == 1:
+
+			def func(parameters,state=state,conj=conj,contract=contract):
+				def func(i,out):
+					U = switch(i%length,data,parameters[i])
+					return contract(U,out,conj)
+
+				out = state
+				return forloop(0,parameters.size,func,out)	
+
+		elif state.ndim == 2:
+
+			subparameters = slicing(parameters,0,length)
+			substate = None
+			subconj = conj
+			subdata = data
+			subidentity = identity
+			subconstants = constants
+			subnoise = None
+
+			subscheme = scheme
+
+			subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
+
+			def func(parameters,state=state,conj=conj,contract=contract):
+				def func(i,out):
+					x = slicing(parameters,i*length,length)
+					U = subfunc(x,identity,conj)
+					return contract(U,out,conj)
+
+				out = state
+				return forloop(0,parameters.size//length,func,out)	
+
+
+	elif constants is not None and noise is not None:
+
+		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
+		
+	func = jit(func)
+
+	return func			
+
+
+def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+	'''
+	Contract data and state
+	Args:
+		parameters (array): parameters of shape (size,)
+		state (array): state of shape (n,) or (n,n)
+		conj (bool): conjugate
+		data (array): data of shape (length,)
+		identity (array): Array of data identity of shape (n,n)
+		constants (array): Array of constants to act of shape (n,n)
+		noise (array): Array of noise to act of shape (...,n,n)
+	Returns:
+		func (callable): contracted data(parameters) and state with signature func(parameters,state,conj)
+	'''
+
+	size = parameters.shape[0]
+	length = len(data)
+
+	subscripts = 'ij,jk,kl->il'
+	shapes = (identity.shape,identity.shape,identity.shape)
+	einsummation = einsum(subscripts,*shapes)
+
+	if state is not None or noise is not None:
+		return None
+		raise NotImplementedError("TODO: Implement gradients for non-unitary contraction")
+
+
+	def func(parameters=None,state=None,conj=None):
+		def func(i):
+
+			subparameters = slicing(parameters,0,i)
+			substate = None
+			subconj = conj
+			subdata = data
+			subidentity = identity
+			subconstants = constants
+			subnoise = None
+
+			subscheme = scheme
+
+			subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
+
+			U = subfunc(subparameters,identity,subconj)
+
+
+			subparameters = slicing(parameters,i+1,size-i-1)
+			substate = None
+			subconj = conj
+			subdata = shift(data,-((i+1)%length))
+			subidentity = identity
+			subconstants = constants
+			subnoise = None
+
+			subscheme = scheme
+
+			subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
+
+			V = subfunc(subparameters,identity,subconj)
+
+			A = pi*data[i%length](parameters[i] + 1/2)
+
+			return einsummation(V,A,U)
+
+		return array([func(i) for i in range(parameters.size)])
+
+	func = jit(func)
+
+	return func

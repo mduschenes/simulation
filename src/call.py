@@ -1032,7 +1032,6 @@ def init(key,
 		Returns:
 			task (dict[str,str]): Task for job
 		'''
-
 		pool = 1 if pool is None else pool
 		verbose = False
 		execution = True if execute == -1 else execute
@@ -1155,7 +1154,7 @@ def init(key,
 			'resume':resume[key],
 			'boolean':True,
 			'cmd':None,
-			'env':None,
+			'env':env,
 			'process':process,
 			'pool':pool,
 			'size':size,
@@ -1177,7 +1176,7 @@ def init(key,
 		flags = []
 		cmd = []
 		options = []
-		env = []
+		env = env
 
 		cmd,env = command(args[key],task,exe=exe,flags=flags,cmd=cmd,options=options,env=env,process=process,processes=processes,device=device,execute=execution,verbose=verbose)
 

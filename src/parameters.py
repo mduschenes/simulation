@@ -13,10 +13,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vfunc,switch,array,arange,bound
+from src.utils import jit,vfunc,switch,array,arange,bound,setitem
 from src.utils import concatenate,addition
 from src.utils import initialize,slicing,datatype
-from src.utils import pi,itg,scalars,delim,separ
+from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin
 
 from src.iterables import indexer,inserter,setter,getter
 
@@ -100,8 +100,6 @@ class Parameter(System):
 		Returns:
 			constraints (array): constraints
 		'''
-		if parameters is None:
-			return 0
 
 		parameters = parameters.reshape(-1,*self.shape[1:])
 
@@ -138,7 +136,7 @@ class Parameter(System):
 		self.attributes = [attr for attr in self.attributes if getattr(self.model,attr,None) is not None] if self.attributes is not None else ()
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
 
-		self.parameters = self.parameters if self.parameters is not None else 1
+		self.parameters = array(self.parameters if self.parameters is not None else 1,dtype=self.dtype)
 		self.dtype = self.data.dtype if self.data is not None else None
 
 		# Set data
@@ -243,65 +241,82 @@ class Parameter(System):
 		self.data = self.data
 
 		# Set functions
-		# defaults = {
-		# 	'data':self.data,
-		# 	'parameters':self.parameters,
-		# 	'slices':self.slices,
-		# 	'constant':self.constant,'default':0,'lambda':0,'scale':1,'length':len(self.group)}
-		# category = self.category
-		# method = self.method
-		# kwargs = deepcopy(self.kwargs)
-		# kwargs.update({attr: kwargs.get(attr,defaults[attr]) for attr in defaults})
-		# kwargs = deepcopy(kwargs)
-		# for attr in kwargs:
+		defaults = {
+			'constant':self.constant,
+			'lambda':0,
+			'scale':[self.parameters,2*pi],
+			'shift':[[0],[-pi/2]],
+			'default':0,
+			}
+		self.kwargs.update({attr: kwargs.get(attr,defaults[attr]) for attr in defaults})
 
-		# 	if kwargs[attr] is None:
-		# 		continue
-		
-		# 	if attr in ['lambda','scale']:
+		for attr in self.kwargs:
+
+			if self.kwargs.get(attr) is None:
+				continue
+
+			if attr in ['lambda','scale','shift','default']:
 				
-		# 		kwargs[attr] = array(kwargs[attr],dtype=self.dtype)
+				self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
 			
-		# 	elif attr in ['constant']:
+			elif attr in ['constant']:
 				
-		# 		if not all(isinstance(kwargs[attr][i],dict) for i in kwargs[attr]):
-		# 			axis = -1
-		# 			kwargs[attr] = {axis:kwargs[attr]}
-		# 		for axis in list(kwargs[attr]):
-		# 			constants = kwargs[attr].pop(axis)
-		# 			indices = array([int(i) for i in constants])
-		# 			values = array([constants[i] for i in constants],dtype=self.dtype)
-		# 			axis = int(axis) % self.ndim
-		# 			indices = (*(slice(None),)*(axis-1),indices)
-		# 			kwargs[attr][axis] = {'indices':indices,'values':values}
+				if not all(isinstance(self.kwargs[attr][i],dict) for i in self.kwargs[attr]):
+					axis = -1
+					self.kwargs[attr] = {axis:self.kwargs[attr]}
+				for axis in list(self.kwargs[attr]):
+					constants = self.kwargs[attr].pop(axis)
+					indices = array([int(i) for i in constants])
+					values = array([constants[i] for i in constants],dtype=self.dtype)
+					axis = int(axis)
+					indices = (*(slice(None),)*(axis % self.ndim-1),indices)
+					self.kwargs[attr][axis] = {'indices':indices,'values':values}
+	
 
 		if self.category in ['variable']:
 
 			if self.method in ['bounded']:
+		
 				def func(parameters):
 					return self.parameters*bound(parameters[self.slices])
 
-				def constraint(parameters):
-					return 0					
+			elif self.method in ['constrained']:					
+			
+				def func(parameters):
+					parameters = bound(parameters[self.slices])
+					# shape = parameters.shape
+					# parameters = parameters.reshape(2,-1)
+					# parameters = self.parameters*parameters[0]*cos(2*pi*parameters[1] + self.kwargs['shift'])
+					# parameters = parameters.reshape(*shape)
+					return parameters
 
 			else:
+	
 				def func(parameters):
 					return self.parameters*parameters[self.slices]
-			
+		
+	
+
+			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
 				def constraint(parameters):
-					return 0
+					return self.kwargs['lambda']*((parameters[...,self.kwargs['constant'][-1]['indices']] - self.kwargs['constant'][-1]['values'])**2).sum()
+			else:
+				def constraint(parameters):
+					return self.kwargs['default']
 
 		else:
+		
 			def func(parameters):
 				return self.parameters*self.data[self.slices]
-		
+
+			
 			def constraint(parameters):
-				return 0
+				return self.kwargs['default']
+
+
+		self.func = jit(func)
 		
-
-		self.func = func
-		self.constraint = constraint
-
+		self.constraint = jit(constraint)
 
 		return
 
@@ -310,6 +325,9 @@ class Parameter(System):
 
 
 class Parameters(System):
+
+	__data__ = {}
+
 	def __init__(self,data=None,model=None,system=None,**kwargs):
 		'''
 		Initialize data of parameters
@@ -319,15 +337,14 @@ class Parameters(System):
 		and are contained in Parameters.data = {parameter: Parameter()} as Parameter() instances
 
 		Setup parameters such that calling the Parameters(parameters) class with input parameters 
-		i) parameters array of size (G*P*D),
-			for G groups of P parameters, each of dimension D, 
-			for parameter groups with category in ['variable'],
-			P,D may be group dependent, and depend on Parameter.locality, Parameter.model and Parameter.attributes 
-		ii) parameters for each group are sliced with parameter slices (slice(P),slice(D)) and reshaped into shape (P,D)
-		iii) parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
-		iv) parameters for all groups are concatenated to [parameter_i = Parameters[slices_i]]
-			with slices Parameters.slices = [slices]
-		v) Parameters(parameters) returns iterable of parameters for each data in model [parameter_i]
+		i) 		parameters array of size (G*P*D),
+					for G groups of P parameters, each of dimension D, 
+					for parameter groups with category in ['variable'],
+					P,D may be group dependent, and depend on Parameter.locality, Parameter.model and Parameter.attributes 
+		ii) 	parameters for each group are sliced with parameter slices (slice(P*D)) and reshaped into shape (P,D)
+		iii) 	parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
+		iv) 	parameters for all groups are concatenated to [parameter_i = Parameters[slices_i]][indices]
+					with slices Parameters.slices = [slices], and sorted with indices Parameters.indices = [indices]
 		
 		Args:
 			data (dict): Dictionary of data corresponding to parameters groups, with dictionary values with properties:
@@ -355,8 +372,8 @@ class Parameters(System):
 		'''
 
 		defaults = dict(
-			data=None,__data__={},
-			slices=None,indices=None,func=None,constraint=None,
+			data=None,
+			slices=None,indices=None,func=None,constraint=None,parameters=None,
 			shape=None,size=None,ndim=None,dtype=None,
 			)
 
@@ -371,26 +388,6 @@ class Parameters(System):
 
 		self.__setup__()
 
-		# for parameter in self:
-		# 	print(parameter)
-		# 	print(self[parameter].shape,self[parameter].slices,self[parameter].indices)
-		# 	# print(self[parameter].data)#())
-		# 	print(self[parameter]())
-		# 	# print(self[parameter](self[parameter].data))#()))
-		# 	print(self[parameter](self[parameter]()))
-		# 	print()
-
-		# if (self.data is not None) and (self.data.size > 0):
-		# 	print(self)
-		# 	print(self.slices,self.indices)
-		# 	# print(self.data)#())
-		# 	print(self())
-		# 	print()
-		# 	# print(self(self.data))#())
-		# 	print(self(self()))
-		# 	# print(self.constraints(self.data))#())
-		# 	print(self.constraints(self()))
-		# 	print('----------------')
 		return
 
 	def __call__(self,parameters=None):
@@ -446,6 +443,9 @@ class Parameters(System):
 				delattr(self,parameter)
 
 		
+		# Set dtype
+		dtype = datatype(self.dtype)
+
 		# Set indices and slices
 		slices = []
 		indices = []
@@ -467,6 +467,7 @@ class Parameters(System):
 		slices = [[*i] for i in slices]
 		indices = array([indices.index(i) for i in range(len(indices))])
 
+
 		# Set func and constraint
 		funcs = []
 		constraints = []
@@ -478,18 +479,13 @@ class Parameters(System):
 			func = self[parameter].constraints
 			constraints.append(func)
 
-		def func(parameters,slices=slices,funcs=funcs):
+		def func(parameters,slices=slices,funcs=funcs,dtype=dtype):
 			return concatenate([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)])
 
-		def constraint(parameters,slices=slices,funcs=constraints):
+		def constraint(parameters,slices=slices,funcs=constraints,dtype=dtype):
 			return addition(array([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)]))
 
-		self.indices = indices
-		self.slices = slices
-		self.func = func
-		self.constraint = constraint
-
-		# Set data
+		# Get data
 		data = []
 		for parameter in self:
 			if self[parameter].category not in ['variable']:
@@ -497,10 +493,26 @@ class Parameters(System):
 			parameter = self[parameter]()
 			data.extend(parameter)
 
-		data = array(data,dtype=self.dtype).reshape(-1) if data else None
+		data = array(data,dtype=self.dtype).ravel() if data else None
+
+		# Get parameters
+		parameters = []
+		for parameter in self:
+			parameter = self[parameter].parameters
+			if parameter.size > 1:
+				parameters.extend(parameter)	
+			else:
+				parameters.append(parameter)	
+
+		parameters = array(parameters,dtype=self.dtype).ravel() if parameters else None
 
 		# Set attributes
 		self.data = data
+		self.indices = indices
+		self.slices = slices
+		self.func = func
+		self.constraint = constraint
+		self.parameters = parameters
 		self.shape = self.data.shape if data is not None else None
 		self.size = self.data.size if data is not None else None
 		self.ndim = self.data.ndim if data is not None else None
