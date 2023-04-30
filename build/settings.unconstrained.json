@@ -1,5 +1,5 @@
 {
-"class":{
+"cls":{
 	"model":"src.quantum.Unitary",
 	"parameters":"src.parameters.Parameters",
 	"label":"src.quantum.Label",
@@ -14,9 +14,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":721931,
-	"size":10,
-	"reset":43253,
+	"seed":1821,
+	"size":30,
+	"reset":1821,
 	"index":null
 	},
 "permutations":{
@@ -24,30 +24,48 @@
 	
 		"model.N":[2],		
 		"model.M":[5,10,20,50,100,200,500,1000,2000,5000],
-		"model.tau":[100],
+		"model.M":[5000,2000,1000,500,200,100,50,10],
+		"model.tau":[141.241],
 
 		"system.unit":[1e6],
 		"system.dtype":["complex256"],
-		"parameters.xy.scale":[1],
-		"parameters.z.scale":[1.230231e-2],
-		"parameters.zz.scale":[1.42117230231e-4],
-		"noise.scale":[null],
-		"state.scale":[null],
+		"system.dtype":["complex128"],
+		"parameters.xy.parameters":[1],
+		"parameters.z.parameters":[1.230231e-2],
+		"parameters.zz.parameters":[1.42117230231e-4],
+		"label.string":["label"],
+		"label.operator":["haar"],
+		"label.parameters":[1],
+		"noise.parameters":[false],
+		"state.parameters":[false],
 
 		"parameters.xy.method":[null],
 		"parameters.xy.locality":[null],
 		"parameters.xy.bounds":[[-1,1]],
 		"parameters.xy.constant":[null],					
+		"parameters.xy.kwargs.lambda":[null],		
 
-		"optimize.iterations":[[0,1000]],
+		"optimize.iterations":[[0,2000]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["real"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/unconstrained.ad.2.256.5.5000"],
-		"jobs.postprocess.cwd":["gobi/unconstrained.ad.2.256.5.5000"],
-		
+		"jobs.job.cwd":["gobi/unconstrained.ad.4.256.5.200.50"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.ad.4.256.5.200.50"],
+
+		"jobs.job.cwd":["gobi/unconstrained.ad.4.128.500.5000.50"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.ad.4.128.500.5000.50"],
+
+		"jobs.job.cwd":["gobi/unconstrained.ad.4.256.500.1000.50"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.ad.4.256.500.1000.50"],
+
+		"jobs.job.cwd":["gobi/unconstrained.ad.2.256.5.5000.30.141"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.ad.2.256.5.5000.30.141"],
+
+		"jobs.job.cwd":["gobi/unconstrained.ad.2.128.5.5000.30.141"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.ad.2.128.5.5000.30.141"],
+
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
@@ -62,15 +80,17 @@
 		"jobs.job.resume":[null],
 		"jobs.postprocess.resume":[null],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
+		"jobs.job.args.NUMPY_BACKEND":["autograd"],
+		"jobs.job.args.NUMPY_BACKEND":["jax.autograd"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["20:00:00"],
+		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
 		"jobs.job.patterns.mem":["64GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[1],
-		"jobs.postprocess.patterns.cpus-per-task":[2]		
+		"jobs.postprocess.patterns.cpus-per-task":[2]	
 		},
 	"groups":null,
 	"index":null
@@ -99,7 +119,7 @@
 	"dtype":"complex256",
 	"format":"array",
 	"device":"cpu",
-	"backend":"np",
+	"backend":null,
 	"architecture":null,
 	"seed":null,	
 	"key":null,
@@ -117,8 +137,8 @@
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
-	"eps":{"value":1e-30,"grad":1e-30,"value.difference":1e-30,"grad.difference":1e-30,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
-	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":100,"alpha":0,"beta":0},
+	"eps":{"value":0,"grad":0,"value.difference":0,"grad.difference":0,"value.increase":0,"iteration":1,"alpha":1e-7,"beta":1e3},
+	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":1e4,"alpha":0,"beta":0},
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e30,1e30],"alpha":[1e-30,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
@@ -140,8 +160,8 @@
 		},
 	"track":{
 			"iteration":[],
-			"parameters":[],
-			"grad":[],
+			"parameters":false,
+			"grad":false,
 			"search":false,
 			"value":[],
 			"objective":[],
@@ -323,6 +343,7 @@
 		"verbose":"info"
 		}
 	},
+"callback":{},
 "process": {},
 "plot": {}
 }
