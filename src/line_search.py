@@ -10,13 +10,13 @@ import scipy as osp
 
 ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
-BACKENDS = ['jax','autograd']
+BACKENDS = ['jax','autograd','jax.autograd']
 
 BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
 
 assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	envs = {
 		'JAX_PLATFORM_NAME':'cpu',
@@ -47,7 +47,7 @@ __all__ = ['LineSearchWarning', 'line_search_wolfe1', 'line_search_wolfe2',
 		   'scalar_search_wolfe1', 'scalar_search_wolfe2',
 		   'armijo']
 
-if BACKEND in ['jax']:
+if BACKEND in ['jax','jax.autograd']:
 
 	def setitem(obj,index,item):
 		'''
