@@ -1126,14 +1126,22 @@ class Operators(Object):
 			hermitian = False
 			unitary = False
 			shape = identity.shape
-		elif state.ndim == 1:
+		elif state.ndim == 1 and noise is not None:
+			hermitian = False
+			unitary = False
+			shape = state.shape
+		elif state.ndim == 2 and noise is not None:
+			hermitian = False
+			unitary = False
+			shape = state.shape
+		elif state.ndim == 1 and noise is None:
 			hermitian = True
 			unitary = False
 			shape = state.shape
-		elif state.ndim == 2:
+		elif state.ndim == 2 and noise is None:
 			hermitian = True
 			unitary = False
-			shape = state.shape
+			shape = state.shape			
 		else:
 			raise NotImplementedError
 
