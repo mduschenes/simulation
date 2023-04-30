@@ -613,12 +613,13 @@ def check_machine_precision(path,tol):
 
 	seed = 12931
 	maxbits = 256
-	maxdtype = 'float%d'%(maxbits//2)
+	maxdtype = 'complex%d'%(maxbits)
+	maxftype = 'float%d'%(maxbits//2)
 	np.random.seed(seed)
 
 	def analytical(k,n,eps):
 		
-		error = np.zeros(k,dtype=maxdtype)
+		error = np.zeros(k,dtype=maxftype)
 		
 		for i in range(k):
 			# e = (np.array(n,dtype=dtype)**i)*((1 + np.sqrt(sum(((1+eps)**(j+1) - 1)**2 for j in range(n))))**(i+1) - 1)
@@ -631,28 +632,30 @@ def check_machine_precision(path,tol):
 
 	def numerical(k,n,eps):
 		random = 'haar'
-		bits = int(eps*np.log10(2))
+		info = np.finfo('complex%d'%(eps))
+		bits = -np.floor(np.log10(info.eps))
+
 		dtype = 'complex%d'%(eps)
 		ftype = 'float%d'%(eps//2)
-		norm = lambda A,ord=2: (((np.abs(A)**ord).sum(dtype=maxdtype))**(1/ord)).real
+		norm = lambda A,ord=2: (((np.absolute(A,dtype=maxftype)**ord).sum(dtype=maxftype))**(1/ord)).real
 		
 		V = sp.Matrix([[sp.exp(sp.Mul(sp.I,2*sp.pi,sp.Rational(i*j,n))) for j in range(n)] for i in range(n)])/sp.sqrt(n)
 		S = [sp.Rational(np.random.randint(1,i) if i>1 else 0,i) for i in np.random.randint(1,n**2,size=n)]
 		D = lambda k=1: sp.diag(*(sp.exp(sp.Mul(sp.I,2*sp.pi,s,k)) for s in S))
 		W = lambda k=1: V*D(k)*V.H
-		N = lambda A: np.array(sp.N(A,2*maxbits),dtype=dtype)
+		N = lambda A: np.array(sp.N(A,4*maxbits),dtype=maxdtype)
 
 		A = N(W())
 		C = norm(A)
 		B = A
 		
-		error = np.zeros(k,dtype=ftype)
+		error = np.zeros(k,dtype=maxftype)
 		
 		for i in range(k):
-			B = np.dot(A,B)
+			B = np.matmul(A,B,dtype=dtype)# + 0.5*10**(-bits)*np.random.choice([-1,1],B.shape).astype(maxdtype) 
 			e = norm(B - N(W(i+2)))/C
 			error[i] = e
-			print(i,e,B.dtype,error[i].dtype)
+			print(i,e,B.dtype,error[i].dtype,bits)
 		
 		return error		
 
@@ -682,7 +685,7 @@ def check_machine_precision(path,tol):
 	K = list(range(1,k+1))
 	L = 13
 	samples = 1
-	epsilon = np.logspace(-20,-20+L-1,L,dtype=maxdtype).tolist()
+	epsilon = np.logspace(-20,-20+L-1,L,dtype=maxftype).tolist()
 	precision = [64,128,256]
 
 	mplstyle = 'config/plot.mplstyle'
@@ -704,7 +707,7 @@ def check_machine_precision(path,tol):
 			eps = -np.floor(np.log10(info.eps))
 			print(info)
 			error = [numerical(k,n,bits) for i in range(samples)]
-			error,errorerr = np.mean(error,axis=0,dtype=maxdtype),np.std(error,axis=0,dtype=maxdtype)/np.sqrt(max(1,samples-1),dtype=maxdtype)
+			error,errorerr = np.mean(error,axis=0,dtype=maxftype),np.std(error,axis=0,dtype=maxftype)/np.sqrt(max(1,samples-1),dtype=maxftype)
 			plot = ax.errorbar(K,error,yerr=errorerr,
 				alpha=0.7,#(precision.index(bits)+1)/len(precision),
 				linewidth=4,
