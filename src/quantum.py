@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
-from src.utils import array,asarray,empty,identity,ones,zeros,arange,rand
+from src.utils import array,asarray,empty,identity,ones,zeros,arange,rand,diag
 from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,sort,relsort
 from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos
 from src.utils import to_string,is_hermitian,is_unitary,allclose
@@ -363,32 +363,46 @@ class Object(System):
 		unitary = self.unitary	
 
 		if ndim > 3:
-			normalization = einsum('...uij,...ukj->...ik',conjugate(data),data)
-			eps = array([identity(shape[-2:],dtype=dtype)]*(normalization.ndim-2),dtype=dtype)
-		elif ndim == 3:
-			normalization = einsum('uij,ukj->ik',conjugate(data),data)
-			eps = identity(shape[-2:],dtype=dtype)
-		elif ndim == 2:
 			if hermitian and not unitary:
-				normalization = einsum('ii->',data)
-				eps = ones(shape[:-2],dtype=dtype)
+				norm = None
+				eps = None
 			elif not hermitian and unitary:
-				normalization = einsum('ij,kj->ik',conjugate(data),data)
+				norm = einsum('...uij,...ukj->...ik',conjugate(data),data)
+				eps = array([identity(shape[-2:],dtype=dtype)]*(norm.ndim-2),dtype=dtype)
+			else:
+				norm = None
+				eps = None
+		elif ndim == 3:
+			if hermitian and unitary:
+				norm = None
+				eps = None
+			elif not hermitian and unitary:
+				norm = einsum('uij,ukj->ik',conjugate(data),data)
 				eps = identity(shape[-2:],dtype=dtype)
 			else:
-				normalization = None
+				norm = None
+				eps = None
+		elif ndim == 2:
+			if hermitian and not unitary:
+				norm = einsum('ii->',data)
+				eps = ones(shape[:-2],dtype=dtype)
+			elif not hermitian and unitary:
+				norm = einsum('ij,kj->ik',conjugate(data),data)
+				eps = identity(shape[-2:],dtype=dtype)
+			else:
+				norm = None
 				eps = None
 		else:
-			normalization = einsum('i,i->',conjugate(data),data)
+			norm = einsum('i,i->',conjugate(data),data)
 			eps = ones(shape=(),dtype=dtype)
 
-		if normalization is None or eps is None:
+		if norm is None or eps is None:
 			return
 
-		assert (eps.shape == normalization.shape), "Incorrect operator shape %r != %r"%(eps.shape,normalization.shape)
+		assert (eps.shape == norm.shape), "Incorrect operator shape %r != %r"%(eps.shape,norm.shape)
 
 		if dtype not in ['complex256','float128']:
-			assert allclose(eps,normalization), "Incorrect normalization data%r: %r (hermitian: %r, unitary : %r)"%(eps.shape,normalization,hermitian,unitary)
+			assert allclose(eps,norm), "Incorrect norm data%r: %r (hermitian: %r, unitary : %r)"%(eps.shape,norm,hermitian,unitary)
 
 		return
 
@@ -755,6 +769,7 @@ class Noise(Object):
 
 	basis = {
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
+		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['E','eps']},
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['D','depolarize']},
 		**{attr: Object(data=array([[0,1],[1,0]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['X','x','amplitude']},
 		**{attr: Object(data=array([[1,0],[0,0]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['00']},
@@ -813,6 +828,9 @@ class Noise(Object):
 		parameters = self.parameters
 		operator = delim.join(self.operator) if self.operator else None
 
+		hermitian = True
+		unitary = False
+
 		if parameters > 0:
 			if operator is None:
 				data = [self.basis['I']()]
@@ -827,17 +845,22 @@ class Noise(Object):
 						sqrt(parameters/3)*self.basis['X'](),
 						sqrt(parameters/3)*self.basis['Y'](),
 						sqrt(parameters/3)*self.basis['Z']()]
+			elif operator in ['eps']:
+				data = array([identity(self.n),diag((1+parameters)*(arange(self.n)+1) - 1)])
+				hermitian = False
+				unitary = False
 			else:
 				data = [self.basis['I']()]
 		else:
 			data = [self.basis['I']()]
 
-		data = array([tensorprod(i)	for i in itertools.product(data,repeat=self.N)],dtype=self.dtype)
+		if not isinstance(data,arrays):
+			data = array([tensorprod(i)	for i in itertools.product(data,repeat=self.N)],dtype=self.dtype)
 
-		hermitian = True
-		unitary = False
 
 		self.data = data
+		self.hermitian = hermitian
+		self.unitary = unitary
 
 		return
 
@@ -1099,6 +1122,10 @@ class Operators(Object):
 			hermitian = False
 			unitary = True
 			shape = identity.shape
+		elif state is None and noise is not None:
+			hermitian = False
+			unitary = False
+			shape = identity.shape
 		elif state.ndim == 1 and noise is None:
 			hermitian = True
 			unitary = False
@@ -1107,10 +1134,6 @@ class Operators(Object):
 			hermitian = True
 			unitary = False
 			shape = state.shape
-		elif state.ndim == 2 and noise is not None:
-			hermitian = True
-			unitary = False
-			shape = state.shape			
 		else:
 			raise NotImplementedError
 
@@ -2056,9 +2079,9 @@ class Callback(System):
 				# 	for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				# 'U\n%s\nV\n%s'%(
-				# 	to_string((model(parameters)).round(4)),
-				# 	to_string((metric.label()).round(4))),
+				'U\n%s\nV\n%s'%(
+					to_string((model(parameters)).round(4)),
+					to_string((metric.label()).round(4))),
 				])
 
 
@@ -2166,11 +2189,23 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 		if state is None:
 
-			raise NotImplementedError("TODO: Implement state == None, constants == None, noise != None scheme")
+			state = data
+
+			subscripts = 'uij,jk,kl->il'
+			shapes = (noise.shape,data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state,conj):
+				return einsummation(noise,data,state)	
 
 		elif state.ndim == 1:
+		
+			subscripts = 'uij,jk,k->i'
+			shapes = (noise.shape,data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
 
-			raise NotImplementedError("TODO: Implement state.ndim == 1, constants == None, noise != None scheme")
+			def func(data,state,conj):
+				return einsummation(noise,data,state)	
 
 		elif state.ndim == 2:
 
@@ -2180,11 +2215,6 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 			def func(data,state,conj):
 				return einsummation(noise,data,state,conjugate(data),conjugate(noise))	
-
-		else:
-			
-			raise NotImplementedError("TODO: Implement state.ndim > 2, constants == None, noise != None scheme")
-
 
 	elif constants is not None and noise is not None:
 
@@ -2258,11 +2288,25 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 
 		if state is None:
 
-			raise NotImplementedError("TODO: Implement state == None, constants == None, noise != None scheme")
+			state = identity
+
+			def func(parameters,state=state,conj=conj,contract=contract):
+				def func(i,out):
+					U = switch(i%length,data,parameters[i])
+					return contract(U,out,conj)
+
+				out = identity
+				return forloop(0,parameters.size,func,out)	
 
 		elif state.ndim == 1:
 
-			raise NotImplementedError("TODO: Implement state.ndim == 1, constants == None, noise != None scheme")
+			def func(parameters,state=state,conj=conj,contract=contract):
+				def func(i,out):
+					U = switch(i%length,data,parameters[i])
+					return contract(U,out,conj)
+
+				out = state
+				return forloop(0,parameters.size,func,out)	
 
 		elif state.ndim == 2:
 
@@ -2286,10 +2330,6 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 
 				out = state
 				return forloop(0,parameters.size//length,func,out)	
-
-		else:
-			
-			raise NotImplementedError("TODO: Implement state.ndim > 2, constants == None, noise != None scheme")
 
 
 	elif constants is not None and noise is not None:
@@ -2324,7 +2364,7 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 	einsummation = einsum(subscripts,*shapes)
 
 	if state is not None or noise is not None:
-
+		return None
 		raise NotImplementedError("TODO: Implement gradients for non-unitary contraction")
 
 

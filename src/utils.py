@@ -3202,7 +3202,8 @@ def mse(*operands,optimize=True,wrapper=None):
 	@jit
 	def func(*operands):
 		out = operands[0]-operands[1]
-		out = real(einsummation(out,out,*operands[2:]))
+		out = real(einsummation(out,conjugate(out),*operands[2:])/
+				   einsummation(operands[1],conjugate(operands[1]),*operands[2:]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -3283,19 +3284,24 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 		@jit
 		def func(*operands):
 			out = operands[0]-operands[1]
-			out = real(einsummation(operands[2],out))
+			out = 2*real(einsummation(operands[2],conjugate(out))/
+				   einsummation(operands[1],conjugate(operands[1]))
+				)
 			return wrapper(out,*operands)
 	elif length == 4:
 		@jit
 		def func(*operands):
 			out = operands[0]-operands[1]			
-			out = real(einsummation(operands[3],out,operands[2]))
+			out = 2*real(einsummation(operands[3],conjugate(out),operands[2])/
+				   einsummation(operands[1],conjugate(operands[1]))
+				   )
 			return wrapper(out,*operands)
 	else:
 		@jit
 		def func(*operands):
 			out = operands[0]-operands[1]
-			out = real(einsummation(operands[2],out))
+			out = 2*real(einsummation(operands[2],conjugate(out))/
+				   einsummation(operands[1],conjugate(operands[1])))
 			return wrapper(out,*operands)			
 
 	if isarray:

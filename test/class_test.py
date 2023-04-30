@@ -643,19 +643,30 @@ def check_machine_precision(path,tol):
 		S = [sp.Rational(np.random.randint(1,i) if i>1 else 0,i) for i in np.random.randint(1,n**2,size=n)]
 		D = lambda k=1: sp.diag(*(sp.exp(sp.Mul(sp.I,2*sp.pi,s,k)) for s in S))
 		W = lambda k=1: V*D(k)*V.H
-		N = lambda A: np.array(sp.N(A,4*maxbits),dtype=maxdtype)
+		N = lambda A,bits=4*maxbits: np.array(sp.N(A,bits),dtype=maxdtype)
+		E = np.diag((1+10**(-bits))**(np.arange(n)+2)-1)
 
-		A = N(W())
+		A = N(W(),bits=bits)
 		C = norm(A)
 		B = A
+
+		# print(A)
+		# print(A*B)
+		# print(N(W(2)))
+		# print(A*B - N(W(2)))
+		# print(norm(A))
+		# exit()
 		
 		error = np.zeros(k,dtype=maxftype)
 		
 		for i in range(k):
 			B = np.matmul(A,B,dtype=dtype)# + 0.5*10**(-bits)*np.random.choice([-1,1],B.shape).astype(maxdtype) 
+			# B = np.matmul(A,B,dtype=maxdtype) + np.matmul(A,np.matmul(E,B,dtype=maxdtype),dtype=maxdtype) # + 0.5*10**(-bits)*np.random.choice([-1,1],B.shape).astype(maxdtype) 
+			# B = A*B
 			e = norm(B - N(W(i+2)))/C
+			# e = norm(np.array(sp.N(B,bits),dtype=maxdtype) - N(W(i+2)))/C
 			error[i] = e
-			print(i,e,B.dtype,error[i].dtype,bits)
+			print(i,e,dtype,error[i].dtype,bits)
 		
 		return error		
 
@@ -663,7 +674,7 @@ def check_machine_precision(path,tol):
 		bits = int(eps*np.log10(2))
 		dtype = 'float%d'%(eps//2)
 
-		N = lambda a: np.asscalar(np.array(sp.N(a,2*maxbits),dtype=dtype))
+		N = lambda a,bits=4*maxbits: np.asscalar(np.array(sp.N(a,bits),dtype=dtype))
 
 		v = sp.Rational(np.random.randint(1,n),n)
 		a = N(v)
