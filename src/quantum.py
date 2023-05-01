@@ -846,7 +846,7 @@ class Noise(Object):
 						sqrt(parameters/3)*self.basis['Y'](),
 						sqrt(parameters/3)*self.basis['Z']()]
 			elif operator in ['eps']:
-				data = array([identity(self.n),diag((1+parameters)*(arange(self.n)+1) - 1)])
+				data = array([identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
 				hermitian = False
 				unitary = False
 			else:

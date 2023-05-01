@@ -1704,6 +1704,8 @@ def plotter(settings,hyperparameters,verbose=None):
 									data[attr] = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
 								elif attr in ['zorder']:
 									data[attr] = 1000*data[attr]['__index__']
+								elif attr in ['marker']:
+									data[attr] = data[attr]['__value__'][data[attr]['__index__']%len(data[attr]['__value__'])] if not isinstance(data[attr]['__value__'],str) else data[attr]['__value__']
 								elif attr in ['linestyle']:
 									data[attr] = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
 									data[attr] = '-' if data[attr] < 1/3 else '--' if data[attr] < 2/3 else '---'
