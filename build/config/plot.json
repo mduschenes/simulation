@@ -46,8 +46,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}
                 }
             ],
             "fill_between": [
@@ -68,7 +68,7 @@
                         }
                     },
                     "alpha": 0.4,
-                    "color":{"@M@":"viridis"}
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"}
                 }
             ],
             "set_ylabel": {
@@ -260,8 +260,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}
                 }
             ],
             "fill_between": [
@@ -276,8 +276,8 @@
                         "noise.parameters": null
                     },
                     "alpha": 0.5,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}
                 }
             ],
             "set_ylabel": {
@@ -469,8 +469,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 }
             ],
             "fill_between": [
@@ -485,8 +485,8 @@
                         "noise.parameters": null
                     },
                     "alpha": 0.5,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 }
             ],
             "set_ylabel": {
@@ -894,8 +894,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 }
             ],
             "fill_between": [
@@ -928,8 +928,8 @@
                         }
                     },
                     "alpha": 0.5,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 }
             ],
             "set_ylabel": {
@@ -1129,8 +1129,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 }
             ],
             "fill_between": [
@@ -1163,8 +1163,8 @@
                         }
                     },
                     "alpha": 0.5,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}
                 }
             ],
             "set_ylabel": {
@@ -1355,8 +1355,8 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 },
                 {
                     "x": "noise.parameters",
@@ -1384,8 +1384,8 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 }
             ],
             "set_colorbar": {
@@ -1602,8 +1602,8 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 }
             ],
             "set_ylabel": {
@@ -3346,8 +3346,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 },
                 {
                     "x": null,
@@ -3407,8 +3407,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 }
             ],
             "set_ylabel": {
@@ -3607,8 +3607,8 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis"},
-                    "ecolor":{"@M@":"viridis"}                    
+                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
                 }
             ],
             "set_ylabel": {
@@ -3775,8 +3775,8 @@
                 "linestyle": "--",
                 "elinewidth": 2,
                 "capsize": 3,
-                "color":{"@M@":"viridis"},
-                "ecolor":{"@M@":"viridis"}                
+                "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                
             }],
             "set_ylabel": {
                 "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
@@ -3943,8 +3943,8 @@
                 "linestyle": "--",
                 "elinewidth": 2,
                 "capsize": 3,
-                "color":{"@M@":"viridis"},
-                "ecolor":{"@M@":"viridis"}                
+                "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
+                "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                
             }],
             "set_ylabel": {
                 "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
