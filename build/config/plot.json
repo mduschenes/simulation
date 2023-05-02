@@ -24,12 +24,16 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,
+                            "backend": null,
                             "noise.parameters": null
                         },
                         "legend": {
-                            "label":{"instance": "\\textrm{Avg}"},
-                            "exclude":["instance"]
+                            "label": {
+                                "instance": "\\textrm{Avg}"
+                            },
+                            "exclude": [
+                                "instance"
+                            ]
                         },
                         "scinotation": {
                             "scilimits": [
@@ -40,14 +44,19 @@
                             "one": false
                         }
                     },
-                    "marker": "o",
+                    "marker": {"@M@":["o","^","s"]},
                     "markersize": 12,
                     "linestyle": "-",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}
+                    "color": {
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "fill_between": [
@@ -55,20 +64,26 @@
                     "x": "iteration",
                     "y": "objective",
                     "label": {
-                        "label":{
+                        "label": {
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "noise.parameters": null
-                            },
+                        },
                         "legend": {
-                            "label":{},
-                            "exclude":["M","instance"]
+                            "label": {},
+                            "exclude": [
+                                "M",
+                                "instance"
+                            ]
                         }
                     },
                     "alpha": 0.4,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"}
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -241,7 +256,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -260,8 +275,14 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "fill_between": [
@@ -272,12 +293,18 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
-                        "backend":null,                        
+                        "backend": null,
                         "noise.parameters": null
                     },
                     "alpha": 0.5,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -450,7 +477,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -469,8 +496,14 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "fill_between": [
@@ -481,12 +514,18 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
-                        "backend":null,                        
+                        "backend": null,
                         "noise.parameters": null
                     },
                     "alpha": 0.5,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -677,8 +716,12 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@tau.noise.scale@":"viridis"},
-                    "ecolor":{"@tau.noise.scale@":"viridis"}                    
+                    "color": {
+                        "@tau.noise.scale@": "viridis"
+                    },
+                    "ecolor": {
+                        "@tau.noise.scale@": "viridis"
+                    }
                 }
             ],
             "fill_between": [
@@ -692,8 +735,12 @@
                         "noise.scale": null
                     },
                     "alpha": 0.5,
-                    "color":{"@tau.noise.scale@":"viridis"},
-                    "ecolor":{"@tau.noise.scale@":"viridis"}                    
+                    "color": {
+                        "@tau.noise.scale@": "viridis"
+                    },
+                    "ecolor": {
+                        "@tau.noise.scale@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -867,7 +914,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -894,8 +941,14 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "fill_between": [
@@ -907,7 +960,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -928,8 +981,14 @@
                         }
                     },
                     "alpha": 0.5,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -1102,7 +1161,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -1129,8 +1188,14 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "fill_between": [
@@ -1142,7 +1207,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -1163,8 +1228,14 @@
                         }
                     },
                     "alpha": 0.5,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -1337,7 +1408,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "iteration": "@iteration.min@"
                         },
                         "scinotation": {
@@ -1355,8 +1426,14 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 },
                 {
                     "x": "noise.parameters",
@@ -1366,7 +1443,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "iteration": "@iteration.min@"
                         },
                         "scinotation": {
@@ -1384,8 +1461,14 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "set_colorbar": {
@@ -1411,10 +1494,14 @@
                 },
                 "set_ticklabels": {
                     "ticklabels": [
-                        0,2,4,6,8
+                        0,
+                        2,
+                        4,
+                        6,
+                        8
                     ],
                     "size": 50
-                },                
+                },
                 "ax.yaxis.set_tick_params": {
                     "pad": 5
                 },
@@ -1592,7 +1679,7 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "M": null,
-                        "backend":null,                        
+                        "backend": null,
                         "iteration": "@iteration.min@"
                     },
                     "alpha": 0.8,
@@ -1602,8 +1689,14 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -1801,8 +1894,12 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@tau@":"viridis"},
-                    "ecolor":{"@tau@":"viridis"}                    
+                    "color": {
+                        "@tau@": "viridis"
+                    },
+                    "ecolor": {
+                        "@tau@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -2001,8 +2098,12 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@tau@":"viridis"},
-                    "ecolor":{"@tau@":"viridis"}                    
+                    "color": {
+                        "@tau@": "viridis"
+                    },
+                    "ecolor": {
+                        "@tau@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -2199,8 +2300,12 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@noise.parameters@":"viridis"},
-                    "ecolor":{"@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "set_colorbar": {
@@ -2229,7 +2334,7 @@
                         1.0
                     ],
                     "size": 50
-                },                 
+                },
                 "ax.yaxis.set_tick_params": {
                     "pad": 5
                 },
@@ -2399,24 +2504,30 @@
             "close": {}
         },
         "ax": {
-            "errorbar": [{
-                "x": "M",
-                "y": "variables.relative.mean",
-                "label": {
-                    "N": null,
-                    "parameters.xy.method": null,
-                    "noise.parameters": null,
-                    "iteration": "@iteration.min@"
-                },
-                "marker": "o",
-                "markersize": 8,
-                "linewidth": 4,
-                "linestyle": "-",
-                "elinewidth": 2,
-                "capsize": 3,
-                "color":{"@noise.parameters@":"viridis"},
-                "ecolor":{"@noise.parameters@":"viridis"}                
-            }],
+            "errorbar": [
+                {
+                    "x": "M",
+                    "y": "variables.relative.mean",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "noise.parameters": null,
+                        "iteration": "@iteration.min@"
+                    },
+                    "marker": "o",
+                    "markersize": 8,
+                    "linewidth": 4,
+                    "linestyle": "-",
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color": {
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@noise.parameters@": "viridis"
+                    }
+                }
+            ],
             "legend": {
                 "title_fontsize": 20,
                 "get_title": {
@@ -2578,24 +2689,30 @@
             "close": {}
         },
         "ax": {
-            "errorbar": [{
-                "x": "M",
-                "y": "iteration.min",
-                "label": {
-                    "N": null,
-                    "parameters.xy.method": null,
-                    "noise.parameters": null,
-                    "iteration": "@iteration.min@"
-                },
-                "marker": "o",
-                "markersize": 8,
-                "linewidth": 4,
-                "linestyle": "-",
-                "elinewidth": 2,
-                "capsize": 3,
-                "color":{"@noise.parameters@":"viridis"},
-                "ecolor":{"@noise.parameters@":"viridis"}
-            }],
+            "errorbar": [
+                {
+                    "x": "M",
+                    "y": "iteration.min",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "noise.parameters": null,
+                        "iteration": "@iteration.min@"
+                    },
+                    "marker": "o",
+                    "markersize": 8,
+                    "linewidth": 4,
+                    "linestyle": "-",
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color": {
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@noise.parameters@": "viridis"
+                    }
+                }
+            ],
             "legend": {
                 "title_fontsize": 20,
                 "get_title": {
@@ -2734,8 +2851,12 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color":{"@noise.scale@":"viridis"},
-                    "ecolor":{"@noise.scale@":"viridis"}                    
+                    "color": {
+                        "@noise.scale@": "viridis"
+                    },
+                    "ecolor": {
+                        "@noise.scale@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -2915,24 +3036,30 @@
             "close": {}
         },
         "ax": {
-            "errorbar": [{
-                "x": "tau",
-                "y": "iteration.min",
-                "label": {
-                    "N": null,
-                    "parameters.xy.method": null,
-                    "noise.scale": null,
-                    "iteration": "@iteration.min@"
-                },
-                "marker": "o",
-                "markersize": 8,
-                "linewidth": 4,
-                "linestyle": "-",
-                "elinewidth": 2,
-                "capsize": 3,
-                "color":{"@noise.scale@":"viridis"},
-                "ecolor":{"@noise.scale@":"viridis"}                
-            }],
+            "errorbar": [
+                {
+                    "x": "tau",
+                    "y": "iteration.min",
+                    "label": {
+                        "N": null,
+                        "parameters.xy.method": null,
+                        "noise.scale": null,
+                        "iteration": "@iteration.min@"
+                    },
+                    "marker": "o",
+                    "markersize": 8,
+                    "linewidth": 4,
+                    "linestyle": "-",
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color": {
+                        "@noise.scale@": "viridis"
+                    },
+                    "ecolor": {
+                        "@noise.scale@": "viridis"
+                    }
+                }
+            ],
             "legend": {
                 "title_fontsize": 20,
                 "get_title": {
@@ -3071,7 +3198,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,
+                            "backend": null,
                             "noise.parameters": null
                         },
                         "shape": {
@@ -3096,8 +3223,8 @@
                                 "M"
                             ]
                         },
-                        "legend":{
-                            "exclude":null
+                        "legend": {
+                            "exclude": null
                         },
                         "scinotation": {
                             "scilimits": [
@@ -3108,7 +3235,9 @@
                             "one": false
                         }
                     },
-                    "alpha": {"__axis__":0.5},
+                    "alpha": {
+                        "__axis__": 0.5
+                    },
                     "zorder": 1000,
                     "marker": "o",
                     "markersize": 12,
@@ -3116,8 +3245,12 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color": {"@M@":"viridis"},
-                    "ecolor": {"@M@":"viridis"}
+                    "color": {
+                        "@M@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis"
+                    }
                 }
             ],
             "set_colorbar": {
@@ -3140,7 +3273,7 @@
                 "set_ticklabels": {
                     "ticklabels": 3,
                     "size": 50
-                },                
+                },
                 "ax.yaxis.set_tick_params": {
                     "pad": 5
                 },
@@ -3239,8 +3372,8 @@
                 ],
                 "ncol": 1,
                 "join": null,
-                "keep":"last",
-                "alpha":1,
+                "keep": "last",
+                "alpha": 1,
                 "set_label": true,
                 "set_zorder": {
                     "level": 100
@@ -3295,15 +3428,17 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "noise.parameters": null,
                             "iteration": "$0$",
                             "$\\textrm{Iteration}$": "\\textrm{Initial},~\\textrm{Final}"
                         },
                         "legend": {
-                            "label":{},
-                            "exclude":["iteration"]
-                        },                        
+                            "label": {},
+                            "exclude": [
+                                "iteration"
+                            ]
+                        },
                         "shape": {
                             "shape": {
                                 "row": [
@@ -3327,8 +3462,8 @@
                             ]
                         },
                         "normalize": {
-                                "x":"size"
-                            },
+                            "x": "size"
+                        },
                         "scinotation": {
                             "scilimits": [
                                 0,
@@ -3346,8 +3481,14 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 },
                 {
                     "x": null,
@@ -3357,14 +3498,16 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
                         "legend": {
-                            "label":{},
-                            "exclude":["iteration"]
-                        },                        
+                            "label": {},
+                            "exclude": [
+                                "iteration"
+                            ]
+                        },
                         "shape": {
                             "shape": {
                                 "row": [
@@ -3388,8 +3531,8 @@
                             ]
                         },
                         "normalize": {
-                                "x":"size"
-                            },
+                            "x": "size"
+                        },
                         "scinotation": {
                             "scilimits": [
                                 0,
@@ -3407,8 +3550,14 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -3434,7 +3583,7 @@
             },
             "set_xnbins": {
                 "nbins": 6
-            },           
+            },
             "set_yscale": {
                 "value": "linear"
             },
@@ -3557,14 +3706,16 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "M": null,
-                            "backend":null,                            
+                            "backend": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
                         "legend": {
-                            "label":{},
-                            "exclude":["iteration"]
-                        },                        
+                            "label": {},
+                            "exclude": [
+                                "iteration"
+                            ]
+                        },
                         "shape": {
                             "shape": {
                                 "row": [
@@ -3588,8 +3739,8 @@
                             ]
                         },
                         "normalize": {
-                                "x":"size"
-                            },
+                            "x": "size"
+                        },
                         "scinotation": {
                             "scilimits": [
                                 0,
@@ -3607,8 +3758,14 @@
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
-                    "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                    "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                    
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
                 }
             ],
             "set_ylabel": {
@@ -3625,13 +3782,13 @@
             "yaxis.offsetText.set_fontsize": {
                 "fontsize": 20
             },
-            "set_xscale": { 
+            "set_xscale": {
                 "value": "linear"
             },
             "set_xlim": {
                 "xmin": -0.1,
                 "xmax": 1.1
-            },            
+            },
             "set_xnbins": {
                 "nbins": 6
             },
@@ -3748,36 +3905,46 @@
             "close": {}
         },
         "ax": {
-            "errorbar": [{
-                "x": null,
-                "y": "hessian.eigenvalues",
-                "label": {
+            "errorbar": [
+                {
+                    "x": null,
+                    "y": "hessian.eigenvalues",
                     "label": {
-                        "N": null,
-                        "parameters.xy.method": null,
-                        "M": null,
-                        "backend":null,                        
-                        "noise.parameters": null,
-                        "iteration": "@iteration.max@",
-                        "rank": "hessian.rank"
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "backend": null,
+                            "noise.parameters": null,
+                            "iteration": "@iteration.max@",
+                            "rank": "hessian.rank"
+                        },
+                        "legend": {
+                            "label": {},
+                            "exclude": [
+                                "iteration"
+                            ]
+                        },
+                        "slice": [
+                            0,
+                            1000,
+                            null
+                        ]
                     },
-                    "legend": {
-                        "label":{},
-                        "exclude":["iteration"]
-                    },                        
-                    "slice": [
-                        0,
-                        1000,
-                        null
-                    ]
-                },
-                "marker": "o",
-                "linestyle": "--",
-                "elinewidth": 2,
-                "capsize": 3,
-                "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                
-            }],
+                    "marker": "o",
+                    "linestyle": "--",
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
+                }
+            ],
             "set_ylabel": {
                 "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
             },
@@ -3916,36 +4083,46 @@
             "close": {}
         },
         "ax": {
-            "errorbar": [{
-                "x": null,
-                "y": "fisher.eigenvalues",
-                "label": {
+            "errorbar": [
+                {
+                    "x": null,
+                    "y": "fisher.eigenvalues",
                     "label": {
-                        "N": null,
-                        "parameters.xy.method": null,
-                        "M": null,
-                        "backend":null,                        
-                        "noise.parameters": null,
-                        "iteration": "@iteration.max@",
-                        "rank": "fisher.rank"
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "backend": null,
+                            "noise.parameters": null,
+                            "iteration": "@iteration.max@",
+                            "rank": "fisher.rank"
+                        },
+                        "legend": {
+                            "label": {},
+                            "exclude": [
+                                "iteration"
+                            ]
+                        },
+                        "slice": [
+                            0,
+                            1000,
+                            null
+                        ]
                     },
-                    "legend": {
-                        "label":{},
-                        "exclude":["iteration"]
-                    },                        
-                    "slice": [
-                        0,
-                        1000,
-                        null
-                    ]
-                },
-                "marker": "o",
-                "linestyle": "--",
-                "elinewidth": 2,
-                "capsize": 3,
-                "color":{"@M@":"viridis","@noise.parameters@":"viridis"},
-                "ecolor":{"@M@":"viridis","@noise.parameters@":"viridis"}                
-            }],
+                    "marker": "o",
+                    "linestyle": "--",
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
+                }
+            ],
             "set_ylabel": {
                 "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
             },
@@ -4084,36 +4261,44 @@
             "close": {}
         },
         "ax": {
-            "errorbar": [{
-                "x": null,
-                "y": "hessian.eigenvalues",
-                "label": {
+            "errorbar": [
+                {
+                    "x": null,
+                    "y": "hessian.eigenvalues",
                     "label": {
-                        "N": null,
-                        "parameters.xy.method": null,
-                        "T": null,
-                        "tau": null,
-                        "noise.scale": null,
-                        "iteration": "@iteration.max@",
-                        "rank": "hessian.rank"
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "T": null,
+                            "tau": null,
+                            "noise.scale": null,
+                            "iteration": "@iteration.max@",
+                            "rank": "hessian.rank"
+                        },
+                        "legend": {
+                            "label": {},
+                            "exclude": [
+                                "iteration"
+                            ]
+                        },
+                        "slice": [
+                            0,
+                            1000,
+                            null
+                        ]
                     },
-                    "legend": {
-                        "label":{},
-                        "exclude":["iteration"]
-                    },                        
-                    "slice": [
-                        0,
-                        1000,
-                        null
-                    ]
-                },
-                "marker": "o",
-                "linestyle": "--",
-                "elinewidth": 2,
-                "capsize": 3,
-                "color":{"@tau@":"viridis"},
-                "ecolor":{"@tau@":"viridis"}                
-            }],
+                    "marker": "o",
+                    "linestyle": "--",
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color": {
+                        "@tau@": "viridis"
+                    },
+                    "ecolor": {
+                        "@tau@": "viridis"
+                    }
+                }
+            ],
             "set_ylabel": {
                 "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
             },
@@ -4252,36 +4437,44 @@
             "close": {}
         },
         "ax": {
-            "errorbar": [{
-                "x": null,
-                "y": "fisher.eigenvalues",
-                "label": {
+            "errorbar": [
+                {
+                    "x": null,
+                    "y": "fisher.eigenvalues",
                     "label": {
-                        "N": null,
-                        "parameters.xy.method": null,
-                        "T": null,
-                        "tau": null,
-                        "noise.par": null,
-                        "iteration": "@iteration.max@",
-                        "rank": "fisher.rank"
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "T": null,
+                            "tau": null,
+                            "noise.par": null,
+                            "iteration": "@iteration.max@",
+                            "rank": "fisher.rank"
+                        },
+                        "legend": {
+                            "label": {},
+                            "exclude": [
+                                "iteration"
+                            ]
+                        },
+                        "slice": [
+                            0,
+                            1000,
+                            null
+                        ]
                     },
-                    "legend": {
-                        "label":{},
-                        "exclude":["iteration"]
-                    },                        
-                    "slice": [
-                        0,
-                        1000,
-                        null
-                    ]
-                },
-                "marker": "o",
-                "linestyle": "--",
-                "elinewidth": 2,
-                "capsize": 3,
-                "color":{"@tau@":"viridis"},
-                "ecolor":{"@tau@":"viridis"}                
-            }],
+                    "marker": "o",
+                    "linestyle": "--",
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color": {
+                        "@tau@": "viridis"
+                    },
+                    "ecolor": {
+                        "@tau@": "viridis"
+                    }
+                }
+            ],
             "set_ylabel": {
                 "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
             },

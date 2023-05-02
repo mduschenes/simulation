@@ -575,22 +575,26 @@ def analyse(data,analyses=None,verbose=None):
 				def func(attrs,data):
 					function = sp.stats.zscore
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
+					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
-					out = {attr: ((data[[attr]].apply(function,**kwargs[attr])[attr]) if value[attr] > 0 else 
-								  (data[[attr]].apply(function,**kwargs[attr])[attr] >= -value[attr]))
-							if ((len(data)>1) and (value[attr] is not None)) else True for attr in attrs}
+					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
+					out = {attr: ((out[attr].apply(function,**kwargs[attr]) <= value[attr]) if value[attr] > 0 else 
+								  (out[attr].apply(function,**kwargs[attr]) >= -value[attr]))
+							if ((len(out[attr])>1) and (value[attr] is not None)) else True for attr in attrs}
 					out = conditions([out[attr] for attr in attrs],op='and')
 					return out
 			elif analysis in ['quantile']:
 				def func(attrs,data):
 					function = analysis
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
+					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}					
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
-					out = {attr: (((data[attr] > getattr(data[attr],function)(value[attr])) if value[attr] > 0 else 
-								   (data[attr] <= getattr(data[attr],function)(-value[attr]))) &
-								  ((data[attr] < getattr(data[attr],function)(1-value[attr])) if value[attr] > 0 else 
-								   (data[attr] >= getattr(data[attr],function)(1+value[attr]))))
-							if ((len(data)>1) and (value[attr] is not None)) else True for attr in attrs}
+					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
+					out = {attr: (((out[attr] > getattr(out[attr],function)(value[attr])) if value[attr] > 0 else 
+								   (out[attr] <= getattr(out[attr],function)(-value[attr]))) &
+								  ((out[attr] < getattr(out[attr],function)(1-value[attr])) if value[attr] > 0 else 
+								   (out[attr] >= getattr(out[attr],function)(1+value[attr]))))
+							if ((len(out[attr])>1) and (value[attr] is not None)) else True for attr in attrs}
 					out = conditions([out[attr] for attr in attrs],op='and')
 					return out
 			elif analysis in ['parse']:
@@ -598,7 +602,8 @@ def analyse(data,analyses=None,verbose=None):
 					function = parse
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
-					out = [function(attr,value[attr],data,verbose=verbose) for attr in attrs]
+					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}					
+					out = [function(attr,value[attr],out,verbose=verbose) for attr in attrs]
 					out = conditions(out,op='and')
 					return out
 			elif analysis in ['abs']:
@@ -647,7 +652,7 @@ def analyse(data,analyses=None,verbose=None):
 
 			for attrs in args:
 				if analysis in ['zscore','quantile','parse']:
-					value = func(attrs,data)
+					value = func(attrs,data).to_numpy()
 					out = conditions([out,value],op='and')
 				elif analysis in ['abs','replace']:
 					data = func(attrs,data)
