@@ -27,6 +27,10 @@
                             "backend": null,
                             "noise.parameters": null
                         },
+                        "analysis":{
+                            "zscore":{"objective":{"wrapper":"log10","value":0.1}}
+                        },
+                        "analysis":null,
                         "legend": {
                             "label": {
                                 "instance": "\\textrm{Avg}"
@@ -81,7 +85,6 @@
                     },
                     "alpha": 0.4,
                     "color": {
-                        "@M@": "viridis",
                         "@noise.parameters@": "viridis"
                     }
                 }
