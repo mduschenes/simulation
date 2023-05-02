@@ -28,8 +28,8 @@
 		"model.tau":[141.241],
 
 		"system.unit":[1e6],
-		"system.dtype":["complex256"],
 		"system.dtype":["complex128"],
+		"system.dtype":["complex256"],
 		"parameters.xy.parameters":[1],
 		"parameters.z.parameters":[1.230231e-2],
 		"parameters.zz.parameters":[1.42117230231e-4],
@@ -60,11 +60,11 @@
 		"jobs.job.cwd":["gobi/unconstrained.ad.4.256.500.1000.50"],
 		"jobs.postprocess.cwd":["gobi/unconstrained.ad.4.256.500.1000.50"],
 
-		"jobs.job.cwd":["gobi/unconstrained.ad.2.256.5.5000.30.141"],
-		"jobs.postprocess.cwd":["gobi/unconstrained.ad.2.256.5.5000.30.141"],
-
 		"jobs.job.cwd":["gobi/unconstrained.ad.2.128.5.5000.30.141"],
 		"jobs.postprocess.cwd":["gobi/unconstrained.ad.2.128.5.5000.30.141"],
+
+		"jobs.job.cwd":["gobi/unconstrained.ad.2.256.5.5000.30.141"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.ad.2.256.5.5000.30.141"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -77,11 +77,11 @@
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],
-		"jobs.job.resume":[null],
+		"jobs.job.resume":[true],
 		"jobs.postprocess.resume":[null],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.NUMPY_BACKEND":["autograd"],
 		"jobs.job.args.NUMPY_BACKEND":["jax.autograd"],
+		"jobs.job.args.NUMPY_BACKEND":["autograd"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
@@ -91,10 +91,10 @@
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
-		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"],
 		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"]		
+		"jobs.postprocess.patterns.account":["def-carrasqu"],
+		"jobs.job.patterns.account":["def-raymond"],
+		"jobs.postprocess.patterns.account":["def-raymond"]
 		},
 	"groups":null,
 	"index":null
