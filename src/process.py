@@ -430,7 +430,7 @@ def parse(key,value,data,verbose=None):
 
 					if delimiter in ['$']: # Explicit value: value
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]           
+						values = [i for value in values for i in [parser(value),value]]           
 						values = [value for value in values if (value is not null)]
 
 						if values and (values is not null):
@@ -516,8 +516,8 @@ def parse(key,value,data,verbose=None):
 
 					elif delimiter in ['==']: # Include value
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]           
-						
+						values = [i for value in values for i in [parser(value),value]]           
+
 						if values and (values is not null):
 							out = conditions([data[key] == value for value in values],op='or')																												
 

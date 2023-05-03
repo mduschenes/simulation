@@ -15,7 +15,7 @@
             "close": {}
         },
         "ax": {
-            "errorbar": [
+           "errorbar": [
                 {
                     "x": "iteration",
                     "y": "objective",
@@ -27,13 +27,12 @@
                             "backend": null,
                             "noise.parameters": null
                         },
-                        "analysis":{
-                            "zscore":{"objective":{"wrapper":"log10","value":0.1}}
-                        },
-                        "analysis":null,
+                        "include":["M"],
                         "legend": {
                             "label": {
                             },
+                            "sort":["M","noise.parameters"],
+                            "include":null,
                             "exclude": [
                                 "instance"
                             ]
@@ -47,18 +46,18 @@
                             "one": false
                         }
                     },
-                    "marker": {"@M@":["o","^","s"]},
+                    "alpha":1,
+                    "marker": {"@noise.parameters@":["o","^","s","P"]},
                     "markersize": 12,
                     "linestyle": "-",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@noise.parameters@": "viridis"
+                        "@M@": "viridis"
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": "viridis"
                     }
                 },
                 {
@@ -73,10 +72,7 @@
                             "noise.parameters": null,
                             "instance":null                            
                         },
-                        "analysis":{
-                            "zscore":{"objective":{"wrapper":"log10","value":0.1}}
-                        },
-                        "analysis":null,
+                        "include":["M"],                        
                         "legend": {
                             "label": {
                             },
@@ -92,19 +88,18 @@
                             "one": false
                         }
                     },
-                    "marker": {"@M@":["o","^","s"]},
-                    "alpha":0.6,
+                    "marker": {"@noise.parameters@":["o","^","s","P"]},
+                    "alpha":0.2,
                     "markersize": 12,
                     "linestyle": "-",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@noise.parameters@": "viridis"
+                        "@M@": "viridis"
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": "viridis"
                     }
                 }                
             ],
@@ -116,10 +111,11 @@
                         "label": {
                             "N": null,
                             "parameters.xy.method": null,
-                            "M": null,
+                            "M": null,                          
                             "backend": null,
                             "noise.parameters": null
                         },
+                        "include":["M"],                        
                         "legend": {
                             "label": {},
                             "exclude": [
@@ -130,7 +126,7 @@
                     },
                     "alpha": 0.4,
                     "color": {
-                        "@noise.parameters@": "viridis"
+                        "@M@": "viridis"
                     }
                 }
             ],
