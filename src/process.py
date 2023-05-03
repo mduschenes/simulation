@@ -301,7 +301,7 @@ def find(dictionary,verbose=None):
 	default = null
 	separator = '='
 	defaults = {
-				'func':{'stat':{'':'mean','err':'sem'}}, 
+				'func':{}, 
 				'include':None,
 				'exclude':None,
 				'slice':None,
@@ -315,7 +315,7 @@ def find(dictionary,verbose=None):
 				'shape':None,
 					#{'shape': {'row':[],'col':[],'axis':[],'axes':[]},'reshape':[],'transpose':[]},
 				'legend': {
-					'label':{},'include':None,'exclude':None
+					'label':{},'include':None,'exclude':None,'sort':None,
 				},
 				'texify':{},
 				'valify': {},		
@@ -430,7 +430,7 @@ def parse(key,value,data,verbose=None):
 
 					if delimiter in ['$']: # Explicit value: value
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]           
+						values = [i for value in values for i in [parser(value),value]]           
 						values = [value for value in values if (value is not null)]
 
 						if values and (values is not null):
@@ -516,8 +516,8 @@ def parse(key,value,data,verbose=None):
 
 					elif delimiter in ['==']: # Include value
 						parser = lambda value: (to_number(value) if len(value)>0 else null)
-						values = [parser(value) for value in values]           
-						
+						values = [i for value in values for i in [parser(value),value]]           
+
 						if values and (values is not null):
 							out = conditions([data[key] == value for value in values],op='or')																												
 
@@ -558,7 +558,7 @@ def analyse(data,analyses=None,verbose=None):
 		data (dataframe): data of attributes
 		analyses (dict[str,iterable[iterable[dict]]]): Processes to analyse of the form 
 			{analysis:[({attr:value},kwargs)]},
-			allowed analysis strings in ['zscore','quantile','parse','abs','replace']
+			allowed analysis strings in ['zscore','quantile','parse','abs','log','log10','replace']
 		verbose (bool): Verbosity			
 	Returns:
 		out (dataframe): Analysed data
@@ -575,22 +575,26 @@ def analyse(data,analyses=None,verbose=None):
 				def func(attrs,data):
 					function = sp.stats.zscore
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
+					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
-					out = {attr: ((data[[attr]].apply(function,**kwargs[attr])[attr]) if value[attr] > 0 else 
-								  (data[[attr]].apply(function,**kwargs[attr])[attr] >= -value[attr]))
-							if ((len(data)>1) and (value[attr] is not None)) else True for attr in attrs}
+					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
+					out = {attr: ((out[attr].apply(function,**kwargs[attr]) <= value[attr]) if value[attr] > 0 else 
+								  (out[attr].apply(function,**kwargs[attr]) >= -value[attr]))
+							if ((len(out[attr])>1) and (value[attr] is not None)) else True for attr in attrs}
 					out = conditions([out[attr] for attr in attrs],op='and')
 					return out
 			elif analysis in ['quantile']:
 				def func(attrs,data):
 					function = analysis
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
+					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}					
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
-					out = {attr: (((data[attr] > getattr(data[attr],function)(value[attr])) if value[attr] > 0 else 
-								   (data[attr] <= getattr(data[attr],function)(-value[attr]))) &
-								  ((data[attr] < getattr(data[attr],function)(1-value[attr])) if value[attr] > 0 else 
-								   (data[attr] >= getattr(data[attr],function)(1+value[attr]))))
-							if ((len(data)>1) and (value[attr] is not None)) else True for attr in attrs}
+					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
+					out = {attr: (((out[attr] > getattr(out[attr],function)(value[attr])) if value[attr] > 0 else 
+								   (out[attr] <= getattr(out[attr],function)(-value[attr]))) &
+								  ((out[attr] < getattr(out[attr],function)(1-value[attr])) if value[attr] > 0 else 
+								   (out[attr] >= getattr(out[attr],function)(1+value[attr]))))
+							if ((len(out[attr])>1) and (value[attr] is not None)) else True for attr in attrs}
 					out = conditions([out[attr] for attr in attrs],op='and')
 					return out
 			elif analysis in ['parse']:
@@ -598,15 +602,17 @@ def analyse(data,analyses=None,verbose=None):
 					function = parse
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
-					out = [function(attr,value[attr],data,verbose=verbose) for attr in attrs]
+					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}					
+					out = [function(attr,value[attr],out,verbose=verbose) for attr in attrs]
 					out = conditions(out,op='and')
 					return out
-			elif analysis in ['abs']:
+			elif analysis in ['abs','log','log10']:
 				def func(attrs,data):
 					function = analysis
+					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
 					out = data
 					for attr in attrs:
-						out[attr] = getattr(out[attr],function)()
+						out[attr] = out[attr].apply(function,**kwargs[attr])
 					return out
 			elif analysis in ['replace']:
 				def func(attrs,data):
@@ -647,9 +653,9 @@ def analyse(data,analyses=None,verbose=None):
 
 			for attrs in args:
 				if analysis in ['zscore','quantile','parse']:
-					value = func(attrs,data)
+					value = func(attrs,data).to_numpy()
 					out = conditions([out,value],op='and')
-				elif analysis in ['abs','replace']:
+				elif analysis in ['abs','log','log10','replace']:
 					data = func(attrs,data)
 
 	if out is True:
@@ -861,9 +867,14 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 	def sem(obj):
 		obj = np.array(list(obj))
 		obj = to_tuple(obj.std(0)/np.sqrt(obj.shape[0]))
-		return obj		
+		return obj	
 
-	functions = {}
+	def mean_log(obj):
+		return 10**(obj.apply('log10').mean())
+	def sem_log(obj):
+		return 10**(obj.apply('log10').sem())
+
+	functions = {'mean_log':mean_log,'sem_log':sem_log}
 
 	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
 	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
@@ -892,7 +903,10 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		analyses = keys[name][other].get('analysis',{})
 
 		if not funcs:
-			funcs = {'stat':{'':'mean','err':'sem'}}
+			funcs = {'stat':None}
+		for func in funcs:
+			if funcs.get(func) is None:
+				funcs[func] = {'':'mean','err':'sem'}
 
 		funcs = {function : {func: functions.get(funcs[function][func],funcs[function][func]) for func in funcs[function]} for function in funcs}
 
@@ -914,6 +928,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		if analyses:
 			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
+
 
 		shapes = {group[:-len(independent)] if (independent) and isinstance(group,tuple) else group: groups.get_group(group).shape for group in groups.groups}
 
@@ -940,7 +955,6 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		for i,group in enumerate(groups.groups):
 
 			logger.log(info,"Group : %r %r -> %r"%(group,shapes[group],groups.get_group(group).shape))
-
 			for j,function in enumerate(funcs):
 
 				grouping = groups.get_group(group)
@@ -1036,7 +1050,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						elif any(((data.get(attr) is None) or isinstance(data.get(attr),str)) for attr in ALL if attr in data and attr not in INDEPENDENT):
 							data.clear()
 
-		if all((not data) for prop in PLOTS if prop in settings[instance][subinstance][obj] for data in search(settings[instance][subinstance][obj][prop])):
+		if all((not data) for prop in PLOTS if settings[instance][subinstance][obj].get(prop) for data in search(settings[instance][subinstance][obj][prop])):
 			settings[instance].pop(subinstance);
 
 	for instance in list(settings):
@@ -1293,18 +1307,25 @@ def plotter(settings,hyperparameters,verbose=None):
 								data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER])) else data[OTHER][OTHER][OTHER][label] if (label in data[OTHER][OTHER][OTHER]) else None
 							for data in search(settings[instance][subinstance][obj][prop]) if (
 								((data) and ((label in data[OTHER]) or (label in data[OTHER][OTHER][OTHER]))))
-							)))					
+							)))
 					value['include'] = any((
+							(((data[OTHER][OTHER]['legend']['include'] is not False) and (data[OTHER][OTHER]['legend']['exclude'] is not True))) and (
 							(((not data[OTHER][OTHER]['legend']['include']) and (not data[OTHER][OTHER]['legend']['exclude']))) or
 							(((not data[OTHER][OTHER]['legend']['include']) or (label in data[OTHER][OTHER]['legend']['include'])) and
 							 ((not data[OTHER][OTHER]['legend']['exclude']) or (label not in data[OTHER][OTHER]['legend']['exclude']))
-							)
+							))
 							)
 							for i in PLOTS
 							if i in settings[instance][subinstance][obj]
 							for data in search(settings[instance][subinstance][obj][i])
 							if (data) 
 							)
+					value['sort'] = [k for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend']['sort']))
+							for i in PLOTS
+							if i in settings[instance][subinstance][obj]
+							for data in search(settings[instance][subinstance][obj][i])
+							if (data) and (data[OTHER][OTHER]['legend'].get('sort') is not None)
+							for k in data[OTHER][OTHER]['legend']['sort']]),key=lambda i: i[-1].index(i[0]))]
 					value['label'] = any((
 							(label in data[OTHER][OTHER][OTHER]) and 
 							(label in data[OTHER]))# and (data[OTHER][OTHER][OTHER][label] is None))
@@ -1441,7 +1462,7 @@ def plotter(settings,hyperparameters,verbose=None):
 											value[label] = {
 												'__item__': None,
 												'__items__':[list(range(shape[INDEXES.index(label)])) 
-													for prop in PLOTS if prop in settings[instance][subinstance][obj] 
+													for prop in PLOTS if settings[instance][subinstance][obj].get(prop)
 													for item,shape,data in search(settings[instance][subinstance][obj][prop],returns=True) if data][0],
 												'__value__': val
 												}			
@@ -1532,6 +1553,8 @@ def plotter(settings,hyperparameters,verbose=None):
 				if not data:
 					continue
 
+				separator = ',~'
+
 				value = [
 					{
 						**{(prop,label):'%s'%(texify(label,texify=values[prop][label]['attr']['texify']))
@@ -1559,7 +1582,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					{
 						**{(prop,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
-							',~'.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify=values[prop][label]['attr']['texify']) 
+							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify=values[prop][label]['attr']['texify']) 
 									for value in values[prop][label]['value']]))
 							for prop in values 
 							for label in natsorted(set((
@@ -1569,7 +1592,7 @@ def plotter(settings,hyperparameters,verbose=None):
 								(values[prop][label]['legend']) and (len(values[prop][label]['value'])==1))))))},
 						**{(prop,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
-							',~'.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify=values[prop][label]['attr']['texify']) 
+							separator.join([texify(scinotation(value,**values[prop][label]['attr']['scinotation']),texify=values[prop][label]['attr']['texify']) 
 									for value in values[prop][label]['value']]))
 							for prop in values 
 							for label in natsorted(set((
@@ -1579,14 +1602,23 @@ def plotter(settings,hyperparameters,verbose=None):
 								(values[prop][label]['other']) and (len(values[prop][label]['value'])==1))))))},
 					},
 					]
-
+				
+				def sorter(value):
+					sorter = [i for prop in values for label in values[prop] for i in (values[prop][label]['sort'] if values[prop][label]['sort'] else [])]
+					if sorter:
+						sorter = sorted(set(value),key=lambda i,sorter=sorter: sorter.index(i[-1]) if i[-1] in sorter else len(sorter))
+					else:
+						sorter = natsorted(set(value))
+					return sorter
 
 				if data.get('multiline',None):
 					separator = '\n'
 				else:
 					separator = '~,~'
+				delimiter = '~,~'
 
-				value = separator.join(['~,~'.join([i[k] for k in realsorted(set(i))]).replace('$','') for i in value if i])
+				value = [[i[k] for k in sorter(i)] for i in value if i]
+				value = separator.join([delimiter.join(i) for i in value]).replace('$','')
 
 				if isinstance(data.get(attr),str) and data[attr].count('%s'):
 					data[attr] = data[attr]%(value)
@@ -1723,7 +1755,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					if data.get(attr%(axes)) is None:
 						if axes in AXES:
-							data[attr%(axes)] = [data[OTHER][axes]['label'] for prop in PLOTS if prop in settings[instance][subinstance][obj] for data in search(settings[instance][subinstance][obj][prop]) if OTHER in data]
+							data[attr%(axes)] = [data[OTHER][axes]['label'] for prop in PLOTS if settings[instance][subinstance][obj].get(prop) for data in search(settings[instance][subinstance][obj][prop]) if OTHER in data]
 
 							data[attr%(axes)] = data[attr%(axes)][0] if data[attr%(axes)] else None
 					
@@ -1793,11 +1825,26 @@ def plotter(settings,hyperparameters,verbose=None):
 						
 						}
 
+					def sorter(value):
+						if data[OTHER][OTHER]['legend']['sort'] is not None:
+							sorter = [*[i for i in data[OTHER][OTHER]['legend']['sort']],*[i for i in natsorted(set(value)) if i not in data[OTHER][OTHER]['legend']['sort']]]
+							sorter = sorted(set(value),key=lambda i,sorter=sorter: sorter.index(i))
+						else:
+							sorter = natsorted(set(value))
+						return sorter
+				
+					separator = ',~'
 
-					value = ',~'.join([value[label] for label in realsorted(set(value)) if 
-								(((not data[OTHER][OTHER]['legend']['include']) or (label in data[OTHER][OTHER]['legend']['include'])) and
-								 ((not data[OTHER][OTHER]['legend']['exclude']) or (label not in data[OTHER][OTHER]['legend']['exclude'])))
-								])
+					value = [value[label] for label in sorter(value)
+							if (
+							(((data[OTHER][OTHER]['legend']['include'] is not False) and (data[OTHER][OTHER]['legend']['exclude'] is not True))) and (
+							(((not data[OTHER][OTHER]['legend']['include']) and (not data[OTHER][OTHER]['legend']['exclude']))) or
+							(((not data[OTHER][OTHER]['legend']['include']) or (label in data[OTHER][OTHER]['legend']['include'])) and
+							 ((not data[OTHER][OTHER]['legend']['exclude']) or (label not in data[OTHER][OTHER]['legend']['exclude']))
+							)))
+							]
+
+					value = separator.join(value)
 
 					value = value if value else None
 
