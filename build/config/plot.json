@@ -33,7 +33,6 @@
                         "analysis":null,
                         "legend": {
                             "label": {
-                                "instance": "\\textrm{Avg}"
                             },
                             "exclude": [
                                 "instance"
@@ -61,7 +60,53 @@
                         "@M@": "viridis",
                         "@noise.parameters@": "viridis"
                     }
-                }
+                },
+                {
+                    "x": "iteration",
+                    "y": "objective",
+                    "label": {
+                        "label": {
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "M": null,
+                            "backend": null,
+                            "noise.parameters": null,
+                            "instance":null                            
+                        },
+                        "analysis":{
+                            "zscore":{"objective":{"wrapper":"log10","value":0.1}}
+                        },
+                        "analysis":null,
+                        "legend": {
+                            "label": {
+                            },
+                            "include":false,
+                            "exclude": true
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
+                        }
+                    },
+                    "marker": {"@M@":["o","^","s"]},
+                    "alpha":0.6,
+                    "markersize": 12,
+                    "linestyle": "-",
+                    "linewidth": 4,
+                    "elinewidth": 2,
+                    "capsize": 3,
+                    "color": {
+                        "@noise.parameters@": "viridis"
+                    },
+                    "ecolor": {
+                        "@M@": "viridis",
+                        "@noise.parameters@": "viridis"
+                    }
+                }                
             ],
             "fill_between": [
                 {
