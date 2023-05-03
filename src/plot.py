@@ -708,12 +708,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if index is not None:
 						labels,handles = [labels[i[j]] for i,j in zip(indexes,index)],[handles[i[j]] for i,j in zip(indexes,index)]
 
-				if kwargs[attr].get('alpha') is not None:
-					alpha = kwargs[attr]['alpha']
-					alpha = [alpha]*len(handles) if isinstance(alpha,scalars) else alpha
-				else:
-					alpha = None
-
 				if kwargs[attr].get('multiline') is True:
 					pass
 
@@ -731,7 +725,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							} 
 									if 'set_title' in kwargs[attr] or 'title' in kwargs[attr] else {'title':None})},
 					**{subattr: {**kwargs[attr].get(subattr,{})} for subattr in ['get_title','get_texts']},
-					**({'legendHandles': {'alpha': alpha}} if alpha is not None else {}),
+					**({'legendHandles': {'set_alpha': [kwargs[attr]['set_alpha']]*len(handles) if isinstance(kwargs[attr]['set_alpha'],scalars) else kwargs[attr]['set_alpha']}} if kwargs[attr].get('set_alpha') is not None else {}),
 					})
 
 
@@ -742,7 +736,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					(('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is False)))
 					))
 
-				nullkwargs.extend(['prop','join','flip','update','keep','alpha','multiline','handlers','set_zorder','get_zorder','set_title','title','get_title','get_texts','set_label'])
+				nullkwargs.extend(['prop','join','flip','update','keep','multiline','handlers','set_zorder','get_zorder','set_title','set_alpha','title','get_title','get_texts','set_label'])
 
 
 			elif attr in ['plot','axvline','axhline']:
@@ -1273,18 +1267,24 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							except:
 								try:
 									for _subattr_ in getattr(_attr_,a):
-										for i,l in enumerate(_kwds[k]):
-											if _kwds[k][l] is not None:
-												v = getattr(_subattr_,'get_%s'%(l))()
-												v = _kwds[k][l][i]
-												getattr(_subattr_,'set_%s'%(l))(v)
-											else:
-												pass
-									else:
-										pass
-								except Exception as exception:
-									pass	
-								pass							
+										for l in _kwds[k]:
+											for i in _kwds[k][l]:
+												getattr(_subattr_,l)(i)
+								except:
+									try:
+										for _subattr_ in getattr(_attr_,a):
+											for i,l in enumerate(_kwds[k]):
+												if _kwds[k][l] is not None:
+													v = getattr(_subattr_,'get_%s'%(l))()
+													v = _kwds[k][l][i]
+													getattr(_subattr_,'set_%s'%(l))(v)
+												else:
+													pass
+										else:
+											pass
+									except Exception as exception:
+										pass	
+									pass							
 				
 
 			# except:

@@ -3606,7 +3606,7 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = abs2(einsummation(*operands))
+		out = abs2(einsummation(*operands))#/real(einsummation(operands[0],conjugate(operands[0]))*einsummation(operands[1],conjugate(operands[1])))
 		return wrapper(out,*operands)
 	
 	if isarray:
