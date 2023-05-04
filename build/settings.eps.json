@@ -15,7 +15,7 @@
 	},
 "seed":{
 	"seed":1821,
-	"size":10,
+	"size":20,
 	"reset":1821,
 	"index":null
 	},
@@ -23,7 +23,7 @@
 	"permutations":{	
 	
 		"model.N":[2],		
-		"model.M":[20,30,50,100],
+		"model.M":[20,30,50,100,500,1000],
 		"model.P":[1],
 		"model.tau":[100],
 		"model.T": [null],
@@ -40,7 +40,7 @@
 		"label.parameters":[1],
 		"noise.string":["K"],
 		"noise.operator":["eps"],
-		"noise.parameters":[1e-18,1e-16,1e-15,1e-14,1e-12,1e-13,1e-10,1e-8],
+		"noise.parameters":[1e-19,1e-18,1e-17,1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8],
 		"state.label":["psi"],
 		"state.operator":["haar"],
 		"state.ndim":[2],
@@ -52,14 +52,14 @@
 		"parameters.xy.constant":[null],					
 		"parameters.xy.kwargs.lambda":[null],		
 
-		"optimize.iterations":[[0,100]],
+		"optimize.iterations":[[0,500]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/eps.2.256.20.100.10.100"],
-		"jobs.postprocess.cwd":["gobi/eps.2.256.20.100.10.100"],
+		"jobs.job.cwd":["gobi/eps.2.256.20.1000.20.500"],
+		"jobs.postprocess.cwd":["gobi/eps.2.256.20.1000.20.500"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
