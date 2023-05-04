@@ -1155,7 +1155,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						if hasattr(plt.cm,color):
 							value = value
 							attribute = color
-							def fielder(i,N,attribute=attribute,value=value):
+							norms = {'vmin':0,'vmax':1}
+							def fielder(i,N,attribute=attribute,value=value,norms=norms):
 								if value is None:
 									i = (((i)/max(1,N-1)) if (N > 1) else 0.5,1)
 								elif not isinstance(value,list):
@@ -1181,13 +1182,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									norm = tmp[-1].get('norm',None)
 									size = prod(shape[-2:])
 									values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
-									norms = ({**norm,**{
+									norms.update(({**norm,**{
 											 'vmin':norm.get('vmin',min(values,default=0)),
 											 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
 											{'vmin':norm[0],
 											 'vmax':norm[1]} if norm is not None else
 											{'vmin':min(values,default=0),
-											 'vmax':max(values,default=1)})
+											 'vmax':max(values,default=1)}))
 
 									values = list(natsorted(set([*values,*[norms['vmin'],norms['vmax']]])))
 									norms.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))

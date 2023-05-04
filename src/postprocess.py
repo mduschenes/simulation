@@ -96,7 +96,7 @@ defaults = {
 		}
 
 	},
-'noise.scale.M.min': {
+'noise.parameters.M.min': {
 	"fig":{
 		"set_size_inches":{"w":9,"h":6},
 		"subplots_adjust":{},
@@ -106,7 +106,7 @@ defaults = {
 		},
 	"ax":{
 		"errorbar":{
-			"x":"noise.scale",
+			"x":"noise.parameters",
 			"y":"M",
 			"label":None,
 
@@ -121,7 +121,7 @@ defaults = {
             "color": "#EB008B",
 			},
 		"fill_between":{
-			"x":"noise.scale",
+			"x":"noise.parameters",
 			"y":"M",
 			"alpha":0.5,
 			"color":'viridis',
@@ -136,12 +136,14 @@ defaults = {
 		"set_xlim": {"xmin": 5e-13,"xmax":5e0},
 		"set_xlim": {"xmin": 5e-21,"xmax":5e0},
 		"set_xlim": {"xmin": 5e-17,"xmax":5e0},
+		"set_xlim": {"xmin": 5e-21,"xmax":5e0},
 		"set_xticks":{"ticks":[1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"set_xticks":{"ticks":[1e-20,1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
 		"set_xticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
 		"set_xticks":{"ticks":[1e-12,1e-8,1e-4,1e0]},
 		"set_xticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
 		"set_xticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0]},
+		"set_xticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -199,7 +201,7 @@ defaults = {
 		}
 
 	},
-'M.objective.noise.scale': {
+'M.objective.noise.parameters': {
 	"fig":{
 		"set_size_inches":{"w":9,"h":6},
 		"subplots_adjust":{},
@@ -222,7 +224,7 @@ defaults = {
 			"color":"viridis",
 			},
 		"fill_between":{
-			"x":"noise.scale",
+			"x":"noise.parameters",
 			"alpha":0.4,
 			"color":'viridis',
 			},			
@@ -233,8 +235,10 @@ defaults = {
 		"set_xnbins":{"nbins":9},
 		"set_xlim": {"xmin": -100,"xmax": 6100},
 		"set_xlim": {"xmin": -100,"xmax": 2600},
+		"set_xlim": {"xmin": -100,"xmax": 1100},
 		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
 		"set_xticks":{"ticks":[0,500,1000,1500,2000,2500]},
+		"set_xticks":{"ticks":[0,200,400,600,800,1000]},
 		"set_yscale":{"value":"linear"},
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim": {"ymin": 1e-5,"ymax": 1e-1},
@@ -242,6 +246,7 @@ defaults = {
 		"set_ylim": {"ymin": 5e-9,"ymax": 5e2},
 		"set_ylim": {"ymin": 1e-17,"ymax": 1e5},
 		"set_ylim": {"ymin": 5e-11,"ymax": 5e0},
+		"set_ylim": {"ymin": 5e-21,"ymax": 5e0},
 		"set_ynbins":{"nbins":5},
 		"set_yticks":{"ticks":[1e-4,1e-3,1e-2,1e-1]},
 		"set_yticks":{"ticks":[1e-12,1e-8,1e-6,1e-4,1e-2,1e0,1e2]},
@@ -249,6 +254,7 @@ defaults = {
 		"set_yticks":{"ticks":[1e-16,1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2,1e0,1e2,1e4]},
 		"set_yticks":{"ticks":[1e-16,1e-12,1e-8,1e-4,1e0,1e4]},
 		"set_yticks":{"ticks":[1e-10,1e-8,1e-6,1e-4,1e-2,1e0]},
+		"set_yticks":{"ticks":[1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"yaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
@@ -314,7 +320,7 @@ def postprocess(path,**kwargs):
 	'''
 
 	plots = [
-		'noise.scale.M.min',
+		'noise.parameters.M.min',
 		# 'None.eigenvalues',
 		]
 	
@@ -322,7 +328,7 @@ def postprocess(path,**kwargs):
 	for name in plots:
 		print('Plotting :',name)		
 
-		if name in ['noise.scale.M.min']:
+		if name in ['noise.parameters.M.min']:
 
 			with cd(path):
 
@@ -334,15 +340,19 @@ def postprocess(path,**kwargs):
 
 				data = {}
 				
-				key = ['M.objective.noise.scale','None','ax','errorbar']
-				label = {'x':'noise.scale','y':'M','z':'objective'}
+				key = ['M.objective.noise.parameters','None','ax','errorbar']
+				label = {'x':'noise.parameters','y':'M','z':'objective'}
 				axes = AXES
 				other = OTHER
-				values = list(search(getter(hyperparameters,key)))
+				values = [data for data in search(getter(hyperparameters,key)) if data is not None]
 				slices = slice(None,None,None)
 
+				for i in search(getter(hyperparameters,key)):
+					print(i)
+					print()
+
 				for axis in label:
-					ax = [ax for ax in axes if all(((ax in value[other]) and (value[other][ax]['axis'] == label[axis])) for value in values)]
+					ax = [ax for ax in axes if all(((ax in value[other]) and (value[other][ax]['label'] == label[axis])) for value in values)]
 
 					if ax:
 						ax = ax[0]
@@ -359,6 +369,9 @@ def postprocess(path,**kwargs):
 				slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
 				slices = list(range(2,14,2))#range(4,len(data[label['y']])-5) # noise.new.vectorv
 				slices = list(range(2,12,1))#range(4,len(data[label['y']])-5) # noise.vectorq
+
+				size = min(len(data[label[axis]]) for axis in label if label[axis] in data)
+				slices = range(2,6)
 
 				X = [array(data['%s'%(label['x'])][i]) for i in slices]
 				Y = [array(data['%s'%(label['y'])][i]) for i in slices]
