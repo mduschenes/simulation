@@ -956,7 +956,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				
 					values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
 
-					norm = ({**norm,**{
+					norms = ({**norm,**{
 							 'vmin':norm.get('vmin',min(values,default=0)),
 							 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
 							{'vmin':norm[0],
@@ -964,28 +964,28 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							{'vmin':min(values,default=0),
 							 'vmax':max(values,default=1)})
 
-					values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
-					norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
+					values = list(natsorted(set([*values,*[norms['vmin'],norms['vmax']]])))
+					norms.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
 
 					if scale in ['linear',None]:
-						norm = matplotlib.colors.Normalize(**norm)  
+						norm = matplotlib.colors.Normalize(**norms)  
 					elif scale in ['log']:
 						values = [i for i in values if i>0]
 						if values:
-							norm.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])))
-						norm = matplotlib.colors.LogNorm(**norm)  
+							norms.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])))
+						norm = matplotlib.colors.LogNorm(**norms)  
 					else:
-						norm = matplotlib.colors.Normalize(**norm)					
+						norm = matplotlib.colors.Normalize(**norms)					
 
 					values = norm(values)
 
 					N = len(values)
 
-					if isinstance(colors,str):
+					for i,color in enumerate(colors if not isinstance(colors,str) else [colors]):
 						
 						delimiter = '_'
 						separator = '-'						
-						color,options = colors.split(delimiter)[0],colors.split(delimiter)[1:]
+						color,options = color.split(delimiter)[0],color.split(delimiter)[1:]
 						options = list(set(options))
 						reverse = 'r' in options
 						alpha = 'alpha' in options
@@ -1001,7 +1001,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 						def colorer(i,N,color=color,value=value):
 							if value is None:
-								i = (((i+0.5)/(N+0)) if (N > 1) else 0.5,1)
+								i = (((i)/max(1,N-1)) if (N > 1) else 0.5,1)
 							elif not isinstance(value,list):
 								i = value[0]
 							else:
@@ -1016,9 +1016,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 							return color
 
-						colors = [colorer(i,N) for i in range(N)]
+						if isinstance(colors,str):
+							colors = [colorer(i,N) for i in range(N)]
+						else:
+							colors[i] = colorer(i,N)
 
-			
 					cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*100)  
 					pos = obj.get_position()
 					
@@ -1155,13 +1157,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							attribute = color
 							def fielder(i,N,attribute=attribute,value=value):
 								if value is None:
-									i = (((i+0.5)/(N+0)) if (N > 1) else 0.5,1)
+									i = (((i)/max(1,N-1)) if (N > 1) else 0.5,1)
 								elif not isinstance(value,list):
 									i = value[0]
 								else:
 									i = value[i%len(value)] 
 
-								i,alpha = i[0],i[1]
+								i,alpha = (i[0]-norms['vmin'])/(norms['vmax']-norms['vmin']),i[1]
 
 								if hasattr(plt.cm,attribute):
 									value = getattr(plt.cm,attribute)(i)
@@ -1179,7 +1181,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									norm = tmp[-1].get('norm',None)
 									size = prod(shape[-2:])
 									values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
-									norm = ({**norm,**{
+									norms = ({**norm,**{
 											 'vmin':norm.get('vmin',min(values,default=0)),
 											 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
 											{'vmin':norm[0],
@@ -1187,8 +1189,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 											{'vmin':min(values,default=0),
 											 'vmax':max(values,default=1)})
 
-									values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
-									norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
+									values = list(natsorted(set([*values,*[norms['vmin'],norms['vmax']]])))
+									norms.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
 									
 									N = max(1,max(N,len(values)))
 
@@ -1208,8 +1210,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 						def fielder(i,N,attribute=attribute,value=value):
 							return attribute[i%len(value)]	
-
-
 
 					_kwargs_[field] = fielder(i,N)
 				
