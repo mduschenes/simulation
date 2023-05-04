@@ -393,8 +393,12 @@ class Object(System):
 				norm = None
 				eps = None
 		else:
-			norm = einsum('i,i->',conjugate(data),data)
-			eps = ones(shape=(),dtype=dtype)
+			if not hermitian and unitary:
+				norm = einsum('i,i->',conjugate(data),data)
+				eps = ones(shape=(),dtype=dtype)
+			else:
+				norm = None
+				eps = None
 
 		if norm is None or eps is None:
 			return
@@ -769,7 +773,7 @@ class Noise(Object):
 
 	basis = {
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
-		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['E','eps']},
+		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['E','eps','noise']},
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['D','depolarize']},
 		**{attr: Object(data=array([[0,1],[1,0]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['X','x','amplitude']},
 		**{attr: Object(data=array([[1,0],[0,0]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['00']},
@@ -846,7 +850,11 @@ class Noise(Object):
 						sqrt(parameters/3)*self.basis['Y'](),
 						sqrt(parameters/3)*self.basis['Z']()]
 			elif operator in ['eps']:
-				data = array([identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
+				data = array([identity(self.n,dtype=self.dtype),diag((1+parameters)**(arange(self.n)+2) - 1)])
+				hermitian = False
+				unitary = False
+			elif operator in ['noise']:
+				data = array(parameters,dtype=datatype(self.dtype))#[identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
 				hermitian = False
 				unitary = False
 			else:
@@ -856,7 +864,6 @@ class Noise(Object):
 
 		if not isinstance(data,arrays):
 			data = array([tensorprod(i)	for i in itertools.product(data,repeat=self.N)],dtype=self.dtype)
-
 
 		self.data = data
 		self.hermitian = hermitian
@@ -2197,14 +2204,27 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 		if state is None:
 
-			state = data
+			if noise.ndim == 3:
 
-			subscripts = 'uij,jk,kl->il'
-			shapes = (noise.shape,data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
+				state = data
 
-			def func(data,state,conj):
-				return einsummation(noise,data,state)	
+				subscripts = 'uij,jk,kl->il'
+				shapes = (noise.shape,data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(noise,data,state)	
+
+			elif noise.ndim == 0:
+
+				state = data
+
+				subscripts = 'ij,jk->ik'
+				shapes = (data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(data,state) + noise*rand(state.shape,random='uniform',key=None,bounds=[-1,1],dtype=noise.dtype)
 
 		elif state.ndim == 1:
 		
