@@ -109,7 +109,8 @@ def setup(settings):
 	# Find keys of seeds in hyperparameters
 	items = ['seed']
 	types = (list,dict,)
-	exclude = ['seed','seed.seed','system.seed']
+	exclude = ['seed','seed.seed','system.seed',
+	*[attr for permutation in permutations for attr in permutation if attr.split(delim)[-1] == 'seed' and permutation[attr] is not None]]
 	seedlings = search(hyperparameters,items=items,returns=True,types=types)
 
 	seedlings = {delim.join([*index,element]):obj for index,shape,item in seedlings for element,obj in zip(items,item)}

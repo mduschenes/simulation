@@ -1085,16 +1085,16 @@ class Operators(Object):
 
 		objs = {'parameters':parameters,'state':state,'noise':noise}
 		classes = {'parameters':Parameters,'state':State,'noise':Noise}
-
+		arguments = {'parameters':False,'state':True,'noise':True}
 
 		# Get functions
 		for obj in objs:
-			data,cls = objs[obj],classes[obj]
+			data,cls,argument = objs[obj],classes[obj],arguments[obj]
 			data = getattr(self,obj,None) if data is None or data is True else data if data is not False else None
 			if not isinstance(data,cls):
 				kwargs = {}
 
-				args = {**dict(data=None),**data} if isinstance(data,dict) else dict(data=data)
+				args = ({**dict(data=None),**data} if (isinstance(data,dict) and (argument or all(attr in data for attr in dict(data=None)))) else dict(data=data))
 				setter(kwargs,args,func=False)
 
 				args = dict(**namespace(cls,self),model=self,system=self.system)
