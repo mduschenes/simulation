@@ -1164,7 +1164,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								else:
 									i = value[i%len(value)] 
 
-								i,alpha = (i[0]-norms['vmin'])/(norms['vmax']-norms['vmin']),i[1]
+								i,alpha = (i[0]-norms['vmin'])/((norms['vmax']-norms['vmin']) if norms['vmax'] != norms['vmin'] else 1),i[1]
 
 								if hasattr(plt.cm,attribute):
 									value = getattr(plt.cm,attribute)(i)
