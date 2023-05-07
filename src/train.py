@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim,namespace
+from src.utils import argparser,jit,allclose,delim,namespace,prng
 from src.io import load,glob
 from src.system import Dict
 from src.optimize import Optimizer,Objective,Metric,Callback
@@ -74,9 +74,22 @@ def train(hyperparameters):
 		hyperparams = hyperparameters.optimize
 		system = hyperparameters.system
 
+		seed = prng(**hyperparameters.seed)
+
 		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
 		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 		callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
+
+		from src.utils import rand,BACKEND
+		import numpy as np
+
+		print(BACKEND,np.random.get_state()[1][0],hyperparameters.seed.reset,model.noise.seed,[rand(random='uniform',key=None,bounds=[-1,1],dtype=model.dtype) for i in range(3)])
+		print()
+		print(model.parameters())
+		print()
+		print(label())
+
+		return
 
 		if hyperparameters.boolean.load:
 			model.load()

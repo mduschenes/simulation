@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import PRNGKey,delim,union,is_equal
+from src.utils import prng,delim,union,is_equal
 from src.iterables import getter,setter,permuter,search
 from src.io import load,dump,join,split
 from src.call import launch
@@ -117,11 +117,12 @@ def setup(settings):
 
 	count = len(seedlings)
 	
-	shape = (size,count,-1)
+	shape = (size,count)
 	size *= count
 
 	if size:
-		seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape).tolist()
+		seeds = prng(seed=seed,size=size,reset=reset)
+		seeds = seeds.reshape(*shape,*(-1,)*(seeds.ndim>1)).tolist()
 		seeds = [dict(zip(seedlings,seed)) for seed in seeds]
 	else:
 		seeds = []
