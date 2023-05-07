@@ -9,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim,namespace
+from src.utils import argparser,jit,allclose,delim,namespace,prng
 from src.io import load,glob
 from src.system import Dict
 from src.optimize import Optimizer,Objective,Metric,Callback
@@ -73,6 +73,8 @@ def train(hyperparameters):
 
 		hyperparams = hyperparameters.optimize
 		system = hyperparameters.system
+
+		seed = prng(**hyperparameters.seed)
 
 		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
 		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})

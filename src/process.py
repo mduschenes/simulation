@@ -683,6 +683,9 @@ def loader(data,settings,hyperparameters,verbose=None):
 	# Get keys
 	keys = find(settings)
 
+	# Set data boolean
+	new = False
+
 	# Set metadata
 	metadata = hyperparameters['path']['metadata']
 	
@@ -794,6 +797,8 @@ def loader(data,settings,hyperparameters,verbose=None):
 		settings.update(load(path,default=default,verbose=verbose))
 		setter(settings,tmp,func=func)
 
+		new = exists(path)
+
 	else:
 
 		# Load data
@@ -811,7 +816,9 @@ def loader(data,settings,hyperparameters,verbose=None):
 			default = None
 			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
 			
-		if tmp is not None:
+		new = tmp is not None and data is not None
+
+		if new:
 			path = tmp
 			wrapper = 'pd'
 			dump(data,path,wrapper=wrapper,verbose=verbose)
@@ -831,8 +838,10 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 	# Dump settings
 	if hyperparameters['dump']:
-		path = metadata
-		dump(settings,metadata,verbose=verbose)
+		if new:
+			path = metadata
+			wrapper = None
+			dump(settings,path,wrapper=wrapper,verbose=verbose)
 
 	return
 
