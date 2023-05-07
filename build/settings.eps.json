@@ -59,8 +59,8 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/eps.2.256.20.1000.20.500"],
-		"jobs.postprocess.cwd":["gobi/eps.2.256.20.1000.20.500"],
+		"jobs.job.cwd":["gobi/rand.2.256.2.1000.10.500"],
+		"jobs.postprocess.cwd":["gobi/rand.2.256.2.1000.10.500"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -73,7 +73,7 @@
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],
-		"jobs.job.resume":[null],
+		"jobs.job.resume":[true],
 		"jobs.postprocess.resume":[null],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.NUMPY_BACKEND":["jax.autograd"],
