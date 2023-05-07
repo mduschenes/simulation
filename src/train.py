@@ -80,17 +80,6 @@ def train(hyperparameters):
 		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 		callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
 
-		from src.utils import rand,BACKEND
-		import numpy as np
-
-		print(BACKEND,np.random.get_state()[1][0],hyperparameters.seed.reset,model.noise.seed,[rand(random='uniform',key=None,bounds=[-1,1],dtype=model.dtype) for i in range(3)])
-		print()
-		print(model.parameters())
-		print()
-		print(label())
-
-		return
-
 		if hyperparameters.boolean.load:
 			model.load()
 
