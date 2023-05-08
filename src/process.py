@@ -683,6 +683,9 @@ def loader(data,settings,hyperparameters,verbose=None):
 	# Get keys
 	keys = find(settings)
 
+	# Set data boolean
+	new = False
+
 	# Set metadata
 	metadata = hyperparameters['path']['metadata']
 	
@@ -739,11 +742,6 @@ def loader(data,settings,hyperparameters,verbose=None):
 				if i is None:
 					continue
 
-				for j in range(i):
-					iterable.get(key_iterable).pop(j);
-
-				i = 0					
-
 				for subindex,datum in enumerate(search(iterable.get(key_iterable)[i])):
 					if not datum:
 						continue
@@ -799,6 +797,8 @@ def loader(data,settings,hyperparameters,verbose=None):
 		settings.update(load(path,default=default,verbose=verbose))
 		setter(settings,tmp,func=func)
 
+		new = exists(path)
+
 	else:
 
 		# Load data
@@ -816,7 +816,9 @@ def loader(data,settings,hyperparameters,verbose=None):
 			default = None
 			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
 			
-		if tmp is not None:
+		new = tmp is not None and data is not None
+
+		if new:
 			path = tmp
 			wrapper = 'pd'
 			dump(data,path,wrapper=wrapper,verbose=verbose)
@@ -834,11 +836,12 @@ def loader(data,settings,hyperparameters,verbose=None):
 				settings.pop(instance,None);
 				continue
 
-	
 	# Dump settings
 	if hyperparameters['dump']:
-		path = metadata
-		dump(settings,metadata,verbose=verbose)
+		if new:
+			path = metadata
+			wrapper = None
+			dump(settings,path,wrapper=wrapper,verbose=verbose)
 
 	return
 
@@ -1543,7 +1546,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						elif data[attr%(axes)].get(kwarg) is None:
 							data[attr%(axes)][kwarg] = data.get('set_%sticks'%(axes),{}).get('ticks')
 
-					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=2)) for i in data[attr%(axes)][kwarg]]
+					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,3])) for i in data[attr%(axes)][kwarg]]
 
 			# set legend
 			prop = 'legend'
@@ -1731,7 +1734,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							delimiter = '__'
 							if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
 								if attr in ['color','ecolor']:
-									data[attr] = '_'.join([data[attr]['__value__'],str(data[attr]['__index__']/max(1,data[attr]['__size__']))])
+									data[attr] = '_'.join([data[attr]['__value__'],str(data[attr]['__index__']/max(1,data[attr]['__size__']-1))])
 								elif attr in ['alpha']:
 									data[attr] = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
 								elif attr in ['zorder']:

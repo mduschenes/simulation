@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import PRNGKey,delim,union,is_equal
+from src.utils import prng,delim,union,is_equal
 from src.iterables import getter,setter,permuter,search
 from src.io import load,dump,join,split
 from src.call import launch
@@ -109,7 +109,8 @@ def setup(settings):
 	# Find keys of seeds in hyperparameters
 	items = ['seed']
 	types = (list,dict,)
-	exclude = ['seed','seed.seed','system.seed']
+	exclude = ['seed','seed.seed','system.seed',
+	*[attr for permutation in permutations for attr in permutation if attr.split(delim)[-1] == 'seed' and permutation[attr] is not None]]
 	seedlings = search(hyperparameters,items=items,returns=True,types=types)
 
 	seedlings = {delim.join([*index,element]):obj for index,shape,item in seedlings for element,obj in zip(items,item)}
@@ -117,11 +118,12 @@ def setup(settings):
 
 	count = len(seedlings)
 	
-	shape = (size,count,-1)
+	shape = (size,count)
 	size *= count
 
 	if size:
-		seeds = PRNGKey(seed=seed,size=size,reset=reset).reshape(shape).tolist()
+		seeds = prng(seed=seed,size=size,reset=reset)
+		seeds = seeds.reshape(*shape,*(-1,)*(seeds.ndim>1)).tolist()
 		seeds = [dict(zip(seedlings,seed)) for seed in seeds]
 	else:
 		seeds = []

@@ -646,7 +646,7 @@ def check_machine_precision(path,tol):
 		N = lambda A,bits=4*maxbits: np.array(sp.N(A,bits),dtype=maxdtype)
 		E = np.diag((1+10**(-bits))**(np.arange(n)+2)-1)
 
-		A = N(W(),bits=bits)
+		A = N(W(),bits=bits)	
 		C = norm(A)
 		B = A
 

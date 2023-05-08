@@ -35,7 +35,7 @@ class Parameter(System):
 			category (str): category of parameter, allowed strings in ['variable','constant']
 			method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded']
 			group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
-			locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['shared']
+			locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['local','global']
 			bounds (iterable[object]): Bounds of parameters
 			attributes (iterable[str]): Model attributes for additional dimensions of parameter
 			axis (int,iterable[int]): Axis of input parameter data to insert into class data
@@ -176,7 +176,7 @@ class Parameter(System):
 		group = list(group)
 		for subgroup in list(group):
 			
-			if locality.get(subgroup) in ['shared']:
+			if locality.get(subgroup) in ['local']:
 				size = 1
 			else:
 				size = len([j for j in strings if strings[j]['group'] == subgroup])
@@ -193,7 +193,7 @@ class Parameter(System):
 
 			strings[i]['size'] = strings[i]['sizes'][group.index(strings[i]['group'])]
 
-			if locality.get(strings[i]['group']) in ['shared']:
+			if locality.get(strings[i]['group']) in ['local']:
 				strings[i]['slices'] = sum(strings[i]['sizes'][:group.index(strings[i]['group'])])
 			else:
 				strings[i]['slices'] = sum(strings[i]['sizes'][:group.index(strings[i]['group'])]) + [j for j in strings if strings[j]['group'] == strings[i]['group']].index(i)
@@ -353,7 +353,7 @@ class Parameters(System):
 				category (str): category of parameter, allowed strings in ['variable','constant']
 				method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded']
 				group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
-				locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['shared']
+				locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['local','global']
 				bounds (iterable[object]): Bounds of parameters
 				attributes (iterable[str]): Model attributes for additional dimensions of parameter
 				axis (int,iterable[int]): Axis of input parameter data to insert into class data

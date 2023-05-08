@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
-from src.utils import array,asarray,empty,identity,ones,zeros,arange,rand,diag
+from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
 from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,sort,relsort
 from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos
 from src.utils import to_string,is_hermitian,is_unitary,allclose
@@ -332,7 +332,7 @@ class Object(System):
 		'''		
 		msg = []
 
-		for attr in ['shape']:
+		for attr in ['operator','shape','parameters']:
 			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
 			msg.append(string)
 
@@ -393,8 +393,12 @@ class Object(System):
 				norm = None
 				eps = None
 		else:
-			norm = einsum('i,i->',conjugate(data),data)
-			eps = ones(shape=(),dtype=dtype)
+			if not hermitian and unitary:
+				norm = einsum('i,i->',conjugate(data),data)
+				eps = ones(shape=(),dtype=dtype)
+			else:
+				norm = None
+				eps = None
 
 		if norm is None or eps is None:
 			return
@@ -769,7 +773,7 @@ class Noise(Object):
 
 	basis = {
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
-		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['E','eps']},
+		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['E','eps','noise','rand']},
 		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['D','depolarize']},
 		**{attr: Object(data=array([[0,1],[1,0]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['X','x','amplitude']},
 		**{attr: Object(data=array([[1,0],[0,0]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['00']},
@@ -846,7 +850,12 @@ class Noise(Object):
 						sqrt(parameters/3)*self.basis['Y'](),
 						sqrt(parameters/3)*self.basis['Z']()]
 			elif operator in ['eps']:
-				data = array([identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
+				data = array([identity(self.n,dtype=self.dtype),diag((1+parameters)**(arange(self.n)+2) - 1)])
+				hermitian = False
+				unitary = False
+			elif operator in ['noise','rand']:
+				data = array(parameters,dtype=datatype(self.dtype))#[identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
+				seed = prng(reset=self.seed)
 				hermitian = False
 				unitary = False
 			else:
@@ -856,7 +865,6 @@ class Noise(Object):
 
 		if not isinstance(data,arrays):
 			data = array([tensorprod(i)	for i in itertools.product(data,repeat=self.N)],dtype=self.dtype)
-
 
 		self.data = data
 		self.hermitian = hermitian
@@ -1077,16 +1085,16 @@ class Operators(Object):
 
 		objs = {'parameters':parameters,'state':state,'noise':noise}
 		classes = {'parameters':Parameters,'state':State,'noise':Noise}
-
+		arguments = {'parameters':False,'state':True,'noise':True}
 
 		# Get functions
 		for obj in objs:
-			data,cls = objs[obj],classes[obj]
+			data,cls,argument = objs[obj],classes[obj],arguments[obj]
 			data = getattr(self,obj,None) if data is None or data is True else data if data is not False else None
 			if not isinstance(data,cls):
 				kwargs = {}
 
-				args = {**dict(data=None),**data} if isinstance(data,dict) else dict(data=data)
+				args = ({**dict(data=None),**data} if (isinstance(data,dict) and (argument or all(attr in data for attr in dict(data=None)))) else dict(data=data))
 				setter(kwargs,args,func=False)
 
 				args = dict(**namespace(cls,self),model=self,system=self.system)
@@ -1719,27 +1727,6 @@ class Label(Operator):
 	def __init__(self,*args,**kwargs):
 		return
 
-	def info(self,verbose=None):
-		'''
-		Log class information
-		Args:
-			verbose (int,str): Verbosity of message			
-		'''		
-		msg = []
-
-		for attr in ['shape','parameters']:
-			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
-			msg.append(string)
-
-		# for attr in ['data']:
-		# 	string = '%s'%(to_string(self()))
-		# 	msg.append(string)			
-
-		msg = '\n'.join(msg)
-		
-		self.log(msg,verbose=verbose)
-		return
-
 	def __call__(self,parameters=None,state=None,conj=None):
 		'''
 		Call operator
@@ -2197,14 +2184,27 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 		if state is None:
 
-			state = data
+			if noise.ndim == 3:
 
-			subscripts = 'uij,jk,kl->il'
-			shapes = (noise.shape,data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
+				state = data
 
-			def func(data,state,conj):
-				return einsummation(noise,data,state)	
+				subscripts = 'uij,jk,kl->il'
+				shapes = (noise.shape,data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(noise,data,state)	
+
+			elif noise.ndim == 0:
+
+				state = data
+
+				subscripts = 'ij,jk->ik'
+				shapes = (data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(data,state) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)
 
 		elif state.ndim == 1:
 		
