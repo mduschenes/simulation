@@ -1546,7 +1546,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						elif data[attr%(axes)].get(kwarg) is None:
 							data[attr%(axes)][kwarg] = data.get('set_%sticks'%(axes),{}).get('ticks')
 
-					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,3])) for i in data[attr%(axes)][kwarg]]
+					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in data[attr%(axes)][kwarg]]
 
 			# set legend
 			prop = 'legend'
