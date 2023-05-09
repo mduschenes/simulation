@@ -2204,7 +2204,7 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 				einsummation = einsum(subscripts,*shapes)
 
 				def func(data,state,conj):
-					return einsummation(data,state) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)
+					return einsummation(data,state) + noise*(1+rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2)
 
 		elif state.ndim == 1:
 		
