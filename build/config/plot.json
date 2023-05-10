@@ -3305,7 +3305,7 @@
             ],
             "set_colorbar": {
                 "values": "__axis__",
-                "colors": "viridis_alpha_0.5",
+                "colors": "viridis_alpha-0.5",
                 "size": "3%",
                 "pad": 0.1,
                 "set_scale": {

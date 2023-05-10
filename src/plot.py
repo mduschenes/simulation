@@ -258,18 +258,6 @@ def list_from_generator(generator,field=None):
 	return items
 
 
-# Check if obj is number
-def is_number(obj):
-	try:
-		obj = float(obj)
-		return True
-	except:
-		try:
-			obj = int(obj)
-			return True
-		except:
-			return False
-
 def is_int(a,*args,**kwargs):
 	'''
 	Check if object is an integer number
@@ -280,6 +268,20 @@ def is_int(a,*args,**kwargs):
 	'''
 	try:
 		return float(a) == int(a)
+	except:
+		return False
+
+def is_float(a,*args,**kwargs):
+	'''
+	Check if object is a float number
+	Args:
+		a (object): Object to be checked as float
+	Returns:
+		out (boolean): If object is a float
+	'''
+	try:
+		a = float(a)
+		return True
 	except:
 		return False
 
@@ -300,6 +302,45 @@ def is_inf(obj):
 # Check if obj is nan or inf
 def is_naninf(obj):
 	return is_nan(obj) or is_inf(obj)
+
+
+def is_number(a,*args,**kwargs):
+	'''
+	Check if object is an integer float number
+	Args:
+		a (object): Object to be checked as number
+	Returns:
+		out (boolean): If object is a number
+	'''
+	return is_int(a,*args,**kwargs) or is_float(a,*args,**kwargs)
+
+def to_number(a,dtype=None,**kwargs):
+	'''
+	Convert object to number
+	Args:
+		a (int,float,str): Object to convert to number
+		dtype (data_type): Datatype of number
+	Returns:
+		number (object): Number representation of object
+	'''
+	prefixes = {'-':-1}
+	dtypes = {'int':int,'float':float}
+
+	coefficient = 1
+	number = a
+	dtype = dtypes.get(dtype,dtype)
+	if isinstance(a,str):
+		for prefix in prefixes:
+			if a.startswith(prefix):
+				a = prefix.join(a.split(prefix)[1:])
+				coefficient *= prefixes[prefix]
+		if is_int(a):
+			dtype = int
+		elif is_float(a):
+			dtype = float
+		if is_number(a):
+			number = coefficient*float(a)
+	return number
 
 def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
 	'''
@@ -971,33 +1012,52 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						norm = matplotlib.colors.Normalize(**norms)  
 					elif scale in ['log']:
 						values = [i for i in values if i>0]
-						if values:
-							norms.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])))
+						norms.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])) if values else {})
 						norm = matplotlib.colors.LogNorm(**norms)  
 					else:
 						norm = matplotlib.colors.Normalize(**norms)					
 
+					# print('set_colorbar values',norms)
+					# print('colors',colors)
+					# print(values)
 					values = norm(values)
+					# print(values)
 
 					N = len(values)
 
 					for i,color in enumerate(colors if not isinstance(colors,str) else [colors]):
-						
+						# color = 'color_alpha-property_scale-property_r_value0-property0_..._valueN-propertyN'
 						delimiter = '_'
 						separator = '-'						
 						color,options = color.split(delimiter)[0],color.split(delimiter)[1:]
+						props = {'r':None,'scale':None,'alpha':1}
 						options = list(set(options))
-						reverse = 'r' in options
-						alpha = 'alpha' in options
-						options = [(float(i.split(separator)[0]),float(i.split(separator)[1])) if i.count(separator) else float(i) for i in options if i not in ['r','alpha']]
-						if alpha:
-							value = [(options[0],i) if not isinstance(i,tuple) else i for i in (options[1:] if options[1:] else values)]
+						props = {prop: (*(to_number(j) for j in (i.split(separator) if not is_number(i) else [i]) for i in options if prop in i.split(separator) and j != prop),)[0] if any(prop in (i.split(separator) if not is_number(i) else [i]) for i in options) else props[prop] for prop in props}
+						options = [(to_number(i.split(separator)[0]),to_number(i.split(separator)[1])) if (i.count(separator) and not is_number(i)) else to_number(i) for i in options if not any(j in props for j in (i.split(separator) if not is_number(i) else [i]))]
+
+						value = [(*i,) if isinstance(i,tuple) else (i,props['alpha']) for i in (options if options else values)]
+
+						scale = {'vmin':min([i[0] for i in value],default=0),
+							 	 'vmax':max([i[0] for i in value],default=1)}
+						if props['scale'] in ['linear',None]:
+							scale = matplotlib.colors.Normalize(**scale)  
+						elif props['scale'] in ['log']:
+							value = [i for i in value if i[0]>0]
+							scale.update(dict(zip(['vmin','vmax'],[min([i[0] for i in value],default=0),max([i[0] for i in value],default=1)])) if value else {})
+							scale = matplotlib.colors.LogNorm(**scale)  
 						else:
-							value = [(i,1) if not isinstance(i,tuple) else i for i in (options[:] if options[:] else values)]
+							scale = matplotlib.colors.Normalize(**scale)					
+
+
+						# print('set_colorbar field')
+						# print(value)
+						value = list(zip(scale([i[0] for i in value]),[i[1] for i in value]))
+						# print(value)
+						# exit()
 
 						value = None if not value else value
 
-						color = delimiter.join([color,'r']) if reverse else color
+						color = delimiter.join([color,'r']) if props['r'] else color
 
 						def colorer(i,N,color=color,value=value):
 							if value is None:
@@ -1134,29 +1194,52 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					i = to_index(index[fields[field]],shape[fields[field]])
 
 					if field in ['color','ecolor']:
-						colors = value
 
+						# color = 'color_alpha-property_scale-property_r_value0-property0_..._valueN-propertyN'
+						color = value
 						delimiter = '_'
-						separator = '-'
-						color,options = colors.split(delimiter)[0],colors.split(delimiter)[1:]
+						separator = '-'						
+						color,options = color.split(delimiter)[0],color.split(delimiter)[1:]
+						props = {'r':None,'scale':None,'alpha':1}
 						options = list(set(options))
-						reverse = 'r' in options
-						alpha = 'alpha' in options
-						options = [(float(i.split(separator)[0]),float(i.split(separator)[1])) if i.count(separator) else float(i) for i in options if i not in ['r','alpha']]
-						if alpha:
-							value = [(options[0],i) if not isinstance(i,tuple) else i for i in options[1:]]
+						props = {prop: (*(to_number(j) for j in (i.split(separator) if not is_number(i) else [i]) for i in options if prop in i.split(separator) and j != prop),)[0] if any(prop in (i.split(separator) if not is_number(i) else [i]) for i in options) else props[prop] for prop in props}
+						options = [(to_number(i.split(separator)[0]),to_number(i.split(separator)[1])) if (i.count(separator) and not is_number(i)) else to_number(i) for i in options if not any(j in props for j in i.split(separator))]
+
+						value = [(*i,) if isinstance(i,tuple) else (i,props['alpha']) for i in (options if options else values)]
+
+						# print('field color')
+						# print(color)
+						# print(value)
+						# exit()
+
+						scale = {'vmin':min([i[0] for i in value],default=0),
+							 	 'vmax':max([i[0] for i in value],default=1)}
+						
+						print('color field',scale)
+						print(value)
+						if props['scale'] in ['linear',None]:
+							scale = matplotlib.colors.Normalize(**scale)  
+						elif props['scale'] in ['log']:
+							value = [i for i in value if i[0]>0]
+							scale.update(dict(zip(['vmin','vmax'],[min([i[0] for i in value],default=0),max([i[0] for i in value],default=1)])) if value else {})
+							scale = matplotlib.colors.LogNorm(**scale)  
 						else:
-							value = [(i,1) if not isinstance(i,tuple) else i for i in options[:]]
+							scale = matplotlib.colors.Normalize(**scale)					
+
+
+						value = list(zip(scale([i[0] for i in value]),[i[1] for i in value]))
 
 						value = None if not value else value
 
-						color = delimiter.join([color,'r']) if reverse else color
+						color = delimiter.join([color,'r']) if props['r'] else color
+
+						print(value,color,scale)
+						# exit()
 
 						if hasattr(plt.cm,color):
 							value = value
 							attribute = color
-							norms = {'vmin':0,'vmax':1}
-							def fielder(i,N,attribute=attribute,value=value,norms=norms):
+							def fielder(i,N,attribute=attribute,value=value):
 								if value is None:
 									i = (((i)/max(1,N-1)) if (N > 1) else 0.5,1)
 								elif not isinstance(value,list):
@@ -1164,7 +1247,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								else:
 									i = value[i%len(value)] 
 
-								i,alpha = (i[0]-norms['vmin'])/((norms['vmax']-norms['vmin']) if norms['vmax'] != norms['vmin'] else 1),i[1]
+								i,alpha = i[0],i[1]
 
 								if hasattr(plt.cm,attribute):
 									value = getattr(plt.cm,attribute)(i)
@@ -1182,13 +1265,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 									norm = tmp[-1].get('norm',None)
 									size = prod(shape[-2:])
 									values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
-									norms.update(({**norm,**{
+									norms = ({**norm,**{
 											 'vmin':norm.get('vmin',min(values,default=0)),
 											 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
 											{'vmin':norm[0],
 											 'vmax':norm[1]} if norm is not None else
 											{'vmin':min(values,default=0),
-											 'vmax':max(values,default=1)}))
+											 'vmax':max(values,default=1)})
 
 									values = list(natsorted(set([*values,*[norms['vmin'],norms['vmax']]])))
 									norms.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
@@ -1520,8 +1603,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 if __name__ == '__main__':
-	if len(sys.argv)<2:
-		exit()
+
 	data = sys.argv[1]
 	path = sys.argv[2]
 	settings = sys.argv[3]

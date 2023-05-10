@@ -1424,6 +1424,7 @@ def plotter(settings,hyperparameters,verbose=None):
 								if not (label.startswith(delimiter) and label.endswith(delimiter)):
 									continue
 
+
 								label,val = label.replace(delimiter,''),value.pop(label)
 								
 								if delimiter in ['@']:
@@ -1493,15 +1494,16 @@ def plotter(settings,hyperparameters,verbose=None):
 				if not data:
 					continue
 
-				value = deepcopy(data)
-
 				delimiter = '__'
 				for attr in data:
 					if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
 						if attr in ['colors']:
-							data[attr] = ['_'.join([data[attr]['__value__'],str(data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1))]) for i in data[attr]['__items__']]
+							string,value = data[attr]['__value__'],[data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) if ((data[attr]['__value__'] is None) or (data[attr]['__value__'] is False) or (len(i)>1)) else i[0] for i in data[attr]['__items__']]
+							value = ['_'.join([str(string),str(i)]) for i in value]
 						else:
-							data[attr] = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
+							value = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) if ((data[attr]['__value__'] is None) or (data[attr]['__value__'] is False) or (len(i)>1)) else i[0] for i in data[attr]['__items__']]
+
+						data[attr] = value
 
 				attr = 'values'
 				if (data.get(attr) is None):
@@ -1512,7 +1514,10 @@ def plotter(settings,hyperparameters,verbose=None):
 				for axes in ['',*AXES]:
 					if data.get(attr%(axes)) is None:
 						continue
-					data[attr%(axes)][kwarg%(axes)] = texify(data[attr%(axes)][kwarg%(axes)])
+					
+					value = texify(data[attr%(axes)][kwarg%(axes)])
+
+					data[attr%(axes)][kwarg%(axes)] = value
 
 				attr = 'set_%sticks'
 				kwarg = 'ticks'
@@ -1520,14 +1525,22 @@ def plotter(settings,hyperparameters,verbose=None):
 					if data.get(attr%(axes)) is None:
 						continue
 					else:
+						value = data.get('norm')
+						if value is None:
+							value = {'vmin':min(data['values'],default=0),'vmax':max(data['values'],default=1)}
+						elif not isinstance(value,dict):
+							value = {'vmin':min(value),'vmax':max(value)}
+						else:
+							value = {'vmin':value.get('vmin',0),'vmax':value.get('vmax',1)}
+
+						value = [min(min(data['values'],default=0),value['vmin']),max(max(data['values'],default=1),value['vmax'])]
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 							if data[attr%(axes)][kwarg] == 1:
-								data[attr%(axes)][kwarg] = [(max(data['values'],default=1) + min(data['values'],default=1))/2]
+								value = [(value[0]+value[1])/2]
 							else:
-								data[attr%(axes)][kwarg] = np.linspace(
-									min(0,min(data['values'],default=0)),
-									max(1,max(data['values'],default=1)),
-									data[attr%(axes)][kwarg]).tolist()
+								value = np.linspace(*value,min(len(set((*data['values'],*value))),data[attr%(axes)][kwarg])).tolist()
+
+							data[attr%(axes)][kwarg] = value
 
 				attr = 'set_%sticklabels'
 				kwarg = 'ticklabels'
@@ -1536,17 +1549,26 @@ def plotter(settings,hyperparameters,verbose=None):
 						continue
 					else:
 						if isinstance(data[attr%(axes)].get(kwarg),int):
-							if data[attr%(axes)][kwarg] == 1:
-								data[attr%(axes)][kwarg] = [(max(data['values'],default=1) + min(data['values'],default=1))/2]
+							value = data.get('norm')
+							if value is None:
+								value = {'vmin':min(data['values'],default=0),'vmax':max(data['values'],default=1)}
+							elif not isinstance(value,dict):
+								value = {'vmin':min(value),'vmax':max(value)}
 							else:
-								data[attr%(axes)][kwarg] = np.linspace(
-									min(data['values'],default=0),
-									max(data['values'],default=1),
-									min(len(data['values']),data[attr%(axes)][kwarg])).tolist()
-						elif data[attr%(axes)].get(kwarg) is None:
-							data[attr%(axes)][kwarg] = data.get('set_%sticks'%(axes),{}).get('ticks')
+								value = {'vmin':value.get('vmin',0),'vmax':value.get('vmax',1)}
 
-					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in data[attr%(axes)][kwarg]]
+							value = [min(min(data['values'],default=0),value['vmin']),max(max(data['values'],default=1),value['vmax'])]
+
+							if data[attr%(axes)][kwarg] == 1:
+								value = [(value[0]+value[1])/2]
+							else:
+								value = np.linspace(value[0],value[1],min(len(set((*data['values'],*value))),data[attr%(axes)][kwarg])).tolist()
+						elif data[attr%(axes)].get(kwarg) is None:
+							value = data.get('set_%sticks'%(axes),{}).get('ticks')
+						else:
+							value = data[attr%(axes)].get(kwarg)
+
+					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in value]
 
 			# set legend
 			prop = 'legend'
@@ -1705,12 +1727,13 @@ def plotter(settings,hyperparameters,verbose=None):
 						if data.get(attr) is None:
 							continue
 
+						value = data[attr]
 
 						if attr in [OTHER]:
 						
-							if data[attr][OTHER].get('labels') is not None:
-								for label in data[attr][OTHER]['labels']:
-									if (label in data[attr]) and (label not in ALL) and not parse(label,data[attr][OTHER]['labels'][label],data[attr],verbose=verbose):
+							if value[OTHER].get('labels') is not None:
+								for label in value[OTHER]['labels']:
+									if (label in value) and (label not in ALL) and not parse(label,value[OTHER]['labels'][label],value,verbose=verbose):
 										data.clear()
 										break
 						
@@ -1719,32 +1742,38 @@ def plotter(settings,hyperparameters,verbose=None):
 							if isinstance(data.get(attr),scalars):
 								continue							
 
-							data[attr] = np.array(data[attr])
+							value = np.array(value)
 
 							if normalize.get(attr):
-								data[attr] = normalize[attr](attr,data)
+								value = normalize[attr](attr,data)
 
 							for subslice in slices:
-								data[attr] = data[attr][subslice]
+								value = value[subslice]
 
-							data[attr] = np.array([valify(i,valify=data[OTHER][OTHER].get('valify')) for i in data[attr]])
+							value = np.array([valify(i,valify=data[OTHER][OTHER].get('valify')) for i in value])
 
 						else:
 							
 							delimiter = '__'
-							if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
+							if isinstance(value,dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in value):
 								if attr in ['color','ecolor']:
-									data[attr] = '_'.join([data[attr]['__value__'],str(data[attr]['__index__']/max(1,data[attr]['__size__']-1))])
+
+									string,value = data[attr]['__value__'],data[attr]['__items__'].index(data[attr]['__item__'])/max(1,data[attr]['__size__']-1) if ((data[attr]['__value__'] is None) or (data[attr]['__value__'] is False) or (len(data[attr]['__item__'])>1)) else data[attr]['__item__'][0]
+									value = '_'.join([str(string),str(value)])
+
+									data[attr] = value
+
 								elif attr in ['alpha']:
-									data[attr] = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
+									value = (value['__index__'] + 0.5)/(value['__size__'])
 								elif attr in ['zorder']:
-									data[attr] = 1000*data[attr]['__index__']
+									value = 1000*value['__index__']
 								elif attr in ['marker']:
-									data[attr] = data[attr]['__value__'][data[attr]['__index__']%len(data[attr]['__value__'])] if not isinstance(data[attr]['__value__'],str) else data[attr]['__value__']
+									value = value['__value__'][value['__index__']%len(value['__value__'])] if not isinstance(value['__value__'],str) else value['__value__']
 								elif attr in ['linestyle']:
-									data[attr] = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
-									data[attr] = '-' if data[attr] < 1/3 else '--' if data[attr] < 2/3 else '---'
-					
+									value = (value['__index__'] + 0.5)/(value['__size__'])
+									value = '-' if value < 1/3 else '--' if value < 2/3 else '---'
+						
+						data[attr] = value
 
 			# set title and axes label
 			prop = 'set_%slabel'
@@ -1858,7 +1887,10 @@ def plotter(settings,hyperparameters,verbose=None):
 			prop = 'savefig'
 			attr = 'fname'
 			for data in search(settings[instance][subinstance]['fig'].get(prop)):
-				data[attr] = join(delim.join([split(path,directory_file=True),instance]),ext=split(path,ext=True))
+
+				value = join(delim.join([split(path,directory_file=True),instance]),ext=split(path,ext=True))
+				
+				data[attr] = value
 
 	# Plot data
 	for instance in settings:

@@ -21,6 +21,7 @@
 **/tmp.*
 **/check
 **/*.profile
+**/mnt
 tmp
 keep
 examples/**
