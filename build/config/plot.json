@@ -54,10 +54,10 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 },
                 {
@@ -96,10 +96,10 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }                
             ],
@@ -126,7 +126,7 @@
                     },
                     "alpha": 0.4,
                     "color": {
-                        "@M@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -313,19 +313,17 @@
                         }
                     },
                     "alpha": 0.8,
-                    "marker": "o",
+                    "marker": {"@noise.parameters@":["o","^","s","P"]},
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -342,12 +340,10 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -534,19 +530,17 @@
                         }
                     },
                     "alpha": 0.8,
-                    "marker": "o",
+                    "marker": {"@noise.parameters@":["o","^","s","P"]},
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -563,12 +557,10 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -761,10 +753,10 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@tau.noise.scale@": "viridis"
+                        "@tau.noise.scale@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@tau.noise.scale@": "viridis"
+                        "@tau.noise.scale@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -780,10 +772,10 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@tau.noise.scale@": "viridis"
+                        "@tau.noise.scale@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@tau.noise.scale@": "viridis"
+                        "@tau.noise.scale@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -986,12 +978,10 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -1026,12 +1016,10 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -1233,12 +1221,10 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -1273,12 +1259,10 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -1471,12 +1455,10 @@
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 },
                 {
@@ -1506,44 +1488,36 @@
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
             "set_colorbar": {
-                "values": "@M@",
-                "colors": "viridis",
+                "value": {"@M@": {"value":null,"type":"index"}},
+                "color": "viridis",
+                "norm":[0,1],
+                "scale":"linear",
+                "alpha":1,   
+                "segments":100,             
                 "size": "3%",
                 "pad": 0.1,
-                "norm": [
-                    0,
-                    1
-                ],
-                "set_scale": {
-                    "value": "linear"
-                },
                 "set_label": {
                     "label": "M",
                     "labelpad": 10,
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 5,
+                    "ticks": 6,
                     "size": 50
                 },
                 "set_ticklabels": {
                     "ticklabels": [
-                        0,
-                        500,
-                        1000,
-                        1500,
-                        2000
-                    ],
+                        0,100,200,300,400,500
+                    ],            
+                    "ticklabels":6,
                     "size": 50
                 },
                 "ax.yaxis.set_tick_params": {
@@ -1740,12 +1714,10 @@
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -1945,10 +1917,10 @@
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@tau@": "viridis"
+                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@tau@": "viridis"
+                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -2149,10 +2121,10 @@
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@tau@": "viridis"
+                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@tau@": "viridis"
+                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -2351,21 +2323,27 @@
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@noise.parameters@": "viridis"
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[1e-20,1e-4],"scale":"log","alpha":1},"type":"value"},
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":null,"scale":"log","alpha":1},"type":"value"}
                     },
                     "ecolor": {
-                        "@noise.parameters@": "viridis"
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[1e-20,1e-4],"scale":"log","alpha":1},"type":"value"},
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":null,"scale":"log","alpha":1},"type":"index"}
                     }
                 }
             ],
             "set_colorbar": {
-                "values": "@noise.parameters@",
-                "colors": "viridis",
+                "value": {"@noise.parameters@": {"value":null,"type":"value"}},
+                "value": {"@noise.parameters@": {"value":null,"type":"index"}},
+                "color": "viridis",
+                "norm":[1e-20,1e-4],
+                "norm":[0,1],
+                "scale":"log",
+                "scale":"linear",
+                "alpha":1,
+                "segments":100,                                         
                 "size": "3%",
                 "pad": 0.1,
-                "set_scale": {
-                    "value": "linear"
-                },
                 "set_label": {
                     "label": "noise.parameters",
                     "labelpad": 10,
@@ -2377,11 +2355,11 @@
                 },
                 "set_ticklabels": {
                     "ticklabels": [
+                        1e-20,
                         1e-16,
                         1e-12,
                         1e-08,
-                        0.0001,
-                        1.0
+                        1e-04
                     ],
                     "size": 50
                 },
@@ -2571,10 +2549,10 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@noise.parameters@": "viridis"
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@noise.parameters@": "viridis"
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -2756,10 +2734,10 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@noise.parameters@": "viridis"
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@noise.parameters@": "viridis"
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -2902,10 +2880,10 @@
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@noise.scale@": "viridis"
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@noise.scale@": "viridis"
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -3103,10 +3081,10 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@noise.scale@": "viridis"
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@noise.scale@": "viridis"
+                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -3296,21 +3274,22 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
             "set_colorbar": {
-                "values": "__axis__",
-                "colors": "viridis_alpha-0.5",
+                "value": {"__axis__": {"value":null,"type":"index"}},
+                "color": "viridis",
+                "norm":[0,1],
+                "scale":"linear",
+                "alpha":0.5,
+                "segments":100,
                 "size": "3%",
                 "pad": 0.1,
-                "set_scale": {
-                    "value": "linear"
-                },
                 "set_label": {
                     "label": "$\\lambda$",
                     "labelpad": 10,
@@ -3525,19 +3504,17 @@
                     },
                     "alpha": 0.5,
                     "zorder": 1000,
-                    "marker": "o",
+                    "marker": {"@noise.parameters@":["o","^","s","P"]},
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 },
                 {
@@ -3594,19 +3571,17 @@
                     },
                     "alpha": 0.9,
                     "zorder": 0,
-                    "marker": "o",
+                    "marker": {"@noise.parameters@":["o","^","s","P"]},
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -3802,19 +3777,17 @@
                     },
                     "alpha": 0.9,
                     "zorder": 0,
-                    "marker": "o",
+                    "marker": {"@noise.parameters@":["o","^","s","P"]},
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -3981,17 +3954,15 @@
                             null
                         ]
                     },
-                    "marker": "o",
+                    "marker": {"@noise.parameters@":["o","^","s","P"]},
                     "linestyle": "--",
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -4159,17 +4130,15 @@
                             null
                         ]
                     },
-                    "marker": "o",
+                    "marker": {"@noise.parameters@":["o","^","s","P"]},
                     "linestyle": "--",
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@M@": "viridis",
-                        "@noise.parameters@": "viridis"
+                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -4342,10 +4311,10 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@tau@": "viridis"
+                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@tau@": "viridis"
+                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -4518,10 +4487,10 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@tau@": "viridis"
+                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     },
                     "ecolor": {
-                        "@tau@": "viridis"
+                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],

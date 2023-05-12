@@ -2,6 +2,7 @@
 
 # Import python modules
 import os,sys,copy,warnings,itertools,inspect,datetime
+import traceback
 from copy import deepcopy
 from math import prod
 import json,glob
@@ -437,6 +438,75 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 
 
 
+def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**kwargs):
+	'''
+	Set color
+	Args:
+		value (int,float,iterable[int,float]): Value to process color
+		color (str): color
+		values (iterable[int,float]): Values to process colors
+		norm (iterable[int,float],dict[str,[int,float]]): Range of values, either iterable [vmin,vmax] or dictionary {'vmin':vmin,'vmax':vmax}
+		scale (str): Scale type for normalization, allowed strings in ['linear','log']
+		alpha (int,float,iterable[int,float]): Alpha of color
+		kwargs (dict): Additional keywork arguments
+	Returns:
+		value (int,float,iterable[int,float]): Normalized values corresponding to color
+		color (str,tuple,array): colors of value
+		norm (callable): Normalization function, with signature norm(value)
+	'''
+	if value is None:
+		value = values
+	if color is None:
+		color = 'viridis'
+
+	if value is None:
+		value = []
+
+	values = [i for i in values if not ((i is None) or is_naninf(i))]
+	norm = ({**norm,**{
+				 'vmin':norm.get('vmin',min(values,default=0)),
+				 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
+				{'vmin':norm[0],
+				 'vmax':norm[1]} if norm is not None else
+				{'vmin':min(values,default=0),
+				 'vmax':max(values,default=1)})
+
+	values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
+	norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
+
+	if not isinstance(value,scalars):
+		value = list(natsorted(set([*value,*[norm['vmin'],norm['vmax']]])))
+
+	if scale in ['linear',None]:
+		norm = matplotlib.colors.Normalize(**norm)  
+	elif scale in ['log']:
+		values = [i for i in values if i>0]
+		norm.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])) if values else {})
+		norm = matplotlib.colors.LogNorm(**norm)  
+	else:
+		norm = matplotlib.colors.Normalize(**norm)					
+
+	try:
+		value = norm(value)
+	except:
+		value = None
+
+	if hasattr(plt.cm,color):
+		try:
+			color = getattr(plt.cm,color)(value)
+		except:
+			color = color
+		
+		if isinstance(color,tuple):
+			color = list(color)
+			color[-1] = alpha
+			color = tuple(color)
+		elif isinstance(color,np.ndarray):
+			color[:,-1] = alpha
+
+	return value,color,norm
+
+
 def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=None):
 	'''
 	Plot x,y,z with settings
@@ -621,7 +691,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'set_title':[OTHER],
 				'suptitle':['t'],
 				'annotate':['s'],
-				'set_colorbar':['values','colors'],
+				'set_colorbar':['value'],
 				'legend':['handles','labels','title','set_title']
 				},
 			}
@@ -676,6 +746,16 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			kwds = {}
 			_args = []
 			_kwds = {}
+
+
+			fields = {
+				'set_colorbar':slice(-2,None),
+				'color':slice(-2,None),
+				'ecolor':slice(-2,None),
+				'marker':slice(-4,-3),
+				'linestyle':slice(-5,-4),
+				'alpha':slice(-6,-5),
+				}
 
 			attr_ = attr
 			kwargs = deepcopy(kwargs)
@@ -974,153 +1054,88 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# 	call = False
 
 			elif attr in ['set_colorbar']:
-				values = kwargs[attr].get('values',[])
-				colors = kwargs[attr].get('colors',[])
-				norm = kwargs[attr].get('norm',None)
-				padding = kwargs[attr].get('pad',0.05)
+
+				nullkwargs.extend(['value','color','norm','scale','alpha','segments','size','pad','orientation','position','set_yscale','set_xscale','normed_values'])
+				call = False
+
+				kwds = ['value','values','color','norm','scale','alpha']
+			
+				kwds = {prop: kwargs[attr].get(prop,None) for prop in kwds}
+
+				if isinstance(kwds.get('value'),dict):
+					kwds.update(kwds.pop('value',{}))
+
+				prop = 'values'
+				tmp = 'value'
+				if kwds.get(prop) is None:
+					if kwds.get(tmp) is not None:
+						kwds[prop] = kwds[tmp]
+					else:
+						kwds[prop] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+
+				prop = 'value'
+				tmp = 'values'
+				if kwds.get(prop) is None:
+					kwds[prop] = kwds.get(tmp)
+
+				value,color,norm = set_color(**kwds)
+				
+				name = 'colorbar'				
+				colors = list([list(i) for i in zip([i for i in value],[tuple(i) for i in color])])
+				N = len(colors)
+
+				segments = kwargs[attr].get('segments',1)
 				sizing = kwargs[attr].get('size','5%')
+				padding = kwargs[attr].get('pad',0.05)
 				orientation = kwargs[attr].get('orientation','vertical')
 				position = kwargs[attr].get('position','right')
-				scale = kwargs[attr].get('set_scale',{}).get('value',
-						kwargs[attr].get('set_yscale',{}).get('value',
-						kwargs[attr].get('set_xscale',{}).get('value')))
-				size = prod(shape[-2:])
+				relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
+
 				for axes in ['',*AXES]:
 					field = 'set_%slabel'%(axes)
 					subfield = '%slabel'%(axes)
 					if field in kwargs[attr]:
 						kwargs[attr][field][subfield] = attr_texify(kwargs[attr][field][subfield],field,subfield)
 
-				nullkwargs.extend(['values','colors','norm','size','pad','orientation','position','set_scale','set_yscale','set_xscale','normed_values'])
+				if N > 1:
 
-				if values is not None and colors is not None:
-				
-					values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
+					cmap = matplotlib.colors.LinearSegmentedColormap.from_list(name=name,colors=colors,N=N*segments)
 
-					norms = ({**norm,**{
-							 'vmin':norm.get('vmin',min(values,default=0)),
-							 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
-							{'vmin':norm[0],
-							 'vmax':norm[1]} if norm is not None else
-							{'vmin':min(values,default=0),
-							 'vmax':max(values,default=1)})
-
-					values = list(natsorted(set([*values,*[norms['vmin'],norms['vmax']]])))
-					norms.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
-
-					if scale in ['linear',None]:
-						norm = matplotlib.colors.Normalize(**norms)  
-					elif scale in ['log']:
-						values = [i for i in values if i>0]
-						norms.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])) if values else {})
-						norm = matplotlib.colors.LogNorm(**norms)  
-					else:
-						norm = matplotlib.colors.Normalize(**norms)					
-
-					# print('set_colorbar values',norms)
-					# print('colors',colors)
-					# print(values)
-					values = norm(values)
-					# print(values)
-
-					N = len(values)
-
-					for i,color in enumerate(colors if not isinstance(colors,str) else [colors]):
-						# color = 'color_alpha-property_scale-property_r_value0-property0_..._valueN-propertyN'
-						delimiter = '_'
-						separator = '-'						
-						color,options = color.split(delimiter)[0],color.split(delimiter)[1:]
-						props = {'r':None,'scale':None,'alpha':1}
-						options = list(set(options))
-						props = {prop: (*(to_number(j) for j in (i.split(separator) if not is_number(i) else [i]) for i in options if prop in i.split(separator) and j != prop),)[0] if any(prop in (i.split(separator) if not is_number(i) else [i]) for i in options) else props[prop] for prop in props}
-						options = [(to_number(i.split(separator)[0]),to_number(i.split(separator)[1])) if (i.count(separator) and not is_number(i)) else to_number(i) for i in options if not any(j in props for j in (i.split(separator) if not is_number(i) else [i]))]
-
-						value = [(*i,) if isinstance(i,tuple) else (i,props['alpha']) for i in (options if options else values)]
-
-						scale = {'vmin':min([i[0] for i in value],default=0),
-							 	 'vmax':max([i[0] for i in value],default=1)}
-						if props['scale'] in ['linear',None]:
-							scale = matplotlib.colors.Normalize(**scale)  
-						elif props['scale'] in ['log']:
-							value = [i for i in value if i[0]>0]
-							scale.update(dict(zip(['vmin','vmax'],[min([i[0] for i in value],default=0),max([i[0] for i in value],default=1)])) if value else {})
-							scale = matplotlib.colors.LogNorm(**scale)  
-						else:
-							scale = matplotlib.colors.Normalize(**scale)					
-
-
-						# print('set_colorbar field')
-						# print(value)
-						value = list(zip(scale([i[0] for i in value]),[i[1] for i in value]))
-						# print(value)
-						# exit()
-
-						value = None if not value else value
-
-						color = delimiter.join([color,'r']) if props['r'] else color
-
-						def colorer(i,N,color=color,value=value):
-							if value is None:
-								i = (((i)/max(1,N-1)) if (N > 1) else 0.5,1)
-							elif not isinstance(value,list):
-								i = value[0]
-							else:
-								i = value[i%len(value)] 
-
-							i,alpha = i[0],i[1]
-							if hasattr(plt.cm,color):
-								color = getattr(plt.cm,color)(i)
-								color = list(color)
-								color[-1] = alpha
-								color = tuple(color)
-
-							return color
-
-						if isinstance(colors,str):
-							colors = [colorer(i,N) for i in range(N)]
-						else:
-							colors[i] = colorer(i,N)
-
-					cmap = matplotlib.colors.LinearSegmentedColormap.from_list('colorbar', list(zip(values,colors)), N=N*100)  
 					pos = obj.get_position()
+					divider = make_axes_locatable(obj)
+					cax = divider.append_axes(position,size=sizing,pad=padding)
 					
-					relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
+					# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
+					# cax = plt.add_axes()
+					# cax.set_position(pos)
 
-					if N > 1:
-						# pos = [pos.x0+padding, pos.y0, pos.width*relative, pos1.height] 
-						# cax = plt.add_axes()
-						# cax.set_position(pos)
-						divider = make_axes_locatable(obj)
-						cax = divider.append_axes(position,size=sizing,pad=padding)
-						colorbar = matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm, orientation=orientation)
-						obj = colorbar	
+					colorbar = matplotlib.colorbar.ColorbarBase(cax,cmap=cmap,norm=norm,orientation=orientation)
+					obj = colorbar	
+
+					for kwarg in kwargs[attr]:
 						
-						for kwarg in kwargs[attr]:
-							
-							if kwarg in nullkwargs:
-								continue
+						if kwarg in nullkwargs:
+							continue
 
-							_obj = obj
-							
-							for _kwarg in kwarg.split('.'):
-								try:
-									_obj = getattr(_obj,_kwarg)
-								except Exception as exception:
-									break									
-							if isinstance(kwargs[attr][kwarg],dict):
-								try:
-									if _kwarg.startswith('get_'):
-										for i in _obj():
-											getattr(i,_kwarg)(kwargs[attr][kwarg])
-									else:
-										_obj(**kwargs[attr][kwarg])
-								except Exception as exception:
-									continue
-							else:
+						_obj = obj
+						
+						for _kwarg in kwarg.split('.'):
+							try:
+								_obj = getattr(_obj,_kwarg)
+							except Exception as exception:
+								break									
+						if isinstance(kwargs[attr][kwarg],dict):
+							try:
+								if _kwarg.startswith('get_'):
+									for i in _obj():
+										getattr(i,_kwarg)(kwargs[attr][kwarg])
+								else:
+									_obj(**kwargs[attr][kwarg])
+							except Exception as exception:
 								continue
-					
-				call = False
-
+						else:
+							continue
+				
 
 			elif attr in ['savefig']:
 				path = kwargs[attr].get('fname')
@@ -1156,13 +1171,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# marker index[-4]
 			# linestyle index[-5]
 			# linestyle index[-6]
-			fields = {
-				'color':slice(-3,None),
-				'ecolor':slice(-3,None),
-				'marker':slice(-4,-3),
-				'linestyle':slice(-5,-4),
-				'alpha':slice(-6,-5),
-				}
 			for field in fields:
 				
 				value = _kwargs_.get(field)
@@ -1185,117 +1193,40 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					_obj = getattr(obj,'get_lines')()[-1]
 					_kwargs_[field] = getattr(_obj,'get_%s'%(field))()
 			
-				elif isinstance(value,str):
-					attribute = None
-					def fielder(i,N,attribute=attribute,value=value):
-						return value
-					
-					N = prod(shape[fields[field]])
-					i = to_index(index[fields[field]],shape[fields[field]])
+				elif isinstance(value,(dict,str)):
 
 					if field in ['color','ecolor']:
 
-						# color = 'color_alpha-property_scale-property_r_value0-property0_..._valueN-propertyN'
-						color = value
-						delimiter = '_'
-						separator = '-'						
-						color,options = color.split(delimiter)[0],color.split(delimiter)[1:]
-						props = {'r':None,'scale':None,'alpha':1}
-						options = list(set(options))
-						props = {prop: (*(to_number(j) for j in (i.split(separator) if not is_number(i) else [i]) for i in options if prop in i.split(separator) and j != prop),)[0] if any(prop in (i.split(separator) if not is_number(i) else [i]) for i in options) else props[prop] for prop in props}
-						options = [(to_number(i.split(separator)[0]),to_number(i.split(separator)[1])) if (i.count(separator) and not is_number(i)) else to_number(i) for i in options if not any(j in props for j in i.split(separator))]
+						kwds = ['value','values','color','norm','scale','alpha']
 
-						value = [(*i,) if isinstance(i,tuple) else (i,props['alpha']) for i in (options if options else values)]
+						kwds = {prop: value.get(prop,None) for prop in kwds}
 
-						# print('field color')
-						# print(color)
-						# print(value)
-						# exit()
+						if isinstance(value,dict):
+							kwds.update(value)
+						elif isinstance(value,str):
+							kwds.update({'color':value})
 
-						scale = {'vmin':min([i[0] for i in value],default=0),
-							 	 'vmax':max([i[0] for i in value],default=1)}
-						
-						print('color field',scale)
-						print(value)
-						if props['scale'] in ['linear',None]:
-							scale = matplotlib.colors.Normalize(**scale)  
-						elif props['scale'] in ['log']:
-							value = [i for i in value if i[0]>0]
-							scale.update(dict(zip(['vmin','vmax'],[min([i[0] for i in value],default=0),max([i[0] for i in value],default=1)])) if value else {})
-							scale = matplotlib.colors.LogNorm(**scale)  
-						else:
-							scale = matplotlib.colors.Normalize(**scale)					
+						if isinstance(kwds.get('value'),dict):
+							kwds.update(kwds.pop('value',{}))
 
+						prop = 'values'
+						tmp = 'value'
+						if kwds.get(prop) is None:
+							if kwds.get(tmp) is not None:
+								kwds[prop] = kwds[tmp]
+							else:
+								kwds[prop] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
 
-						value = list(zip(scale([i[0] for i in value]),[i[1] for i in value]))
+						prop = 'value'
+						tmp = 'values'
+						if kwds.get(prop) is None:
+							kwds[prop] = to_index(index[fields[field]],shape[fields[field]])/max(1,prod(shape[fields[attr]])-1)
 
-						value = None if not value else value
+						value,color,norm = set_color(**kwds)
 
-						color = delimiter.join([color,'r']) if props['r'] else color
+						value = color
 
-						print(value,color,scale)
-						# exit()
-
-						if hasattr(plt.cm,color):
-							value = value
-							attribute = color
-							def fielder(i,N,attribute=attribute,value=value):
-								if value is None:
-									i = (((i)/max(1,N-1)) if (N > 1) else 0.5,1)
-								elif not isinstance(value,list):
-									i = value[0]
-								else:
-									i = value[i%len(value)] 
-
-								i,alpha = i[0],i[1]
-
-								if hasattr(plt.cm,attribute):
-									value = getattr(plt.cm,attribute)(i)
-									value = list(value)
-									value[-1] = alpha
-									value = tuple(value)
-
-								return value
-
-							subattr = 'set_colorbar'
-							if kwargs.get(subattr) is not None:
-								N = 1
-								for tmp in search(kwargs.get(subattr)):
-									values = tmp[-1].get('values',None)
-									norm = tmp[-1].get('norm',None)
-									size = prod(shape[-2:])
-									values = [i for i in values if not ((i is None) or is_naninf(i))] if ((values) and not any(isinstance(i,str) for i in values)) else range(size) if not norm else []
-									norms = ({**norm,**{
-											 'vmin':norm.get('vmin',min(values,default=0)),
-											 'vmax':norm.get('vmax',max(values,default=1))}} if isinstance(norm,dict) else 
-											{'vmin':norm[0],
-											 'vmax':norm[1]} if norm is not None else
-											{'vmin':min(values,default=0),
-											 'vmax':max(values,default=1)})
-
-									values = list(natsorted(set([*values,*[norms['vmin'],norms['vmax']]])))
-									norms.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
-									
-									N = max(1,max(N,len(values)))
-
-									i = values.index(i) if i in values else i
-
-					elif field in ['marker']:
-						if value in [None]:
-							attribute = [None]
-						elif not isinstance(value,str):
-							value = [i for i in value]
-						elif value in ['dashes']:
-							attribute = ['-','--','---']
-						elif value in ['shapes']:
-							attribute = ['.','^','*','o']
-						else:
-							attribute = [value]
-
-						def fielder(i,N,attribute=attribute,value=value):
-							return attribute[i%len(value)]	
-
-					_kwargs_[field] = fielder(i,N)
+					_kwargs_[field] = value
 				
 				else:
 					continue
@@ -1308,23 +1239,26 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				except:
 					break			
 
-			try:
-				if args != []:
-					_attr = _obj(*args,**_kwargs_)
-				else:
-					try:
-						_attr = _obj(**_kwargs_)
-					except:
-						_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
-						if _kwargs_:
-							_attr = _obj(**_kwargs_)
-						else:
-							_attr = None
 
-			except Exception as e:
-				_attr = None
-				if not isinstance(e,AttributeError):
-					logger.log(debug,'%r %r %s %r %r'%(e,_obj,attr,args,_kwargs_))
+			# try:
+			if args != []:
+				_attr = _obj(*args,**_kwargs_)
+			else:
+				try:
+					_attr = _obj(**_kwargs_)
+				except:
+					_kwargs_ = {_kwarg_:_kwargs_[_kwarg_] for _kwarg_ in _kwargs_ if _kwargs_[_kwarg_] is not None}
+					if _kwargs_:
+						_attr = _obj(**_kwargs_)
+					else:
+						_attr = None
+			# exit()
+			# except Exception as e:
+			# 	_attr = None
+			# 	if not isinstance(e,AttributeError):
+			# 		logger.log(debug,'%r %r %s %r %r'%(e,_obj,attr,args,_kwargs_))
+			# 		logger.log(debug,'%r'%(traceback.format_exc()))
+			# 		exit()
 
 			for k in _kwds:
 				_attr_ = _attr

@@ -1494,20 +1494,43 @@ def plotter(settings,hyperparameters,verbose=None):
 				if not data:
 					continue
 
+				attr = 'value'
 				delimiter = '__'
-				for attr in data:
-					if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
-						if attr in ['colors']:
-							string,value = data[attr]['__value__'],[data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) if ((data[attr]['__value__'] is None) or (data[attr]['__value__'] is False) or (len(i)>1)) else i[0] for i in data[attr]['__items__']]
-							value = ['_'.join([str(string),str(i)]) for i in value]
-						else:
-							value = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) if ((data[attr]['__value__'] is None) or (data[attr]['__value__'] is False) or (len(i)>1)) else i[0] for i in data[attr]['__items__']]
-
-						data[attr] = value
-
-				attr = 'values'
 				if (data.get(attr) is None):
 					continue
+				
+				elif isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
+
+					if all(len(i)>1 for i in data[attr]['__items__']):
+						items = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
+					else:
+						items = [i[0] for i in data[attr]['__items__']]
+
+					value = data[attr]['__value__']
+					indices = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
+
+					if isinstance(value,dict):
+						defaults = {'value':None,'type':None}
+						value.update({prop: value.get(prop,defaults[prop]) for prop in defaults})
+
+						if value['type'] in ['value']:
+							if all(len(i)>1 for i in data[attr]['__items__']):
+								value = indices
+							else:
+								value = [i[0] for i in data[attr]['__items__']]
+						elif value['type'] in ['index']:
+							value = indices
+						else:
+							value = indices
+					elif value is not None:
+						value = indices
+					else:
+						value = None
+
+					data[attr] = value
+
+				else:
+					items = data[attr]
 
 				attr = 'set_%slabel'
 				kwarg = '%slabel'
@@ -1525,22 +1548,37 @@ def plotter(settings,hyperparameters,verbose=None):
 					if data.get(attr%(axes)) is None:
 						continue
 					else:
-						value = data.get('norm')
-						if value is None:
-							value = {'vmin':min(data['values'],default=0),'vmax':max(data['values'],default=1)}
-						elif not isinstance(value,dict):
-							value = {'vmin':min(value),'vmax':max(value)}
+						norm = data.get('norm')
+						scale = data.get('scale')
+						if norm is None:
+							norm = {'vmin':min(data['value'],default=0),'vmax':max(data['value'],default=1)}
+						elif not isinstance(norm,dict):
+							norm = {'vmin':min(norm),'vmax':max(norm)}
 						else:
-							value = {'vmin':value.get('vmin',0),'vmax':value.get('vmax',1)}
+							norm = {'vmin':norm.get('vmin',0),'vmax':norm.get('vmax',1)}
 
-						value = [min(min(data['values'],default=0),value['vmin']),max(max(data['values'],default=1),value['vmax'])]
+						value = [min(min(data['value'],default=0),norm['vmin']),max(max(data['value'],default=1),norm['vmax'])]
 						if isinstance(data[attr%(axes)].get(kwarg),int):
+							
+							size = min(len(set((*data['value'],*value))),data[attr%(axes)][kwarg])
+							
 							if data[attr%(axes)][kwarg] == 1:
+								value = np.array(value)							
 								value = [(value[0]+value[1])/2]
+							elif scale in ['linear']:
+								value = np.array(value)
+								value = np.linspace(*value,size).tolist()
+							elif scale in ['log']:
+								value = np.log10(value)
+								value = np.logspace(*value,size).tolist()
 							else:
-								value = np.linspace(*value,min(len(set((*data['values'],*value))),data[attr%(axes)][kwarg])).tolist()
+								value = np.array(value)
+								value = np.linspace(*value,size).tolist()
 
-							data[attr%(axes)][kwarg] = value
+						else:
+							value = data[attr%(axes)][kwarg]
+
+						data[attr%(axes)][kwarg] = value
 
 				attr = 'set_%sticklabels'
 				kwarg = 'ticklabels'
@@ -1548,27 +1586,36 @@ def plotter(settings,hyperparameters,verbose=None):
 					if data.get(attr%(axes)) is None:
 						continue
 					else:
-						if isinstance(data[attr%(axes)].get(kwarg),int):
-							value = data.get('norm')
-							if value is None:
-								value = {'vmin':min(data['values'],default=0),'vmax':max(data['values'],default=1)}
-							elif not isinstance(value,dict):
-								value = {'vmin':min(value),'vmax':max(value)}
-							else:
-								value = {'vmin':value.get('vmin',0),'vmax':value.get('vmax',1)}
+						norm = data.get('norm')
+						scale = data.get('scale')
+						if norm is None:
+							norm = {'vmin':min(data['value'],default=0),'vmax':max(data['value'],default=1)}
+						elif not isinstance(norm,dict):
+							norm = {'vmin':min(norm),'vmax':max(norm)}
+						else:
+							norm = {'vmin':norm.get('vmin',0),'vmax':norm.get('vmax',1)}
 
-							value = [min(min(data['values'],default=0),value['vmin']),max(max(data['values'],default=1),value['vmax'])]
+						value = items
+						if isinstance(data[attr%(axes)].get(kwarg),int):
+
+							length = len(value)+1
+							size = max(1,len(set((*data['value'],*value)))//min(len(set((*data['value'],*value))),data[attr%(axes)][kwarg]))
+							size = size-1 if (length-1)//((length-1)//size) > size else size
+							slices = slice(0,length,(length-1)//size)
+
+							print(value,value[slices])
 
 							if data[attr%(axes)][kwarg] == 1:
-								value = [(value[0]+value[1])/2]
+								value = [(value[0]+value[-1])/2]
 							else:
-								value = np.linspace(value[0],value[1],min(len(set((*data['values'],*value))),data[attr%(axes)][kwarg])).tolist()
-						elif data[attr%(axes)].get(kwarg) is None:
-							value = data.get('set_%sticks'%(axes),{}).get('ticks')
+								value = value[slices]
 						else:
-							value = data[attr%(axes)].get(kwarg)
+							value = data[attr%(axes)][kwarg]
 
 					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in value]
+
+
+				print(data)
 
 			# set legend
 			prop = 'legend'
@@ -1755,24 +1802,57 @@ def plotter(settings,hyperparameters,verbose=None):
 						else:
 							
 							delimiter = '__'
-							if isinstance(value,dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in value):
+							if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
+								
+								value = data[attr]['__value__']
+								indices = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
+
+								if isinstance(data[attr]['__value__'],str):
+									value = data[attr]['__value__']
+								
+								elif isinstance(value,dict):
+									defaults = {'value':None,'type':None}
+									value.update({prop: value.get(prop,defaults[prop]) for prop in defaults})
+
+									if value['type'] in ['value']:
+										if all(len(i)>1 for i in data[attr]['__items__']):
+											tmp = indices
+										else:
+											tmp = [i[0] for i in data[attr]['__items__']]
+									elif value['type'] in ['index']:
+										tmp = indices
+									else:
+										tmp = indices
+
+									if isinstance(value['value'],dict):
+										if value['type'] in ['value','index']:
+											prop = 'value'
+										elif value['type'] in value['value']:
+											prop = value['type']
+										value['value'][prop] = tmp[data[attr]['__index__']]
+										value['value']['values'] = tmp
+									else:
+										value['value'] = tmp[data[attr]['__index__']]
+
+									value = value['value']
+
+								else:
+									value = data[attr]['__value__'][data[attr]['__index__']%len(data[attr]['__value__'])] if not isinstance(data[attr]['__value__'],str) else data[attr]['__value__']
+
 								if attr in ['color','ecolor']:
-
-									string,value = data[attr]['__value__'],data[attr]['__items__'].index(data[attr]['__item__'])/max(1,data[attr]['__size__']-1) if ((data[attr]['__value__'] is None) or (data[attr]['__value__'] is False) or (len(data[attr]['__item__'])>1)) else data[attr]['__item__'][0]
-									value = '_'.join([str(string),str(value)])
-
-									data[attr] = value
-
+									pass
 								elif attr in ['alpha']:
-									value = (value['__index__'] + 0.5)/(value['__size__'])
+									value = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
 								elif attr in ['zorder']:
-									value = 1000*value['__index__']
+									value = 1000*data[attr]['__index__']
 								elif attr in ['marker']:
-									value = value['__value__'][value['__index__']%len(value['__value__'])] if not isinstance(value['__value__'],str) else value['__value__']
+									pass
 								elif attr in ['linestyle']:
-									value = (value['__index__'] + 0.5)/(value['__size__'])
+									value = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
 									value = '-' if value < 1/3 else '--' if value < 2/3 else '---'
-						
+								else:
+									pass
+
 						data[attr] = value
 
 			# set title and axes label
