@@ -1603,8 +1603,6 @@ def plotter(settings,hyperparameters,verbose=None):
 							size = size-1 if (length-1)//((length-1)//size) > size else size
 							slices = slice(0,length,(length-1)//size)
 
-							print(value,value[slices])
-
 							if data[attr%(axes)][kwarg] == 1:
 								value = [(value[0]+value[-1])/2]
 							else:
@@ -1614,8 +1612,6 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in value]
 
-
-				print(data)
 
 			# set legend
 			prop = 'legend'

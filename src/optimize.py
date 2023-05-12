@@ -1332,7 +1332,6 @@ class Optimization(System):
 			data = [default for i in range(size-len(self.attributes[attr]))]
 			self.attributes[attr] = [*self.attributes[attr],*data]
 
-
 		self.parameters = self.get_params(state)
 		self.reset(clear=False)
 
@@ -1363,7 +1362,19 @@ class Optimization(System):
 				self.track.pop(attr)
 			elif ((not isinstance(value,list)) and (value)) or clear:
 				self.track[attr] = []
-		
+
+		if all(hasattr(self.func,attr) for attr in dict(model=None)):
+			model = self.func.model
+			delimiter = delim
+			regex = ['*']
+			obj = model		
+			for attr in self.track:
+				for i in attr.split(delimiter):
+					if i in regex:
+						pass
+
+
+
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
 		while (self.sizes) and (self.size > 0) and (self.size >= sum(self.sizes[attr] for attr in self.sizes)):

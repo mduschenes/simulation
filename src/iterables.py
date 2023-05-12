@@ -25,7 +25,7 @@ def isiterable(obj,exceptions=()):
 	'''
 	return hasattr(obj,'__iter__') and not isinstance(obj,exceptions)
 
-def getattrs(obj,attr,default=None,delimiter=None):
+def getattrs(obj,attr,default=None,delimiter=None,regex=None):
 	'''
 	Get nested attribute of object
 	Args:
@@ -38,24 +38,43 @@ def getattrs(obj,attr,default=None,delimiter=None):
 	'''
 	if isinstance(attr,str):
 		if (delimiter is None) or (hasattr(obj,attr)):
-			attr = [attr]
+			attrs = [attr]
 		else:
-			attr = attr.split(delimiter)
+			attrs = attr.split(delimiter)
 	else:
 		if delimiter is None:
-			attr = [subattr for subattr in attr]
+			attrs = [i for i in attr]
 		else:
-			attr = [subsubattr for subattr in attr for subsubattr in subattr.split(delimiter)]
+			attrs = [j for i in attr for j in i.split(delimiter)]
 
-	for subattr in attr:
-		if not hasattr(obj,subattr):
+	if regex is None:
+		regex = []
+	elif isinstance(regex,str):
+		regex = [regex]
+
+	for i,attr in enumerate(attrs):
+		if attr in regex:
+			attrs = [[attr,*attrs[i+1:]] for attr in obj]
+			objs = []
+			for attr in attrs:
+				returns = getattrs(obj,attr,default=default,delimiter=delimiter,regex=regex)
+				if attr in regex:
+					objs.extend(returns)
+				else:
+					objs.append(returns)
+			if not any(attr in regex for attr in attrs):
+				obj = objs[-1]
+			else:
+				obj = objs
+			return obj
+		if not hasattr(obj,attr):
 			obj = default
 			break
-		obj = getattr(obj,subattr)
+		obj = getattr(obj,attr)
 
 	return obj
 
-def setattrs(obj,attr,value,delimiter=None):
+def setattrs(obj,attr,value,delimiter=None,regex=None):
 	'''
 	Set nested attribute of object
 	Args:
@@ -63,35 +82,42 @@ def setattrs(obj,attr,value,delimiter=None):
 		attr (str,iterable[str]): Nested attribute of object
 		value (object): Nested value of object
 		delimiter (str): Delimiter to split nested attributes
+		regex (str): Regex patterns for attributes		
 	'''
-
-
 
 	if isinstance(attr,str):
 		if (delimiter is None) or (hasattr(obj,attr)):
-			attr = [attr]
+			attrs = [attr]
 		else:
-			attr = attr.split(delimiter)
+			attrs = attr.split(delimiter)
 	else:
 		if delimiter is None:
-			attr = [subattr for subattr in attr]
+			attrs = [i for i in attr]
 		else:
-			attr = [subsubattr for subattr in attr for subsubattr in attr.split(delimiter)]
+			attrs = [j for i in attr for j in i.split(delimiter)]
 
+	if regex is None:
+		regex = []
+	elif isinstance(regex,str):
+		regex = [regex]
 
-
-	for subattr in attr[:-1]:
-		if not hasattr(obj,subattr):
-			setattr(obj,subattr,null())
-		obj = getattr(obj,subattr)
+	for i,attr in enumerate(attrs[:-1]):
+		if attr in regex:
+			attrs = [[attr,*attrs[i+1:]] for attr in obj]
+			for attr in attrs:
+				setattrs(obj,attr,default=default,delimiter=delimiter,regex=regex)
+			return
+		if not hasattr(obj,attr):
+			setattr(obj,attr,null())
+		obj = getattr(obj,attr)
 	
-	subattr = attr[-1]
-	setattr(obj,subattr,value)
+	attr = attrs[-1]
+	setattr(obj,attr,value)
 
 	return
 
 
-def hasattrs(obj,attr,default=None,delimiter=None):
+def hasattrs(obj,attr,default=None,delimiter=None,regex=None):
 	'''
 	Check existence of nested attribute of object
 	Args:
@@ -99,9 +125,11 @@ def hasattrs(obj,attr,default=None,delimiter=None):
 		attr (str,iterable[str]): Nested attribute of object
 		default (object): Default nested attribute of object
 		delimiter (str): Delimiter to split nested attributes
+		regex (str): Regex patterns for attributes
 	Returns:
 		has (bool): Nested attribute existence
 	'''
+
 	if isinstance(attr,str):
 		if delimiter is None:
 			attr = [attr]
@@ -109,16 +137,25 @@ def hasattrs(obj,attr,default=None,delimiter=None):
 			attr = attr.split(delimiter)
 	else:
 		if delimiter is None:
-			attr = [subattr for subattr in attr]
+			attr = [i for i in attr]
 		else:
-			attr = [subsubattr for subattr in attr for subsubattr in attr.split(delimiter)]
+			attr = [j for i in attr for j in i.split(delimiter)]
+
+	if regex is None:
+		regex = []
+	elif isinstance(regex,str):
+		regex = [regex]
 
 	has = True
-	for subattr in attr:
-		if not hasattr(obj,subattr):
+	for i,attr in enumerate(attrs):
+		if attr in regex:
+			attrs = [[attr,*attrs[i+1:]] for attr in obj]
+			has = has and all(hasattrs(obj,attr,default=default,delimiter=delimiter,regex=regex) for attr in attrs)
+			break
+		elif not hasattr(obj,attr):
 			has = False
 			break
-		obj = getattr(obj,subattr)
+		obj = getattr(obj,attr)
 
 	return has
 
