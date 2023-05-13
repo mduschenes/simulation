@@ -117,9 +117,14 @@ def setup(settings):
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
 
 	count = len(seedlings)
-	
-	shape = (size,count)
-	size *= count
+
+	if isinstance(size,int):
+		shape = (size,count)
+		size *= count
+	elif len(size) == 
+		count = len(seedlings)
+		shape = (size,count)
+		size **= count
 
 	if size:
 		seeds = prng(seed=seed,size=size,reset=reset)

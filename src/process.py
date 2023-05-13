@@ -23,7 +23,7 @@ from src.utils import array,expand_dims,conditions
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
 from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
-from src.iterables import getter,setter,search,inserter,indexer,nullshape
+from src.iterables import getter,setter,search,inserter,indexer
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
