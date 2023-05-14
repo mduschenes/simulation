@@ -19,7 +19,7 @@ from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,sh
 from src.utils import to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,null,delim,scalars,arrays,datatype
 
-from src.iterables import setter,getter,getattrs,hasattrs,namespace,iterate,indexer,inserter
+from src.iterables import setter,getattrs,hasattrs,namespace,iterate,indexer,inserter
 
 from src.io import load,dump,join,split
 
@@ -1787,7 +1787,7 @@ class Callback(System):
 			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
 
-			'noise.scale':[],'optimize.c1':[],'optimize.c2':[],
+			'noise.scale':[],'hyperparameters.c1':[],'hyperparameters.c2':[],
 
 		}
 
@@ -2030,8 +2030,8 @@ class Callback(System):
 					value = [getattrs(model,i,default=default,delimiter=delim) for i in value]
 					value = value[0]/value[1] if value[1] else value[0]
 
-				elif attr not in attributes and not (getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=null,delimiter=delim) is null):
-					value = getter(hyperparameters,attr.replace('optimize%s'%(delim),''),default=default,delimiter=delim)
+				elif attr not in attributes and hasattrs(optimizer,attr,delimiter=delim):
+					value = getattrs(optimizer,attr,default=default,delimiter=delim)
 
 				elif attr not in attributes and hasattrs(model,attr,delimiter=delim):
 					value = getattrs(model,attr,default=default,delimiter=delim)

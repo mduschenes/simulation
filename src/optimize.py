@@ -1365,7 +1365,7 @@ class Optimization(System):
 				self.track[attr] = []
 
 		
-		objs = {'func.model':None,'hyperparameters':['optimize']}
+		objs = {'func.model':False,'hyperparameters':True}
 		for attr in list(self.track):
 
 			if attr in self.attributes:
@@ -1373,25 +1373,23 @@ class Optimization(System):
 			
 			value = self.track.pop(attr)
 			
-			for obj in objs:
+			for name in objs:
 
-				if not hasattrs(self,obj,delimiter=delim):
+				if not hasattrs(self,name,delimiter=delim):
 					continue
 
-				if (objs[obj] is not None) and (attr.split(delim)[0] in objs[obj]):
-					pattern = delim.join(attr.split(delim)[1:])
+				if objs[name]:
+					pattern = delim.join(attr.split(delim)[1:]) if attr.split(delim)[0] == name else attr
 				else:
 					pattern = attr
 
-				obj = getattrs(self,obj,delimiter=delim)
+				obj = getattrs(self,name,delimiter=delim)
 				attribute = None
 
 				for attribute in iterate(obj,pattern):
 
-					if pattern != attr:
-						attribute = delim.join([attr.split(delim)[0],attribute])
-					else:
-						attribute = attribute
+					if objs[name]:
+						attribute = delim.join([name,attribute])
 
 					self.track[attribute] = [*deepcopy(value)]
 
@@ -1399,6 +1397,7 @@ class Optimization(System):
 					break
 				else:
 					self.track[attr] = [*deepcopy(value)]
+
 
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
