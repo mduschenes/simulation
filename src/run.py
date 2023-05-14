@@ -140,8 +140,9 @@ def setup(settings):
 		values = {'permutations':permutations,'seed':seeds,'other':other}
 	else:
 		values = {'permutations':permutations,'other':other}
+
 	index = {attr: hyperparameters.get(attr,{}).get('index') for attr in values}
-	# formatter = lambda instance,value,values,default: '%d'%(instance)	
+
 	formatter = lambda instance,value,values,default: ((delim.join([
 		*([default] if default is not None else []),
 		*['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]])) 

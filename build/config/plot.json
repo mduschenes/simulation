@@ -15,7 +15,7 @@
             "close": {}
         },
         "ax": {
-           "errorbar": [
+            "errorbar": [
                 {
                     "x": "iteration",
                     "y": "objective",
@@ -27,12 +27,11 @@
                             "backend": null,
                             "noise.parameters": null
                         },
-                        "include":["M"],
                         "legend": {
-                            "label": {
-                            },
-                            "sort":["M","noise.parameters"],
-                            "include":null,
+                            "sort": [
+                                "N","M",
+                                "noise.parameters"
+                            ],
                             "exclude": [
                                 "instance"
                             ]
@@ -46,18 +45,79 @@
                             "one": false
                         }
                     },
-                    "alpha":1,
-                    "marker": {"@noise.parameters@":["o","^","s","P"]},
+                    "alpha": 1,
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 12,
                     "linestyle": "-",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }                        
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }                        
                     }
                 },
                 {
@@ -70,13 +130,10 @@
                             "M": null,
                             "backend": null,
                             "noise.parameters": null,
-                            "instance":null                            
+                            "instance": null
                         },
-                        "include":["M"],                        
                         "legend": {
-                            "label": {
-                            },
-                            "include":false,
+                            "include": false,
                             "exclude": true
                         },
                         "scinotation": {
@@ -88,20 +145,81 @@
                             "one": false
                         }
                     },
-                    "marker": {"@noise.parameters@":["o","^","s","P"]},
-                    "alpha":0.2,
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
+                    "alpha": 0.2,
                     "markersize": 12,
                     "linestyle": "-",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
-                }                
+                }
             ],
             "fill_between": [
                 {
@@ -111,13 +229,11 @@
                         "label": {
                             "N": null,
                             "parameters.xy.method": null,
-                            "M": null,                          
+                            "M": null,
                             "backend": null,
                             "noise.parameters": null
                         },
-                        "include":["M"],                        
                         "legend": {
-                            "label": {},
                             "exclude": [
                                 "M",
                                 "instance"
@@ -126,7 +242,34 @@
                     },
                     "alpha": 0.4,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -313,17 +456,78 @@
                         }
                     },
                     "alpha": 0.8,
-                    "marker": {"@noise.parameters@":["o","^","s","P"]},
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -340,7 +544,34 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -527,17 +758,78 @@
                         }
                     },
                     "alpha": 0.8,
-                    "marker": {"@noise.parameters@":["o","^","s","P"]},
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -554,7 +846,34 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -727,9 +1046,9 @@
                         "label": {
                             "N": null,
                             "parameters.xy.method": null,
-                            "tau.noise.scale": null,
-                            "T.noise.scale": null,
-                            "noise.scale": null
+                            "tau.noise.parameters": null,
+                            "T.noise.parameters": null,
+                            "noise.parameters": null
                         },
                         "scinotation": {
                             "scilimits": [
@@ -747,10 +1066,36 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@tau.noise.scale@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau.noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@tau.noise.scale@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau.noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -762,11 +1107,24 @@
                         "N": null,
                         "parameters.xy.method": null,
                         "tau": null,
-                        "noise.scale": null
+                        "noise.parameters": null
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@tau.noise.scale@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau.noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -969,10 +1327,64 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -1007,7 +1419,34 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -1209,10 +1648,64 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -1247,7 +1740,34 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@N@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        },                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -1433,17 +1953,50 @@
                         }
                     },
                     "alpha": 0.8,
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 20,
                     "linestyle": "-",
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                    "color": {                       
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
-                    "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                    "ecolor": {                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 },
                 {
@@ -1466,27 +2019,68 @@
                         }
                     },
                     "alpha": 0.8,
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 20,
                     "linestyle": "--",
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                    "color": {                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
-                    "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                    "ecolor": {                        
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
             "set_colorbar": {
-                "value": {"@M@": {"value":null,"type":"index"}},
+                "value": {
+                    "@M@": {
+                        "value": null,
+                        "type": "index"
+                    }
+                },
                 "color": "viridis",
-                "norm":[0,1],
-                "scale":"linear",
-                "alpha":1,   
-                "segments":100,             
+                "norm": [
+                    0,
+                    1
+                ],
+                "scale": "linear",
+                "alpha": 1,
+                "segments": 100,
                 "size": "3%",
                 "pad": 0.1,
                 "set_label": {
@@ -1499,10 +2093,7 @@
                     "size": 50
                 },
                 "set_ticklabels": {
-                    "ticklabels": [
-                        0,100,200,300,400,500
-                    ],            
-                    "ticklabels":6,
+                    "ticklabels": 6,
                     "size": 50
                 },
                 "ax.yaxis.set_tick_params": {
@@ -1547,9 +2138,9 @@
                     1e-10,
                     1e-08,
                     1e-06,
-                    1e-04,
-                    1e-02,
-                    1e00
+                    0.0001,
+                    0.01,
+                    1.0
                 ]
             },
             "set_yscale": {
@@ -1692,17 +2283,50 @@
                         "iteration": "@iteration.min@"
                     },
                     "alpha": 0.8,
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 20,
                     "linestyle": "--",
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -1867,7 +2491,7 @@
             }
         }
     },
-    "noise.scale.objective.tau": {
+    "noise.parameters.objective.tau": {
         "fig": {
             "set_size_inches": {
                 "w": 28,
@@ -1885,7 +2509,7 @@
         "ax": {
             "errorbar": [
                 {
-                    "x": "noise.scale",
+                    "x": "noise.parameters",
                     "y": "objective",
                     "label": {
                         "N": null,
@@ -1895,17 +2519,50 @@
                         "iteration": "@iteration.min@"
                     },
                     "alpha": 0.8,
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },                    
                     "markersize": 20,
                     "linestyle": "--",
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -2071,7 +2728,7 @@
             }
         }
     },
-    "noise.scale.objective.diff.tau": {
+    "noise.parameters.objective.diff.tau": {
         "fig": {
             "set_size_inches": {
                 "w": 18,
@@ -2089,7 +2746,7 @@
         "ax": {
             "errorbar": [
                 {
-                    "x": "noise.scale",
+                    "x": "noise.parameters",
                     "y": "objective.diff.state",
                     "label": {
                         "N": null,
@@ -2099,17 +2756,50 @@
                         "iteration": "@iteration.min@"
                     },
                     "alpha": 0.8,
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },                    
                     "markersize": 20,
                     "linestyle": "--",
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -2295,38 +2985,73 @@
                     "x": "M",
                     "y": "objective",
                     "label": {
-                        "N": null,
-                        "parameters.xy.method": null,
-                        "noise.parameters": null,
-                        "iteration": "@iteration.min@"
+                        "label":{
+                            "N": null,
+                            "parameters.xy.method": null,
+                            "noise.parameters": null,
+                            "iteration": "@iteration.min@"
+                        },
+                        "legend":{
+                            "include":["N"]
+                        }
                     },
                     "alpha": 0.8,
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },                    
                     "markersize": 20,
                     "linestyle": "--",
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[1e-20,1e-4],"scale":"log","alpha":1},"type":"value"},
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":null,"scale":"log","alpha":1},"type":"value"}
+                        "@noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": null,
+                                "scale": "log",
+                                "alpha": 1
+                            },
+                            "type": "value"
+                        }
                     },
                     "ecolor": {
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[1e-20,1e-4],"scale":"log","alpha":1},"type":"value"},
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":null,"scale":"log","alpha":1},"type":"index"}
+                        "@noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": null,
+                                "scale": "log",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
             "set_colorbar": {
-                "value": {"@noise.parameters@": {"value":null,"type":"value"}},
-                "value": {"@noise.parameters@": {"value":null,"type":"index"}},
+                "value": {
+                    "@noise.parameters@": {
+                        "value": null,
+                        "type": "index"
+                    }
+                },
                 "color": "viridis",
-                "norm":[1e-20,1e-4],
-                "norm":[0,1],
-                "scale":"log",
-                "scale":"linear",
-                "alpha":1,
-                "segments":100,                                         
+                "norm": [
+                    0,
+                    1
+                ],
+                "scale": "linear",
+                "alpha": 1,
+                "segments": 100,
                 "size": "3%",
                 "pad": 0.1,
                 "set_label": {
@@ -2344,7 +3069,7 @@
                         1e-16,
                         1e-12,
                         1e-08,
-                        1e-04
+                        0.0001
                     ],
                     "size": 50
                 },
@@ -2475,7 +3200,28 @@
                 "which": "both",
                 "axis": "both"
             },
-            "legend": null
+            "legend": null,
+            "legend": {
+                "title_fontsize": 40,
+                "fontsize": 40,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 40
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    0.72,
+                    0.02
+                ],
+                "ncol": 1,
+                "set_zorder": {
+                    "level": 100
+                }
+            }
         },
         "style": {
             "texify": null,
@@ -2527,17 +3273,50 @@
                         "noise.parameters": null,
                         "iteration": "@iteration.min@"
                     },
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 8,
                     "linewidth": 4,
                     "linestyle": "-",
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -2712,17 +3491,50 @@
                         "noise.parameters": null,
                         "iteration": "@iteration.min@"
                     },
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },                    
                     "markersize": 8,
                     "linewidth": 4,
                     "linestyle": "-",
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -2829,7 +3641,7 @@
             }
         }
     },
-    "tau.objective.noise.scale": {
+    "tau.objective.noise.parameters": {
         "fig": {
             "set_size_inches": {
                 "w": 18,
@@ -2847,28 +3659,61 @@
         "ax": {
             "errorbar": [
                 {
-                    "x": "tau.noise.scale",
+                    "x": "tau.noise.parameters",
                     "y": "objective",
                     "label": {
                         "N": null,
                         "parameters.xy.method": null,
-                        "noise.scale": null,
-                        "T.noise.scale": null,
+                        "noise.parameters": null,
+                        "T.noise.parameters": null,
                         "parameters.zz.parameters": null,
                         "iteration": "@iteration.min@"
                     },
                     "alpha": 0.8,
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 20,
                     "linestyle": "--",
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -3056,20 +3901,53 @@
                     "label": {
                         "N": null,
                         "parameters.xy.method": null,
-                        "noise.scale": null,
+                        "noise.parameters": null,
                         "iteration": "@iteration.min@"
                     },
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 8,
                     "linewidth": 4,
                     "linestyle": "-",
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@noise.parameters@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@noise.parameters@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -3252,27 +4130,68 @@
                         "__axis__": 0.5
                     },
                     "zorder": 1000,
-                    "marker": "o",
+                    "marker": {
+                        "@N@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
             "set_colorbar": {
-                "value": {"__axis__": {"value":null,"type":"index"}},
+                "value": {
+                    "__axis__": {
+                        "value": null,
+                        "type": "index"
+                    }
+                },
                 "color": "viridis",
-                "norm":[0,1],
-                "scale":"linear",
-                "alpha":0.5,
-                "segments":100,
+                "norm": [
+                    0,
+                    1
+                ],
+                "scale": "linear",
+                "alpha": 0.5,
+                "segments": 100,
                 "size": "3%",
                 "pad": 0.1,
                 "set_label": {
@@ -3448,7 +4367,6 @@
                             "$\\textrm{Iteration}$": "\\textrm{Initial},~\\textrm{Final}"
                         },
                         "legend": {
-                            "label": {},
                             "exclude": [
                                 "iteration"
                             ]
@@ -3489,17 +4407,50 @@
                     },
                     "alpha": 0.5,
                     "zorder": 1000,
-                    "marker": {"@noise.parameters@":["o","^","s","P"]},
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 },
                 {
@@ -3515,7 +4466,6 @@
                             "iteration": "@iteration.min@"
                         },
                         "legend": {
-                            "label": {},
                             "exclude": [
                                 "iteration"
                             ]
@@ -3556,17 +4506,50 @@
                     },
                     "alpha": 0.9,
                     "zorder": 0,
-                    "marker": {"@noise.parameters@":["o","^","s","P"]},
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -3721,7 +4704,6 @@
                             "iteration": "@iteration.min@"
                         },
                         "legend": {
-                            "label": {},
                             "exclude": [
                                 "iteration"
                             ]
@@ -3762,17 +4744,50 @@
                     },
                     "alpha": 0.9,
                     "zorder": 0,
-                    "marker": {"@noise.parameters@":["o","^","s","P"]},
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "markersize": 12,
                     "linestyle": "--",
                     "linewidth": 4,
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -3928,7 +4943,6 @@
                             "rank": "hessian.rank"
                         },
                         "legend": {
-                            "label": {},
                             "exclude": [
                                 "iteration"
                             ]
@@ -3939,15 +4953,48 @@
                             null
                         ]
                     },
-                    "marker": {"@noise.parameters@":["o","^","s","P"]},
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "linestyle": "--",
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -4104,7 +5151,6 @@
                             "rank": "fisher.rank"
                         },
                         "legend": {
-                            "label": {},
                             "exclude": [
                                 "iteration"
                             ]
@@ -4115,15 +5161,48 @@
                             null
                         ]
                     },
-                    "marker": {"@noise.parameters@":["o","^","s","P"]},
+                    "marker": {
+                        "@noise.parameters@": [
+                            "o",
+                            "^",
+                            "s",
+                            "P"
+                        ]
+                    },
                     "linestyle": "--",
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@M@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -4275,12 +5354,11 @@
                             "parameters.xy.method": null,
                             "T": null,
                             "tau": null,
-                            "noise.scale": null,
+                            "noise.parameters": null,
                             "iteration": "@iteration.max@",
                             "rank": "hessian.rank"
                         },
                         "legend": {
-                            "label": {},
                             "exclude": [
                                 "iteration"
                             ]
@@ -4296,10 +5374,36 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
@@ -4456,7 +5560,6 @@
                             "rank": "fisher.rank"
                         },
                         "legend": {
-                            "label": {},
                             "exclude": [
                                 "iteration"
                             ]
@@ -4472,10 +5575,36 @@
                     "elinewidth": 2,
                     "capsize": 3,
                     "color": {
-                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     },
                     "ecolor": {
-                        "@tau@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
+                        "@tau@": {
+                            "value": {
+                                "value": null,
+                                "color": "viridis",
+                                "values": [],
+                                "norm": [
+                                    0,
+                                    1
+                                ],
+                                "scale": "linear",
+                                "alpha": 1
+                            },
+                            "type": "index"
+                        }
                     }
                 }
             ],
