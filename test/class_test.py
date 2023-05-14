@@ -16,8 +16,8 @@ for PATH in PATHS:
 from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,cos,sin,bound
 from src.utils import gradient,hessian,fisher
 from src.utils import norm,conjugate,dagger,dot,eig,difference,maximum,argmax,abs,sort
-from src.utils import pi,delim,arrays,scalars,namespace
-from src.iterables import getter,setter
+from src.utils import pi,delim,arrays,scalars
+from src.iterables import getter,setter,namespace
 from src.io import load,dump,exists
 
 from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label,trotter

@@ -806,12 +806,17 @@ def _load(obj,wr,ext,**kwargs):
 	try:
 		assert ext in exts, "Cannot load extension %s"%(ext)
 	except Exception as exception:
-		# try:
 		obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
-		obj = os.path.basename(obj)
-		data = getattr(importlib.import_module(obj),module)
-		# except Exception as exception:
-		# 	raise exception
+		try:
+			path = os.path.basename(obj).strip('.')
+			data = getattr(importlib.import_module(path),module)
+		except:
+			path = obj
+			spec = importlib.util.spec_from_file_location(module,path)
+			data = importlib.util.module_from_spec(spec)
+			sys.modules[module] = data
+			spec.loader.exec_module(data)
+			data = getattr(data,module)
 
 	if ext in ['npy']:
 		data = np.load(obj,**{'allow_pickle':True,**kwargs})

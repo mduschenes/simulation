@@ -93,18 +93,20 @@ def setup(settings):
 	setter(hyperparameters,load(path,default=default),func=func)
 
 	# Get permutations of hyperparameters
-	permutations = settings['permutations']['permutations']
-	groups = settings['permutations']['groups']
+	permutations = settings['permutations'].get('permutations')
+	groups = settings['permutations'].get('groups')
 	permutations = permuter(permutations,groups=groups)
 
 	# Get seeds for number of splits/seedings, for all nested hyperparameters branches that involve a seed
-	seed = settings['seed']['seed']
-	size = settings['seed']['size']
-	reset = settings['seed']['reset']
+	seed = settings['seed'].get('seed')
+	size = settings['seed'].get('size')
+	reset = settings['seed'].get('reset')
+	groups = settings['seed'].get('groups')
 
 	seed = seed if seed is not None else None
 	size = size if size is not None else 1
 	reset = reset if reset is not None else None
+	groups = groups if groups is not None else None
 
 	# Find keys of seeds in hyperparameters
 	items = ['seed']
@@ -117,9 +119,12 @@ def setup(settings):
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
 
 	count = len(seedlings)
-	
-	shape = (size,count)
-	size *= count
+
+	if isinstance(size,int):
+		shape = (size,count)
+		size *= count
+	else:
+		raise NotImplementedError
 
 	if size:
 		seeds = prng(seed=seed,size=size,reset=reset)
@@ -135,8 +140,9 @@ def setup(settings):
 		values = {'permutations':permutations,'seed':seeds,'other':other}
 	else:
 		values = {'permutations':permutations,'other':other}
+
 	index = {attr: hyperparameters.get(attr,{}).get('index') for attr in values}
-	# formatter = lambda instance,value,values,default: '%d'%(instance)	
+
 	formatter = lambda instance,value,values,default: ((delim.join([
 		*([default] if default is not None else []),
 		*['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]])) 
