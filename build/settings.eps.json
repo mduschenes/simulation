@@ -22,16 +22,17 @@
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[2],		
+		"model.N":[2,3,4],		
 		"model.M":[20,30,50,100,500,1000],
 		"model.M":[2,5,10,15,20,25,30,40,50,60,70,80,90,100,200,500,1000],
-		"model.M":[80,90,100,200,500,1000],
+		"model.M":[8,16,32,64,128,256,512,1024,2048,4096],
 		"model.P":[1],
 		"model.tau":[100],
 		"model.T": [null],
 
-		"system.dtype":["complex128"],
 		"system.dtype":["complex256"],
+		"system.dtype":["complex128"],
+
 		"system.unit":[1e6],
 		
 		"parameters.xy.parameters":[1],
@@ -48,7 +49,7 @@
 		
 		"noise.string":["K"],
 		"noise.operator":["noise"],
-		"noise.parameters":[1e-19,1e-18,1e-17,1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
+		"noise.parameters":[1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
 		"noise.seed":[null],		
 		
 		"state.label":["psi"],
@@ -63,14 +64,14 @@
 		"parameters.xy.constant":[null],					
 		"parameters.xy.kwargs.lambda":[null],		
 
-		"optimize.iterations":[[0,500]],
+		"optimize.iterations":[[0,300]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/rand.2.256.80.1000.10.500"],
-		"jobs.postprocess.cwd":["gobi/rand.2.256.80.1000.10.500"],
+		"jobs.job.cwd":["gobi/rand.N.256.2.4096.10.500"],
+		"jobs.postprocess.cwd":["gobi/rand.N.256.2.4096.10.500"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -78,7 +79,7 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[8],
+		"jobs.job.pool":[16],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -88,14 +89,15 @@
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.NUMPY_BACKEND":["jax.autograd"],
 		"jobs.job.args.NUMPY_BACKEND":["autograd"],
+		"jobs.job.args.NUMPY_BACKEND":["jax"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[8],		
+		"jobs.job.args.JOB_PROCESSES":[4],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
-		"jobs.job.patterns.mem":["256GB"],
+		"jobs.job.patterns.mem":["128GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[8],
+		"jobs.job.patterns.cpus-per-task":[4],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
 		"jobs.job.patterns.account":["def-carrasqu"],
 		"jobs.postprocess.patterns.account":["def-carrasqu"],
