@@ -341,9 +341,6 @@
                     "alpha": 0.5,
                     "color": {
                         "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
-                    },
-                    "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -558,9 +555,6 @@
                     "alpha": 0.5,
                     "color": {
                         "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
-                    },
-                    "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -772,9 +766,6 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@tau.noise.scale@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
-                    },
-                    "ecolor": {
                         "@tau.noise.scale@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
@@ -1017,9 +1008,6 @@
                     "alpha": 0.5,
                     "color": {
                         "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
-                    },
-                    "ecolor": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }
             ],
@@ -1259,9 +1247,6 @@
                     },
                     "alpha": 0.5,
                     "color": {
-                        "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
-                    },
-                    "ecolor": {
                         "@M@": {"value":{"value":null,"color":"viridis","values":[],"norm":[0,1],"scale":"linear","alpha":1},"type":"index"}
                     }
                 }

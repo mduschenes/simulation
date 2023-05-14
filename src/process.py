@@ -321,7 +321,8 @@ def find(dictionary,verbose=None):
 				'texify':{},
 				'valify': {},		
 				'scinotation':{'scilimits':[0,2],'decimals':0,'one':False},
-				'kwargs'
+				'args':None,
+				'kwargs':None,
 	}
 
 	items = [*dimensions,*other]
@@ -921,7 +922,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		for function in funcs:
 			
 			if funcs[function] is None:
-				funcs[func] = stats
+				funcs[function] = stats
 			
 			for func in funcs[function]:
 				
