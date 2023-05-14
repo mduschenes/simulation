@@ -13,10 +13,9 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import gradient
-from src.utils import namespace
 from src.utils import allclose
 
-from src.iterables import getter,setter,permuter,equalizer
+from src.iterables import getter,setter,permuter,equalizer,namespace
 
 from src.io import load,dump
 

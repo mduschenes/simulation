@@ -17,9 +17,9 @@ from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,d
 from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,sort,relsort
 from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos
 from src.utils import to_string,is_hermitian,is_unitary,allclose
-from src.utils import pi,e,nan,null,delim,scalars,arrays,namespace,datatype
+from src.utils import pi,e,nan,null,delim,scalars,arrays,datatype
 
-from src.iterables import setter,getter,getattrs,hasattrs,indexer,inserter
+from src.iterables import setter,getter,getattrs,hasattrs,namespace,regex,indexer,inserter
 
 from src.io import load,dump,join,split
 

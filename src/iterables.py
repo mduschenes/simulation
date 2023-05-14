@@ -1,7 +1,7 @@
  #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools
+import os,sys,warnings,itertools,re
 from copy import deepcopy
 import traceback
 
@@ -12,7 +12,28 @@ warnings.simplefilter("ignore", (UserWarning,DeprecationWarning,FutureWarning))
 scalars = (int,np.integer,float,np.floating,str,type(None))
 
 
-class null(object): pass
+def namespace(cls,signature=None,init=False,**kwargs):
+	'''
+	Get namespace of attributes of class instance
+	Args:
+		cls (class): Class to get attributes
+		signature (dict): Dictionary to get only attributes in cls
+		init (bool): Initialize class for all attributes
+		kwargs (dict): Additional keyword arguments for cls
+	Returns:
+		attrs (iterable,dict): Attributes of cls
+	'''
+	
+	if init:
+		attrs = dir(cls(**kwargs))
+	else:
+		attrs = cls.__dict__
+
+	if signature is None:
+		return attrs
+	else:
+		return {attr: signature[attr] for attr in signature if attr in attrs}
+
 
 def isiterable(obj,exceptions=()):
 	'''
@@ -81,7 +102,7 @@ def setattrs(obj,attr,value,delimiter=None):
 	for i,attr in enumerate(attrs[:-1]):
 
 		if not hasattr(obj,attr):
-			setattr(obj,attr,null())
+			setattr(obj,attr,None)
 		obj = getattr(obj,attr)
 	
 	attr = attrs[-1]
@@ -104,14 +125,14 @@ def hasattrs(obj,attr,default=None,delimiter=None):
 
 	if isinstance(attr,str):
 		if delimiter is None:
-			attr = [attr]
+			attrs = [attr]
 		else:
-			attr = attr.split(delimiter)
+			attrs = attr.split(delimiter)
 	else:
 		if delimiter is None:
-			attr = [i for i in attr]
+			attrs = [i for i in attr]
 		else:
-			attr = [j for i in attr for j in i.split(delimiter)]
+			attrs = [j for i in attr for j in i.split(delimiter)]
 
 	has = True
 	for i,attr in enumerate(attrs):
@@ -122,9 +143,28 @@ def hasattrs(obj,attr,default=None,delimiter=None):
 
 	return has
 
+def contains(string,pattern):
+    '''
+    Search for pattern in string
+    Args:
+        string (str): String to search
+        pattern (str,iterable[str]): Pattern to search
+    Returns:
+        boolean (bool): String contains pattern
+    '''
+    replacements = {'*':'.*','\\':'\\\\'}
+    patterns = [pattern] if isinstance(pattern,str) else pattern
+    for i,pattern in enumerate(patterns):
+        for replacement in replacements:
+            pattern = pattern.replace(replacement,replacements[replacement])
+        
+        patterns[i] = pattern
+    searches = [re.search(pattern,string) for pattern in patterns]
+    boolean = all(search is not None for search in searches)
+    return boolean
 
 
-def iterate(obj,attr,attrs=[],delimiter='.',regex='*'):
+def regex(obj,attr,attrs=[],delimiter='.',pattern='*'):
 	'''
 	Get nested attributes of object
 	Args:
@@ -132,24 +172,23 @@ def iterate(obj,attr,attrs=[],delimiter='.',regex='*'):
 		attr (str): Nested attribute of object
 		attrs (iterable[str]): Nested attributes of object
 		delimiter (str): Delimiter to split nested attributes
-		regex (str,iterable[str]): Regex pattern of nested attributes
+		pattern (str,iterable[str]): Pattern of nested attributes
 	Yields:
 		attr (str): Nested attributes
 	'''
-
 	delimiter = delimiter if isinstance(delimiter,str) else ''.join(delimiter) if delimiter is not None else '.'
-	regex = [regex] if isinstance(regex,str) else regex if regex is not None else ['*']
+	pattern = [pattern] if isinstance(pattern,str) else pattern if pattern is not None else ['*']
 
 	attributes = attr.split(delimiter)
 
 	for i,attr in enumerate(attributes):
-		if attr in regex:
-			
+		if attr in pattern:
 			yield from iterate(obj,attr,[*attrs,attr])
-		if hasattr(obj,attr):
+		else:
+			if hasattr(obj,attr):
+				yield attr
 
-
-
+	return
 	
 
 

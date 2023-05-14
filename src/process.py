@@ -3,6 +3,7 @@
 # Import python modules
 import os,sys,itertools,warnings,traceback
 from copy import deepcopy
+from functools import partial,wraps
 import numpy as np
 import scipy as sp
 import scipy.stats
@@ -320,6 +321,7 @@ def find(dictionary,verbose=None):
 				'texify':{},
 				'valify': {},		
 				'scinotation':{'scilimits':[0,2],'decimals':0,'one':False},
+				'kwargs'
 	}
 
 	items = [*dimensions,*other]
@@ -863,21 +865,22 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 	if not hyperparameters['process']:
 		return
 
-	def mean(obj):
+	def default(obj,*args,**kwargs):
+		return obj.first()
+
+	def mean(obj,*args,**kwargs):
 		obj = np.array(list(obj))
 		obj = to_tuple(obj.mean(0))
 		return obj
-	def sem(obj):
+	def sem(obj,*args,**kwargs):
 		obj = np.array(list(obj))
 		obj = to_tuple(obj.std(0)/np.sqrt(obj.shape[0]))
 		return obj	
 
-	def mean_log(obj):
+	def mean_log(obj,*args,**kwargs):
 		return 10**(obj.apply('log10').mean())
-	def sem_log(obj):
+	def sem_log(obj,*args,**kwargs):
 		return 10**(obj.apply('log10').sem())
-
-	functions = {'mean_log':mean_log,'sem_log':sem_log}
 
 	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
 	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
@@ -904,12 +907,56 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		exclude = keys[name][other].get('exclude')
 		funcs = keys[name][other].get('func',{})
 		analyses = keys[name][other].get('analysis',{})
+		args = keys[name][other].get('args',None)
+		kwargs = keys[name][other].get('kwargs',None)
 
+
+		stat = 'stat'
+		stats = {'':'mean','err':'sem'}
+		functions = {'mean_log':mean_log,'sem_log':sem_log}
+		
 		if not funcs:
-			funcs = {'stat':None}
-		for func in funcs:
-			if funcs.get(func) is None:
-				funcs[func] = {'':'mean','err':'sem'}
+			funcs = {stat:None}
+		
+		for function in funcs:
+			
+			if funcs[function] is None:
+				funcs[func] = stats
+			
+			for func in funcs[function]:
+				
+				obj = funcs[function][func]
+				
+				if isinstance(obj,str):
+					
+					if callable(getattr(data,obj,None)):
+						pass
+					elif obj in functions:
+						obj = functions[obj]
+					else:
+						obj = load(obj,default=default)
+
+				if callable(obj):
+
+					if args is None:
+						arguments = ()
+					elif isinstance(args,dict):
+						arguments = args.get(function,())
+					else:
+						arguments = args
+					
+					if kwargs is None:
+						keywords = {}
+					elif all(i in kwargs for i in funcs):
+						keywords = kwargs.get(function,{})
+					else:
+						keywords = kwargs
+					
+					try:
+						obj = wraps(obj)(partial(obj,*arguments,**keywords))
+					except:
+						pass
+
 
 		funcs = {function : {func: functions.get(funcs[function][func],funcs[function][func]) for func in funcs[function]} for function in funcs}
 
