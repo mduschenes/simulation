@@ -27,12 +27,17 @@ def namespace(cls,signature=None,init=False,**kwargs):
 	if init:
 		attrs = dir(cls(**kwargs))
 	else:
-		attrs = cls.__dict__
+		try:
+			attrs = cls.__dict__
+		except:
+			attrs = None
 
 	if signature is None:
 		return attrs
-	else:
+	elif attrs is not None:
 		return {attr: signature[attr] for attr in signature if attr in attrs}
+	else:
+		return attrs
 
 
 def isiterable(obj,exceptions=()):
@@ -148,48 +153,17 @@ def contains(string,pattern):
     Search for pattern in string
     Args:
         string (str): String to search
-        pattern (str,iterable[str]): Pattern to search
+        pattern (str): Pattern to search
     Returns:
         boolean (bool): String contains pattern
     '''
     replacements = {'*':'.*','\\':'\\\\'}
-    patterns = [pattern] if isinstance(pattern,str) else pattern
-    for i,pattern in enumerate(patterns):
-        for replacement in replacements:
-            pattern = pattern.replace(replacement,replacements[replacement])
+    for replacement in replacements:
+        pattern = pattern.replace(replacement,replacements[replacement])
         
-        patterns[i] = pattern
-    searches = [re.search(pattern,string) for pattern in patterns]
-    boolean = all(search is not None for search in searches)
+    boolean = re.fullmatch(pattern,string)
+
     return boolean
-
-
-def regex(obj,attr,attrs=[],delimiter='.',pattern='*'):
-	'''
-	Get nested attributes of object
-	Args:
-		obj (object): Object of object
-		attr (str): Nested attribute of object
-		attrs (iterable[str]): Nested attributes of object
-		delimiter (str): Delimiter to split nested attributes
-		pattern (str,iterable[str]): Pattern of nested attributes
-	Yields:
-		attr (str): Nested attributes
-	'''
-	delimiter = delimiter if isinstance(delimiter,str) else ''.join(delimiter) if delimiter is not None else '.'
-	pattern = [pattern] if isinstance(pattern,str) else pattern if pattern is not None else ['*']
-
-	attributes = attr.split(delimiter)
-
-	for i,attr in enumerate(attributes):
-		if attr in pattern:
-			yield from iterate(obj,attr,[*attrs,attr])
-		else:
-			if hasattr(obj,attr):
-				yield attr
-
-	return
-	
 
 
 def copier(key,value,copy):
@@ -699,3 +673,29 @@ def inserter(index,item,iterable,types=(list,),exceptions=()):
 			iterable[i] = item
 
 	return
+
+
+def iterate(obj,attr,attributes=[],delimiter='.'):
+	'''
+	Get nested attributes of object
+	Args:
+		obj (object): Object of object
+		attr (str,iterable[str]): Nested attribute of object
+		attributes (iterable[str]): Nested attributes of object
+		delimiter (str): Delimiter to split nested attributes
+	Yields:
+		attr (str): Nested attributes
+	'''
+
+	delimiter = delimiter if delimiter is not None else '.'
+
+	attrs = [i for i in attr] if not isinstance(attr,str) else attr.split(delimiter) if (attr is not None) and not (attr.count(delimiter) and hasattr(obj,attr)) else [attr] if attr is not None else []
+
+	if attrs and namespace(obj) is not None:
+		attr = attrs.pop(0)
+		for attribute in namespace(obj):
+			if contains(attribute,attr):
+				if attrs:
+					yield from iterate(getattr(obj,attribute),attrs,attributes=[*attributes,attribute],delimiter=delimiter)
+				else:
+					yield delimiter.join([*attributes,attribute])
