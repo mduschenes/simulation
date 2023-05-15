@@ -913,7 +913,10 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 
 		stat = 'stat'
-		stats = {'':'mean','err':'sem'}
+		stats = {
+			**{axes: {'':'mean','err':'sem'} for axes in dimensions[:-1]},
+			**{axes: {'':'mean','err':'sem'} for axes in dimensions[-1:]},
+			}
 		functions = {'mean_log':mean_log,'sem_log':sem_log}
 		
 		if not funcs:
@@ -924,42 +927,44 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 			if funcs[function] is None:
 				funcs[function] = stats
 			
-			for func in funcs[function]:
-				
-				obj = funcs[function][func]
-				
-				if isinstance(obj,str):
+			for axes in funcs[function]:
+
+				for func in funcs[function][axes]:
 					
-					if callable(getattr(data,obj,None)):
-						pass
-					elif obj in functions:
-						obj = functions[obj]
-					else:
-						obj = load(obj,default=default)
-
-				if callable(obj):
-
-					if args is None:
-						arguments = ()
-					elif isinstance(args,dict):
-						arguments = args.get(function,())
-					else:
-						arguments = args
+					obj = funcs[function][axes][func]
 					
-					if kwargs is None:
-						keywords = {}
-					elif all(i in kwargs for i in funcs):
-						keywords = kwargs.get(function,{})
-					else:
-						keywords = kwargs
-					
-					try:
-						obj = wraps(obj)(partial(obj,*arguments,**keywords))
-					except:
-						pass
+					if isinstance(obj,str):
+						
+						if callable(getattr(data,obj,None)):
+							pass
+						elif obj in functions:
+							obj = functions[obj]
+						else:
+							obj = load(obj,default=default)
 
+					if callable(obj):
 
-		funcs = {function : {func: functions.get(funcs[function][func],funcs[function][func]) for func in funcs[function]} for function in funcs}
+						if args is None:
+							arguments = ()
+						elif isinstance(args,dict):
+							arguments = args.get(function,())
+						else:
+							arguments = args
+						
+						if kwargs is None:
+							keywords = {}
+						elif all(i in kwargs for i in funcs):
+							keywords = kwargs.get(function,{})
+						else:
+							keywords = kwargs
+						
+						try:
+							obj = wraps(obj)(partial(obj,*arguments,**keywords))
+						except:
+							pass
+
+					funcs[function][axes][func] = obj
+
 
 		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in data]
 		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in data]
@@ -984,15 +989,32 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		shapes = {group[:-len(independent)] if (independent) and isinstance(group,tuple) else group: groups.get_group(group).shape for group in groups.groups}
 
 		agg = {
-			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] for attr in data},
-			**{attr : [(delim.join(((attr,function,func))),{'array':{'':mean,'err':sem}[func],'object':'first','dtype':funcs[function][func]}[dtypes[attr]]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
+			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] 
+					  if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] 
+					  for attr in data},
+			**{attr : [(delim.join(((attr,function,func))),
+					    {'array':{'':mean,'err':sem}[func],
+					     'object':'first',
+					     'dtype':funcs[function][axes][func]
+					    }[dtypes[attr]]) 
+						for function in funcs for func in funcs[function][axes]] 
+						for axes,attr in zip(dimensions[:-1],independent)
+						},
+			**{attr : [(delim.join(((attr,function,func))),
+					    {'array':{'':mean,'err':sem}[func],
+					     'object':'first',
+					     'dtype':funcs[function][axes][func]
+					    }[dtypes[attr]]) 
+						for function in funcs for func in funcs[function][axes]] 
+						for axes,attr in zip(dimensions[-1:],dependent)
+						},						
 		}
 
 		dtype = {attr: data[attr].dtype for attr in agg if attr in label}
 
 		droplevel = dict(level=0,axis=1)
 		by = [*labels]
-		variables = [*independent,*dependent,*[subattr[0] for attr in dependent for subattr in agg[attr]]]
+		variables = [*independent,*dependent,*[subattr[0] for attr in [*independent,*dependent] for subattr in agg[attr]]]
 
 		groups = groups.agg(agg).droplevel(**droplevel).astype(dtype)
 
@@ -1017,14 +1039,14 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 				destination = other
 				value[destination] = {
 					**{attr: grouping[attr].to_list()[0] for attr in source},
-					**{'%s%s'%(axes,func) if keys[name][axes] in dependent else axes: 
+					**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent] else axes: 
 						{
 						'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
 						'func':[j,function],
 						'label':keys[name][axes] if keys[name][axes] is not null else None
 						} 
 						for axes in dimensions 
-						for func in funcs[function]
+						for func in funcs[function][axes]
 						},
 					**{other: {attr: {subattr: keys[name][other][attr][subattr] 
 						if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
@@ -1033,13 +1055,13 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 						},
 					}
 
-				for func in funcs[function]:	
-					for axes in dimensions:
+				for axes in dimensions:
+					for func in funcs[function][axes]:	
 						
 						attr = keys[name][axes]
 
-						source = delim.join(((attr,function,func))) if attr in dependent else attr
-						destination = '%s%s'%(axes,func) if attr in dependent else axes
+						source = delim.join(((attr,function,func))) if attr in [*independent,*dependent] else attr
+						destination = '%s%s'%(axes,func) if attr in [*independent,*dependent] else axes
 
 						if grouping.shape[0]:
 							if source in grouping:
