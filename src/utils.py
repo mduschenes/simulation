@@ -301,29 +301,6 @@ class argparser(argparse.ArgumentParser):
 		return self.kwargs.values()
 
 
-def namespace(cls,signature=None,init=False,**kwargs):
-	'''
-	Get namespace of attributes of class instance
-	Args:
-		cls (class): Class to get attributes
-		signature (dict): Dictionary to get only attributes in cls
-		init (bool): Initialize class for all attributes
-		kwargs (dict): Additional keyword arguments for cls
-	Returns:
-		attrs (iterable,dict): Attributes of cls
-	'''
-	
-	if init:
-		attrs = dir(cls(**kwargs))
-	else:
-		attrs = cls.__dict__
-
-	if signature is None:
-		return attrs
-	else:
-		return {attr: signature[attr] for attr in signature if attr in attrs}
-
-
 if BACKEND in ['jax','jax.autograd']:
 	
 	def setitem(obj,index,item):
@@ -1728,6 +1705,9 @@ if BACKEND in ['jax']:
 
 		if reset is not None:
 			onp.random.seed(reset)
+
+		if not isinstance(size,int):
+			size = len(size)
 
 		if seed is None:
 			seed = onp.random.randint(*bounds)

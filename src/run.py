@@ -93,18 +93,15 @@ def setup(settings):
 	setter(hyperparameters,load(path,default=default),func=func)
 
 	# Get permutations of hyperparameters
-	permutations = settings['permutations']['permutations']
-	groups = settings['permutations']['groups']
+	permutations = settings['permutations'].get('permutations')
+	groups = settings['permutations'].get('groups')
 	permutations = permuter(permutations,groups=groups)
 
 	# Get seeds for number of splits/seedings, for all nested hyperparameters branches that involve a seed
-	seed = settings['seed']['seed']
-	size = settings['seed']['size']
-	reset = settings['seed']['reset']
-
-	seed = seed if seed is not None else None
-	size = size if size is not None else 1
-	reset = reset if reset is not None else None
+	seed = settings['seed'].get('seed')
+	size = settings['seed'].get('size')
+	reset = settings['seed'].get('reset')
+	groups = settings['seed'].get('groups')
 
 	# Find keys of seeds in hyperparameters
 	items = ['seed']
@@ -117,53 +114,81 @@ def setup(settings):
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
 
 	count = len(seedlings)
-	
-	shape = (size,count)
-	size *= count
+
+	if isinstance(size,int):
+		size = [size]*count
+		groups = [[i for i in seedlings]]
+	elif isinstance(size,dict):
+		size = [size.get(seedling,1) for seedling in seedlings]
+		groups = groups		
+	elif len(size) == 1:
+		size = [*size]*count
+		groups = groups
+	elif len(size) == count:
+		size = [i for i in size]
+		groups = groups
+	else:
+		size = [1]*count
+		groups = [[i for i in seedlings]]
+
+	shape = (*size,)
+	size = sum(size)
 
 	if size:
 		seeds = prng(seed=seed,size=size,reset=reset)
-		seeds = seeds.reshape(*shape,*(-1,)*(seeds.ndim>1)).tolist()
-		seeds = [dict(zip(seedlings,seed)) for seed in seeds]
+		seedlings = {seedling: seeds[sum(shape[:i]):sum(shape[:i+1])].tolist() for i,seedling in enumerate(seedlings)}
+		seeds = permuter(seedlings,groups=groups)
 	else:
 		seeds = []
 
-	other = [{'system.key':None,'system.instance':None,'system.seed':seed}]
+	other = [{'system.key':None,'system.instance':None,'system.instances':None,'system.seed':seed}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
 	if size:
 		values = {'permutations':permutations,'seed':seeds,'other':other}
 	else:
 		values = {'permutations':permutations,'other':other}
+
 	index = {attr: hyperparameters.get(attr,{}).get('index') for attr in values}
-	# formatter = lambda instance,value,values,default: '%d'%(instance)	
-	formatter = lambda instance,value,values,default: ((delim.join([
-		*([default] if default is not None else []),
-		*['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]])) 
-		if any(len(values[k])>1 for k in values) else default)
+
+	def formatter(instance,value,values,default):
+		if any(len(values[k])>1 for k in values):
+			string = delim.join([
+				*([default] if default is not None else []),
+				*['%d'%(v[0]) for k,v in zip(values,value) if len(values[k])>1]])
+		else:
+			string = default
+
+		return string
 
 	keys = {}
 
-	for instance,value in enumerate(value for value in itertools.product(*(zip(range(len(values[attr])),values[attr]) for attr in values))):
+	for instance,value in enumerate(value for value in itertools.product(*(
+		zip(range(len(values[attr])),values[attr]) for attr in values)
+		)):
 
-		if allowed(
+		if not allowed(
 			{attr: index[attr] for attr in index},
 			{attr: {k:v[1] for k,v in zip(values,value)}[attr] for attr in index},
 			{attr: values[attr] for attr in index},
 			):
+			continue
 
-			key = formatter(instance,value,values,getter(hyperparameters,'system.key',delimiter=delim))
-			value = [v[1] for v in value]
-			keys[key] = {}
-			for setting in value:
-				for attr in setting:
+		key = formatter(instance,value,values,default=getter(hyperparameters,'system.key',delimiter=delim))
+		indices = [v[0] for v in value]
+		value = [v[1] for v in value]
+		keys[key] = {}
+		for setting in value:
+			for attr in setting:
 
-					keys[key][attr] = setting[attr]
+				keys[key][attr] = setting[attr]
 
-					if attr in ['system.key']:
-						keys[key][attr] = key
-					elif attr in ['system.instance']:
-						keys[key][attr] = key.split(delim)[-1] if key is not None else None
+				if attr in ['system.key']:
+					keys[key][attr] = key
+				elif attr in ['system.instance']:
+					keys[key][attr] = int(key.split(delim)[-1]) if key is not None else None					
+				elif attr in ['system.instances']:
+					keys[key][attr] = {seedling: seedlings[seedling].index(keys[key][seedling]) for seedling in seedlings}
 
 	# Set settings with key and seed instances
 	settings = {key: deepcopy(settings) for key in keys}

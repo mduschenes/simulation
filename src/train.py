@@ -9,9 +9,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim,namespace,prng
+from src.utils import argparser,jit,allclose,delim,prng
 from src.io import load,glob
 from src.system import Dict
+from src.iterables import namespace
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 logger = Logger()

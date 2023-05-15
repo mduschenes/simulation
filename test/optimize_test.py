@@ -40,7 +40,7 @@ from src.optimize import Optimizer,Objective,Metric,Callback
 
 from src.quantum import Unitary,Hamiltonian
 
-from src.utils import namespace
+from src.iterables import namespace
 from src.system import Dict
 
 # Logging

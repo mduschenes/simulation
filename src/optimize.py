@@ -3,6 +3,7 @@
 # Import python modules
 import os,sys,itertools,functools,copy,datetime
 from functools import partial
+from copy import deepcopy
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -16,13 +17,13 @@ from src.utils import jit,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv,
 from src.utils import is_unitary,is_hermitian,is_naninf
 from src.utils import scalars,delim,nan
 
-from src.iterables import setter,getattrs
+from src.iterables import setter,getattrs,hasattrs,iterate
 
 from src.line_search import line_search,armijo
 
 from src.io import dump,load,join,split,copy,exists
 
-from src.system import System
+from src.system import System,Dict
 
 
 # Logging
@@ -1075,7 +1076,7 @@ class Optimization(System):
 
 		setter(hyperparameters,defaults,delimiter=None,func=False)
 
-		self.hyperparameters = hyperparameters
+		self.hyperparameters = Dict(hyperparameters)
 		self.system = system
 
 		self.value_and_grad,self.func,self.grad = value_and_gradient(func,grad,returns=True)
@@ -1332,7 +1333,6 @@ class Optimization(System):
 			data = [default for i in range(size-len(self.attributes[attr]))]
 			self.attributes[attr] = [*self.attributes[attr],*data]
 
-
 		self.parameters = self.get_params(state)
 		self.reset(clear=False)
 
@@ -1363,7 +1363,41 @@ class Optimization(System):
 				self.track.pop(attr)
 			elif ((not isinstance(value,list)) and (value)) or clear:
 				self.track[attr] = []
+
 		
+		objs = {'func.model':False,'hyperparameters':True}
+		for attr in list(self.track):
+
+			if attr in self.attributes:
+				continue
+			
+			value = self.track.pop(attr)
+			
+			for name in objs:
+
+				if not hasattrs(self,name,delimiter=delim):
+					continue
+
+				if objs[name]:
+					pattern = delim.join(attr.split(delim)[1:]) if attr.split(delim)[0] == name else attr
+				else:
+					pattern = attr
+
+				obj = getattrs(self,name,delimiter=delim)
+				attribute = None
+
+				for attribute in iterate(obj,pattern):
+
+					if objs[name]:
+						attribute = delim.join([name,attribute])
+
+					self.track[attribute] = [*deepcopy(value)]
+
+				if attribute is not None:
+					break
+				else:
+					self.track[attr] = [*deepcopy(value)]
+
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
 		while (self.sizes) and (self.size > 0) and (self.size >= sum(self.sizes[attr] for attr in self.sizes)):
@@ -1414,16 +1448,17 @@ class Optimization(System):
 			for subattr in ['func.model','func.metric','func.model.parameters','func.model.state','func.model.noise','func.metric.label']:
 				substring = '%s: %s'%(subattr,getattrs(self,delim.join([subattr,attr]),delimiter=delim) if getattrs(self,subattr,delimiter=delim) is not None else None)
 				string.append(substring)
-			string = ', '.join(string)
+			string = '%s %s: %s'%('Optimizer',attr,', '.join(string))
+
 			msg.append(string)
 
 		for attr in ['track','attributes']:
 			string = '%s %s: %s'%('Optimizer',attr,
 				{key: getattr(self,attr).get(key,[None])[-1] 
 				if isinstance(getattr(self,attr).get(key,[None])[-1],scalars) else ['...'] 
-				for key in getattr(self,attr)
-				if any(getattr(self,attr).get(key) for key in getattr(self,attr))
-				})
+				for key in getattr(self,attr)} if any(getattr(self,attr).get(key) for key in getattr(self,attr)) else
+				[attr for attr in getattr(self,attr)]
+				)
 			msg.append(string)
 
 
