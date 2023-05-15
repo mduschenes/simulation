@@ -1398,7 +1398,6 @@ class Optimization(System):
 				else:
 					self.track[attr] = [*deepcopy(value)]
 
-
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
 
 		while (self.sizes) and (self.size > 0) and (self.size >= sum(self.sizes[attr] for attr in self.sizes)):
@@ -1449,7 +1448,8 @@ class Optimization(System):
 			for subattr in ['func.model','func.metric','func.model.parameters','func.model.state','func.model.noise','func.metric.label']:
 				substring = '%s: %s'%(subattr,getattrs(self,delim.join([subattr,attr]),delimiter=delim) if getattrs(self,subattr,delimiter=delim) is not None else None)
 				string.append(substring)
-			string = ', '.join(string)
+			string = '%s %s: %s'%('Optimizer',attr,', '.join(string))
+
 			msg.append(string)
 
 		for attr in ['track','attributes']:

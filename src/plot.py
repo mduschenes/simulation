@@ -819,6 +819,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
 					if keep in ['first']:
 						index = [0]*len(indexes)
+					elif keep in ['middle']:
+						index = [min(len(i) for i in indexes)//2]*len(indexes)
 					elif keep in ['last']:
 						index = [-1]*len(indexes)
 					elif isinstance(keep,int):

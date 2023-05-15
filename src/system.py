@@ -91,6 +91,8 @@ class System(Dictionary):
 			'unit':None,			
 			'seed':None,
 			'key':None,
+			'instance':None,
+			'instances':None,
 			'timestamp':datetime.datetime.now().strftime('%d.%M.%Y.%H.%M.%S.%f'),
 			'cwd':None,
 			'path':None,
@@ -107,6 +109,10 @@ class System(Dictionary):
 
 			attr = 'backend'
 			kwargs[attr] = os.environ.get('NUMPY_BACKEND',str(None)).lower() if kwargs.get(attr,defaults.get(attr)) is None else os.environ.get(kwargs.get(attr,defaults.get(attr)),kwargs.get(attr,defaults.get(attr))).lower()
+			
+			attr = 'instances'
+			if kwargs.get(attr) is not None:
+				kwargs[attr] = Dict(kwargs[attr])
 			return
 
 		updates(kwargs,defaults)

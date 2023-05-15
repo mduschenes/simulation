@@ -1342,7 +1342,7 @@ class Operators(Object):
 
 		msg = []
 
-		for attr in ['string','key','seed','N','D','d','L','delta','M','tau','T','P','n','g','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
+		for attr in ['string','key','seed','instance','instances','N','D','d','L','delta','M','tau','T','P','n','g','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
 			string = '%s: %s'%(attr,getattrs(self,attr,delimiter=delim,default=None))
 			msg.append(string)
 
