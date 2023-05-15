@@ -1706,6 +1706,9 @@ if BACKEND in ['jax']:
 		if reset is not None:
 			onp.random.seed(reset)
 
+		if not isinstance(size,int):
+			size = len(size)
+
 		if seed is None:
 			seed = onp.random.randint(*bounds)
 

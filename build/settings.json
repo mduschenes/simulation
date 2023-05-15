@@ -176,10 +176,8 @@
 			"hessian.rank":true,"fisher.rank":true,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],"instance":[],"backend":[],
-			"parameters.xy.parameters":[],"parameters.xy.method":[],
-			"parameters.z.parameters":[],"parameters.z.method":[],
-			"parameters.zz.parameters":[],"parameters.zz.method":[],
+			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"backend":[],"key":[],"instance":[],"instances.*":[],
+			"parameters.*.parameters":[],"parameters.*.method":[],
 			"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
 		}	
 	},

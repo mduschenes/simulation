@@ -33,7 +33,13 @@
                                 "noise.parameters"
                             ],
                             "exclude": [
-                                "instance"
+                                "instance",
+                                "instances.parameters.xy.seed",
+                                "instances.parameters.z.seed",
+                                "instances.parameters.zz.seed",
+                                "instances.label.seed",
+                                "instances.noise.seed",
+                                "instances.state.seed"
                             ]
                         },
                         "scinotation": {
@@ -130,7 +136,12 @@
                             "M": null,
                             "backend": null,
                             "noise.parameters": null,
-                            "instance": null
+                            "instances.parameters.xy.seed": null,
+                            "instances.parameters.z.seed": null,
+                            "instances.parameters.zz.seed": null,
+                            "instances.label.seed": null,
+                            "instances.noise.seed": null,
+                            "instances.state.seed": null
                         },
                         "legend": {
                             "include": false,
@@ -236,7 +247,13 @@
                         "legend": {
                             "exclude": [
                                 "M",
-                                "instance"
+                                "instance",
+                                "instances.parameters.xy.seed",
+                                "instances.parameters.z.seed",
+                                "instances.parameters.zz.seed",
+                                "instances.label.seed",
+                                "instances.noise.seed",
+                                "instances.state.seed"
                             ]
                         }
                     },

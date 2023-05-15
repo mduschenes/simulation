@@ -56,63 +56,67 @@ def getattrs(obj,attr,default=None,delimiter=None):
 	Get nested attribute of object
 	Args:
 		obj (object): Object of attributes
-		attr (str,iterable[str]): Nested attribute of object
+		attr (str): Nested attribute of object
 		default (object): Default nested attribute of object
 		delimiter (str): Delimiter to split nested attributes
 	Returns:
 		obj (object): Nested attribute
 	'''
-	if isinstance(attr,str):
-		if (delimiter is None) or (hasattr(obj,attr)):
-			attrs = [attr]
-		else:
-			attrs = attr.split(delimiter)
-	else:
-		if delimiter is None:
-			attrs = [i for i in attr]
-		else:
-			attrs = [j for i in attr for j in i.split(delimiter)]
 
-	for i,attr in enumerate(attrs):
-		
-		if not hasattr(obj,attr):
-			obj = default
-			break
-		
-		obj = getattr(obj,attr)
+	if delimiter is None:
+		return getattr(obj,attr,default)
 
-	return obj
+	attrs = attr.split(delimiter)
+	
+	n = len(attrs)
+
+	for i in range(n):
+		attr = delimiter.join(attrs[:i+1])
+		
+		if hasattr(obj,attr):
+			if i == (n-1):
+				return getattr(obj,attr)
+			else:
+				attribute = delimiter.join(attrs[i+1:])
+				return getattrs(getattr(obj,attr),attribute,default=default,delimiter=delimiter)
+	
+	return default
 
 def setattrs(obj,attr,value,delimiter=None):
 	'''
 	Set nested attribute of object
 	Args:
 		obj (object): Object of attributes
-		attr (str,iterable[str]): Nested attribute of object
+		attr (str): Nested attribute of object
 		value (object): Nested value of object
 		delimiter (str): Delimiter to split nested attributes
 	'''
 
-	if isinstance(attr,str):
-		if (delimiter is None) or (hasattr(obj,attr)):
-			attrs = [attr]
-		else:
-			attrs = attr.split(delimiter)
-	else:
-		if delimiter is None:
-			attrs = [i for i in attr]
-		else:
-			attrs = [j for i in attr for j in i.split(delimiter)]
+	raise NotImplementedError
 
-	for i,attr in enumerate(attrs[:-1]):
 
-		if not hasattr(obj,attr):
-			setattr(obj,attr,None)
-		obj = getattr(obj,attr)
+	if delimiter is None:
+		return getattr(obj,attr,default)
+
+	attrs = attr.split(delimiter)
 	
+	n = len(attrs)
+
+	for i in range(n):
+		attr = delimiter.join(attrs[:i+1])
+		
+		if hasattr(obj,attr):
+			if i == (n-1):
+				setattr(obj,attr,value)
+				return True
+			else:
+				attribute = delimiter.join(attrs[i+1:])
+				setattrs(getattr(obj,attr),attribute,value=value,delimiter=delimiter)
+				return
+
 	attr = attrs[-1]
 	setattr(obj,attr,value)
-
+		
 	return
 
 
@@ -121,49 +125,47 @@ def hasattrs(obj,attr,default=None,delimiter=None):
 	Check existence of nested attribute of object
 	Args:
 		obj (object): Object of attributes
-		attr (str,iterable[str]): Nested attribute of object
+		attr (str): Nested attribute of object
 		default (object): Default nested attribute of object
 		delimiter (str): Delimiter to split nested attributes
 	Returns:
 		has (bool): Nested attribute existence
 	'''
 
-	if isinstance(attr,str):
-		if delimiter is None:
-			attrs = [attr]
-		else:
-			attrs = attr.split(delimiter)
-	else:
-		if delimiter is None:
-			attrs = [i for i in attr]
-		else:
-			attrs = [j for i in attr for j in i.split(delimiter)]
+	if delimiter is None:
+		return hasattr(obj,attr)
 
-	has = True
-	for i,attr in enumerate(attrs):
-		if not hasattr(obj,attr):
-			has = False
-			break
-		obj = getattr(obj,attr)
-
-	return has
+	attrs = attr.split(delimiter)
+	
+	n = len(attrs)
+	
+	for i in range(n):
+		attr = delimiter.join(attrs[:i+1])
+		if hasattr(obj,attr):
+			if i == (n-1):
+				return True
+			else:
+				attribute = delimiter.join(attrs[i+1:])
+				return hasattrs(getattr(obj,attr),attribute,default=default,delimiter=delimiter)
+	
+	return False
 
 def contains(string,pattern):
-    '''
-    Search for pattern in string
-    Args:
-        string (str): String to search
-        pattern (str): Pattern to search
-    Returns:
-        boolean (bool): String contains pattern
-    '''
-    replacements = {'*':'.*','\\':'\\\\'}
-    for replacement in replacements:
-        pattern = pattern.replace(replacement,replacements[replacement])
-        
-    boolean = re.fullmatch(pattern,string)
+	'''
+	Search for pattern in string
+	Args:
+		string (str): String to search
+		pattern (str): Pattern to search
+	Returns:
+		boolean (bool): String contains pattern
+	'''
+	replacements = {'\\':'\\\\','.':'\\.','*':'.*',}
+	for replacement in replacements:
+		pattern = pattern.replace(replacement,replacements[replacement])
+		
+	boolean = re.fullmatch(pattern,string) is not None
 
-    return boolean
+	return boolean
 
 
 def copier(key,value,copy):
@@ -675,12 +677,12 @@ def inserter(index,item,iterable,types=(list,),exceptions=()):
 	return
 
 
-def iterate(obj,attr,attributes=[],delimiter='.'):
+def iterate(obj,attr,attributes=[],delimiter=None):
 	'''
 	Get nested attributes of object
 	Args:
 		obj (object): Object of object
-		attr (str,iterable[str]): Nested attribute of object
+		attr (str): Nested attribute of object
 		attributes (iterable[str]): Nested attributes of object
 		delimiter (str): Delimiter to split nested attributes
 	Yields:
@@ -689,13 +691,24 @@ def iterate(obj,attr,attributes=[],delimiter='.'):
 
 	delimiter = delimiter if delimiter is not None else '.'
 
-	attrs = [i for i in attr] if not isinstance(attr,str) else attr.split(delimiter) if (attr is not None) and not (attr.count(delimiter) and hasattr(obj,attr)) else [attr] if attr is not None else []
+	attrs = attr.split(delimiter)
+
+	n = len(attrs)
+
+	exists = False
 
 	if attrs and namespace(obj) is not None:
-		attr = attrs.pop(0)
-		for attribute in namespace(obj):
-			if contains(attribute,attr):
-				if attrs:
-					yield from iterate(getattr(obj,attribute),attrs,attributes=[*attributes,attribute],delimiter=delimiter)
-				else:
-					yield delimiter.join([*attributes,attribute])
+
+		for i in range(n):
+			attr = delimiter.join(attrs[:i+1])
+			for attribute in namespace(obj):
+				if contains(attribute,attr):
+					if attrs[i+1:]:
+						yield from iterate(getattr(obj,attribute),delimiter.join(attrs[i+1:]),attributes=[*attributes,attribute],delimiter=delimiter)
+					else:
+						yield delimiter.join([*attributes,attribute])
+
+					exists = True
+			
+			if exists:
+				break
