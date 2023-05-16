@@ -920,6 +920,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		exclude = keys[name][other].get('exclude')
 		funcs = keys[name][other].get('func',{})
 		analyses = keys[name][other].get('analysis',{})
+		wrappers = keys[name][other].get('wrapper',{})
 		args = keys[name][other].get('args',None)
 		kwargs = keys[name][other].get('kwargs',None)
 
@@ -986,6 +987,18 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 					funcs[function][axes][func] = obj
 
 
+		for attr in wrappers:
+
+			if wrapper in ALL:
+				continue
+
+			wrapper = load(wrappers[attr],default=None)
+			
+			try:
+				data[attr] = wrapper(data)
+			except:
+				pass
+
 		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in data]
 		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in data]
 		labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((label[attr] is null) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
@@ -1004,23 +1017,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		if analyses:
 		
-			data = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True)
-			
-			independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in data]
-			dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in data]
-			labels = [attr for attr in label if (attr in data) and (((label[attr] is null) and (exclude is None) and (include is None)) or ((label[attr] is null) and (exclude is None)) or ((exclude is not None) and (attr not in exclude))) or ((include is not None) and (attr in include))]
-			boolean = [parse(attr,label[attr],data,verbose=verbose) for attr in label]
-			boolean = conditions(boolean,op='and')
-			boolean = slice(None) if ((boolean is True) or (boolean is False) or (boolean is None)) else boolean
-
-			by = [*labels,*independent]
-
-			if not by:
-				key,value = name,None
-				setter(settings,{key:value},delimiter=delim,func=True)
-				continue
-
-			groups = data.groupby(by=by,as_index=False)
+			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
 
 		print(list(groups),list(data))
 		exit()
@@ -1908,11 +1905,11 @@ def plotter(settings,hyperparameters,verbose=None):
 						]
 					slices = [subslice for subslice in slices if subslice is not None]
 
-					wrapper = data[OTHER][OTHER].get('wrapper')
-					if wrapper is None:
-						wrapper = {}
+					wrappers = data[OTHER][OTHER].get('wrapper')
+					if wrappers is None:
+						wrappers = {}
 					else:
-						wrapper = {attr: load(wrapper[attr],default=None) for attr in wrapper}
+						wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr in ALL}
 
 					normalize = data[OTHER][OTHER].get('normalize')
 					normalizations = {
@@ -1955,8 +1952,8 @@ def plotter(settings,hyperparameters,verbose=None):
 
 							value = np.array(value)
 
-							if wrapper.get(attr):
-								value = wrapper[attr]({
+							if wrappers.get(attr):
+								value = wrappers[attr]({
 									**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in ALL},
 									**{attr: data[OTHER][attr] for attr in data[OTHER]},
 									})
