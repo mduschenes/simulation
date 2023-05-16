@@ -989,7 +989,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		for attr in wrappers:
 
-			if wrapper in ALL:
+			if attr in ALL:
 				continue
 
 			wrapper = load(wrappers[attr],default=None)
@@ -1018,9 +1018,6 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		if analyses:
 		
 			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
-
-		print(list(groups),list(data))
-		exit()
 
 		shapes = {group[:-len(independent)] if (independent) and isinstance(group,tuple) else group: groups.get_group(group).shape for group in groups.groups}
 
@@ -1913,7 +1910,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					normalize = data[OTHER][OTHER].get('normalize')
 					normalizations = {
-						'size': (lambda axes,data: (data[axes]/(len(data[axes])-1)) if (len(data[axes])>1) else np.array([0.5])),
+						'size': (lambda axes,data: (np.array(data[axes])/(len(data[axes])-1)) if (len(data[axes])>1) else np.array([0.5])),
 						None: (lambda axes,data: data[axes]),
 					}
 					if not normalize:
@@ -2005,8 +2002,10 @@ def plotter(settings,hyperparameters,verbose=None):
 
 									value = value['value']
 
-								else:
+								elif not isinstance(data[attr]['__value__'],scalars):
 									value = data[attr]['__value__'][data[attr]['__index__']%len(data[attr]['__value__'])] if not isinstance(data[attr]['__value__'],str) else data[attr]['__value__']
+								else:
+									value = data[attr]['__value__']
 
 								if attr in ['color','ecolor']:
 									pass

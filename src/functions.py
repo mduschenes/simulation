@@ -21,4 +21,4 @@ for PATH in PATHS:
 
 
 def func_MN(data):
-	return np.array(data['M'])/np.array(data['N'])
+	return data['M']/data['N']
