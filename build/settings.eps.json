@@ -15,7 +15,7 @@
 	},
 "seed":{
 	"seed":1821,
-	"size":20,
+	"size":30,
 	"reset":1821,
 	"index":null
 	},
@@ -26,7 +26,7 @@
 		"model.M":[20,30,50,100,500,1000],
 		"model.M":[2,5,10,15,20,25,30,40,50,60,70,80,90,100,200,500,1000],
 		"model.M":[8,16,32,64,128,256,512,1024,2048,4096],
-		"model.P":[1],
+		"model.P":[2],
 		"model.tau":[100],
 		"model.T": [null],
 
@@ -38,14 +38,31 @@
 		"parameters.xy.parameters":[1],
 		"parameters.z.parameters":[1.230231e-2],
 		"parameters.zz.parameters":[1.42117230231e-4],
-		"parameters.xy.seed":[123456789],
-		"parameters.z.seed":[123456789],
-		"parameters.zz.seed":[123456789],
+		"parameters.xy.seed":[null],
+		"parameters.z.seed":[null],
+		"parameters.zz.seed":[null],
 		
 		"label.string":["label"],
 		"label.operator":["haar"],
 		"label.parameters":[1],
-		"label.seed":[123456789],		
+		"label.seed":[null],	
+
+		"noise.string":["K"],
+		"noise.operator":["phase"],
+		"noise.parameters":[1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
+		"noise.seed":[123456789],		
+		
+		"state.label":["psi"],
+		"state.operator":["haar"],
+		"state.ndim":[2],
+		"state.parameters":[true],
+		"state.seed":[null],				
+
+
+		"label.string":["label"],
+		"label.operator":["haar"],
+		"label.parameters":[1],
+		"label.seed":[null],		
 		
 		"noise.string":["K"],
 		"noise.operator":["noise"],
@@ -56,7 +73,8 @@
 		"state.operator":["haar"],
 		"state.ndim":[2],
 		"state.parameters":[false],
-		"state.seed":[123456789],		
+		"state.seed":[null],	
+
 
 		"parameters.xy.method":[null],
 		"parameters.xy.locality":[null],
@@ -70,8 +88,11 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/rand.N.256.2.4096.10.500"],
-		"jobs.postprocess.cwd":["gobi/rand.N.256.2.4096.10.500"],
+		"jobs.job.cwd":["gobi/phase.N.128.8.4096.30.500"],
+		"jobs.postprocess.cwd":["gobi/phase.N.128.8.4096.30.500"],
+
+		"jobs.job.cwd":["gobi/rand.N.128.8.4096.30.500"],
+		"jobs.postprocess.cwd":["rand/phase.N.128.8.4096.30.500"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -99,10 +120,10 @@
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[4],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
-		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"],
 		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"]
+		"jobs.postprocess.patterns.account":["def-raymond"],
+		"jobs.job.patterns.account":["def-carrasqu"],
+		"jobs.postprocess.patterns.account":["def-carrasqu"],			
 		},
 	"groups":null,
 	"index":null
