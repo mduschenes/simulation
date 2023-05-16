@@ -1554,9 +1554,9 @@ def plotter(settings,hyperparameters,verbose=None):
 												**{attr:data[OTHER][attr] for attr in data[OTHER] for prop in values if label in values[prop] and attr in values[prop]}
 												})
 											items = func({
-												**{attr:[values[prop][label]['value'] for prop in values if label in values[prop]][0] for attr in ALL if attr in data},
+												**{attr:np.array([values[prop][label]['value'] for prop in values if label in values[prop]][0]) for attr in ALL if attr in data},
 												**{attr:data[OTHER][attr] for attr in [label]},
-												**{attr:[values[prop][attr]['value'] for prop in values if label in values[prop]][0] for attr in data[OTHER] for prop in values if (label != attr) and (label in values[prop]) and (attr in values[prop])}
+												**{attr:np.array([values[prop][attr]['value'] for prop in values if label in values[prop]][0]) for attr in data[OTHER] for prop in values if (label != attr) and (label in values[prop]) and (attr in values[prop])}
 												})											
 										elif prop in PLOTS:
 											if label not in data[OTHER]:
