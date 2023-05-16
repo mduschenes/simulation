@@ -4345,7 +4345,7 @@
                 "ncol": 1,
                 "join": null,
                 "keep": "last",
-                "alpha": 1,
+                "set_alpha": 1,
                 "set_label": true,
                 "set_zorder": {
                     "level": 100
