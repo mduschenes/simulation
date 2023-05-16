@@ -232,7 +232,7 @@ class Space(System):
 		Setup space attributes space,string,n
 		'''
 
-		wrapper = lambda func: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=self.dtype))
+		wrapper = lambda func,dtype: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=dtype).item())
 
 		funcs =  {
 			'spin':{
@@ -249,6 +249,9 @@ class Space(System):
 				},				
 			}
 
+		dtypes = {
+			'M': int,'T':self.dtype,'tau':self.dtype,
+		}
 
 		if isinstance(self.space,Space):
 			self.space = self.space.space
@@ -256,7 +259,7 @@ class Space(System):
 			self.space = self.default
 	
 		self.funcs = funcs.get(self.space,funcs[self.default])
-		self.funcs = {attr: wrapper(self.funcs[attr]) for attr in self.funcs}
+		self.funcs = {attr: wrapper(self.funcs[attr],dtypes.get(attr)) for attr in self.funcs}
 
 		self.__string__()
 		self.__size__()
@@ -322,7 +325,7 @@ class Time(System):
 		Setup time evolution attributes tau
 		'''
 
-		wrapper = lambda func: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=self.dtype))
+		wrapper = lambda func,dtype: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=dtype).item())
 
 		funcs =  {
 			'linear':{
@@ -337,13 +340,17 @@ class Time(System):
 				},				
 			}
 
+		dtypes = {
+			'M': int,'T':self.dtype,'tau':self.dtype,
+		}
+
 		if isinstance(self.time,Time):
 			self.time = self.time.time
 		if self.time is None:
 			self.time = self.default
 
 		self.funcs = funcs.get(self.time,funcs[self.default])
-		self.funcs = {attr: wrapper(self.funcs[attr]) for attr in self.funcs}
+		self.funcs = {attr: wrapper(self.funcs[attr],dtypes.get(attr)) for attr in self.funcs}
 		
 		self.__string__()
 		self.__size__()
@@ -364,7 +371,6 @@ class Time(System):
 			self.T = self.funcs['T'](self.T,self.M,self.tau,self.time)
 		elif (self.M is None) and (self.T is not None) and (self.tau is not None):
 			self.M = self.funcs['M'](self.T,self.M,self.tau,self.time)
-
 		return 
 
 	def __str__(self):
@@ -392,7 +398,7 @@ class Lattice(System):
 		setter(kwargs,system,delimiter=delim,func=False)
 		super().__init__(**kwargs)
 
-		wrapper = lambda func: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=self.dtype))
+		wrapper = lambda func,dtype: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=dtype).item())
 
 		funcs = {
 			'square': {
@@ -403,6 +409,10 @@ class Lattice(System):
 				'L': (lambda N,d,L,delta,n,z,lattice: L if L is not None else float(N)),
 				'delta': (lambda N,d,L,delta,n,z,lattice: delta if delta is not None else L/n),
 			}			
+		}
+
+		dtypes = {
+			'M': int,'T':self.dtype,'tau':self.dtype,
 		}
 
 		# Define lattice
@@ -445,7 +455,7 @@ class Lattice(System):
 		self.z = z
 
 		self.funcs = funcs.get(self.lattice,funcs[self.default])
-		self.funcs = {attr: wrapper(self.funcs[attr]) for attr in self.funcs}
+		self.funcs = {attr: wrapper(self.funcs[attr],dtypes.get(attr)) for attr in self.funcs}
 	
 		# Define attributes
 		self.__size__()

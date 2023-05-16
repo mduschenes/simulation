@@ -1451,7 +1451,7 @@ class asarray(np.ndarray):
 	def __new__(self,*args,**kwargs):
 		return np.asarray(*args,**kwargs)
 
-class asscalar(onp.ndarray):
+class asscalar(np.ndarray):
 	'''
 	array class
 	Args:
