@@ -339,6 +339,8 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 	else:
 		path = globber.iglob(path,recursive=True,**kwargs)
 	
+
+
 	if include is not None:
 		path = list(natsorted(filter(include,path)))
 
@@ -777,7 +779,9 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	data = wrapper(data)
 
-	if isinstance(args['path'],str) and (args['wrapper'] in [None,'pd']):
+	if not data:
+		data = default
+	elif isinstance(args['path'],str) and (args['wrapper'] in [None,'pd']):
 		name = list(data)[-1]
 		data = data[name]
 	elif not isinstance(args['path'],dict) and (args['wrapper'] in [None,'pd']):
