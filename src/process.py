@@ -311,13 +311,15 @@ def find(dictionary,verbose=None):
 					# 'zscore':[{'objective':0.5}],
 					# 'quantile':{'objective':None}
 					# 'parse':[{'__path__':'*','M':"<600<"}]
-					# 'abs':['alpha']
+					# 'abs':['alpha'],
+					# 'func':{"MN":"functions.py.MN"},
 					},
 				'shape':None,
 					#{'shape': {'row':[],'col':[],'axis':[],'axes':[]},'reshape':[],'transpose':[]},
 				'legend': {
 					'label':{},'include':None,'exclude':None,'sort':None,
 				},
+				'wrapper':{},
 				'texify':{},
 				'valify': {},		
 				'scinotation':{'scilimits':[0,2],'decimals':0,'one':False},
@@ -561,7 +563,7 @@ def analyse(data,analyses=None,verbose=None):
 		data (dataframe): data of attributes
 		analyses (dict[str,iterable[iterable[dict]]]): Processes to analyse of the form 
 			{analysis:[({attr:value},kwargs)]},
-			allowed analysis strings in ['zscore','quantile','parse','abs','log','log10','replace']
+			allowed analysis strings in ['zscore','quantile','parse','abs','log','log10','replace','func']
 		verbose (bool): Verbosity			
 	Returns:
 		out (dataframe): Analysed data
@@ -636,6 +638,16 @@ def analyse(data,analyses=None,verbose=None):
 								value = to_number(value)
 							out[attr][function(out[attr],kwarg)] = value
 					return out					
+			elif analysis in ['func']:
+				def func(attrs,data):
+					out = data
+					for attr in attrs:
+						function = attrs[attr]
+						default = None
+						function = load(function,default=None)
+						if function is not None:
+							out[attr] = function(data)
+					return out
 			else:
 				continue
 
@@ -658,7 +670,7 @@ def analyse(data,analyses=None,verbose=None):
 				if analysis in ['zscore','quantile','parse']:
 					value = func(attrs,data).to_numpy()
 					out = conditions([out,value],op='and')
-				elif analysis in ['abs','log','log10','replace']:
+				elif analysis in ['abs','log','log10','replace','func']:
 					data = func(attrs,data)
 
 	if out is True:
@@ -908,12 +920,16 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		exclude = keys[name][other].get('exclude')
 		funcs = keys[name][other].get('func',{})
 		analyses = keys[name][other].get('analysis',{})
+		wrappers = keys[name][other].get('wrapper',{})
 		args = keys[name][other].get('args',None)
 		kwargs = keys[name][other].get('kwargs',None)
 
 
 		stat = 'stat'
-		stats = {'':'mean','err':'sem'}
+		stats = {
+			**{axes: {'':'mean','err':'sem'} for axes in dimensions[:-1]},
+			**{axes: {'':'mean','err':'sem'} for axes in dimensions[-1:]},
+			}
 		functions = {'mean_log':mean_log,'sem_log':sem_log}
 		
 		if not funcs:
@@ -922,44 +938,66 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		for function in funcs:
 			
 			if funcs[function] is None:
-				funcs[function] = stats
+				funcs[function] = {}
 			
-			for func in funcs[function]:
-				
-				obj = funcs[function][func]
-				
-				if isinstance(obj,str):
+			for axes in dimensions:
+
+				if funcs[function].get(axes) is None:
+					funcs[function][axes] = {}
+
+				for func in stats[axes]:
+
+					if func not in funcs[function][axes]:
+						funcs[function][axes][func] = stats[axes][func]
+		
+				for func in funcs[function][axes]:
 					
-					if callable(getattr(data,obj,None)):
-						pass
-					elif obj in functions:
-						obj = functions[obj]
-					else:
-						obj = load(obj,default=default)
-
-				if callable(obj):
-
-					if args is None:
-						arguments = ()
-					elif isinstance(args,dict):
-						arguments = args.get(function,())
-					else:
-						arguments = args
+					obj = funcs[function][axes][func]
 					
-					if kwargs is None:
-						keywords = {}
-					elif all(i in kwargs for i in funcs):
-						keywords = kwargs.get(function,{})
-					else:
-						keywords = kwargs
-					
-					try:
-						obj = wraps(obj)(partial(obj,*arguments,**keywords))
-					except:
-						pass
+					if isinstance(obj,str):
+						
+						if callable(getattr(data,obj,None)):
+							pass
+						elif obj in functions:
+							obj = functions[obj]
+						else:
+							obj = load(obj,default=default)
+
+					if callable(obj):
+
+						if args is None:
+							arguments = ()
+						elif isinstance(args,dict):
+							arguments = args.get(function,())
+						else:
+							arguments = args
+						
+						if kwargs is None:
+							keywords = {}
+						elif all(i in kwargs for i in funcs):
+							keywords = kwargs.get(function,{})
+						else:
+							keywords = kwargs
+						
+						try:
+							obj = wraps(obj)(partial(obj,*arguments,**keywords))
+						except:
+							pass
+
+					funcs[function][axes][func] = obj
 
 
-		funcs = {function : {func: functions.get(funcs[function][func],funcs[function][func]) for func in funcs[function]} for function in funcs}
+		for attr in wrappers:
+
+			if attr in ALL:
+				continue
+
+			wrapper = load(wrappers[attr],default=None)
+			
+			try:
+				data[attr] = wrapper(data)
+			except:
+				pass
 
 		independent = [keys[name][axes] for axes in dimensions[:-1] if keys[name][axes] in data]
 		dependent = [keys[name][axes] for axes in dimensions[-1:] if keys[name][axes] in data]
@@ -978,21 +1016,38 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		groups = data[boolean].groupby(by=by,as_index=False)
 
 		if analyses:
+		
 			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
-
 
 		shapes = {group[:-len(independent)] if (independent) and isinstance(group,tuple) else group: groups.get_group(group).shape for group in groups.groups}
 
 		agg = {
-			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] for attr in data},
-			**{attr : [(delim.join(((attr,function,func))),{'array':{'':mean,'err':sem}[func],'object':'first','dtype':funcs[function][func]}[dtypes[attr]]) for function in funcs for func in funcs[function]] for attr in data if attr in dependent},
+			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] 
+					  if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] 
+					  for attr in data},
+			**{attr : [(delim.join(((attr,function,func))),
+					    {'array':{'':mean,'err':sem}[func],
+					     'object':'first',
+					     'dtype':funcs[function][axes][func]
+					    }[dtypes[attr]]) 
+						for function in funcs for func in funcs[function][axes]] 
+						for axes,attr in zip(dimensions[:-1],independent)
+						},
+			**{attr : [(delim.join(((attr,function,func))),
+					    {'array':{'':mean,'err':sem}[func],
+					     'object':'first',
+					     'dtype':funcs[function][axes][func]
+					    }[dtypes[attr]]) 
+						for function in funcs for func in funcs[function][axes]] 
+						for axes,attr in zip(dimensions[-1:],dependent)
+						},						
 		}
 
 		dtype = {attr: data[attr].dtype for attr in agg if attr in label}
 
 		droplevel = dict(level=0,axis=1)
 		by = [*labels]
-		variables = [*independent,*dependent,*[subattr[0] for attr in dependent for subattr in agg[attr]]]
+		variables = [*independent,*dependent,*[subattr[0] for attr in [*independent,*dependent] for subattr in agg[attr]]]
 
 		groups = groups.agg(agg).droplevel(**droplevel).astype(dtype)
 
@@ -1017,14 +1072,14 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 				destination = other
 				value[destination] = {
 					**{attr: grouping[attr].to_list()[0] for attr in source},
-					**{'%s%s'%(axes,func) if keys[name][axes] in dependent else axes: 
+					**{'%s%s'%(axes,func) if keys[name][axes] in [*independent,*dependent] else axes: 
 						{
 						'group':[i,dict(zip(groups.grouper.names,group if isinstance(group,tuple) else (group,)))],
 						'func':[j,function],
 						'label':keys[name][axes] if keys[name][axes] is not null else None
 						} 
 						for axes in dimensions 
-						for func in funcs[function]
+						for func in funcs[function][axes]
 						},
 					**{other: {attr: {subattr: keys[name][other][attr][subattr] 
 						if keys[name][other][attr][subattr] is not null else None for subattr in keys[name][other][attr]}
@@ -1033,13 +1088,13 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 						},
 					}
 
-				for func in funcs[function]:	
-					for axes in dimensions:
+				for axes in dimensions:
+					for func in funcs[function][axes]:	
 						
 						attr = keys[name][axes]
 
-						source = delim.join(((attr,function,func))) if attr in dependent else attr
-						destination = '%s%s'%(axes,func) if attr in dependent else axes
+						source = delim.join(((attr,function,func))) if attr in [*independent,*dependent] else attr
+						destination = '%s%s'%(axes,func) if attr in [*independent,*dependent] else axes
 
 						if grouping.shape[0]:
 							if source in grouping:
@@ -1475,22 +1530,64 @@ def plotter(settings,hyperparameters,verbose=None):
 
 								label,val = label.replace(delimiter,''),value.pop(label)
 								
+
 								if delimiter in ['@']:
+
 									if not any(label in values[prop] for prop in values):
 										continue
+									
+									if isinstance(val,dict):
+										defaults = {'value':None,'type':None,'func':None}
+										val.update({prop: val.get(prop,defaults[prop]) for prop in defaults})
+
+										if isinstance(val['func'],str):
+											func = load(val['func'],default=None)
+										else:
+											func = val['func']
+
+										if prop not in PLOTS:
+											item = None
+											items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
+										elif callable(func):
+											item = func({
+												**{attr:data[attr] for attr in ALL if attr in data},
+												**{attr:data[OTHER][attr] for attr in data[OTHER] for prop in values if label in values[prop] and attr in values[prop]}
+												})
+											items = func({
+												**{attr:np.array([values[prop][label]['value'] for prop in values if label in values[prop]][0]) for attr in ALL if attr in data},
+												**{attr:data[OTHER][attr] for attr in [label]},
+												**{attr:np.array([values[prop][attr]['value'] for prop in values if label in values[prop]][0]) for attr in data[OTHER] for prop in values if (label != attr) and (label in values[prop]) and (attr in values[prop])}
+												})											
+										elif prop in PLOTS:
+											if label not in data[OTHER]:
+												continue
+											else:
+												item = data[OTHER].get(label)
+												items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
+										else:
+											continue
+
+									elif prop in PLOTS:
+										item = data[OTHER].get(label)
+										items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
+
+									else:
+										item = None
+										items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
+
 									if prop in PLOTS:
 										if label not in data[OTHER]:
 											continue
 										else:
 											value[label] = {
-												'__item__': data[OTHER][label],
-												'__items__': [values[prop][label]['value'] for prop in values if label in values[prop]][0],
+												'__item__': item,
+												'__items__': items,
 												'__value__': val
 												}
 									else:
 										value[label] = {
-											'__item__': None,
-											'__items__': [values[prop][label]['value'] for prop in values if label in values[prop]][0],
+											'__item__': item,
+											'__items__': items,
 											'__value__': val
 											}
 								
@@ -1498,27 +1595,36 @@ def plotter(settings,hyperparameters,verbose=None):
 									if label not in [*GRID[:LAYOUTDIM],*INDEXES]:
 										continue
 									if label in GRID[:LAYOUTDIM]:
+										item = position[GRID.index(label)]
+										items = list(range(grid[instance][subinstance][GRID.index(label)]))
+
 										value[label] = {
-											'__item__': position[GRID.index(label)],
-											'__items__':list(range(grid[instance][subinstance][GRID.index(label)])),
+											'__item__': item,
+											'__items__': items,
 											'__value__': val
 											}
 									elif label in INDEXES:
+
 										if prop in PLOTS:
+											item = index[INDEXES.index(label)]
+											items = list(range(shape[INDEXES.index(label)]))
+
 											value[label] = {
-												'__item__': index[INDEXES.index(label)],
-												'__items__':list(range(shape[INDEXES.index(label)])),
+												'__item__': item,
+												'__items__': items,
 												'__value__': val
 												}	
 										else:
-											value[label] = {
-												'__item__': None,
-												'__items__':[list(range(shape[INDEXES.index(label)])) 
+											item = None
+											items = [list(range(shape[INDEXES.index(label)])) 
 													for prop in PLOTS if settings[instance][subinstance][obj].get(prop)
-													for item,shape,data in search(settings[instance][subinstance][obj][prop],returns=True) if data][0],
+													for item,shape,data in search(settings[instance][subinstance][obj][prop],returns=True) if data][0]
+											value[label] = {
+												'__item__': item,
+												'__items__': items,
 												'__value__': val
-												}			
-
+												}
+							
 						if not value:
 							value = None
 						else:
@@ -1558,7 +1664,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					indices = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
 
 					if isinstance(value,dict):
-						defaults = {'value':None,'type':None}
+						defaults = {'value':None,'type':None,'func':None}
 						value.update({prop: value.get(prop,defaults[prop]) for prop in defaults})
 
 						if value['type'] in ['value']:
@@ -1570,10 +1676,12 @@ def plotter(settings,hyperparameters,verbose=None):
 							value = indices
 						else:
 							value = indices
+
 					elif value is not None:
 						value = indices
 					else:
 						value = None
+
 
 					data[attr] = value
 
@@ -1794,9 +1902,15 @@ def plotter(settings,hyperparameters,verbose=None):
 						]
 					slices = [subslice for subslice in slices if subslice is not None]
 
+					wrappers = data[OTHER][OTHER].get('wrapper')
+					if wrappers is None:
+						wrappers = {}
+					else:
+						wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr in ALL}
+
 					normalize = data[OTHER][OTHER].get('normalize')
 					normalizations = {
-						'size': (lambda axes,data: (data[axes]/(len(data[axes])-1)) if (len(data[axes])>1) else np.array([0.5])),
+						'size': (lambda axes,data: (np.array(data[axes])/(len(data[axes])-1)) if (len(data[axes])>1) else np.array([0.5])),
 						None: (lambda axes,data: data[axes]),
 					}
 					if not normalize:
@@ -1835,11 +1949,19 @@ def plotter(settings,hyperparameters,verbose=None):
 
 							value = np.array(value)
 
+							if wrappers.get(attr):
+								value = wrappers[attr]({
+									**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in ALL},
+									**{attr: data[OTHER][attr] for attr in data[OTHER]},
+									})
+
 							if normalize.get(attr):
 								value = normalize[attr](attr,data)
 
 							for subslice in slices:
 								value = value[subslice]
+
+
 
 							value = np.array([valify(i,valify=data[OTHER][OTHER].get('valify')) for i in value])
 
@@ -1880,8 +2002,10 @@ def plotter(settings,hyperparameters,verbose=None):
 
 									value = value['value']
 
-								else:
+								elif not isinstance(data[attr]['__value__'],scalars):
 									value = data[attr]['__value__'][data[attr]['__index__']%len(data[attr]['__value__'])] if not isinstance(data[attr]['__value__'],str) else data[attr]['__value__']
+								else:
+									value = data[attr]['__value__']
 
 								if attr in ['color','ecolor']:
 									pass

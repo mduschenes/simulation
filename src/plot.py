@@ -38,7 +38,7 @@ VARIANTS = ['','err','1','2']
 FORMATS = ['lower','upper']
 ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for axes in AXES for variant in VARIANTS for fmt in FORMATS]
 DEPENDENT = [axes for axes in ALL if any(axes.lower().startswith(i.lower()) for i in AXES[DIM-1:])]
-INDEPENDENT = [axes for axes in AXES if any(axes.lower().startswith(i.lower()) for i in AXES[:DIM-1])]
+INDEPENDENT = [axes for axes in ALL if any(axes.lower().startswith(i.lower()) for i in AXES[:DIM-1])]
 OTHER = 'label'
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
@@ -819,6 +819,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
 					if keep in ['first']:
 						index = [0]*len(indexes)
+					elif keep in ['middle']:
+						index = [min(len(i) for i in indexes)//2]*len(indexes)
 					elif keep in ['last']:
 						index = [-1]*len(indexes)
 					elif isinstance(keep,int):
@@ -846,7 +848,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							} 
 									if 'set_title' in kwargs[attr] or 'title' in kwargs[attr] else {'title':None})},
 					**{subattr: {**kwargs[attr].get(subattr,{})} for subattr in ['get_title','get_texts']},
-					**({'legendHandles': {'set_alpha': [kwargs[attr]['set_alpha']]*len(handles) if isinstance(kwargs[attr]['set_alpha'],scalars) else kwargs[attr]['set_alpha']}} if kwargs[attr].get('set_alpha') is not None else {}),
+					**({'legendHandles': {
+							'set_%s'%(prop): [kwargs[attr]['set_%s'%(prop)]]*len(handles) if isinstance(kwargs[attr]['set_%s'%(prop)],scalars) else kwargs[attr]['set_%s'%(prop)]
+							for prop in ['alpha','color']
+							if kwargs[attr].get('set_%s'%(prop)) is not None}} if any(kwargs[attr].get('set_%s'%(prop)) is not None for prop in ['alpha','color']) else {})
 					})
 
 
@@ -857,7 +862,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					(('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is False)))
 					))
 
-				nullkwargs.extend(['prop','join','flip','update','keep','multiline','handlers','set_zorder','get_zorder','set_title','set_alpha','title','get_title','get_texts','set_label'])
+				nullkwargs.extend(['prop','join','flip','update','keep','multiline','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','title','get_title','get_texts','set_label'])
 
 
 			elif attr in ['plot','axvline','axhline']:

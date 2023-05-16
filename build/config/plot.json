@@ -29,17 +29,12 @@
                         },
                         "legend": {
                             "sort": [
-                                "N","M",
+                                "N",
+                                "M",
                                 "noise.parameters"
                             ],
                             "exclude": [
-                                "instance",
-                                "instances.parameters.xy.seed",
-                                "instances.parameters.z.seed",
-                                "instances.parameters.zz.seed",
-                                "instances.label.seed",
-                                "instances.noise.seed",
-                                "instances.state.seed"
+                                "instance"
                             ]
                         },
                         "scinotation": {
@@ -93,7 +88,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        }                        
+                        }
                     },
                     "ecolor": {
                         "@N@": {
@@ -123,7 +118,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        }                        
+                        }
                     }
                 },
                 {
@@ -136,12 +131,7 @@
                             "M": null,
                             "backend": null,
                             "noise.parameters": null,
-                            "instances.parameters.xy.seed": null,
-                            "instances.parameters.z.seed": null,
-                            "instances.parameters.zz.seed": null,
-                            "instances.label.seed": null,
-                            "instances.noise.seed": null,
-                            "instances.state.seed": null
+                            "instance": null
                         },
                         "legend": {
                             "include": false,
@@ -247,13 +237,7 @@
                         "legend": {
                             "exclude": [
                                 "M",
-                                "instance",
-                                "instances.parameters.xy.seed",
-                                "instances.parameters.z.seed",
-                                "instances.parameters.zz.seed",
-                                "instances.label.seed",
-                                "instances.noise.seed",
-                                "instances.state.seed"
+                                "instance"
                             ]
                         }
                     },
@@ -500,7 +484,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -530,7 +514,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -574,7 +558,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -802,7 +786,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -832,7 +816,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -876,7 +860,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -1357,7 +1341,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -1387,7 +1371,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -1449,7 +1433,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -1678,7 +1662,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -1708,7 +1692,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -1770,7 +1754,7 @@
                                 "alpha": 1
                             },
                             "type": "index"
-                        },                        
+                        },
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -1961,6 +1945,11 @@
                             "backend": null,
                             "iteration": "@iteration.min@"
                         },
+                        "legend": {
+                            "include": [
+                                "N"
+                            ]
+                        },
                         "scinotation": {
                             "scilimits": [
                                 0,
@@ -1970,6 +1959,9 @@
                         }
                     },
                     "alpha": 0.8,
+                    "alpha": {
+                        "@N@": [0.4,0.6,0.8]
+                    },
                     "marker": {
                         "@N@": [
                             "o",
@@ -1983,7 +1975,7 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color": {                       
+                    "color": {
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -1999,7 +1991,7 @@
                             "type": "index"
                         }
                     },
-                    "ecolor": {                        
+                    "ecolor": {
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -2036,6 +2028,9 @@
                         }
                     },
                     "alpha": 0.8,
+                    "alpha": {
+                        "@N@": [0.4,0.6,0.8]
+                    },
                     "marker": {
                         "@N@": [
                             "o",
@@ -2049,7 +2044,7 @@
                     "linewidth": 10,
                     "elinewidth": 7,
                     "capsize": 10,
-                    "color": {                        
+                    "color": {
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -2065,7 +2060,7 @@
                             "type": "index"
                         }
                     },
-                    "ecolor": {                        
+                    "ecolor": {
                         "@M@": {
                             "value": {
                                 "value": null,
@@ -2248,7 +2243,29 @@
                 "which": "both",
                 "axis": "both"
             },
-            "legend": null
+            "legend": null,
+            "legend": {
+                "title_fontsize": 40,
+                "fontsize": 40,
+                "get_title": {
+                    "ha": "center"
+                },
+                "prop": {
+                    "size": 40
+                },
+                "markerscale": 1.2,
+                "handlelength": 3,
+                "framealpha": 0.8,
+                "loc": [
+                    0.72,
+                    0.02
+                ],
+                "ncol": 1,
+                "keep":"middle",
+                "set_zorder": {
+                    "level": 100
+                }
+            }            
         },
         "style": {
             "texify": null,
@@ -2543,7 +2560,7 @@
                             "s",
                             "P"
                         ]
-                    },                    
+                    },
                     "markersize": 20,
                     "linestyle": "--",
                     "linewidth": 10,
@@ -2780,7 +2797,7 @@
                             "s",
                             "P"
                         ]
-                    },                    
+                    },
                     "markersize": 20,
                     "linestyle": "--",
                     "linewidth": 10,
@@ -3002,17 +3019,22 @@
                     "x": "M",
                     "y": "objective",
                     "label": {
-                        "label":{
+                        "label": {
                             "N": null,
                             "parameters.xy.method": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
-                        "legend":{
-                            "include":["N"]
+                        "legend": {
+                            "include": [
+                                "N"
+                            ]
                         }
                     },
                     "alpha": 0.8,
+                    "alpha": {
+                        "@N@": [0.4,0.6,0.8]
+                    },
                     "marker": {
                         "@N@": [
                             "o",
@@ -3020,7 +3042,7 @@
                             "s",
                             "P"
                         ]
-                    },                    
+                    },
                     "markersize": 20,
                     "linestyle": "--",
                     "linewidth": 10,
@@ -3217,7 +3239,6 @@
                 "which": "both",
                 "axis": "both"
             },
-            "legend": null,
             "legend": {
                 "title_fontsize": 40,
                 "fontsize": 40,
@@ -3235,6 +3256,7 @@
                     0.02
                 ],
                 "ncol": 1,
+                "keep":"middle",
                 "set_zorder": {
                     "level": 100
                 }
@@ -3515,7 +3537,7 @@
                             "s",
                             "P"
                         ]
-                    },                    
+                    },
                     "markersize": 8,
                     "linewidth": 4,
                     "linestyle": "-",
@@ -4323,7 +4345,7 @@
                 "ncol": 1,
                 "join": null,
                 "keep": "last",
-                "alpha": 1,
+                "set_alpha": 1,
                 "set_label": true,
                 "set_zorder": {
                     "level": 100
