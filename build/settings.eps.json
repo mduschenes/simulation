@@ -88,11 +88,11 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/phase.N.128.8.4096.30.500"],
-		"jobs.postprocess.cwd":["gobi/phase.N.128.8.4096.30.500"],
+		"jobs.job.cwd":["gobi/phase.N.128.8.4096.30.300"],
+		"jobs.postprocess.cwd":["gobi/phase.N.128.8.4096.30.300"],
 
-		"jobs.job.cwd":["gobi/rand.N.128.8.4096.30.500"],
-		"jobs.postprocess.cwd":["rand/phase.N.128.8.4096.30.500"],
+		"jobs.job.cwd":["gobi/rand.N.128.8.4096.30.300"],
+		"jobs.postprocess.cwd":["gobi/rand.N.128.8.4096.30.300"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -123,7 +123,7 @@
 		"jobs.job.patterns.account":["def-raymond"],
 		"jobs.postprocess.patterns.account":["def-raymond"],
 		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"],			
+		"jobs.postprocess.patterns.account":["def-carrasqu"]			
 		},
 	"groups":null,
 	"index":null
