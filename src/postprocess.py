@@ -236,9 +236,21 @@ defaults = {
 		"set_xlim": {"xmin": -100,"xmax": 6100},
 		"set_xlim": {"xmin": -100,"xmax": 2600},
 		"set_xlim": {"xmin": -100,"xmax": 1100},
+		"set_xlim": {"xmin": -100,"xmax": 4200},
 		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
 		"set_xticks":{"ticks":[0,500,1000,1500,2000,2500]},
 		"set_xticks":{"ticks":[0,200,400,600,800,1000]},
+		"set_xticks":{"ticks":[0,1000,2000,3000,4000]},
+		"set_xscale":{"value":"log"},
+		"set_xnbins":{"nbins":9},
+		"set_xlim": {"xmin": -100,"xmax": 6100},
+		"set_xlim": {"xmin": -100,"xmax": 2600},
+		"set_xlim": {"xmin": -100,"xmax": 1100},
+		"set_xlim": {"xmin": 5e0,"xmax": 5e3},
+		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
+		"set_xticks":{"ticks":[0,500,1000,1500,2000,2500]},
+		"set_xticks":{"ticks":[0,200,400,600,800,1000]},
+		"set_xticks":{"ticks":[1e1,1e2,1e3]},		
 		"set_yscale":{"value":"linear"},
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim": {"ymin": 1e-5,"ymax": 1e-1},
@@ -338,463 +350,476 @@ def postprocess(path,**kwargs):
 				if hyperparameters is None:
 					continue
 
-				data = {}
-				
 				key = ['M.objective.noise.parameters','None','ax','errorbar']
 				label = {'x':'noise.parameters','y':'M','z':'objective'}
 				axes = AXES
 				other = OTHER
-				values = [data for data in search(getter(hyperparameters,key)) if data is not None]
-				slices = slice(None,None,None)
+				sorting = {attr: [OTHER,attr] for attr in 
+					set([attr for data in search(getter(hyperparameters,key)) if data is not None 
+						 for attr in data[OTHER] if attr not in [*ALL,OTHER]])}
+				sorting = {attr: sorting[attr] for attr in sorting if attr in ['N']}
+				sorting = {attr: set([getter(data,sorting[attr]) for data in search(getter(hyperparameters,key)) if data is not None])
+							for attr in sorting}
+				sorting = {attr: sorting[attr] for attr in sorting if len(sorting[attr])>1}
 
-				for i in search(getter(hyperparameters,key)):
-					print(i)
-					print()
+				for sorts in itertools.product(*(sorting[attr] for attr in sorting)):
 
-				for axis in label:
-					ax = [ax for ax in axes if all(((ax in value[other]) and (value[other][ax]['label'] == label[axis])) for value in values)]
+					sorts = dict(zip(sorting,sorts))
 
-					if ax:
-						ax = ax[0]
-						data[label[axis]] = [value[ax][slices] for value in values]
-						data['%serr'%(label[axis])] = [value['%serr'%(ax)][slices] if '%serr'%(ax) in value else None for value in values]
+					print(sorts)
+
+					data = {}
+
+					values = [data for data in search(getter(hyperparameters,key)) if data is not None and all(data[OTHER][attr]==sorts[attr] for attr in sorts)]
+					slices = slice(None,None,None)
+
+					for axis in label:
+						ax = [ax for ax in axes if all(((ax in value[other]) and (value[other][ax]['label'] == label[axis])) for value in values)]
+
+						if ax:
+							ax = ax[0]
+							data[label[axis]] = [value[ax][slices] for value in values]
+							data['%serr'%(label[axis])] = [value['%serr'%(ax)][slices] if '%serr'%(ax) in value else None for value in values]
+						else:
+							data[label[axis]] = [value[other][label[axis]] for value in values]
+							data['%serr'%(label[axis])] = [None for value in values]
+
+						# data[label[axis]] = [value if value not in ['None',None,nan] else 1e-20 for value in data[label[axis]]]
+
+					slices = list(range(4,len(data[label['y']])-5))
+					slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5) # noise.long
+					slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
+					slices = list(range(2,14,2))#range(4,len(data[label['y']])-5) # noise.new.vectorv
+					slices = list(range(2,12,1))#range(4,len(data[label['y']])-5) # noise.vectorq
+
+					size = min(len(data[label[axis]]) for axis in label if label[axis] in data)
+					slices = range(2,4)
+
+					X = [array(data['%s'%(label['x'])][i]) for i in slices]
+					Y = [array(data['%s'%(label['y'])][i]) for i in slices]
+					Z = [array(data['%s'%(label['z'])][i]) for i in slices]
+
+
+					Xerr = [array(data['%serr'%(label['x'])][i]) for i in slices]
+					Yerr = [array(data['%serr'%(label['y'])][i]) for i in slices]
+					Zerr = [array(data['%serr'%(label['z'])][i]) for i in slices]
+
+					_X,_Y,_Z = [],[],[]
+					_Xerr,_Yerr,_Zerr = [],[],[]
+
+					_path = join(delim.join(['data',*('%s%s'%(attr,sorts[attr]) for attr in sorts),'data']),ext='json')
+					_settings = load(_path,default=None)
+
+					_settings = None
+
+					if _settings is not None:
+						fig,ax = None,None
+						settings = _settings
+						fig,ax = plot(settings=settings,fig=fig,ax=ax)
 					else:
-						data[label[axis]] = [value[other][label[axis]] for value in values]
-						data['%serr'%(label[axis])] = [None for value in values]
+						try:
+							x,y,z,xerr,yerr,zerr = [],[],[],None,[],[]
+							parameterss,covariances,others = [],[],[]
+							indices,indexes = [],[]
+							for i,(x_,y_,z_,yerr_,zerr_) in enumerate(zip(X,Y,Z,Yerr,Zerr)):
 
-					# data[label[axis]] = [value if value not in ['None',None,nan] else 1e-20 for value in data[label[axis]]]
+								indices.append(i)
 
-				slices = list(range(4,len(data[label['y']])-5))
-				slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5) # noise.long
-				slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
-				slices = list(range(2,14,2))#range(4,len(data[label['y']])-5) # noise.new.vectorv
-				slices = list(range(2,12,1))#range(4,len(data[label['y']])-5) # noise.vectorq
+								slices_ = slice(0,None,None)
+								
+								y_ = y_[slices_] if y_ is not None else None
+								z_ = z_[slices_] if z_ is not None else None
 
-				size = min(len(data[label[axis]]) for axis in label if label[axis] in data)
-				slices = range(2,6)
+								yerr_ = yerr_[slices_] if yerr_ is not None and not is_naninf(yerr_).all() else None
+								zerr_ = zerr_[slices_] if zerr_ is not None and not is_naninf(zerr_).all() else None
 
-				X = [array(data['%s'%(label['x'])][i]) for i in slices]
-				Y = [array(data['%s'%(label['y'])][i]) for i in slices]
-				Z = [array(data['%s'%(label['z'])][i]) for i in slices]
+								_x = x_
+								_n = y_.size
+								_y = linspace(y_.min(),y_.max(),_n)
+								_z = ones(_n)
+								_yerr = zeros(_n)
+								_zerr = zeros(_n)
 
+								y_min = y_[argmin(z_)]
 
-				Xerr = [array(data['%serr'%(label['x'])][i]) for i in slices]
-				Yerr = [array(data['%serr'%(label['y'])][i]) for i in slices]
-				Zerr = [array(data['%serr'%(label['z'])][i]) for i in slices]
+								# x_min = arange(3)
+								# y_min = array([y_[argmin(z_)-1],y_[argmin(z_)],y_[argmin(z_)+1]])
+								# z_min = array([z_[argmin(z_)-1],z_[argmin(z_)],z_[argmin(z_)+1]])
+								# _x_min = linspace(x_min.min(),x_min.max(),100)
+								# _y_min = linspace(y_min.min(),y_min.max(),100)
+								# _z_min = linspace(z_min.min(),z_min.max(),100)
+								# func_min = lambda parameters,x: sum(c*x**i for i,c in enumerate(parameters))
+								# parameters_min = ones(1+4)
+								# _z_min = fit(y_min,z_min,_y_min,_z_min,parameters=parameters_min,func=func_min)[1]
+								# import matplotlib.pyplot as plt
+								# fig,ax = plt.subplots()
+								# ax.plot(y_min,z_min,label='data')
+								# ax.plot(_y_min,_z_min,label='fit')
+								# ax.legend()
+								# fig.savefig('fit.%e.pdf'%(_x))
+								# y_min = _y_min[argmin(_z_min)]
 
-				_X,_Y,_Z = [],[],[]
-				_Xerr,_Yerr,_Zerr = [],[],[]
-
-				_path = 'data.data.json'
-				_settings = load(_path,default=None)
-
-				if _settings is not None:
-					fig,ax = None,None
-					settings = _settings
-					fig,ax = plot(settings=settings,fig=fig,ax=ax)
-				else:
-					try:
-						x,y,z,xerr,yerr,zerr = [],[],[],None,[],[]
-						parameterss,covariances,others = [],[],[]
-						indices,indexes = [],[]
-						for i,(x_,y_,z_,yerr_,zerr_) in enumerate(zip(X,Y,Z,Yerr,Zerr)):
-
-							indices.append(i)
-
-							slices_ = slice(0,None,None)
-							
-							y_ = y_[slices_] if y_ is not None else None
-							z_ = z_[slices_] if z_ is not None else None
-
-							yerr_ = yerr_[slices_] if yerr_ is not None and not is_naninf(yerr_).all() else None
-							zerr_ = zerr_[slices_] if zerr_ is not None and not is_naninf(zerr_).all() else None
-
-							_x = x_
-							_n = y_.size
-							_y = linspace(y_.min(),y_.max(),_n)
-							_z = ones(_n)
-							_yerr = zeros(_n)
-							_zerr = zeros(_n)
-
-							y_min = y_[argmin(z_)]
-
-							# x_min = arange(3)
-							# y_min = array([y_[argmin(z_)-1],y_[argmin(z_)],y_[argmin(z_)+1]])
-							# z_min = array([z_[argmin(z_)-1],z_[argmin(z_)],z_[argmin(z_)+1]])
-							# _x_min = linspace(x_min.min(),x_min.max(),100)
-							# _y_min = linspace(y_min.min(),y_min.max(),100)
-							# _z_min = linspace(z_min.min(),z_min.max(),100)
-							# func_min = lambda parameters,x: sum(c*x**i for i,c in enumerate(parameters))
-							# parameters_min = ones(1+4)
-							# _z_min = fit(y_min,z_min,_y_min,_z_min,parameters=parameters_min,func=func_min)[1]
-							# import matplotlib.pyplot as plt
-							# fig,ax = plt.subplots()
-							# ax.plot(y_min,z_min,label='data')
-							# ax.plot(_y_min,_z_min,label='fit')
-							# ax.legend()
-							# fig.savefig('fit.%e.pdf'%(_x))
-							# y_min = _y_min[argmin(_z_min)]
-
-							func = [
-									'cubic',
-									# (lambda parameters,x: parameters[0] + parameters[1]*x),
-									(lambda parameters,x: parameters[0] + parameters[1]*x),
+								func = [
+										'cubic',
+										# (lambda parameters,x: parameters[0] + parameters[1]*x),
+										(lambda parameters,x: parameters[0] + parameters[1]*x),
+										]
+								parameters = [array([1.0,1.0]),array([0.0,1.0])]
+								bounds = [y_min]
+								kwargs = {
+									'optimizer':'cg',
+									'alpha':1e-10,
+									'iterations':1000,
+									'eps':{'value':1e-4},
+									'uncertainty':all(parameter.size<1000 for parameter in parameters),
+									# 'path':'fit.%0.1e.pdf'%(_x),
+									'verbose':0,
+									}
+								
+								preprocess = [
+									lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+									# lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+									# lambda x,y,parameters: (log(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None),
+									lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),							
 									]
-							parameters = [array([1.0,1.0]),array([0.0,1.0])]
-							bounds = [y_min]
+								postprocess = [
+									lambda x,y,parameters: (x if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+									# lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+									# lambda x,y,parameters: (log(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None),
+									lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+									]
+
+								_y_ = y_
+								_z_ = z_
+								_yerr_ = yerr_
+								_zerr_ = zerr_
+
+								# _func,_z,_parameters,_zerr,_covariance,_other = fit(
+								# 	y_,z_,
+								# 	_x=_y,_y=_z,
+								# 	func=func,
+								# 	xerr=yerr_,yerr=zerr_,
+								# 	parameters=parameters,
+								# 	preprocess=preprocess,postprocess=postprocess,
+								# 	bounds=bounds,kwargs=kwargs)	
+								
+
+								###########
+
+								# y_ = _y
+								# z_ = _z
+								# yerr_ = None
+								# zerr_ = _zerr
+								# func = [
+								# 	# 'cubic',#
+								# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
+								# 	'cubic',
+								# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
+								# ]
+								# parameters = [array([1.0,1.0]),array([1.0,1.0]),array([1.0,1.0])]
+								# preprocess = [
+								# 	lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+								# 	lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+								# 	lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+								# 	]
+								# postprocess = [
+								# 	lambda x,y,parameters: (x if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+								# 	lambda x,y,parameters: (x if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+								# 	lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
+								# 	]
+								# bounds = [y_[argmin(z_)-10],y_[argmin(z_)]]
+
+								# _func,_z,_parameters,_zerr,_covariance,_other = fit(
+								# 	y_,z_,
+								# 	_x=_y,_y=_z,
+								# 	func=func,
+								# 	xerr=yerr_,yerr=zerr_,
+								# 	parameters=parameters,
+								# 	preprocess=preprocess,postprocess=postprocess,
+								# 	bounds=bounds,kwargs=kwargs)
+
+								# y_ = _y
+								# z_ = _z
+								# yerr_ = None
+								# zerr_ = _zerr
+								# func = [
+								# 	# 'cubic',#
+								# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
+								# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
+								# ]
+								# bounds = [y_[argmin(z_)]]
+
+								# _func,_z,_parameters,_zerr,_covariance,_other = fit(
+								# 	y_,z_,
+								# 	_x=_y_,_y=_z_,
+								# 	func=func,
+								# 	xerr=yerr_,yerr=zerr_,
+								# 	parameters=parameters,
+								# 	preprocess=preprocess,postprocess=postprocess,
+								# 	bounds=bounds,kwargs=kwargs)
+
+
+								_z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_,None,[{'r':1}]*(len(bounds)+1)
+
+								index = argmin(_z)
+								indexerr = [argmin(_z+k*_zerr) for k in [-1,1]]
+								_yerrindex = sum(abs(_y[i] - _y[index]) for i in indexerr)/len(indexerr)
+
+								print(i,slices[i],_x,[_o['r'] for _o in _other])
+								# print(index,indexerr,_yerrindex)
+								print(_y[index])
+								# print([_y[i] for i in indexerr])
+								# print(_yerr[index])
+								# print(zerr_[index])
+								# print(_zerr[index])
+								# print(parameters)
+								# print(_parameters)
+								print()
+
+								_X.append(_x)
+								_Y.append(_y)
+								_Yerr.append(_yerr)
+								_Z.append(_z)
+								_Zerr.append(_zerr)
+
+								x.append(_x)
+								y.append(_y[index])
+								z.append(_z[index])
+								yerr.append(_yerrindex if _yerrindex else 1)
+								zerr.append(_zerr[index])
+								indexes.append(index)
+								parameterss.append(_parameters)
+								covariances.append(_covariance)
+								others.append(_other)
+
+							fig,ax = None,None
+							settings = deepcopy(defaults[key[0]])
+							options = {
+								'fig':{
+									'savefig':{
+										**settings['fig']['savefig'],
+										'fname':join(delim.join(['plot',name,*('%s%s'%(attr,sorts[attr]) for attr in sorts)]),ext='pdf'),
+										}
+								},
+								'ax':{
+									'errorbar':[
+										*[
+										{
+										**settings['ax']['errorbar'],
+										'x':Y[i],
+										'y':Z[i],
+										'xerr':Yerr[i],
+										'yerr':Zerr[i],	
+										'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)) if hasattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color']) else defaults[key[0]]['ax']['errorbar']['color'],	
+										'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
+										# 'marker':'o',
+										# 'linestyle':'',
+										# 'alpha':0.7,
+										} for i in indices
+										],
+										*[
+										{
+										**settings['ax']['errorbar'],
+										'x':_Y[i],
+										'y':_Z[i],
+										# 'yerr':_Zerr[i],							
+						                "alpha": 0.8,
+						                "marker": None,
+						                "markersize": None,
+						                "linestyle": "-",
+						                "capsize": 1,
+						                "linewidth": 1.75,
+						                "elinewidth": 7,
+						                "color": "k"									
+										} for i in indices
+										],
+										*[
+										{
+										'x':[y[i] for i in indices],
+										'y':[z[i] for i in indices],
+										# 'xerr':[yerr[i] for i in indices],
+										# 'yerr':[zerr[i] for i in indices],
+										# 'yerr':[(_Z[i]*(1 - (_Z[i]/(_Z[i]+_Zerr[i])))),_Zerr[i]],							
+										'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
+										# 'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)) if hasattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color']) else defaults[key[0]]['ax']['errorbar']['color'],	
+										'ecolor':'viridis',
+										'marker':'o',
+										'markersize':20,
+										'markerfacecolor':"None",
+										"linestyle":"--",
+										"capsize":4,			
+										"linewidth":4,
+										'alpha':0.8,
+										}
+										],								
+									],
+									'fill_between':[
+										# *[
+										# {
+										# **settings['ax']['fill_between'],	
+										# 'x':Y[i],
+										# 'y':Z[i],
+										# 'yerr':[(Z[i]*(1 - (Z[i]/(Z[i]+Zerr[i])))),Zerr[i]],
+										# 'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(indices)),	
+										# } for i in indices
+										# ],
+										*[
+										{
+										**settings['ax']['fill_between'],	
+										'x':_Y[i],
+										'y':_Z[i],
+										'yerr':_Zerr[i],
+										'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(indices)) if hasattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color']) else defaults[key[0]]['ax']['fill_between']['color'],	
+										} for i in indices
+										],
+										]
+									},
+								}
+
+							setter(settings,options)
+
+							fig,ax = plot(settings=settings,fig=fig,ax=ax)
+
+							_settings = settings
+							dump(_settings,_path)
+
+						except Exception as exception:
+							raise
+
+
+							_x = X
+							_y = Y
+							_z = Z
+
+							shape = _y.shape
+							ndim = _y.ndim
+							axis = 1
+							indices = arange(len(_x))
+							slices = slice(None,None,None)
+							slices = tuple((slices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
+							slices = argmin(_z[slices],axis=axis)
+							slices = tuple((slices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
+							x = _x
+							y = _y[slices]
+
+					_path = join(delim.join(['data',*('%s%s'%(attr,sorts[attr]) for attr in sorts),'fit']),ext='json')
+					_settings = load(_path,default=None)
+
+					_settings = None
+
+					if _settings is not None:
+						fig,ax = None,None
+						settings = _settings
+						fig,ax = plot(settings=settings,fig=fig,ax=ax)
+					else:
+						try:
+							x = array(x)
+							y = array(y)
+							xerr = array(xerr) if xerr is not None and not all([z is None for z in xerr]) else None
+							yerr = array(yerr) if yerr is not None and not all([z is None for z in yerr]) else None
+							slices = arange(len(x))[(x>=1e-28) & (x<=1e-3) & (x != 1e0)]
+
+							def func(parameters,x):
+								y = parameters[0] + parameters[1]*(x)
+								return y
+
+							_n = x.size*10
+							_x = logspace(int(log10(x.min()))-3,0,_n)
+							_y = ones(_n)
+							p = 2
+							parameters = array([-1.0,-1.0])[:p]
 							kwargs = {
 								'optimizer':'cg',
-								'alpha':1e-10,
+								'alpha':1e-4,
 								'iterations':1000,
-								'eps':{'value':1e-4},
-								'uncertainty':all(parameter.size<1000 for parameter in parameters),
-								# 'path':'fit.%0.1e.pdf'%(_x),
+								'eps':{'value':1e-5},
+								'uncertainty':parameters.size<1000,
+								'path':None,
 								'verbose':0,
-								}
-							
-							preprocess = [
-								lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
-								# lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
-								# lambda x,y,parameters: (log(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None),
-								lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),							
-								]
-							postprocess = [
-								lambda x,y,parameters: (x if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
-								# lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
-								# lambda x,y,parameters: (log(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None),
-								lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
-								]
+							}
+							preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)
+							postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)
 
-							_y_ = y_
-							_z_ = z_
-							_yerr_ = yerr_
-							_zerr_ = zerr_
-
-							_func,_z,_parameters,_zerr,_covariance,_other = fit(
-								y_,z_,
-								_x=_y,_y=_z,
-								func=func,
-								xerr=yerr_,yerr=zerr_,
-								parameters=parameters,
+							_func,_y,_parameters,_yerr,_covariance,_other = fit(
+								x[slices],y[slices],
+								_x=_x,_y=_y,
+								func=func,parameters=parameters,
+								yerr=yerr[slices] if yerr is not None else yerr,
+								xerr=xerr[slices] if xerr is not None else xerr,
 								preprocess=preprocess,postprocess=postprocess,
-								bounds=bounds,kwargs=kwargs)	
-							
-
-							###########
-
-							# y_ = _y
-							# z_ = _z
-							# yerr_ = None
-							# zerr_ = _zerr
-							# func = [
-							# 	# 'cubic',#
-							# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
-							# 	'cubic',
-							# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
-							# ]
-							# parameters = [array([1.0,1.0]),array([1.0,1.0]),array([1.0,1.0])]
-							# preprocess = [
-							# 	lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
-							# 	lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
-							# 	lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
-							# 	]
-							# postprocess = [
-							# 	lambda x,y,parameters: (x if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
-							# 	lambda x,y,parameters: (x if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
-							# 	lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
-							# 	]
-							# bounds = [y_[argmin(z_)-10],y_[argmin(z_)]]
-
-							# _func,_z,_parameters,_zerr,_covariance,_other = fit(
-							# 	y_,z_,
-							# 	_x=_y,_y=_z,
-							# 	func=func,
-							# 	xerr=yerr_,yerr=zerr_,
-							# 	parameters=parameters,
-							# 	preprocess=preprocess,postprocess=postprocess,
-							# 	bounds=bounds,kwargs=kwargs)
-
-							# y_ = _y
-							# z_ = _z
-							# yerr_ = None
-							# zerr_ = _zerr
-							# func = [
-							# 	# 'cubic',#
-							# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
-							# 	(lambda parameters,x: parameters[0] + parameters[1]*x),
-							# ]
-							# bounds = [y_[argmin(z_)]]
-
-							# _func,_z,_parameters,_zerr,_covariance,_other = fit(
-							# 	y_,z_,
-							# 	_x=_y_,_y=_z_,
-							# 	func=func,
-							# 	xerr=yerr_,yerr=zerr_,
-							# 	parameters=parameters,
-							# 	preprocess=preprocess,postprocess=postprocess,
-							# 	bounds=bounds,kwargs=kwargs)
+								kwargs=kwargs)
 
 
-							# _z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_,None,[{'r':1}]*(len(bounds)+1)
+							fig,ax = None,None
+							settings = deepcopy(defaults[name])
 
-							index = argmin(_z)
-							indexerr = [argmin(_z+k*_zerr) for k in [-1,1]]
-							_yerrindex = sum(abs(_y[i] - _y[index]) for i in indexerr)/len(indexerr)
-
-							print(i,slices[i],_x,[_o['r'] for _o in _other])
-							# print(index,indexerr,_yerrindex)
-							print(_y[index])
-							# print([_y[i] for i in indexerr])
-							# print(_yerr[index])
-							# print(zerr_[index])
-							# print(_zerr[index])
-							# print(parameters)
-							# print(_parameters)
-							print()
-
-							_X.append(_x)
-							_Y.append(_y)
-							_Yerr.append(_yerr)
-							_Z.append(_z)
-							_Zerr.append(_zerr)
-
-							x.append(_x)
-							y.append(_y[index])
-							z.append(_z[index])
-							yerr.append(_yerrindex if _yerrindex else 1)
-							zerr.append(_zerr[index])
-							indexes.append(index)
-							parameterss.append(_parameters)
-							covariances.append(_covariance)
-							others.append(_other)
-
-						fig,ax = None,None
-						settings = deepcopy(defaults[key[0]])
-						options = {
-							'fig':{
-								'savefig':{
-									**settings['fig']['savefig'],
-									'fname':join(delim.join(['plot',name]),ext='pdf'),
-									}
-							},
-							'ax':{
-								'errorbar':[
-									*[
-									{
-									**settings['ax']['errorbar'],
-									'x':Y[i],
-									'y':Z[i],
-									'xerr':Yerr[i],
-									'yerr':Zerr[i],	
-									'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)) if hasattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color']) else defaults[key[0]]['ax']['errorbar']['color'],	
-									'label':scinotation(X[i],decimals=1,scilimits=[0,3]),
-									# 'marker':'o',
-									# 'linestyle':'',
-									# 'alpha':0.7,
-									} for i in indices
-									],
-									*[
-									{
-									**settings['ax']['errorbar'],
-									'x':_Y[i],
-									'y':_Z[i],
-									# 'yerr':_Zerr[i],							
-					                "alpha": 0.8,
-					                "marker": None,
-					                "markersize": None,
-					                "linestyle": "-",
-					                "capsize": 1,
-					                "linewidth": 1.75,
-					                "elinewidth": 7,
-					                "color": "k"									
-									} for i in indices
-									],
-									*[
-									{
-									'x':[y[i] for i in indices],
-									'y':[z[i] for i in indices],
-									# 'xerr':[yerr[i] for i in indices],
-									# 'yerr':[zerr[i] for i in indices],
-									# 'yerr':[(_Z[i]*(1 - (_Z[i]/(_Z[i]+_Zerr[i])))),_Zerr[i]],							
-									'color': 'k',#getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)),	
-									# 'color': getattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color'])(i/len(indices)) if hasattr(plt.cm,defaults[key[0]]['ax']['errorbar']['color']) else defaults[key[0]]['ax']['errorbar']['color'],	
-									'ecolor':'viridis',
-									'marker':'o',
-									'markersize':20,
-									'markerfacecolor':"None",
-									"linestyle":"--",
-									"capsize":4,			
-									"linewidth":4,
-									'alpha':0.8,
-									}
-									],								
-								],
-								'fill_between':[
-									# *[
-									# {
-									# **settings['ax']['fill_between'],	
-									# 'x':Y[i],
-									# 'y':Z[i],
-									# 'yerr':[(Z[i]*(1 - (Z[i]/(Z[i]+Zerr[i])))),Zerr[i]],
-									# 'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(indices)),	
-									# } for i in indices
-									# ],
-									*[
-									{
-									**settings['ax']['fill_between'],	
-									'x':_Y[i],
-									'y':_Z[i],
-									'yerr':_Zerr[i],
-									'color': getattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color'])(i/len(indices)) if hasattr(plt.cm,defaults[key[0]]['ax']['fill_between']['color']) else defaults[key[0]]['ax']['fill_between']['color'],	
-									} for i in indices
-									],
-									]
-								},
-							}
-
-						setter(settings,options)
-
-						fig,ax = plot(settings=settings,fig=fig,ax=ax)
-
-						_settings = settings
-						dump(_settings,_path)
-
-					except Exception as exception:
-						raise
-
-
-						_x = X
-						_y = Y
-						_z = Z
-
-						shape = _y.shape
-						ndim = _y.ndim
-						axis = 1
-						indices = arange(len(_x))
-						slices = slice(None,None,None)
-						slices = tuple((slices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
-						slices = argmin(_z[slices],axis=axis)
-						slices = tuple((slices if ax == axis else arange(shape[ax]) for ax in range(ndim)))
-						x = _x
-						y = _y[slices]
-
-				
-				_path = 'data.fit.json'
-				_settings = load(_path,default=None)
-
-				if _settings is not None:
-					fig,ax = None,None
-					settings = _settings
-					fig,ax = plot(settings=settings,fig=fig,ax=ax)
-				else:
-					try:
-						x = array(x)
-						y = array(y)
-						xerr = array(xerr) if xerr is not None and not all([z is None for z in xerr]) else None
-						yerr = array(yerr) if yerr is not None and not all([z is None for z in yerr]) else None
-						slices = arange(len(x))[(x>=1e-28) & (x<=1e-3) & (x != 1e0)]
-
-						def func(parameters,x):
-							y = parameters[0] + parameters[1]*(x)
-							return y
-
-						_n = x.size*10
-						_x = logspace(int(log10(x.min()))-3,0,_n)
-						_y = ones(_n)
-						p = 2
-						parameters = array([-1.0,-1.0])[:p]
-						kwargs = {
-							'optimizer':'cg',
-							'alpha':1e-4,
-							'iterations':1000,
-							'eps':{'value':1e-5},
-							'uncertainty':parameters.size<1000,
-							'path':None,
-							'verbose':0,
-						}
-						preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)
-						postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)
-
-						_func,_y,_parameters,_yerr,_covariance,_other = fit(
-							x[slices],y[slices],
-							_x=_x,_y=_y,
-							func=func,parameters=parameters,
-							yerr=yerr[slices] if yerr is not None else yerr,
-							xerr=xerr[slices] if xerr is not None else xerr,
-							preprocess=preprocess,postprocess=postprocess,
-							kwargs=kwargs)
-
-
-						fig,ax = None,None
-						settings = deepcopy(defaults[name])
-
-						options = {
-							'fig':{
-								'savefig':{
-									**settings['fig']['savefig'],
-									'fname':join(delim.join(['plot',name,'fit']),ext='pdf'),
-									}
-								},
-							'ax':{
-								'errorbar':[
-									{
-									**settings['ax']['errorbar'],
-									'x':x,
-									'y':y,
-									'xerr':xerr,
-									'yerr':yerr,
-									'legend':None,
-									'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0) if hasattr(plt.cm,defaults[name]['ax']['errorbar']['color']) else defaults[name]['ax']['errorbar']['color'],	
+							options = {
+								'fig':{
+									'savefig':{
+										**settings['fig']['savefig'],
+										'fname':join(delim.join(['plot',name,*('%s%s'%(attr,sorts[attr]) for attr in sorts),'fit']),ext='pdf'),
+										}
 									},
-									{
-									**settings['ax']['errorbar'],						
-									'x':_x,
-									'y':_y,
-									# 'yerr':_yerr,
-									# 'label':r'$\quad~~ M_{\gamma} = \alpha\log{\gamma} + \beta$'+'\n'+r'$%s$'%(',~'.join([
-									# 'label':r'$\quad~~ M_{\gamma} = \alpha{\gamma}^{-\chi} + \beta$'+'\n'+r'$%s$'%(',~'.join([
-									# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
-									# 'label':r'$\quad~~ M_{\gamma} = {(\gamma-\beta)}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
-									# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
-									'label':(
-										r'$\quad~~ M_{\gamma} = -\alpha\log{\gamma} - {\beta}$' + '\n' + 
-										r'$%s$'%('\n'.join([
-										'%s = %s'%(z,scinotation(-_parameters[len(_parameters)-1-i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
-											for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_parameters)])])) + '\n' +
-										# r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty_propagation(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
-										r'$%s$'%('r^2 = %s'%(scinotation(_other['r'],decimals=4,scilimits=[-1,4])))
-										),
-									'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(1) if hasattr(plt.cm,defaults[name]['ax']['errorbar']['color']) else defaults[name]['ax']['errorbar']['color'],	
-									"alpha": 0.8,
-					                "marker": None,
-					                "markersize": 20,
-					                "linestyle": "--",
-					                "capsize": 10,
-					                "linewidth": 5,
-					                "elinewidth": 7,
-					                "color": "#481567ff",
-					                "zorder": -1
-									},												
-									],
-								'fill_between':{
-									**settings['ax']['fill_between'],	
-									'x':_x,
-									'y':_y,
-									'yerr':_yerr,
-									'color': getattr(plt.cm,defaults[name]['ax']['fill_between']['color'])(0.25) if hasattr(plt.cm,defaults[name]['ax']['fill_between']['color']) else defaults[name]['ax']['errorbar']['fill_between'],	
-									}
-								},
-							}
+								'ax':{
+									'errorbar':[
+										{
+										**settings['ax']['errorbar'],
+										'x':x,
+										'y':y,
+										'xerr':xerr,
+										'yerr':yerr,
+										'legend':None,
+										'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(0) if hasattr(plt.cm,defaults[name]['ax']['errorbar']['color']) else defaults[name]['ax']['errorbar']['color'],	
+										},
+										{
+										**settings['ax']['errorbar'],						
+										'x':_x,
+										'y':_y,
+										# 'yerr':_yerr,
+										# 'label':r'$\quad~~ M_{\gamma} = \alpha\log{\gamma} + \beta$'+'\n'+r'$%s$'%(',~'.join([
+										# 'label':r'$\quad~~ M_{\gamma} = \alpha{\gamma}^{-\chi} + \beta$'+'\n'+r'$%s$'%(',~'.join([
+										# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
+										# 'label':r'$\quad~~ M_{\gamma} = {(\gamma-\beta)}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
+										# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
+										'label':(
+											r'$\quad~~ M_{\gamma} = -\alpha\log{\gamma} - {\beta}$' + '\n' + 
+											r'$%s$'%('\n'.join([
+											'%s = %s'%(z,scinotation(-_parameters[len(_parameters)-1-i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
+												for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_parameters)])])) + '\n' +
+											# r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty_propagation(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
+											r'$%s$'%('r^2 = %s'%(scinotation(_other['r'],decimals=4,scilimits=[-1,4])))
+											),
+										'color': getattr(plt.cm,defaults[name]['ax']['errorbar']['color'])(1) if hasattr(plt.cm,defaults[name]['ax']['errorbar']['color']) else defaults[name]['ax']['errorbar']['color'],	
+										"alpha": 0.8,
+						                "marker": None,
+						                "markersize": 20,
+						                "linestyle": "--",
+						                "capsize": 10,
+						                "linewidth": 5,
+						                "elinewidth": 7,
+						                "color": "#481567ff",
+						                "zorder": -1
+										},												
+										],
+									'fill_between':{
+										**settings['ax']['fill_between'],	
+										'x':_x,
+										'y':_y,
+										'yerr':_yerr,
+										'color': getattr(plt.cm,defaults[name]['ax']['fill_between']['color'])(0.25) if hasattr(plt.cm,defaults[name]['ax']['fill_between']['color']) else defaults[name]['ax']['errorbar']['fill_between'],	
+										}
+									},
+								}
 
-						setter(settings,options)
+							setter(settings,options)
 
-						fig,ax = plot(settings=settings,fig=fig,ax=ax)
+							fig,ax = plot(settings=settings,fig=fig,ax=ax)
 
-						_settings = settings
-						dump(_settings,_path)
+							_settings = settings
+							dump(_settings,_path)
 
-					except Exception as exception:
-						raise
+						except Exception as exception:
+							raise
 
 
 

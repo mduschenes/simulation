@@ -892,7 +892,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						):
 
 
-
 						if isinstance(kwargs[attr][subprop],(int,np.integer,float,np.floating)) or is_naninf(kwargs[attr][subprop]):
 							kwargs[attr][subprop] = [kwargs[attr][subprop],kwargs[attr][subprop]]
 						elif np.array(kwargs[attr][subprop]).ndim == 1:
@@ -909,6 +908,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
 							kwargs[attr][subprop][1]
 							])
+
+						if kwargs[attr].get(subprop) is not None and kwargs[attr].get(AXES[dim-1]) is not None:
+							if kwargs[attr][subprop].size == 2 and kwargs[attr][AXES[dim-1]].size > 2:
+								kwargs[attr][subprop] = None
 
 					if kwargs[attr].get(subprop) is not None:
 						kwargs[attr][subprop] = np.abs(kwargs[attr][subprop])
@@ -954,6 +957,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
 							kwargs[attr][subprop][1]
 							])
+
+						if kwargs[attr].get(subprop) is not None and kwargs[attr].get(AXES[dim-1]) is not None:
+							if kwargs[attr][subprop].size == 2 and kwargs[attr][AXES[dim-1]].size > 2:
+								kwargs[attr][subprop] = None
 
 				if ((kwargs[attr].get('y1') is not None) and (len(kwargs[attr].get('y1'))) and 
 					(kwargs[attr].get('y2') is not None) and (len(kwargs[attr].get('y2')))):
@@ -1204,7 +1211,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 						kwds = ['value','values','color','norm','scale','alpha']
 
-						kwds = {prop: value.get(prop,None) for prop in kwds}
+						kwds = {prop: None	 for prop in kwds}
 
 						if isinstance(value,dict):
 							kwds.update(value)
@@ -1220,12 +1227,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							if kwds.get(tmp) is not None:
 								kwds[prop] = kwds[tmp]
 							else:
-								kwds[prop] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+								kwds[prop] = [i/max(1,prod(shape[fields[field]])-1) for i in range(prod(shape[fields[field]]))]
 
 						prop = 'value'
 						tmp = 'values'
 						if kwds.get(prop) is None:
-							kwds[prop] = to_index(index[fields[field]],shape[fields[field]])/max(1,prod(shape[fields[attr]])-1)
+							kwds[prop] = to_index(index[fields[field]],shape[fields[field]])/max(1,prod(shape[fields[field]])-1)
 
 						value,color,norm = set_color(**kwds)
 
