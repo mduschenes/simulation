@@ -92,7 +92,7 @@
 		"jobs.postprocess.cwd":["gobi/phase.N.128.8.4096.30.500"],
 
 		"jobs.job.cwd":["gobi/rand.N.128.8.4096.30.500"],
-		"jobs.postprocess.cwd":["rand/phase.N.128.8.4096.30.500"],
+		"jobs.postprocess.cwd":["gobi/rand.N.128.8.4096.30.500"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
