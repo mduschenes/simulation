@@ -26,7 +26,7 @@
 		"model.M":[null],
 		"model.P":[2],
 		"model.tau":[2e2,5e2,10e2,30e2,50e2,100e2],
-		"model.T": [1e6],
+		"model.T": [0.1e6,0.5e6,0.75e6,1e6,2e6],
 
 		"system.dtype":["complex256"],
 		"system.dtype":["complex128"],
@@ -50,6 +50,8 @@
 		"noise.parameters":[0,1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
 		"noise.parameters":[false],
 		"noise.seed":[null],		
+		"noise.scale":[1e6],		
+		"noise.initialization":["time"],		
 		
 		"state.label":["psi"],
 		"state.operator":["haar"],
@@ -69,8 +71,8 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/tau.noiseless.4.128.8.4096.20.300"],
-		"jobs.postprocess.cwd":["gobi/tau.noiseless.4.128.8.4096.20.300"],
+		"jobs.job.cwd":["gobi/tau.noise.4.128.10.10000.20.300"],
+		"jobs.postprocess.cwd":["gobi/tau.noise.4.128.10.10000.20.300"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -186,12 +188,14 @@
 			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
 			"hessian.rank":false,"fisher.rank":false,
 
-			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"key":[],"instance":[],
-			"parameters.xy.parameters":[],"parameters.xy.method":[],
-			"parameters.z.parameters":[],"parameters.z.method":[],
-			"parameters.zz.parameters":[],"parameters.zz.method":[],
-			"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
+			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],"n":[],"g":[],
+			"space":[],"time":[],"lattice":[],
+			"architecture":[],"timestamp":[],"backend":[],"unit":[],"seed":[],
+			"key":[],"instance":[],"instances.*":[],
+			"parameters.*.parameters":[],"parameters.*.method":[],
+			"noise.parameters":[],"noise.scale":[],"noise.tau":[],"noise.initialization":[],
+			"hyperparameters.optimizer":[],"hyperparameters.search.alpha":[],"hyperparameters.search.beta":[],
+			"hyperparameters.c1":false,"hyperparameters.c2":false
 		}	
 	},
 "parameters":{
