@@ -791,6 +791,10 @@ class Noise(Object):
 	hermitian = None
 	unitary = None
 
+	scale = None
+	tau = None
+	initialization = None
+
 	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,state=None,system=None,**kwargs):		
 
 		defaults = dict(			
@@ -2025,7 +2029,7 @@ class Callback(System):
 						value = argmax(abs(difference(value)/value[:-1]))+1	
 						value = value.size if (value==value.size-1) else value
 
-				elif attr in ['tau.noise.parameters','T.noise.parameters']:
+				elif attr in []:
 					value = [attr.split(delim)[0],delim.join(attr.split(delim)[1:])]
 					value = [getattrs(model,i,default=default,delimiter=delim) for i in value]
 					value = value[0]/value[1] if value[1] else value[0]
