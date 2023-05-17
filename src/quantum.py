@@ -15,7 +15,7 @@ for PATH in PATHS:
 from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
 from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,sort,relsort
-from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos
+from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,null,delim,scalars,arrays,datatype
 
@@ -791,7 +791,7 @@ class Noise(Object):
 	hermitian = None
 	unitary = None
 
-	scale = None
+	scale = 1
 	tau = None
 	initialization = None
 
