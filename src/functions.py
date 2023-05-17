@@ -22,3 +22,15 @@ for PATH in PATHS:
 
 def func_MN(data):
 	return data['M']/data['N']
+
+def func_tau(data):
+	return data['tau']/data.get('T',1)
+
+def func_T(data):
+	return data['T']/data.get('T',1)
+
+def func_tau_noise(data):
+	return data['tau']/data.get('noise.scale',1)
+
+def func_T_noise(data):
+	return data['T']/data.get('noise.scale',1)

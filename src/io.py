@@ -339,6 +339,8 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 	else:
 		path = globber.iglob(path,recursive=True,**kwargs)
 	
+
+
 	if include is not None:
 		path = list(natsorted(filter(include,path)))
 
