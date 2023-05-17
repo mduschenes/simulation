@@ -1,7 +1,7 @@
  #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools
+import os,sys,warnings,itertools,re
 from copy import deepcopy
 import traceback
 
@@ -12,7 +12,33 @@ warnings.simplefilter("ignore", (UserWarning,DeprecationWarning,FutureWarning))
 scalars = (int,np.integer,float,np.floating,str,type(None))
 
 
-class null(object): pass
+def namespace(cls,signature=None,init=False,**kwargs):
+	'''
+	Get namespace of attributes of class instance
+	Args:
+		cls (class): Class to get attributes
+		signature (dict): Dictionary to get only attributes in cls
+		init (bool): Initialize class for all attributes
+		kwargs (dict): Additional keyword arguments for cls
+	Returns:
+		attrs (iterable,dict): Attributes of cls
+	'''
+	
+	if init:
+		attrs = dir(cls(**kwargs))
+	else:
+		try:
+			attrs = cls.__dict__
+		except:
+			attrs = None
+
+	if signature is None:
+		return attrs
+	elif attrs is not None:
+		return {attr: signature[attr] for attr in signature if attr in attrs}
+	else:
+		return attrs
+
 
 def isiterable(obj,exceptions=()):
 	'''
@@ -30,64 +56,67 @@ def getattrs(obj,attr,default=None,delimiter=None):
 	Get nested attribute of object
 	Args:
 		obj (object): Object of attributes
-		attr (str,iterable[str]): Nested attribute of object
+		attr (str): Nested attribute of object
 		default (object): Default nested attribute of object
 		delimiter (str): Delimiter to split nested attributes
 	Returns:
 		obj (object): Nested attribute
 	'''
-	if isinstance(attr,str):
-		if (delimiter is None) or (hasattr(obj,attr)):
-			attr = [attr]
-		else:
-			attr = attr.split(delimiter)
-	else:
-		if delimiter is None:
-			attr = [subattr for subattr in attr]
-		else:
-			attr = [subsubattr for subattr in attr for subsubattr in subattr.split(delimiter)]
 
-	for subattr in attr:
-		if not hasattr(obj,subattr):
-			obj = default
-			break
-		obj = getattr(obj,subattr)
+	if delimiter is None:
+		return getattr(obj,attr,default)
 
-	return obj
+	attrs = attr.split(delimiter)
+	
+	n = len(attrs)
+
+	for i in range(n):
+		attr = delimiter.join(attrs[:i+1])
+		
+		if hasattr(obj,attr):
+			if i == (n-1):
+				return getattr(obj,attr)
+			else:
+				attribute = delimiter.join(attrs[i+1:])
+				return getattrs(getattr(obj,attr),attribute,default=default,delimiter=delimiter)
+	
+	return default
 
 def setattrs(obj,attr,value,delimiter=None):
 	'''
 	Set nested attribute of object
 	Args:
 		obj (object): Object of attributes
-		attr (str,iterable[str]): Nested attribute of object
+		attr (str): Nested attribute of object
 		value (object): Nested value of object
 		delimiter (str): Delimiter to split nested attributes
 	'''
 
+	raise NotImplementedError
 
 
-	if isinstance(attr,str):
-		if (delimiter is None) or (hasattr(obj,attr)):
-			attr = [attr]
-		else:
-			attr = attr.split(delimiter)
-	else:
-		if delimiter is None:
-			attr = [subattr for subattr in attr]
-		else:
-			attr = [subsubattr for subattr in attr for subsubattr in attr.split(delimiter)]
+	if delimiter is None:
+		return getattr(obj,attr,default)
 
-
-
-	for subattr in attr[:-1]:
-		if not hasattr(obj,subattr):
-			setattr(obj,subattr,null())
-		obj = getattr(obj,subattr)
+	attrs = attr.split(delimiter)
 	
-	subattr = attr[-1]
-	setattr(obj,subattr,value)
+	n = len(attrs)
 
+	for i in range(n):
+		attr = delimiter.join(attrs[:i+1])
+		
+		if hasattr(obj,attr):
+			if i == (n-1):
+				setattr(obj,attr,value)
+				return True
+			else:
+				attribute = delimiter.join(attrs[i+1:])
+				setattrs(getattr(obj,attr),attribute,value=value,delimiter=delimiter)
+				return
+
+	attr = attrs[-1]
+	setattr(obj,attr,value)
+		
 	return
 
 
@@ -96,31 +125,47 @@ def hasattrs(obj,attr,default=None,delimiter=None):
 	Check existence of nested attribute of object
 	Args:
 		obj (object): Object of attributes
-		attr (str,iterable[str]): Nested attribute of object
+		attr (str): Nested attribute of object
 		default (object): Default nested attribute of object
 		delimiter (str): Delimiter to split nested attributes
 	Returns:
 		has (bool): Nested attribute existence
 	'''
-	if isinstance(attr,str):
-		if delimiter is None:
-			attr = [attr]
-		else:
-			attr = attr.split(delimiter)
-	else:
-		if delimiter is None:
-			attr = [subattr for subattr in attr]
-		else:
-			attr = [subsubattr for subattr in attr for subsubattr in attr.split(delimiter)]
 
-	has = True
-	for subattr in attr:
-		if not hasattr(obj,subattr):
-			has = False
-			break
-		obj = getattr(obj,subattr)
+	if delimiter is None:
+		return hasattr(obj,attr)
 
-	return has
+	attrs = attr.split(delimiter)
+	
+	n = len(attrs)
+	
+	for i in range(n):
+		attr = delimiter.join(attrs[:i+1])
+		if hasattr(obj,attr):
+			if i == (n-1):
+				return True
+			else:
+				attribute = delimiter.join(attrs[i+1:])
+				return hasattrs(getattr(obj,attr),attribute,default=default,delimiter=delimiter)
+	
+	return False
+
+def contains(string,pattern):
+	'''
+	Search for pattern in string
+	Args:
+		string (str): String to search
+		pattern (str): Pattern to search
+	Returns:
+		boolean (bool): String contains pattern
+	'''
+	replacements = {'\\':'\\\\','.':'\\.','*':'.*',}
+	for replacement in replacements:
+		pattern = pattern.replace(replacement,replacements[replacement])
+		
+	boolean = re.fullmatch(pattern,string) is not None
+
+	return boolean
 
 
 def copier(key,value,copy):
@@ -509,16 +554,15 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 	Search of iterable, returning elements and indices of elements
 	Args:
 		iterable (iterable): Nested iterable
-		index (iterable[int]): Index of element
+		index (iterable[int,str]): Index of element
 		shape (iterable[int]): Shape of iterable
 		returns (bool,str): Returns of search, 
 			None returns item, True returns index,shape,item, False returns None, 
 			allowed strings (.delimited) for combinations of ['index','shape','item']
-		find (iterable): 
 		types (type,tuple[type]): Allowed types to be searched
 		exceptions (type,tuple[type]): Disallowed types to be searched
 	Yields:
-		index (iterable[int]): Index of item
+		index (iterable[int,str]): Index of item
 		shape (iterable[iterable[int]]): Shape of iterable at index
 		item (iterable): Iterable element
 	'''
@@ -569,29 +613,41 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 			yield from search(item,index=[*index,i],shape=[*shape,size],
 				returns=returns,items=items,types=types,exceptions=exceptions)
 
-def indexer(item,iterable,returns=None,types=(list,),exceptions=()):
+def find(item,iterable,types=(list,),exceptions=()):
 	'''
 	Search for index of item in iterable
 	Args:
 		item (object): Item to search
 		iterable (iterable): Nested iterable
-		returns (bool): Returns of search, 
-			None or False returns index,shape,item, True yields item
-		yielder (bool): Yield all indices of items, otherwise return first
 		types (type,tuple[type]): Allowed types to be searched
 		exceptions (type,tuple[type]): Disallowed types to be searched
 	Returns:
-		index (iterable[int]): Index of item
+		index (iterable[int,str]): Index of item
 	'''	
 	for index,shape,element in search(iterable,returns=True,types=types,exceptions=exceptions):
 		if element == item:
-			if returns:
-				yield index
-			else:
-				return index
+			return index
 	return None
 
-def insert(index,item,iterable,types=(list,),exceptions=()):
+def indexer(index,iterable,types=(list,),exceptions=()):
+	'''
+	Get item at index in iterable
+	Args:
+		index (iterable[int,str]): Index of element
+		iterable (iterable): Nested iterable
+		types (type,tuple[type]): Allowed types to be searched
+		exceptions (type,tuple[type]): Disallowed types to be searched
+	Returns:
+		item (object): Item at index
+	'''	
+	item = iterable
+	for i in index:
+		item = item[i]
+
+	return item
+
+
+def inserter(index,item,iterable,types=(list,),exceptions=()):
 	'''
 	Insert item at index into iterable
 	Args:
@@ -621,207 +677,38 @@ def insert(index,item,iterable,types=(list,),exceptions=()):
 	return
 
 
-def nullshape(index,shape,iterable,exclude=[]):
+def iterate(obj,attr,attributes=[],delimiter=None):
 	'''
-	Modify shape and index of iterable, excluding items
+	Get nested attributes of object
 	Args:
-		index (iterable): Index of item
-		shape (iterable[int]): Shape of iterable		
-		iterable (iterable): Nested iterable
-		exclude (object,iterable[object]): Disallowed items to be counted
-	Returns:
-		index (iterable): Index of item
-		shape (iterable[int]): Shape of iterable		
-	'''	
-	dictionaries = (dict,)
-	exclude = [exclude] if isinstance(exclude,scalars) else exclude
-	size = len(index)
-	index,shape = deepcopy(index),deepcopy(shape)
-	tmp = iterable
-	for i in range(size):
-		value = tmp[index[i]]
-		if isinstance(tmp,dictionaries):
-			tmp = {i:tmp[i] for i in tmp if not any(tmp[i] is j for j in exclude)}
-			index[i] = index[i]
-		else:
-			tmp = [i for i in tmp if not any(i is j for j in exclude)]
-			index[i] = tmp.index(value)
-
-		shape[i] = len(tmp)
-
-		tmp = tmp[index[i]]
-
-	return index,shape
-
-
-def slicer(iterable,slices):
-	"""	
-	Slice nested iterable
-	Args:
-		iterable (iterable): Iterable to slice
-		slices (iterable[int],slice): Shape to slice
+		obj (object): Object of object
+		attr (str): Nested attribute of object
+		attributes (iterable[str]): Nested attributes of object
+		delimiter (str): Delimiter to split nested attributes
 	Yields:
-		iterable (iterable): Sliced iterable
-	"""
-	if not slices:
-		yield iterable
-	else:
-		if isinstance(slices[0],int):
-			slices[0] = slice(slices[0])
-		for item in iterable[slices[0]]:
-			yield from slicer(item,slices[1:])
-
-
-
-def formatstring(key,iterable,elements,*args,**kwargs):
-
+		attr (str): Nested attributes
 	'''
-	Format values in iterable based on key and elements
 
-	Args:
-		key (object): key to index iterable for formatting
-		iterable (dict): dictionary with values to be formatted
-		elements (dict): dictionary of elements to format iterable values
+	delimiter = delimiter if delimiter is not None else '.'
 
-	Returns:
-		Formatted value based on key,iterable, and elements
-	'''	
+	attrs = attr.split(delimiter)
 
+	n = len(attrs)
 
-	# Get value associated with key for iterable and elements dictionaries
-	try:
-		i = iterable[key]
-	except:
-		i = None
-	e = elements[key]
-	n = 0
-	m = 0
+	exists = False
 
+	if attrs and namespace(obj) is not None:
 
-	# Return elements[key] if kwargs[key] not passed to function, or elements[key] is not a type to be formatted
-	if key not in kwargs or not isinstance(e,(str,tuple,list)):
-		return e
+		for i in range(n):
+			attr = delimiter.join(attrs[:i+1])
+			for attribute in namespace(obj):
+				if contains(attribute,attr):
+					if attrs[i+1:]:
+						yield from iterate(getattr(obj,attribute),delimiter.join(attrs[i+1:]),attributes=[*attributes,attribute],delimiter=delimiter)
+					else:
+						yield delimiter.join([*attributes,attribute])
 
-	# Check for different cases of types of iterable[key] and elements[key] to be formatted
-
-	# If iterable[key] is not a string, or iterable tuple or list, return value based on elements[key]
-	if not isinstance(i,(str,tuple,list)):
-
-		# If elements[key] is a string, string format elements[key] with args and kwargs and return the formatted value
-		if isinstance(e,str):
-			m = e.count('%')
-			if m == 0:
-				return e
-			else:
-				return e%(tuple((*args,*kwargs[key]))[:m])
-
-		# If elements[key] is an iterable tuple or list, string format each element of elements[key] with args and kwargs and return the formatted value as a tuple
-		elif isinstance(e,(tuple,list)):
-			m = 0
-			e = [x for x in e]
-			c = [j for j,x in enumerate(e) if isinstance(x,str) and x.count('%')>0]
-			for j,x in enumerate(e):
-				if not isinstance(x,str):
-					continue
-				m = x.count('%')
-				if m > 0:
-					k = c.index(j)
-					e[j] = x%(tuple((*args,*kwargs[key]))[k:m+k])
-			e = tuple(x for x in e)
-			return e
-
-		# If elements[key] is other object, return elements[key]
-		else:
-			return e
-
-	# If iterable[key] is a string, format iterable[key] based on elements[key]
-	elif isinstance(i,str):
-
-		# Get number of formatting elements in iterable[key] string to be formatted
-		n = i.count('%')
-		if n == 0:
-			# If iterable[key] has no formatting elements, return based on elements[key]
-
-			# If elements[key] is a string, string format elements[key] with args and kwargs and return the formatted value
-			if isinstance(e,str):
-				m = e.count('%')
-				if m == 0:
-					return e
-				else:
-					return e%(tuple((i,*args,*kwargs[key]))[:m])
-
-			# If elements[key] is an iterable tuple or list, string format each element of elements[key] with args and kwargs and return the formatted value as a tuple
-			elif isinstance(e,(tuple,list)):
-				m = 0
-				e = [x for x in e]
-				c = [j for j,x in enumerate(e) if isinstance(x,str) and x.count('%')>0]	
-				for j,x in enumerate(e):
-					if not isinstance(x,str):
-						continue
-					m = x.count('%')
-					if m > 0:
-						k = c.index(j)
-						if isinstance(i,str):
-							e[j] = x%(tuple((i,*args,*kwargs[key]))[k:m+k])
-						else:
-							e[j] = x%(tuple((*i,*args,*kwargs[key]))[k:m+k])										
-				e = tuple(x for x in e)
-				return e
-
-			# If elements[key] is other object, return elements[key]
-			else:
-				return e
-		# If iterable[key] string has non-zero formatting elements, format iterable[key] string with elements[key], args, and kwargs
-		else:
-			if isinstance(e,str):
-				return i%(tuple((e,*args,*kwargs[key]))[:n])
-			elif isinstance(e,(tuple,list)):
-				return i%(tuple((*e,*args,*kwargs[key]))[:n])
-			else:
-				return e
-
-	# If iterable[key] is an iterable tuple or list, string format each element of iterable[key] with elements[key],args and kwargs and return the formatted value as a tuple
-	elif isinstance(i,(tuple,list)):
-		i = [str(x) for x in i]
-		n = 0
-		c = [j for j,x in enumerate(i) if isinstance(x,str) and x.count('%')>0]	
-		for j,x in enumerate(i):
-			n = x.count('%')
-			if n > 0:
-				k = c.index(j)				
-				if isinstance(e,str):
-					i[j] = x%(tuple((e,*args,*kwargs[key]))[k:n+k])
-				else:
-					i[j] = x%(tuple((*e,*args,*kwargs[key]))[k:n+k])										
-
-		if n == 0:
-			if isinstance(e,str):
-				m = e.count('%')
-				if m == 0:
-					return e
-				else:
-					return e%(tuple((i,*args,*kwargs[key]))[:m])
-			elif isinstance(e,(tuple,list)):
-				m = 0
-				e = [x for x in e]
-				c = [j for j,x in enumerate(e) if isinstance(x,str) and x.count('%')>0]					
-				for j,x in enumerate(e):
-					if not isinstance(x,str):
-						continue
-					m = x.count('%')
-					if m > 0:
-						k = c.index(j)				
-						if isinstance(i,str):
-							e[j] = x%(tuple((i,*args,*kwargs[key]))[k:m+k])
-						else:
-							e[j] = x%(tuple((*i,*args,*kwargs[key]))[k:m+k])										
-				e = tuple(x for x in e)
-				return e
-			else:
-				return e			
-			return e
-		else:
-			i = tuple(x for x in i)
-			return i
-	else:
-		return e
+					exists = True
+			
+			if exists:
+				break

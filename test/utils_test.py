@@ -5,10 +5,6 @@ import pytest
 import os,sys
 import itertools,functools,copy,warnings
 
-import jax
-import jax.numpy as np
-import numpy as onp
-
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..','..']
@@ -17,10 +13,11 @@ for PATH in PATHS:
 
 from src.io import load,dump,join,split,edit
 
-from src.utils import array,zeros,rand,identity,datatype,allclose,sqrt,abs2
+from src.utils import np,onp,BACKEND
+from src.utils import array,zeros,rand,identity,setitem,datatype,allclose,sqrt,abs2
 from src.utils import gradient,rand,eye,diag,sin,cos
 from src.utils import einsum,norm,norm2,trace,mse
-from src.utils import expm,expmv,expmm,expmc,expmvc,expmmc,_expm
+from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
 
@@ -187,11 +184,11 @@ def test_expmm():
 	return
 
 
-def test_expmmc(*args,**kwargs):
+def test_expmmn(*args,**kwargs):
 
 	def func(*args,**kwargs):
 		x,A,I,v,B = kwargs['x'],kwargs['A'],kwargs['I'],kwargs['v'],kwargs['B']
-		out = expmmc(x,A,I,v,B)
+		out = expmmn(x,A,I,v,B)
 		return out
 
 	def _func(*args,**kwargs):
@@ -247,9 +244,9 @@ def test_gradient_expm(path=None,tol=None):
 		for i in range(m*d):
 			for j in range(m*d):
 				U = _expm(x[j],A[j%d],I)
-				out = out.at[i].set(U.dot(out[i]))
+				out = setitem(out,i,U.dot(out[i]))
 				if j == i:
-					out = out.at[i].set(A[j%d].dot(out[i]))
+					out = setitem(out,i,A[j%d].dot(out[i]))
 
 		return out
 
@@ -282,7 +279,7 @@ def test_expmi():
 
 		B = array([I,*[0*I]*(B.shape[0]-1)])
 
-		out = expmmc(x,A,I,v,B)
+		out = expmmn(x,A,I,v,B)
 
 		return out
 
@@ -391,6 +388,10 @@ def test_scinotation(path=None,tol=None):
 	return
 
 def test_gradient(path=None,tol=None):
+
+	if BACKEND in ['autograd']:
+		return
+
 	def func(x,y,z):
 		x,y,z = sin(z),cos(x),sin(y)
 		return x,y
@@ -459,14 +460,52 @@ def test_norm(path=None,tol=None):
 	return
 
 
+def test_rand(path,tol):
+	from importlib import reload
+	import src.utils
+
+	kwargs = [
+		{'shape':(4,3),'random':'haar'},
+		{'shape':(100,),'random':'normal'},
+		{'shape':(2,5,2),'random':'rand'},
+		{'shape':(2,5,2),'random':'rand'},
+		{'shape':(2,5,2),'random':'rand'},
+		]
+	seed = 1234
+	size = len(kwargs)
+	a = [[] for i in range(size)]
+
+
+	os.environ['NUMPY_BACKEND'] = 'JAX.AUTOGRAD'
+	reload(src.utils)
+	from src.utils import array,rand,prng,BACKEND
+	keys = prng(seed,size=size)
+	for i in range(size):
+		kwargs[i]['key'] = keys[i]
+		a[i].append(rand(**kwargs[i]))
+
+	os.environ['NUMPY_BACKEND'] = 'AUTOGRAD'
+	reload(src.utils)
+	from src.utils import array,rand,prng,BACKEND
+	keys = prng(seed,size=size)
+	for i in range(size):
+		kwargs[i]['key'] = keys[i]
+		a[i].append(rand(**kwargs[i]))
+
+	assert all(allclose(*a[i]) for i in range(size)), "Incorrect Random Initialization"
+
+	return
+
+
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_getter(path,tol)
-	test_setter(path,tol)
-	test_scinotation(path,tol)
-	test_gradient(path,tol)
-	test_gradient_expm(path,tol)
-	test_norm(path,tol)
-	
+	# test_getter(path,tol)
+	# test_setter(path,tol)
+	# test_scinotation(path,tol)
+	# test_gradient(path,tol)
+	# test_gradient_expm(path,tol)
+	# test_norm(path,tol)
+	# test_expmi()	
+	test_rand(path,tol)

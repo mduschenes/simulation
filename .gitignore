@@ -20,6 +20,10 @@
 **/*test.json
 **/tmp.*
 **/check
+<<<<<<< HEAD
+=======
+**/*.profile
+>>>>>>> ad
 **/mnt
 tmp
 keep

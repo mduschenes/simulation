@@ -9,8 +9,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim
+from src.utils import argparser,jit,allclose,delim,prng
 from src.io import load,glob
+from src.system import Dict
+from src.iterables import namespace
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 logger = Logger()
@@ -31,6 +33,7 @@ def setup(hyperparameters):
 	elif isinstance(hyperparameters,str):
 		hyperparameters = load(hyperparameters,default=default)
 
+	hyperparameters = Dict(hyperparameters)
 
 	return hyperparameters
 
@@ -61,48 +64,42 @@ def train(hyperparameters):
 			model = None
 			return model
 
-		if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train']):
+		if not any(hyperparameters.boolean[attr] for attr in hyperparameters.boolean):
 			model = None
 			return model
 
-		backend = hyperparameters.get('backend')
-		if backend is not None:
-			backend = __import__(backend)
+		model = load(hyperparameters.cls.model)
+		label = load(hyperparameters.cls.label)
+		callback = load(hyperparameters.cls.callback)
 
-		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
+		hyperparams = hyperparameters.optimize
+		system = hyperparameters.system
 
-		model = cls['model'](**hyperparameters['model'],
-				parameters=hyperparameters['parameters'],
-				state=hyperparameters['state'],
-				noise=hyperparameters['noise'],
-				label=hyperparameters['label'],
-				system=hyperparameters['system'])
+		seed = prng(**hyperparameters.seed)
 
-		if hyperparameters['boolean'].get('load'):
+		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+		callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
+
+		if hyperparameters.boolean.load:
 			model.load()
 
-		if hyperparameters['boolean'].get('train'):
+		if hyperparameters.boolean.train:
 
 			parameters = model.parameters()
-			shapes = model.shapes
-			label = model.label()
-			hyperparams = hyperparameters['optimize']
-			system = hyperparameters['system']
-			kwargs = {attr: hyperparams.get(attr) for attr in system if attr in hyperparams}
-			func = [model.constraints]
-			callback = cls['callback']()
+			func = model.parameters.constraints
 
-			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system,**kwargs)
-			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
-			callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system,**kwargs)
+			metric = Metric(label=label,hyperparameters=hyperparams,system=system)
+			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
+			callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 
-			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system,**kwargs)
+			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system)
 
 			parameters = optimizer(parameters)
 
-			model.parameters(parameters)
-		
-		if hyperparameters['boolean'].get('dump'):	
+			model.parameters.data = parameters
+
+		if hyperparameters.boolean.dump:	
 			model.dump()
 	
 		models[name] = model

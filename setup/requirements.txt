@@ -17,6 +17,7 @@ matplotlib=3.5
 
 pyaml
 pytest
+sympy
 dill
 jsonpickle
 natsort

@@ -18,10 +18,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,is_array,is_ndarray,concatenate
+from src.utils import array,concatenate
 from src.utils import to_repr,to_eval
 from src.utils import returnargs
-from src.utils import scalars,nan,delim
+from src.utils import arrays,scalars,nan,delim
 
 # Logging
 from src.logger	import Logger
@@ -339,6 +339,8 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 	else:
 		path = globber.iglob(path,recursive=True,**kwargs)
 	
+
+
 	if include is not None:
 		path = list(natsorted(filter(include,path)))
 
@@ -459,7 +461,7 @@ def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 		obj (object): Serialized object
 	'''	
 
-	if is_array(obj) or is_ndarray(obj):
+	if isinstance(obj,arrays):
 		obj = obj.tolist()
 	return obj
 
@@ -694,7 +696,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
 			def convert(path,data):
 				for attr in data:
-					if any(is_ndarray(i) for i in data[attr]):
+					if any(isinstance(i,arrays) for i in data[attr]):
 						data[attr] = [tuple(i) for i in data[attr]]
 				size = max([len(data[attr]) for attr in data],default=0)
 				data['__path__'] = [path]*size
@@ -761,13 +763,13 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			try:
 				datum = _load(path,wr=wr,ext=ext,**kwargs)
 				break
-			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError) as exception:			
+			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
 				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						datum = _load(obj,wr=wr,ext=ext,**kwargs)
 						break
-				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError) as exception:
+				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 					pass
 
@@ -806,12 +808,17 @@ def _load(obj,wr,ext,**kwargs):
 	try:
 		assert ext in exts, "Cannot load extension %s"%(ext)
 	except Exception as exception:
-		# try:
 		obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
-		obj = os.path.basename(obj)
-		data = getattr(importlib.import_module(obj),module)
-		# except Exception as exception:
-		# 	raise exception
+		try:
+			path = os.path.basename(obj).strip('.')
+			data = getattr(importlib.import_module(path),module)
+		except:
+			path = obj
+			spec = importlib.util.spec_from_file_location(module,path)
+			data = importlib.util.module_from_spec(spec)
+			sys.modules[module] = data
+			spec.loader.exec_module(data)
+			data = getattr(data,module)
 
 	if ext in ['npy']:
 		data = np.load(obj,**{'allow_pickle':True,**kwargs})
@@ -904,13 +911,13 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 			try:
 				_dump(data,path,wr=wr,ext=ext,**kwargs)
 				break
-			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError) as exception:
+			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						_dump(data,obj,wr=wr,ext=ext,**kwargs)
 					break
-				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError) as exception:
+				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 					pass
 		

@@ -13,9 +13,9 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient,hessian,einsum,diag,partial,where
+from src.utils import jit,gradient,hessian,einsum,dot,diag,partial,where
 from src.utils import array,ones,zeros,rand,eye
-from src.utils import norm,inv,lstsq,interp,piecewise
+from src.utils import norm,inv,lstsq,interp,piecewise,setitem
 from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,product,is_naninf,allclose
 from src.utils import nan,null,scalars,delim
 
@@ -115,9 +115,9 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 			)
 
 		_func[i] = returns[0]
-		_y = _y.at[_condition[i]].set(returns[1]) 
+		_y = setitem(_y,_condition[i],returns[1] )
 		_parameters[i] = returns[2]
-		_yerr = _yerr.at[_condition[i]].set(returns[3])
+		_yerr = setitem(_yerr,_condition[i],returns[3])
 		_covariance[i] = returns[4]
 		_other[i] = returns[5]
 
@@ -224,7 +224,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	if func is None or (isinstance(func,str) and func in ['lstsq','mse']):
 
 		def func(parameters,x,*args,**kwargs):
-			y = x.dot(parameters)
+			y = dot(x,parameters)
 			return y
 
 		if intercept:
@@ -243,7 +243,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		if yerr.dim == 1:
 			yerr = diag(yerr)
 		
-		_covariance = lstsq(x.T.dot(x),lstsq(x.T.dot(x),x.T.dot(yerr).dot(x)).T).T
+		_covariance = lstsq(dot(x.T,x),lstsq(dot(x.T,x),dot(dot(x.T,yerr),x)).T).T
 
 	elif isinstance(func,str):
 
@@ -287,7 +287,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		elif _covariance.ndim == 1:
 			_yerr = abs(diag(_grad)*_covariance)
 		elif _covariance.ndim == 2:
-			_yerr = sqrt(diag(_grad.dot(_covariance).dot(_grad.T)))
+			_yerr = sqrt(diag(dot(dot(_grad,_covariance),_grad.T)))
 
 	elif isinstance(func,array):
 		z = func
@@ -310,7 +310,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			xerr = abs(jac*xerr)
 		else:
 			jac = invgrad[i][i]
-			xerr = jac.dot(xerr).dot(jac.T)
+			xerr = dot(dot(jac,xerr),jac.T)
 	if yerr is not None:
 		i = 1
 		if yerr.ndim == 1:
@@ -318,7 +318,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			yerr = abs(jac*yerr)
 		else:
 			jac = invgrad[i][i]
-			yerr = jac.dot(yerr).dot(jac.T)
+			yerr = dot(dot(jac,yerr),jac.T)
 
 	_invgrad = gradtransform(_x,_y,_parameters)
 	if _xerr is not None:
@@ -328,7 +328,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_xerr = abs(_jac*_xerr)
 		else:
 			_jac = _invgrad[i][i]
-			_xerr = _jac.dot(_xerr).dot(_jac.T)
+			_xerr = dot(dot(_jac,_xerr),_jac.T)
 	if _yerr is not None:
 		i = 1
 		if _yerr.ndim == 1:
@@ -336,7 +336,8 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_yerr = abs(_jac*_yerr)
 		else:
 			_jac = _invgrad[i][i]
-			_yerr = _jac.dot(_yerr).dot(_jac.T)
+			_yerr = dot(dot(_jac,_yerr),_jac.T)
+
 
 	if _covariance is not None:
 		i = 2
@@ -345,7 +346,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 			_covariance = abs(_jac*_covariance)
 		else:
 			_jac = _invgrad[i][i]
-			_covariance = _jac.dot(_covariance).dot(_jac.T)
+			_covariance = dot(dot(_jac,_covariance),_jac.T)
 
 	x,y,parameters = invtransform(x,y,parameters)
 
