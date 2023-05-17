@@ -175,10 +175,14 @@
 			"hessian.eigenvalues":true,"fisher.eigenvalues":true,
 			"hessian.rank":true,"fisher.rank":true,
 
-			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],"architecture":[],"timestamp":[],"backend":[],"key":[],"instance":[],"instances.*":[],
+			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],"n":[],"g":[],
+			"space":[],"time":[],"lattice":[],
+			"architecture":[],"timestamp":[],"backend":[],"unit":[],"seed":[],
+			"key":[],"instance":[],"instances.*":[],
 			"parameters.*.parameters":[],"parameters.*.method":[],
-			"noise.parameters":[],"optimize.c1":false,"optimize.c2":false
+			"noise.parameters":[],"noise.scale":[],"noise.tau":[],"noise.initialization":[],
+			"hyperparameters.optimizer":[],"hyperparameters.search.alpha":[],"hyperparameters.search.beta":[],
+			"hyperparameters.c1":false,"hyperparameters.c2":false
 		}	
 	},
 "parameters":{

@@ -816,20 +816,21 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if kwargs[attr].get('keep') is not None:
 					keep = kwargs[attr]['keep']
 					unique = list(sorted(set(labels),key=lambda i: labels.index(i)))
-					indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
-					if keep in ['first']:
-						index = [0]*len(indexes)
-					elif keep in ['middle']:
-						index = [min(len(i) for i in indexes)//2]*len(indexes)
-					elif keep in ['last']:
-						index = [-1]*len(indexes)
-					elif isinstance(keep,int):
-						index = [index]*len(indexes)
-					else:
-						index = [i for i in index]
+					if unique:
+						indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
+						if keep in ['first']:
+							index = [0]*len(indexes)
+						elif keep in ['middle']:
+							index = [min(len(i) for i in indexes)//2]*len(indexes)
+						elif keep in ['last']:
+							index = [-1]*len(indexes)
+						elif isinstance(keep,int):
+							index = [index]*len(indexes)
+						else:
+							index = [i for i in index]
 
-					if index is not None:
-						labels,handles = [labels[i[j]] for i,j in zip(indexes,index)],[handles[i[j]] for i,j in zip(indexes,index)]
+						if index is not None:
+							labels,handles = [labels[i[j]] for i,j in zip(indexes,index)],[handles[i[j]] for i,j in zip(indexes,index)]
 
 				if kwargs[attr].get('multiline') is True:
 					pass

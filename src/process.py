@@ -990,6 +990,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 					funcs[function][axes][func] = obj
 
 
+		tmp = {}
 		for attr in wrappers:
 
 			if attr in ALL:
@@ -997,6 +998,11 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 			wrapper = load(wrappers[attr],default=None)
 			
+			if attr in data:
+				tmp[attr] = data[attr]
+			else:
+				tmp[attr] = None
+
 			try:
 				data[attr] = wrapper(data)
 			except:
@@ -1116,6 +1122,12 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 
 				setter(settings,{key:value},delimiter=delim,func=True)
+
+		for attr in tmp:
+			if tmp[attr] is None:
+				data.drop(columns=attr)
+			else:
+				data[attr] = tmp[attr]
 
 	return
 
@@ -1654,7 +1666,8 @@ def plotter(settings,hyperparameters,verbose=None):
 				attr = 'value'
 				delimiter = '__'
 				if (data.get(attr) is None):
-					continue
+				
+					data[attr] = []
 				
 				elif isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
 
@@ -1693,6 +1706,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 				attr = 'set_%slabel'
 				kwarg = '%slabel'
+
 				for axes in ['',*AXES]:
 					if data.get(attr%(axes)) is None:
 						continue
@@ -1710,16 +1724,16 @@ def plotter(settings,hyperparameters,verbose=None):
 						norm = data.get('norm')
 						scale = data.get('scale')
 						if norm is None:
-							norm = {'vmin':min(data['value'],default=0),'vmax':max(data['value'],default=1)}
+							norm = {'vmin':min(data.get('value',[]),default=0),'vmax':max(data.get('value',[]),default=1)}
 						elif not isinstance(norm,dict):
 							norm = {'vmin':min(norm),'vmax':max(norm)}
 						else:
 							norm = {'vmin':norm.get('vmin',0),'vmax':norm.get('vmax',1)}
 
-						value = [min(min(data['value'],default=0),norm['vmin']),max(max(data['value'],default=1),norm['vmax'])]
+						value = [min(min(data.get('value',[]),default=0),norm['vmin']),max(max(data.get('value',[]),default=1),norm['vmax'])]
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 							
-							size = min(len(set((*data['value'],*value))),data[attr%(axes)][kwarg])
+							size = min(len(set((*data.get('value',[]),*value))),data[attr%(axes)][kwarg])
 							
 							if data[attr%(axes)][kwarg] == 1:
 								value = np.array(value)							
@@ -1748,7 +1762,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						norm = data.get('norm')
 						scale = data.get('scale')
 						if norm is None:
-							norm = {'vmin':min(data['value'],default=0),'vmax':max(data['value'],default=1)}
+							norm = {'vmin':min(data.get('value',[]),default=0),'vmax':max(data.get('value',[]),default=1)}
 						elif not isinstance(norm,dict):
 							norm = {'vmin':min(norm),'vmax':max(norm)}
 						else:
@@ -1758,7 +1772,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 
 							length = len(value)+1
-							size = max(1,len(set((*data['value'],*value)))//min(len(set((*data['value'],*value))),data[attr%(axes)][kwarg]))
+							size = max(1,len(set((*data.get('value',[]),*value)))//min(len(set((*data.get('value',[]),*value))),data[attr%(axes)][kwarg]))
 							size = size-1 if (length-1)//((length-1)//size) > size else size
 							slices = slice(0,length,(length-1)//size)
 
