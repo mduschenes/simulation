@@ -791,7 +791,7 @@ class Noise(Object):
 	hermitian = None
 	unitary = None
 
-	scale = None
+	scale = 1
 	tau = None
 	initialization = None
 

@@ -4748,6 +4748,7 @@
                         "label":{
                             "N": null,
                             "parameters.xy.method": null,
+                            "noise.scale":null,
                             "T": null,
                             "parameters.zz.parameters": null,
                             "iteration": "@iteration.min@"
@@ -4769,7 +4770,7 @@
                     "elinewidth": 7,
                     "capsize": 10,
                     "color": {
-                        "@noise.scale@": {
+                        "@T@": {
                             "value": {
                                 "value": null,
                                 "color": "viridis",
@@ -4785,7 +4786,7 @@
                         }
                     },
                     "ecolor": {
-                        "@noise.scale@": {
+                        "@T@": {
                             "value": {
                                 "value": null,
                                 "color": "viridis",
@@ -4804,7 +4805,7 @@
             ],
             "set_colorbar": {
                 "value": {
-                    "@noise.scale@": {
+                    "@T@": {
                         "value": null,
                         "type": "index"
                     }
@@ -4820,7 +4821,7 @@
                 "size": "3%",
                 "pad": 0.1,
                 "set_label": {
-                    "label": "noise.scale",
+                    "label": "T",
                     "labelpad": 10,
                     "size": 30
                 },
