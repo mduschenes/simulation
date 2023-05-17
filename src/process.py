@@ -810,9 +810,13 @@ def loader(data,settings,hyperparameters,verbose=None):
 		tmp = deepcopy(settings)
 
 		settings.update(load(path,default=default,verbose=verbose))
-		setter(settings,tmp,func=func)
 
 		new = exists(path)
+
+		if new:
+			setter(settings,tmp,func=func)
+		else:
+			settings = tmp
 
 	else:
 
@@ -839,9 +843,10 @@ def loader(data,settings,hyperparameters,verbose=None):
 			dump(data,path,wrapper=wrapper,verbose=verbose)
 
 
+		print(data)
+
 		# Get functions of data
 		apply(keys,data,settings,hyperparameters,verbose=verbose)
-
 
 
 	# Check settings
