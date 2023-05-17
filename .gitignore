@@ -20,12 +20,14 @@
 **/*test.json
 **/tmp.*
 **/check
+**/mnt
 tmp
 keep
 examples/**
 build/config/test.slurm
 build/constrained.py
 build/unconstrained.py
+build/settings.tmp.json
 build/new
 build/plots
 setup/requirements.txt.*.*
