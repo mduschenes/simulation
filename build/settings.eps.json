@@ -38,9 +38,32 @@
 		"parameters.xy.parameters":[1],
 		"parameters.z.parameters":[1.230231e-2],
 		"parameters.zz.parameters":[1.42117230231e-4],
+
+		"parameters.xy.seed":[123456789],
+		"parameters.z.seed":[123456789],
+		"parameters.zz.seed":[123456789],
+
 		"parameters.xy.seed":[null],
 		"parameters.z.seed":[null],
 		"parameters.zz.seed":[null],
+
+		"label.string":["label"],
+		"label.operator":["haar"],
+		"label.parameters":[1],
+		"label.seed":[null],		
+		
+		"noise.string":["K"],
+		"noise.operator":["noise"],
+		"noise.parameters":[1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
+		"noise.parameters":[0,1e-18,5e-17,1e-17,5e-16],
+		"noise.seed":[null],		
+		
+		"state.label":["psi"],
+		"state.operator":["haar"],
+		"state.ndim":[2],
+		"state.parameters":[false],
+		"state.seed":[null],	
+
 		
 		"label.string":["label"],
 		"label.operator":["haar"],
@@ -50,13 +73,14 @@
 		"noise.string":["K"],
 		"noise.operator":["phase"],
 		"noise.parameters":[1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
+		"noise.parameters":[0,1e-18,5e-17,1e-17,5e-16],
 		"noise.seed":[123456789],		
 		
 		"state.label":["psi"],
 		"state.operator":["haar"],
 		"state.ndim":[2],
 		"state.parameters":[true],
-		"state.seed":[null],				
+		"state.seed":[null],		
 
 
 		"label.string":["label"],
@@ -67,13 +91,14 @@
 		"noise.string":["K"],
 		"noise.operator":["noise"],
 		"noise.parameters":[1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
+		"noise.parameters":[0,1e-18,5e-17,1e-17,5e-16],
 		"noise.seed":[null],		
 		
 		"state.label":["psi"],
 		"state.operator":["haar"],
 		"state.ndim":[2],
 		"state.parameters":[false],
-		"state.seed":[null],	
+		"state.seed":[null],			
 
 
 		"parameters.xy.method":[null],
@@ -88,11 +113,11 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/phase.N.128.8.4096.30.300"],
-		"jobs.postprocess.cwd":["gobi/phase.N.128.8.4096.30.300"],
+		"jobs.job.cwd":["gobi/phase.N.128.8.4096.30.300.0"],
+		"jobs.postprocess.cwd":["gobi/phase.N.128.8.4096.30.300.0"],
 
-		"jobs.job.cwd":["gobi/rand.N.128.8.4096.30.300"],
-		"jobs.postprocess.cwd":["gobi/rand.N.128.8.4096.30.300"],
+		"jobs.job.cwd":["gobi/rand.N.128.8.4096.30.300.0"],
+		"jobs.postprocess.cwd":["gobi/rand.N.128.8.4096.30.300.0"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -123,7 +148,7 @@
 		"jobs.job.patterns.account":["def-raymond"],
 		"jobs.postprocess.patterns.account":["def-raymond"],
 		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"]			
+		"jobs.postprocess.patterns.account":["def-carrasqu"]
 		},
 	"groups":null,
 	"index":null
