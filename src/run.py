@@ -113,7 +113,7 @@ def setup(settings):
 	seedlings = {delim.join([*index,element]):obj for index,shape,item in seedlings for element,obj in zip(items,item)}
 	seedlings = [seedling for seedling in seedlings if (seedling not in exclude) and (seedlings[seedling] is None)]
 
-	count = len(seedlings)
+	count = max(1,len(seedlings))
 
 	if isinstance(size,int):
 		size = [size]*count
@@ -139,15 +139,12 @@ def setup(settings):
 		seedlings = {seedling: seeds[sum(shape[:i]):sum(shape[:i+1])].tolist() for i,seedling in enumerate(seedlings)}
 		seeds = permuter(seedlings,groups=groups)
 	else:
-		seeds = []
+		seeds = [{}]
 
 	other = [{'system.key':None,'system.instance':None,'system.instances':None,'system.seed':seed}]
 
 	# Get all allowed enumerated keys and seeds for permutations and seedlings of hyperparameters
-	if size:
-		values = {'permutations':permutations,'seed':seeds,'other':other}
-	else:
-		values = {'permutations':permutations,'other':other}
+	values = {'permutations':permutations,'seed':seeds,'other':other}
 
 	index = {attr: hyperparameters.get(attr,{}).get('index') for attr in values}
 

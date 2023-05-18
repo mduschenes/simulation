@@ -1189,6 +1189,12 @@ def init(key,
 
 			msg = 'Job : %s'%(key)
 			logger.log(info,msg)
+		
+		else:
+			
+			msg = '-Job : %s'%(key)
+			logger.log(info,msg)
+
 
 		return task
 
