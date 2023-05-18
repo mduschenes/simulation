@@ -1238,7 +1238,7 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	keys = [None]
 	tasks = []
 	results = []
-	
+
 	if not jobs:
 		return results
 
@@ -1278,6 +1278,12 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	keys = intersection(keys,cwd)
 
 	if not isinstance(resume,dict):
+		if resume is True:
+			resume = nonempty(
+				path=join('*.*.*',ext='stderr',root=cwd),
+				pattern=r'.*\.[^.]*\.\([^.]*\)\.[^.]*$:\1',
+				execute=True
+				)
 		resume = {key: resume for key in keys}
 
 	keys = intersection(keys,resume,sort=None)
