@@ -2153,7 +2153,9 @@ def plotter(settings,hyperparameters,verbose=None):
 			attr = 'fname'
 			for data in search(settings[instance][subinstance]['fig'].get(prop)):
 
-				value = join(delim.join([split(path,directory_file=True),instance]),ext=split(path,ext=True))
+				value = [split(path,directory_file=True),instance,data[attr]]
+				value = [i for i in value if i is not None]
+				value = join(delim.join(value),ext=split(path,ext=True))
 				
 				data[attr] = value
 
