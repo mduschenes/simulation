@@ -654,10 +654,7 @@ def nonempty(path,pattern=None,env=None,process=None,processes=None,device=None,
 		return stdout
 
 	if isinstance(path,str):
-		print(list(glob(path)))
-
 		path = glob(path)
-
 
 	path = ' '.join(path)
 
@@ -1058,6 +1055,7 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 
 	name = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,execute=execute)	
 
+
 	path = list(set(path))
 	cwd = list(set(cwd))
 	pwd = list(set(pwd))
@@ -1067,8 +1065,10 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	multiple = ['serial']
 	pattern = 'error'
 
+	name = name if name is not None else '*'
 	process = processes.get(process)
 	multiple = (size>1) and (process not in multiple)
+
 
 	paths = paths.get(process,paths.get(default))
 	patterns = list(set([patterns[key].get(pattern,'%s.%s'%(name,'stderr')) for key in keys])) if all(key in patterns for key in keys) else [patterns.get(pattern)]
@@ -1093,9 +1093,7 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 					root=path if (not split(pattern,directory=True)) else None)
 				pattern = strings[string]
 
-
-				print(path,pattern)
-				returns = nonempty(path=path,pattern=pattern,execute=True)
+				returns = nonempty(path=path,pattern=pattern,execute=True,verbose=True)
 
 				if not multiple and not returns:
 					returns = None
@@ -1108,10 +1106,8 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 				path,pattern = tmp
 
 	if status is not None:
-		status = [int(i) for i in status if (not multiple) and len(i) and (i < size)]
+		status = [int(i) for i in status if (multiple) and len(i)]
 
-	print(status)
-	exit()
 	return status
 
 
