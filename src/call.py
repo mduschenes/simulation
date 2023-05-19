@@ -1093,7 +1093,7 @@ def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 					root=path if (not split(pattern,directory=True)) else None)
 				pattern = strings[string]
 
-				returns = nonempty(path=path,pattern=pattern,execute=True,verbose=True)
+				returns = nonempty(path=path,pattern=pattern,execute=True)
 
 				if not multiple and not returns:
 					returns = None
