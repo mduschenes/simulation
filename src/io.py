@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools,inspect,traceback,datetime
+import os,sys,warnings,itertools,inspect,traceback,datetime,re
 import shutil
 from copy import deepcopy
 import glob as globber
@@ -77,6 +77,22 @@ def environ():
 
 	return os.environ
 
+def contains(string,pattern):
+	'''
+	Search for pattern in string
+	Args:
+		string (str): String to search
+		pattern (str): Pattern to search
+	Returns:
+		boolean (bool): String contains pattern
+	'''
+	replacements = {'\\':'\\\\','.':'\\.','*':'.*',}
+	for replacement in replacements:
+		pattern = pattern.replace(replacement,replacements[replacement])
+		
+	boolean = re.fullmatch(pattern,string) is not None
+
+	return boolean
 
 
 def exists(path):
@@ -323,6 +339,8 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		include = os.path.isfile
 	elif include in ['directory']:
 		include = os.path.isdir
+	elif isinstance(include,str):
+		include = lambda path,include=include: contains(path,include)
 
 	if not isinstance(recursive,str):
 		if recursive:
@@ -338,7 +356,6 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		path = (path for path in [default])
 	else:
 		path = globber.iglob(path,recursive=True,**kwargs)
-	
 
 
 	if include is not None:
