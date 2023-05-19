@@ -22,7 +22,7 @@
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[4],		
+		"model.N":[2,3,4],		
 		"model.M":[null],
 		"model.P":[2],
 		"model.tau":[2e2,5e2,10e2,30e2,50e2,100e2],
@@ -71,8 +71,8 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/tau.noise.4.128.10.10000.20.300"],
-		"jobs.postprocess.cwd":["gobi/tau.noise.4.128.10.10000.20.300"],
+		"jobs.job.cwd":["gobi/tau.noise.N.128.10.10000.20.300"],
+		"jobs.postprocess.cwd":["gobi/tau.noise.N.128.10.10000.20.300"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -80,7 +80,7 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[16],
+		"jobs.job.pool":[4],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -94,7 +94,7 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[4],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["12:00:00"],		
+		"jobs.job.patterns.time":["20:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
 		"jobs.job.patterns.mem":["128GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
