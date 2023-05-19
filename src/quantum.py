@@ -2212,21 +2212,45 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 		elif state.ndim == 1:
 		
-			subscripts = 'uij,jk,k->i'
-			shapes = (noise.shape,data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
+			if noise.ndim == 3:
 
-			def func(data,state,conj):
-				return einsummation(noise,data,state)	
+				subscripts = 'uij,jk,k->i'
+				shapes = (noise.shape,data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(noise,data,state)	
+
+			elif noise.ndim == 0:
+
+				subscripts = 'ij,j->i'
+				shapes = (data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(data,state) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2
+
 
 		elif state.ndim == 2:
 
-			subscripts = 'uij,jk,kl,ml,unm->in'
-			shapes = (noise.shape,data.shape,state.shape,data.shape,noise.shape)
-			einsummation = einsum(subscripts,*shapes)
+			if noise.ndim == 3:
 
-			def func(data,state,conj):
-				return einsummation(noise,data,state,conjugate(data),conjugate(noise))	
+				subscripts = 'uij,jk,kl,ml,unm->in'
+				shapes = (noise.shape,data.shape,state.shape,data.shape,noise.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(noise,data,state,conjugate(data),conjugate(noise))	
+
+			elif noise.ndim == 0:
+
+				subscripts = 'jk,kl,ml->im'
+				shapes = (data.shape,state.shape,data.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(data,state,conjugate(data)) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2	
+
 
 	elif constants is not None and noise is not None:
 
@@ -2421,3 +2445,4 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 	func = jit(func)
 
 	return func
+	
