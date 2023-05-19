@@ -1280,8 +1280,6 @@ def init(key,
 			msg = 'Job : %s'%(key)
 			logger.log(info,msg)
 		
-		else:
-
 		return task
 
 def callback(task,key,keys):
