@@ -37,8 +37,7 @@ AXES = ['x','y','z']
 VARIANTS = ['','err','1','2']
 FORMATS = ['lower','upper']
 ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for axes in AXES for variant in VARIANTS for fmt in FORMATS]
-DEPENDENT = [axes for axes in ALL if any(axes.lower().startswith(i.lower()) for i in AXES[DIM-1:])]
-INDEPENDENT = [axes for axes in ALL if any(axes.lower().startswith(i.lower()) for i in AXES[:DIM-1])]
+VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] for ax in AXES}
 OTHER = 'label'
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
@@ -504,6 +503,7 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 	else:
 		norm = matplotlib.colors.Normalize(**norm)					
 
+	print(value)
 	try:
 		value = norm(value)
 	except:
@@ -521,6 +521,9 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 			color = tuple(color)
 		elif isinstance(color,np.ndarray):
 			color[:,-1] = alpha
+
+
+	print(value,color)
 
 	return value,color,norm
 
@@ -832,6 +835,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'set_colorbar':slice(-2,None),
 				'color':slice(-2,None),
 				'ecolor':slice(-2,None),
+				'c':slice(-2,None),
 				'marker':slice(-4,-3),
 				'linestyle':slice(-5,-4),
 				'alpha':slice(-6,-5),
@@ -1025,7 +1029,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				dim = 2
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
+				replacements = {'color':'c'}
+				for replacement in replacements:
+					if replacement in kwargs[attr]:
+						kwargs[attr][replacements[replacement]] = kwargs[attr][replacement]
+
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
+				nullkwargs.extend([i for i in ['label', 'alpha', 'marker','markersize','linestyle','linewidth','elinewidth','capsize','color', 'ecolor']])
 
 				call = True
 
@@ -1042,10 +1052,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['imshow']:
 				dim = 2
 
-				fields = [*['%s%s'%(k.upper(),s) for s in VARIANTS[:1] for k in AXES[:1]],*AXES[:dim][::-1]]
-				for field in fields:
-					if field in kwargs[attr]:
-						args.append(kwargs[attr].get(field))
+				props = [*['%s%s'%(k.upper(),s) for s in VARIANTS[:1] for k in AXES[:1]],*AXES[:dim][::-1]]
+				for prop in props:
+					if prop in kwargs[attr]:
+						args.append(kwargs[attr].get(prop))
 						break
 
 				nullkwargs.extend([*['%s%s'%(k.upper(),s) for s in VARIANTS[:2] for k in AXES[:1]],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
@@ -1066,10 +1076,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
 
-				fields = ['transform']
-				for field in fields:
-					if field in ['transform']:
-						kwargs[attr][field] = getattr(obj,kwargs[attr].get(field))
+				props = ['transform']
+				for prop in props:
+					if prop in ['transform']:
+						kwargs[attr][prop] = getattr(obj,kwargs[attr].get(prop))
 
 				dim = 2
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
@@ -1140,10 +1150,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
 
 				for axes in ['',*AXES]:
-					field = 'set_%slabel'%(axes)
-					subfield = '%slabel'%(axes)
-					if field in kwargs[attr]:
-						kwargs[attr][field][subfield] = attr_texify(kwargs[attr][field][subfield],field,subfield)
+					prop = 'set_%slabel'%(axes)
+					subprop = '%slabel'%(axes)
+					if prop in kwargs[attr]:
+						kwargs[attr][prop][subprop] = attr_texify(kwargs[attr][prop][subprop],prop,subprop)
 
 				if N > 1:
 
@@ -1243,7 +1253,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 				elif isinstance(value,(dict,str)):
 
-					if field in ['color','ecolor']:
+					if field in ['color','ecolor','c']:
 
 						kwds = ['value','values','color','norm','scale','alpha']
 
@@ -1273,6 +1283,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						value,color,norm = set_color(**kwds)
 
 						value = color
+
+					replacements = {'c':'color'}
+					if field in replacements:
+						if not isinstance(value,scalars) or isinstance(value,tuple) or len(value) == 1:
+							_kwargs_.pop(field);
+							field = replacements[field]
 
 					_kwargs_[field] = value
 				

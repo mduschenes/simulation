@@ -29,7 +29,7 @@ from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
 from src.postprocess import postprocess
-from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,OTHER,DEPENDENT,INDEPENDENT,PLOTS,DIM,LAYOUTDIM
+from src.plot import plot,AXES,VARIANTS,FORMATS,ALL,VARIABLES,OTHER,PLOTS,LAYOUTDIM
 
 # Logging
 from src.logger	import Logger
@@ -41,7 +41,6 @@ LAYOUT = ['row','col']
 GRID = [*LAYOUT,'axis','axes']
 INDEXES = ['variable','label','func','axis'] 
 
-AXESDIM = min(2,DIM)
 LAYOUTDIM = len(LAYOUT)
 GRIDDIM = len(GRID)
 INDEXDIM = len(INDEXES)
@@ -288,8 +287,9 @@ def find(dictionary,verbose=None):
 		keys (dict[dict]): Formatted keys based on found keys of the form {name: {prop:attr} or {prop:{attr:value}}}
 	'''
 
-	dimensions = AXES[:AXESDIM]
+	dimensions = AXES
 	other = [OTHER]
+	dim = len(dimensions)
 
 	def parser(string,separator,default):
 		if string.count(separator):
@@ -327,11 +327,19 @@ def find(dictionary,verbose=None):
 				'kwargs':None,
 	}
 
-	items = [*dimensions,*other]
-	types = (list,dict,)
-	keys = search(dictionary,items=items,returns=True,types=types)
-	
-	keys = {tuple(index): dict(zip(items,item)) for index,shape,item in keys}
+	keys = {}
+
+	for i in range(dim,0,-1):
+
+		items = [*dimensions[:i],*other]
+		types = (list,dict,)
+		key = search(dictionary,items=items,returns=True,types=types)
+		
+		key = {tuple(index): dict(zip(items,item)) for index,shape,item in key}
+
+		key = {index:key[index] for index in key if index not in keys}
+
+		keys.update(key)
 
 	for name in keys:
 		for attr in keys[name]:
@@ -929,10 +937,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 
 		stat = 'stat'
-		stats = {
-			**{axes: {'':'mean','err':'sem'} for axes in dimensions[:-1]},
-			**{axes: {'':'mean','err':'sem'} for axes in dimensions[-1:]},
-			}
+		stats = {axes: {'':'mean','err':'sem'} for axes in dimensions}
 		functions = {'mean_log':mean_log,'sem_log':sem_log}
 		
 		if not funcs:
@@ -1035,21 +1040,13 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 					  if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] 
 					  for attr in data},
 			**{attr : [(delim.join(((attr,function,func))),
-					    {'array':{'':mean,'err':sem}[func],
-					     'object':'first',
-					     'dtype':funcs[function][axes][func]
-					    }[dtypes[attr]]) 
+						{'array':{'':mean,'err':sem}[func],
+						 'object':'first',
+						 'dtype':funcs[function][axes][func]
+						}[dtypes[attr]]) 
 						for function in funcs for func in funcs[function][axes]] 
-						for axes,attr in zip(dimensions[:-1],independent)
+						for axes,attr in zip([*dimensions[:-1],*dimensions[-1:]],[*independent,*dependent])
 						},
-			**{attr : [(delim.join(((attr,function,func))),
-					    {'array':{'':mean,'err':sem}[func],
-					     'object':'first',
-					     'dtype':funcs[function][axes][func]
-					    }[dtypes[attr]]) 
-						for function in funcs for func in funcs[function][axes]] 
-						for axes,attr in zip(dimensions[-1:],dependent)
-						},						
 		}
 
 		dtype = {attr: data[attr].dtype for attr in agg if attr in label}
@@ -1166,10 +1163,24 @@ def plotter(settings,hyperparameters,verbose=None):
 				
 				if prop in PLOTS:
 					for data in search(settings[instance][subinstance][obj][prop]):
+
 						if data is None:
 							continue
-						elif any(((data.get(attr) is None) or isinstance(data.get(attr),str)) for attr in ALL if attr in data and attr not in INDEPENDENT):
-							data.clear()
+
+						dimensions = [axes for axes in AXES if axes in data]
+						independent = [axes for axes in ALL 
+							for variable in VARIABLES 
+							if axes in VARIABLES[variable] and variable in dimensions and dimensions.index(variable) < (len(dimensions)-1)]
+						dim = len(dimensions)
+
+						for attr in ALL:
+							
+							if attr not in data:
+								continue
+
+							if attr in independent:
+								if (data.get(attr) is None) or isinstance(data.get(attr),str):
+									data.clear()
 
 		if all((not data) for prop in PLOTS if settings[instance][subinstance][obj].get(prop) for data in search(settings[instance][subinstance][obj][prop])):
 			settings[instance].pop(subinstance);
@@ -1203,13 +1214,18 @@ def plotter(settings,hyperparameters,verbose=None):
 						continue
 
 					shapes = data[OTHER][OTHER].get('shape')
+					dimensions = [axes for axes in AXES if axes in data]
+					independent = [axes for axes in ALL 
+						for variable in VARIABLES 
+						if axes in VARIABLES[variable] and variable in dimensions and dimensions.index(variable) < (len(dimensions)-1)]
+					dim = len(dimensions)
 
 					for axes in ALL:
 						
 						if axes not in data or isinstance(data[axes],scalars):
 							continue
 
-						if shapes and (axes not in INDEPENDENT):
+						if shapes and (axes not in independent):
 
 							shape = shapes.get('shape')
 							slices = shapes.get('slices')
@@ -1284,16 +1300,20 @@ def plotter(settings,hyperparameters,verbose=None):
 							max(1,max(grid[instance][subinstance][i],data[axes].shape[i]))
 							for i in range(len(grid[instance][subinstance]))]
 
-					
+					dimensions = [axes for axes in AXES if axes in data]
+					independent = [axes for axes in ALL 
+						for variable in VARIABLES 
+						if axes in VARIABLES[variable] and variable in dimensions and dimensions.index(variable) < (len(dimensions)-1)]
+					dim = len(dimensions)
+
 					for axes in ALL:
 						
 						if axes not in data or isinstance(data[axes],scalars):
 							continue
 
-						if shapes and (axes in INDEPENDENT):
-
-							data[axes] = data[AXES[AXESDIM-1]].copy()
-							data[axes][...,:] = np.arange(data[AXES[AXESDIM-1]].shape[-1])
+						if shapes and (axes in independent):
+							data[axes] = data[AXES[dim-1]].copy()
+							data[axes][...,:] = np.arange(data[AXES[dim-1]].shape[-1])
 
 
 	for instance in list(settings):
@@ -1406,6 +1426,10 @@ def plotter(settings,hyperparameters,verbose=None):
 				if prop not in settings[instance][subinstance][obj]:
 					continue
 
+				values[prop] = {}
+
+			for prop in values:
+
 				labels = list(natsorted(set(label
 					for data in search(settings[instance][subinstance][obj][prop])
 					if (data)
@@ -1413,8 +1437,6 @@ def plotter(settings,hyperparameters,verbose=None):
 					if ((data) and (label not in [*ALL,OTHER]))
 					)))
 
-				values[prop] = {}
-			
 				for label in labels:
 					value = {}
 					value['value'] = list(realsorted(set(
@@ -1447,6 +1469,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							for data in search(settings[instance][subinstance][obj][i])
 							if (data) and (data[OTHER][OTHER]['legend'].get('sort') is not None)
 							for k in data[OTHER][OTHER]['legend']['sort']]),key=lambda i: i[-1].index(i[0]))]
+					value['axes'] = False				
 					value['label'] = any((
 							(label in data[OTHER][OTHER][OTHER]) and 
 							(label in data[OTHER]))# and (data[OTHER][OTHER][OTHER][label] is None))
@@ -1503,9 +1526,70 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					values[prop][label] = value
 
+				
+				labels = list(natsorted(set(label
+					for data in search(settings[instance][subinstance][obj][prop])
+					if (data)
+					for label in data
+					if ((data) and (label in [*ALL]))
+					)))
+
+				for label in labels:
+					value = {}
+					value['value'] = list(realsorted(set(i
+							for data in search(settings[instance][subinstance][obj][prop]) if (data)
+							for i in data.get(label,[]))))
+					value['include'] = True
+					value['sort'] = [k for (k,j) in sorted(set([(k,tuple(data[OTHER][OTHER]['legend']['sort']))
+							for i in PLOTS
+							if i in settings[instance][subinstance][obj]
+							for data in search(settings[instance][subinstance][obj][i])
+							if (data) and (data[OTHER][OTHER]['legend'].get('sort') is not None)
+							for k in data[OTHER][OTHER]['legend']['sort']]),key=lambda i: i[-1].index(i[0]))]
+					value['axes'] = True				
+					value['label'] = False
+					value['other'] = False
+					value['legend'] = False
+					value['attr'] = {
+							**{attr: {string:  data[OTHER][OTHER][attr][string]
+								for data in search(settings[instance][subinstance][obj][prop]) 
+								if ((data) and attr in data[OTHER][OTHER])
+								for string in data[OTHER][OTHER][attr]}
+								for attr in ['texify','valify']},
+							**{attr: {
+								**{kwarg:[
+								min((data[OTHER][OTHER][attr][kwarg][0]
+									for data in search(settings[instance][subinstance][obj][prop]) 
+									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									default=0),
+								max((data[OTHER][OTHER][attr][kwarg][1]
+									for data in search(settings[instance][subinstance][obj][prop]) 
+									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									default=0),											
+								] for kwarg in ['scilimits']},
+								**{kwarg: 
+									max((data[OTHER][OTHER][attr][kwarg]
+									for data in search(settings[instance][subinstance][obj][prop]) 
+									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))),
+									default=0) 
+									for kwarg in ['decimals']},
+								**{kwarg: 
+									any((data[OTHER][OTHER][attr][kwarg]
+									for data in search(settings[instance][subinstance][obj][prop]) 
+									if ((data) and (attr in data[OTHER][OTHER]) and (kwarg in data[OTHER][OTHER][attr]))))
+									for kwarg in ['one']},										
+								}
+								for attr in ['scinotation']},
+							}
+
+					values[prop][label] = value
+
+					values[prop][label] = value
+
 				for label in list(values[prop]):
 					if any(label in values[i] for i in values if i not in [prop]):
 						values[prop].pop(label);
+
 
 			# setup values based attrs
 			delimiters = ['@','__']
@@ -1544,7 +1628,6 @@ def plotter(settings,hyperparameters,verbose=None):
 
 
 								label,val = label.replace(delimiter,''),value.pop(label)
-								
 
 								if delimiter in ['@']:
 
@@ -1574,8 +1657,9 @@ def plotter(settings,hyperparameters,verbose=None):
 												**{attr:np.array([values[prop][attr]['value'] for prop in values if label in values[prop]][0]) for attr in data[OTHER] for prop in values if (label != attr) and (label in values[prop]) and (attr in values[prop])}
 												})											
 										elif prop in PLOTS:
-											if label not in data[OTHER]:
-												continue
+											if label in data:
+												item = [i for i in data[label]]
+												items = [i for i in data[label]]
 											else:
 												item = data[OTHER].get(label)
 												items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
@@ -1583,8 +1667,12 @@ def plotter(settings,hyperparameters,verbose=None):
 											continue
 
 									elif prop in PLOTS:
-										item = data[OTHER].get(label)
-										items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
+										if label in data:
+											item = None
+											items = [i for i in data[label]]
+										else:
+											item = data[OTHER].get(label)
+											items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 
 									else:
 										item = None
@@ -1640,6 +1728,7 @@ def plotter(settings,hyperparameters,verbose=None):
 												'__value__': val
 												}
 							
+
 						if not value:
 							value = None
 						else:
@@ -1733,8 +1822,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						value = [min(min(data.get('value',[]),default=0),norm['vmin']),max(max(data.get('value',[]),default=1),norm['vmax'])]
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 							
-							size = min(len(set((*data.get('value',[]),*value))),data[attr%(axes)][kwarg])
-							
+							size = data[attr%(axes)][kwarg]
 							if data[attr%(axes)][kwarg] == 1:
 								value = np.array(value)							
 								value = [(value[0]+value[1])/2]
@@ -1803,22 +1891,22 @@ def plotter(settings,hyperparameters,verbose=None):
 							(prop,label)
 							for prop in values 
 							for label in values[prop]
-							if ((values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['legend']) and (len(values[prop][label]['value'])>1))))))},
 						**{(prop,label):'%s'%(texify(label,texify=values[prop][label]['attr']['texify']))
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 
 							for label in values[prop]
-							if ((values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['other']) and (len(values[prop][label]['value'])>1))))))},
 						**{(prop,label):'%s'%(texify(label,texify=values[prop][label]['attr']['texify'])) 
 							for prop,label in natsorted(set((
 							(prop,label)
 							for prop in values 					
 							for label in values[prop] 
-							if (((values[prop][label]['include']) and (values[prop][label]['label']) and (len(values[prop][label]['value'])>1)) and 
-								not (values[prop][label]['other'])))))},
+							if ((not values[prop][label]['axes']) and (((values[prop][label]['include']) and (values[prop][label]['label']) and (len(values[prop][label]['value'])>1)) and 
+								not (values[prop][label]['other']))))))},
 					},					
 					{
 						**{(prop,label):'%s%s%s'%(
@@ -1829,7 +1917,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							for label in natsorted(set((
 							label 
 							for label in values[prop]
-							if ((values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['legend']) and (len(values[prop][label]['value'])==1))))))},
 						**{(prop,label):'%s%s%s'%(
 							texify(label),' : ' if label else '',
@@ -1839,7 +1927,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							for label in natsorted(set((
 							label 
 							for label in values[prop]
-							if ((values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
+							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['other']) and (len(values[prop][label]['value'])==1))))))},
 					},
 					]
@@ -2012,10 +2100,17 @@ def plotter(settings,hyperparameters,verbose=None):
 											prop = 'value'
 										elif value['type'] in value['value']:
 											prop = value['type']
-										value['value'][prop] = tmp[data[attr]['__index__']]
-										value['value']['values'] = tmp
+										if data[attr]['__index__'] is not None:
+											value['value'][prop] = tmp[data[attr]['__index__']]
+											value['value']['values'] = tmp
+										else:
+											value['value'][prop] = None
+											value['value']['values'] = tmp
 									else:
-										value['value'] = tmp[data[attr]['__index__']]
+										if data[attr]['__index__'] is not None:
+											value['value'] = None
+										else:
+											value['value'] = tmp[data[attr]['__index__']]
 
 									value = value['value']
 
@@ -2090,7 +2185,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							for label in natsorted(set((
 							label 
 							for label in values[prop]
-							if ((not ((values[prop][label]['label'])) and 
+							if ((not values[prop][label]['axes']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['legend']) and (len(values[prop][label]['value'])>1))))))},
 						**{label: (texify(
 							scinotation((data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
@@ -2102,7 +2197,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							for label in natsorted(set((
 							label 
 							for label in values[prop]
-							if ((not ((values[prop][label]['label'])) and 
+							if ((not values[prop][label]['axes']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['other']) and (len(values[prop][label]['value'])>1))))))},
 						**{label: (texify(scinotation(data[OTHER][label],
 							**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
@@ -2117,8 +2212,8 @@ def plotter(settings,hyperparameters,verbose=None):
 							for label in natsorted(set((
 							label 
 							for label in values[prop] 
-							if ((((values[prop][label]['label']) and (len(values[prop][label]['value'])>1)) and 
-								not (values[prop][label]['other']))))))},							
+							if ((not values[prop][label]['axes']) and ((((values[prop][label]['label']) and (len(values[prop][label]['value'])>1)) and 
+								not (values[prop][label]['other'])))))))},							
 						
 						}
 
