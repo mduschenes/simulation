@@ -42,7 +42,7 @@ OTHER = 'label'
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
 CAXES = ['colorbar']
-PLOTS = ['plot','scatter','errorbar','histogram','fill_between','axvline','axhline','vlines','hlines','plot_surface']
+PLOTS = ['plot','scatter','errorbar','histogram','fill_between','axvline','axhline','vlines','hlines','plot_surface','contour','contourf','tricontour','tricontourf']
 LAYOUT = ['nrows','ncols','index','left','right','top','bottom','hspace','wspace','width_ratios','height_ratios','pad']
 NULLLAYOUT = ['index','pad']
 PATHS = {
@@ -1051,12 +1051,45 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				call = True
 
-			elif attr in ['plot_surface','contour','contourf']:
+			elif attr in ['plot_surface','contour','contourf','tricontour','tricontourf']:
 
 				dim = 3
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
+				props = ['color']
+				for prop in props:
+					if prop not in kwargs[attr]:
+						continue
+					if isinstance(kwargs[attr][prop],dict):
+
+						kwds = ['value','values','color','norm','scale','alpha']
+					
+						kwds = {kwd: kwargs[attr][prop].get(kwd,None) for kwd in kwds}
+
+						if isinstance(kwds.get('value'),dict):
+							kwds.update(kwds.pop('value',{}))
+
+						value = 'values'
+						values = 'value'
+						if kwds.get(value) is None and kwds.get(values) is None:
+							kwds[value] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+							kwds[values] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+						elif kwds.get(value) is None and kwds.get(values) is not None:
+							kwds[value] = kwds[values]
+						elif kwds.get(value) is not None and kwds.get(values) is None:
+							kwds[values] = kwds[value]
+						elif kwds.get(value) is not None and kwds.get(values) is not None:
+							pass
+
+						value,color,values,colors,norm = set_color(**kwds)
+
+						kwargs[attr]['cmap'] = kwds['color']
+						kwargs[attr]['norm'] = norm
+						kwargs[attr]['vmin'] = norm.vmin
+						kwargs[attr]['vmax'] = norm.vmax
+
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
+				nullkwargs.extend([i for i in ['label', 'alpha', 'marker','markersize','linestyle','linewidth','elinewidth','capsize','color', 'ecolor']])
 
 				call = True
 
