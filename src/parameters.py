@@ -283,12 +283,7 @@ class Parameter(System):
 			elif self.method in ['constrained']:					
 			
 				def func(parameters):
-					parameters = bound(parameters[self.slices])
-					# shape = parameters.shape
-					# parameters = parameters.reshape(2,-1)
-					# parameters = self.parameters*parameters[0]*cos(2*pi*parameters[1] + self.kwargs['shift'])
-					# parameters = parameters.reshape(*shape)
-					return parameters
+					return self.parameters*bound(parameters[self.slices])
 
 			else:
 	

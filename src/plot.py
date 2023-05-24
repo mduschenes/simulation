@@ -37,8 +37,7 @@ AXES = ['x','y','z']
 VARIANTS = ['','err','1','2']
 FORMATS = ['lower','upper']
 ALL = ['%s%s'%(getattr(axes,fmt)(),variant) for axes in AXES for variant in VARIANTS for fmt in FORMATS]
-DEPENDENT = [axes for axes in ALL if any(axes.lower().startswith(i.lower()) for i in AXES[DIM-1:])]
-INDEPENDENT = [axes for axes in ALL if any(axes.lower().startswith(i.lower()) for i in AXES[:DIM-1])]
+VARIABLES = {ax: [axes for axes in ALL if axes.lower().startswith(ax.lower())] for ax in AXES}
 OTHER = 'label'
 WHICH = ['major','minor']
 FORMATTER = ['formatter','locator']
@@ -343,6 +342,24 @@ def to_number(a,dtype=None,**kwargs):
 			number = coefficient*float(a)
 	return number
 
+
+def allclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
+	'''
+	Check if arrays a and b are all close within tolerance
+	Args:
+		a (array): Array to compare with
+		b (array): Array to compare
+		rtol (float): Relative tolerance of arrays
+		atol (float): Absolute tolerance of arrays
+		equal_nan (bool): Compare nan's as equal
+	Returns:
+		out (bool): Boolean of whether a and b are all close
+	'''
+	return np.allclose(a,b,rtol,atol,equal_nan)	
+
+
+
+
 def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits=[-1,1],error=None,usetex=False):
 	'''
 	Put number into scientific notation string
@@ -446,12 +463,14 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 		color (str): color
 		values (iterable[int,float]): Values to process colors
 		norm (iterable[int,float],dict[str,[int,float]]): Range of values, either iterable [vmin,vmax] or dictionary {'vmin':vmin,'vmax':vmax}
-		scale (str): Scale type for normalization, allowed strings in ['linear','log']
+		scale (str): Scale type for normalization, allowed strings in ['linear','log','symlog']
 		alpha (int,float,iterable[int,float]): Alpha of color
-		kwargs (dict): Additional keywork arguments
+		kwargs (dict): Additional keyword arguments
 	Returns:
 		value (int,float,iterable[int,float]): Normalized values corresponding to color
 		color (str,tuple,array): colors of value
+		values (int,float,iterable[int,float]): Normalized values corresponding to color
+		colors (str,tuple,array): colors of values
 		norm (callable): Normalization function, with signature norm(value)
 	'''
 	if value is None:
@@ -461,6 +480,9 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 
 	if value is None:
 		value = []
+
+	if isinstance(values,scalars):
+		values = [values]
 
 	values = [i for i in values if not ((i is None) or is_naninf(i))]
 	norm = ({**norm,**{
@@ -475,11 +497,11 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 	norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
 
 	if not isinstance(value,scalars):
-		value = list(natsorted(set([*value,*[norm['vmin'],norm['vmax']]])))
+		value = list(natsorted(set([*value])))
 
 	if scale in ['linear',None]:
 		norm = matplotlib.colors.Normalize(**norm)  
-	elif scale in ['log']:
+	elif scale in ['log','symlog']:
 		values = [i for i in values if i>0]
 		norm.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])) if values else {})
 		norm = matplotlib.colors.LogNorm(**norm)  
@@ -488,13 +510,17 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 
 	try:
 		value = norm(value)
+		values = norm(values)
 	except:
 		value = None
+		values = None
 
 	if hasattr(plt.cm,color):
 		try:
+			colors = getattr(plt.cm,color)(values)
 			color = getattr(plt.cm,color)(value)
 		except:
+			colors = color
 			color = color
 		
 		if isinstance(color,tuple):
@@ -504,7 +530,76 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 		elif isinstance(color,np.ndarray):
 			color[:,-1] = alpha
 
-	return value,color,norm
+		if isinstance(colors,tuple):
+			colors = list(colors)
+			colors[-1] = alpha
+			colors = tuple(colors)
+		elif isinstance(colors,np.ndarray):
+			colors[:,-1] = alpha			
+
+	return value,color,values,colors,norm
+
+
+
+def set_err(err=None,value=None,scale=None,**kwargs):
+	'''
+	Set error
+	Args:
+		err (int,float,iterable[int,float],iterable[iterable[int,float]]): Error, either scalar, or iterable of scalars for equal +- errors, or iterable of 2 iterables for independent +- errors
+		value (int,float,iterable[int,float]): Value to process error
+		scale (str): Scale type for normalization, allowed strings in ['linear','log','symlog']
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		err (iterable[iterable[int,float]]): Errors normalized as per value and scale
+	'''
+
+	if ((err is None) or (value is None) or 
+	   (scale is None)):
+	
+	   err = None
+
+	elif ((scale is None) or
+		  (isinstance(scale,str) and scale not in ['log','symlog']) or 
+		  (not isinstance(scale,str) and not any(i in ['log','symlog'] for i in scale))):
+	
+		err = err
+	
+	elif ((isinstance(scale,str) and scale in ['log','symlog']) or 
+		  (not isinstance(scale,str) and any(i in ['log','symlog'] for i in scale))):		
+		if isinstance(err,scalars):
+			err = [err]*2
+		elif is_naninf(err):
+			err = [err]*2
+		else:
+			err = np.array(err)
+			value = np.array(err)
+			if err.size == 1:
+				err = np.asscalar(err)
+				err = [err]*2
+			elif err.ndim == 1:
+				if err.size == value.size:
+					err = [[i if i is not None and not is_naninf(i) else 0 for i in err]]*2
+				else:
+					err = [i if i is not None and not is_naninf(i) else 0 for i in err]
+			elif err.ndim == 2:
+				err = [[j if j is not None and not is_naninf(j) else 0 for j in i] for i in err]
+
+		err = np.array(err)
+		value = np.array(value)
+
+		if allclose(err,0):
+			err = None
+		else:
+			err = np.array([value*(1-(value/(value+err[0]))),np.ones(value.shape)*err[1]])
+
+	else:
+	
+		err = None
+
+	if err is not None:
+		err = np.abs(err)
+
+	return err
 
 
 def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=None):
@@ -752,6 +847,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				'set_colorbar':slice(-2,None),
 				'color':slice(-2,None),
 				'ecolor':slice(-2,None),
+				'c':slice(-2,None),
 				'marker':slice(-4,-3),
 				'linestyle':slice(-5,-4),
 				'alpha':slice(-6,-5),
@@ -877,46 +973,21 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['errorbar']:
 				dim = 2
-
+				props = '%serr'
+				subprops ='%s'
 				subattrs = 'set_%sscale'
-				props ='%s'
-				subprops = '%serr'
 				for axes in AXES[:dim]:
 					prop = props%(axes)
 					subprop = subprops%(axes)
 					subattr = subattrs%(axes)
 
-					if (
-						(kwargs[attr].get(prop) is not None) and (kwargs[attr].get(subprop) is not None) and 
-						(kwargs.get(subattr) is not None) and
-						(any(tmp[-1].get('value') in ['log'] for tmp in search(kwargs.get(subattr))))
-						):
+					err = kwargs[attr].get(prop)
+					value = kwargs[attr].get(subprop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
 
+					err = set_err(err=err,value=value,scale=scale)
 
-						if isinstance(kwargs[attr][subprop],(int,np.integer,float,np.floating)) or is_naninf(kwargs[attr][subprop]):
-							kwargs[attr][subprop] = [kwargs[attr][subprop],kwargs[attr][subprop]]
-						elif np.array(kwargs[attr][subprop]).ndim == 1:
-							kwargs[attr][subprop] = [i if i is not None else 0 for i in kwargs[attr][subprop]]
-							kwargs[attr][subprop] = np.array([kwargs[attr][subprop],kwargs[attr][subprop]])
-						elif np.array(kwargs[attr][subprop]).ndim == 2:
-							kwargs[attr][subprop] = [[j if j is not None else 0 for j in i] for i in kwargs[attr][subprop]]
-							kwargs[attr][subprop] = np.array(kwargs[attr][subprop])
-
-						kwargs[attr][prop] = np.array(kwargs[attr][prop])
-						kwargs[attr][subprop] = np.array(kwargs[attr][subprop])
-
-						kwargs[attr][subprop] = np.array([
-							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
-							kwargs[attr][subprop][1]
-							])
-
-						if kwargs[attr].get(subprop) is not None and kwargs[attr].get(AXES[dim-1]) is not None:
-							if kwargs[attr][subprop].size == 2 and kwargs[attr][AXES[dim-1]].size > 2:
-								kwargs[attr][subprop] = None
-
-					if kwargs[attr].get(subprop) is not None:
-						kwargs[attr][subprop] = np.abs(kwargs[attr][subprop])
-					
+					kwargs[attr][prop] = err
 
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
@@ -927,41 +998,21 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['fill_between']:
 
 				dim = 2
-				
+				props = '%serr'
+				subprops ='%s'
 				subattrs = 'set_%sscale'
-				props ='%s'
-				subprops = '%serr'
 				for axes in AXES[:dim]:
 					prop = props%(axes)
 					subprop = subprops%(axes)
 					subattr = subattrs%(axes)
 
-					if (
-						(kwargs[attr].get(prop) is not None) and (kwargs[attr].get(subprop) is not None) and 
-						(kwargs.get(subattr) is not None) and
-						(any(tmp[-1].get('value') in ['log'] for tmp in search(kwargs.get(subattr))))
-						):
+					err = kwargs[attr].get(prop)
+					value = kwargs[attr].get(subprop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
 
-						if isinstance(kwargs[attr][subprop],(int,np.integer,float,np.floating)) or is_naninf(kwargs[attr][subprop]):
-							kwargs[attr][subprop] = [kwargs[attr][subprop],kwargs[attr][subprop]]
-						elif np.array(kwargs[attr][subprop]).ndim == 1:
-							kwargs[attr][subprop] = [i if i is not None else 0 for i in kwargs[attr][subprop]]
-							kwargs[attr][subprop] = np.array([kwargs[attr][subprop],kwargs[attr][subprop]])
-						elif np.array(kwargs[attr][subprop]).ndim == 2:
-							kwargs[attr][subprop] = [[j if j is not None else 0 for j in i] for i in kwargs[attr][subprop]]
-							kwargs[attr][subprop] = np.array(kwargs[attr][subprop])
+					err = set_err(err=err,value=value,scale=scale)
 
-						kwargs[attr][prop] = np.array(kwargs[attr][prop])
-						kwargs[attr][subprop] = np.array(kwargs[attr][subprop])
-
-						kwargs[attr][subprop] = np.array([
-							kwargs[attr][prop]*(1-(kwargs[attr][prop]/(kwargs[attr][prop]+kwargs[attr][subprop][0]))),
-							kwargs[attr][subprop][1]
-							])
-
-						if kwargs[attr].get(subprop) is not None and kwargs[attr].get(AXES[dim-1]) is not None:
-							if kwargs[attr][subprop].size == 2 and kwargs[attr][AXES[dim-1]].size > 2:
-								kwargs[attr][subprop] = None
+					kwargs[attr][prop] = err
 
 				if ((kwargs[attr].get('y1') is not None) and (len(kwargs[attr].get('y1'))) and 
 					(kwargs[attr].get('y2') is not None) and (len(kwargs[attr].get('y2')))):
@@ -990,7 +1041,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				dim = 2
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
+				replacements = {'color':'c','markersize':'s'}
+				for replacement in replacements:
+					if replacement in kwargs[attr]:
+						kwargs[attr][replacements[replacement]] = kwargs[attr][replacement]
+
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
+				nullkwargs.extend([i for i in ['label', 'alpha', 'marker','markersize','linestyle','linewidth','elinewidth','capsize','color', 'ecolor']])
 
 				call = True
 
@@ -1007,10 +1064,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['imshow']:
 				dim = 2
 
-				fields = [*['%s%s'%(k.upper(),s) for s in VARIANTS[:1] for k in AXES[:1]],*AXES[:dim][::-1]]
-				for field in fields:
-					if field in kwargs[attr]:
-						args.append(kwargs[attr].get(field))
+				props = [*['%s%s'%(k.upper(),s) for s in VARIANTS[:1] for k in AXES[:1]],*AXES[:dim][::-1]]
+				for prop in props:
+					if prop in kwargs[attr]:
+						args.append(kwargs[attr].get(prop))
 						break
 
 				nullkwargs.extend([*['%s%s'%(k.upper(),s) for s in VARIANTS[:2] for k in AXES[:1]],*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
@@ -1031,10 +1088,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
 
-				fields = ['transform']
-				for field in fields:
-					if field in ['transform']:
-						kwargs[attr][field] = getattr(obj,kwargs[attr].get(field))
+				props = ['transform']
+				for prop in props:
+					if prop in ['transform']:
+						kwargs[attr][prop] = getattr(obj,kwargs[attr].get(prop))
 
 				dim = 2
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
@@ -1078,23 +1135,22 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if isinstance(kwds.get('value'),dict):
 					kwds.update(kwds.pop('value',{}))
 
-				prop = 'values'
-				tmp = 'value'
-				if kwds.get(prop) is None:
-					if kwds.get(tmp) is not None:
-						kwds[prop] = kwds[tmp]
-					else:
-						kwds[prop] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+				value = 'values'
+				values = 'value'
+				if kwds.get(value) is None and kwds.get(values) is None:
+					kwds[value] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+					kwds[values] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+				elif kwds.get(value) is None and kwds.get(values) is not None:
+					kwds[value] = kwds[values]
+				elif kwds.get(value) is not None and kwds.get(values) is None:
+					kwds[values] = kwds[value]
+				elif kwds.get(value) is not None and kwds.get(values) is not None:
+					pass
 
-				prop = 'value'
-				tmp = 'values'
-				if kwds.get(prop) is None:
-					kwds[prop] = kwds.get(tmp)
-
-				value,color,norm = set_color(**kwds)
+				value,color,values,colors,norm = set_color(**kwds)
 				
 				name = 'colorbar'				
-				colors = list([list(i) for i in zip([i for i in value],[tuple(i) for i in color])])
+				colors = list([list(i) for i in zip([i for i in values],[tuple(i) for i in colors])])
 				N = len(colors)
 
 				segments = kwargs[attr].get('segments',1)
@@ -1105,10 +1161,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				relative = sizing if isinstance(sizing,(int,np.integer,float,np.floating)) else float(sizing.replace('%',''))/100
 
 				for axes in ['',*AXES]:
-					field = 'set_%slabel'%(axes)
-					subfield = '%slabel'%(axes)
-					if field in kwargs[attr]:
-						kwargs[attr][field][subfield] = attr_texify(kwargs[attr][field][subfield],field,subfield)
+					prop = 'set_%slabel'%(axes)
+					subprop = '%slabel'%(axes)
+					if prop in kwargs[attr]:
+						kwargs[attr][prop][subprop] = attr_texify(kwargs[attr][prop][subprop],prop,subprop)
 
 				if N > 1:
 
@@ -1208,11 +1264,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			
 				elif isinstance(value,(dict,str)):
 
-					if field in ['color','ecolor']:
+					if field in ['color','ecolor','c']:
 
 						kwds = ['value','values','color','norm','scale','alpha']
 
-						kwds = {prop: None	 for prop in kwds}
+						kwds = {prop: None	for prop in kwds}
 
 						if isinstance(value,dict):
 							kwds.update(value)
@@ -1222,22 +1278,27 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						if isinstance(kwds.get('value'),dict):
 							kwds.update(kwds.pop('value',{}))
 
-						prop = 'values'
-						tmp = 'value'
-						if kwds.get(prop) is None:
-							if kwds.get(tmp) is not None:
-								kwds[prop] = kwds[tmp]
-							else:
-								kwds[prop] = [i/max(1,prod(shape[fields[field]])-1) for i in range(prod(shape[fields[field]]))]
+						value = 'values'
+						values = 'value'
+						if kwds.get(value) is None and kwds.get(values) is None:
+							kwds[value] = to_index(index[fields[field]],shape[fields[field]])/max(1,prod(shape[fields[field]])-1)
+							kwds[values] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+						elif kwds.get(value) is None and kwds.get(values) is not None:
+							kwds[value] = kwds[values]
+						elif kwds.get(value) is not None and kwds.get(values) is None:
+							kwds[values] = kwds[value]
+						elif kwds.get(value) is not None and kwds.get(values) is not None:
+							pass
 
-						prop = 'value'
-						tmp = 'values'
-						if kwds.get(prop) is None:
-							kwds[prop] = to_index(index[fields[field]],shape[fields[field]])/max(1,prod(shape[fields[field]])-1)
-
-						value,color,norm = set_color(**kwds)
+						value,color,values,colors,norm = set_color(**kwds)
 
 						value = color
+
+					replacements = {'c':'color'}
+					if field in replacements:
+						if not isinstance(value,scalars) or isinstance(value,tuple) or len(value) == 1:
+							_kwargs_.pop(field);
+							field = replacements[field]
 
 					_kwargs_[field] = value
 				
