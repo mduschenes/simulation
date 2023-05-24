@@ -1659,7 +1659,7 @@ def plotter(settings,hyperparameters,verbose=None):
 										elif prop in PLOTS:
 											if label in data:
 												item = [i for i in data[label]]
-												items = [i for i in data[label]]
+												items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 											else:
 												item = data[OTHER].get(label)
 												items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
@@ -1730,6 +1730,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							
 
 						if not value:
+							labels = None
 							value = None
 						else:
 							labels = list(value)
@@ -1743,7 +1744,6 @@ def plotter(settings,hyperparameters,verbose=None):
 								value.pop(label);
 
 						data[attr] = value
-
 
 			# set colorbar
 			prop = 'set_colorbar'
@@ -1773,10 +1773,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						value.update({prop: value.get(prop,defaults[prop]) for prop in defaults})
 
 						if value['type'] in ['value']:
-							if all(len(i)>1 for i in data[attr]['__items__']):
-								value = indices
-							else:
-								value = [i[0] for i in data[attr]['__items__']]
+							value = items
 						elif value['type'] in ['index']:
 							value = indices
 						else:
@@ -1786,7 +1783,6 @@ def plotter(settings,hyperparameters,verbose=None):
 						value = indices
 					else:
 						value = None
-
 
 					data[attr] = value
 
@@ -1812,14 +1808,16 @@ def plotter(settings,hyperparameters,verbose=None):
 					else:
 						norm = data.get('norm')
 						scale = data.get('scale')
+
 						if norm is None:
 							norm = {'vmin':min(data.get('value',[]),default=0),'vmax':max(data.get('value',[]),default=1)}
 						elif not isinstance(norm,dict):
 							norm = {'vmin':min(norm),'vmax':max(norm)}
 						else:
-							norm = {'vmin':norm.get('vmin',0),'vmax':norm.get('vmax',1)}
+							norm = {'vmin':norm.get('vmin',min(data.get('value',[]),default=0)),'vmax':norm.get('vmax',max(data.get('value',[]),default=1))}
 
 						value = [min(min(data.get('value',[]),default=0),norm['vmin']),max(max(data.get('value',[]),default=1),norm['vmax'])]
+
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 							
 							size = data[attr%(axes)][kwarg]
@@ -2074,6 +2072,11 @@ def plotter(settings,hyperparameters,verbose=None):
 							
 							delimiter = '__'
 							if isinstance(data[attr],dict) and all(prop.startswith(delimiter) and prop.endswith(delimiter) for prop in data[attr]):
+
+								if all(len(i)>1 for i in data[attr]['__items__']):
+									items = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
+								else:
+									items = [i[0] for i in data[attr]['__items__']]
 								
 								value = data[attr]['__value__']
 								indices = [data[attr]['__items__'].index(i)/max(1,data[attr]['__size__']-1) for i in data[attr]['__items__']]
@@ -2086,10 +2089,7 @@ def plotter(settings,hyperparameters,verbose=None):
 									value.update({prop: value.get(prop,defaults[prop]) for prop in defaults})
 
 									if value['type'] in ['value']:
-										if all(len(i)>1 for i in data[attr]['__items__']):
-											tmp = indices
-										else:
-											tmp = [i[0] for i in data[attr]['__items__']]
+										tmp = items
 									elif value['type'] in ['index']:
 										tmp = indices
 									else:
@@ -2253,7 +2253,7 @@ def plotter(settings,hyperparameters,verbose=None):
 				value = join(delim.join(value),ext=split(path,ext=True))
 				
 				data[attr] = value
-
+		
 	# Plot data
 	for instance in settings:
 
@@ -2410,7 +2410,3 @@ if __name__ == '__main__':
 	args = argparser(arguments,wrappers)
 
 	main(*args,**args)
-
-	# mv metadata.json data.json
-	# find CWD -name metadata.json -exec sed -i '/\(\"both\"\|\"major\"\|\"minor\"\|\"x\"\|\"y\"\|\"z\"\)/! s/\"axis\":\ \(".*"\)/\"label\":\ \1/g' {} \;
-	# grep '"axis"' CWD/metadata.json

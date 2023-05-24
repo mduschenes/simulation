@@ -47,6 +47,9 @@
 						}
 					},
 					"alpha": 1,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},
 					"marker": {
 						"@noise.parameters@": [
 							"o",
@@ -61,20 +64,6 @@
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -91,20 +80,6 @@
 						}
 					},
 					"ecolor": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -155,26 +130,15 @@
 						]
 					},
 					"alpha": 0.2,
+					"alpha": {
+						"@N@": [0.2]
+					},
 					"markersize": 12,
 					"linestyle": "-",
 					"linewidth": 4,
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -191,20 +155,6 @@
 						}
 					},
 					"ecolor": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -242,21 +192,10 @@
 						}
 					},
 					"alpha": 0.4,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -466,7 +405,9 @@
 							"one": false
 						}
 					},
-					"alpha": 1,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},					
 					"marker": {
 						"@noise.parameters@": [
 							"o",
@@ -481,20 +422,6 @@
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -511,20 +438,6 @@
 						}
 					},
 					"ecolor": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -575,26 +488,15 @@
 						]
 					},
 					"alpha": 0.2,
+					"alpha": {
+						"@N@": [0.2]
+					},
 					"markersize": 12,
 					"linestyle": "-",
 					"linewidth": 4,
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -611,20 +513,6 @@
 						}
 					},
 					"ecolor": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -662,21 +550,10 @@
 						}
 					},
 					"alpha": 0.4,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},					
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -887,6 +764,9 @@
 						}
 					},
 					"alpha": 1,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},					
 					"marker": {
 						"@noise.parameters@": [
 							"o",
@@ -901,20 +781,6 @@
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -931,20 +797,6 @@
 						}
 					},
 					"ecolor": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -994,27 +846,15 @@
 							"P"
 						]
 					},
-					"alpha": 0.2,
+					"alpha": {
+						"@N@": [0.2]
+					},					
 					"markersize": 12,
 					"linestyle": "-",
 					"linewidth": 4,
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -1031,20 +871,6 @@
 						}
 					},
 					"ecolor": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -1082,21 +908,10 @@
 						}
 					},
 					"alpha": 0.4,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},					
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -1560,6 +1375,9 @@
 						}
 					},
 					"alpha": 1,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},					
 					"marker": {
 						"@noise.parameters@": [
 							"o",
@@ -1574,20 +1392,6 @@
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -1604,20 +1408,6 @@
 						}
 					},
 					"ecolor": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -1668,26 +1458,15 @@
 						]
 					},
 					"alpha": 0.2,
+					"alpha": {
+						"@N@": [0.2]
+					},					
 					"markersize": 12,
 					"linestyle": "-",
 					"linewidth": 4,
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -1704,20 +1483,6 @@
 						}
 					},
 					"ecolor": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -1755,21 +1520,10 @@
 						}
 					},
 					"alpha": 0.4,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},					
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -1980,6 +1734,9 @@
 						}
 					},
 					"alpha": 1,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},					
 					"marker": {
 						"@noise.parameters@": [
 							"o",
@@ -1994,20 +1751,6 @@
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -2024,20 +1767,6 @@
 						}
 					},
 					"ecolor": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -2088,26 +1817,15 @@
 						]
 					},
 					"alpha": 0.2,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},
 					"markersize": 12,
 					"linestyle": "-",
 					"linewidth": 4,
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -2124,20 +1842,6 @@
 						}
 					},
 					"ecolor": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -2175,21 +1879,10 @@
 						}
 					},
 					"alpha": 0.4,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},					
 					"color": {
-						"@N@": {
-							"value": {
-								"value": null,
-								"color": "viridis",
-								"values": [],
-								"norm": [
-									0,
-									1
-								],
-								"scale": "linear",
-								"alpha": 1
-							},
-							"type": "index"
-						},
 						"@M@": {
 							"value": {
 								"value": null,
@@ -5489,7 +5182,7 @@
 								"color": "viridis",
 								"values": [],
 								"norm": [
-									0,
+									1e-20,
 									1
 								],
 								"scale": "log",
@@ -5505,7 +5198,7 @@
 								"color": "viridis",
 								"values": [],
 								"norm": [
-									0,
+									1e-20,
 									1
 								],
 								"scale": "log",
@@ -5525,7 +5218,7 @@
 				},
 				"color": "viridis",
 				"norm": [
-					0,
+					1e-20,
 					1
 				],
 				"scale": "log",
@@ -5539,11 +5232,11 @@
 					"size": 30
 				},
 				"set_ticks": {
-					"ticks": 5,
+					"ticks": 6,
 					"labelsize": 50
 				},
 				"set_ticklabels": {
-					"ticklabels": [0,1e-15,1e-10,1e-5,1e0],
+					"ticklabels": [1e-20,1e-16,1e-12,1e-8,1e-4,1e0],
 					"size": 50
 				},
 				"ax.yaxis.set_tick_params": {
@@ -5672,6 +5365,7 @@
 				"which": "both",
 				"axis": "both"
 			},
+			"set_axisbelow":{"b":true},			
 			"legend": {
 				"title_fontsize": 40,
 				"fontsize": 40,
