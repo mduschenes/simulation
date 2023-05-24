@@ -2244,7 +2244,7 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 			elif noise.ndim == 0:
 
-				subscripts = 'jk,kl,ml->im'
+				subscripts = 'ij,jk,lk->il'
 				shapes = (data.shape,state.shape,data.shape)
 				einsummation = einsum(subscripts,*shapes)
 
