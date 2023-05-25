@@ -985,7 +985,7 @@ def _dump(data,obj,wr,ext,**kwargs):
 	elif ext in ['hdf5','h5','ckpt']:
 		if wrapper in ['pd']:
 			ext = 'hdf'
-			getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
+			getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data'),'mode':'w'})
 		else:
 			dump_hdf5(data,obj,wr=wr,ext=ext,**kwargs)
 	elif ext in ['pdf']:

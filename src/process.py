@@ -769,7 +769,7 @@ def loader(data,settings,hyperparameters,verbose=None):
 					if not datum:
 						continue
 					datum.update({attr: data[attr] for attr in data if attr not in [*ALL,OTHER]})
-					datum.update({attr: np.array(datum[attr]) for attr in datum if attr in [*ALL] and not isinstance(datum[attr],str)})
+					datum.update({attr: datum[attr] for attr in datum if attr in [*ALL] and not isinstance(datum[attr],str)})
 
 					attr = OTHER
 
@@ -853,7 +853,6 @@ def loader(data,settings,hyperparameters,verbose=None):
 			wrapper = 'pd'
 			dump(data,path,wrapper=wrapper,verbose=verbose)
 
-
 		# Get functions of data
 		apply(keys,data,settings,hyperparameters,verbose=verbose)
 
@@ -865,6 +864,36 @@ def loader(data,settings,hyperparameters,verbose=None):
 				settings.pop(instance,None);
 				continue
 
+
+	# import json
+	# func = json.dumps
+	# for instance in settings:
+	# 	print('--- %s ---'%(instance))
+	# 	for subinstance in settings[instance]:
+	# 		for obj in settings[instance][subinstance]:
+	# 			for attr in settings[instance][subinstance][obj]:
+	# 				try:
+	# 					string = func(settings[instance][subinstance][obj][attr])
+	# 				except:
+	# 					print(obj,attr)
+	# 					print(settings[instance][subinstance][obj][attr])
+	# 					exit()
+	# 				for data in search(settings[instance][subinstance][obj][attr]):
+	# 					try:
+	# 						for prop in data:
+	# 							print(obj,attr,prop,type(data[prop]),data[prop])
+	# 					except:
+	# 						print(obj,attr,type(data),data)
+	# 			print()
+	# 	print()
+	# def func(path,data):
+	# 	with open(path,'w') as path:
+	# 		json.dump(data,path)
+	# 	return
+	# path = '~/test.json'
+	# data = settings
+	# func(path,data)
+	# exit()
 	# Dump settings
 	if hyperparameters['dump']:
 		path = metadata
@@ -1116,6 +1145,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 							else:
 								value[destination] = grouping.reset_index().index.to_numpy()
 
+							value[destination] = value[destination].tolist()
 						else:
 							value[destination] = None
 
@@ -1226,6 +1256,8 @@ def plotter(settings,hyperparameters,verbose=None):
 						
 						if axes not in data or isinstance(data[axes],scalars):
 							continue
+
+						data[axes] = np.array(data[axes])
 
 						if shapes and (axes not in independent):
 
@@ -2256,6 +2288,7 @@ def plotter(settings,hyperparameters,verbose=None):
 				
 				data[attr] = value
 		
+
 	# Plot data
 	for instance in settings:
 
