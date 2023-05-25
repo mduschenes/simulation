@@ -861,27 +861,27 @@ def loader(data,settings,hyperparameters,verbose=None):
 				continue
 
 
-	# import json
-	# func = json.dumps
-	# for instance in settings:
-	# 	print('--- %s ---'%(instance))
-	# 	for subinstance in settings[instance]:
-	# 		for obj in settings[instance][subinstance]:
-	# 			for attr in settings[instance][subinstance][obj]:
-	# 				try:
-	# 					string = func(settings[instance][subinstance][obj][attr])
-	# 				except:
-	# 					print(obj,attr)
-	# 					print(settings[instance][subinstance][obj][attr])
-	# 					exit()
-	# 				for data in search(settings[instance][subinstance][obj][attr]):
-	# 					try:
-	# 						for prop in data:
-	# 							print(obj,attr,prop,type(data[prop]),data[prop])
-	# 					except:
-	# 						print(obj,attr,type(data),data)
-	# 			print()
-	# 	print()
+	import json
+	func = json.dumps
+	for instance in settings:
+		print('--- %s ---'%(instance))
+		for subinstance in settings[instance]:
+			for obj in settings[instance][subinstance]:
+				for attr in settings[instance][subinstance][obj]:
+					try:
+						string = func(settings[instance][subinstance][obj][attr])
+					except:
+						print(obj,attr)
+						print(settings[instance][subinstance][obj][attr])
+						exit()
+					for data in search(settings[instance][subinstance][obj][attr]):
+						try:
+							for prop in data:
+								print(obj,attr,prop,type(data[prop]),data[prop])
+						except:
+							print(obj,attr,type(data),data)
+				print()
+		print()
 	# def func(path,data):
 	# 	with open(path,'w') as path:
 	# 		json.dump(data,path)
@@ -889,7 +889,7 @@ def loader(data,settings,hyperparameters,verbose=None):
 	# path = '~/test.json'
 	# data = settings
 	# func(path,data)
-	# exit()
+	exit()
 	# Dump settings
 	if hyperparameters['dump']:
 		path = metadata
@@ -1141,7 +1141,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 							else:
 								value[destination] = grouping.reset_index().index.to_numpy()
 
-							value[destination] = value[destination].tolist()
+							if isinstance(value[destination],arrays):
+								value[destination] = value[destination].tolist()
+								
 						else:
 							value[destination] = None
 
