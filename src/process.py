@@ -860,37 +860,6 @@ def loader(data,settings,hyperparameters,verbose=None):
 				settings.pop(instance,None);
 				continue
 
-
-	import json
-	func = json.dumps
-	for instance in settings:
-		print('--- %s ---'%(instance))
-		for subinstance in settings[instance]:
-			for obj in settings[instance][subinstance]:
-				for attr in settings[instance][subinstance][obj]:
-					for data in search(settings[instance][subinstance][obj][attr]):
-						try:
-							for prop in data:
-								print(obj,attr,prop,type(data[prop]),data[prop])
-
-							try:
-								string = func(data)
-							except:
-								print(obj,attr,list(data))
-								print(data)
-								exit()
-						except:
-							print(obj,attr,type(data),data)
-				print()
-		print()
-	# def func(path,data):
-	# 	with open(path,'w') as path:
-	# 		json.dump(data,path)
-	# 	return
-	# path = '~/test.json'
-	# data = settings
-	# func(path,data)
-	exit()
 	# Dump settings
 	if hyperparameters['dump']:
 		path = metadata
