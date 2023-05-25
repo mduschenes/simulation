@@ -23,7 +23,7 @@ from src.utils import argparser
 from src.utils import array,expand_dims,conditions
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
-from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
+from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import getter,setter,search,inserter,indexer
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
@@ -1387,6 +1387,8 @@ def plotter(settings,hyperparameters,verbose=None):
 									slices = tuple((*position,*axis))
 
 									data[axes] = data[axes][slices]
+									
+								if isinstance(data.get(axes),arrays):
 									data[axes] = data[axes].tolist()
 
 							index = [*index[:-len(axis)],*axis]
@@ -1712,6 +1714,12 @@ def plotter(settings,hyperparameters,verbose=None):
 										item = None
 										items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 
+									if isinstance(item,arrays):
+										item = item.tolist()
+									
+									if isinstance(items,arrays):
+										items = items.tolist()
+
 									if prop in PLOTS:
 										if label not in data[OTHER]:
 											continue
@@ -1860,16 +1868,18 @@ def plotter(settings,hyperparameters,verbose=None):
 								value = [(value[0]+value[1])/2]
 							elif scale in ['linear']:
 								value = np.array(value)
-								value = np.linspace(*value,size).tolist()
+								value = np.linspace(*value,size)
 							elif scale in ['log']:
 								value = np.log10(value)
-								value = np.logspace(*value,size).tolist()
+								value = np.logspace(*value,size)
 							else:
 								value = np.array(value)
-								value = np.linspace(*value,size).tolist()
-
+								value = np.linspace(*value,size)
 						else:
 							value = data[attr%(axes)][kwarg]
+
+						if isinstance(value,arrays):
+							value = value.tolist()
 
 						data[attr%(axes)][kwarg] = value
 
@@ -2097,7 +2107,6 @@ def plotter(settings,hyperparameters,verbose=None):
 
 							for subslice in slices:
 								value = value[subslice]
-
 
 
 							value = np.array([valify(i,valify=data[OTHER][OTHER].get('valify')) for i in value])
