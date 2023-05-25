@@ -868,16 +868,17 @@ def loader(data,settings,hyperparameters,verbose=None):
 		for subinstance in settings[instance]:
 			for obj in settings[instance][subinstance]:
 				for attr in settings[instance][subinstance][obj]:
-					try:
-						string = func(settings[instance][subinstance][obj][attr])
-					except:
-						print(obj,attr)
-						print(settings[instance][subinstance][obj][attr])
-						exit()
 					for data in search(settings[instance][subinstance][obj][attr]):
 						try:
 							for prop in data:
 								print(obj,attr,prop,type(data[prop]),data[prop])
+
+							try:
+								string = func(data)
+							except:
+								print(obj,attr,list(data))
+								print(data)
+								exit()
 						except:
 							print(obj,attr,type(data),data)
 				print()
@@ -1143,7 +1144,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 							if isinstance(value[destination],arrays):
 								value[destination] = value[destination].tolist()
-								
+
 						else:
 							value[destination] = None
 
