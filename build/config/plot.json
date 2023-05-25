@@ -175,7 +175,7 @@
 			"fill_between": [
 				{
 					"x": "iteration",
-					"y": "grad.norm",
+					"y": "objective",
 					"label": {
 						"label": {
 							"N": null,
