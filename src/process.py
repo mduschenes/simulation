@@ -814,20 +814,16 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 		# Load settings
 		path = metadata
-		default = {}
-		tmp = deepcopy(settings)
+		default = None
+		tmp = load(path,default=default,verbose=verbose)
 
-		settings.update(load(path,default=default,verbose=verbose))
-
-		new = exists(path)
+		new = exists(path) and tmp is not None
 
 		if new:
-			try:
-				setter(settings,tmp,func=func)
-			except:
-				settings = tmp
-		else:
-			settings = tmp
+			new = deepcopy(settings)
+			settings.update(tmp)
+			tmp = new
+			setter(settings,tmp,func=func)
 
 	else:
 
