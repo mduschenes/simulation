@@ -822,7 +822,10 @@ def loader(data,settings,hyperparameters,verbose=None):
 		new = exists(path)
 
 		if new:
-			setter(settings,tmp,func=func)
+			try:
+				setter(settings,tmp,func=func)
+			except:
+				settings = tmp
 		else:
 			settings = tmp
 
@@ -864,10 +867,9 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 	# Dump settings
 	if hyperparameters['dump']:
-		if new:
-			path = metadata
-			wrapper = None
-			dump(settings,path,wrapper=wrapper,verbose=verbose)
+		path = metadata
+		wrapper = None
+		dump(settings,path,wrapper=wrapper,verbose=verbose)
 
 	return
 
