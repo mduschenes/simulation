@@ -87,7 +87,7 @@
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],
-		"jobs.job.resume":[null],
+		"jobs.job.resume":[false],
 		"jobs.postprocess.resume":[null],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.NUMPY_BACKEND":["jax.autograd"],
