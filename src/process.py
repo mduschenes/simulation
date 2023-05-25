@@ -23,7 +23,7 @@ from src.utils import argparser
 from src.utils import array,expand_dims,conditions
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import argmax,difference,abs
-from src.utils import e,pi,nan,scalars,delim,nulls,null,Null,scinotation
+from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import getter,setter,search,inserter,indexer
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
@@ -769,7 +769,7 @@ def loader(data,settings,hyperparameters,verbose=None):
 					if not datum:
 						continue
 					datum.update({attr: data[attr] for attr in data if attr not in [*ALL,OTHER]})
-					datum.update({attr: np.array(datum[attr]) for attr in datum if attr in [*ALL] and not isinstance(datum[attr],str)})
+					datum.update({attr: datum[attr] for attr in datum if attr in [*ALL] and not isinstance(datum[attr],str)})
 
 					attr = OTHER
 
@@ -814,17 +814,16 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 		# Load settings
 		path = metadata
-		default = {}
-		tmp = deepcopy(settings)
+		default = None
+		tmp = load(path,default=default,verbose=verbose)
 
-		settings.update(load(path,default=default,verbose=verbose))
-
-		new = exists(path)
+		new = exists(path) and tmp is not None
 
 		if new:
+			new = deepcopy(settings)
+			settings.update(tmp)
+			tmp = new
 			setter(settings,tmp,func=func)
-		else:
-			settings = tmp
 
 	else:
 
@@ -850,7 +849,6 @@ def loader(data,settings,hyperparameters,verbose=None):
 			wrapper = 'pd'
 			dump(data,path,wrapper=wrapper,verbose=verbose)
 
-
 		# Get functions of data
 		apply(keys,data,settings,hyperparameters,verbose=verbose)
 
@@ -864,10 +862,9 @@ def loader(data,settings,hyperparameters,verbose=None):
 
 	# Dump settings
 	if hyperparameters['dump']:
-		if new:
-			path = metadata
-			wrapper = None
-			dump(settings,path,wrapper=wrapper,verbose=verbose)
+		path = metadata
+		wrapper = None
+		dump(settings,path,wrapper=wrapper,verbose=verbose)
 
 	return
 
@@ -1114,6 +1111,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 							else:
 								value[destination] = grouping.reset_index().index.to_numpy()
 
+							if isinstance(value[destination],arrays):
+								value[destination] = value[destination].tolist()
+
 						else:
 							value[destination] = None
 
@@ -1224,6 +1224,8 @@ def plotter(settings,hyperparameters,verbose=None):
 						
 						if axes not in data or isinstance(data[axes],scalars):
 							continue
+
+						data[axes] = np.array(data[axes])
 
 						if shapes and (axes not in independent):
 
@@ -1353,6 +1355,8 @@ def plotter(settings,hyperparameters,verbose=None):
 									slices = tuple((*position,*axis))
 
 									data[axes] = data[axes][slices]
+									
+								if isinstance(data.get(axes),arrays):
 									data[axes] = data[axes].tolist()
 
 							index = [*index[:-len(axis)],*axis]
@@ -1678,6 +1682,12 @@ def plotter(settings,hyperparameters,verbose=None):
 										item = None
 										items = [values[prop][label]['value'] for prop in values if label in values[prop]][0]
 
+									if isinstance(item,arrays):
+										item = item.tolist()
+									
+									if isinstance(items,arrays):
+										items = items.tolist()
+
 									if prop in PLOTS:
 										if label not in data[OTHER]:
 											continue
@@ -1826,16 +1836,18 @@ def plotter(settings,hyperparameters,verbose=None):
 								value = [(value[0]+value[1])/2]
 							elif scale in ['linear']:
 								value = np.array(value)
-								value = np.linspace(*value,size).tolist()
+								value = np.linspace(*value,size)
 							elif scale in ['log']:
 								value = np.log10(value)
-								value = np.logspace(*value,size).tolist()
+								value = np.logspace(*value,size)
 							else:
 								value = np.array(value)
-								value = np.linspace(*value,size).tolist()
-
+								value = np.linspace(*value,size)
 						else:
 							value = data[attr%(axes)][kwarg]
+
+						if isinstance(value,arrays):
+							value = value.tolist()
 
 						data[attr%(axes)][kwarg] = value
 
@@ -2065,7 +2077,6 @@ def plotter(settings,hyperparameters,verbose=None):
 								value = value[subslice]
 
 
-
 							value = np.array([valify(i,valify=data[OTHER][OTHER].get('valify')) for i in value])
 
 						else:
@@ -2254,6 +2265,7 @@ def plotter(settings,hyperparameters,verbose=None):
 				
 				data[attr] = value
 		
+
 	# Plot data
 	for instance in settings:
 

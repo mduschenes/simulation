@@ -420,49 +420,22 @@ class funcclass(object):
 	def __call__(self,*args,**kwargs):
 		return self.func(*args,**kwargs)
 
-def encode_json(obj,represent=False,**kwargs):
-	'''
-	Encode object into jsonable
-	Args:
-		obj(object): Object to convert
-		represent (bool): Representation of objects
-		kwargs (dict): Additional keyword arguments
-	Returns:
-		dictionary (dictionary): Jsonable dictionary of object
-	'''
-	if not isinstance(obj,dict):
-		dictionary = deepcopy(dump_json(obj))
-	else:
-		dictionary = obj
-		# dictionary = {}
-		# for key in obj:
-			# dictionary[to_repr(key,represent=represent)] = encode_json(obj[key],represent=represent,**kwargs)
-	return dictionary
+class encode_json(json.JSONEncoder):
+	def default(self, obj):
+		encode = super().encode
+		default = super().default
+		if isinstance(obj,arrays):
+			return obj.tolist()
+		elif isinstance(obj,np.bool_):
+			return encode(bool(obj))
+		else:
+			return default(default(obj))
 
-def decode_json(dictionary,represent=False,**kwargs):
-	'''
-	Convert jsonable into dictionary
-	Args:
-		dictionary(object): Object to convert
-		represent (bool): Representation of objects
-		kwargs (dict): Additional keyword arguments
-	Returns:
-		obj (dictionary): Dictionary to convert to obj
-	'''
-	obj = dictionary
-	return obj
-
-	# obj = {}
-	# if not isinstance(dictionary,dict):
-	# 	obj = dictionary
-	# else:
-	# 	for key in dictionary:
-	# 		try:
-	# 			obj[to_eval(key,represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
-	# 		except (ValueError,SyntaxError):
-	# 			obj[to_eval(to_repr(key,represent=represent),represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
-	# return obj
-
+class decode_json(json.JSONDecoder):
+	def default(self, obj):
+		encode = super().encode
+		default = super().default
+		return default(obj)
 
 
 def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
@@ -477,9 +450,6 @@ def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 	Returns:
 		obj (object): Serialized object
 	'''	
-
-	if isinstance(obj,arrays):
-		obj = obj.tolist()
 	return obj
 
 def load_json(obj,key='py/object',wr='r',ext='json',**kwargs):
@@ -668,7 +638,8 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 	with open(path,'w') as fobj:
 		try:
 			# json.dump(obj,fobj,**{'default':dump_json,'ensure_ascii':False,'indent':4})
-			json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+			# json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+			json.dump(data,obj,**{'cls':encode_json,'ensure_ascii':False,'indent':4,**kwargs})
 			isjsonable = True
 		except Exception as exception:
 			pass
@@ -849,8 +820,7 @@ def _load(obj,wr,ext,**kwargs):
 		# TODO: Load specific types as wrapped types (i.e) onp.array -> np.array for JAX)
 		data = pickle.load(obj,**kwargs)
 	elif ext in ['json']:
-		# data = json.load(obj,**{'object_hook':load_json,**kwargs})
-		data = decode_json(json.load(obj,**{'object_hook':load_json,**kwargs}),**kwargs)
+		data = json.load(obj,**{'cls':decode_json,'object_hook':load_json,**kwargs})
 	elif ext in ['hdf5','h5','ckpt']:
 		if wrapper in ['pd']:
 			ext = 'hdf'
@@ -979,13 +949,14 @@ def _dump(data,obj,wr,ext,**kwargs):
 	elif ext in ['json']:
 		# jsonable(data,callables=kwargs.pop('callables',False))	
 		# json.dump(data,obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
-		json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+		# json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+		json.dump(data,obj,**{'cls':encode_json,'ensure_ascii':False,'indent':4,**kwargs})
 	elif ext in ['tex']:
 		obj.write(data,**kwargs)
 	elif ext in ['hdf5','h5','ckpt']:
 		if wrapper in ['pd']:
 			ext = 'hdf'
-			getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
+			getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data'),'mode':'w'})
 		else:
 			dump_hdf5(data,obj,wr=wr,ext=ext,**kwargs)
 	elif ext in ['pdf']:
