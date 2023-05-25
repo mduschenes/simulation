@@ -15,18 +15,19 @@
 	},
 "seed":{
 	"seed":1821,
-	"size":35,
+	"size":30,
 	"reset":1821,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
 	
-		"model.N":[2,3,4],		
+		"model.N":[4],		
 		"model.M":[20,30,50,100,500,1000],
 		"model.M":[2,5,10,15,20,25,30,40,50,60,70,80,90,100,200,500,1000],
 		"model.M":[8,16,32,64,128,256,512,1024,2048,4096],
 		"model.M":[10,20,30,40,50,60,70,80,90,100,150,200,300,400,500,600,700,800,900,1000,1500,2000,2500,3000,3500,4000],
+		"model.M":[10,50,100,200,300,400,500,1000,2000],		
 		"model.P":[2],
 		"model.tau":[100],
 		"model.T": [null],
@@ -53,6 +54,7 @@
 		"noise.operator":["noise"],
 		"noise.operator":["phase"],
 		"noise.parameters":[0,1e-18,5e-17,1e-17,1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
+		"noise.parameters":[1e-12,1e-10,1e-8,1e-6,1e-5,1e-4,1e-2,1e-1],
 		"noise.seed":[null],		
 		
 		"state.label":["psi"],
@@ -76,18 +78,21 @@
 		"jobs.job.cwd":["gobi/phase.M.N"],
 		"jobs.postprocess.cwd":["gobi/phase.M.N"],
 
+		"jobs.job.cwd":["gobi/phase.rel.M.4"],
+		"jobs.postprocess.cwd":["gobi/phase.rel.M.4"],
+
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[64],
+		"jobs.job.pool":[4],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],
-		"jobs.job.resume":[true],
+		"jobs.job.resume":[null],
 		"jobs.postprocess.resume":[null],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.NUMPY_BACKEND":["jax.autograd"],
@@ -100,7 +105,7 @@
 		"jobs.postprocess.patterns.time":["6:00:00"],
 		"jobs.job.patterns.mem":["128GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[8],
+		"jobs.job.patterns.cpus-per-task":[4],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 		},
 	"groups":null,
@@ -183,8 +188,10 @@
 			"iteration.min":[],
 			"grad.norm":[],"search.norm":[],			
 			"variables":false,"variables.relative":false,"variables.relative.mean":false,
+			"variables":false,"variables.relative":false,"variables.relative.mean":true,
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
+			"objective.ideal.state":true,"objective.diff.state":true,"objective.rel.state":true,
 			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
 			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
