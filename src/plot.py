@@ -535,7 +535,11 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 			colors[-1] = alpha
 			colors = tuple(colors)
 		elif isinstance(colors,np.ndarray):
-			colors[:,-1] = alpha			
+			colors[:,-1] = alpha	
+
+	else:
+		colors = color
+		color = color		
 
 	return value,color,values,colors,norm
 
@@ -1072,8 +1076,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						value = 'values'
 						values = 'value'
 						if kwds.get(value) is None and kwds.get(values) is None:
-							kwds[value] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
-							kwds[values] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+							kwds[value] = [i/max(1,prod(shape[fields[prop]])-1) for i in range(prod(shape[fields[prop]]))]
+							kwds[values] = [i/max(1,prod(shape[fields[prop]])-1) for i in range(prod(shape[fields[prop]]))]
 						elif kwds.get(value) is None and kwds.get(values) is not None:
 							kwds[value] = kwds[values]
 						elif kwds.get(value) is not None and kwds.get(values) is None:
@@ -1315,14 +1319,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						values = 'value'
 						if kwds.get(value) is None and kwds.get(values) is None:
 							kwds[value] = to_index(index[fields[field]],shape[fields[field]])/max(1,prod(shape[fields[field]])-1)
-							kwds[values] = [i/max(1,prod(shape[fields[attr]])-1) for i in range(prod(shape[fields[attr]]))]
+							kwds[values] = [i/max(1,prod(shape[fields[field]])-1) for i in range(prod(shape[fields[field]]))]
 						elif kwds.get(value) is None and kwds.get(values) is not None:
 							kwds[value] = kwds[values]
 						elif kwds.get(value) is not None and kwds.get(values) is None:
 							kwds[values] = kwds[value]
 						elif kwds.get(value) is not None and kwds.get(values) is not None:
 							pass
-
 						value,color,values,colors,norm = set_color(**kwds)
 
 						value = color
