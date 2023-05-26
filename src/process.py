@@ -22,7 +22,7 @@ for PATH in PATHS:
 from src.utils import argparser
 from src.utils import array,expand_dims,conditions
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
-from src.utils import argmax,difference,abs
+from src.utils import argmax,argsort,difference,abs
 from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import getter,setter,search,inserter,indexer
 from src.parallel import Parallelize,Pooler
@@ -571,7 +571,7 @@ def analyse(data,analyses=None,verbose=None):
 		data (dataframe): data of attributes
 		analyses (dict[str,iterable[iterable[dict]]]): Processes to analyse of the form 
 			{analysis:[({attr:value},kwargs)]},
-			allowed analysis strings in ['zscore','quantile','parse','abs','log','log10','replace','func']
+			allowed analysis strings in ['zscore','quantile','slice','parse','abs','log','log10','replace','func']
 		verbose (bool): Verbosity			
 	Returns:
 		out (dataframe): Analysed data
@@ -610,6 +610,20 @@ def analyse(data,analyses=None,verbose=None):
 							if ((len(out[attr])>1) and (value[attr] is not None)) else True for attr in attrs}
 					out = conditions([out[attr] for attr in attrs],op='and')
 					return out
+			elif analysis in ['slice']:
+				def func(attrs,data):
+					function = lambda data: np.argsort(data,axis=0).to_numpy().ravel()
+					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
+					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}					
+					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
+					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
+					out = {attr: (
+							(out[attr]>=out[attr].iloc[function(out[attr])[value[attr] if value[attr] < len(out[attr]) else 0]]) & 
+							(out[attr]<=out[attr].iloc[function(out[attr])[len(out[attr])-1-value[attr] if value[attr] < len(out[attr]) else -1]]) 
+							)
+							for attr in attrs}
+					out = conditions([out[attr] for attr in attrs],op='and')
+					return out					
 			elif analysis in ['parse']:
 				def func(attrs,data):
 					function = parse
@@ -675,7 +689,7 @@ def analyse(data,analyses=None,verbose=None):
 			args = deepcopy(args)
 
 			for attrs in args:
-				if analysis in ['zscore','quantile','parse']:
+				if analysis in ['zscore','quantile','slice','parse']:
 					value = func(attrs,data).to_numpy()
 					out = conditions([out,value],op='and')
 				elif analysis in ['abs','log','log10','replace','func']:
@@ -966,6 +980,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 						elif obj in functions:
 							obj = functions[obj]
 						else:
+							print(obj,default,load(obj,default=default))
 							obj = load(obj,default=default)
 
 					if callable(obj):
