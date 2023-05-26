@@ -1000,6 +1000,119 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 
 	return
 
+def status(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.',cwd='.',pool=None,resume=None,pause=None,file=None,env=None,process=None,processes=None,device=None,execute=False,verbose=None):
+	'''
+	Status of job
+	Args:
+		name (str,int): Name or id of job
+		jobs (str,dict[str,str]): Submission script, or {key:job}
+		args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
+		paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
+		patterns (dict[str,dict[str,str]],dict[str,dict[str,dict[str,str]]]): Patterns to update files {path:{pattern:replacement}} or {key:{path:{pattern:replacement}}
+		dependencies (iterable[str,int],dict[str,iterable[str,int]]): Dependences of previous jobs to job [dependency] or {key:[dependency]}
+		pwd (str,dict[str,str]): Input root path for files, either path, or {key:path}
+		cwd (str,dict[str,str]): Output root path for files, either path, or {key:path}
+		pool (int): Number of subtasks in a pool per task (parallelized with processes number of parallel processes)
+		resume (bool,str,iterable[int],dict[str,bool,str,iterable[str,int]]): Resume jobs, boolean to resume all jobs with criteria (stderr), or iterable of allowed strings or integers of jobs
+		pause (int,str): Time to sleep after call		
+		file (str): Write command to file		
+		env (dict[str,str]): Environmental variables for args		
+		process (str): Type of process instance, either in serial, in parallel, or as an array, allowed strings in ['serial','parallel','array']
+		processes (int): Number of processes per command		
+		device (str): Name of device to submit to
+		execute (boolean,int): Boolean whether to issue commands, or int < 0 for dry run
+		verbose (int,str,bool): Verbosity
+	Returns:
+		status (iterable[str]): Return of status of jobs
+	'''
+
+	keys = [None] if not isinstance(jobs,dict) else list(jobs)
+	jobs = list((jobs[key] for key in keys)) if isinstance(jobs,dict) else [jobs for key in keys]
+	pwd = list((pwd[key] for key in keys)) if isinstance(pwd,dict) else [pwd for key in keys]
+	cwd = list((cwd[key] for key in keys)) if isinstance(cwd,dict) else [cwd for key in keys]
+	path = [join(i,root=path) for i,path in enumerate(cwd)]
+
+	size = len(keys)
+
+	pattern = 'job-name'
+	path = list(set((join(j,root=i) for i,j in zip(pwd,jobs))))
+	kwargs = {'prefix':'.*','default':'','pattern':pattern,'value':r'\(.*\)','postfix':''}
+	if device in ['pc']:
+		kwargs.update({'default':'#SBATCH'})
+	elif device in ['slurm']:
+		kwargs.update({'default':'#SBATCH'})
+
+	string = '%s%s --%s=%s%s'%(tuple((kwargs[kwarg] for kwarg in kwargs)))
+
+	exe = ['sed']
+	flags = ['-n',r's:%s:\1:p'%(string)]
+	cmd = [*path]
+	options = []
+	env = []
+	args = []
+	shell = False
+	execute = True
+
+	name = call(*args,exe=exe,flags=flags,cmd=cmd,options=options,env=env,shell=shell,execute=execute)	
+
+
+	path = list(set(path))
+	cwd = list(set(cwd))
+	pwd = list(set(pwd))
+	paths = {'cwd':cwd,'path':path}
+	processes = {'serial':'path','parallel':'cwd','array':'cwd',None:'cwd'}
+	default = 'cwd'
+	multiple = ['serial']
+	pattern = 'error'
+
+	name = name if name is not None else '*'
+	process = processes.get(process)
+	multiple = (size>1) and (process not in multiple)
+
+
+	paths = paths.get(process,paths.get(default))
+	patterns = list(set([patterns[key].get(pattern,'%s.%s'%(name,'stderr')) for key in keys])) if all(key in patterns for key in keys) else [patterns.get(pattern)]
+
+	status = []
+
+	for path in paths:
+
+		if multiple:
+			strings = {'%s.*.*'%(name):r'.*\.[^.]*\.\([^.]*\)\.[^.]*$:\1'}
+		else:
+			strings = {'%s.*'%(name):r'.*\.\([^.]*\)\.[^.]*$:\1'}
+
+		for string in strings:
+
+			for pattern in patterns:
+
+				tmp = path,pattern
+				path = join(
+					split(pattern,directory=True),
+					'%s%s'%('',string),ext=split(pattern,ext=True),
+					root=path if (not split(pattern,directory=True)) else None)
+				pattern = strings[string]
+
+				returns = nonempty(path=path,pattern=pattern,execute=True)
+
+				if not multiple and not returns:
+					returns = None
+
+				if returns is None:
+					status = None
+				elif status is not None:
+					status.extend(returns)
+
+				path,pattern = tmp
+
+	if status is not None:
+		status = [int(i) for i in status if (multiple) and len(i)]
+
+	return status
+
+
+
+
 
 def init(key,
 		keys=None,
@@ -1012,7 +1125,7 @@ def init(key,
 			task (dict[str,str]): Job task
 			key (str): Name of task
 			keys (dict[str,dict[str]]): Jobs with task names and arguments
-			name (str): Name of job
+			name (str,id): Name or id of job
 			jobs (str,dict[str,str]): Submission script, or {key:job}
 			args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
 			paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
@@ -1097,35 +1210,12 @@ def init(key,
 			if value is None:
 				value = None
 			elif isinstance(value,(bool)) and value:
-				subattr = {'serial':'path','parallel':'cwd','array':'cwd',None:'cwd'}.get(task['process'],'cwd')
-				files = task['patterns'].get('error')
-				directory = task[subattr]
-				pattern = [
-					'*.*.*' if (task['count'] is not None) else '*.*',
-					r'.*\.[^.]*\.\([^.]*\)\.[^.]*$:\1' if (task['count'] is not None) else r'.*\.\([^.]*\)\.[^.]*$:\1']
-				files = join(
-					split(files,directory=True),
-					pattern[0],ext=split(files,ext=True),
-					root=directory if (not split(files,directory=True)) else None)
-				files = nonempty(
-					path=files,
-					pattern=pattern[1],
-					execute=True
-					)
-				if (task['count'] is None) and files:
-					value = None
-				else:
-					value = files
+				value = status(**task)
 			elif isinstance(value,(bool)) and not value:
 				value = []
 			else:
 				value = [i for i in value]
 				
-			try:
-				value = [int(i) for i in value if (task['count'] is None) or (int(i) < task['count'])] if value is not None else value
-			except:
-				value = []			
-
 			task[attr] = value
 
 			attr = 'boolean'
@@ -1189,7 +1279,7 @@ def init(key,
 
 			msg = 'Job : %s'%(key)
 			logger.log(info,msg)
-
+		
 		return task
 
 def callback(task,key,keys):
@@ -1207,7 +1297,7 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	'''
 	Submit job commands as tasks to command line
 	Args:
-		name (str): Name of job
+		name (str,int): Name or id of job
 		jobs (str,dict[str,str]): Submission script, or {key:job}
 		args (dict[str,str],dict[str,dict[str,str]]): Arguments to pass to command line, either {arg:value} or {key:{arg:value}}
 		paths (dict[str,object],dict[str,dict[str,object]]): Relative paths of files to pwd/cwd, with data to update paths {path:data} or {key:{path:data}}
@@ -1232,9 +1322,14 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	keys = [None]
 	tasks = []
 	results = []
-	
+
 	if not jobs:
 		return results
+
+	queue = status(
+		name=name,jobs=jobs,args=args,paths=paths,patterns=patterns,dependencies=dependencies,
+		pwd=pwd,cwd=cwd,pool=pool,resume=resume,pause=pause,file=file,
+		env=env,process=process,processes=processes,device=device,execute=execute,verbose=verbose)
 
 	if isinstance(jobs,str):
 		jobs = {key:jobs for key in keys}
@@ -1272,6 +1367,12 @@ def submit(name=None,jobs={},args={},paths={},patterns={},dependencies=[],pwd='.
 	keys = intersection(keys,cwd)
 
 	if not isinstance(resume,dict):
+
+		if resume is True:
+			resume = queue
+		elif resume is False:
+			resume = None
+
 		resume = {key: resume for key in keys}
 
 	keys = intersection(keys,resume,sort=None)

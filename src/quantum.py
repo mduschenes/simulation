@@ -1938,21 +1938,22 @@ class Callback(System):
 				elif attr in [
 					'variables','variables.norm','variables.relative','variables.relative.mean',
 					] and (do):
-					size = model.parameters.size//model.M
+					# TODO: Sort out shape of variable parameters from arbitrary parameters returns
+					slices = slice(0,2*model.N)
 					if attr in ['variables']:
-						value = model.parameters(parameters)[:size]
+						value = model.parameters(parameters)[slices]
 					elif attr in ['variables.norm']:
-						value = model.parameters(parameters)[:size]
+						value = model.parameters(parameters)[slices]
 						value = norm(value)/(value.size)
 					elif attr in ['variables.relative']:
 						eps = 1e-20
-						value = model.parameters(parameters)[:size]
-						_value = model.parameters(attributes['parameters'][0])[:size]
+						value = model.parameters(parameters)[slices]
+						_value = model.parameters(attributes['parameters'][0])[slices]
 						value = abs((value - _value + eps)/(_value + eps))
 					elif attr in ['variables.relative.mean']:
 						eps = 1e-20
-						value = model.parameters(parameters)[:size]
-						_value = model.parameters(attributes['parameters'][0])[:size]
+						value = model.parameters(parameters)[slices]
+						_value = model.parameters(attributes['parameters'][0])[slices]
 						value = abs((value - _value + eps)/(_value + eps)).mean()
 
 				elif attr in ['objective']:
@@ -2212,21 +2213,45 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 		elif state.ndim == 1:
 		
-			subscripts = 'uij,jk,k->i'
-			shapes = (noise.shape,data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
+			if noise.ndim == 3:
 
-			def func(data,state,conj):
-				return einsummation(noise,data,state)	
+				subscripts = 'uij,jk,k->i'
+				shapes = (noise.shape,data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(noise,data,state)	
+
+			elif noise.ndim == 0:
+
+				subscripts = 'ij,j->i'
+				shapes = (data.shape,state.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(data,state) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2
+
 
 		elif state.ndim == 2:
 
-			subscripts = 'uij,jk,kl,ml,unm->in'
-			shapes = (noise.shape,data.shape,state.shape,data.shape,noise.shape)
-			einsummation = einsum(subscripts,*shapes)
+			if noise.ndim == 3:
 
-			def func(data,state,conj):
-				return einsummation(noise,data,state,conjugate(data),conjugate(noise))	
+				subscripts = 'uij,jk,kl,ml,unm->in'
+				shapes = (noise.shape,data.shape,state.shape,data.shape,noise.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(noise,data,state,conjugate(data),conjugate(noise))	
+
+			elif noise.ndim == 0:
+
+				subscripts = 'ij,jk,lk->il'
+				shapes = (data.shape,state.shape,data.shape)
+				einsummation = einsum(subscripts,*shapes)
+
+				def func(data,state,conj):
+					return einsummation(data,state,conjugate(data)) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2	
+
 
 	elif constants is not None and noise is not None:
 
@@ -2421,3 +2446,4 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 	func = jit(func)
 
 	return func
+	

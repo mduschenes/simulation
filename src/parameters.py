@@ -176,7 +176,7 @@ class Parameter(System):
 		group = list(group)
 		for subgroup in list(group):
 			
-			if locality.get(subgroup) in ['local']:
+			if locality.get(subgroup) in ['global']:
 				size = 1
 			else:
 				size = len([j for j in strings if strings[j]['group'] == subgroup])
@@ -193,7 +193,7 @@ class Parameter(System):
 
 			strings[i]['size'] = strings[i]['sizes'][group.index(strings[i]['group'])]
 
-			if locality.get(strings[i]['group']) in ['local']:
+			if locality.get(strings[i]['group']) in ['global']:
 				strings[i]['slices'] = sum(strings[i]['sizes'][:group.index(strings[i]['group'])])
 			else:
 				strings[i]['slices'] = sum(strings[i]['sizes'][:group.index(strings[i]['group'])]) + [j for j in strings if strings[j]['group'] == strings[i]['group']].index(i)
@@ -283,12 +283,7 @@ class Parameter(System):
 			elif self.method in ['constrained']:					
 			
 				def func(parameters):
-					parameters = bound(parameters[self.slices])
-					# shape = parameters.shape
-					# parameters = parameters.reshape(2,-1)
-					# parameters = self.parameters*parameters[0]*cos(2*pi*parameters[1] + self.kwargs['shift'])
-					# parameters = parameters.reshape(*shape)
-					return parameters
+					return self.parameters*bound(parameters[self.slices])
 
 			else:
 	
