@@ -839,31 +839,28 @@ class Noise(Object):
 		hermitian = True
 		unitary = False
 
-		if parameters > 0:
-			if operator is None:
-				data = [self.basis['I']()]
-			elif operator in ['phase']:
-				data = [sqrt(1-parameters)*self.basis['I'](),
-						sqrt(parameters)*self.basis['Z']()]
-			elif operator in ['amplitude']:
-				data = [self.basis['00']() + sqrt(1-parameters)*self.basis['11'](),
-						sqrt(parameters)*self.basis['01']()]
-			elif operator in ['depolarize']:
-				data = [sqrt(1-parameters)*self.basis['I'](),
-						sqrt(parameters/3)*self.basis['X'](),
-						sqrt(parameters/3)*self.basis['Y'](),
-						sqrt(parameters/3)*self.basis['Z']()]
-			elif operator in ['eps']:
-				data = array([identity(self.n,dtype=self.dtype),diag((1+parameters)**(arange(self.n)+2) - 1)])
-				hermitian = False
-				unitary = False
-			elif operator in ['noise','rand']:
-				data = array(parameters,dtype=datatype(self.dtype))#[identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
-				seed = prng(reset=self.seed)
-				hermitian = False
-				unitary = False
-			else:
-				data = [self.basis['I']()]
+		if operator is None:
+			data = [self.basis['I']()]
+		elif operator in ['phase']:
+			data = [sqrt(1-parameters)*self.basis['I'](),
+					sqrt(parameters)*self.basis['Z']()]
+		elif operator in ['amplitude']:
+			data = [self.basis['00']() + sqrt(1-parameters)*self.basis['11'](),
+					sqrt(parameters)*self.basis['01']()]
+		elif operator in ['depolarize']:
+			data = [sqrt(1-parameters)*self.basis['I'](),
+					sqrt(parameters/3)*self.basis['X'](),
+					sqrt(parameters/3)*self.basis['Y'](),
+					sqrt(parameters/3)*self.basis['Z']()]
+		elif operator in ['eps']:
+			data = array([identity(self.n,dtype=self.dtype),diag((1+parameters)**(arange(self.n)+2) - 1)])
+			hermitian = False
+			unitary = False
+		elif operator in ['noise','rand']:
+			data = array(parameters,dtype=datatype(self.dtype))#[identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
+			seed = prng(reset=self.seed)
+			hermitian = False
+			unitary = False
 		else:
 			data = [self.basis['I']()]
 
