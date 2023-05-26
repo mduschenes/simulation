@@ -1938,21 +1938,22 @@ class Callback(System):
 				elif attr in [
 					'variables','variables.norm','variables.relative','variables.relative.mean',
 					] and (do):
-					size = model.parameters.size//model.M
+					# TODO: Sort out shape of variable parameters from arbitrary parameters returns
+					slices = slice(0,2*model.N)
 					if attr in ['variables']:
-						value = model.parameters(parameters)[:size]
+						value = model.parameters(parameters)[slices]
 					elif attr in ['variables.norm']:
-						value = model.parameters(parameters)[:size]
+						value = model.parameters(parameters)[slices]
 						value = norm(value)/(value.size)
 					elif attr in ['variables.relative']:
 						eps = 1e-20
-						value = model.parameters(parameters)[:size]
-						_value = model.parameters(attributes['parameters'][0])[:size]
+						value = model.parameters(parameters)[slices]
+						_value = model.parameters(attributes['parameters'][0])[slices]
 						value = abs((value - _value + eps)/(_value + eps))
 					elif attr in ['variables.relative.mean']:
 						eps = 1e-20
-						value = model.parameters(parameters)[:size]
-						_value = model.parameters(attributes['parameters'][0])[:size]
+						value = model.parameters(parameters)[slices]
+						_value = model.parameters(attributes['parameters'][0])[slices]
 						value = abs((value - _value + eps)/(_value + eps)).mean()
 
 				elif attr in ['objective']:
