@@ -578,7 +578,6 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 			err = np.array(err)
 			value = np.array(err)
 			if err.size == 1:
-				err = np.asscalar(err)
 				err = [err]*2
 			elif err.ndim == 1:
 				if err.size == value.size:
