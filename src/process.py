@@ -612,18 +612,16 @@ def analyse(data,analyses=None,verbose=None):
 					return out
 			elif analysis in ['slice']:
 				def func(attrs,data):
-					function = lambda data: np.argsort(data,axis=0)#data.to_numpy().ravel())
+					function = lambda data: np.argsort(data,axis=0).to_numpy().ravel()
 					value = {attr: attrs[attr] if not isinstance(attrs[attr],dict) else attrs[attr].pop('value',None) for attr in attrs}
 					wrappers = {attr: None if not isinstance(attrs[attr],dict) else attrs[attr].pop('wrapper',None) for attr in attrs}					
 					kwargs = {attr: {} if not isinstance(attrs[attr],dict) else attrs[attr] for attr in attrs}
 					out = {attr: (data[[attr]].apply(wrappers[attr])) if wrappers[attr] is not None else data[[attr]] for attr in attrs}
 					out = {attr: (
-							(out[attr]>out[attr].iloc[:,function(out[attr]).iloc[:,min(0,value[attr])]]) & 
-							(out[attr]<out[attr].iloc[:,function(out[attr]).iloc[:min(len(out[attr])-1,len(out[attr])-1-value[attr])]])
+							(out[attr]>=out[attr].iloc[function(out[attr])[value[attr] if value[attr] < len(out[attr]) else 0]]) & 
+							(out[attr]<=out[attr].iloc[function(out[attr])[len(out[attr])-1-value[attr] if value[attr] < len(out[attr]) else -1]]) 
 							)
 							for attr in attrs}
-					print(out)
-					exit()
 					out = conditions([out[attr] for attr in attrs],op='and')
 					return out					
 			elif analysis in ['parse']:
