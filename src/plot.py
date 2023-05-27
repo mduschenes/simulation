@@ -557,26 +557,27 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 		err (iterable[iterable[int,float]]): Errors normalized as per value and scale
 	'''
 
+	if isinstance(scale,str):
+		scale = [scale]
+
 	if ((err is None) or (value is None) or 
 	   (scale is None)):
 	
 	   err = None
 
 	elif ((scale is None) or
-		  (isinstance(scale,str) and scale not in ['log','symlog']) or 
-		  (not isinstance(scale,str) and not any(i in ['log','symlog'] for i in scale))):
+		  (not any(i in ['log','symlog'] for i in scale))):
 	
 		err = err
 	
-	elif ((isinstance(scale,str) and scale in ['log','symlog']) or 
-		  (not isinstance(scale,str) and any(i in ['log','symlog'] for i in scale))):		
+	elif ((not isinstance(scale,str) and any(i in ['log','symlog'] for i in scale))):		
 		if isinstance(err,scalars):
 			err = [err]*2
 		elif is_naninf(err):
 			err = [err]*2
 		else:
 			err = np.array(err)
-			value = np.array(err)
+			value = np.array(value)
 			if err.size == 1:
 				err = [err]*2
 			elif err.ndim == 1:
@@ -987,7 +988,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					err = kwargs[attr].get(prop)
 					value = kwargs[attr].get(subprop)
 					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
-
+					
 					err = set_err(err=err,value=value,scale=scale)
 
 					kwargs[attr][prop] = err
@@ -1015,37 +1016,36 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					err = set_err(err=err,value=value,scale=scale)
 
-					# if axes in ['y'] and any(i in ['log'] for i in scale):
-					# 	print(axes,scale)
-					# 	print(((np.abs(value-err[0])/value) > 1).any())
-					# 	# print()
-					# 	# print((((value+err[1])/value) > 1).any())
-					# 	# print()
-					# 	print()
-
 					kwargs[attr][prop] = err
 
 				if ((kwargs[attr].get('y1') is not None) and (len(kwargs[attr].get('y1'))) and 
 					(kwargs[attr].get('y2') is not None) and (len(kwargs[attr].get('y2')))):
 					call = True
-					args.extend([kwargs[attr].get('x'),kwargs[attr].get('y1'),kwargs[attr].get('y2')])					
+					x = np.array(kwargs[attr].get('x')) if kwargs[attr].get('x') is not None else kwargs[attr].get('x')
+					y = np.array(kwargs[attr].get('y'))
+					yerr = [y-kwargs[attr].get('y1'),kwargs[attr].get('y2')-y]
+					args.extend([x,y-yerr[0],y+yerr[1]])
 				elif ((kwargs[attr].get('yerr') is None) and (len(kwargs[attr].get('yerr')))):
 					call = False
-					args.extend([kwargs[attr].get('x'),kwargs[attr].get('y'),kwargs[attr].get('y')])
+					x = np.array(kwargs[attr].get('x')) if kwargs[attr].get('x') is not None else kwargs[attr].get('x')
+					y = np.array(kwargs[attr].get('y'))
+					yerr = [0]*2
+					args.extend([x,y-yerr[0],y+yerr[1]])
 				elif ((kwargs[attr].get('yerr') is not None) and (len(kwargs[attr].get('yerr'))) and
 					  (kwargs[attr].get('y') is not None) and (len(kwargs[attr].get('y')))):
 					call = True
-					yerr = np.array(kwargs[attr].get('yerr'))
+					x = np.array(kwargs[attr].get('x')) if kwargs[attr].get('x') is not None else kwargs[attr].get('x')
 					y = np.array(kwargs[attr].get('y'))
-					x = kwargs[attr].get('x')
+					yerr = np.array(kwargs[attr].get('yerr'))
 					if ((yerr.ndim == 2) and (yerr.shape[0] == 2)):
-						args.extend([kwargs[attr].get('x'),y-yerr[0],y+yerr[1]])
+						args.extend([x,y-yerr[0],y+yerr[1]])
 					else:
 						args.extend([kwargs[attr].get('x'),y-yerr,y+yerr])
 				else:
 					args.extend([])
 					call = False
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS for k in AXES],*[OTHER]])
+
 
 			elif attr in ['scatter']:
 
