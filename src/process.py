@@ -907,15 +907,21 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		obj = np.array(list(obj))
 		obj = to_tuple(obj.mean(0))
 		return obj
+	def std(obj,*args,**kwargs):
+		obj = np.array(list(obj))
+		obj = to_tuple(obj.std(0,ddof=1))
+		return obj
 	def sem(obj,*args,**kwargs):
 		obj = np.array(list(obj))
-		obj = to_tuple(obj.std(0)/np.sqrt(obj.shape[0]))
+		obj = to_tuple(obj.std(0,ddof=1)/np.sqrt(obj.shape[0]))
 		return obj	
 
 	def mean_log(obj,*args,**kwargs):
 		return 10**(obj.apply('log10').mean())
+	def std_log(obj,*args,**kwargs):
+		return 10**(obj.apply('log10').std(ddof=1))
 	def sem_log(obj,*args,**kwargs):
-		return 10**(obj.apply('log10').sem())
+		return 10**(obj.apply('log10').sem(ddof=1))
 
 	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
 	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
@@ -947,9 +953,10 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		kwargs = keys[name][other].get('kwargs',None)
 
 
+		funcs = deepcopy(funcs)
 		stat = 'stat'
-		stats = {axes: {'':'mean','err':'sem'} for axes in dimensions}
-		functions = {'mean_log':mean_log,'sem_log':sem_log}
+		stats = {axes: {'':'mean','err':'std'} for axes in dimensions}
+		functions = {'mean_log':mean_log,'std_log':std_log,'sem_log':'sem_log'}
 		
 		if not funcs:
 			funcs = {stat:None}
@@ -959,7 +966,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 			if funcs[function] is None:
 				funcs[function] = {}
 			
-			for axes in dimensions:
+			for axes in stats:
 
 				if funcs[function].get(axes) is None:
 					funcs[function][axes] = {}
@@ -968,7 +975,6 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 					if func not in funcs[function][axes]:
 						funcs[function][axes][func] = stats[axes][func]
-		
 				for func in funcs[function][axes]:
 					
 					obj = funcs[function][axes][func]
@@ -980,25 +986,40 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 						elif obj in functions:
 							obj = functions[obj]
 						else:
-							print(obj,default,load(obj,default=default))
 							obj = load(obj,default=default)
 
 					if callable(obj):
 
 						if args is None:
 							arguments = ()
-						elif isinstance(args,dict):
-							arguments = args.get(function,())
 						else:
 							arguments = args
 						
+						if isinstance(arguments,dict) and any(i in arguments for i in funcs):
+							arguments = arguments.get(arguments,arguments)
+						if isinstance(arguments,dict) and any(i in arguments for i in stats):
+							arguments = arguments.get(axes,arguments)
+						if isinstance(arguments,dict) and any(i in arguments for i in stats[axes]):
+							arguments = arguments.get(func,arguments)
+
+						if isinstance(arguments,dict):
+							arguments = ()
+						
 						if kwargs is None:
 							keywords = {}
-						elif all(i in kwargs for i in funcs):
-							keywords = kwargs.get(function,{})
 						else:
 							keywords = kwargs
-						
+
+						if isinstance(keywords,dict) and any(i in keywords for i in funcs):
+							keywords = keywords.get(function,keywords)
+						if isinstance(keywords,dict) and any(i in keywords for i in stats):
+							keywords = keywords.get(axes,keywords)
+						if isinstance(keywords,dict) and any(i in keywords for i in stats[axes]):
+							keywords = keywords.get(func,keywords)
+
+						if not isinstance(keywords,dict):
+							keywords = {}
+
 						try:
 							obj = wraps(obj)(partial(obj,*arguments,**keywords))
 						except:
@@ -1006,7 +1027,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 					funcs[function][axes][func] = obj
 
-
+		# exit()
 		tmp = {}
 		for attr in wrappers:
 
@@ -1052,7 +1073,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 					  if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])] 
 					  for attr in data},
 			**{attr : [(delim.join(((attr,function,func))),
-						{'array':{'':mean,'err':sem}[func],
+						{'array':{'':mean,'err':std}[func],
 						 'object':'first',
 						 'dtype':funcs[function][axes][func]
 						}[dtypes[attr]]) 
@@ -2329,7 +2350,7 @@ def process(data,settings,hyperparameters,pwd=None,cwd=None,verbose=True):
 	
 	- Filter with booleans of all labels
 	- Group by non-null labels and independent
-	- Aggregate functions of dependent (mean,sem) for each group
+	- Aggregate functions of dependent (mean,std) for each group
 	- Assign new labels for functions with label.function 
 	- Regroup with non-null labels
 	
