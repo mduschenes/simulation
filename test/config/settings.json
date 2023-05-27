@@ -150,7 +150,8 @@
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},
-	"track":{}	
+	"track":{"iteration":[],"parameters":[],"objective":[],
+		"value":[],"grad":[],"search":[]}	
 	},
 "parameters":{
 	"xy": {

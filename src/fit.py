@@ -184,6 +184,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 	_x,_y = transform(_x,_y)
 
 	invgrad = gradtransform(x,y,parameters)
+
 	if xerr is not None:
 		i = 0
 		if xerr.ndim == 1:
