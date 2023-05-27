@@ -2893,8 +2893,9 @@ def mse(*operands,optimize=True,wrapper=None):
 	@jit
 	def func(*operands):
 		out = operands[0]-operands[1]
-		out = real(einsummation(out,conjugate(out),*operands[2:])/
-				   einsummation(operands[1],conjugate(operands[1]),*operands[2:]))
+		out = real(einsummation(out,out,*operands[2:]))
+		# out = real(einsummation(out,conjugate(out),*operands[2:])/
+		# 		   einsummation(operands[1],conjugate(operands[1]),*operands[2:]))
 		return wrapper(out,*operands)
 
 	if isarray:
@@ -5240,9 +5241,7 @@ def put(a,values,indices,axis):
 
 		# np.put_along_axis(a,indices,values,axis=axis)
 
-		if axis in [0]:
-			a = setitem(a,(indices),values)
-		elif axis in [a.ndim-1]:
+		if axis in [a.ndim-1]:
 			a = setitem(a,(Ellipsis,indices),values)
 		else:
 			raise ValueError("Not Implemented for axis %d"%(axis))
@@ -6864,13 +6863,12 @@ def initialize(data,shape,dtype=None,**kwargs):
 		if not all(isinstance(constant[i],dict) for i in constant):
 			axis = -1
 			constant = {axis:constant}
-		
 		for axis in constant:
 			indices = array([int(i) for i in constant[axis]])
 			values = array([constant[axis][i] for i in constant[axis]],dtype=dtype)
 			axis = int(axis)
 
-			data = put(data,values,indices,axis=axis)	
+			data = put(data,values,indices,axis=axis)
 
 	data = data.astype(dtype)
 

@@ -246,16 +246,17 @@ class Parameter(System):
 			'lambda':0,
 			'scale':[self.parameters,2*pi],
 			'shift':[[0],[-pi/2]],
+			'sigmoid':1,
 			'default':0,
 			}
-		self.kwargs.update({attr: kwargs.get(attr,defaults[attr]) for attr in defaults})
+		self.kwargs.update({attr: self.kwargs.get(attr,kwargs.get(attr,defaults[attr])) for attr in defaults})
 
 		for attr in self.kwargs:
 
 			if self.kwargs.get(attr) is None:
 				continue
 
-			if attr in ['lambda','scale','shift','default']:
+			if attr in ['lambda','scale','shift','sigmoid','default']:
 				
 				self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
 			
@@ -269,9 +270,9 @@ class Parameter(System):
 					indices = array([int(i) for i in constants])
 					values = array([constants[i] for i in constants],dtype=self.dtype)
 					axis = int(axis)
-					indices = (*(slice(None),)*(axis % self.ndim-1),indices)
+					ax = self.ndim - axis if axis < 0 else axis
+					indices = (*(slice(None),)*(max(0,ax-2)),indices,*(slice(None),)*(max(0,self.ndim - ax - 1)))
 					self.kwargs[attr][axis] = {'indices':indices,'values':values}
-	
 
 		if self.category in ['variable']:
 
@@ -280,13 +281,15 @@ class Parameter(System):
 				def func(parameters):
 					return self.parameters*bound(parameters[self.slices])
 
+			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
+				def func(parameters):
+					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
+
 			elif self.method in ['constrained']:					
-			
 				def func(parameters):
 					return self.parameters*bound(parameters[self.slices])
 
 			else:
-	
 				def func(parameters):
 					return self.parameters*parameters[self.slices]
 		
@@ -294,7 +297,15 @@ class Parameter(System):
 
 			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
 				def constraint(parameters):
-					return self.kwargs['lambda']*((parameters[...,self.kwargs['constant'][-1]['indices']] - self.kwargs['constant'][-1]['values'])**2).sum()
+					return self.kwargs['lambda']*(
+						(parameters[self.kwargs['constant'][-1]['indices']] - 
+						  self.kwargs['constant'][-1]['values'])**2
+						).sum()
+					# return self.kwargs['lambda']*sum(
+					# 	((parameters[self.kwargs['constant'][i]['indices']] - 
+					# 	  self.kwargs['constant'][i]['values'])**2).sum() 
+					# 	for i in self.kwargs['constant'])
+			
 			else:
 				def constraint(parameters):
 					return self.kwargs['default']
@@ -452,9 +463,8 @@ class Parameters(System):
 				slc = None
 				index = self[parameter].indices
 
-
 			slc = [max((i[-1] for i in slices),default=0),slc] if slc is not None else [0,0]
-			index = [i for i in index]
+			index = [int(i) for i in index]
 
 			slices.append(slc)
 			indices.extend(index)

@@ -48,6 +48,7 @@ def test_err(path=None,tol=None):
 	x = sort(rand((n,),bounds=[0,1],key=key['x']))
 	parameters = array([rand(bounds=[0,1],key=key['parameters_'][0]),rand(bounds=[-1,0],key=key['parameters_'][1])])[:d].ravel()
 	y = model(parameters,x) 
+
 	xerr = None
 	yerr = sigma*rand(n,bounds=[-1,1],key=key['yerr']) if (sigma is not None and sigma>0) else None
 	yerr = sigma*ones(n) if (sigma is not None and sigma>0) else None
@@ -65,7 +66,6 @@ def test_err(path=None,tol=None):
 	def func(parameters,x):
 		y = parameters[0] + parameters[1]*x
 		return y
-
 
 	_n = n*10
 	_x = logspace(int(log10(x.min()))-2,int(log10(x.max())),_n)

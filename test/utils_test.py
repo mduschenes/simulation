@@ -472,6 +472,7 @@ def test_rand(path,tol):
 		{'shape':(2,5,2),'random':'rand'},
 		]
 	seed = 1234
+	reset = 1234
 	size = len(kwargs)
 	a = [[] for i in range(size)]
 
@@ -479,7 +480,7 @@ def test_rand(path,tol):
 	os.environ['NUMPY_BACKEND'] = 'JAX.AUTOGRAD'
 	reload(src.utils)
 	from src.utils import array,rand,prng,BACKEND
-	keys = prng(seed,size=size)
+	keys = prng(seed,reset=reset,size=size)
 	for i in range(size):
 		kwargs[i]['key'] = keys[i]
 		a[i].append(rand(**kwargs[i]))
@@ -487,7 +488,7 @@ def test_rand(path,tol):
 	os.environ['NUMPY_BACKEND'] = 'AUTOGRAD'
 	reload(src.utils)
 	from src.utils import array,rand,prng,BACKEND
-	keys = prng(seed,size=size)
+	keys = prng(seed,reset=reset,size=size)
 	for i in range(size):
 		kwargs[i]['key'] = keys[i]
 		a[i].append(rand(**kwargs[i]))
