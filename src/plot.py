@@ -593,7 +593,7 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 		if allclose(err,0):
 			err = None
 		else:
-			err = np.array([value*(1-(value/(value+err[0]))),np.ones(value.shape)*err[1]])
+			err = np.array([value*(1-(value/(value+err[1]))),np.ones(value.shape)*err[1]])
 
 	else:
 	
@@ -1014,6 +1014,14 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
 
 					err = set_err(err=err,value=value,scale=scale)
+
+					# if axes in ['y'] and any(i in ['log'] for i in scale):
+					# 	print(axes,scale)
+					# 	print(((np.abs(value-err[0])/value) > 1).any())
+					# 	# print()
+					# 	# print((((value+err[1])/value) > 1).any())
+					# 	# print()
+					# 	print()
 
 					kwargs[attr][prop] = err
 

@@ -20,29 +20,18 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-def func_objective_min_mean(data,attr="objective",func="min",stat='mean',**kwargs):
+def func_stat(data,func="min",stat='mean',**kwargs):
 	default = lambda data: (lambda *args,data=data,**kwargs: data)
-	attr = slice(None) if attr is None else attr
-	out = getattr(data[attr],func,default(data[attr]))(**kwargs)
-	return getattr(out,stat,default(out))()
+	stat = {'sem':lambda data,**kwargs:data.std()/np.sqrt(data.size)}.get(stat,stat) if isinstance(stat,str) else stat
+	out = getattr(data,func,default(data))(**kwargs) if isinstance(func,str) else func(data,**kwargs)
+	return getattr(out,stat,default(out))(**kwargs) if isinstance(stat,str) else stat(out,**kwargs)
 
-def func_objective_min_sem(data,attr="objective",func="min",stat='sem',**kwargs):
+def func_attr_stat(data,attr="objective",func="min",stat='mean',**kwargs):
 	default = lambda data: (lambda *args,data=data,**kwargs: data)
+	stat = {'sem':lambda data,**kwargs:data.std()/np.sqrt(data.size)}.get(stat,stat) if isinstance(stat,str) else stat
 	attr = slice(None) if attr is None else attr
-	out = getattr(data[attr],func,default(data[attr]))(**kwargs)
-	return getattr(out,stat,default(out))()	
-
-def func_objective_max_mean(data,attr="objective",func="max",stat='mean',**kwargs):
-	default = lambda data: (lambda *args,data=data,**kwargs: data)
-	attr = slice(None) if attr is None else attr
-	out = getattr(data[attr],func,default(data[attr]))(**kwargs)
-	return getattr(out,stat,default(out))()
-
-def func_objective_max_sem(data,attr="objective",func="max",stat='sem',**kwargs):
-	default = lambda data: (lambda *args,data=data,**kwargs: data)
-	attr = slice(None) if attr is None else attr
-	out = getattr(data[attr],func,default(data[attr]))(**kwargs)
-	return getattr(out,stat,default(out))()	
+	out = getattr(data,func,default(data))(**kwargs) if isinstance(func,str) else func(data,**kwargs)
+	return getattr(out,stat,default(out))(**kwargs) if isinstance(stat,str) else stat(out,**kwargs)
 
 def func_MN(data):
 	return data['M']/data['N']
