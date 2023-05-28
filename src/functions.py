@@ -36,10 +36,18 @@ def func_attr_stat(data,attr="objective",func="min",stat='mean',**kwargs):
 def func_MN(data):
 	return data['M']/data['N']
 
-def func_tau(data):
+def func_tau_unit(data):
+	return data['tau']/data.get('unit',1)
+
+def func_T_unit(data):
+	return data['T']/data.get('unit',1)
+
+
+
+def func_tau_noise_scale(data):
 	return data['tau']/data.get('noise.scale',1)
 
-def func_T(data):
+def func_T_noise_scale(data):
 	return data['T']/data.get('noise.scale',1)
 
 
