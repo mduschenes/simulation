@@ -456,7 +456,7 @@
 				},
 				{
 					"x": "iteration",
-					"y": "objective",
+					"y": "grad.norm",
 					"label": {
 						"label": {
 							"N": null,

@@ -244,8 +244,8 @@ class Parameter(System):
 		defaults = {
 			'constant':self.constant,
 			'lambda':0,
-			'scale':[self.parameters,2*pi],
-			'shift':[[0],[-pi/2]],
+			'scale':[1,2*pi],
+			'shift':[0,-pi/2],
 			'sigmoid':1,
 			'default':0,
 			}
@@ -281,34 +281,63 @@ class Parameter(System):
 				def func(parameters):
 					return self.parameters*bound(parameters[self.slices])
 
-			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
+			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['scale','shift','sigmoid']):
+		
 				def func(parameters):
-					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
+					return self.parameters*bound((
+						(self.kwargs['scale'][0]*parameters[self.slices][0::2])*
+						cos(self.kwargs['scale'][1]*parameters[self.slices][1::2][None,...] + self.kwargs['shift'][...,None,None])
+						).reshape(-1,*parameters.shape[1:]),scale=self.kwargs['sigmoid'])
 
 			elif self.method in ['constrained']:					
+		
 				def func(parameters):
-					return self.parameters*bound(parameters[self.slices])
+					return self.parameters*bound(parameters)
 
 			else:
-				def func(parameters):
-					return self.parameters*parameters[self.slices]
-		
+
+				if isinstance(self.method,dict):
+					func = self.method.get('func')
+				elif isinstance(self.method,str):
+					func = self.method
+				else:
+					func = None
+				
+				func = load(func)
+
+				if func is None:
+					def func(parameters):
+						return self.parameters*parameters[self.slices]
+				else:
+					func = partial(func,self=self)
 	
 
 			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
+			
 				def constraint(parameters):
-					return self.kwargs['lambda']*(
-						(parameters[self.kwargs['constant'][-1]['indices']] - 
-						  self.kwargs['constant'][-1]['values'])**2
-						).sum()
-					# return self.kwargs['lambda']*sum(
-					# 	((parameters[self.kwargs['constant'][i]['indices']] - 
-					# 	  self.kwargs['constant'][i]['values'])**2).sum() 
-					# 	for i in self.kwargs['constant'])
+					return self.kwargs['lambda']*sum(
+						((parameters[self.kwargs['constant'][i]['indices']] - 
+						  self.kwargs['constant'][i]['values'])**2).sum() 
+						for i in self.kwargs['constant'])
 			
 			else:
-				def constraint(parameters):
-					return self.kwargs['default']
+
+				if isinstance(self.method,dict):
+					constraint = self.method.get('constraint')
+				elif isinstance(self.method,str):
+					constraint = None
+				else:
+					constraint = None
+				
+				constraint = load(constraint)
+
+				if constraint is None:
+			
+					def constraint(parameters):
+						return self.kwargs['default']
+
+				else:
+					constraint = partial(constraint,self=self)
 
 		else:
 		
