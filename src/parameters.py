@@ -276,14 +276,20 @@ class Parameter(System):
 
 		if self.category in ['variable']:
 
-			if self.method in ['bounded']:
+			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 		
+				def func(parameters):
+					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
+					
+			elif self.method in ['bounded']:
+
 				def func(parameters):
 					return self.parameters*bound(parameters[self.slices])
 
 			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['scale','shift','sigmoid']):
 		
 				def func(parameters):
+					print(self.slices)
 					return self.parameters*bound((
 						(self.kwargs['scale'][0]*parameters[self.slices][:self.slices.size//2])*
 						cos(self.kwargs['scale'][1]*parameters[self.slices][self.slices.size//2:][None,...] + self.kwargs['shift'][...,None,None])
@@ -551,6 +557,11 @@ class Parameters(System):
 		self.size = self.data.size if data is not None else None
 		self.ndim = self.data.ndim if data is not None else None
 		self.dtype = self.data.dtype if data is not None else None
+
+		for parameter in self:
+			print(parameter,self[parameter].slices,self[parameter].indices)
+		print(self.slices)
+		print(self.indices)
 
 		return
 

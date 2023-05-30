@@ -1692,7 +1692,7 @@ class Unitary(Hamiltonian):
 		parameters = self.trotterize(parameters)
 
 		gradient_trotterize = jit(lambda grad,P=self.P: gradient_trotter(grad,P))
-		slices = arange(self.parameters.size//prod(shape[1:]))
+		slices = array([j for parameter in self.parameters for j in self.parameters[parameter].slices if self.parameters[parameter].category in ['variable']])
 		reshape = (*shape[1:],-1,*self.shape)
 		transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
 		shapes = (-1,*self.shape)

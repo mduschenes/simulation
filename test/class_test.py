@@ -271,22 +271,30 @@ def test_parameters(path,tol):
 	for i in range(size):
 		locality = model.parameters[parameter].locality.get(model.parameters[parameter].group[i])
 		if (locality in ['local',None]):
-			slices = slice(None)
+			index = arange(parameters.shape[0])
 		elif (locality in ['global']):
-			slices = array([i for i in range(parameters.shape[0]) for j in range(N)])
+			index = array([j for j in model.parameters[parameter].slices])
+		
+		if method in ['constrained']:
+			slices = arange(model.parameters[parameter].slices.size//size)
+		else:
+			slices = arange(i*(model.parameters[parameter].slices.size//size),(i+1)*(model.parameters[parameter].slices.size//size))
+		_slices = arange(0,i*(model.parameters[parameter].slices.size//size))
 
-		features = parameters[slices]
+		features = parameters[index]
 
 		wrapper = wrappers[i]
 		func = funcs[i]
 		kwds = kwargs[i]
-		indices = slice(i*N,(i+1)*N)
-		vars = model.parameters[parameter].parameters*wrapper(func(features,**kwds))
-		if not allclose(variables[indices],vars):
-			print(vars)
-			print(variables[indices])
+		indices = slice(_slices.size,_slices.size+slices.size)
+		vars = model.parameters[parameter].parameters*wrapper(func(features,**kwds))[slices]
+		print(index,slices,_slices,indices,features.shape,parameters.shape,variables[indices].shape,vars.shape)
+		print(vars)
+		print(variables[indices])
+		if (variables[indices].shape != vars.shape) or not allclose(variables[indices],vars):
 			raise ValueError("Incorrect parameter initialization %d %r"%(i,model.parameters))
-
+		print()
+	print('Done')
 	return
 
 
