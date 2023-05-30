@@ -1908,15 +1908,6 @@ def plotter(settings,hyperparameters,verbose=None):
 					if data.get(attr%(axes)) is None:
 						continue
 					else:
-						norm = data.get('norm')
-						scale = data.get('scale')
-						if norm is None:
-							norm = {'vmin':min(data.get('value',[]),default=0),'vmax':max(data.get('value',[]),default=1)}
-						elif not isinstance(norm,dict):
-							norm = {'vmin':min(norm),'vmax':max(norm)}
-						else:
-							norm = {'vmin':norm.get('vmin',0),'vmax':norm.get('vmax',1)}
-
 						value = items
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 
