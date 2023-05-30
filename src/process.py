@@ -690,7 +690,9 @@ def analyse(data,analyses=None,verbose=None):
 
 			for attrs in args:
 				if analysis in ['zscore','quantile','slice','parse']:
-					value = func(attrs,data).to_numpy()
+					value = func(attrs,data)
+					print(value)
+					value = value.to_numpy() if not isinstance(value,bool) else value
 					out = conditions([out,value],op='and')
 				elif analysis in ['abs','log','log10','replace','func']:
 					data = func(attrs,data)
