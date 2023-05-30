@@ -93,7 +93,7 @@
 		"z":{"operator":["Z"],"site":"i","string":"z","parameters":null},
 		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz","parameters":null}
 		},
-	"N":2,
+	"N":3,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -157,10 +157,9 @@
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"method":"constrained",
-		"method":null,
+		"method":"unconstrained",
 		"group":[["x"],["y"]],
-		"locality":null,
+		"locality":"local",
 		"bounds":[-1,1],
 		"attributes":["M"],		
 		"data":null,
@@ -172,7 +171,6 @@
 			"interpolation":3,
 			"smoothness":2
 			},
-		"initialization":0.25,
 		"constant":{"-1":{"0":0,"-1":0}},
 		"constant":null,
 		"args":[],
@@ -199,7 +197,7 @@
 		"category":"constant",
 		"method":null,		
 		"group":[["zz"]],
-		"data":[1,1,1,1,1,1,1,1],								
+		"data":[1,-1,1,1,1,1,1,1],								
 		"parameters":1,
 		"bounds":[-1,1],
 		"locality":null,

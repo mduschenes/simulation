@@ -131,7 +131,7 @@ class Parameter(System):
 		self.category = self.category if self.category is not None else None
 		self.method = self.method if self.method is not None else None
 		self.group = (*((*group,) if not isinstance(group,str) else (group,) for group in self.group),)  if self.group is not None else ()
-		self.locality = {group: self.locality if isinstance(self.locality,str) else self.locality.get(subgroup) if isinstance(self.locality,dict) else self.locality[i] for i,group in enumerate(self.group)} if self.locality is not None else {}
+		self.locality = {group: self.locality if self.locality is None or isinstance(self.locality,str) else self.locality.get(subgroup) if isinstance(self.locality,dict) else self.locality[i] for i,group in enumerate(self.group)}
 		self.model = self.model if self.model is not None else None
 		self.attributes = [attr for attr in self.attributes if getattr(self.model,attr,None) is not None] if self.attributes is not None else ()
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
@@ -276,8 +276,13 @@ class Parameter(System):
 
 		if self.category in ['variable']:
 
-			if self.method in ['bounded']:
+			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 		
+				def func(parameters):
+					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
+					
+			elif self.method in ['bounded']:
+
 				def func(parameters):
 					return self.parameters*bound(parameters[self.slices])
 
@@ -285,8 +290,8 @@ class Parameter(System):
 		
 				def func(parameters):
 					return self.parameters*bound((
-						(self.kwargs['scale'][0]*parameters[self.slices][0::2])*
-						cos(self.kwargs['scale'][1]*parameters[self.slices][1::2][None,...] + self.kwargs['shift'][...,None,None])
+						(self.kwargs['scale'][0]*parameters[self.slices][:self.slices.size//2])*
+						cos(self.kwargs['scale'][1]*parameters[self.slices][self.slices.size//2:][None,...] + self.kwargs['shift'][...,None,None])
 						).reshape(-1,*parameters.shape[1:]),scale=self.kwargs['sigmoid'])
 
 			elif self.method in ['constrained']:					
