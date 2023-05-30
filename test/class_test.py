@@ -237,52 +237,55 @@ def test_parameters(path,tol):
 	print(variables.round(6))
 
 
+	parameter = 'xy'
 	shape = parameters.shape
-	parameter = 'xy'	
+	category = model.parameters[parameter].category
+	method = model.parameters[parameter].method	
+	size = len(model.parameters[parameter].group)
+	null = lambda parameters,**kwargs: parameters
 
-	print(model.parameters[parameter].category,model.parameters[parameter].method,model.parameters[parameter].constraints(model.parameters()))
+	print('Parameters / Constraints :::',category,method,model.parameters[parameter].constraints(model.parameters()))
 
-	if (model.parameters[parameter].method in [None,'unconstrained']):
-		slices = slice(parameters.shape[0])
-		vars = parameters
-		if not allclose(variables[slices],vars):
+	if (method in [None,'unconstrained']):
+		
+		wrappers = [null,null]
+		funcs = [null,null]
+		kwargs = [{},{}]
+
+	elif (method in ['constrained']):
+
+		wrappers = [bound,bound]
+		funcs = [
+			lambda parameters,**kwargs: kwargs['scale'][0]*parameters[:parameters.shape[0]//2]*cos(kwargs['scale'][1]*parameters[parameters.shape[0]//2:]),
+			lambda parameters,**kwargs: kwargs['scale'][0]*parameters[:parameters.shape[0]//2]*cos(kwargs['scale'][1]*parameters[parameters.shape[0]//2:] + kwargs['shift']),
+		]
+		kwargs = [{'scale':[1,2*pi],'shift':0},{'scale':[1,2*pi],'shift':-pi/2}]
+
+	elif (method in ['bounded']):
+
+		wrappers = [bound,bound]
+		funcs = [null,null]
+		kwargs = [{},{}]
+
+
+	for i in range(size):
+		locality = model.parameters[parameter].locality.get(model.parameters[parameter].group[i])
+		if (locality in ['local',None]):
+			slices = slice(None)
+		elif (locality in ['global']):
+			slices = array([i for i in range(parameters.shape[0]) for j in range(N)])
+
+		features = parameters[slices]
+
+		wrapper = wrappers[i]
+		func = funcs[i]
+		kwds = kwargs[i]
+		indices = slice(i*N,(i+1)*N)
+		vars = model.parameters[parameter].parameters*wrapper(func(features,**kwds))
+		if not allclose(variables[indices],vars):
 			print(vars)
-			print(variables[slices])
-			raise ValueError("Incorrect parameter initialization %r"%(model.parameters))
-	
-	elif (model.parameters[parameter].method in ['constrained']):
-		G = len(model.parameters[parameter].group)
-		wrapper = bound
-		funcs = [cos,sin]
-		scale = [model.parameters[parameter].parameters,2*pi]
-		features = wrapper(parameters)
-
-		for i in range(G):
-			func = funcs[i]
-			slices = slice(i,features.shape[0],2)
-			vars = scale[0]*features[0::2]*func(scale[1]*features[1::2])
-			if not allclose(variables[slices],vars):
-				print(vars)
-				print(variables[slices])
-				raise ValueError("Incorrect parameter initialization %d %r"%(i,model.parameters))
-
-	elif (model.parameters[parameter].method in ['bounded']):
-		G = len(model.parameters[parameter].group)
-		wrapper = bound
-		scale = [model.parameters[parameter].parameters,2*pi]		
-		features = wrapper(parameters)
-
-		for i in range(G):
-			slices = slice(i,features.shape[0],2)
-			vars = scale[0]*features[slices]
-			if not allclose(variables[slices],vars):
-				print(vars)
-				print(variables[slices])
-				raise ValueError("Incorrect parameter initialization %r"%(model.parameters))
-
-
-
-
+			print(variables[indices])
+			raise ValueError("Incorrect parameter initialization %d %r"%(i,model.parameters))
 
 	return
 
@@ -761,6 +764,7 @@ if __name__ == '__main__':
 	func = test_fisher
 	func = test_hessian
 	func = check_machine_precision
+	func = test_parameters
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)
