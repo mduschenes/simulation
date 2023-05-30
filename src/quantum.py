@@ -1353,10 +1353,12 @@ class Operators(Object):
 
 		for attr in ['parameters.%s'%(i) for i in (self.parameters if self.parameters is not None else [])]:
 			string = []
-			for subattr in ['category','method','shape','parameters']:
+			for subattr in ['category','method','locality','shape','parameters']:
 				substring = getattrs(self,delim.join([attr,subattr]),delimiter=delim,default=None)
 				if isinstance(substring,(str,int,list,tuple,*arrays)):
 					substring = '%s'%(substring,)
+				elif isinstance(substring,dict):
+					substring = ', '.join(['%s: %s'%(prop,substring[prop]) for prop in substring])	
 				elif substring is not None:
 					substring = '%0.4e'%(substring)
 				else:
@@ -1690,7 +1692,7 @@ class Unitary(Hamiltonian):
 		parameters = self.trotterize(parameters)
 
 		gradient_trotterize = jit(lambda grad,P=self.P: gradient_trotter(grad,P))
-		slices = arange(self.parameters.size//prod(shape[1:]))
+		slices = array([j for parameter in self.parameters for j in self.parameters[parameter].slices if self.parameters[parameter].category in ['variable']])
 		reshape = (*shape[1:],-1,*self.shape)
 		transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
 		shapes = (-1,*self.shape)
