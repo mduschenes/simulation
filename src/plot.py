@@ -1236,7 +1236,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							try:
 								_obj = getattr(_obj,_kwarg)
 							except Exception as exception:
-								break									
+								break
 						if isinstance(kwargs[attr][kwarg],dict):
 							try:
 								if _kwarg.startswith('get_'):

@@ -1888,7 +1888,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							elif scale in ['linear']:
 								value = np.array(value)
 								value = np.linspace(*value,size)
-							elif scale in ['log']:
+							elif scale in ['log','symlog']:
 								value = np.log10(value)
 								value = np.logspace(*value,size)
 							else:
@@ -1908,22 +1908,30 @@ def plotter(settings,hyperparameters,verbose=None):
 					if data.get(attr%(axes)) is None:
 						continue
 					else:
+						scale = data.get('scale')
 						value = items
+						print(items)
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 
 							length = len(value)+1
 							size = data[attr%(axes)][kwarg]
-							slices = slice(0,length,max(1,(length-1)//size))
+							step = (length-1)//size
 
 							if data[attr%(axes)][kwarg] == 1:
 								value = [(value[0]+value[-1])/2]
-							else:
-								value = value[slices]
+							elif step > 0:
+								value = value[slice(0,length,step)]
+							elif scale in ['log','symlog']:
+								value = np.logspace(min(value),max(value),size)
+							elif scale in ['linear']:
+								value = np.linspace(min(value),max(value),size)
 						else:
 							value = data[attr%(axes)][kwarg]
 
-					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in value]
-
+					if value is not None:
+						data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in value]
+					else:
+						data[attr%(axes)][kwarg] = value
 
 			# set legend
 			prop = 'legend'
