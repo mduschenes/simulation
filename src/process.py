@@ -1921,9 +1921,8 @@ def plotter(settings,hyperparameters,verbose=None):
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 
 							length = len(value)+1
-							size = max(1,len(set((*data.get('value',[]),*value)))//min(len(set((*data.get('value',[]),*value))),data[attr%(axes)][kwarg]))
-							size = size-1 if (length-1)//((length-1)//size) > size else size
-							slices = slice(0,length,(length-1)//size)
+							size = data[attr%(axes)][kwarg]
+							slices = slice(0,length,max(1,(length-1)//size))
 
 							if data[attr%(axes)][kwarg] == 1:
 								value = [(value[0]+value[-1])/2]
