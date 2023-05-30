@@ -27,6 +27,7 @@
 							"backend": null,
 							"noise.parameters": null
 						},
+                        "analysis":{"zscore":{"objective":3}},					
 						"legend": {
 							"sort": [
 								"N",
@@ -109,6 +110,7 @@
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
+                        "analysis":{"zscore":{"objective":3}},					
 						"legend": {
 							"include": false,
 							"exclude": true
@@ -185,6 +187,7 @@
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},						
+                        "analysis":{"zscore":{"objective":3}},						
 						"legend": {
 							"include": false,
 							"exclude": true
@@ -261,6 +264,7 @@
 							"backend": null,
 							"noise.parameters": null
 						},
+                        "analysis":{"zscore":{"objective":3}},					
 						"legend": {
 							"exclude": [
 								"M",
