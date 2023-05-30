@@ -394,6 +394,7 @@ def parse(key,value,data,verbose=None):
 			'#i,j,k,...#' (index value),
 			'%start,stop,step%' (slice value),
 			'*pattern,*' (regex pattern),
+			':func,:' (function type), 			
 			'<upper<' (exclusive upper bound value),
 			'>lower>' (exclusive lower bound value),
 			'<=upper<=' (inclusive upper bound value),
@@ -407,7 +408,7 @@ def parse(key,value,data,verbose=None):
 		out (dataframe): Condition on data indices
 	'''
 	negators = ['!','~']
-	delimiters = ['$','@','#','%','*','<','>','<=','>=','==','!=']
+	delimiters = ['$','@','*',':','#','%','<','>','<=','>=','==','!=']
 	parserator = ';'
 	separator = ','
 
@@ -436,7 +437,7 @@ def parse(key,value,data,verbose=None):
 					break
 
 			for delimiter in delimiters:
-				
+
 				if value.startswith(delimiter) and value.endswith(delimiter):
 				
 					values = value[len(delimiter):-len(delimiter)].split(separator)
@@ -481,6 +482,18 @@ def parse(key,value,data,verbose=None):
 								out = data[key].isin(data[key].unique()[slice(*values)])
 							except:
 								out = not default
+
+					elif delimiter in [':']: # Data value: func
+						
+						parser = lambda value: (to_str(value) if len(value)>0 else null)
+						values = [i for value in values for i in [parser(value),value]]           
+						values = [value for value in values if (value is not null)]
+
+						if values and (values is not null):
+							try:
+								out = conditions([data[key]==getattr(data[key],value)() for value in values if hasattr(data[key],value)],op='or')
+							except:
+								out = not default 
 
 					elif delimiter in ['*']: # Regex value pattern
 						def parser(value):
@@ -540,6 +553,7 @@ def parse(key,value,data,verbose=None):
 
 						if values and (values is not null):
 							out = conditions([data[key] != value for value in values],op='or')																												
+
 
 					if negate:
 						out = ~out

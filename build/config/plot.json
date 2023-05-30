@@ -105,9 +105,86 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null,
-							"instance": null
+							"noise.parameters": null
 						},
+						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
+						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
+						"legend": {
+							"include": false,
+							"exclude": true
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						}
+					},
+					"marker": {
+						"@noise.parameters@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"alpha": 0.2,
+					"alpha": {
+						"@N@": [0.2]
+					},
+					"markersize": 12,
+					"linestyle": "-",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
+					"ecolor": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					}
+				},
+				{
+					"x": "iteration",
+					"y": "objective",
+					"label": {
+						"label": {
+							"N": null,
+							"parameters.xy.method": null,
+							"M": null,
+							"backend": null,
+							"noise.parameters": null
+						},
+						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
+						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},						
 						"legend": {
 							"include": false,
 							"exclude": true
@@ -463,9 +540,86 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null,
-							"instance": null
+							"noise.parameters": null
 						},
+						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
+						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
+						"legend": {
+							"include": false,
+							"exclude": true
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						}
+					},
+					"marker": {
+						"@noise.parameters@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"alpha": 0.2,
+					"alpha": {
+						"@N@": [0.2]
+					},
+					"markersize": 12,
+					"linestyle": "-",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
+					"ecolor": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					}
+				},
+				{
+					"x": "iteration",
+					"y": "grad.norm",
+					"label": {
+						"label": {
+							"N": null,
+							"parameters.xy.method": null,
+							"M": null,
+							"backend": null,
+							"noise.parameters": null
+						},
+						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
+						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},
 						"legend": {
 							"include": false,
 							"exclude": true
@@ -822,9 +976,85 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null,
-							"instance": null
+							"noise.parameters": null
 						},
+						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
+						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
+						"legend": {
+							"include": false,
+							"exclude": true
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						}
+					},
+					"marker": {
+						"@noise.parameters@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"alpha": {
+						"@N@": [0.2]
+					},					
+					"markersize": 12,
+					"linestyle": "-",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
+					"ecolor": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					}
+				},
+				{
+					"x": "iteration",
+					"y": "search.norm",
+					"label": {
+						"label": {
+							"N": null,
+							"parameters.xy.method": null,
+							"M": null,
+							"backend": null,
+							"noise.parameters": null
+						},
+						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
+						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},
 						"legend": {
 							"include": false,
 							"exclude": true
@@ -1433,9 +1663,86 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null,
-							"instance": null
+							"noise.parameters": null
 						},
+						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
+						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
+						"legend": {
+							"include": false,
+							"exclude": true
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						}
+					},
+					"marker": {
+						"@noise.parameters@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"alpha": 0.2,
+					"alpha": {
+						"@N@": [0.2]
+					},					
+					"markersize": 12,
+					"linestyle": "-",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
+					"ecolor": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					}
+				},
+				{
+					"x": "iteration",
+					"y": "alpha",
+					"label": {
+						"label": {
+							"N": null,
+							"parameters.xy.method": null,
+							"M": null,
+							"backend": null,
+							"noise.parameters": null
+						},
+						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
+						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},						
 						"legend": {
 							"include": false,
 							"exclude": true
@@ -1792,9 +2099,86 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null,
-							"instance": null
+							"noise.parameters": null
 						},
+						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
+						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
+						"legend": {
+							"include": false,
+							"exclude": true
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						}
+					},
+					"marker": {
+						"@noise.parameters@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"alpha": 0.2,
+					"alpha": {
+						"@N@": [0.4,0.6,0.8]
+					},
+					"markersize": 12,
+					"linestyle": "-",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
+					"ecolor": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					}
+				},
+				{
+					"x": "iteration",
+					"y": "beta",
+					"label": {
+						"label": {
+							"N": null,
+							"parameters.xy.method": null,
+							"M": null,
+							"backend": null,
+							"noise.parameters": null
+						},
+						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
+						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},						
 						"legend": {
 							"include": false,
 							"exclude": true
