@@ -136,6 +136,7 @@
 					"alpha": {
 						"@N@": [0.2]
 					},
+					"alpha":0.2,					
 					"markersize": 12,
 					"linestyle": "-",
 					"linewidth": 4,
@@ -213,6 +214,7 @@
 					"alpha": {
 						"@N@": [0.2]
 					},
+					"alpha":0.2,
 					"markersize": 12,
 					"linestyle": "-",
 					"linewidth": 4,
@@ -294,6 +296,47 @@
 					}
 				}
 			],
+			"set_colorbar": {
+				"value": {
+					"@M@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.1,
+				"set_label": {
+					"label": "M",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 7,
+					"size": 50
+				},
+				"set_ticklabels": {
+					"ticklabels": 7,
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},				
 			"set_ylabel": {
 				"ylabel": "$\\textrm{Infidelity}$"
 			},
@@ -415,7 +458,8 @@
 					"level": 100
 				},
 				"update": null
-			}
+			},
+			"legend":null
 		},
 		"style": {
 			"texify": null,
@@ -729,6 +773,47 @@
 					}
 				}
 			],
+			"set_colorbar": {
+				"value": {
+					"@M@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.1,
+				"set_label": {
+					"label": "M",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 7,
+					"size": 50
+				},
+				"set_ticklabels": {
+					"ticklabels": 7,
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},				
 			"set_ylabel": {
 				"ylabel": "$\\textrm{Infidelity}$"
 			},
@@ -850,7 +935,8 @@
 					"level": 100
 				},
 				"update": null
-			}
+			},
+			"legend":null
 		},
 		"style": {
 			"texify": null,
@@ -1163,6 +1249,47 @@
 					}
 				}
 			],
+			"set_colorbar": {
+				"value": {
+					"@M@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.1,
+				"set_label": {
+					"label": "M",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 7,
+					"size": 50
+				},
+				"set_ticklabels": {
+					"ticklabels": 7,
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},				
 			"set_ylabel": {
 				"ylabel": "$\\textrm{Infidelity}$"
 			},
@@ -1284,7 +1411,8 @@
 					"level": 100
 				},
 				"update": null
-			}
+			},
+			"legend":null
 		},
 		"style": {
 			"texify": null,
@@ -1852,6 +1980,47 @@
 					}
 				}
 			],
+			"set_colorbar": {
+				"value": {
+					"@M@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.1,
+				"set_label": {
+					"label": "M",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 7,
+					"size": 50
+				},
+				"set_ticklabels": {
+					"ticklabels": 7,
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},				
 			"set_ylabel": {
 				"ylabel": "$\\textrm{Infidelity}$"
 			},
@@ -1973,7 +2142,8 @@
 					"level": 100
 				},
 				"update": null
-			}
+			},
+			"legend":null
 		},
 		"style": {
 			"texify": null,
@@ -2288,6 +2458,47 @@
 					}
 				}
 			],
+			"set_colorbar": {
+				"value": {
+					"@M@": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 1,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.1,
+				"set_label": {
+					"label": "M",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 7,
+					"size": 50
+				},
+				"set_ticklabels": {
+					"ticklabels": 7,
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},			
 			"set_ylabel": {
 				"ylabel": "$\\textrm{Infidelity}$"
 			},
@@ -2409,7 +2620,8 @@
 					"level": 100
 				},
 				"update": null
-			}
+			},
+			"legend":null
 		},
 		"style": {
 			"texify": null,
