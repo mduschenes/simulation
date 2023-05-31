@@ -69,7 +69,8 @@
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
-		"optimize.eps.value":[1e-12],
+		"optimize.eps.value":[1e-16],
+		"optimize.eps.value.increase":[1e-3],
 
 		"jobs.job.cwd":["gobi/unconstrained.4.128.10.5000.30.500"],
 		"jobs.postprocess.cwd":["gobi/unconstrained.4.128.10.5000.30.500"],
