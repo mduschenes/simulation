@@ -25,7 +25,6 @@ from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,
 from src.utils import argmax,argsort,difference,abs
 from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import getter,setter,search,inserter,indexer
-from src.system import Dict
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
@@ -1090,7 +1089,6 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		if analyses:
 			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
-
 
 		shapes = {name: tuple(((min(names[name][grouping].shape[i] for grouping in names[name]),
 								max(names[name][grouping].shape[i] for grouping in names[name]))
