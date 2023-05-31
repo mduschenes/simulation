@@ -1869,7 +1869,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					else:
 						norm = data.get('norm')
 						scale = data.get('scale')
-
+						length = len(data.get('value',[]))
 						if norm is None:
 							norm = {'vmin':min(data.get('value',[]),default=0),'vmax':max(data.get('value',[]),default=1)}
 						elif not isinstance(norm,dict):
@@ -1882,25 +1882,30 @@ def plotter(settings,hyperparameters,verbose=None):
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 							
 							size = data[attr%(axes)][kwarg]
+
 							if data[attr%(axes)][kwarg] == 1:
 								value = np.array(value)							
 								value = [(value[0]+value[1])/2]
 							elif scale in ['linear']:
 								value = np.array(value)
-								value = np.linspace(*value,size)
+								value = np.linspace(*value,size,endpoint=True)
 							elif scale in ['log','symlog']:
 								value = np.log10(value)
-								value = np.logspace(*value,size)
+								value = np.logspace(*value,size,endpoint=True)
 							else:
 								value = np.array(value)
-								value = np.linspace(*value,size)
+								value = np.linspace(*value,size,endpoint=True)
 						else:
 							value = data[attr%(axes)][kwarg]
 
 						if isinstance(value,arrays):
 							value = value.tolist()
 
-						data[attr%(axes)][kwarg] = value
+
+						if value is not None:
+							data[attr%(axes)][kwarg] = value
+						else:
+							data[attr%(axes)][kwarg] = value
 
 				attr = 'set_%sticklabels'
 				kwarg = 'ticklabels'
@@ -1908,25 +1913,36 @@ def plotter(settings,hyperparameters,verbose=None):
 					if data.get(attr%(axes)) is None:
 						continue
 					else:
+						
 						scale = data.get('scale')
 						value = items
-						print(items)
+						
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 
-							length = len(value)+1
-							size = data[attr%(axes)][kwarg]
-							step = (length-1)//size
-
-							if data[attr%(axes)][kwarg] == 1:
+							length = len(value)
+							size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),data[attr%(axes)][kwarg])
+							if size == 1:
 								value = [(value[0]+value[-1])/2]
-							elif step > 0:
-								value = value[slice(0,length,step)]
-							elif scale in ['log','symlog']:
-								value = np.logspace(min(value),max(value),size)
-							elif scale in ['linear']:
-								value = np.linspace(min(value),max(value),size)
+							elif ((length+1)%size) == 0:
+								value = [items[0],*items[slice(1,length-1,(length-2)//(size-3))],items[-1]]
+							else:
+								size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),length)
+								if scale in ['log','symlog']:
+									value = np.logspace(min(value),max(value),size,endpoint=True)
+								elif scale in ['linear']:
+									value = np.linspace(min(value),max(value),size,endpoint=True)
+								else:
+									value = None
+
+								if value is None:
+									pass
+								elif any(isinstance(i,int) for i in items):
+									value = [int(i) for i in value]
+								else:
+									value = [i for i in value]
 						else:
 							value = data[attr%(axes)][kwarg]
+
 
 					if value is not None:
 						data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in value]
