@@ -59,7 +59,7 @@
 
 		"parameters.xy.method":["constrained"],
 		"parameters.xy.locality":["global"],
-		"parameters.xy.bounds":[[-1,1]],
+		"parameters.xy.bounds":[[-1e3,1e3]],
 		"parameters.xy.constant":[{"-1":{"0":0,"-1":0}}],					
 		"parameters.xy.kwargs.sigmoid":[1],		
 		"parameters.xy.kwargs.lambda":[5e2],		
