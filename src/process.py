@@ -1095,6 +1095,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 								max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
 					for i in range(groups.ndim)))
 					for prop in properties}
+		shapes = {prop: tuple((i[0] if len(set(i))==1 else i for i in shapes[prop])) for prop in shapes}
 
 		agg = {
 			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] 
