@@ -22,8 +22,8 @@
 "permutations":{
 	"permutations":{	
 
-		"model.N":[4],		
-		"model.M":[2,4,6,8],
+		"model.N":[2],		
+		"model.M":[3],
 		"model.P":[1],
 		"model.tau":[1],
 		"model.T": [null],
@@ -93,7 +93,7 @@
 		"z":{"operator":["Z"],"site":"i","string":"z","parameters":null},
 		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz","parameters":null}
 		},
-	"N":3,
+	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
@@ -175,7 +175,7 @@
 		"constant":null,
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":5e2}
-		},			
+		},
 	"z": {
 		"string":"z",
 		"category":"constant",
