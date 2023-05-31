@@ -1842,6 +1842,7 @@ class Callback(System):
 
 		stop = (
 			(hyperparameters['eps'].get('value.increase') is not None) and
+			(hyperparameters['eps'].get('value.increase') > 0) and
 			((len(attributes['value']) > 1) and 
 			 (attributes['iteration'][-1] >= max(1,
 				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and
