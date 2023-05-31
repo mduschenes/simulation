@@ -72,8 +72,8 @@
 		"optimize.eps.value":[1e-16],
 		"optimize.eps.value.increase":[1e-3],
 
-		"jobs.job.cwd":["gobi/constrained.4.128.10.5000.30.500"],
-		"jobs.postprocess.cwd":["gobi/constrained.4.128.10.5000.30.500"],
+		"jobs.job.cwd":["gobi/constrained.stop.4.128.10.5000.30.500"],
+		"jobs.postprocess.cwd":["gobi/constrained.stop.4.128.10.5000.30.500"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
