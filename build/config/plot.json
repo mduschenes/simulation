@@ -1708,7 +1708,7 @@
 			"errorbar": [
 				{
 					"x": "iteration",
-					"y": "alph",
+					"y": "alpha",
 					"label": {
 						"label": {
 							"N": null,

@@ -1025,7 +1025,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					y = np.array(kwargs[attr].get('y'))
 					yerr = [y-kwargs[attr].get('y1'),kwargs[attr].get('y2')-y]
 					args.extend([x,y-yerr[0],y+yerr[1]])
-				elif ((kwargs[attr].get('yerr') is None) and (len(kwargs[attr].get('yerr')))):
+				elif ((kwargs[attr].get('yerr') is not None) and (len(kwargs[attr].get('yerr')))):
 					call = False
 					x = np.array(kwargs[attr].get('x')) if kwargs[attr].get('x') is not None else kwargs[attr].get('x')
 					y = np.array(kwargs[attr].get('y'))

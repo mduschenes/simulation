@@ -2057,22 +2057,14 @@ def plotter(settings,hyperparameters,verbose=None):
 						continue
 
 					slices = []
-					subslices = [data[OTHER][OTHER].get('slice'),data[OTHER][OTHER].get('labels')]
+					subslices = deepcopy([data[OTHER][OTHER].get('slice'),data[OTHER][OTHER].get('labels')])
 					for subslice in subslices:
 						if subslice is None:
 							subslice = [slice(None)]
 						elif isinstance(subslice,dict):
-							subslice = {
-								axes if (axes in data) else [subaxis 
-										for subaxis in ALL if ((subaxis in data[OTHER]) and 
-											(data[OTHER][subaxis]['label']==axes))][0]: 
-								subslice[axes] for axes in subslice if (
-								(not isinstance(subslice[axes],str)) or
-								((axes in data) or any(data[OTHER][subaxis]['label']==axes 
-									for subaxis in data[OTHER] if (
-									(subaxis in ALL) and (subaxis in data[OTHER]))))
-								)
-								}
+							for axes in list(subslice):
+								if (axes not in data) and (not any(data[OTHER][subaxis]['label']==axes for subaxis in ALL if subaxis in data[OTHER])):
+									subslice.pop(axes)
 
 							if subslice:
 								subslice = [
@@ -2088,12 +2080,11 @@ def plotter(settings,hyperparameters,verbose=None):
 						
 						slices.extend(subslice)
 
-
 					slices = [
 						conditions([subslice for subslice in slices if not isinstance(subslice,slice)],op='and'),
 						*[subslice for subslice in slices if isinstance(subslice,slice)]
 						]
-					slices = [subslice for subslice in slices if subslice is not None]
+					slices = [subslice for subslice in slices if subslice is not None and subslice is not True and subslice is not False]
 
 					wrappers = data[OTHER][OTHER].get('wrapper')
 					if wrappers is None:
@@ -2120,7 +2111,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						}
 
 
-					for attr in data:
+					for attr in list(data):
 						
 						if data.get(attr) is None:
 							continue
@@ -2151,9 +2142,10 @@ def plotter(settings,hyperparameters,verbose=None):
 							if normalize.get(attr):
 								value = normalize[attr](attr,data)
 
+							l = len(value)
+
 							for subslice in slices:
 								value = value[subslice]
-
 
 							value = np.array([valify(i,valify=data[OTHER][OTHER].get('valify')) for i in value])
 
