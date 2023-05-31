@@ -394,6 +394,7 @@ def parse(key,value,data,verbose=None):
 			'#i,j,k,...#' (index value),
 			'%start,stop,step%' (slice value),
 			'*pattern,*' (regex pattern),
+			':func,:' (function type), 			
 			'<upper<' (exclusive upper bound value),
 			'>lower>' (exclusive lower bound value),
 			'<=upper<=' (inclusive upper bound value),
@@ -407,7 +408,7 @@ def parse(key,value,data,verbose=None):
 		out (dataframe): Condition on data indices
 	'''
 	negators = ['!','~']
-	delimiters = ['$','@','#','%','*','<','>','<=','>=','==','!=']
+	delimiters = ['$','@','*',':','#','%','<','>','<=','>=','==','!=']
 	parserator = ';'
 	separator = ','
 
@@ -436,7 +437,7 @@ def parse(key,value,data,verbose=None):
 					break
 
 			for delimiter in delimiters:
-				
+
 				if value.startswith(delimiter) and value.endswith(delimiter):
 				
 					values = value[len(delimiter):-len(delimiter)].split(separator)
@@ -481,6 +482,18 @@ def parse(key,value,data,verbose=None):
 								out = data[key].isin(data[key].unique()[slice(*values)])
 							except:
 								out = not default
+
+					elif delimiter in [':']: # Data value: func
+						
+						parser = lambda value: (to_str(value) if len(value)>0 else null)
+						values = [i for value in values for i in [parser(value),value]]           
+						values = [value for value in values if (value is not null)]
+
+						if values and (values is not null):
+							try:
+								out = conditions([data[key]==getattr(data[key],value)() for value in values if hasattr(data[key],value)],op='or')
+							except:
+								out = not default 
 
 					elif delimiter in ['*']: # Regex value pattern
 						def parser(value):
@@ -540,6 +553,7 @@ def parse(key,value,data,verbose=None):
 
 						if values and (values is not null):
 							out = conditions([data[key] != value for value in values],op='or')																												
+
 
 					if negate:
 						out = ~out
@@ -690,7 +704,8 @@ def analyse(data,analyses=None,verbose=None):
 
 			for attrs in args:
 				if analysis in ['zscore','quantile','slice','parse']:
-					value = func(attrs,data).to_numpy()
+					value = func(attrs,data)
+					value = value.to_numpy() if not isinstance(value,bool) else value
 					out = conditions([out,value],op='and')
 				elif analysis in ['abs','log','log10','replace','func']:
 					data = func(attrs,data)
@@ -1854,7 +1869,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					else:
 						norm = data.get('norm')
 						scale = data.get('scale')
-
+						length = len(data.get('value',[]))
 						if norm is None:
 							norm = {'vmin':min(data.get('value',[]),default=0),'vmax':max(data.get('value',[]),default=1)}
 						elif not isinstance(norm,dict):
@@ -1867,25 +1882,30 @@ def plotter(settings,hyperparameters,verbose=None):
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 							
 							size = data[attr%(axes)][kwarg]
+
 							if data[attr%(axes)][kwarg] == 1:
 								value = np.array(value)							
 								value = [(value[0]+value[1])/2]
 							elif scale in ['linear']:
 								value = np.array(value)
-								value = np.linspace(*value,size)
-							elif scale in ['log']:
+								value = np.linspace(*value,size,endpoint=True)
+							elif scale in ['log','symlog']:
 								value = np.log10(value)
-								value = np.logspace(*value,size)
+								value = np.logspace(*value,size,endpoint=True)
 							else:
 								value = np.array(value)
-								value = np.linspace(*value,size)
+								value = np.linspace(*value,size,endpoint=True)
 						else:
 							value = data[attr%(axes)][kwarg]
 
 						if isinstance(value,arrays):
 							value = value.tolist()
 
-						data[attr%(axes)][kwarg] = value
+
+						if value is not None:
+							data[attr%(axes)][kwarg] = value
+						else:
+							data[attr%(axes)][kwarg] = value
 
 				attr = 'set_%sticklabels'
 				kwarg = 'ticklabels'
@@ -1893,32 +1913,41 @@ def plotter(settings,hyperparameters,verbose=None):
 					if data.get(attr%(axes)) is None:
 						continue
 					else:
-						norm = data.get('norm')
+						
 						scale = data.get('scale')
-						if norm is None:
-							norm = {'vmin':min(data.get('value',[]),default=0),'vmax':max(data.get('value',[]),default=1)}
-						elif not isinstance(norm,dict):
-							norm = {'vmin':min(norm),'vmax':max(norm)}
-						else:
-							norm = {'vmin':norm.get('vmin',0),'vmax':norm.get('vmax',1)}
-
 						value = items
+						
 						if isinstance(data[attr%(axes)].get(kwarg),int):
 
-							length = len(value)+1
-							size = max(1,len(set((*data.get('value',[]),*value)))//min(len(set((*data.get('value',[]),*value))),data[attr%(axes)][kwarg]))
-							size = size-1 if (length-1)//((length-1)//size) > size else size
-							slices = slice(0,length,(length-1)//size)
-
-							if data[attr%(axes)][kwarg] == 1:
+							length = len(value)
+							size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),data[attr%(axes)][kwarg])
+							if size == 1:
 								value = [(value[0]+value[-1])/2]
+							elif ((length+1)%size) == 0:
+								value = [items[0],*items[slice(1,length-1,(length-2)//(size-3))],items[-1]]
 							else:
-								value = value[slices]
+								size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),length)
+								if scale in ['log','symlog']:
+									value = np.logspace(min(value),max(value),size,endpoint=True)
+								elif scale in ['linear']:
+									value = np.linspace(min(value),max(value),size,endpoint=True)
+								else:
+									value = None
+
+								if value is None:
+									pass
+								elif any(isinstance(i,int) for i in items):
+									value = [int(i) for i in value]
+								else:
+									value = [i for i in value]
 						else:
 							value = data[attr%(axes)][kwarg]
 
-					data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in value]
 
+					if value is not None:
+						data[attr%(axes)][kwarg] = [texify(scinotation(i,decimals=1,scilimits=[-1,4])) for i in value]
+					else:
+						data[attr%(axes)][kwarg] = value
 
 			# set legend
 			prop = 'legend'
