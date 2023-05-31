@@ -260,7 +260,27 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 				(isinstance(element,str) and delimiter) and 
 				(element not in iterable)):
 				#((element.count(delimiter)>0) and ((element not in iterable)) or (element.split(delimiter)[0] in iterable))):
-				e = tuple(element.split(delimiter))
+				# e = element.split(delimiter)
+
+				e = []
+				_element = element.split(delimiter)
+				_iterable = iterable
+				while _element and isinstance(_iterable,dict):
+					for l in range(len(_element),-1,-1):
+						_e = delimiter.join(_element[:l])
+
+						if _e in _iterable:
+							_iterable = _iterable.get(_e)
+							e.append(_e)
+							_element = _element[l:]
+							break
+					if l == 0:
+						e.extend(_element)
+						break
+				e = tuple(e)
+
+				# print(element,e)
+
 			elif isiterable(element,exceptions=scalars):
 				e = tuple(element)
 			else:
