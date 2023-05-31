@@ -1692,7 +1692,7 @@ class Unitary(Hamiltonian):
 		parameters = self.trotterize(parameters)
 
 		gradient_trotterize = jit(lambda grad,P=self.P: gradient_trotter(grad,P))
-		slices = array([j for parameter in self.parameters for j in self.parameters[parameter].slices if self.parameters[parameter].category in ['variable']])
+		indices = self.parameters.indices
 		reshape = (*shape[1:],-1,*self.shape)
 		transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
 		shapes = (-1,*self.shape)
@@ -1701,7 +1701,7 @@ class Unitary(Hamiltonian):
 		grad = grad.reshape(reshape)
 		grad = grad.transpose(transpose)
 		grad = gradient_trotterize(grad)
-		grad = grad[slices]
+		grad = grad[indices]
 		grad = grad.reshape(*shapes)
 
 		return grad
@@ -1937,23 +1937,22 @@ class Callback(System):
 				elif attr in [
 					'variables','variables.norm','variables.relative','variables.relative.mean',
 					] and (do):
-					# TODO: Sort out shape of variable parameters from arbitrary parameters returns
-					slices = slice(0,2*model.N)
+					indices = model.parameters.indices
 					if attr in ['variables']:
-						value = model.parameters(parameters)[slices]
+						value = model.parameters(parameters)[indices]
 					elif attr in ['variables.norm']:
-						value = model.parameters(parameters)[slices]
+						value = model.parameters(parameters)[indices]
 						value = norm(value)/(value.size)
 					elif attr in ['variables.relative']:
 						eps = 1e-20
-						value = model.parameters(parameters)[slices]
-						_value = model.parameters(attributes['parameters'][0])[slices]
-						value = abs((value - _value + eps)/(_value + eps))
+						value = model.parameters(parameters)[indices]
+						_value = model.parameters(attributes['parameters'][0])[indices]
+						value = abs(10**(log10(abs(value - _value)) - log10(abs(_value))))
 					elif attr in ['variables.relative.mean']:
 						eps = 1e-20
-						value = model.parameters(parameters)[slices]
-						_value = model.parameters(attributes['parameters'][0])[slices]
-						value = abs((value - _value + eps)/(_value + eps)).mean()
+						value = model.parameters(parameters)[indices]
+						_value = model.parameters(attributes['parameters'][0])[indices]
+						value = abs(10**(log10(abs(value - _value)) - log10(abs(_value)))).mean()
 
 				elif attr in ['objective']:
 					value = abs(metric(model(parameters)))

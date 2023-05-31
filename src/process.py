@@ -25,6 +25,7 @@ from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,
 from src.utils import argmax,argsort,difference,abs
 from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import getter,setter,search,inserter,indexer
+from src.system import Dict
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
@@ -1077,11 +1078,24 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		groups = data[boolean].groupby(by=by,as_index=False)
 
+		names = {}
+		variables = independent
+		func = lambda group,variables: (group[:-len(variables)] if (variables) and isinstance(group,tuple) else group)
+		for group in groups.groups:
+			name = func(group,variables)
+			if name in names:
+				continue
+			names[name] = {grouping: groups.get_group(grouping) for grouping in groups.groups if func(grouping,variables)==name}
+			names[name] = {grouping: Dict({prop: getattr(names[name][grouping],prop) for prop in ['shape','size','ndim'] if hasattr(names[name][grouping],prop)}) for grouping in names[name]}
+
 		if analyses:
-		
 			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
 
-		shapes = {group[:-len(independent)] if (independent) and isinstance(group,tuple) else group: groups.get_group(group).shape for group in groups.groups}
+
+		shapes = {name: tuple(((min(names[name][grouping].shape[i] for grouping in names[name]),
+								max(names[name][grouping].shape[i] for grouping in names[name]))
+					for i in range(groups.ndim)))
+					for name in names}
 
 		agg = {
 			**{attr : [(attr, {'array':mean,'object':'first','dtype':'mean'}[dtypes[attr]] 
