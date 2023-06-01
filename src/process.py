@@ -766,7 +766,6 @@ def loader(data,settings,hyperparameters,verbose=None):
 				if (not iterable.get(key_iterable)) or i >= len(iterable.get(key_iterable)):
 					continue
 
-				i = None
 				axes = {attr: data[attr] for attr in data if attr in ALL}
 				if data.get(OTHER) is None:
 					continue
@@ -779,7 +778,8 @@ def loader(data,settings,hyperparameters,verbose=None):
 						labels = {attr: data[OTHER][attr] for attr in data[OTHER]}
 				else:
 					labels = {attr: None for attr in data[OTHER]}
-
+				
+				k = None
 				for j in range(len(iterable.get(key_iterable))):
 					if all((
 						all(datum[OTHER][attr]['label']==axes[attr] for attr in axes) and 
@@ -787,14 +787,18 @@ def loader(data,settings,hyperparameters,verbose=None):
 						all(datum[OTHER][OTHER][OTHER][attr]==labels[attr] for attr in labels)
 						)
 						for datum in search(iterable.get(key_iterable)[j]) if datum):
-						i = j
-						break
+						if k is not None:
+							k = True
+							break
+						k = j
 
 
-				if i is None:
+				if k is None:
 					continue
+				elif k is True:
+					k = i
 
-				for subindex,datum in enumerate(search(iterable.get(key_iterable)[i])):
+				for subindex,datum in enumerate(search(iterable.get(key_iterable)[k])):
 					if not datum:
 						continue
 					datum.update({attr: data[attr] for attr in data if attr not in [*ALL,OTHER]})
@@ -924,6 +928,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 	def log(obj,*args,**kwargs):
 		return np.log(obj)		
 
+	def sqrt(obj,*args,**kwargs):
+		return np.sqrt(obj)	
+
 	def mean(obj,*args,**kwargs):
 		obj = np.array(list(obj))
 		obj = to_tuple(obj.mean(0))
@@ -945,18 +952,18 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		return obj.sem(ddof=kwargs.get('ddof',1))		
 
 	def mean_geometric(obj,*args,**kwargs):
-		return exp(obj.log().mean())
+		return exp(log(obj).mean())
 	def std_geometric(obj,*args,**kwargs):
-		return exp(obj.log().std(ddof=kwargs.get('ddof',1)))
+		return sqrt(mean_geometric(obj**2,*args,**kwargs) - mean_geometric(obj,*args,**kwargs)**2)
 	def sem_geometric(obj,*args,**kwargs):
-		return exp(obj.log().sem(ddof=kwargs.get('ddof',1)))		
+		return sqrt(mean_geometric(obj**2,*args,**kwargs) - mean_geometric(obj,*args,**kwargs)**2)/sqrt(obj.size)
 
 	def mean_log(obj,*args,**kwargs):
-		return exp(obj.log().mean())
+		return exp(log(obj).mean())
 	def std_log(obj,*args,**kwargs):
-		return exp(obj.log().std(ddof=kwargs.get('ddof',1)))
+		return exp(log(obj).std(ddof=kwargs.get('ddof',1)))
 	def sem_log(obj,*args,**kwargs):
-		return exp(obj.log().sem(ddof=kwargs.get('ddof',1)))		
+		return exp(log(obj).sem(ddof=kwargs.get('ddof',1)))		
 
 	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
 	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
@@ -1585,6 +1592,11 @@ def plotter(settings,hyperparameters,verbose=None):
 							for data in search(settings[instance][subinstance][obj][prop])
 							if (data)
 							)
+					value['labels'] = {attr: value
+							for attr,value in (data[OTHER][OTHER]['legend']['label'] if isinstance(data[OTHER][OTHER].get('legend',{}).get('label'),dict) else {None:data[OTHER][OTHER].get('legend',{}).get('label')}
+								).items()
+							if attr not in labels
+							}
 					value['attr'] = {
 							**{attr: {string:  data[OTHER][OTHER][attr][string]
 								for data in search(settings[instance][subinstance][obj][prop]) 
@@ -1643,6 +1655,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					value['label'] = False
 					value['other'] = False
 					value['legend'] = False
+					value['labels'] = {}
 					value['attr'] = {
 							**{attr: {string:  data[OTHER][OTHER][attr][string]
 								for data in search(settings[instance][subinstance][obj][prop]) 
@@ -2043,6 +2056,16 @@ def plotter(settings,hyperparameters,verbose=None):
 							if ((not values[prop][label]['axes']) and (values[prop][label]['include']) and (not ((values[prop][label]['label'])) and 
 								(values[prop][label]['other']) and (len(values[prop][label]['value'])==1))))))},
 					},
+					{
+						**{(prop,attr):'%s'%(texify(attr,texify=values[prop][label]['attr']['texify']))
+							for prop,attr in natsorted(set((
+							(prop,attr)
+							for prop in values 
+							for label in values[prop]
+							for attr in values[prop][label]['labels']
+							if attr is not None
+							)))},
+					},					
 					]
 				
 				def sorter(value):
@@ -2068,7 +2091,6 @@ def plotter(settings,hyperparameters,verbose=None):
 					data[attr] = value
 				else:
 					data[attr] = None
-
 
 			# set kwargs data
 			for prop in PLOTS:
@@ -2284,7 +2306,8 @@ def plotter(settings,hyperparameters,verbose=None):
 						**{label: (texify(
 							scinotation((data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
 							if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
-								data[OTHER][OTHER][OTHER][label].replace('$','')) if label in data[OTHER][OTHER][OTHER] else data[OTHER][OTHER]['legend']['label'].get(label)),
+								data[OTHER][OTHER][OTHER][label].replace('$','')) if label in data[OTHER][OTHER][OTHER] else data[OTHER][OTHER]['legend']['label'].get(label)
+								if isinstance(data[OTHER][OTHER]['legend'].get('label'),dict) else None),
 								**data[OTHER][OTHER].get('scinotation',{}),
 								texify=data[OTHER][OTHER].get('texify'))
 							)
@@ -2296,7 +2319,8 @@ def plotter(settings,hyperparameters,verbose=None):
 						**{label: (texify(
 							scinotation((data[OTHER][data[OTHER][OTHER][OTHER][label].replace('@','')]
 								if data[OTHER][OTHER][OTHER][label].replace('@','') in data[OTHER] else 
-								data[OTHER][OTHER][OTHER][label].replace('$','')) if label in data[OTHER][OTHER][OTHER] else data[OTHER][OTHER]['legend']['label'].get(label) ,
+								data[OTHER][OTHER][OTHER][label].replace('$','')) if label in data[OTHER][OTHER][OTHER] else (data[OTHER][OTHER]['legend']['label'].get(label) 
+								if isinstance(data[OTHER][OTHER]['legend'].get('label'),dict) else None),
 								**data[OTHER][OTHER].get('scinotation',{})),
 								texify=data[OTHER][OTHER].get('texify'))
 							)
@@ -2313,7 +2337,8 @@ def plotter(settings,hyperparameters,verbose=None):
 									data[OTHER][OTHER][OTHER][label].replace('$',''),
 									**data[OTHER][OTHER].get('scinotation',{})),
 								texify=data[OTHER][OTHER].get('texify'))
-							) if label in data[OTHER][OTHER][OTHER] else texify(scinotation(data[OTHER][OTHER]['legend']['label'].get(label) ,
+							) if label in data[OTHER][OTHER][OTHER] else texify(scinotation((data[OTHER][OTHER]['legend']['label'].get(label) 
+																				if isinstance(data[OTHER][OTHER]['legend'].get('label'),dict) else None),
 																			**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')) 
 							for label in natsorted(set((
 							label 
@@ -2321,6 +2346,13 @@ def plotter(settings,hyperparameters,verbose=None):
 							if ((not values[prop][label]['axes']) and ((((values[prop][label]['label']) and (len(values[prop][label]['value'])>1)) and 
 								not (values[prop][label]['other'])))))))},							
 						
+						**({label: (texify(scinotation(data[OTHER][OTHER]['legend'].get('label',{}).get(label),
+							**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')))
+							for label in data[OTHER][OTHER]['legend'].get('label')} 
+							if isinstance(data[OTHER][OTHER]['legend'].get('label'),dict) else 
+							{None:(texify(scinotation(data[OTHER][OTHER]['legend'].get('label'),
+											**data[OTHER][OTHER].get('scinotation',{})),texify=data[OTHER][OTHER].get('texify')))}
+							)
 						}
 
 					def sorter(value):
@@ -2335,19 +2367,18 @@ def plotter(settings,hyperparameters,verbose=None):
 
 					value = [value[label] for label in sorter(value)
 							if (
+							(label is None) or (
 							(((data[OTHER][OTHER]['legend']['include'] is not False) and (data[OTHER][OTHER]['legend']['exclude'] is not True))) and (
 							(((not data[OTHER][OTHER]['legend']['include']) and (not data[OTHER][OTHER]['legend']['exclude']))) or
 							(((not data[OTHER][OTHER]['legend']['include']) or (label in data[OTHER][OTHER]['legend']['include'])) and
 							 ((not data[OTHER][OTHER]['legend']['exclude']) or (label not in data[OTHER][OTHER]['legend']['exclude']))
-							)))
+							))))
 							]
-
 					value = separator.join(value)
 
 					value = value if value else None
 
 					data[attr] = value	
-
 			
 			# savefig
 			prop = 'savefig'

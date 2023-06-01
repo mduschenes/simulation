@@ -593,15 +593,17 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 
 		if allclose(err,0):
 			err = None
-		else:
-			err = np.array([value*(1-(value/(value+err[1]))),np.ones(value.shape)*err[1]])
-
+		# else:
+		# 	err = np.array([value*(1-(value/(value+err[1]))),np.ones(value.shape)*err[1]])
 	else:
 	
 		err = None
 
 	if err is not None:
 		err = np.abs(err)
+
+	if err is not None:
+		err[err==0] = np.nan
 
 	return err
 
