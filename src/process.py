@@ -924,6 +924,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 	def log(obj,*args,**kwargs):
 		return np.log(obj)		
 
+	def sqrt(obj,*args,**kwargs):
+		return np.sqrt(obj)	
+
 	def mean(obj,*args,**kwargs):
 		obj = np.array(list(obj))
 		obj = to_tuple(obj.mean(0))
@@ -947,9 +950,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 	def mean_geometric(obj,*args,**kwargs):
 		return exp(log(obj).mean())
 	def std_geometric(obj,*args,**kwargs):
-		return exp(log(obj).std(ddof=kwargs.get('ddof',1)))
+		return sqrt(mean_geometric(obj**2,*args,**kwargs) - mean_geometric(obj,*args,**kwargs)**2)
 	def sem_geometric(obj,*args,**kwargs):
-		return exp(log(obj).sem(ddof=kwargs.get('ddof',1)))		
+		return sqrt(mean_geometric(obj**2,*args,**kwargs) - mean_geometric(obj,*args,**kwargs)**2)/sqrt(obj.size)
 
 	def mean_log(obj,*args,**kwargs):
 		return exp(log(obj).mean())
