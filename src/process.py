@@ -22,7 +22,6 @@ for PATH in PATHS:
 from src.utils import argparser
 from src.utils import array,expand_dims,conditions
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
-from src.utils import argmax,argsort,difference,abs
 from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import getter,setter,search,inserter,indexer
 from src.system import Dict
@@ -919,6 +918,12 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 	def default(obj,*args,**kwargs):
 		return obj.first()
 
+	def exp(obj,*args,**kwargs):
+		return np.exp(obj)
+	
+	def log(obj,*args,**kwargs):
+		return np.log(obj)		
+
 	def mean(obj,*args,**kwargs):
 		obj = np.array(list(obj))
 		obj = to_tuple(obj.mean(0))
@@ -932,12 +937,26 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		obj = to_tuple(obj.std(0,ddof=1)/np.sqrt(obj.shape[0]))
 		return obj	
 
+	def mean_arithmetic(obj,*args,**kwargs):
+		return obj.mean()
+	def std_arithmetic(obj,*args,**kwargs):
+		return obj.std(ddof=kwargs.get('ddof',1))		
+	def sem_arithmetic(obj,*args,**kwargs):
+		return obj.sem(ddof=kwargs.get('ddof',1))		
+
+	def mean_geometric(obj,*args,**kwargs):
+		return exp(obj.log().mean())
+	def std_geometric(obj,*args,**kwargs):
+		return exp(obj.log().std(ddof=kwargs.get('ddof',1)))
+	def sem_geometric(obj,*args,**kwargs):
+		return exp(obj.log().sem(ddof=kwargs.get('ddof',1)))		
+
 	def mean_log(obj,*args,**kwargs):
-		return 10**(obj.apply('log10').mean())
+		return exp(obj.log().mean())
 	def std_log(obj,*args,**kwargs):
-		return 10**(obj.apply('log10').std(ddof=1))
+		return exp(obj.log().std(ddof=kwargs.get('ddof',1)))
 	def sem_log(obj,*args,**kwargs):
-		return 10**(obj.apply('log10').sem(ddof=1))
+		return exp(obj.log().sem(ddof=kwargs.get('ddof',1)))		
 
 	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
 	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
@@ -972,7 +991,11 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		funcs = deepcopy(funcs)
 		stat = 'stat'
 		stats = {axes: {'':'mean','err':'std'} for axes in dimensions}
-		functions = {'mean_log':mean_log,'std_log':std_log,'sem_log':'sem_log'}
+		functions = {
+			'mean_log':mean_log,'std_log':std_log,'sem_log':'sem_log',
+			'mean_arithmetic':mean_arithmetic,'std_arithmetic':std_arithmetic,'sem_arithmetic':sem_arithmetic,
+			'mean_geometric':mean_geometric,'std_geometric':std_geometric,'sem_geometric':sem_geometric,
+			}
 		
 		if not funcs:
 			funcs = {stat:None}
@@ -991,6 +1014,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 					if func not in funcs[function][axes]:
 						funcs[function][axes][func] = stats[axes][func]
+			
 				for func in funcs[function][axes]:
 					
 					obj = funcs[function][axes][func]
