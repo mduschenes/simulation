@@ -945,18 +945,18 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		return obj.sem(ddof=kwargs.get('ddof',1))		
 
 	def mean_geometric(obj,*args,**kwargs):
-		return exp(obj.log().mean())
+		return exp(log(obj).mean())
 	def std_geometric(obj,*args,**kwargs):
-		return exp(obj.log().std(ddof=kwargs.get('ddof',1)))
+		return exp(log(obj).std(ddof=kwargs.get('ddof',1)))
 	def sem_geometric(obj,*args,**kwargs):
-		return exp(obj.log().sem(ddof=kwargs.get('ddof',1)))		
+		return exp(log(obj).sem(ddof=kwargs.get('ddof',1)))		
 
 	def mean_log(obj,*args,**kwargs):
-		return exp(obj.log().mean())
+		return exp(log(obj).mean())
 	def std_log(obj,*args,**kwargs):
-		return exp(obj.log().std(ddof=kwargs.get('ddof',1)))
+		return exp(log(obj).std(ddof=kwargs.get('ddof',1)))
 	def sem_log(obj,*args,**kwargs):
-		return exp(obj.log().sem(ddof=kwargs.get('ddof',1)))		
+		return exp(log(obj).sem(ddof=kwargs.get('ddof',1)))		
 
 	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
 	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
