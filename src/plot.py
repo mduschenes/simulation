@@ -15,6 +15,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+# improt matplotlib.lines import Line2D
 
 # Logging
 from src.logger	import Logger
@@ -914,7 +915,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 				if kwargs[attr].get('handlers') is not None:
-					handlers = kwargs[attr].get('handlers')
+					handlers = kwargs[attr].get('handlers',{})
+					if not isinstance(handlers,dict):
+						handlers = {handler:{} for handler in handlers}
 					funcs = {
 						**{
 						container.lower():{
@@ -922,6 +925,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							}
 						for container in ['Errorbar']
 						},
+						**{
+						'Errorbar'.lower():{
+							getattr(matplotlib.container,'%sContainer'%('Errorbar'.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%('Errorbar'.capitalize()))
+							}
+						for container in ['cmap']
+						},						
 						}
 					for handler in handlers:
 						for _obj in objs:
@@ -947,16 +956,20 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					unique = list(sorted(set(labels),key=lambda i: labels.index(i)))
 					if unique:
 						indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
-						if keep in ['first']:
-							index = [0]*len(indexes)
-						elif keep in ['middle']:
-							index = [min(len(i) for i in indexes)//2]*len(indexes)
-						elif keep in ['last']:
-							index = [-1]*len(indexes)
-						elif isinstance(keep,int):
-							index = [index]*len(indexes)
-						else:
-							index = [i for i in index]
+						keep = [keep]*len(indexes) if isinstance(keep,(str,int)) else keep
+						index = []
+						for k,i in zip(keep,indexes):
+
+							if k in ['first']:
+								index.append(0)
+							elif k in ['middle']:
+								index.append(len(i)//2)
+							elif k in ['last']:
+								index.append(-1)
+							elif isinstance(k,int):
+								index.append(k)
+							else:
+								index.append(k)
 
 						if index is not None:
 							labels,handles = [labels[i[j]] for i,j in zip(indexes,index)],[handles[i[j]] for i,j in zip(indexes,index)]
