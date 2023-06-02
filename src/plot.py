@@ -543,6 +543,36 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 
 	return value,color,values,colors,norm
 
+def set_data(data=None,scale=None,**kwargs):
+	'''
+	Set data
+	Args:
+		data (int,float,iterable[int,float]): Data
+		scale (str): Scale type for normalization, allowed strings in ['linear','log','symlog']
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		data (array): Data
+	'''
+
+	if isinstance(scale,str):
+		scale = [scale]
+
+	if ((data is None) or 
+	   (scale is None)):
+	
+	   data = None
+
+	elif ((scale is None) or
+		  (not any(i in ['log','symlog'] for i in scale))):
+	
+		data = data
+	
+	elif ((not isinstance(scale,str) and any(i in ['log','symlog'] for i in scale))):
+
+		data = np.array(data)
+		data[data==0] = np.nan
+
+	return data
 
 
 def set_err(err=None,value=None,scale=None,**kwargs):
@@ -593,17 +623,14 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 
 		if allclose(err,0):
 			err = None
-		# else:
-		# 	err = np.array([value*(1-(value/(value+err[1]))),np.ones(value.shape)*err[1]])
+		else:
+			err = np.array([value*(1-(value/(value+err[1]))),np.ones(value.shape)*err[1]])
 	else:
 	
 		err = None
 
 	if err is not None:
 		err = np.abs(err)
-
-	if err is not None:
-		err[err==0] = np.nan
 
 	return err
 
@@ -970,6 +997,23 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
+		
+				props = '%s'
+				subattrs = 'set_%sscale'
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subattr = subattrs%(axes)
+					
+					if kwargs[attr].get(prop) is None:
+						continue
+
+					data = kwargs[attr].get(prop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					
+					data = set_data(data=data,scale=scale)
+
+					kwargs[attr][prop] = data
+
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
@@ -979,6 +1023,24 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['errorbar']:
 				dim = 2
+			
+				props = '%s'
+				subattrs = 'set_%sscale'
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subattr = subattrs%(axes)
+
+					if kwargs[attr].get(prop) is None:
+						continue
+
+					data = kwargs[attr].get(prop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					
+					data = set_data(data=data,scale=scale)
+
+					kwargs[attr][prop] = data
+
+
 				props = '%serr'
 				subprops ='%s'
 				subattrs = 'set_%sscale'
@@ -995,6 +1057,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					kwargs[attr][prop] = err
 
+
+
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
@@ -1004,6 +1068,23 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['fill_between']:
 
 				dim = 2
+				
+				props = '%s'
+				subattrs = 'set_%sscale'
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subattr = subattrs%(axes)
+					
+					if kwargs[attr].get(prop) is None:
+						continue
+
+					data = kwargs[attr].get(prop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					
+					data = set_data(data=data,scale=scale)
+
+					kwargs[attr][prop] = data
+
 				props = '%serr'
 				subprops ='%s'
 				subattrs = 'set_%sscale'
@@ -1052,6 +1133,24 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['scatter']:
 
 				dim = 2
+				
+
+				props = '%s'
+				subattrs = 'set_%sscale'
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subattr = subattrs%(axes)
+
+					if kwargs[attr].get(prop) is None:
+						continue
+
+					data = kwargs[attr].get(prop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					
+					data = set_data(data=data,scale=scale)
+
+					kwargs[attr][prop] = data
+
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				replacements = {'color':'c','markersize':'s'}
