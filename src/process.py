@@ -1593,8 +1593,10 @@ def plotter(settings,hyperparameters,verbose=None):
 							if (data)
 							)
 					value['labels'] = {attr: value
+							for data in search(settings[instance][subinstance][obj][prop])
+							if data 
 							for attr,value in (data[OTHER][OTHER]['legend']['label'] if isinstance(data[OTHER][OTHER].get('legend',{}).get('label'),dict) else {None:data[OTHER][OTHER].get('legend',{}).get('label')}
-								).items()
+								).items()							
 							if attr not in labels
 							}
 					value['attr'] = {
