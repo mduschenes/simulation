@@ -237,53 +237,64 @@ def test_parameters(path,tol):
 	print(variables.round(6))
 
 
+	parameter = 'xy'
 	shape = parameters.shape
-	parameter = 'xy'	
+	category = model.parameters[parameter].category
+	method = model.parameters[parameter].method	
+	size = len(model.parameters[parameter].group)
+	null = lambda parameters,**kwargs: parameters
 
-	print(model.parameters[parameter].category,model.parameters[parameter].method,model.parameters[parameter].constraints(model.parameters()))
+	print('Parameters / Constraints :::',category,method,model.parameters[parameter].constraints(model.parameters()))
 
-	if (model.parameters[parameter].method in [None,'unconstrained']):
-		slices = slice(parameters.shape[0])
-		vars = parameters
-		if not allclose(variables[slices],vars):
-			print(vars)
-			print(variables[slices])
-			raise ValueError("Incorrect parameter initialization %r"%(model.parameters))
-	
-	elif (model.parameters[parameter].method in ['constrained']):
-		G = len(model.parameters[parameter].group)
-		wrapper = bound
-		funcs = [cos,sin]
-		scale = [model.parameters[parameter].parameters,2*pi]
-		features = wrapper(parameters)
+	if (method in [None,'unconstrained']):
+		
+		wrappers = [null,null]
+		funcs = [null,null]
+		kwargs = [{},{}]
 
-		for i in range(G):
-			func = funcs[i]
-			slices = slice(i,features.shape[0],2)
-			vars = scale[0]*features[0::2]*func(scale[1]*features[1::2])
-			if not allclose(variables[slices],vars):
-				print(vars)
-				print(variables[slices])
-				raise ValueError("Incorrect parameter initialization %d %r"%(i,model.parameters))
+	elif (method in ['constrained']):
 
-	elif (model.parameters[parameter].method in ['bounded']):
-		G = len(model.parameters[parameter].group)
-		wrapper = bound
-		scale = [model.parameters[parameter].parameters,2*pi]		
-		features = wrapper(parameters)
+		wrappers = [bound,bound]
+		funcs = [
+			lambda parameters,**kwargs: kwargs['scale'][0]*parameters[:parameters.shape[0]//2]*cos(kwargs['scale'][1]*parameters[parameters.shape[0]//2:]),
+			lambda parameters,**kwargs: kwargs['scale'][0]*parameters[:parameters.shape[0]//2]*cos(kwargs['scale'][1]*parameters[parameters.shape[0]//2:] + kwargs['shift']),
+		]
+		kwargs = [{'scale':[1,2*pi],'shift':0},{'scale':[1,2*pi],'shift':-pi/2}]
 
-		for i in range(G):
-			slices = slice(i,features.shape[0],2)
-			vars = scale[0]*features[slices]
-			if not allclose(variables[slices],vars):
-				print(vars)
-				print(variables[slices])
-				raise ValueError("Incorrect parameter initialization %r"%(model.parameters))
+	elif (method in ['bounded']):
+
+		wrappers = [bound,bound]
+		funcs = [null,null]
+		kwargs = [{},{}]
 
 
+	for i in range(size):
+		locality = model.parameters[parameter].locality.get(model.parameters[parameter].group[i])
+		if (locality in ['local',None]):
+			index = arange(parameters.shape[0])
+		elif (locality in ['global']):
+			index = array([j for j in model.parameters[parameter].slices])
+		
+		if method in ['constrained']:
+			slices = arange(model.parameters[parameter].slices.size//size)
+		else:
+			slices = arange(i*(model.parameters[parameter].slices.size//size),(i+1)*(model.parameters[parameter].slices.size//size))
+		_slices = arange(0,i*(model.parameters[parameter].slices.size//size))
 
+		features = parameters[index]
 
-
+		wrapper = wrappers[i]
+		func = funcs[i]
+		kwds = kwargs[i]
+		indices = slice(_slices.size,_slices.size+slices.size)
+		vars = model.parameters[parameter].parameters*wrapper(func(features,**kwds))[slices]
+		print(index,slices,_slices,indices,features.shape,parameters.shape,variables[indices].shape,vars.shape)
+		print(vars)
+		print(variables[indices])
+		if (variables[indices].shape != vars.shape) or not allclose(variables[indices],vars):
+			raise ValueError("Incorrect parameter initialization %d %r"%(i,model.parameters))
+		print()
+	print('Done')
 	return
 
 
@@ -761,6 +772,7 @@ if __name__ == '__main__':
 	func = test_fisher
 	func = test_hessian
 	func = check_machine_precision
+	func = test_parameters
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

@@ -839,31 +839,28 @@ class Noise(Object):
 		hermitian = True
 		unitary = False
 
-		if parameters > 0:
-			if operator is None:
-				data = [self.basis['I']()]
-			elif operator in ['phase']:
-				data = [sqrt(1-parameters)*self.basis['I'](),
-						sqrt(parameters)*self.basis['Z']()]
-			elif operator in ['amplitude']:
-				data = [self.basis['00']() + sqrt(1-parameters)*self.basis['11'](),
-						sqrt(parameters)*self.basis['01']()]
-			elif operator in ['depolarize']:
-				data = [sqrt(1-parameters)*self.basis['I'](),
-						sqrt(parameters/3)*self.basis['X'](),
-						sqrt(parameters/3)*self.basis['Y'](),
-						sqrt(parameters/3)*self.basis['Z']()]
-			elif operator in ['eps']:
-				data = array([identity(self.n,dtype=self.dtype),diag((1+parameters)**(arange(self.n)+2) - 1)])
-				hermitian = False
-				unitary = False
-			elif operator in ['noise','rand']:
-				data = array(parameters,dtype=datatype(self.dtype))#[identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
-				seed = prng(reset=self.seed)
-				hermitian = False
-				unitary = False
-			else:
-				data = [self.basis['I']()]
+		if operator is None:
+			data = [self.basis['I']()]
+		elif operator in ['phase']:
+			data = [sqrt(1-parameters)*self.basis['I'](),
+					sqrt(parameters)*self.basis['Z']()]
+		elif operator in ['amplitude']:
+			data = [self.basis['00']() + sqrt(1-parameters)*self.basis['11'](),
+					sqrt(parameters)*self.basis['01']()]
+		elif operator in ['depolarize']:
+			data = [sqrt(1-parameters)*self.basis['I'](),
+					sqrt(parameters/3)*self.basis['X'](),
+					sqrt(parameters/3)*self.basis['Y'](),
+					sqrt(parameters/3)*self.basis['Z']()]
+		elif operator in ['eps']:
+			data = array([identity(self.n,dtype=self.dtype),diag((1+parameters)**(arange(self.n)+2) - 1)])
+			hermitian = False
+			unitary = False
+		elif operator in ['noise','rand']:
+			data = array(parameters,dtype=datatype(self.dtype))#[identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
+			seed = prng(reset=self.seed)
+			hermitian = False
+			unitary = False
 		else:
 			data = [self.basis['I']()]
 
@@ -1356,10 +1353,12 @@ class Operators(Object):
 
 		for attr in ['parameters.%s'%(i) for i in (self.parameters if self.parameters is not None else [])]:
 			string = []
-			for subattr in ['category','method','shape','parameters']:
+			for subattr in ['category','method','locality','shape','parameters']:
 				substring = getattrs(self,delim.join([attr,subattr]),delimiter=delim,default=None)
 				if isinstance(substring,(str,int,list,tuple,*arrays)):
 					substring = '%s'%(substring,)
+				elif isinstance(substring,dict):
+					substring = ', '.join(['%s: %s'%(prop,substring[prop]) for prop in substring])	
 				elif substring is not None:
 					substring = '%0.4e'%(substring)
 				else:
@@ -1693,7 +1692,7 @@ class Unitary(Hamiltonian):
 		parameters = self.trotterize(parameters)
 
 		gradient_trotterize = jit(lambda grad,P=self.P: gradient_trotter(grad,P))
-		slices = arange(self.parameters.size//prod(shape[1:]))
+		indices = self.parameters.indices
 		reshape = (*shape[1:],-1,*self.shape)
 		transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
 		shapes = (-1,*self.shape)
@@ -1702,7 +1701,7 @@ class Unitary(Hamiltonian):
 		grad = grad.reshape(reshape)
 		grad = grad.transpose(transpose)
 		grad = gradient_trotterize(grad)
-		grad = grad[slices]
+		grad = grad[indices]
 		grad = grad.reshape(*shapes)
 
 		return grad
@@ -1843,6 +1842,7 @@ class Callback(System):
 
 		stop = (
 			(hyperparameters['eps'].get('value.increase') is not None) and
+			(hyperparameters['eps'].get('value.increase') > 0) and
 			((len(attributes['value']) > 1) and 
 			 (attributes['iteration'][-1] >= max(1,
 				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and
@@ -1938,23 +1938,22 @@ class Callback(System):
 				elif attr in [
 					'variables','variables.norm','variables.relative','variables.relative.mean',
 					] and (do):
-					# TODO: Sort out shape of variable parameters from arbitrary parameters returns
-					slices = slice(0,2*model.N)
+					indices = model.parameters.indices
 					if attr in ['variables']:
-						value = model.parameters(parameters)[slices]
+						value = model.parameters(parameters)[indices]
 					elif attr in ['variables.norm']:
-						value = model.parameters(parameters)[slices]
+						value = model.parameters(parameters)[indices]
 						value = norm(value)/(value.size)
 					elif attr in ['variables.relative']:
 						eps = 1e-20
-						value = model.parameters(parameters)[slices]
-						_value = model.parameters(attributes['parameters'][0])[slices]
-						value = abs((value - _value + eps)/(_value + eps))
+						value = model.parameters(parameters)[indices]
+						_value = model.parameters(attributes['parameters'][0])[indices]
+						value = abs(10**(log10(abs(value - _value)) - log10(abs(_value))))
 					elif attr in ['variables.relative.mean']:
 						eps = 1e-20
-						value = model.parameters(parameters)[slices]
-						_value = model.parameters(attributes['parameters'][0])[slices]
-						value = abs((value - _value + eps)/(_value + eps)).mean()
+						value = model.parameters(parameters)[indices]
+						_value = model.parameters(attributes['parameters'][0])[indices]
+						value = abs(10**(log10(abs(value - _value)) - log10(abs(_value)))).mean()
 
 				elif attr in ['objective']:
 					value = abs(metric(model(parameters)))

@@ -55,7 +55,7 @@ class Parameter(System):
 			group=None,locality=None,bounds=None,attributes=None,axis=None,
 			parameters=None,
 			seed=None,random=None,initialization=None,constant=None,
-			slices=None,indices=None,func=None,constraint=None,
+			slices=None,sort=None,indices=None,func=None,constraint=None,
 			shape=None,size=None,ndim=None,dtype=None,			
 			args=(),kwargs={}
 			)
@@ -70,7 +70,7 @@ class Parameter(System):
 
 		self.__initialize__()
 
-		assert (self.indices is not None), "Zero-size data, No indices for parameter"
+		assert (self.size is not None), "Zero-size data"
 
 		return
 
@@ -131,7 +131,7 @@ class Parameter(System):
 		self.category = self.category if self.category is not None else None
 		self.method = self.method if self.method is not None else None
 		self.group = (*((*group,) if not isinstance(group,str) else (group,) for group in self.group),)  if self.group is not None else ()
-		self.locality = {group: self.locality if isinstance(self.locality,str) else self.locality.get(subgroup) if isinstance(self.locality,dict) else self.locality[i] for i,group in enumerate(self.group)} if self.locality is not None else {}
+		self.locality = {group: self.locality if self.locality is None or isinstance(self.locality,str) else self.locality.get(subgroup) if isinstance(self.locality,dict) else self.locality[i] for i,group in enumerate(self.group)}
 		self.model = self.model if self.model is not None else None
 		self.attributes = [attr for attr in self.attributes if getattr(self.model,attr,None) is not None] if self.attributes is not None else ()
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
@@ -154,12 +154,13 @@ class Parameter(System):
 		strings = {strings[i]: [j for j in strings if strings[j] == strings[i]] for i in strings}
 		strings = {i: {
 			'string':string,'label':separ.join((str(string),str(j))),
-			'indices':i,'slices':None,'group':None,
+			'sort':i,'indices':j,'slices':None,'group':None,
 			}
 			for string in strings for j,i in enumerate(strings[string])}
 		
 		# Get slices (indices of parameter for each data in each group (locality dependent) (sort parameters into order of indices of data))
-		# Get indices (indices of data for each parameter in each group (re-order/sort parameters from slices and func())		
+		# Get sort (indices of data for each parameter in each group (re-order/sort parameters from slices and func())		
+		# Get indices (indices of data for each parameter in each group)		
 		# Get sizes (number of parameters per group for each group)
 		# Get size (number of parameters per group)
 		for i in list(strings):
@@ -198,15 +199,16 @@ class Parameter(System):
 			else:
 				strings[i]['slices'] = sum(strings[i]['sizes'][:group.index(strings[i]['group'])]) + [j for j in strings if strings[j]['group'] == strings[i]['group']].index(i)
 
-
 		slices = array([strings[i]['slices'] for i in strings]) if strings else None
+		sort = array([strings[i]['sort'] for i in strings]) if strings else None
 		indices = array([strings[i]['indices'] for i in strings]) if strings else None
 		shape = [
 			sum(max(strings[i]['size'] for i in strings if strings[i]['group'] == subgroup) for subgroup in group),
 			*(getattr(model,attr) for attr in attributes)] if strings else None
-	
+
 		# Set attributes
 		self.slices = slices
+		self.sort = sort
 		self.indices = indices
 		self.shape = shape if shape is not None else None
 		self.size = prod(shape) if shape is not None else None
@@ -231,12 +233,15 @@ class Parameter(System):
 		self.dtype = dtype if dtype is not None else self.dtype
 
 		kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
-		self.data = initialize(**kwargs)
 
-		self.shape = self.data.shape if self.data is not None else None
-		self.size = self.data.size if self.data is not None else None
-		self.ndim = self.data.ndim if self.data is not None else None
-		self.dtype = self.data.dtype if self.data is not None else None
+		if self.size is not None:
+
+			self.data = initialize(**kwargs)
+
+			self.shape = self.data.shape if self.data is not None else None
+			self.size = self.data.size if self.data is not None else None
+			self.ndim = self.data.ndim if self.data is not None else None
+			self.dtype = self.data.dtype if self.data is not None else None
 
 		self.data = self.data
 
@@ -244,18 +249,19 @@ class Parameter(System):
 		defaults = {
 			'constant':self.constant,
 			'lambda':0,
-			'scale':[self.parameters,2*pi],
-			'shift':[[0],[-pi/2]],
+			'scale':[1,2*pi],
+			'shift':[0,-pi/2],
+			'sigmoid':1,
 			'default':0,
 			}
-		self.kwargs.update({attr: kwargs.get(attr,defaults[attr]) for attr in defaults})
+		self.kwargs.update({attr: self.kwargs.get(attr,kwargs.get(attr,defaults[attr])) for attr in defaults})
 
 		for attr in self.kwargs:
 
 			if self.kwargs.get(attr) is None:
 				continue
 
-			if attr in ['lambda','scale','shift','default']:
+			if attr in ['lambda','scale','shift','sigmoid','default']:
 				
 				self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
 			
@@ -269,35 +275,79 @@ class Parameter(System):
 					indices = array([int(i) for i in constants])
 					values = array([constants[i] for i in constants],dtype=self.dtype)
 					axis = int(axis)
-					indices = (*(slice(None),)*(axis % self.ndim-1),indices)
+					ax = self.ndim - axis if axis < 0 else axis
+					indices = (*(slice(None),)*(max(0,ax-2)),indices,*(slice(None),)*(max(0,self.ndim - ax - 1)))
 					self.kwargs[attr][axis] = {'indices':indices,'values':values}
-	
 
 		if self.category in ['variable']:
 
-			if self.method in ['bounded']:
+			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 		
 				def func(parameters):
+					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
+					
+			elif self.method in ['bounded']:
+
+				def func(parameters):
 					return self.parameters*bound(parameters[self.slices])
+
+			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['scale','shift','sigmoid']):
+		
+				def func(parameters):
+					return self.parameters*bound((
+						(self.kwargs['scale'][0]*parameters[self.slices][:self.slices.size//2])*
+						cos(self.kwargs['scale'][1]*parameters[self.slices][self.slices.size//2:][None,...] + self.kwargs['shift'][...,None,None])
+						).reshape(-1,*parameters.shape[1:]),scale=self.kwargs['sigmoid'])
 
 			elif self.method in ['constrained']:					
-			
+		
 				def func(parameters):
-					return self.parameters*bound(parameters[self.slices])
+					return self.parameters*bound(parameters)
 
 			else:
-	
-				def func(parameters):
-					return self.parameters*parameters[self.slices]
-		
+
+				if isinstance(self.method,dict):
+					func = self.method.get('func')
+				elif isinstance(self.method,str):
+					func = self.method
+				else:
+					func = None
+				
+				func = load(func)
+
+				if func is None:
+					def func(parameters):
+						return self.parameters*parameters[self.slices]
+				else:
+					func = partial(func,self=self)
 	
 
 			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
+			
 				def constraint(parameters):
-					return self.kwargs['lambda']*((parameters[...,self.kwargs['constant'][-1]['indices']] - self.kwargs['constant'][-1]['values'])**2).sum()
+					return self.kwargs['lambda']*sum(
+						((parameters[self.kwargs['constant'][i]['indices']] - 
+						  self.kwargs['constant'][i]['values'])**2).sum() 
+						for i in self.kwargs['constant'])
+			
 			else:
-				def constraint(parameters):
-					return self.kwargs['default']
+
+				if isinstance(self.method,dict):
+					constraint = self.method.get('constraint')
+				elif isinstance(self.method,str):
+					constraint = None
+				else:
+					constraint = None
+				
+				constraint = load(constraint)
+
+				if constraint is None:
+			
+					def constraint(parameters):
+						return self.kwargs['default']
+
+				else:
+					constraint = partial(constraint,self=self)
 
 		else:
 		
@@ -368,7 +418,7 @@ class Parameters(System):
 
 		defaults = dict(
 			data=None,
-			slices=None,indices=None,func=None,constraint=None,parameters=None,
+			slices=None,sort=None,indices=None,func=None,constraint=None,parameters=None,
 			shape=None,size=None,ndim=None,dtype=None,
 			)
 
@@ -397,7 +447,7 @@ class Parameters(System):
 		if parameters is None:
 			return self.data
 
-		parameters = self.func(parameters)[self.indices]
+		parameters = self.func(parameters)[self.sort]
 
 		return parameters
 
@@ -441,27 +491,33 @@ class Parameters(System):
 		# Set dtype
 		dtype = datatype(self.dtype)
 
-		# Set indices and slices
+		# Set slices and sort and indices
+		categories = ['variable']
 		slices = []
+		sort = []
 		indices = []
 		for i,parameter in enumerate(self):
-			if self[parameter].category in ['variable']:
+			if self[parameter].category in categories:
 				slc = self[parameter].size
-				index = self[parameter].indices
+				srt = self[parameter].sort
+				idx = self[parameter].category
 			else:
 				slc = None
-				index = self[parameter].indices
+				srt = self[parameter].sort
+				idx = self[parameter].category
 
 
 			slc = [max((i[-1] for i in slices),default=0),slc] if slc is not None else [0,0]
-			index = [i for i in index]
+			srt = [int(i) for i in srt]
+			idx = [idx for i in srt]
 
 			slices.append(slc)
-			indices.extend(index)
+			sort.extend(srt)
+			indices.extend(idx)
 
 		slices = [[*i] for i in slices]
-		indices = array([indices.index(i) for i in range(len(indices))])
-
+		sort = array([sort.index(i) for i in range(len(sort))])
+		indices = array([list(sort).index(i) for i in range(len(sort)) if indices[i] in categories])
 
 		# Set func and constraint
 		funcs = []
@@ -475,10 +531,10 @@ class Parameters(System):
 			constraints.append(func)
 
 		def func(parameters,slices=slices,funcs=funcs,dtype=dtype):
-			return concatenate([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)])
+			return concatenate([func(slicing(parameters,*i)) for i,func in zip(slices,funcs)])
 
 		def constraint(parameters,slices=slices,funcs=constraints,dtype=dtype):
-			return addition(array([func(slicing(parameters,*indices)) for indices,func in zip(slices,funcs)]))
+			return addition(array([func(slicing(parameters,*i)) for i,func in zip(slices,funcs)]))
 
 		# Get data
 		data = []
@@ -501,10 +557,14 @@ class Parameters(System):
 
 		parameters = array(parameters,dtype=self.dtype).ravel() if parameters else None
 
+
+
+
 		# Set attributes
 		self.data = data
-		self.indices = indices
 		self.slices = slices
+		self.sort = sort
+		self.indices = indices
 		self.func = func
 		self.constraint = constraint
 		self.parameters = parameters

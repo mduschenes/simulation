@@ -72,6 +72,10 @@ def train(hyperparameters):
 		label = load(hyperparameters.cls.label)
 		callback = load(hyperparameters.cls.callback)
 
+		if any(i is None for i in [model,label,callback]):
+			model = None
+			return model
+
 		hyperparams = hyperparameters.optimize
 		system = hyperparameters.system
 

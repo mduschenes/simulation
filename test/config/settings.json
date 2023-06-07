@@ -22,8 +22,8 @@
 "permutations":{
 	"permutations":{	
 
-		"model.N":[4],		
-		"model.M":[2,4,6,8],
+		"model.N":[2],		
+		"model.M":[3],
 		"model.P":[1],
 		"model.tau":[1],
 		"model.T": [null],
@@ -150,16 +150,16 @@
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},
-	"track":{}	
+	"track":{"iteration":[],"parameters":[],"objective":[],
+		"value":[],"grad":[],"search":[]}	
 	},
 "parameters":{
 	"xy": {
 		"string":"xy",
 		"category":"variable",
-		"method":"constrained",
-		"method":null,
+		"method":"unconstrained",
 		"group":[["x"],["y"]],
-		"locality":null,
+		"locality":"local",
 		"bounds":[-1,1],
 		"attributes":["M"],		
 		"data":null,
@@ -171,12 +171,11 @@
 			"interpolation":3,
 			"smoothness":2
 			},
-		"initialization":0.25,
 		"constant":{"-1":{"0":0,"-1":0}},
 		"constant":null,
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":5e2}
-		},			
+		},
 	"z": {
 		"string":"z",
 		"category":"constant",
@@ -198,7 +197,7 @@
 		"category":"constant",
 		"method":null,		
 		"group":[["zz"]],
-		"data":[1,1,1,1,1,1,1,1],								
+		"data":[1,-1,1,1,1,1,1,1],								
 		"parameters":1,
 		"bounds":[-1,1],
 		"locality":null,
