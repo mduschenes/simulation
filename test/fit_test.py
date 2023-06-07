@@ -5,9 +5,6 @@ import pytest
 import os,sys
 import itertools,functools,copy,warnings
 
-import jax
-import jax.numpy as np
-import numpy as onp
 import matplotlib.pyplot as plt
 
 # Import User modules
@@ -16,6 +13,7 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+from src.utils import np,onp,BACKEND
 from src.io import load,dump,join,split,edit
 from src.utils import array,ones,zeros,rand,logspace,gradient,sort,norm,allclose,log10,exp10,abs,inf
 from src.fit import fit,cov
@@ -30,6 +28,9 @@ def warn_with_traceback(message, category, filename, lineno, file=None, line=Non
 
 
 def test_err(path=None,tol=None):
+
+	if BACKEND in ['autograd']:
+		return
 
 	scale = 3
 	def model(parameters,x):
@@ -47,6 +48,7 @@ def test_err(path=None,tol=None):
 	x = sort(rand((n,),bounds=[0,1],key=key['x']))
 	parameters = array([rand(bounds=[0,1],key=key['parameters_'][0]),rand(bounds=[-1,0],key=key['parameters_'][1])])[:d].ravel()
 	y = model(parameters,x) 
+
 	xerr = None
 	yerr = sigma*rand(n,bounds=[-1,1],key=key['yerr']) if (sigma is not None and sigma>0) else None
 	yerr = sigma*ones(n) if (sigma is not None and sigma>0) else None
@@ -64,7 +66,6 @@ def test_err(path=None,tol=None):
 	def func(parameters,x):
 		y = parameters[0] + parameters[1]*x
 		return y
-
 
 	_n = n*10
 	_x = logspace(int(log10(x.min()))-2,int(log10(x.max())),_n)

@@ -18,38 +18,58 @@ def warn_with_traceback(message, category, filename, lineno, file=None, line=Non
 	return
 warnings.showwarning = warn_with_traceback
 
-envs = {
-	'JAX_PLATFORM_NAME':'cpu',
-	'TF_CPP_MIN_LOG_LEVEL':5
-}
-for var in envs:
-	os.environ[var] = str(envs[var])
-
-
 import matplotlib
 import matplotlib.pyplot as plt
 
 import numpy as onp
 import scipy as osp
 import pandas as pd
-import jax
-import jax.numpy as np
-import jax.scipy as sp
-import jax.example_libraries.optimizers
-from jax._src import prng as jaxprng
-from jax.tree_util import register_pytree_node_class as tree_register
-from jax.tree_util import tree_map as tree_map
 
-import absl.logging
-absl.logging.set_verbosity(absl.logging.INFO)
 
-configs = {
-	'jax_disable_jit':False,
-	'jax_platforms':'cpu',
-	'jax_enable_x64': True
+ENVIRON = 'NUMPY_BACKEND'
+DEFAULT = 'jax'
+BACKENDS = ['jax','autograd','jax.autograd']
+
+BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
+
+assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
+
+
+if BACKEND in ['jax','jax.autograd']:
+	
+	envs = {
+		'JAX_PLATFORM_NAME':'cpu',
+		'TF_CPP_MIN_LOG_LEVEL':5
 	}
-for name in configs:
-	jax.config.update(name,configs[name])
+	for var in envs:
+		os.environ[var] = str(envs[var])
+
+
+	import jax
+	import jax.numpy as np
+	import jax.scipy as sp
+
+	import jax.example_libraries.optimizers
+	from jax.tree_util import register_pytree_node_class as tree_register
+	from jax.tree_util import tree_map as tree_map
+
+	import absl.logging
+	absl.logging.set_verbosity(absl.logging.INFO)
+
+	configs = {
+		'jax_disable_jit':False,
+		'jax_platforms':'cpu',
+		'jax_enable_x64': True
+		}
+	for name in configs:
+		jax.config.update(name,configs[name])
+
+elif BACKEND in ['autograd']:
+
+	import autograd
+	import autograd.numpy as np
+	import autograd.scipy as sp
+	import autograd.scipy.linalg
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
 pd.set_option('display.max_rows', 500)
@@ -57,15 +77,6 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 # Constants
-pi = np.pi
-e = np.exp(1)
-nan = np.nan
-inf = np.inf
-scalars = (int,np.integer,float,np.floating,str,type(None))
-nulls = ('',None)
-delim = '.'
-
-optimizer_libraries = jax.example_libraries.optimizers
 
 class Null(object):
 	def __str__(self):
@@ -83,9 +94,56 @@ class none(object):
 null = Null()
 
 # Types
-itg = np.integer
-flt = np.float32
-dbl = np.float64
+
+
+if BACKEND in ['jax','jax.autograd']:
+
+	itg = np.integer
+	flt = np.float32
+	dbl = np.float64
+
+	pi = np.pi
+	e = np.exp(1)
+
+	nan = np.nan
+	inf = np.inf
+	scalars = (int,np.integer,float,np.floating,onp.int,onp.integer,onp.float,onp.floating,str,type(None))
+	arrays = (np.ndarray,onp.ndarray)
+
+	iterables = (*arrays,list,tuple,set)
+	nulls = ('',None,Null)
+	delim = '.'
+	separ = '_'
+
+
+elif BACKEND in ['autograd']:
+
+	itg = np.integer
+	flt = np.float32
+	dbl = np.float64
+
+	pi = np.pi
+	e = np.exp(1)
+
+	nan = np.nan
+	inf = np.inf
+	scalars = (int,np.integer,float,np.floating,onp.int,onp.integer,onp.float,onp.floating,str,type(None))
+	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox)
+
+	iterables = (*arrays,list,tuple,set)
+	nulls = ('',None,Null)
+	delim = '.'
+	separ = '_'	
+
+
+# Libraries
+if BACKEND in ['jax','jax.autograd']:
+
+	optimizer_libraries = jax.example_libraries.optimizers
+
+elif BACKEND in ['autograd']:
+
+	optimizer_libraries = []
 
 class mapping(dict):
 	def __init__(self,*args,**kwargs):
@@ -243,67 +301,359 @@ class argparser(argparse.ArgumentParser):
 		return self.kwargs.values()
 
 
-def jit(func,*,static_argnums=None,**kwargs):
-	'''
-	Just-in-time compile function
-	Args:
-		func (callable): Function to compile
-		static_argnums (dict): Arguments to statically compile
-		kwargs (dict): Additional (non-jittable) arguments to keep constant when jitting
-	Returns:
-		func (callable): Compiled function
-	'''
-	return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+if BACKEND in ['jax','jax.autograd']:
+	
+	def setitem(obj,index,item):
+		'''
+		Set item at index of object
+		Args:
+			obj (object): Object to set
+			index (object): Index to set item
+			item (object): Item to set
+		Returns:
+			obj (object): Object with set item at index
+		'''
+		
+		# TODO merge indexing for different numpy backends (jax vs autograd)
 
-# @partial(jit,static_argnums=(2,))	
-def vmap(func,in_axes=0,out_axes=0,axes_name=None):	
-	'''
-	Vectorize function over input axes of iterables
-	Args:
-		func (callable): Function that acts on single elements of iterables
-		in_axes (int,iterable): Input axes of iterables
-		out_axes (int,interable): Output axes of func return
-		axes_names (object): hashable Python object used to identify the mapped
-			axis so that parallel collectives can be applied.
-	Returns:
-		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
-	'''
-	return jax.vmap(func,in_axes,out_axes,axes_name)
+		# obj = obj.at[index].set(item)		
+		obj = obj.at[index].set(item)
+		return obj
 
+elif BACKEND in ['autograd']:
+	
+	def setitem(obj,index,item):
+		'''
+		Set item at index of object
+		Args:
+			obj (object): Object to set
+			index (object): Index to set item
+			item (object): Item to set
+		Returns:
+			obj (object): Object with set item at index
+		'''
+		
+		# TODO merge indexing for different numpy backends (jax vs autograd)
 
-# @partial(jit,static_argnums=(2,))	
-def forloop(start,end,func,out):	
-	'''
-	Perform loop of func from start to end indices
-	Args:
-		start (int): Start index of loop
-		end (int): End index of loop
-		func (callable): Function that acts on iterables with signature func(i,out)
-		out (array): Initial value of loop
-	Returns:
-		out (array): Return of loop
-	'''
-	if (end-start) <= 0:
-		return out
-	return jax.lax.fori_loop(start,end,func,out)
+		obj[index] = item
+		# obj = obj.at[index].set(item)
+		return obj
 
 
-# @partial(jit,static_argnums=(2,))
-def vfunc(funcs,index):	
-	'''
-	Vectorize indexed functions over operands
-	Args:
-		funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
-		index (iterable[int]): Iterable of indices of functions to call
-	Returns:
-		vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
-	'''
-	# def vfunc(*iterables):
-	# 	return array(list(map(lambda i,*x:funcs[i](*x),*[index,*iterables])))
-	# return vfunc
-	# func = jit(vmap(lambda i,x,funcs=funcs: jax.lax.switch(i,funcs,x)))
-	func = lambda index,x: array([funcs[i](x[i]) for i in index])
-	return lambda x,func=func,index=index: func(index,x)
+if BACKEND in ['jax','jax.autograd']:
+
+	def jit(func,*,static_argnums=None,**kwargs):
+		'''
+		Just-in-time compile function
+		Args:
+			func (callable): Function to compile
+			static_argnums (dict): Arguments to statically compile
+			kwargs (dict): Additional (non-jittable) arguments to keep constant when jitting
+		Returns:
+			func (callable): Compiled function
+		'''
+
+		# TODO merge jit for different numpy backends (jax vs autograd)
+
+		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+		# return wraps(func)(partial(func,**kwargs))
+
+elif BACKEND in ['autograd']:
+
+	def jit(func,*,static_argnums=None,**kwargs):
+		'''
+		Just-in-time compile function
+		Args:
+			func (callable): Function to compile
+			static_argnums (dict): Arguments to statically compile
+			kwargs (dict): Additional (non-jittable) arguments to keep constant when jitting
+		Returns:
+			func (callable): Compiled function
+		'''
+
+		# TODO merge jit for different numpy backends (jax vs autograd)
+
+		# return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
+		return wraps(func)(partial(func,**kwargs))		
+
+
+if BACKEND in ['jax','jax.autograd']:
+
+	# @partial(jit,static_argnums=(2,))	
+	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+		'''
+		Vectorize function over input axis of iterables
+		Args:
+			func (callable): Function that acts on single elements of iterables
+			in_axes (int,iterable): Input axis of iterables
+			out_axes (int,interable): Output axis of func return
+			axis_names (object): hashable Python object used to identify the mapped
+				axis so that parallel collectives can be applied.
+			kwargs (dict): Additional keyword arguments for func
+		Returns:
+			vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+		'''
+
+		# TODO merge vmap for different numpy backends (jax vs autograd)
+
+		func = jit(func,**kwargs)
+
+		vfunc = jax.vmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
+		return vfunc
+
+		# in_axes = [in_axes] if in_axes is None or isinstance(in_axes,int) else in_axes
+		# out_axes = [out_axes] if out_axes is None or isinstance(out_axes,int) else out_axes
+		# axis_name = [axis_name] if axis_name is None or isinstance(axis_name,int) else axis_name
+
+		# def vfunc(*args,**kwargs):
+		# 	args = itertools.product(*(arg if (i in in_axes) and ((len(in_axes)<len(args)) or (in_axes[i] is not None)) else [arg] for i,arg in enumerate(args)))
+		# 	# TODO arbitrary in_axes, out_axes
+		# 	return array([func(*arg,**kwargs) for arg in args])
+
+		# return vfunc
+
+
+elif BACKEND in ['autograd']:
+
+	# @partial(jit,static_argnums=(2,))	
+	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+		'''
+		Vectorize function over input axis of iterables
+		Args:
+			func (callable): Function that acts on single elements of iterables
+			in_axes (int,iterable): Input axis of iterables
+			out_axes (int,interable): Output axis of func return
+			axis_names (object): hashable Python object used to identify the mapped
+				axis so that parallel collectives can be applied.
+			kwargs (dict): Additional keyword arguments for func
+		Returns:
+			vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+		'''
+
+		# TODO merge vmap for different numpy backends (jax vs autograd)
+
+		# func = jit(func,**kwargs)
+
+		# vfunc = jax.vmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
+		# return vfunc
+
+		in_axes = [in_axes] if in_axes is None or isinstance(in_axes,int) else in_axes
+		out_axes = [out_axes] if out_axes is None or isinstance(out_axes,int) else out_axes
+		axis_name = [axis_name] if axis_name is None or isinstance(axis_name,int) else axis_name
+
+		def vfunc(*args,**kwargs):
+			args = itertools.product(*(arg if (i in in_axes) and ((len(in_axes)<len(args)) or (in_axes[i] is not None)) else [arg] for i,arg in enumerate(args)))
+			# TODO arbitrary in_axes, out_axes
+			return array([func(*arg,**kwargs) for arg in args])
+
+		return vfunc
+
+
+if BACKEND in ['jax','jax.autograd']:
+
+	# @partial(jit,static_argnums=(2,))	
+	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+		'''
+		Vectorize function over input axis of iterables
+		Args:
+			func (callable): Function that acts on single elements of iterables
+			in_axes (int,iterable): Input axis of iterables
+			out_axes (int,interable): Output axis of func return
+			axis_names (object): hashable Python object used to identify the mapped
+				axis so that parallel collectives can be applied.
+			kwargs (dict): Additional keyword arguments for func
+		Returns:
+			pfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+		'''
+
+		# TODO merge pmap for different numpy backends (jax vs autograd)
+
+		func = jit(func,**kwargs)
+
+		pfunc = jax.pmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
+		return pfunc
+
+elif BACKEND in ['autograd']:
+
+	# @partial(jit,static_argnums=(2,))	
+	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+		'''
+		Vectorize function over input axis of iterables
+		Args:
+			func (callable): Function that acts on single elements of iterables
+			in_axes (int,iterable): Input axis of iterables
+			out_axes (int,interable): Output axis of func return
+			axis_names (object): hashable Python object used to identify the mapped
+				axis so that parallel collectives can be applied.
+			kwargs (dict): Additional keyword arguments for func
+		Returns:
+			pfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+		'''
+
+		# TODO merge pmap for different numpy backends (jax vs autograd)
+
+		func = jit(func,**kwargs)
+
+		pfunc = jax.pmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
+		return pfunc
+
+
+if BACKEND in ['jax','jax.autograd']:
+
+	# @partial(jit,static_argnums=(2,))
+	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+		'''
+		Vectorize indexed functions over operands
+		Args:
+			funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
+			in_axes (int,iterable): Input axis of iterables
+			out_axes (int,interable): Output axis of func return
+			axis_names (object): hashable Python object used to identify the mapped
+				axis so that parallel collectives can be applied.
+			kwargs (dict): Additional keyword arguments for func	
+		Returns:
+			vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+		'''
+
+		funcs = [jit(func,**kwargs) for func in funcs]
+
+		func = lambda index,*args: switch(index,funcs,*args)
+		vfunc = vmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
+		# func = lambda index,*args,funcs=funcs: switch(index,funcs,*args[index])
+		# vfunc = lambda *args,funcs: array([func(index,*args) for index in range(len(funcs))])
+
+		return vfunc
+
+elif BACKEND in ['autograd']:
+
+	# @partial(jit,static_argnums=(2,))
+	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
+		'''
+		Vectorize indexed functions over operands
+		Args:
+			funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
+			in_axes (int,iterable): Input axis of iterables
+			out_axes (int,interable): Output axis of func return
+			axis_names (object): hashable Python object used to identify the mapped
+				axis so that parallel collectives can be applied.
+			kwargs (dict): Additional keyword arguments for func	
+		Returns:
+			vfunc (callable): Vectorized function with signature vfunc(*iterables) = [func(*iterables[axes_in][0]),...,func(*iterables[axes_in][n-1])]
+		'''
+
+		funcs = [jit(func,**kwargs) for func in funcs]
+
+		# func = lambda index,*args: switch(index,funcs,*args)
+		# vfunc = vmap(func,in_axes=in_axes,out_axes=out_axes,axis_name=axis_name)
+
+		func = lambda index,*args,funcs=funcs: switch(index,funcs,*args[index])
+		vfunc = lambda *args,funcs: array([func(index,*args) for index in range(len(funcs))])
+
+		return vfunc
+
+
+if BACKEND in ['jax','jax.autograd']:
+	
+	def switch(index,funcs,*args):
+		'''
+		Switch between indexed functions over operands
+		Args:
+			index (int): Index for function
+			funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
+			args (tuple): Arguments for function
+		Returns:
+			out (object): Return of function
+		'''	
+
+		# TODO merge switch for different numpy backends (jax vs autograd)
+
+		return jax.lax.switch(index,funcs,*args)
+		# return funcs[index](*args)
+
+elif BACKEND in ['autograd']:
+
+	def switch(index,funcs,*args):
+		'''
+		Switch between indexed functions over operands
+		Args:
+			index (int): Index for function
+			funcs (iterable[callable]): Functions that act on that acts on single elements of iterables
+			args (tuple): Arguments for function
+		Returns:
+			out (object): Return of function
+		'''	
+
+		# TODO merge switch for different numpy backends (jax vs autograd)
+
+		# return jax.lax.switch(index,funcs,*args)
+		return funcs[index](*args)
+
+
+if BACKEND in ['jax','jax.autograd']:
+	
+	# @partial(jit,static_argnums=(2,))	
+	def forloop(start,end,func,out):	
+		'''
+		Perform loop of func from start to end indices
+		Args:
+			start (int): Start index of loop
+			end (int): End index of loop
+			func (callable): Function that acts on iterables with signature func(i,out)
+			out (array): Initial value of loop
+		Returns:
+			out (array): Return of loop
+		'''
+
+		# TODO merge forloop for different numpy backends (jax vs autograd)
+
+		if (end-start) <= 0:
+			return out
+		return jax.lax.fori_loop(start,end,func,out)
+		
+		# if end <= start:
+		# 	step = -1
+		# else:
+		# 	step = 1
+
+		# for i in range(start,end,step):
+		# 	out = func(i,out)
+		# return out
+
+
+elif BACKEND in ['autograd']:
+
+	# @partial(jit,static_argnums=(2,))	
+	def forloop(start,end,func,out):	
+		'''
+		Perform loop of func from start to end indices
+		Args:
+			start (int): Start index of loop
+			end (int): End index of loop
+			func (callable): Function that acts on iterables with signature func(i,out)
+			out (array): Initial value of loop
+		Returns:
+			out (array): Return of loop
+		'''
+
+		# TODO merge forloop for different numpy backends (jax vs autograd)
+
+		# if (end-start) <= 0:
+		# 	return out
+		# return jax.lax.fori_loop(start,end,func,out)
+		
+		if end <= start:
+			step = -1
+		else:
+			step = 1
+
+		for i in range(start,end,step):
+			out = func(i,out)
+		return out		
 
 
 def value_and_gradient(func,grad=None,returns=False):
@@ -325,7 +675,8 @@ def value_and_gradient(func,grad=None,returns=False):
 
 	if grad is None:
 		grad = gradient(func)
-		value_and_grad = jit(jax.value_and_grad(func))
+		# value_and_grad = jit(jax.value_and_grad(func))
+		value_and_grad = _value_and_grad(func,grad)
 	else:
 		value_and_grad = _value_and_grad(func,grad)
 
@@ -345,8 +696,8 @@ def gradient(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		kwargs : Additional keyword arguments for gradient mode:
 			'finite': tol (float): Finite difference tolerance
 			'shift': shifts (int): Number of eigenvalues of shifted values
-			'fwd': move (bool): Move differentiated axes to beginning of dimensions
-			'rev': move (bool): Move differentiated axes to beginning of dimensions
+			'fwd': move (bool): Move differentiated axis to beginning of dimensions
+			'rev': move (bool): Move differentiated axis to beginning of dimensions
 	Returns:
 		grad (callable): Gradient of function
 	'''
@@ -413,102 +764,288 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 		vectors = eye(size).reshape((size,*shape))
 		out = vmap(vmap(lambda v,s: s*func(x+pi/4/s*v),in_axes=(0,None)),in_axes=(None,0))(vectors,shifts).sum(0)
 		out = out.reshape((*shape,*out.shape[1:]))
-		return 
+		return out
 
 	return grad
 
 
-def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
-	'''
-	Compute gradient of function
-	Args:
-		func (callable): Function to differentiate
-		move (bool): Move differentiated axes to beginning of dimensions
-		argnums (int,iterable[int]): Arguments of func to derive with respect to
-		holomorphic (bool): Whether function is holomorphic	
-		kwargs : Additional keyword arguments
-	Returns:
-		grad (callable): Gradient of function
-	'''
-	_grad = jit(jax.grad(func,argnums=argnums,holomorphic=holomorphic))
+if BACKEND in ['jax','jax.autograd']:
 
-	if move:
-		grad = _grad
-	else:
-		grad = _grad
+	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute gradient of function
+		Args:
+			func (callable): Function to differentiate
+			move (bool): Move differentiated axis to beginning of dimensions
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic	
+			kwargs : Additional keyword arguments
+		Returns:
+			grad (callable): Gradient of function
+		'''
 
-	return grad
+		# TODO merge grad for different numpy backends (jax vs autograd)
 
-def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
-	'''
-	Compute forward gradient of function
-	Args:
-		func (callable): Function to differentiate
-		move (bool): Move differentiated axes to beginning of dimensions
-		argnums (int,iterable[int]): Arguments of func to derive with respect to
-		holomorphic (bool): Whether function is holomorphic	
-		kwargs : Additional keyword arguments
-	Returns:
-		grad (callable): Gradient of function
-	'''
+		_grad = jit(jax.grad(func,argnums=argnums,holomorphic=holomorphic))
+		# argnum = argnums
+		# if holomorphic:
+		# 	_grad = jit(autograd.grad(func,argnum=argnum))
+		# else:
+		# 	_grad = jit(autograd.grad(func,argnum=argnum))
 
-	_grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
+		if move:
+			grad = _grad
+		else:
+			grad = _grad
 
-	if move:
-		@jit
-		def grad(*args,**kwargs):
-			x,args = args[0],args[1:]
-			ndim = x.ndim
-			return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
-	else:
-		grad = _grad
+		return grad
 
-	return grad
+elif BACKEND in ['autograd']:
 
-def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
-	'''
-	Compute reverse gradient of function
-	Args:
-		func (callable): Function to differentiate
-		move (bool): Move differentiated axes to beginning of dimensions
-		argnums (int,iterable[int]): Arguments of func to derive with respect to
-		holomorphic (bool): Whether function is holomorphic		
-		kwargs : Additional keyword arguments		
-	Returns:
-		grad (callable): Gradient of function
-	'''
+	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute gradient of function
+		Args:
+			func (callable): Function to differentiate
+			move (bool): Move differentiated axis to beginning of dimensions
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic	
+			kwargs : Additional keyword arguments
+		Returns:
+			grad (callable): Gradient of function
+		'''
 
-	_grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
+		# TODO merge grad for different numpy backends (jax vs autograd)
 
-	if move:
-		@jit
-		def grad(*args,**kwargs):
-			x,args = args[0],args[1:]
-			ndim = x.ndim
-			return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))		
-	else:
-		grad = _grad
+		# _grad = jit(jax.grad(func,argnums=argnums,holomorphic=holomorphic))
+		argnum = argnums
+		if holomorphic:
+			_grad = jit(autograd.grad(func,argnum=argnum))
+		else:
+			_grad = jit(autograd.grad(func,argnum=argnum))
 
-	return grad
+		if move:
+			grad = _grad
+		else:
+			grad = _grad
 
-def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
-	'''
-	Compute hessian of function
-	Args:
-		func (callable): Function to differentiate
-		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
-		argnums (int,iterable[int]): Arguments of func to derive with respect to
-		holomorphic (bool): Whether function is holomorphic
-		kwargs : Additional keyword arguments for gradient mode:
-			'finite': tol (float): Finite difference tolerance
-			'shift': shifts (int): Number of eigenvalues of shifted values
-			'fwd': move (bool): Move differentiated axes to beginning of dimensions
-			'rev': move (bool): Move differentiated axes to beginning of dimensions
-	Returns:
-		grad (callable): Hessian of function
-	'''
-	grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
-	return grad
+		return grad
+
+
+if BACKEND in ['jax','jax.autograd']:
+
+	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute forward gradient of function
+		Args:
+			func (callable): Function to differentiate
+			move (bool): Move differentiated axis to beginning of dimensions
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic	
+			kwargs : Additional keyword arguments
+		Returns:
+			grad (callable): Gradient of function
+		'''
+
+		# TODO merge grad for different numpy backends (jax vs autograd)
+
+		_grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
+		# argnum = argnums
+		# if holomorphic:
+		# 	_grad = jit(autograd.jacobian(func,argnum=argnum))
+		# else:
+		# 	_grad = jit(autograd.jacobian(func,argnum=argnum))
+
+		if move:
+			@jit
+			def grad(*args,**kwargs):
+				x,args = args[0],args[1:]
+				ndim = x.ndim
+				return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
+		else:
+			grad = _grad
+
+		return grad
+
+
+elif BACKEND in ['autograd']:
+
+	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute forward gradient of function
+		Args:
+			func (callable): Function to differentiate
+			move (bool): Move differentiated axis to beginning of dimensions
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic	
+			kwargs : Additional keyword arguments
+		Returns:
+			grad (callable): Gradient of function
+		'''
+		# TODO merge grad for different numpy backends (jax vs autograd)
+
+		# _grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
+		argnum = argnums
+
+		if not isinstance(argnum,int):
+			
+			move = False
+			def _grad(*args,**kwargs):
+				grads = [[None for axis in argnum] for axis in argnum]
+				for i,axis in enumerate(argnum):
+					_grad = jit(autograd.jacobian(func,argnum=axis))
+					grads[i][i] = _grad(*args,**kwargs)
+				return grads
+		else:
+			if holomorphic:
+				_grad = jit(autograd.jacobian(func,argnum=argnum))
+			else:
+				_grad = jit(autograd.jacobian(func,argnum=argnum))
+
+		if move:
+			@jit
+			def grad(*args,**kwargs):
+				x,args = args[0],args[1:]
+				ndim = x.ndim
+				return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
+		else:
+			grad = _grad
+
+		return grad
+
+
+if BACKEND in ['jax','jax.autograd']:
+
+	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute reverse gradient of function
+		Args:
+			func (callable): Function to differentiate
+			move (bool): Move differentiated axis to beginning of dimensions
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic		
+			kwargs : Additional keyword arguments		
+		Returns:
+			grad (callable): Gradient of function
+		'''
+
+		# TODO merge grad for different numpy backends (jax vs autograd)
+
+		_grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
+		# argnum = argnums
+		# if holomorphic:
+		# 	_grad = jit(autograd.grad(func,argnum=argnum))
+		# else:
+		# 	_grad = jit(autograd.grad(func,argnum=argnum))	
+
+		if move:
+			@jit
+			def grad(*args,**kwargs):
+				x,args = args[0],args[1:]
+				ndim = x.ndim
+				return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))		
+		else:
+			grad = _grad
+
+		return grad
+
+
+elif BACKEND in ['autograd']:
+
+	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute reverse gradient of function
+		Args:
+			func (callable): Function to differentiate
+			move (bool): Move differentiated axis to beginning of dimensions
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic		
+			kwargs : Additional keyword arguments		
+		Returns:
+			grad (callable): Gradient of function
+		'''
+
+		# TODO merge grad for different numpy backends (jax vs autograd)
+
+		# _grad = jit(jax.jacrev(func,argnums=argnums,holomorphic=holomorphic))
+		argnum = argnums
+		if holomorphic:
+			_grad = jit(autograd.grad(func,argnum=argnum))
+		else:
+			_grad = jit(autograd.grad(func,argnum=argnum))	
+
+		if move:
+			@jit
+			def grad(*args,**kwargs):
+				x,args = args[0],args[1:]
+				ndim = x.ndim
+				return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))		
+		else:
+			grad = _grad
+
+		return grad
+
+
+if BACKEND in ['jax','jax.autograd']:
+
+	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute hessian of function
+		Args:
+			func (callable): Function to differentiate
+			mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic
+			kwargs : Additional keyword arguments for gradient mode:
+				'finite': tol (float): Finite difference tolerance
+				'shift': shifts (int): Number of eigenvalues of shifted values
+				'fwd': move (bool): Move differentiated axis to beginning of dimensions
+				'rev': move (bool): Move differentiated axis to beginning of dimensions
+		Returns:
+			grad (callable): Hessian of function
+		'''
+		
+		# TODO merge grad for different numpy backends (jax vs autograd)
+		
+		grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
+		# argnum = argnums
+		# if holomorphic:
+		# 	grad = jit(autograd.hessian(func,argnum=argnum))
+		# else:
+		# 	grad = jit(autograd.hessian(func,argnum=argnum))	
+
+		return grad
+
+
+elif BACKEND in ['autograd']:
+
+	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute hessian of function
+		Args:
+			func (callable): Function to differentiate
+			mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic
+			kwargs : Additional keyword arguments for gradient mode:
+				'finite': tol (float): Finite difference tolerance
+				'shift': shifts (int): Number of eigenvalues of shifted values
+				'fwd': move (bool): Move differentiated axis to beginning of dimensions
+				'rev': move (bool): Move differentiated axis to beginning of dimensions
+		Returns:
+			grad (callable): Hessian of function
+		'''
+		
+		# TODO merge grad for different numpy backends (jax vs autograd)
+		
+		# grad = jit(jax.hessian(func,argnums=argnums,holomorphic=holomorphic))
+		argnum = argnums
+		if holomorphic:
+			grad = jit(autograd.hessian(func,argnum=argnum))
+		else:
+			grad = jit(autograd.hessian(func,argnum=argnum))	
+
+		return grad		
 
 
 def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
@@ -557,12 +1094,12 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	def fisher(*args,**kwargs):
 		f = func(*args,**kwargs)
 		g = grad(*args,**kwargs)
-		_f = f.conj()
-		_g = g.conj()
+		_f = conjugate(f)
+		_g = conjugate(g)
 		out = 0
 		for einsummation in einsummations:
 			out = out + einsummation(f,g,_f,_g)
-		out = out.real
+		out = real(out)
 		return out
 
 	return fisher
@@ -606,7 +1143,7 @@ def datatype(dtype):
 		dtype (datatype): Underlying datatype
 	'''
 	
-	return array([],dtype=dtype).real.dtype
+	return real(array([],dtype=dtype)).dtype
 
 class Array(onp.ndarray):
 	'''
@@ -722,99 +1259,147 @@ class String(str):
 
 
 
-@tree_register
-class Parameters(dict):
-	'''
-	Class for pytree subclassed dict dictionary of parameters, with children and auxiliary keys
-	Args:
-		parameters (dict): Dictionary of parameters
-		children (iterable): Iterable of tree leaf children keys
-		auxiliary (iterable): Iterable of tree leaf auxiliary keys
-	'''
-	def __init__(self,parameters,children=None,auxiliary=None):
-		super().__init__(parameters)
+# @tree_register
+# class Parameters(dict):
+# 	'''
+# 	Class for pytree subclassed dict dictionary of parameters, with children and auxiliary keys
+# 	Args:
+# 		parameters (dict): Dictionary of parameters
+# 		children (iterable): Iterable of tree leaf children keys
+# 		auxiliary (iterable): Iterable of tree leaf auxiliary keys
+# 	'''
+# 	def __init__(self,parameters,children=None,auxiliary=None):
+# 		super().__init__(parameters)
 
-		if children is None:
-			children = [parameter for parameter in parameters]
-		if auxiliary is None:
-			auxiliary = []
-		else:
-			auxiliary = [parameter for parameter in parameters if parameters not in children]
+# 		if children is None:
+# 			children = [parameter for parameter in parameters]
+# 		if auxiliary is None:
+# 			auxiliary = []
+# 		else:
+# 			auxiliary = [parameter for parameter in parameters if parameters not in children]
 
-		self.children = children
-		self.auxiliary = auxiliary
-		return
+# 		self.children = children
+# 		self.auxiliary = auxiliary
+# 		return
 
-	def tree_flatten(self):
-		keys = (self.children,self.auxiliary,)
-		children = (*(self[parameter] for parameter in self.children),)
-		auxiliary = (*keys,*(self[parameter] for parameter in self.auxiliary),)
-		return (children,auxiliary)
+# 	def tree_flatten(self):
+# 		keys = (self.children,self.auxiliary,)
+# 		children = (*(self[parameter] for parameter in self.children),)
+# 		auxiliary = (*keys,*(self[parameter] for parameter in self.auxiliary),)
+# 		return (children,auxiliary)
 
-	@classmethod
-	def tree_unflatten(cls,auxiliary,children):
-		keys,auxiliary = auxiliary[:2],auxiliary[2:]
-		parameters = {
-			**dict(zip(keys[0],children)),
-			**dict(zip(keys[1],auxiliary))
-			}
-		return cls(parameters)
+# 	@classmethod
+# 	def tree_unflatten(cls,auxiliary,children):
+# 		keys,auxiliary = auxiliary[:2],auxiliary[2:]
+# 		parameters = {
+# 			**dict(zip(keys[0],children)),
+# 			**dict(zip(keys[1],auxiliary))
+# 			}
+# 		return cls(parameters)
 
-def tree_func(func):
-	'''
-	Perform binary function on trees a and b
-	Args:
-		func (callable): Callable function with signature func(*args,**kwargs)
-	Returns:
-		tree_func (callable): Function that returns tree_map pytree of function call with signature tree_func(*args,**kwargs)
-	'''
-	@jit
-	def tree_func(*args,**kwargs):
-		return tree_map(func,*args,**kwargs)
-	return tree_func
-
-
-
-@tree_func
-@jit
-def tree_dot(a,b):
-	'''
-	Perform dot product function on trees a and b
-	Args:
-		a (pytree): Pytree object to perform function
-		b (pytree): Pytree object to perform function
-	Returns:
-		tree_map (pytree): Return pytree of function call
-	'''	
-	return dot(a.ravel(),b.ravel())
-
-@tree_func
-@jit
-def tree_add(a,b):
-	'''
-	Perform add function on trees a and b
-	Args:
-		a (pytree): Pytree object to perform function
-		b (pytree): Pytree object to perform function
-	Returns:
-		tree_map (pytree): Return pytree of function call
-	'''
-	return add(a,b)
+# def tree_func(func):
+# 	'''
+# 	Perform binary function on trees a and b
+# 	Args:
+# 		func (callable): Callable function with signature func(*args,**kwargs)
+# 	Returns:
+# 		tree_func (callable): Function that returns tree_map pytree of function call with signature tree_func(*args,**kwargs)
+# 	'''
+# 	@jit
+# 	def tree_func(*args,**kwargs):
+# 		return tree_map(func,*args,**kwargs)
+# 	return tree_func
 
 
-def decorator(*args,**kwargs):
+
+# @tree_func
+# @jit
+# def tree_dot(a,b):
+# 	'''
+# 	Perform dot product function on trees a and b
+# 	Args:
+# 		a (pytree): Pytree object to perform function
+# 		b (pytree): Pytree object to perform function
+# 	Returns:
+# 		tree_map (pytree): Return pytree of function call
+# 	'''	
+# 	return dot(a.ravel(),b.ravel())
+
+# @tree_func
+# @jit
+# def tree_add(a,b):
+# 	'''
+# 	Perform add function on trees a and b
+# 	Args:
+# 		a (pytree): Pytree object to perform function
+# 		b (pytree): Pytree object to perform function
+# 	Returns:
+# 		tree_map (pytree): Return pytree of function call
+# 	'''
+# 	return add(a,b)
+
+
+def decorator(*arguments,function=None,**keywords):
 	'''
 	Wrap function with args and kwargs
+	Args:
+		arguments (iterable): Decorator arguments
+		keywords (dict): Decorator keyword arguments
+
 	'''
 	def wrapper(func):
 		@wraps
-		def wrapped(*_args,**_kwargs):
-			arg = (*_args,*args)
-			kwarg = {**kwargs,**_kwargs}
-			return func(*arg,**kwarg)
+		def wrapped(*args,**kwargs):
+			args = (*args,*arguments)
+			kwargs = {**keywords,**kwargs}
+			return func(*args,**kwargs)
 		return wrapped
-	return wrapper
+	return wrapper	
 
+
+def wrapper(function,*arguments,**keywords):
+	'''
+	Wrap func args and kwargs with function
+	Args:
+		function (callable): Function to wrap arguments with signature function(args,kwargs,*arguments,**keywords) -> args,kwargs
+		arguments (iterable): Function arguments
+		keywords (dict): Function keyword arguments
+
+	'''
+	if function is None:
+		def function(args,kwargs,*arguments,**keywords):
+			return args,kwargs
+	function = partial(function,*arguments,**keywords)
+	def wrapper(func):
+		@wraps
+		def wrapped(*args,**kwargs):
+			args,kwargs = function(args,kwargs)
+			return func(*args,**kwargs)
+		return wrapped
+	return wrapper	
+
+
+class Array(onp.ndarray):
+	'''
+	array subclass (TODO: Views do not copy attrs)
+	'''
+	def __new__(cls,obj,attrs={},**kwargs):
+		self = onp.asarray(obj,**kwargs).view(cls)
+		self.attrs = attrs
+		for attr in self.attrs:
+			setattr(self,attr,attrs[attr])
+		return self
+
+	def __array_finalize__(self, obj):
+		if obj is None:
+			return
+		try:
+			self.attrs = obj.attrs
+			for attr in self.attrs:
+				setattr(self,attr,getattr(obj,attr,None))
+		except:
+			pass
+		return
 
 class array(np.ndarray):
 	'''
@@ -827,7 +1412,7 @@ class array(np.ndarray):
 	'''
 	def __new__(self,*args,**kwargs):
 		return np.array(*args,**kwargs)
-
+		# return super().__init__(self,*args,**kwargs)
 
 class nparray(onp.ndarray):
 	'''
@@ -840,6 +1425,7 @@ class nparray(onp.ndarray):
 	'''
 	def __new__(self,*args,**kwargs):
 		return onp.array(*args,**kwargs)
+		# return super().__init__(self,*args,**kwargs)
 
 class asndarray(onp.ndarray):
 	'''
@@ -865,7 +1451,7 @@ class asarray(np.ndarray):
 	def __new__(self,*args,**kwargs):
 		return np.asarray(*args,**kwargs)
 
-class asscalar(onp.ndarray):
+class asscalar(np.ndarray):
 	'''
 	array class
 	Args:
@@ -1097,290 +1683,631 @@ class toffoli(array):
 			out = toffoli(n-1,*args,**kwargs)
 			return array([[out,out],[out,-out]],*args,**kwargs)
 
+if BACKEND in ['jax']:
 
-def PRNGKey(seed=None,size=False,reset=None):
-	'''
-	Generate PRNG key
-	Args:
-		seed (int,array): Seed for random number generation or random key for future seeding
-		size(bool,int): Number of splits of random key
-		reset (bool,int): Reset seed
-	Returns:
-		key (key,list[key]): Random key
-	'''	
-	def default_prng_impl():
-		
+	def prng(seed=None,size=False,reset=None,**kwargs):
 		'''
-		Get the default PRNG implementation.
+		Generate prng key
+		Args:
+			seed (int,array): Seed for random number generation or random key for future seeding
+			size(bool,int): Number of splits of random key
+			reset (bool,int): Reset seed
+			kwargs (dict): Additional keyword arguments for seeding
+		Returns:
+			key (key,list[key]): Random key
+		'''	
 
-		The default implementation is determined by ``config.jax_default_prng_impl``,
-		which specifies it by name. This function returns the corresponding
-		``jax.prng.PRNGImpl`` instance.
+		# TODO merge random seeding for different numpy backends (jax vs autograd)
+
+		bounds = [0,2**32]
+
+		generator = jax.random
+
+		if reset is not None:
+			onp.random.seed(reset)
+
+		if not isinstance(size,int):
+			size = len(size)
+
+		if seed is None:
+			seed = onp.random.randint(*bounds)
+
+		if isinstance(seed,(int)):
+			key = generator.PRNGKey(seed)
+			# key = generator.seed(seed)		
+		else:
+			key = asndarray(seed,dtype=np.uint32)
+
+		if size:
+			key = generator.split(key,num=size)
+			# key = generator.randint(*bounds,size=size)
+
+		return key
+
+elif BACKEND in ['jax.autograd','autograd']:
+
+	def prng(seed=None,size=False,reset=None,**kwargs):
 		'''
+		Generate prng key
+		Args:
+			seed (int,array): Seed for random number generation or random key for future seeding
+			size(bool,int): Number of splits of random key
+			reset (bool,int): Reset seed
+			kwargs (dict): Additional keyword arguments for seeding			
+		Returns:
+			key (key,list[key]): Random key
+		'''	
 
-		PRNG_IMPLS = {
-			'threefry2x32': jaxprng.threefry_prng_impl,
-			'rbg': jaxprng.rbg_prng_impl,
-			'unsafe_rbg': jaxprng.unsafe_rbg_prng_impl,
-			}
+		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
-		impl_name = jaxconfig.jax_default_prng_impl
-		assert impl_name in PRNG_IMPLS, impl_name
-		return PRNG_IMPLS[impl_name]
+		bounds = [0,2**32]
 
+		generator = onp.random
 
-	if reset is not None:
-		onp.random.seed(reset)
+		if reset is not None:
+			generator.seed(reset)
 
-	if seed is None:
-		seed = onp.random.randint(1e12)
+		if seed is None:
+			seed = generator.randint(*bounds)
 
-	if isinstance(seed,(int)):
-		key = jax.random.PRNGKey(seed)
-	else:
-		key = asndarray(seed,dtype=np.uint32)
-
-	if size:
-		key = jax.random.split(key,num=size)
-
-	return key
-
-
-def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,dtype=None,**kwargs):
-	'''
-	Get random array
-	Args:
-		shape (int,iterable): Size or Shape of random arrayf
-		key (PRNGArrayKey,iterable[int],int): PRNG key or seed
-		seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
-		bounds (iterable): Bounds on array
-		random (str): Type of random distribution
-		mesh (int): Get meshgrid of array for mesh dimensions
-		dtype (data_type): Datatype of array		
-		kwargs (dict): Additional keyword arguments for random
-	Returns:
-		out (array): Random array
-	'''	
-
-	if shape is None:
-		shape = 1
-	if isinstance(shape,int):
-		shape = (shape,)
-
-	if seed is not None:
 		key = seed
-	key = PRNGKey(key)
 
-	if bounds is None:
-		bounds = ["-inf","inf"]
-	elif isinstance(bounds,scalars):
-		bounds = [0,bounds]
-	elif len(bounds)==0:
-		bounds = ["-inf","inf"]
+		if size:
+			key = generator.randint(*bounds,size=size)
 
-	bounds = [to_number(i,dtype) for i in bounds]
-
-	b = len(bounds)
-	for i in range(b):
-		if isinstance(bounds[i],str):
-			if random in ['gaussian','normal']:
-				bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
-			else:
-				bounds[i] = float(bounds)
-
-	subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
-	complex = is_complexdtype(dtype) and random not in subrandoms
-	_dtype = dtype
-	dtype = datatype(dtype)
-
-	if complex:
-		shape = (2,*shape)
-
-	if random in ['uniform','rand']:
-		def func(key,shape,bounds,dtype):
-			out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
-			return out
-	elif random in ['randint']:
-		def func(key,shape,bounds,dtype):		
-			out = jax.random.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
-			return out
-	elif random in ['gaussian','normal']:
-		def func(key,shape,bounds,dtype):
-			out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*jax.random.normal(key,shape,dtype=dtype)				
-			return out
-	elif random in ['haar']:
-		def func(key,shape,bounds,dtype):
-
-			bounds = [-1,1]
-			subrandom = 'gaussian'
-			subdtype = 'complex'
-			ndim = len(shape)
-
-			if ndim < 2:
-				shape = [*shape]*2
-
-			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
-
-			if ndim < 4:
-				reshape = (*(1,)*(4-out.ndim),*out.shape)
-			else:
-				reshape = out.shape
-
-			out = out.reshape(reshape)
-
-			for i in range(out.shape[0]):
-				for j in range(out.shape[1]):
-
-					Q,R = qr(out[i,j])
-					R = diag(R)
-					R = diag(R/abs(R))
-					
-					out = out.at[i,j].set(Q.dot(R))
-
-			out = out.reshape(shape)
-
-			assert allclose(1,einsum('...ij,...ij->...',out,out.conj()).real/out.shape[-1])
-
-			# Create random matrices versus vectors
-			if ndim == 1: # Random vector
-				out = out[...,0] 
-			elif ndim == 2: # Random matrix
-				out = out[:,:]
-			elif ndim == 3: # Samples of random vectors
-				out = out[...,0]
-			elif ndim == 4: # Samples of random rank-1 matrices
-
-				out = out[...,0]
-
-				out = einsum('...i,...j->...ij',out,out.conj())
+		return key
 
 
-			return out
+if BACKEND in ['jax']:
 
+	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
+		'''
+		Get random array
+		Args:
+			shape (int,iterable): Size or Shape of random arrayf
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			bounds (iterable): Bounds on array
+			random (str): Type of random distribution
+			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
+			mesh (int): Get meshgrid of array for mesh dimensions
+			reset (bool,int): Reset seed		
+			dtype (data_type): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random
+		Returns:
+			out (array): Random array
+		'''	
 
-	elif random in ['hermitian','symmetric']:
-		def func(key,shape,bounds,dtype):
+		# TODO merge random seeding for different numpy backends (jax vs autograd)
+
+		if shape is None:
+			shape = 1
+		if isinstance(shape,int):
+			shape = (shape,)
+
+		if seed is not None:
+			key = seed
 		
-			bounds = [-1,1]
-			subrandom = 'gaussian'
-			subdtype = 'complex'
-			ndim = len(shape)
+		key = prng(key,reset=reset)
 
-			if ndim == 1:
-				shape = [*shape]*2
+		generator = jax.random
+
+		if bounds is None:
+			bounds = ["-inf","inf"]
+		elif isinstance(bounds,scalars):
+			bounds = [0,bounds]
+		elif len(bounds)==0:
+			bounds = ["-inf","inf"]
+
+		bounds = [to_number(i,dtype) for i in bounds]
+
+		b = len(bounds)
+		for i in range(b):
+			if isinstance(bounds[i],str):
+				if random in ['gaussian','normal']:
+					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
+				else:
+					bounds[i] = float(bounds)
+
+		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
+		complex = is_complexdtype(dtype) and random not in subrandoms
+		_dtype = dtype
+		dtype = datatype(dtype)
+
+		if complex:
+			shape = (2,*shape)
+
+		if random in ['uniform','rand']:
+			def func(key,shape,bounds,dtype):
+				out = generator.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+				# out = asarray(generator.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)
+				return out
+		elif random in ['randint']:
+			def func(key,shape,bounds,dtype):		
+				out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+				# out = asarray(generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)		
+				return out
+		elif random in ['gaussian','normal']:
+			def func(key,shape,bounds,dtype):
+				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
+				# out = asarray((bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype),dtype=dtype)
+				return out
+		elif random in ['haar']:
+			def func(key,shape,bounds,dtype):
+
+				bounds = [-1,1]
+				subrandom = 'gaussian'
+				subdtype = 'complex'
+				ndim = len(shape)
+				shapes = shape
+
+				if ndim < 2:
+					shape = [*shape]*2
+				elif ndim >= 2:
+					if shape[-2] != shape[-1]:
+						shape = (*shape[:-1],*shape[-1:]*2)
+
+				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
+
+				if out.ndim < 4:
+					reshape = (*(1,)*(4-out.ndim),*out.shape)
+				else:
+					reshape = out.shape
+
+
+				out = out.reshape(reshape)
+
+				for i in range(out.shape[0]):
+					for j in range(out.shape[1]):
+
+						Q,R = qr(out[i,j])
+						R = diag(R)
+						R = diag(R/abs(R))
+						
+						out = setitem(out,(i,j),dot(Q,R))
+
+				out = out.reshape(shape)
+
+				assert allclose(1,real(einsum('...ij,...ij->...',out,conjugate(out)))/out.shape[-1])
+
+				# Create random matrices versus vectors
+				shape = shapes
+				if ndim == 1: # Random vector
+					out = out[...,0] 
+				elif ndim == 2: # Random vector or matrix
+					if shape[-2] != shape[-1]:
+						out = out[...,0]
+						weights = rand(out.shape[0],key=key,dtype=_dtype)
+						out = einsum('u,...ui->...i',weights,out)
+						weights = sqrt(einsum('...i,...i->...',conjugate(out),out))
+						out = out/weights
+					else:
+						out = out[:,:]
+				elif ndim == 3: # Sum of samples of random rank-1 matrices (vectors)
+					out = out[...,0]
+					weights = rand(out.shape[0],key=key,dtype=_dtype)
+					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
+					weights = einsum('...ii->...',out)
+					out = out/weights				
+
+				elif ndim >= 4: # Samples of random matrices
+					# TODO: Implement random density matrices
+					raise NotImplementedError
+					out = out[...,0]
+					weights = rand(out.shape[0],key=key,dtype=dtype)
+					weights = weights/weights.sum()
+					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
+
+
+				return out
+
+
+		elif random in ['hermitian','symmetric']:
+			def func(key,shape,bounds,dtype):
+			
+				bounds = [-1,1]
+				subrandom = 'gaussian'
+				subdtype = 'complex'
 				ndim = len(shape)
 
-			out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)	
+				if ndim == 1:
+					shape = [*shape]*2
+					ndim = len(shape)
 
-			out = (out + moveaxis(out,(-1,-2),(-2,-1)).conj())/2
+				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)	
 
-
-			if ndim == 1:
-				out = diag(out)
-
-			return out
-
-	elif random in ['zero']:
-		def func(key,shape,bounds,dtype):
-			out = zeros(shape[-1],dtype=dtype)
-			out = out.at[0].set(1)
-			ndim = len(shape)
-			if ndim == 1:
-				pass
-			elif ndim == 2:
-				out = outer(out,out)
-			elif ndim == 3:
-				out = array([[out]*shape[1]]*shape[0])
-			elif ndim == 4:
-				out = outer(out,out)
-				out = array([[out]*shape[1]]*shape[0])
-			return out
-	elif random in ['one']:
-		def func(key,shape,bounds,dtype):
-			out = zeros(shape[-1],dtype=dtype)
-			out = out.at[-1].set(1)
-			ndim = len(shape)
-			if ndim == 1:
-				pass
-			elif ndim == 2:
-				out = outer(out,out)
-			elif ndim == 3:
-				out = array([[out]*shape[1]]*shape[0])
-			elif ndim == 4:
-				out = outer(out,out)
-				out = array([[out]*shape[1]]*shape[0])
-			return out			
-	elif random in ['plus']:
-		def func(key,shape,bounds,dtype):
-			out = zeros(shape[-1],dtype=dtype)
-			out = out.at[:].set(1)/sqrt(shape[-1])
-			ndim = len(shape)
-			if ndim == 1:
-				pass
-			elif ndim == 2:
-				out = outer(out,out)
-			elif ndim == 3:
-				out = array([[out]*shape[1]]*shape[0])
-			elif ndim == 4:
-				out = outer(out,out)
-				out = array([[out]*shape[1]]*shape[0])
-			return out	
-	elif random in ['minus']:
-		def func(key,shape,bounds,dtype):
-			out = zeros(shape[-1],dtype=dtype)
-			out = out.at[0::2].set(1)/sqrt(shape[-1])
-			out = out.at[1::2].set(-1)/sqrt(shape[-1])
-			ndim = len(shape)
-			if ndim == 1:
-				pass
-			elif ndim == 2:
-				out = outer(out,out)
-			elif ndim == 3:
-				out = array([[out]*shape[1]]*shape[0])
-			elif ndim == 4:
-				out = outer(out,out)
-				out = array([[out]*shape[1]]*shape[0])
-			return out				
-	elif random in ['zeros']:
-		def func(key,shape,bounds,dtype):
-			out = zeros(shape,dtype=dtype)
-			return out
-	elif random in ['ones']:
-		def func(key,shape,bounds,dtype):
-			out = ones(shape,dtype=dtype)
-			return out	
-	elif random in ['linspace']:
-		def func(key,shape,bounds,dtype):
-			num = shape[0] if not isinstance(shape,int) else shape
-			out = linspace(*bounds,num,dtype=dtype)
-			return out					
-	elif random in ['logspace']:
-		def func(key,shape,bounds,dtype):
-			num = shape[0] if not isinstance(shape,int) else shape
-			out = logspace(*bounds,num,dtype=dtype)
-			return out								
-	else:
-		def func(key,shape,bounds,dtype):
-			out = jax.random.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
-			return out
-
-	if mesh is not None:
-		out = array([out.reshape(-1) for out in np.meshgrid(*[func(key,shape,bounds,dtype) for i in range(mesh)])])
-	else:
-		out = func(key,shape,bounds,dtype)
+				out = (out + conjugate(moveaxis(out,(-1,-2),(-2,-1))))/2
 
 
-	if scale is not None:
-		out = out*scale
+				if ndim == 1:
+					out = diag(out)
 
-	if complex:
-		out = out[0] + 1j*out[1]
+				return out
 
-	dtype = _dtype if _dtype is not None else out.dtype
+		elif random in ['zero']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,0,1)
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out
+		elif random in ['one']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,-1,1)
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out			
+		elif random in ['plus']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,slice(None),1/sqrt(shape[-1]))
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out	
+		elif random in ['minus']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,slice(0,None,2),1/sqrt(shape[-1]))
+				out = setitem(out,slice(1,None,2),-1/sqrt(shape[-1]))
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out				
+		elif random in ['zeros']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape,dtype=dtype)
+				return out
+		elif random in ['ones']:
+			def func(key,shape,bounds,dtype):
+				out = ones(shape,dtype=dtype)
+				return out	
+		elif random in ['linspace']:
+			def func(key,shape,bounds,dtype):
+				num = shape[0] if not isinstance(shape,int) else shape
+				out = linspace(*bounds,num,dtype=dtype)
+				return out					
+		elif random in ['logspace']:
+			def func(key,shape,bounds,dtype):
+				num = shape[0] if not isinstance(shape,int) else shape
+				out = logspace(*bounds,num,dtype=dtype)
+				return out								
+		else:
+			def func(key,shape,bounds,dtype):
+				out = generator.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+				# out = asarray(generator.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)
+				return out
 
-	out = out.astype(dtype)
+		if mesh is not None:
+			out = array([out.reshape(-1) for out in np.meshgrid(*[func(key,shape,bounds,dtype) for i in range(mesh)])])
+		else:
+			out = func(key,shape,bounds,dtype)
 
-	return out
+
+		if scale in ['normalize']:
+			out = out/out.sum()
+		elif scale in ['1']:
+			out = out/out.sum()
+		elif scale in ['2']:
+			out = out/sqrt(sqr(out).sum())
+		elif scale is not None:
+			out = out*scale
+
+		if complex:
+			out = out[0] + 1j*out[1]
+
+		dtype = _dtype if _dtype is not None else out.dtype
+
+		out = array(out,dtype=dtype)
+
+		return out
+
+
+elif BACKEND in ['jax.autograd','autograd']:
+
+	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
+		'''
+		Get random array
+		Args:
+			shape (int,iterable): Size or Shape of random arrayf
+			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			bounds (iterable): Bounds on array
+			random (str): Type of random distribution
+			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
+			mesh (int): Get meshgrid of array for mesh dimensions
+			reset (bool,int): Reset seed		
+			dtype (data_type): Datatype of array		
+			kwargs (dict): Additional keyword arguments for random
+		Returns:
+			out (array): Random array
+		'''	
+
+		# TODO merge random seeding for different numpy backends (jax vs autograd)
+
+		if shape is None:
+			shape = 1
+		if isinstance(shape,int):
+			shape = (shape,)
+
+		if seed is not None:
+			key = seed
+		
+		key = prng(key,reset=reset)
+
+		generator = onp.random.RandomState(key)
+
+		if bounds is None:
+			bounds = ["-inf","inf"]
+		elif isinstance(bounds,scalars):
+			bounds = [0,bounds]
+		elif len(bounds)==0:
+			bounds = ["-inf","inf"]
+
+		bounds = [to_number(i,dtype) for i in bounds]
+
+		b = len(bounds)
+		for i in range(b):
+			if isinstance(bounds[i],str):
+				if random in ['gaussian','normal']:
+					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
+				else:
+					bounds[i] = float(bounds)
+
+		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
+		complex = is_complexdtype(dtype) and random not in subrandoms
+		_dtype = dtype
+		dtype = datatype(dtype)
+
+		if complex:
+			shape = (2,*shape)
+
+		if random in ['uniform','rand']:
+			def func(key,shape,bounds,dtype):
+				# out = generator.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+				out = generator.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
+				return out
+		elif random in ['randint']:
+			def func(key,shape,bounds,dtype):		
+				# out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+				out = generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype)		
+				return out
+		elif random in ['gaussian','normal']:
+			def func(key,shape,bounds,dtype):
+				# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
+				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype)				
+				return out
+		elif random in ['haar']:
+			def func(key,shape,bounds,dtype):
+
+				bounds = [-1,1]
+				subrandom = 'gaussian'
+				subdtype = 'complex'
+				ndim = len(shape)
+				shapes = shape
+
+				if ndim < 2:
+					shape = [*shape]*2
+				elif ndim >= 2:
+					if shape[-2] != shape[-1]:
+						shape = (*shape[:-1],*shape[-1:]*2)
+
+				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
+
+				if out.ndim < 4:
+					reshape = (*(1,)*(4-out.ndim),*out.shape)
+				else:
+					reshape = out.shape
+
+
+				out = out.reshape(reshape)
+
+				for i in range(out.shape[0]):
+					for j in range(out.shape[1]):
+
+						Q,R = qr(out[i,j])
+						R = diag(R)
+						R = diag(R/abs(R))
+						
+						out = setitem(out,(i,j),dot(Q,R))
+
+				out = out.reshape(shape)
+
+				assert allclose(1,real(einsum('...ij,...ij->...',out,conjugate(out)))/out.shape[-1])
+
+				# Create random matrices versus vectors
+				shape = shapes
+				if ndim == 1: # Random vector
+					out = out[...,0] 
+				elif ndim == 2: # Random vector or matrix
+					if shape[-2] != shape[-1]:
+						out = out[...,0]
+						weights = rand(out.shape[0],key=key,dtype=_dtype)
+						out = einsum('u,...ui->...i',weights,out)
+						weights = sqrt(einsum('...i,...i->...',conjugate(out),out))
+						out = out/weights
+					else:
+						out = out[:,:]
+				elif ndim == 3: # Sum of samples of random rank-1 matrices (vectors)
+					out = out[...,0]
+					weights = rand(out.shape[0],key=key,dtype=_dtype)
+					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
+					weights = einsum('...ii->...',out)
+					out = out/weights				
+
+				elif ndim >= 4: # Samples of random matrices
+					# TODO: Implement random density matrices
+					raise NotImplementedError
+					out = out[...,0]
+					weights = rand(out.shape[0],key=key,dtype=dtype)
+					weights = weights/weights.sum()
+					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
+
+
+				return out
+
+
+		elif random in ['hermitian','symmetric']:
+			def func(key,shape,bounds,dtype):
+			
+				bounds = [-1,1]
+				subrandom = 'gaussian'
+				subdtype = 'complex'
+				ndim = len(shape)
+
+				if ndim == 1:
+					shape = [*shape]*2
+					ndim = len(shape)
+
+				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)	
+
+				out = (out + conjugate(moveaxis(out,(-1,-2),(-2,-1))))/2
+
+
+				if ndim == 1:
+					out = diag(out)
+
+				return out
+
+		elif random in ['zero']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,0,1)
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out
+		elif random in ['one']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,-1,1)
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out			
+		elif random in ['plus']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,slice(None),1/sqrt(shape[-1]))
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out	
+		elif random in ['minus']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape[-1],dtype=dtype)
+				out = setitem(out,slice(0,None,2),1/sqrt(shape[-1]))
+				out = setitem(out,slice(1,None,2),-1/sqrt(shape[-1]))
+				ndim = len(shape)
+				if ndim == 1:
+					pass
+				elif ndim == 2:
+					out = outer(out,out)
+				elif ndim == 3:
+					out = array([[out]*shape[1]]*shape[0])
+				elif ndim == 4:
+					out = outer(out,out)
+					out = array([[out]*shape[1]]*shape[0])
+				return out				
+		elif random in ['zeros']:
+			def func(key,shape,bounds,dtype):
+				out = zeros(shape,dtype=dtype)
+				return out
+		elif random in ['ones']:
+			def func(key,shape,bounds,dtype):
+				out = ones(shape,dtype=dtype)
+				return out	
+		elif random in ['linspace']:
+			def func(key,shape,bounds,dtype):
+				num = shape[0] if not isinstance(shape,int) else shape
+				out = linspace(*bounds,num,dtype=dtype)
+				return out					
+		elif random in ['logspace']:
+			def func(key,shape,bounds,dtype):
+				num = shape[0] if not isinstance(shape,int) else shape
+				out = logspace(*bounds,num,dtype=dtype)
+				return out								
+		else:
+			def func(key,shape,bounds,dtype):
+				# out = generator.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
+				out = generator.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
+				return out
+
+		if mesh is not None:
+			out = array([out.reshape(-1) for out in np.meshgrid(*[func(key,shape,bounds,dtype) for i in range(mesh)])])
+		else:
+			out = func(key,shape,bounds,dtype)
+
+
+		if scale in ['normalize']:
+			out = out/out.sum()
+		elif scale in ['1']:
+			out = out/out.sum()
+		elif scale in ['2']:
+			out = out/sqrt(sqr(out).sum())
+		elif scale is not None:
+			out = out*scale
+
+		if complex:
+			out = out[0] + 1j*out[1]
+
+		dtype = _dtype if _dtype is not None else out.dtype
+
+		out = array(out,dtype=dtype)
+
+		return out
 
 
 def _svd(A,k=None):
@@ -1434,7 +2361,7 @@ def eig(a,compute_v=False,hermitian=False):
 		if hermitian:
 			_eig = np.linalg.eigh
 		else:
-			_eig = np.linalg.eig
+			_eig = sp.linalg.eig
 	else:
 		if hermitian:
 			_eig = np.linalg.eigvalsh
@@ -1611,22 +2538,47 @@ def nansqrt(a):
 	return np.sqrt(a)
 
 
-@partial(jit,static_argnums=(1,2,3,))
-def norm(a,axis=None,ord=2,keepdims=False):
-	'''
-	Norm of array
-	Args:
-		a (array): array to be normalized
-		axis (int,iterable[int]): axis to normalize over. Flattens array if None.
-		ord (int,str): order of normalization
-		keepdims (bool): Keep axis of size 1 along normalization
-	Returns:
-		out (array): Norm of array
-	'''
+if BACKEND in ['jax','jax.autograd']:
 
-	out = np.linalg.norm(a,axis=axis,ord=ord,keepdims=keepdims)
+	@partial(jit,static_argnums=(1,2,3,))
+	def norm(a,axis=None,ord=2,keepdims=False):
+		'''
+		Norm of array
+		Args:
+			a (array): array to be normalized
+			axis (int,iterable[int]): axis to normalize over. Flattens array if None.
+			ord (int,str): order of normalization
+			keepdims (bool): Keep axis of size 1 along normalization
+		Returns:
+			out (array): Norm of array
+		'''
 
-	return out
+		# TODO merge norm for different numpy backends (jax vs autograd)
+
+		out = np.linalg.norm(a,axis=axis,ord=ord,keepdims=keepdims)
+
+		return out
+
+elif BACKEND in ['autograd']:
+
+	@partial(jit,static_argnums=(1,2,3,))
+	def norm(a,axis=None,ord=2,keepdims=False):
+		'''
+		Norm of array
+		Args:
+			a (array): array to be normalized
+			axis (int,iterable[int]): axis to normalize over. Flattens array if None.
+			ord (int,str): order of normalization
+			keepdims (bool): Keep axis of size 1 along normalization
+		Returns:
+			out (array): Norm of array
+		'''
+
+		# TODO merge norm for different numpy backends (jax vs autograd)
+
+		out = addition(a**ord,axis=axis)**(1/ord)
+
+		return out		
 
 
 @jit
@@ -1640,13 +2592,13 @@ def norm2(a,b=None):
 		out (array): Norm of array
 	'''
 	if b is None:
-		out = dot(conj(a),a)
+		out = dot(conjugate(a),a)
 	elif b.ndim == 1:
-		out = dot(conj(a),a*b)
+		out = dot(conjugate(a),a*b)
 	elif b.ndim == 2:
-		out = dot(dot(conj(a),b),a)
+		out = dot(dot(conjugate(a),b),a)
 	else:
-		out = dot(conj(a),a)
+		out = dot(conjugate(a),a)
 
 	return out
 
@@ -1657,7 +2609,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	Args:
 		metric (str,callable): Type of metric
 		shapes (iterable[tuple[int]]): Shapes of Operators
-		label (array): Label			
+		label (array,callable): Label			
 		weights (array): Weights
 		optimize (bool,str,iterable): Contraction type			
 		returns (bool): Return metric gradients
@@ -1674,12 +2626,14 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		size = 1
 		ndim = None
 
+
 	if callable(metric):
 			metric = metric
 			func = jit(metric)
 			grad = jit(gradient(metric))
 			# grad = gradient(func,mode='fwd',holomorphic=True,move=True)			
 			grad_analytical = jit(gradient(metric))
+	
 	elif metric is None:
 
 		func = inner_norm
@@ -1816,7 +2770,12 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 
 	if (label is not None) and (weights is not None):
 
-		label = conj(label)
+		if callable(label):
+			label = label()
+
+		if metric in ['abs2']:
+			label = conjugate(label)
+
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
 
 		def func(*operands,func=func,label=label,weights=weights):
@@ -1828,7 +2787,11 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	
 	elif (label is not None):
 
-		label = conj(label)
+		if callable(label):
+			label = label()
+
+		if metric in ['abs2']:
+			label = conjugate(label)	
 
 		def func(*operands,func=func,label=label):
 			return func(*operands[:1],label,*operands[1:])
@@ -1870,10 +2833,10 @@ def mse(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -1930,10 +2893,12 @@ def mse(*operands,optimize=True,wrapper=None):
 	@jit
 	def func(*operands):
 		out = operands[0]-operands[1]
-		out = einsummation(out,out,*operands[2:]).real
+		out = real(einsummation(out,out,*operands[2:]))
+		# out = real(einsummation(out,conjugate(out),*operands[2:])/
+		# 		   einsummation(operands[1],conjugate(operands[1]),*operands[2:]))
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -1950,10 +2915,10 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2011,22 +2976,27 @@ def gradient_mse(*operands,optimize=True,wrapper=None):
 		@jit
 		def func(*operands):
 			out = operands[0]-operands[1]
-			out = einsummation(operands[2],out).real
+			out = 2*real(einsummation(operands[2],conjugate(out))/
+				   einsummation(operands[1],conjugate(operands[1]))
+				)
 			return wrapper(out,*operands)
 	elif length == 4:
 		@jit
 		def func(*operands):
 			out = operands[0]-operands[1]			
-			out = einsummation(operands[3],out,operands[2]).real
+			out = 2*real(einsummation(operands[3],conjugate(out),operands[2])/
+				   einsummation(operands[1],conjugate(operands[1]))
+				   )
 			return wrapper(out,*operands)
 	else:
 		@jit
 		def func(*operands):
 			out = operands[0]-operands[1]
-			out = einsummation(operands[2],out).real
+			out = 2*real(einsummation(operands[2],conjugate(out))/
+				   einsummation(operands[1],conjugate(operands[1])))
 			return wrapper(out,*operands)			
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2045,10 +3015,10 @@ def inner(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2104,10 +3074,10 @@ def inner(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = einsummation(*operands[:length]).real
+		out = real(einsummation(*operands[:length]))
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2124,10 +3094,10 @@ def gradient_inner(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2185,20 +3155,20 @@ def gradient_inner(*operands,optimize=True,wrapper=None):
 	if length == 3:
 		@jit
 		def func(*operands):
-			out = einsummation(operands[2],operands[1]).real
+			out = real(einsummation(operands[2],operands[1]))
 			return wrapper(out,*operands)
 	elif length == 4:
 		@jit
 		def func(*operands):
-			out = einsummation(operands[3],operands[1],operands[2]).real
+			out = real(einsummation(operands[3],operands[1],operands[2]))
 			return wrapper(out,*operands)
 	else:
 		@jit
 		def func(*operands):
-			out = einsummation(operands[2],operands[1]).real
+			out = real(einsummation(operands[2],operands[1]))
 			return wrapper(out,*operands)			
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2217,10 +3187,10 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
 
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2240,10 +3210,10 @@ def inner_norm(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = einsummation(abs2(operands[0]-operands[1].conj()).real)
+		out = einsummation(abs2(operands[0]-conjugate(operands[1])))
 		return wrapper(out,*operands)
 	
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2260,10 +3230,10 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2283,11 +3253,11 @@ def gradient_inner_norm(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = (operands[0]-operands[1].conj()).conj()
-		out = 2*einsummation(operands[2],out).real
+		out = conjugate(operands[0])-operands[1]
+		out = 2*real(einsummation(operands[2],out))
 		return wrapper(out,*operands)
 	
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2305,10 +3275,10 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2328,10 +3298,10 @@ def inner_abs2(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = abs2(einsummation(*operands)).real
+		out = abs2(einsummation(*operands))#/real(einsummation(operands[0],conjugate(operands[0]))*einsummation(operands[1],conjugate(operands[1])))
 		return wrapper(out,*operands)
 	
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2350,10 +3320,10 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2384,10 +3354,10 @@ def gradient_inner_abs2(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = (2*(einsummation_func(operands[0],operands[1]).conj()*einsummation_grad(operands[2],operands[1])).real)
+		out = 2*real(conjugate(einsummation_func(operands[0],operands[1]))*einsummation_grad(operands[2],operands[1]))
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2405,10 +3375,10 @@ def inner_real(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2428,10 +3398,10 @@ def inner_real(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = einsummation(*operands).real
+		out = real(einsummation(*operands))
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2449,10 +3419,10 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2472,10 +3442,10 @@ def gradient_inner_real(*operands,optimize=True,wrapper=None):
 
 	@jit
 	def func(*operands):
-		out = einsummation(operands[2],operands[1]).real
+		out = real(einsummation(operands[2],operands[1]))
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2493,10 +3463,10 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2519,7 +3489,7 @@ def inner_imag(*operands,optimize=True,wrapper=None):
 		out = einsummation(*operands).imag
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2537,10 +3507,10 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 	Returns:
 		out (callable,array): Summation, callable if shapes supplied, otherwise out array
 	'''	
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
 	wrapper = jit(wrapper) if wrapper is not None else jit(nullfunc)
 	
-	if arrays:
+	if isarray:
 		shapes = [operand.shape for operand in operands]
 	else:
 		shapes = [operand for operand in operands]
@@ -2563,7 +3533,7 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 		out = einsummation(operands[2],operands[1]).imag
 		return wrapper(out,*operands)
 
-	if arrays:
+	if isarray:
 		out = func(*operands)
 	else:
 		out = func
@@ -2583,41 +3553,6 @@ def dot(a,b):
 		out (array): Dot product
 	'''	
 	return np.dot(a,b)
-
-@jit
-def transpose(a):
-	'''
-	Calculate transpose of array a
-	Args:
-		a (array): Array to calculate transpose
-	Returns:
-		out (array): Transpose
-	'''	
-	return a.T
-
-
-@jit
-def conj(a):
-	'''
-	Calculate conjugate of array a
-	Args:
-		a (array): Array to calculate conjugate
-	Returns:
-		out (array): Conjugate
-	'''	
-	return a.conj()
-
-@jit
-def dagger(a):
-	'''
-	Calculate conjugate transpose of array a
-	Args:
-		a (array): Array to calculate conjugate transpose
-	Returns:
-		out (array): Conjugate transpose
-	'''	
-	return conj(transpose(a))
-
 
 
 @jit
@@ -2693,7 +3628,7 @@ def _addition(a,b):
 	return np.add(a,b)
 
 @jit
-def addition(a):
+def addition(a,axis=None):
 	'''
 	Add list of arrays elementwise
 	Args:
@@ -2702,7 +3637,7 @@ def addition(a):
 		out (ndarray) if out argument is not None
 	'''
 	# return forloop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
-	return a.sum(0)
+	return np.sum(a,axis=axis)
 
 def product(a):
 	'''
@@ -2822,58 +3757,58 @@ def multi_dot(a):
 	return np.linalg.multi_dot(a)
 
 @partial(jit,static_argnums=(1,))
-def prod(a,axes=0):
+def prod(a,axis=0):
 	'''
-	Get product of elements in array along axes
+	Get product of elements in array along axis
 	Args:
 		a (array): Array to compute product of elements
-		axes (int): axes to perform product
+		axis (int): axis to perform product
 	Returns:
-		out (array): Reduced array of product of elements along axes
+		out (array): Reduced array of product of elements along axis
 	'''
-	return np.prod(a,axes)
+	return np.prod(a,axis)
 
 
 @partial(jit,static_argnums=(1,))
-def average(a,axes=0,weights=None):
+def average(a,axis=0,weights=None):
 	'''
-	Get average of elements in array along axes
+	Get average of elements in array along axis
 	Args:
 		a (array): Array to compute product of elements
-		axes (int): axes to perform product
+		axis (int): axis to perform product
 		weights (array): Weights to compute average with respect to
 	Returns:
-		out (array): Reduced array of average of elements along axes
+		out (array): Reduced array of average of elements along axis
 	'''
-	return np.average(a,axes,weights)
+	return np.average(a,axis,weights)
 
 
 
 @partial(jit,static_argnums=(2,))
-def vtensordot(a,b,axes=0):
+def vtensordot(a,b,axis=0):
 	'''
 	Tensordot product of arrays a and b
 	Args:
 		a (array): Array to multiply
 		b (array): Array to multiply
-		axes (int,iterable): axes to perform tensordot 
+		axis (int,iterable): axis to perform tensordot 
 	Returns:
-		out (array): Dot product of array along axes
+		out (array): Dot product of array along axis
 	'''
-	return vmap(lambda a: tensordot(a,b,axes))(a)
+	return vmap(lambda a: tensordot(a,b,axis))(a)
 
 @partial(jit,static_argnums=(2,))
-def tensordot(a,b,axes=0):
+def tensordot(a,b,axis=0):
 	'''
 	Tensordot product of arrays a and b
 	Args:
 		a (array): Array to multiply
 		b (array): Array to multiply
-		axes (int,iterable): axes to perform tensordot 
+		axis (int,iterable): axis to perform tensordot 
 	Returns:
-		out (array): Dot product of array along axes
+		out (array): Dot product of array along axis
 	'''
-	return np.tensordot(a,b,axes)
+	return np.tensordot(a,b,axis)
 
 
 @jit
@@ -2948,7 +3883,7 @@ def vntensorprod(a,n):
 
 def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	'''
-	Get optimal summation of axes in array denoted by subscripts
+	Get optimal summation of axis in array denoted by subscripts
 	Args:
 		subscripts (str): operations to perform for summation
 		operands (iterable[iterable[int],array]): Shapes of arrays or arrays to compute summation of elements
@@ -2961,7 +3896,8 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	noperands = subscripts.count(',')+1
 	operands = operands[:noperands]
 
-	arrays = all(is_array(operand) for operand in operands)
+	isarray = all(isinstance(operand,arrays) for operand in operands)
+
 
 	if wrapper is None:
 		@jit
@@ -2970,7 +3906,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	else:
 		wrapper = jit(wrapper)
 
-	if arrays:
+	if isarray:
 		shapes = [tuple(operand.shape) for operand in operands]
 	else:
 		shapes = [tuple(operand) for operand in operands if operand is not None]
@@ -2981,7 +3917,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 	def einsummation(*operands,subscripts=subscripts,optimize=optimize,wrapper=wrapper):
 		return wrapper(np.einsum(subscripts,*operands,optimize=optimize),*operands)
 
-	if arrays:
+	if isarray:
 		return einsummation(*operands)
 	else:
 		return einsummation
@@ -2989,7 +3925,7 @@ def einsum(subscripts,*operands,optimize=True,wrapper=None):
 
 def einsum_path(subscripts,*shapes,optimize=True):
 	'''
-	Get optimal summation path of axes of shapes
+	Get optimal summation path of axis of shapes
 	Args:
 		subscripts (str): operations to perform for summation	
 		shapes (iterable): Shapes of arrays to compute summation of elements
@@ -3001,253 +3937,13 @@ def einsum_path(subscripts,*shapes,optimize=True):
 	optimizers = {True:'optimal',False:'auto',None:'optimal'}
 	optimize = optimizers.get(optimize,optimize)
 
-	operands = (empty(shape) for shape in shapes)
+	operands = (zeros(shape) for shape in shapes)
 
 	optimize,string = np.einsum_path(subscripts,*operands,optimize=optimize)
 
 	return optimize
 
 
-
-@jit
-def contraction(parameters,data,identity):
-	'''
-	Calculate matrix product of parameters times data
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		data (array): Array of data to matrix product of shape (d,n,n)
-		identity (array): Array of data identity
-	Returns:
-		out (array): Matrix product of data of shape (n,n)
-	'''	
-	return matmul(parameters*data)
-
-
-@jit
-def multiplication(parameters,data,identity):
-	'''
-	Calculate tensor product of parameters times data
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		data (array): Array of data to tensor multiply of shape (d,n,n)
-		identity (array): Array of data identity
-	Returns:
-		out (array): Tensor product of data of shape (n,n)
-	'''		
-	return tensorprod(data)
-
-
-@jit
-def summation(parameters,data,identity):
-	'''
-	Calculate matrix sum of parameters times data
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		data (array): Array of data to matrix sum of shape (d,n,n)
-		identity (array): Array of data identity
-	Returns:
-		out (array): Matrix sum of data of shape (n,n)
-	'''	
-	return addition(parameters*data)
-
-
-@jit
-def exponentiation(parameters,data,identity):
-	'''
-	Calculate matrix exponential of parameters times data
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
-		data (array): Array of data to matrix exponentiate of shape (d,n,n)
-		identity (array): Array of data identity
-	Returns:
-		out (array): Matrix exponential of data of shape (n,n)
-	'''		
-	out = expm(parameters,data,identity)
-	return out
-
-
-@jit
-def summationv(parameters,data,identity,state):
-	'''
-	Calculate matrix sum of parameters times data, acting on vector
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		data (array): Array of data to matrix sum of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
-	Returns:
-		out (array): Matrix sum of data of shape (n,n)
-	'''	
-	return dot(addition(parameters*data),state)
-
-@jit
-def exponentiationv(parameters,data,identity,state):
-	'''
-	Calculate matrix exponential of parameters times data, acting on vector
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
-		data (array): Array of data to matrix exponentiate of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,) or (p,n)
-	Returns:
-		out (array): Matrix exponential of data of shape (n,n)
-	'''		
-	out = expmv(parameters,data,identity,state)
-	return out
-
-@jit
-def summationm(parameters,data,identity,state):
-	'''
-	Calculate matrix sum of parameters times data, acting on matrix
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		data (array): Array of data to matrix sum of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,n) or (p,n,n)
-	Returns:
-		out (array): Matrix sum of data of shape (n,n)
-	'''	
-	return dot(addition(parameters*data),state)
-
-@jit
-def exponentiationm(parameters,data,identity,state):
-	'''
-	Calculate matrix exponential of parameters times data, acting on matrix
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
-		data (array): Array of data to matrix exponentiate of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
-	Returns:
-		out (array): Matrix exponential of data of shape (n,n)
-	'''		
-	out = expmm(parameters,data,identity,state)
-	return out
-
-
-@jit
-def summationc(parameters,data,identity,constants):
-	'''
-	Calculate matrix sum of parameters times data, with constant matrix
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		data (array): Array of data to matrix sum of shape (d,n,n)
-		identity (array): Array of data identity
-		constants (array): Array of constants to act of shape (n,n)
-	Returns:
-		out (array): Matrix sum of data of shape (n,n)
-	'''	
-	return dot(constants,addition(parameters*data))
-
-@jit
-def exponentiationc(parameters,data,identity,constants):
-	'''
-	Calculate matrix exponential of parameters times data, with constant matrix
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
-		data (array): Array of data to matrix exponentiate of shape (d,n,n)
-		identity (array): Array of data identity
-		constants (array): Array of constants to act of shape (n,n)
-	Returns:
-		out (array): Matrix exponential of data of shape (n,n)
-	'''		
-	out = expmc(parameters,data,identity,constants)
-	return out
-
-
-@jit
-def summationmc(parameters,data,identity,state,constants):
-	'''
-	Calculate matrix sum of parameters times data, acting on matrix, with constant matrix
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		data (array): Array of data to matrix sum of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,n) or (p,n,n)
-		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
-	Returns:
-		out (array): Matrix sum of data of shape (n,n)
-	'''	
-	return dot(addition(parameters*data),state)
-
-@jit
-def exponentiationmc(parameters,data,identity,state,constants):
-	'''
-	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
-		data (array): Array of data to matrix exponentiate of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
-		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
-	Returns:
-		out (array): Matrix exponential of data of shape (n,n)
-	'''		
-	out = expmc(parameters,data,identity,state,constants)
-	return out
-
-
-@jit
-def summationmvc(parameters,data,identity,state,constants):
-	'''
-	Calculate matrix sum of parameters times data, acting on matrix, with constant matrix
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		data (array): Array of data to matrix sum of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,n) or (p,n,n)
-		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
-	Returns:
-		out (array): Matrix sum of data of shape (n,n)
-	'''	
-	return dot(addition(parameters*data),state)
-
-@jit
-def exponentiationmvc(parameters,data,identity,state,constants):
-	'''
-	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
-		data (array): Array of data to matrix exponentiate of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
-		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
-	Returns:
-		out (array): Matrix exponential of data of shape (n,n)
-	'''		
-	out = expmvc(parameters,data,identity,state,constants)
-	return out
-
-@jit
-def summationmmc(parameters,data,identity,state,constants):
-	'''
-	Calculate matrix sum of parameters times data, acting on matrix, with constant matrix
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		data (array): Array of data to matrix sum of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,n) or (p,n,n)
-		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
-	Returns:
-		out (array): Matrix sum of data of shape (n,n)
-	'''	
-	return dot(addition(parameters*data),state)
-
-@jit
-def exponentiationmmc(parameters,data,identity,state,constants):
-	'''
-	Calculate matrix exponential of parameters times data, acting on matrix, with constant matrix
-	Args:
-		parameters (array): parameters of shape (m,) or (m,n,) or (m,n,n)
-		data (array): Array of data to matrix exponentiate of shape (d,n,n)
-		identity (array): Array of data identity
-		state (array): Array of state to act on of shape (n,) or (n,n) or (p,n) or (p,n,n)
-		constants (array): Array of constants to act of shape (n,n) or (k,n,n)
-	Returns:
-		out (array): Matrix exponential of data of shape (n,n)
-	'''		
-	out = expmmc(parameters,data,identity,state,constants)
-	return out
 
 
 @jit
@@ -3286,18 +3982,43 @@ def swap(i,j,N,D):
 	return S
 
 
+if BACKEND in ['jax','jax.autograd']:
 
-def slicing(a,start,size):
-	'''
-	Get slice of array
-	Args:
-		a (array): Array to be sliced along first dimension
-		start (int): Start index to slice
-		size (int): Length of slice
-	Returns:
-		a (array): Sliced array
-	'''
-	return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
+	def slicing(a,start,size):
+		'''
+		Get slice of array
+		Args:
+			a (array): Array to be sliced along first dimension
+			start (int): Start index to slice
+			size (int): Length of slice
+		Returns:
+			a (array): Sliced array
+		'''
+
+		# TODO merge slicing for different numpy backends (jax vs autograd)
+
+		return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
+		# return a[start:start+size]
+
+elif BACKEND in ['autograd']:
+
+	def slicing(a,start,size):
+		'''
+		Get slice of array
+		Args:
+			a (array): Array to be sliced along first dimension
+			start (int): Start index to slice
+			size (int): Length of slice
+		Returns:
+			a (array): Sliced array
+		'''
+
+		# TODO merge slicing for different numpy backends (jax vs autograd)
+
+		# return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
+		return a[start:start+size]		
+
+
 
 
 def slice_size(*slices):
@@ -3567,16 +4288,16 @@ def anticommutes(a,b):
 
 
 @partial(jit,static_argnums=(1,))
-def trace(a,axes=(0,1)):
+def trace(a,axis=(0,1)):
 	'''
 	Calculate trace of array
 	Args:
 		a (array): Array to calculate trace
-		axes (iterable): Axes to compute trace with respect to
+		axis (iterable): Axes to compute trace with respect to
 	Returns:
 		out (array): Trace of array
 	'''	
-	return np.trace(a,axis1=axes[0],axis2=axes[1])
+	return np.trace(a,axis1=axis[0],axis2=axis[1])
 
 @jit
 def rank(a,tol=None,hermitian=False):
@@ -3625,7 +4346,7 @@ def real(a):
 	Returns:
 		out (array): Real value of array
 	'''	
-	return a.real
+	return np.real(a)
 
 
 @jit
@@ -3637,8 +4358,42 @@ def imag(a):
 	Returns:
 		out (array): Imaginary value of array
 	'''	
-	return a.imag
+	return np.imag(a)
 
+
+@jit
+def transpose(a):
+	'''
+	Calculate transpose of array a
+	Args:
+		a (array): Array to calculate transpose
+	Returns:
+		out (array): Transpose
+	'''	
+	return a.T
+
+
+@jit
+def conjugate(a):
+	'''
+	Calculate conjugate of array a
+	Args:
+		a (array): Array to calculate conjugate
+	Returns:
+		out (array): Conjugate
+	'''	
+	return np.conj(a)
+
+@jit
+def dagger(a):
+	'''
+	Calculate conjugate transpose of array a
+	Args:
+		a (array): Array to calculate conjugate transpose
+	Returns:
+		out (array): Conjugate transpose
+	'''	
+	return conjugate(transpose(a))
 
 @jit
 def sqrtm(a):
@@ -3662,6 +4417,17 @@ def sqrt(a):
 		out (array): Square root of array
 	'''
 	return np.sqrt(a)
+
+@jit
+def sqr(a):
+	'''
+	Calculate square of array a
+	Args:
+		a (array): Array to compute square root
+	Returns:
+		out (array): Square root of array
+	'''
+	return a**2
 
 @jit
 def log10(a):
@@ -3715,7 +4481,7 @@ def _expm(x,A,I,n=2):
 	Args:
 		x (array): parameters of shape (1,) or (n,) or (n,n)
 		A (array): Array of data to matrix exponentiate of shape (n,n)
-		I (array): Array of data identity
+		I (array): Array of data identity of shape (n,n)
 		n (int): Number of eigenvalues of matrix
 	Returns:
 		out (array): Matrix exponential of A of shape (n,n)
@@ -3730,20 +4496,21 @@ def expm(x,A,I):
 	Args:
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
-		I (array): Array of data identity
+		I (array): Array of data identity of shape (n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape (n,n)
 	'''		
 	m = x.shape[0]
-	d,shape = A.shape[0],A.shape[1:]
+	d = A.shape[0]
 
 	subscripts = 'ij,jk->ik'
-	shapes = (shape,shape)
-	einsummation = einsum #(subscripts,shapes)
+	shapes = (I.shape,I.shape)
+	einsummation = einsum
 
 	def func(i,out):
 		U = _expm(x[i],A[i%d],I)
 		return einsummation(subscripts,U,out)
+
 	return forloop(0,m,func,I)
 
 @jit
@@ -3753,59 +4520,26 @@ def gradient_expm(x,A,I):
 	Args:
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
-		I (array): Array of data identity
+		I (array): Array of data identity of shape (n,n)
 	Returns:
 		out (array): Gradient of matrix exponential of A of shape (m,n,n)
 	'''			
 
-	# TODO: Check jittable vmap of index dependent slices of x for faster gradient in terms of expm()
-
 	m = x.shape[0]
-	d,shape = A.shape[0],A.shape[1:]
-
-	# subscripts = 'ij,jk->ik'
-	# shapes = (shape,shape)
-	# einsummation = einsum #(subscripts,shapes)
-
-	# def func(i,out):
-	# 	U = _expm(x[i],A[i%d],I)
-	# 	return einsummation(subscripts,U,out)
+	d = A.shape[0]
 
 	subscripts = 'ij,jk,kl->il'
-	shapes = (shape,shape,shape)
-	einsummation = einsum #(subscripts,shapes)
+	shapes = (I.shape,I.shape,I.shape)	
+	einsummation = einsum
 
 	def grad(i):
 		y = slicing(x,0,i)
 		z = slicing(x,i,m-i)
 		U = expm(y,A,I)
-		V = expm(z,roll(A,-(i%d),axis=0),I)
+		V = expm(z,roll(A,-(i%d)),I)
 		return einsummation(subscripts,V,A[i%d],U)		
 
 	return array([grad(i) for i in range(m)])
-	# return jax.vmap(grad)(arange(m))
-
-
-@jit
-def expspm(x,A,I):
-	'''
-	Calculate matrix exponential of parameters times data
-	Args:
-		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
-		A (array): Array of data to matrix exponentiate of shape (d,n,n)
-		I (array): Array of data identity
-	Returns:
-		out (array): Matrix exponential of A of shape (n,n)
-	'''		
-	m = x.shape[0]
-	d,shape = A.shape[0],A.shape[1:]
-
-	def func(i,out):
-		return out + x[i]*A[i%d]
-
-	out = zeros(I.shape,dtype=I.dtype)
-	return sp.linalg.expm(forloop(0,m,func,out))
-
 
 @jit
 def expmc(x,A,I,B):
@@ -3814,24 +4548,24 @@ def expmc(x,A,I,B):
 	Args:
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
-		I (array): Array of data identity
-		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
+		I (array): Array of data identity of shape (n,n)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
-	d,shape = A.shape[0],A.shape[1:]
+	d = A.shape[0]
 
-	subscripts = 'uij,jk,kl->il'
-	shapes = (shape,shape,shape)
-	einsummation = einsum #(subscripts,shapes)
+	subscripts = 'ij,jk,kl->il'
+	shapes = (B.shape,I.shape,I.shape)
+	einsummation = einsum
 
 	def func(i,out):
 		U = _expm(x[i],A[i%d],I)
 		return einsummation(subscripts,B,U,out)
-		# return dot(B,dot(U,out))
 
 	return forloop(0,m,func,I)
+
 
 
 @jit
@@ -3841,23 +4575,21 @@ def expmv(x,A,I,v):
 	Args:
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
-		I (array): Array of data identity
+		I (array): Array of data identity of shape (n,n)
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
-	d,shape = A.shape[0],A.shape[1:]
-	n = v.shape[0]
+	d = A.shape[0]
 
 	subscripts = 'ij,j->i'
-	shapes = (shape,(n,))
-	einsummation = einsum #(subscripts,shapes)
+	shapes = (I.shape,v.shape)
+	einsummation = einsum
 
 	def func(i,out):
 		U = _expm(x[i],A[i%d],I)
 		return einsummation(subscripts,U,out)
-		# return dot(U,out)
 
 	return forloop(0,m,func,v)
 
@@ -3869,23 +4601,21 @@ def expmm(x,A,I,v):
 	Args:
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
-		I (array): Array of data identity
+		I (array): Array of data identity of shape (n,n)
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
-	d,shape = A.shape[0],A.shape[1:]
-	n = v.shape[0]
+	d = A.shape[0]
 
 	subscripts = 'ij,jk,lk->il'
-	shapes = (shape,(n,n),shape)
-	einsummation = einsum #(subscripts,shapes)
+	shapes = (I.shape,v.shape,I.shape)
+	einsummation = einsum
 
 	def func(i,out):
 		U = _expm(x[i],A[i%d],I)
-		return einsummation(subscripts,U,out,U.conj())
-		# return dot(dot(U,out),U.conj())
+		return einsummation(subscripts,U,out,conjugate(U))
 
 	return forloop(0,m,func,v)
 
@@ -3897,25 +4627,23 @@ def expmvc(x,A,I,v,B):
 	Args:
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
-		I (array): Array of data identity
+		I (array): Array of data identity of shape (n,n)
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,)
-		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
-	d,shape = A.shape[0],A.shape[1:]
-	n = v.shape[0]
+	d = A.shape[0]
 
-	subscripts = 'uij,jk,k->i'
-	shapes = (shape,shape,(n,))
-	einsummation = einsum #(subscripts,shapes)
+	subscripts = 'ij,jk,k->i'
+	shapes = (B.shape,I.shape,v.shape)
+	einsummation = einsum
 
 	def func(i,out):
 		y = slicing(x,i*d,d)
 		U = expm(y,A,I)
 		return einsummation(subscripts,B,U,out)		
-		# return dot(B,dot(U,out))
 
 	return forloop(0,m//d,func,v)
 
@@ -3927,25 +4655,79 @@ def expmmc(x,A,I,v,B):
 	Args:
 		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
 		A (array): Array of data to matrix exponentiate of shape (d,n,n)
-		I (array): Array of data identity
+		I (array): Array of data identity of shape (n,n)
+		v (array): Array of data to multiply with matrix exponentiate of shape (n,n)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
+	Returns:
+		out (array): Matrix exponential of A of shape times vector of shape (n,)
+	'''		
+	m = x.shape[0]
+	d = A.shape[0]
+
+	subscripts = 'ij,jk,kl,ml,nm->in'
+	shapes = (B.shape,I.shape,v.shape,I.shape,B.shape)
+	einsummation = einsum
+
+	def func(i,out):
+		y = slicing(x,i*d,d)
+		U = expm(y,A,I)
+		return einsummation(subscripts,B,U,out,conjugate(U),conjugate(B))
+
+	return forloop(0,m//d,func,v)
+
+@jit
+def expmmn(x,A,I,v,B):
+	'''
+	Calculate matrix exponential of parameters times data, multiplied with matrix, and constant matrix
+	Args:
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		A (array): Array of data to matrix exponentiate of shape (d,n,n)
+		I (array): Array of data identity of shape (n,n)
 		v (array): Array of data to multiply with matrix exponentiate of shape (n,n)
 		B (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
 	Returns:
 		out (array): Matrix exponential of A of shape times vector of shape (n,)
 	'''		
 	m = x.shape[0]
-	d,shape = A.shape[0],A.shape[1:]
-	n = v.shape[0]
-	k = B.shape[0]
+	d = A.shape[0]
 
-	subscripts = 'aij,jk,kl,ml,anm->in'
-	shapes = ((k,*shape),(*shape,),(n,n,),(*shape,),(k,*shape))
-	einsummation = einsum #(subscripts,shapes)
+	subscripts = 'uij,jk,kl,ml,unm->in'
+	shapes = (B.shape,I.shape,v.shape,I.shape,B.shape)
+	einsummation = einsum
 
 	def func(i,out):
 		y = slicing(x,i*d,d)
 		U = expm(y,A,I)
-		return einsummation(subscripts,B,U,out,U.conj(),B.conj())
+		return einsummation(subscripts,B,U,out,conjugate(U),conjugate(B))
+
+	return forloop(0,m//d,func,v)
+
+
+@jit
+def expmmcn(x,A,I,v,B,C):
+	'''
+	Calculate matrix exponential of parameters times data, multiplied with matrix, and constant matrix
+	Args:
+		x (array): parameters of shape (m,) or (m,n,) or (m,n,n)		
+		A (array): Array of data to matrix exponentiate of shape (d,n,n)
+		I (array): Array of data identity of shape (n,n)
+		v (array): Array of data to multiply with matrix exponentiate of shape (n,n)
+		B (array): Array of data to constant multiply with each matrix exponential of shape (n,n)
+		C (array): Array of data to constant multiply with each matrix exponential of shape (k,n,n)
+	Returns:
+		out (array): Matrix exponential of A of shape times vector of shape (n,)
+	'''		
+	m = x.shape[0]
+	d = A.shape[0]
+
+	subscripts = 'uij,jk,kl,lm,nm,on,upo->ip'
+	shapes = (C.shape,B.shape,I.shape,v.shape,I.shape,B.shape,C.shape)
+	einsummation = einsum
+
+	def func(i,out):
+		y = slicing(x,i*d,d)
+		U = expm(y,A,I)
+		return einsummation(subscripts,C,B,U,out,conjugate(U),conjugate(B),conjugate(C))
 
 	return forloop(0,m//d,func,v)
 
@@ -4243,7 +5025,7 @@ def argsort(a,axis=0):
 
 
 @partial(jit,static_argnums=(1,))
-def concatenate(a,axis):
+def concatenate(a,axis=0):
 	'''
 	Concatenate iterables along axis
 	Args:
@@ -4277,7 +5059,7 @@ def vstack(a):
 	'''
 	return np.vstack(a)
 
-def roll(a,shift,axis=None):
+def roll(a,shift,axis=0):
 	'''
 	Shift array along axis (periodically)
 	Args:
@@ -4288,6 +5070,32 @@ def roll(a,shift,axis=None):
 		out (array): Shifted array
 	'''
 	return np.roll(a,shift,axis=axis)
+
+
+def shift(iterable,shift,axis=None):
+	'''
+	Shift iterable along axis (periodically)
+	Args:
+		iterable (iterable): Iterable to shift
+		shift (int,iterable[int]): Shift along axis
+		axis (int,iterable[int]): Axis to shift along
+	Returns:
+		out (iterable): Shifted iterable
+	'''	
+	shift = shift % len(iterable)
+	return iterable[-shift:] + iterable[:-shift]
+
+def cumsum(a,axis=None):
+	'''
+	Cumulative sum along axis
+	Args:
+		a (array): iterable to sum
+		axis (int) : axis to sum
+	Returns:
+		out (array): Summed iterable
+	'''
+
+	return np.cumsum(asarray(a),axis=axis)
 
 
 @jit
@@ -4311,8 +5119,10 @@ def mod(a,b):
 	Returns:
 		out (array): Modular division of a mod b
 	'''
-	return np.mod(a,b)
-
+	try:
+		return np.mod(a,b)
+	except TypeError:
+		return mod(real(a),b) + 1j*mod(imag(a),b)
 
 # @partial(jit,static_argnums=(1,))
 def unique(a,axis=None):
@@ -4375,62 +5185,78 @@ def repeats(a,repeats,axis):
 
 
 
-def take(a,indices,axes):
+def take(a,indices,axis):
 	'''
 	Take slices from array
 	Args:
 		a (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
-		axes (int,interable[int]): Axis or axes corresponding to indices to slice
+		axis (int,interable[int]): Axis or axis corresponding to indices to slice
 	Returns:
 		out (array): Sliced array
 	'''
-	if isinstance(axes,int):
-		axes = [axes]
+	if isinstance(axis,int):
+		axis = [axis]
 		indices = [indices]
 
 	shape = a.shape
 
-	for axis,index in zip(axes,indices):
-		if isinstance(index,int):
-			index = array(range(index))
+	for axis,indices in zip(axis,indices):
+		if isinstance(indices,int):
+			indices = array(range(indices))
 		else:
-			index = array(_iter_(index))
-		index = minimums(shape[axis]-1,index)[:shape[axis]]
-		a = np.take(a,index,axis)
+			indices = array(_iter_(indices))
+		indices = minimums(shape[axis]-1,indices)[:shape[axis]]
+		a = np.take(a,indices,axis)
 	return a
 
 
-def put(a,b,indices,axes):
+def put(a,values,indices,axis):
 	'''
 	Put array to slices array
 	Args:
 		a (array): Array to put
-		b (array): Array to take
+		values (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
-		axes (int,interable[int]): Axis or axes corresponding to indices to slice
+		axis (int,interable[int]): Axis or axis corresponding to indices to slice
 	Returns:
 		out (array): Put array
 	'''
-	if isinstance(axes,int):
-		axes = [axes]
+	if isinstance(axis,int):
+		axis = [axis]
 		indices = [indices]
+		values = [values]
 
-	ndim = b.ndim
+	# TODO merge put_along_axis for different numpy backends (jax vs autograd)
 
-	if len(indices) < ndim:
-		indices = [indices[axis-len([a for a in axes if a<axis])] if axis in axes else [None]  for axis in range(ndim)]
+	for axis,indices,values in zip(axis,indices,values):
 
-	lengths = [len(i) for i in indices]
-	ax = [axis for axis in axes if lengths[axis] == max(lengths)]
-	indices = [[i[axis-len([a for a in ax if a<axis])] if axis not in ax else indices[axis] for axis in axes] for i in itertools.product(*[indices[axis] for axis in axes if axis not in ax])]
+		axis = axis % a.ndim
+		indices = array(indices)
 
-	for axis,index in zip(axes,indices):
-		if isinstance(index,int):
-			index = slice(index)
+		# if values.ndim < a.ndim:
+		# 	values = values.reshape(*(1,)*(axis),*values.shape,*(1,)*(a.ndim-values.ndim-axis))
+		# if indices.ndim < a.ndim:
+		# 	indices = indices.reshape(*(1,)*(axis),*indices.shape,*(1,)*(a.ndim-indices.ndim-axis))
+
+		# np.put_along_axis(a,indices,values,axis=axis)
+
+		if axis in [a.ndim-1]:
+			a = setitem(a,(Ellipsis,indices),values)
 		else:
-			index = array(index)
-		a = np.take(a,index,axis)
+			raise ValueError("Not Implemented for axis %d"%(axis))
+
+		# Ni, M, Nk = a.shape[:axis], a.shape[axis], a.shape[axis+1:]
+		# size = indices.shape[axis]
+
+		# for i in np.ndindex(Ni):
+		# 	for k in np.ndindex(Nk):
+		# 		a_1d = a[i + np.s_[:,] + k]
+		# 		indices_1d = indices[i + np.s_[:,] + k]
+		# 		values_1d  = values[i + np.s_[:,] + k]
+		# 		for j in range(size):
+		# 			a_1d[indices_1d[j]] = values_1d[j]
+
 	return a
 
 
@@ -4449,13 +5275,13 @@ def broadcast_to(a,shape):
 
 def moveaxis(a,source,destination):
 	'''
-	Move axes of array
+	Move axis of array
 	Args:
 		a (array): Array to be moved
-		source (int,iterable[int]): Initial axes
-		destination (int,interable[int]): Final axes
+		source (int,iterable[int]): Initial axis
+		destination (int,interable[int]): Final axis
 	Returns:
-		out (array): Array with moved axes
+		out (array): Array with moved axis
 	'''
 
 	return np.moveaxis(a,source,destination)
@@ -4463,38 +5289,58 @@ def moveaxis(a,source,destination):
 
 def expand_dims(a,axis):
 	'''
-	Expand axes of array
+	Expand axis of array
 	Args:
 		a (array): Array to be expanded
 		axis (int,iterable[int]): Axes to expand to
 	Returns:
-		out (array): Array with expanded axes
+		out (array): Array with expanded axis
 	'''
-
+	if isinstance(axis,range):
+		axis = list(axis)
 	return np.expand_dims(a,axis)
 
 
 
-def padding(a,shape,key=None,bounds=[0,1],random='zeros'):
+def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
 	'''
 	Ensure array is shape and pad with values
 	Args:
 		a (array): Array to be padded
 		shape (int,iterable[int]): Size or shape of array
+		axis (int,iterable[int]): axis of a to retain
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
+		dtype (data_type): Datatype of array		
 	Returns:
 		out (array): Padded array
 	'''
 
+	if shape is None:
+		out = a
+		return out
+
+	if a is None:
+		a = zeros(shape,dtype=dtype)
+	else:
+		a = array(a,dtype=dtype)
+
 	if isinstance(shape,int):
 		shape = [shape]
 
+	if isinstance(axis,int):
+		axis = [axis]
+
 	ndim = len(shape)
 
-	if a.ndim < ndim:
-		a = expand_dims(a,range(a.ndim,ndim))
+	diff = max(0,ndim - a.ndim)
+	reshape = a.shape
+
+	a = a.reshape(*a.shape,*(1,)*diff)
+
+	for axis in range(ndim-diff,ndim):
+		a = repeat(a,shape[axis],axis)	
 
 	a = take(a,shape,range(ndim))
 
@@ -4520,74 +5366,9 @@ def padding(a,shape,key=None,bounds=[0,1],random='zeros'):
 	return a
 
 
-@partial(jit,static_argnums=(0,1,2,))
-def randomstring(K,N,D=2):
-	'''
-	Create K random N-qudit Pauli string arrays of shape (K,D**N,D**N)
-	Args:
-		K (int): Number of Pauli strings
-		N (int): Number of qudits
-		D (int): Dimension of qudits
-	Returns:
-		string (array): Pauli string arrays of shap (K,D**N,D**N)
-	'''
-	
-	assert D==2,"Qudits for D=%d > 2 not implemented"%(D)
-	
-	seed = None
-	key = PRNGKey(seed)
-
-	d = int(D**2)
-	if D == 2:
-		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
-	else:
-		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
-
-	alpha = jax.random.uniform(key,(K*N,d))
-	
-	string = vtensordot(alpha,basis,1)
-	string = string.reshape((K,N,D,D))
-	string = vtensorprod(string)
-	
-	return string
-	
 
 
-@partial(jit,static_argnums=(0,1,2,))
-def paulistring(string,N,K,D=2):
-	'''
-	Create K N-qudit Pauli string arrays of shape (K,D**N,D**N)
-	Args:
-		K (int): Number of Pauli strings
-		N (int): Number of qudits
-		D (int): Dimension of qudits
-	Returns:
-		string (array): Pauli string arrays of shap (K,D**N,D**N)
-	'''
-	
-	assert D==2,"Qudits for D=%d > 2 not implemented"%(D)
-	
-	seed = None
-	key = PRNGKey(seed)
-
-	d = int(D**2)
-	if D == 2:
-		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
-	else:
-		basis = array([[[1,0],[0,1]],[[0,1],[1,0]],[[0,-1j],[1j,0]],[[1,0],[0,-1]]])
-
-	alpha = jax.random.uniform(key,(K*N,d))
-	
-	string = vtensordot(alpha,basis,1)
-	string = string.reshape((K,N,D,D))
-	string = vtensorprod(string)
-	
-	return string
-	
-
-
-
-@partial(jit,static_argnums=(2,3,4,))
+# @partial(jit,static_argnums=(2,3,4,))
 def allclose(a,b,rtol=1e-05,atol=1e-08,equal_nan=False):
 	'''
 	Check if arrays a and b are all close within tolerance
@@ -4746,7 +5527,7 @@ def is_scalar(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is scalar
 	'''
-	return (not is_array(a) and not islisttuple(a)) or (is_array(a) and (a.ndim<1) and (a.size<2))
+	return isinstance(a,scalars) or (not isinstance(a,arrays) and not is_listtuple(a)) or (isinstance(a,arrays) and (a.ndim<1) and (a.size<2))
 
 
 def is_int(a,*args,**kwargs):
@@ -5413,7 +6194,7 @@ def piecewise(func,bounds,**kwargs):
 		n = len(bounds)-1
 		if x.ndim > 1:
 			axis,ord,r = 1,2,x.reshape(*x.shape[:1],-1)
-			r = norm(r,axis=axis,ord=axis)
+			r = norm(r,axis=axis,ord=ord)
 		else:
 			r = x
 		conditions = [(
@@ -5458,105 +6239,6 @@ def extrema(x,y,_x=None,**kwargs):
 
 
 
-# @partial(jit,static_argnums=(2,))
-# def trotter(A,U,p):
-# 	r'''
-# 	Perform p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
-# 	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
-# 	k internally commuting components {A_i} of the matrix A = \sum_i^k A_i .
-# 	For example, for {U_i = e^{A_i}} :
-# 		f_0 = e^{\sum_i A_i}
-# 		f_1 = \prod_i^k U_i
-# 		f_2 = \prod_i^k U_i^{1/2} \prod_k^i U_i^{1/2}
-# 	For p>0, it will be checked if A_i objects have a matrix exponential module for efficient exponentials,
-# 	otherwise the standard expm function will be used.
-
-# 	Args:
-# 		A (iterable): Array of shape (k,n,n) of k components of a square matrix of shape (n,n) A_i	
-# 		U (iterable): Array of shape (k,n,n) of k components of the matrix exponential of a square matrix of shape (n,n) expm(A_i/p)
-# 		p (int): Order of trotterization p>0
-# 	Returns:
-# 		U (array): Trotterized matrix exponential of shape (n,n)
-# 	'''
-# 	if p == 1:
-# 		U = matmul(U)
-# 	elif p == 2:
-# 		U = matmul(array([*U[::1],*U[::-1]]))
-# 	else:
-# 		U = matmul(U)
-# 	return U
-
-
-# @partial(jit,static_argnums=(2,))
-# def trottergrad(A,U,p):
-# 	r'''
-# 	Perform gradient of p-order trotterization of a matrix exponential U = e^{A} ~ f_p({U_i}) + O(|A|^p)
-# 	where f_p is a function of the matrix exponentials {U_i = e^{A_i}} of the 
-# 	k internally commuting components {A_i} of the matrix A = \sum_i^k A_i .
-# 	For example, for {U_i = e^{A_i}} :
-# 		f_0 = e^{\sum_i A_i}
-# 		f_1 = \prod_i^k U_i
-# 		f_2 = \prod_i^k U_i^{1/2} \prod_k^i U_i^{1/2}
-# 	For p>0, it will be checked if A_i objects have a matrix exponential module for efficient exponentials,
-# 	otherwise the standard expm function will be used.
-
-# 	Args:
-# 		A (iterable): Array of shape (k,n,n) of k components of a square matrix of shape (n,n) A_i
-# 		U (iterable): Array of shape (k,n,n) of k components of the matrix exponential of a square matrix of shape (n,n) expm(A_i/p)
-# 		p (int): Order of trotterization p>0
-# 	Returns:
-# 		U (array): Gradient of Trotterized matrix exponential of shape (k,n,n)
-# 	'''
-# 	m = len(U)
-# 	if p == 1:
-# 		U = array([matmul(array([*U[:i],A[i]/p,*slicing(U,i,k-i)])) for i in range(k)])
-# 	elif p == 2:
-# 		U = array([matmul(array([*slicing(U,0,i)[::1],A[i]/p,*slicing(U,i,k-i)[::1],*U[::-1]])) + 
-# 				matmul(array([*U[::1],*slicing(U,i,k-i)[::-1],A[i]/p,*slicing(U,0,i)[::-1]]))
-# 				for i in range(k)])
-# 	else:
-# 		U = array([matmul(array([*slicing(U,0,i),A[i]/p,*slicing(U,i,k-i)])) for i in range(k)])
-# 	return U
-
-def trotter(a,p):
-	'''
-	Calculate p-order trotter series of iterable
-	Args:
-		a (iterable): Iterable to calculate trotter series
-		p (int): Order of trotter series
-	Returns:
-		out (iterable): Trotter series of iterable
-	'''	
-	# return [v for u in [a[::i] for i in [1,-1,1,-1][:p]] for v in u]	
-	return [u for i in [1,-1,1,-1][:p] for u in a[::i]]
-
-def gradient_trotter(da,p):
-	'''
-	Calculate gradient of p-order trotter series of iterable
-	Args:
-		da (iterable): Gradient of iterable to calculate trotter series		
-		p (int): Order of trotter series
-	Returns:
-		out (iterable): Gradient of trotter series of iterable
-	'''	
-	n = da.shape[0]//p
-	return sum([da[:n][::i] if i>0 else da[-n:][::i] for i in [1,-1,1,-1][:p]])
-
-
-def invtrotter(a,p):
-	'''
-	Calculate inverse of p-order trotter series of iterable
-	Args:
-		a (iterable): Iterable to calculate inverse trotter series
-		p (int): Order of trotter series
-	Returns:
-		out (iterable): Inverse trotter series of iterable
-	'''	
-	n = a.shape[0]//p
-	return a[:n]
-
-
-
 @jit
 def heaviside(a):
 	'''
@@ -5583,24 +6265,26 @@ def sigmoid(a,scale=1):
 	# return sp.special.expit(scale*a)
 
 @jit
-def bound(a,kwargs):
+def bound(a,scale=1,**kwargs):
 	'''
 	Bound array
 	Args:
 		a (array): Array to bound
+		scale (float): scale of bound
 		kwargs (dict): Keyword arguments for bounds
 	Returns:
 		out (array): Bounded array
 	'''
-	return 2*sigmoid(a,kwargs['sigmoid']) - 1
+	return 2*sigmoid(a,scale) - 1
 
 
 @jit
-def nullbound(a,kwargs):
+def nullbound(a,scale=1,**kwargs):
 	'''
-	Null nound array
+	Null bound array
 	Args:
 		a (array): Array to bound
+		scale (float): scale of bound
 		kwargs (dict): Keyword arguments for bounds
 	Returns:
 		out (array): Bounded array
@@ -5773,7 +6457,7 @@ def to_number(a,dtype=None,**kwargs):
 		elif is_float(a):
 			dtype = float
 		if is_number(a):
-			number = dtype(coefficient*a)
+			number = coefficient*float(a)
 	return number
 
 def to_int(a,**kwargs):
@@ -5819,7 +6503,10 @@ def to_string(a,**kwargs):
 		string (str): String representation of array
 	'''
 
-	string = np.array_str(a,**kwargs).replace('[[',' [').replace(']]','] ')
+	if a is not None:
+		string = np.array_str(a,**kwargs)#.replace('[[',' [').replace(']]','] ')
+	else:
+		string = None
 
 	return string
 
@@ -5899,6 +6586,9 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		String with scientific notation format for number
 
 	'''
+
+	if decimals is None:
+		decimals = 1
 
 	if scilimits is None:
 		scilimits = [-1,1]
@@ -6074,93 +6764,115 @@ def padder(strings,padding=' ',delimiter=None,justification='left'):
 	return padded
 
 
-def initialize(parameters,shape,hyperparameters,reset=None,layer=None,slices=None,shapes=None,dtype=None):
+def initialize(data,shape,dtype=None,**kwargs):
 	'''
-	Initialize parameters
+	Initialize data
 	Args:
-		parameters (array): parameters array
-		shape (iterable): shape of parameters
-		hyperparameters (dict): hyperparameters for initialization
-		reset (bool): Overwrite existing parameters
-		layer (str): Layer type of parameters
-		slices (iterable): slices of array within containing array
-		shapes (iterable): shape of containing array of parameters
-		dtype (str,datatype): data type of parameters		
+		data (array): data array
+		shape (iterable): shape of data
+		dtype (str,datatype): data type of data		
+		kwargs (dict): Additional keyword arguments for initialization
 	Returns:
-		out (array): initialized slice of parameters
+		data (array): data
 	'''	
 
-	# Initialization hyperparameters
-	layer = 'parameters' if layer is None else layer
-	bounds = hyperparameters['bounds'][layer]
-	constant = hyperparameters['constants'][layer]	
-	initialization = hyperparameters['initialization']
-	random = hyperparameters['random']
-	pad = hyperparameters['pad']
-	seed = hyperparameters['seed']
+	defaults = {
+		'bounds':None,
+		'initialization':None,
+		'constant':None,
+		'boundary':None,
+		'random':None,
+		'seed':None,
+		'axis':None
+	}
+
+	kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
+
+	bounds = kwargs['bounds']
+	initialization = kwargs['initialization']
+	constant = kwargs['constant']	
+	random = kwargs['random']
+	seed = kwargs['seed']
+	axis = kwargs['axis']
+
+	ndim = None if shape is None else 0 if isinstance(shape,int) else len(shape)
 	key = seed
 
-	# Parameters shape and bounds
-	shape = shape
-	ndim = len(shape)
+	# pad data
+	if data is not None and axis is not None:
+		if isinstance(axis,int):
+			axis = [axis]
+		axis = [i%ndim for i in axis]
+		
+		assert len(axis) == data.ndim, "Incorrect axis %r specified for data %r"%(axis,data.shape)
 
-	if shapes is None:
-		shapes = shape
+		reshape = [1 for i in range(data.ndim+sum(i for i in axis if i>=data.ndim))]
+		for i in range(len(axis)):
+			reshape[axis[i]] = data.shape[i]
 
-	if slices is None:
-		slices = tuple([slice(0,shapes[axis],1) for axis in range(ndim)])
+		data = data.reshape(reshape)
 
-	if bounds is None:
-		bounds = ['-inf','inf']
-	elif len(bounds)==0:
-		bounds = ['-inf','inf']
+	data = padding(data,shape,key=key,bounds=bounds,random=random,dtype=dtype)
 
-	bounds = [to_number(i,dtype) for i in bounds]
+	if data is None:
+		return data
+	
+	shape = data.shape
+	size = data.size
+	ndim = data.ndim
+	dtype = data.dtype
 
-	# Add random padding of values if parameters not reset
-	if not reset:
-		parameters = padding(parameters,shape,key=key,bounds=bounds,random=pad)
-	else:
-		if initialization in ['interpolation']:
-			# Parameters are initialized as interpolated random values between bounds
-			interpolation = hyperparameters['interpolation']
-			smoothness = max(1,min(shape[-1]//2,hyperparameters['smoothness']))
+	if isinstance(initialization,dict):
+		if initialization['method'] in ['interpolation']:
+			
+			# Data are initialized as interpolated random values between bounds
+			interpolation = initialization['interpolation']
+			smoothness = max(1,min(shape[-1]//2,initialization['smoothness']))
 			shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
 			pts_interp = smoothness*arange(shape_interp[-1])
 			pts = arange(shape[-1])
 
-			parameters_interp = rand(shape_interp,key=key,bounds=bounds,random=random)
-			for axis in range(ndim):
-				for i,value in zip(constant[axis].get('slice',[]),constant[axis].get('value',[])):
-					j = shapes[axis] + i if i < 0 else i
-					if j >= slices[axis].start and j < slices[axis].stop:
-						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-						parameters_interp = parameters_interp.at[indices].set(value)
-
+			data_interp = rand(shape_interp,key=key,bounds=bounds,random=random,dtype=dtype)
 			try:
-				parameters = interpolate(pts_interp,parameters_interp,pts,interpolation)
+				data = interpolate(pts_interp,data_interp,pts,interpolation)
 			except:
-				parameters = rand(shape,key=key,bounds=bounds,random=random)
+				data = rand(shape,key=key,bounds=bounds,random=random,dtype=dtype)
 
-			for axis in range(ndim):
-				for i,value in zip(constant[axis].get('slice',[]),constant[axis].get('value',[])):
-					j = shapes[axis] + i if i < 0 else i
-					if j >= slices[axis].start and j < slices[axis].stop:
-						indices = tuple([slice(None) if ax != axis else i for ax in range(ndim)])
-						parameters = parameters.at[indices].set(value)
-
-			parameters = minimums(bounds[1],maximums(bounds[0],parameters))
-
-		elif initialization in ['uniform']:
-			parameters = ((bounds[0]+bounds[1])/2)*ones(shape)
+			data = minimums(bounds[1],maximums(bounds[0],data))
+	
+	elif isinstance(initialization,str):
+		
+		if initialization in ['uniform']:
+			data = ((bounds[0]+bounds[1])/2)*ones(shape,dtype=dtype)
+		
 		elif initialization in ['random']:
-			parameters = rand(shape,key=key,bounds=bounds,random=random)
-		elif initialization in ['zero']:
-			parameters = zeros(shape)
-		else:
-			parameters = rand(shape,key=key,bounds=bounds,random=random)		
+			data = rand(shape,key=key,bounds=bounds,random=random,dtype=dtype)
 
-	return parameters
+		elif initialization in ['one','ones']:
+			data = ones(shape,dtype=dtype)
+		
+		elif initialization in ['zero','zeros']:
+			data = zeros(shape,dtype=dtype)
+
+	elif initialization is not None: 
+		
+		if isinstance(initialization,scalars):
+			data = initialization*ones(shape,dtype=dtype)
+
+	if constant is not None:
+		if not all(isinstance(constant[i],dict) for i in constant):
+			axis = -1
+			constant = {axis:constant}
+		for axis in constant:
+			indices = array([int(i) for i in constant[axis]])
+			values = array([constant[axis][i] for i in constant[axis]],dtype=dtype)
+			axis = int(axis)
+
+			data = put(data,values,indices,axis=axis)
+
+	data = data.astype(dtype)
+
+	return data
 
 
 def bloch(state,path=None):
@@ -6192,14 +6904,14 @@ def bloch(state,path=None):
 		ndim = state.ndim
 
 		if ndim == 1:
-			state = einsum('i,aij,j->a',state.conj(),basis,state)
+			state = einsum('i,aij,j->a',conjugate(state),basis,state)
 		elif ndim == 2:
-			state = einsum('ui,aij,uj->ua',state.conj(),basis,state)
+			state = einsum('ui,aij,uj->ua',conjugate(state),basis,state)
 		elif ndim == 3:
-			state = einsum('uij,aij->ua',state,basis.conj())
+			state = einsum('uij,aij->ua',state,conjugate(basis))
 		else:
 			pass
-		state = state.real
+		state = real(state)
 		return state
 
 	root = os.path.dirname(os.path.abspath(__file__))

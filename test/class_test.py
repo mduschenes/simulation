@@ -3,7 +3,7 @@
 # Import python modules
 import pytest
 import os,sys
-import itertools,functools
+import itertools,functools,time
 from copy import deepcopy as deepcopy
 	
 # Import User modules
@@ -13,19 +13,103 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,array,einsum,tensorprod,allclose,is_hermitian,is_unitary,delim,cos,sin,sigmoid,pi
-from src.utils import norm,dagger,cholesky,trotter,expm,fisher,eig,difference,maximum,argmax,abs,sort
-from src.iterables import getter,setter
+from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,cos,sin,bound
+from src.utils import gradient,hessian,fisher
+from src.utils import norm,conjugate,dagger,dot,eig,difference,maximum,argmax,abs,sort
+from src.utils import pi,delim,arrays,scalars
+from src.iterables import getter,setter,namespace
 from src.io import load,dump,exists
 
-# Logging
-# from src.system import Logger
-# name = __name__
-# path = os.getcwd()
-# file = 'logging.conf'
-# conf = os.path.join(path,file)
-# file = None #'log.log'
-# logger = Logger(name,conf,file=file)
+from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label,trotter
+from src.optimize import Optimizer,Objective,Metric,Callback
+from src.system import Dictionary,Dict
+
+def test_object(path,tol):
+	bases = {'Pauli':Pauli,'State':State,'Gate':Gate,'Haar':Haar,'Noise':Noise}
+	arguments = {
+		'Pauli': {
+			'basis':'Pauli',
+			'kwargs':dict(
+				data=delim.join(['X','Y','Z']),operator=None,site=[0,1,2],string='XYZ',
+				kwargs=dict(N=3,D=2,ndim=2,parameters=1,verbose=True),
+			),
+		},
+		'Gate': {
+			'basis':'Gate',
+			'kwargs':dict(
+				data=delim.join(['I','CNOT']),operator=None,site=[0,1,2],string='CX',
+				kwargs=dict(N=3,D=2,ndim=2,verbose=True),
+			),
+		},
+		'Haar':{
+			'basis':'Haar',
+			'kwargs': dict(
+				data=delim.join(['haar']),operator=None,site=[0,1,2],string='U',
+				kwargs=dict(N=3,D=2,ndim=2,seed=1,reset=1,verbose=True),
+			),
+		},
+		'Psi':{
+			'basis':'State',
+			'kwargs': dict(
+				data=delim.join(['minus']),operator=None,site=[0,1],string='-',
+				kwargs=dict(N=2,D=2,ndim=1,seed=1,reset=1,verbose=True),
+			),
+		},
+		'Noise':{
+			'basis':'Noise',
+			'kwargs': dict(
+				data=delim.join(['phase']),operator=None,site=[0,1],string='K',
+				kwargs=dict(N=2,D=2,ndim=3,parameters=0.25,verbose=True),
+			),
+		},
+	}
+
+	for name in arguments:
+	
+		base = bases[arguments[name]['basis']]
+		args = arguments[name]['kwargs']
+		kwargs = args.pop('kwargs',{})
+
+		operator = Operator(**args,**kwargs)
+
+		assert operator.string == args['string'], "Operator.string = %s != %s"%(operator.string,args['string'])
+		assert ((arguments[name]['basis'] in ['Haar','State','Gate','Noise']) or allclose(operator.data,
+			tensorprod([base.basis[i]() for i in args['data'].split(delim)]))), "Operator.data %s != %r"%(operator.string,operator(operator.parameters))
+		assert tuple(operator.operator) == tuple(args['data'].split(delim))
+
+		for attr in kwargs:
+			assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
+
+		for attr in operator:
+			print(attr,operator[attr])
+		print()
+
+
+		other = base(**args,**kwargs)
+
+		for attr in other:
+			assert attr in ['timestamp','logger'] or callable(operator[attr]) or ((operator[attr] == other[attr]) if not isinstance(operator[attr],arrays) else allclose(operator[attr],other[attr])), "Incorrect reinitialization %s %r != %r"%(attr,operator[attr],other[attr])
+		assert allclose(operator(operator.parameters),other(other.parameters))
+		
+		args.update(dict(data=None))
+		operator = base(**args,**kwargs)
+		assert operator(operator.parameters) is None
+
+		args.update(dict(data=None,operator=None))
+		operator = base(**args,**kwargs)
+		assert operator(operator.parameters) is None
+		
+		print()
+
+	operator = Operator(verbose=True)
+	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.parameters,operator)
+
+	operator = Operator('I',N=3,verbose=True)
+	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.parameters,operator.shape)
+
+
+	return
+
 
 def test_model(path,tol):
 
@@ -34,14 +118,94 @@ def test_model(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	hyperparameters = Dict(hyperparameters)
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
+	model = load(hyperparameters.cls.model)
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+
+	parameters = model.parameters()
+
+	t = time.time()
+	parameters = rand(shape=parameters.shape,random='normal',bounds=[-1,1],key=1234)
+	obj = model(parameters)
+	print(parameters.shape,obj.shape,time.time()-t)
+
+
+	for i in range(10):
+		t = time.time()
+		parameters = rand(shape=parameters.shape,random='normal',bounds=[-1,1],key=1234)
+		obj = model(parameters)
+		print(i,parameters.shape,obj.shape,time.time()-t)
+
+
+	I = model.identity()
+	objH = dagger(model(parameters,conj=True))
+	objD = dagger(model(parameters))
+
+	objobjH = dot(obj,objH)
+	objHobj = dot(objH,obj)
+	objobjD = dot(obj,objD)
+	objDobj = dot(objD,obj)
+
+	print('model(conj=True) - dagger(model())',(objH-objH).min(),(objH-objH).max())
+	# print(objH-objH)
+	# print()
+
+	print('model() * model(conj=True) - I',(objobjH - I).min(),(objobjH - I).max())
+	# print(objobjH - I)
+	# print()
+
+	print('model(conj=True) * model() - I',(objHobj - I).min(),(objHobj - I).max())
+	# print(objHobj - I)
+	# print()
+
+	print('model() * dagger(model()) - I',(objobjD - I).min(),(objobjD - I).max())
+	# print(objobjD - I)
+	# print()
+
+	print('dagger(model()) * model() - I',(objDobj - I).min(),(objDobj - I).max())
+	# print(objDobj - I)
+	# print()
+
+	assert allclose(objobjH,I), "Incorrect unitarity model() * model(conj=True) != I"
+	assert allclose(objHobj,I), "Incorrect unitarity model(conj=True) * model() != I"
+	assert allclose(objobjD,I), "Incorrect unitarity model() * dagger(model()) != I"
+	assert allclose(objDobj,I), "Incorrect unitarity dagger(model()) * model() != I"
+
+	assert allclose(objH,objD), "Incorrect model(conj=True) != conj(model())"
+
+	m,d,p = model.M,len(model),model.P
+	identity = model.identity()
+	parameters = rand(shape=model.parameters.shape,random='normal',bounds=[-1,1],key=1234)
+
+	out = model(parameters)
+
+	slices = [slice(None,None,1),slice(None,None,-1)][:p]
+	data = [i for s in slices for i in model.data[s]]
+
+	slices = array([i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in list(range(d))[s]])
+	parameters = (model.coefficients*model.parameters(parameters))[slices].T.ravel()
+
+	tmp = model.identity()
+	for i in range(m*d*p):
+		f = data[i%(d*p)]
+		# print(i,data[i%(d*p)].string)
+		tmp = dot(f(parameters[i]),tmp)
+
+	assert allclose(out,tmp), "Incorrect model() from data()"
+
+
+	tmp = model.identity()
+	for i in range(m*d*p):
+		f = lambda x: cos(pi*x)*identity + -1j*sin(pi*x)*data[i%(d*p)].data
+		# print(i,data[i%(d*p)].string)
+		tmp = dot(f(parameters[i]),tmp)
+
+	assert allclose(out,tmp), "Incorrect model() from func()"
+
+	print('Unitary Conditions Passed')
 
 	return 
 
@@ -52,59 +216,91 @@ def test_parameters(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	hyperparameters = Dict(hyperparameters)
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
+	model = load(hyperparameters.cls.model)
+
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
 
 	parameters = model.parameters()
-	variables = model.__parameters__(parameters)
-
-	print(model.data)
-	print(model.parameters)
+	variables = model.parameters(parameters)
 
 	# Get parameters in shape (P*K,M)
 	M,N = model.M,model.N
-	parameters = parameters.reshape(-1,model.dims[0])
-	variables = variables.reshape(model.dims[0],-1).T
+	parameters = parameters.reshape(-1,M)
+	variables = variables.reshape(-1,M)
 
 	print(parameters.round(3))
 	print(variables.round(6))
 
+
+	parameter = 'xy'
 	shape = parameters.shape
-	slices = tuple((slice(size) for size in shape))
-	parameter = 'xy'	
-	if (model.parameters.hyperparameters.get(parameter,{}).get('method') in [None,'unconstrained']):
-		vars = parameters
-		if not allclose(variables[slices],vars):
-			print(vars)
-			print(variables[slices])
-			raise ValueError("Incorrect parameter initialization %r"%(model.parameters.hyperparameters))
-	else:
-		G = len(model.parameters.hyperparameters[parameter]['group'])
-		wrapper = sigmoid
-		funcs = [cos,sin]
-		scale = [model.parameters.hyperparameters[parameter]['scale'],2*pi]
-		features = wrapper(parameters.reshape(G,shape[0]//G,*shape[1:]))
+	category = model.parameters[parameter].category
+	method = model.parameters[parameter].method	
+	size = len(model.parameters[parameter].group)
+	null = lambda parameters,**kwargs: parameters
 
-		for i,func in zip(range(G),funcs):
-			slices = slice(i*N,(i+1)*N)
-			vars = scale[0]*features[0]*func(scale[1]*features[1])
-			if not allclose(variables[slices],vars):
-				print(vars)
-				print(variables[slices])
-				raise ValueError("Incorrect parameter initialization %r"%(model.parameters.hyperparameters))
+	print('Parameters / Constraints :::',category,method,model.parameters[parameter].constraints(model.parameters()))
 
+	if (method in [None,'unconstrained']):
+		
+		wrappers = [null,null]
+		funcs = [null,null]
+		kwargs = [{},{}]
+
+	elif (method in ['constrained']):
+
+		wrappers = [bound,bound]
+		funcs = [
+			lambda parameters,**kwargs: kwargs['scale'][0]*parameters[:parameters.shape[0]//2]*cos(kwargs['scale'][1]*parameters[parameters.shape[0]//2:]),
+			lambda parameters,**kwargs: kwargs['scale'][0]*parameters[:parameters.shape[0]//2]*cos(kwargs['scale'][1]*parameters[parameters.shape[0]//2:] + kwargs['shift']),
+		]
+		kwargs = [{'scale':[1,2*pi],'shift':0},{'scale':[1,2*pi],'shift':-pi/2}]
+
+	elif (method in ['bounded']):
+
+		wrappers = [bound,bound]
+		funcs = [null,null]
+		kwargs = [{},{}]
+
+
+	for i in range(size):
+		locality = model.parameters[parameter].locality.get(model.parameters[parameter].group[i])
+		if (locality in ['local',None]):
+			index = arange(parameters.shape[0])
+		elif (locality in ['global']):
+			index = array([j for j in model.parameters[parameter].slices])
+		
+		if method in ['constrained']:
+			slices = arange(model.parameters[parameter].slices.size//size)
+		else:
+			slices = arange(i*(model.parameters[parameter].slices.size//size),(i+1)*(model.parameters[parameter].slices.size//size))
+		_slices = arange(0,i*(model.parameters[parameter].slices.size//size))
+
+		features = parameters[index]
+
+		wrapper = wrappers[i]
+		func = funcs[i]
+		kwds = kwargs[i]
+		indices = slice(_slices.size,_slices.size+slices.size)
+		vars = model.parameters[parameter].parameters*wrapper(func(features,**kwds))[slices]
+		print(index,slices,_slices,indices,features.shape,parameters.shape,variables[indices].shape,vars.shape)
+		print(vars)
+		print(variables[indices])
+		if (variables[indices].shape != vars.shape) or not allclose(variables[indices],vars):
+			raise ValueError("Incorrect parameter initialization %d %r"%(i,model.parameters))
+		print()
+	print('Done')
 	return
 
 
 
 def test_logger(path,tol):
-	cls = load('src.system.Object')
+	cls = load('src.system.System')
 
 	data = None
 	shape = None
@@ -131,14 +327,13 @@ def test_data(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	hyperparameters = Dict(hyperparameters)
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
+	model = load(hyperparameters.cls.model)
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+
 
 	basis = {
 		'I':array([[1,0],[0,1]],dtype=model.dtype),
@@ -171,226 +366,186 @@ def test_data(path,tol):
 
 	data = trotter(data,P)
 	string = trotter(string,P)
-	datas = trotter([d() for d in model.data],P)
-	strings = trotter([d.operator for d in model.data],P)
+	datas = trotter([d.data for d in model.data],P)
 	sites = trotter([d.site for d in model.data],P)
 
-	for i,(s,S,d,D,site) in enumerate(zip(string,strings,data,datas,sites)):
+	for i,(s,d,D,site) in enumerate(zip(string,data,datas,sites)):
 		assert allclose(d,D), "data[%s,%d] incorrect"%(s,i)
 
 	return
 
-def test_class(path,tol):
+def test_initialization(path,tol):
 
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = load(hyperparameters['class']['model'])
+	hyperparameters = Dict(hyperparameters)
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
+	model = load(hyperparameters.cls.model)
+	label = load(hyperparameters.cls.label)
+
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
 	parameters = model.parameters()
+	kwargs = dict(verbose=True)
 
-	copy = {attr: deepcopy(getattr(model,attr)) for attr in ['state','noise','label']}
-	attrs = ['noise.string','noise.scale','state.scale','exponentiation']
-	kwargs = {'initial':dict(),'noisy':dict(noise={'scale':0},state={'scale':1}),'noiseless':dict(noise=False,state=False),'restore':dict(copy)}
-	U = {}
+	metric = Metric(label=label,hyperparameters=hyperparams,system=system,**kwargs)
 
-	for name in kwargs:
 
-		kwds = {}
-		setter(kwds,copy,func=True,copy=True)
-		setter(kwds,kwargs[name],func=True,copy=True)
-		model.__functions__(**kwds)
-		func = jit(model)
-		u = func(parameters)
-		U[name] = u
+	def copier(model,metric):
 
-		if attrs:
-			print('---- %s ----'%(name))
-			print(u)
-		for attr in attrs:
-			print(attr,getter(model,attr,delimiter=delim))
+		copy = Dictionary(
+			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=model.noise,info=model.info,hermitian=model.hermitian,unitary=model.unitary),
+			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.label.state,noise=model.noise,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
+			label=Dictionary(func=metric.label.__call__,data=metric.label(),state=metric.label.state,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
+			)
 
-		if u.ndim == 1:
-			print('Normalized state')
-			assert is_unitary(u), "Non-normalized state"
-		elif u.ndim == 2:
-			if getter(model,'state',delimiter=delim)() is not None:
-				print('Hermitian noisy state')
-				assert is_hermitian(u), "Non-hermitian state"
-			else:
-				print('Unitary noiseless operator')
-				assert is_unitary(u), "Non-unitary operator"
-		else:
-			raise ValueError("ndim = %d != 1,2"%(u.ndim))	
+		return copy
 
-		if attrs:
-			print()
+	copy = copier(model,metric)
 
-	assert allclose(U['initial'],U['restore']),"Incorrect restored obj"
+	
+	defaults = Dictionary(state=model.state,noise=model.noise,label=metric.label)
 
+
+	tmp = Dictionary(state=False,noise=False,label=False)
+
+	
+	label = metric.label
+
+	model.__initialize__(state=tmp.state,noise=tmp.noise)
+
+	label.__initialize__(state=model.state)
+
+	metric.__initialize__(model=model,label=label)
+
+	tmp = copier(model,metric)
+
+	model.__initialize__(state=defaults.state,noise=defaults.noise)
+
+	label.__initialize__(state=defaults.state)
+
+	metric.__initialize__(model=model,label=label)
+
+	
+	new = copier(model,metric)
+
+
+	
+	print('--- COPY INFO ---')
+	copy.model.info(verbose=True)
+	print()
+
+	print('--- TMP INFO ---')
+	tmp.model.info(verbose=True)
+	print()
+
+	print('--- NEW INFO ---')
+	new.model.info(verbose=True)
+	print()
+
+
+	print('State model (hermitian: %s, unitary: %s)'%(copy.model.hermitian,copy.model.unitary))
+	print(copy.model.data)
+
+	print('State label (hermitian: %s, unitary: %s)'%(copy.label.hermitian,copy.label.unitary))
+	print(copy.label.data)
+
+	print('State state (hermitian: %s, unitary: %s)'%(copy.label.state.hermitian,copy.label.state.unitary))
+	print(copy.label.state())
+
+	print('Unitary model (hermitian: %s, unitary: %s)'%(tmp.model.hermitian,tmp.model.unitary))
+	print(tmp.model.data)
+
+	print('Unitary label (hermitian: %s, unitary: %s)'%(tmp.label.hermitian,tmp.label.unitary))
+	print(tmp.label.data)
+
+	print('State model (hermitian: %s, unitary: %s)'%(new.model.hermitian,new.model.unitary))
+	print(new.model.data)
+
+	print('State label (hermitian: %s, unitary: %s)'%(new.label.hermitian,new.label.unitary))
+	print(new.label.data)
+
+	print('State state (hermitian: %s, unitary: %s)'%(new.label.state.hermitian,new.label.state.unitary))
+	print(new.label.state())
+
+
+	UpsiU = copy.model.data
+	U = tmp.model.data
+	psi = copy.model.state()
+	K = copy.model.noise()
+	VpsiV = copy.label.data
+	V = tmp.label.data
+
+	if K is None:
+		if psi is None:
+			return
+		elif psi.ndim == 1:
+			UpsiUtmp = einsum('ij,j->i',U,psi,conjugate(U))
+			VpsiVtmp = einsum('ij,j->i',V,psi,conjugate(V))
+		elif psi.ndim == 2:
+			UpsiUtmp = einsum('ij,jk,lk->il',U,psi,conjugate(U))
+			VpsiVtmp = einsum('ij,jk,lk->il',V,psi,conjugate(V))		
+	elif K is not None:
+		return
+		if psi is None:
+			return
+		elif psi.ndim == 1:
+			return
+		elif psi.ndim == 2:
+			UpsiUtmp = einsum('uij,jk,kl,ml,unm->in',K,U,psi,conjugate(U),conjugate(K))
+			VpsiVtmp = einsum('ij,jk,lk->il',V,psi,conjugate(V))		
+
+
+	assert allclose(UpsiUtmp,UpsiU), "Incorrect model() re-initialization"
+	assert allclose(VpsiVtmp,VpsiV), "Incorrect label() re-initialization"
+	assert allclose(new.metric.data,copy.metric.data), "Incorrect metric() re-initialization"
+	
 	return
 
-
-
-
-def test_normalization(path,tol):
-
+def test_hessian(path,tol):
+	
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	classes = {'state':'src.states.State','noise':'src.noise.Noise','label':'src.operators.Gate'}
+	hyperparameters = Dict(hyperparameters)
 
-	keys = ['state','label','noise']
+	model = load(hyperparameters.cls.model)
+	label = load(hyperparameters.cls.label)
 
-	for key in keys:
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
 
-		cls = load(classes[key])
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-		# Variables
-		shape = (hyperparameters['model']['D']**hyperparameters['model']['N'],)*2
-		size = [1,1]
-		dims = [hyperparameters['model']['N'],hyperparameters['model']['D']]
-		system = {'dtype':'complex','verbose':True,'cleanup':True}
-		kwargs = {kwarg : hyperparameters[key][kwarg] for kwarg in hyperparameters[key] if kwarg not in ['data','shape','size','dims','system']}
+	parameters = model.parameters()
+	kwargs = dict(verbose=True)
 
-		# Initial instance
-		kwargs.update({'scale':1,'key':key,'cls':{'tau':1}})
-		data = {}
-		obj = cls(data,shape,size=size,dims=dims,system=system,**kwargs)
+	metric = Metric(label=label,hyperparameters=hyperparams,system=system,**kwargs)
 
-		data = obj()
+	func = hessian(jit(lambda parameters: metric(model(parameters))))
 
-		if obj.ndim == 1:
-			if key in ['state']: # state vector
-				normalization = einsum('...i,...i->...',data,data.conj()).real/1
-			elif key in ['label']: # label vector
-				normalization = einsum('...i,...i->...',data,data.conj()).real/1
-			elif key in ['noise']: # noise vector
-				normalization = einsum('...i,...i->...',data,data.conj()).real/1
-			else:
-				raise ValueError("Incorrect key = %s and obj.ndim = %d"%(key,obj.ndim))
-		elif obj.ndim == 2:
-			if key in ['state']: # state matrix
-				normalization = einsum('...ii->...',data).real/1
-			elif key in ['label']: # label matrix 
-				normalization = einsum('...ij,...ij->...',data,data.conj()).real/obj.n
-			elif key in ['noise']: # noise matrix
-				normalization = einsum('...ij,...ij->...',data,data.conj()).real/obj.n
-			else:
-				raise ValueError("Incorrect key = %s and obj.ndim = %d"%(key,obj.ndim))
-		elif obj.ndim == 3:
-			if key in ['noise']:
-				normalization = einsum('...uij,...uij->...',data.conj(),data).real/obj.n
-			else:
-				raise ValueError("Incorrect key = %s and obj.ndim = %d"%(key,obj.ndim))
+	out = func(parameters)
 
-		else:
-			raise AssertionError("Incorrect obj.ndim = %d"%(obj.ndim))
+	eigs = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
+	eigs = eigs/max(1,maximum(eigs))
 
-		assert(allclose(1,normalization)),"Incorrectly normalized obj: %0.5e"%(normalization)
+	rank = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
+	rank = min(rank.size,argmax(abs(difference(rank)/rank[:-1]))+1)
 
-		copy = deepcopy(dict(obj))
-		copydata = obj()
-
-		# Identical instance
-		data = dict(copy)
-		data.update(kwargs)
-
-		obj = cls(data,shape,size=size,dims=dims,system=system)
-
-		print(key)
-		print('orig',copydata)
-		print('----')
-		print('identical',obj())
-		print()
-		print(copy['cls'],copy['scale'])
-		print(obj.cls,obj.scale)
-		# for attr in data:
-		# 	print(attr,data[attr])
-		# 	print()
-		# obj.info()
-
-		assert(allclose(obj(),copydata)), "Incorrect identical initialization"
-
-
-		# Difference instance
-		data = dict(copy)
-		data['scale'] = None
-		data['logger'] = 'log.txt'
-
-		obj = cls(data,shape,size=size,dims=dims,system=system)
-
-
-		# obj.info()
-		print('None',obj(),obj.logger.file,obj.logger.cleanup)
-		print()
-
-		assert(obj() is None),"Incorrect data set to None"
-
-
-		# Reinit instance
-		data = dict(copy)
-		data['scale'] = 1
-
-		obj = cls(data,shape,size=size,dims=dims,system=system)
-
-
-		# obj.info()
-		print('reinit',obj(),obj.cleanup)
-		print()
-		print()
-
-		assert(allclose(obj(),copydata)), "Incorrect reinitialization"
+	print(eigs)
+	print(rank)
 
 	return
-
-
-def test_call(path,tol):
-
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
-
-	cls = load(hyperparameters['class']['model'])
-
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	parameters = model.parameters()
-
-
-	parameters = model.parameters()
-	variables = model.__parameters__(parameters)
-	coefficients = model.coefficients
-	data = array(trotter([data() for data in model.data],model.P))
-	identity = model.identity()
-
-	params = parameters.reshape(-1,model.dims[0])
-	vars = variables.reshape(model.dims[0],-1).T
-
-	_out = expm(coefficients*variables,data,identity)
-
-	out = model(parameters)
-
-	assert allclose(_out,out), "Incorrect model function"
-
-	return 
 
 def test_fisher(path,tol):
 	
@@ -399,19 +554,19 @@ def test_fisher(path,tol):
 	if hyperparameters is None:
 		raise "Hyperparameters %s not loaded"%(path)
 
-	cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters['class']}
+	hyperparameters = Dict(hyperparameters)
 
-	model = cls['model'](**hyperparameters['model'],
-			parameters=hyperparameters['parameters'],
-			state=hyperparameters['state'],
-			noise=hyperparameters['noise'],
-			label=hyperparameters['label'],
-			system=hyperparameters['system'])
+	model = load(hyperparameters.cls.model)
+	label = load(hyperparameters.cls.label)
+
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
+
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})	
 
 	parameters = model.parameters()
 
-
-	func = fisher(model,shapes=(model.shape,(*model.dimensions,*model.shape)))
+	func = fisher(model,shapes=(model.shape,(*parameters.shape,*model.shape)))
 
 	out = func(parameters)
 
@@ -419,10 +574,193 @@ def test_fisher(path,tol):
 	eigs = eigs/max(1,maximum(eigs))
 
 	rank = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
-	rank = argmax(abs(difference(rank)/rank[:-1]))+1						
+	rank = min(rank.size,argmax(abs(difference(rank)/rank[:-1]))+1)
 
 	print(eigs)
 	print(rank)
+
+	return
+
+
+def profile(funcs,*args,profile=True,**kwargs):
+	import cProfile, pstats
+	import snakeviz.cli
+	
+	if callable(funcs):
+		funcs = [funcs]
+
+	if not profile:
+		for func in funcs:
+			func(*args,**kwargs)
+		return
+
+	sort = ['cumtime']
+	lines = 100
+	file = 'stats.profile'
+
+	for func in funcs:
+		profiler = cProfile.Profile()
+		profiler.enable()
+
+		func(*args,**kwargs)
+
+		profiler.disable()
+
+		stats = pstats.Stats(profiler).sort_stats(*sort)
+		stats.print_stats(lines)
+		stats.dump_stats(filename=file)
+
+	# snakeviz.cli.main([file])
+
+	return
+
+
+def check_machine_precision(path,tol):
+	import matplotlib
+	import matplotlib.pyplot as plt
+	from mpl_toolkits.axes_grid1 import make_axes_locatable
+	import autograd.numpy as np
+	import sympy as sp
+
+	seed = 12931
+	maxbits = 256
+	maxdtype = 'complex%d'%(maxbits)
+	maxftype = 'float%d'%(maxbits//2)
+	np.random.seed(seed)
+
+	def analytical(k,n,eps):
+		
+		error = np.zeros(k,dtype=maxftype)
+		
+		for i in range(k):
+			# e = (np.array(n,dtype=dtype)**i)*((1 + np.sqrt(sum(((1+eps)**(j+1) - 1)**2 for j in range(n))))**(i+1) - 1)
+			# e = (n**(i+1))*
+			e = ((1+(n**(3/2))*eps)**(i+2) - 1)
+			# e = ((1+eps)**(i+2) - 1)
+			error[i] = e
+			print(i,e.dtype)
+		return error
+
+	def numerical(k,n,eps):
+		random = 'haar'
+		info = np.finfo('complex%d'%(eps))
+		bits = -np.floor(np.log10(info.eps))
+
+		dtype = 'complex%d'%(eps)
+		ftype = 'float%d'%(eps//2)
+		norm = lambda A,ord=2: (((np.absolute(A,dtype=maxftype)**ord).sum(dtype=maxftype))**(1/ord)).real
+		
+		V = sp.Matrix([[sp.exp(sp.Mul(sp.I,2*sp.pi,sp.Rational(i*j,n))) for j in range(n)] for i in range(n)])/sp.sqrt(n)
+		S = [sp.Rational(np.random.randint(1,i) if i>1 else 0,i) for i in np.random.randint(1,n**2,size=n)]
+		D = lambda k=1: sp.diag(*(sp.exp(sp.Mul(sp.I,2*sp.pi,s,k)) for s in S))
+		W = lambda k=1: V*D(k)*V.H
+		N = lambda A,bits=4*maxbits: np.array(sp.N(A,bits),dtype=maxdtype)
+		E = np.diag((1+10**(-bits))**(np.arange(n)+2)-1)
+
+		A = N(W(),bits=bits)	
+		C = norm(A)
+		B = A
+
+		# print(A)
+		# print(A*B)
+		# print(N(W(2)))
+		# print(A*B - N(W(2)))
+		# print(norm(A))
+		# exit()
+		
+		error = np.zeros(k,dtype=maxftype)
+		
+		for i in range(k):
+			B = np.matmul(A,B,dtype=dtype)# + 0.5*10**(-bits)*np.random.choice([-1,1],B.shape).astype(maxdtype) 
+			# B = np.matmul(A,B,dtype=maxdtype) + np.matmul(A,np.matmul(E,B,dtype=maxdtype),dtype=maxdtype) # + 0.5*10**(-bits)*np.random.choice([-1,1],B.shape).astype(maxdtype) 
+			# B = A*B
+			e = norm(B - N(W(i+2)))/C
+			# e = norm(np.array(sp.N(B,bits),dtype=maxdtype) - N(W(i+2)))/C
+			error[i] = e
+			print(i,e,dtype,error[i].dtype,bits)
+		
+		return error		
+
+	def machine(k,n,eps):
+		bits = int(eps*np.log10(2))
+		dtype = 'float%d'%(eps//2)
+
+		N = lambda a,bits=4*maxbits: np.asscalar(np.array(sp.N(a,bits),dtype=dtype))
+
+		v = sp.Rational(np.random.randint(1,n),n)
+		a = N(v)
+		c = lambda b: N(sp.Mul(b*v))
+		b = N(a)
+
+		error = np.zeros(k,dtype=dtype)
+		
+		for i in range(k):
+			e = np.abs(a*b - c(b))/c(b)
+			b = a*b
+			error[i] = e
+			print(i,e)
+		
+		return error	
+
+	n = 2**2
+	k = int(1e2)
+	K = list(range(1,k+1))
+	L = 13
+	samples = 1
+	epsilon = np.logspace(-20,-20+L-1,L,dtype=maxftype).tolist()
+	precision = [64,128,256]
+
+	mplstyle = 'config/plot.mplstyle'
+	with matplotlib.style.context(mplstyle):
+
+		fig,ax = plt.subplots()
+		plots = []
+		for eps in epsilon:
+			error = analytical(k,n,eps)
+			plot = ax.plot(K,error,
+				linewidth=4,
+				label='$10^{-%d}$'%(np.round(-np.log10(eps))),
+				color=plt.cm.viridis((epsilon.index(eps)+1)/len(epsilon))
+				)
+			plots.append(plot)
+
+		for bits in precision:
+			info = np.finfo('complex%d'%(bits))
+			eps = -np.floor(np.log10(info.eps))
+			print(info)
+			error = [numerical(k,n,bits) for i in range(samples)]
+			error,errorerr = np.mean(error,axis=0,dtype=maxftype),np.std(error,axis=0,dtype=maxftype)/np.sqrt(max(1,samples-1),dtype=maxftype)
+			plot = ax.errorbar(K,error,yerr=errorerr,
+				alpha=0.7,#(precision.index(bits)+1)/len(precision),
+				linewidth=4,
+				linestyle='--',
+				color=['k','r','b'][precision.index(bits)],
+				label=r'$%d~\textrm{bit}~ (\varepsilon \sim 10^{-%d})$'%(bits//2,eps)
+				)
+				
+		# ax.axhline(1e-8,color='k',linestyle='--');
+		# ax.axhline(1e-16,color='k',linestyle='--');
+		fig.set_size_inches(10,10)
+		ax.set_xlabel(r'$\textrm{Matmul Count}~k$')
+		ax.set_ylabel(r'$\textrm{Matmul Error}~ \epsilon_{k}$')
+		ax.set_yscale('log');
+		ax.set_xscale('log');
+		# ax.set_xlim(5e-1,5e6);
+		# ax.set_xlim(5e-1,5e2);
+		ax.set_xlim(5e-1,2e4);
+		ax.set_ylim(1e-21,1e-3);
+		# ax.set_xticks([1e0,1e2,1e4,1e6]);
+		# ax.set_xticks([1e0,1e1,1e2]);
+		ax.set_xticks([1e0,1e1,1e2,1e3,1e4]);
+		ax.set_yticks([1e-20,1e-16,1e-12,1e-8,1e-4]);
+		ax.minorticks_off();
+		ax.grid(True,alpha=0.3);
+		ax.set_title(r'$\frac{\norm{\widetilde{A^k} - A^k}}{\norm{A^k}} \leq \epsilon_{k} = (1 + \epsilon)^{k} - 1 ~\sim~ k \epsilon$',pad=30)
+		legend = ax.legend(
+			title=r'$\textrm{Machine Precision} ~ \varepsilon$' + '\n' + r'$A \in \textrm{U}(n) ~,~ \epsilon \sim O(n^{3/2})\varepsilon$',
+			loc=[1.1,-0.1],ncol=1);
+		legend.get_title().set_ha('center')
+		fig.savefig('matmul_error.pdf',bbox_inches="tight",pad_inches=0.2)
 
 	return
 
@@ -431,11 +769,10 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
-	test_parameters(path,tol)
-	# test_call(path,tol)
-	# test_data(path,tol)
-	# test_logger(path,tol)
-	# test_class(path,tol)
-	# test_model(path,tol)
-	# test_normalization(path,tol)
-	# test_fisher(path,tol)
+	func = test_fisher
+	func = test_hessian
+	func = check_machine_precision
+	func = test_parameters
+	args = ()
+	kwargs = dict(path=path,tol=tol,profile=False)
+	profile(func,*args,**kwargs)

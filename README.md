@@ -5,11 +5,19 @@ Pre-processing, hyperparameter searches, and inter-dependent, parallelized job s
 
 The hierarchy of inheritance of classes is as follows
 
-`Unitary <- Hamiltonian <- Observable <- System <- Dictionary`
+`Unitary <- Hamiltonian <- Operators <- Object <- System <- Dictionary`
 
-`Operator <- System <- Dictionary`
+`Operators <- Object <- System <- Dictionary`
+
+`Operator <- Object <- System <- Dictionary`
 
 `State,Noise,Gate <- Object <- System <- Dictionary`
+
+`Label <- Operator <- Object <- System <- Dictionary`
+
+`Parameters <- System <- Dictionary`
+
+`Parameter <- System <- Dictionary`
 
 `Space,Time,Lattice <- System <- Dictionary`
 
@@ -35,6 +43,12 @@ To configure jobs scripts, plot and processing settings, that follow the matplot
 - `process.json` : data analysis settings 
 - `plot.json` : plots axes and figures 
 - `plot.mplstyle` : matplotlib style
+
+The numpy backend can be set with the environment variable (with any case)
+
+`NUMPY_BACKEND=<jax,autograd>`
+
+where the default is jax.
 
 ## Run
 Under `build`, please run 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,warnings,itertools,inspect,traceback,datetime
+import os,sys,warnings,itertools,inspect,traceback,datetime,re
 import shutil
 from copy import deepcopy
 import glob as globber
@@ -18,10 +18,10 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,is_array,is_ndarray,concatenate
+from src.utils import array,concatenate
 from src.utils import to_repr,to_eval
 from src.utils import returnargs
-from src.utils import scalars,nan,delim
+from src.utils import arrays,scalars,nan,delim
 
 # Logging
 from src.logger	import Logger
@@ -77,6 +77,22 @@ def environ():
 
 	return os.environ
 
+def contains(string,pattern):
+	'''
+	Search for pattern in string
+	Args:
+		string (str): String to search
+		pattern (str): Pattern to search
+	Returns:
+		boolean (bool): String contains pattern
+	'''
+	replacements = {'\\':'\\\\','.':'\\.','*':'.*',}
+	for replacement in replacements:
+		pattern = pattern.replace(replacement,replacements[replacement])
+		
+	boolean = re.fullmatch(pattern,string) is not None
+
+	return boolean
 
 
 def exists(path):
@@ -323,6 +339,8 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		include = os.path.isfile
 	elif include in ['directory']:
 		include = os.path.isdir
+	elif isinstance(include,str):
+		include = lambda path,include=include: contains(path,include)
 
 	if not isinstance(recursive,str):
 		if recursive:
@@ -338,7 +356,8 @@ def glob(path,include=None,recursive=False,default=None,**kwargs):
 		path = (path for path in [default])
 	else:
 		path = globber.iglob(path,recursive=True,**kwargs)
-	
+
+
 	if include is not None:
 		path = list(natsorted(filter(include,path)))
 
@@ -401,49 +420,22 @@ class funcclass(object):
 	def __call__(self,*args,**kwargs):
 		return self.func(*args,**kwargs)
 
-def encode_json(obj,represent=False,**kwargs):
-	'''
-	Encode object into jsonable
-	Args:
-		obj(object): Object to convert
-		represent (bool): Representation of objects
-		kwargs (dict): Additional keyword arguments
-	Returns:
-		dictionary (dictionary): Jsonable dictionary of object
-	'''
-	if not isinstance(obj,dict):
-		dictionary = deepcopy(dump_json(obj))
-	else:
-		dictionary = obj
-		# dictionary = {}
-		# for key in obj:
-			# dictionary[to_repr(key,represent=represent)] = encode_json(obj[key],represent=represent,**kwargs)
-	return dictionary
+class encode_json(json.JSONEncoder):
+	def default(self, obj):
+		encode = super().encode
+		default = super().default
+		if isinstance(obj,arrays):
+			return obj.tolist()
+		elif isinstance(obj,np.bool_):
+			return encode(bool(obj))
+		else:
+			return default(default(obj))
 
-def decode_json(dictionary,represent=False,**kwargs):
-	'''
-	Convert jsonable into dictionary
-	Args:
-		dictionary(object): Object to convert
-		represent (bool): Representation of objects
-		kwargs (dict): Additional keyword arguments
-	Returns:
-		obj (dictionary): Dictionary to convert to obj
-	'''
-	obj = dictionary
-	return obj
-
-	# obj = {}
-	# if not isinstance(dictionary,dict):
-	# 	obj = dictionary
-	# else:
-	# 	for key in dictionary:
-	# 		try:
-	# 			obj[to_eval(key,represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
-	# 		except (ValueError,SyntaxError):
-	# 			obj[to_eval(to_repr(key,represent=represent),represent=represent)] = decode_json(dictionary[key],represent=represent,**kwargs)
-	# return obj
-
+class decode_json(json.JSONDecoder):
+	def default(self, obj):
+		encode = super().encode
+		default = super().default
+		return default(obj)
 
 
 def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
@@ -458,9 +450,6 @@ def dump_json(obj,key='py/object',wr='w',ext='json',**kwargs):
 	Returns:
 		obj (object): Serialized object
 	'''	
-
-	if is_array(obj) or is_ndarray(obj):
-		obj = obj.tolist()
 	return obj
 
 def load_json(obj,key='py/object',wr='r',ext='json',**kwargs):
@@ -649,7 +638,8 @@ def jsonable(obj,path=None,callables=False,**kwargs):
 	with open(path,'w') as fobj:
 		try:
 			# json.dump(obj,fobj,**{'default':dump_json,'ensure_ascii':False,'indent':4})
-			json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+			# json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+			json.dump(data,obj,**{'cls':encode_json,'ensure_ascii':False,'indent':4,**kwargs})
 			isjsonable = True
 		except Exception as exception:
 			pass
@@ -694,7 +684,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
 			def convert(path,data):
 				for attr in data:
-					if any(is_ndarray(i) for i in data[attr]):
+					if any(isinstance(i,arrays) for i in data[attr]):
 						data[attr] = [tuple(i) for i in data[attr]]
 				size = max([len(data[attr]) for attr in data],default=0)
 				data['__path__'] = [path]*size
@@ -761,13 +751,13 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			try:
 				datum = _load(path,wr=wr,ext=ext,**kwargs)
 				break
-			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError) as exception:			
+			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
 				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						datum = _load(obj,wr=wr,ext=ext,**kwargs)
 						break
-				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError) as exception:
+				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 					pass
 
@@ -806,12 +796,17 @@ def _load(obj,wr,ext,**kwargs):
 	try:
 		assert ext in exts, "Cannot load extension %s"%(ext)
 	except Exception as exception:
-		# try:
 		obj,module = '.'.join(obj.split('.')[:-1]),obj.split('.')[-1]
-		obj = os.path.basename(obj)
-		data = getattr(importlib.import_module(obj),module)
-		# except Exception as exception:
-		# 	raise exception
+		try:
+			path = os.path.basename(obj).strip('.')
+			data = getattr(importlib.import_module(path),module)
+		except:
+			path = obj
+			spec = importlib.util.spec_from_file_location(module,path)
+			data = importlib.util.module_from_spec(spec)
+			sys.modules[module] = data
+			spec.loader.exec_module(data)
+			data = getattr(data,module)
 
 	if ext in ['npy']:
 		data = np.load(obj,**{'allow_pickle':True,**kwargs})
@@ -825,8 +820,7 @@ def _load(obj,wr,ext,**kwargs):
 		# TODO: Load specific types as wrapped types (i.e) onp.array -> np.array for JAX)
 		data = pickle.load(obj,**kwargs)
 	elif ext in ['json']:
-		# data = json.load(obj,**{'object_hook':load_json,**kwargs})
-		data = decode_json(json.load(obj,**{'object_hook':load_json,**kwargs}),**kwargs)
+		data = json.load(obj,**{'cls':decode_json,'object_hook':load_json,**kwargs})
 	elif ext in ['hdf5','h5','ckpt']:
 		if wrapper in ['pd']:
 			ext = 'hdf'
@@ -904,13 +898,13 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 			try:
 				_dump(data,path,wr=wr,ext=ext,**kwargs)
 				break
-			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError) as exception:
+			except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 				try:
 					with open(path,wr) as obj:
 						_dump(data,obj,wr=wr,ext=ext,**kwargs)
 					break
-				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError) as exception:
+				except (ValueError,AttributeError,TypeError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
 					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
 					pass
 		
@@ -955,13 +949,14 @@ def _dump(data,obj,wr,ext,**kwargs):
 	elif ext in ['json']:
 		# jsonable(data,callables=kwargs.pop('callables',False))	
 		# json.dump(data,obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
-		json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+		# json.dump(encode_json(data,**kwargs),obj,**{'default':dump_json,'ensure_ascii':False,'indent':4,**kwargs})
+		json.dump(data,obj,**{'cls':encode_json,'ensure_ascii':False,'indent':4,**kwargs})
 	elif ext in ['tex']:
 		obj.write(data,**kwargs)
 	elif ext in ['hdf5','h5','ckpt']:
 		if wrapper in ['pd']:
 			ext = 'hdf'
-			getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
+			getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data'),'mode':'w'})
 		else:
 			dump_hdf5(data,obj,wr=wr,ext=ext,**kwargs)
 	elif ext in ['pdf']:
