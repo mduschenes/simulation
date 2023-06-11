@@ -15,6 +15,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+# improt matplotlib.lines import Line2D
 
 # Logging
 from src.logger	import Logger
@@ -543,6 +544,36 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 
 	return value,color,values,colors,norm
 
+def set_data(data=None,scale=None,**kwargs):
+	'''
+	Set data
+	Args:
+		data (int,float,iterable[int,float]): Data
+		scale (str): Scale type for normalization, allowed strings in ['linear','log','symlog']
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		data (array): Data
+	'''
+
+	if isinstance(scale,str):
+		scale = [scale]
+
+	if ((data is None) or 
+	   (scale is None)):
+	
+	   data = None
+
+	elif ((scale is None) or
+		  (not any(i in ['log','symlog'] for i in scale))):
+	
+		data = data
+	
+	elif ((not isinstance(scale,str) and any(i in ['log','symlog'] for i in scale))):
+
+		data = np.array(data)
+		data[data==0] = np.nan
+
+	return data
 
 
 def set_err(err=None,value=None,scale=None,**kwargs):
@@ -582,11 +613,11 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 				err = [err]*2
 			elif err.ndim == 1:
 				if err.size == value.size:
-					err = [[i if i is not None and not is_naninf(i) else 0 for i in err]]*2
+					err = [[i if i is not None and not is_naninf(i) else nan for i in err]]*2
 				else:
-					err = [i if i is not None and not is_naninf(i) else 0 for i in err]
+					err = [i if i is not None and not is_naninf(i) else nan for i in err]
 			elif err.ndim == 2:
-				err = [[j if j is not None and not is_naninf(j) else 0 for j in i] for i in err]
+				err = [[j if j is not None and not is_naninf(j) else nan for j in i] for i in err]
 
 		err = np.array(err)
 		value = np.array(value)
@@ -595,7 +626,6 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 			err = None
 		else:
 			err = np.array([value*(1-(value/(value+err[1]))),np.ones(value.shape)*err[1]])
-
 	else:
 	
 		err = None
@@ -885,7 +915,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 				if kwargs[attr].get('handlers') is not None:
-					handlers = kwargs[attr].get('handlers')
+					handlers = kwargs[attr].get('handlers',{})
+					if not isinstance(handlers,dict):
+						handlers = {handler:{} for handler in handlers}
 					funcs = {
 						**{
 						container.lower():{
@@ -893,6 +925,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							}
 						for container in ['Errorbar']
 						},
+						**{
+						'Errorbar'.lower():{
+							getattr(matplotlib.container,'%sContainer'%('Errorbar'.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%('Errorbar'.capitalize()))
+							}
+						for container in ['cmap']
+						},						
 						}
 					for handler in handlers:
 						for _obj in objs:
@@ -918,16 +956,20 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					unique = list(sorted(set(labels),key=lambda i: labels.index(i)))
 					if unique:
 						indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
-						if keep in ['first']:
-							index = [0]*len(indexes)
-						elif keep in ['middle']:
-							index = [min(len(i) for i in indexes)//2]*len(indexes)
-						elif keep in ['last']:
-							index = [-1]*len(indexes)
-						elif isinstance(keep,int):
-							index = [index]*len(indexes)
-						else:
-							index = [i for i in index]
+						keep = [keep]*len(indexes) if isinstance(keep,(str,int)) else keep
+						index = []
+						for k,i in zip(keep,indexes):
+
+							if k in ['first']:
+								index.append(0)
+							elif k in ['middle']:
+								index.append(len(i)//2)
+							elif k in ['last']:
+								index.append(-1)
+							elif isinstance(k,int):
+								index.append(k)
+							else:
+								index.append(k)
 
 						if index is not None:
 							labels,handles = [labels[i[j]] for i,j in zip(indexes,index)],[handles[i[j]] for i,j in zip(indexes,index)]
@@ -968,6 +1010,23 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
+		
+				props = '%s'
+				subattrs = 'set_%sscale'
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subattr = subattrs%(axes)
+					
+					if kwargs[attr].get(prop) is None:
+						continue
+
+					data = kwargs[attr].get(prop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					
+					data = set_data(data=data,scale=scale)
+
+					kwargs[attr][prop] = data
+
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
@@ -977,6 +1036,24 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['errorbar']:
 				dim = 2
+			
+				props = '%s'
+				subattrs = 'set_%sscale'
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subattr = subattrs%(axes)
+
+					if kwargs[attr].get(prop) is None:
+						continue
+
+					data = kwargs[attr].get(prop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					
+					data = set_data(data=data,scale=scale)
+
+					kwargs[attr][prop] = data
+
+
 				props = '%serr'
 				subprops ='%s'
 				subattrs = 'set_%sscale'
@@ -993,6 +1070,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 					kwargs[attr][prop] = err
 
+
+
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:2] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				nullkwargs.extend([*['%s%s'%(k,s) for s in VARIANTS[:2] for k in AXES],*[]])
@@ -1002,6 +1081,23 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['fill_between']:
 
 				dim = 2
+				
+				props = '%s'
+				subattrs = 'set_%sscale'
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subattr = subattrs%(axes)
+					
+					if kwargs[attr].get(prop) is None:
+						continue
+
+					data = kwargs[attr].get(prop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					
+					data = set_data(data=data,scale=scale)
+
+					kwargs[attr][prop] = data
+
 				props = '%serr'
 				subprops ='%s'
 				subattrs = 'set_%sscale'
@@ -1025,7 +1121,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					y = np.array(kwargs[attr].get('y'))
 					yerr = [y-kwargs[attr].get('y1'),kwargs[attr].get('y2')-y]
 					args.extend([x,y-yerr[0],y+yerr[1]])
-				elif ((kwargs[attr].get('yerr') is None) and (len(kwargs[attr].get('yerr')))):
+				elif ((kwargs[attr].get('yerr') is not None) and (len(kwargs[attr].get('yerr')))):
 					call = False
 					x = np.array(kwargs[attr].get('x')) if kwargs[attr].get('x') is not None else kwargs[attr].get('x')
 					y = np.array(kwargs[attr].get('y'))
@@ -1050,6 +1146,24 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			elif attr in ['scatter']:
 
 				dim = 2
+				
+
+				props = '%s'
+				subattrs = 'set_%sscale'
+				for axes in AXES[:dim]:
+					prop = props%(axes)
+					subattr = subattrs%(axes)
+
+					if kwargs[attr].get(prop) is None:
+						continue
+
+					data = kwargs[attr].get(prop)
+					scale = [tmp[-1].get('value') for tmp in search(kwargs.get(subattr)) if tmp is not None and tmp[-1] is not None]
+					
+					data = set_data(data=data,scale=scale)
+
+					kwargs[attr][prop] = data
+
 				args.extend([kwargs[attr].get('%s%s'%(k,s)) for s in VARIANTS[:1] for k in AXES[:dim] if ((kwargs[attr].get('%s%s'%(k,s)) is not None))])
 
 				replacements = {'color':'c','markersize':'s'}

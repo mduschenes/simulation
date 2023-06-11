@@ -319,11 +319,11 @@
 					"size": 30
 				},
 				"set_ticks": {
-					"ticks": 7,
+					"ticks": 5,
 					"size": 50
 				},
 				"set_ticklabels": {
-					"ticklabels": 7,
+					"ticklabels": 5,
 					"size": 50
 				},
 				"ax.yaxis.set_tick_params": {
@@ -796,11 +796,11 @@
 					"size": 30
 				},
 				"set_ticks": {
-					"ticks": 7,
+					"ticks": 5,
 					"size": 50
 				},
 				"set_ticklabels": {
-					"ticklabels": 7,
+					"ticklabels": 5,
 					"size": 50
 				},
 				"ax.yaxis.set_tick_params": {
@@ -1272,11 +1272,11 @@
 					"size": 30
 				},
 				"set_ticks": {
-					"ticks": 7,
+					"ticks": 5,
 					"size": 50
 				},
 				"set_ticklabels": {
-					"ticklabels": 7,
+					"ticklabels": 5,
 					"size": 50
 				},
 				"ax.yaxis.set_tick_params": {
@@ -1708,7 +1708,7 @@
 			"errorbar": [
 				{
 					"x": "iteration",
-					"y": "alph",
+					"y": "alpha",
 					"label": {
 						"label": {
 							"N": null,
@@ -2003,11 +2003,11 @@
 					"size": 30
 				},
 				"set_ticks": {
-					"ticks": 7,
+					"ticks": 5,
 					"size": 50
 				},
 				"set_ticklabels": {
-					"ticklabels": 7,
+					"ticklabels": 5,
 					"size": 50
 				},
 				"ax.yaxis.set_tick_params": {
@@ -2481,11 +2481,11 @@
 					"size": 30
 				},
 				"set_ticks": {
-					"ticks": 7,
+					"ticks": 5,
 					"size": 50
 				},
 				"set_ticklabels": {
-					"ticklabels": 7,
+					"ticklabels": 5,
 					"size": 50
 				},
 				"ax.yaxis.set_tick_params": {

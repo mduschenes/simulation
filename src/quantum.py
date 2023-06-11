@@ -491,7 +491,7 @@ class Operator(Object):
 
 			if not all(j in subclass.basis for obj in [data,operator] if (obj is not None and not isinstance(obj,arrays)) for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
 				continue
-			
+
 			if cls is Operator:
 			
 				self = subclass(**kwargs)
@@ -552,7 +552,7 @@ class Pauli(Object):
 		'''
 
 		def func(parameters=None,state=None,conj=None):
-			return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
+			return cos((pi/2)*parameters)*self.identity + -1j*sin((pi/2)*parameters)*self.data
 
 		hermitian = False
 		unitary = True
@@ -951,7 +951,7 @@ class Operators(Object):
 		self.__lattice__()
 
 		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
-		self.coefficients = array(self.tau/self.P,dtype=datatype(self.dtype))
+		self.coefficients = array((self.tau)*(1/self.P),dtype=datatype(self.dtype))
 
 		self.shape = () if self.n is None else (self.n,self.n)
 		self.size = prod(self.shape)
@@ -1692,7 +1692,7 @@ class Unitary(Hamiltonian):
 		parameters = self.trotterize(parameters)
 
 		gradient_trotterize = jit(lambda grad,P=self.P: gradient_trotter(grad,P))
-		slices = array([j for parameter in self.parameters for j in self.parameters[parameter].slices if self.parameters[parameter].category in ['variable']])
+		indices = self.parameters.indices
 		reshape = (*shape[1:],-1,*self.shape)
 		transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
 		shapes = (-1,*self.shape)
@@ -1701,7 +1701,7 @@ class Unitary(Hamiltonian):
 		grad = grad.reshape(reshape)
 		grad = grad.transpose(transpose)
 		grad = gradient_trotterize(grad)
-		grad = grad[slices]
+		grad = grad[indices]
 		grad = grad.reshape(*shapes)
 
 		return grad
@@ -1842,6 +1842,7 @@ class Callback(System):
 
 		stop = (
 			(hyperparameters['eps'].get('value.increase') is not None) and
+			(hyperparameters['eps'].get('value.increase') > 0) and
 			((len(attributes['value']) > 1) and 
 			 (attributes['iteration'][-1] >= max(1,
 				hyperparameters['value']['iteration'] if hyperparameters['value'].get('iteration') is not None else 1))) and
@@ -1937,23 +1938,22 @@ class Callback(System):
 				elif attr in [
 					'variables','variables.norm','variables.relative','variables.relative.mean',
 					] and (do):
-					# TODO: Sort out shape of variable parameters from arbitrary parameters returns
-					slices = slice(0,2*model.N)
+					indices = model.parameters.indices
 					if attr in ['variables']:
-						value = model.parameters(parameters)[slices]
+						value = model.parameters(parameters)[indices]
 					elif attr in ['variables.norm']:
-						value = model.parameters(parameters)[slices]
+						value = model.parameters(parameters)[indices]
 						value = norm(value)/(value.size)
 					elif attr in ['variables.relative']:
 						eps = 1e-20
-						value = model.parameters(parameters)[slices]
-						_value = model.parameters(attributes['parameters'][0])[slices]
-						value = abs((value - _value + eps)/(_value + eps))
+						value = model.parameters(parameters)[indices]
+						_value = model.parameters(attributes['parameters'][0])[indices]
+						value = abs(10**(log10(abs(value - _value)) - log10(abs(_value))))
 					elif attr in ['variables.relative.mean']:
 						eps = 1e-20
-						value = model.parameters(parameters)[slices]
-						_value = model.parameters(attributes['parameters'][0])[slices]
-						value = abs((value - _value + eps)/(_value + eps)).mean()
+						value = model.parameters(parameters)[indices]
+						_value = model.parameters(attributes['parameters'][0])[indices]
+						value = abs(10**(log10(abs(value - _value)) - log10(abs(_value)))).mean()
 
 				elif attr in ['objective']:
 					value = abs(metric(model(parameters)))
@@ -2077,10 +2077,10 @@ class Callback(System):
 				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
 				# 	for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
-				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				# 'U\n%s\nV\n%s'%(
-				# 	to_string((model(parameters)).round(4)),
-				# 	to_string((metric.label()).round(4))),
+				'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
+				'U\n%s\nV\n%s'%(
+					to_string((model(parameters)).round(4)),
+					to_string((metric.label()).round(4))),
 				])
 
 
@@ -2436,7 +2436,7 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 
 			V = subfunc(subparameters,identity,subconj)
 
-			A = pi*data[i%length](parameters[i] + 1/2)
+			A = (pi/2)*data[i%length](parameters[i] + 1)
 
 			return einsummation(V,A,U)
 
