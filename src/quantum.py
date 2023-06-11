@@ -1779,6 +1779,7 @@ class Callback(System):
 			'alpha':[],'beta':[],
 
 			'iteration.max':[],'iteration.min':[],
+			'parameters.relative':[],'parameters.relative.mean':[],
 			'variables':[],'variables.relative':[],'variables.relative.mean':[],
 			'objective.ideal.noise':[],'objective.diff.noise':[],'objective.rel.noise':[],
 			'objective.ideal.state':[],'objective.diff.state':[],'objective.rel.state':[],
@@ -1828,10 +1829,10 @@ class Callback(System):
 				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
 			(log10(abs(attributes['value'][-1] - attributes['value'][-2])) > 
 				(log10(abs(hyperparameters['eps']['value.difference'])))) and
-			(norm(attributes['grad'][-1])/attributes['grad'][-1].size > 
+			(norm(attributes['grad'][-1])/sqrt(attributes['grad'][-1].size) > 
 				  (hyperparameters['eps']['grad']*hyperparameters['value']['grad'])) and
-			(norm(attributes['grad'][-1] - attributes['grad'][-2])/attributes['grad'][-2].size > 
-				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/attributes['grad'][-2].size))
+			(norm(attributes['grad'][-1] - attributes['grad'][-2])/sqrt(attributes['grad'][-2].size) > 
+				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/sqrt(attributes['grad'][-2].size)))
 			)
 			)
 
@@ -1859,6 +1860,7 @@ class Callback(System):
 			**{attr: lambda i,attr,track,default: (empty(track[attr][-1].shape) if ((i>0) and i<(len(track[attr])-1)) else track[attr][i])
 				for attr in [
 					'parameters','grad','search',
+					'parameters.relative',
 					'variables','variables.relative',
 					'hessian','fisher',
 					'hessian.eigenvalues','fisher.eigenvalues']},
@@ -1894,6 +1896,7 @@ class Callback(System):
 			
 				if attr in [
 					'parameters','grad','search',
+					'parameters.relative',
 					'variables','variables.relative',
 					'hessian','fisher',
 					'hessian.eigenvalues','fisher.eigenvalues']:
@@ -1929,7 +1932,25 @@ class Callback(System):
 				elif attr in ['parameters.norm','grad.norm','search.norm']:
 					value = attr.split(delim)[0]
 					value = attributes[value][index]
-					value = norm(value)/(value.size)
+					value = norm(value)/sqrt(value.size)
+
+				elif attr in ['parameters.relative','parameters.relative.mean',
+					] and (not do):
+					value = default
+
+				elif attr in [
+					'parameters.relative','parameters.relative.mean',
+					] and (do):
+					eps = 1e-20
+					if attr in ['parameters.relative']:
+						value = parameters
+						_value = attributes['parameters'][0]
+						value = abs((value-_value)/(_value+eps))
+					elif attr in ['parameters.relative.mean']:
+						eps = 1e-20
+						value = parameters
+						_value = attributes['parameters'][0]
+						value = norm((value-_value)/(_value+eps))/sqrt(value.size)
 
 				elif attr in ['variables.norm','variables.relative','variables.relative.mean'
 					] and (not do):
@@ -1939,21 +1960,21 @@ class Callback(System):
 					'variables','variables.norm','variables.relative','variables.relative.mean',
 					] and (do):
 					indices = model.parameters.indices
+					eps = 1e-20
 					if attr in ['variables']:
 						value = model.parameters(parameters)[indices]
 					elif attr in ['variables.norm']:
 						value = model.parameters(parameters)[indices]
-						value = norm(value)/(value.size)
+						value = norm(value)/sqrt(value.size)
 					elif attr in ['variables.relative']:
-						eps = 1e-20
 						value = model.parameters(parameters)[indices]
 						_value = model.parameters(attributes['parameters'][0])[indices]
-						value = abs(10**(log10(abs(value - _value)) - log10(abs(_value))))
+						value = abs((value-_value)/(_value+eps))
 					elif attr in ['variables.relative.mean']:
 						eps = 1e-20
 						value = model.parameters(parameters)[indices]
 						_value = model.parameters(attributes['parameters'][0])[indices]
-						value = abs(10**(log10(abs(value - _value)) - log10(abs(_value)))).mean()
+						value = norm((value-_value)/(_value+eps))/sqrt(value.size)
 
 				elif attr in ['objective']:
 					value = abs(metric(model(parameters)))
@@ -2061,9 +2082,9 @@ class Callback(System):
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
 					norm(attributes['parameters'][-1])/
-						 (attributes['parameters'][-1].size),
+						 sqrt(attributes['parameters'][-1].size),
 					norm(attributes['grad'][-1])/
-						 (attributes['grad'][-1].size),
+						 sqrt(attributes['grad'][-1].size),
 				),
 				'\t\t'.join([
 					'%s = %0.4e'%(attr,attributes[attr][-1])
