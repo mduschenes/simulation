@@ -470,7 +470,10 @@ def parse(key,value,data,verbose=None):
 								out = data[key].unique()
 								out = data[key].isin(out[[value for value in values if value < out.size]])
 							except:
-								out = not default
+								if isinstance(default,bool):
+									out = not default
+								else:
+									out = ~ default
 
 					elif delimiter in ['%']: # Slice value start,stop,step
 						parser = lambda value: (to_int(value) if len(value)>0 else None)
@@ -481,7 +484,10 @@ def parse(key,value,data,verbose=None):
 							try:
 								out = data[key].isin(data[key].unique()[slice(*values)])
 							except:
-								out = not default
+								if isinstance(default,bool):
+									out = not default
+								else:
+									out = ~ default
 
 					elif delimiter in [':']: # Data value: func
 						
@@ -493,7 +499,10 @@ def parse(key,value,data,verbose=None):
 							try:
 								out = conditions([data[key]==getattr(data[key],value)() for value in values if hasattr(data[key],value)],op='or')
 							except:
-								out = not default 
+								if isinstance(default,bool):
+									out = not default
+								else:
+									out = ~ default								
 
 					elif delimiter in ['*']: # Regex value pattern
 						def parser(value):
@@ -573,7 +582,10 @@ def parse(key,value,data,verbose=None):
 			try:
 				out = data[key] in value
 			except:
-				out = not default
+				if isinstance(default,bool):
+					out = not default
+				else:
+					out = ~ default
 	
 	return out
 
@@ -933,23 +945,28 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 	def mean(obj,*args,**kwargs):
 		obj = np.array(list(obj))
-		obj = to_tuple(obj.mean(0))
+		obj = to_tuple(obj.mean(axis=0))
 		return obj
 	def std(obj,*args,**kwargs):
 		obj = np.array(list(obj))
-		obj = to_tuple(obj.std(0,ddof=1))
+		obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
 		return obj
 	def sem(obj,*args,**kwargs):
 		obj = np.array(list(obj))
-		obj = to_tuple(obj.std(0,ddof=1)/np.sqrt(obj.shape[0]))
+		obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1)/np.sqrt(obj.shape[0]))
 		return obj	
+	def none(obj,*args,**kwargs):
+		obj = np.array(list(obj))
+		obj[...] = nan
+		obj = to_tuple(obj)
+		return obj			
 
 	def mean_arithmetic(obj,*args,**kwargs):
 		return obj.mean()
 	def std_arithmetic(obj,*args,**kwargs):
-		return obj.std(ddof=kwargs.get('ddof',1))		
+		return obj.std(ddof=kwargs.get('ddof',obj.shape[0]>1))		
 	def sem_arithmetic(obj,*args,**kwargs):
-		return obj.sem(ddof=kwargs.get('ddof',1))		
+		return obj.sem(ddof=kwargs.get('ddof',obj.shape[0]>1))		
 
 	def mean_geometric(obj,*args,**kwargs):
 		return exp(log(obj).mean())
@@ -961,9 +978,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 	def mean_log(obj,*args,**kwargs):
 		return exp(log(obj).mean())
 	def std_log(obj,*args,**kwargs):
-		return exp(log(obj).std(ddof=kwargs.get('ddof',1)))
+		return exp(log(obj).std(ddof=kwargs.get('ddof',obj.shape[0]>1)))
 	def sem_log(obj,*args,**kwargs):
-		return exp(log(obj).sem(ddof=kwargs.get('ddof',1)))		
+		return exp(log(obj).sem(ddof=kwargs.get('ddof',obj.shape[0]>1)))		
 
 	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
 	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
@@ -1074,7 +1091,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 					funcs[function][axes][func] = obj
 
-		# exit()
+
 		tmp = {}
 		for attr in wrappers:
 
@@ -1134,7 +1151,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 					  for attr in data},
 			**{attr : [(delim.join(((attr,function,func))),
 						{'array':{'':mean,'err':std}[func],
-						 'object':'first',
+						 'object':{'':'first','err':none}[func],
 						 'dtype':funcs[function][axes][func]
 						}[dtypes[attr]]) 
 						for function in funcs for func in funcs[function][axes]] 
@@ -1194,6 +1211,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 						source = delim.join(((attr,function,func))) if attr in [*independent,*dependent] else attr
 						destination = '%s%s'%(axes,func) if attr in [*independent,*dependent] else axes
+
 
 						if grouping.shape[0]:
 							if source in grouping:
@@ -1275,6 +1293,8 @@ def plotter(settings,hyperparameters,verbose=None):
 								continue
 
 							if attr in independent:
+								if attr.endswith('err'):
+									continue
 								if (data.get(attr) is None) or isinstance(data.get(attr),str):
 									data.clear()
 
@@ -1411,7 +1431,11 @@ def plotter(settings,hyperparameters,verbose=None):
 
 						if shapes and (axes in independent):
 							data[axes] = data[AXES[dim-1]].copy()
-							data[axes][...,:] = np.arange(data[AXES[dim-1]].shape[-1])
+
+							if axes.endswith('err'):
+								data[axes][...] = 0
+							else:
+								data[axes][...,:] = np.arange(data[AXES[dim-1]].shape[-1])
 
 
 	for instance in list(settings):

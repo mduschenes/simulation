@@ -491,7 +491,7 @@ class Operator(Object):
 
 			if not all(j in subclass.basis for obj in [data,operator] if (obj is not None and not isinstance(obj,arrays)) for k in (obj if not isinstance(obj,str) else [obj]) for j in ([k] if k in subclass.basis else k.split(delim))):
 				continue
-			
+
 			if cls is Operator:
 			
 				self = subclass(**kwargs)
@@ -552,7 +552,7 @@ class Pauli(Object):
 		'''
 
 		def func(parameters=None,state=None,conj=None):
-			return cos(pi*parameters)*self.identity + -1j*sin(pi*parameters)*self.data
+			return cos((pi/2)*parameters)*self.identity + -1j*sin((pi/2)*parameters)*self.data
 
 		hermitian = False
 		unitary = True
@@ -951,7 +951,7 @@ class Operators(Object):
 		self.__lattice__()
 
 		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
-		self.coefficients = array(self.tau/self.P,dtype=datatype(self.dtype))
+		self.coefficients = array((self.tau)*(1/self.P),dtype=datatype(self.dtype))
 
 		self.shape = () if self.n is None else (self.n,self.n)
 		self.size = prod(self.shape)
@@ -2077,10 +2077,10 @@ class Callback(System):
 				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
 				# 	for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
-				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				# 'U\n%s\nV\n%s'%(
-				# 	to_string((model(parameters)).round(4)),
-				# 	to_string((metric.label()).round(4))),
+				'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
+				'U\n%s\nV\n%s'%(
+					to_string((model(parameters)).round(4)),
+					to_string((metric.label()).round(4))),
 				])
 
 
@@ -2436,7 +2436,7 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 
 			V = subfunc(subparameters,identity,subconj)
 
-			A = pi*data[i%length](parameters[i] + 1/2)
+			A = (pi/2)*data[i%length](parameters[i] + 1)
 
 			return einsummation(V,A,U)
 
