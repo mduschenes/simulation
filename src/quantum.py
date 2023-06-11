@@ -1947,7 +1947,6 @@ class Callback(System):
 						_value = attributes['parameters'][0]
 						value = abs((value-_value)/(_value+eps))
 					elif attr in ['parameters.relative.mean']:
-						eps = 1e-20
 						value = parameters
 						_value = attributes['parameters'][0]
 						value = norm((value-_value)/(_value+eps))/sqrt(value.size)
@@ -1971,7 +1970,6 @@ class Callback(System):
 						_value = model.parameters(attributes['parameters'][0])[indices]
 						value = abs((value-_value)/(_value+eps))
 					elif attr in ['variables.relative.mean']:
-						eps = 1e-20
 						value = model.parameters(parameters)[indices]
 						_value = model.parameters(attributes['parameters'][0])[indices]
 						value = norm((value-_value)/(_value+eps))/sqrt(value.size)
