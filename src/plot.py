@@ -613,11 +613,11 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 				err = [err]*2
 			elif err.ndim == 1:
 				if err.size == value.size:
-					err = [[i if i is not None and not is_naninf(i) else 0 for i in err]]*2
+					err = [[i if i is not None and not is_naninf(i) else nan for i in err]]*2
 				else:
-					err = [i if i is not None and not is_naninf(i) else 0 for i in err]
+					err = [i if i is not None and not is_naninf(i) else nan for i in err]
 			elif err.ndim == 2:
-				err = [[j if j is not None and not is_naninf(j) else 0 for j in i] for i in err]
+				err = [[j if j is not None and not is_naninf(j) else nan for j in i] for i in err]
 
 		err = np.array(err)
 		value = np.array(value)

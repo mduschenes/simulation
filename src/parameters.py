@@ -33,7 +33,7 @@ class Parameter(System):
 			data (iterable): data of parameter
 			string (str): Name of parameter
 			category (str): category of parameter, allowed strings in ['variable','constant']
-			method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded']
+			method (str): method of parameter, allowed strings in ['unconstrained','constrained','coupled','bounded']
 			group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
 			locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['local','global']
 			bounds (iterable[object]): Bounds of parameters
@@ -294,15 +294,30 @@ class Parameter(System):
 			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['scale','shift','sigmoid']):
 		
 				def func(parameters):
-					return self.parameters*bound((
-						(self.kwargs['scale'][0]*parameters[self.slices][:self.slices.size//2])*
-						cos(self.kwargs['scale'][1]*parameters[self.slices][self.slices.size//2:][None,...] + self.kwargs['shift'][...,None,None])
-						).reshape(-1,*parameters.shape[1:]),scale=self.kwargs['sigmoid'])
+					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
 
 			elif self.method in ['constrained']:					
 		
 				def func(parameters):
 					return self.parameters*bound(parameters)
+
+			elif self.method in ['coupled'] and all(self.kwargs.get(attr) is not None for attr in ['scale','shift','sigmoid']):
+		
+				def func(parameters):
+					return self.parameters*bound((
+						(self.kwargs['scale'][0]*parameters[self.slices][:self.slices.size//2])*
+						cos(self.kwargs['scale'][1]*parameters[self.slices][self.slices.size//2:][None,...] + self.kwargs['shift'][...,None,None])
+						).reshape(-1,*parameters.shape[1:]),scale=self.kwargs['sigmoid'])
+
+			elif self.method in ['coupled']:					
+		
+				def func(parameters):
+					return self.parameters*bound(parameters)
+
+			elif self.method in ['unconstrained']:					
+				
+				def func(parameters):
+					return self.parameters*parameters[self.slices]
 
 			else:
 
@@ -329,7 +344,20 @@ class Parameter(System):
 						((parameters[self.kwargs['constant'][i]['indices']] - 
 						  self.kwargs['constant'][i]['values'])**2).sum() 
 						for i in self.kwargs['constant'])
+
+			elif self.method in ['coupled'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
 			
+				def constraint(parameters):
+					return self.kwargs['lambda']*sum(
+						((parameters[self.kwargs['constant'][i]['indices']] - 
+						  self.kwargs['constant'][i]['values'])**2).sum() 
+						for i in self.kwargs['constant'])
+
+			elif self.method in ['unconstrained']:
+
+					def constraint(parameters):
+						return self.kwargs['default']
+				
 			else:
 
 				if isinstance(self.method,dict):
@@ -396,7 +424,7 @@ class Parameters(System):
 				data (iterable): data of parameter
 				string (str): Name of parameter
 				category (str): category of parameter, allowed strings in ['variable','constant']
-				method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded']
+				method (str): method of parameter, allowed strings in ['unconstrained','constrained','coupled','bounded']
 				group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
 				locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['local','global']
 				bounds (iterable[object]): Bounds of parameters
