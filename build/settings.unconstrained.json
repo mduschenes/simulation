@@ -105,7 +105,7 @@
 		"jobs.job.patterns.account":["def-carrasqu"],
 		"jobs.postprocess.patterns.account":["def-carrasqu"],
 		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"]		
+		"jobs.postprocess.patterns.account":["def-raymond"]
 		},
 	"groups":null,
 	"index":null
@@ -166,6 +166,7 @@
 		"parameters":true,
 		"grad":true,
 		"search":true,
+		"parameters.relative":true,"parameters.relative.mean":true,
 		"variables":true,"variables.relative":true,"variables.relative.mean":true
 	},
 	"attributes":{
@@ -185,7 +186,8 @@
 
 			"iteration.max":[],
 			"iteration.min":[],
-			"grad.norm":[],"search.norm":[],			
+			"grad.norm":[],"search.norm":[],
+			"parameters.relative":false,"parameters.relative.mean":[],
 			"variables":false,"variables.relative":false,"variables.relative.mean":[],
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
