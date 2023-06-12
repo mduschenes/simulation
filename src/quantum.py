@@ -1829,10 +1829,10 @@ class Callback(System):
 				(hyperparameters['eps']['value']*hyperparameters['value']['value'])) and
 			(log10(abs(attributes['value'][-1] - attributes['value'][-2])) > 
 				(log10(abs(hyperparameters['eps']['value.difference'])))) and
-			(norm(attributes['grad'][-1])/sqrt(attributes['grad'][-1].size) > 
+			(norm(attributes['grad'][-1])/(attributes['grad'][-1].size) > 
 				  (hyperparameters['eps']['grad']*hyperparameters['value']['grad'])) and
-			(norm(attributes['grad'][-1] - attributes['grad'][-2])/sqrt(attributes['grad'][-2].size) > 
-				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/sqrt(attributes['grad'][-2].size)))
+			(norm(attributes['grad'][-1] - attributes['grad'][-2])/(attributes['grad'][-2].size) > 
+				  (hyperparameters['eps']['grad.difference']*norm(attributes['grad'][-2])/(attributes['grad'][-2].size)))
 			)
 			)
 
@@ -1932,7 +1932,7 @@ class Callback(System):
 				elif attr in ['parameters.norm','grad.norm','search.norm']:
 					value = attr.split(delim)[0]
 					value = attributes[value][index]
-					value = norm(value)/sqrt(value.size)
+					value = norm(value)/(value.size)
 
 				elif attr in ['parameters.relative','parameters.relative.mean',
 					] and (not do):
@@ -1949,7 +1949,7 @@ class Callback(System):
 					elif attr in ['parameters.relative.mean']:
 						value = parameters
 						_value = attributes['parameters'][0]
-						value = norm((value-_value)/(_value+eps))/sqrt(value.size)
+						value = norm((value-_value)/(_value+eps))/(value.size)
 
 				elif attr in ['variables.norm','variables.relative','variables.relative.mean'
 					] and (not do):
@@ -1964,7 +1964,7 @@ class Callback(System):
 						value = model.parameters(parameters)[indices]
 					elif attr in ['variables.norm']:
 						value = model.parameters(parameters)[indices]
-						value = norm(value)/sqrt(value.size)
+						value = norm(value)/(value.size)
 					elif attr in ['variables.relative']:
 						value = model.parameters(parameters)[indices]
 						_value = model.parameters(attributes['parameters'][0])[indices]
@@ -1972,7 +1972,7 @@ class Callback(System):
 					elif attr in ['variables.relative.mean']:
 						value = model.parameters(parameters)[indices]
 						_value = model.parameters(attributes['parameters'][0])[indices]
-						value = norm((value-_value)/(_value+eps))/sqrt(value.size)
+						value = norm((value-_value)/(_value+eps))/(value.size)
 
 				elif attr in ['objective']:
 					value = abs(metric(model(parameters)))
@@ -2080,9 +2080,9 @@ class Callback(System):
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
 					norm(attributes['parameters'][-1])/
-						 sqrt(attributes['parameters'][-1].size),
+						 (attributes['parameters'][-1].size),
 					norm(attributes['grad'][-1])/
-						 sqrt(attributes['grad'][-1].size),
+						 (attributes['grad'][-1].size),
 				),
 				'\t\t'.join([
 					'%s = %0.4e'%(attr,attributes[attr][-1])
