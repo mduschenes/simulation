@@ -24,7 +24,7 @@
 	
 		"model.N":[4],		
 		"model.M":[2,5,10,15,20,25,30,40,50,60,70,80,90,100,200,500,1000],
-		"model.M":[10,20,50,75,100,200,300,500],
+		"model.M":[10,20,50,75,100,200,300,500,1000],
 		"model.P":[2],
 		"model.tau":[100],
 		"model.T": [null],
@@ -65,7 +65,7 @@
 		"parameters.xy.kwargs.sigmoid":[1],		
 		"parameters.xy.kwargs.lambda":[5e1],	
 
-		"optimize.iterations":[[0,500]],
+		"optimize.iterations":[[0,1]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
@@ -74,8 +74,8 @@
 		"optimize.eps.value.increase":[1e-3],
 		"optimize.value.iteration":[50],
 
-		"jobs.job.cwd":["gobi/eig.4.128.10.5000.50.500"],
-		"jobs.postprocess.cwd":["gobi/eig.4.128.10.5000.50.500"],
+		"jobs.job.cwd":["gobi/eig.4.128.10.500.50.1"],
+		"jobs.postprocess.cwd":["gobi/eig.4.128.10.500.50.1"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -99,7 +99,7 @@
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
-		"jobs.job.patterns.mem":["128GB"],
+		"jobs.job.patterns.mem":["256GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
@@ -155,8 +155,8 @@
 	"status":1,
 	"clear":false,
 	"kwargs":{"noise":{"parameters":1e-3}},
-	"c1":1e-5,"c2":1e-1,"maxiter":2500,
-	"alpha":1e-4,"beta":1e-4,
+	"c1":1e-4,"c2":0.9,"maxiter":2500,
+	"alpha":1e-4,"beta":1e-2,
 	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":20},
 	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"do":{
@@ -230,13 +230,7 @@
 		"category":"constant",
 		"method":null,		
 		"group":[["z"]],
-		"data":[
-				-1,
-				0,
-				1,
-				0.5,
-				-2
-			],
+		"data":[-1,0,1,0.5,-2],
 		"parameters":1,
 		"bounds":[-1,1],
 		"locality":null,
@@ -252,18 +246,7 @@
 		"category":"constant",
 		"method":null,		
 		"group":[["zz"]],
-		"data":[
-				7.24,
-				-1.3,
-				0.5,
-				8,
-				0.2,
-				2,
-				-3,
-				0.6,
-				0.9,
-				-0.6
-			],
+		"data":[7.24,-1.3,0.5,8,0.2,2,-3,0.6,0.9,-0.6],
 		"parameters":1,
 		"bounds":[-1,1],
 		"locality":null,
