@@ -1308,6 +1308,9 @@ def plotter(settings,hyperparameters,verbose=None):
 	# Set grid layout based on GRID
 	grid = {}
 	for instance in list(settings):
+
+		logger.log(info*verbose,"Setting : %s"%(instance))
+
 		for subinstance in list(settings[instance]):
 			
 			if not settings[instance][subinstance].get(obj):
@@ -1532,8 +1535,6 @@ def plotter(settings,hyperparameters,verbose=None):
 	# Set kwargs
 	for instance in list(settings):
 	
-		logger.log(info*verbose,"Setting : %s"%(instance))
-
 		for subinstance in list(settings[instance]):
 			
 			if not settings[instance][subinstance].get(obj):
@@ -2001,7 +2002,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							if size == 1:
 								value = [(value[0]+value[-1])/2]
 							elif ((length+1)%size) == 0:
-								value = [items[0],*items[slice(1,length-1,(length-2)//(size-3))],items[-1]]
+								value = [items[0],*items[slice(1,length-1,max(1,length-2)//max(1,(size-3)))],items[-1]]
 							else:
 								size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),length)
 								if scale in ['log','symlog']:
