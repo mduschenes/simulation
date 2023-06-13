@@ -7297,6 +7297,14 @@
 							"iteration": "@iteration.max@",
 							"rank": "hessian.rank"
 						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},						
 						"legend": {
 							"exclude": [
 								"iteration"
@@ -7505,6 +7513,14 @@
 							"iteration": "@iteration.max@",
 							"rank": "fisher.rank"
 						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},						
 						"legend": {
 							"exclude": [
 								"iteration"
@@ -7713,6 +7729,14 @@
 							"iteration": "@iteration.max@",
 							"rank": "hessian.rank"
 						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},						
 						"legend": {
 							"exclude": [
 								"iteration"
@@ -7915,6 +7939,14 @@
 							"iteration": "@iteration.max@",
 							"rank": "fisher.rank"
 						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						},						
 						"legend": {
 							"exclude": [
 								"iteration"
