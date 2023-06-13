@@ -1399,7 +1399,9 @@ class Optimization(System):
 				else:
 					self.track[attr] = [*deepcopy(value)]
 
+
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
+
 
 		while (self.sizes) and (self.size > 0) and (self.size >= sum(self.sizes[attr] for attr in self.sizes)):
 			for attr in self.attributes:
@@ -1417,6 +1419,7 @@ class Optimization(System):
 				self.parameters = self.attributes[attr][-1]
 		else:
 			self.iteration = 0
+
 	
 		if not clear:
 			if isinstance(self.iterations,int):
@@ -1430,10 +1433,11 @@ class Optimization(System):
 				self.iterations = range(self.iteration,self.iterations[1],*self.iterations[2:])
 
 
+
 		if (state is not None) and (
 		   (isinstance(self.iterations,int) and (self.iteration == 0)) or 
 		   (isinstance(self.iterations,range) and (self.iterations.start == 0) and (self.iterations.stop == 0)) or 
-		   ((self.iterations[0] == 0) and (self.iterations[0] == 0))):
+		   ((not isinstance(self.iterations,(int,range))) and (self.iterations[0] == 0) and (self.iterations[1] == 0))):
 			
 			iteration = self.iteration
 			
@@ -1454,7 +1458,6 @@ class Optimization(System):
 
 			self.dump(iteration,state)
 
-			print('Dumped')
 
 		return
 
