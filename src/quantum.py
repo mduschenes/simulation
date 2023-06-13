@@ -377,7 +377,9 @@ class Object(System):
 		except TypeError as exception:
 			data = self.data
 
-		if not isinstance(data,arrays):
+		if data is None:
+			return
+		elif not isinstance(data,arrays):
 			return
 
 		shape = self.shape
@@ -1205,8 +1207,8 @@ class Operators(Object):
 			unitary = False
 			shape = state.shape
 		elif state.ndim == 1 and noise is None:
-			hermitian = True
-			unitary = False
+			hermitian = False
+			unitary = True
 			shape = state.shape
 		elif state.ndim == 2 and noise is None:
 			hermitian = True
@@ -1769,6 +1771,47 @@ class Unitary(Hamiltonian):
 
 
 
+class Channel(Unitary):
+	'''
+	Channel class of Operators
+	Args:
+		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
+			operator (iterable[str]): string names of operators
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
+			string (iterable[str]): string labels of operators
+			parameters (iterable[object]): parameters of operators
+		operator (iterable[str]): string names of operators
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','<ij>','ij','i<j','i...j']
+		string (iterable[str]): string labels of operators
+		N (int): Number of qudits
+		D (int): Dimension of qudits
+		d (int): Spatial dimension
+		L (int,float): Scale in system
+		delta (float): Simulation length scale				
+		M (int): Number of time steps
+		T (int): Simulation Time
+		tau (float): Simulation time scale		
+		P (int): Trotter order		
+		space (str,Space): Type of local space
+		time (str,Time): Type of Time evolution space
+		lattice (str,Lattice): Type of lattice
+		parameters (str,dict,Parameters): Type of parameters	
+		state (str,dict,State): Type of state	
+		noise (str,dict,Noise): Type of noise
+		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
+		kwargs (dict): Additional system keyword arguments	
+	'''
+	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,
+				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
+				space=None,time=None,lattice=None,state=None,noise=None,system=None,**kwargs):
+		
+		super().__init__(data=data,operator=operator,site=site,string=string,parameters=parameters,
+				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
+				space=space,time=time,lattice=lattice,state=state,noise=noise,system=system,**kwargs)
+
+		return
+
+
 class Label(Operator):
 	
 	basis = {}
@@ -1879,7 +1922,7 @@ class Callback(System):
 
 		init = (len(attributes['iteration'])==1) and ((attributes['iteration'][-1]==0) or (attributes['iteration'][-1] != (iterations.stop)))
 		
-		done = (len(attributes['iteration'])>1) and (attributes['iteration'][-1] == (iterations.stop))
+		done = ((len(attributes['iteration'])>1) and (attributes['iteration'][-1] == (iterations.stop)))
 		
 		status = (
 			((len(attributes['value']) >= 1) and 
@@ -1913,8 +1956,9 @@ class Callback(System):
 			(log10(hyperparameters['eps']['value.increase']*attributes['value'][-1]))))
 			)
 
+		none = (iterations.start == 0) and (iterations.stop == 0)
 
-		status = (status) and (not stop)
+		status = ((status) and (not stop) and (not none))
 
 		updates = {
 			**{attr: lambda i,attr,track,default: (track[attr][-1]) for attr in ['iteration.max','iteration.min']},

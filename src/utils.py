@@ -1069,49 +1069,50 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 
 	if shapes is None:
 		ndim = None
-		shapes = None
 	else:
 		ndim = min((len(shape) for shape in shapes),default=2)
-		shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
 
 
 	hermitian = getattr(func,'hermitian',False)
 	unitary = getattr(func,'unitary',False)
 
-	eig = spectrum(func,compute_v=True,hermitian=hermitian)
-
 	if hermitian:
+
+		func = spectrum(func,compute_v=True,hermitian=hermitian)
+
 		if ndim == 1:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
 		elif ndim == 2:
-			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
+			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0],shapes[1],shapes[0],shapes[0]]]
+			subscripts = ['in,unm,jm,jp,vpq,iq,ij->uv']
+			wrappers = [lambda out,*operands: out]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
 	
-		if shapes is None:
+		if shapes is not None:
 	
 			einsummations = [
 				einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
 			einsummations = [
-				lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_g,g),
-				lambda f,g,_f,_g,einsummations=einsummations: einsummations[1](_g,f,g,_f)
+				lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_f,g,f,f,g,_f,_g),
 				]
 
 		else:
 
 			einsummations = [
-					lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_g,g,optimize=optimize,wrapper=wrapper),
-					lambda f,g,_f,_g,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,_g,f,g,_f,optimize=optimize,wrapper=wrapper)
+				lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_f,g,f,f,g,_f,_g,optimize=optimize,wrapper=wrapper),
 				]	
 
 		@jit
 		def fisher(*args,**kwargs):
-			f = func(*args,**kwargs)
+			s,f = func(*args,**kwargs)
 			g = grad(*args,**kwargs)
+
 			_f = conjugate(f)
-			_g = conjugate(g)
+			_g = s.reshape(-1,1) + s.reshape(1,-1)
+
 			out = 0
 			for einsummation in einsummations:
 				out = out + einsummation(f,g,_f,_g)
@@ -1121,15 +1122,19 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 
 	elif unitary:
 		if ndim == 1:
+			shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
 			subscripts = ['ui,vi->uv','ui,i,vj,j->uv']
 			wrappers = [lambda out,*operands: out,lambda out,*operands: -out]
 		elif ndim == 2:
+			shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
 			subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
 			wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
 		else:
-			raise NotImplementedError("Unitary Fisher Information Not Implemented for ndim = %r"%(ndim))
+			shapes = None
+			subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
+			wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
 		
-		if shapes is None:
+		if shapes is not None:
 	
 			einsummations = [
 				einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
@@ -1143,8 +1148,8 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		else:
 
 			einsummations = [
-					lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_g,g,optimize=optimize,wrapper=wrapper),
-					lambda f,g,_f,_g,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,_g,f,g,_f,optimize=optimize,wrapper=wrapper)
+				lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_g,g,optimize=optimize,wrapper=wrapper),
+				lambda f,g,_f,_g,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,_g,f,g,_f,optimize=optimize,wrapper=wrapper)
 				]	
 
 		@jit

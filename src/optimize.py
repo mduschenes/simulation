@@ -1110,7 +1110,7 @@ class Optimization(System):
 
 		self.paths = {'track':join(self.path,ext=None,root=self.cwd),'attributes':join(self.path,ext='ckpt',root=self.cwd)} if self.path is not None else None
 
-		self.reset(clear=True)
+		self.reset(clear=True,state=None)
 
 		return
 
@@ -1297,7 +1297,7 @@ class Optimization(System):
 		do = (self.paths is not None)
 
 		if not do:
-			self.reset(clear=False)
+			self.reset(clear=False,state=state)
 			return iteration,state
 
 		path = self.paths['track']
@@ -1334,7 +1334,7 @@ class Optimization(System):
 			self.attributes[attr] = [*self.attributes[attr],*data]
 
 		self.parameters = self.get_params(state)
-		self.reset(clear=False)
+		self.reset(clear=False,state=state)
 
 		iteration = self.iteration
 		state = self.opt_init(self.parameters)
@@ -1342,11 +1342,12 @@ class Optimization(System):
 		return iteration,state
 		
 
-	def reset(self,clear=None):
+	def reset(self,clear=None,state=None):
 		'''
 		Reset class attributes
 		Args:
 			clear (bool): clear attributes
+			state (object): optimizer state
 		'''
 		clear = self.clear if clear is None else clear
 
@@ -1427,6 +1428,33 @@ class Optimization(System):
 					self.iterations.step)				
 			else:
 				self.iterations = range(self.iteration,self.iterations[1],*self.iterations[2:])
+
+
+		if (state is not None) and (
+		   (isinstance(self.iterations,int) and (self.iteration == 0)) or 
+		   (isinstance(self.iterations,range) and (self.iterations.start == 0) and (self.iterations.stop == 0)) or 
+		   ((self.iterations[0] == 0) and (self.iterations[0] == 0))):
+			
+			iteration = self.iteration
+			
+			value,grad,parameters = self.opt_step(iteration-1,state)
+			search = -grad
+			alpha,beta = self.hyperparameters.get('alpha'),self.hyperparameters.get('beta')
+
+			attrs = {'search':search,'alpha':alpha,'beta':beta}
+			for attr in attrs:
+				if attr in self.attributes:
+					self.attributes[attr].append(attrs[attr])
+		
+			state = self.opt_init(parameters)
+			parameters = self.get_params(state)
+			track = self.track
+			optimizer = self
+			self.status = self.callback(parameters,track,optimizer)
+
+			self.dump(iteration,state)
+
+			print('Dumped')
 
 		return
 
@@ -1760,7 +1788,6 @@ class ConjugateGradient(Optimization):
 			track = self.track
 			optimizer = self
 			self.status = self.callback(parameters,track,optimizer)
-
 
 		parameters = self.get_params(state)
 
