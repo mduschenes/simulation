@@ -15,7 +15,7 @@
 	},
 "seed":{
 	"seed":787945,
-	"size":1,
+	"size":50,
 	"reset":787945,
 	"index":null
 	},
@@ -24,7 +24,7 @@
 	
 		"model.N":[4],		
 		"model.M":[2,5,10,15,20,25,30,40,50,60,70,80,90,100,200,500,1000],
-		"model.M":[10,20,50,75,100,200,300,500,1000],
+		"model.M":[10,20,50,75,100,200,300,500,600],
 		"model.P":[2],
 		"model.tau":[100],
 		"model.T": [null],
@@ -65,7 +65,14 @@
 		"parameters.xy.kwargs.sigmoid":[1],		
 		"parameters.xy.kwargs.lambda":[5e1],	
 
-		"optimize.iterations":[[0,1]],
+		"parameters.xy.method":["unconstrained"],
+		"parameters.xy.locality":["local"],
+		"parameters.xy.bounds":[[-1,1]],
+		"parameters.xy.constant":[null],					
+		"parameters.xy.kwargs.sigmoid":[null],		
+		"parameters.xy.kwargs.lambda":[null],			
+
+		"optimize.iterations":[[0,500]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
@@ -74,8 +81,11 @@
 		"optimize.eps.value.increase":[1e-3],
 		"optimize.value.iteration":[50],
 
-		"jobs.job.cwd":["gobi/eig.4.128.10.500.50.1"],
-		"jobs.postprocess.cwd":["gobi/eig.4.128.10.500.50.1"],
+		"jobs.job.cwd":["gobi/eig.constrained.4.128.10.600.100.500"],
+		"jobs.postprocess.cwd":["gobi/eig.constrained.4.128.10.600.100.500"],
+
+		"jobs.job.cwd":["gobi/eig.unconstrained.4.128.10.600.100.500"],
+		"jobs.postprocess.cwd":["gobi/eig.unconstrained.4.128.10.600.100.500"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -83,7 +93,7 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[1],
+		"jobs.job.pool":[2],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
