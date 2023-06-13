@@ -237,7 +237,8 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		hyperparameters[attr] = {instance: bool(hyperparameters[attr][instance]) for instance in settings}
 	elif isinstance(hyperparameters.get(attr),list):
 		hyperparameters[attr] = {**{instance: False for instance in settings},**{instance: True for instance in hyperparameters[attr]}}
-	hyperparameters[attr] = {**{instance: True for instance in settings},**{instance: bool(hyperparameters[attr][instance]) for instance in hyperparameters[attr]}}
+	elif isinstance(hyperparameters.get(attr),dict):
+		hyperparameters[attr] = {**{instance: False for instance in settings},**{instance: bool(hyperparameters[attr][instance]) for instance in hyperparameters[attr]}}
 
 	for instance in list(settings):
 		if (not hyperparameters.get(attr,{}).get(instance)) or (not settings[instance]):

@@ -1199,11 +1199,11 @@ class Operators(Object):
 			unitary = False
 			shape = identity.shape
 		elif state.ndim == 1 and noise is not None:
-			hermitian = False
+			hermitian = True
 			unitary = False
 			shape = state.shape
 		elif state.ndim == 2 and noise is not None:
-			hermitian = False
+			hermitian = True
 			unitary = False
 			shape = state.shape
 		elif state.ndim == 1 and noise is None:
@@ -2201,10 +2201,10 @@ class Callback(System):
 				# 	if isinstance(attributes[attr][-1],arrays) else type(attributes[attr][-1]) 
 				# 	for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
-				'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				'U\n%s\nV\n%s'%(
-					to_string((model(parameters)).round(4)),
-					to_string((metric.label()).round(4))),
+				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
+				# 'U\n%s\nV\n%s'%(
+				# 	to_string((model(parameters)).round(4)),
+				# 	to_string((metric.label()).round(4))),
 				])
 
 
