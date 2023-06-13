@@ -205,7 +205,7 @@
 			"grad.norm":[],"search.norm":[],			
 			"variables":false,"variables.relative":false,"variables.relative.mean":[],
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
-			"objective.ideal.state":true,"objective.diff.true":false,"objective.rel.state":true,
+			"objective.ideal.state":true,"objective.diff.state":true,"objective.rel.state":true,
 			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
 			"hessian":false,"fisher":false,
 			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
