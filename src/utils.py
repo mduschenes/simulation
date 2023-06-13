@@ -1107,11 +1107,12 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 
 		@jit
 		def fisher(*args,**kwargs):
-			s,f = func(*args,**kwargs)
+			f = func(*args,**kwargs)
 			g = grad(*args,**kwargs)
 
+			_g,f = f
 			_f = conjugate(f)
-			_g = s.reshape(-1,1) + s.reshape(1,-1)
+			_g = _g.reshape(-1,1) + _g.reshape(1,-1)
 
 			out = 0
 			for einsummation in einsummations:
