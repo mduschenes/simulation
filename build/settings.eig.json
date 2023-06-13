@@ -99,7 +99,7 @@
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
-		"jobs.job.patterns.mem":["80GB"],
+		"jobs.job.patterns.mem":["128GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
