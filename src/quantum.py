@@ -29,6 +29,30 @@ from src.parameters import Parameters
 
 from src.optimize import Objective,Metric
 
+N = 1
+D = 2
+random = 'haar'
+dtype = 'complex'
+Basis = {
+	'I': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0],[0,1]],dtype=dtype)),
+	'X': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,1],[1,0]],dtype=dtype)),
+	'Y': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,-1j],[1j,0]],dtype=dtype)),
+	'Z': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0],[0,-1]],dtype=dtype)),
+	'CNOT': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=dtype)),
+	'HADAMARD': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,1,],[1,-1]],dtype=dtype)/sqrt(D)),
+	'TOFFOLI': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,1,0,0,0,0,0],[0,0,0,1,0,0,0,0],
+  			    	  						  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]],dtype=dtype)),
+	'RANDOM': (lambda *args,N=N,D=D,ndim=2,random=random,dtype=dtype,**kwargs: rand(shape=(D,)*ndim,random=random,dtype=dtype)),
+	'00': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0],[0,0]],dtype=dtype)),
+	'01': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,1],[0,0]],dtype=dtype)),
+	'10': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,0],[1,0]],dtype=dtype)),
+	'11': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,0],[0,1]],dtype=dtype)),
+	'0': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([1,0],dtype=dtype)),
+	'1': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([0,1],dtype=dtype)),
+	'+': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([1,1,],dtype=dtype)/sqrt(D)),
+	'-': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([1,-1,],dtype=dtype)/sqrt(D)),
+}
+
 class Object(System):
 	'''
 	Base class for Quantum Objects
@@ -463,7 +487,7 @@ class Operator(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
+		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
 			}
 	default = 'I'
 	D = 2
@@ -527,10 +551,10 @@ class Pauli(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
-		**{attr: Object(data=array([[0,1],[1,0]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['X','x']},
-		**{attr: Object(data=array([[0,-1j],[1j,0]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Y','y']},
-		**{attr: Object(data=array([[1,0],[0,-1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Z','z']},
+		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
+		**{attr: Object(data=Basis['X'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['X','x']},
+		**{attr: Object(data=Basis['Y'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Y','y']},
+		**{attr: Object(data=Basis['Z'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Z','z']},
 			}
 	default = 'I'
 	D = 2
@@ -578,11 +602,10 @@ class Gate(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I']},
-		**{attr: Object(data=array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]),D=2,locality=2,hermitian=True,unitary=True,string=attr) for attr in ['CNOT','C','cnot']},
-		**{attr: Object(data=array([[1,1,],[1,-1]])/sqrt(2),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['HADAMARD','H']},
-		**{attr: Object(data=array([[1,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,1,0,0,0,0,0],[0,0,0,1,0,0,0,0],
-						  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]]),D=2,locality=3,hermitian=True,unitary=True,string=attr) for attr in ['TOFFOLI','T','toffoli']},
+		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I']},
+		**{attr: Object(data=Basis['CNOT'](),D=2,locality=2,hermitian=True,unitary=True,string=attr) for attr in ['CNOT','C','cnot']},
+		**{attr: Object(data=Basis['HADAMARD'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['HADAMARD','H']},
+		**{attr: Object(data=Basis['TOFFOLI'](),D=2,locality=3,hermitian=True,unitary=True,string=attr) for attr in ['TOFFOLI','T','toffoli']},
 		}
 	default = 'I'
 	D = 2 
@@ -626,8 +649,8 @@ class Haar(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I']},
-		**{attr: Object(data=rand(shape=(2,2),random='haar',dtype='complex'),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['random','U','haar']},
+		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I']},
+		**{attr: Object(data=Basis['RANDOM'](ndim=2),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['random','U','haar']},
 		}
 	default = 'I'
 	D = 2
@@ -688,12 +711,12 @@ class State(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I']},
-		**{attr: Object(data=rand(shape=(2,),random='haar',dtype='complex'),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['random','psi','haar']},
-		**{attr: Object(data=array([1,0,]),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['zeros','0']},
-		**{attr: Object(data=array([0,1,]),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['ones','1']},
-		**{attr: Object(data=array([1,1,])/sqrt(2),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['plus','+']},
-		**{attr: Object(data=array([1,-1,])/sqrt(2),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['minus','-']},
+		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I']},
+		**{attr: Object(data=Basis['RANDOM'](ndim=1),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['random','psi','haar']},
+		**{attr: Object(data=Basis['0'](),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['zeros','0']},
+		**{attr: Object(data=Basis['1'](),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['ones','1']},
+		**{attr: Object(data=Basis['+'](),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['plus','+']},
+		**{attr: Object(data=Basis['-'](),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['minus','-']},
 		}
 	default = 'I'
 	D = 2
@@ -772,16 +795,17 @@ class Noise(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
-		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['E','eps','noise','rand']},
-		**{attr: Object(data=array([[1,0],[0,1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['D','depolarize']},
-		**{attr: Object(data=array([[0,1],[1,0]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['X','x','amplitude']},
-		**{attr: Object(data=array([[1,0],[0,0]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['00']},
-		**{attr: Object(data=array([[0,1],[0,0]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['01']},
-		**{attr: Object(data=array([[0,0],[1,0]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['10']},
-		**{attr: Object(data=array([[0,0],[0,1]]),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['11']},
-		**{attr: Object(data=array([[0,-1j],[1j,0]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Y','y','amplitude_phase']},
-		**{attr: Object(data=array([[1,0],[0,-1]]),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Z','z','phase']},
+		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
+		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['eps','noise','rand']},
+		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['depolarize']},
+		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['amplitude']},
+		**{attr: Object(data=Basis['00'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['00']},
+		**{attr: Object(data=Basis['01'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['01']},
+		**{attr: Object(data=Basis['10'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['10']},
+		**{attr: Object(data=Basis['11'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['11']},
+		**{attr: Object(data=Basis['X'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['X','x','flip','bitflip']},
+		**{attr: Object(data=Basis['Y'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Y','y','flipphase']},
+		**{attr: Object(data=Basis['Z'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['Z','z','phase','dephase']},
 		}
 	default = 'I'
 	D = 2
@@ -821,6 +845,53 @@ class Noise(Object):
 			parameters (object): parameter of operator			
 		'''
 
+		def func(operator,parameters):
+			'''
+			Return operator
+			Args:
+				operator (str): Operator name
+			Returns:
+				data (iterable[array]): Operators for operator
+				hermitian (bool): Operator is hermitian
+				unitary (bool): Operator is unitary
+			'''
+			hermitian = True
+			unitary = False
+			
+			if operator is None:
+				data = [self.basis[self.default]()]
+			elif operator in ['Z','z','phase','dephase']:
+				data = [sqrt(1-parameters)*self.basis['I'](),
+						sqrt(parameters)*self.basis['Z']()]
+			elif operator in ['X','x','flip','bitflip']:
+				data = [sqrt(1-parameters)*self.basis['I'](),
+						sqrt(parameters)*self.basis['X']()]
+			elif operator in ['Y','y','flipphase']:
+				data = [sqrt(1-parameters)*self.basis['I'](),
+						sqrt(parameters)*self.basis['Y']()]												
+			elif operator in ['amplitude']:
+				data = [self.basis['00']() + sqrt(1-parameters)*self.basis['11'](),
+						sqrt(parameters)*self.basis['01']()]
+			elif operator in ['depolarize']:
+				data = [sqrt(1-parameters)*self.basis['I'](),
+						sqrt(parameters/(self.D**2-1))*self.basis['X'](),
+						sqrt(parameters/(self.D**2-1))*self.basis['Y'](),
+						sqrt(parameters/(self.D**2-1))*self.basis['Z']()]
+			elif operator in ['eps']:
+				data = array([identity(self.n,dtype=self.dtype),diag((1+parameters)**(arange(self.n)+2) - 1)])
+				hermitian = False
+				unitary = False
+			elif operator in ['noise','rand']:
+				data = array(parameters,dtype=datatype(self.dtype))#[identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
+				seed = prng(reset=self.seed)
+				hermitian = False
+				unitary = False
+			else:
+				data = [self.basis[self.default]()]
+
+			return data,hermitian,unitary
+
+
 		if (getattr(self,'scale',None) is not None):
 			if (getattr(self,'initialization',None) in ['time']):
 				if (getattr(self,'tau') is not None):
@@ -831,41 +902,31 @@ class Noise(Object):
 			self.operator = None
 			return
 
-		assert (self.parameters >= 0) and (self.parameters <= 1), "Noise scale %r not in [0,1]"%(self.parameters)
-
-		parameters = self.parameters
-		operator = delim.join(self.operator) if self.operator else None
+		N = self.N
+		default = self.default
+		site = list(range(self.N)) if self.site is None else self.site
+		operator = None if self.operator is None else [self.operator[i] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
+		locality = len(operator)
+		parameters = [None]*self.N if self.parameters is None else [self.parameters[i] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.parameters,scalars) else [self.parameters]*self.N
 
 		hermitian = True
 		unitary = False
 
-		if operator is None:
-			data = [self.basis['I']()]
-		elif operator in ['phase']:
-			data = [sqrt(1-parameters)*self.basis['I'](),
-					sqrt(parameters)*self.basis['Z']()]
-		elif operator in ['amplitude']:
-			data = [self.basis['00']() + sqrt(1-parameters)*self.basis['11'](),
-					sqrt(parameters)*self.basis['01']()]
-		elif operator in ['depolarize']:
-			data = [sqrt(1-parameters)*self.basis['I'](),
-					sqrt(parameters/3)*self.basis['X'](),
-					sqrt(parameters/3)*self.basis['Y'](),
-					sqrt(parameters/3)*self.basis['Z']()]
-		elif operator in ['eps']:
-			data = array([identity(self.n,dtype=self.dtype),diag((1+parameters)**(arange(self.n)+2) - 1)])
-			hermitian = False
-			unitary = False
-		elif operator in ['noise','rand']:
-			data = array(parameters,dtype=datatype(self.dtype))#[identity(self.n),diag((1+parameters)**(arange(self.n)+2) - 1)])
-			seed = prng(reset=self.seed)
-			hermitian = False
-			unitary = False
-		else:
-			data = [self.basis['I']()]
+		data = []
+
+		assert ((isinstance(parameters,scalars) and (parameters >= 0) and (parameters <= 1)) or (all((i>=0) and (i<=1) for i in parameters))), "Noise scale %r not in [0,1]"%(parameters)
+
+		for i in range(N):
+			datum,hermitian,unitary = func(operator[i],parameters[i])
+			
+			if isinstance(datum,arrays):
+				data = datum
+				break
+
+			data.append(datum)
 
 		if not isinstance(data,arrays):
-			data = array([tensorprod(i)	for i in itertools.product(data,repeat=self.N)],dtype=self.dtype)
+			data = array([tensorprod(i)	for i in itertools.product(*data)],dtype=self.dtype)
 
 		self.data = data
 		self.hermitian = hermitian

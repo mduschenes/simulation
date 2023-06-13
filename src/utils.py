@@ -1056,51 +1056,111 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		grad (callable): Gradient to compute
 		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type
-		mode (str): Type of fisher information, allowed ['operator','state']
+		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'fwd'
 	Returns:
 		fisher (callable): Fisher information of function
 	'''
-	if mode in ['operator']:
-		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
-	elif mode in ['state']:
-		subscripts = ['uai,vai->uv','uai,ai,vaj,aj->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -out]
-	else:
-		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
 
 	if grad is None:
-		grad = gradient(func,mode='fwd',move=True)
+		grad = gradient(func,mode=mode,move=True)
 
-	if shapes is not None:
-		shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
-		einsummations = [
-			einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
-				for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
-			]
-		einsummations = [
-			lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_g,g),
-			lambda f,g,_f,_g,einsummations=einsummations: einsummations[1](_g,f,g,_f)
-			]
-	else:
+	if mode is None:
+		mode = 'fwd'
+
+	if shapes is None:
+		ndim = None
 		shapes = None
-		einsummations = [
-			lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_g,g,optimize=optimize,wrapper=wrapper),
-			lambda f,g,_f,_g,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,_g,f,g,_f,optimize=optimize,wrapper=wrapper)
-		]
+	else:
+		ndim = min((len(shape) for shape in shapes),default=2)
+		shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
 
-	@jit
-	def fisher(*args,**kwargs):
-		f = func(*args,**kwargs)
-		g = grad(*args,**kwargs)
-		_f = conjugate(f)
-		_g = conjugate(g)
-		out = 0
-		for einsummation in einsummations:
-			out = out + einsummation(f,g,_f,_g)
-		out = real(out)
-		return out
+
+	hermitian = getattr(func,'hermitian',False)
+	unitary = getattr(func,'unitary',False)
+
+	eig = spectrum(func,compute_v=True,hermitian=hermitian)
+
+	if hermitian:
+		if ndim == 1:
+			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
+		elif ndim == 2:
+			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
+		else:
+			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
+	
+		if shapes is None:
+	
+			einsummations = [
+				einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
+					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+				]
+			einsummations = [
+				lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_g,g),
+				lambda f,g,_f,_g,einsummations=einsummations: einsummations[1](_g,f,g,_f)
+				]
+
+		else:
+
+			einsummations = [
+					lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_g,g,optimize=optimize,wrapper=wrapper),
+					lambda f,g,_f,_g,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,_g,f,g,_f,optimize=optimize,wrapper=wrapper)
+				]	
+
+		@jit
+		def fisher(*args,**kwargs):
+			f = func(*args,**kwargs)
+			g = grad(*args,**kwargs)
+			_f = conjugate(f)
+			_g = conjugate(g)
+			out = 0
+			for einsummation in einsummations:
+				out = out + einsummation(f,g,_f,_g)
+			out = real(out)
+			return out
+
+
+	elif unitary:
+		if ndim == 1:
+			subscripts = ['ui,vi->uv','ui,i,vj,j->uv']
+			wrappers = [lambda out,*operands: out,lambda out,*operands: -out]
+		elif ndim == 2:
+			subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
+			wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
+		else:
+			raise NotImplementedError("Unitary Fisher Information Not Implemented for ndim = %r"%(ndim))
+		
+		if shapes is None:
+	
+			einsummations = [
+				einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
+					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+				]
+			einsummations = [
+				lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_g,g),
+				lambda f,g,_f,_g,einsummations=einsummations: einsummations[1](_g,f,g,_f)
+				]
+
+		else:
+
+			einsummations = [
+					lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_g,g,optimize=optimize,wrapper=wrapper),
+					lambda f,g,_f,_g,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,_g,f,g,_f,optimize=optimize,wrapper=wrapper)
+				]	
+
+		@jit
+		def fisher(*args,**kwargs):
+			f = func(*args,**kwargs)
+			g = grad(*args,**kwargs)
+			_f = conjugate(f)
+			_g = conjugate(g)
+			out = 0
+			for einsummation in einsummations:
+				out = out + einsummation(f,g,_f,_g)
+			out = real(out)
+			return out
+	else:
+
+		raise NotImplementedError("Not Hermitian/Unitary Fisher Information Not Implemented for ndim = %r"%(ndim))
 
 	return fisher
 
@@ -2368,6 +2428,26 @@ def eig(a,compute_v=False,hermitian=False):
 		else:
 			_eig = np.linalg.eigvals
 	return _eig(a)
+
+
+def spectrum(func,compute_v=False,hermitian=False):
+	'''
+	Compute eigenvalues and eigenvectors of a function
+	Args:
+		func (callable): Function to compute eigenvalues and eigenvectors of shape (...,n,n)
+		compute_v (bool): Compute V eigenvectors in addition to eigenvalues
+		hermitian (bool): Whether array is Hermitian
+	Returns:
+		wrapper (callable): Returns:
+			eigenvalues (array): Array of eigenvalues of shape (...,n)
+			eigenvectors (array): Array of normalized eigenvectors of shape (...,n,n)
+	'''
+
+	@jit
+	def wrapper(*args,**kwargs):
+		return eig(func(*args,**kwargs),compute_v=compute_v,hermitian=hermitian)
+
+	return wrapper
 
 def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 	'''
