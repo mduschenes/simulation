@@ -1126,8 +1126,10 @@ class Optimization(System):
 		iteration = self.iteration
 		state = self.opt_init(parameters)
 		iteration,state = self.load(iteration,state)
-		
+
 		self.info()
+
+		self.init(iteration,state)
 
 		for iteration in self.iterations:
 
@@ -1432,32 +1434,41 @@ class Optimization(System):
 			else:
 				self.iterations = range(self.iteration,self.iterations[1],*self.iterations[2:])
 
+		return
 
 
-		if (state is not None) and (
+	def init(self,iteration,state):
+		'''
+		Update attributes
+		Args:
+			iteration (int): optimizer iteration
+			state (object): optimizer state
+		'''
+
+		do = (state is not None) and (
 		   (isinstance(self.iterations,int) and (self.iteration == 0)) or 
 		   (isinstance(self.iterations,range) and (self.iterations.start == 0) and (self.iterations.stop == 0)) or 
-		   ((not isinstance(self.iterations,(int,range))) and (self.iterations[0] == 0) and (self.iterations[1] == 0))):
+		   ((not isinstance(self.iterations,(int,range))) and (self.iterations[0] == 0) and (self.iterations[1] == 0)))
+
+		if not do:
+			return
 			
-			iteration = self.iteration
-			
-			value,grad,parameters = self.opt_step(iteration-1,state)
-			search = -grad
-			alpha,beta = self.hyperparameters.get('alpha'),self.hyperparameters.get('beta')
+		value,grad,parameters = self.opt_step(iteration-1,state)
+		search = -grad
+		alpha,beta = self.hyperparameters.get('alpha'),self.hyperparameters.get('beta')
 
-			attrs = {'search':search,'alpha':alpha,'beta':beta}
-			for attr in attrs:
-				if attr in self.attributes:
-					self.attributes[attr].append(attrs[attr])
-		
-			state = self.opt_init(parameters)
-			parameters = self.get_params(state)
-			track = self.track
-			optimizer = self
-			self.status = self.callback(parameters,track,optimizer)
+		attrs = {'search':search,'alpha':alpha,'beta':beta}
+		for attr in attrs:
+			if attr in self.attributes:
+				self.attributes[attr].append(attrs[attr])
+	
+		state = self.opt_init(parameters)
+		parameters = self.get_params(state)
+		track = self.track
+		optimizer = self
+		self.status = self.callback(parameters,track,optimizer)
 
-			self.dump(iteration,state)
-
+		self.dump(iteration,state)
 
 		return
 

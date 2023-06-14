@@ -8381,10 +8381,38 @@
 								"alpha": 1
 							},
 							"type": "index"
-						}
+						},
+						"@N@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}						
 					},
 					"ecolor": {
 						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						},
+						"@N@": {
 							"value": {
 								"value": null,
 								"color": "viridis",

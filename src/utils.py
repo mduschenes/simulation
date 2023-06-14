@@ -2842,13 +2842,13 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	else:
 		func = partial(func,optimize=optimize_grad,wrapper=wrapper_func)
 
-	if shapes_grad:
-		grad_analytical = grad_analytical(*shapes_grad,optimize=optimize_func,wrapper=wrapper_grad)
-	else:
-		grad_analytical = partial(grad_analytical,optimize=optimize_grad,wrapper=wrapper_grad)
+	# if shapes_grad:
+	# 	grad_analytical = grad_analytical(*shapes_grad,optimize=optimize_func,wrapper=wrapper_grad)
+	# else:
+	# 	grad_analytical = partial(grad_analytical,optimize=optimize_grad,wrapper=wrapper_grad)
+	grad_analytical = gradient(func,mode='fwd',holomorphic=True,move=True)
 
 	grad = grad_analytical
-	# grad = gradient(func,mode='fwd',holomorphic=True,move=True)
 
 	func = jit(func)
 	grad = jit(grad)

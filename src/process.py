@@ -1222,7 +1222,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 									value[destination] = grouping[source].to_numpy()
 							elif source is null:
 								source = delim.join(((dependent[-1],function,func)))
-								value[destination] = np.arange(len(grouping[source].iloc[0]))
+								value[destination] = np.arange(1,len(grouping[source].iloc[0])+1)
 							else:
 								value[destination] = grouping.reset_index().index.to_numpy()
 
@@ -1439,7 +1439,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							if axes.endswith('err'):
 								data[axes][...] = 0
 							else:
-								data[axes][...,:] = np.arange(data[AXES[dim-1]].shape[-1])
+								data[axes][...,:] = np.arange(1,data[AXES[dim-1]].shape[-1]+1)
 
 
 	for instance in list(settings):
