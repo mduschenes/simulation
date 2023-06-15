@@ -217,7 +217,7 @@ class Object(System):
 
 		self.operator = list((i for i in self.operator)) if self.operator is not None and not isinstance(self.operator,arrays) else self.operator
 		self.site = list((i for i in self.site)) if self.site is not None else self.site
-		self.string = str(self.string) if self.string is not None else self.string
+		self.string = '%s-%s'%(str(self.string),'%s'%(delim.join(self.operator)) if not isinstance(self.operator,arrays) else '') if self.string is not None else self.string
 		self.parameters = self.parameters if self.parameters is not None else self.parameters
 
 		self.identity = tensorprod([self.basis.get(self.default)() for i in range(self.N)]) if (self.default in self.basis) else None
