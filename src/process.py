@@ -2284,8 +2284,7 @@ def plotter(settings,hyperparameters,verbose=None):
 								elif attr in ['marker']:
 									pass
 								elif attr in ['linestyle']:
-									value = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
-									value = '-' if value < 1/3 else '--' if value < 2/3 else '---'
+									pass
 								else:
 									pass
 

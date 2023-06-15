@@ -42,12 +42,12 @@ def func_tau_unit(data):
 def func_T_unit(data):
 	return data['T']/data.get('unit',1)
 
-
-
 def func_tau_noise_scale(data):
 	return data['tau']/data.get('noise.scale',1)
 
 def func_T_noise_scale(data):
 	return data['T']/data.get('noise.scale',1)
 
-
+def func_fisher_rank(data):
+	eps = 1e-12
+	return (np.array(list(data['fisher.eigenvalues']))>eps).sum()
