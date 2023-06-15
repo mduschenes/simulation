@@ -17,7 +17,7 @@ from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,d
 from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,trace,sort,relsort
 from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_string,is_hermitian,is_unitary,allclose
-from src.utils import pi,e,nan,null,delim,scalars,arrays,datatype
+from src.utils import pi,e,nan,delim,scalars,arrays,datatype
 
 from src.iterables import setter,getattrs,hasattrs,namespace,iterate,indexer,inserter
 
@@ -31,6 +31,7 @@ from src.optimize import Objective,Metric
 
 N = 1
 D = 2
+ndim = 2
 random = 'haar'
 dtype = 'complex'
 Basis = {
@@ -42,7 +43,7 @@ Basis = {
 	'HADAMARD': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,1,],[1,-1]],dtype=dtype)/sqrt(D)),
 	'TOFFOLI': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,1,0,0,0,0,0],[0,0,0,1,0,0,0,0],
   			    	  						  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]],dtype=dtype)),
-	'RANDOM': (lambda *args,N=N,D=D,ndim=2,random=random,dtype=dtype,**kwargs: rand(shape=(D,)*ndim,random=random,dtype=dtype)),
+	'RANDOM': (lambda *args,N=N,D=D,ndim=ndim,random=random,dtype=dtype,**kwargs: rand(shape=(D,)*ndim,random=random,dtype=dtype)),
 	'00': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0],[0,0]],dtype=dtype)),
 	'01': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,1],[0,0]],dtype=dtype)),
 	'10': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,0],[1,0]],dtype=dtype)),
@@ -164,7 +165,7 @@ class Object(System):
 			pass
 
 		N = max(self.N,max(site)+1 if site is not None else self.N) if self.N is not None else max(site)+1 if site is not None else 0
-		D = self.D if self.D is not None else data.size**(1/(data.ndim*N)) if isinstance(data,arrays) else 1
+		D = self.D if self.D is not None else data.size**(1/max(1,data.ndim*N)) if isinstance(data,arrays) else 1
 		n = D**N if (N is not None) and (D is not None) else None
 
 		shape = self.shape if self.shape is not None else data.shape if isinstance(data,arrays) else None
@@ -185,6 +186,8 @@ class Object(System):
 		else:
 			site = list(range(N)) if site is None else site
 
+		null = (self.parameters is False) or (self.ndim == 0)
+
 		self.data = data if data is not None else operator if operator is not None else None
 		self.operator = operator if operator is not None else None
 		self.site = site if site is not None else None
@@ -200,10 +203,10 @@ class Object(System):
 		self.ndim = ndim
 		self.dtype = dtype
 
-		if not (self.parameters is False) and (((self.data is not None) or (self.operator is not None)) and (not isinstance(self.data,arrays))):
+		if (not null) and (((self.data is not None) or (self.operator is not None)) and (not isinstance(self.data,arrays))):
 			self.__setup__(data,operator,site,string,parameters)
 
-		if self.parameters is False:
+		if null:
 			self.data = None
 		elif isinstance(self.operator,arrays):
 			self.data = self.operator
