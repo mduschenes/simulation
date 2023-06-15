@@ -637,6 +637,8 @@ class Function(System):
 			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
+		
+		super().__init__(**kwargs)
 
 		if func is None:
 			func = []

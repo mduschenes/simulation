@@ -566,7 +566,7 @@ def test_fisher(path,tol):
 
 	parameters = model.parameters()
 
-	func = fisher(model,shapes=(model.shape,(*parameters.shape,*model.shape)))
+	func = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)))
 
 	out = func(parameters)
 
@@ -769,10 +769,11 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 
-	func = test_fisher
 	func = test_hessian
 	func = check_machine_precision
 	func = test_parameters
+	func = test_object
+	func = test_fisher
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

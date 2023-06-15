@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
-from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,sort,relsort
+from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,trace,sort,relsort
 from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,null,delim,scalars,arrays,datatype
@@ -81,7 +81,7 @@ class Object(System):
 		defaults = dict(			
 			shape=None,size=None,ndim=None,
 			samples=None,identity=None,locality=None,index=None,
-			conj=None,func=None
+			conj=None,func=None,gradient=None
 			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
@@ -96,6 +96,13 @@ class Object(System):
 				return self.data
 
 			self.func = func
+
+		if self.gradient is None:
+			
+			def gradient(parameters=None,state=None,conj=None):
+				return 0*self.data
+
+			self.gradient = gradient			
 
 		if isinstance(data,self.__class__) or isinstance(operator,self.__class__):
 			if isinstance(data,self.__class__):
@@ -218,15 +225,15 @@ class Object(System):
 		self.locality = max(self.locality if self.locality is not None else 0,len(self.site) if self.site is not None else 0)
 		self.index = self.index if self.index is not None else None
 
-		if (self.samples is True) and (self.size is not None):
-			shape,bounds,scale,seed,dtype = self.size, [0,1], 'normalize', self.seed, datatype(self.dtype)
-			self.samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
-		elif not isinstance(self.samples,arrays):
-			self.samples = None
+		if (self.samples is not None) and isinstance(self.data,arrays) and (self.ndim is not None) and (self.data.ndim>self.ndim):
+			if isinstance(self.samples,int) and (self.samples > 0):
+				shape,bounds,scale,seed,dtype = self.data.shape[:self.data.ndim-self.ndim], [0,1], 'normalize', self.seed, datatype(self.dtype)
+				self.samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
+			elif not isinstance(self.samples,arrays):
+				self.samples = None
 
-		if isinstance(self.data,arrays) and (self.samples is not None) and (self.ndim is not None):
-			if (self.data.ndim>self.ndim):
-				self.data = einsum('%s...,%s->...'%((''.join(['i','j','k','l'][:self.data.ndim-self.ndim]),)*2),self.samples,self.data)
+			if (self.samples is not None):
+				self.data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:self.data.ndim-self.ndim]),)*2),self.samples,self.data)
 
 		self.data = self.data.astype(self.dtype) if self.data is not None else None
 		self.identity = self.identity.astype(self.dtype) if self.identity is not None else None
@@ -323,6 +330,23 @@ class Object(System):
 			parameters = self.parameters
 
 		return self.func(parameters,state,conj)
+
+	def grad(self,parameters=None,state=None,conj=None):
+		'''
+		Call operator gradient
+		Args:
+			parameters (array): parameters
+			state (obj): state
+			conj (bool): conjugate			
+		Returns:
+			data (array): data
+		'''
+
+		if parameters is None:
+			parameters = self.parameters
+
+		return self.gradient(parameters,state,conj)
+
 
 	def __str__(self):
 		string = self.__class__.__name__ if not self.string else self.string
@@ -581,14 +605,19 @@ class Pauli(Object):
 		def func(parameters=None,state=None,conj=None):
 			return cos((pi/2)*parameters)*self.identity + -1j*sin((pi/2)*parameters)*self.data
 
+		def gradient(parameters=None,state=None,conj=None):
+			return (pi/2)*(-sin((pi/2)*parameters)*self.identity + -1j*cos((pi/2)*parameters)*self.data)
+
 		hermitian = False
 		unitary = True
 
 		self.func = func
+		self.gradient = gradient
 		self.hermitian = hermitian
 		self.unitary = unitary
 
 		return
+
 
 class Gate(Object):
 	'''
@@ -674,7 +703,7 @@ class Haar(Object):
 			parameters (object): parameter of operator			
 		'''
 
-		shape = (self.D**self.N,)*self.ndim
+		shape = (self.n,)*self.ndim
 		size = prod(shape)
 		random = getattr(self,'random','haar')
 		seed = getattr(self,'seed',None)
@@ -716,8 +745,8 @@ class State(Object):
 	basis = {
 		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I']},
 		**{attr: Object(data=Basis['RANDOM'](ndim=1),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['random','psi','haar']},
-		**{attr: Object(data=Basis['0'](),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['zeros','0']},
-		**{attr: Object(data=Basis['1'](),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['ones','1']},
+		**{attr: Object(data=Basis['0'](),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['zero','zeros','0']},
+		**{attr: Object(data=Basis['1'](),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['one','ones','1']},
 		**{attr: Object(data=Basis['+'](),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['plus','+']},
 		**{attr: Object(data=Basis['-'](),D=2,locality=1,hermitian=True,unitary=False,string=attr) for attr in ['minus','-']},
 		}
@@ -740,36 +769,69 @@ class State(Object):
 			parameters (object): parameter of operator			
 		'''
 
-		shape = (self.D**self.N,)*self.ndim
-		if isinstance(self.samples,int):
-			shape = (self.samples,*shape)
+		N = self.N
+		D = self.D
+		default = self.default
+		shape = (self.D,)
 		ndim = len(shape)
-		size = prod(shape[-self.ndim:])
+		size = prod(shape)
 		random = getattr(self,'random','haar')
 		seed = getattr(self,'seed',None)
 		reset = getattr(self,'reset',None)
 		dtype = self.dtype
 
-		data = zeros(shape=shape,dtype=dtype)
-		operator = operator[0] if operator else None
+		site = list(range(self.N)) if self.site is None else self.site if not isinstance(self.site,int) else [self.site]
+		operator = None if self.operator is None else [self.operator[self.site.index(i)%len(self.operator)] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
+		locality = len(operator)
+		samples = self.samples if self.samples is not None else 1
 
-		if operator in ['zeros','0']:
-			data = setitem(data,0,1)
-		elif operator in ['ones','1']:
-			data = setitem(data,-1,1)			
-		elif operator in ['plus','+']:
-			data = setitem(data,slice(None),1/sqrt(size))			
-		elif operator in ['minus','-']:
-			data = setitem(data,slice(None),(-1)**arange(size)/sqrt(size))
-		elif operator in ['random','psi','haar']:
-			data = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
-		else:
-			data = self.data
+		data = []
 
-		if (data is not None) and (ndim < self.ndim):
-			data = einsum('...i,...j->...ij',data,conjugate(data))
+		for s in range(samples):
+			
+			datum = []
+			
+			for i in range(N):
+				
+				tmp = zeros(shape=shape,dtype=dtype)
 
-		if ndim == 1:
+				if operator[i] in ['zero','zeros','0']:
+					tmp = setitem(tmp,0,1)
+				elif operator[i] in ['one','ones','1']:
+					tmp = setitem(tmp,-1,1)
+				elif operator[i] in ['plus','+']:
+					tmp = setitem(tmp,slice(None),1/sqrt(size))
+				elif operator[i] in ['minus','-']:
+					tmp = setitem(tmp,slice(None),(-1)**arange(size)/sqrt(size))
+				elif operator[i] in ['random','psi','haar']:
+					tmp = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
+				elif isinstance(self.data,arrays):
+					tmp = self.data.reshape(N,*shape)[i]
+				else:
+					tmp = None
+
+				if tmp is None:
+					datum = tmp
+					break
+
+				datum.append(tmp)
+			
+			if datum is not None:
+				if not isinstance(datum,arrays):
+					datum = tensorprod(datum)
+
+				if datum.ndim < self.ndim:
+					datum = einsum('...i,...j->...ij',datum,conjugate(datum))
+
+			data.append(datum)
+
+		if data is not None:
+			if len(data) == 1:
+				data = data[-1]
+			else:
+				data = array(data,dtype=self.dtype)
+
+		if self.ndim == 1:
 			hermitian = False
 			unitary = True
 		else:
@@ -848,7 +910,7 @@ class Noise(Object):
 			parameters (object): parameter of operator			
 		'''
 
-		def func(operator,parameters):
+		def operators(operator,parameters):
 			'''
 			Return operator
 			Args:
@@ -907,8 +969,8 @@ class Noise(Object):
 
 		N = self.N
 		default = self.default
-		site = list(range(self.N)) if self.site is None else self.site
-		operator = None if self.operator is None else [self.operator[i] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
+		site = list(range(self.N)) if self.site is None else self.site if not isinstance(self.site,int) else [self.site]
+		operator = None if self.operator is None else [self.operator[self.site.index(i)%len(self.operator)] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
 		locality = len(operator)
 		parameters = [None]*self.N if self.parameters is None else [self.parameters[i] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.parameters,scalars) else [self.parameters]*self.N
 
@@ -920,7 +982,7 @@ class Noise(Object):
 		assert ((isinstance(parameters,scalars) and (parameters >= 0) and (parameters <= 1)) or (all((i>=0) and (i<=1) for i in parameters))), "Noise scale %r not in [0,1]"%(parameters)
 
 		for i in range(N):
-			datum,hermitian,unitary = func(operator[i],parameters[i])
+			datum,hermitian,unitary = operators(operator[i],parameters[i])
 			
 			if isinstance(datum,arrays):
 				data = datum
@@ -1186,6 +1248,7 @@ class Operators(Object):
 		conj = self.conj
 
 		data = trotter([jit(i) for i in self.data],self.P)
+		grads = trotter([jit(i.grad) for i in self.data],self.P)
 		slices = trotter(list(range(len(self))),self.P)
 		trotterize = jit(lambda parameters,slices: parameters[slices].T.ravel(),slices=array(slices))
 
@@ -1222,7 +1285,7 @@ class Operators(Object):
 		
 		grad = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
-		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
+		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise,grads=grads)
 
 		# Update class attributes
 		self.func = func
@@ -2502,7 +2565,7 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 	return func			
 
 
-def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None,grads=None):
 	'''
 	Contract data and state
 	Args:
@@ -2513,6 +2576,7 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 		identity (array): Array of data identity of shape (n,n)
 		constants (array): Array of constants to act of shape (n,n)
 		noise (array): Array of noise to act of shape (...,n,n)
+		grads (array): data of shape (length,)
 	Returns:
 		func (callable): contracted data(parameters) and state with signature func(parameters,state,conj)
 	'''
@@ -2527,6 +2591,10 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 	if state is not None or noise is not None:
 		return None
 		raise NotImplementedError("TODO: Implement gradients for non-unitary contraction")
+
+	if grads is not None:
+		grads = [(lambda parameters,state=None,conj=None,i=i: (pi/2)*data[i%length](parameters[i] + 1)) for i in range(size)]
+
 
 
 	def func(parameters=None,state=None,conj=None):
@@ -2561,7 +2629,7 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 
 			V = subfunc(subparameters,identity,subconj)
 
-			A = (pi/2)*data[i%length](parameters[i] + 1)
+			A = grads[i](parameters,state,conj)
 
 			return einsummation(V,A,U)
 

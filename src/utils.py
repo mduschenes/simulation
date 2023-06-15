@@ -1083,9 +1083,9 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		if ndim == 1:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
 		elif ndim == 2:
-			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0],shapes[1],shapes[0],shapes[0]]]
-			subscripts = ['in,unm,jm,jp,vpq,iq,ij->uv']
-			wrappers = [lambda out,*operands: out]
+			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
+			subscripts = ['in,unm,jm->uij','uij,vij,ij->uv']
+			wrappers = [lambda out,*operands: out,lambda out,*operands: 2*out]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
 	
@@ -1096,13 +1096,15 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
 			einsummations = [
-				lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_f,g,f,f,g,_f,_g),
+				lambda f,g,_f,einsummations=einsummations: einsummations[0](_f,g,f),
+				lambda f,_f,g,einsummations=einsummations: einsummations[1](f,_f,g),
 				]
 
 		else:
 
 			einsummations = [
-				lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_f,g,f,f,g,_f,_g,optimize=optimize,wrapper=wrapper),
+				lambda f,g,_f,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_f,g,f,optimize=optimize,wrapper=wrapper),
+				lambda f,g,_f,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,f,_f,g,optimize=optimize,wrapper=wrapper),
 				]	
 
 		@jit
@@ -1114,11 +1116,10 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 			_f = conjugate(f)
 			_g = _g.reshape(-1,1) + _g.reshape(1,-1)
 
-			out = 0
-			for einsummation in einsummations:
-				out = out + einsummation(f,g,_f,_g)
+			out = einsummations[0](f,g,_f)
+			out = einsummations[1](out,conjugate(out),_g)
 			out = real(out)
-			return out
+			return out			
 
 
 	elif unitary:
@@ -1909,9 +1910,8 @@ if BACKEND in ['jax']:
 
 				if ndim < 2:
 					shape = [*shape]*2
-				elif ndim >= 2:
-					if shape[-2] != shape[-1]:
-						shape = (*shape[:-1],*shape[-1:]*2)
+				elif shape[-1] != shape[-2]:
+					shape = [*shape[:-1],*shape[-1:]*2]
 
 				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
 
@@ -1919,7 +1919,6 @@ if BACKEND in ['jax']:
 					reshape = (*(1,)*(4-out.ndim),*out.shape)
 				else:
 					reshape = out.shape
-
 
 				out = out.reshape(reshape)
 
@@ -1940,30 +1939,8 @@ if BACKEND in ['jax']:
 				shape = shapes
 				if ndim == 1: # Random vector
 					out = out[...,0] 
-				elif ndim == 2: # Random vector or matrix
-					if shape[-2] != shape[-1]:
-						out = out[...,0]
-						weights = rand(out.shape[0],key=key,dtype=_dtype)
-						out = einsum('u,...ui->...i',weights,out)
-						weights = sqrt(einsum('...i,...i->...',conjugate(out),out))
-						out = out/weights
-					else:
-						out = out[:,:]
-				elif ndim == 3: # Sum of samples of random rank-1 matrices (vectors)
-					out = out[...,0]
-					weights = rand(out.shape[0],key=key,dtype=_dtype)
-					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
-					weights = einsum('...ii->...',out)
-					out = out/weights				
-
-				elif ndim >= 4: # Samples of random matrices
-					# TODO: Implement random density matrices
-					raise NotImplementedError
-					out = out[...,0]
-					weights = rand(out.shape[0],key=key,dtype=dtype)
-					weights = weights/weights.sum()
-					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
-
+				else:
+					out = out[:,:]
 
 				return out
 
@@ -2185,9 +2162,8 @@ elif BACKEND in ['jax.autograd','autograd']:
 
 				if ndim < 2:
 					shape = [*shape]*2
-				elif ndim >= 2:
-					if shape[-2] != shape[-1]:
-						shape = (*shape[:-1],*shape[-1:]*2)
+				elif shape[-1] != shape[-2]:
+					shape = [*shape[:-1],*shape[-1:]*2]
 
 				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
 
@@ -2216,33 +2192,10 @@ elif BACKEND in ['jax.autograd','autograd']:
 				shape = shapes
 				if ndim == 1: # Random vector
 					out = out[...,0] 
-				elif ndim == 2: # Random vector or matrix
-					if shape[-2] != shape[-1]:
-						out = out[...,0]
-						weights = rand(out.shape[0],key=key,dtype=_dtype)
-						out = einsum('u,...ui->...i',weights,out)
-						weights = sqrt(einsum('...i,...i->...',conjugate(out),out))
-						out = out/weights
-					else:
-						out = out[:,:]
-				elif ndim == 3: # Sum of samples of random rank-1 matrices (vectors)
-					out = out[...,0]
-					weights = rand(out.shape[0],key=key,dtype=_dtype)
-					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
-					weights = einsum('...ii->...',out)
-					out = out/weights				
-
-				elif ndim >= 4: # Samples of random matrices
-					# TODO: Implement random density matrices
-					raise NotImplementedError
-					out = out[...,0]
-					weights = rand(out.shape[0],key=key,dtype=dtype)
-					weights = weights/weights.sum()
-					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
-
+				else: # Random matrix
+					out = out
 
 				return out
-
 
 		elif random in ['hermitian','symmetric']:
 			def func(key,shape,bounds,dtype):
@@ -2842,11 +2795,11 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	else:
 		func = partial(func,optimize=optimize_grad,wrapper=wrapper_func)
 
-	# if shapes_grad:
-	# 	grad_analytical = grad_analytical(*shapes_grad,optimize=optimize_func,wrapper=wrapper_grad)
-	# else:
-	# 	grad_analytical = partial(grad_analytical,optimize=optimize_grad,wrapper=wrapper_grad)
-	grad_analytical = gradient(func,mode='fwd',holomorphic=True,move=True)
+	if shapes_grad:
+		grad_analytical = grad_analytical(*shapes_grad,optimize=optimize_func,wrapper=wrapper_grad)
+	else:
+		grad_analytical = partial(grad_analytical,optimize=optimize_grad,wrapper=wrapper_grad)
+	# grad_analytical = gradient(func,mode='fwd',holomorphic=True,move=True)
 
 	grad = grad_analytical
 

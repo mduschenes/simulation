@@ -23,7 +23,7 @@
 "permutations":{
 	"permutations":{	
 
-		"model.N":[2,3,4,5,6,7,8],		
+		"model.N":[3],		
 		"model.M":[20],
 		"model.P":[1],
 		"model.tau":[1],
@@ -77,12 +77,8 @@
 		"parameters.zz.constant":[null],					
 		"parameters.zz.kwargs.lambda":[null],	
 
-		"jobs.job.cwd":["test"],
-		"jobs.postprocess.cwd":["test"],				
-
-
-		"jobs.job.cwd":["tmp"],
-		"jobs.postprocess.cwd":["tmp"],	
+		"jobs.job.cwd":["fisher"],
+		"jobs.postprocess.cwd":["fisher"],	
 
 		"jobs.job.device":["pc"],
 		"jobs.postprocess.device":["pc"],		
