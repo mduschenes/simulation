@@ -116,7 +116,7 @@ def test_model(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -214,7 +214,7 @@ def test_parameters(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -325,7 +325,7 @@ def test_data(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -379,7 +379,7 @@ def test_initialization(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -514,7 +514,7 @@ def test_hessian(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -548,11 +548,12 @@ def test_hessian(path,tol):
 	return
 
 def test_fisher(path,tol):
-	
+
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
+
 
 	hyperparameters = Dict(hyperparameters)
 

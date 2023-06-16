@@ -140,21 +140,21 @@ class Object(System):
 			pass
 		elif isinstance(operator,str):
 			if operator not in [default]:
-				site = list(range(min(max(locality if locality is not None else 0,sum(basis[i].locality for i in operator.split(delim) if i in basis and basis[i].locality is not None)),N))) if site is None else site if not isinstance(site,int) else [site]
+				site = list(range(min(max(locality if locality is not None else 0,sum(basis[i].locality for i in operator.split(delim) if i in basis and basis[i].locality is not None)),N))) if site is None else site[:N] if not isinstance(site,int) else [site][:N]
 				operator = [i for i in operator.split(delim)][:len(site)]
 			elif operator in [default]:
-				site = list(range(basis[operator].locality if N is None else N)) if site is None else site if not isinstance(site,int) else [site]
+				site = list(range(basis[operator].locality if N is None else N)) if site is None else site[:N] if not isinstance(site,int) else [site][:N]
 				operator = operator
 		elif not isinstance(operator,str) and not isinstance(operator,arrays):
-			site = site if not isinstance(site,int) else [site]
+			site = site[:N] if not isinstance(site,int) else [site][:N]
 			operator = [j for i in operator for j in (i.split(delim) if isinstance(i,str) else i)][:len(site)]
 
 		if site is None:
 			pass
 		elif isinstance(site,int):
-			site = [site]
+			site = [site][:N]
 		else:
-			site = [j for i in site for j in ([i] if isinstance(i,int) else i)]
+			site = [j for i in site[:N] for j in ([i] if isinstance(i,int) else i)][:N]
 
 		if string is None:
 			pass
@@ -1241,6 +1241,8 @@ class Operators(Object):
 
 			setattr(self,obj,instance)
 				
+
+
 		# Set functions
 		identity = self.identity()
 		parameters = self.parameters()
@@ -1250,12 +1252,14 @@ class Operators(Object):
 		constants = self.constants
 		conj = self.conj
 
+		parameters = self.parameters(parameters)
+
+		assert parameters is not None, "Incorrect parameters() initialization"
+
 		data = trotter([jit(i) for i in self.data],self.P)
 		grads = trotter([jit(i.grad) for i in self.data],self.P)
 		slices = trotter(list(range(len(self))),self.P)
 		trotterize = jit(lambda parameters,slices: parameters[slices].T.ravel(),slices=array(slices))
-
-		parameters = trotterize(self.coefficients*self.parameters(parameters))
 
 		if state is None and noise is None:
 			hermitian = False
@@ -1283,6 +1287,8 @@ class Operators(Object):
 			shape = state.shape			
 		else:
 			raise NotImplementedError
+
+		parameters = trotterize(self.coefficients*parameters)
 
 		func = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 		
@@ -2213,14 +2219,10 @@ class Callback(System):
 						value = function(parameters)
 
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
-						# value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
-						# value = value/maximum(value)
-						value = sort(eig(function(parameters),hermitian=True))[::-1]
-						value = value/maximum(value)						
+						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
+						value = value/maximum(value)
 					elif attr in ['hessian.rank','fisher.rank']:
-						# value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
-						# value = value/maximum(value)
-						value = sort(eig(function(parameters),hermitian=True))[::-1]
+						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
 						value = value/maximum(value)
 						value = argmax(abs(difference(value)/value[:-1]))+1	
 						value = value.size if (value==value.size-1) else value

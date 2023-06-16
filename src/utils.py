@@ -1083,87 +1083,78 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		if ndim == 1:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
 		elif ndim == 2:
-			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
-			subscripts = ['in,unm,jm->uij','uij,vij,ij->uv']
-			wrappers = [lambda out,*operands: out,lambda out,*operands: 2*out]
+			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0]],[[shapes[0][0]],[shapes[0][1]]],[shapes[1],shapes[1],shapes[0]]]
+			subscripts = ['in,unm,jm->uij','i,j->ij','uij,vij,ij->uv']
+			wrappers = [lambda out,*operands: out,lambda out,*operands: 1/out,lambda out,*operands: 2*out]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
 	
+
 		if shapes is not None:
-	
 			einsummations = [
-				einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
+				lambda *operands,einsummation=einsum(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
-			einsummations = [
-				lambda f,g,_f,einsummations=einsummations: einsummations[0](_f,g,f),
-				lambda f,_f,g,einsummations=einsummations: einsummations[1](f,_f,g),
-				]
-
 		else:
-
 			einsummations = [
-				lambda f,g,_f,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_f,g,f,optimize=optimize,wrapper=wrapper),
-				lambda f,g,_f,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,f,_f,g,optimize=optimize,wrapper=wrapper),
-				]	
+				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsum(subscripts,*operands,optimize=optimize,wrapper=wrapper)
+					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+				]
 
 		@jit
 		def fisher(*args,**kwargs):
-			f = func(*args,**kwargs)
-			g = grad(*args,**kwargs)
+		
+			function = func(*args,**kwargs)
+			gradient = grad(*args,**kwargs)
 
-			_g,f = f
-			_f = conjugate(f)
-			_g = _g.reshape(-1,1) + _g.reshape(1,-1)
+			eigenvalues,eigenvectors = function
 
-			out = einsummations[0](f,g,_f)
-			out = einsummations[1](out,conjugate(out),_g)
+			out = einsummations[0](conjugate(eigenvectors),gradient,eigenvectors)
+			tmp = einsummations[1](eigenvalues,eigenvalues)
+			out = einsummations[2](conjugate(out),out,tmp)
+			
 			out = real(out)
+
 			return out			
 
 
 	elif unitary:
+
 		if ndim == 1:
-			shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
-			subscripts = ['ui,vi->uv','ui,i,vj,j->uv']
-			wrappers = [lambda out,*operands: out,lambda out,*operands: -out]
+			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
+			subscripts = ['ui,i->u','u,v->uv','ui,vi->uv']
+			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**1),lambda out,*operands: -out,lambda out,*operands: out]
 		elif ndim == 2:
-			shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
-			subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-			wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
+			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
+			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
+			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -out,lambda out,*operands: out/operands[0].shape[1]]
 		else:
 			shapes = None
-			subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-			wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
+			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
+			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -out,lambda out,*operands: out/operands[0].shape[1]]			
 		
 		if shapes is not None:
-	
 			einsummations = [
-				einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
+				lambda *operands,einsummation=einsum(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
-			einsummations = [
-				lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_g,g),
-				lambda f,g,_f,_g,einsummations=einsummations: einsummations[1](_g,f,g,_f)
-				]
-
 		else:
-
 			einsummations = [
-				lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_g,g,optimize=optimize,wrapper=wrapper),
-				lambda f,g,_f,_g,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,_g,f,g,_f,optimize=optimize,wrapper=wrapper)
+				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsum(subscripts,*operands,optimize=optimize,wrapper=wrapper)
+					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]	
 
 		@jit
 		def fisher(*args,**kwargs):
-			f = func(*args,**kwargs)
-			g = grad(*args,**kwargs)
-			_f = conjugate(f)
-			_g = conjugate(g)
-			out = 0
-			for einsummation in einsummations:
-				out = out + einsummation(f,g,_f,_g)
+			function = func(*args,**kwargs)
+			gradient = grad(*args,**kwargs)
+
+			out = einsummations[0](conjugate(gradient),function)
+			out = einsummations[1](conjugate(out),out)
+			out = out + einsummations[2](conjugate(gradient),gradient)
+			
 			out = real(out)
+
 			return out
 	else:
 

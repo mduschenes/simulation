@@ -526,7 +526,7 @@ class Lattice(System):
 					N,n,z = self.N,self.n,self.z
 					r = self.nearestneighbours(r=1).tolist()
 					sites = ((i,j) for k in range(N) for i,j in zip([k]*z,r[k]) if (
-						((i<j) and ((((i)%n != 0) and ((j)%n != 0)) or (((i+1)%n != 0) and ((j+1)%n != 0))))
+						((i<j) and ((n<=z) or ((((i)%n != 0) and ((j)%n != 0)) or (((i+1)%n != 0) and ((j+1)%n != 0)))))
 						))
 				else:
 					sites = ()					
