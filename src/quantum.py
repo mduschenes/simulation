@@ -2224,8 +2224,7 @@ class Callback(System):
 					elif attr in ['hessian.rank','fisher.rank']:
 						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
 						value = value/maximum(value)
-						value = argmax(abs(difference(value)/value[:-1]))+1	
-						value = value.size if (value==value.size-1) else value
+						value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
 
 				elif attr in []:
 					value = [attr.split(delim)[0],delim.join(attr.split(delim)[1:])]
