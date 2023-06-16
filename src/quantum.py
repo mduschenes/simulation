@@ -60,7 +60,7 @@ class Object(System):
 	Args:
 		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		parameters (object): parameter of operator
 		state (object): state of operators
@@ -507,7 +507,7 @@ class Operator(Object):
 	Args:
 		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		parameters (object): parameter of operator		
 		state (object): state of operators		
@@ -572,7 +572,7 @@ class Pauli(Object):
 	Args:
 		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		parameters (object): parameter of operator				
 		state (object): state of operators				
@@ -600,7 +600,7 @@ class Pauli(Object):
 		Args:
 			data (iterable[str]): data of operator
 			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			parameters (object): parameter of operator			
 		'''
@@ -628,7 +628,7 @@ class Gate(Object):
 	Args:
 		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		parameters (object): parameter of operator				
 		state (object): state of operators		
@@ -656,7 +656,7 @@ class Gate(Object):
 		Args:
 			data (iterable[str]): data of operator
 			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			parameters (object): parameter of operator			
 		'''
@@ -675,7 +675,7 @@ class Haar(Object):
 	Args:
 		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		parameters (object): parameter of operator		
 		state (object): state of operators		
@@ -701,7 +701,7 @@ class Haar(Object):
 		Args:
 			data (iterable[str]): data of operator
 			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			parameters (object): parameter of operator			
 		'''
@@ -737,7 +737,7 @@ class State(Object):
 	Args:
 		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		parameters (object): parameter of operator		
 		state (object): state of operators		
@@ -767,7 +767,7 @@ class State(Object):
 		Args:
 			data (iterable[str]): data of operator
 			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			parameters (object): parameter of operator			
 		'''
@@ -854,7 +854,7 @@ class Noise(Object):
 	Args:
 		data (iterable[str]): data of operator
 		operator (iterable[str]): string names of operators		
-		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		parameters (object): parameter of operator		
 		state (object): state of operators		
@@ -908,7 +908,7 @@ class Noise(Object):
 		Args:
 			data (iterable[str]): data of operator
 			operator (iterable[str]): string names of operators			
-			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			parameters (object): parameter of operator			
 		'''
@@ -1009,11 +1009,11 @@ class Operators(Object):
 	Args:
 		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			parameters (iterable[object]): parameters of operators
 		operator (iterable[str]): string names of operators
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (iterable[str]): string labels of operators
 		parameters (iterable[str],dict,Parameters): parameters of operators		
 		N (int): Number of qudits
@@ -1100,11 +1100,11 @@ class Operators(Object):
 		Args:
 			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 				operator (iterable[str]): string names of operators
-				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 				string (iterable[str]): string labels of operators
 				parameters (iterable[object]): parameters of operators
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			parameters (iterable[object]): parameters of operators
 		'''
@@ -1151,7 +1151,7 @@ class Operators(Object):
 		Args:
 			data (iterable[str,Operator]): data of operator
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			parameters (iterable[object]): parameters of operators
 		'''
@@ -1620,11 +1620,11 @@ class Hamiltonian(Operators):
 	Args:
 		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			parameters (iterable[object]): parameters of operators
 		operator (iterable[str]): string names of operators
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (iterable[str]): string labels of operators
 		parameters (iterable[object]): parameters of operators
 		N (int): Number of qudits
@@ -1662,11 +1662,11 @@ class Hamiltonian(Operators):
 		Args:
 			data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 				operator (iterable[str]): string names of operators
-				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+				site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 				string (iterable[str]): string labels of operators
 				parameters (iterable[object]): parameters of operators
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			parameters (iterable[object]): parameters of operators
 		'''
@@ -1694,7 +1694,7 @@ class Hamiltonian(Operators):
 
 		# Lattice sites
 		sites = self.lattice # sites types on lattice
-		indices = {'i': ['i'],'<ij>':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
+		indices = {'i': ['i'],'<ij>':['i','j'],'>ij<':['i','j'],'i<j':['i','j'],'ij':['i','j'],'i...j':['i','j']}   # allowed symbolic indices and maximum locality of many-body site interactions
 
 		# Get number of operators
 		size = min([len(objs[obj]) for obj in objs if objs[obj] is not None],default=0)
@@ -1760,11 +1760,11 @@ class Unitary(Hamiltonian):
 	Args:
 		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			parameters (iterable[object]): parameters of operators
 		operator (iterable[str]): string names of operators
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (iterable[str]): string labels of operators
 		N (int): Number of qudits
 		D (int): Dimension of qudits
@@ -1844,11 +1844,11 @@ class Channel(Unitary):
 	Args:
 		data (dict[str,dict],iterable[Operator]): data for operators with key,values of operator name and operator,site,string,parameters dictionary for operator
 			operator (iterable[str]): string names of operators
-			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			parameters (iterable[object]): parameters of operators
 		operator (iterable[str]): string names of operators
-		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','i...j']
+		site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (iterable[str]): string labels of operators
 		N (int): Number of qudits
 		D (int): Dimension of qudits
@@ -2213,10 +2213,14 @@ class Callback(System):
 						value = function(parameters)
 
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
-						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
-						value = value/maximum(value)
+						# value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
+						# value = value/maximum(value)
+						value = sort(eig(function(parameters),hermitian=True))[::-1]
+						value = value/maximum(value)						
 					elif attr in ['hessian.rank','fisher.rank']:
-						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
+						# value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
+						# value = value/maximum(value)
+						value = sort(eig(function(parameters),hermitian=True))[::-1]
 						value = value/maximum(value)
 						value = argmax(abs(difference(value)/value[:-1]))+1	
 						value = value.size if (value==value.size-1) else value

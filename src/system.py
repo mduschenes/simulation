@@ -481,7 +481,7 @@ class Lattice(System):
 		'''
 		Get list of lists of sites of lattice
 		Args:
-			site (str,int): Type of sites, either int for unique site-length list of vertices, or allowed strings in ['i','ij','i<j','<ij>','i...j']
+			site (str,int): Type of sites, either int for unique site-length list of vertices, or allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		Returns:
 			sites (generator): Generator of site-length lists of lattice
 		'''
@@ -509,12 +509,27 @@ class Lattice(System):
 						sort(
 							vstack([
 								repeat(arange(self.N),self.z,0),
-								self.nearestneighbours(r=1)[0].ravel()
+								self.nearestneighbours(r=1).ravel()
 							]),
 						axis=0),
 						axis=1).T)
 				else:
 					sites = ()
+
+			elif site in ['>ij<']:
+				# TODO: Implement open boundary conditions for nearest neighbours in d>1 dimensions
+				if self.d > 1:
+					raise NotImplementedError
+				if self.z > self.N:
+					sites = ()
+				elif self.z > 0:
+					N,n,z = self.N,self.n,self.z
+					r = self.nearestneighbours(r=1).tolist()
+					sites = ((i,j) for k in range(N) for i,j in zip([k]*z,r[k]) if (
+						((i<j) and ((((i)%n != 0) and ((j)%n != 0)) or (((i+1)%n != 0) and ((j+1)%n != 0))))
+						))
+				else:
+					sites = ()					
 
 			elif site in ['i...j']:
 				sites = (range(self.N) for i in range(self.N))
@@ -606,26 +621,33 @@ class Lattice(System):
 						lambda x: mod(x + s*r,self.n))) 
 						for i in range(self.d)for s in [1,-1]])
 		Args:
-			r (int,list): Radius of number of nearest neighbours away to compute nearest neighbours on lattice of shape (l,)
+			r (int,iterable): Radius of number of nearest neighbours away to compute nearest neighbours on lattice, an integer or of shape (l,)
 			vertices (array): Vertices to compute nearest neighbours on lattice of shape (N,)
 		Returns:
-			nearestneighbours (array): Array of shape (l,N,z) of nearest neighbours a manhattan distance r away
+			nearestneighbours (array): Array of shape (N,z) or (l,N,z) of nearest neighbours a manhattan distance r away
 		'''
 		if vertices is None:
 			vertices = self.vertices
 		
-		sitepos = self.position(vertices)[:,None]
+		position = self.position(vertices)[:,None]
 		
 		if r is None:
-			Rrange = self.R
-		elif isinstance(r,list):
-			Rrange = r
+			R = self.R
+		elif not isinstance(r,int):
+			R = r
 		else:
-			Rrange = [r]
-		return array([concatenate(
-							(self.site(mod(sitepos+R*self.I,self.n)),
-							 self.site(mod(sitepos-R*self.I,self.n))),axis=1)
-								for R in Rrange],dtype=self.datatype)                     
+			R = [r]
+
+
+		nearestneighbours = array([concatenate(
+							(self.site(mod(position+r*self.I,self.n)),
+							 self.site(mod(position-r*self.I,self.n))),axis=1)
+								for r in R],dtype=self.datatype)
+
+		if isinstance(r,int):
+			nearestneighbours = nearestneighbours[0]
+
+		return nearestneighbours
 
 
 	def iterable(self,k,conditions=None):

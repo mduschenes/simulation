@@ -5037,6 +5037,15 @@ def minimums(a,b):
 	'''
 	return np.minimum(a,b)
 
+def natsort(a):
+	'''
+	Natural sort iterable
+	Args:
+		a (iterable): Iterable to sort
+	Returns:
+		out (array): Sorted iterable
+	'''
+	return natsorted(a)
 
 @partial(jit,static_argnums=(1,))
 def sort(a,axis=0):
