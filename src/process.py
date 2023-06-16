@@ -957,9 +957,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1)/np.sqrt(obj.shape[0]))
 		return obj	
 	def none(obj,*args,**kwargs):
-		obj = np.array(list(obj))
 		obj[...] = nan
-		obj = to_tuple(obj)
 		return obj			
 
 	def mean_arithmetic(obj,*args,**kwargs):
