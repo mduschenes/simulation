@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
-from src.utils import tensorprod,conjugate,einsum,dot,norm,eig,trace,sort,relsort
+from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort
 from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,delim,scalars,arrays,datatype
@@ -2220,7 +2220,15 @@ class Callback(System):
 
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
 						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
+						# if model.state.ndim == 1:
+						# 	print(model.state(),1-dot(dagger(model.state()),model.state()))
+						# elif model.state.ndim == 2:
+						# 	print(model.state(),1-trace(model.state()),1-trace(dot(dagger(model.state()),model.state())))
+						# print(model.noise())
+						print(value)
 						value = value/maximum(value)
+						print(value)
+						exit()
 					elif attr in ['hessian.rank','fisher.rank']:
 						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
 						value = value/maximum(value)

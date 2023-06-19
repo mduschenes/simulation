@@ -1083,9 +1083,10 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		if ndim == 1:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
 		elif ndim == 2:
-			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0]],[[shapes[0][0]],[shapes[0][1]]],[shapes[1],shapes[1],shapes[0]]]
-			subscripts = ['in,unm,jm->uij','i,j->ij','uij,vij,ij->uv']
-			wrappers = [lambda out,*operands: out,lambda out,*operands: 1/out,lambda out,*operands: 2*out]
+			print('Doing hermitian state ndim',ndim)
+			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
+			subscripts = ['in,unm,jm->uij','uij,vij,ij->uv']
+			wrappers = [lambda out,*operands: out,lambda out,*operands: out]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
 	
@@ -1101,17 +1102,29 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
 
-		@jit
+		# @jit
 		def fisher(*args,**kwargs):
-		
+			
+			eps = 1e-15
+
 			function = func(*args,**kwargs)
 			gradient = grad(*args,**kwargs)
 
 			eigenvalues,eigenvectors = function
 
+			print(sort(eigenvalues))
+
+			index = array([i for i,j in enumerate(eigenvalues) if j > eps])
+			print(index)
+
+			eigenvalues,eigenvectors,gradient = eigenvalues[index],eigenvectors[:,index].T,gradient
+
+
 			out = einsummations[0](conjugate(eigenvectors),gradient,eigenvectors)
-			tmp = einsummations[1](eigenvalues,eigenvalues)
-			out = einsummations[2](conjugate(out),out,tmp)
+			tmp = 1/(eigenvalues[:,None] + eigenvalues[None,:])
+			print(tmp)
+			print(eigenvalues.shape,eigenvectors.shape,out.shape,tmp.shape)
+			out = einsummations[1](conjugate(out),out,tmp)
 			
 			out = real(out)
 
@@ -1121,17 +1134,18 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	elif unitary:
 
 		if ndim == 1:
+			print('Doing unitary state ndim',ndim)
 			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
 			subscripts = ['ui,i->u','u,v->uv','ui,vi->uv']
-			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**1),lambda out,*operands: -out,lambda out,*operands: out]
+			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**0),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**0)]
 		elif ndim == 2:
 			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
 			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
-			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -out,lambda out,*operands: out/operands[0].shape[1]]
+			wrappers = [lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]
 		else:
 			shapes = None
 			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
-			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -out,lambda out,*operands: out/operands[0].shape[1]]			
+			wrappers = [lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]			
 		
 		if shapes is not None:
 			einsummations = [
