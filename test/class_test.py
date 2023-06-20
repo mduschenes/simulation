@@ -645,7 +645,6 @@ def test_check_fisher(path,tol):
 				V = evolve(model,(0,0),((n+1)%M if n < (M-1) else M,l))
 				_V = evolve(model,(n,(l+1)%K if l < (K-1) else K),(M,K))
 
-
 				assert allclose(dot(_U,dot(model.data[k](parameters[m][k]),U)),unitary)
 				assert allclose(dot(_V,dot(model.data[l](parameters[n][l]),V)),unitary), "\n%r\n%r\n%r\n%r"%(dot(_V,dot(model.data[l](parameters[n][l]),V)),unitary,V,_V)
 
@@ -666,7 +665,7 @@ def test_check_fisher(path,tol):
 
 
 	out = []
-	permutations = {'state.ndim':[1,2],'state.parameters':[True],'noise.parameters':[False]}
+	permutations = {'state.ndim':[1,1,2],'state.parameters':[True],'noise.parameters':[False]}
 	permutations = permuter(permutations)
 	n = len(permutations)
 
