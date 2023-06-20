@@ -60,7 +60,7 @@ def func_T_noise_scale(data):
 
 def func_fisher_rank(data):
 	out = np.array(list(data['fisher.eigenvalues']))
-	out = nonzero(out,eps=100)
+	out = nonzero(out,axis=-1,eps=1000)
 	return out
 
 def func_fisher_eigenvalues(data):
