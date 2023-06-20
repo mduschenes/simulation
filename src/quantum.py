@@ -82,7 +82,7 @@ class Object(System):
 		defaults = dict(			
 			shape=None,size=None,ndim=None,
 			samples=None,identity=None,locality=None,index=None,
-			conj=None,func=None,gradient=None
+			conj=False,func=None,gradient=None
 			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
@@ -93,14 +93,14 @@ class Object(System):
 
 		if self.func is None:
 			
-			def func(parameters=None,state=None,conj=None):
-				return self.data
+			def func(parameters=None,state=None,conj=False):
+				return self.data if not conj else dagger(self.data)
 
 			self.func = func
 
 		if self.gradient is None:
 			
-			def gradient(parameters=None,state=None,conj=None):
+			def gradient(parameters=None,state=None,conj=False):
 				return 0*self.data
 
 			self.gradient = gradient			
@@ -249,7 +249,7 @@ class Object(System):
 
 		return
 
-	def __initialize__(self,data=None,parameters=None,state=None,conj=None):
+	def __initialize__(self,data=None,parameters=None,state=None,conj=False):
 		'''
 		Initialize operator
 		Args:
@@ -318,7 +318,7 @@ class Object(System):
 		return
 
 
-	def __call__(self,parameters=None,state=None,conj=None):
+	def __call__(self,parameters=None,state=None,conj=False):
 		'''
 		Call operator
 		Args:
@@ -334,7 +334,7 @@ class Object(System):
 
 		return self.func(parameters,state,conj)
 
-	def grad(self,parameters=None,state=None,conj=None):
+	def grad(self,parameters=None,state=None,conj=False):
 		'''
 		Call operator gradient
 		Args:
@@ -605,11 +605,17 @@ class Pauli(Object):
 			parameters (object): parameter of operator			
 		'''
 
-		def func(parameters=None,state=None,conj=None):
-			return cos((pi/2)*parameters)*self.identity + -1j*sin((pi/2)*parameters)*self.data
+		def sign(conj):
+			return 1-2*conj
 
-		def gradient(parameters=None,state=None,conj=None):
-			return (pi/2)*(-sin((pi/2)*parameters)*self.identity + -1j*cos((pi/2)*parameters)*self.data)
+		def func(parameters=None,state=None,conj=False):
+			return cos(sign(conj)*(1.0)*parameters)*self.identity + -1j*sin(sign(conj)*(1.0)*parameters)*self.data
+
+		def gradient(parameters=None,state=None,conj=False):
+			return sign(conj)*(1.0)*(-sin(sign(conj)*(1.0)*parameters)*self.identity + -1j*cos(sign(conj)*(1.0)*parameters)*self.data)
+
+		if self.parameters is None:
+			self.parameters = 1
 
 		hermitian = False
 		unitary = True
@@ -965,7 +971,9 @@ class Noise(Object):
 				if (getattr(self,'tau') is not None):
 					self.parameters = (1 - exp(-self.tau/self.scale))/2
 
-		if (self.parameters is None):
+		do = (self.parameters is None)
+
+		if do:
 			self.data = None
 			self.operator = None
 			return
@@ -1065,7 +1073,7 @@ class Operators(Object):
 		self.identity = None
 		self.coefficients = None
 		self.constants = None
-		self.conj = None
+		self.conj = False
 
 		self.func = None
 		self.gradient = None
@@ -1257,7 +1265,7 @@ class Operators(Object):
 		assert parameters is not None, "Incorrect parameters() initialization"
 
 		data = trotter([jit(i) for i in self.data],self.P)
-		grads = trotter([jit(i.grad) for i in self.data],self.P)
+		grad = trotter([jit(i.grad) for i in self.data],self.P)
 		slices = trotter(list(range(len(self))),self.P)
 		trotterize = jit(lambda parameters,slices: parameters[slices].T.ravel(),slices=array(slices))
 
@@ -1292,9 +1300,11 @@ class Operators(Object):
 
 		func = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 		
-		grad = gradient(self,mode='fwd',move=True)
+		grad_jax = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
-		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise,grads=grads)
+		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise,grad=grad)
+
+		grad = grad_jax
 
 		# Update class attributes
 		self.func = func
@@ -1312,7 +1322,7 @@ class Operators(Object):
 
 		return
 
-	def __call__(self,parameters=None,state=None,conj=None):
+	def __call__(self,parameters=None,state=None,conj=False):
 		'''
 		Class function
 		Args:
@@ -1333,7 +1343,7 @@ class Operators(Object):
 
 		return self.func(parameters,state,conj)
 
-	def grad(self,parameters=None,state=None,conj=None):
+	def grad(self,parameters=None,state=None,conj=False):
 		''' 
 		Class gradient
 		Args:
@@ -1345,7 +1355,7 @@ class Operators(Object):
 		'''		
 		return self.gradient(parameters)
 
-	def grad_finite(self,parameters=None,state=None,conj=None):
+	def grad_finite(self,parameters=None,state=None,conj=False):
 		''' 
 		Class gradient
 		Args:
@@ -1357,7 +1367,7 @@ class Operators(Object):
 		'''		
 		return self.gradient_finite(parameters)		
 
-	def grad_analytical(self,parameters=None,state=None,conj=None):
+	def grad_analytical(self,parameters=None,state=None,conj=False):
 		''' 
 		Class gradient
 		Args:
@@ -1803,7 +1813,7 @@ class Unitary(Hamiltonian):
 
 		return
 
-	def grad_analytical(self,parameters=None,state=None,conj=None):
+	def grad_analytical(self,parameters=None,state=None,conj=False):
 		'''
 		Class gradient
 		Args:
@@ -1907,7 +1917,7 @@ class Label(Operator):
 	def __init__(self,*args,**kwargs):
 		return
 
-	def __call__(self,parameters=None,state=None,conj=None):
+	def __call__(self,parameters=None,state=None,conj=False):
 		'''
 		Call operator
 		Args:
@@ -2341,7 +2351,7 @@ def gradient_trotter(iterable,p):
 	return i
 
 
-def contraction(data,state=None,conj=None,constants=None,noise=None):
+def contraction(data,state=None,conj=False,constants=None,noise=None):
 	'''
 	Contract data and state
 	Args:
@@ -2369,7 +2379,7 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 		elif state.ndim == 1:
 			
-			subscripts = 'ij,j->i'
+			subscripts = 'ij,j...->i...'
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
@@ -2419,7 +2429,7 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 		
 			if noise.ndim == 3:
 
-				subscripts = 'uij,jk,k->i'
+				subscripts = 'uij,jk,k...->i...'
 				shapes = (noise.shape,data.shape,state.shape)
 				einsummation = einsum(subscripts,*shapes)
 
@@ -2428,7 +2438,7 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 			elif noise.ndim == 0:
 
-				subscripts = 'ij,j->i'
+				subscripts = 'ij,j...->i...'
 				shapes = (data.shape,state.shape)
 				einsummation = einsum(subscripts,*shapes)
 
@@ -2461,12 +2471,12 @@ def contraction(data,state=None,conj=None,constants=None,noise=None):
 
 		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
 		
-	func = jit(func)	
+	func = jit(func,static_argnums=(2))	
 
 	return func
 
 
-def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None):
+def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=None,noise=None):
 	'''
 	Contract data and state
 	Args:
@@ -2486,15 +2496,19 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 
 	contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
 
+	def index(i,size,conj):
+		return (size-1)*conj + (1-2*conj)*(i%size)
+
 	if constants is None and noise is None:
 		
 		if state is None:
 			
 			state = identity
 
-			def func(parameters,state=state,conj=conj,contract=contract):
+			def func(parameters,state=state,conj=conj,contract=contract,index=index):
 				def func(i,out):
-					U = switch(i%length,data,parameters[i])
+					# U = switch(i%length,data,parameters[i])					
+					U = switch(index(i,length,conj=conj),data,parameters[index(i,size,conj=conj)],out,conj)
 					return contract(U,out,conj)
 
 				out = identity
@@ -2502,22 +2516,20 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 	
 		elif state.ndim == 1:
 			
-			def func(parameters,state=state,conj=conj,contract=contract):
+			def func(parameters,state=state,conj=conj,contract=contract,index=index):
 				def func(i,out):
-					U = switch(i%length,data,parameters[i])
+					U = switch(index(i,length,conj=conj),data,parameters[index(i,size,conj=conj)],out,conj)
 					return contract(U,out,conj)
-
 				out = state
 				return forloop(0,parameters.size,func,out)				
 
 
 		elif state.ndim == 2:
 			
-			def func(parameters,state=state,conj=conj,contract=contract):
+			def func(parameters,state=state,conj=conj,contract=contract,index=index):
 				def func(i,out):
-					U = switch(i%length,data,parameters[i])
+					U = switch(index(i,length,conj=conj),data,parameters[index(i,size,conj=conj)],out,conj)
 					return contract(U,out,conj)
-
 				out = state
 				return forloop(0,parameters.size,func,out)				
 
@@ -2531,9 +2543,10 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 
 			state = identity
 
-			def func(parameters,state=state,conj=conj,contract=contract):
+			def func(parameters,state=state,conj=conj,contract=contract,index=index):
 				def func(i,out):
-					U = switch(i%length,data,parameters[i])
+					U = switch(index(i,length,conj=conj),data,parameters[index(i,size,conj=conj)],out,conj)
+					# U = switch(i%length,data,parameters[i])
 					return contract(U,out,conj)
 
 				out = identity
@@ -2541,9 +2554,9 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 
 		elif state.ndim == 1:
 
-			def func(parameters,state=state,conj=conj,contract=contract):
+			def func(parameters,state=state,conj=conj,contract=contract,index=index):
 				def func(i,out):
-					U = switch(i%length,data,parameters[i])
+					U = switch(index(i,length,conj=conj),data,parameters[index(i,size,conj=conj)],out,conj)
 					return contract(U,out,conj)
 
 				out = state
@@ -2563,7 +2576,7 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 
 			subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
 
-			def func(parameters,state=state,conj=conj,contract=contract):
+			def func(parameters,state=state,conj=conj,contract=contract,index=index):
 				def func(i,out):
 					x = slicing(parameters,i*length,length)
 					U = subfunc(x,identity,conj)
@@ -2577,12 +2590,12 @@ def scheme(parameters,state=None,conj=None,data=None,identity=None,constants=Non
 
 		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
 		
-	func = jit(func)
+	func = jit(func,static_argnums=(2))
 
 	return func			
 
 
-def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,constants=None,noise=None,grads=None):
+def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,constants=None,noise=None,grad=None):
 	'''
 	Contract data and state
 	Args:
@@ -2593,7 +2606,7 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 		identity (array): Array of data identity of shape (n,n)
 		constants (array): Array of constants to act of shape (n,n)
 		noise (array): Array of noise to act of shape (...,n,n)
-		grads (array): data of shape (length,)
+		grad (array): data of shape (length,)
 	Returns:
 		func (callable): contracted data(parameters) and state with signature func(parameters,state,conj)
 	'''
@@ -2609,12 +2622,11 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 		return None
 		raise NotImplementedError("TODO: Implement gradients for non-unitary contraction")
 
-	if grads is not None:
-		grads = [(lambda parameters,state=None,conj=None,i=i: (pi/2)*data[i%length](parameters[i] + 1)) for i in range(size)]
+	if grad is not None:
+		grad = [(lambda parameters,state=None,conj=False,i=i: (1.0)*data[i%length](parameters[i] + (pi/2))) for i in range(size)]
 
 
-
-	def func(parameters=None,state=None,conj=None):
+	def func(parameters=None,state=None,conj=False):
 		def func(i):
 
 			subparameters = slicing(parameters,0,i)
@@ -2646,7 +2658,7 @@ def gradient_scheme(parameters,state=None,conj=None,data=None,identity=None,cons
 
 			V = subfunc(subparameters,identity,subconj)
 
-			A = grads[i](parameters,state,conj)
+			A = grad[i](parameters,state,conj)
 
 			return einsummation(V,A,U)
 

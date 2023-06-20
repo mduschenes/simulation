@@ -26,6 +26,12 @@ import scipy as osp
 import pandas as pd
 
 
+# Import user modules
+ROOT = os.path.dirname(os.path.abspath(__file__))
+PATHS = ['','..']
+for PATH in PATHS:
+	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
 ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
 BACKENDS = ['jax','autograd','jax.autograd']
@@ -114,6 +120,7 @@ if BACKEND in ['jax','jax.autograd']:
 	nulls = ('',None,Null)
 	delim = '.'
 	separ = '_'
+
 
 
 elif BACKEND in ['autograd']:
@@ -300,6 +307,18 @@ class argparser(argparse.ArgumentParser):
 	def values(self):
 		return self.kwargs.values()
 
+
+def epsilon(dtype=float):
+	'''	
+	Get machine precision epsilon for dtype
+	Args:
+		dtype (data_type): Datatype to get machine precision
+	Returns:
+		eps (array): Machine precision
+	'''
+	eps = np.finfo(dtype).eps
+
+	return eps
 
 if BACKEND in ['jax','jax.autograd']:
 	
@@ -1085,8 +1104,8 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		elif ndim == 2:
 			print('Doing hermitian state ndim',ndim)
 			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
-			subscripts = ['in,unm,jm->uij','uij,vij,ij->uv']
-			wrappers = [lambda out,*operands: out,lambda out,*operands: out]
+			subscripts = ['ni,unm,mj->uij','uij,vij,ij->uv']
+			wrappers = [lambda out,*operands: out, lambda out,*operands: out/2]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
 	
@@ -1105,27 +1124,20 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		# @jit
 		def fisher(*args,**kwargs):
 			
-			eps = 1e-15
-
 			function = func(*args,**kwargs)
 			gradient = grad(*args,**kwargs)
 
 			eigenvalues,eigenvectors = function
 
-			print(sort(eigenvalues))
+			n = eigenvalues.size
+			d = nonzero(eigenvalues)
+			index,_index = range(d,n),range(0,d)
+			index,_index = [*index,*index,*_index],[*index,*_index,*index]
 
-			index = array([i for i,j in enumerate(eigenvalues) if j > eps])
-			print(index)
+			tmp = einsummations[0](conjugate(eigenvectors[:,index]),gradient,eigenvectors[:,_index])
+			tmp = einsummations[1](tmp,conjugate(tmp),1/(eigenvalues[index,None] + eigenvalues[None,_index]))
+			out = tmp
 
-			eigenvalues,eigenvectors,gradient = eigenvalues[index],eigenvectors[:,index].T,gradient
-
-
-			out = einsummations[0](conjugate(eigenvectors),gradient,eigenvectors)
-			tmp = 1/(eigenvalues[:,None] + eigenvalues[None,:])
-			print(tmp)
-			print(eigenvalues.shape,eigenvectors.shape,out.shape,tmp.shape)
-			out = einsummations[1](conjugate(out),out,tmp)
-			
 			out = real(out)
 
 			return out			
@@ -1141,11 +1153,11 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		elif ndim == 2:
 			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
 			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
-			wrappers = [lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]
+			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]
 		else:
 			shapes = None
 			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
-			wrappers = [lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]			
+			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]			
 		
 		if shapes is not None:
 			einsummations = [
@@ -3989,7 +4001,6 @@ def einsum_path(subscripts,*shapes,optimize=True):
 
 
 
-
 @jit
 def distance(a,b):
 	'''
@@ -4154,6 +4165,19 @@ def slice_slice(*slices,index=None):
 
 	return slices
 
+
+def nonzero(a,eps=None):
+	'''
+	Count non-zero elements of array, with eps tolerance
+	Args:
+		a (array): Array to count non-zero elements
+		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
+	Returns:
+		n (int): Number of non-zero entries
+	'''
+	eps = epsilon(a.dtype) if eps is None else eps
+	n = np.count_nonzero(abs(a)>eps)
+	return n
 
 def _len_(obj):
 	'''
@@ -4434,6 +4458,7 @@ def dagger(a):
 	Calculate conjugate transpose of array a
 	Args:
 		a (array): Array to calculate conjugate transpose
+		conj (bool): Conjugate of array
 	Returns:
 		out (array): Conjugate transpose
 	'''	
@@ -6851,7 +6876,11 @@ def initialize(data,shape,dtype=None,**kwargs):
 	ndim = None if shape is None else 0 if isinstance(shape,int) else len(shape)
 	key = seed
 
-	# pad data
+	if isinstance(data,str):
+		default = None
+		data = load(data,default=default)
+
+	# Pad data
 	if data is not None and axis is not None:
 		if isinstance(axis,int):
 			axis = [axis]
@@ -7004,3 +7033,6 @@ def bloch(state,path=None):
 
 	return fig,ax
 
+
+
+from src.io import load
