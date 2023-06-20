@@ -26,7 +26,7 @@ for PATH in PATHS:
 from src.utils import array
 from src.utils import to_tuple
 from src.utils import maximum,minimum,abs
-from src.utils import arrays,scalars,epsilon
+from src.utils import arrays,scalars,nonzero
 
 # Processing
 
@@ -60,8 +60,8 @@ def func_T_noise_scale(data):
 
 def func_fisher_rank(data):
 	out = np.array(list(data['fisher.eigenvalues']))
-	eps = epsilon(out.dtype)
-	return (out>eps).sum()
+	out = nonzero(out,eps=100)
+	return out
 
 def func_fisher_eigenvalues(data):
 	out = np.array(list(data['fisher.eigenvalues']))

@@ -2235,19 +2235,11 @@ class Callback(System):
 
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
 						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
-						# if model.state.ndim == 1:
-						# 	print(model.state(),1-dot(dagger(model.state()),model.state()))
-						# elif model.state.ndim == 2:
-						# 	print(model.state(),1-trace(model.state()),1-trace(dot(dagger(model.state()),model.state())))
-						# print(model.noise())
-						print(value)
 						value = value/maximum(value)
-						print(value)
-						exit()
 					elif attr in ['hessian.rank','fisher.rank']:
 						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
 						value = value/maximum(value)
-						value = nonzero(value)
+						value = nonzero(value,eps=50)
 						# value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
 
 				elif attr in []:

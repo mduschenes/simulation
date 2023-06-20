@@ -1104,7 +1104,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		if ndim == 1:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
 		elif ndim == 2:
-			print('Doing hermitian state ndim',ndim)
 			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
 			subscripts = ['ni,unm,mj->uij','uij,vij,ij->uv']
 			wrappers = [lambda out,*operands: out, lambda out,*operands: out]
@@ -1153,7 +1152,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	elif unitary:
 
 		if ndim == 1:
-			print('Doing unitary state ndim',ndim)
 			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
 			subscripts = ['ui,i->u','u,v->uv','ui,vi->uv']
 			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**0),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**0)]
