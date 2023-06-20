@@ -26,6 +26,12 @@ import scipy as osp
 import pandas as pd
 
 
+# Import user modules
+ROOT = os.path.dirname(os.path.abspath(__file__))
+PATHS = ['','..']
+for PATH in PATHS:
+	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
 ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
 BACKENDS = ['jax','autograd','jax.autograd']
@@ -71,7 +77,7 @@ elif BACKEND in ['autograd']:
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
 
-np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
+np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
@@ -114,6 +120,7 @@ if BACKEND in ['jax','jax.autograd']:
 	nulls = ('',None,Null)
 	delim = '.'
 	separ = '_'
+
 
 
 elif BACKEND in ['autograd']:
@@ -300,6 +307,20 @@ class argparser(argparse.ArgumentParser):
 	def values(self):
 		return self.kwargs.values()
 
+
+def epsilon(dtype=float,eps=None):
+	'''	
+	Get machine precision epsilon for dtype
+	Args:
+		dtype (data_type): Datatype to get machine precision
+		eps (float): Relative machine precision multiplier
+	Returns:
+		eps (array): Machine precision
+	'''
+	eps = 1 if eps is None else eps
+	eps = eps*np.finfo(dtype).eps
+
+	return eps
 
 if BACKEND in ['jax','jax.autograd']:
 	
@@ -1056,51 +1077,124 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		grad (callable): Gradient to compute
 		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type
-		mode (str): Type of fisher information, allowed ['operator','state']
+		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'fwd'
 	Returns:
 		fisher (callable): Fisher information of function
 	'''
-	if mode in ['operator']:
-		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
-	elif mode in ['state']:
-		subscripts = ['uai,vai->uv','uai,ai,vaj,aj->uv']
-		wrappers = [lambda out,*operands: out,lambda out,*operands: -out]
-	else:
-		subscripts = ['uij,vij->uv','uij,ij,vlk,lk->uv']
-		wrappers = [lambda out,*operands: out/(operands[0].shape[-1]),lambda out,*operands: -out/(operands[0].shape[-1]**2)]
 
 	if grad is None:
-		grad = gradient(func,mode='fwd',move=True)
+		grad = gradient(func,mode=mode,move=True)
 
-	if shapes is not None:
-		shapes = [[shapes[1],shapes[1]],[shapes[1],shapes[0],shapes[1],shapes[0]]]
-		einsummations = [
-			einsum(subscript,*shape,optimize=optimize,wrapper=wrapper)
-				for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
-			]
-		einsummations = [
-			lambda f,g,_f,_g,einsummations=einsummations: einsummations[0](_g,g),
-			lambda f,g,_f,_g,einsummations=einsummations: einsummations[1](_g,f,g,_f)
-			]
+	if mode is None:
+		mode = 'fwd'
+
+	if shapes is None:
+		ndim = None
 	else:
-		shapes = None
-		einsummations = [
-			lambda f,g,_f,_g,subscripts=subscripts[0],optimize=optimize,wrapper=wrappers[0]: einsum(subscripts,_g,g,optimize=optimize,wrapper=wrapper),
-			lambda f,g,_f,_g,subscripts=subscripts[1],optimize=optimize,wrapper=wrappers[1]: einsum(subscripts,_g,f,g,_f,optimize=optimize,wrapper=wrapper)
-		]
+		ndim = min((len(shape) for shape in shapes),default=2)
 
-	@jit
-	def fisher(*args,**kwargs):
-		f = func(*args,**kwargs)
-		g = grad(*args,**kwargs)
-		_f = conjugate(f)
-		_g = conjugate(g)
-		out = 0
-		for einsummation in einsummations:
-			out = out + einsummation(f,g,_f,_g)
-		out = real(out)
-		return out
+
+	hermitian = getattr(func,'hermitian',False)
+	unitary = getattr(func,'unitary',False)
+
+	if hermitian:
+
+		func = spectrum(func,compute_v=True,hermitian=hermitian)
+
+		if ndim == 1:
+			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
+		elif ndim == 2:
+			print('Doing hermitian state ndim',ndim)
+			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
+			subscripts = ['ni,unm,mj->uij','uij,vij,ij->uv']
+			wrappers = [lambda out,*operands: out, lambda out,*operands: out]
+		else:
+			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
+	
+
+		if shapes is not None:
+			einsummations = [
+				lambda *operands,einsummation=einsum(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
+					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+				]
+		else:
+			einsummations = [
+				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsum(subscripts,*operands,optimize=optimize,wrapper=wrapper)
+					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+				]
+
+		# @jit
+		def fisher(*args,**kwargs):
+			
+			function = func(*args,**kwargs)
+			gradient = grad(*args,**kwargs)
+
+			eigenvalues,eigenvectors = function
+
+			n = eigenvalues.size
+			d = nonzero(eigenvalues)
+			indices,zeros = slice(n-d,n),slice(0,n-d)
+
+			out = 0
+
+			i,j = indices,indices
+			tmp = einsummations[0](conjugate(eigenvectors[:,i]),gradient,eigenvectors[:,j])
+			out += einsummations[1](tmp,conjugate(tmp),1/(eigenvalues[i,None] + eigenvalues[None,j]))
+
+			i,j = indices,zeros
+			tmp = einsummations[0](conjugate(eigenvectors[:,i]),gradient,eigenvectors[:,j])
+			out += 2*real(einsummations[1](tmp,conjugate(tmp),1/(eigenvalues[i,None] + eigenvalues[None,j])))
+
+			out = real(out)
+
+			return out			
+
+
+	elif unitary:
+
+		if ndim == 1:
+			print('Doing unitary state ndim',ndim)
+			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
+			subscripts = ['ui,i->u','u,v->uv','ui,vi->uv']
+			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**0),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**0)]
+		elif ndim == 2:
+			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
+			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
+			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]
+		else:
+			shapes = None
+			subscripts = ['uij,ij->u','u,v->uv','uij,vij->uv']
+			wrappers = [lambda out,*operands: out/sqrt(operands[0].shape[-1]**2),lambda out,*operands: -2*out,lambda out,*operands: 2*out/sqrt(operands[0].shape[-1]**2)]			
+		
+		if shapes is not None:
+			einsummations = [
+				lambda *operands,einsummation=einsum(subscript,*shape,optimize=optimize,wrapper=wrapper): einsummation(*operands)
+					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+				]
+		else:
+			einsummations = [
+				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsum(subscripts,*operands,optimize=optimize,wrapper=wrapper)
+					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
+				]	
+
+		@jit
+		def fisher(*args,**kwargs):
+			function = func(*args,**kwargs)
+			gradient = grad(*args,**kwargs)
+
+			out = 0
+			tmp = einsummations[0](conjugate(gradient),function)
+			out += einsummations[1](conjugate(tmp),tmp)
+
+			tmp = einsummations[2](conjugate(gradient),gradient)
+			out += tmp
+			
+			out = real(out)
+
+			return out
+	else:
+
+		raise NotImplementedError("Not Hermitian/Unitary Fisher Information Not Implemented for ndim = %r"%(ndim))
 
 	return fisher
 
@@ -1843,9 +1937,8 @@ if BACKEND in ['jax']:
 
 				if ndim < 2:
 					shape = [*shape]*2
-				elif ndim >= 2:
-					if shape[-2] != shape[-1]:
-						shape = (*shape[:-1],*shape[-1:]*2)
+				elif shape[-1] != shape[-2]:
+					shape = [*shape[:-1],*shape[-1:]*2]
 
 				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
 
@@ -1853,7 +1946,6 @@ if BACKEND in ['jax']:
 					reshape = (*(1,)*(4-out.ndim),*out.shape)
 				else:
 					reshape = out.shape
-
 
 				out = out.reshape(reshape)
 
@@ -1874,30 +1966,8 @@ if BACKEND in ['jax']:
 				shape = shapes
 				if ndim == 1: # Random vector
 					out = out[...,0] 
-				elif ndim == 2: # Random vector or matrix
-					if shape[-2] != shape[-1]:
-						out = out[...,0]
-						weights = rand(out.shape[0],key=key,dtype=_dtype)
-						out = einsum('u,...ui->...i',weights,out)
-						weights = sqrt(einsum('...i,...i->...',conjugate(out),out))
-						out = out/weights
-					else:
-						out = out[:,:]
-				elif ndim == 3: # Sum of samples of random rank-1 matrices (vectors)
-					out = out[...,0]
-					weights = rand(out.shape[0],key=key,dtype=_dtype)
-					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
-					weights = einsum('...ii->...',out)
-					out = out/weights				
-
-				elif ndim >= 4: # Samples of random matrices
-					# TODO: Implement random density matrices
-					raise NotImplementedError
-					out = out[...,0]
-					weights = rand(out.shape[0],key=key,dtype=dtype)
-					weights = weights/weights.sum()
-					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
-
+				else:
+					out = out[:,:]
 
 				return out
 
@@ -2119,9 +2189,8 @@ elif BACKEND in ['jax.autograd','autograd']:
 
 				if ndim < 2:
 					shape = [*shape]*2
-				elif ndim >= 2:
-					if shape[-2] != shape[-1]:
-						shape = (*shape[:-1],*shape[-1:]*2)
+				elif shape[-1] != shape[-2]:
+					shape = [*shape[:-1],*shape[-1:]*2]
 
 				out = rand(shape,bounds=bounds,key=key,random=subrandom,dtype=subdtype,**kwargs)
 
@@ -2150,33 +2219,10 @@ elif BACKEND in ['jax.autograd','autograd']:
 				shape = shapes
 				if ndim == 1: # Random vector
 					out = out[...,0] 
-				elif ndim == 2: # Random vector or matrix
-					if shape[-2] != shape[-1]:
-						out = out[...,0]
-						weights = rand(out.shape[0],key=key,dtype=_dtype)
-						out = einsum('u,...ui->...i',weights,out)
-						weights = sqrt(einsum('...i,...i->...',conjugate(out),out))
-						out = out/weights
-					else:
-						out = out[:,:]
-				elif ndim == 3: # Sum of samples of random rank-1 matrices (vectors)
-					out = out[...,0]
-					weights = rand(out.shape[0],key=key,dtype=_dtype)
-					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
-					weights = einsum('...ii->...',out)
-					out = out/weights				
-
-				elif ndim >= 4: # Samples of random matrices
-					# TODO: Implement random density matrices
-					raise NotImplementedError
-					out = out[...,0]
-					weights = rand(out.shape[0],key=key,dtype=dtype)
-					weights = weights/weights.sum()
-					out = einsum('u,...ui,...uj->...ij',weights,out,conjugate(out))
-
+				else: # Random matrix
+					out = out
 
 				return out
-
 
 		elif random in ['hermitian','symmetric']:
 			def func(key,shape,bounds,dtype):
@@ -2368,6 +2414,26 @@ def eig(a,compute_v=False,hermitian=False):
 		else:
 			_eig = np.linalg.eigvals
 	return _eig(a)
+
+
+def spectrum(func,compute_v=False,hermitian=False):
+	'''
+	Compute eigenvalues and eigenvectors of a function
+	Args:
+		func (callable): Function to compute eigenvalues and eigenvectors of shape (...,n,n)
+		compute_v (bool): Compute V eigenvectors in addition to eigenvalues
+		hermitian (bool): Whether array is Hermitian
+	Returns:
+		wrapper (callable): Returns:
+			eigenvalues (array): Array of eigenvalues of shape (...,n)
+			eigenvectors (array): Array of normalized eigenvectors of shape (...,n,n)
+	'''
+
+	@jit
+	def wrapper(*args,**kwargs):
+		return eig(func(*args,**kwargs),compute_v=compute_v,hermitian=hermitian)
+
+	return wrapper
 
 def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 	'''
@@ -2760,9 +2826,9 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		grad_analytical = grad_analytical(*shapes_grad,optimize=optimize_func,wrapper=wrapper_grad)
 	else:
 		grad_analytical = partial(grad_analytical,optimize=optimize_grad,wrapper=wrapper_grad)
+	# grad_analytical = gradient(func,mode='fwd',holomorphic=True,move=True)
 
 	grad = grad_analytical
-	# grad = gradient(func,mode='fwd',holomorphic=True,move=True)
 
 	func = jit(func)
 	grad = jit(grad)
@@ -3945,7 +4011,6 @@ def einsum_path(subscripts,*shapes,optimize=True):
 
 
 
-
 @jit
 def distance(a,b):
 	'''
@@ -4110,6 +4175,19 @@ def slice_slice(*slices,index=None):
 
 	return slices
 
+
+def nonzero(a,eps=None):
+	'''
+	Count non-zero elements of array, with eps tolerance
+	Args:
+		a (array): Array to count non-zero elements
+		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
+	Returns:
+		n (int): Number of non-zero entries
+	'''
+	eps = epsilon(a.dtype,eps=eps) if eps is None or isinstance(eps,int) else eps
+	n = np.count_nonzero(abs(a)>eps)
+	return n
 
 def _len_(obj):
 	'''
@@ -4390,6 +4468,7 @@ def dagger(a):
 	Calculate conjugate transpose of array a
 	Args:
 		a (array): Array to calculate conjugate transpose
+		conj (bool): Conjugate of array
 	Returns:
 		out (array): Conjugate transpose
 	'''	
@@ -4998,6 +5077,15 @@ def minimums(a,b):
 	'''
 	return np.minimum(a,b)
 
+def natsort(a):
+	'''
+	Natural sort iterable
+	Args:
+		a (iterable): Iterable to sort
+	Returns:
+		out (array): Sorted iterable
+	'''
+	return natsorted(a)
 
 @partial(jit,static_argnums=(1,))
 def sort(a,axis=0):
@@ -6798,7 +6886,11 @@ def initialize(data,shape,dtype=None,**kwargs):
 	ndim = None if shape is None else 0 if isinstance(shape,int) else len(shape)
 	key = seed
 
-	# pad data
+	if isinstance(data,str):
+		default = None
+		data = load(data,default=default)
+
+	# Pad data
 	if data is not None and axis is not None:
 		if isinstance(axis,int):
 			axis = [axis]
@@ -6951,3 +7043,6 @@ def bloch(state,path=None):
 
 	return fig,ax
 
+
+
+from src.io import load

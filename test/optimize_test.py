@@ -59,8 +59,8 @@ def test_objective(path,tol):
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
 	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
-	func = Objective(model,metric,callback=callback,hyperparameters=hyperparams,system=system)
-	callback = Callback(model,callback,func=func,metric=metric,hyperparameters=hyperparams,system=system)
+	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
+	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 
 	parameters = model.parameters()
 
@@ -69,7 +69,6 @@ def test_objective(path,tol):
 	grad_finite = gradient(func,mode='finite',tol=tol)
 	grad_grad = func.grad
 	grad_analytical = func.grad_analytical
-
 
 	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"

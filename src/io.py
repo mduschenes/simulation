@@ -29,7 +29,6 @@ logger = Logger()
 info = 100	
 debug = 0
 
-
 class cd(object):
 	'''
 	Class to safely change paths and return to previous path

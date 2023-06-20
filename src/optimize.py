@@ -637,6 +637,8 @@ class Function(System):
 			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
 		setter(kwargs,system,delimiter=delim,func=False)
+		
+		super().__init__(**kwargs)
 
 		if func is None:
 			func = []
@@ -1110,7 +1112,7 @@ class Optimization(System):
 
 		self.paths = {'track':join(self.path,ext=None,root=self.cwd),'attributes':join(self.path,ext='ckpt',root=self.cwd)} if self.path is not None else None
 
-		self.reset(clear=True)
+		self.reset(clear=True,state=None)
 
 		return
 
@@ -1126,8 +1128,10 @@ class Optimization(System):
 		iteration = self.iteration
 		state = self.opt_init(parameters)
 		iteration,state = self.load(iteration,state)
-		
+
 		self.info()
+
+		self.init(iteration,state)
 
 		for iteration in self.iterations:
 
@@ -1297,7 +1301,7 @@ class Optimization(System):
 		do = (self.paths is not None)
 
 		if not do:
-			self.reset(clear=False)
+			self.reset(clear=False,state=state)
 			return iteration,state
 
 		path = self.paths['track']
@@ -1334,7 +1338,7 @@ class Optimization(System):
 			self.attributes[attr] = [*self.attributes[attr],*data]
 
 		self.parameters = self.get_params(state)
-		self.reset(clear=False)
+		self.reset(clear=False,state=state)
 
 		iteration = self.iteration
 		state = self.opt_init(self.parameters)
@@ -1342,11 +1346,12 @@ class Optimization(System):
 		return iteration,state
 		
 
-	def reset(self,clear=None):
+	def reset(self,clear=None,state=None):
 		'''
 		Reset class attributes
 		Args:
 			clear (bool): clear attributes
+			state (object): optimizer state
 		'''
 		clear = self.clear if clear is None else clear
 
@@ -1398,7 +1403,9 @@ class Optimization(System):
 				else:
 					self.track[attr] = [*deepcopy(value)]
 
+
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
+
 
 		while (self.sizes) and (self.size > 0) and (self.size >= sum(self.sizes[attr] for attr in self.sizes)):
 			for attr in self.attributes:
@@ -1416,6 +1423,7 @@ class Optimization(System):
 				self.parameters = self.attributes[attr][-1]
 		else:
 			self.iteration = 0
+
 	
 		if not clear:
 			if isinstance(self.iterations,int):
@@ -1427,6 +1435,42 @@ class Optimization(System):
 					self.iterations.step)				
 			else:
 				self.iterations = range(self.iteration,self.iterations[1],*self.iterations[2:])
+
+		return
+
+
+	def init(self,iteration,state):
+		'''
+		Update attributes
+		Args:
+			iteration (int): optimizer iteration
+			state (object): optimizer state
+		'''
+
+		do = (state is not None) and (
+		   (isinstance(self.iterations,int) and (self.iteration == 0)) or 
+		   (isinstance(self.iterations,range) and (self.iterations.start == 0) and (self.iterations.stop == 0)) or 
+		   ((not isinstance(self.iterations,(int,range))) and (self.iterations[0] == 0) and (self.iterations[1] == 0)))
+
+		if not do:
+			return
+			
+		value,grad,parameters = self.opt_step(iteration-1,state)
+		search = -grad
+		alpha,beta = self.hyperparameters.get('alpha'),self.hyperparameters.get('beta')
+
+		attrs = {'search':search,'alpha':alpha,'beta':beta}
+		for attr in attrs:
+			if attr in self.attributes:
+				self.attributes[attr].append(attrs[attr])
+	
+		state = self.opt_init(parameters)
+		parameters = self.get_params(state)
+		track = self.track
+		optimizer = self
+		self.status = self.callback(parameters,track,optimizer)
+
+		self.dump(iteration,state)
 
 		return
 
@@ -1760,7 +1804,6 @@ class ConjugateGradient(Optimization):
 			track = self.track
 			optimizer = self
 			self.status = self.callback(parameters,track,optimizer)
-
 
 		parameters = self.get_params(state)
 

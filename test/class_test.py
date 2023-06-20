@@ -5,6 +5,7 @@ import pytest
 import os,sys
 import itertools,functools,time
 from copy import deepcopy as deepcopy
+from math import prod
 	
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -15,9 +16,9 @@ for PATH in PATHS:
 
 from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,cos,sin,bound
 from src.utils import gradient,hessian,fisher
-from src.utils import norm,conjugate,dagger,dot,eig,difference,maximum,argmax,abs,sort
-from src.utils import pi,delim,arrays,scalars
-from src.iterables import getter,setter,namespace
+from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,abs,sort,sqrt,real,imag
+from src.utils import pi,delim,arrays,scalars,epsilon,setitem
+from src.iterables import getter,setter,permuter,namespace
 from src.io import load,dump,exists
 
 from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label,trotter
@@ -116,7 +117,7 @@ def test_model(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -141,7 +142,7 @@ def test_model(path,tol):
 
 
 	I = model.identity()
-	objH = dagger(model(parameters,conj=True))
+	objH = dagger(model(parameters,conj=False))
 	objD = dagger(model(parameters))
 
 	objobjH = dot(obj,objH)
@@ -214,7 +215,7 @@ def test_parameters(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -325,7 +326,7 @@ def test_data(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -379,7 +380,7 @@ def test_initialization(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -514,7 +515,7 @@ def test_hessian(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -538,47 +539,185 @@ def test_hessian(path,tol):
 
 	eigs = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
 	eigs = eigs/max(1,maximum(eigs))
+	rank = nonzero(eigs,eps=50)
 
-	rank = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
-	rank = min(rank.size,argmax(abs(difference(rank)/rank[:-1]))+1)
-
-	print(eigs)
-	print(rank)
+	print(model.state.ndim,rank,eigs)
 
 	return
 
 def test_fisher(path,tol):
+
+	out = []
+	permutations = {'state.operator':['zero'],'state.ndim':[1,2],'state.parameters':[True],'noise.parameters':[False]}
+
+	for kwargs in permuter(permutations):
+
+		default = None
+		hyperparameters = load(path,default=default)
+		if hyperparameters is None:
+			raise Exception("Hyperparameters %s not loaded"%(path))
+
+
+		hyperparameters = Dict(hyperparameters)
+
+		setter(hyperparameters,kwargs,delimiter=delim)
+
+		model = load(hyperparameters.cls.model)
+		label = load(hyperparameters.cls.label)
+
+		hyperparams = hyperparameters.optimize
+		system = hyperparameters.system
+
+		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})	
+
+		parameters = model.parameters()
+
+		func = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)))
+
+		tmp = func(parameters)
+
+		eigs = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1]
+		eigs = eigs/max(1,maximum(eigs))
+
+		rank = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1]
+		rank = nonzero(eigs,eps=50)
+
+		print(model.state.ndim,rank,eigs)
+
+		out.append(eigs)
+
+	for i in out:
+		for j in out:
+			assert allclose(i,j), "Incorrect Fisher Computation\n%r\n%r\n%r"%(norm(i-j)/min(norm(i),norm(j))/sqrt(i.size*j.size),i,j)
+
+	print("Passed")
 	
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+	return
 
-	hyperparameters = Dict(hyperparameters)
+# @pytest.mark.skip
+def test_check_fisher(path,tol):
 
-	model = load(hyperparameters.cls.model)
-	label = load(hyperparameters.cls.label)
+	def function(model):
 
-	hyperparams = hyperparameters.optimize
-	system = hyperparameters.system
+		def evolve(model,start=None,stop=None):
+			M,K = model.M,len(model)
+			parameters = model.trotterize(model.coefficients*model.parameters()).reshape(M,K)
+			U = model.identity()
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})	
+			start = (0,0) if start is None else start
+			stop = (M,K) if stop is None else stop
 
-	parameters = model.parameters()
 
-	func = fisher(model,shapes=(model.shape,(*parameters.shape,*model.shape)))
+			for i in range(start[0],stop[0]):
+				step = (0 if i > 0 else start[1],K if i < (stop[0]-1) else stop[1])
+				for j in range(step[0],step[1]):
+					U = dot(model.data[j](parameters[i][j]),U)
 
-	out = func(parameters)
+			return U
 
-	eigs = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
-	eigs = eigs/max(1,maximum(eigs))
 
-	rank = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
-	rank = min(rank.size,argmax(abs(difference(rank)/rank[:-1]))+1)
+		M,K = model.M,len(model)
+		P = M*K
+		parameters = model.trotterize(model.coefficients*model.parameters()).reshape(M,K)
 
-	print(eigs)
-	print(rank)
 
+		unitary = evolve(model)
+		state = model(parameters=model.parameters(),state=model.state())
+		out = zeros((P,P),dtype=parameters.dtype)
+
+
+		print(M,K)
+		print(unitary)
+		print(state)
+		print(dot(unitary,model.state()))
+		assert allclose(state,dot(unitary,model.state()))
+
+
+
+
+		for i in range(P):
+			for j in range(P):
+				m,k = i//K,i%K
+				n,l = j//K,j%K
+
+				U = evolve(model,(0,0),((m+1)%M if m < (M-1) else M,k))
+				_U = evolve(model,(m,(k+1)%K if k < (K-1) else K),(M,K))
+				V = evolve(model,(0,0),((n+1)%M if n < (M-1) else M,l))
+				_V = evolve(model,(n,(l+1)%K if l < (K-1) else K),(M,K))
+
+
+				assert allclose(dot(_U,dot(model.data[k](parameters[m][k]),U)),unitary)
+				assert allclose(dot(_V,dot(model.data[l](parameters[n][l]),V)),unitary), "\n%r\n%r\n%r\n%r"%(dot(_V,dot(model.data[l](parameters[n][l]),V)),unitary,V,_V)
+
+				H = model.data[k].grad(parameters[m][k])
+				G = model.data[l].grad(parameters[n][l])
+
+				assert allclose(model.data[k].coefficients*model.data[k]().dot(model.data[k](parameters[m][k])),H)
+				assert allclose(model.data[k].coefficients*model.data[l]().dot(model.data[l](parameters[n][l])),G)
+
+				psi = dot(dot(_U,dot(H,U)),model.state())
+				phi = dot(dot(_V,dot(G,V)),model.state())
+
+				tmp = 2*real(dot(dagger(psi),phi) - dot(dagger(state),psi)*dagger(dot(dagger(state),phi)))
+
+				out = setitem(out,(i,j),tmp)
+
+		return out
+
+
+	out = []
+	permutations = {'state.ndim':[1,2],'state.parameters':[True],'noise.parameters':[False]}
+	permutations = permuter(permutations)
+	n = len(permutations)
+
+	for i in range(n):
+
+		kwargs = permutations[i]
+
+		default = None
+		hyperparameters = load(path,default=default)
+		if hyperparameters is None:
+			raise Exception("Hyperparameters %s not loaded"%(path))
+
+		hyperparameters = Dict(hyperparameters)
+
+		setter(hyperparameters,kwargs,delimiter=delim)
+
+		model = load(hyperparameters.cls.model)
+		label = load(hyperparameters.cls.label)
+
+		hyperparams = hyperparameters.optimize
+		system = hyperparameters.system
+
+		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})	
+
+		parameters = model.parameters()
+
+		func = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)))
+
+		if i == (n-3):
+			tmp = function(model)
+		else:
+			tmp = func(parameters)
+
+		eigs = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1]
+		# eigs = eigs/max(1,maximum(eigs))
+		rank = nonzero(eigs,eps=50)
+
+		print()
+		print('-----')
+		print(rank,eigs)
+		print(tmp)
+		print()
+
+		out.append(eigs)
+
+	for i in range(n):
+		for j in range(n):
+			assert allclose(out[i],out[j]), "Incorrect Fisher Computation (%d,%d):\n%r\n%r\n%r"%(i,j,out[i]-out[j],out[i],out[j]) #/min(norm(out[i]),norm(out[j]))/sqrt(out[i].size*out[j].size)
+
+	print("Passed")
+	
 	return
 
 
@@ -661,13 +800,6 @@ def check_machine_precision(path,tol):
 		C = norm(A)
 		B = A
 
-		# print(A)
-		# print(A*B)
-		# print(N(W(2)))
-		# print(A*B - N(W(2)))
-		# print(norm(A))
-		# exit()
-		
 		error = np.zeros(k,dtype=maxftype)
 		
 		for i in range(k):
@@ -766,13 +898,17 @@ def check_machine_precision(path,tol):
 
 
 if __name__ == '__main__':
+	path = 'config/settings.test.json'
+	path = 'config/settings.tmp.json'
 	path = 'config/settings.json'
 	tol = 5e-8 
 
-	func = test_fisher
 	func = test_hessian
 	func = check_machine_precision
 	func = test_parameters
+	func = test_object
+	func = test_model
+	func = test_check_fisher
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)
