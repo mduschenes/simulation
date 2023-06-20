@@ -77,7 +77,7 @@ elif BACKEND in ['autograd']:
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
 
-np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.2e')) for dtype in ['float','float64',np.float64,np.float32]}})
+np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
 pd.set_option('display.max_rows', 500)
 pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
@@ -308,15 +308,17 @@ class argparser(argparse.ArgumentParser):
 		return self.kwargs.values()
 
 
-def epsilon(dtype=float):
+def epsilon(dtype=float,eps=None):
 	'''	
 	Get machine precision epsilon for dtype
 	Args:
 		dtype (data_type): Datatype to get machine precision
+		eps (float): Relative machine precision multiplier
 	Returns:
 		eps (array): Machine precision
 	'''
-	eps = np.finfo(dtype).eps
+	eps = 1 if eps is None else eps
+	eps = eps*np.finfo(dtype).eps
 
 	return eps
 
@@ -1105,7 +1107,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 			print('Doing hermitian state ndim',ndim)
 			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
 			subscripts = ['ni,unm,mj->uij','uij,vij,ij->uv']
-			wrappers = [lambda out,*operands: out, lambda out,*operands: out/2]
+			wrappers = [lambda out,*operands: out, lambda out,*operands: out]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
 	
@@ -1131,12 +1133,17 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 
 			n = eigenvalues.size
 			d = nonzero(eigenvalues)
-			index,_index = range(d,n),range(0,d)
-			index,_index = [*index,*index,*_index],[*index,*_index,*index]
+			indices,zeros = slice(n-d,n),slice(0,n-d)
 
-			tmp = einsummations[0](conjugate(eigenvectors[:,index]),gradient,eigenvectors[:,_index])
-			tmp = einsummations[1](tmp,conjugate(tmp),1/(eigenvalues[index,None] + eigenvalues[None,_index]))
-			out = tmp
+			out = 0
+
+			i,j = indices,indices
+			tmp = einsummations[0](conjugate(eigenvectors[:,i]),gradient,eigenvectors[:,j])
+			out += einsummations[1](tmp,conjugate(tmp),1/(eigenvalues[i,None] + eigenvalues[None,j]))
+
+			i,j = indices,zeros
+			tmp = einsummations[0](conjugate(eigenvectors[:,i]),gradient,eigenvectors[:,j])
+			out += 2*real(einsummations[1](tmp,conjugate(tmp),1/(eigenvalues[i,None] + eigenvalues[None,j])))
 
 			out = real(out)
 
@@ -1175,9 +1182,12 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 			function = func(*args,**kwargs)
 			gradient = grad(*args,**kwargs)
 
-			out = einsummations[0](conjugate(gradient),function)
-			out = einsummations[1](conjugate(out),out)
-			out = out + einsummations[2](conjugate(gradient),gradient)
+			out = 0
+			tmp = einsummations[0](conjugate(gradient),function)
+			out += einsummations[1](conjugate(tmp),tmp)
+
+			tmp = einsummations[2](conjugate(gradient),gradient)
+			out += tmp
 			
 			out = real(out)
 
@@ -4175,7 +4185,7 @@ def nonzero(a,eps=None):
 	Returns:
 		n (int): Number of non-zero entries
 	'''
-	eps = epsilon(a.dtype) if eps is None else eps
+	eps = epsilon(a.dtype,eps=eps) if eps is None or isinstance(eps,int) else eps
 	n = np.count_nonzero(abs(a)>eps)
 	return n
 

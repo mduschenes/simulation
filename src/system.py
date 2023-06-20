@@ -626,7 +626,7 @@ class Lattice(System):
 			vertices = self.vertices
 
 		# TODO: Implement open boundary conditions for nearest neighbours in d>1 dimensions
-		if not periodic:
+		if not periodic or self.N == self.z:
 			if self.d == 1:
 				vertices = vertices[0:-self.S//2]
 			else:

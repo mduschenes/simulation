@@ -15,7 +15,7 @@ for PATH in PATHS:
 from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort
-from src.utils import setitem,maximum,minimum,argmax,argmin,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
+from src.utils import setitem,maximum,minimum,argmax,argmin,nonzero,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,delim,scalars,arrays,datatype
 
@@ -82,7 +82,7 @@ class Object(System):
 		defaults = dict(			
 			shape=None,size=None,ndim=None,
 			samples=None,identity=None,locality=None,index=None,
-			conj=False,func=None,gradient=None
+			conj=False,coefficients=None,func=None,gradient=None
 			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
@@ -609,13 +609,18 @@ class Pauli(Object):
 			return 1-2*conj
 
 		def func(parameters=None,state=None,conj=False):
-			return cos(sign(conj)*(1.0)*parameters)*self.identity + -1j*sin(sign(conj)*(1.0)*parameters)*self.data
+			coefficients = sign(conj)*self.coefficients			
+			return cos(coefficients*parameters)*self.identity + -1j*sin(coefficients*parameters)*self.data
 
 		def gradient(parameters=None,state=None,conj=False):
-			return sign(conj)*(1.0)*(-sin(sign(conj)*(1.0)*parameters)*self.identity + -1j*cos(sign(conj)*(1.0)*parameters)*self.data)
+			coefficients = sign(conj)*self.coefficients
+			return coefficients*(-sin(coefficients*parameters)*self.identity + -1j*cos(coefficients*parameters)*self.data)
 
 		if self.parameters is None:
 			self.parameters = 1
+
+		if self.coefficients is None:
+			self.coefficients = pi/2
 
 		hermitian = False
 		unitary = True
@@ -2242,7 +2247,8 @@ class Callback(System):
 					elif attr in ['hessian.rank','fisher.rank']:
 						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
 						value = value/maximum(value)
-						value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
+						value = nonzero(value)
+						# value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
 
 				elif attr in []:
 					value = [attr.split(delim)[0],delim.join(attr.split(delim)[1:])]
@@ -2493,6 +2499,7 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 	size = parameters.shape[0] if parameters is not None else 1
 	length = len(data) if data is not None else 1
+	indices = [0,size]
 
 	contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
 
@@ -2505,33 +2512,33 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 			
 			state = identity
 
-			def func(parameters,state=state,conj=conj,contract=contract,index=index):
+			def func(parameters,state=state,conj=conj,indices=indices,contract=contract,index=index):
 				def func(i,out):
 					# U = switch(i%length,data,parameters[i])					
 					U = switch(index(i,length,conj=conj),data,parameters[index(i,size,conj=conj)],out,conj)
 					return contract(U,out,conj)
 
 				out = identity
-				return forloop(0,parameters.size,func,out)				
+				return forloop(*indices,func,out)				
 	
 		elif state.ndim == 1:
 			
-			def func(parameters,state=state,conj=conj,contract=contract,index=index):
+			def func(parameters,state=state,conj=conj,indices=indices,contract=contract,index=index):
 				def func(i,out):
 					U = switch(index(i,length,conj=conj),data,parameters[index(i,size,conj=conj)],out,conj)
 					return contract(U,out,conj)
 				out = state
-				return forloop(0,parameters.size,func,out)				
+				return forloop(*indices,func,out)				
 
 
 		elif state.ndim == 2:
 			
-			def func(parameters,state=state,conj=conj,contract=contract,index=index):
+			def func(parameters,state=state,conj=conj,indices=indices,contract=contract,index=index):
 				def func(i,out):
 					U = switch(index(i,length,conj=conj),data,parameters[index(i,size,conj=conj)],out,conj)
 					return contract(U,out,conj)
 				out = state
-				return forloop(0,parameters.size,func,out)				
+				return forloop(*indices,func,out)				
 
 	elif constants is not None and noise is None:
 
@@ -2543,26 +2550,28 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 			state = identity
 
-			def func(parameters,state=state,conj=conj,contract=contract,index=index):
+			def func(parameters,state=state,conj=conj,indices=indices,contract=contract,index=index):
 				def func(i,out):
 					U = switch(index(i,length,conj=conj),data,parameters[index(i,size,conj=conj)],out,conj)
 					# U = switch(i%length,data,parameters[i])
 					return contract(U,out,conj)
 
 				out = identity
-				return forloop(0,parameters.size,func,out)	
+				return forloop(*indices,func,out)	
 
 		elif state.ndim == 1:
 
-			def func(parameters,state=state,conj=conj,contract=contract,index=index):
+			def func(parameters,state=state,conj=conj,indices=indices,contract=contract,index=index):
 				def func(i,out):
 					U = switch(index(i,length,conj=conj),data,parameters[index(i,size,conj=conj)],out,conj)
 					return contract(U,out,conj)
 
 				out = state
-				return forloop(0,parameters.size,func,out)	
+				return forloop(*indices,func,out)	
 
 		elif state.ndim == 2:
+
+			indices = [0,size//length]
 
 			subparameters = slicing(parameters,0,length)
 			substate = None
@@ -2576,21 +2585,21 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 			subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
 
-			def func(parameters,state=state,conj=conj,contract=contract,index=index):
+			def func(parameters,state=state,conj=conj,indices=indices,contract=contract,index=index):
 				def func(i,out):
 					x = slicing(parameters,i*length,length)
 					U = subfunc(x,identity,conj)
 					return contract(U,out,conj)
 
 				out = state
-				return forloop(0,parameters.size//length,func,out)	
+				return forloop(*indices,func,out)	
 
 
 	elif constants is not None and noise is not None:
 
 		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
 		
-	func = jit(func,static_argnums=(2))
+	func = jit(func,static_argnums=(2,3,4,5))
 
 	return func			
 
@@ -2623,7 +2632,7 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 		raise NotImplementedError("TODO: Implement gradients for non-unitary contraction")
 
 	if grad is not None:
-		grad = [(lambda parameters,state=None,conj=False,i=i: (1.0)*data[i%length](parameters[i] + (pi/2))) for i in range(size)]
+		grad = [(lambda parameters,state=None,conj=False,i=i: data[i%length].coefficients*data[i%length](parameters[i] + (1.0))) for i in range(size)]
 
 
 	def func(parameters=None,state=None,conj=False):
