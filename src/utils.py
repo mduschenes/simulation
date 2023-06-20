@@ -4174,17 +4174,18 @@ def slice_slice(*slices,index=None):
 	return slices
 
 
-def nonzero(a,eps=None):
+def nonzero(a,axis=None,eps=None):
 	'''
 	Count non-zero elements of array, with eps tolerance
 	Args:
 		a (array): Array to count non-zero elements
+		axis (int,iterable[int]): Axis to compute non-zero elements
 		eps (scalar): Epsilon tolerance, defaults to epsilon precision of array dtype
 	Returns:
 		n (int): Number of non-zero entries
 	'''
 	eps = epsilon(a.dtype,eps=eps) if eps is None or isinstance(eps,int) else eps
-	n = np.count_nonzero(abs(a)>eps)
+	n = np.count_nonzero(abs(a)>eps,axis=axis)
 	return n
 
 def _len_(obj):
