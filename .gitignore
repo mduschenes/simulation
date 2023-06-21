@@ -20,10 +20,7 @@
 **/*test.json
 **/tmp.*
 **/check
-<<<<<<< HEAD
-=======
 **/*.profile
->>>>>>> ad
 **/mnt
 tmp
 keep
@@ -35,3 +32,4 @@ build/settings.tmp.json
 build/new
 build/plots
 setup/requirements.txt.*.*
+test/config/settings.*.json
