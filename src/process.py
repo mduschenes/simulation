@@ -237,7 +237,8 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		hyperparameters[attr] = {instance: bool(hyperparameters[attr][instance]) for instance in settings}
 	elif isinstance(hyperparameters.get(attr),list):
 		hyperparameters[attr] = {**{instance: False for instance in settings},**{instance: True for instance in hyperparameters[attr]}}
-	hyperparameters[attr] = {**{instance: True for instance in settings},**{instance: bool(hyperparameters[attr][instance]) for instance in hyperparameters[attr]}}
+	elif isinstance(hyperparameters.get(attr),dict):
+		hyperparameters[attr] = {**{instance: False for instance in settings},**{instance: bool(hyperparameters[attr][instance]) for instance in hyperparameters[attr]}}
 
 	for instance in list(settings):
 		if (not hyperparameters.get(attr,{}).get(instance)) or (not settings[instance]):
@@ -956,9 +957,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1)/np.sqrt(obj.shape[0]))
 		return obj	
 	def none(obj,*args,**kwargs):
-		obj = np.array(list(obj))
 		obj[...] = nan
-		obj = to_tuple(obj)
 		return obj			
 
 	def mean_arithmetic(obj,*args,**kwargs):
@@ -1221,7 +1220,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 									value[destination] = grouping[source].to_numpy()
 							elif source is null:
 								source = delim.join(((dependent[-1],function,func)))
-								value[destination] = np.arange(len(grouping[source].iloc[0]))
+								value[destination] = np.arange(1,len(grouping[source].iloc[0])+1)
 							else:
 								value[destination] = grouping.reset_index().index.to_numpy()
 
@@ -1308,6 +1307,9 @@ def plotter(settings,hyperparameters,verbose=None):
 	# Set grid layout based on GRID
 	grid = {}
 	for instance in list(settings):
+
+		logger.log(info*verbose,"Setting : %s"%(instance))
+
 		for subinstance in list(settings[instance]):
 			
 			if not settings[instance][subinstance].get(obj):
@@ -1435,7 +1437,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							if axes.endswith('err'):
 								data[axes][...] = 0
 							else:
-								data[axes][...,:] = np.arange(data[AXES[dim-1]].shape[-1])
+								data[axes][...,:] = np.arange(1,data[AXES[dim-1]].shape[-1]+1)
 
 
 	for instance in list(settings):
@@ -1532,8 +1534,6 @@ def plotter(settings,hyperparameters,verbose=None):
 	# Set kwargs
 	for instance in list(settings):
 	
-		logger.log(info*verbose,"Setting : %s"%(instance))
-
 		for subinstance in list(settings[instance]):
 			
 			if not settings[instance][subinstance].get(obj):
@@ -2001,7 +2001,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							if size == 1:
 								value = [(value[0]+value[-1])/2]
 							elif ((length+1)%size) == 0:
-								value = [items[0],*items[slice(1,length-1,(length-2)//(size-3))],items[-1]]
+								value = [items[0],*items[slice(1,length-1,max(1,length-2)//max(1,(size-3)))],items[-1]]
 							else:
 								size = min(len(data.get('set_%sticks'%(axes),{}).get('ticks',[])),length)
 								if scale in ['log','symlog']:
@@ -2282,8 +2282,7 @@ def plotter(settings,hyperparameters,verbose=None):
 								elif attr in ['marker']:
 									pass
 								elif attr in ['linestyle']:
-									value = (data[attr]['__index__'] + 0.5)/(data[attr]['__size__'])
-									value = '-' if value < 1/3 else '--' if value < 2/3 else '---'
+									pass
 								else:
 									pass
 

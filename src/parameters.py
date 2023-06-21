@@ -54,6 +54,7 @@ class Parameter(System):
 			string=None,category=None,method=None,
 			group=None,locality=None,bounds=None,attributes=None,axis=None,
 			parameters=None,
+			wrapper=None,
 			seed=None,random=None,initialization=None,constant=None,
 			slices=None,sort=None,indices=None,func=None,constraint=None,
 			shape=None,size=None,ndim=None,dtype=None,			
@@ -88,7 +89,7 @@ class Parameter(System):
 
 		parameters = parameters.reshape(-1,*self.shape[1:])
 		
-		parameters = self.func(parameters)
+		parameters = self.wrapper(self.func(parameters))
 
 		return parameters	
 
@@ -387,9 +388,17 @@ class Parameter(System):
 				return self.kwargs['default']
 
 
+		def wrapper(parameters,*args,**kwargs):
+			return parameters
+
+		wrapper = self.wrapper if self.wrapper is not None else wrapper
+
+
 		self.func = jit(func)
 		
 		self.constraint = jit(constraint)
+
+		self.wrapper = jit(wrapper)
 
 		return
 
@@ -446,7 +455,7 @@ class Parameters(System):
 
 		defaults = dict(
 			data=None,
-			slices=None,sort=None,indices=None,func=None,constraint=None,parameters=None,
+			slices=None,sort=None,indices=None,func=None,constraint=None,parameters=None,wrapper=None,
 			shape=None,size=None,ndim=None,dtype=None,
 			)
 
@@ -475,7 +484,7 @@ class Parameters(System):
 		if parameters is None:
 			return self.data
 
-		parameters = self.func(parameters)[self.sort]
+		parameters = self.wrapper(self.func(parameters)[self.sort])
 
 		return parameters
 
@@ -534,8 +543,7 @@ class Parameters(System):
 				srt = self[parameter].sort
 				idx = self[parameter].category
 
-
-			slc = [max((i[-1] for i in slices),default=0),slc] if slc is not None else [0,0]
+			slc = [sum(i[-1] for i in slices),slc] if slc is not None else [0,0]
 			srt = [int(i) for i in srt]
 			idx = [idx for i in srt]
 
@@ -563,6 +571,12 @@ class Parameters(System):
 
 		def constraint(parameters,slices=slices,funcs=constraints,dtype=dtype):
 			return addition(array([func(slicing(parameters,*i)) for i,func in zip(slices,funcs)]))
+
+		def wrapper(parameters,*args,**kwargs):
+			return parameters
+
+		wrapper = self.wrapper if self.wrapper is not None else wrapper
+
 
 		# Get data
 		data = []
@@ -596,6 +610,7 @@ class Parameters(System):
 		self.func = func
 		self.constraint = constraint
 		self.parameters = parameters
+		self.wrapper = wrapper
 		self.shape = self.data.shape if data is not None else None
 		self.size = self.data.size if data is not None else None
 		self.ndim = self.data.ndim if data is not None else None

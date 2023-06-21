@@ -34,5 +34,14 @@ build/plots
 keep
 **/*test.json
 setup/requirements.txt.*.*
+<<<<<<< HEAD
 src/wip
 test/config/settings.*.json
+=======
+<<<<<<< HEAD
+test/config/settings.*.json
+=======
+test/config/settings.*.json
+src/wip
+>>>>>>> exp
+>>>>>>> dev
