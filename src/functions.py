@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+'''
+Miscellaneous utility functions (for processing, plotting)
+'''
+
 # Import python modules
 import os,sys,itertools,warnings,traceback
 from copy import deepcopy
@@ -19,6 +23,12 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+from src.utils import array
+from src.utils import to_tuple
+from src.utils import maximum,minimum,abs
+from src.utils import arrays,scalars,nonzero
+
+# Processing
 
 def func_stat(data,func="min",stat='mean',**kwargs):
 	default = lambda data: (lambda *args,data=data,**kwargs: data)
@@ -42,12 +52,20 @@ def func_tau_unit(data):
 def func_T_unit(data):
 	return data['T']/data.get('unit',1)
 
-
-
 def func_tau_noise_scale(data):
 	return data['tau']/data.get('noise.scale',1)
 
 def func_T_noise_scale(data):
 	return data['T']/data.get('noise.scale',1)
 
+def func_fisher_rank(data):
+	out = np.array(list(data['fisher.eigenvalues']))
+	out = nonzero(out,axis=-1,eps=1000)
+	return out
 
+def func_fisher_eigenvalues(data):
+	out = np.array(list(data['fisher.eigenvalues']))
+	out = abs(out)
+	out = out/maximum(out)
+	out = to_tuple(out)
+	return out

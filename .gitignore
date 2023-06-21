@@ -31,5 +31,12 @@ build/unconstrained.py
 build/settings.tmp.json
 build/new
 build/plots
+keep
+**/*test.json
 setup/requirements.txt.*.*
+<<<<<<< HEAD
 test/config/settings.*.json
+=======
+test/config/settings.*.json
+src/wip
+>>>>>>> exp

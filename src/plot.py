@@ -53,6 +53,7 @@ PATHS = {
 	}
 
 scalars = (int,np.integer,float,np.floating,str,type(None))
+nan = np.nan
 
 def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,func=None):
 	'''

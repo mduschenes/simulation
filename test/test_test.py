@@ -29,7 +29,7 @@ def test_metric(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -58,7 +58,7 @@ def test_objective(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 
@@ -91,7 +91,7 @@ def test_grad(path,tol):
 	default = None
 	hyperparameters = load(path,default=default)
 	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+		raise Exception("Hyperparameters %s not loaded"%(path))
 
 	hyperparameters = Dict(hyperparameters)
 

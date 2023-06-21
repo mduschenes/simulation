@@ -20,79 +20,12 @@
 	"index":null
 	},
 "permutations":{
-	"permutations":{	
-
-		"model.N":[4],		
-		"model.M":[2,4,6,8],
-		"model.P":[1],
-		"model.tau":[1],
-		"model.T": [null],
-
-		"noise.parameters":[1e6],
-		"noise.initialization":["random"],
-
-		"system.unit":[1e6],
-		"parameters.xy.parameters":[1],
-		"parameters.z.parameters":[1e-2],
-		"parameters.zz.parameters":[1e-4],
-		"parameters.xy.kwargs.lambda":[0],		
-		"label.string":["label"],
-		"label.operator":["Z"],
-		"label.parameters":[0.25],
-		"noise.parameters":[false],
-		"state.parameters":[false],
-
-
-		"optimize.iterations":[100],
-		"optimize.optimizer":["cg"],
-		"optimize.metric":["real"],
-		"optimize.search.alpha":["line_search"],
-		"optimize.search.beta":["hestenes_stiefel"],
-
-		"parameters.xy.method":["bound"],
-		"parameters.xy.kwargs.lambda":[0],
-
-		"jobs.job.cwd":["tmp"],
-		"jobs.postprocess.cwd":["tmp"],		
-	
-		"jobs.job.device":["slurm"],
-		"jobs.postprocess.device":["slurm"],
-		"jobs.job.process":["array"],
-		"jobs.postprocess.process":[null],
-		"jobs.job.processes":[1],
-		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[1],
-		"jobs.postprocess.pool":[1],
-		"jobs.job.execute":[1],	
-		"jobs.postprocess.execute":[1],	
-		"jobs.job.resume":[null],	
-		"jobs.postprocess.resume":[null],			
-		"jobs.job.verbose":[1],	
-		"jobs.postprocess.verbose":[1],	
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["1:00:00"],
-		"jobs.postprocess.patterns.time":["1:00:00"],
-		"jobs.job.patterns.mem":["16GB"],
-		"jobs.postprocess.patterns.mem":["16GB"],
-		"jobs.job.patterns.cpus-per-task":[1],
-		"jobs.job.patterns.account":[null],
-		"jobs.postprocess.patterns.cpus-per-task":[1]
-
-		},
+	"permutations":{},
 	"groups":null,
 	"index":null
 	},
 "model":{
-	"data":{
-		"x":{"operator":["X"],"site":"i","string":"x","parameters":null},
-		"y":{"operator":["Y"],"site":"i","string":"y","parameters":null},
-		"z":{"operator":["Z"],"site":"i","string":"z","parameters":null},
-		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz","parameters":null}
-		},
+	"data":{},
 	"N":2,
 	"D":2,
 	"d":1,
@@ -151,86 +84,11 @@
 		},
 	"track":{}	
 	},
-"parameters":{
-	"xy": {
-		"string":"xy",
-		"category":"variable",
-		"method":null,
-		"group":[["x"],["y"]],
-		"locality":null,
-		"bounds":[-1,1],
-		"attributes":["M"],		
-		"data":null,
-		"parameters":1,
-		"seed":null,	
-		"random":"uniform",
-		"initialization":{
-			"method":"interpolation",
-			"interpolation":3,
-			"smoothness":2
-			},
-		"constant":{"-1":{"0":0,"-1":0}},
-		"args":[],
-		"kwargs":{"sigmoid":1,"lambda":5e2}
-		},			
-	"z": {
-		"string":"z",
-		"category":"constant",
-		"method":null,		
-		"group":[["z"]],
-		"data":[0,1,1,-1,-1,1],
-		"parameters":1,
-		"bounds":[-1,1],
-		"locality":null,
-		"attributes":["M"],
-		"seed":null,
-		"random":null,
-		"initialization":null,
-		"args":[],
-		"kwargs":{}
-		},				
-	"zz": {
-		"string":"zz",
-		"category":"constant",
-		"method":null,		
-		"group":[["zz"]],
-		"data":[1,1,1,1,1,1,1,1],								
-		"parameters":1,
-		"bounds":[-1,1],
-		"locality":null,
-		"attributes":["M"],
-		"seed":null,
-		"random":null,	
-		"initialization":null,
-		"args":[],
-		"kwargs":{}
-		}
+"parameters":{}
 	},
-"label": {
-	"operator":"Z",
-	"site":null,
-	"string":"U",
-	"parameters":0.5,
-	"ndim":2,
-	"seed":null
-	},
-"state": {
-	"operator":"haar",
-	"site":null,
-	"string":"U",
-	"parameters":false,
-	"ndim":2,
-	"samples":1,
-	"seed":null
-	},	
-"noise": {
-	"data":"phase",
-	"site":null,
-	"string":"K",
-	"parameters":false,
-	"ndim":3,
-	"seed":null
-	},
+"label": {},
+"state": {},	
+"noise": {},
 "jobs":{
 	"preprocess":null,
 	"job":{
