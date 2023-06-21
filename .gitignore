@@ -20,10 +20,7 @@
 **/*test.json
 **/tmp.*
 **/check
-<<<<<<< HEAD
-=======
 **/*.profile
->>>>>>> ad
 **/mnt
 tmp
 keep
@@ -38,3 +35,4 @@ keep
 **/*test.json
 setup/requirements.txt.*.*
 src/wip
+test/config/settings.*.json
