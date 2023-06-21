@@ -63,7 +63,7 @@ if BACKEND in ['jax','jax.autograd']:
 	absl.logging.set_verbosity(absl.logging.INFO)
 
 	configs = {
-		'jax_disable_jit':False,
+		'jax_disable_jit':True,
 		'jax_platforms':'cpu',
 		'jax_enable_x64': True
 		}

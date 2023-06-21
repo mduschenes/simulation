@@ -1084,8 +1084,7 @@ class Operators(Object):
 		self.gradient = None
 		self.gradient_finite = None
 		self.gradient_analytical = None
-		self.trotterize = None
-
+		
 		self.system = system
 
 		self.__time__()
@@ -1265,14 +1264,15 @@ class Operators(Object):
 		constants = self.constants
 		conj = self.conj
 
-		parameters = self.parameters(parameters)
-
-		assert parameters is not None, "Incorrect parameters() initialization"
+		assert self.parameters(parameters) is not None, "Incorrect parameters() initialization"
 
 		data = trotter([jit(i) for i in self.data],self.P)
 		grad = trotter([jit(i.grad) for i in self.data],self.P)
 		slices = trotter(list(range(len(self))),self.P)
-		trotterize = jit(lambda parameters,slices: parameters[slices].T.ravel(),slices=array(slices))
+		
+		wrapper = jit(lambda parameters,slices,coefficients: coefficients*parameters[slices].T.ravel(),slices=array(slices),coefficients=coefficients)
+
+		self.parameters.wrapper = wrapper
 
 		if state is None and noise is None:
 			hermitian = False
@@ -1301,7 +1301,7 @@ class Operators(Object):
 		else:
 			raise NotImplementedError
 
-		parameters = trotterize(self.coefficients*parameters)
+		parameters = self.parameters(parameters)
 
 		func = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 		
@@ -1316,7 +1316,6 @@ class Operators(Object):
 		self.gradient = grad
 		self.gradient_finite = grad_finite
 		self.gradient_analytical = grad_analytical
-		self.trotterize = trotterize
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -1344,7 +1343,7 @@ class Operators(Object):
 		if state is None:
 			state = self.state()
 
-		parameters = self.trotterize(self.coefficients*self.parameters(parameters))
+		parameters = self.parameters(parameters)
 
 		return self.func(parameters,state,conj)
 
@@ -1835,13 +1834,11 @@ class Unitary(Hamiltonian):
 		if state is None:
 			state = self.state()
 
-		parameters = self.coefficients*self.parameters(parameters)
+		parameters = self.parameters(parameters)
 
-		shape = parameters.shape
-		ndim = parameters.ndim
+		shape = [(parameters.size//self.M)//self.P,self.M]
+		ndim = len(shape)
 		
-		parameters = self.trotterize(parameters)
-
 		gradient_trotterize = jit(lambda grad,P=self.P: gradient_trotter(grad,P))
 		indices = self.parameters.indices
 		reshape = (*shape[1:],-1,*self.shape)
@@ -2623,9 +2620,8 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 		return None
 		raise NotImplementedError("TODO: Implement gradients for non-unitary contraction")
 
-	if grad is not None:
-		grad = [(lambda parameters,state=None,conj=False,i=i: data[i%length].coefficients*data[i%length](parameters[i] + (1.0))) for i in range(size)]
-
+	if grad is None:
+		grad = [(lambda parameters,state=None,conj=False,i=i: data[i].coefficients*data[i](parameters + (pi/2)/data[i].coefficients)) for i in range(length)]
 
 	def func(parameters=None,state=None,conj=False):
 		def func(i):
@@ -2659,7 +2655,7 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 
 			V = subfunc(subparameters,identity,subconj)
 
-			A = grad[i](parameters,state,conj)
+			A = grad[i%length](parameters[i],state,conj)
 
 			return einsummation(V,A,U)
 
@@ -2668,4 +2664,3 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 	func = jit(func)
 
 	return func
-	

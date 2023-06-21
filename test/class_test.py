@@ -187,7 +187,7 @@ def test_model(path,tol):
 	data = [i for s in slices for i in model.data[s]]
 
 	slices = array([i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in list(range(d))[s]])
-	parameters = (model.coefficients*model.parameters(parameters))[slices].T.ravel()
+	parameters = model.parameters(parameters)
 
 	tmp = model.identity()
 	for i in range(m*d*p):
@@ -232,11 +232,12 @@ def test_parameters(path,tol):
 	# Get parameters in shape (P*K,M)
 	M,N = model.M,model.N
 	parameters = parameters.reshape(-1,M)
-	variables = variables.reshape(-1,M)
+	variables = variables.reshape(M,-1).T
 
-	print(parameters.round(3))
+	variables = variables[:variables.shape[0]//model.P]/model.coefficients
+
+	print(parameters.round(6))
 	print(variables.round(6))
-
 
 	parameter = 'xy'
 	shape = parameters.shape
@@ -595,22 +596,21 @@ def test_fisher(path,tol):
 	return
 
 # @pytest.mark.skip
-def test_check_fisher(path,tol):
+def check_fisher(path,tol):
 
 	def function(model):
 
-		def evolve(model,start=None,stop=None):
+		def evolve(model,indices=None):
 			M,K = model.M,len(model)
-			parameters = model.trotterize(model.coefficients*model.parameters()).reshape(M,K)
+			parameters = model.parameters(model.parameters()).reshape(M,K)
 			U = model.identity()
 
-			start = (0,0) if start is None else start
-			stop = (M,K) if stop is None else stop
+			indices = [[0,M],[0,K]] if indices is None else indices
 
-
-			for i in range(start[0],stop[0]):
-				step = (0 if i > 0 else start[1],K if i < (stop[0]-1) else stop[1])
-				for j in range(step[0],step[1]):
+			for i in range(*indices[0]):
+				step = [0 if i > indices[0][0] else indices[1][0],
+						K if i < (indices[0][1]-1) else indices[1][1]]
+				for j in range(*step):
 					U = dot(model.data[j](parameters[i][j]),U)
 
 			return U
@@ -618,34 +618,35 @@ def test_check_fisher(path,tol):
 
 		M,K = model.M,len(model)
 		P = M*K
-		parameters = model.trotterize(model.coefficients*model.parameters()).reshape(M,K)
+		parameters = model.parameters(model.parameters()).reshape(M,K)
 
+		print(parameters)
+
+		print(model.parameters())
+		print(model.parameters(model.parameters()))
+
+		assert allclose(model.parameters(),model.parameters(model.parameters()).reshape(M,K).T.ravel())
 
 		unitary = evolve(model)
 		state = model(parameters=model.parameters(),state=model.state())
 		out = zeros((P,P),dtype=parameters.dtype)
 
-
-		print(M,K)
-		print(unitary)
 		print(state)
 		print(dot(unitary,model.state()))
+
 		assert allclose(state,dot(unitary,model.state()))
-
-
-
 
 		for i in range(P):
 			for j in range(P):
 				m,k = i//K,i%K
 				n,l = j//K,j%K
 
-				U = evolve(model,(0,0),((m+1)%M if m < (M-1) else M,k))
-				_U = evolve(model,(m,(k+1)%K if k < (K-1) else K),(M,K))
-				V = evolve(model,(0,0),((n+1)%M if n < (M-1) else M,l))
-				_V = evolve(model,(n,(l+1)%K if l < (K-1) else K),(M,K))
+				U = evolve(model,[[0,m+1],[0,k]])
+				_U = evolve(model,[[m if k < (K-1) else m+1,M],[k+1 if k < (K-1) else 0,K]])
+				V = evolve(model,[[0,n+1],[0,l]])
+				_V = evolve(model,[[n if l < (K-1) else n+1,M],[l+1 if l < (K-1) else 0,K]])
 
-				assert allclose(dot(_U,dot(model.data[k](parameters[m][k]),U)),unitary)
+				assert allclose(dot(_U,dot(model.data[k](parameters[m][k]),U)),unitary), "\n%r\n%r\n%r\n%r"%(dot(_U,dot(model.data[k](parameters[m][k]),U)),unitary,U,_U)
 				assert allclose(dot(_V,dot(model.data[l](parameters[n][l]),V)),unitary), "\n%r\n%r\n%r\n%r"%(dot(_V,dot(model.data[l](parameters[n][l]),V)),unitary,V,_V)
 
 				H = model.data[k].grad(parameters[m][k])
@@ -904,10 +905,10 @@ if __name__ == '__main__':
 
 	func = test_hessian
 	func = check_machine_precision
-	func = test_parameters
 	func = test_object
 	func = test_model
-	func = test_check_fisher
+	func = check_fisher
+	func = test_parameters
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)
