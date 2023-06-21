@@ -1942,10 +1942,14 @@ class Label(Operator):
 			data = None
 		elif state is None:
 			data = data
-		elif state.ndim == 1:
-			data = einsum('ij,j->i',data,state)
-		elif state.ndim == 2:
-			data = einsum('ij,jk,lk->il',data,state,conjugate(data))
+		else:
+
+			assert data.shape[-1] == self.state.shape[0], "Incorrect Label \"%s\" shape %r for state \"%s\" shape %r"%(self,data.shape,self.state,self.state.shape)
+
+			if state.ndim == 1:
+				data = einsum('ij,j->i',data,state)
+			elif state.ndim == 2:
+				data = einsum('ij,jk,lk->il',data,state,conjugate(data))
 
 		return data
 		
