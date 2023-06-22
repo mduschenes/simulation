@@ -19,7 +19,7 @@ from src.utils import gradient,hessian,fisher
 from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,abs,sort,sqrt,real,imag
 from src.utils import pi,delim,arrays,scalars,epsilon,inplace
 from src.iterables import getter,setter,permuter,namespace
-from src.io import load,dump,exists
+from src.io import load,dump,join,exists
 
 from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label,trotter
 from src.optimize import Optimizer,Objective,Metric,Callback
@@ -538,9 +538,9 @@ def test_hessian(path,tol):
 
 	out = func(parameters)
 
-	eigs = sort(abs(eig(func(parameters),compute_v=False,hermitian=True)))[::-1]
-	eigs = eigs/max(1,maximum(eigs))
-	rank = nonzero(eigs,eps=50)
+	eigs = sort(abs(eig(out,compute_v=False,hermitian=True)))[::-1] if out is not None else None
+	eigs = eigs/max(1,maximum(eigs)) if eigs is not None else None
+	rank = nonzero(eigs,eps=50) if eigs is not None else None
 
 	print(model.state.ndim,rank,eigs)
 
@@ -577,13 +577,9 @@ def test_fisher(path,tol):
 
 		tmp = func(parameters)
 
-		eigs = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1]
-		eigs = eigs/max(1,maximum(eigs))
-
-		rank = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1]
-		rank = nonzero(eigs,eps=50)
-
-		print(model.state.ndim,rank,eigs)
+		eigs = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1] if tmp is not None else None
+		eigs = eigs/max(1,maximum(eigs)) if eigs is not None else None
+		rank = nonzero(eigs,eps=50) if eigs is not None else None
 
 		out.append(eigs)
 
@@ -598,103 +594,90 @@ def test_fisher(path,tol):
 # @pytest.mark.skip
 def check_fisher(path,tol):
 
-	def function(model):
+	def _fisher(model):
 
-		def evolve(model):
+		def trotter(iterable,p):
 
-			parameters = model.parameters(model.parameters())
-			M,K,P = parameters.size, parameters.size//model.M, model.P
 			slices = [slice(None,None,1),slice(None,None,-1)]
 
 			data = []
-			for i in slices[:P]:
-				data += model.data[i]
+			for i in slices[:p]:
+				data += iterable[i]
+
+			return data
+
+		def function(model):
+
+			parameters = model.parameters(model.parameters())
+			M,K,P = parameters.size, parameters.size//model.M, model.P
+			indices = model.parameters.indices		
+
+			data = trotter(model.data,P)
 
 			U = model.identity()
 
 			for i in range(M):
 				U = dot(data[i%K](parameters[i]),U)
 
-			return U			
+			return U
 
+		def gradient(model):
 
-		parameters = model.parameters(model.parameters())
-		indices = model.parameters.indices		
-		M = parameters.size
-		K = parameters.size//model.M
-		P = model.P
-		G = model.parameters().size
+			parameters = model.parameters(model.parameters())
+			indices = model.parameters.indices
+			M,K,P,G,L = parameters.size, parameters.size//model.M, model.P, model.parameters().size, model.parameters().size//model.M
+			
+			func = function(model)
+			grad = zeros((G,*model.shape),dtype=model.dtype)
+			state = model.state()
+			data = trotter(model.data,P)
 
-		slices = [slice(None,None,1),slice(None,None,-1)]
+			U = model.identity()
+			_U = func
+			u,_u = model.identity(),model.identity()
 
-		data = []
-		for i in slices[:P]:
-			data += model.data[i]
-
-		print(model.parameters())
-		print(parameters)
-		print(indices)
-		print(M,K,G)
-
-		print(model.parameters())
-		print(model.parameters(model.parameters()))
-		# assert allclose(model.parameters(),model.parameters(model.parameters()).reshape(M,-1).T.ravel())
-
-		unitary = evolve(model)
-		state = model(parameters=model.parameters(),state=model.state())
-		out = zeros((G,G),dtype=parameters.dtype)
-
-		print(state)
-		print(dot(unitary,model.state()))
-
-		assert allclose(state,dot(unitary,model.state()))
-
-		U = model.identity()
-		_U = unitary
-		u,_u = model.identity(),model.identity()
-
-		V = model.identity()
-		_V = unitary
-		v,_v = model.identity(),model.identity()
-
-		for i in range(M):
-			for j in range(M):
+			for i in range(M):
 
 				u,_u = _u,data[i%K](parameters[i])
 				U = dot(u,U)
 				_U = dot(_U,dagger(_u))
 
-				v,_v = _v,data[j%K](parameters[j])
-				V = dot(v,V)
-				_V = dot(_V,dagger(_v))
-
 				H = model.coefficients*data[i%K].grad(parameters[i])
-				G = model.coefficients*data[j%K].grad(parameters[j])
 
-				assert allclose(dot(_U,dot(data[i%K](parameters[i]),U)),unitary), "\n%r\n%r\n%r\n%r"%(dot(_U,dot(data[i%K](parameters[i]),U)),unitary,U,_U)
-				assert allclose(dot(_V,dot(data[j%K](parameters[j]),V)),unitary), "\n%r\n%r\n%r\n%r"%(dot(_V,dot(data[j%K](parameters[j]),V)),unitary,V,_V)
-
+				assert allclose(dot(_U,dot(data[i%K](parameters[i]),U)),func), "\n%r\n%r\n%r\n%r"%(dot(_U,dot(data[i%K](parameters[i]),U)),func,U,_U)
 				assert allclose(model.coefficients*data[i%K].coefficients*data[i%K]().dot(data[i%K](parameters[i])),H)
-				assert allclose(model.coefficients*data[i%K].coefficients*data[j%K]().dot(data[j%K](parameters[j])),G)
 
-				psi = dot(dot(_U,dot(H,U)),model.state())
-				phi = dot(dot(_V,dot(G,V)),model.state())
-
-				tmp = 2*real(dot(dagger(psi),phi) - dot(dagger(state),psi)*dagger(dot(dagger(state),phi)))
+				tmp = dot(dot(_U,dot(H,U)),state)
 
 				for s in indices:
 					if i%K != s:
 						continue
-					for t in indices:
-						if j%K != t:
-							continue
+					
+					n = (i//K)*L + indices[s]
 
-						n = (i//K)*K + indices[s]
-						m = (j//K)*K + indices[t]
+					grad = inplace(grad,n,tmp,'add')
 
-						print(i,j,n,m)
+			return grad
 
-						out = inplace(out,(n,m),tmp,'add')
+
+		func = function(model)
+		grad = gradient(model)
+		state = dot(func,model.state())
+		parameters = model.parameters()
+		G,dtype = parameters.size,parameters.dtype
+
+		if not G:
+			out = None
+			return out
+
+		out = zeros((G,G),dtype=dtype)
+
+		for i in range(G):
+			for j in range(G):
+
+				tmp = 2*real(dot(dagger(grad[i]),grad[j]) - dot(dagger(state),grad[i])*dagger(dot(dagger(state),grad[j])))
+
+				out = inplace(out,(i,j),tmp)
 
 		return out
 
@@ -728,15 +711,30 @@ def check_fisher(path,tol):
 		parameters = model.parameters()
 
 		func = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)))
+		_func = _fisher
 
 		if i == (n-3):
-			tmp = function(model)
+			tmp = _func(model)
 		else:
 			tmp = func(parameters)
 
-		eigs = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1]
+		eigs = eig(tmp,compute_v=False,hermitian=True) if tmp is not None else None
+		rank = nonzero(eigs,eps=1e-10) if eigs is not None else None
+
+
+		if i == (n-1):
+			stats = {'N':model.N,'M':model.M,'Bndy':{'<ij>':'closed','>ij<':'open'}.get(hyperparameters.model.data.zz.site,'')}
+			data = {
+				'parameters_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): model.parameters().reshape(-1,model.M),
+				'eig_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): eigs,
+				}
+			directory = '~/Downloads/'
+
+			for file in data:
+				dump(data[file],join(directory,file))
+
+		eigs = sort(abs(eigs))[::-1] if eigs is not None else None
 		# eigs = eigs/max(1,maximum(eigs))
-		rank = nonzero(eigs,eps=1e-12)
 
 		print()
 		print('-----')
@@ -746,9 +744,11 @@ def check_fisher(path,tol):
 
 		out.append(eigs)
 
+		# exit()
+
 	for i in range(n):
 		for j in range(n):
-			assert allclose(out[i],out[j]), "Incorrect Fisher Computation (%d,%d):\n%r\n%r\n%r"%(i,j,out[i]-out[j],out[i],out[j]) #/min(norm(out[i]),norm(out[j]))/sqrt(out[i].size*out[j].size)
+			assert (out[i] is None and out[j] is None) or allclose(out[i],out[j]), "Incorrect Fisher Computation (%d,%d):\n%r\n%r\n%r"%(i,j,out[i]-out[j],out[i],out[j]) #/min(norm(out[i]),norm(out[j]))/sqrt(out[i].size*out[j].size)
 
 	print("Passed")
 	

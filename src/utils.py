@@ -1118,6 +1118,14 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	else:
 		ndim = min((len(shape) for shape in shapes),default=2)
 
+	from math import prod
+	size = min((prod(shape[:len(shape)-ndim] for shape in shapes if len(shape)>ndim)),default=0)
+	dtype = getattr(func,'dtype',None)
+
+	if not size:
+		def fisher(*args,**kwargs):
+			return None
+		return fisher
 
 	hermitian = getattr(func,'hermitian',False)
 	unitary = getattr(func,'unitary',False)

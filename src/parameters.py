@@ -249,6 +249,7 @@ class Parameter(System):
 		self.data = self.data
 
 		# Set functions
+		categories = ['variable']
 		defaults = {
 			'constant':self.constant,
 			'lambda':0,
@@ -282,7 +283,7 @@ class Parameter(System):
 					indices = (*(slice(None),)*(max(0,ax-2)),indices,*(slice(None),)*(max(0,self.ndim - ax - 1)))
 					self.kwargs[attr][axis] = {'indices':indices,'values':values}
 
-		if self.category in ['variable']:
+		if self.category in categories:
 
 			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 		
@@ -423,7 +424,7 @@ class Parameters(System):
 		Setup parameters such that calling the Parameters(parameters) class with input parameters 
 		i) 		parameters array of size (G*P*D),
 					for G groups of P parameters, each of dimension D, 
-					for parameter groups with category in ['variable'],
+					for parameter groups with category in categories = ['variable'],
 					P,D may be group dependent, and depend on Parameter.locality, Parameter.model and Parameter.attributes 
 		ii) 	parameters for each group are sliced with parameter slices (slice(P*D)) and reshaped into shape (P,D)
 		iii) 	parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
@@ -597,12 +598,12 @@ class Parameters(System):
 		# Get data
 		data = []
 		for parameter in self:
-			if self[parameter].category not in ['variable']:
+			if self[parameter].category not in categories:
 				continue
 			parameter = self[parameter]()
 			data.extend(parameter)
 
-		data = array(data,dtype=self.dtype).ravel() if data else None
+		data = array(data,dtype=self.dtype).ravel()
 
 		# Get parameters
 		parameters = []
