@@ -324,40 +324,65 @@ def epsilon(dtype=float,eps=None):
 
 if BACKEND in ['jax','jax.autograd']:
 	
-	def setitem(obj,index,item):
+	def inplace(obj,index,item,op=None,**kwargs):
 		'''
-		Set item at index of object
+		Apply operation with item at index of object
 		Args:
-			obj (object): Object to set
-			index (object): Index to set item
-			item (object): Item to set
+			obj (object): Object to apply operation
+			index (object): Index to apply operation item
+			item (object): Item to operate with
+			op (str): Operation to apply at index, allowed strings in ['set','get','apply','add','multiply','divide','power','min','max']
+			kwargs (dict): Additional keyword arguments for operation
 		Returns:
-			obj (object): Object with set item at index
+			obj (object): Object with applied item at index
 		'''
 		
 		# TODO merge indexing for different numpy backends (jax vs autograd)
 
-		# obj = obj.at[index].set(item)		
-		obj = obj.at[index].set(item)
+		op = 'set' if op is None else op
+
+		obj = getattr(obj.at[index],op)(item,**kwargs)
+
 		return obj
 
 elif BACKEND in ['autograd']:
 	
-	def setitem(obj,index,item):
+	def inplace(obj,index,item,op=None,**kwargs):
 		'''
-		Set item at index of object
+		Apply operation with item at index of object
 		Args:
-			obj (object): Object to set
-			index (object): Index to set item
-			item (object): Item to set
+			obj (object): Object to apply operation
+			index (object): Index to apply operation item
+			item (object): Item to operate with
+			op (str): Operation to apply at index, allowed strings in ['set','get','apply','add','multiply','divide','power','min','max']
+			kwargs (dict): Additional keyword arguments for operation
 		Returns:
-			obj (object): Object with set item at index
+			obj (object): Object with applied item at index
 		'''
 		
 		# TODO merge indexing for different numpy backends (jax vs autograd)
 
-		obj[index] = item
-		# obj = obj.at[index].set(item)
+		op = 'set' if op is None else op
+
+		if op in ['set']:
+			obj[index] = item
+		elif op in ['get']:
+			obj = obj[index]
+		elif op in ['apply']:
+			obj = item.at(obj,index)
+		elif op in ['add']:
+			obj[index] += item
+		elif op in ['multiply']:
+			obj[index] *= item
+		elif op in ['divide']:
+			obj[index] /= item						
+		elif op in ['power']:
+			obj[index] **= item						
+		elif op in ['min']:
+			obj[index] = min(obj[index],item)
+		elif op in ['max']:
+			obj[index] = max(obj[index],item)
+
 		return obj
 
 
@@ -1954,7 +1979,7 @@ if BACKEND in ['jax']:
 						R = diag(R)
 						R = diag(R/abs(R))
 						
-						out = setitem(out,(i,j),dot(Q,R))
+						out = inplace(out,(i,j),dot(Q,R))
 
 				out = out.reshape(shape)
 
@@ -1995,7 +2020,7 @@ if BACKEND in ['jax']:
 		elif random in ['zero']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
-				out = setitem(out,0,1)
+				out = inplace(out,0,1)
 				ndim = len(shape)
 				if ndim == 1:
 					pass
@@ -2010,7 +2035,7 @@ if BACKEND in ['jax']:
 		elif random in ['one']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
-				out = setitem(out,-1,1)
+				out = inplace(out,-1,1)
 				ndim = len(shape)
 				if ndim == 1:
 					pass
@@ -2025,7 +2050,7 @@ if BACKEND in ['jax']:
 		elif random in ['plus']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
-				out = setitem(out,slice(None),1/sqrt(shape[-1]))
+				out = inplace(out,slice(None),1/sqrt(shape[-1]))
 				ndim = len(shape)
 				if ndim == 1:
 					pass
@@ -2040,8 +2065,8 @@ if BACKEND in ['jax']:
 		elif random in ['minus']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
-				out = setitem(out,slice(0,None,2),1/sqrt(shape[-1]))
-				out = setitem(out,slice(1,None,2),-1/sqrt(shape[-1]))
+				out = inplace(out,slice(0,None,2),1/sqrt(shape[-1]))
+				out = inplace(out,slice(1,None,2),-1/sqrt(shape[-1]))
 				ndim = len(shape)
 				if ndim == 1:
 					pass
@@ -2207,7 +2232,7 @@ elif BACKEND in ['jax.autograd','autograd']:
 						R = diag(R)
 						R = diag(R/abs(R))
 						
-						out = setitem(out,(i,j),dot(Q,R))
+						out = inplace(out,(i,j),dot(Q,R))
 
 				out = out.reshape(shape)
 
@@ -2247,7 +2272,7 @@ elif BACKEND in ['jax.autograd','autograd']:
 		elif random in ['zero']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
-				out = setitem(out,0,1)
+				out = inplace(out,0,1)
 				ndim = len(shape)
 				if ndim == 1:
 					pass
@@ -2262,7 +2287,7 @@ elif BACKEND in ['jax.autograd','autograd']:
 		elif random in ['one']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
-				out = setitem(out,-1,1)
+				out = inplace(out,-1,1)
 				ndim = len(shape)
 				if ndim == 1:
 					pass
@@ -2277,7 +2302,7 @@ elif BACKEND in ['jax.autograd','autograd']:
 		elif random in ['plus']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
-				out = setitem(out,slice(None),1/sqrt(shape[-1]))
+				out = inplace(out,slice(None),1/sqrt(shape[-1]))
 				ndim = len(shape)
 				if ndim == 1:
 					pass
@@ -2292,8 +2317,8 @@ elif BACKEND in ['jax.autograd','autograd']:
 		elif random in ['minus']:
 			def func(key,shape,bounds,dtype):
 				out = zeros(shape[-1],dtype=dtype)
-				out = setitem(out,slice(0,None,2),1/sqrt(shape[-1]))
-				out = setitem(out,slice(1,None,2),-1/sqrt(shape[-1]))
+				out = inplace(out,slice(0,None,2),1/sqrt(shape[-1]))
+				out = inplace(out,slice(1,None,2),-1/sqrt(shape[-1]))
 				ndim = len(shape)
 				if ndim == 1:
 					pass
@@ -5329,7 +5354,7 @@ def put(a,values,indices,axis):
 		# np.put_along_axis(a,indices,values,axis=axis)
 
 		if axis in [a.ndim-1]:
-			a = setitem(a,(Ellipsis,indices),values)
+			a = inplace(a,(Ellipsis,indices),values)
 		else:
 			raise ValueError("Not Implemented for axis %d"%(axis))
 

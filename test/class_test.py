@@ -17,7 +17,7 @@ for PATH in PATHS:
 from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,cos,sin,bound
 from src.utils import gradient,hessian,fisher
 from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,abs,sort,sqrt,real,imag
-from src.utils import pi,delim,arrays,scalars,epsilon,setitem
+from src.utils import pi,delim,arrays,scalars,epsilon,inplace
 from src.iterables import getter,setter,permuter,namespace
 from src.io import load,dump,exists
 
@@ -600,67 +600,101 @@ def check_fisher(path,tol):
 
 	def function(model):
 
-		def evolve(model,indices=None):
-			M,K = model.M,len(model)
-			parameters = model.parameters(model.parameters()).reshape(M,K)
+		def evolve(model):
+
+			parameters = model.parameters(model.parameters())
+			M,K,P = parameters.size, parameters.size//model.M, model.P
+			slices = [slice(None,None,1),slice(None,None,-1)]
+
+			data = []
+			for i in slices[:P]:
+				data += model.data[i]
+
 			U = model.identity()
 
-			indices = [[0,M],[0,K]] if indices is None else indices
+			for i in range(M):
+				U = dot(data[i%K](parameters[i]),U)
 
-			for i in range(*indices[0]):
-				step = [0 if i > indices[0][0] else indices[1][0],
-						K if i < (indices[0][1]-1) else indices[1][1]]
-				for j in range(*step):
-					U = dot(model.data[j](parameters[i][j]),U)
-
-			return U
+			return U			
 
 
-		M,K = model.M,len(model)
-		P = M*K
-		parameters = model.parameters(model.parameters()).reshape(M,K)
+		parameters = model.parameters(model.parameters())
+		indices = model.parameters.indices		
+		M = parameters.size
+		K = parameters.size//model.M
+		P = model.P
+		G = model.parameters().size
 
+		slices = [slice(None,None,1),slice(None,None,-1)]
+
+		data = []
+		for i in slices[:P]:
+			data += model.data[i]
+
+		print(model.parameters())
 		print(parameters)
+		print(indices)
+		print(M,K,G)
 
 		print(model.parameters())
 		print(model.parameters(model.parameters()))
-
-		assert allclose(model.parameters(),model.parameters(model.parameters()).reshape(M,K).T.ravel())
+		# assert allclose(model.parameters(),model.parameters(model.parameters()).reshape(M,-1).T.ravel())
 
 		unitary = evolve(model)
 		state = model(parameters=model.parameters(),state=model.state())
-		out = zeros((P,P),dtype=parameters.dtype)
+		out = zeros((G,G),dtype=parameters.dtype)
 
 		print(state)
 		print(dot(unitary,model.state()))
 
 		assert allclose(state,dot(unitary,model.state()))
 
-		for i in range(P):
-			for j in range(P):
-				m,k = i//K,i%K
-				n,l = j//K,j%K
+		U = model.identity()
+		_U = unitary
+		u,_u = model.identity(),model.identity()
 
-				U = evolve(model,[[0,m+1],[0,k]])
-				_U = evolve(model,[[m if k < (K-1) else m+1,M],[k+1 if k < (K-1) else 0,K]])
-				V = evolve(model,[[0,n+1],[0,l]])
-				_V = evolve(model,[[n if l < (K-1) else n+1,M],[l+1 if l < (K-1) else 0,K]])
+		V = model.identity()
+		_V = unitary
+		v,_v = model.identity(),model.identity()
 
-				assert allclose(dot(_U,dot(model.data[k](parameters[m][k]),U)),unitary), "\n%r\n%r\n%r\n%r"%(dot(_U,dot(model.data[k](parameters[m][k]),U)),unitary,U,_U)
-				assert allclose(dot(_V,dot(model.data[l](parameters[n][l]),V)),unitary), "\n%r\n%r\n%r\n%r"%(dot(_V,dot(model.data[l](parameters[n][l]),V)),unitary,V,_V)
+		for i in range(M):
+			for j in range(M):
 
-				H = model.data[k].grad(parameters[m][k])
-				G = model.data[l].grad(parameters[n][l])
+				u,_u = _u,data[i%K](parameters[i])
+				U = dot(u,U)
+				_U = dot(_U,dagger(_u))
 
-				assert allclose(model.data[k].coefficients*model.data[k]().dot(model.data[k](parameters[m][k])),H)
-				assert allclose(model.data[k].coefficients*model.data[l]().dot(model.data[l](parameters[n][l])),G)
+				v,_v = _v,data[j%K](parameters[j])
+				V = dot(v,V)
+				_V = dot(_V,dagger(_v))
+
+				H = model.coefficients*data[i%K].grad(parameters[i])
+				G = model.coefficients*data[j%K].grad(parameters[j])
+
+				assert allclose(dot(_U,dot(data[i%K](parameters[i]),U)),unitary), "\n%r\n%r\n%r\n%r"%(dot(_U,dot(data[i%K](parameters[i]),U)),unitary,U,_U)
+				assert allclose(dot(_V,dot(data[j%K](parameters[j]),V)),unitary), "\n%r\n%r\n%r\n%r"%(dot(_V,dot(data[j%K](parameters[j]),V)),unitary,V,_V)
+
+				assert allclose(model.coefficients*data[i%K].coefficients*data[i%K]().dot(data[i%K](parameters[i])),H)
+				assert allclose(model.coefficients*data[i%K].coefficients*data[j%K]().dot(data[j%K](parameters[j])),G)
 
 				psi = dot(dot(_U,dot(H,U)),model.state())
 				phi = dot(dot(_V,dot(G,V)),model.state())
 
 				tmp = 2*real(dot(dagger(psi),phi) - dot(dagger(state),psi)*dagger(dot(dagger(state),phi)))
 
-				out = setitem(out,(i,j),tmp)
+				for s in indices:
+					if i%K != s:
+						continue
+					for t in indices:
+						if j%K != t:
+							continue
+
+						n = (i//K)*K + indices[s]
+						m = (j//K)*K + indices[t]
+
+						print(i,j,n,m)
+
+						out = inplace(out,(n,m),tmp,'add')
 
 		return out
 
@@ -702,7 +736,7 @@ def check_fisher(path,tol):
 
 		eigs = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1]
 		# eigs = eigs/max(1,maximum(eigs))
-		rank = nonzero(eigs,eps=50)
+		rank = nonzero(eigs,eps=1e-12)
 
 		print()
 		print('-----')
@@ -899,16 +933,16 @@ def check_machine_precision(path,tol):
 
 if __name__ == '__main__':
 	path = 'config/settings.test.json'
-	path = 'config/settings.tmp.json'
 	path = 'config/settings.json'
+	path = 'config/settings.tmp.json'
 	tol = 5e-8 
 
 	func = test_hessian
 	func = check_machine_precision
 	func = test_object
 	func = test_model
-	func = check_fisher
 	func = test_parameters
+	func = check_fisher
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

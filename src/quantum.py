@@ -15,7 +15,7 @@ for PATH in PATHS:
 from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort
-from src.utils import setitem,maximum,minimum,argmax,argmin,nonzero,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
+from src.utils import inplace,maximum,minimum,argmax,argmin,nonzero,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,delim,scalars,arrays,datatype
 
@@ -42,7 +42,7 @@ Basis = {
 	'CNOT': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=dtype)),
 	'HADAMARD': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,1,],[1,-1]],dtype=dtype)/sqrt(D)),
 	'TOFFOLI': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,1,0,0,0,0,0],[0,0,0,1,0,0,0,0],
-  			    	  						  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]],dtype=dtype)),
+											  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]],dtype=dtype)),
 	'RANDOM': (lambda *args,N=N,D=D,ndim=ndim,random=random,dtype=dtype,**kwargs: rand(shape=(D,)*ndim,random=random,dtype=dtype)),
 	'00': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0],[0,0]],dtype=dtype)),
 	'01': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,1],[0,0]],dtype=dtype)),
@@ -810,13 +810,13 @@ class State(Object):
 				tmp = zeros(shape=shape,dtype=dtype)
 
 				if operator[i] in ['zero','zeros','0']:
-					tmp = setitem(tmp,0,1)
+					tmp = inplace(tmp,0,1)
 				elif operator[i] in ['one','ones','1']:
-					tmp = setitem(tmp,-1,1)
+					tmp = inplace(tmp,-1,1)
 				elif operator[i] in ['plus','+']:
-					tmp = setitem(tmp,slice(None),1/sqrt(size))
+					tmp = inplace(tmp,slice(None),1/sqrt(size))
 				elif operator[i] in ['minus','-']:
-					tmp = setitem(tmp,slice(None),(-1)**arange(size)/sqrt(size))
+					tmp = inplace(tmp,slice(None),(-1)**arange(size)/sqrt(size))
 				elif operator[i] in ['random','psi','haar']:
 					tmp = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
 				elif isinstance(self.data,arrays):
@@ -1253,8 +1253,6 @@ class Operators(Object):
 
 			setattr(self,obj,instance)
 				
-
-
 		# Set functions
 		identity = self.identity()
 		parameters = self.parameters()
@@ -1264,15 +1262,20 @@ class Operators(Object):
 		constants = self.constants
 		conj = self.conj
 
+		wrapper = self.parameters.wrapper
+		indices = self.parameters.indices
+
 		assert self.parameters(parameters) is not None, "Incorrect parameters() initialization"
 
 		data = trotter([jit(i) for i in self.data],self.P)
 		grad = trotter([jit(i.grad) for i in self.data],self.P)
 		slices = trotter(list(range(len(self))),self.P)
-		
+
 		wrapper = jit(lambda parameters,slices,coefficients: coefficients*parameters[slices].T.ravel(),slices=array(slices),coefficients=coefficients)
+		indices = trotter(indices,self.P)
 
 		self.parameters.wrapper = wrapper
+		self.parameters.indices = indices
 
 		if state is None and noise is None:
 			hermitian = False
@@ -1307,7 +1310,7 @@ class Operators(Object):
 		
 		grad_jax = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
-		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise,grad=grad)
+		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise,grad=grad,indices=indices)
 
 		grad = grad_jax
 
@@ -1836,11 +1839,11 @@ class Unitary(Hamiltonian):
 
 		parameters = self.parameters(parameters)
 
-		shape = [(parameters.size//self.M)//self.P,self.M]
+		shape = [-1,self.M]
 		ndim = len(shape)
-		
-		gradient_trotterize = jit(lambda grad,P=self.P: gradient_trotter(grad,P))
 		indices = self.parameters.indices
+		
+		indices = {i: array([j for j in indices if indices[j] == i]) for i in set(indices[i] for i in indices)}
 		reshape = (*shape[1:],-1,*self.shape)
 		transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
 		shapes = (-1,*self.shape)
@@ -1848,7 +1851,7 @@ class Unitary(Hamiltonian):
 		grad = self.coefficients*self.gradient_analytical(parameters)
 		grad = grad.reshape(reshape)
 		grad = grad.transpose(transpose)
-		grad = gradient_trotterize(grad)
+		raise NotImplementedError("Implement addition of shared parameters gradient")
 		grad = grad[indices]
 		grad = grad.reshape(*shapes)
 
@@ -2152,7 +2155,10 @@ class Callback(System):
 				elif attr in [
 					'variables','variables.norm','variables.relative','variables.relative.mean',
 					] and (do):
+					
 					indices = model.parameters.indices
+					indices = array([min(j for j in indices if indices[j] == i) for i in set(indices[i] for i in indices)])
+
 					eps = 1e-20
 					if attr in ['variables']:
 						value = model.parameters(parameters)[indices]
@@ -2315,38 +2321,28 @@ def trotter(iterable,p):
 	'''
 	slices = [slice(None,None,1),slice(None,None,-1)]
 
-	if p > len(slices):
-		raise NotImplementedError("p = %d Not Implemented"%(p))
-
-	i = []        
-
-	for indices in slices[:p]:
-		i += iterable[indices]
-	
-	return i
-
-
-def gradient_trotter(iterable,p):
-	'''
-	Gradient of trotterized iterable with order p
-	Args:
-		iterable (iterable): Iterable
-		p (int): Order of trotterization
-	Returns:
-		iterable (iterable): Gradient of trotterized iterable
-	'''	
-	slices = [slice(None,None,1),slice(None,None,-1)]
+	n = len(iterable)
 
 	if p > len(slices):
 		raise NotImplementedError("p = %d Not Implemented"%(p))
 
-	n = len(iterable)//p
+	if not isinstance(iterable,dict):
+		i = []        
 
-	i = 0        
+		for indices in slices[:p]:
+			i += iterable[indices]
 
-	for indices in slices[:p]:
-		i += iterable[:n][indices] if indices.step > 0 else iterable[-n:][indices]
-	
+	else:
+		i = {}
+		assert all(isinstance(i,int) for i in iterable), "Trotterized dict must have int keys"
+		if p == 1:
+			i.update({i: iterable[i] for i in iterable})
+		elif p == 2:
+			i.update({i: iterable[i] for i in iterable})
+			i.update({(p*n-1-i): iterable[i] for i in iterable})
+		else:
+			raise NotImplementedError("Trotterization for p = %d not implemented for dict"%(p))
+
 	return i
 
 
@@ -2597,7 +2593,7 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 	return func			
 
 
-def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,constants=None,noise=None,grad=None):
+def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,constants=None,noise=None,grad=None,indices=None):
 	'''
 	Contract data and state
 	Args:
@@ -2609,12 +2605,22 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 		constants (array): Array of constants to act of shape (n,n)
 		noise (array): Array of noise to act of shape (...,n,n)
 		grad (array): data of shape (length,)
+		indices (dict,iterable[int]): indices to compute gradients with respect to {index_parameter: index_gradient}
 	Returns:
 		func (callable): contracted data(parameters) and state with signature func(parameters,state,conj)
 	'''
 
 	size = parameters.shape[0]
 	length = len(data)
+
+	if indices is None:
+		indices = {i:i for j,i in enumerate(range(size))}
+	elif isinstance(indices,dict):
+		indices = {i:indices[i] for i,j in enumerate(indices)}
+	else:
+		indices = {i:j for i,j in enumerate(indices)}
+
+	index = len(set(indices[i] for i in indices))
 
 	subscripts = 'ij,jk,kl->il'
 	shapes = (identity.shape,identity.shape,identity.shape)
@@ -2627,8 +2633,10 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 	if grad is None:
 		grad = [(lambda parameters,state=None,conj=False,i=i: data[i].coefficients*data[i](parameters + (pi/2)/data[i].coefficients)) for i in range(length)]
 
+
+
 	def func(parameters=None,state=None,conj=False):
-		def func(i):
+		def func(i,out):
 
 			subparameters = slicing(parameters,0,i)
 			substate = None
@@ -2643,7 +2651,6 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 			subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
 
 			U = subfunc(subparameters,identity,subconj)
-
 
 			subparameters = slicing(parameters,i+1,size-i-1)
 			substate = None
@@ -2661,9 +2668,13 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 
 			A = grad[i%length](parameters[i],state,conj)
 
-			return einsummation(V,A,U)
+			out = inplace(out,indices[i],einsummation(V,A,U),'add')
 
-		return array([func(i) for i in range(parameters.size)])
+			return out
+
+		out = zeros((index,*identity.shape),dtype=identity.dtype)
+
+		return forloop(0,size,out)
 
 	func = jit(func)
 
