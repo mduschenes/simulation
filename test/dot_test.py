@@ -15,8 +15,8 @@ for PATH in PATHS:
 from src.io import load,dump,join,split,edit
 
 from src.utils import np,onp,BACKEND
-from src.utils import array,zeros,rand,eye
-from src.utils import abs2,trace,dot,allclose,product,gradient
+from src.utils import array,gradient,zeros,rand,eye
+from src.utils import abs2,trace,dot,allclose
 from src.utils import inner,inner_norm,inner_abs2,inner_real
 from src.utils import gradient_inner,gradient_inner_norm,gradient_inner_abs2,gradient_inner_real
 

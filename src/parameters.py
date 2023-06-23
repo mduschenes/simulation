@@ -4,7 +4,6 @@
 import os,sys
 from copy import deepcopy
 from functools import partial,wraps
-from math import prod
 
 
 # Import User modules
@@ -14,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,vfunc,switch,array,arange,bound
-from src.utils import concatenate,addition
+from src.utils import concatenate,addition,prod
 from src.utils import initialize,slicing,datatype
 from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin
 

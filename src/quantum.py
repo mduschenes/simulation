@@ -4,7 +4,6 @@
 import os,sys,itertools
 from copy import deepcopy
 from functools import partial
-from math import prod
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -14,7 +13,7 @@ for PATH in PATHS:
 
 from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
-from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort
+from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort,prod
 from src.utils import inplace,maximum,minimum,argmax,argmin,nonzero,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,delim,scalars,arrays,datatype
