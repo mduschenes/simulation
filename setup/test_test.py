@@ -14,6 +14,7 @@ def test_jax(*args,**kwargs):
 	import os
 	envs = {
 		'JAX_PLATFORMS':'cpu',
+		'JAX_PLATFORM_NAME':'cpu',
 		'TF_CPP_MIN_LOG_LEVEL':5
 	}
 	for var in envs:
