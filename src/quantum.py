@@ -350,6 +350,18 @@ class Object(System):
 		return self.gradient(parameters,state,conj)
 
 
+	def conjugate(self,parameters=None,state=None,conj=True):
+		'''
+		Call conjugate operator
+		Args:
+			parameters (array): parameters
+			state (obj): state
+			conj (bool): conjugate			
+		Returns:
+			data (array): data
+		'''
+		return self(parameters,state,conj)
+
 	def __str__(self):
 		string = self.__class__.__name__ if not self.string else self.string
 		if self.operator is not None and not isinstance(self.operator,arrays):
@@ -2332,6 +2344,7 @@ def trotter(iterable=None,p=None):
 		i = iterable
 
 	else:
+
 		raise NotImplementedError("Trotterization for %r not implemented"%(iterable))
 
 
