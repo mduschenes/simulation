@@ -49,7 +49,7 @@ __all__ = ['LineSearchWarning', 'line_search_wolfe1', 'line_search_wolfe2',
 
 if BACKEND in ['jax','jax.autograd']:
 
-	def setitem(obj,index,item):
+	def inplace(obj,index,item):
 		'''
 		Set item at index of object
 		Args:
@@ -70,7 +70,7 @@ if BACKEND in ['jax','jax.autograd']:
 elif BACKEND in ['autograd']:
 
 
-	def setitem(obj,index,item):
+	def inplace(obj,index,item):
 		'''
 		Set item at index of object
 		Args:
@@ -552,10 +552,10 @@ def _cubicmin(a, fa, fpa, b, fb, c, fc):
 		denom = (db * dc) ** 2 * (db - dc)
 		d1 = np.empty((2, 2))
 	
-		d1 = setitem(d1,(0,0),dc ** 2)
-		d1 = setitem(d1,(0,1),-db ** 2)
-		d1 = setitem(d1,(1,0),-dc ** 3)
-		d1 = setitem(d1,(1,1),db ** 3)
+		d1 = inplace(d1,(0,0),dc ** 2)
+		d1 = inplace(d1,(0,1),-db ** 2)
+		d1 = inplace(d1,(1,0),-dc ** 3)
+		d1 = inplace(d1,(1,1),db ** 3)
 
 		[A, B] = np.dot(d1, np.asarray([fb - fa - C * db,
 										fc - fa - C * dc]).flatten())

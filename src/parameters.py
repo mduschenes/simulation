@@ -13,14 +13,14 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vfunc,switch,array,arange,bound,setitem
+from src.utils import jit,vfunc,switch,array,arange,bound
 from src.utils import concatenate,addition
 from src.utils import initialize,slicing,datatype
 from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin
 
 from src.iterables import indexer,inserter,setter,getter
 
-from src.system import System
+from src.system import System,Dict
 from src.io import load,dump,join,split
 
 
@@ -56,7 +56,7 @@ class Parameter(System):
 			parameters=None,
 			wrapper=None,
 			seed=None,random=None,initialization=None,constant=None,
-			slices=None,sort=None,indices=None,func=None,constraint=None,
+			indices=None,slices=None,sort=None,func=None,constraint=None,
 			shape=None,size=None,ndim=None,dtype=None,			
 			args=(),kwargs={}
 			)
@@ -150,29 +150,31 @@ class Parameter(System):
 		kwargs = self.kwargs
 		dtype = self.dtype
 
-		# Get strings (indices of data for each unique string)
-		strings = {i: data.string for i,data in enumerate(model.data)} if model is not None else {}
-		strings = {strings[i]: [j for j in strings if strings[j] == strings[i]] for i in strings}
-		strings = {i: {
+		# Get indices (indices of data for each unique string)
+		indices = {i: data.string for i,data in enumerate(model.data)} if model is not None else {}
+		indices = {indices[i]: [j for j in indices if indices[j] == indices[i]] for i in indices}
+		indices = {i: {
 			'string':string,'label':separ.join((str(string),str(j))),
-			'sort':i,'indices':j,'slices':None,'group':None,
+			'sort':i,'index':j,'slices':None,'group':None,
 			}
-			for string in strings for j,i in enumerate(strings[string])}
+			for string in indices for j,i in enumerate(indices[string])}
+
+		indices = {i: Dict(indices[i]) for i in indices}
 		
 		# Get slices (indices of parameter for each data in each group (locality dependent) (sort parameters into order of indices of data))
 		# Get sort (indices of data for each parameter in each group (re-order/sort parameters from slices and func())		
-		# Get indices (indices of data for each parameter in each group)		
+		# Get indexes (indices of data for each parameter in each group)		
 		# Get sizes (number of parameters per group for each group)
 		# Get size (number of parameters per group)
-		for i in list(strings):
+		for i in list(indices):
 			for subgroup in group:
-				for attr in strings[i]:
-					if strings[i][attr] in subgroup:
-						strings[i]['slices'] = group.index(subgroup)
-						strings[i]['group'] = subgroup
+				for attr in indices[i]:
+					if indices[i][attr] in subgroup:
+						indices[i].slices = group.index(subgroup)
+						indices[i].group = subgroup
 						break
-			if any(strings[i][attr] is None for attr in strings[i]):
-				strings.pop(i)
+			if any(indices[i][attr] is None for attr in indices[i]):
+				indices.pop(i)
 
 		sizes = []
 		group = list(group)
@@ -181,7 +183,7 @@ class Parameter(System):
 			if locality.get(subgroup) in ['global']:
 				size = 1
 			else:
-				size = len([j for j in strings if strings[j]['group'] == subgroup])
+				size = len([j for j in indices if indices[j].group == subgroup])
 			
 			if not size:
 				group.remove(subgroup)
@@ -189,28 +191,28 @@ class Parameter(System):
 			
 			sizes.append(size)
 
-		for i in strings:
+		for i in indices:
 		
-			strings[i]['sizes'] = sizes
+			indices[i].sizes = sizes
 
-			strings[i]['size'] = strings[i]['sizes'][group.index(strings[i]['group'])]
+			indices[i].size = indices[i].sizes[group.index(indices[i].group)]
 
-			if locality.get(strings[i]['group']) in ['global']:
-				strings[i]['slices'] = sum(strings[i]['sizes'][:group.index(strings[i]['group'])])
+			if locality.get(indices[i].group) in ['global']:
+				indices[i].slices = sum(indices[i].sizes[:group.index(indices[i].group)])
 			else:
-				strings[i]['slices'] = sum(strings[i]['sizes'][:group.index(strings[i]['group'])]) + [j for j in strings if strings[j]['group'] == strings[i]['group']].index(i)
+				indices[i].slices = sum(indices[i].sizes[:group.index(indices[i].group)]) + [j for j in indices if indices[j].group == indices[i].group].index(i)
 
-		slices = array([strings[i]['slices'] for i in strings]) if strings else None
-		sort = array([strings[i]['sort'] for i in strings]) if strings else None
-		indices = array([strings[i]['indices'] for i in strings]) if strings else None
+
+		slices = array([indices[i].slices for i in indices]) if indices else None
+		sort = array([indices[i].sort for i in indices]) if indices else None
 		shape = [
-			sum(max(strings[i]['size'] for i in strings if strings[i]['group'] == subgroup) for subgroup in group),
-			*(getattr(model,attr) for attr in attributes)] if strings else None
+			sum(max(indices[i].size for i in indices if indices[i].group == subgroup) for subgroup in group),
+			*(getattr(model,attr) for attr in attributes)] if indices else None
 
 		# Set attributes
+		self.indices = indices
 		self.slices = slices
 		self.sort = sort
-		self.indices = indices
 		self.shape = shape if shape is not None else None
 		self.size = prod(shape) if shape is not None else None
 		self.ndim = len(shape) if shape is not None else None
@@ -247,6 +249,7 @@ class Parameter(System):
 		self.data = self.data
 
 		# Set functions
+		categories = ['variable']
 		defaults = {
 			'constant':self.constant,
 			'lambda':0,
@@ -280,7 +283,7 @@ class Parameter(System):
 					indices = (*(slice(None),)*(max(0,ax-2)),indices,*(slice(None),)*(max(0,self.ndim - ax - 1)))
 					self.kwargs[attr][axis] = {'indices':indices,'values':values}
 
-		if self.category in ['variable']:
+		if self.category in categories:
 
 			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 		
@@ -421,12 +424,12 @@ class Parameters(System):
 		Setup parameters such that calling the Parameters(parameters) class with input parameters 
 		i) 		parameters array of size (G*P*D),
 					for G groups of P parameters, each of dimension D, 
-					for parameter groups with category in ['variable'],
+					for parameter groups with category in categories = ['variable'],
 					P,D may be group dependent, and depend on Parameter.locality, Parameter.model and Parameter.attributes 
 		ii) 	parameters for each group are sliced with parameter slices (slice(P*D)) and reshaped into shape (P,D)
 		iii) 	parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
-		iv) 	parameters for all groups are concatenated to [parameter_i = Parameters[slices_i]][indices]
-					with slices Parameters.slices = [slices], and sorted with indices Parameters.indices = [indices]
+		iv) 	parameters for all groups are concatenated to [parameter_i = Parameters[slices_i]][sort]
+					with slices Parameters.slices = [slices], and sorted with sort Parameters.sort = [sort]
 		
 		Args:
 			data (dict): Dictionary of data corresponding to parameters groups, with dictionary values with properties:
@@ -453,10 +456,15 @@ class Parameters(System):
 			kwargs (dict): Additional system keyword arguments
 		'''
 
+
 		defaults = dict(
-			data=None,
-			slices=None,sort=None,indices=None,func=None,constraint=None,parameters=None,wrapper=None,
-			shape=None,size=None,ndim=None,dtype=None,
+			string=None,category=None,method=None,
+			group=None,locality=None,bounds=None,attributes=None,axis=None,
+			parameters=None,
+			seed=None,random=None,initialization=None,constant=None,
+			indices=None,slices=None,sort=None,func=None,constraint=None,wrapper=None,
+			shape=None,size=None,ndim=None,dtype=None,			
+			args=(),kwargs={}
 			)
 
 		data = data if data is not None else None
@@ -530,30 +538,39 @@ class Parameters(System):
 
 		# Set slices and sort and indices
 		categories = ['variable']
+		indices = {}
+		group = []
 		slices = []
 		sort = []
-		indices = []
 		for i,parameter in enumerate(self):
 			if self[parameter].category in categories:
+				idx = self[parameter].indices
+				grp = self[parameter].group
 				slc = self[parameter].size
 				srt = self[parameter].sort
-				idx = self[parameter].category
 			else:
+				idx = None
+				grp = self[parameter].group							
 				slc = None
 				srt = self[parameter].sort
-				idx = self[parameter].category
 
+			idx = idx if idx is not None else {}
+			grp = tuple(grp)
 			slc = [sum(i[-1] for i in slices),slc] if slc is not None else [0,0]
 			srt = [int(i) for i in srt]
-			idx = [idx for i in srt]
 
+			indices.update(idx)
+			group.append(grp)
 			slices.append(slc)
 			sort.extend(srt)
-			indices.extend(idx)
 
+		group = group
 		slices = [[*i] for i in slices]
 		sort = array([sort.index(i) for i in range(len(sort))])
-		indices = array([list(sort).index(i) for i in range(len(sort)) if indices[i] in categories])
+
+		for j,i in enumerate(indices):
+			k =  group.index([j for j in group if indices[i].group in j][0])
+			indices[i] = max((indices[k] for l,k in enumerate(indices) if l < j),default=-1) + ((indices[i].index == 0) or (indices[i].size != 1))
 
 		# Set func and constraint
 		funcs = []
@@ -581,12 +598,12 @@ class Parameters(System):
 		# Get data
 		data = []
 		for parameter in self:
-			if self[parameter].category not in ['variable']:
+			if self[parameter].category not in categories:
 				continue
 			parameter = self[parameter]()
 			data.extend(parameter)
 
-		data = array(data,dtype=self.dtype).ravel() if data else None
+		data = array(data,dtype=self.dtype).ravel()
 
 		# Get parameters
 		parameters = []
@@ -600,13 +617,12 @@ class Parameters(System):
 		parameters = array(parameters,dtype=self.dtype).ravel() if parameters else None
 
 
-
-
 		# Set attributes
 		self.data = data
+		self.indices = indices
 		self.slices = slices
 		self.sort = sort
-		self.indices = indices
+		self.group = group
 		self.func = func
 		self.constraint = constraint
 		self.parameters = parameters
