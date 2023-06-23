@@ -14,7 +14,7 @@ for PATH in PATHS:
 from src.io import load,dump,join,split,edit
 
 from src.utils import np,onp,BACKEND
-from src.utils import array,zeros,rand,identity,setitem,datatype,allclose,sqrt,abs2
+from src.utils import array,zeros,rand,identity,inplace,datatype,allclose,sqrt,abs2
 from src.utils import gradient,rand,eye,diag,sin,cos
 from src.utils import einsum,norm,norm2,trace,mse
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
@@ -244,9 +244,9 @@ def test_gradient_expm(path=None,tol=None):
 		for i in range(m*d):
 			for j in range(m*d):
 				U = _expm(x[j],A[j%d],I)
-				out = setitem(out,i,U.dot(out[i]))
+				out = inplace(out,i,U.dot(out[i]))
 				if j == i:
-					out = setitem(out,i,A[j%d].dot(out[i]))
+					out = inplace(out,i,A[j%d].dot(out[i]))
 
 		return out
 
