@@ -45,7 +45,7 @@ assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
 if BACKEND in ['jax','jax.autograd']:
 	
 	envs = {
-		'JAX_PLATFORM_NAME':'cpu',
+		'JAX_PLATFORMS':'cpu',
 		'TF_CPP_MIN_LOG_LEVEL':5
 	}
 	for var in envs:
