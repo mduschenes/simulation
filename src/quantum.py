@@ -16,7 +16,7 @@ from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fis
 from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort
 from src.utils import inplace,maximum,minimum,argmax,argmin,nonzero,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
-from src.utils import to_string,is_hermitian,is_unitary,allclose
+from src.utils import to_index,to_position,to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,delim,scalars,arrays,datatype
 
 from src.iterables import setter,getattrs,hasattrs,namespace,iterate,indexer,inserter
@@ -1272,7 +1272,7 @@ class Operators(Object):
 		slices = trotter(list(range(len(self))),self.P)
 
 		wrapper = jit(lambda parameters,slices,coefficients: coefficients*parameters[slices].T.ravel(),slices=array(slices),coefficients=coefficients)
-		indices = trotter(indices,self.P,len(self))
+		indices = trotter(indices,self.P,(len(self),self.M))
 
 		self.parameters.wrapper = wrapper
 		self.parameters.indices = indices
@@ -1384,7 +1384,26 @@ class Operators(Object):
 		Returns:
 			out (array): Return of function
 		'''		
-		return self.gradient_analytical(parameters)
+		if parameters is None:
+			parameters = self.parameters()
+
+		if state is None:
+			state = self.state()
+
+		parameters = self.parameters(parameters)
+
+		# shape = [-1,self.M]
+		# ndim = len(shape)
+		# indices = self.parameters.indices
+		
+		# indices = {i: array([j for j in indices if indices[j] == i]) for i in set(indices[i] for i in indices)}
+		# reshape = (*shape[1:],-1,*self.shape)
+		# transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
+		# shapes = (-1,*self.shape)
+
+		grad = self.coefficients*self.gradient_analytical(parameters,state,conj)
+
+		return grad
 
 
 	def __len__(self):
@@ -1819,43 +1838,6 @@ class Unitary(Hamiltonian):
 		self.norm()
 
 		return
-
-	def grad_analytical(self,parameters=None,state=None,conj=False):
-		'''
-		Class gradient
-		Args:
-			parameters (array): parameters		
-			state (obj): state
-			conj (bool): conjugate
-		Returns
-			out (array): Return of function
-		'''	
-
-		if parameters is None:
-			parameters = self.parameters()
-
-		if state is None:
-			state = self.state()
-
-		parameters = self.parameters(parameters)
-
-		# shape = [-1,self.M]
-		# ndim = len(shape)
-		# indices = self.parameters.indices
-		
-		# indices = {i: array([j for j in indices if indices[j] == i]) for i in set(indices[i] for i in indices)}
-		# reshape = (*shape[1:],-1,*self.shape)
-		# transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
-		# shapes = (-1,*self.shape)
-
-		grad = self.coefficients*self.gradient_analytical(parameters)
-		# grad = grad.reshape(reshape)
-		# grad = grad.transpose(transpose)
-		# raise NotImplementedError("Implement addition of shared parameters gradient")
-		# grad = grad[indices]
-		# grad = grad.reshape(*shapes)
-
-		return grad
 
 
 
@@ -2310,39 +2292,45 @@ class Callback(System):
 		return status
 
 
-def trotter(iterable,p,n=None):
+def trotter(iterable,p,shape=None):
 	'''
 	Trotterized iterable with order p
 	Args:
 		iterable (iterable): Iterable
 		p (int): Order of trotterization
-		n (int): Size of iterable
+		shape (int): Shape of iterable
 	Returns:
 		iterable (iterable): Trotterized iterable
 	'''
-	slices = [slice(None,None,1),slice(None,None,-1)]
 
-	n = len(iterable) if n is None else n
-
-	if p > len(slices):
-		raise NotImplementedError("p = %d Not Implemented"%(p))
+	P = 2
+	if p > P:
+		raise NotImplementedError("p = %d > %d Not Implemented"%(p,P))
 
 	if not isinstance(iterable,dict):
-		i = []        
+		slices = [slice(None,None,1),slice(None,None,-1)]
+		shape = None if shape is None else shape
 
+		i = []        
 		for indices in slices[:p]:
 			i += iterable[indices]
 
-	else:
+	elif all(isinstance(i,int) for i in iterable):
+		slices = [
+			{(i,*j): iterable[i]*max(prod(shape[1:]),1) + to_index(j,shape[1:]) for i in iterable for j in (itertools.product(*(range(i) for i in shape[1:])) if prod(shape[1:]) else ((),))},
+			{(p*shape[0]-1-i,*j): iterable[i]*max(prod(shape[1:]),1) + to_index(j,shape[1:]) for i in iterable for j in (itertools.product(*(range(i) for i in shape[1:])) if prod(shape[1:]) else ((),))}
+			]
+		shape = (len(iterable),) if shape is None else shape
+
 		i = {}
-		assert all(isinstance(i,int) for i in iterable), "Trotterized dict must have int keys"
-		if p == 1:
-			i.update({i: iterable[i] for i in iterable})
-		elif p == 2:
-			i.update({i: iterable[i] for i in iterable})
-			i.update({(p*n-1-i): iterable[i] for i in iterable})
-		else:
-			raise NotImplementedError("Trotterization for p = %d not implemented for dict"%(p))
+		for indices in slices[:p]:
+			i.update(indices)
+
+	elif all(isinstance(i,tuple) and isinstance(iterable[i],int) for i in iterable):
+		i = iterable
+	else:
+		raise NotImplementedError("Trotterization for %r not implemented"%(iterable))
+
 
 	return i
 
@@ -2467,7 +2455,8 @@ def contraction(data,state=None,conj=False,constants=None,noise=None):
 
 		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
 		
-	func = jit(func,static_argnums=(2))	
+	# func = jit(func,static_argnums=(2))	
+	func = jit(func)	
 
 	return func
 
@@ -2589,7 +2578,8 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
 		
-	func = jit(func,static_argnums=(2,3,4,5))
+	# func = jit(func,static_argnums=(2,3,4,5))
+	func = jit(func)
 
 	return func			
 
@@ -2634,10 +2624,11 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 	if grad is None:
 		grad = [(lambda parameters,state=None,conj=False,i=i: data[i].coefficients*data[i](parameters + (pi/2)/data[i].coefficients)) for i in range(length)]
 
-
-
 	def func(parameters=None,state=None,conj=False):
 		def func(i,out):
+
+			if (i%length,i//length) not in indices:
+				return out
 
 			subparameters = slicing(parameters,0,i)
 			substate = None
@@ -2669,13 +2660,9 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 
 			A = grad[i%length](parameters[i],state,conj)
 
-			for j in indices:
-				if i%length != j:
-					continue
-				
-				j = (i//length)*(size//length) + indices[j]
+			j = indices[(i%length,i//length)]
 
-				out = inplace(out,j,einsummation(V,A,U),'add')
+			out = inplace(out,j,einsummation(V,A,U),'add')
 
 			return out
 
@@ -2683,6 +2670,7 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 
 		for i in range(size):
 			out = func(i,out)
+
 		return out
 
 	func = jit(func)

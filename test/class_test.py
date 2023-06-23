@@ -236,10 +236,14 @@ def test_parameters(path,tol):
 
 	variables = variables[:variables.shape[0]//model.P]/model.coefficients
 
+	print(list(model.parameters))
 	print(parameters.round(6))
 	print(variables.round(6))
 
 	parameter = 'xy'
+
+	assert parameter in model.parameters, "Incorrect parameters: missing %s"%(parameter)
+
 	shape = parameters.shape
 	category = model.parameters[parameter].category
 	method = model.parameters[parameter].method	
@@ -609,8 +613,8 @@ def check_fisher(path,tol):
 		def function(model):
 
 			parameters = model.parameters(model.parameters())
-			M,K,P = parameters.size, parameters.size//model.M, model.P
 			indices = model.parameters.indices		
+			M,K,P = parameters.size, parameters.size//model.M, model.P
 
 			data = trotter(model.data,P)
 
@@ -638,6 +642,9 @@ def check_fisher(path,tol):
 
 			for i in range(M):
 
+				if (i%K,i//K) not in indices:
+					continue
+
 				u,_u = _u,data[i%K](parameters[i])
 				U = dot(u,U)
 				_U = dot(_U,dagger(_u))
@@ -648,14 +655,10 @@ def check_fisher(path,tol):
 				assert allclose(model.coefficients*data[i%K].coefficients*data[i%K]().dot(data[i%K](parameters[i])),H)
 
 				tmp = dot(dot(_U,dot(H,U)),state)
+				
+				j = indices[(i%K,i//K)]
 
-				for s in indices:
-					if i%K != s:
-						continue
-					
-					n = (i//K)*L + indices[s]
-
-					grad = inplace(grad,n,tmp,'add')
+				grad = inplace(grad,j,tmp,'add')
 
 			return grad
 
@@ -722,16 +725,16 @@ def check_fisher(path,tol):
 		rank = nonzero(eigs,eps=1e-10) if eigs is not None else None
 
 
-		if i == (n-1):
-			stats = {'N':model.N,'M':model.M,'Bndy':{'<ij>':'closed','>ij<':'open'}.get(hyperparameters.model.data.zz.site,'')}
-			data = {
-				'parameters_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): model.parameters().reshape(-1,model.M),
-				'eig_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): eigs,
-				}
-			directory = '~/Downloads/'
+		# if i == (n-1):
+		# 	stats = {'N':model.N,'M':model.M,'Bndy':{'<ij>':'closed','>ij<':'open'}.get(hyperparameters.model.data.zz.site,'')}
+		# 	data = {
+		# 		'parameters_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): model.parameters().reshape(-1,model.M),
+		# 		'eig_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): eigs,
+		# 		}
+		# 	directory = '~/Downloads/'
 
-			for file in data:
-				dump(data[file],join(directory,file))
+		# 	for file in data:
+		# 		dump(data[file],join(directory,file))
 
 		eigs = sort(abs(eigs))[::-1] if eigs is not None else None
 		# eigs = eigs/max(1,maximum(eigs))
@@ -943,6 +946,7 @@ if __name__ == '__main__':
 	func = test_model
 	func = test_parameters
 	func = check_fisher
+	func = test_initialization
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)
