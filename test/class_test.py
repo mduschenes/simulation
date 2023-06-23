@@ -17,7 +17,7 @@ for PATH in PATHS:
 from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,cos,sin,bound
 from src.utils import gradient,hessian,fisher
 from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,abs,sort,sqrt,real,imag
-from src.utils import pi,delim,arrays,scalars,epsilon,inplace
+from src.utils import pi,delim,arrays,scalars,epsilon,inplace,to_index,to_position
 from src.iterables import getter,setter,permuter,namespace
 from src.io import load,dump,join,exists
 
@@ -618,12 +618,12 @@ def check_fisher(path,tol):
 
 			data = trotter(model.data,P)
 
-			U = model.identity()
+			out = model.identity()
 
 			for i in range(M):
-				U = dot(data[i%K](parameters[i]),U)
+				out = dot(data[i%K](parameters[i]),out)
 
-			return U
+			return out
 
 		def gradient(model):
 
@@ -650,9 +650,6 @@ def check_fisher(path,tol):
 				_U = dot(_U,dagger(_u))
 
 				H = model.coefficients*data[i%K].grad(parameters[i])
-
-				assert allclose(dot(_U,dot(data[i%K](parameters[i]),U)),func), "\n%r\n%r\n%r\n%r"%(dot(_U,dot(data[i%K](parameters[i]),U)),func,U,_U)
-				assert allclose(model.coefficients*data[i%K].coefficients*data[i%K]().dot(data[i%K](parameters[i])),H)
 
 				tmp = dot(dot(_U,dot(H,U)),state)
 				
@@ -703,6 +700,8 @@ def check_fisher(path,tol):
 
 		setter(hyperparameters,kwargs,delimiter=delim)
 
+		print('N: %d, M: %d, B: %s'%(hyperparameters.model.N,hyperparameters.model.M,hyperparameters.model.data.zz.site))
+
 		model = load(hyperparameters.cls.model)
 		label = load(hyperparameters.cls.label)
 
@@ -720,6 +719,23 @@ def check_fisher(path,tol):
 			tmp = _func(model)
 		else:
 			tmp = func(parameters)
+
+		size = model.parameters(model.parameters()).size
+		length = model.parameters().size//model.M
+		indices = model.parameters.indices
+		index = len(set(indices[i] for i in indices))
+		shape = (length,model.M)
+		dtype = int
+		# transform = zeros(tmp.shape,dtype=dtype)
+		# for i in indices:
+		# 	j = to_index(to_position(indices[i],shape),shape)
+		# 	transform = inplace(transform,(j,indices[i]),1)
+		# print('-----')
+		# print(transform)
+		# print(tmp)
+
+		# tmp = dot(transform,dot(tmp,transform.T)) 
+
 
 		eigs = eig(tmp,compute_v=False,hermitian=True) if tmp is not None else None
 		rank = nonzero(eigs,eps=1e-10) if eigs is not None else None
@@ -739,10 +755,11 @@ def check_fisher(path,tol):
 		eigs = sort(abs(eigs))[::-1] if eigs is not None else None
 		# eigs = eigs/max(1,maximum(eigs))
 
-		print()
 		print('-----')
+		# for i in indices:
+		# 	print(i,indices[i])
 		print(rank,eigs)
-		print(tmp)
+		# print(tmp)
 		print()
 
 		out.append(eigs)
@@ -945,8 +962,8 @@ if __name__ == '__main__':
 	func = test_object
 	func = test_model
 	func = test_parameters
-	func = check_fisher
 	func = test_initialization
+	func = check_fisher
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

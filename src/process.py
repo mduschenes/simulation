@@ -11,7 +11,6 @@ import scipy.special
 import pandas as pd
 from pandas.api.types import is_float_dtype
 from natsort import natsorted,realsorted
-from math import prod
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -20,7 +19,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser
-from src.utils import array,expand_dims,conditions
+from src.utils import array,expand_dims,conditions,prod
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import getter,setter,search,inserter,indexer

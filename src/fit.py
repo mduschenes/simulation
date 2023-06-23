@@ -16,7 +16,7 @@ for PATH in PATHS:
 from src.utils import jit,gradient,hessian,einsum,dot,diag,partial,where
 from src.utils import array,ones,zeros,rand,eye
 from src.utils import norm,inv,lstsq,interp,piecewise,inplace
-from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,product,is_naninf,allclose
+from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,is_naninf,allclose
 from src.utils import nan,null,scalars,delim
 
 from src.optimize import Optimizer,Metric,Objective,Callback,Covariance

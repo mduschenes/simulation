@@ -2,6 +2,7 @@
 
 # Import python modules
 import os,sys,itertools,copy,ast,operator
+from math import prod
 
 from functools import partial,wraps
 from natsort import natsorted
@@ -1118,7 +1119,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	else:
 		ndim = min((len(shape) for shape in shapes),default=2)
 
-	from math import prod
 	size = min((prod(shape[:len(shape)-ndim] for shape in shapes if len(shape)>ndim)),default=0)
 	dtype = getattr(func,'dtype',None)
 
@@ -3852,19 +3852,6 @@ def multi_dot(a):
 		out (array): Reduced array of matrix product of arrays
 	'''
 	return np.linalg.multi_dot(a)
-
-@partial(jit,static_argnums=(1,))
-def prod(a,axis=0):
-	'''
-	Get product of elements in array along axis
-	Args:
-		a (array): Array to compute product of elements
-		axis (int): axis to perform product
-	Returns:
-		out (array): Reduced array of product of elements along axis
-	'''
-	return np.prod(a,axis)
-
 
 @partial(jit,static_argnums=(1,))
 def average(a,axis=0,weights=None):
@@ -6670,7 +6657,6 @@ def to_position(index,shape):
 	Returns:
 		position (iterable[int]): Dimensional positions
 	'''
-	from math import prod
 	position = [index//(prod(shape[i+1:]))%(shape[i]) for i in range(len(shape))]
 	return position
 
@@ -6683,7 +6669,6 @@ def to_index(position,shape):
 	Returns:
 		index (int): Linear index
 	'''	
-	from math import prod
 	index = sum((position[i]*(prod(shape[i+1:])) for i in range(len(shape))))
 	return index
 
