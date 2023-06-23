@@ -4,6 +4,7 @@
 import os,sys
 from copy import deepcopy
 from functools import partial,wraps
+import itertools
 
 
 # Import User modules
@@ -14,7 +15,7 @@ for PATH in PATHS:
 
 from src.utils import jit,vfunc,switch,array,arange,bound
 from src.utils import concatenate,addition,prod
-from src.utils import initialize,slicing,datatype
+from src.utils import initialize,slicing,datatype,to_index,to_position
 from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin
 
 from src.iterables import indexer,inserter,setter,getter
@@ -150,6 +151,7 @@ class Parameter(System):
 		dtype = self.dtype
 
 		# Get indices (indices of data for each unique string)
+		localities = ['global']
 		indices = {i: data.string for i,data in enumerate(model.data)} if model is not None else {}
 		indices = {indices[i]: [j for j in indices if indices[j] == indices[i]] for i in indices}
 		indices = {i: {
@@ -179,7 +181,7 @@ class Parameter(System):
 		group = list(group)
 		for subgroup in list(group):
 			
-			if locality.get(subgroup) in ['global']:
+			if locality.get(subgroup) in localities:
 				size = 1
 			else:
 				size = len([j for j in indices if indices[j].group == subgroup])
@@ -196,7 +198,7 @@ class Parameter(System):
 
 			indices[i].size = indices[i].sizes[group.index(indices[i].group)]
 
-			if locality.get(indices[i].group) in ['global']:
+			if locality.get(indices[i].group) in localities:
 				indices[i].slices = sum(indices[i].sizes[:group.index(indices[i].group)])
 			else:
 				indices[i].slices = sum(indices[i].sizes[:group.index(indices[i].group)]) + [j for j in indices if indices[j].group == indices[i].group].index(i)
@@ -207,6 +209,9 @@ class Parameter(System):
 		shape = [
 			sum(max(indices[i].size for i in indices if indices[i].group == subgroup) for subgroup in group),
 			*(getattr(model,attr) for attr in attributes)] if indices else None
+
+		for i in indices:
+			indices[i].shape = shape
 
 		# Set attributes
 		self.indices = indices
@@ -567,9 +572,21 @@ class Parameters(System):
 		slices = [[*i] for i in slices]
 		sort = array([sort.index(i) for i in range(len(sort))])
 
-		for j,i in enumerate(indices):
-			k =  group.index([j for j in group if indices[i].group in j][0])
-			indices[i] = max((indices[k] for l,k in enumerate(indices) if l < j),default=-1) + ((indices[i].index == 0) or (indices[i].size != 1))
+		for j,i in enumerate(list(indices)):
+
+			indices[i] = (
+				max((indices[k][0] for l,k in enumerate(indices) if l < j),default=-1) + ((indices[i].index == 0) or (indices[i].size != 1)),
+				(sum(self[parameter].slices.size for parameter in self if self[parameter].slices is not None),*indices[i].shape[1:])
+				)
+
+		for j,i in enumerate(list(indices)):
+
+			k,shape = indices.pop(i)
+
+			for j in (itertools.product(*(range(i) for i in shape[1:])) if prod(shape[1:]) else ((),)):
+				indices[(i,*j)] = (k*max(prod(shape[1:]),1) + to_index(j,shape[1:]),shape)
+			
+
 
 		# Set func and constraint
 		funcs = []

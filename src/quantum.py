@@ -1091,7 +1091,7 @@ class Operators(Object):
 		self.__lattice__()
 
 		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
-		self.coefficients = array((self.tau)*(1/self.P),dtype=datatype(self.dtype))
+		self.coefficients = array((self.tau)*trotter(p=self.P),dtype=datatype(self.dtype))
 
 		self.shape = () if self.n is None else (self.n,self.n)
 		self.size = prod(self.shape)
@@ -1271,7 +1271,7 @@ class Operators(Object):
 		slices = trotter(list(range(len(self))),self.P)
 
 		wrapper = jit(lambda parameters,slices,coefficients: coefficients*parameters[slices].T.ravel(),slices=array(slices),coefficients=coefficients)
-		indices = trotter(indices,self.P,(len(self),self.M))
+		indices = trotter(indices,self.P)
 
 		self.parameters.wrapper = wrapper
 		self.parameters.indices = indices
@@ -2291,42 +2291,46 @@ class Callback(System):
 		return status
 
 
-def trotter(iterable,p,shape=None):
+def trotter(iterable=None,p=None):
 	'''
-	Trotterized iterable with order p
+	Trotterized iterable for order p or coefficients for order p
 	Args:
 		iterable (iterable): Iterable
 		p (int): Order of trotterization
-		shape (int): Shape of iterable
 	Returns:
-		iterable (iterable): Trotterized iterable
+		iterable (iterable): Trotterized iterable for order p
+		coefficients (scalar): Coefficients for order p
 	'''
 
 	P = 2
-	if p > P:
-		raise NotImplementedError("p = %d > %d Not Implemented"%(p,P))
+	if isinstance(p,int) and (p > P):
+		raise NotImplementedError("p = %r > %d Not Implemented"%(p,P))
 
-	if not isinstance(iterable,dict):
+	if iterable is None:
+		coefficients = 1/p if isinstance(p,int) else None
+		return coefficients
+
+	elif not isinstance(iterable,dict):
 		slices = [slice(None,None,1),slice(None,None,-1)]
-		shape = None if shape is None else shape
 
 		i = []        
 		for indices in slices[:p]:
 			i += iterable[indices]
 
-	elif all(isinstance(i,int) for i in iterable):
+	elif all(isinstance(i,tuple) and isinstance(iterable[i],tuple) for i in iterable):
 		slices = [
-			{(i,*j): iterable[i]*max(prod(shape[1:]),1) + to_index(j,shape[1:]) for i in iterable for j in (itertools.product(*(range(i) for i in shape[1:])) if prod(shape[1:]) else ((),))},
-			{(p*shape[0]-1-i,*j): iterable[i]*max(prod(shape[1:]),1) + to_index(j,shape[1:]) for i in iterable for j in (itertools.product(*(range(i) for i in shape[1:])) if prod(shape[1:]) else ((),))}
-			]
-		shape = (len(iterable),) if shape is None else shape
-
+			{(i[0],*i[1:]): iterable[i][0] for i in iterable},
+			{(p*iterable[i][1][0]-1-i[0],*i[1:]): iterable[i][0] for i in iterable}
+			]			
+		
 		i = {}
 		for indices in slices[:p]:
 			i.update(indices)
 
 	elif all(isinstance(i,tuple) and isinstance(iterable[i],int) for i in iterable):
+
 		i = iterable
+
 	else:
 		raise NotImplementedError("Trotterization for %r not implemented"%(iterable))
 

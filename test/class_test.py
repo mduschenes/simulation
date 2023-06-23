@@ -721,20 +721,20 @@ def check_fisher(path,tol):
 			tmp = func(parameters)
 
 		size = model.parameters(model.parameters()).size
-		length = len(model)
+		length = model.parameters().size//model.M
 		indices = model.parameters.indices
 		index = len(set(indices[i] for i in indices))
-		shape = (index,size//length)
+		shape = (length,model.M)
 		dtype = int
-		transform = zeros(tmp.shape,dtype=dtype)
-		for i in indices:
-			j = to_index(to_position(indices[i],shape[::-1]),shape[:])
-			transform = inplace(transform,(j,indices[i]),1)
-		print('-----')
-		print(transform)
-		print(tmp)
+		# transform = zeros(tmp.shape,dtype=dtype)
+		# for i in indices:
+		# 	j = to_index(to_position(indices[i],shape),shape)
+		# 	transform = inplace(transform,(j,indices[i]),1)
+		# print('-----')
+		# print(transform)
+		# print(tmp)
 
-		tmp = dot(transform,dot(tmp,transform.T)) 
+		# tmp = dot(transform,dot(tmp,transform.T)) 
 
 
 		eigs = eig(tmp,compute_v=False,hermitian=True) if tmp is not None else None
@@ -756,8 +756,10 @@ def check_fisher(path,tol):
 		# eigs = eigs/max(1,maximum(eigs))
 
 		print('-----')
+		# for i in indices:
+		# 	print(i,indices[i])
 		print(rank,eigs)
-		print(tmp)
+		# print(tmp)
 		print()
 
 		out.append(eigs)
