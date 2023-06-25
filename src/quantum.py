@@ -1094,6 +1094,7 @@ class Operators(Object):
 
 		self.func = None
 		self.gradient = None
+		self.gradient_automatic = None
 		self.gradient_finite = None
 		self.gradient_analytical = None
 		
@@ -1320,15 +1321,16 @@ class Operators(Object):
 
 		func = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 		
-		grad_jax = gradient(self,mode='fwd',move=True)
+		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
 		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise,grad=grad,indices=indices)
 
-		grad = grad_jax
+		grad = grad_automatic
 
 		# Update class attributes
 		self.func = func
 		self.gradient = grad
+		self.gradient_automatic = grad_automatic
 		self.gradient_finite = grad_finite
 		self.gradient_analytical = grad_analytical
 		self.hermitian = hermitian
@@ -1374,6 +1376,18 @@ class Operators(Object):
 		'''		
 		return self.gradient(parameters)
 
+	def grad_automatic(self,parameters=None,state=None,conj=False):
+		''' 
+		Class gradient
+		Args:
+			parameters (array): parameters
+			state (obj): state
+			conj (bool): conjugate
+		Returns:
+			out (array): Return of function
+		'''		
+		return self.gradient_automatic(parameters)	
+
 	def grad_finite(self,parameters=None,state=None,conj=False):
 		''' 
 		Class gradient
@@ -1403,18 +1417,6 @@ class Operators(Object):
 			state = self.state()
 
 		parameters = self.parameters(parameters)
-
-		# shape = [-1,self.M]
-		# ndim = len(shape)
-		# indices = self.parameters.indices
-		
-		# indices = {i: array([j for j in indices if indices[j] == i]) for i in set(indices[i] for i in indices)}
-		# reshape = (*shape[1:],-1,*self.shape)
-		# transpose = (ndim-1,*range(0,ndim-1),*range(ndim,ndim+self.ndim))
-		# shapes = (-1,*self.shape)
-
-		if self.gradient_analytical is None:
-			raise NotImplementedError("TODO: Implement gradients for non-unitary contraction")
 
 		grad = self.coefficients*self.gradient_analytical(parameters,state,conj)
 
@@ -2314,7 +2316,7 @@ def trotter(iterable=None,p=None):
 		iterable (iterable): Iterable
 		p (int): Order of trotterization
 	Returns:
-		iterable (iterable): Trotterized iterable for order p
+		iterables (iterable): Trotterized iterable for order p
 		coefficients (scalar): Coefficients for order p
 	'''
 
@@ -2327,32 +2329,49 @@ def trotter(iterable=None,p=None):
 		return coefficients
 
 	elif not isinstance(iterable,dict):
-		slices = [slice(None,None,1),slice(None,None,-1)]
+		slices = []
+		for index in range(p):
+			if index == 0:
+				indices = slice(None,None,1)
+			elif index == 1:
+				indices = slice(None,None,-1)
+			slices.append(indices)
 
-		i = []        
+		iterables = []        
 		for indices in slices[:p]:
-			i += iterable[indices]
+			iterables += iterable[indices]
 
-	elif all(isinstance(i,tuple) and isinstance(iterable[i],tuple) for i in iterable):
-		slices = [
-			{(i[0],*i[1:]): iterable[i][0] for i in iterable},
-			{(p*iterable[i][1][0]-1-i[0],*i[1:]): iterable[i][0] for i in iterable}
-			]			
-		
-		i = {}
+	elif all(isinstance(i,int) and isinstance(iterable[i],tuple) for i in iterable):
+		slices = []
+		for index in range(p):
+			indices = {}
+			for i in iterable:
+				k,shape = iterable[i]
+				shape = (p*shape[0],*shape[1:])
+				j = to_position(i,shape[::-1])[::-1]
+				if index == 0:
+					j = to_index((j[0],*j[1:])[::-1],shape[::-1])
+				elif index == 1:
+					j = to_index((p*shape[0]-1-j[0],*j[1:])[::-1],shape[::-1])
+
+				indices[j] = k
+
+			slices.append(indices)
+
+		iterables = {}
 		for indices in slices[:p]:
-			i.update(indices)
+			iterables.update(indices)
 
-	elif all(isinstance(i,tuple) and isinstance(iterable[i],int) for i in iterable):
+	elif all(isinstance(i,int) and isinstance(iterable[i],int) for i in iterable):
 
-		i = iterable
+		iterables = iterable
 
 	else:
 
 		raise NotImplementedError("TODO: Trotterization for %r not implemented"%(iterable))
 
 
-	return i
+	return iterables
 
 
 def contraction(data,state=None,conj=False,constants=None,noise=None):
@@ -2383,7 +2402,7 @@ def contraction(data,state=None,conj=False,constants=None,noise=None):
 
 		elif state.ndim == 1:
 			
-			subscripts = 'ij,j...->i...'
+			subscripts = 'ij,j->i'
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
@@ -2401,7 +2420,7 @@ def contraction(data,state=None,conj=False,constants=None,noise=None):
 
 	elif constants is not None and noise is None:
 
-		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise == None scheme")
+		raise NotImplementedError("TODO: Implement contraction of state == Any, constants != None, noise == None scheme")
 		
 	elif constants is None and noise is not None:
 
@@ -2411,71 +2430,70 @@ def contraction(data,state=None,conj=False,constants=None,noise=None):
 
 				state = data
 
-				subscripts = 'uij,jk,kl->il'
-				shapes = (noise.shape,data.shape,state.shape)
+				subscripts = 'uij,jk->ik'
+				shapes = (noise.shape,state.shape)
 				einsummation = einsum(subscripts,*shapes)
 
 				def func(data,state,conj):
-					return einsummation(noise,data,state)	
+					return einsummation(data,state)	
 
 			elif noise.ndim == 0:
 
 				state = data
 
-				subscripts = 'ij,jk->ik'
-				shapes = (data.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
+				subscripts = None
+				shapes = None
+				einsummation = None
 
 				def func(data,state,conj):
-					return einsummation(data,state) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2
+					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2
 
 		elif state.ndim == 1:
 		
 			if noise.ndim == 3:
 
-				subscripts = 'uij,jk,k...->i...'
-				shapes = (noise.shape,data.shape,state.shape)
+				subscripts = 'uij,j->i'
+				shapes = (noise.shape,state.shape)
 				einsummation = einsum(subscripts,*shapes)
 
 				def func(data,state,conj):
-					return einsummation(noise,data,state)	
+					return einsummation(data,state)	
 
 			elif noise.ndim == 0:
 
-				subscripts = 'ij,j...->i...'
-				shapes = (data.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
+				subscripts = None
+				shapes = None
+				einsummation = None
 
 				def func(data,state,conj):
-					return einsummation(data,state) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2
+					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2
 
 
 		elif state.ndim == 2:
 
 			if noise.ndim == 3:
 
-				subscripts = 'uij,jk,kl,ml,unm->in'
-				shapes = (noise.shape,data.shape,state.shape,data.shape,noise.shape)
+				subscripts = 'uij,jk,ulk->il'
+				shapes = (noise.shape,state.shape,noise.shape)
 				einsummation = einsum(subscripts,*shapes)
 
 				def func(data,state,conj):
-					return einsummation(noise,data,state,conjugate(data),conjugate(noise))	
+					return einsummation(data,state,conjugate(noise))	
 
 			elif noise.ndim == 0:
 
-				subscripts = 'ij,jk,lk->il'
-				shapes = (data.shape,state.shape,data.shape)
-				einsummation = einsum(subscripts,*shapes)
+				subscripts = None
+				shapes = None
+				einsummation = None
 
 				def func(data,state,conj):
-					return einsummation(data,state,conjugate(data)) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2	
+					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2	
 
 
 	elif constants is not None and noise is not None:
 
-		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
+		raise NotImplementedError("TODO: Implement contraction of state == Any, constants != None, noise != None scheme")
 		
-	# func = jit(func,static_argnums=(2))	
 	func = jit(func)	
 
 	return func
@@ -2509,7 +2527,7 @@ def gradient_contraction(data,state=None,conj=False,constants=None,noise=None):
 
 		elif state.ndim == 1:
 			
-			subscripts = 'ij,j...->i...'
+			subscripts = 'ij,j->i'
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
@@ -2518,20 +2536,21 @@ def gradient_contraction(data,state=None,conj=False,constants=None,noise=None):
 
 		elif state.ndim == 2:
 			
-			subscripts = 'ij,jk->il'
+			subscripts = 'ij,jk->ik'
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
 			def func(data,state,conj):
-				return einsummation(data,state) + einsummation(state,dagger(data))
+				out = einsummation(data,state)
+				return out + dagger(out)
 
 	elif constants is not None and noise is None:
 
-		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise == None scheme")
+		raise NotImplementedError("TODO: Implement gradient of state == Any, constants != None, noise == None scheme")
 		
 	elif constants is None and noise is not None:
 
-		raise NotImplementedError("TODO: Implement state == Any, constants == None, noise != None scheme")
+		raise NotImplementedError("TODO: Implement gradient of state == Any, constants == None, noise != None scheme")
 
 		if state is None:
 
@@ -2539,76 +2558,75 @@ def gradient_contraction(data,state=None,conj=False,constants=None,noise=None):
 
 				state = data
 
-				subscripts = 'uij,jk,kl->il'
-				shapes = (noise.shape,data.shape,state.shape)
+				subscripts = 'uij,jk->ik'
+				shapes = (noise.shape,state.shape)
 				einsummation = einsum(subscripts,*shapes)
 
 				def func(data,state,conj):
-					return einsummation(noise,data,state)	
+					return einsummation(data,state)	
 
 			elif noise.ndim == 0:
 
 				state = data
 
-				subscripts = 'ij,jk->ik'
-				shapes = (data.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
+				subscripts = None
+				shapes = None
+				einsummation = None
 
 				def func(data,state,conj):
-					return einsummation(data,state) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2
+					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2
 
 		elif state.ndim == 1:
 		
 			if noise.ndim == 3:
 
-				subscripts = 'uij,jk,k...->i...'
-				shapes = (noise.shape,data.shape,state.shape)
+				subscripts = 'uij,j->i'
+				shapes = (noise.shape,state.shape)
 				einsummation = einsum(subscripts,*shapes)
 
 				def func(data,state,conj):
-					return einsummation(noise,data,state)	
+					return einsummation(data,state)	
 
 			elif noise.ndim == 0:
 
-				subscripts = 'ij,j...->i...'
-				shapes = (data.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
+				subscripts = None
+				shapes = None
+				einsummation = None
 
 				def func(data,state,conj):
-					return einsummation(data,state) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2
+					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2
 
 
 		elif state.ndim == 2:
 
 			if noise.ndim == 3:
 
-				subscripts = 'uij,jk,kl,ml,unm->in'
-				shapes = (noise.shape,data.shape,state.shape,data.shape,noise.shape)
+				subscripts = 'uij,jk,ulk->il'
+				shapes = (noise.shape,state.shape,noise.shape)
 				einsummation = einsum(subscripts,*shapes)
 
 				def func(data,state,conj):
-					return einsummation(noise,data,state,conjugate(data),conjugate(noise))	
+					return einsummation(data,state,conjugate(noise))	
 
 			elif noise.ndim == 0:
 
-				subscripts = 'ij,jk,lk->il'
-				shapes = (data.shape,state.shape,data.shape)
-				einsummation = einsum(subscripts,*shapes)
+				subscripts = None
+				shapes = None
+				einsummation = None
 
 				def func(data,state,conj):
-					return einsummation(data,state,conjugate(data)) + noise*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=noise.dtype)/2	
+					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2	
 
 
 	elif constants is not None and noise is not None:
 
-		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
+		raise NotImplementedError("TODO: Implement gradient of state == Any, constants != None, noise != None scheme")
 		
-	# func = jit(func,static_argnums=(2))	
 	func = jit(func)	
 
 	return func
 
-def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=None,noise=None):
+def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=None,noise=None,indices=None):
 	'''
 	Contract data and state
 	Args:
@@ -2625,8 +2643,7 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 	size = parameters.shape[0] if parameters is not None else 1
 	length = len(data) if data is not None else 1
-	indices = array([i for i in range(size)])
-	indexes = [0,size]
+	indices = array([i for i in range(size)]) if indices is None else None
 
 	contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
 
@@ -2639,35 +2656,44 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 			
 			state = identity
 
-			def func(parameters,state=state,conj=conj,indices=indices,indexes=indexes):
+			def func(parameters,state=state,conj=conj,indices=indices):
+			
 				def func(i,out):
-					#i = indices[i]
-					# obj = switch(i%length,data,parameters[i])					
+					i = indices[i]
 					obj = switch(indexer(i,length,conj=conj),data,parameters[indexer(i,size,conj=conj)],out,conj)
 					return contract(obj,out,conj)
 
 				out = identity
+				indexes = [0,len(indices)]
 				return forloop(*indexes,func,out)				
 	
 		elif state.ndim == 1:
 			
-			def func(parameters,state=state,conj=conj,indices=indices,indexes=indexes):
+			def func(parameters,state=state,conj=conj,indices=indices):
+			
 				def func(i,out):
-					#i = indices[i]					
+					i = indices[i]					
 					obj = switch(indexer(i,length,conj=conj),data,parameters[indexer(i,size,conj=conj)],out,conj)
 					return contract(obj,out,conj)
+				
 				out = state
+				indexes = [0,len(indices)]
+				
 				return forloop(*indexes,func,out)				
 
 
 		elif state.ndim == 2:
 			
-			def func(parameters,state=state,conj=conj,indices=indices,indexes=indexes):
+			def func(parameters,state=state,conj=conj,indices=indices):
+			
 				def func(i,out):
-					#i = indices[i]					
+					i = indices[i]					
 					obj = switch(indexer(i,length,conj=conj),data,parameters[indexer(i,size,conj=conj)],out,conj)
 					return contract(obj,out,conj)
+				
 				out = state
+				indexes = [0,len(indices)]				
+				
 				return forloop(*indexes,func,out)				
 
 	elif constants is not None and noise is None:
@@ -2676,56 +2702,56 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 	elif constants is None and noise is not None:
 
+		function = scheme(parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=None)
+		indices = array([i*length for i in range(size//length)])
+
+		obj = noise
+
 		if state is None:
 
 			state = identity
+			indices = array([i for i in range(size)])
 
-			def func(parameters,state=state,conj=conj,indices=indices,indexes=indexes):
+			def func(parameters,state=state,conj=conj,indices=indices):
+
+				size,length = size,1
+
+				indices = array([i for i in range(size)])
+
 				def func(i,out):
-					#i = indices[i]					
-					obj = switch(indexer(i,length,conj=conj),data,parameters[indexer(i,size,conj=conj)],out,conj)
-					# obj = switch(i%length,data,parameters[i])
+					out = function(parameters,state,conj,indices=arange(indices[i],indices[i+1]))
 					return contract(obj,out,conj)
 
 				out = identity
+				indexes = [0,len(indices)]				
+				
 				return forloop(*indexes,func,out)	
 
 		elif state.ndim == 1:
 
-			def func(parameters,state=state,conj=conj,indices=indices,indexes=indexes):
+			def func(parameters,state=state,conj=conj,indices=indices):
+
 				def func(i,out):
-					#i = indices[i]					
-					obj = switch(indexer(i,length,conj=conj),data,parameters[indexer(i,size,conj=conj)],out,conj)
+					out = function(parameters,state,conj,indices=arange(indices[i],indices[i+1]))
 					return contract(obj,out,conj)
 
-				out = state
+				out = identity
+				indexes = [0,len(indices)]				
+				
 				return forloop(*indexes,func,out)	
 
 		elif state.ndim == 2:
 
-			indices = [0,size//length]
-
-			subparameters = slicing(parameters,0,length)
-			substate = None
-			subconj = conj
-			subdata = data
-			subidentity = identity
-			subconstants = constants
-			subnoise = None
-
-			subscheme = scheme
-
-			subfunc = subscheme(subparameters,state=substate,conj=subconj,data=subdata,identity=subidentity,constants=subconstants,noise=subnoise)
-
-			def func(parameters,state=state,conj=conj,indices=indices,indexes=indexes):
+			def func(parameters,state=state,conj=conj,indices=indices):
+			
 				def func(i,out):
-					#i = indices[i]					
-					x = slicing(parameters,i*length,length)
-					obj = subfunc(x,identity,conj)
+					out = function(parameters,state,conj,indices=arange(indices[i],indices[i+1]))
 					return contract(obj,out,conj)
 
-				out = state
-				return forloop(*indexes,func,out)	
+				out = identity
+				indexes = [0,len(indices)]				
+				
+				return forloop(*indexes,func,out)
 
 
 	elif constants is not None and noise is not None:
@@ -2773,8 +2799,8 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 
 	indexes = [0,len(indexer)]
 
-	contract = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
-	gradient_contract = gradient_contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
+	function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
+	contract = gradient_contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
 
 	if noise is not None:
 		return None
@@ -2782,7 +2808,7 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 	if grad is None:
 		grad = [(lambda parameters,state=None,conj=False,i=i: data[i].coefficients*data[i](parameters + (pi/2)/data[i].coefficients)) for i in range(length)]
 
-	def func(parameters,state=state,conj=conj,indices=indices,indexes=indexes):
+	def func(parameters,state=state,conj=conj,indices=indices):
 	
 		def func(i,out):
 

@@ -101,7 +101,7 @@
 	"M":2,
 	"T":null,
 	"tau":1,
-	"P":1,
+	"P":2,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square"

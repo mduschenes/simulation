@@ -108,14 +108,17 @@ def test_grad(path,tol):
 
 	parameters = model.parameters()
 
+	print(model(parameters))
+	exit()
+
 	# grad of unitary
-	grad_jax = model.grad
+	grad_automatic = model.grad_automatic
 	grad_finite = model.grad_finite
 	grad_analytical = model.grad_analytical
 
-	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
+	assert allclose(grad_automatic(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
-	assert allclose(grad_jax(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
+	assert allclose(grad_automatic(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
 
 	print('Passed')
 

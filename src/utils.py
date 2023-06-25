@@ -1929,7 +1929,7 @@ if BACKEND in ['jax']:
 				return out
 		elif random in ['randint']:
 			def func(key,shape,bounds,dtype):		
-				out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
+				out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1]).astype(dtype)		
 				# out = asarray(generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)		
 				return out
 		elif random in ['gaussian','normal']:

@@ -65,15 +65,13 @@ def test_objective(path,tol):
 	parameters = model.parameters()
 
 	# Grad of objective
-	grad_jax = func.grad
-	grad_finite = gradient(func,mode='finite',tol=tol)
-	grad_grad = func.grad
+	grad_automatic = func.grad_automatic
+	grad_finite = func.grad_finite
 	grad_analytical = func.grad_analytical
 
-	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
+	assert allclose(grad_automatic(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
-	assert allclose(grad_finite(parameters),grad_grad(parameters)), "Finite grad != Analytical grad"
-	assert allclose(grad_jax(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
+	assert allclose(grad_automatic(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
 
 	return
 

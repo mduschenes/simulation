@@ -573,20 +573,19 @@ class Parameters(System):
 		sort = array([sort.index(i) for i in range(len(sort))])
 
 		for j,i in enumerate(list(indices)):
-
 			indices[i] = (
 				max((indices[k][0] for l,k in enumerate(indices) if l < j),default=-1) + ((indices[i].index == 0) or (indices[i].size != 1)),
 				(sum(self[parameter].slices.size for parameter in self if self[parameter].slices is not None),*indices[i].shape[1:])
 				)
 
 		for j,i in enumerate(list(indices)):
-
 			k,shape = indices.pop(i)
-
 			for j in (itertools.product(*(range(i) for i in shape[1:])) if prod(shape[1:]) else ((),)):
 				indices[(i,*j)] = (k*max(prod(shape[1:]),1) + to_index(j,shape[1:]),shape)
-			
-
+		
+		for j,i in enumerate(list(indices)):
+			k,shape = indices.pop(i)
+			indices[to_index(i[::-1],shape[::-1])] = (k,shape)
 
 		# Set func and constraint
 		funcs = []
