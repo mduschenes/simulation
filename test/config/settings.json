@@ -101,7 +101,7 @@
 	"M":2,
 	"T":null,
 	"tau":1,
-	"P":2,
+	"P":1,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square"
@@ -221,8 +221,8 @@
 	"operator":"haar",
 	"site":null,
 	"string":"U",
-	"parameters":false,
-	"ndim":2,
+	"parameters":true,
+	"ndim":0,
 	"samples":1,
 	"seed":123
 	},	

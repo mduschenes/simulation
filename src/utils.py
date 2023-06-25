@@ -658,18 +658,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		# TODO merge forloop for different numpy backends (jax vs autograd)
 
-		if (end-start) <= 0:
-			return out
 		return jax.lax.fori_loop(start,end,func,out)
-		
-		# if end <= start:
-		# 	step = -1
-		# else:
-		# 	step = 1
-
-		# for i in range(start,end,step):
-		# 	out = func(i,out)
-		# return out
 
 
 elif BACKEND in ['autograd']:
@@ -689,16 +678,7 @@ elif BACKEND in ['autograd']:
 
 		# TODO merge forloop for different numpy backends (jax vs autograd)
 
-		# if (end-start) <= 0:
-		# 	return out
-		# return jax.lax.fori_loop(start,end,func,out)
-		
-		if end <= start:
-			step = -1
-		else:
-			step = 1
-
-		for i in range(start,end,step):
+		for i in range(start,end):
 			out = func(i,out)
 		return out		
 

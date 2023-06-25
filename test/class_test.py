@@ -712,7 +712,7 @@ def check_fisher(path,tol):
 
 		parameters = model.parameters()
 
-		func = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)))
+		func = fisher(model,model.grad_analytical,shapes=(model.shape,(*parameters.shape,*model.shape)))
 		_func = _fisher
 
 		if i == (n-3):
