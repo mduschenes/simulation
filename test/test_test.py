@@ -127,6 +127,7 @@ def test_grad(path,tol):
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
+	path = 'config/settings.test.json'
 	tol = 5e-8 
 	# test_metric(path,tol)
 	# test_objective(path,tol)

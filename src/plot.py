@@ -600,7 +600,10 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 	elif ((scale is None) or
 		  (not any(i in ['log','symlog'] for i in scale))):
 	
-		err = err
+		if allclose(err,0):
+			err = None
+		else:
+			err = err
 	
 	elif ((not isinstance(scale,str) and any(i in ['log','symlog'] for i in scale))):		
 		if isinstance(err,scalars):

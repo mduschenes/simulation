@@ -141,70 +141,77 @@ def test_model(path,tol):
 		print(i,parameters.shape,obj.shape,time.time()-t)
 
 
-	I = model.identity()
-	objH = dagger(model(parameters,conj=False))
-	objD = dagger(model(parameters))
-
-	objobjH = dot(obj,objH)
-	objHobj = dot(objH,obj)
-	objobjD = dot(obj,objD)
-	objDobj = dot(objD,obj)
-
-	print('model(conj=True) - dagger(model())',(objH-objH).min(),(objH-objH).max())
-	# print(objH-objH)
-	# print()
-
-	print('model() * model(conj=True) - I',(objobjH - I).min(),(objobjH - I).max())
-	# print(objobjH - I)
-	# print()
-
-	print('model(conj=True) * model() - I',(objHobj - I).min(),(objHobj - I).max())
-	# print(objHobj - I)
-	# print()
-
-	print('model() * dagger(model()) - I',(objobjD - I).min(),(objobjD - I).max())
-	# print(objobjD - I)
-	# print()
-
-	print('dagger(model()) * model() - I',(objDobj - I).min(),(objDobj - I).max())
-	# print(objDobj - I)
-	# print()
-
-	assert allclose(objobjH,I), "Incorrect unitarity model() * model(conj=True) != I"
-	assert allclose(objHobj,I), "Incorrect unitarity model(conj=True) * model() != I"
-	assert allclose(objobjD,I), "Incorrect unitarity model() * dagger(model()) != I"
-	assert allclose(objDobj,I), "Incorrect unitarity dagger(model()) * model() != I"
-
-	assert allclose(objH,objD), "Incorrect model(conj=True) != conj(model())"
-
-	m,d,p = model.M,len(model),model.P
-	identity = model.identity()
-	parameters = rand(shape=model.parameters.shape,random='normal',bounds=[-1,1],key=1234)
-
-	out = model(parameters)
-
-	slices = [slice(None,None,1),slice(None,None,-1)][:p]
-	data = [i for s in slices for i in model.data[s]]
-
-	slices = array([i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in list(range(d))[s]])
-	parameters = model.parameters(parameters)
-
-	tmp = model.identity()
-	for i in range(m*d*p):
-		f = data[i%(d*p)]
-		# print(i,data[i%(d*p)].string)
-		tmp = dot(f(parameters[i]),tmp)
-
-	assert allclose(out,tmp), "Incorrect model() from data()"
+	if (not model.unitary) and (not model.hermitian):
+		return
 
 
-	tmp = model.identity()
-	for i in range(m*d*p):
-		f = lambda x: cos(pi/2*x)*identity + -1j*sin(pi/2*x)*data[i%(d*p)].data
-		# print(i,data[i%(d*p)].string)
-		tmp = dot(f(parameters[i]),tmp)
+	if model.unitary:
+		I = model.identity()
+		objH = dagger(model(parameters,conj=False))
+		objD = dagger(model(parameters))
 
-	assert allclose(out,tmp), "Incorrect model() from func()"
+		objobjH = dot(obj,objH)
+		objHobj = dot(objH,obj)
+		objobjD = dot(obj,objD)
+		objDobj = dot(objD,obj)
+
+		print('model(conj=True) - dagger(model())',(objH-objH).min(),(objH-objH).max())
+		# print(objH-objH)
+		# print()
+
+		print('model() * model(conj=True) - I',(objobjH - I).min(),(objobjH - I).max())
+		# print(objobjH - I)
+		# print()
+
+		print('model(conj=True) * model() - I',(objHobj - I).min(),(objHobj - I).max())
+		# print(objHobj - I)
+		# print()
+
+		print('model() * dagger(model()) - I',(objobjD - I).min(),(objobjD - I).max())
+		# print(objobjD - I)
+		# print()
+
+		print('dagger(model()) * model() - I',(objDobj - I).min(),(objDobj - I).max())
+		# print(objDobj - I)
+		# print()
+
+		assert allclose(objobjH,I), "Incorrect unitarity model() * model(conj=True) != I"
+		assert allclose(objHobj,I), "Incorrect unitarity model(conj=True) * model() != I"
+		assert allclose(objobjD,I), "Incorrect unitarity model() * dagger(model()) != I"
+		assert allclose(objDobj,I), "Incorrect unitarity dagger(model()) * model() != I"
+
+		assert allclose(objH,objD), "Incorrect model(conj=True) != conj(model())"
+
+
+	if model.state() is None and model.noise() is None:
+		m,d,p = model.M,len(model),model.P
+		identity = model.identity()
+		parameters = rand(shape=model.parameters.shape,random='normal',bounds=[-1,1],key=1234)
+
+		out = model(parameters)
+
+		slices = [slice(None,None,1),slice(None,None,-1)][:p]
+		data = [i for s in slices for i in model.data[s]]
+
+		slices = array([i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in list(range(d))[s]])
+		parameters = model.parameters(parameters)
+
+		tmp = model.identity()
+		for i in range(m*d*p):
+			f = data[i%(d*p)]
+			# print(i,data[i%(d*p)].string)
+			tmp = dot(f(parameters[i]),tmp)
+
+		assert allclose(out,tmp), "Incorrect model() from data()"
+
+
+		tmp = model.identity()
+		for i in range(m*d*p):
+			f = lambda x: cos(pi/2*x)*identity + -1j*sin(pi/2*x)*data[i%(d*p)].data
+			# print(i,data[i%(d*p)].string)
+			tmp = dot(f(parameters[i]),tmp)
+
+		assert allclose(out,tmp), "Incorrect model() from func()"
 
 	print('Unitary Conditions Passed')
 
@@ -953,17 +960,18 @@ def check_machine_precision(path,tol):
 
 if __name__ == '__main__':
 	path = 'config/settings.test.json'
-	path = 'config/settings.json'
 	path = 'config/settings.tmp.json'
+	path = 'config/settings.json'
+
 	tol = 5e-8 
 
 	func = test_hessian
 	func = check_machine_precision
 	func = test_object
-	func = test_model
 	func = test_parameters
 	func = test_initialization
 	func = check_fisher
+	func = test_model
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

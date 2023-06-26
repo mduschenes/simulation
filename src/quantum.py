@@ -1323,7 +1323,8 @@ class Operators(Object):
 		
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
-		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise,grad=grad,indices=indices)
+		# grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise,grad=grad,indices=indices)
+		grad_analytical = None
 
 		grad = grad_automatic
 
@@ -2387,6 +2388,7 @@ def contraction(data,state=None,conj=False,constants=None,noise=None):
 		func (callable): contracted data and state with signature func(data,state,conj)
 	'''
 
+
 	if constants is None and noise is None:
 		
 		if state is None:
@@ -2643,7 +2645,6 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 	size = parameters.shape[0] if parameters is not None else 1
 	length = len(data) if data is not None else 1
-	indices = array([i for i in range(size)]) if indices is None else None
 
 	contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
 
@@ -2651,50 +2652,28 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 		return (size-1)*conj + (1-2*conj)*(i%size)
 
 	if constants is None and noise is None:
-		
-		if state is None:
-			
-			state = identity
-
-			def func(parameters,state=state,conj=conj,indices=indices):
-			
-				def func(i,out):
-					i = indices[i]
-					obj = switch(indexer(i,length,conj=conj),data,parameters[indexer(i,size,conj=conj)],out,conj)
-					return contract(obj,out,conj)
-
-				out = identity
-				indexes = [0,len(indices)]
-				return forloop(*indexes,func,out)				
 	
-		elif state.ndim == 1:
-			
-			def func(parameters,state=state,conj=conj,indices=indices):
-			
-				def func(i,out):
-					i = indices[i]					
-					obj = switch(indexer(i,length,conj=conj),data,parameters[indexer(i,size,conj=conj)],out,conj)
-					return contract(obj,out,conj)
-				
-				out = state
-				indexes = [0,len(indices)]
-				
-				return forloop(*indexes,func,out)				
+		obj = data
+		indices = array([i for i in range(size)]) if indices is None else None
+		step = 0
 
+		def function(parameters,state=state,conj=conj,indices=indices):
+			obj = switch(indexer(indices,length,conj=conj),data,parameters[indexer(indices,size,conj=conj)],state,conj)
+			out = contract(obj,state,conj)
+			return out
 
-		elif state.ndim == 2:
+		def func(parameters,state=state,conj=conj,indices=indices):
+		
+			def func(i,out):
+				out = function(parameters,out,conj,indices=indices[i]+step)
+				return out
+
+			out = state if state is not None else identity
 			
-			def func(parameters,state=state,conj=conj,indices=indices):
+			indexes = [0,len(indices)]
 			
-				def func(i,out):
-					i = indices[i]					
-					obj = switch(indexer(i,length,conj=conj),data,parameters[indexer(i,size,conj=conj)],out,conj)
-					return contract(obj,out,conj)
-				
-				out = state
-				indexes = [0,len(indices)]				
-				
-				return forloop(*indexes,func,out)				
+			return forloop(*indexes,func,out)
+
 
 	elif constants is not None and noise is None:
 
@@ -2702,63 +2681,29 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 	elif constants is None and noise is not None:
 
-		function = scheme(parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=None)
-		indices = array([i*length for i in range(size//length)])
-
 		obj = noise
+		indices = array([i*length for i in range(size)])
+		step = arange(length)
 
-		if state is None:
+		function = scheme(parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=None)
 
-			state = identity
-			indices = array([i for i in range(size)])
+		def func(parameters,state=state,conj=conj,indices=indices):
 
-			def func(parameters,state=state,conj=conj,indices=indices):
+			def func(i,out):
+				out = function(parameters,out,conj,indices=indices[i]+step)
+				return contract(obj,out,conj)
 
-				size,length = size,1
+			out = state if state is not None else identity
 
-				indices = array([i for i in range(size)])
-
-				def func(i,out):
-					out = function(parameters,state,conj,indices=arange(indices[i],indices[i+1]))
-					return contract(obj,out,conj)
-
-				out = identity
-				indexes = [0,len(indices)]				
-				
-				return forloop(*indexes,func,out)	
-
-		elif state.ndim == 1:
-
-			def func(parameters,state=state,conj=conj,indices=indices):
-
-				def func(i,out):
-					out = function(parameters,state,conj,indices=arange(indices[i],indices[i+1]))
-					return contract(obj,out,conj)
-
-				out = identity
-				indexes = [0,len(indices)]				
-				
-				return forloop(*indexes,func,out)	
-
-		elif state.ndim == 2:
-
-			def func(parameters,state=state,conj=conj,indices=indices):
+			indexes = [0,len(indices)]				
 			
-				def func(i,out):
-					out = function(parameters,state,conj,indices=arange(indices[i],indices[i+1]))
-					return contract(obj,out,conj)
-
-				out = identity
-				indexes = [0,len(indices)]				
-				
-				return forloop(*indexes,func,out)
+			return forloop(*indexes,func,out)	
 
 
 	elif constants is not None and noise is not None:
 
 		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
 		
-	# func = jit(func,static_argnums=(2,3,4,5))
 	func = jit(func)
 
 	return func			
@@ -2802,6 +2747,116 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 	function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 	contract = gradient_contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
 
+
+	if constants is None and noise is None:
+		
+		if state is None:
+			
+			state = identity
+
+		elif state.ndim == 1:
+			
+			state = state
+
+		elif state.ndim == 2:
+
+			state = state
+
+
+		def func(parameters,state=state,conj=conj,indices=indices):
+		
+			def func(i,out):
+
+				i = indexer[i]
+
+				obj = state
+
+				obj = function(parameters,obj,conj,indices=[0,i+1])
+
+				derivative = dot(switch(i,data,parameters[i],obj,conj),switch(i,data,parameters[i],obj,1-conj))
+
+				obj = contract(derivative,obj,conj)
+
+				obj = function(parameters,obj,conj,indices=[i+1,size])
+
+				j = indices[i]
+
+				out = inplace(out,j,obj,'add')
+
+				return out
+
+			index = len(set(indices[i] for i in indices))	
+			out = zeros((index,*identity.shape),dtype=identity.dtype)
+			out = forloop(*indexes,func,out)
+
+			return out
+
+
+
+		def func(parameters,state=state,conj=conj,indices=indices):
+		
+			def func(i,out):
+				i = indices[i]
+				obj = switch(indexer(i,length,conj=conj),data,parameters[indexer(i,size,conj=conj)],out,conj)
+				return contract(obj,out,conj)
+
+			out = identity
+			indexes = [0,len(indices)]
+			return forloop(*indexes,func,out)
+
+			
+	elif constants is not None and noise is None:
+
+		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise == None scheme")
+
+	elif constants is None and noise is not None:
+
+		function = scheme(parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=None)
+		obj = noise
+
+		if state is None:
+	
+			state = identity
+
+			size,length = size,1
+
+		elif state.ndim == 1:
+
+			state = state
+
+			size,length = size//length,length
+
+		elif state.ndim == 2:
+
+			state = state
+
+			size,length = size//length,length
+
+
+		indices = array([i*length for i in range(size)])
+
+		def func(parameters,state=state,conj=conj,indices=indices):
+
+			def func(i,out):
+				i = indices[i]										
+				out = function(parameters,out,conj,indices=arange(indices[i],indices[i+1]))
+				return contract(obj,out,conj)
+
+			out = state
+			indexes = [0,len(indices)]				
+			
+			return forloop(*indexes,func,out)	
+
+
+	elif constants is not None and noise is not None:
+
+		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
+		
+	func = jit(func)
+
+	return func		
+
+
 	if noise is not None:
 		return None
 
@@ -2813,7 +2868,6 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 		def func(i,out):
 
 			i = indexer[i]
-			print(i)
 
 			obj = state
 

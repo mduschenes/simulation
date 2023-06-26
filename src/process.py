@@ -1178,7 +1178,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 			for j,function in enumerate(funcs):
 
 				grouping = groups.get_group(group)
-				
+
 				key = (*name[:-3],i,j,*name[-1:])
 				value = deepcopy(getter(settings,name,delimiter=delim))
 
@@ -1228,8 +1228,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 						else:
 							value[destination] = None
-
-
+						
 				setter(settings,{key:value},delimiter=delim,func=True)
 
 		for attr in tmp:

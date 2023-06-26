@@ -171,6 +171,7 @@
 			"interpolation":3,
 			"smoothness":2
 			},
+		"initialization":"zero",
 		"constant":{"-1":{"0":0,"-1":0}},
 		"constant":null,
 		"args":[],
@@ -218,11 +219,11 @@
 	"seed":123
 	},
 "state": {
-	"operator":"haar",
+	"operator":"plus",
 	"site":null,
 	"string":"U",
-	"parameters":true,
-	"ndim":0,
+	"parameters":false,
+	"ndim":2,
 	"samples":1,
 	"seed":123
 	},	
