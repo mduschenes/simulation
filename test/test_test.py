@@ -109,7 +109,6 @@ def test_grad(path,tol):
 	parameters = model.parameters()
 
 	print(model(parameters))
-	exit()
 
 	# grad of unitary
 	grad_automatic = model.grad_automatic

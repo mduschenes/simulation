@@ -72,6 +72,8 @@ def train(hyperparameters):
 		label = load(hyperparameters.cls.label)
 		callback = load(hyperparameters.cls.callback)
 
+		from src.quantum import Channel as model
+
 		if any(i is None for i in [model,label,callback]):
 			model = None
 			return model
