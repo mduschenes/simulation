@@ -22,7 +22,7 @@ then
 	options+=("--dry-run")
 fi
 
-cmd_sync_local_remote=("rclone" "sync" "${local}" "${remote}" ${options[@]}) 
+cmd_sync_local_remote=("rclone" "copy" "${local}" "${remote}" ${options[@]}) 
 cmd_copy_remote_local=("rclone" "copy" "${remote}" "${local}" ${options[@]})
 
 # Only Keep Log Data Yearly
