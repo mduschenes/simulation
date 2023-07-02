@@ -58,6 +58,10 @@ def func_tau_noise_scale(data):
 def func_T_noise_scale(data):
 	return data['T']/data.get('noise.scale',1)
 
+def func_variables_relative_mean(data):
+	out = np.array(data['variables.relative.mean'])
+	return out/max(1,maximum(out))
+
 def func_fisher_rank(data):
 	out = np.array(list(data['fisher.eigenvalues']))
 	out = nonzero(out,axis=-1,eps=1000)
