@@ -367,7 +367,6 @@ def find(dictionary,verbose=None):
 					keys[name][attr] = {attr: keys[name][attr]}
 
 				setter(keys[name][attr],defaults,delimiter=delim,func=False)
-
 			
 			else:
 				if not keys[name][attr]:
@@ -1277,6 +1276,25 @@ def plotter(settings,hyperparameters,verbose=None):
 
 						if data is None:
 							continue
+
+
+						if OTHER in data and OTHER in data[OTHER]:
+							
+							wrappers = data[OTHER][OTHER].get('wrapper')
+							if wrappers is None:
+								wrappers = {}
+							else:
+								wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr not in ALL}
+
+
+							for attr in data[OTHER]:
+								if wrappers.get(attr):
+									value = {
+										**{attr: data[OTHER][attr] for attr in data[OTHER]},
+										**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
+										}
+									value = wrappers[attr](value)
+									data[OTHER][attr] = value
 
 						dimensions = [axes for axes in AXES if axes in data]
 						independent = [axes for axes in ALL 
@@ -2189,6 +2207,13 @@ def plotter(settings,hyperparameters,verbose=None):
 
 						value = data[attr]
 
+						if wrappers.get(attr):
+							value = wrappers[attr]({
+								**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
+								**{attr: data[OTHER][attr] for attr in data[OTHER]},
+								})
+
+
 						if attr in [OTHER]:
 						
 							if value[OTHER].get('labels') is not None:
@@ -2203,12 +2228,6 @@ def plotter(settings,hyperparameters,verbose=None):
 								continue							
 
 							value = np.array(value)
-
-							if wrappers.get(attr):
-								value = wrappers[attr]({
-									**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in ALL},
-									**{attr: data[OTHER][attr] for attr in data[OTHER]},
-									})
 
 							if normalize.get(attr):
 								value = normalize[attr](attr,data)

@@ -18,7 +18,7 @@ for PATH in PATHS:
 
 from src.utils import argparser
 from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig 
-from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,uncertainty_propagation,exp,exp10,log,log10,sqrt
+from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,allclose,scinotation,uncertainty_propagation,exp,exp10,log,log10,sqrt
 from src.utils import is_naninf
 from src.utils import nan,delim,null
 from src.iterables import setter,getter,search
@@ -119,6 +119,7 @@ defaults = {
             "elinewidth": 5,
             "color": "#73d055ff",
             "color": "#EB008B",
+            "color": "#27AD81FF",
 			},
 		"fill_between":{
 			"x":"noise.parameters",
@@ -147,7 +148,15 @@ defaults = {
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"xaxis.set_minor_locator":None,		
+		"xaxis.set_minor_locator":None,	
+
+		# "set_xscale":{"value":"linear","base":10},
+		# "set_xnbins":{"nbins":6},
+		# "set_xlim": {"xmin": -100,"xmax":5100},
+		# "set_xticks":{"ticks":[0,500,1000,1500,2000,2500,3000,3500,4000,4500,5000]},
+		# "xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
+		# "xaxis.set_minor_locator":None,	
+
 		
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
@@ -160,11 +169,13 @@ defaults = {
 		"set_ynbins":{"nbins":7},
 		"set_ylim": {"ymin": -100,"ymax": 1100},
 		"set_ylim": {"ymin": -100,"ymax": 1700},
+		"set_ylim": {"ymin": -100,"ymax": 400},
 		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
 		"set_yticks":{"ticks":[0,1000,2000]},		
 		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
 		"set_yticks":{"ticks":[0,200,400,600,800,1000]},		
 		"set_yticks":{"ticks":[0,400,800,1200,1600]},		
+		"set_yticks":{"ticks":[0,100,200,300,400]},		
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
@@ -231,16 +242,6 @@ defaults = {
 		"set_ylabel":{"ylabel":r'$\textrm{Infidelity}$'},
 		"set_xlabel":{"xlabel":r"$M$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"linear"},
-		"set_xnbins":{"nbins":9},
-		"set_xlim": {"xmin": -100,"xmax": 6100},
-		"set_xlim": {"xmin": -100,"xmax": 2600},
-		"set_xlim": {"xmin": -100,"xmax": 1100},
-		"set_xlim": {"xmin": -100,"xmax": 4200},
-		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
-		"set_xticks":{"ticks":[0,500,1000,1500,2000,2500]},
-		"set_xticks":{"ticks":[0,200,400,600,800,1000]},
-		"set_xticks":{"ticks":[0,1000,2000,3000,4000]},
 		"set_xscale":{"value":"log"},
 		"set_xnbins":{"nbins":9},
 		"set_xlim": {"xmin": -100,"xmax": 6100},
@@ -250,7 +251,22 @@ defaults = {
 		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
 		"set_xticks":{"ticks":[0,500,1000,1500,2000,2500]},
 		"set_xticks":{"ticks":[0,200,400,600,800,1000]},
-		"set_xticks":{"ticks":[1e1,1e2,1e3]},		
+		"set_xticks":{"ticks":[1e1,1e2,1e3]},	
+
+		"set_xscale":{"value":"linear"},
+		"set_xnbins":{"nbins":9},
+		"set_xlim": {"xmin": -100,"xmax": 6100},
+		"set_xlim": {"xmin": -100,"xmax": 2600},
+		"set_xlim": {"xmin": -100,"xmax": 1100},
+		"set_xlim": {"xmin": -100,"xmax": 4200},
+		"set_xlim": {"xmin": -100,"xmax": 1600},
+		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
+		"set_xticks":{"ticks":[0,500,1000,1500,2000,2500]},
+		"set_xticks":{"ticks":[0,200,400,600,800,1000]},
+		"set_xticks":{"ticks":[0,1000,2000,3000,4000]},
+		"set_xticks":{"ticks":[0,250,500,750,1000,1250,1500]},
+
+
 		"set_yscale":{"value":"linear"},
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim": {"ymin": 1e-5,"ymax": 1e-1},
@@ -394,11 +410,11 @@ def postprocess(path,**kwargs):
 
 					size = min(len(data[label[axis]]) for axis in label if label[axis] in data)
 					slices = range(2,4)
+					slices = range(0,size,2)
 
 					X = [array(data['%s'%(label['x'])][i]) for i in slices]
 					Y = [array(data['%s'%(label['y'])][i]) for i in slices]
 					Z = [array(data['%s'%(label['z'])][i]) for i in slices]
-
 
 					Xerr = [array(data['%serr'%(label['x'])][i]) for i in slices]
 					Yerr = [array(data['%serr'%(label['y'])][i]) for i in slices]
@@ -432,6 +448,9 @@ def postprocess(path,**kwargs):
 
 								yerr_ = yerr_[slices_] if yerr_ is not None and not is_naninf(yerr_).all() else None
 								zerr_ = zerr_[slices_] if zerr_ is not None and not is_naninf(zerr_).all() else None
+
+								yerr_ = None if allclose(yerr_,0) else yerr_
+								zerr_ = None if allclose(zerr_,0) else zerr_
 
 								_x = x_
 								_n = y_.size
@@ -489,19 +508,22 @@ def postprocess(path,**kwargs):
 									lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
 									]
 
-								_y_ = y_
-								_z_ = z_
-								_yerr_ = yerr_
-								_zerr_ = zerr_
+								# _y_ = y_
+								# _z_ = z_
+								# _yerr_ = yerr_
+								# _zerr_ = zerr_
 
-								# _func,_z,_parameters,_zerr,_covariance,_other = fit(
-								# 	y_,z_,
-								# 	_x=_y,_y=_z,
-								# 	func=func,
-								# 	xerr=yerr_,yerr=zerr_,
-								# 	parameters=parameters,
-								# 	preprocess=preprocess,postprocess=postprocess,
-								# 	bounds=bounds,kwargs=kwargs)	
+								# print(yerr_)
+								# print(y_.shape,z_.shape,_y.shape,_z.shape,yerr_.shape,zerr_.shape)
+
+								_func,_z,_parameters,_zerr,_covariance,_other = fit(
+									y_,z_,
+									_x=_y,_y=_z,
+									func=func,
+									xerr=yerr_,yerr=zerr_,
+									parameters=parameters,
+									preprocess=preprocess,postprocess=postprocess,
+									bounds=bounds,kwargs=kwargs)	
 								
 
 								###########

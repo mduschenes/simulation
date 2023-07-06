@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 import numpy as onp
 import scipy as osp
 import pandas as pd
+import scipy.special as ospsp
 
 
 # Import user modules
@@ -35,7 +36,7 @@ for PATH in PATHS:
 
 ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
-BACKENDS = ['jax','autograd','jax.autograd']
+BACKENDS = ['jax','autograd','jax.autograd','numpy']
 
 BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
 
@@ -77,6 +78,12 @@ elif BACKEND in ['autograd']:
 	import autograd.numpy as np
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
+
+elif BACKEND in ['numpy']:
+	import numpy as np
+	import scipy as sp
+	import pandas as pd
+	import scipy.special as spsp
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
 pd.set_option('display.max_rows', 500)
@@ -143,13 +150,31 @@ elif BACKEND in ['autograd']:
 	delim = '.'
 	separ = '_'	
 
+elif BACKEND in ['numpy']:
+
+	itg = np.integer
+	flt = np.float32
+	dbl = np.float64
+
+	pi = np.pi
+	e = np.exp(1)
+
+	nan = np.nan
+	inf = np.inf
+	scalars = (int,np.integer,float,np.floating,onp.int,onp.integer,onp.float,onp.floating,str,type(None))
+	arrays = (np.ndarray,onp.ndarray,)
+
+	iterables = (*arrays,list,tuple,set)
+	nulls = ('',None,Null)
+	delim = '.'
+	separ = '_'	
 
 # Libraries
 if BACKEND in ['jax','jax.autograd']:
 
 	optimizer_libraries = jax.example_libraries.optimizers
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 	optimizer_libraries = []
 
@@ -346,7 +371,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return obj
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 	
 	def inplace(obj,index,item,op=None,**kwargs):
 		'''
@@ -405,7 +430,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
 		# return wraps(func)(partial(func,**kwargs))
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 	def jit(func,*,static_argnums=None,**kwargs):
 		'''
@@ -461,7 +486,7 @@ if BACKEND in ['jax','jax.autograd']:
 		# return vfunc
 
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -523,7 +548,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return pfunc
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -576,7 +601,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return vfunc
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))
 	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -622,7 +647,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.switch(index,funcs,*args)
 		# return funcs[index](*args)
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 	def switch(index,funcs,*args):
 		'''
@@ -661,7 +686,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.fori_loop(start,end,func,out)
 
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
@@ -858,6 +883,25 @@ elif BACKEND in ['autograd']:
 
 		return grad
 
+elif BACKEND in ['numpy']:
+
+	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute gradient of function
+		Args:
+			func (callable): Function to differentiate
+			move (bool): Move differentiated axis to beginning of dimensions
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic	
+			kwargs : Additional keyword arguments
+		Returns:
+			grad (callable): Gradient of function
+		'''
+
+		# TODO merge grad for different numpy backends (jax vs autograd)
+
+		raise NotImplementedError
+		return
 
 if BACKEND in ['jax','jax.autograd']:
 
@@ -940,6 +984,26 @@ elif BACKEND in ['autograd']:
 
 		return grad
 
+elif BACKEND in ['numpy']:
+
+	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute forward gradient of function
+		Args:
+			func (callable): Function to differentiate
+			move (bool): Move differentiated axis to beginning of dimensions
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic	
+			kwargs : Additional keyword arguments
+		Returns:
+			grad (callable): Gradient of function
+		'''
+		# TODO merge grad for different numpy backends (jax vs autograd)
+
+		# _grad = jit(jax.jacfwd(func,argnums=argnums,holomorphic=holomorphic))
+
+		raise NotImplementedError
+		return
 
 if BACKEND in ['jax','jax.autograd']:
 
@@ -1013,6 +1077,24 @@ elif BACKEND in ['autograd']:
 		return grad
 
 
+elif BACKEND in ['numpy']:
+
+	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute reverse gradient of function
+		Args:
+			func (callable): Function to differentiate
+			move (bool): Move differentiated axis to beginning of dimensions
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic		
+			kwargs : Additional keyword arguments		
+		Returns:
+			grad (callable): Gradient of function
+		'''
+
+		raise NotImplementedError
+		return
+
 if BACKEND in ['jax','jax.autograd']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
@@ -1074,6 +1156,27 @@ elif BACKEND in ['autograd']:
 
 		return grad		
 
+elif BACKEND in ['numpy']:
+
+	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
+		'''
+		Compute hessian of function
+		Args:
+			func (callable): Function to differentiate
+			mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'grad'
+			argnums (int,iterable[int]): Arguments of func to derive with respect to
+			holomorphic (bool): Whether function is holomorphic
+			kwargs : Additional keyword arguments for gradient mode:
+				'finite': tol (float): Finite difference tolerance
+				'shift': shifts (int): Number of eigenvalues of shifted values
+				'fwd': move (bool): Move differentiated axis to beginning of dimensions
+				'rev': move (bool): Move differentiated axis to beginning of dimensions
+		Returns:
+			grad (callable): Hessian of function
+		'''
+
+		raise NotImplementedError
+		return
 
 def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	'''
@@ -1567,9 +1670,12 @@ class asscalar(np.ndarray):
 	'''
 	def __new__(self,a,*args,**kwargs):
 		try:
-			return a.item()#onp.asscalar(a,*args,**kwargs)
+			return a.item()
 		except (AttributeError,ValueError):
-			return a
+			try:
+				return onp.asscalar(a,*args,**kwargs)
+			except:
+				return a
 
 
 class objs(onp.ndarray):
@@ -1829,7 +1935,7 @@ if BACKEND in ['jax']:
 
 		return key
 
-elif BACKEND in ['jax.autograd','autograd']:
+elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 	def prng(seed=None,size=False,reset=None,**kwargs):
 		'''
@@ -2115,7 +2221,7 @@ if BACKEND in ['jax']:
 		return out
 
 
-elif BACKEND in ['jax.autograd','autograd']:
+elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
 		'''
@@ -2615,6 +2721,18 @@ def nansqrt(a):
 	return np.sqrt(a)
 
 
+def factorial(n,exact=True):
+	'''
+	Compute factorial n!
+	Args:
+		n (int): Number to compute factorial
+		exact (bool): Compute factorial exactly
+	Returns:
+		n (int,float): Factorial of n
+	'''
+	n = ospsp.factorial(n,exact=exact)
+	return n
+
 if BACKEND in ['jax','jax.autograd']:
 
 	@partial(jit,static_argnums=(1,2,3,))
@@ -2636,7 +2754,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return out
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 	@partial(jit,static_argnums=(1,2,3,))
 	def norm(a,axis=None,ord=2,keepdims=False):
@@ -4063,7 +4181,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
 		# return a[start:start+size]
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 	def slicing(a,start,size):
 		'''
@@ -4185,7 +4303,7 @@ def nonzero(a,axis=None,eps=None):
 		n (int): Number of non-zero entries
 	'''
 	eps = epsilon(a.dtype,eps=eps) if eps is None or isinstance(eps,int) else eps
-	n = np.count_nonzero(abs(a)>eps,axis=axis)
+	n = np.count_nonzero(abs(a)>=eps,axis=axis)
 	return n
 
 def _len_(obj):

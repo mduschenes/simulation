@@ -640,6 +640,33 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 	return err
 
 
+def get_children(obj,attr):
+	'''
+	Return all children of attribute from obj
+	Args:
+		obj (object): Object instance
+		attr (str): attribute
+	Yields:
+		children (object): Children instances
+	'''
+	if attr in ['legendHandles']:
+
+		try:
+			tree = obj._legend_box.get_children()[1]
+			for column in tree.get_children():
+				for row in column.get_children():
+					for i in row.get_children()[0].get_children():
+						yield i
+		except:
+			tree = getattr(obj,attr,[])
+			for i in tree:
+				yield i
+	else:
+		tree = getattr(obj,attr,[])
+		for i in tree:
+			yield i
+
+
 def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=None):
 	'''
 	Plot x,y,z with settings
@@ -941,7 +968,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							func = funcs.get(handler)
 							if func is not None:
 								handler_map.update({types: func[types](**handlers[handler]) for types in func if isinstance(_obj,types)})
-
 				if kwargs[attr].get('join') is not None:
 					n = min(len(handles),len(labels))
 					k = kwargs[attr].get('join',1)
@@ -954,7 +980,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					ncol = kwargs[attr].get('ncol',1)
 					flip = lambda items,n: list(itertools.chain(*[items[i::n] for i in range(n)]))
 					handles,labels = flip(handles,ncol),flip(labels,ncol)
-
 				if kwargs[attr].get('keep') is not None:
 					keep = kwargs[attr]['keep']
 					unique = list(sorted(set(labels),key=lambda i: labels.index(i)))
@@ -974,19 +999,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								index.append(k)
 							else:
 								index.append(k)
-
 						if index is not None:
 							labels,handles = [labels[i[j]] for i,j in zip(indexes,index)],[handles[i[j]] for i,j in zip(indexes,index)]
-
 				if kwargs[attr].get('multiline') is True:
 					pass
+
 
 				if ('handles' in kwargs[attr]) and (not kwargs[attr]['handles']):
 					handles = []
 				if ('labels' in kwargs[attr]) and (not kwargs[attr]['labels']):
 					labels = []
 				kwargs[attr].update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map])))
-
 				_kwds.update({
 					'set_zorder':kwargs[attr].get('set_zorder',{'level':100}),
 					'set_title':{
@@ -1010,7 +1033,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					))
 
 				nullkwargs.extend(['prop','join','flip','update','keep','multiline','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','title','get_title','get_texts','set_label'])
-
 
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
@@ -1519,7 +1541,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 										getattr(_subattr_,l)(**_kwds[k][l])
 							except:
 								try:
-									for _subattr_ in getattr(_attr_,a):
+									for _subattr_ in get_children(_attr,a):
 										for l in _kwds[k]:
 											for i in _kwds[k][l]:
 												getattr(_subattr_,l)(i)

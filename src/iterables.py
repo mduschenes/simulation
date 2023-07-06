@@ -433,6 +433,23 @@ def hasser(iterable,elements,delimiter=False):
 		return False
 
 
+def permutations(*iterables,repeat=None):
+	'''
+	Get product of permutations of iterables
+	Args:
+		iterables (iterable[iterables],iterable[int]): Iterables to permute, or iterable of int to get all permutations of range(int)
+	Returns:
+		iterables (generator[tuple]): Generator of tuples of all permutations of iterables
+	'''
+	
+	if all(isinstance(i,int) for i in iterables):
+		iterables = (range(i) for i in iterables)
+	
+	if repeat is None:
+		repeat = 1
+
+	return itertools.product(*iterables,repeat=repeat)
+
 def permuter(dictionary,copy=False,groups=None,ordered=True):
 	'''
 	Get all combinations of values of dictionary of lists
@@ -485,7 +502,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 		'''
 		Get all list of dictionaries of all permutations of sub-dictionaries
 		'''
-		return [{k:d[k] for d in dicts for k in d} for dicts in itertools.product(*dictionaries)]
+		return [{k:d[k] for d in dicts for k in d} for dicts in permutations(*dictionaries)]
 
 	def retriever(keys,values):
 		'''

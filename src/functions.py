@@ -24,8 +24,8 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import array
-from src.utils import to_tuple
-from src.utils import maximum,minimum,abs
+from src.utils import to_tuple,asscalar
+from src.utils import maximum,minimum,abs,sort
 from src.utils import arrays,scalars,nonzero
 
 # Processing
@@ -58,17 +58,39 @@ def func_tau_noise_scale(data):
 def func_T_noise_scale(data):
 	return data['T']/data.get('noise.scale',1)
 
+def func_tau_J(data):
+	return data['tau']*data.get('parameters.zz.parameters',1)
+
+def func_T_J(data):
+	return data['T']*data.get('parameters.zz.parameters',1)
+
 def func_variables_relative_mean(data):
 	out = np.array(data['variables.relative.mean'])
 	return out/max(1,maximum(out))
 
 def func_fisher_rank(data):
 	out = np.array(list(data['fisher.eigenvalues']))
-	out = nonzero(out,axis=-1,eps=1000)
+	out = sort(abs(out))
+	out = out/maximum(out)
+	out = asscalar(nonzero(out,axis=-1,eps=5e-16))
 	return out
 
 def func_fisher_eigenvalues(data):
 	out = np.array(list(data['fisher.eigenvalues']))
+	out = abs(out)
+	out = out/maximum(out)
+	out = to_tuple(out)
+	return out
+
+def func_hessian_rank(data):
+	out = np.array(list(data['hessian.eigenvalues']))
+	out = sort(abs(out))
+	out = out/maximum(out)
+	out = asscalar(nonzero(out,axis=-1,eps=1e-16))
+	return out
+
+def func_hessian_eigenvalues(data):
+	out = np.array(list(data['hessian.eigenvalues']))
 	out = abs(out)
 	out = out/maximum(out)
 	out = to_tuple(out)
