@@ -70,6 +70,7 @@
 		"noise.operator":["phase"],
 		"noise.parameters":[1e-19,1e-18,1e-17,1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
 		"noise.parameters":[false],
+		""
 		"noise.seed":[null],		
 		"noise.initialization":["time"],
 		
@@ -91,8 +92,8 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/tau.test"],
-		"jobs.postprocess.cwd":["gobi/tau.test"],
+		"jobs.job.cwd":["gobi/tau.noise"],
+		"jobs.postprocess.cwd":["gobi/tau.noise"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -100,7 +101,7 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[4],
+		"jobs.job.pool":[20],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -114,11 +115,11 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[4],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["12:00:00"],		
+		"jobs.job.patterns.time":["16:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
 		"jobs.job.patterns.mem":["256GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[4],
+		"jobs.job.patterns.cpus-per-task":[8],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
 		"jobs.job.patterns.account":["def-carrasqu"],
 		"jobs.postprocess.patterns.account":["def-carrasqu"],
