@@ -14,28 +14,49 @@
 	"dump":0
 	},
 "seed":{
-	"seed":1821,
-	"size":20,
-	"reset":1821,
+	"seed":2318193,
+	"size":30,
+	"reset":2318193,
 	"index":null
 	},
 "permutations":{
 	"permutations":{	
-	
-		"model.N":[2,3,4],		
+
+		"model.N":[4],		
 		"model.M":[null],
 		"model.P":[2],
-		"model.tau":[2e2,5e2,10e2,30e2,50e2,100e2],
-		"model.T": [0.1e6,0.5e6,0.75e6,1e6,2e6],
+		"model.tau":[
+			5e-1,1e0,1e1,5e1,1e2,5e2,1e3,
+			10e-1,2e0,2e1,10e1,2e2,10e2,2e3,
+			25e-1,5e0,5e1,25e1,5e2,25e2,5e3,
+			5e0,1e1,1e2,5e2,1e3,5e3,1e4,
+			10e0,2e1,2e2,10e2,2e3,10e3,2e4,
+			25e0,5e1,5e2,25e2,5e3,25e3,5e4,
+			5e1,1e2,1e3,5e3,1e4,5e4,1e5,
+			10e1,2e2,2e3,10e3,2e4,10e4,2e5,
+			25e1,5e2,5e3,25e3,5e4,25e4,5e5
+		],
+		"model.T": [
+			1e4,1e4,1e4,1e4,1e4,1e4,1e4,
+			2e4,2e4,2e4,2e4,2e4,2e4,2e4,
+			5e4,5e4,5e4,5e4,5e4,5e4,5e4,
+			1e5,1e5,1e5,1e5,1e5,1e5,1e5,
+			2e5,2e5,2e5,2e5,2e5,2e5,2e5,
+			5e5,5e5,5e5,5e5,5e5,5e5,5e5,
+			1e6,1e6,1e6,1e6,1e6,1e6,1e6,
+			2e6,2e6,2e6,2e6,2e6,2e6,2e6,
+			5e6,5e6,5e6,5e6,5e6,5e6,5e6
+		],
 
 		"system.dtype":["complex256"],
 		"system.dtype":["complex128"],
-
 		"system.unit":[1e6],
 		
 		"parameters.xy.parameters":[1],
 		"parameters.z.parameters":[1.230231e-2],
 		"parameters.zz.parameters":[1.42117230231e-4],
+		"parameters.z.parameters":[1],
+		"parameters.zz.parameters":[0.5],		
 		"parameters.xy.seed":[null],
 		"parameters.z.seed":[null],
 		"parameters.zz.seed":[null],
@@ -43,21 +64,20 @@
 		"label.string":["label"],
 		"label.operator":["haar"],
 		"label.parameters":[1],
-		"label.seed":[null],	
-
+		"label.seed":[null],		
+		
 		"noise.string":["K"],
 		"noise.operator":["phase"],
-		"noise.parameters":[0,1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
+		"noise.parameters":[1e-19,1e-18,1e-17,1e-16,1e-15,1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8,1e-7,1e-6],
 		"noise.parameters":[false],
 		"noise.seed":[null],		
-		"noise.scale":[1e6],		
-		"noise.initialization":["time"],		
+		"noise.initialization":["time"],
 		
 		"state.label":["psi"],
 		"state.operator":["haar"],
 		"state.ndim":[2],
-		"state.parameters":[true],
-		"state.seed":[null],				
+		"state.parameters":[false],
+		"state.seed":[null],		
 
 		"parameters.xy.method":[null],
 		"parameters.xy.locality":[null],
@@ -65,14 +85,14 @@
 		"parameters.xy.constant":[null],					
 		"parameters.xy.kwargs.lambda":[null],		
 
-		"optimize.iterations":[[0,300]],
+		"optimize.iterations":[[0,500]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"jobs.job.cwd":["gobi/tau.noise.N.128.10.10000.20.300"],
-		"jobs.postprocess.cwd":["gobi/tau.noise.N.128.10.10000.20.300"],
+		"jobs.job.cwd":["gobi/tau.test"],
+		"jobs.postprocess.cwd":["gobi/tau.test"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -85,7 +105,7 @@
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],
-		"jobs.job.resume":[null],
+		"jobs.job.resume":[true],
 		"jobs.postprocess.resume":[null],
 		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.NUMPY_BACKEND":["jax.autograd"],
@@ -94,14 +114,19 @@
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[4],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["20:00:00"],		
+		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
-		"jobs.job.patterns.mem":["128GB"],
+		"jobs.job.patterns.mem":["256GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[4],
-		"jobs.postprocess.patterns.cpus-per-task":[2]
+		"jobs.postprocess.patterns.cpus-per-task":[2],
+		"jobs.job.patterns.account":["def-carrasqu"],
+		"jobs.postprocess.patterns.account":["def-carrasqu"],
+		"jobs.job.patterns.account":["def-raymond"],
+		"jobs.postprocess.patterns.account":["def-raymond"]
 		},
 	"groups":null,
+	"groups":[["model.tau","model.T"]],
 	"index":null
 	},
 "model":{
@@ -187,6 +212,7 @@
 			"hessian":false,"fisher":false,
 			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
 			"hessian.rank":false,"fisher.rank":false,
+
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],"n":[],"g":[],
 			"space":[],"time":[],"lattice":[],
