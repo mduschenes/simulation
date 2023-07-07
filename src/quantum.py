@@ -988,7 +988,7 @@ class Noise(Object):
 		site = list(range(self.N)) if self.site is None else self.site if not isinstance(self.site,int) else [self.site]
 		operator = None if self.operator is None else [self.operator[self.site.index(i)%len(self.operator)] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
 		locality = len(operator)
-		parameters = [None]*self.N if self.parameters is None else [self.parameters[i] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.parameters,scalars) else [self.parameters]*self.N
+		parameters = [None]*self.N if self.parameters is None else [self.parameters[[self.site.index(i)%len(self.parameters)]] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.parameters,scalars) and self.parameters.size > 1 else [self.parameters]*self.N
 
 		hermitian = True
 		unitary = False
