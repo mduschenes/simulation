@@ -5339,7 +5339,7 @@ def unique(a,axis=None):
 	Returns:
 		out (array): Unique elements of array
 	'''
-	return np.unique(a,axis=axis)
+	return onp.unique(a,axis=axis)
 
 def uniqueobjs(a,axis=None):
 	'''

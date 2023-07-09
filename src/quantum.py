@@ -14,7 +14,7 @@ for PATH in PATHS:
 from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort,prod
-from src.utils import inplace,maximum,minimum,argmax,argmin,nonzero,difference,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
+from src.utils import inplace,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,delim,scalars,arrays,datatype
 
@@ -53,12 +53,13 @@ Basis = {
 	'-': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([1,-1,],dtype=dtype)/sqrt(D)),
 }
 
-def trotter(iterable=None,p=None):
+def trotter(iterable=None,p=None,shape=None):
 	'''
 	Trotterized iterable for order p or coefficients for order p
 	Args:
 		iterable (iterable): Iterable
 		p (int): Order of trotterization
+		shape (iterable[int]): Shape of iterable
 	Returns:
 		iterables (iterable): Trotterized iterable for order p
 		coefficients (scalar): Coefficients for order p
@@ -68,12 +69,17 @@ def trotter(iterable=None,p=None):
 	if isinstance(p,int) and (p > P):
 		raise NotImplementedError("p = %r > %d Not Implemented"%(p,P))
 
+	if shape is None:
+		shape = (len(iterable),) if iterable is not None else (1,)
+	
+
 	if iterable is None:
 		coefficients = 1/p if isinstance(p,int) else None
 		return coefficients
 
 	elif not isinstance(iterable,dict):
 		slices = []
+		tmp = None
 		for index in range(p):
 			if index == 0:
 				indices = slice(None,None,1)
@@ -85,18 +91,18 @@ def trotter(iterable=None,p=None):
 		for indices in slices[:p]:
 			iterables += iterable[indices]
 
-	elif all(isinstance(i,int) and isinstance(iterable[i],tuple) for i in iterable):
+	elif all(isinstance(i,int) and isinstance(iterable[i],int) for i in iterable) and all(i < prod(shape) for i in iterable):
 		slices = []
+		tmp = (p*shape[0],*shape[1:]) 
 		for index in range(p):
 			indices = {}
 			for i in iterable:
-				k,shape = iterable[i]
+				k = iterable[i]
 				j = to_position(i,shape[::-1])[::-1]
-				shape = (p*shape[0],*shape[1:])
 				if index == 0:
-					j = to_index((j[0],*j[1:])[::-1],shape[::-1])
+					j = to_index((j[0],*j[1:])[::-1],tmp[::-1])
 				elif index == 1:
-					j = to_index((shape[0]-1-j[0],*j[1:])[::-1],shape[::-1])
+					j = to_index((tmp[0]-1-j[0],*j[1:])[::-1],tmp[::-1])
 
 				indices[j] = k
 
@@ -106,11 +112,8 @@ def trotter(iterable=None,p=None):
 		for indices in slices[:p]:
 			iterables.update(indices)
 
-
-	elif all(isinstance(i,int) and isinstance(iterable[i],int) for i in iterable):
-
+	elif all(isinstance(i,int) and isinstance(iterable[i],int) for i in iterable) and not all(i < prod(shape) for i in iterable):
 		iterables = iterable
-
 	else:
 
 		raise NotImplementedError("TODO: Trotterization for %r not implemented"%(iterable))
@@ -400,7 +403,6 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 	
 		obj = data
 		indices = size
-		step = 0
 
 		def function(parameters,state=state,conj=conj,indices=indices):
 			obj = switch(indexer(indices,length,conj=conj),data,parameters[indexer(indices,size,conj=conj)],state,conj)
@@ -409,14 +411,12 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 		def func(parameters,state=state,conj=conj,indices=indices):
 		
 			def func(i,out):
-				# i = indices[i]
-				obj = function(parameters,out,conj,indices=i+step)
+				obj = function(parameters,out,conj,indices=i)
 				return contract(obj,out,conj)
 
 			state = state if state is not None else identity
+			indexes = [0,indices] if isinstance(indices,int) else indices
 			out = state
-			
-			indexes = [0,indices] if not isinstance(indices,int) else indices
 
 			return forloop(*indexes,func,out)
 
@@ -436,15 +436,14 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 		def func(parameters,state=state,conj=conj,indices=indices):
 
 			def func(i,out):
-				# i = indices[i]
+				i = indices[i]
 				out = function(parameters,out,conj,indices=i+step)
 				return contract(obj,out,conj)
 
 			state = state if state is not None else identity
 			out = state
 
-
-			indexes = [0,indices] if isinstance(indices,int) else indices
+			indexes = [0,indices] if isinstance(indices,int) else [minimum(indices),maximum(indices)+1]
 			
 			return forloop(*indexes,func,out)	
 
@@ -454,7 +453,6 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
 		
 	func = jit(func)
-
 	return func			
 
 
@@ -485,8 +483,23 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 	else:
 		indices = {i:j for j,i in enumerate(indices)}
 
-	indexer,indices = array([i for i in range(size) if i in indices]),array([indices[i] for i in indices])
-	step = arange(size)
+	# indexer,indices = array([i for i in range(size) if i in indices]),array([indices[i] for i in indices])
+	
+	indices,indexer,sizes = (
+		list(set(indices[i] for i in indices)),
+		[[j for j in indices if indices[j] == i] for i in set(indices[i] for i in indices)],
+		[sum(range(i-1)) for i in range(1,len(set(indices[i] for i in indices))+2)]
+		)
+	indices,indexer,sizes = (
+		array([i for i in indices]),
+		array([j for i in indexer for j in i]),
+		array([sum(len(indexer[j]) for j in range(i-1)) for i in range(1,len(indexer)+2)]),
+		)
+
+	print(indices)
+	print(indexer)
+	print(sizes)
+	step = 0
 
 	function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 	contract = gradient_contraction(identity,state=state,conj=conj,constants=constants,noise=None)
@@ -494,34 +507,38 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 	if grad is None:
 		grad = [(lambda parameters,state=None,conj=False,i=i: data[i].coefficients*data[i](parameters + (pi/2)/data[i].coefficients)) for i in range(length)]
 
-	
-
 	def func(parameters,state=state,conj=conj,indices=indices):
-	
+
 		def func(i,out):
 
-			i = indexer[i]
+			def func(j,out):
 
-			obj = state
+				j = indexer[sizes[i]+j]
 
-			obj = function(parameters,obj,conj,indices=(0,i+1))
+				obj = state
 
-			derivative = dot(switch(i,grad,parameters[i],None,conj),switch(i,data,parameters[i],None,1-conj))
+				# obj = function(parameters,obj,conj,indices=(0,j+1))
+				obj = function(parameters,obj,conj,indices=(0,j))
 
-			obj = contract(derivative,obj,conj)
+				# derivative = dot(switch(j,grad,parameters[j],None,conj),switch(j,data,parameters[j],None,1-conj))
+				derivative = switch(j,grad,parameters[j],None,conj)
 
-			obj = function(parameters,obj,conj,indices=(i+1,size))
+				obj = contract(derivative,obj,conj)
 
-			j = indices[i]
+				obj = function(parameters,obj,conj,indices=(j+1,size)) #if (j+1) < size else obj
 
-			out = inplace(out,j,obj,'add')
+				out = inplace(out,i,obj,'add')
 
-			return out
+				return out
+
+			i = indices[i]	
+			indexes = [0,sizes[i+1]-sizes[i]]
+			return forloop(*indexes,func,out)
 
 		state = state if state is not None else identity
-		out = zeros((len(indices),*identity.shape),dtype=identity.dtype)
-
+		indices = array([indices]) if isinstance(indices,int) else indices
 		indexes = [0,len(indices)]
+		out = zeros((len(indices),*identity.shape),dtype=identity.dtype)
 		
 		return forloop(*indexes,func,out)
 
@@ -560,7 +577,7 @@ class Object(System):
 
 		defaults = dict(			
 			shape=None,size=None,ndim=None,
-			samples=None,identity=None,locality=None,index=None,
+			samples=None,identity=None,locality=None,
 			conj=False,coefficients=None,func=None,gradient=None,
 			)
 
@@ -706,7 +723,6 @@ class Object(System):
 		self.identity = tensorprod([self.basis.get(self.default)() for i in range(self.N)]) if (self.default in self.basis) else None
 		
 		self.locality = max(self.locality if self.locality is not None else 0,len(self.site) if self.site is not None else 0)
-		self.index = self.index if self.index is not None else None
 
 		if (self.samples is not None) and isinstance(self.data,arrays) and (self.ndim is not None) and (self.data.ndim>self.ndim):
 			if isinstance(self.samples,int) and (self.samples > 0):
@@ -1788,12 +1804,12 @@ class Operators(Object):
 
 		assert self.parameters(parameters) is not None, "Incorrect parameters() initialization"
 
-		data = trotter([jit(i) for i in self.data],self.P)
-		grad = trotter([jit(i.grad) for i in self.data],self.P)
-		slices = trotter(list(range(len(self))),self.P)
+		data = trotter([jit(i) for i in self.data],p=self.P)
+		grad = trotter([jit(i.grad) for i in self.data],p=self.P)
+		slices = trotter(list(range(len(self))),p=self.P)
 
 		wrapper = jit(lambda parameters,slices,coefficients: coefficients*parameters[slices].T.ravel(),slices=array(slices),coefficients=coefficients)
-		indices = trotter(indices,self.P)
+		indices = trotter(indices,p=self.P,shape=(len(self),self.M))
 
 		self.parameters.wrapper = wrapper
 		self.parameters.indices = indices

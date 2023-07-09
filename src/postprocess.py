@@ -231,7 +231,7 @@ defaults = {
             "linestyle": "",
             "capsize": 1,
             "linewidth": 1.75,
-            "elinewidth": 7,
+            "elinewidth": 4,
 			"color":"viridis",
 			},
 		"fill_between":{
@@ -310,12 +310,14 @@ defaults = {
 			"title_fontsize": 20,
 			"set_title":r"$\gamma$",
 			"prop": {"size": 20},
+			"columnspacing":0.5,
+			"handletextpad":0.25,
 			"markerscale": 1,
-			"handlelength": 2,
+			"handlelength": 1,
 			"framealpha": 0.8,
-			"loc": [0.76,0.38],
             "handlers":{"errorbar":{"yerr_size":20}},			
-			"ncol": 1,
+			"loc": [0.05,0.1],
+			"ncol": 7,
 			"set_zorder":{"level":100},
 			"set_label":None,
 			}
@@ -402,6 +404,7 @@ def postprocess(path,**kwargs):
 
 						# data[label[axis]] = [value if value not in ['None',None,nan] else 1e-20 for value in data[label[axis]]]
 
+					# Slices of x,y,z instances
 					slices = list(range(4,len(data[label['y']])-5))
 					slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5) # noise.long
 					slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
@@ -410,7 +413,8 @@ def postprocess(path,**kwargs):
 
 					size = min(len(data[label[axis]]) for axis in label if label[axis] in data)
 					slices = range(2,4)
-					slices = range(0,size,2)
+					slices = range(0,size-2,2)
+					# slices = range(3,4)
 
 					X = [array(data['%s'%(label['x'])][i]) for i in slices]
 					Y = [array(data['%s'%(label['y'])][i]) for i in slices]
@@ -459,7 +463,8 @@ def postprocess(path,**kwargs):
 								_yerr = zeros(_n)
 								_zerr = zeros(_n)
 
-								y_min = y_[argmin(z_)]
+								i_min = argmin(z_)-({**{i:0 for i in [1]},**{i:1 for i in [2,3,5]},**{i:2 for i in [4]},**{i:-1 for i in [0]}} [i])
+								y_min = (y_[i_min-1] + y_[i_min] + y_[i_min+1])/3
 
 								# x_min = arange(3)
 								# y_min = array([y_[argmin(z_)-1],y_[argmin(z_)],y_[argmin(z_)+1]])
@@ -479,24 +484,35 @@ def postprocess(path,**kwargs):
 								# y_min = _y_min[argmin(_z_min)]
 
 								func = [
-										'cubic',
+										# 'cubic',
+										(lambda parameters,x: parameters[0] + parameters[1]*x),										
 										# (lambda parameters,x: parameters[0] + parameters[1]*x),
 										(lambda parameters,x: parameters[0] + parameters[1]*x),
 										]
 								parameters = [array([1.0,1.0]),array([0.0,1.0])]
 								bounds = [y_min]
-								kwargs = {
+								kwargs = [{
 									'optimizer':'cg',
-									'alpha':1e-10,
-									'iterations':1000,
-									'eps':{'value':1e-4},
+									'alpha':1e-6,
+									'iterations':100,
+									'eps':{'value':1e-10},
 									'uncertainty':all(parameter.size<1000 for parameter in parameters),
 									# 'path':'fit.%0.1e.pdf'%(_x),
-									'verbose':0,
-									}
+									'verbose':1,
+									},
+									{
+									'optimizer':'cg',
+									'alpha':1e-10,
+									'iterations':100,
+									'eps':{'value':1e-10},
+									'uncertainty':all(parameter.size<1000 for parameter in parameters),
+									# 'path':'fit.%0.1e.pdf'%(_x),
+									'verbose':1,
+									}]
 								
 								preprocess = [
 									lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+									# lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),															
 									# lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
 									# lambda x,y,parameters: (log(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None),
 									lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),							
@@ -581,9 +597,9 @@ def postprocess(path,**kwargs):
 								# 	bounds=bounds,kwargs=kwargs)
 
 
-								_z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_,None,[{'r':1}]*(len(bounds)+1)
+								# _z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_,None,[{'r':1}]*(len(bounds)+1)
 
-								index = argmin(_z)
+								index = max(0,argmin(_z))
 								indexerr = [argmin(_z+k*_zerr) for k in [-1,1]]
 								_yerrindex = sum(abs(_y[i] - _y[index]) for i in indexerr)/len(indexerr)
 
@@ -642,17 +658,19 @@ def postprocess(path,**kwargs):
 										*[
 										{
 										**settings['ax']['errorbar'],
-										'x':_Y[i],
-										'y':_Z[i],
+										'x':_Y[i][:],
+										'y':_Z[i][:],	
+										'x':_Y[i][indexes[i]:],
+										'y':_Z[i][indexes[i]:],
 										# 'yerr':_Zerr[i],							
 						                "alpha": 0.8,
 						                "marker": None,
 						                "markersize": None,
-						                "linestyle": "-",
+						                "linestyle": ":",
 						                "capsize": 1,
 						                "linewidth": 1.75,
-						                "elinewidth": 7,
-						                "color": "k"									
+						                "elinewidth": 4,
+						                "color": 'k'									
 										} for i in indices
 										],
 										*[
@@ -752,12 +770,12 @@ def postprocess(path,**kwargs):
 							parameters = array([-1.0,-1.0])[:p]
 							kwargs = {
 								'optimizer':'cg',
-								'alpha':1e-4,
-								'iterations':1000,
+								'alpha':1e-6,
+								'iterations':100,
 								'eps':{'value':1e-5},
 								'uncertainty':parameters.size<1000,
 								'path':None,
-								'verbose':0,
+								'verbose':True,
 							}
 							preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)
 							postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)
@@ -806,7 +824,7 @@ def postprocess(path,**kwargs):
 										'label':(
 											r'$\quad~~ M_{\gamma} = -\alpha\log{\gamma} - {\beta}$' + '\n' + 
 											r'$%s$'%('\n'.join([
-											'%s = %s'%(z,scinotation(-_parameters[len(_parameters)-1-i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
+											'%s = %s'%(z,scinotation(-_parameters[len(_parameters)-1-i],decimals=2,one=True,zero=True,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
 												for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_parameters)])])) + '\n' +
 											# r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty_propagation(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
 											r'$%s$'%('r^2 = %s'%(scinotation(_other['r'],decimals=4,scilimits=[-1,4])))

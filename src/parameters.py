@@ -585,7 +585,8 @@ class Parameters(System):
 		
 		for j,i in enumerate(list(indices)):
 			k,shape = indices.pop(i)
-			indices[to_index(i[::-1],shape[::-1])] = (k,shape)
+			indices[to_index(i[::-1],shape[::-1])] = k
+
 
 		# Set func and constraint
 		funcs = []

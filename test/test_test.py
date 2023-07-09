@@ -96,6 +96,8 @@ def test_grad(path,tol):
 	hyperparameters = Dict(hyperparameters)
 
 	model = load(hyperparameters.cls.model)
+	from src.quantum import Channel as model
+	
 	label = load(hyperparameters.cls.label)
 	callback = load(hyperparameters.cls.callback)
 
