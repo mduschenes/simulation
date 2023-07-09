@@ -184,6 +184,7 @@ def test_model(path,tol):
 
 
 	if model.state() is None and model.noise() is None:
+
 		m,d,p = model.M,len(model),model.P
 		identity = model.identity()
 		parameters = rand(shape=model.parameters.shape,random='normal',bounds=[-1,1],key=1234)
@@ -196,6 +197,9 @@ def test_model(path,tol):
 		slices = array([i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in list(range(d))[s]])
 		parameters = model.parameters(parameters)
 
+		print("Doing model() test",m,d,p)
+
+
 		tmp = model.identity()
 		for i in range(m*d*p):
 			f = data[i%(d*p)]
@@ -203,7 +207,9 @@ def test_model(path,tol):
 			tmp = dot(f(parameters[i]),tmp)
 
 		assert allclose(out,tmp), "Incorrect model() from data()"
+		
 
+		print("Doing func() test",m,d,p)
 
 		tmp = model.identity()
 		for i in range(m*d*p):
@@ -506,20 +512,22 @@ def test_initialization(path,tol):
 			UpsiUtmp = einsum('ij,jk,lk->il',U,psi,conjugate(U))
 			VpsiVtmp = einsum('ij,jk,lk->il',V,psi,conjugate(V))		
 	elif K is not None:
-		return
+		#TODO: Implement test for multiple layers of noise 
 		if psi is None:
 			return
 		elif psi.ndim == 1:
 			return
-		elif psi.ndim == 2:
+		elif psi.ndim == 2 and model.M == 1:
 			UpsiUtmp = einsum('uij,jk,kl,ml,unm->in',K,U,psi,conjugate(U),conjugate(K))
 			VpsiVtmp = einsum('ij,jk,lk->il',V,psi,conjugate(V))		
+		else:
+			return
 
 
 	assert allclose(UpsiUtmp,UpsiU), "Incorrect model() re-initialization"
 	assert allclose(VpsiVtmp,VpsiV), "Incorrect label() re-initialization"
 	assert allclose(new.metric.data,copy.metric.data), "Incorrect metric() re-initialization"
-	
+	print("Passed")
 	return
 
 def test_hessian(path,tol):
@@ -969,8 +977,8 @@ if __name__ == '__main__':
 	func = check_machine_precision
 	func = test_object
 	func = test_parameters
-	func = test_initialization
 	func = check_fisher
+	func = test_initialization
 	func = test_model
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)

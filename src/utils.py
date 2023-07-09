@@ -708,6 +708,42 @@ elif BACKEND in ['autograd','numpy']:
 		return out		
 
 
+if BACKEND in ['jax','jax.autograd']:
+	
+	# @partial(jit,static_argnums=(2,))	
+	def cond(pred,true_fun,false_fun,*operands):	
+		'''
+		Conditionally evaluate functions
+		Args:
+			pred (bool): Conditional to choose function to evaluate
+			true_fun (callable): Function to evaluate if pred is True, with signature true_func(*operands)
+			false_fun (callable): Function to evaluate if pred is False, with signature false_fun(*operands)
+			operands (iterable[object]): Arguments for functions
+		Returns:
+			out (array): Return of function
+		'''
+		return jax.lax.cond(pred,true_fun,false_fun,*operands)
+
+
+elif BACKEND in ['autograd','numpy']:
+
+	# @partial(jit,static_argnums=(2,))	
+	def cond(pred,true_fun,false_fun,*operands):	
+		'''
+		Conditionally evaluate functions
+		Args:
+			pred (bool): Conditional to choose function to evaluate
+			true_fun (callable): Function to evaluate if pred is True, with signature true_func(*operands)
+			false_fun (callable): Function to evaluate if pred is False, with signature false_fun(*operands)
+			operands (iterable[object]): Arguments for functions
+		Returns:
+			out (array): Return of function
+		'''
+		if pred:
+			return true_fun(*operands)
+		else:
+			return false_fun(*operands)
+
 def value_and_gradient(func,grad=None,returns=False):
 	'''
 	Compute value and gradient of function

@@ -11,7 +11,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vmap,vfunc,switch,forloop,slicing,gradient,hessian,fisher
+from src.utils import jit,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort,prod
 from src.utils import inplace,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
@@ -276,7 +276,7 @@ def gradient_contraction(data,state=None,conj=False,constants=None,noise=None):
 				return einsummation(data,state)
 
 		elif state.ndim == 1:
-			
+
 			subscripts = 'ij,j->i'
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
@@ -396,27 +396,32 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 	contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
 
-	def indexer(i,size,conj):
+	def sorter(i,size,conj):
 		return (size-1)*conj + (1-2*conj)*(i%size)
 
 	if constants is None and noise is None:
 	
 		obj = data
-		indices = size
+		step = 1
+		indices = (0,size//step)
+		indexer = arange(0,size,step)
+		sizes = step*ones(size//step)
 
 		def function(parameters,state=state,conj=conj,indices=indices):
-			obj = switch(indexer(indices,length,conj=conj),data,parameters[indexer(indices,size,conj=conj)],state,conj)
+			obj = switch(sorter(indices,length,conj=conj),data,parameters[sorter(indices,size,conj=conj)],state,conj)
 			return obj
 
 		def func(parameters,state=state,conj=conj,indices=indices):
 		
 			def func(i,out):
+				i = indexer[i]
 				obj = function(parameters,out,conj,indices=i)
 				return contract(obj,out,conj)
 
 			state = state if state is not None else identity
-			indexes = [0,indices] if isinstance(indices,int) else indices
 			out = state
+
+			indexes = [0,indices] if isinstance(indices,int) else indices
 
 			return forloop(*indexes,func,out)
 
@@ -428,26 +433,27 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 	elif constants is None and noise is not None:
 
 		obj = noise
-		indices = array([i*length for i in range(size//length)])
-		step = arange(length)
+		step = length
+		indices = (0,size//step)
+		indexer = arange(0,size,step)
+		sizes = step*ones(size//step)
 
-		function = scheme(parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=None)
+		function = scheme(parameters,state=state,conj=conj,data=data,identity=identity,constants=constants)
 
 		def func(parameters,state=state,conj=conj,indices=indices):
 
 			def func(i,out):
-				i = indices[i]
-				out = function(parameters,out,conj,indices=i+step)
+				i = indexer[i]
+				out = function(parameters,out,conj,indices=(i,i+step))
 				return contract(obj,out,conj)
 
 			state = state if state is not None else identity
 			out = state
-
-			indexes = [0,indices] if isinstance(indices,int) else [minimum(indices),maximum(indices)+1]
 			
-			return forloop(*indexes,func,out)	
+			indexes = [0,indices//step] if isinstance(indices,int) else [indices[0]//step,indices[-1]//step]
 
-
+			return forloop(*indexes,func,out)
+		
 	elif constants is not None and noise is not None:
 
 		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
@@ -483,8 +489,6 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 	else:
 		indices = {i:j for j,i in enumerate(indices)}
 
-	# indexer,indices = array([i for i in range(size) if i in indices]),array([indices[i] for i in indices])
-	
 	indices,indexer,sizes = (
 		list(set(indices[i] for i in indices)),
 		[[j for j in indices if indices[j] == i] for i in set(indices[i] for i in indices)],
@@ -496,51 +500,108 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 		array([sum(len(indexer[j]) for j in range(i-1)) for i in range(1,len(indexer)+2)]),
 		)
 
-	print(indices)
-	print(indexer)
-	print(sizes)
-	step = 0
-
-	function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
-	contract = gradient_contraction(identity,state=state,conj=conj,constants=constants,noise=None)
-
 	if grad is None:
 		grad = [(lambda parameters,state=None,conj=False,i=i: data[i].coefficients*data[i](parameters + (pi/2)/data[i].coefficients)) for i in range(length)]
+	
 
-	def func(parameters,state=state,conj=conj,indices=indices):
+	if constants is None and noise is None:
 
-		def func(i,out):
+		function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
+		_function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants)
+		_function_ = jit(lambda data,state,conj:state)
+		contract = gradient_contraction(identity,state=state,conj=conj,constants=constants)
+		_contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
+		_contract_ = jit(lambda data,state,conj:state)
 
-			def func(j,out):
+		step = length
 
-				j = indexer[sizes[i]+j]
+		def func(parameters,state=state,conj=conj,indices=indices):
 
-				obj = state
+			def func(i,out):
 
-				# obj = function(parameters,obj,conj,indices=(0,j+1))
-				obj = function(parameters,obj,conj,indices=(0,j))
+				def func(j,out):
 
-				# derivative = dot(switch(j,grad,parameters[j],None,conj),switch(j,data,parameters[j],None,1-conj))
-				derivative = switch(j,grad,parameters[j],None,conj)
+					j = indexer[sizes[indices[i]]+j]
 
-				obj = contract(derivative,obj,conj)
+					obj = state
 
-				obj = function(parameters,obj,conj,indices=(j+1,size)) #if (j+1) < size else obj
+					obj = function(parameters,obj,conj,indices=(0,j+1))
 
-				out = inplace(out,i,obj,'add')
+					derivative = dot(switch(j%step,grad,parameters[j],None,conj),switch(j%step,data,parameters[j],None,1-conj))
 
-				return out
+					obj = contract(derivative,obj,conj)
 
-			i = indices[i]	
-			indexes = [0,sizes[i+1]-sizes[i]]
+					obj = function(parameters,obj,conj,indices=(j+1,size))
+
+					out = inplace(out,i,obj,'add')
+
+					return out
+
+				indexes = [0,sizes[indices[i]+1]-sizes[indices[i]]]
+
+				return forloop(*indexes,func,out)
+
+			state = state if state is not None else identity
+			indices = array([indices]) if isinstance(indices,int) else indices
+			indexes = [0,len(indices)]
+			out = zeros((len(indices),*state.shape),dtype=identity.dtype)
+			
 			return forloop(*indexes,func,out)
 
-		state = state if state is not None else identity
-		indices = array([indices]) if isinstance(indices,int) else indices
-		indexes = [0,len(indices)]
-		out = zeros((len(indices),*identity.shape),dtype=identity.dtype)
-		
-		return forloop(*indexes,func,out)
+	elif constants is not None and noise is None:
+
+		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise == None scheme")
+
+	elif constants is None and noise is not None:
+
+		function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
+		_function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants)
+		_function_ = jit(lambda data,state,conj:state)
+		contract = gradient_contraction(identity,state=state,conj=conj,constants=constants)
+		_contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
+		_contract_ = jit(lambda data,state,conj:state)
+
+		step = length
+
+		def func(parameters,state=state,conj=conj,indices=indices):
+
+			def func(i,out):
+
+				def func(j,out):
+
+					j = indexer[sizes[indices[i]]+j]
+
+					obj = state
+
+					obj = function(parameters,obj,conj,indices=(0,(j//step)*step))
+					obj = _function(parameters,obj,conj,indices=((j//step)*step,j+1))
+
+					derivative = dot(switch(j%step,grad,parameters[j],None,conj),switch(j%step,data,parameters[j],None,1-conj))
+
+					obj = contract(derivative,obj,conj)
+
+					obj = cond((j%step)==0,_contract,_contract_,noise,obj,conj)
+
+					obj = function(parameters,obj,conj,indices=(j+1,size))
+
+					out = inplace(out,i,obj,'add')
+
+					return out
+
+				indexes = [0,sizes[indices[i]+1]-sizes[indices[i]]]
+
+				return forloop(*indexes,func,out)
+
+			state = state if state is not None else identity
+			indices = array([indices]) if isinstance(indices,int) else indices
+			indexes = [0,len(indices)]
+			out = zeros((len(indices),*identity.shape),dtype=identity.dtype)
+			
+			return forloop(*indexes,func,out)
+	
+	elif constants is not None and noise is not None:
+
+		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
 
 	func = jit(func)
 
