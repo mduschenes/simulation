@@ -69,9 +69,17 @@ def test_objective(path,tol):
 	grad_finite = func.grad_finite
 	grad_analytical = func.grad_analytical
 
+	print(grad_automatic(parameters))
+	print()
+	print(grad_finite(parameters))
+	print()
+	print(grad_analytical(parameters)/grad_automatic(parameters))
+
 	assert allclose(grad_automatic(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
 	assert allclose(grad_automatic(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
+
+	print('Passed')
 
 	return
 
@@ -123,6 +131,7 @@ def test_optimizer(path,tol):
 		for path in optimizer.paths:
 			rm(optimizer.paths[path],execute=True)
 
+	print('Passed')
 	return
 
 

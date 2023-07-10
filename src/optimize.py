@@ -770,6 +770,15 @@ class Objective(Function):
 
 		super().__init__(model,func=func,grad=grad,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system,**kwargs)
 
+		grad_automatic = gradient(self,mode='rev',move=True)
+		grad_finite = gradient(self,mode='finite',move=True)
+		def grad_analytical(parameters):
+			return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) + self.gradient(parameters)	
+
+		self.gradient_automatic = grad_automatic
+		self.gradient_finite = grad_finite
+		self.gradient_analytical = grad_analytical
+
 		return
 
 	# @partial(jit,static_argnums=(0,))
@@ -806,6 +815,17 @@ class Objective(Function):
 		return self.metric.grad(self.model(parameters),self.model.grad(parameters)) + self.gradient(parameters)	
 
 	# @partial(jit,static_argnums=(0,))
+	def grad_automatic(self,parameters):
+		'''
+		Gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.gradient_automatic(parameters)
+
+	# @partial(jit,static_argnums=(0,))
 	def grad_analytical(self,parameters):
 		'''
 		Gradient call
@@ -815,6 +835,17 @@ class Objective(Function):
 			out (object): Return of function
 		'''
 		return self.metric.grad_analytical(self.model(parameters),self.model.grad_analytical(parameters)) + self.gradient(parameters)	
+
+	# @partial(jit,static_argnums=(0,))
+	def grad_finite(self,parameters):
+		'''
+		Gradient call
+		Args:
+			parameters (array): parameters
+		Returns:
+			out (object): Return of function
+		'''
+		return self.gradient_finite(parameters)
 
 
 class Callback(Function):
@@ -955,6 +986,17 @@ class Metric(System):
 		return self.gradient(*operands)
 
 	# @partial(jit,static_argnums=(0,))
+	def grad_automatic(self,*operands):
+		'''
+		Gradient call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.gradient_automatic(*operands)
+
+	# @partial(jit,static_argnums=(0,))
 	def grad_analytical(self,*operands):
 		'''
 		Gradient call
@@ -964,6 +1006,17 @@ class Metric(System):
 			out (object): Return of function
 		'''		
 		return self.gradient_analytical(*operands)
+
+	# @partial(jit,static_argnums=(0,))
+	def grad_finite(self,*operands):
+		'''
+		Gradient call
+		Args:
+			operands (array): operands
+		Returns:
+			out (object): Return of function
+		'''		
+		return self.gradient_finite(*operands)
 
 	def info(self,verbose=None):
 		'''
@@ -1028,8 +1081,13 @@ class Metric(System):
 			optimize=self.optimize,
 			returns=True)
 
+		grad_automatic = gradient(self,mode='fwd',move=True)
+		grad_finite = gradient(self,mode='finite',move=True)
+
 		self.function = func
 		self.gradient = grad
+		self.gradient_automatic = grad_automatic
+		self.gradient_finite = grad_finite
 		self.gradient_analytical = grad_analytical
 
 		return

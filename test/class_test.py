@@ -14,7 +14,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 
-from src.utils import jit,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,cos,sin,bound
+from src.utils import jit,forloop,switch,array,rand,arange,zeros,ones,eye,einsum,tensorprod,allclose,cos,sin,bound
 from src.utils import gradient,hessian,fisher
 from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,abs,sort,sqrt,real,imag
 from src.utils import pi,delim,arrays,scalars,epsilon,inplace,to_index,to_position
@@ -45,21 +45,21 @@ def test_object(path,tol):
 		'Haar':{
 			'basis':'Haar',
 			'kwargs': dict(
-				data=delim.join(['haar']),operator=None,site=[0,1,2],string='U',
+				data=delim.join(['haar']*3),operator=None,site=[0,1,2],string='U',
 				kwargs=dict(N=3,D=2,ndim=2,seed=1,reset=1,verbose=True),
 			),
 		},
 		'Psi':{
 			'basis':'State',
 			'kwargs': dict(
-				data=delim.join(['minus']),operator=None,site=[0,1],string='-',
+				data=delim.join(['minus']*2),operator=None,site=[0,1],string='-',
 				kwargs=dict(N=2,D=2,ndim=1,seed=1,reset=1,verbose=True),
 			),
 		},
 		'Noise':{
 			'basis':'Noise',
 			'kwargs': dict(
-				data=delim.join(['phase']),operator=None,site=[0,1],string='K',
+				data=delim.join(['phase']*2),operator=None,site=[0,1],string='K',
 				kwargs=dict(N=2,D=2,ndim=3,parameters=0.25,verbose=True),
 			),
 		},
@@ -76,7 +76,7 @@ def test_object(path,tol):
 		assert operator.string == args['string'], "Operator.string = %s != %s"%(operator.string,args['string'])
 		assert ((arguments[name]['basis'] in ['Haar','State','Gate','Noise']) or allclose(operator.data,
 			tensorprod([base.basis[i]() for i in args['data'].split(delim)]))), "Operator.data %s != %r"%(operator.string,operator(operator.parameters))
-		assert tuple(operator.operator) == tuple(args['data'].split(delim))
+		assert tuple(operator.operator) == tuple(args['data'].split(delim)),"%r != %r"%(tuple(operator.operator),tuple(args['data'].split(delim)))
 
 		for attr in kwargs:
 			assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
@@ -109,6 +109,7 @@ def test_object(path,tol):
 	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.parameters,operator.shape)
 
 
+	print("Passed")
 	return
 
 
@@ -563,6 +564,8 @@ def test_hessian(path,tol):
 
 	print(model.state.ndim,rank,eigs)
 
+	print('Passed')
+
 	return
 
 def test_fisher(path,tol):
@@ -645,32 +648,49 @@ def check_fisher(path,tol):
 			parameters = model.parameters(model.parameters())
 			indices = model.parameters.indices
 			M,K,P,G,L = parameters.size, parameters.size//model.M, model.P, model.parameters().size, model.parameters().size//model.M
+
+			# indexer = array([i for i in indices])
+			# indices = array([indices[i] for i in indices])
+			indices = array([indices.get(i,-1) for i in range(M)])
 			
 			func = function(model)
-			grad = zeros((G,*model.shape),dtype=model.dtype)
 			state = model.state()
-			data = trotter(model.data,P)
+			data = trotter([jit(i) for i in model.data],P)
+			grads = trotter([jit(i.grad) for i in model.data],P)
 
 			U = model.identity()
 			_U = func
 			u,_u = model.identity(),model.identity()
 
-			for i in range(M):
+			grad = zeros((G,*model.shape),dtype=model.dtype)
 
-				if (i%K,i//K) not in indices:
-					continue
+			def func(i,out):
 
-				u,_u = _u,data[i%K](parameters[i])
+				grad,U,_U,u,_u = out
+
+				# i,j = indexer[i],indices[i]
+				i,j = i,indices[i]
+
+				u,_u = _u,switch(i%K,data,parameters[i])
 				U = dot(u,U)
 				_U = dot(_U,dagger(_u))
 
-				H = model.coefficients*data[i%K].grad(parameters[i])
+				H = model.coefficients*switch(i%K,grads,parameters[i])
 
-				tmp = dot(dot(_U,dot(H,U)),state)
+				tmp = dot(dot(_U,dot(H,U)),state)*(i > -1)
 				
-				j = indices[(i%K,i//K)]
-
 				grad = inplace(grad,j,tmp,'add')
+
+				out = grad,U,_U,u,_u
+
+				return out
+
+			out = grad,U,_U,u,_u
+			indexes = [0,M] 
+			# for i in range(*indexes):
+			# 	out = func(i,out)
+			out = forloop(*indexes,func,out)
+			grad,U,_U,u,_u = out
 
 			return grad
 
@@ -968,18 +988,19 @@ def check_machine_precision(path,tol):
 
 if __name__ == '__main__':
 	path = 'config/settings.test.json'
-	path = 'config/settings.tmp.json'
 	path = 'config/settings.json'
+	path = 'config/settings.tmp.json'
 
 	tol = 5e-8 
 
-	func = test_hessian
 	func = check_machine_precision
-	func = test_object
 	func = test_parameters
 	func = check_fisher
 	func = test_initialization
 	func = test_model
+	func = test_object
+	func = test_hessian
+	func = check_fisher
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

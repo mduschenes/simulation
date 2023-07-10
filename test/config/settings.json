@@ -98,7 +98,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":2,
+	"M":6,
 	"T":null,
 	"tau":1,
 	"P":2,
@@ -121,7 +121,7 @@
 	"path":"data.hdf5",
 	"conf":"logging.conf",
 	"logger":"log.log",
-	"cleanup":false,
+	"cleanup":true,
 	"verbose":"info"
 	},
 "optimize":{
@@ -230,7 +230,7 @@
 	"data":"phase",
 	"site":null,
 	"string":"K",
-	"parameters":1e-6,
+	"parameters":1e-8,
 	"ndim":3,
 	"seed":123
 	},

@@ -421,7 +421,7 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 			state = state if state is not None else identity
 			out = state
 
-			indexes = [0,indices] if isinstance(indices,int) else indices
+			indexes = indices if indices is not None else [0,parameters.size]
 
 			return forloop(*indexes,func,out)
 
@@ -444,13 +444,14 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 			def func(i,out):
 				i = indexer[i]
-				out = function(parameters,out,conj,indices=(i,i+step))
+				x = slicing(parameters,i,step)
+				out = function(x,out,conj,indices=None)
 				return contract(obj,out,conj)
 
 			state = state if state is not None else identity
 			out = state
 			
-			indexes = [0,indices//step] if isinstance(indices,int) else [indices[0]//step,indices[-1]//step]
+			indexes = [indices[0]//step,indices[-1]//step] if indices is not None else [0,parameters.size//step]
 
 			return forloop(*indexes,func,out)
 		
@@ -489,15 +490,25 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 	else:
 		indices = {i:j for j,i in enumerate(indices)}
 
+	indices,tmp = list(set(indices[i] for i in indices)),indices
+
+	indexer = {}
+	for i in tmp:
+		if tmp[i] not in indexer:
+			indexer[tmp[i]] = [i]
+		else:
+			indexer[tmp[i]].append(i)
+	indexer = [indexer[i] for i in indexer]
+
+	sizes = [0]
+	for i in range(len(indexer)):
+		sizes.append(len(indexer[i]))
+	sizes = cumsum(sizes)
+
 	indices,indexer,sizes = (
-		list(set(indices[i] for i in indices)),
-		[[j for j in indices if indices[j] == i] for i in set(indices[i] for i in indices)],
-		[sum(range(i-1)) for i in range(1,len(set(indices[i] for i in indices))+2)]
-		)
-	indices,indexer,sizes = (
-		array([i for i in indices]),
-		array([j for i in indexer for j in i]),
-		array([sum(len(indexer[j]) for j in range(i-1)) for i in range(1,len(indexer)+2)]),
+		array(indices).reshape(-1),
+		array([j for i in indexer for j in i]).reshape(-1),
+		array(sizes).reshape(-1)
 		)
 
 	if grad is None:
@@ -542,7 +553,6 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 				return forloop(*indexes,func,out)
 
 			state = state if state is not None else identity
-			indices = array([indices]) if isinstance(indices,int) else indices
 			indexes = [0,len(indices)]
 			out = zeros((len(indices),*state.shape),dtype=identity.dtype)
 			
@@ -594,7 +604,6 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 				return forloop(*indexes,func,out)
 
 			state = state if state is not None else identity
-			indices = array([indices]) if isinstance(indices,int) else indices
 			indexes = [0,len(indices)]
 			out = zeros((len(indices),*state.shape),dtype=identity.dtype)
 			
@@ -1909,6 +1918,7 @@ class Operators(Object):
 		
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
+		# grad_analytical = grad_automatic
 		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise,grad=grad,indices=indices)
 
 		grad = grad_automatic

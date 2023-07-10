@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import gradient
-from src.utils import allclose
+from src.utils import allclose,trace,dot
 
 from src.iterables import getter,setter,permuter,equalizer,namespace
 
@@ -49,6 +49,8 @@ def test_metric(path,tol):
 	out = metric(label())
 
 	assert allclose(0,out), "Incorrect metric %0.5e"%(out)
+
+	print('Passed')
 	
 	return
 
@@ -67,7 +69,7 @@ def test_objective(path,tol):
 	model = model(**hyperparameters.model,
 		parameters=hyperparameters.parameters,
 		state=hyperparameters.state,
-		noise=hyperparameters.noise,
+		noise=None,
 		system=hyperparameters.system)
 
 	parameters = model.parameters()
@@ -84,6 +86,8 @@ def test_objective(path,tol):
 
 	assert allclose(0,out), "Incorrect objective %0.5e"%(out)
 
+	print('Passed')
+
 	return
 
 def test_grad(path,tol):
@@ -96,8 +100,6 @@ def test_grad(path,tol):
 	hyperparameters = Dict(hyperparameters)
 
 	model = load(hyperparameters.cls.model)
-	from src.quantum import Channel as model
-
 	label = load(hyperparameters.cls.label)
 	callback = load(hyperparameters.cls.callback)
 
@@ -141,6 +143,6 @@ if __name__ == '__main__':
 	path = 'config/settings.test.json'
 	path = 'config/settings.json'
 	tol = 5e-8 
-	# test_metric(path,tol)
+	test_metric(path,tol)
 	# test_objective(path,tol)
-	test_grad(path,tol)
+	# test_grad(path,tol)

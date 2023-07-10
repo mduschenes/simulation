@@ -11,8 +11,6 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.io import load,dump,join,split,edit
-
 from src.utils import np,onp,BACKEND
 from src.utils import array,zeros,rand,identity,inplace,datatype,allclose,sqrt,abs2
 from src.utils import gradient,rand,eye,diag,sin,cos
@@ -24,6 +22,7 @@ from src.utils import scinotation,delim
 from src.optimize import Metric
 
 from src.iterables import getter,setter
+from src.io import load,dump,join,split,edit
 
 
 def warn_with_traceback(message, category, filename, lineno, file=None, line=None):
@@ -100,6 +99,8 @@ def test_expm():
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
@@ -142,6 +143,8 @@ def test_expmv():
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
@@ -180,6 +183,8 @@ def test_expmm():
 	_out = _func(*args,**kwargs)
 
 	assert allclose(out,_out)
+
+	print('Passed')
 
 	return
 
@@ -225,6 +230,8 @@ def test_expmmn(*args,**kwargs):
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
@@ -269,6 +276,8 @@ def test_gradient_expm(path=None,tol=None):
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
@@ -309,6 +318,8 @@ def test_expmi():
 
 	assert allclose(out,_out)
 
+	print('Passed')
+
 	return
 
 
@@ -334,6 +345,8 @@ def test_getter(path=None,tol=None):
 		value = getter(iterable,element)
 		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
 	
+	print('Passed')
+
 	return
 
 def test_setter(path=None,tol=None):
@@ -358,6 +371,8 @@ def test_setter(path=None,tol=None):
 		# print(iterable)
 		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
 	
+	print('Passed')
+
 	return
 
 def test_scinotation(path=None,tol=None):
@@ -385,6 +400,8 @@ def test_scinotation(path=None,tol=None):
 	string = scinotation(number,**kwargs)
 	assert string == _string, "%s != %s"%(string,_string)
 
+	print('Passed')
+
 	return
 
 def test_gradient(path=None,tol=None):
@@ -411,6 +428,8 @@ def test_gradient(path=None,tol=None):
 	assert all(isinstance(h,tuple) and len(h)==p for i,h in enumerate(g))
 	assert all(isinstance(k,array) and k.shape == (n,n) and allclose(k,_g[i][j]) for i,h in enumerate(g) for j,k in enumerate(h))
 
+	print('Passed')
+
 	return
 
 def test_mult(path=None,tol=None):
@@ -424,6 +443,8 @@ def test_mult(path=None,tol=None):
 	d = b.dot(diag(a))
 
 	assert allclose(c,d)
+
+	print('Passed')
 
 	return
 
@@ -456,6 +477,8 @@ def test_norm(path=None,tol=None):
 	h = norm2(a-b,c)
 
 	assert all((allclose(d,e),allclose(d,f),allclose(d,h),allclose(e,f),allclose(e,h))), "norm^2 incorrect"
+
+	print('Passed')
 
 	return
 
@@ -495,6 +518,8 @@ def test_rand(path,tol):
 
 	assert all(allclose(*a[i]) for i in range(size)), "Incorrect Random Initialization"
 
+	print('Passed')
+
 	return
 
 
@@ -509,4 +534,5 @@ if __name__ == '__main__':
 	# test_gradient_expm(path,tol)
 	# test_norm(path,tol)
 	# test_expmi()	
-	test_rand(path,tol)
+	# test_rand(path,tol)
+	test_gradient_expm(path,tol)

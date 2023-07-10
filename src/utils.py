@@ -3004,7 +3004,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		if callable(label):
 			label = label()
 
-		if metric in ['abs2']:
+		if metric in ['abs2','real']:
 			label = conjugate(label)
 
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
@@ -3021,7 +3021,7 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 		if callable(label):
 			label = label()
 
-		if metric in ['abs2']:
+		if metric in ['abs2','real']:
 			label = conjugate(label)	
 
 		def func(*operands,func=func,label=label):
@@ -4734,6 +4734,9 @@ def expm(x,A,I):
 	'''		
 	m = x.shape[0]
 	d = A.shape[0]
+
+	if m == 0:
+		return I
 
 	subscripts = 'ij,jk->ik'
 	shapes = (I.shape,I.shape)
