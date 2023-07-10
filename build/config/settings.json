@@ -20,69 +20,7 @@
 	"index":null
 	},
 "permutations":{
-	"permutations":{	
-
-		"model.N":[4],		
-		"model.M":[2,4,6,8],
-		"model.P":[1],
-		"model.tau":[1],
-		"model.T": [null],
-
-		"noise.parameters":[1e6],
-		"noise.initialization":["random"],
-
-		"system.unit":[1e6],
-		"parameters.xy.parameters":[1],
-		"parameters.z.parameters":[1e-2],
-		"parameters.zz.parameters":[1e-4],
-		"parameters.xy.kwargs.lambda":[0],		
-		"label.string":["label"],
-		"label.operator":["Z"],
-		"label.parameters":[0.25],
-		"noise.parameters":[false],
-		"state.parameters":[false],
-
-
-		"optimize.iterations":[100],
-		"optimize.optimizer":["cg"],
-		"optimize.metric":["real"],
-		"optimize.search.alpha":["line_search"],
-		"optimize.search.beta":["hestenes_stiefel"],
-
-		"parameters.xy.method":["bound"],
-		"parameters.xy.kwargs.lambda":[0],
-
-		"jobs.job.cwd":["tmp"],
-		"jobs.postprocess.cwd":["tmp"],		
-	
-		"jobs.job.device":["slurm"],
-		"jobs.postprocess.device":["slurm"],
-		"jobs.job.process":["array"],
-		"jobs.postprocess.process":[null],
-		"jobs.job.processes":[1],
-		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[1],
-		"jobs.postprocess.pool":[1],
-		"jobs.job.execute":[1],	
-		"jobs.postprocess.execute":[1],	
-		"jobs.job.resume":[null],	
-		"jobs.postprocess.resume":[null],			
-		"jobs.job.verbose":[1],	
-		"jobs.postprocess.verbose":[1],	
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.job.args.JOB_PROCESSES":[1],		
-		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["1:00:00"],
-		"jobs.postprocess.patterns.time":["1:00:00"],
-		"jobs.job.patterns.mem":["16GB"],
-		"jobs.postprocess.patterns.mem":["16GB"],
-		"jobs.job.patterns.cpus-per-task":[1],
-		"jobs.job.patterns.account":[null],
-		"jobs.postprocess.patterns.cpus-per-task":[1]
-
-		},
+	"permutations":{},
 	"groups":null,
 	"index":null
 	},
