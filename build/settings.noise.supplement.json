@@ -99,7 +99,7 @@
         "jobs.postprocess.device":["slurm"],
         "jobs.job.process":["array"],
         "jobs.postprocess.process":[null],
-        "jobs.job.processes":[8],
+        "jobs.job.processes":[1],
         "jobs.postprocess.processes":[1],
         "jobs.job.pool":[64],
         "jobs.postprocess.pool":[1],
