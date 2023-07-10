@@ -117,6 +117,17 @@ def test_grad(path,tol):
 	grad_finite = model.grad_finite
 	grad_analytical = model.grad_analytical
 
+	index = 0
+	print('-----')
+	print(grad_automatic(parameters)[index])
+	print()
+	print(grad_finite(parameters)[index])
+	print()	
+	print(grad_analytical(parameters)[index])
+	print('-----')	
+	print()
+	print(grad_automatic(parameters)[index]/grad_analytical(parameters)[index])
+
 	assert allclose(grad_automatic(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
 	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
 	assert allclose(grad_automatic(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
@@ -127,8 +138,8 @@ def test_grad(path,tol):
 
 
 if __name__ == '__main__':
-	path = 'config/settings.json'
 	path = 'config/settings.test.json'
+	path = 'config/settings.json'
 	tol = 5e-8 
 	# test_metric(path,tol)
 	# test_objective(path,tol)

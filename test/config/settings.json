@@ -159,7 +159,7 @@
 		"category":"variable",
 		"method":"unconstrained",
 		"group":[["x"],["y"]],
-		"locality":"local",
+		"locality":"global",
 		"bounds":[-1,1],
 		"attributes":["M"],		
 		"data":null,
@@ -171,7 +171,6 @@
 			"interpolation":3,
 			"smoothness":2
 			},
-		"initialization":"zero",
 		"constant":{"-1":{"0":0,"-1":0}},
 		"constant":null,
 		"args":[],
@@ -222,7 +221,7 @@
 	"operator":"plus",
 	"site":null,
 	"string":"U",
-	"parameters":false,
+	"parameters":true,
 	"ndim":2,
 	"samples":1,
 	"seed":123
@@ -231,7 +230,7 @@
 	"data":"phase",
 	"site":null,
 	"string":"K",
-	"parameters":false,
+	"parameters":1e-6,
 	"ndim":3,
 	"seed":123
 	},

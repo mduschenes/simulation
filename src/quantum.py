@@ -12,7 +12,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher
-from src.utils import array,asarray,empty,identity,ones,zeros,rand,prng,arange,diag
+from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,arange,diag
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort,prod
 from src.utils import inplace,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,is_hermitian,is_unitary,allclose
@@ -434,7 +434,7 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 
 		obj = noise
 		step = length
-		indices = (0,size//step)
+		indices = (0,size)
 		indexer = arange(0,size,step)
 		sizes = step*ones(size//step)
 
@@ -556,7 +556,7 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 
 		function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
 		_function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants)
-		_function_ = jit(lambda data,state,conj:state)
+		_function_ = jit(lambda parameters,state,conj,indices:state)
 		contract = gradient_contraction(identity,state=state,conj=conj,constants=constants)
 		_contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
 		_contract_ = jit(lambda data,state,conj:state)
@@ -573,16 +573,17 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 
 					obj = state
 
-					obj = function(parameters,obj,conj,indices=(0,(j//step)*step))
-					obj = _function(parameters,obj,conj,indices=((j//step)*step,j+1))
+					obj = cond((j<=(step-1)),_function,_function_,parameters,obj,conj,(0,j+1))
+					obj = cond((j>(step-1)),function,_function_,parameters,obj,conj,(0,(j//step)*step))
+					obj = cond((j>(step-1)),_function,_function_,parameters,obj,conj,((j//step)*step,j+1))
 
 					derivative = dot(switch(j%step,grad,parameters[j],None,conj),switch(j%step,data,parameters[j],None,1-conj))
-
 					obj = contract(derivative,obj,conj)
-
-					obj = cond((j%step)==0,_contract,_contract_,noise,obj,conj)
-
-					obj = function(parameters,obj,conj,indices=(j+1,size))
+					
+					obj = cond((j%step)==(step-1),_contract,_contract_,noise,obj,conj)
+					obj = cond((j%step)!=(step-1),_function,_function_,parameters,obj,conj,(j+1,(j//step)*step+step))
+					obj = cond((j%step)!=(step-1),_contract,_contract_,noise,obj,conj)
+					obj = cond(j<(size-step+1),function,_function_,parameters,obj,conj,((j//step)*step+step,size))
 
 					out = inplace(out,i,obj,'add')
 
@@ -595,7 +596,7 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 			state = state if state is not None else identity
 			indices = array([indices]) if isinstance(indices,int) else indices
 			indexes = [0,len(indices)]
-			out = zeros((len(indices),*identity.shape),dtype=identity.dtype)
+			out = zeros((len(indices),*state.shape),dtype=identity.dtype)
 			
 			return forloop(*indexes,func,out)
 	
