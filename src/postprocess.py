@@ -414,6 +414,7 @@ def postprocess(path,**kwargs):
 					size = min(len(data[label[axis]]) for axis in label if label[axis] in data)
 					slices = range(2,4)
 					slices = range(0,size-2,2)
+					slices = range(1,size-1,1)
 					# slices = range(3,4)
 
 					X = [array(data['%s'%(label['x'])][i]) for i in slices]
@@ -463,7 +464,7 @@ def postprocess(path,**kwargs):
 								_yerr = zeros(_n)
 								_zerr = zeros(_n)
 
-								i_min = argmin(z_)-({**{i:0 for i in [1]},**{i:1 for i in [2,3,5]},**{i:2 for i in [4]},**{i:-1 for i in [0]}} [i])
+								i_min = argmin(z_)#-({**{i:0 for i in [1]},**{i:1 for i in [2,3,5]},**{i:2 for i in [4]},**{i:-1 for i in [0]}}.get(i,0))
 								y_min = (y_[i_min-1] + y_[i_min] + y_[i_min+1])/3
 
 								# x_min = arange(3)

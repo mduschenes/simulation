@@ -20,6 +20,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 	envs = {
 		'JAX_PLATFORMS':'cpu',
+		'JAX_PLATFORM_NAME':'cpu',
 		'TF_CPP_MIN_LOG_LEVEL':5
 	}
 	for var in envs:
@@ -29,9 +30,21 @@ if BACKEND in ['jax','jax.autograd']:
 	import jax
 	import jax.numpy as np
 	import jax.scipy as sp
-	
+
 	import scipy.optimize
 	from scipy.optimize import minpack2 as minpack2
+
+	import absl.logging
+	absl.logging.set_verbosity(absl.logging.INFO)
+
+	configs = {
+		'jax_disable_jit':False,
+		'jax_platforms':'cpu',
+		'jax_platform_name':'cpu',
+		'jax_enable_x64': True
+		}
+	for name in configs:
+		jax.config.update(name,configs[name])
 
 elif BACKEND in ['autograd']:
 

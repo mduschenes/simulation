@@ -47,6 +47,7 @@ if BACKEND in ['jax','jax.autograd']:
 	
 	envs = {
 		'JAX_PLATFORMS':'cpu',
+		'JAX_PLATFORM_NAME':'cpu',
 		'TF_CPP_MIN_LOG_LEVEL':5
 	}
 	for var in envs:
@@ -67,6 +68,7 @@ if BACKEND in ['jax','jax.autograd']:
 	configs = {
 		'jax_disable_jit':False,
 		'jax_platforms':'cpu',
+		'jax_platform_name':'cpu',
 		'jax_enable_x64': True
 		}
 	for name in configs:
