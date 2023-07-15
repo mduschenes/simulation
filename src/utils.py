@@ -336,6 +336,30 @@ class argparser(argparse.ArgumentParser):
 		return self.kwargs.values()
 
 
+def insert(obj,index,value):
+	'''
+	Insert value into obj at index
+	Args:
+		obj (iterable[object],dict): Object to insert into
+		index (int): Index to insert into
+		value (object,dict): Value to insert (if obj is a dict then value if value is a dict, the obj will be updated with value)
+	Returns:
+		obj (iterable[object],dict): Object with inserted value at index
+	'''
+
+	if isinstance(obj,dict):
+		index = len(obj)+index if index < 0 else index
+		obj = type(obj)({
+			**{key: obj[key] for i,key in enumerate(obj) if i < index},
+			**(value if isinstance(value,dict) else {index:value}),
+			**{key: obj[key] for i,key in enumerate(obj) if i >= index}
+			})
+	else:
+		obj.insert(index,value)
+
+	return obj
+
+
 def epsilon(dtype=float,eps=None):
 	'''	
 	Get machine precision epsilon for dtype
@@ -2003,6 +2027,46 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 		if size:
 			key = generator.randint(*bounds,size=size)
+
+		return key
+
+if BACKEND in ['jax']:
+
+	def spawn(seed=None,**kwargs):
+		'''
+		Generate split prng key
+		Args:
+			seed (int,array): Seed for random number generation or random key for future seeding
+			kwargs (dict): Additional keyword arguments for seeding
+		Returns:
+			key (key,list[key]): Random key
+		'''	
+
+		# TODO merge random seeding for different numpy backends (jax vs autograd)
+
+		generator = jax.random
+
+		_,key = generator.split(seed)
+
+		return key
+
+elif BACKEND in ['jax.autograd','autograd','numpy']:
+
+	def spawn(seed=None,**kwargs):
+		'''
+		Generate split prng key
+		Args:
+			seed (int,array): Seed for random number generation or random key for future seeding
+			kwargs (dict): Additional keyword arguments for seeding
+		Returns:
+			key (key,list[key]): Random key
+		'''	
+
+		# TODO merge random seeding for different numpy backends (jax vs autograd)
+
+		generator = onp.random
+
+		key = seed
 
 		return key
 
@@ -7032,12 +7096,13 @@ def initialize(data,shape,dtype=None,**kwargs):
 
 	kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
 
-	bounds = kwargs['bounds']
-	initialization = kwargs['initialization']
-	constant = kwargs['constant']	
-	random = kwargs['random']
-	seed = kwargs['seed']
-	axis = kwargs['axis']
+	bounds = kwargs.get('bounds')
+	initialization = kwargs.get('initialization')
+	constant = kwargs.get('constant')
+	random = kwargs.get('random')
+	seed = kwargs.get('seed')
+	axis = kwargs.get('axis')
+	model = kwargs.get('model')
 
 	ndim = None if shape is None else 0 if isinstance(shape,int) else len(shape)
 	key = seed
@@ -7101,6 +7166,20 @@ def initialize(data,shape,dtype=None,**kwargs):
 		
 		elif initialization in ['zero','zeros']:
 			data = zeros(shape,dtype=dtype)
+
+		elif initialization in ['time']:
+			if model is None:
+				data = data
+			else:
+				try:
+					parameters = model.tau
+					scale = model.data.noise.scale
+
+					data = (1 - exp(-parameters/scale))/2
+
+				except AttributeError:
+					
+					data = data
 
 	elif initialization is not None: 
 		

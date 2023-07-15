@@ -125,7 +125,7 @@ def test_model(path,tol):
 	model = load(hyperparameters.cls.model)
 	system = hyperparameters.system
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 
 	parameters = model.parameters()
 
@@ -184,7 +184,7 @@ def test_model(path,tol):
 		assert allclose(objH,objD), "Incorrect model(conj=True) != conj(model())"
 
 
-	if model.state() is None and model.noise() is None:
+	if model.state() is None and model.unitary:
 
 		m,d,p = model.M,len(model),model.P
 		identity = model.identity()
@@ -238,7 +238,7 @@ def test_parameters(path,tol):
 	hyperparams = hyperparameters.optimize
 	system = hyperparameters.system
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 
 	parameters = model.parameters()
 	variables = model.parameters(parameters)
@@ -352,7 +352,7 @@ def test_data(path,tol):
 	model = load(hyperparameters.cls.model)
 	system = hyperparameters.system
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 
 
 	basis = {
@@ -409,7 +409,7 @@ def test_initialization(path,tol):
 	hyperparams = hyperparameters.optimize
 	system = hyperparameters.system
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
 	parameters = model.parameters()
@@ -421,8 +421,8 @@ def test_initialization(path,tol):
 	def copier(model,metric):
 
 		copy = Dictionary(
-			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=model.noise,info=model.info,hermitian=model.hermitian,unitary=model.unitary),
-			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.label.state,noise=model.noise,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
+			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=model.data.noise,info=model.info,hermitian=model.hermitian,unitary=model.unitary),
+			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.label.state,noise=model.data.noise,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
 			label=Dictionary(func=metric.label.__call__,data=metric.label(),state=metric.label.state,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
 			)
 
@@ -431,7 +431,7 @@ def test_initialization(path,tol):
 	copy = copier(model,metric)
 
 	
-	defaults = Dictionary(state=model.state,noise=model.noise,label=metric.label)
+	defaults = Dictionary(state=model.state,noise=model.data.noise,label=metric.label)
 
 
 	tmp = Dictionary(state=False,noise=False,label=False)
@@ -546,7 +546,7 @@ def test_hessian(path,tol):
 	hyperparams = hyperparameters.optimize
 	system = hyperparameters.system
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
 	parameters = model.parameters()
@@ -591,7 +591,7 @@ def test_fisher(path,tol):
 		hyperparams = hyperparameters.optimize
 		system = hyperparameters.system
 
-		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})	
+		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})	
 
 		parameters = model.parameters()
 
@@ -743,7 +743,7 @@ def check_fisher(path,tol):
 		hyperparams = hyperparameters.optimize
 		system = hyperparameters.system
 
-		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})	
+		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})	
 
 		parameters = model.parameters()
 

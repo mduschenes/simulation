@@ -12,9 +12,9 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher
-from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,arange,diag
+from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,spawn,arange,diag
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort,prod
-from src.utils import inplace,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
+from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,is_hermitian,is_unitary,allclose
 from src.utils import pi,e,nan,delim,scalars,arrays,datatype
 
@@ -121,24 +121,24 @@ def trotter(iterable=None,p=None,shape=None):
 	return iterables
 
 
-def contraction(data,state=None,conj=False,constants=None,noise=None):
+def contraction(data,state=None,conj=False):
 	'''
 	Contract data and state
 	Args:
 		data (array): Array of data of shape (n,n)
 		state (array): state of shape (n,) or (n,n)
 		conj (bool): conjugate
-		constants (array): Array of constants to act of shape (n,n)
-		noise (array): Array of noise to act of shape (...,n,n)
 	Returns:
 		func (callable): contracted data and state with signature func(data,state,conj)
 	'''
 
 	if data is None:
-		return None
-
-	if constants is None and noise is None:
 		
+		def func(data,state,conj):
+			return data
+
+	elif data.ndim == 2:
+
 		if state is None:
 			
 			state = data
@@ -168,215 +168,88 @@ def contraction(data,state=None,conj=False,constants=None,noise=None):
 			def func(data,state,conj):
 				return einsummation(data,state,conjugate(data))
 
-	elif constants is not None and noise is None:
-
-		raise NotImplementedError("TODO: Implement contraction of state == Any, constants != None, noise == None scheme")
-		
-	elif constants is None and noise is not None:
+	elif data.ndim == 3:
 
 		if state is None:
+			
+			state = data
 
-			if noise.ndim == 3:
+			subscripts = 'uij,ujk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
 
-				state = data
-
-				subscripts = 'uij,jk->ik'
-				shapes = (noise.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
-
-				def func(data,state,conj):
-					return einsummation(data,state)	
-
-			elif noise.ndim == 0:
-
-				state = data
-
-				subscripts = None
-				shapes = None
-				einsummation = None
-
-				def func(data,state,conj):
-					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2
+			def func(data,state,conj):
+				return einsummation(data,state)
 
 		elif state.ndim == 1:
-		
-			if noise.ndim == 3:
-
-				subscripts = 'uij,j->i'
-				shapes = (noise.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
-
-				def func(data,state,conj):
-					return einsummation(data,state)	
-
-			elif noise.ndim == 0:
-
-				subscripts = None
-				shapes = None
-				einsummation = None
-
-				def func(data,state,conj):
-					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2
-
+			
+			subscripts = 'uij,j->i'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state,conj):
+				return einsummation(data,state)
 
 		elif state.ndim == 2:
+			
+			subscripts = 'uij,jk,ulk->il'
+			shapes = (data.shape,state.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state,conj):
+				return einsummation(data,state,conjugate(data))
 
-			if noise.ndim == 3:
-
-				subscripts = 'uij,jk,ulk->il'
-				shapes = (noise.shape,state.shape,noise.shape)
-				einsummation = einsum(subscripts,*shapes)
-
-				def func(data,state,conj):
-					return einsummation(data,state,conjugate(noise))	
-
-			elif noise.ndim == 0:
-
-				subscripts = None
-				shapes = None
-				einsummation = None
-
-				def func(data,state,conj):
-					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2	
-
-
-	elif constants is not None and noise is not None:
-
-		raise NotImplementedError("TODO: Implement contraction of state == Any, constants != None, noise != None scheme")
-		
 	func = jit(func)	
 
 	return func
 
 
-def gradient_contraction(data,state=None,conj=False,constants=None,noise=None):
+def gradient_contraction(data,state=None,conj=False):
 	'''
 	Contract data and state
 	Args:
 		data (array): Array of data of shape (n,n)
 		state (array): state of shape (n,) or (n,n)
 		conj (bool): conjugate
-		constants (array): Array of constants to act of shape (n,n)
-		noise (array): Array of noise to act of shape (...,n,n)
 	Returns:
 		func (callable): contracted data and state with signature func(data,state,conj)
 	'''
 
-	if constants is None and noise is None:
+	if state is None:
 		
-		if state is None:
-			
-			state = data
+		state = data
 
-			subscripts = 'ij,jk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
+		subscripts = 'ij,jk->ik'
+		shapes = (data.shape,state.shape)
+		einsummation = einsum(subscripts,*shapes)
 
-			def func(data,state,conj):
-				return einsummation(data,state)
+		def func(data,state,conj):
+			return einsummation(data,state)
 
-		elif state.ndim == 1:
+	elif state.ndim == 1:
 
-			subscripts = 'ij,j->i'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			def func(data,state,conj):
-				return einsummation(data,state)
-
-		elif state.ndim == 2:
-			
-			subscripts = 'ij,jk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-			
-			def func(data,state,conj):
-				out = einsummation(data,state)
-				return out + dagger(out)
-
-	elif constants is not None and noise is None:
-
-		raise NotImplementedError("TODO: Implement gradient of state == Any, constants != None, noise == None scheme")
+		subscripts = 'ij,j->i'
+		shapes = (data.shape,state.shape)
+		einsummation = einsum(subscripts,*shapes)
 		
-	elif constants is None and noise is not None:
+		def func(data,state,conj):
+			return einsummation(data,state)
 
-		raise NotImplementedError("TODO: Implement gradient of state == Any, constants == None, noise != None scheme")
-
-		if state is None:
-
-			if noise.ndim == 3:
-
-				state = data
-
-				subscripts = 'uij,jk->ik'
-				shapes = (noise.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
-
-				def func(data,state,conj):
-					return einsummation(data,state)	
-
-			elif noise.ndim == 0:
-
-				state = data
-
-				subscripts = None
-				shapes = None
-				einsummation = None
-
-				def func(data,state,conj):
-					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2
-
-		elif state.ndim == 1:
+	elif state.ndim == 2:
 		
-			if noise.ndim == 3:
-
-				subscripts = 'uij,j->i'
-				shapes = (noise.shape,state.shape)
-				einsummation = einsum(subscripts,*shapes)
-
-				def func(data,state,conj):
-					return einsummation(data,state)	
-
-			elif noise.ndim == 0:
-
-				subscripts = None
-				shapes = None
-				einsummation = None
-
-				def func(data,state,conj):
-					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2
-
-
-		elif state.ndim == 2:
-
-			if noise.ndim == 3:
-
-				subscripts = 'uij,jk,ulk->il'
-				shapes = (noise.shape,state.shape,noise.shape)
-				einsummation = einsum(subscripts,*shapes)
-
-				def func(data,state,conj):
-					return einsummation(data,state,conjugate(noise))	
-
-			elif noise.ndim == 0:
-
-				subscripts = None
-				shapes = None
-				einsummation = None
-
-				def func(data,state,conj):
-					return state + data*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=data.dtype)/2	
-
-
-	elif constants is not None and noise is not None:
-
-		raise NotImplementedError("TODO: Implement gradient of state == Any, constants != None, noise != None scheme")
+		subscripts = 'ij,jk->ik'
+		shapes = (data.shape,state.shape)
+		einsummation = einsum(subscripts,*shapes)
 		
+		def func(data,state,conj):
+			out = einsummation(data,state)
+			return out + dagger(out)
+
 	func = jit(func)	
 
 	return func
 
-def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=None,noise=None,indices=None):
+def scheme(parameters,state=None,conj=False,data=None,identity=None,indices=None):
 	'''
 	Contract data and state
 	Args:
@@ -385,8 +258,6 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 		conjugate (bool): conjugate
 		data (array): data of shape (length,)
 		identity (array): Array of data identity of shape (n,n)
-		constants (array): Array of constants to act of shape (n,n)
-		noise (array): Array of noise to act of shape (...,n,n)
 	Returns:
 		func (callable): contracted data(parameters) and state with signature func(parameters,state,conj)
 	'''
@@ -394,76 +265,38 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,constants=No
 	size = parameters.shape[0] if parameters is not None else 1
 	length = len(data) if data is not None else 1
 
-	contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
+	contract = contraction(identity,state=state,conj=conj)
 
 	def sorter(i,size,conj):
 		return (size-1)*conj + (1-2*conj)*(i%size)
 
-	if constants is None and noise is None:
+	obj = data
+	step = 1
+	indices = (0,size//step)
+
+	def function(parameters,state=state,conj=conj,indices=indices):
+		obj = switch(sorter(indices,length,conj=conj),data,parameters[sorter(indices,size,conj=conj)],state,conj)
+		return obj
+
+	def func(parameters,state=state,conj=conj,indices=indices):
 	
-		obj = data
-		step = 1
-		indices = (0,size//step)
-		indexer = arange(0,size,step)
-		sizes = step*ones(size//step)
+		def func(i,out):
+			obj = function(parameters,out,conj,indices=i)
+			return contract(obj,out,conj)
 
-		def function(parameters,state=state,conj=conj,indices=indices):
-			obj = switch(sorter(indices,length,conj=conj),data,parameters[sorter(indices,size,conj=conj)],state,conj)
-			return obj
+		state = state if state is not None else identity
+		out = state
 
-		def func(parameters,state=state,conj=conj,indices=indices):
-		
-			def func(i,out):
-				i = indexer[i]
-				obj = function(parameters,out,conj,indices=i)
-				return contract(obj,out,conj)
+		# indexes = indices if indices is not None else [0,parameters.size]
+		indexes = indices
 
-			state = state if state is not None else identity
-			out = state
+		return forloop(*indexes,func,out)
 
-			indexes = indices if indices is not None else [0,parameters.size]
-
-			return forloop(*indexes,func,out)
-
-
-	elif constants is not None and noise is None:
-
-		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise == None scheme")
-
-	elif constants is None and noise is not None:
-
-		obj = noise
-		step = length
-		indices = (0,size)
-		indexer = arange(0,size,step)
-		sizes = step*ones(size//step)
-
-		function = scheme(parameters,state=state,conj=conj,data=data,identity=identity,constants=constants)
-
-		def func(parameters,state=state,conj=conj,indices=indices):
-
-			def func(i,out):
-				i = indexer[i]
-				x = slicing(parameters,i,step)
-				out = function(x,out,conj,indices=None)
-				return contract(obj,out,conj)
-
-			state = state if state is not None else identity
-			out = state
-			
-			indexes = [indices[0]//step,indices[-1]//step] if indices is not None else [0,parameters.size//step]
-
-			return forloop(*indexes,func,out)
-		
-	elif constants is not None and noise is not None:
-
-		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
-		
 	func = jit(func)
 	return func			
 
 
-def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,constants=None,noise=None,grad=None,indices=None):
+def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,grad=None,indices=None):
 	'''
 	Contract data and state
 	Args:
@@ -472,8 +305,6 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 		conj (bool): conjugate
 		data (array): data of shape (length,)
 		identity (array): Array of data identity of shape (n,n)
-		constants (array): Array of constants to act of shape (n,n)
-		noise (array): Array of noise to act of shape (...,n,n)
 		grad (array): data of shape (length,)
 		indices (dict,iterable[int]): indices to compute gradients with respect to {index_parameter: index_gradient}
 	Returns:
@@ -515,103 +346,46 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,con
 		grad = [(lambda parameters,state=None,conj=False,i=i: data[i].coefficients*data[i](parameters + (pi/2)/data[i].coefficients)) for i in range(length)]
 	
 
-	if constants is None and noise is None:
+	function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity)
+	_function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity)
+	_function_ = jit(lambda data,state,conj:state)
+	contract = gradient_contraction(identity,state=state,conj=conj)
+	_contract = contraction(identity,state=state,conj=conj)
+	_contract_ = jit(lambda data,state,conj:state)
 
-		function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
-		_function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants)
-		_function_ = jit(lambda data,state,conj:state)
-		contract = gradient_contraction(identity,state=state,conj=conj,constants=constants)
-		_contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
-		_contract_ = jit(lambda data,state,conj:state)
+	step = length
 
-		step = length
+	def func(parameters,state=state,conj=conj,indices=indices):
 
-		def func(parameters,state=state,conj=conj,indices=indices):
+		def func(i,out):
 
-			def func(i,out):
+			def func(j,out):
 
-				def func(j,out):
+				j = indexer[sizes[indices[i]]+j]
 
-					j = indexer[sizes[indices[i]]+j]
+				obj = state
 
-					obj = state
+				obj = function(parameters,obj,conj,indices=(0,(j+1)//step))
 
-					obj = function(parameters,obj,conj,indices=(0,j+1))
+				derivative = dot(switch(j%step,grad,parameters[j],None,conj),switch(j%step,data,parameters[j],None,1-conj))
 
-					derivative = dot(switch(j%step,grad,parameters[j],None,conj),switch(j%step,data,parameters[j],None,1-conj))
+				obj = contract(derivative,obj,conj)
 
-					obj = contract(derivative,obj,conj)
+				obj = function(parameters,obj,conj,indices=((j+1)//step,size//step))
 
-					obj = function(parameters,obj,conj,indices=(j+1,size))
+				out = inplace(out,i,obj,'add')
 
-					out = inplace(out,i,obj,'add')
+				return out
 
-					return out
+			indexes = [0,sizes[indices[i]+1]-sizes[indices[i]]]
 
-				indexes = [0,sizes[indices[i]+1]-sizes[indices[i]]]
-
-				return forloop(*indexes,func,out)
-
-			state = state if state is not None else identity
-			indexes = [0,len(indices)]
-			out = zeros((len(indices),*state.shape),dtype=identity.dtype)
-			
 			return forloop(*indexes,func,out)
 
-	elif constants is not None and noise is None:
-
-		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise == None scheme")
-
-	elif constants is None and noise is not None:
-
-		function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
-		_function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants)
-		_function_ = jit(lambda parameters,state,conj,indices:state)
-		contract = gradient_contraction(identity,state=state,conj=conj,constants=constants)
-		_contract = contraction(identity,state=state,conj=conj,constants=constants,noise=noise)
-		_contract_ = jit(lambda data,state,conj:state)
-
-		step = length
-
-		def func(parameters,state=state,conj=conj,indices=indices):
-
-			def func(i,out):
-
-				def func(j,out):
-
-					j = indexer[sizes[indices[i]]+j]
-
-					obj = state
-
-					obj = cond((j<=(step-1)),_function,_function_,parameters,obj,conj,(0,j+1))
-					obj = cond((j>(step-1)),function,_function_,parameters,obj,conj,(0,(j//step)*step))
-					obj = cond((j>(step-1)),_function,_function_,parameters,obj,conj,((j//step)*step,j+1))
-
-					derivative = dot(switch(j%step,grad,parameters[j],None,conj),switch(j%step,data,parameters[j],None,1-conj))
-					obj = contract(derivative,obj,conj)
-					
-					obj = cond((j%step)==(step-1),_contract,_contract_,noise,obj,conj)
-					obj = cond((j%step)!=(step-1),_function,_function_,parameters,obj,conj,(j+1,(j//step)*step+step))
-					obj = cond((j%step)!=(step-1),_contract,_contract_,noise,obj,conj)
-					obj = cond(j<(size-step+1),function,_function_,parameters,obj,conj,((j//step)*step+step,size))
-
-					out = inplace(out,i,obj,'add')
-
-					return out
-
-				indexes = [0,sizes[indices[i]+1]-sizes[indices[i]]]
-
-				return forloop(*indexes,func,out)
-
-			state = state if state is not None else identity
-			indexes = [0,len(indices)]
-			out = zeros((len(indices),*state.shape),dtype=identity.dtype)
-			
-			return forloop(*indexes,func,out)
-	
-	elif constants is not None and noise is not None:
-
-		raise NotImplementedError("TODO: Implement state == Any, constants != None, noise != None scheme")
+		state = state if state is not None else identity
+		indexes = [0,len(indices)]
+		out = zeros((len(indices),*state.shape),dtype=identity.dtype)
+		
+		return forloop(*indexes,func,out)
 
 	func = jit(func)
 
@@ -629,8 +403,6 @@ class Object(System):
 		string (str): string label of operator
 		parameters (object): parameter of operator
 		state (object): state of operators
-		constants (object): constants of operators
-		noise (object): noise of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -644,16 +416,16 @@ class Object(System):
 	hermitian = None
 	unitary = None
 
-	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,state=None,constants=None,noise=None,system=None,**kwargs):		
+	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,state=None,system=None,**kwargs):		
 
 		defaults = dict(			
 			shape=None,size=None,ndim=None,
 			samples=None,identity=None,locality=None,
-			conj=False,coefficients=None,func=None,gradient=None,
+			conj=False,coefficients=None,func=None,gradient=None,contract=None,
 			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,constants=constants,noise=noise,system=system),delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
@@ -855,6 +627,8 @@ class Object(System):
 
 		if conj is None:
 			conj = self.conj
+
+		contract = self.contract
 		
 		hermitian = self.hermitian
 		unitary = self.unitary
@@ -864,6 +638,8 @@ class Object(System):
 		self.parameters = parameters			
 		self.state = state
 		self.conj = conj
+
+		self.contract = contract
 
 
 		try:
@@ -890,6 +666,10 @@ class Object(System):
 			hermitian = True
 			unitary = False
 
+
+		state = self.identity if state is None else state
+		contract = contraction(data,state=state,conj=conj):
+
 		self.shape = data.shape if isinstance(data,arrays) else None
 		self.size = data.size if isinstance(data,arrays) else None
 		self.ndim = data.ndim if isinstance(data,arrays) else None
@@ -898,7 +678,10 @@ class Object(System):
 		self.hermitian = hermitian
 		self.unitary = unitary
 
+		self.contract = contract
+
 		return
+
 
 
 	def __call__(self,parameters=None,state=None,conj=False):
@@ -947,9 +730,12 @@ class Object(System):
 		return self(parameters,state,conj)
 
 	def __str__(self):
-		string = self.__class__.__name__ if not self.string else self.string
 		if self.operator is not None and not isinstance(self.operator,arrays):
 			string = '%s'%(delim.join(self.operator))
+		elif self.string:
+			string = self.string
+		else:
+			string = self.__class__.__name__
 		return string
 
 	def __repr__(self):
@@ -1106,8 +892,6 @@ class Operator(Object):
 		string (str): string label of operator
 		parameters (object): parameter of operator		
 		state (object): state of operators		
-		constants (object): constants of operators
-		noise (object): noise of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		inherit (boolean): Inherit super class when initialized
 		kwargs (dict): Additional system keyword arguments	
@@ -1121,13 +905,13 @@ class Operator(Object):
 	N = None
 	n = None
 
-	def __new__(cls,data=None,operator=None,site=None,string=None,parameters=None,state=None,constants=None,noise=None,system=None,inherit=False,**kwargs):		
+	def __new__(cls,data=None,operator=None,site=None,string=None,parameters=None,state=None,system=None,inherit=False,**kwargs):		
 
 		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
 
 		self = None
 
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,constants=constants,noise=noise,system=system),delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 
 		classes = [Gate,Pauli,Haar,State,Noise,Object]
 
@@ -1173,8 +957,6 @@ class Pauli(Object):
 		string (str): string label of operator
 		parameters (object): parameter of operator				
 		state (object): state of operators				
-		constants (object): constants of operators
-		noise (object): noise of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -1193,7 +975,7 @@ class Pauli(Object):
 	hermitian = None
 	unitary = None
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -1202,6 +984,7 @@ class Pauli(Object):
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			parameters (object): parameter of operator			
+			kwargs (dict): Additional operator keyword arguments			
 		'''
 
 		def sign(conj):
@@ -1226,6 +1009,7 @@ class Pauli(Object):
 
 		self.func = func
 		self.gradient = gradient
+
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -1242,8 +1026,6 @@ class Gate(Object):
 		string (str): string label of operator
 		parameters (object): parameter of operator				
 		state (object): state of operators		
-		constants (object): constants of operators
-		noise (object): noise of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -1262,7 +1044,7 @@ class Gate(Object):
 	hermitian = None
 	unitary = None
 	
-	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -1270,7 +1052,8 @@ class Gate(Object):
 			operator (iterable[str]): string names of operators			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
-			parameters (object): parameter of operator			
+			parameters (object): parameter of operator		
+			kwargs (dict): Additional operator keyword arguments
 		'''
 		
 		hermitian = False
@@ -1291,8 +1074,6 @@ class Haar(Object):
 		string (str): string label of operator
 		parameters (object): parameter of operator		
 		state (object): state of operators		
-		constants (object): constants of operators
-		noise (object): noise of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -1309,7 +1090,7 @@ class Haar(Object):
 	hermitian = None
 	unitary = None
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -1318,6 +1099,7 @@ class Haar(Object):
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
 			parameters (object): parameter of operator			
+			kwargs (dict): Additional operator keyword arguments			
 		'''
 
 		shape = (self.n,)*self.ndim
@@ -1355,8 +1137,6 @@ class State(Object):
 		string (str): string label of operator
 		parameters (object): parameter of operator		
 		state (object): state of operators		
-		constants (object): constants of operators
-		noise (object): noise of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -1377,7 +1157,7 @@ class State(Object):
 	hermitian = None
 	unitary = None
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -1385,7 +1165,8 @@ class State(Object):
 			operator (iterable[str]): string names of operators			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
-			parameters (object): parameter of operator			
+			parameters (object): parameter of operator		
+			kwargs (dict): Additional operator keyword arguments				
 		'''
 
 		N = self.N
@@ -1413,6 +1194,7 @@ class State(Object):
 			for i in range(N):
 				
 				tmp = zeros(shape=shape,dtype=dtype)
+				# seed = spawn(seed)
 
 				if operator[i] in ['zero','zeros','0']:
 					tmp = inplace(tmp,0,1)
@@ -1423,6 +1205,8 @@ class State(Object):
 				elif operator[i] in ['minus','-']:
 					tmp = inplace(tmp,slice(None),(-1)**arange(size)/sqrt(size))
 				elif operator[i] in ['random','psi','haar']:
+					print('replace')
+					shape = (self.D**self.N,)
 					tmp = rand(shape=shape,random=random,seed=seed,reset=reset,dtype=dtype)
 				elif isinstance(self.data,arrays):
 					tmp = self.data.reshape(N,*shape)[i]
@@ -1434,6 +1218,11 @@ class State(Object):
 					break
 
 				datum.append(tmp)
+
+				print('replace')
+				if operator[i] in ['random','psi','haar']:
+					break
+
 			
 			if datum is not None:
 				if not isinstance(datum,arrays):
@@ -1474,8 +1263,6 @@ class Noise(Object):
 		string (str): string label of operator
 		parameters (object): parameter of operator		
 		state (object): state of operators		
-		constants (object): constants of operators
-		noise (object): noise of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
@@ -1501,11 +1288,7 @@ class Noise(Object):
 	hermitian = None
 	unitary = None
 
-	scale = 1
-	tau = None
-	initialization = None
-
-	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,state=None,constants=None,noise=None,system=None,**kwargs):		
+	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,state=None,system=None,**kwargs):		
 
 		defaults = dict(			
 			shape=None,size=None,ndim=None,
@@ -1513,14 +1296,14 @@ class Noise(Object):
 			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,constants=constants,noise=noise,system=system),delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,parameters=parameters,state=state,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 
 		super().__init__(**kwargs)
 
 		return
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None,**kwargs):
 		'''
 		Setup operator
 		Args:
@@ -1528,7 +1311,8 @@ class Noise(Object):
 			operator (iterable[str]): string names of operators			
 			site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (str): string label of operator
-			parameters (object): parameter of operator			
+			parameters (object): parameter of operator
+			kwargs (dict): Additional operator keyword arguments			
 		'''
 
 		def operators(operator,parameters):
@@ -1578,11 +1362,6 @@ class Noise(Object):
 			return data,hermitian,unitary
 
 
-		if (getattr(self,'scale',None) is not None):
-			if (getattr(self,'initialization',None) in ['time']):
-				if (getattr(self,'tau') is not None):
-					self.parameters = (1 - exp(-self.tau/self.scale))/2
-
 		do = (self.parameters is None) or (self.parameters is False)
 
 		if do:
@@ -1616,10 +1395,29 @@ class Noise(Object):
 		if not isinstance(data,arrays):
 			data = array([tensorprod(i)	for i in itertools.product(*data)],dtype=self.dtype)
 
+
+		if self.ndim == 0:
+			def func(parameters=None,state=None,conj=False):
+				return state + parameters*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=self.dtype)/2
+
+			def gradient(parameters=None,state=None,conj=False):
+				return 0*state
+
+		else:
+			func = self.func
+			gradient = self.gradient
+
+
+		
+
 		self.data = data
+
+		self.func = func
+		self.gradient = gradient
+		
 		self.hermitian = hermitian
 		self.unitary = unitary
-
+		
 		return
 
 
@@ -1649,14 +1447,13 @@ class Operators(Object):
 		time (str,Time): Type of Time evolution space						
 		lattice (str,Lattice): Type of lattice	
 		state (str,dict,State): Type of state	
-		noise (str,dict,Noise): Type of noise
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
 	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
-		space=None,time=None,lattice=None,state=None,noise=None,system=None,**kwargs):
+		space=None,time=None,lattice=None,state=None,system=None,**kwargs):
 
 		setter(kwargs,system,delimiter=delim,func=False)
 		super().__init__(**kwargs)
@@ -1674,17 +1471,15 @@ class Operators(Object):
 		self.time = time
 		self.lattice = lattice
 
-		self.data = []
+		self.data = Dictionary()
 		self.parameters = parameters
 
 		self.n = None
 		self.g = None
 		
 		self.state = state
-		self.noise = noise
 		self.identity = None
 		self.coefficients = None
-		self.constants = None
 		self.conj = False
 
 		self.func = None
@@ -1714,7 +1509,7 @@ class Operators(Object):
 
 		return	
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None,**kwargs):
 		'''
 		Setup class
 		Args:
@@ -1727,6 +1522,7 @@ class Operators(Object):
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			parameters (iterable[object]): parameters of operators
+			kwargs (dict): Additional class keyword arguments			
 		'''
 
 		# Get operator,site,string from data
@@ -1743,15 +1539,21 @@ class Operators(Object):
 		elif isinstance(data,dict) and all(isinstance(data[name],dict) and (obj in data[name]) for name in data for obj in objs):
 			for obj in objs:
 				objs[obj].extend([data[name][obj] for name in data])
+
+
+			kwargs.update({kwarg: [data[name][kwarg] if kwarg in data[name] else None for name in data] 
+				for kwarg in set(kwarg for name in data for kwarg in data[name] if kwarg not in objs)
+				})
+
 			data = None
 
 		# Set class attributes
-		self.__extend__(data=data,**objs)
+		self.__extend__(data=data,**objs,**kwargs)
 
 		return
 
 
-	def __append__(self,data=None,operator=None,site=None,string=None,parameters=None):
+	def __append__(self,data=None,operator=None,site=None,string=None,parameters=None,**kwargs):
 		'''
 		Append to class
 		Args:
@@ -1760,12 +1562,13 @@ class Operators(Object):
 			site (int): site of local operator
 			string (str): string label of operator
 			parameters (object): parameter of operator			
+			kwargs (dict): Additional class keyword arguments			
 		'''
 		index = -1
-		self.__insert__(index,data,operator,site,string,parameters)
+		self.__insert__(index,data,operator,site,string,parameters,**kwargs)
 		return
 
-	def __extend__(self,data=None,operator=None,site=None,string=None,parameters=None):
+	def __extend__(self,data=None,operator=None,site=None,string=None,parameters=None,**kwargs):
 		'''
 		Setup class
 		Args:
@@ -1774,9 +1577,14 @@ class Operators(Object):
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			parameters (iterable[object]): parameters of operators
+			kwargs (dict): Additional class keyword arguments			
 		'''
 
-		size = min([len(i) for i in [data,operator,site,string,parameters] if i is not None],default=0)
+
+		size = min([len(i) for i in (data,operator,site,string,parameters) if i is not None],default=0)
+
+		length = min([len(i) for i in (kwargs[kwarg] for kwarg in kwargs) if i is not None],default=size)
+		kwargs = [{kwarg: kwargs[kwarg][i] for kwarg in kwargs if kwargs[kwarg] is not None} for i in range(length)]
 
 		if not size:
 			return
@@ -1790,15 +1598,17 @@ class Operators(Object):
 		if string is None:
 			string = [None]*size						
 		if parameters is None:
-			parameters = [None]*size			
+			parameters = [None]*size	
+		if kwargs is None:
+			kwargs = [{}]*size	
 
-		for _data,_operator,_site,_string,_parameters in zip(data,operator,site,string,parameters):
-			self.__append__(_data,_operator,_site,_string,_parameters)
+		for _data,_operator,_site,_string,_parameters,_kwargs in zip(data,operator,site,string,parameters,kwargs):
+			self.__append__(_data,_operator,_site,_string,_parameters,**_kwargs)
 
 		return
 
 
-	def __insert__(self,index,data,operator,site,string,parameters):
+	def __insert__(self,index,data,operator,site,string,parameters,**kwargs):
 		'''
 		Insert to class
 		Args:
@@ -1807,35 +1617,39 @@ class Operators(Object):
 			operator (str): string name of operator
 			site (int): site of local operator
 			string (str): string label of operator
-			parameters (object): parameter of operator			
+			parameters (object): parameter of operator
+			kwargs (dict): Additional class keyword arguments						
 		'''
 
 		if index == -1:
 			index = len(self)
 
-		kwargs = dict(N=self.N,D=self.D,system=self.system,verbose=False)
+		defaults = dict(N=self.N,D=self.D,system=self.system,verbose=False)
+
+		setter(kwargs,defaults,func=False)
+
+		kwargs = {kwargs[kwarg] for kwarg in kwargs if kwargs[kwarg] is not None}
 
 		data = Operator(data=data,operator=operator,site=site,string=string,parameters=parameters,**kwargs)
-		self.data.insert(index,data)
+
+		self.data = insert(self.data,index,{index: data})
 
 		return
 
-	def __initialize__(self,parameters=None,state=None,noise=None):
+	def __initialize__(self,parameters=None,state=None):
 		''' 
 		Setup class functions
 		Args:
 			parameters (bool,dict,array,Parameters): Class parameters
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters, or boolean to choose self.state or None
-			noise (bool,dict,array,Noise): Noise to act on with class of shape (-1,self.shape), or class hyperparameters, or boolean to choose self.noise or None
 		'''
 
 		parameters = self.parameters if parameters is None else parameters
 		state = self.state if state is None else state
-		noise = self.noise if noise is None else noise
 
-		objs = {'parameters':parameters,'state':state,'noise':noise}
-		classes = {'parameters':Parameters,'state':State,'noise':Noise}
-		arguments = {'parameters':False,'state':True,'noise':True}
+		objs = {'parameters':parameters,'state':state}
+		classes = {'parameters':Parameters,'state':State}
+		arguments = {'parameters':False,'state':True}
 
 		# Get functions
 		for obj in objs:
@@ -1865,9 +1679,7 @@ class Operators(Object):
 		identity = self.identity()
 		parameters = self.parameters()
 		state = self.state()
-		noise = self.noise()
 		coefficients = self.coefficients
-		constants = self.constants
 		conj = self.conj
 
 		wrapper = self.parameters.wrapper
@@ -1875,9 +1687,11 @@ class Operators(Object):
 
 		assert self.parameters(parameters) is not None, "Incorrect parameters() initialization"
 
-		data = trotter([jit(i) for i in self.data],p=self.P)
-		grad = trotter([jit(i.grad) for i in self.data],p=self.P)
-		slices = trotter(list(range(len(self))),p=self.P)
+		indexes = {i: data for i,data in enumerate(self.data) if data() is not None}
+
+		data = trotter([jit(indexes[i]) for i in indexes],p=self.P)
+		grad = trotter([jit(indexes[i].grad) for i in indexes],p=self.P)
+		slices = trotter([i for i in indexes],p=self.P)
 
 		wrapper = jit(lambda parameters,slices,coefficients: coefficients*parameters[slices].T.ravel(),slices=array(slices),coefficients=coefficients)
 		indices = trotter(indices,p=self.P,shape=(len(self),self.M))
@@ -1885,41 +1699,14 @@ class Operators(Object):
 		self.parameters.wrapper = wrapper
 		self.parameters.indices = indices
 
-		if state is None and noise is None:
-			hermitian = False
-			unitary = True
-			shape = identity.shape
-		elif state is None and noise is not None:
-			hermitian = False
-			unitary = False
-			shape = identity.shape
-		elif state.ndim == 1 and noise is not None:
-			hermitian = True
-			unitary = False
-			shape = state.shape
-		elif state.ndim == 2 and noise is not None:
-			hermitian = True
-			unitary = False
-			shape = state.shape
-		elif state.ndim == 1 and noise is None:
-			hermitian = False
-			unitary = True
-			shape = state.shape
-		elif state.ndim == 2 and noise is None:
-			hermitian = True
-			unitary = False
-			shape = state.shape			
-		else:
-			raise NotImplementedError
-
 		parameters = self.parameters(parameters)
 
-		func = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise)
+		func = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity)
 		
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
 		# grad_analytical = grad_automatic
-		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,constants=constants,noise=noise,grad=grad,indices=indices)
+		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,grad=grad,indices=indices)
 
 		grad = grad_automatic
 
@@ -2156,7 +1943,7 @@ class Operators(Object):
 
 			msg.append(string)
 
-		for attr in ['parameters','state','noise']:
+		for attr in ['parameters','state']:
 			string = []
 			for subattr in [None,'shape','parameters']:
 				if subattr is None:
@@ -2178,6 +1965,27 @@ class Operators(Object):
 
 			msg.append(string)			
 
+		for attr in ['noise']:
+			string = []
+			for subattr in [None,'shape','parameters']:
+				if subattr is None:
+					subattr = attr
+					substring = str(getattrs(self,attr,delimiter=delim,default=None))
+				else:
+					substring = getattrs(self,delim.join([attr,subattr]),delimiter=delim,default=None)
+				if isinstance(substring,(str,int,list,tuple,*arrays)):
+					substring = '%s'%(substring,)
+				elif substring is not None:
+					substring = '%0.4e'%(substring)
+				else:
+					substring = str(substring)
+				substring = '%s : %s'%(subattr,substring)
+
+				string.append(substring)
+
+			string = ', '.join(string)
+
+			msg.append(string)	
 
 		# for attr in ['model']:
 		# 	string = '%s :\n%s'%(delim.join(attr.split(delim)[:1]),to_string(self()))
@@ -2296,22 +2104,21 @@ class Hamiltonian(Operators):
 		lattice (str,Lattice): Type of lattice		
 		parameters (str,dict,Parameters): Type of parameters	
 		state (str,dict,State): Type of state	
-		noise (str,dict,Noise): Type of noise
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
 	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
-				space=None,time=None,lattice=None,state=None,noise=None,system=None,**kwargs):
+				space=None,time=None,lattice=None,state=None,system=None,**kwargs):
 
 		super().__init__(data=data,operator=operator,site=site,string=string,parameters=parameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
-				space=space,time=time,lattice=lattice,state=state,noise=noise,system=system,**kwargs)
+				space=space,time=time,lattice=lattice,state=state,system=system,**kwargs)
 		
 		return
 
-	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None):
+	def __setup__(self,data=None,operator=None,site=None,string=None,parameters=None,**kwargs):
 		'''
 		Setup class
 		Args:
@@ -2324,6 +2131,7 @@ class Hamiltonian(Operators):
 			site (iterable[str,iterable[int,str]]): site of local operators, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 			string (iterable[str]): string labels of operators
 			parameters (iterable[object]): parameters of operators
+			kwargs (dict): Additional class keyword arguments		
 		'''
 
 		# Get operator,site,string,parameters from data
@@ -2435,18 +2243,17 @@ class Unitary(Hamiltonian):
 		lattice (str,Lattice): Type of lattice
 		parameters (str,dict,Parameters): Type of parameters	
 		state (str,dict,State): Type of state	
-		noise (str,dict,Noise): Type of noise
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
 	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
-				space=None,time=None,lattice=None,state=None,noise=None,system=None,**kwargs):
+				space=None,time=None,lattice=None,state=None,system=None,**kwargs):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,parameters=parameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
-				space=space,time=time,lattice=lattice,state=state,noise=noise,system=system,**kwargs)
+				space=space,time=time,lattice=lattice,state=state,system=system,**kwargs)
 
 		self.norm()
 
@@ -2480,17 +2287,16 @@ class Channel(Unitary):
 		lattice (str,Lattice): Type of lattice
 		parameters (str,dict,Parameters): Type of parameters	
 		state (str,dict,State): Type of state	
-		noise (str,dict,Noise): Type of noise
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	def __init__(self,data=None,operator=None,site=None,string=None,parameters=None,
 				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
-				space=None,time=None,lattice=None,state=None,noise=None,system=None,**kwargs):
+				space=None,time=None,lattice=None,state=None,system=None,**kwargs):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,parameters=parameters,
 				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
-				space=space,time=time,lattice=lattice,state=state,noise=noise,system=system,**kwargs)
+				space=space,time=time,lattice=lattice,state=state,system=system,**kwargs)
 
 		return
 
