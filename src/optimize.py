@@ -1547,7 +1547,7 @@ class Optimization(System):
 
 		for attr in ['dtype']:
 			string = []
-			for subattr in ['func.model','func.metric','func.model.parameters','func.model.state','func.model.noise','func.metric.label']:
+			for subattr in ['func.model','func.metric','func.model.parameters','func.model.state','func.metric.label']:
 				substring = '%s: %s'%(subattr,getattrs(self,delim.join([subattr,attr]),delimiter=delim) if getattrs(self,subattr,delimiter=delim) is not None else None)
 				string.append(substring)
 			string = '%s %s: %s'%('Optimizer',attr,', '.join(string))

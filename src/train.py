@@ -69,6 +69,7 @@ def train(hyperparameters):
 			return model
 
 		model = load(hyperparameters.cls.model)
+		from src.quantum import Channel as model
 		label = load(hyperparameters.cls.label)
 		callback = load(hyperparameters.cls.callback)
 
@@ -81,7 +82,7 @@ def train(hyperparameters):
 
 		seed = prng(**hyperparameters.seed)
 
-		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 		callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
 

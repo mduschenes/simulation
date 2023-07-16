@@ -127,7 +127,7 @@ if BACKEND in ['jax','jax.autograd']:
 	arrays = (np.ndarray,onp.ndarray)
 
 	iterables = (*arrays,list,tuple,set)
-	nulls = ('',None,Null)
+	nulls = (Null,)
 	delim = '.'
 	separ = '_'
 
@@ -148,7 +148,7 @@ elif BACKEND in ['autograd']:
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox)
 
 	iterables = (*arrays,list,tuple,set)
-	nulls = ('',None,Null)
+	nulls = (Null,)
 	delim = '.'
 	separ = '_'	
 
@@ -167,7 +167,7 @@ elif BACKEND in ['numpy']:
 	arrays = (np.ndarray,onp.ndarray,)
 
 	iterables = (*arrays,list,tuple,set)
-	nulls = ('',None,Null)
+	nulls = (Null,)
 	delim = '.'
 	separ = '_'	
 
@@ -7166,20 +7166,6 @@ def initialize(data,shape,dtype=None,**kwargs):
 		
 		elif initialization in ['zero','zeros']:
 			data = zeros(shape,dtype=dtype)
-
-		elif initialization in ['time']:
-			if model is None:
-				data = data
-			else:
-				try:
-					parameters = model.tau
-					scale = model.data.noise.scale
-
-					data = (1 - exp(-parameters/scale))/2
-
-				except AttributeError:
-					
-					data = data
 
 	elif initialization is not None: 
 		

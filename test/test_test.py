@@ -40,7 +40,7 @@ def test_metric(path,tol):
 	hyperparams = hyperparameters.optimize
 	system = hyperparameters.system
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 	callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
 
@@ -106,7 +106,7 @@ def test_grad(path,tol):
 	hyperparams = hyperparameters.optimize
 	system = hyperparameters.system
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 
 	func = model
 

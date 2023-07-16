@@ -421,8 +421,8 @@ def test_initialization(path,tol):
 	def copier(model,metric):
 
 		copy = Dictionary(
-			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=model.data.noise,info=model.info,hermitian=model.hermitian,unitary=model.unitary),
-			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.label.state,noise=model.data.noise,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
+			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=[model.data[i].data for i in model.data if (not model.data[i].unitary and not model.data[i].hermitian)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
+			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.label.state,noise=[model.data[i].data for i in model.data if (not model.data[i].unitary and not model.data[i].hermitian)],info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
 			label=Dictionary(func=metric.label.__call__,data=metric.label(),state=metric.label.state,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
 			)
 
@@ -431,15 +431,15 @@ def test_initialization(path,tol):
 	copy = copier(model,metric)
 
 	
-	defaults = Dictionary(state=model.state,noise=model.data.noise,label=metric.label)
+	defaults = Dictionary(state=model.state,data={i: model.data[i].data for i in model.data if (not model.data[i].unitary and not model.data[i].hermitian)},label=metric.label)
 
 
-	tmp = Dictionary(state=False,noise=False,label=False)
+	tmp = Dictionary(state=False,data={i: model.data[i].data for i in model.data if (not model.data[i].unitary and not model.data[i].hermitian)},label=False)
 
 	
 	label = metric.label
 
-	model.__initialize__(state=tmp.state,noise=tmp.noise)
+	model.__initialize__(state=tmp.state,data=tmp.data)
 
 	label.__initialize__(state=model.state)
 
@@ -447,7 +447,7 @@ def test_initialization(path,tol):
 
 	tmp = copier(model,metric)
 
-	model.__initialize__(state=defaults.state,noise=defaults.noise)
+	model.__initialize__(state=defaults.state,data=defaults.data)
 
 	label.__initialize__(state=defaults.state)
 
@@ -499,7 +499,7 @@ def test_initialization(path,tol):
 	UpsiU = copy.model.data
 	U = tmp.model.data
 	psi = copy.model.state()
-	K = copy.model.noise()
+	K = copy.model.noise[-1]()
 	VpsiV = copy.label.data
 	V = tmp.label.data
 

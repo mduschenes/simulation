@@ -55,7 +55,7 @@ def test_objective(path,tol):
 	func = None
 	kwargs = dict(verbose=True)
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
 	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
@@ -99,7 +99,7 @@ def test_optimizer(path,tol):
 	func = None
 	kwargs = dict(verbose=True,cleanup=True)
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state,noise=hyperparameters.noise),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 	callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
 

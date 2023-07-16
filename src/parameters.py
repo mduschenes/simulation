@@ -16,7 +16,7 @@ for PATH in PATHS:
 from src.utils import jit,vfunc,switch,array,arange,bound
 from src.utils import concatenate,addition,prod
 from src.utils import initialize,slicing,datatype,to_index,to_position
-from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin
+from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin,exp
 
 from src.iterables import indexer,inserter,setter,getter
 
@@ -33,7 +33,7 @@ class Parameter(System):
 			data (iterable): data of parameter
 			string (str): Name of parameter
 			category (str): category of parameter, allowed strings in ['variable','constant']
-			method (str): method of parameter, allowed strings in ['unconstrained','constrained','coupled','bounded']
+			method (str): method of parameter, allowed strings in ['unconstrained','constrained','coupled','bounded','time']
 			group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
 			locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['local','global']
 			bounds (iterable[object]): Bounds of parameters
@@ -56,7 +56,7 @@ class Parameter(System):
 			parameters=None,
 			wrapper=None,
 			seed=None,random=None,initialization=None,constant=None,
-			indices=None,slices=None,sort=None,func=None,constraint=None,
+			indices=None,slices=None,sort=None,instance=None,func=None,constraint=None,
 			shape=None,size=None,ndim=None,dtype=None,			
 			args=(),kwargs={}
 			)
@@ -152,11 +152,12 @@ class Parameter(System):
 
 		# Get indices (indices of data for each unique string)
 		localities = ['global']
-		indices = {i: data.string for i,data in enumerate(model.data)} if model is not None else {}
-		indices = {indices[i]: [j for j in indices if indices[j] == indices[i]] for i in indices}
+		indices = {i: model.data[data] for i,data in enumerate(model.data)} if model is not None else {}
+		indices = {indices[i].string: {j:indices[j] for j in indices if indices[j].string == indices[i].string} for i in indices}
 		indices = {i: {
 			'string':string,'label':separ.join((str(string),str(j))),
 			'sort':i,'index':j,'slices':None,'group':None,
+			'instance':indices[string][i],
 			}
 			for string in indices for j,i in enumerate(indices[string])}
 
@@ -206,6 +207,7 @@ class Parameter(System):
 
 		slices = array([indices[i].slices for i in indices]) if indices else None
 		sort = array([indices[i].sort for i in indices]) if indices else None
+		instance = [indices[i].instance for i in indices]
 		shape = [
 			sum(max(indices[i].size for i in indices if indices[i].group == subgroup) for subgroup in group),
 			*(getattr(model,attr) for attr in attributes)] if indices else None
@@ -213,10 +215,12 @@ class Parameter(System):
 		for i in indices:
 			indices[i].shape = shape
 
+
 		# Set attributes
 		self.indices = indices
 		self.slices = slices
 		self.sort = sort
+		self.instance = instance
 		self.shape = shape if shape is not None else None
 		self.size = prod(shape) if shape is not None else None
 		self.ndim = len(shape) if shape is not None else None
@@ -257,7 +261,7 @@ class Parameter(System):
 		defaults = {
 			'constant':self.constant,
 			'lambda':0,
-			'scale':[1,2*pi],
+			'coefficients':[1,2*pi],
 			'shift':[0,-pi/2],
 			'sigmoid':1,
 			'default':0,
@@ -269,7 +273,7 @@ class Parameter(System):
 			if self.kwargs.get(attr) is None:
 				continue
 
-			if attr in ['lambda','scale','shift','sigmoid','default']:
+			if attr in ['lambda','coefficients','shift','sigmoid','default']:
 				
 				self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
 			
@@ -287,6 +291,20 @@ class Parameter(System):
 					indices = (*(slice(None),)*(max(0,ax-2)),indices,*(slice(None),)*(max(0,self.ndim - ax - 1)))
 					self.kwargs[attr][axis] = {'indices':indices,'values':values}
 
+		defaults = {}
+		if self.method in ['time']:
+			try:
+				defaults.update({
+					'tau':getattr(self.model,'tau',None),
+					'scale':self.kwargs.get('scale',None)
+					}
+				)
+			except:
+				self.method = None
+		
+		self.kwargs.update(defaults)
+
+
 		if self.category in categories:
 
 			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
@@ -299,7 +317,7 @@ class Parameter(System):
 				def func(parameters):
 					return self.parameters*bound(parameters[self.slices])
 
-			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['scale','shift','sigmoid']):
+			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
 		
 				def func(parameters):
 					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
@@ -309,12 +327,12 @@ class Parameter(System):
 				def func(parameters):
 					return self.parameters*bound(parameters)
 
-			elif self.method in ['coupled'] and all(self.kwargs.get(attr) is not None for attr in ['scale','shift','sigmoid']):
+			elif self.method in ['coupled'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
 		
 				def func(parameters):
 					return self.parameters*bound((
-						(self.kwargs['scale'][0]*parameters[self.slices][:self.slices.size//2])*
-						cos(self.kwargs['scale'][1]*parameters[self.slices][self.slices.size//2:][None,...] + self.kwargs['shift'][...,None,None])
+						(self.kwargs['coefficients'][0]*parameters[self.slices][:self.slices.size//2])*
+						cos(self.kwargs['coefficients'][1]*parameters[self.slices][self.slices.size//2:][None,...] + self.kwargs['shift'][...,None,None])
 						).reshape(-1,*parameters.shape[1:]),scale=self.kwargs['sigmoid'])
 
 			elif self.method in ['coupled']:					
@@ -326,6 +344,10 @@ class Parameter(System):
 				
 				def func(parameters):
 					return self.parameters*parameters[self.slices]
+
+			elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
+				def func(parameters):
+					return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
 
 			else:
 
@@ -440,7 +462,7 @@ class Parameters(System):
 				data (iterable): data of parameter
 				string (str): Name of parameter
 				category (str): category of parameter, allowed strings in ['variable','constant']
-				method (str): method of parameter, allowed strings in ['unconstrained','constrained','coupled','bounded']
+				method (str): method of parameter, allowed strings in ['unconstrained','constrained','coupled','bounded','time']
 				group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
 				locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['local','global']
 				bounds (iterable[object]): Bounds of parameters
@@ -466,7 +488,7 @@ class Parameters(System):
 			group=None,locality=None,bounds=None,attributes=None,axis=None,
 			parameters=None,
 			seed=None,random=None,initialization=None,constant=None,
-			indices=None,slices=None,sort=None,func=None,constraint=None,wrapper=None,
+			indices=None,slices=None,sort=None,instance=None,func=None,constraint=None,wrapper=None,
 			shape=None,size=None,ndim=None,dtype=None,			
 			args=(),kwargs={}
 			)
@@ -546,31 +568,37 @@ class Parameters(System):
 		group = []
 		slices = []
 		sort = []
+		instance = []
 		for i,parameter in enumerate(self):
 			if self[parameter].category in categories:
 				idx = self[parameter].indices
 				grp = self[parameter].group
 				slc = self[parameter].size
 				srt = self[parameter].sort
+				ins = self[parameter].instance
 			else:
 				idx = None
 				grp = self[parameter].group							
 				slc = None
 				srt = self[parameter].sort
+				ins = self[parameter].instance				
 
 			idx = idx if idx is not None else {}
 			grp = tuple(grp)
 			slc = [sum(i[-1] for i in slices),slc] if slc is not None else [0,0]
 			srt = [int(i) for i in srt]
+			ins = [i for i in ins]
 
 			indices.update(idx)
 			group.append(grp)
 			slices.append(slc)
 			sort.extend(srt)
+			instance.append(ins)
 
 		group = group
 		slices = [[*i] for i in slices]
 		sort = array([sort.index(i) for i in range(len(sort))])
+		instance = [i for i in instance]
 
 		for j,i in enumerate(list(indices)):
 			indices[i] = (
@@ -638,6 +666,7 @@ class Parameters(System):
 		self.indices = indices
 		self.slices = slices
 		self.sort = sort
+		self.instance = instance
 		self.group = group
 		self.func = func
 		self.constraint = constraint
