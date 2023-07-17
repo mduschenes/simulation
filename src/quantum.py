@@ -15,7 +15,7 @@ for PATH in PATHS:
 from src.utils import jit,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,spawn,arange,diag
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort,prod
-from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,abs,mod,sqrt,log,log10,sign,sin,cos,exp
+from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleave,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose
 from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,datatype
 
@@ -478,7 +478,8 @@ class Object(System):
 			parameters=None,
 			shape=None,size=None,ndim=None,
 			samples=None,identity=None,locality=None,
-			conj=False,coefficients=None,func=None,gradient=None,contract=None,gradient_contract=None,
+			conj=False,coefficients=None,func=None,gradient=None,
+			contract=None,gradient_contract=None,
 			)
 
 		setter(kwargs,defaults,delimiter=delim,func=False)
@@ -932,7 +933,7 @@ class Object(System):
 		norm = None
 		eps = None
 
-		print(self,ndim,'hermitian',hermitian,'unitary',unitary)
+		# print(self,ndim,'hermitian',hermitian,'unitary',unitary)
 
 		if hermitian is None and unitary is None:
 			norm = None
@@ -975,8 +976,8 @@ class Object(System):
 		if dtype not in ['complex256','float128']:
 			assert (eps.shape == norm.shape), "Incorrect operator shape %r != %r"%(eps.shape,norm.shape)
 			assert allclose(eps,norm), "Incorrect norm data%r: %r (hermitian: %r, unitary : %r)"%(eps.shape,norm,hermitian,unitary)
-			print(self,self.__class__)
-			print()
+			# print(self,self.__class__)
+			# print()
 
 		return
 
@@ -1138,6 +1139,8 @@ class Pauli(Object):
 		if self.coefficients is None:
 			self.coefficients = pi/2
 
+		data = self.data if data is None else data
+
 		hermitian = True
 		unitary = True
 
@@ -1188,9 +1191,13 @@ class Gate(Object):
 			string (str): string label of operator
 			kwargs (dict): Additional operator keyword arguments
 		'''
+
+		data = self.data if data is None else data
 		
 		hermitian = False
 		unitary = True
+
+		self.data = data
 
 		self.hermitian = hermitian
 		self.unitary = unitary
@@ -1257,6 +1264,7 @@ class Haar(Object):
 		unitary = True
 
 		self.data = data
+
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -1395,6 +1403,7 @@ class State(Object):
 			unitary = False
 
 		self.data = data
+
 		self.hermitian = hermitian
 		self.unitary = unitary
 
@@ -1415,7 +1424,7 @@ class Noise(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['I','i']},
+		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=True,unitary=True,string=attr) for attr in ['I','i']},
 		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['eps','noise','rand']},
 		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['depolarize']},
 		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['amplitude']},
@@ -1634,7 +1643,6 @@ class Operators(Object):
 		self.__lattice__()
 
 		self.identity = Operator(Operator.default,N=self.N,D=self.D,system=self.system,verbose=False)
-		self.coefficients = array((self.tau)*trotter(p=self.P),dtype=datatype(self.dtype))
 
 		self.shape = () if self.n is None else (self.n,self.n)
 		self.size = prod(self.shape)
@@ -1805,6 +1813,10 @@ class Operators(Object):
 			setattr(self,obj,instance)
 
 
+		# Check objs
+		
+		assert self.parameters(self.parameters()) is not None, "Incorrect parameters"
+
 		# Set data
 		if data is None or data is True:
 			data = {}
@@ -1815,41 +1827,115 @@ class Operators(Object):
 		for i in data:
 			self.data[i].__initialize__(data=data[i],state=self.state)
 
-		# Set functions
+		# Set attributes
 		identity = self.identity()
 		parameters = self.parameters()
 		state = self.state()
-		coefficients = self.coefficients
+
 		conj = self.conj
 
 		wrapper = self.parameters.wrapper
 		indices = self.parameters.indices
 
-		shape = self.shape if state is None else state.shape 
+
+		# Set indices
+		p = self.P
 
 		indexes = {i: self.data[data] for i,data in enumerate(self.data) if (self.data[data]() is not None)}
-		# indexes = Dictionary(
-		# 	all={i:indexes[i] for i in indexes},
-		# 	indexes={i:indexes[i] for i in indexes if (indexes[i].unitary) or (indexes[i].hermitian)},
-		# 	other={i:indexes[i] for i in indexes if not ((indexes[i].unitary) or (indexes[i].hermitian))}
-		# 	)
+		indexes = {
+			None:{i:indexes[i] for i in indexes},
+			True:{i:indexes[i] for i in indexes if (indexes[i].unitary)},
+			False:{i:indexes[i] for i in indexes if not ((indexes[i].unitary))}
+			}
 
-		if self.P > 1:
-			raise NotImplementedError("Partial Trotter for p > 1 Not Implemented")
 
-		assert self.parameters(parameters) is not None, "Incorrect parameters"
+		true = [True]
+		false = [False]
+		shape = (len(self),self.M) 
+		sort = interleave({attr: array([i for i in indexes[attr]]) for attr in indexes if attr is not None})
+		indexes = {tuple(to_position(i,shape=shape[::-1]))[::-1]:indices[i] for i in indices}
+		
 
-		data = trotter([jit(indexes[i]) for i in indexes],p=self.P)
-		grad = trotter([jit(indexes[i].grad) for i in indexes],p=self.P)
-		slices = trotter([i for i in indexes],p=self.P)
+		print(sort)
+		print(indices)
+		print(indexes)
 
-		# data = trotter([jit(indexes.all[i]) for i in indexes.all],p=self.P)
-		# grad = trotter([jit(indexes.all[i].grad) for i in indexes.all],p=self.P)
-		# slices = [trotter([i for i in indexes.indexes if i < j],p=self.P) for j in indexes[other]]
-		# slices = [trotter([i for i in indexes.indexes if i < j],p=self.P) for j in indexes[other]]
+		slices = []
+		sizes = {}
+		indices = {}
+		for i,slc in sort:
+			
+			index = {k:indexes[k] for k in indexes if k[0] in slc}
+			dims = shape 
+			length = max((max(i,default=-1) for i in slices),default=-1)+1
+			
+			if index:
+				shift = min(k[0] for k in index) + prod(dims[1:])*max((to_position(indices[i],shape=sizes[i][::-1])[-1] for i in indices),default=0)
+			else:
+				shift = None
 
-		wrapper = jit(lambda parameters,slices,coefficients: coefficients*parameters[slices].T.ravel(),slices=array(slices),coefficients=coefficients)
-		indices = trotter(indices,p=self.P,shape=(len(self),self.M))
+			if i in true:
+				if index:
+					index = {(k[0]-min(k[0] for k in index),*k[1:]):index[k] for k in index}
+					dims = (max(k[0] for k in index),*dims[1:])
+					index = {to_index(k[::-1],shape=dims[::-1]):index[k] for k in index}			
+					index = trotter(index,p=p,shape=dims)
+					index = {i+shift:index[i] for i in index}
+					size = {i: dims for i in index}
+				else:
+					index = None
+					size = None
+			elif i in false:
+				if index:
+					index = {(k[0]-min(k[0] for k in index),*k[1:]):index[k] for k in index}
+					dims = (max(k[0] for k in index),*dims[1:])
+					index = {to_index(k[::-1],shape=dims[::-1]):index[k] for k in index}			
+					index = {i+shift:index[i] for i in index}
+					size = {i: dims for i in index}
+				else:
+					index = None
+					size = None
+			else:
+				if index:
+					index = {(k[0]-min(k[0] for k in index),*k[1:]):index[k] for k in index}
+					dims = (max(k[0] for k in index),*dims[1:])
+					index = {to_index(k[::-1],shape=dims[::-1]):index[k] for k in index}			
+					index = {i+shift:index[i] for i in index}
+					size = {i: dims for i in index}
+				else:
+					index = None
+					size = None
+
+			if index is not None:
+				indices.update(index)
+
+			if size is not None:
+				sizes.update(size)
+
+			slc = [length+k for k,l in enumerate(slc)]
+			if i in true:
+				slices.append(trotter(slc,p=p))
+			elif i in false:
+				slices.append(slc)
+			else:
+				slices.append(slc)
+
+		print(slices)
+		print(indices)
+		exit()
+
+		slices = trotter([i for i in indexes],p=p)
+		coefficients = array([(self.tau)*trotter(p=p),1],dtype=datatype(self.dtype))
+		data = trotter([jit(indexes[i]) for i in indexes],p=p)
+		grad = trotter([jit(indexes[i].grad) for i in indexes],p=p)
+
+		# data = trotter([jit(indexes.all[i]) for i in indexes.all],p=p)
+		# grad = trotter([jit(indexes.all[i].grad) for i in indexes.all],p=p)
+		# slices = [trotter([i for i in indexes.indexes if i < j],p=p) for j in indexes[other]]
+		# slices = [trotter([i for i in indexes.indexes if i < j],p=p) for j in indexes[other]]
+
+		wrapper = jit(lambda parameters,slices,coefficients: (coefficients*parameters[slices]).T.ravel(),slices=array(slices),coefficients=coefficients)
+		indices = trotter(indices,p=p,shape=(len(self),self.M))
 
 		print(indices)
 
@@ -1865,6 +1951,10 @@ class Operators(Object):
 
 		self.parameters.wrapper = wrapper
 		self.parameters.indices = indices
+		self.coefficients = coefficients
+
+
+		shape = self.shape if state is None else state.shape 
 
 		parameters = self.parameters(parameters)
 
@@ -2771,12 +2861,12 @@ class Callback(System):
 
 					defaults = Dictionary(
 						state=model.state,
-						data={i: model.data[i].data for i in model.data if (not model.data[i].unitary and not model.data[i].hermitian)},
+						data={i: model.data[i].data for i in model.data if (not model.data[i].unitary)},
 						label=metric.label)
 
 					tmp = Dictionary(
 						state=model.state,
-						data={i: model.data[i].data for i in model.data if model.data[i].string in (not model.data[i].unitary and not model.data[i].hermitian)},
+						data={i: model.data[i].data for i in model.data if (not model.data[i].unitary)},
 						label=metric.label)
 
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
@@ -2834,13 +2924,13 @@ class Callback(System):
 
 				elif attr in ["noise.parameters","noise.method"]:
 					for i in model.parameters:
-						if all((not j.unitary and not j.hermitian) for j in model.parameters[i].instance):
+						if all((not j.unitary) for j in model.parameters[i].instance):
 							value = getattrs(model.parameters[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
 							break
 				
 				elif attr in ["noise.scale","noise.tau"]:
 					for i in model.parameters:
-						if all((not j.unitary and not j.hermitian) for j in model.parameters[i].instance):
+						if all((not j.unitary) for j in model.parameters[i].instance):
 							value = getattrs(model.parameters[i].kwargs,delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
 							break
 

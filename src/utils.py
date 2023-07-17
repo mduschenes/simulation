@@ -1375,10 +1375,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	return fisher
 
 
-@jit
-def difference(a,n=1,axis=-1):
-	return np.diff(a,n=n,axis=axis)
-
 def nullfunc(obj,*args,**kwargs):
 	'''
 	Null function
@@ -5404,9 +5400,71 @@ def cumsum(a,axis=None):
 	Returns:
 		out (array): Summed iterable
 	'''
-
 	return np.cumsum(asarray(a),axis=axis)
 
+def split(a,condition):
+	'''
+	Split array along axis
+	Args:
+		a (array): iterable to split
+		condition (array): condition of where to split
+	Returns:
+		out (array): Split iterable
+	'''
+	return np.split(a,condition)
+
+@jit
+def difference(a,n=1,axis=-1):
+	'''
+	Get difference of array elements
+	'''
+	return np.diff(a,n=n,axis=axis)
+
+def grouping(a,method='adjacent',**kwargs):
+	'''
+	Group array with method
+	Args:
+		a (array): iterable to find grouped elements
+		method (str): Method, allowed strings in ['adjacent'] 
+		kwargs (dict): Additional keyword arguments for method
+	Returns:
+		out (array): Grouped indices of elements
+	'''
+	
+	if method in ['adjacent']:
+		def func(a,eps=1,**kwargs):
+			return where(difference(a) != eps)[0] + 1
+	else:
+		raise NotImplementedError("method '%s' to group elements Not Implemented"%(method))
+
+	a = sort(a)
+	return split(a,func(a,**kwargs))
+
+def interleave(a,method='adjacent',**kwargs):
+	'''
+	Interleave arrays, grouped by method
+	Args:
+		a (iterable[array]dict[array]): iterables to find grouped elements
+		method (str): Method, allowed strings in ['adjacent'] 
+		kwargs (dict): Additional keyword arguments for method		
+	Returns:
+		out (iterable[tuple[int,array]]): Grouped indices elements with form [(a_index/key,a_elements)]
+	'''
+
+	if method in ['adjacent']:
+		def func(i,**kwargs):
+			return minimum(i[-1])
+	else:
+		raise NotImplementedError("method '%s' to group elements Not Implemented"%(method))
+
+	if not isinstance(a,dict):
+		a = {i: j for i,j in enumerate(a)}
+
+	out = [(i,k) for i in a for k in grouping(a[i],method=method)]
+
+	out = sorted(out,key=lambda i: func(i,**kwargs))
+
+	return out
 
 @jit
 def diag(a):

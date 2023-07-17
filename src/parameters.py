@@ -597,7 +597,7 @@ class Parameters(System):
 
 		group = group
 		slices = [[*i] for i in slices]
-		sort = array([sort.index(i) for i in range(len(sort))])
+		sort = array([sort.index(i) for i in sorted(sort)])
 		instance = [i for i in instance]
 
 		for j,i in enumerate(list(indices)):
