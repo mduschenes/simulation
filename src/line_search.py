@@ -10,7 +10,7 @@ import scipy as osp
 
 ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
-BACKENDS = ['jax','autograd','jax.autograd']
+BACKENDS = ['jax','autograd','jax.autograd','numpy']
 
 BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
 
@@ -56,6 +56,14 @@ elif BACKEND in ['autograd']:
 	import scipy.optimize
 	from scipy.optimize import minpack2 as minpack2
 
+elif BACKEND in ['numpy']:
+
+	import numpy as np
+	import scipy as sp
+
+	import scipy.optimize
+	from scipy.optimize import minpack2 as minpack2
+
 __all__ = ['LineSearchWarning', 'line_search_wolfe1', 'line_search_wolfe2',
 		   'scalar_search_wolfe1', 'scalar_search_wolfe2',
 		   'armijo']
@@ -80,7 +88,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return obj
 
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 
 	def inplace(obj,index,item):

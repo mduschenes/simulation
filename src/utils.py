@@ -1244,7 +1244,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 	'''
 	Compute fisher information of function
 	Args:
-		func (callable): Function to compute
+		func (callable,model instance): Function to compute
 		grad (callable): Gradient to compute
 		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type
@@ -1253,9 +1253,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		fisher (callable): Fisher information of function
 	'''
 
-	if grad is None:
-		grad = gradient(func,mode=mode,move=True)
-
 	if mode is None:
 		mode = 'fwd'
 
@@ -1263,6 +1260,9 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		ndim = None
 	else:
 		ndim = min((len(shape) for shape in shapes),default=2)
+
+	if grad is None:
+		grad = gradient(func,mode=mode,move=True)
 
 	size = min((prod(shape[:len(shape)-ndim] for shape in shapes if len(shape)>ndim)),default=0)
 	dtype = getattr(func,'dtype',None)
@@ -3955,7 +3955,10 @@ def where(conditions,x=None,y=None):
 	Returns:
 		out (array): Indices of conditions
 	'''
-	return np.where(conditions,x,y)
+	if x is not None or y is not None:
+		return np.where(conditions,x,y)
+	else:
+		return np.where(conditions)
 
 def conditions(booleans,op):
 	'''
@@ -5437,7 +5440,7 @@ def grouping(a,method='adjacent',**kwargs):
 	else:
 		raise NotImplementedError("method '%s' to group elements Not Implemented"%(method))
 
-	a = sort(a)
+	a = sort(array(a))
 	return split(a,func(a,**kwargs))
 
 def interleave(a,method='adjacent',**kwargs):

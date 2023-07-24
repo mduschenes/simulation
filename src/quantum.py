@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools
+import os,sys
 from copy import deepcopy
 from functools import partial
 import traceback
@@ -19,7 +19,7 @@ from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,diffe
 from src.utils import to_index,to_position,to_string,allclose
 from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,datatype
 
-from src.iterables import setter,getattrs,hasattrs,namespace
+from src.iterables import setter,getattrs,hasattrs,namespace,permutations
 
 from src.io import load,dump,join,split
 
@@ -123,30 +123,38 @@ def trotter(iterable=None,p=None,shape=None):
 	return iterables
 
 
-def contraction(data,state=None,conj=False):
+def contraction(data,state=None):
 	'''
 	Contract data and state
 	Args:
 		data (array): Array of data of shape (n,n)
 		state (array): state of shape (n,) or (n,n)
-		conj (bool): conjugate
 	Returns:
-		func (callable): contracted data and state with signature func(data,state,conj)
+		func (callable): contracted data and state with signature func(data,state)
 	'''
+
+	def wrapper(func):
+		def function(data,state):
+			if state is not None:
+				return func(data,state)
+			else:
+				return data
+		return function
+
 
 	if data is None:
 		
-		def func(data,state,conj):
+		def func(data,state):
 			return data
 	
 	elif data.ndim == 0:
 
-		def func(data,state,conj):
+		def func(data,state):
 			return data
 
 	elif data.ndim == 1:
 		
-		def func(data,state,conj):
+		def func(data,state):
 			return data
 
 	elif data.ndim == 2:
@@ -159,7 +167,7 @@ def contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 
-			def func(data,state,conj):
+			def func(data,state):
 				return einsummation(data,state)
 
 		elif state.ndim == 1:
@@ -168,7 +176,7 @@ def contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(data,state,conj):
+			def func(data,state):
 				return einsummation(data,state)
 
 		elif state.ndim == 2:
@@ -177,7 +185,7 @@ def contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape,data.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(data,state,conj):
+			def func(data,state):
 				return einsummation(data,state,conjugate(data))
 
 	elif data.ndim == 3:
@@ -190,7 +198,7 @@ def contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 
-			def func(data,state,conj):
+			def func(data,state):
 				return einsummation(data,state)
 
 		elif state.ndim == 1:
@@ -199,7 +207,7 @@ def contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(data,state,conj):
+			def func(data,state):
 				return einsummation(data,state)
 
 		elif state.ndim == 2:
@@ -208,38 +216,38 @@ def contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape,data.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(data,state,conj):
+			def func(data,state):
 				return einsummation(data,state,conjugate(data))
 
+	func = wrapper(func)
 	func = jit(func)	
 
 	return func
 
 
-def gradient_contraction(data,state=None,conj=False):
+def gradient_contraction(data,state=None):
 	'''
 	Contract data and state
 	Args:
 		data (array): Array of data of shape (n,n)
 		state (array): state of shape (n,) or (n,n)
-		conj (bool): conjugate
 	Returns:
-		func (callable): contracted data and state with signature func(data,state,conj)
+		func (callable): contracted data and state with signature func(data,state)
 	'''
 
 	if data is None:
 		
-		def func(data,state,conj):
+		def func(data,state):
 			return data
 	
 	elif data.ndim == 0:
 
-		def func(data,state,conj):
+		def func(data,state):
 			return data
 
 	elif data.ndim == 1:
 		
-		def func(data,state,conj):
+		def func(data,state):
 			return data
 
 	elif data.ndim == 2:
@@ -252,7 +260,7 @@ def gradient_contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 
-			def func(data,state,conj):
+			def func(data,state):
 				return einsummation(data,state)
 
 		elif state.ndim == 1:
@@ -261,7 +269,7 @@ def gradient_contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(data,state,conj):
+			def func(data,state):
 				return einsummation(data,state)
 
 		elif state.ndim == 2:
@@ -270,7 +278,7 @@ def gradient_contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(data,state,conj):
+			def func(data,state):
 				out = einsummation(data,state)
 				return out + dagger(out)
 
@@ -284,7 +292,7 @@ def gradient_contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 
-			def func(data,state,conj):
+			def func(data,state):
 				out = einsummation(data,state)
 				return out + dagger(out)
 
@@ -294,7 +302,7 @@ def gradient_contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(data,state,conj):
+			def func(data,state):
 				return einsummation(data,state)
 
 		elif state.ndim == 2:
@@ -303,7 +311,7 @@ def gradient_contraction(data,state=None,conj=False):
 			shapes = (data.shape,state.shape,data.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(data,state,conj):
+			def func(data,state):
 				out = einsummation(data,state,conjugate(data))
 				return out + dagger(out)
 
@@ -321,30 +329,30 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,indices=None
 		data (array): data of shape (length,)
 		identity (array): Array of data identity of shape (n,n)
 	Returns:
-		func (callable): contracted data(parameters) and state with signature func(parameters,state,conj)
+		func (callable): contracted data(parameters) and state with signature func(parameters,state)
 	'''
 
 	size = parameters.shape[0] if parameters is not None else 1
 	length = len(data) if data is not None else 1
 
-	def sorter(i,size,conj):
+	def sorter(i,size):
 		return (size-1)*conj + (1-2*conj)*(i%size)
 
 	obj = data
 	step = 1
 	indices = (0,size//step)
 
-	def function(parameters,state=state,conj=conj,indices=indices):
-		obj = switch(sorter(indices,length,conj=conj),data,parameters[sorter(indices,size,conj=conj)],state,conj)
+	def function(parameters,state=state,indices=indices):
+		obj = switch(sorter(indices,length),data,parameters[sorter(indices,size)],state)
 		return obj
 
-	def func(parameters,state=state,conj=conj,indices=indices):
+	def func(parameters,state=state,indices=indices):
 
 		state = state if state is not None else identity
 		out = state
 	
 		def func(i,out):
-			return function(parameters,out,conj,indices=i)
+			return function(parameters,out,indices=i)
 
 		indexes = indices
 
@@ -366,7 +374,7 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,gra
 		grad (array): data of shape (length,)
 		indices (dict,iterable[int]): indices to compute gradients with respect to {index_parameter: index_gradient}
 	Returns:
-		func (callable): contracted data(parameters) and state with signature func(parameters,state,conj)
+		func (callable): contracted data(parameters) and state with signature func(parameters,state)
 	'''
 
 	size = parameters.shape[0]
@@ -401,15 +409,15 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,gra
 		)
 
 	if grad is None:
-		grad = [(lambda parameters,state=None,conj=False,i=i: data[i].coefficients*data[i](parameters + (pi/2)/data[i].coefficients)) for i in range(length)]
+		grad = [(lambda parameters,state=None,i=i: data[i].coefficients*data[i](parameters + (pi/2)/data[i].coefficients)) for i in range(length)]
 	
 
-	function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity)
-	contract = gradient_contraction(identity,state=state,conj=conj)
+	function = scheme(parameters=parameters,state=state,data=data,identity=identity)
+	contract = gradient_contraction(identity,state=state)
 
 	step = length
 
-	def func(parameters,state=state,conj=conj,indices=indices):
+	def func(parameters,state=state,indices=indices):
 
 		def func(i,out):
 
@@ -419,13 +427,13 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,gra
 
 				obj = state
 
-				obj = function(parameters,obj,conj,indices=(0,(j+1)//step))
+				obj = function(parameters,obj,indices=(0,(j+1)//step))
 
-				derivative = dot(switch(j%step,grad,parameters[j],None,conj),switch(j%step,data,parameters[j],None,1-conj))
+				derivative = einsum('...i,...ij->...j',switch(j%step,grad,parameters[j],None),dagger(switch(j%step,data,parameters[j],None)))
 
-				obj = contract(derivative,obj,conj)
+				obj = contract(derivative,obj)
 
-				obj = function(parameters,obj,conj,indices=((j+1)//step,size//step))
+				obj = function(parameters,obj,indices=((j+1)//step,size//step))
 
 				out = inplace(out,i,obj,'add')
 
@@ -490,7 +498,7 @@ class Object(System):
 
 		if self.func is None:
 
-			def func(parameters=None,state=None,conj=False):
+			def func(parameters=None,state=None):
 				return self.data
 				# return self.data if not conj else dagger(self.data)
 
@@ -498,7 +506,7 @@ class Object(System):
 
 		if self.gradient is None:
 			
-			def gradient(parameters=None,state=None,conj=False):
+			def gradient(parameters=None,state=None):
 				return 0*self.data
 				# return 0*(self.data if not conj else dagger(self.data))
 
@@ -720,7 +728,7 @@ class Object(System):
 
 		if self.func is None:
 
-			def func(parameters=None,state=None,conj=False):
+			def func(parameters=None,state=None):
 				return self.data
 				# return self.data if not conj else dagger(self.data)
 
@@ -728,7 +736,7 @@ class Object(System):
 
 		if self.gradient is None:
 			
-			def gradient(parameters=None,state=None,conj=False):
+			def gradient(parameters=None,state=None):
 				return 0*self.data
 				# return 0*(self.data if not conj else dagger(self.data))
 
@@ -775,25 +783,36 @@ class Object(System):
 
 		contract = self.contract
 		gradient_contract = self.gradient_contract
+
+		hermitian = self.hermitian
+		unitary = self.unitary
 		
+		if state is not None:
+			hermitian = hermitian or state.hermitian
+			unitary = unitary and state.unitary
+
+
 		self.data = data
 		self.state = state
 		self.conj = conj
 
+		self.hermitian = hermitian
+		self.unitary = unitary
+
 		try:
 			state = state()
-			data = self(parameters,state,conj)
+			data = self(parameters,state)
 		except TypeError:
 			state = None
 			data = self.data
 
 		if contract is None:
 			state = self.identity if state is None else state
-			contract = contraction(data,state=state,conj=conj)
+			contract = contraction(data,state=state)
 
 		if gradient_contract is None:
 			state = self.identity if state is None else state
-			gradient_contract = gradient_contraction(data,state=state,conj=conj)			
+			gradient_contract = gradient_contraction(data,state=state)			
 
 		self.shape = data.shape if isinstance(data,arrays) else None
 		self.size = data.size if isinstance(data,arrays) else None
@@ -808,13 +827,12 @@ class Object(System):
 		return
 
 
-	def __call__(self,parameters=None,state=None,conj=False):
+	def __call__(self,parameters=None,state=None):
 		'''
 		Call operator
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			conj (bool): conjugate			
 		Returns:
 			data (array): data
 		'''
@@ -822,18 +840,25 @@ class Object(System):
 		if parameters is None:
 			parameters = self.parameters
 
-		if state is None:
-			return self.func(parameters,state,conj)
-		else:
-			return self.contract(self.func(parameters,state,conj),state,conj)
+		return self.contract(self.func(parameters,state),state)
+		# return self.func(parameters,state)
 
-	def grad(self,parameters=None,state=None,conj=False):
+		# if state is None:
+		# 	if self.state is None:
+		# 		state = None
+		# 	else:
+		# 		state = self.state()
+		# if state is None:
+		# 	return self.func(parameters,state)
+		# else:
+		# 	return self.contract(self.func(parameters,state),state)
+
+	def grad(self,parameters=None,state=None):
 		'''
 		Call operator gradient
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			conj (bool): conjugate			
 		Returns:
 			data (array): data
 		'''
@@ -842,21 +867,15 @@ class Object(System):
 			parameters = self.parameters
 
 		if state is None:
-			return self.gradient(parameters,state,conj)
+			if self.state is None:
+				state = None
+			else:
+				state = self.state()
+		if state is None:
+			return self.gradient(parameters,state)
 		else:
-			return self.gradient_contract(self.gradient(parameters,state,conj),state,conj)
+			return self.gradient_contract(self.gradient(parameters,state),state)
 
-	def conjugate(self,parameters=None,state=None,conj=True):
-		'''
-		Call conjugate operator
-		Args:
-			parameters (array): parameters
-			state (obj): state
-			conj (bool): conjugate			
-		Returns:
-			data (array): data
-		'''
-		return self(parameters,state,conj)
 
 	def __str__(self):
 		if isinstance(self.operator,str):
@@ -912,11 +931,9 @@ class Object(System):
 			data (array): Data to normalize			
 		'''
 
-		# data = self()
 		try:
 			data = self()
 		except TypeError as exception:
-			print('Exception : %r\n%r'%(exception,traceback.format_exc()))
 			data = self.data
 
 		if data is None:
@@ -924,6 +941,7 @@ class Object(System):
 		elif not isinstance(data,arrays):
 			return
 
+		state = self.state
 		shape = self.shape
 		ndim = self.ndim
 		dtype = self.dtype
@@ -932,8 +950,6 @@ class Object(System):
 
 		norm = None
 		eps = None
-
-		# print(self,ndim,'hermitian',hermitian,'unitary',unitary)
 
 		if hermitian is None and unitary is None:
 			norm = None
@@ -973,11 +989,12 @@ class Object(System):
 		if norm is None or eps is None:
 			return
 
+		# if state is not None and self.hermitian and not unitary:
+		# 	return
+
 		if dtype not in ['complex256','float128']:
 			assert (eps.shape == norm.shape), "Incorrect operator shape %r != %r"%(eps.shape,norm.shape)
 			assert allclose(eps,norm), "Incorrect norm data%r: %r (hermitian: %r, unitary : %r)"%(eps.shape,norm,hermitian,unitary)
-			# print(self,self.__class__)
-			# print()
 
 		return
 
@@ -1122,15 +1139,12 @@ class Pauli(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-		def sign(conj):
-			return 1-2*conj
-
-		def func(parameters=None,state=None,conj=False):
-			coefficients = sign(conj)*self.coefficients			
+		def func(parameters=None,state=None):
+			coefficients = (1-2*self.conj)*self.coefficients			
 			return cos(coefficients*parameters)*self.identity + -1j*sin(coefficients*parameters)*self.data
 
-		def gradient(parameters=None,state=None,conj=False):
-			coefficients = sign(conj)*self.coefficients
+		def gradient(parameters=None,state=None):
+			coefficients = (1-2*self.conj)*self.coefficients			
 			return coefficients*(-sin(coefficients*parameters)*self.identity + -1j*cos(coefficients*parameters)*self.data)
 
 		if self.parameters is None:
@@ -1537,7 +1551,7 @@ class Noise(Object):
 					break
 
 			if not isinstance(data,arrays):
-				data = array([tensorprod(i)	for i in itertools.product(*data)],dtype=self.dtype)
+				data = array([tensorprod(i)	for i in permutations(*data)],dtype=self.dtype)
 
 		else:
 
@@ -1547,10 +1561,10 @@ class Noise(Object):
 		unitary = False
 
 		if self.ndim == 0:
-			def func(parameters=None,state=None,conj=False):
+			def func(parameters=None,state=None):
 				return state + parameters*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=self.dtype)/2
 
-			def gradient(parameters=None,state=None,conj=False):
+			def gradient(parameters=None,state=None):
 				return 0*state
 
 		else:
@@ -1776,17 +1790,19 @@ class Operators(Object):
 
 		return
 
-	def __initialize__(self,parameters=None,state=None,data=None):
+	def __initialize__(self,parameters=None,state=None,data=None,conj=None):
 		''' 
 		Setup class functions
 		Args:
 			parameters (bool,dict,array,Parameters): Class parameters
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters, or boolean to choose self.state or None
 			data (bool,dict): data of class
+			conj (bool): conjugate
 		'''
 
 		parameters = self.parameters if parameters is None else parameters
 		state = self.state if state is None else state
+		conj = self.conj if conj is None else conj
 
 		objs = {'parameters':parameters,'state':state}
 		classes = {'parameters':Parameters,'state':State}
@@ -1827,132 +1843,100 @@ class Operators(Object):
 		for i in data:
 			self.data[i].__initialize__(data=data[i],state=self.state)
 
+		self.conj = conj
+
 		# Set attributes
 		identity = self.identity()
 		parameters = self.parameters()
 		state = self.state()
-
 		conj = self.conj
 
-		wrapper = self.parameters.wrapper
 		indices = self.parameters.indices
+		wrapper = self.parameters.wrapper
 
 
-		# Set indices
+		# Set trotterized indices
 		p = self.P
 
 		indexes = {i: self.data[data] for i,data in enumerate(self.data) if (self.data[data]() is not None)}
-		indexes = {
-			None:{i:indexes[i] for i in indexes},
-			True:{i:indexes[i] for i in indexes if (indexes[i].unitary)},
-			False:{i:indexes[i] for i in indexes if not ((indexes[i].unitary))}
-			}
+		booleans = {}
+		for i in indexes:
+			if indexes[i].unitary:
+				boolean = True
+			elif not indexes[i].unitary:
+				boolean = False
+			else:
+				boolean = None
+			booleans[i] = boolean
 
 
 		true = [True]
 		false = [False]
-		shape = (len(self),self.M) 
-		sort = interleave({attr: array([i for i in indexes[attr]]) for attr in indexes if attr is not None})
-		indexes = {tuple(to_position(i,shape=shape[::-1]))[::-1]:indices[i] for i in indices}
 		
+		shape = (len(self),self.M)
 
-		print(sort)
-		print(indices)
-		print(indexes)
+		length = len(self)
+		shape = (length,*shape[1:])
+		indices = {tuple(to_position(i,shape=shape[::-1]))[::-1]:indices[i] for i in indices}
 
-		slices = []
-		sizes = {}
-		indices = {}
-		for i,slc in sort:
+		sort = {attr: [i for i in booleans if booleans[i] == attr] for attrs in [true,false] for attr in attrs}
+		sort = interleave({attr: sort[attr] for attr in sort if sort[attr]})
+
+		slices = {}
+		step = 0		
+		for index,slc in sort:
+
+			slc = [int(i) for i in slc]
 			
-			index = {k:indexes[k] for k in indexes if k[0] in slc}
-			dims = shape 
-			length = max((max(i,default=-1) for i in slices),default=-1)+1
-			
-			if index:
-				shift = min(k[0] for k in index) + prod(dims[1:])*max((to_position(indices[i],shape=sizes[i][::-1])[-1] for i in indices),default=0)
+			if index in true:
+				tmp = trotter(slc,p=p)
+			elif index in false:
+				tmp = slc
 			else:
-				shift = None
+				tmp = slc
 
-			if i in true:
-				if index:
-					index = {(k[0]-min(k[0] for k in index),*k[1:]):index[k] for k in index}
-					dims = (max(k[0] for k in index),*dims[1:])
-					index = {to_index(k[::-1],shape=dims[::-1]):index[k] for k in index}			
-					index = trotter(index,p=p,shape=dims)
-					index = {i+shift:index[i] for i in index}
-					size = {i: dims for i in index}
-				else:
-					index = None
-					size = None
-			elif i in false:
-				if index:
-					index = {(k[0]-min(k[0] for k in index),*k[1:]):index[k] for k in index}
-					dims = (max(k[0] for k in index),*dims[1:])
-					index = {to_index(k[::-1],shape=dims[::-1]):index[k] for k in index}			
-					index = {i+shift:index[i] for i in index}
-					size = {i: dims for i in index}
-				else:
-					index = None
-					size = None
-			else:
-				if index:
-					index = {(k[0]-min(k[0] for k in index),*k[1:]):index[k] for k in index}
-					dims = (max(k[0] for k in index),*dims[1:])
-					index = {to_index(k[::-1],shape=dims[::-1]):index[k] for k in index}			
-					index = {i+shift:index[i] for i in index}
-					size = {i: dims for i in index}
-				else:
-					index = None
-					size = None
+			for i in slc:
+				for k,j in enumerate(tmp):
+					if j == i:
+						slices[min(tmp)+k+step] = i
 
-			if index is not None:
-				indices.update(index)
+			step = max(slices,default=0)-max(slc,default=0)
 
-			if size is not None:
-				sizes.update(size)
+		length = max(slices,default=0)+1
+		shape = (length,*shape[1:])
+		indices = {to_index((j,*i[1:])[::-1],shape=shape[::-1]):indices[i] for i in indices for j in slices if i[0]==slices[j]}
 
-			slc = [length+k for k,l in enumerate(slc)]
-			if i in true:
-				slices.append(trotter(slc,p=p))
-			elif i in false:
-				slices.append(slc)
-			else:
-				slices.append(slc)
+		coefficients = {
+			**{attr:(self.tau)*trotter(p=p) for attr in true},
+			**{attr:1 for attr in false}
+			}
+		coefficients = [coefficients[booleans[slices[i]]] for i in slices]
+		coefficients = array(coefficients,dtype=datatype(self.dtype))[:,None]
 
-		print(slices)
-		print(indices)
-		exit()
+		data = trotter([jit(indexes[slices[i]]) for i in slices],p=p)
+		grad = trotter([jit(indexes[slices[i]].grad) for i in slices],p=p)
 
-		slices = trotter([i for i in indexes],p=p)
-		coefficients = array([(self.tau)*trotter(p=p),1],dtype=datatype(self.dtype))
-		data = trotter([jit(indexes[i]) for i in indexes],p=p)
-		grad = trotter([jit(indexes[i].grad) for i in indexes],p=p)
-
-		# data = trotter([jit(indexes.all[i]) for i in indexes.all],p=p)
-		# grad = trotter([jit(indexes.all[i].grad) for i in indexes.all],p=p)
-		# slices = [trotter([i for i in indexes.indexes if i < j],p=p) for j in indexes[other]]
-		# slices = [trotter([i for i in indexes.indexes if i < j],p=p) for j in indexes[other]]
-
-		wrapper = jit(lambda parameters,slices,coefficients: (coefficients*parameters[slices]).T.ravel(),slices=array(slices),coefficients=coefficients)
-		indices = trotter(indices,p=p,shape=(len(self),self.M))
-
-		print(indices)
+		slices = array([slices[i] for i in slices])
+		indices = {i:indices[i] for i in indices}
+		def wrapper(parameters,slices,coefficients): 
+			return (coefficients*parameters[slices]).T.ravel()
+		wrapper = jit(wrapper,slices=slices,coefficients=coefficients)
 
 		if state is None:
 			hermitian = all(indexes[i].hermitian for i in indexes)
 			unitary = all(indexes[i].unitary for i in indexes)
 		elif state.ndim == 1:
-			hermitian = all(indexes[i].hermitian for i in indexes) and False
-			unitary = all(indexes[i].unitary for i in indexes) and True
+			hermitian = all(indexes[i].hermitian for i in indexes) and self.state.hermitian
+			unitary = all(indexes[i].unitary for i in indexes) and self.state.unitary
 		elif state.ndim == 2:
-			hermitian = all(indexes[i].hermitian for i in indexes) and True
-			unitary = all(indexes[i].unitary for i in indexes) and False
+			hermitian = self.state.hermitian
+			unitary = all(indexes[i].unitary for i in indexes) and self.state.unitary
 
-		self.parameters.wrapper = wrapper
-		self.parameters.indices = indices
+
 		self.coefficients = coefficients
 
+		self.parameters.indices = indices
+		self.parameters.wrapper = wrapper
 
 		shape = self.shape if state is None else state.shape 
 
@@ -1984,13 +1968,12 @@ class Operators(Object):
 
 		return
 
-	def __call__(self,parameters=None,state=None,conj=False):
+	def __call__(self,parameters=None,state=None):
 		'''
 		Class function
 		Args:
 			parameters (array): parameters		
 			state (obj): state
-			conj (bool): conjugate
 		Returns
 			out (array): Return of function
 		'''
@@ -2003,51 +1986,47 @@ class Operators(Object):
 
 		parameters = self.parameters(parameters)
 
-		return self.func(parameters,state,conj)
+		return self.func(parameters,state)
 
-	def grad(self,parameters=None,state=None,conj=False):
+	def grad(self,parameters=None,state=None):
 		''' 
 		Class gradient
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			conj (bool): conjugate
 		Returns:
 			out (array): Return of function
 		'''		
-		return self.gradient(parameters)
+		return self.gradient(parameters,state)
 
-	def grad_automatic(self,parameters=None,state=None,conj=False):
+	def grad_automatic(self,parameters=None,state=None):
 		''' 
 		Class gradient
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			conj (bool): conjugate
 		Returns:
 			out (array): Return of function
 		'''		
-		return self.gradient_automatic(parameters)	
+		return self.gradient_automatic(parameters,state)	
 
-	def grad_finite(self,parameters=None,state=None,conj=False):
+	def grad_finite(self,parameters=None,state=None):
 		''' 
 		Class gradient
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			conj (bool): conjugate
 		Returns:
 			out (array): Return of function
 		'''		
-		return self.gradient_finite(parameters)		
+		return self.gradient_finite(parameters,state)		
 
-	def grad_analytical(self,parameters=None,state=None,conj=False):
+	def grad_analytical(self,parameters=None,state=None):
 		''' 
 		Class gradient
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			conj (bool): conjugate
 		Returns:
 			out (array): Return of function
 		'''		
@@ -2059,7 +2038,7 @@ class Operators(Object):
 
 		parameters = self.parameters(parameters)
 
-		grad = self.coefficients*self.gradient_analytical(parameters,state,conj)
+		grad = self.coefficients*self.gradient_analytical(parameters,state)
 
 		return grad
 
@@ -2593,13 +2572,13 @@ class Label(Operator):
 	def __init__(self,*args,**kwargs):
 		return
 
-	def __call__(self,parameters=None,state=None,conj=False):
+
+	def __call__(self,parameters=None,state=None):
 		'''
 		Call operator
 		Args:
 			parameters (array): parameters
 			state (obj): state
-			conj (bool): conjugate			
 		Returns:
 			data (array): data
 		'''
@@ -2607,23 +2586,15 @@ class Label(Operator):
 		if parameters is None:
 			parameters = self.parameters
 
-		if state is None and self.state is not None:
-			state = self.state()
-
-		data = self.func(parameters,state,conj)
-
-		if data is None:
-			data = None
-		elif state is None:
-			data = data
+		if state is None:
+			if self.state is None:
+				state = None
+			else:
+				state = self.state()
+		if state is None:
+			return self.func(parameters,state)
 		else:
-
-			assert data.shape[-1] == self.state.shape[0], "Incorrect Label \"%s\" shape %r for state \"%s\" shape %r"%(self,data.shape,self.state,self.state.shape)
-
-			data = self.contract(data,state,conj)
-
-		return data
-		
+			return self.contract(self.func(parameters,state),state)
 
 class Callback(System):
 	def __init__(self,*args,**kwargs):
@@ -2861,7 +2832,7 @@ class Callback(System):
 
 					defaults = Dictionary(
 						state=model.state,
-						data={i: model.data[i].data for i in model.data if (not model.data[i].unitary)},
+						data={i: model.data[i].data for i in model.data},
 						label=metric.label)
 
 					tmp = Dictionary(
@@ -2983,9 +2954,9 @@ class Callback(System):
 				# 	for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				# 'U\n%s\nV\n%s'%(
-				# 	to_string((model(parameters)).round(4)),
-				# 	to_string((metric.label()).round(4))),
+				'U\n%s\nV\n%s'%(
+					to_string((model(parameters)).round(4)),
+					to_string((metric.label()).round(4))),
 				])
 
 

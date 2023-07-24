@@ -183,7 +183,7 @@ class Logger(object):
 		self.conf = conf
 		self.file = file
 
-		self.string = str(self.file) if self.file is not None else 'stdout'
+		self.string = os.path.basename(str(self.file)) if self.file is not None else 'stdout'
 
 		self.cleanup = cleanup
 		self.__clean__()
