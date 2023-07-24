@@ -336,7 +336,7 @@ def scheme(parameters,state=None,conj=False,data=None,identity=None,indices=None
 	length = len(data) if data is not None else 1
 
 	def sorter(i,size):
-		return (size-1)*conj + (1-2*conj)*(i%size)
+		return conj*(size-1) + (1-2*conj)*(i%size)
 
 	obj = data
 	step = 1
@@ -2954,9 +2954,9 @@ class Callback(System):
 				# 	for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				'U\n%s\nV\n%s'%(
-					to_string((model(parameters)).round(4)),
-					to_string((metric.label()).round(4))),
+				# 'U\n%s\nV\n%s'%(
+				# 	to_string((model(parameters)).round(4)),
+				# 	to_string((metric.label()).round(4))),
 				])
 
 
