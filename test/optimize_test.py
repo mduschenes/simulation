@@ -47,6 +47,7 @@ def test_objective(path,tol):
 	hyperparameters = Dict(hyperparameters)
 
 	model = load(hyperparameters.cls.model)
+	state = load(hyperparameters.cls.state)
 	label = load(hyperparameters.cls.label)
 	callback = load(hyperparameters.cls.callback)
 
@@ -55,8 +56,12 @@ def test_objective(path,tol):
 	func = None
 	kwargs = dict(verbose=True)
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+	callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
+
+	model.__initialize__(state=state,label=label)
 
 	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
 	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
@@ -91,6 +96,7 @@ def test_optimizer(path,tol):
 	hyperparameters = Dict(hyperparameters)
 
 	model = load(hyperparameters.cls.model)
+	state = load(hyperparameters.cls.state)
 	label = load(hyperparameters.cls.label)
 	callback = load(hyperparameters.cls.callback)
 
@@ -99,9 +105,12 @@ def test_optimizer(path,tol):
 	func = None
 	kwargs = dict(verbose=True,cleanup=True)
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 	callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
+
+	model.__initialize__(state=state,label=label)
 
 	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
 	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams,system=system)

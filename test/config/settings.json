@@ -155,7 +155,9 @@
 		"alpha":[],"beta":[]
 		},
 	"track":{"iteration":[],"parameters":[],"objective":[],
-		"value":[],"grad":[],"search":[]}	
+		"value":[],"grad":[],"search":[],
+		"state.string":[],"state.ndim":[],"label.string":[],"label.ndim":[]
+		}	
 	},
 "parameters":{
 	"xy": {

@@ -1240,7 +1240,7 @@ elif BACKEND in ['numpy']:
 		raise NotImplementedError
 		return
 
-def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
+def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,unitary=None,**kwargs):
 	'''
 	Compute fisher information of function
 	Args:
@@ -1249,6 +1249,8 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type
 		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'fwd'
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
 	Returns:
 		fisher (callable): Fisher information of function
 	'''
@@ -1271,9 +1273,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		def fisher(*args,**kwargs):
 			return None
 		return fisher
-
-	hermitian = getattr(func,'hermitian',False)
-	unitary = getattr(func,'unitary',False)
 
 	if hermitian:
 
@@ -2904,12 +2903,372 @@ def norm2(a,b=None):
 	return out
 
 
-def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=None):
+
+def contraction(data=None,state=None):
+	'''
+	Contract data and state
+	Args:
+		data (array): Array of data of shape (n,n)
+		state (array): state of shape (n,) or (n,n)
+	Returns:
+		func (callable): contracted data and state with signature func(data,state)
+	'''
+
+	def default(data=None,state=None):
+		return data
+
+	def wrapper(func):
+		def function(data=None,state=None):
+			if state is None:
+				return default(data,state)
+			else:
+				return func(data,state)
+		return function
+
+	if data is None:
+
+		if state is None:
+		
+			def func(data,state):
+				return data
+
+		elif state.ndim is None:
+			
+			def func(data,state):
+				return data
+
+		elif state.ndim == 1:
+
+			def func(data,state):
+				return data
+
+		elif state.ndim == 2:
+			
+			def func(data,state):
+				return data
+	
+	elif data.ndim == 0:
+
+		if state is None:
+		
+			def func(data,state):
+				return data
+
+		elif state.ndim is None:
+			
+			def func(data,state):
+				return data
+
+		elif state.ndim == 1:
+
+			def func(data,state):
+				return data
+
+		elif state.ndim == 2:
+			
+			def func(data,state):
+				return data
+
+	elif data.ndim == 1:
+		
+		if state is None:
+		
+			def func(data,state):
+				return data
+
+		elif state.ndim is None:
+			
+			def func(data,state):
+				return data
+
+		elif state.ndim == 1:
+
+			def func(data,state):
+				return data
+
+		elif state.ndim == 2:
+			
+			def func(data,state):
+				return data
+
+	elif data.ndim == 2:
+
+		if state is None:
+			
+			state = data
+
+			subscripts = 'ij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state.ndim is None:
+			
+			state = data
+
+			subscripts = 'ij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state.ndim == 1:
+			
+			subscripts = 'ij,j->i'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state.ndim == 2:
+			
+			subscripts = 'ij,jk,lk->il'
+			shapes = (data.shape,state.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state):
+				return einsummation(data,state,conjugate(data))
+
+	elif data.ndim == 3:
+
+		if state is None:
+			
+			state = data
+
+			subscripts = 'uij,ujk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state.ndim is None:
+			
+			state = data
+
+			subscripts = 'uij,ujk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state.ndim == 1:
+			
+			subscripts = 'uij,j->i'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state.ndim == 2:
+			
+			subscripts = 'uij,jk,ulk->il'
+			shapes = (data.shape,state.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state):
+				return einsummation(data,state,conjugate(data))
+
+	func = wrapper(func)
+	func = jit(func)	
+
+	return func
+
+
+def gradient_contraction(data,state=None):
+	'''
+	Contract grad, data and state
+	Args:
+		data (array): Array of data of shape (n,n)
+		state (array): state of shape (n,) or (n,n)
+	Returns:
+		func (callable): contracted data and state with signature func(data,state)
+	'''
+
+	def default(grad=None,data=None,state=None):
+		return grad
+
+	def wrapper(func):
+		def function(grad=None,data=None,state=None):
+			if state is None:
+				return default(grad,data,state)
+			else:
+				return func(grad,data,state)
+		return function
+
+	if data is None:
+		
+		if state is None:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim is None:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 1:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 2:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+	
+	elif data.ndim == 0:
+
+		if state is None:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim is None:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 1:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 2:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+
+	elif data.ndim == 1:
+		
+		if state is None:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim is None:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 1:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 2:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+
+	elif data.ndim == 2:
+
+		if state is None:
+			
+			state = data
+
+			subscripts = 'ij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(grad=None,data=None,state=None):
+				return einsummation(grad,state)
+
+		elif state.ndim is None:
+			
+			state = data
+
+			subscripts = 'ij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(grad=None,data=None,state=None):
+				return einsummation(grad,state)
+
+		elif state.ndim == 1:
+
+			subscripts = 'ij,j->i'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(grad=None,data=None,state=None):
+				return einsummation(grad,state)
+
+		elif state.ndim == 2:
+			
+			subscripts = 'ij,jk,lk->il'
+			shapes = (data.shape,state.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(grad=None,data=None,state=None):
+				out = einsummation(grad,state,conjugate(data))
+				return out + dagger(out)
+
+	elif data.ndim == 3:
+
+		if state is None:
+			
+			state = data
+
+			subscripts = 'uij,ujk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(grad=None,data=None,state=None):
+				out = einsummation(grad,state)
+				return out + dagger(out)
+
+		elif state.ndim is None:
+			
+			state = data
+
+			subscripts = 'uij,ujk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(grad=None,data=None,state=None):
+				out = einsummation(grad,state)
+				return out + dagger(out)
+
+
+		elif state.ndim == 1:
+			
+			subscripts = 'uij,j->i'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(grad=None,data=None,state=None):
+				return einsummation(grad,state)
+
+		elif state.ndim == 2:
+			
+			subscripts = 'uij,jk,ulk->il'
+			shapes = (data.shape,state.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(grad=None,data=None,state=None):
+				out = einsummation(grad,state,conjugate(data))
+				return out + dagger(out)
+
+	func = wrapper(func)
+	func = jit(func)	
+
+	return func
+
+def metrics(metric,shapes=None,state=None,label=None,weights=None,optimize=None,returns=None):
 	'''
 	Setup metrics
 	Args:
 		metric (str,callable): Type of metric
 		shapes (iterable[tuple[int]]): Shapes of Operators
+		state (array,callable): State			
 		label (array,callable): Label			
 		weights (array): Weights
 		optimize (bool,str,iterable): Contraction type			
@@ -3071,10 +3430,15 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 
 	if (label is not None) and (weights is not None):
 
+		if callable(state):
+			state = state()
 		if callable(label):
 			label = label()
 
-		if metric in ['abs2','real']:
+		if label is not None and state is not None:
+			label = contraction(label,state)(label,state)
+
+		if label is not None and metric in ['abs2','real']:
 			label = conjugate(label)
 
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
@@ -3088,10 +3452,15 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	
 	elif (label is not None):
 
+		if callable(state):
+			state = state()
 		if callable(label):
 			label = label()
 
-		if metric in ['abs2','real']:
+		if label is not None and state is not None:
+			label = contraction(label,state)(label,state)
+
+		if label is not None and metric in ['abs2','real']:
 			label = conjugate(label)	
 
 		def func(*operands,func=func,label=label):

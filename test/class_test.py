@@ -123,8 +123,15 @@ def test_model(path,tol):
 	hyperparameters = Dict(hyperparameters)
 
 	model = load(hyperparameters.cls.model)
+	state = load(hyperparameters.cls.state)
+	label = load(hyperparameters.cls.label)
+
 	system = hyperparameters.system
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+
+	model.__initialize__(state=state,label=label)
 
 	parameters = model.parameters()
 
@@ -233,11 +240,16 @@ def test_parameters(path,tol):
 	hyperparameters = Dict(hyperparameters)
 
 	model = load(hyperparameters.cls.model)
+	state = load(hyperparameters.cls.state)
+	label = load(hyperparameters.cls.label)
 
 	hyperparams = hyperparameters.optimize
 	system = hyperparameters.system
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
+	model.__initialize__(state=state,label=label)
 
 	parameters = model.parameters()
 	variables = model.parameters(parameters)
@@ -355,9 +367,16 @@ def test_data(path,tol):
 	hyperparameters = Dict(hyperparameters)
 
 	model = load(hyperparameters.cls.model)
-	system = hyperparameters.system
+	state = load(hyperparameters.cls.state)
+	label = load(hyperparameters.cls.label)
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
+	hyperparams = hyperparameters.optimize
+	system = hyperparameters.system
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+
+	model.__initialize__(state=state,label=label)
 
 
 	basis = {
@@ -409,13 +428,16 @@ def test_initialization(path,tol):
 	hyperparameters = Dict(hyperparameters)
 
 	model = load(hyperparameters.cls.model)
+	state = load(hyperparameters.cls.state)
 	label = load(hyperparameters.cls.label)
 
 	hyperparams = hyperparameters.optimize
 	system = hyperparameters.system
-
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+
+	model.__initialize__(state=state,label=label)
 
 	parameters = model.parameters()
 	kwargs = dict(verbose=True)
@@ -427,8 +449,8 @@ def test_initialization(path,tol):
 
 		copy = Dictionary(
 			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
-			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.label.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
-			label=Dictionary(func=metric.label.__call__,data=metric.label(),state=metric.label.state,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
+			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
+			label=Dictionary(func=metric.label.__call__,data=metric.label(),state=metric.state,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
 			)
 
 		return copy
@@ -546,13 +568,16 @@ def test_hessian(path,tol):
 	hyperparameters = Dict(hyperparameters)
 
 	model = load(hyperparameters.cls.model)
+	state = load(hyperparameters.cls.state)
 	label = load(hyperparameters.cls.label)
 
 	hyperparams = hyperparameters.optimize
 	system = hyperparameters.system
-
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+
+	model.__initialize__(state=state,label=label)
 
 	parameters = model.parameters()
 	kwargs = dict(verbose=True)
@@ -591,16 +616,20 @@ def test_fisher(path,tol):
 		setter(hyperparameters,kwargs,delimiter=delim)
 
 		model = load(hyperparameters.cls.model)
+		state = load(hyperparameters.cls.state)
 		label = load(hyperparameters.cls.label)
 
 		hyperparams = hyperparameters.optimize
 		system = hyperparameters.system
+		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+		state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
+		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})	
-
+		model.__initialize__(state=state,label=label)
+		
 		parameters = model.parameters()
 
-		func = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)))
+		func = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)),hermitian=state.hermitian,unitary=model.unitary)
 
 		tmp = func(parameters)
 
@@ -743,16 +772,21 @@ def check_fisher(path,tol):
 		print('N: %d, M: %d, B: %s'%(hyperparameters.model.N,hyperparameters.model.M,hyperparameters.model.data.zz.site))
 
 		model = load(hyperparameters.cls.model)
+		state = load(hyperparameters.cls.state)
 		label = load(hyperparameters.cls.label)
 
 		hyperparams = hyperparameters.optimize
 		system = hyperparameters.system
+		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+		state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
+		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})	
+		model.__initialize__(state=state,label=label)
 
 		parameters = model.parameters()
 
-		func = fisher(model,model.grad_analytical,shapes=(model.shape,(*parameters.shape,*model.shape)))
+		func = fisher(model,model.grad_analytical,shapes=(model.shape,(*parameters.shape,*model.shape)),hermitian=state.hermitian,unitary=model.unitary)
+
 		_func = _fisher
 
 		if i == (n-3):

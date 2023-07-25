@@ -13,7 +13,8 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv,norm,metrics,optimizer_libraries
+from src.utils import jit,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv,norm
+from src.utils import metrics,contraction,gradient_contraction,optimizer_libraries
 from src.utils import is_unitary,is_hermitian,is_naninf
 from src.utils import scalars,delim,nan
 
@@ -884,13 +885,14 @@ class Callback(Function):
 
 
 class Metric(System):
-	def __init__(self,metric=None,shapes=None,model=None,label=None,weights=None,optimize=None,hyperparameters={},system=None,**kwargs):
+	def __init__(self,metric=None,shapes=None,model=None,state=None,label=None,weights=None,optimize=None,hyperparameters={},system=None,**kwargs):
 		'''
 		Metric class for distance between operands
 		Args:
 			metric (str,Metric): Type of metric
 			shapes (iterable[tuple[int]]): Shapes of Operators
 			model (object): Model instance	
+			state (array,callable): State			
 			label (array,callable): Label			
 			weights (array): Weights
 			optimize (bool,str,iterable): Contraction type	
@@ -906,6 +908,7 @@ class Metric(System):
 		super().__init__(**kwargs)
 
 		self.metric = hyperparameters.get('metric',metric) if metric is None else metric
+		self.state = hyperparameters.get('state',state) if state is None else state
 		self.label = hyperparameters.get('label',label) if label is None else label
 		self.weights = hyperparameters.get('weights',weights) if weights is None else weights
 		self.shapes = getattr(label,'shape') if shapes is None else shapes
@@ -920,13 +923,14 @@ class Metric(System):
 
 		return
 
-	def __setup__(self,metric=None,shapes=None,model=None,label=None,weights=None,optimize=None):
+	def __setup__(self,metric=None,shapes=None,model=None,state=None,label=None,weights=None,optimize=None):
 		'''
 		Setup metric attributes metric,string
 		Args:
 			metric (str,Metric): Type of metric
 			shapes (iterable[tuple[int]]): Shapes of Operators
 			model (object): Model instance	
+			state (array,callable): State			
 			label (array,callable): Label			
 			weights (array): Weights
 			optimize (bool,str,iterable): Contraction type	
@@ -935,6 +939,7 @@ class Metric(System):
 		self.metric = self.metric if metric is None else metric
 		self.shapes = self.shapes if shapes is None else shapes
 		self.model = self.model if model is None else model
+		self.state = self.state if state is None else state
 		self.label = self.label if label is None else label
 		self.weights = self.weights if weights is None else weights
 		self.optimize = self.optimize if optimize is None else optimize
@@ -1037,13 +1042,14 @@ class Metric(System):
 		return
 
 
-	def __initialize__(self,metric=None,shapes=None,model=None,label=None,weights=None,optimize=None):
+	def __initialize__(self,metric=None,shapes=None,model=None,state=None,label=None,weights=None,optimize=None):
 		'''
 		Setup metric
 		Args:
 			metric (str,Metric): Type of metric
 			shapes (iterable[tuple[int]]): Shapes of Operators
 			model (object): Model instance	
+			state (array,callable): State			
 			label (array,callable): Label			
 			weights (array): Weights
 			optimize (bool,str,iterable): Contraction type	
@@ -1052,32 +1058,49 @@ class Metric(System):
 		self.metric = self.metric if metric is None else metric
 		self.shapes = self.shapes if shapes is None else shapes
 		self.model = self.model if model is None else model
+		self.state = self.state if state is None else state
 		self.label = self.label if label is None else label
 		self.weights = self.weights if weights is None else weights
 		self.optimize = self.optimize if optimize is None else optimize
 
-		if isinstance(self.metric,str) and self.label is not None:
-			if self.label.ndim == 1:
+		if callable(self.state):
+			state = self.state()
+		else:
+			state = self.state
+	
+		if callable(self.label):
+			label = self.label()
+		else:
+			label = self.label
+
+		if label is not None and state is not None:
+			label = contraction(label,state)(label,state)
+
+		if isinstance(self.metric,str):
+
+			if label is None:
+				pass
+			elif label.ndim == 1:
 				if self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'abs2'
-			elif self.label.ndim == 2:
-				if (getattr(self.label,'unitary',None) or is_unitary(self.label)) and self.metric in ['real','imag','norm','abs2']:
+			elif label.ndim == 2:
+				if is_unitary(label) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'abs2'
-				elif (getattr(self.label,'hermitian',None) or is_hermitian(self.label)) and self.metric in ['real','imag','norm','abs2']:
+				elif is_hermitian(label) and self.metric in ['real','imag','norm','abs2']:
 					self.metric = 'real'
 
-		if self.label is not None:
+		if label is not None:
 			if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
-				self.shapes = self.label.shape
+				self.shapes = label.shape
 			else:
-				self.shapes = [self.label.shape]*len(self.shapes)
+				self.shapes = [label.shape]*len(self.shapes)
 		
 		if all(isinstance(i,int) for i in self.shapes) or (len(self.shapes) == 1):
 			self.shapes = [self.shapes,]*2
 
 		func,grad,grad_analytical = metrics(
 			metric=self.metric,shapes=self.shapes,
-			label=self.label,weights=self.weights,
+			state=self.state,label=self.label,weights=self.weights,
 			optimize=self.optimize,
 			returns=True)
 
@@ -1547,7 +1570,7 @@ class Optimization(System):
 
 		for attr in ['dtype']:
 			string = []
-			for subattr in ['func.model','func.metric','func.model.parameters','func.model.state','func.metric.label']:
+			for subattr in ['func.model','func.metric','func.model.parameters','func.model.state','func.metric.state','func.metric.label']:
 				substring = '%s: %s'%(subattr,getattrs(self,delim.join([subattr,attr]),delimiter=delim) if getattrs(self,subattr,delimiter=delim) is not None else None)
 				string.append(substring)
 			string = '%s %s: %s'%('Optimizer',attr,', '.join(string))
@@ -1993,13 +2016,14 @@ class Adam(Optimization):
 
 
 class Covariance(System):
-	def __init__(self,func,grad=None,shapes=None,label=None,weights=None,optimize=None,metric=None,hyperparameters={},system=None,**kwargs):
+	def __init__(self,func,grad=None,shapes=None,state=None,label=None,weights=None,optimize=None,metric=None,hyperparameters={},system=None,**kwargs):
 		'''
 		Compute covariance of function (with Cramer Rao bound)
 		Args:
 			func (callable): Function to compute
 			grad (callable): Gradient to compute
 			shapes (iterable[tuple[int]]): Shapes of functions		
+			state (array, callable): state data for function
 			label (array, callable): label data for function
 			weights (array): weights data for function
 			optimize (bool,str,iterable): Contraction type
@@ -2042,7 +2066,7 @@ class Covariance(System):
 
 		function = func
 
-		metric = metrics(metric,shapes=shapes,label=label,weights=weights)
+		metric = metrics(metric,shapes=shapes,state=state,label=label,weights=weights)
 
 		@jit
 		def func(parameters,*args,**kwargs):

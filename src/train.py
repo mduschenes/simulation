@@ -69,7 +69,7 @@ def train(hyperparameters):
 			return model
 
 		model = load(hyperparameters.cls.model)
-		from src.quantum import Channel as model
+		state = load(hyperparameters.cls.state)
 		label = load(hyperparameters.cls.label)
 		callback = load(hyperparameters.cls.callback)
 
@@ -82,9 +82,11 @@ def train(hyperparameters):
 
 		seed = prng(**hyperparameters.seed)
 
-		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
+		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+		state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 		callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
+
 
 		if hyperparameters.boolean.load:
 			model.load()
@@ -94,7 +96,9 @@ def train(hyperparameters):
 			parameters = model.parameters()
 			func = model.parameters.constraints
 
-			metric = Metric(label=label,hyperparameters=hyperparams,system=system)
+			model.__initialize__(state=state,label=label)
+
+			metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system)
 			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 			callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 
