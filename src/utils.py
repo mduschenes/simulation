@@ -2042,7 +2042,12 @@ if BACKEND in ['jax']:
 
 		generator = jax.random
 
-		_,key = generator.split(seed)
+		if isinstance(seed,(int)):
+			key = prng(seed)
+		else:
+			key = seed
+
+		_,key = generator.split(key)
 
 		return key
 
@@ -2062,7 +2067,10 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 		generator = onp.random
 
-		key = seed
+		if isinstance(seed,(int)):
+			key = prng(seed)
+		else:
+			key = seed
 
 		return key
 
@@ -7248,6 +7256,26 @@ def initialize(data,shape,dtype=None,**kwargs):
 
 	return data
 
+def projector(i,shape):
+	'''
+	Create projector at indices i
+	Args:
+		i (iterable[int],int): Indices of projector
+		shape (iterable[int],int): Shape of projector
+	Returns:
+		projector (array): array of projector
+	'''
+	if isinstance(i,int):
+		i = (i,i)
+	if isinstance(shape,int):
+		shape = (shape,shape)
+	i = tuple(i)
+	shape = tuple(shape)
+
+	projector = zeros(shape,dtype=int)
+	projector = inplace(projector,i,1)
+
+	return projector
 
 def bloch(state,path=None):
 	'''

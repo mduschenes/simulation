@@ -1,9 +1,8 @@
 {
 "cls":{
-	"model":"src.quantum.Unitary",
+	"model":"src.quantum.Channel",
 	"parameters":"src.parameters.Parameters",
 	"label":"src.quantum.Label",
-	"noise":"src.quantum.Noise",
 	"state":"src.quantum.State",
 	"callback":"src.quantum.Callback"
 	},
@@ -28,8 +27,6 @@
 		"model.tau":[1],
 		"model.T": [null],
 
-		"noise.parameters":[1e6],
-		"noise.initialization":["random"],
 
 		"system.unit":[1e6],
 		"parameters.xy.parameters":[1],
@@ -39,9 +36,14 @@
 		"label.string":["pauli"],
 		"label.random":["Z"],
 		"label.parameters":[0.25],
-		"noise.parameters":[null],
 		"state.parameters":[null],
 
+		"data.noise.string":["K"],
+		"data.noise.operator":["phase"],
+		"data.noise.parameters":[false],
+		"data.noise.seed":[null],
+		"parameters.noise.kwargs.scale":[null],
+		"parameters.noise.initialization":[null],
 
 		"optimize.iterations":[100],
 		"optimize.optimizer":["cg"],
@@ -88,10 +90,12 @@
 	},
 "model":{
 	"data":{
-		"x":{"operator":["X"],"site":"i","string":"x","parameters":null},
-		"y":{"operator":["Y"],"site":"i","string":"y","parameters":null},
-		"z":{"operator":["Z"],"site":"i","string":"z","parameters":null},
-		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz","parameters":null}
+		"x":{"operator":["X"],"site":"i","string":"x"},
+		"y":{"operator":["Y"],"site":"i","string":"y"},
+		"z":{"operator":["Z"],"site":"i","string":"z"},
+		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz"},
+		"noise":{"operator":"phase","site":null,"string":"noise",
+			"parameters":true,"ndim":3,"seed":null}
 		},
 	"N":2,
 	"D":2,
@@ -207,6 +211,24 @@
 		"initialization":null,
 		"args":[],
 		"kwargs":{}
+		},
+	"noise": {
+		"string":"noise",
+		"category":"constant",
+		"method":null,		
+		"group":[["noise"]],
+		"data":[1],								
+		"parameters":1e-4,
+		"bounds":[-1,1],
+		"locality":null,
+		"attributes":["M"],
+		"seed":null,
+		"random":null,	
+		"initialization":null,
+		"args":[],
+		"kwargs":{
+			"scale":null
+			}
 		}
 	},
 "label": {
@@ -224,14 +246,6 @@
 	"parameters":true,
 	"ndim":2,
 	"samples":1,
-	"seed":123
-	},	
-"noise": {
-	"data":"phase",
-	"site":null,
-	"string":"K",
-	"parameters":1e-8,
-	"ndim":3,
 	"seed":123
 	},
 "jobs":{

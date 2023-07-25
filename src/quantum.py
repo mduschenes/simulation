@@ -510,7 +510,21 @@ class Object(System):
 				return 0*self.data
 				# return 0*(self.data if not conj else dagger(self.data))
 
-			self.gradient = gradient			
+			self.gradient = gradient	
+
+		if self.contract is None:
+		
+			def contract(data,state):
+				return data	
+
+			self.contract = contract
+
+		if self.gradient_contract is None:
+		
+			def gradient_contract(data,state):
+				return data
+
+			self.gradient_contract = gradient_contract
 
 		if isinstance(data,self.__class__) or isinstance(operator,self.__class__):
 			if isinstance(data,self.__class__):
@@ -742,6 +756,20 @@ class Object(System):
 
 			self.gradient = gradient			
 
+		if self.contract is None:
+
+			def contract(data,state):
+				return data	
+
+			self.contract = contract
+
+		if self.gradient_contract is None:
+			
+			def gradient_contract(data,state):
+				return data	
+
+			self.gradient_contract = gradient_contract
+
 
 		self.__initialize__()
 		
@@ -787,10 +815,30 @@ class Object(System):
 		hermitian = self.hermitian
 		unitary = self.unitary
 		
-		if state is not None:
-			hermitian = hermitian or state.hermitian
+		if state is None and self.state is None:
+			hermitian = hermitian
+			unitary = unitary
+		elif state is None and self.state is not None and self.state() is not None:
+			hermitian = False
+			unitary = False
+		elif state is None and self.state is not None and self.state() is None:			
+			hermitian = False
+			unitary = False		
+		elif state.ndim is None:
+			hermitian = False
+			unitary = False	
+		elif state.ndim == 1 and state() is None:
+			hermitian = False
+			unitary = False
+		elif state.ndim == 1 and state() is not None:
+			hermitian = state.hermitian
 			unitary = unitary and state.unitary
-
+		elif state.ndim == 2 and state() is None:
+			hermitian = False
+			unitary = False
+		elif state.ndim == 2 and state() is not None:
+			hermitian = state.hermitian
+			unitary = unitary and state.unitary
 
 		self.data = data
 		self.state = state
@@ -806,13 +854,11 @@ class Object(System):
 			state = None
 			data = self.data
 
-		if contract is None:
-			state = self.identity if state is None else state
-			contract = contraction(data,state=state)
+		state = self.identity if state is None else state
+		contract = contraction(data,state=state)
 
-		if gradient_contract is None:
-			state = self.identity if state is None else state
-			gradient_contract = gradient_contraction(data,state=state)			
+		state = self.identity if state is None else state
+		gradient_contract = gradient_contraction(data,state=state)			
 
 		self.shape = data.shape if isinstance(data,arrays) else None
 		self.size = data.size if isinstance(data,arrays) else None
@@ -840,18 +886,18 @@ class Object(System):
 		if parameters is None:
 			parameters = self.parameters
 
-		return self.contract(self.func(parameters,state),state)
-		# return self.func(parameters,state)
+		# return self.contract(self.func(parameters,state),state)
+		# # return self.func(parameters,state)
 
-		# if state is None:
-		# 	if self.state is None:
-		# 		state = None
-		# 	else:
-		# 		state = self.state()
-		# if state is None:
-		# 	return self.func(parameters,state)
-		# else:
-		# 	return self.contract(self.func(parameters,state),state)
+		if state is None:
+			if self.state is None:
+				state = None
+			else:
+				state = self.state()
+		if state is None:
+			return self.func(parameters,state)
+		else:
+			return self.contract(self.func(parameters,state),state)
 
 	def grad(self,parameters=None,state=None):
 		'''
@@ -1830,7 +1876,6 @@ class Operators(Object):
 
 
 		# Check objs
-		
 		assert self.parameters(self.parameters()) is not None, "Incorrect parameters"
 
 		# Set data
@@ -1901,6 +1946,8 @@ class Operators(Object):
 						slices[min(tmp)+k+step] = i
 
 			step = max(slices,default=0)-max(slc,default=0)
+
+		slices = {i: slices[i] for i in sorted(slices,key=lambda i:i)}
 
 		length = max(slices,default=0)+1
 		shape = (length,*shape[1:])
@@ -2626,7 +2673,9 @@ class Callback(System):
 			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
 
-			"noise.parameters":[],"noise.scale":[],"noise.tau":[],"noise.method":[],
+			"noise.string":[],"noise.ndim":[],"noise.locality":[],"state.string":[],"state.ndim":[],
+			"noise.parameters":[],"noise.scale":[],"noise.tau":[],"noise.initialization":[],
+
 			'hyperparameters.c1':[],'hyperparameters.c2':[],
 
 		}
@@ -2892,6 +2941,12 @@ class Callback(System):
 						value = value/maximum(value)
 						value = nonzero(value,eps=50)
 						# value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
+
+				elif attr in ["noise.string","noise.ndim","noise.locality"]:
+					for i in model.data:
+						if not i.unitary:
+							value = getattrs(i,delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
+							break
 
 				elif attr in ["noise.parameters","noise.method"]:
 					for i in model.parameters:

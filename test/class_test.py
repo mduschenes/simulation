@@ -1,4 +1,4 @@
-	#!/usr/bin/env python
+#!/usr/bin/env python
 
 # Import python modules
 import pytest
@@ -66,7 +66,7 @@ def test_object(path,tol):
 	}
 
 	for name in arguments:
-	
+
 		base = bases[arguments[name]['basis']]
 		args = arguments[name]['kwargs']
 		kwargs = args.pop('kwargs',{})
@@ -124,7 +124,6 @@ def test_model(path,tol):
 
 	model = load(hyperparameters.cls.model)
 	system = hyperparameters.system
-
 	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters,state=hyperparameters.state),**dict(system=system)})
 
 	parameters = model.parameters()
@@ -193,7 +192,7 @@ def test_model(path,tol):
 		out = model(parameters)
 
 		slices = [slice(None,None,1),slice(None,None,-1)][:p]
-		data = [i for s in slices for i in model.data[s]]
+		data = [model.data[i] for s in slices for i in model.data[s]]
 
 		slices = array([i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in list(range(d))[s]])
 		parameters = model.parameters(parameters)
@@ -248,9 +247,14 @@ def test_parameters(path,tol):
 	parameters = parameters.reshape(-1,M)
 	variables = variables.reshape(M,-1).T
 
-	variables = variables[:variables.shape[0]//model.P]/model.coefficients
+	slices = slice(0,
+		(variables.shape[0]-
+		sum(model.parameters[i].shape[0] for i in model.parameters if any(not j.unitary for j in model.parameters[i].instance))
+		)//model.P)
 
-	print(list(model.parameters))
+	variables = variables[slices]/model.coefficients[slices]
+
+	print(list(model.parameters),variables.shape)
 	print(parameters.round(6))
 	print(variables.round(6))
 
@@ -301,6 +305,7 @@ def test_parameters(path,tol):
 			slices = arange(i*(model.parameters[parameter].slices.size//size),(i+1)*(model.parameters[parameter].slices.size//size))
 		_slices = arange(0,i*(model.parameters[parameter].slices.size//size))
 
+		print(index)
 		features = parameters[index]
 
 		wrapper = wrappers[i]
@@ -386,8 +391,8 @@ def test_data(path,tol):
 
 	data = trotter(data,P)
 	string = trotter(string,P)
-	datas = trotter([d.data for d in model.data],P)
-	sites = trotter([d.site for d in model.data],P)
+	datas = trotter([model.data[i].data for i in model.data if model.data[i].unitary],P)
+	sites = trotter([model.data[i].site for i in model.data if model.data[i].unitary],P)
 
 	for i,(s,d,D,site) in enumerate(zip(string,data,datas,sites)):
 		assert allclose(d,D), "data[%s,%d] incorrect"%(s,i)
@@ -421,8 +426,8 @@ def test_initialization(path,tol):
 	def copier(model,metric):
 
 		copy = Dictionary(
-			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=[model.data[i].data for i in model.data if (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
-			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.label.state,noise=[model.data[i].data for i in model.data if (not model.data[i].unitary)],info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
+			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
+			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.label.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
 			label=Dictionary(func=metric.label.__call__,data=metric.label(),state=metric.label.state,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
 			)
 
@@ -434,7 +439,7 @@ def test_initialization(path,tol):
 	defaults = Dictionary(state=model.state,data={i: model.data[i].data for i in model.data if (not model.data[i].unitary)},label=metric.label)
 
 
-	tmp = Dictionary(state=False,data={i: model.data[i].data for i in model.data if (not model.data[i].unitary)},label=False)
+	tmp = Dictionary(state=False,data={i: model.data[i].data if (model.data[i].unitary) else False for i in model.data},label=False)
 
 	
 	label = metric.label
@@ -634,7 +639,7 @@ def check_fisher(path,tol):
 			indices = model.parameters.indices		
 			M,K,P = parameters.size, parameters.size//model.M, model.P
 
-			data = trotter(model.data,P)
+			data = trotter([model.data[i] for i in model.data],P)
 
 			out = model.identity()
 
@@ -655,8 +660,8 @@ def check_fisher(path,tol):
 			
 			func = function(model)
 			state = model.state()
-			data = trotter([jit(i) for i in model.data],P)
-			grads = trotter([jit(i.grad) for i in model.data],P)
+			data = trotter([jit(model.data[i]) for i in model.data],P)
+			grads = trotter([jit(model.data[i].grad) for i in model.data],P)
 
 			U = model.identity()
 			_U = func
@@ -675,7 +680,7 @@ def check_fisher(path,tol):
 				U = dot(u,U)
 				_U = dot(_U,dagger(_u))
 
-				H = model.coefficients*switch(i%K,grads,parameters[i])
+				H = model.coefficients[i%K]*switch(i%K,grads,parameters[i])
 
 				tmp = dot(dot(_U,dot(H,U)),state)*(i > -1)
 				
@@ -988,19 +993,20 @@ def check_machine_precision(path,tol):
 
 if __name__ == '__main__':
 	path = 'config/settings.test.json'
-	path = 'config/settings.json'
 	path = 'config/settings.tmp.json'
+	path = 'config/settings.json'
 
 	tol = 5e-8 
 
 	func = check_machine_precision
-	func = test_parameters
 	func = check_fisher
-	func = test_initialization
-	func = test_model
-	func = test_object
 	func = test_hessian
 	func = check_fisher
+	func = test_object
+	func = test_model
+	func = test_parameters
+	func = test_data
+	func = test_initialization
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)
