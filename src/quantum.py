@@ -962,7 +962,7 @@ class Pauli(Object):
 			self.parameters = 1
 
 		if self.coefficients is None:
-			self.coefficients = pi/2
+			self.coefficients = pi
 
 		data = self.data if data is None else data
 

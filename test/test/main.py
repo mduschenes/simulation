@@ -501,10 +501,10 @@ def main(n=2,d=2,m=2,p=None,parameters='rand',operator='XZZ',state='0',noise='de
 	metric = fisher(func,grad)
 
 
-	obj = metric(parameters,state)
+	qfim = metric(parameters,state)
 	hermitian = True
 	eps = 5e-13
-	r = rank(obj,hermitian=hermitian,eps=eps)
+	r = rank(qfim,hermitian=hermitian,eps=eps)
 
 	obj = metric(parameters,state)
 	plot(obj,path=path)

@@ -2614,6 +2614,7 @@ def _svd(A,k=None):
 
 	return U,S,V
 
+@jit
 def eig(a,compute_v=False,hermitian=False):
 	'''
 	Compute eigenvalues and eigenvectors
@@ -2637,26 +2638,29 @@ def eig(a,compute_v=False,hermitian=False):
 			_eig = np.linalg.eigvals
 	return _eig(a)
 
-
-def spectrum(func,compute_v=False,hermitian=False):
+@jit
+def schur(a,compute_v=False,output=None):
 	'''
-	Compute eigenvalues and eigenvectors of a function
+	Compute schur decomposition of array
 	Args:
-		func (callable): Function to compute eigenvalues and eigenvectors of shape (...,n,n)
-		compute_v (bool): Compute V eigenvectors in addition to eigenvalues
-		hermitian (bool): Whether array is Hermitian
+		a (array): Array to compute schur decmposition of shape (...,n,n)
+		compute_v (bool): Compute unitary transformation of decomposition
+		output (str): Return real or complex decomposition, allowed strings in ['real','complex']
 	Returns:
-		wrapper (callable): Returns:
-			eigenvalues (array): Array of eigenvalues of shape (...,n)
-			eigenvectors (array): Array of normalized eigenvectors of shape (...,n,n)
+		triangular (array): Array of triangular similar array (...,n,n)
+		unitary (array): Array of unitary transformation of decomposition of shape (...,n,n)
 	'''
+	_schur = sp.linalg.schur
+	output = {True:'complex',False:'real'}[is_complexdtype(a.dtype)] if output is None else output
+	
+	triangular,unitary = _schur(a,outut=output)
 
-	@jit
-	def wrapper(*args,**kwargs):
-		return eig(func(*args,**kwargs),compute_v=compute_v,hermitian=hermitian)
+	if compute_v:
+		return triangular,unitary
+	else:
+		return triangular
 
-	return wrapper
-
+@jit
 def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 	'''
 	Compute singular values of an array
@@ -2721,6 +2725,24 @@ def inv(a):
 	'''
 	return np.linalg.inv(a)
 
+def spectrum(func,compute_v=False,hermitian=False):
+	'''
+	Compute eigenvalues and eigenvectors of a function
+	Args:
+		func (callable): Function to compute eigenvalues and eigenvectors of shape (...,n,n)
+		compute_v (bool): Compute V eigenvectors in addition to eigenvalues
+		hermitian (bool): Whether array is Hermitian
+	Returns:
+		wrapper (callable): Returns:
+			eigenvalues (array): Array of eigenvalues of shape (...,n)
+			eigenvectors (array): Array of normalized eigenvectors of shape (...,n,n)
+	'''
+
+	@jit
+	def wrapper(*args,**kwargs):
+		return eig(func(*args,**kwargs),compute_v=compute_v,hermitian=hermitian)
+
+	return wrapper
 
 @partial(jit,static_argnums=(1,))
 def mean(a,axis=None):
@@ -5895,6 +5917,17 @@ def uniqueobjs(a,axis=None):
 	'''
 	return onp.unique(a,axis=axis)
 
+def reshape(a,shape,order='C'):
+	'''
+	Reshape array to shape, with ordering order
+	Args:
+		a (array): Array to reshape
+		shape (iterable[int]): Shape
+		order (str): Ordering of elements during reshaping, allowed strings in ['C','F','A']
+	Returns:
+		out (array): Reshaped array
+	'''
+	return np.reshape(a,shape,order=order)
 
 def repeat(a,repeats,axis):
 	'''
