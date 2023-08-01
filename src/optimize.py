@@ -13,7 +13,7 @@ for PATH in PATHS:
 
 
 # Import user modules
-from src.utils import jit,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv,norm
+from src.utils import jit,value_and_gradient,gradient,hessian,abs,dot,lstsq,inv,norm,einsum
 from src.utils import metrics,contraction,gradient_contraction,optimizer_libraries
 from src.utils import is_unitary,is_hermitian,is_naninf
 from src.utils import scalars,delim,nan
@@ -1069,12 +1069,15 @@ class Metric(System):
 			state = self.state
 	
 		if callable(self.label):
-			label = self.label()
+			if state is not None:
+				label = partial(self.label,state=state)
+			else:
+				label = self.label
 		else:
-			label = self.label
+			label = lambda *args,label=self.label,state=None,**kwargs: label
 
-		if label is not None and state is not None:
-			label = contraction(label,state)(label,state)
+		self.label = label
+		label = self.label()
 
 		if isinstance(self.metric,str):
 
@@ -1100,7 +1103,7 @@ class Metric(System):
 
 		func,grad,grad_analytical = metrics(
 			metric=self.metric,shapes=self.shapes,
-			state=self.state,label=self.label,weights=self.weights,
+			label=self.label,weights=self.weights,
 			optimize=self.optimize,
 			returns=True)
 
@@ -2066,7 +2069,7 @@ class Covariance(System):
 
 		function = func
 
-		metric = metrics(metric,shapes=shapes,state=state,label=label,weights=weights)
+		metric = metrics(metric,shapes=shapes,label=label,weights=weights)
 
 		@jit
 		def func(parameters,*args,**kwargs):

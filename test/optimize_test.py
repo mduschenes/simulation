@@ -61,9 +61,10 @@ def test_objective(path,tol):
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 	callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
 
-	model.__initialize__(state=state,label=label)
+	label.__initialize__(state=state)
+	model.__initialize__(state=state)
 
-	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
+	metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system)
 	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 
@@ -110,9 +111,10 @@ def test_optimizer(path,tol):
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 	callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
 
-	model.__initialize__(state=state,label=label)
+	label.__initialize__(state=state)
+	model.__initialize__(state=state)
 
-	metric = Metric(label=label,hyperparameters=hyperparams,system=system)
+	metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system)
 	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams,system=system)
 	callback = Callback(model,callback,func=func,metric=metric,hyperparameters=hyperparams,system=system)
 

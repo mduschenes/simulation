@@ -125,13 +125,12 @@ def trotter(iterable=None,p=None,shape=None):
 
 
 
-def scheme(parameters,state=None,label=None,conj=False,data=None,identity=None,indices=None):
+def scheme(parameters,state=None,conj=False,data=None,identity=None,indices=None):
 	'''
 	Contract data and state
 	Args:
 		parameters (array): parameters of shape (size,)
 		state (array): state of shape (n,) or (n,n)
-		label (array): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		data (array): data of shape (length,)
 		identity (array): Array of data identity of shape (n,n)
@@ -145,17 +144,19 @@ def scheme(parameters,state=None,label=None,conj=False,data=None,identity=None,i
 	def sorter(i,size):
 		return conj*(size-1) + (1-2*conj)*(i%size)
 
-	obj = data
 	step = 1
 	indices = (0,size//step)
 
-	def function(parameters,state=state,indices=indices):
+	def function(parameters,state,indices):
 		obj = switch(sorter(indices,length),data,parameters[sorter(indices,size)],state)
 		return obj
 
+	state = state if state is not None else identity
+	obj = state
+
 	def func(parameters,state=state,indices=indices):
 
-		state = state if state is not None else identity
+		state = state if state is not None else obj
 		out = state
 	
 		def func(i,out):
@@ -183,6 +184,7 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,gra
 	Returns:
 		func (callable): contracted data(parameters) and state with signature func(parameters,state)
 	'''
+
 
 	size = parameters.shape[0]
 	length = len(data)
@@ -220,7 +222,7 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,gra
 	
 	step = length
 
-	function = scheme(parameters=parameters,state=state,data=data,identity=identity)
+	function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity)
 	
 	def sorter(i,size):
 		return conj*(size-1) + (1-2*conj)*(i%size)
@@ -229,6 +231,8 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,gra
 		obj = switch(sorter(indices,step),grad,parameters[sorter(indices,size)],state)
 		return obj
 	
+	state = state if state is not None else identity
+	obj = state
 
 	def func(parameters,state=state,indices=indices):
 
@@ -254,9 +258,9 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,gra
 
 			return forloop(*indexes,func,out)
 
-		state = state if state is not None else identity
+		state = state if state is not None else obj
 		indexes = [0,len(indices)]
-		out = zeros((len(indices),*state.shape),dtype=identity.dtype)
+		out = zeros((len(indices),*state.shape),dtype=state.dtype)
 		
 		return forloop(*indexes,func,out)
 
@@ -599,13 +603,12 @@ class Object(System):
 
 		return
 
-	def __initialize__(self,data=None,state=None,label=None,conj=False):
+	def __initialize__(self,data=None,state=None,conj=False):
 		'''
 		Initialize operator
 		Args:
 			data (array): data
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters
-			label (bool,dict,array,Label): Label for class of shape self.shape, or class hyperparameters
 			conj (bool): conjugate
 		'''
 
@@ -623,13 +626,6 @@ class Object(System):
 		elif state is False:
 			state = None
 
-		if label is None:
-			label = None
-		elif label is True:
-			label = None
-		elif label is False:
-			label = None
-
 		parameters = self.parameters
 
 		hermitian = self.hermitian
@@ -638,10 +634,10 @@ class Object(System):
 		contract = self.contract
 		gradient_contract = self.gradient_contract
 
-		if data is not None and state is not None:
+		if data is not None:
 			contract = contraction(data,state)
 
-		if data is not None and state is not None:
+		if data is not None:
 			gradient_contract = gradient_contraction(data,state)
 		
 		self.data = data
@@ -1446,7 +1442,6 @@ class Operators(Object):
 		
 		self.parameters = parameters
 		self.state = None
-		self.label = None
 		self.identity = None
 		self.coefficients = None
 		self.conj = False
@@ -1597,23 +1592,22 @@ class Operators(Object):
 
 		return
 
-	def __initialize__(self,parameters=None,data=None,state=None,label=None,conj=None):
+	def __initialize__(self,parameters=None,data=None,state=None,conj=None):
 		''' 
 		Setup class functions
 		Args:
 			parameters (bool,dict,array,Parameters): Class parameters
 			data (bool,dict): data of class
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters
-			label (bool,dict,array,Label): Label for class of shape self.shape, or class hyperparameters
 			conj (bool): conjugate
 		'''
 
 		parameters = self.parameters if parameters is None else parameters
 		conj = self.conj if conj is None else conj
 
-		objs = {'parameters':parameters,'state':state,'label':label}
-		classes = {'parameters':Parameters,'state':State,'label':Label}
-		arguments = {'parameters':False,'state':True,'label':None}
+		objs = {'parameters':parameters,'state':state}
+		classes = {'parameters':Parameters,'state':State}
+		arguments = {'parameters':False,'state':True}
 
 		# Get functions
 		for obj in objs:
@@ -1649,13 +1643,13 @@ class Operators(Object):
 		for i in data:
 			self.data[i].__initialize__(data=data[i])
 
+		print(state)
 		for i in self.data:
-			self.data[i].__initialize__(state=state,label=label)
-
+			self.data[i].__initialize__(state=state)
+		exit()
 
 		# Set attributes
 		state = self.state()
-		label = self.label()
 		identity = self.identity()
 		parameters = self.parameters()
 		conj = self.conj
@@ -1667,7 +1661,7 @@ class Operators(Object):
 		# Set trotterized indices
 		p = self.P
 
-		indexes = {i: self.data[data] for i,data in enumerate(self.data) if (self.data[data]() is not None)}
+		indexes = {i: self.data[data] for i,data in enumerate(self.data) if (self.data[data](state=state) is not None)}
 		booleans = {}
 		for i in indexes:
 			if indexes[i].unitary:
@@ -1743,12 +1737,12 @@ class Operators(Object):
 
 		parameters = self.parameters(parameters)
 
-		func = scheme(parameters=parameters,conj=conj,data=data,identity=identity)
+		func = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity)
 		
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
 		# grad_analytical = grad_automatic
-		grad_analytical = gradient_scheme(parameters=parameters,conj=conj,data=data,identity=identity,grad=grad,indices=indices)
+		grad_analytical = gradient_scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity,grad=grad,indices=indices)
 
 		grad = grad_automatic
 
@@ -2626,7 +2620,7 @@ class Callback(System):
 					state.__initialize__(data=tmp.state)
 					label.__initialize__(state=state)
 
-					model.__initialize__(data=data,state=state,label=label)
+					model.__initialize__(data=data,state=state)
 
 					metric.__initialize__(model=model,state=state,label=label)
 
@@ -2646,7 +2640,7 @@ class Callback(System):
 					state.__initialize__(data=default.state)
 					label.__initialize__(state=state)
 
-					model.__initialize__(data=data,state=state,label=label)
+					model.__initialize__(data=data,state=state)
 
 					metric.__initialize__(model=model,state=state,label=label)
 					
@@ -2742,9 +2736,9 @@ class Callback(System):
 				# 	for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				# 'U\n%s\nV\n%s'%(
-				# 	to_string((model(parameters)).round(4)),
-				# 	to_string((metric.label()).round(4))),
+				'U\n%s\nV\n%s'%(
+					to_string((model(parameters)).round(4)),
+					to_string((metric.label()).round(4))),
 				])
 
 

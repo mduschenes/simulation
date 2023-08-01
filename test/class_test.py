@@ -131,7 +131,8 @@ def test_model(path,tol):
 	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-	model.__initialize__(state=state,label=label)
+	label.__initialize__(state=state)
+	model.__initialize__(state=state)
 
 	parameters = model.parameters()
 
@@ -249,7 +250,8 @@ def test_parameters(path,tol):
 	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-	model.__initialize__(state=state,label=label)
+	label.__initialize__(state=state)
+	model.__initialize__(state=state)
 
 	parameters = model.parameters()
 	variables = model.parameters(parameters)
@@ -376,7 +378,8 @@ def test_data(path,tol):
 	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-	model.__initialize__(state=state,label=label)
+	label.__initialize__(state=state)	
+	model.__initialize__(state=state)
 
 
 	basis = {
@@ -437,25 +440,27 @@ def test_initialization(path,tol):
 	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-	model.__initialize__(state=state,label=label)
+	label.__initialize__(state=state)	
+	model.__initialize__(state=state)
 
 	parameters = model.parameters()
 	kwargs = dict(verbose=True)
 
-	metric = Metric(label=label,hyperparameters=hyperparams,system=system,**kwargs)
+	metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system,**kwargs)
 
 
-	def copier(model,metric):
+	def copier(model,metric,state,label):
 
 		copy = Dictionary(
 			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
-			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
-			label=Dictionary(func=metric.label.__call__,data=metric.label(),state=metric.state,info=metric.info,hermitian=metric.label.hermitian,unitary=metric.label.unitary),
+			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=metric.info,hermitian=label.hermitian,unitary=label.unitary),
+			label=Dictionary(func=label.__call__,data=label(state=state()),state=state,info=label.info,hermitian=label.hermitian,unitary=label.unitary),
+			state=Dictionary(func=state.__call__,data=state(),state=state,info=state.info,hermitian=state.hermitian,unitary=state.unitary),
 			)
 
 		return copy
 
-	copy = copier(model,metric)
+	copy = copier(model,metric,state,label)
 
 	
 	defaults = Dictionary(state=model.state,data={i: model.data[i].data for i in model.data if (not model.data[i].unitary)},label=metric.label)
@@ -464,24 +469,22 @@ def test_initialization(path,tol):
 	tmp = Dictionary(state=False,data={i: model.data[i].data if (model.data[i].unitary) else False for i in model.data},label=False)
 
 	
-	label = metric.label
+	label.__initialize__(state=tmp.state)	
 
 	model.__initialize__(state=tmp.state,data=tmp.data)
 
-	label.__initialize__(state=model.state)
-
 	metric.__initialize__(model=model,label=label)
 
-	tmp = copier(model,metric)
-
-	model.__initialize__(state=defaults.state,data=defaults.data)
+	tmp = copier(model,metric,state,label)
 
 	label.__initialize__(state=defaults.state)
+
+	model.__initialize__(state=defaults.state,data=defaults.data)
 
 	metric.__initialize__(model=model,label=label)
 
 	
-	new = copier(model,metric)
+	new = copier(model,metric,state,label)
 
 
 	
@@ -577,12 +580,13 @@ def test_hessian(path,tol):
 	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-	model.__initialize__(state=state,label=label)
+	label.__initialize__(state=state)
+	model.__initialize__(state=state)
 
 	parameters = model.parameters()
 	kwargs = dict(verbose=True)
 
-	metric = Metric(label=label,hyperparameters=hyperparams,system=system,**kwargs)
+	metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system,**kwargs)
 
 	func = hessian(jit(lambda parameters: metric(model(parameters))))
 
@@ -625,7 +629,8 @@ def test_fisher(path,tol):
 		state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-		model.__initialize__(state=state,label=label)
+		label.__initialize__(state=state)
+		model.__initialize__(state=state)
 		
 		parameters = model.parameters()
 
@@ -781,7 +786,8 @@ def check_fisher(path,tol):
 		state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 
-		model.__initialize__(state=state,label=label)
+		label.__initialize__(state=state)
+		model.__initialize__(state=state)
 
 		parameters = model.parameters()
 

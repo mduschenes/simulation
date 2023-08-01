@@ -95,8 +95,9 @@ def train(hyperparameters):
 
 			parameters = model.parameters()
 			func = model.parameters.constraints
-
-			model.__initialize__(state=state,label=label)
+			
+			label.__initialize__(state=state)
+			model.__initialize__(state=state)
 
 			metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system)
 			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)

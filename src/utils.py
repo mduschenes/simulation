@@ -2939,14 +2939,6 @@ def contraction(data=None,state=None):
 	def default(data=None,state=None):
 		return data
 
-	def wrapper(func):
-		def function(data=None,state=None):
-			if state is None:
-				return default(data,state)
-			else:
-				return func(data,state)
-		return function
-
 	if data is None:
 
 		if state is None:
@@ -3097,7 +3089,6 @@ def contraction(data=None,state=None):
 			def func(data,state):
 				return einsummation(data,state,conjugate(data))
 
-	func = wrapper(func)
 	func = jit(func)	
 
 	return func
@@ -3116,14 +3107,6 @@ def gradient_contraction(data,state=None):
 	def default(grad=None,data=None,state=None):
 		return grad
 
-	def wrapper(func):
-		def function(grad=None,data=None,state=None):
-			if state is None:
-				return default(grad,data,state)
-			else:
-				return func(grad,data,state)
-		return function
-
 	if data is None:
 		
 		if state is None:
@@ -3279,18 +3262,16 @@ def gradient_contraction(data,state=None):
 				out = einsummation(grad,state,conjugate(data))
 				return out + dagger(out)
 
-	func = wrapper(func)
 	func = jit(func)	
 
 	return func
 
-def metrics(metric,shapes=None,state=None,label=None,weights=None,optimize=None,returns=None):
+def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=None):
 	'''
 	Setup metrics
 	Args:
 		metric (str,callable): Type of metric
 		shapes (iterable[tuple[int]]): Shapes of Operators
-		state (array,callable): State			
 		label (array,callable): Label			
 		weights (array): Weights
 		optimize (bool,str,iterable): Contraction type			
@@ -3452,13 +3433,8 @@ def metrics(metric,shapes=None,state=None,label=None,weights=None,optimize=None,
 
 	if (label is not None) and (weights is not None):
 
-		if callable(state):
-			state = state()
 		if callable(label):
 			label = label()
-
-		if label is not None and state is not None:
-			label = contraction(label,state)(label,state)
 
 		if label is not None and metric in ['abs2','real']:
 			label = conjugate(label)
@@ -3474,13 +3450,8 @@ def metrics(metric,shapes=None,state=None,label=None,weights=None,optimize=None,
 	
 	elif (label is not None):
 
-		if callable(state):
-			state = state()
 		if callable(label):
 			label = label()
-
-		if label is not None and state is not None:
-			label = contraction(label,state)(label,state)
 
 		if label is not None and metric in ['abs2','real']:
 			label = conjugate(label)	
