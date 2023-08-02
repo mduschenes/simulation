@@ -47,6 +47,7 @@ assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
 if BACKEND in ['jax','jax.autograd']:
 	
 	envs = {
+		'JAX_DISABLE_JIT':False,
 		'JAX_PLATFORMS':'cpu',
 		'JAX_PLATFORM_NAME':'cpu',
 		'TF_CPP_MIN_LOG_LEVEL':5
@@ -75,6 +76,8 @@ if BACKEND in ['jax','jax.autograd']:
 	for name in configs:
 		jax.config.update(name,configs[name])
 
+	disp = print
+
 elif BACKEND in ['autograd']:
 
 	import autograd
@@ -82,11 +85,16 @@ elif BACKEND in ['autograd']:
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
 
+	disp = print
+
 elif BACKEND in ['numpy']:
 	import numpy as np
 	import scipy as sp
 	import pandas as pd
 	import scipy.special as spsp
+
+	disp = print
+
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
 pd.set_option('display.max_rows', 500)
@@ -2933,7 +2941,7 @@ def contraction(data=None,state=None):
 	Contract data and state
 	Args:
 		data (array): Array of data of shape (n,n)
-		state (array): state of shape (n,) or (n,n)
+		state (array,bool): state of shape (n,) or (n,n) or boolean to contract data with itself
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
@@ -2941,10 +2949,22 @@ def contraction(data=None,state=None):
 	def default(data=None,state=None):
 		return data
 
+	subscripts = None
+
 	if data is None:
 
 		if state is None:
 		
+			def func(data,state):
+				return data
+
+		elif state is True:
+
+			def func(data,state):
+				return data
+
+		elif state is False:
+
 			def func(data,state):
 				return data
 
@@ -2967,6 +2987,16 @@ def contraction(data=None,state=None):
 
 		if state is None:
 		
+			def func(data,state):
+				return data
+		
+		elif state is True:
+			
+			def func(data,state):
+				return data
+		
+		elif state is False:
+			
 			def func(data,state):
 				return data
 
@@ -2992,6 +3022,16 @@ def contraction(data=None,state=None):
 			def func(data,state):
 				return data
 
+		elif state is True:
+		
+			def func(data,state):
+				return data
+
+		elif state is False:
+		
+			def func(data,state):
+				return data
+
 		elif state.ndim is None:
 			
 			def func(data,state):
@@ -3013,7 +3053,23 @@ def contraction(data=None,state=None):
 
 			def func(data,state):
 				return data
-			
+
+		elif state is True:
+
+			state = data
+
+			subscripts = 'ij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state is False:
+
+			def func(data,state):
+				return data
+
 		elif state.ndim is None:
 			
 			state = data
@@ -3043,10 +3099,27 @@ def contraction(data=None,state=None):
 			def func(data,state):
 				return einsummation(data,state,conjugate(data))
 
+
 	elif data.ndim == 3:
 
 		if state is None:
 			
+			def func(data,state):
+				return data
+
+		elif state is True:
+			
+			state = data
+
+			subscripts = 'uij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state is False:
+
 			def func(data,state):
 				return data
 
@@ -3089,7 +3162,7 @@ def gradient_contraction(data,state=None):
 	Contract grad, data and state
 	Args:
 		data (array): Array of data of shape (n,n)
-		state (array): state of shape (n,) or (n,n)
+		state (array,bool): state of shape (n,) or (n,n) or boolean to contract data with itself
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
@@ -3103,6 +3176,16 @@ def gradient_contraction(data,state=None):
 		
 			def func(grad=None,data=None,state=None):
 				return grad
+
+		elif state is True:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is False:
+		
+			def func(grad=None,data=None,state=None):
+				return grad				
 
 		elif state.ndim is None:
 			
@@ -3126,6 +3209,16 @@ def gradient_contraction(data,state=None):
 			def func(grad=None,data=None,state=None):
 				return grad
 
+		elif state is True:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is False:
+		
+			def func(grad=None,data=None,state=None):
+				return grad	
+	
 		elif state.ndim is None:
 			
 			def func(grad=None,data=None,state=None):
@@ -3148,6 +3241,16 @@ def gradient_contraction(data,state=None):
 			def func(grad=None,data=None,state=None):
 				return grad
 
+		elif state is True:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is False:
+		
+			def func(grad=None,data=None,state=None):
+				return grad	
+	
 		elif state.ndim is None:
 			
 			def func(grad=None,data=None,state=None):
@@ -3166,7 +3269,12 @@ def gradient_contraction(data,state=None):
 	elif data.ndim == 2:
 
 		if state is None:
-			
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is True:
+		
 			state = data
 
 			subscripts = 'ij,jk->ik'
@@ -3175,6 +3283,11 @@ def gradient_contraction(data,state=None):
 
 			def func(grad=None,data=None,state=None):
 				return einsummation(grad,state)
+
+		elif state is False:
+
+			def func(grad=None,data=None,state=None):
+				return grad
 
 		elif state.ndim is None:
 			
@@ -3209,6 +3322,11 @@ def gradient_contraction(data,state=None):
 	elif data.ndim == 3:
 
 		if state is None:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is True:
 			
 			state = data
 
@@ -3220,6 +3338,11 @@ def gradient_contraction(data,state=None):
 				out = einsummation(grad,state)
 				return out + dagger(out)
 
+		elif state is False:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+	
 		elif state.ndim is None:
 			
 			state = data

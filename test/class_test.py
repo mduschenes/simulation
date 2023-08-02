@@ -231,6 +231,36 @@ def test_model(path,tol):
 
 	return 
 
+def test_initialize(path,tol):
+
+	default = None
+	hyperparameters = load(path,default=default)
+	if hyperparameters is None:
+		raise Exception("Hyperparameters %s not loaded"%(path))
+
+	hyperparameters = Dict(hyperparameters)
+
+	model = load(hyperparameters.cls.model)
+	state = load(hyperparameters.cls.state)
+	label = load(hyperparameters.cls.label)
+
+	system = hyperparameters.system
+	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+
+	label.__initialize__(state=state)
+	model.__initialize__(state=state)
+
+
+	data = {}
+	state = False
+	model.__initialize__(data=data,state=state)
+
+
+	return
+
+
 def test_parameters(path,tol):
 
 	default = None
@@ -528,8 +558,8 @@ def test_initialization(path,tol):
 
 	UpsiU = copy.model.data
 	U = tmp.model.data
-	psi = copy.state()
-	K = copy.model.noise[-1]()
+	psi = copy.state.data
+	K = copy.model.noise[-1].data
 	VpsiV = copy.label.data
 	V = tmp.label.data
 
@@ -1047,6 +1077,7 @@ if __name__ == '__main__':
 	func = test_parameters
 	func = test_data
 	func = test_initialization
+	func = test_initialize
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

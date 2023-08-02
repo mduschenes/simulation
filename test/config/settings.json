@@ -95,14 +95,14 @@
 		"z":{"operator":["Z"],"site":"i","string":"z"},
 		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz"},
 		"noise":{"operator":"phase","site":null,"string":"noise",
-			"parameters":true,"ndim":3,"seed":null}
+			"parameters":false,"ndim":3,"seed":null}
 		},
 	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":6,
+	"M":1,
 	"T":null,
 	"tau":1,
 	"P":2,
@@ -142,7 +142,7 @@
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
 	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":20},
-	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
+	"length":{"log":null,"buffer":1,"attributes":3,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"do":{
 		"parameters":true,
 		"grad":true,

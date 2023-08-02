@@ -425,12 +425,13 @@ class Parameter(System):
 
 		wrapper = self.wrapper if self.wrapper is not None else wrapper
 
+		func = jit(func)
+		constraint = jit(constraint)
+		wrapper = jit(wrapper)
 
-		self.func = jit(func)
-		
-		self.constraint = jit(constraint)
-
-		self.wrapper = jit(wrapper)
+		self.func = func
+		self.constraint = constraint
+		self.wrapper = wrapper
 
 		return
 

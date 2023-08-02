@@ -69,6 +69,7 @@ def train(hyperparameters):
 			return model
 
 		model = load(hyperparameters.cls.model)
+		from src.quantum import Channel as model
 		state = load(hyperparameters.cls.state)
 		label = load(hyperparameters.cls.label)
 		callback = load(hyperparameters.cls.callback)
