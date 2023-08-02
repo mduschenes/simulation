@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools,warnings,traceback
-from copy import deepcopy
 from functools import partial,wraps
 import numpy as np
 import scipy as sp
@@ -18,7 +17,7 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser
+from src.utils import argparser,copy
 from src.utils import array,expand_dims,conditions,prod
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
@@ -711,7 +710,7 @@ def analyse(data,analyses=None,verbose=None):
 			else:
 				args = []
 
-			args = deepcopy(args)
+			args = copy(args)
 
 			for attrs in args:
 				if analysis in ['zscore','quantile','slice','parse']:
@@ -864,7 +863,7 @@ def loader(data,settings,hyperparameters,verbose=None):
 		new = exists(path) and tmp is not None
 
 		if new:
-			new = deepcopy(settings)
+			new = copy(settings)
 			settings.update(tmp)
 			tmp = new
 			setter(settings,tmp,func=func)
@@ -1009,7 +1008,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		kwargs = keys[name][other].get('kwargs',None)
 
 
-		funcs = deepcopy(funcs)
+		funcs = copy(funcs)
 		stat = 'stat'
 		stats = {axes: {'':'mean','err':'std'} for axes in dimensions}
 		functions = {
@@ -1179,7 +1178,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 				grouping = groups.get_group(group)
 
 				key = (*name[:-3],i,j,*name[-1:])
-				value = deepcopy(getter(settings,name,delimiter=delim))
+				value = copy(getter(settings,name,delimiter=delim))
 
 				source = [attr for attr in data if attr not in variables]
 				destination = other
@@ -1466,8 +1465,8 @@ def plotter(settings,hyperparameters,verbose=None):
 				
 				key = delim.join([subinstance,*[str(i) for i in position]])
 				
-				settings[instance][key] = deepcopy(settings[instance][subinstance])
-				grid[instance][key] = deepcopy(grid[instance][subinstance])[:LAYOUTDIM]
+				settings[instance][key] = copy(settings[instance][subinstance])
+				grid[instance][key] = copy(grid[instance][subinstance])[:LAYOUTDIM]
 
 				for axis in itertools.product(*(range(i) for i in grid[instance][subinstance][LAYOUTDIM:LAYOUTDIM+AXISDIM])):
 
@@ -1476,7 +1475,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						if prop not in settings[instance][subinstance][obj]:
 							continue
 						
-						for index,shape,data in search(deepcopy(settings[instance][subinstance][obj][prop]),returns=True):
+						for index,shape,data in search(copy(settings[instance][subinstance][obj][prop]),returns=True):
 						
 							if not data:
 								continue
@@ -1526,7 +1525,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 		for index,subinstance in enumerate(settings[instance]):
 			
-			sublayout = deepcopy(layout[instance])
+			sublayout = copy(layout[instance])
 
 			index = sublayout['index']-1 if sublayout['index'] is not None else index
 			nrow = (index - index%sublayout['ncols'])//sublayout['ncols']
@@ -1756,7 +1755,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						if (prop in PLOTS) and (attr in [*ALL,OTHER]):
 							continue
 
-						value = deepcopy(data[attr])
+						value = copy(data[attr])
 
 						if value is None:
 							continue
@@ -2146,7 +2145,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						continue
 
 					slices = []
-					subslices = deepcopy([data[OTHER][OTHER].get('slice'),data[OTHER][OTHER].get('labels')])
+					subslices = copy([data[OTHER][OTHER].get('slice'),data[OTHER][OTHER].get('labels')])
 					for subslice in subslices:
 						if subslice is None:
 							subslice = [slice(None)]

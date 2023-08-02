@@ -3,7 +3,6 @@
 # Import python modules
 import os,sys,warnings,itertools,inspect,traceback,datetime,re
 import shutil
-from copy import deepcopy
 import glob as globber
 import importlib
 import json,jsonpickle,h5py,pickle,dill
@@ -218,7 +217,7 @@ def rm(path):
 	return
 
 
-def copy(source,destination):
+def cp(source,destination):
 	'''
 	Copy paths
 	Args:

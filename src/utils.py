@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,copy,ast,operator
+import os,sys,itertools,ast,operator
+from copy import deepcopy as copy
 from math import prod
 
-from functools import partial,wraps
+from functools import partial,partialmethod,wraps
 from natsort import natsorted
 import argparse
 
@@ -2104,6 +2105,7 @@ if BACKEND in ['jax']:
 		if seed is not None:
 			key = seed
 		
+		_key = key
 		key = prng(key,reset=reset)
 
 		generator = jax.random
@@ -3008,16 +3010,10 @@ def contraction(data=None,state=None):
 	elif data.ndim == 2:
 
 		if state is None:
-			
-			state = data
-
-			subscripts = 'ij,jk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
 
 			def func(data,state):
-				return einsummation(data,state)
-
+				return data
+			
 		elif state.ndim is None:
 			
 			state = data
@@ -3051,14 +3047,8 @@ def contraction(data=None,state=None):
 
 		if state is None:
 			
-			state = data
-
-			subscripts = 'uij,ujk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-
 			def func(data,state):
-				return einsummation(data,state)
+				return data
 
 		elif state.ndim is None:
 			
@@ -3433,10 +3423,9 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 
 	if (label is not None) and (weights is not None):
 
-		if callable(label):
-			label = label()
-
 		if label is not None and metric in ['abs2','real']:
+			if callable(label):
+				label = label()
 			label = conjugate(label)
 
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
@@ -3450,10 +3439,9 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	
 	elif (label is not None):
 
-		if callable(label):
-			label = label()
-
 		if label is not None and metric in ['abs2','real']:
+			if callable(label):
+				label = label()
 			label = conjugate(label)	
 
 		def func(*operands,func=func,label=label):
@@ -6672,7 +6660,7 @@ def copier(key,value,_copy):
 	if ((not _copy) or (isinstance(_copy,dict) and (not _copy.get(key)))):
 		return value
 	else:
-		return copy.deepcopy(value)
+		return copy(value)
 
 def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 	'''
@@ -6691,7 +6679,7 @@ def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 		'''
 		Get lists of values for each group of keys in _groups
 		'''
-		_groups = copy.deepcopy(_groups)
+		_groups = copy(_groups)
 		if _groups is not None:
 			inds = [[keys.index(k) for k in g if k in keys] for g in _groups]
 		else:

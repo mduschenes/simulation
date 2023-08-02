@@ -191,7 +191,7 @@ def test_model(path,tol):
 		assert allclose(objH,objD), "Incorrect model(conj=True) != conj(model())"
 
 
-	if model.state() is None and model.unitary:
+	if state() is None and model.unitary:
 
 		m,d,p = model.M,len(model),model.P
 		identity = model.identity()
@@ -452,8 +452,8 @@ def test_initialization(path,tol):
 	def copier(model,metric,state,label):
 
 		copy = Dictionary(
-			model=Dictionary(func=model.__call__,data=model(),state=model.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
-			metric=Dictionary(func=metric.__call__,data=metric(model()),state=metric.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=metric.info,hermitian=label.hermitian,unitary=label.unitary),
+			model=Dictionary(func=model.__call__,data=model(model.parameters()),state=state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
+			metric=Dictionary(func=metric.__call__,data=metric(model(model.parameters())),state=metric.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=metric.info,hermitian=label.hermitian,unitary=label.unitary),
 			label=Dictionary(func=label.__call__,data=label(state=state()),state=state,info=label.info,hermitian=label.hermitian,unitary=label.unitary),
 			state=Dictionary(func=state.__call__,data=state(),state=state,info=state.info,hermitian=state.hermitian,unitary=state.unitary),
 			)
@@ -463,7 +463,7 @@ def test_initialization(path,tol):
 	copy = copier(model,metric,state,label)
 
 	
-	defaults = Dictionary(state=model.state,data={i: model.data[i].data for i in model.data if (not model.data[i].unitary)},label=metric.label)
+	defaults = Dictionary(state=state,data={i: model.data[i].data for i in model.data if (not model.data[i].unitary)},label=metric.label)
 
 
 	tmp = Dictionary(state=False,data={i: model.data[i].data if (model.data[i].unitary) else False for i in model.data},label=False)
@@ -528,7 +528,7 @@ def test_initialization(path,tol):
 
 	UpsiU = copy.model.data
 	U = tmp.model.data
-	psi = copy.model.state()
+	psi = copy.state()
 	K = copy.model.noise[-1]()
 	VpsiV = copy.label.data
 	V = tmp.label.data
@@ -596,7 +596,7 @@ def test_hessian(path,tol):
 	eigs = eigs/max(1,maximum(eigs)) if eigs is not None else None
 	rank = nonzero(eigs,eps=50) if eigs is not None else None
 
-	print(model.state.ndim,rank,eigs)
+	print(state.ndim,rank,eigs)
 
 	print('Passed')
 
@@ -693,7 +693,7 @@ def check_fisher(path,tol):
 			indices = array([indices.get(i,-1) for i in range(M)])
 			
 			func = function(model)
-			state = model.state()
+			state = state()
 			data = trotter([jit(model.data[i]) for i in model.data],P)
 			grads = trotter([jit(model.data[i].grad) for i in model.data],P)
 
@@ -736,7 +736,7 @@ def check_fisher(path,tol):
 
 		func = function(model)
 		grad = gradient(model)
-		state = dot(func,model.state())
+		state = dot(func,state())
 		parameters = model.parameters()
 		G,dtype = parameters.size,parameters.dtype
 

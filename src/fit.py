@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,warnings,copy,traceback
+import os,sys,itertools,warnings,traceback
 
 import matplotlib.pyplot as plt
 

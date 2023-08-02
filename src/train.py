@@ -87,7 +87,6 @@ def train(hyperparameters):
 		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 		callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
 
-
 		if hyperparameters.boolean.load:
 			model.load()
 
@@ -95,15 +94,17 @@ def train(hyperparameters):
 
 			parameters = model.parameters()
 			func = model.parameters.constraints
+			arguments = ()
+			keywords = {}
 			
 			label.__initialize__(state=state)
 			model.__initialize__(state=state)
 
-			metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system)
+			metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparams,system=system)
 			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
-			callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
+			callback = Callback(model,func=func,callback=callback,arguments=arguments,keywords=keywords,metric=metric,hyperparameters=hyperparams,system=system)
 
-			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system)
+			optimizer = Optimizer(func=func,arguments=arguments,keywords=keywords,callback=callback,hyperparameters=hyperparams,system=system)
 
 			parameters = optimizer(parameters)
 

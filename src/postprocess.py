@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools,functools
-from copy import deepcopy
 from functools import partial,wraps
 import traceback
 
@@ -16,7 +15,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser
+from src.utils import argparser,copy
 from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig 
 from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,allclose,scinotation,uncertainty_propagation,exp,exp10,log,log10,sqrt
 from src.utils import is_naninf
@@ -632,7 +631,7 @@ def postprocess(path,**kwargs):
 								others.append(_other)
 
 							fig,ax = None,None
-							settings = deepcopy(defaults[key[0]])
+							settings = copy(defaults[key[0]])
 							options = {
 								'fig':{
 									'savefig':{
@@ -792,7 +791,7 @@ def postprocess(path,**kwargs):
 
 
 							fig,ax = None,None
-							settings = deepcopy(defaults[name])
+							settings = copy(defaults[name])
 
 							options = {
 								'fig':{
@@ -902,12 +901,12 @@ def postprocess(path,**kwargs):
 					params = [parameters,*rand(shape=(n,*shape),bounds=bounds,key=seed,random=random)]
 
 					fig,ax = None,None
-					settings = {i: deepcopy(defaults[name]) for i in range(m)}
+					settings = {i: copy(defaults[name]) for i in range(m)}
 
 					for i in range(m):
 
 						func = funcs[i]
-						options = deepcopy(defaults[name])
+						options = copy(defaults[name])
 
 						for p,parameters in enumerate(params):
 

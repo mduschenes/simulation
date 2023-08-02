@@ -2,7 +2,7 @@
 
 # Import python modules
 import os,sys,warnings,itertools,re
-from copy import deepcopy
+from copy import deepcopy as copy
 import traceback
 
 import numpy as np
@@ -184,7 +184,7 @@ def copier(key,value,copy):
 	if ((not copy) or (isinstance(copy,dict) and (not copy.get(key)))):
 		return value
 	else:
-		return deepcopy(value)
+		return copy(value)
 
 
 
@@ -473,7 +473,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 		'''
 		Get lists of values for each group of keys in groups
 		'''
-		groups = deepcopy(groups)
+		groups = copy(groups)
 		if groups is not None:
 			inds = [[keys.index(k) for k in g if k in keys] for g in groups]
 		else:

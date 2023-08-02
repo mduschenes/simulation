@@ -6,8 +6,6 @@ Miscellaneous utility functions (for processing, plotting)
 
 # Import python modules
 import os,sys,itertools,warnings,traceback
-from copy import deepcopy
-from functools import partial,wraps
 import numpy as np
 import scipy as sp
 import scipy.stats

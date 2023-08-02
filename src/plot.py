@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,copy,warnings,itertools,inspect,datetime
+import os,sys,warnings,itertools,inspect,datetime
 import traceback
 from copy import deepcopy
 from math import prod

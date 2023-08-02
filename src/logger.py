@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools,functools,datetime,shutil,traceback
-from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
 import atexit

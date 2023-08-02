@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys
-from copy import deepcopy
 from functools import partial,wraps
 import itertools
 
@@ -75,11 +74,13 @@ class Parameter(System):
 
 		return
 
-	def __call__(self,parameters=None):
+	def __call__(self,parameters=None,*args,**kwargs):
 		'''
 		Class data
 		Args:
 			parameters (array): parameters
+			args (iterable[object]): Positional arguments for function
+			kwargs (dict[str,object]): Keyword arguments for function	
 		Returns:
 			parameters (array): parameters
 		'''
@@ -89,22 +90,24 @@ class Parameter(System):
 
 		parameters = parameters.reshape(-1,*self.shape[1:])
 		
-		parameters = self.wrapper(self.func(parameters))
+		parameters = self.wrapper(self.func(parameters,*args,**kwargs))
 
 		return parameters	
 
-	def constraints(self,parameters=None):
+	def constraints(self,parameters=None,*args,**kwargs):
 		'''
 		Class constraints
 		Args:
 			parameters (array): parameters
+			args (iterable[object]): Positional arguments for function
+			kwargs (dict[str,object]): Keyword arguments for function	
 		Returns:
 			constraints (array): constraints
 		'''
 
 		parameters = parameters.reshape(-1,*self.shape[1:])
 
-		constraints = self.constraint(parameters)
+		constraints = self.constraint(parameters,*args,**kwargs)
 
 		return constraints
 
@@ -309,27 +312,27 @@ class Parameter(System):
 
 			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 		
-				def func(parameters):
+				def func(parameters,*args,**kwargs):
 					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
 					
 			elif self.method in ['bounded']:
 
-				def func(parameters):
+				def func(parameters,*args,**kwargs):
 					return self.parameters*bound(parameters[self.slices])
 
 			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
 		
-				def func(parameters):
+				def func(parameters,*args,**kwargs):
 					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
 
 			elif self.method in ['constrained']:					
 		
-				def func(parameters):
+				def func(parameters,*args,**kwargs):
 					return self.parameters*bound(parameters)
 
 			elif self.method in ['coupled'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
 		
-				def func(parameters):
+				def func(parameters,*args,**kwargs):
 					return self.parameters*bound((
 						(self.kwargs['coefficients'][0]*parameters[self.slices][:self.slices.size//2])*
 						cos(self.kwargs['coefficients'][1]*parameters[self.slices][self.slices.size//2:][None,...] + self.kwargs['shift'][...,None,None])
@@ -337,16 +340,16 @@ class Parameter(System):
 
 			elif self.method in ['coupled']:					
 		
-				def func(parameters):
+				def func(parameters,*args,**kwargs):
 					return self.parameters*bound(parameters)
 
 			elif self.method in ['unconstrained']:					
 				
-				def func(parameters):
+				def func(parameters,*args,**kwargs):
 					return self.parameters*parameters[self.slices]
 
 			elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
-				def func(parameters):
+				def func(parameters,*args,**kwargs):
 					return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
 
 			else:
@@ -361,7 +364,7 @@ class Parameter(System):
 				func = load(func)
 
 				if func is None:
-					def func(parameters):
+					def func(parameters,*args,**kwargs):
 						return self.parameters*parameters[self.slices]
 				else:
 					func = partial(func,self=self)
@@ -369,7 +372,7 @@ class Parameter(System):
 
 			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
 			
-				def constraint(parameters):
+				def constraint(parameters,*args,**kwargs):
 					return self.kwargs['lambda']*sum(
 						((parameters[self.kwargs['constant'][i]['indices']] - 
 						  self.kwargs['constant'][i]['values'])**2).sum() 
@@ -377,7 +380,7 @@ class Parameter(System):
 
 			elif self.method in ['coupled'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
 			
-				def constraint(parameters):
+				def constraint(parameters,*args,**kwargs):
 					return self.kwargs['lambda']*sum(
 						((parameters[self.kwargs['constant'][i]['indices']] - 
 						  self.kwargs['constant'][i]['values'])**2).sum() 
@@ -385,7 +388,7 @@ class Parameter(System):
 
 			elif self.method in ['unconstrained']:
 
-					def constraint(parameters):
+					def constraint(parameters,*args,**kwargs):
 						return self.kwargs['default']
 				
 			else:
@@ -401,7 +404,7 @@ class Parameter(System):
 
 				if constraint is None:
 			
-					def constraint(parameters):
+					def constraint(parameters,*args,**kwargs):
 						return self.kwargs['default']
 
 				else:
@@ -409,11 +412,11 @@ class Parameter(System):
 
 		else:
 		
-			def func(parameters):
+			def func(parameters,*args,**kwargs):
 				return self.parameters*self.data[self.slices]
 
 			
-			def constraint(parameters):
+			def constraint(parameters,*args,**kwargs):
 				return self.kwargs['default']
 
 
@@ -506,11 +509,13 @@ class Parameters(System):
 
 		return
 
-	def __call__(self,parameters=None):
+	def __call__(self,parameters=None,*args,**kwargs):
 		'''
 		Class data
 		Args:
 			parameters (array): parameters
+			args (iterable[object]): Positional arguments for function
+			kwargs (dict[str,object]): Keyword arguments for function	
 		Returns:
 			parameters (array,dict): parameters
 		'''
@@ -518,20 +523,22 @@ class Parameters(System):
 		if parameters is None:
 			return self.data
 
-		parameters = self.wrapper(self.func(parameters)[self.sort])
+		parameters = self.wrapper(self.func(parameters,*args,**kwargs)[self.sort])
 
 		return parameters
 
-	def constraints(self,parameters=None):
+	def constraints(self,parameters=None,*args,**kwargs):
 		'''
 		Class constraints
 		Args:
 			parameters (array): parameters
+			args (iterable[object]): Positional arguments for function
+			kwargs (dict[str,object]): Keyword arguments for function				
 		Returns:
 			constraints (array): constraints
 		'''
 
-		constraints = self.constraint(parameters)
+		constraints = self.constraint(parameters,*args,**kwargs)
 
 		return constraints
 
@@ -627,11 +634,11 @@ class Parameters(System):
 			func = self[parameter].constraints
 			constraints.append(func)
 
-		def func(parameters,slices=slices,funcs=funcs,dtype=dtype):
-			return concatenate([func(slicing(parameters,*i)) for i,func in zip(slices,funcs)])
+		def func(parameters,*args,slices=slices,funcs=funcs,dtype=dtype,**kwargs):
+			return concatenate([func(slicing(parameters,*i),*args,**kwargs) for i,func in zip(slices,funcs)])
 
-		def constraint(parameters,slices=slices,funcs=constraints,dtype=dtype):
-			return addition(array([func(slicing(parameters,*i)) for i,func in zip(slices,funcs)]))
+		def constraint(parameters,*args,slices=slices,funcs=constraints,dtype=dtype,**kwargs):
+			return addition(array([func(slicing(parameters,*i),*args,**kwargs) for i,func in zip(slices,funcs)]))
 
 		def wrapper(parameters,*args,**kwargs):
 			return parameters

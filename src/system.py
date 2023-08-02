@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools,functools,datetime,shutil,traceback
-from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
 import atexit
@@ -26,7 +25,7 @@ from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_rea
 from src.utils import itg,dbl,flt,delim,Null,null,scalars,arrays
 
 from src.iterables import getter,setter
-from src.io import join,split,copy,rm,exists
+from src.io import join,split,rm,exists
 from src.logger import Logger
 
 
