@@ -2,7 +2,7 @@
 
 # Import python modules
 import os,sys,warnings,itertools,re
-from copy import deepcopy as copy
+from copy import deepcopy
 import traceback
 
 import numpy as np
@@ -184,7 +184,7 @@ def copier(key,value,copy):
 	if ((not copy) or (isinstance(copy,dict) and (not copy.get(key)))):
 		return value
 	else:
-		return copy(value)
+		return deepcopy(value)
 
 
 
@@ -437,13 +437,12 @@ def permutations(*iterables,repeat=None):
 	'''
 	Get product of permutations of iterables
 	Args:
-		iterables (iterable[iterables],iterable[int]): Iterables to permute, or iterable of int to get all permutations of range(int)
+		iterables (iterable,int): Iterables to permute, or iterable of int to get all permutations of range(int)
 	Returns:
 		iterables (generator[tuple]): Generator of tuples of all permutations of iterables
 	'''
 	
-	if all(isinstance(i,int) for i in iterables):
-		iterables = (range(i) for i in iterables)
+	iterables = (range(i) if isinstance(i,int) else i for i in iterables)
 	
 	if repeat is None:
 		repeat = 1
@@ -473,7 +472,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 		'''
 		Get lists of values for each group of keys in groups
 		'''
-		groups = copy(groups)
+		groups = deepcopy(groups)
 		if groups is not None:
 			inds = [[keys.index(k) for k in g if k in keys] for g in groups]
 		else:
