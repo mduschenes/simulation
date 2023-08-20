@@ -7701,7 +7701,9 @@ def initialize(data,shape,dtype=None,**kwargs):
 	ndim = data.ndim
 	dtype = data.dtype
 
-	if isinstance(initialization,dict):
+	if isinstance(data,arrays):
+		pass
+	elif isinstance(initialization,dict):
 		if initialization['method'] in ['interpolation']:
 			
 			# Data are initialized as interpolated random values between bounds
