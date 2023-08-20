@@ -120,6 +120,8 @@ class Parameter(System):
 		self.size = self.data.size if self.data is not None else None
 		self.ndim = self.data.ndim if self.data is not None else None
 
+		self.parameters = self.parameters if self.parameters is not None else 1
+
 		self.string = self.string if self.string is not None else None
 		self.variable = self.variable if self.variable is not None else None
 		self.method = self.method if self.method is not None else None
@@ -413,13 +415,19 @@ class Parameter(System):
 		return
 
 	def __str__(self):
-		return str(self.string)
+		if self.string is None:
+			string = self.__class__.__name__
+		else:
+			string = str(self.string)
+		return string 
 
 
 class Parameters(System):
 
 	defaults = {}
 	data = {}
+	parameters = None
+	indices = {}
 
 	def __init__(self,parameters=None,system=None,**kwargs):
 		'''
@@ -517,7 +525,17 @@ class Parameters(System):
 				for group in data
 				for parameter in data[group].indices}
 
+		parameters = {self[parameter].indices: self[parameter].parameters for group in {self[parameter].group for parameter in self} for parameter in self if self[parameter].group == group}
+		parameters = array([parameters[indices] for indices in parameters])
+		
+		indices = {parameter:data[parameter].indices for parameter in data}
+
 		self.data = data
+
+		self.indices = indices
+
+		self.parameters = parameters
+
 
 		return
 
@@ -532,11 +550,9 @@ class Parameters(System):
 			parameters (array): parameters
 		'''
 		if parameters is None:
-			parameters = {self[parameter].group for parameter in self}
-			parameters = {self[parameter].indices: self[parameter].parameters for group in parameters for parameter in self if self[parameter].group == group}
-			parameters = array([parameters[indices] for indices in parameters])
-
-		return parameters
+			return self.parameters
+		else:
+			return parameters
 
 	def __iter__(self):
 		return self.__iterdata__()

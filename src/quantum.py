@@ -513,6 +513,7 @@ class Object(System):
 		self.conj = conj
 		self.indices = indices
 
+		print(self,self.parameters)
 		do = not (self.parameters() is False)
 
 		if (do) and (((self.data is not None) or (self.operator is not None))):
@@ -1255,7 +1256,7 @@ class Noise(Object):
 			if self.parameters is None:
 				self.parameters = 0
 
-			do = ((self.parameters() is not None) and (self.parameters() is not False) and (not instance(self.parameters(),dict)))
+			do = ((self.parameters() is not None) and (self.parameters() is not False) and (not isinstance(self.parameters(),dict)))
 
 			if not do:
 				self.data = None
@@ -1606,11 +1607,11 @@ class Operators(Object):
 		parameters = {i:self.data[i].parameters for i in self.data if self.data[i]() is not None} if parameters is None else parameters
 		parameters = Parameters(parameters=parameters)
 
+		self.parameters = parameters
+
 		# Set data
-		for i in self.data:
-			state = self.state
-			indices = paramteters[i].indices
-			self.data[i].__initialize__(parameters=parameters[i].parameters,state=state,indices=parameters[i].indices)
+		for i in self.parameters:
+			self.data[i].__initialize__(parameters=self.parameters[i].parameters,indices=self.parameters[i].indices,state=self.state)
 
 		for i in self.data:
 			print(i,self.data[i],self.data[i].parameters())
