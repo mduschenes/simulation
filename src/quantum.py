@@ -78,14 +78,14 @@ Locality = {
 
 def trotter(iterable=None,p=None,shape=None):
 	'''
-	Trotterized iterable for order p or coefficients for order p
+	Trotterized iterable for order p or parameters for order p
 	Args:
 		iterable (iterable): Iterable
 		p (int): Order of trotterization
 		shape (iterable[int]): Shape of iterable
 	Returns:
 		iterables (iterable): Trotterized iterable for order p
-		coefficients (scalar): Coefficients for order p
+		parameters (scalar): parameters for order p
 	'''
 
 	P = 2
@@ -97,8 +97,8 @@ def trotter(iterable=None,p=None,shape=None):
 	
 
 	if iterable is None:
-		coefficients = 1/p if isinstance(p,int) else None
-		return coefficients
+		parameters = 1/p if isinstance(p,int) else None
+		return parameters
 
 	elif not isinstance(iterable,dict):
 		slices = []
@@ -307,17 +307,18 @@ class Object(System):
 	hermitian = None
 	unitary = None
 
+	defaults = dict(			
+		parameters=None,variable=True,
+		shape=None,size=None,ndim=None,
+		samples=None,identity=None,locality=None,
+		state=None,conj=False,coefficients=None,indices=None,
+		func=None,gradient=None,
+		contract=None,gradient_contract=None,
+		)
+
 	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
-		defaults = dict(			
-			parameters=None,variable=True,
-			shape=None,size=None,ndim=None,
-			samples=None,identity=None,locality=None,
-			state=None,conj=False,coefficients=None,func=None,gradient=None,
-			contract=None,gradient_contract=None,
-			)
-
-		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,self.defaults,delimiter=delim,func=False)
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -434,6 +435,8 @@ class Object(System):
 		self.system = system if system is not None else None
 
 		self.locality = max(locality if locality is not None else 0,len(self.site) if self.site is not None else 0)
+		self.coefficients = self.coefficients if self.coefficients is not None else 1
+		self.indices = self.indices if self.indices is not None else None
 
 		self.N = N
 		self.D = D
@@ -443,6 +446,8 @@ class Object(System):
 		self.size = size
 		self.ndim = ndim
 		self.dtype = dtype
+
+		self.__initialize__()
 
 		self.info()
 
@@ -461,7 +466,7 @@ class Object(System):
 
 		return
 
-	def __initialize__(self,parameters=None,data=None,state=None,conj=False):
+	def __initialize__(self,parameters=None,data=None,state=None,conj=False,indices=None):
 		'''
 		Initialize operator
 		Args:
@@ -469,6 +474,7 @@ class Object(System):
 			data (array): data
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters
 			conj (bool): conjugate
+			indices (array): Indices of parameters
 		'''
 
 		if parameters is None:
@@ -477,36 +483,13 @@ class Object(System):
 			parameters = False
 			data = False
 
+		defaults = {}
+		parameters = dict(data=parameters,indices=indices) if not isinstance(parameters,dict) else parameters
+		setter(parameters,dict(N=self.N,D=self.D,variable=self.variable,system=self.system),delimiter=delim,func=True)
+		setter(parameters,defaults,delimiter=delim,func=False)
+		setter(parameters,self.parameters,delimiter=delim,func=False)
 
-		if isinstance(parameters,dict):
-			defaults = {**{attr: getattr(self,attr) for attr in self if attr not in Parameter.defaults},**dict(system=self.system)}
-			setter(parameters,defaults,delimiter=delim,func=False)
-
-			parameters = Parameter(**parameters)
-
-			print(parameters())
-			print(parameters.constraints())
-
-			print()
-			parameters.__initialize__()
-
-			print(parameters.shape)
-			print(parameters())
-			print(parameters.constraints())
-
-			print()
-			parameters.__initialize__()
-
-			print(parameters.shape)
-			print(parameters())
-			print(parameters.constraints())
-			
-			exit()
-
-		if not callable(parameters):
-
-			def parameters(parameters=parameters,*args,**kwargs):
-				return parameters
+		parameters = Parameter(**parameters)
 
 		if data is None:
 			data = self.data
@@ -521,9 +504,6 @@ class Object(System):
 			state = True
 		elif state is False:
 			state = False
-		elif callable(state):
-			state = state()
-
 		if conj is None:
 			conj = False
 
@@ -531,6 +511,7 @@ class Object(System):
 		self.data = data
 		self.state = state
 		self.conj = conj
+		self.indices = indices
 
 		do = not (self.parameters() is False)
 
@@ -547,11 +528,11 @@ class Object(System):
 		elif self.operator is None:
 			self.data = None
 		elif isinstance(self.operator,str):
-			self.data = tensorprod([basis.get(self.operator)(D=self.D,dtype=self.dtype) if i in self.site else basis.get(self.default)(D=self.D,dtype=self.dtype) for i in range(self.N)]) if self.operator in basis else None
+			self.data = tensorprod([self.basis.get(self.operator)(D=self.D,dtype=self.dtype) if i in self.site else self.basis.get(self.default)(D=self.D,dtype=self.dtype) for i in range(self.N)]) if self.operator in self.basis else None
 		elif self.operator is not None:
-			self.data = tensorprod([basis.get(i)(D=self.D,dtype=self.dtype) for i in self.operator]) if all(i in basis for i in self.operator) else None
+			self.data = tensorprod([self.basis.get(i)(D=self.D,dtype=self.dtype) for i in self.operator]) if all(i in self.basis for i in self.operator) else None
 
-		self.identity = tensorprod([basis.get(self.default)(D=self.D,dtype=self.dtype) for i in range(self.N)]) if (self.default in basis) else None
+		self.identity = tensorprod([self.basis.get(self.default)(D=self.D,dtype=self.dtype) for i in range(self.N)]) if (self.default in self.basis) else None
 		
 		if (self.samples is not None) and isinstance(self.data,arrays) and (self.ndim is not None) and (self.data.ndim>self.ndim):
 			if isinstance(self.samples,int) and (self.samples > 0):
@@ -595,9 +576,11 @@ class Object(System):
 
 			self.gradient_contract = gradient_contract	
 
-
-		self.contract = contraction(data,state)
-		self.gradient_contract = gradient_contraction(data,state)
+		if isinstance(self.data,arrays):
+			data = self.data
+			state = self.state() if callable(self.state) else self.state
+			self.contract = contraction(data,state)
+			self.gradient_contract = gradient_contraction(data,state)
 
 		self.shape = data.shape if isinstance(data,arrays) else None
 		self.size = data.size if isinstance(data,arrays) else None
@@ -911,22 +894,16 @@ class Pauli(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
+		self.coefficients *= pi*(1-2*self.conj)
+
 		def func(parameters=None,state=None):
-			parameters = self.parameters(parameters)			
-			coefficients = (1-2*self.conj)*self.coefficients			
-			return cos(coefficients*parameters)*self.identity + -1j*sin(coefficients*parameters)*self.data
+			parameters = self.coefficients*self.parameters(parameters)			
+			return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 		def gradient(parameters=None,state=None):
-			parameters = self.parameters(parameters)
-			coefficients = (1-2*self.conj)*self.coefficients			
-			return coefficients*(-sin(coefficients*parameters)*self.identity + -1j*cos(coefficients*parameters)*self.data)
+			parameters = self.coefficients*self.parameters(parameters)
+			return self.coefficients*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
-		if self.parameters() is None:
-			
-			self.parameters = 1
-
-		if self.coefficients is None:
-			self.coefficients = pi
 
 		data = self.data if data is None else data
 
@@ -1251,14 +1228,10 @@ class Noise(Object):
 	hermitian = None
 	unitary = None
 
+
 	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
-		defaults = dict(			
-			shape=None,size=None,ndim=None,
-			samples=None,identity=None,locality=None,index=None
-			)
-
-		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,self.defaults,delimiter=delim,func=False)
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 
@@ -1572,10 +1545,9 @@ class Operators(Object):
 		if index == -1:
 			index = len(self)
 
-		defaults = dict(N=self.N,D=self.D,M=self.M,system=self.system)
-
+		defaults = {}
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)}
-
+		setter(kwargs,dict(N=self.N,D=self.D,d=self.d,L=self.L,delta=self.delta,M=self.M,T=self.T,tau=self.tau,P=self.P,system=self.system),delimiter=delim,func=True)
 		setter(kwargs,defaults,func=False)
 
 		data = Operator(data=data,operator=operator,site=site,string=string,**kwargs)
@@ -1584,13 +1556,15 @@ class Operators(Object):
 
 		return
 
-	def __initialize__(self,data=None,state=None,conj=False):
+	def __initialize__(self,parameters=None,data=None,state=None,conj=False,indices=None):
 		''' 
 		Setup class functions
 		Args:
+			parameters (dict,array,Parameters): parameters of class
 			data (bool,dict): data of class
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters
 			conj (bool): conjugate
+			indices (array): Indices of parameters
 		'''
 
 		objs = {'state':state}
@@ -1629,11 +1603,14 @@ class Operators(Object):
 			self.data[i].__initialize__(data=data[i])
 
 		# Set parameters
+		parameters = {i:self.data[i].parameters for i in self.data if self.data[i]() is not None} if parameters is None else parameters
+		parameters = Parameters(parameters=parameters)
 
+		# Set data
 		for i in self.data:
-			parameters = self.parameters[self.parameters.instance[i]]
-			state = self.state()
-			self.data[i].__initialize__(parameters=parameters,state=state)
+			state = self.state
+			indices = paramteters[i].indices
+			self.data[i].__initialize__(parameters=parameters[i].parameters,state=state,indices=parameters[i].indices)
 
 		for i in self.data:
 			print(i,self.data[i],self.data[i].parameters())
@@ -1851,7 +1828,6 @@ class Operators(Object):
 
 		coefficients = self.coefficients[indices]
 
-		# grad = coefficients*self.gradient_analytical(parameters=parameters,state=state)
 		grad = coefficients*self.gradient_analytical(parameters=parameters)
 
 		return grad

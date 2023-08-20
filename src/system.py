@@ -54,7 +54,7 @@ class Dict(Dictionary):
 				kwargs.update(arg)
 
 		for key in kwargs:
-			if isinstance(kwargs[key],dict):
+			if isinstance(kwargs[key],dict) and all(isinstance(attr,str) for attr in kwargs[key]):
 				kwargs[key] = Dict(kwargs[key])
 
 		super().__init__(**kwargs)

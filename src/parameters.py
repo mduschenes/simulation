@@ -27,7 +27,7 @@ class Parameter(System):
 
 	defaults = dict(
 			string=None,variable=None,method=None,
-			locality=None,bounds=None,attributes=None,axis=None,
+			local=None,group=None,bounds=None,attributes=None,axis=None,
 			parameters=None,
 			seed=None,random=None,initialization=None,constants=None,
 			indices=None,func=None,constraint=None,
@@ -43,7 +43,8 @@ class Parameter(System):
 			string (str): Name of parameter
 			variable (bool): Parameter is variable or constant
 			method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded','time']
-			locality (str,iterable[str],dict[iterable,str]): locality of parameter, allowed strings in ['local','global']
+			group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping			
+			local (bool,dict[iterable,bool]): locality of parameter
 			bounds (iterable[object]): Bounds of parameters
 			attributes (iterable[str]): Attributes for additional dimensions of parameter
 			axis (int,iterable[int]): Axis of input parameter data to insert into class data
@@ -68,11 +69,13 @@ class Parameter(System):
 
 		self.__setup__()
 
+		self.__initialize__()
+
 		return
 
 	def __call__(self,parameters=None,*args,**kwargs):
 		'''
-		Class data
+		Class parameters
 		Args:
 			parameters (array): parameters
 			args (iterable[object]): Positional arguments for function
@@ -120,7 +123,8 @@ class Parameter(System):
 		self.string = self.string if self.string is not None else None
 		self.variable = self.variable if self.variable is not None else None
 		self.method = self.method if self.method is not None else None
-		self.locality = self.locality if self.locality is not None else None
+		self.group = (*((*group,) if not isinstance(group,str) else (group,) for group in self.group),)  if self.group is not None else ()		
+		self.local = self.local if isinstance(self.local,dict) else {group:self.local for group in self.group}
 		self.attributes = [attr for attr in self.attributes if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.attributes is not None else ()
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
 
@@ -282,7 +286,7 @@ class Parameter(System):
 		else:
 
 			if self.variable:
-				
+
 				if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 			
 					def func(parameters,*args,**kwargs):
@@ -414,21 +418,12 @@ class Parameter(System):
 
 class Parameters(System):
 
-	__data__ = {}
+	defaults = {}
+	data = {}
 
-	defaults = dict(
-			string=None,variable=None,method=None,
-			group=None,locality=None,bounds=None,attributes=None,axis=None,
-			parameters=None,
-			seed=None,random=None,initialization=None,constants=None,
-			indices=None,slices=None,sort=None,instance=None,func=None,constraint=None,
-			shape=None,size=None,ndim=None,dtype=None,			
-			args=(),kwargs={}
-			)
-
-	def __init__(self,data=None,model=None,system=None,**kwargs):
+	def __init__(self,parameters=None,system=None,**kwargs):
 		'''
-		Initialize data of parameters
+		Initialize structure of parameters
 
 		Parameters are split into groups with names [parameter], and can be accessed as 
 		attributes Parameters.parameter, or items Parameters[parameter],
@@ -438,20 +433,20 @@ class Parameters(System):
 		i) 		parameters array of size (G*P*D),
 					for G groups of P parameters, each of dimension D, 
 					for variable parameter groups
-					P,D may be group dependent, and depend on Parameter.locality, Parameter.model and Parameter.attributes 
+					P,D may be group dependent, and depend on Parameter.local, Parameter.model and Parameter.attributes 
 		ii) 	parameters for each group are sliced with parameter slices (slice(P*D)) and reshaped into shape (P,D)
 		iii) 	parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
 		iv) 	parameters for all groups are concatenated to [parameter_i = Parameters[slices_i]][sort]
 					with slices Parameters.slices = [slices], and sorted with sort Parameters.sort = [sort]
 		
 		Args:
-			data (dict): Dictionary of data corresponding to parameters groups, with dictionary values with properties:
+			parameters(dict): Dictionary of Parameters instances, with class attributes
 				data (iterable): data of parameter
 				string (str): Name of parameter
 				variable (bool): Parameter is variable or constant
 				method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded','time']
 				group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
-				locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['local','global']
+				local (bool,dict[iterable,bool]): locality of parameter
 				bounds (iterable[object]): Bounds of parameters
 				attributes (iterable[str]): Model attributes for additional dimensions of parameter
 				axis (int,iterable[int]): Axis of input parameter data to insert into class data
@@ -464,228 +459,117 @@ class Parameters(System):
 				system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 				model (object): Model with additional attributes for initialization
 				kwargs (dict): Additional system keyword arguments
-			model (object): Model with additional attributes for initialization
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		data = data if data is not None else None
-		__data__ = data if data is not None else {}
-
-		setter(kwargs,dict(data=data,model=model,system=system,__data__=__data__),delimiter=delim,func=False)
-		setter(kwargs,data,delimiter=delim,func=False)
+		setter(kwargs,dict(parameters=parameters,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
-		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,self.defaults,delimiter=delim,func=False)
 		super().__init__(**kwargs)
 
 		self.__setup__()
 
 		return
 
+	def __setup__(self):
+		'''
+		Setup class
+		'''
+
+		data = [group for parameter in self.parameters for group in self.parameters[parameter].group if self.parameters[parameter].variable]
+
+		data = {group:Dict(indices={},slices={},local={},group={},parameters={}) for group in data}
+
+
+		for group in data:
+			
+			parameters = {parameter:i for i,parameter in enumerate(self.parameters) if (self.parameters[parameter].variable) and (self.parameters[parameter].string in group)}
+			size = max((data[group].indices[parameter] for group in data for parameter in data[group].indices),default=-1)+1
+			local = any(self.parameters[parameter].local.get(group) for parameter in parameters)
+
+			data[group].indices = {parameter:parameters[parameter] for i,parameter in enumerate(parameters)}
+			data[group].slices = {parameter:i for i,parameter in enumerate(parameters)}
+			data[group].local = {parameter:local for i,parameter in enumerate(parameters)}
+			data[group].group = {parameter:group for i,parameter in enumerate(parameters)}
+			data[group].parameters = [self.parameters[parameter]() for parameter in parameters]
+			
+			if local:
+				data[group].indices = {parameter: size+i for i,parameter in enumerate(parameters)}
+				data[group].slices = {parameter:i for i,parameter in enumerate(parameters)}
+				data[group].local = {parameter:local for i,parameter in enumerate(parameters)}
+				data[group].group = {parameter:group for i,parameter in enumerate(parameters)}
+				data[group].parameters = array(data[group].parameters)
+			else:
+				data[group].indices = {parameter: size for i,parameter in enumerate(parameters)}
+				data[group].slices = {parameter:slice(None) for i,parameter in enumerate(parameters)}
+				data[group].local = {parameter:local for i,parameter in enumerate(parameters)}
+				data[group].group = {parameter:group for i,parameter in enumerate(parameters)}
+				data[group].parameters = sum(data[group].parameters)/len(data[group].parameters)
+
+		data = {parameter: Dict(
+				indices=data[group].indices[parameter],
+				slices=data[group].slices[parameter],
+				local=data[group].local[parameter],
+				group=data[group].group[parameter],
+				parameters=data[group].parameters[data[group].slices[parameter]]
+				) 
+				for group in data
+				for parameter in data[group].indices}
+
+		self.data = data
+
+		return
+
 	def __call__(self,parameters=None,*args,**kwargs):
 		'''
-		Class data
+		Class parameters
 		Args:
 			parameters (array): parameters
 			args (iterable[object]): Positional arguments for function
 			kwargs (dict[str,object]): Keyword arguments for function	
 		Returns:
-			parameters (array,dict): parameters
-		'''
-
-		if parameters is not None:
-			return self.func(*args,parameters=parameters,**kwargs)
-		else:
-			return self.func(*args,**kwargs)
-
-	def constraints(self,parameters=None,*args,**kwargs):
-		'''
-		Class constraints
-		Args:
 			parameters (array): parameters
-			args (iterable[object]): Positional arguments for function
-			kwargs (dict[str,object]): Keyword arguments for function				
-		Returns:
-			constraints (array): constraints
 		'''
+		if parameters is None:
+			parameters = {self[parameter].group for parameter in self}
+			parameters = {self[parameter].indices: self[parameter].parameters for group in parameters for parameter in self if self[parameter].group == group}
+			parameters = array([parameters[indices] for indices in parameters])
 
-		if parameters is not None:
-			return self.constraint(*args,parameters=parameters,**kwargs)
-		else:
-			return self.constraint(*args,**kwargs)
-
-	def __setup__(self,data=None,model=None):
-		'''
-		Setup attribute
-		Args:
-			data (dict): Dictionary of data corresponding to parameters groups, with dictionary values with properties:
-			model (object): Model with additional attributes for initialization
-		'''
-
-		self.data = data if data is not None else self.data
-		self.model = model if model is not None else self.model
-		self.dtype = datatype(self.dtype)
-		self.__data__ = data if data is not None else self.__data__
-
-		# Set parameters
-		for parameter in list(self):
-			
-			args = {**getattr(self,parameter,{}),**dict(model=self.model,system=self.system)}
-			
-			try:
-				setattr(self,parameter,Parameter(**args))
-			except AssertionError:
-				delattr(self,parameter)
-
-		
-		# Set dtype
-		dtype = datatype(self.dtype)
-
-		# Set slices and sort and indices
-		indices = {}
-		group = []
-		slices = []
-		sort = []
-		instance = []
-		for i,parameter in enumerate(self):
-			if self[parameter].variable:
-				idx = self[parameter].indices
-				grp = self[parameter].group
-				slc = self[parameter].size
-				srt = self[parameter].sort
-				ins = self[parameter].instance
-			else:
-				idx = None
-				grp = self[parameter].group							
-				slc = None
-				srt = self[parameter].sort
-				ins = self[parameter].instance				
-
-			idx = idx if idx is not None else {}
-			grp = tuple(grp)
-			slc = [sum(i[-1] for i in slices),slc] if slc is not None else [0,0]
-			srt = [int(i) for i in srt]
-			ins = [i for i in ins]
-
-			indices.update(idx)
-			group.append(grp)
-			slices.append(slc)
-			sort.extend(srt)
-			instance.append(ins)
-
-		group = group
-		slices = [[*i] for i in slices]
-		sort = array([sort.index(i) for i in sorted(sort)])
-		instance = {i:parameter for parameter in self for i in self[parameter].instance}
-
-		for j,i in enumerate(list(indices)):
-			indices[i] = (
-				max((indices[k][0] for l,k in enumerate(indices) if l < j),default=-1) + ((indices[i].index == 0) or (indices[i].size != 1)),
-				(sum(self[parameter].slices.size for parameter in self if self[parameter].slices is not None),*indices[i].shape[1:])
-				)
-
-		for j,i in enumerate(list(indices)):
-			k,shape = indices.pop(i)
-			for j in (itertools.product(*(range(i) for i in shape[1:])) if prod(shape[1:]) else ((),)):
-				indices[(i,*j)] = (k*max(prod(shape[1:]),1) + to_index(j,shape[1:]),shape)
-		
-		for j,i in enumerate(list(indices)):
-			k,shape = indices.pop(i)
-			indices[to_index(i[::-1],shape[::-1])] = k
-
-
-		# Set func and constraint
-		funcs = []
-		constraints = []
-		for parameter in self:
-
-			func = self[parameter]
-			funcs.append(func)
-
-			func = self[parameter].constraints
-			constraints.append(func)
-
-		def func(parameters,*args,**kwargs):
-			return parameters
-
-		def constraint(parameters,*args,**kwargs):
-			return 0
-
-		# Get data
-		data = []
-		for parameter in self:
-			if self[parameter].variable:
-				continue
-			parameter = self[parameter]()
-			data.extend(parameter)
-
-		data = array(data,dtype=self.dtype).ravel()
-
-		# Get parameters
-		parameters = []
-		for parameter in self:
-			parameter = self[parameter].parameters
-			if parameter.size > 1:
-				parameters.extend(parameter)	
-			else:
-				parameters.append(parameter)	
-
-		parameters = array(parameters,dtype=self.dtype).ravel() if parameters else None
-
-
-		# Set attributes
-		self.data = data
-		self.indices = indices
-		self.slices = slices
-		self.sort = sort
-		self.instance = instance
-		self.group = group
-		self.func = func
-		self.constraint = constraint
-		self.parameters = parameters
-		self.shape = self.data.shape if data is not None else None
-		self.size = self.data.size if data is not None else None
-		self.ndim = self.data.ndim if data is not None else None
-		self.dtype = self.data.dtype if data is not None else None
-
-		return
+		return parameters
 
 	def __iter__(self):
 		return self.__iterdata__()
 
-	def __setattr__(self,key,value):
-		super().__setattr__(key,value)
-		self.__setdata__(key,value)
-		return
+	def __getitem__(self,key):
+		return self.__getdata__(key)
 
 	def __setitem__(self,key,value):
 		super().__setitem__(key,value)
 		self.__setdata__(key,value)
 		return
 
-	def __delattr__(self,key):
-		super().__delattr__(key)
-		self.__deldata__(key)
-		return
-
 	def __len__(self):
-		return self.__data__.__len__()
+		return self.data.__len__()
 
 	def __iterdata__(self):
-		return self.__data__.__iter__()
+		return self.data.__iter__()
+
+	def __getdata__(self,key):
+		return self.data.get(key)
 
 	def __setdata__(self,key,value):
-		if key in self.__data__:
-			self.__data__[key] = value
+		if key in self.data:
+			self.data[key] = value
 		return
 	
 	def __deldata__(self,key):
-		if key in self.__data__:
-			self.__data__.pop(key)
+		if key in self.data:
+			self.data.pop(key)
 		return
 
 	def __str__(self):
-		return ' '.join([str(self.__data__[parameter]) for parameter in self.__data__])
+		return ' '.join([str(self.data[parameter]) for parameter in self.data])
 
 	def info(self,verbose=None):
 		'''
