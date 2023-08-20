@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,copy,ast,operator
-from string import ascii_lowercase as characters
+import os,sys,itertools,ast,operator
+from copy import deepcopy as copy
 from math import prod
 
-from functools import partial,wraps
+from functools import partial,partialmethod,wraps
 from natsort import natsorted
 import argparse
 
@@ -47,6 +47,7 @@ assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
 if BACKEND in ['jax','jax.autograd']:
 	
 	envs = {
+		'JAX_DISABLE_JIT':False,
 		'JAX_PLATFORMS':'cpu',
 		'JAX_PLATFORM_NAME':'cpu',
 		'TF_CPP_MIN_LOG_LEVEL':5
@@ -75,6 +76,8 @@ if BACKEND in ['jax','jax.autograd']:
 	for name in configs:
 		jax.config.update(name,configs[name])
 
+	disp = print
+
 elif BACKEND in ['autograd']:
 
 	import autograd
@@ -82,11 +85,16 @@ elif BACKEND in ['autograd']:
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
 
+	disp = print
+
 elif BACKEND in ['numpy']:
 	import numpy as np
 	import scipy as sp
 	import pandas as pd
 	import scipy.special as spsp
+
+	disp = print
+
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
 pd.set_option('display.max_rows', 500)
@@ -118,6 +126,7 @@ if BACKEND in ['jax','jax.autograd']:
 	itg = np.integer
 	flt = np.float32
 	dbl = np.float64
+	uint = np.uint32
 
 	pi = np.pi
 	e = np.exp(1)
@@ -139,6 +148,7 @@ elif BACKEND in ['autograd']:
 	itg = np.integer
 	flt = np.float32
 	dbl = np.float64
+	uint = np.uint32
 
 	pi = np.pi
 	e = np.exp(1)
@@ -158,6 +168,7 @@ elif BACKEND in ['numpy']:
 	itg = np.integer
 	flt = np.float32
 	dbl = np.float64
+	uint = np.uint32
 
 	pi = np.pi
 	e = np.exp(1)
@@ -1241,7 +1252,7 @@ elif BACKEND in ['numpy']:
 		raise NotImplementedError
 		return
 
-def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
+def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,unitary=None,**kwargs):
 	'''
 	Compute fisher information of function
 	Args:
@@ -1250,6 +1261,8 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		shapes (iterable[tuple[int]]): Shapes of func and grad arrays to compute summation of elements
 		optimize (bool,str,iterable): Contraction type
 		mode (str): Type of gradient, allowed ['grad','finite','shift','fwd','rev'], defaults to 'fwd'
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
 	Returns:
 		fisher (callable): Fisher information of function
 	'''
@@ -1272,9 +1285,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,**kwargs):
 		def fisher(*args,**kwargs):
 			return None
 		return fisher
-
-	hermitian = getattr(func,'hermitian',False)
-	unitary = getattr(func,'unitary',False)
 
 	if hermitian:
 
@@ -1983,14 +1993,14 @@ if BACKEND in ['jax']:
 			seed = onp.random.randint(*bounds)
 
 		if isinstance(seed,(int)):
-			key = generator.PRNGKey(seed)
-			# key = generator.seed(seed)		
+			seed = generator.PRNGKey(seed)
 		else:
-			key = asndarray(seed,dtype=np.uint32)
+			seed = asndarray(seed,dtype=uint)
 
 		if size:
-			key = generator.split(key,num=size)
-			# key = generator.randint(*bounds,size=size)
+			key = spawn(seed,size=size)
+		else:
+			key = seed
 
 		return key
 
@@ -2020,20 +2030,21 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 		if seed is None:
 			seed = generator.randint(*bounds)
 
-		key = seed
-
 		if size:
-			key = generator.randint(*bounds,size=size)
+			key = spawn(seed,size=size)
+		else:
+			key = seed
 
 		return key
 
 if BACKEND in ['jax']:
 
-	def spawn(seed=None,**kwargs):
+	def spawn(seed=None,size=None,**kwargs):
 		'''
 		Generate split prng key
 		Args:
 			seed (int,array): Seed for random number generation or random key for future seeding
+			size(bool,int): Number of splits of random key		
 			kwargs (dict): Additional keyword arguments for seeding
 		Returns:
 			key (key,list[key]): Random key
@@ -2043,17 +2054,26 @@ if BACKEND in ['jax']:
 
 		generator = jax.random
 
-		_,key = generator.split(seed)
+		if seed is None or isinstance(seed,(int)):
+			key = prng(seed)
+		else:
+			key = asndarray(seed,dtype=uint)
+
+		if size:
+			key = generator.split(key,num=size)
+		else:
+			_,key = generator.split(key)
 
 		return key
 
 elif BACKEND in ['jax.autograd','autograd','numpy']:
 
-	def spawn(seed=None,**kwargs):
+	def spawn(seed=None,size=None,**kwargs):
 		'''
 		Generate split prng key
 		Args:
 			seed (int,array): Seed for random number generation or random key for future seeding
+			size(bool,int): Number of splits of random key		
 			kwargs (dict): Additional keyword arguments for seeding
 		Returns:
 			key (key,list[key]): Random key
@@ -2063,7 +2083,15 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 		generator = onp.random
 
-		key = seed
+		if seed is None or isinstance(seed,(int)):
+			key = prng(seed)
+		else:
+			key = seed
+
+		if size:
+			key = generator.randint(*bounds,size=size)
+		else:
+			key = key
 
 		return key
 
@@ -2098,6 +2126,7 @@ if BACKEND in ['jax']:
 		if seed is not None:
 			key = seed
 		
+		_key = key
 		key = prng(key,reset=reset)
 
 		generator = jax.random
@@ -2608,6 +2637,7 @@ def _svd(A,k=None):
 
 	return U,S,V
 
+@jit
 def eig(a,compute_v=False,hermitian=False):
 	'''
 	Compute eigenvalues and eigenvectors
@@ -2631,26 +2661,29 @@ def eig(a,compute_v=False,hermitian=False):
 			_eig = np.linalg.eigvals
 	return _eig(a)
 
-
-def spectrum(func,compute_v=False,hermitian=False):
+@jit
+def schur(a,compute_v=False,output=None):
 	'''
-	Compute eigenvalues and eigenvectors of a function
+	Compute schur decomposition of array
 	Args:
-		func (callable): Function to compute eigenvalues and eigenvectors of shape (...,n,n)
-		compute_v (bool): Compute V eigenvectors in addition to eigenvalues
-		hermitian (bool): Whether array is Hermitian
+		a (array): Array to compute schur decmposition of shape (...,n,n)
+		compute_v (bool): Compute unitary transformation of decomposition
+		output (str): Return real or complex decomposition, allowed strings in ['real','complex']
 	Returns:
-		wrapper (callable): Returns:
-			eigenvalues (array): Array of eigenvalues of shape (...,n)
-			eigenvectors (array): Array of normalized eigenvectors of shape (...,n,n)
+		triangular (array): Array of triangular similar array (...,n,n)
+		unitary (array): Array of unitary transformation of decomposition of shape (...,n,n)
 	'''
+	_schur = sp.linalg.schur
+	output = {True:'complex',False:'real'}[is_complexdtype(a.dtype)] if output is None else output
+	
+	triangular,unitary = _schur(a,outut=output)
 
-	@jit
-	def wrapper(*args,**kwargs):
-		return eig(func(*args,**kwargs),compute_v=compute_v,hermitian=hermitian)
+	if compute_v:
+		return triangular,unitary
+	else:
+		return triangular
 
-	return wrapper
-
+@jit
 def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 	'''
 	Compute singular values of an array
@@ -2715,6 +2748,24 @@ def inv(a):
 	'''
 	return np.linalg.inv(a)
 
+def spectrum(func,compute_v=False,hermitian=False):
+	'''
+	Compute eigenvalues and eigenvectors of a function
+	Args:
+		func (callable): Function to compute eigenvalues and eigenvectors of shape (...,n,n)
+		compute_v (bool): Compute V eigenvectors in addition to eigenvalues
+		hermitian (bool): Whether array is Hermitian
+	Returns:
+		wrapper (callable): Returns:
+			eigenvalues (array): Array of eigenvalues of shape (...,n)
+			eigenvectors (array): Array of normalized eigenvectors of shape (...,n,n)
+	'''
+
+	@jit
+	def wrapper(*args,**kwargs):
+		return eig(func(*args,**kwargs),compute_v=compute_v,hermitian=hermitian)
+
+	return wrapper
 
 @partial(jit,static_argnums=(1,))
 def mean(a,axis=None):
@@ -2729,7 +2780,7 @@ def mean(a,axis=None):
 	return np.mean(a,axis=axis)
 
 @partial(jit,static_argnums=(1,2,))
-def std(a,axis=None,ddof=0):
+def std(a,axis=None,ddof=None):
 	'''
 	Compute std of array along axis
 	Args:
@@ -2743,7 +2794,7 @@ def std(a,axis=None,ddof=0):
 
 
 @partial(jit,static_argnums=(1,2,))
-def sem(a,axis=None,ddof=0):
+def sem(a,axis=None,ddof=None):
 
 	'''
 	Compute standard error of mean
@@ -2775,7 +2826,7 @@ def nanmean(a,axis=None):
 	return np.nanmean(a,axis=axis)
 
 @partial(jit,static_argnums=(1,2,))
-def nanstd(a,axis=None,ddof=0):
+def nanstd(a,axis=None,ddof=None):
 	'''
 	Compute nanstd of array along axis
 	Args:
@@ -2789,7 +2840,7 @@ def nanstd(a,axis=None,ddof=0):
 
 
 @partial(jit,static_argnums=(1,2,))
-def nansem(a,axis=None,ddof=0):
+def nansem(a,axis=None,ddof=None):
 
 	'''
 	Compute nan standard error of mean
@@ -2896,6 +2947,450 @@ def norm2(a,b=None):
 
 	return out
 
+
+
+def contraction(data=None,state=None):
+	'''
+	Contract data and state
+	Args:
+		data (array): Array of data of shape (n,n)
+		state (array,bool): state of shape (n,) or (n,n) or boolean to contract data with itself
+	Returns:
+		func (callable): contracted data and state with signature func(data,state)
+	'''
+
+	def default(data=None,state=None):
+		return data
+
+	subscripts = None
+
+	if data is None:
+
+		if state is None:
+		
+			def func(data,state):
+				return data
+
+		elif state is True:
+
+			def func(data,state):
+				return data
+
+		elif state is False:
+
+			def func(data,state):
+				return data
+
+		elif state.ndim is None:
+			
+			def func(data,state):
+				return data
+
+		elif state.ndim == 1:
+
+			def func(data,state):
+				return data
+
+		elif state.ndim == 2:
+			
+			def func(data,state):
+				return data
+	
+	elif data.ndim == 0:
+
+		if state is None:
+		
+			def func(data,state):
+				return data
+		
+		elif state is True:
+			
+			def func(data,state):
+				return data
+		
+		elif state is False:
+			
+			def func(data,state):
+				return data
+
+		elif state.ndim is None:
+			
+			def func(data,state):
+				return data
+
+		elif state.ndim == 1:
+
+			def func(data,state):
+				return data
+
+		elif state.ndim == 2:
+			
+			def func(data,state):
+				return data
+
+	elif data.ndim == 1:
+		
+		if state is None:
+		
+			def func(data,state):
+				return data
+
+		elif state is True:
+		
+			def func(data,state):
+				return data
+
+		elif state is False:
+		
+			def func(data,state):
+				return data
+
+		elif state.ndim is None:
+			
+			def func(data,state):
+				return data
+
+		elif state.ndim == 1:
+
+			def func(data,state):
+				return data
+
+		elif state.ndim == 2:
+			
+			def func(data,state):
+				return data
+
+	elif data.ndim == 2:
+
+		if state is None:
+
+			def func(data,state):
+				return data
+
+		elif state is True:
+
+			state = data
+
+			subscripts = 'ij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state is False:
+
+			def func(data,state):
+				return data
+
+		elif state.ndim is None:
+			
+			state = data
+
+			subscripts = 'ij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state.ndim == 1:
+			
+			subscripts = 'ij,j->i'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state.ndim == 2:
+			
+			subscripts = 'ij,jk,lk->il'
+			shapes = (data.shape,state.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state):
+				return einsummation(data,state,conjugate(data))
+
+
+	elif data.ndim == 3:
+
+		if state is None:
+			
+			def func(data,state):
+				return data
+
+		elif state is True:
+			
+			state = data
+
+			subscripts = 'uij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state is False:
+
+			def func(data,state):
+				return data
+
+		elif state.ndim is None:
+			
+			state = data
+
+			subscripts = 'uij,ujk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state.ndim == 1:
+			
+			subscripts = 'uij,j->i'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state):
+				return einsummation(data,state)
+
+		elif state.ndim == 2:
+			
+			subscripts = 'uij,jk,ulk->il'
+			shapes = (data.shape,state.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state):
+				return einsummation(data,state,conjugate(data))
+
+	func = jit(func)	
+
+	return func
+
+
+def gradient_contraction(data,state=None):
+	'''
+	Contract grad, data and state
+	Args:
+		data (array): Array of data of shape (n,n)
+		state (array,bool): state of shape (n,) or (n,n) or boolean to contract data with itself
+	Returns:
+		func (callable): contracted data and state with signature func(data,state)
+	'''
+
+	def default(grad=None,data=None,state=None):
+		return grad
+
+	if data is None:
+		
+		if state is None:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is True:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is False:
+		
+			def func(grad=None,data=None,state=None):
+				return grad				
+
+		elif state.ndim is None:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 1:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 2:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+	
+	elif data.ndim == 0:
+
+		if state is None:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is True:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is False:
+		
+			def func(grad=None,data=None,state=None):
+				return grad	
+	
+		elif state.ndim is None:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 1:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 2:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+
+	elif data.ndim == 1:
+		
+		if state is None:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is True:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is False:
+		
+			def func(grad=None,data=None,state=None):
+				return grad	
+	
+		elif state.ndim is None:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 1:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim == 2:
+			
+			def func(grad=None,data=None,state=None):
+				return grad
+
+	elif data.ndim == 2:
+
+		if state is None:
+		
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is True:
+		
+			state = data
+
+			subscripts = 'ij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(grad=None,data=None,state=None):
+				return einsummation(grad,state)
+
+		elif state is False:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state.ndim is None:
+			
+			state = data
+
+			subscripts = 'ij,jk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(grad=None,data=None,state=None):
+				return einsummation(grad,state)
+
+		elif state.ndim == 1:
+
+			subscripts = 'ij,j->i'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(grad=None,data=None,state=None):
+				return einsummation(grad,state)
+
+		elif state.ndim == 2:
+			
+			subscripts = 'ij,jk,lk->il'
+			shapes = (data.shape,state.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(grad=None,data=None,state=None):
+				out = einsummation(grad,state,conjugate(data))
+				return out + dagger(out)
+
+	elif data.ndim == 3:
+
+		if state is None:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+
+		elif state is True:
+			
+			state = data
+
+			subscripts = 'uij,ujk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(grad=None,data=None,state=None):
+				out = einsummation(grad,state)
+				return out + dagger(out)
+
+		elif state is False:
+
+			def func(grad=None,data=None,state=None):
+				return grad
+	
+		elif state.ndim is None:
+			
+			state = data
+
+			subscripts = 'uij,ujk->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+
+			def func(grad=None,data=None,state=None):
+				out = einsummation(grad,state)
+				return out + dagger(out)
+
+
+		elif state.ndim == 1:
+			
+			subscripts = 'uij,j->i'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(grad=None,data=None,state=None):
+				return einsummation(grad,state)
+
+		elif state.ndim == 2:
+			
+			subscripts = 'uij,jk,ulk->il'
+			shapes = (data.shape,state.shape,data.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(grad=None,data=None,state=None):
+				out = einsummation(grad,state,conjugate(data))
+				return out + dagger(out)
+
+	func = jit(func)	
+
+	return func
 
 def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=None):
 	'''
@@ -3064,10 +3559,9 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 
 	if (label is not None) and (weights is not None):
 
-		if callable(label):
-			label = label()
-
-		if metric in ['abs2','real']:
+		if label is not None and metric in ['abs2','real']:
+			if callable(label):
+				label = label()
 			label = conjugate(label)
 
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
@@ -3081,10 +3575,9 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	
 	elif (label is not None):
 
-		if callable(label):
-			label = label()
-
-		if metric in ['abs2','real']:
+		if label is not None and metric in ['abs2','real']:
+			if callable(label):
+				label = label()
 			label = conjugate(label)	
 
 		def func(*operands,func=func,label=label):
@@ -4096,7 +4589,7 @@ def tensordot(a,b,axis=0):
 
 
 @jit
-def kron(a,b):
+def _tensorprod(a,b):
 	'''
 	Tensor (kronecker) product of arrays a and b	
 	Args:
@@ -4119,9 +4612,9 @@ def tensorprod(a):
 	'''
 	out = a[0]
 	for i in range(1,len(a)):
-		out = kron(out,a[i])
+		out = _tensorprod(out,a[i])
 	return out
-	# return forloop(1,len(a),lambda i,out: kron(out,a[i]),a[0])	
+	# return forloop(1,len(a),lambda i,out: _tensorprod(out,a[i]),a[0])	
 
 @jit
 def vtensorprod(a):
@@ -4150,7 +4643,7 @@ def ntensorprod(a,n):
 	for i in range(1,n):
 		out = _tensorpod(out,a)
 	return out
-	# return forloop(1,n,lambda i,out: kron(out,a),a)	
+	# return forloop(1,n,lambda i,out: _tensorprod(out,a),a)	
 
 @jit
 def vntensorprod(a,n):
@@ -4596,60 +5089,6 @@ def trace(a,axis=(0,1)):
 	'''	
 	return np.trace(a,axis1=axis[0],axis2=axis[1])
 
-
-def tr(obj,axis=None,shape=None,size=None):
-    '''
-    Calculate partial trace of object at axis, as per shape
-    Args:
-        obj (array): Array to compute partial trace
-        axis (int,iterable[int]): axis of array to trace over, as per shape
-        shape (iterable[int]): Shape to reshape array for partial trace, or power of size if size is not None
-        size (int,iterable[int]): Base dimensions of each reshaped axis
-    Returns:
-        obj (array): Partially traced object
-    '''
-    
-    if size is not None:
-        if shape is not None:
-            if isinstance(size,int):
-                size = [size for i in shape]
-            shape = [s**i for s,i in zip(size,shape)]
-  
-
-    ndim = obj.ndim
-    shape = shape*ndim
-    
-    if shape is not None:
-        obj = obj.reshape(shape)
-
-    dim = obj.ndim//ndim        
-    shape = obj.shape[:dim]
-        
-    if axis is None:
-        axis = range(dim)
-    elif isinstance(axis,int):
-        axis = [axis]        
-    axis = [dim+i if i<0 else i for i in axis]
-    
-    shape = [prod([shape[i] for i in range(dim) if i not in axis])]*ndim
-    
-    for i in axis:
-        obj = trace(obj,axis=[j*dim+i for j in range(ndim)])
-
-    obj = obj.reshape(shape)
-        
-#     subscripts = [i for i in characters[:dim*ndim]]
-#     for i in axis:
-#         for j in range(ndim-1,0,-1):
-#             subscripts[j*dim+i] = subscripts[i]
-#     subscripts = ''.join(subscripts)
-            
-#     obj = einsum(subscripts,obj)
-    
-#     obj = obj.reshape(shape)
-    
-    return obj
-
 @jit
 def rank(a,tol=None,hermitian=False):
 	'''
@@ -4825,19 +5264,6 @@ def exp(a):
 		out (array): Element-wise exponential of array
 	'''
 	return np.exp(a)
-
-@jit
-def power(a,n):
-	'''
-	Calculate power of array a
-	Args:
-		a (array): Array to power
-		n (int): Power
-	Returns:
-		out (array): Power of array
-	'''
-	return np.linalg.matrix_power(a,n)
-
 
 @jit
 def _expm(x,A,I,n=2):
@@ -5586,7 +6012,6 @@ def uniqueobjs(a,axis=None):
 	'''
 	return onp.unique(a,axis=axis)
 
-
 def reshape(a,shape,order='C'):
 	'''
 	Reshape array to shape, with ordering order
@@ -5750,64 +6175,8 @@ def expand_dims(a,axis):
 	if isinstance(axis,range):
 		axis = list(axis)
 	return np.expand_dims(a,axis)
-	
-def expand(index,basis,init=None):
-	'''
-	Get multiplicative expansion of t copies of p length basis
-	Args:
-		index (iterable[int],iterable[iterable[int]]): Index for basis
-		basis (iterable[array]): p ,d-order operators to expand
-	Returns:
-		operator (array): Expanded basis elements with index
-	'''
-	if init is None:
-		shape = tuple((min((j.shape[i] for j in basis),default=1) for i in range(min((i.ndim for i in basis),default=0))))
-		init = identity(shape)
-	
-	index = [index] if all(isinstance(i,int) for i in index) else index
-	t = len(index)
-	p = len(basis)
 
 
-	operator = None
-	for i in range(t):
-		element = init
-		for j in range(p):
-			element = dot(power(basis[j],index[i][j]),element)
-		if operator is None:
-			operator = element
-		else:
-			operator = tensorprod((operator,element))
-
-	return operator
-
-def expansion(operator,basis,d=None,t=None):
-	'''
-	Expand operator in multiplicative closure of basis, with trace overlap inner product of basis with operator,
-	where basis is assumed to be trace orthogonal.
-	Args:
-		operator (array): Array to expand
-		basis (iterable[array]): p ,d-order operators to expand
-		d (int): Multiplicative order of basis (basis**d = identity)
-		t (int): Number of tensor products of basis to comprise operator
-	Returns:
-		elements (iterable[iterable[iterable[int],array,array]]): Iterable of all pairs (index,coefficient,operators) of coefficients and tensor products of basis operators in expansion
-	'''
-	shape = tuple((min((j.shape[i] for j in basis),default=1) for i in range(min((i.ndim for i in basis),default=0))))
-	d = min(shape) if d is None else d
-	t = 1 if t is None else t
-	p = len(basis)
-	init = identity(shape)
-	elements = []
-	for index in itertools.product(itertools.product(range(d),repeat=p),repeat=t):
-
-		operators = expand(index,basis,init=init)
-		
-		coefficient = trace(dot(dagger(operators),operator))/(d**(t))
-		
-		elements.append([index,coefficient,operators])
-	
-	return elements
 
 def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
 	'''
@@ -6427,7 +6796,7 @@ def copier(key,value,_copy):
 	if ((not _copy) or (isinstance(_copy,dict) and (not _copy.get(key)))):
 		return value
 	else:
-		return copy.deepcopy(value)
+		return copy(value)
 
 def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 	'''
@@ -6446,7 +6815,7 @@ def permute(dictionary,_copy=False,_groups=None,_ordered=True):
 		'''
 		Get lists of values for each group of keys in _groups
 		'''
-		_groups = copy.deepcopy(_groups)
+		_groups = copy(_groups)
 		if _groups is not None:
 			inds = [[keys.index(k) for k in g if k in keys] for g in _groups]
 		else:
@@ -7384,14 +7753,12 @@ def initialize(data,shape,dtype=None,**kwargs):
 
 	return data
 
-
-def projector(i,shape,dtype=None):
+def projector(i,shape):
 	'''
 	Create projector at indices i
 	Args:
 		i (iterable[int],int): Indices of projector
 		shape (iterable[int],int): Shape of projector
-		dtype (datatype): Datatype of operator
 	Returns:
 		projector (array): array of projector
 	'''
@@ -7401,13 +7768,11 @@ def projector(i,shape,dtype=None):
 		shape = (shape,shape)
 	i = tuple(i)
 	shape = tuple(shape)
-	dtype = int if dtype is None else dtype
 
-	projector = zeros(shape,dtype=dtype)
+	projector = zeros(shape,dtype=int)
 	projector = inplace(projector,i,1)
 
 	return projector
-
 
 def bloch(state,path=None):
 	'''

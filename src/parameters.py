@@ -25,52 +25,48 @@ from src.io import load,dump,join,split
 
 class Parameter(System):
 
-	def __init__(self,data,*args,model=None,system=None,**kwargs):
+	defaults = dict(
+			string=None,variable=None,method=None,
+			locality=None,bounds=None,attributes=None,axis=None,
+			parameters=None,
+			seed=None,random=None,initialization=None,constants=None,
+			indices=None,func=None,constraint=None,
+			shape=None,size=None,ndim=None,dtype=None,			
+			args=(),kwargs={}
+			)
+
+	def __init__(self,data,*args,system=None,**kwargs):
 		'''
 		Initialize data of parameter
 		Args:
 			data (iterable): data of parameter
 			string (str): Name of parameter
-			category (str): category of parameter, allowed strings in ['variable','constant']
-			method (str): method of parameter, allowed strings in ['unconstrained','constrained','coupled','bounded','time']
-			group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
-			locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['local','global']
+			variable (bool): Parameter is variable or constant
+			method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded','time']
+			locality (str,iterable[str],dict[iterable,str]): locality of parameter, allowed strings in ['local','global']
 			bounds (iterable[object]): Bounds of parameters
-			attributes (iterable[str]): Model attributes for additional dimensions of parameter
+			attributes (iterable[str]): Attributes for additional dimensions of parameter
 			axis (int,iterable[int]): Axis of input parameter data to insert into class data
 			parameters (iterable): parameters of parameter
 			seed (int, key): Random seed for initialization
 			random (str): Random type for initialization
 			initialization (dict): Keyword arguments for initialization
-			constant (dict[dict[str,object]]): constant indices and values of parameters, along axis, of the form {'axis':{'index':value}}			
+			constants (dict[dict[str,object]]): constant indices and values of parameters, along axis, of the form {'axis':{'index':value}}			
 			args (iterable): Additional arguments for parameter
-			model (object): Model with additional attributes for initialization
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		defaults = dict(
-			string=None,category=None,method=None,
-			group=None,locality=None,bounds=None,attributes=None,axis=None,
-			parameters=None,
-			wrapper=None,
-			seed=None,random=None,initialization=None,constant=None,
-			indices=None,slices=None,sort=None,instance=None,func=None,constraint=None,
-			shape=None,size=None,ndim=None,dtype=None,			
-			args=(),kwargs={}
-			)
 
-		setter(kwargs,dict(data=data,model=model,system=system),delimiter=delim,func=False)
+		kwargs = Dict(kwargs)
+
+		setter(kwargs,dict(data=data,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
-		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,self.defaults,delimiter=delim,func=False)
 
 		super().__init__(*args,**kwargs)
 
 		self.__setup__()
-
-		self.__initialize__()
-
-		assert (self.size is not None), "Zero-size data"
 
 		return
 
@@ -85,14 +81,11 @@ class Parameter(System):
 			parameters (array): parameters
 		'''
 
-		if parameters is None:
-			return self.data
-
-		parameters = parameters.reshape(-1,*self.shape[1:])
-		
-		parameters = self.wrapper(self.func(parameters,*args,**kwargs))
-
-		return parameters	
+	
+		if parameters is not None:
+			return self.func(*args,parameters=parameters,**kwargs)
+		else:
+			return self.func(*args,**kwargs)
 
 	def constraints(self,parameters=None,*args,**kwargs):
 		'''
@@ -105,26 +98,19 @@ class Parameter(System):
 			constraints (array): constraints
 		'''
 
-		parameters = parameters.reshape(-1,*self.shape[1:])
+		if parameters is not None:
+			return self.constraint(*args,parameters=parameters,**kwargs)
+		else:
+			return self.constraint(*args,**kwargs)
 
-		constraints = self.constraint(parameters,*args,**kwargs)
 
-		return constraints
-
-
-	def __setup__(self,data=None,model=None):
+	def __setup__(self):
 		'''
 		Setup class attributes
-		Args:
-			data (array): parameter data
-			model (object): Model with additional attributes for initialization
 		'''
 
-		self.data = data if data is not None else self.data
-		self.model = model if model is not None else self.model
-		self.dtype = datatype(self.dtype)
-
 		# Get data
+		self.dtype = datatype(self.dtype)		
 		self.data = array(self.data,dtype=self.dtype) if self.data is not None else None
 
 		self.shape = self.data.shape if self.data is not None else None
@@ -132,137 +118,31 @@ class Parameter(System):
 		self.ndim = self.data.ndim if self.data is not None else None
 
 		self.string = self.string if self.string is not None else None
-		self.category = self.category if self.category is not None else None
+		self.variable = self.variable if self.variable is not None else None
 		self.method = self.method if self.method is not None else None
-		self.group = (*((*group,) if not isinstance(group,str) else (group,) for group in self.group),)  if self.group is not None else ()
-		self.locality = {group: self.locality if self.locality is None or isinstance(self.locality,str) else self.locality.get(subgroup) if isinstance(self.locality,dict) else self.locality[i] for i,group in enumerate(self.group)}
-		self.model = self.model if self.model is not None else None
-		self.attributes = [attr for attr in self.attributes if getattr(self.model,attr,None) is not None] if self.attributes is not None else ()
+		self.locality = self.locality if self.locality is not None else None
+		self.attributes = [attr for attr in self.attributes if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.attributes is not None else ()
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
 
-		self.parameters = array(self.parameters if self.parameters is not None else 1,dtype=self.dtype)
 		self.dtype = self.data.dtype if self.data is not None else None
 
-		# Set data
-		category = self.category
-		method = self.method
-		group = self.group
-		locality = self.locality
-		model = self.model
-		attributes = self.attributes
-		kwargs = self.kwargs
-		dtype = self.dtype
 
-		# Get indices (indices of data for each unique string)
-		localities = ['global']
-		indices = {i: model.data[data] for i,data in enumerate(model.data)} if model is not None else {}
-		indices = {indices[i].string: {j:indices[j] for j in indices if indices[j].string == indices[i].string} for i in indices}
-		indices = {i: {
-			'string':string,'label':separ.join((str(string),str(j))),
-			'sort':i,'index':j,'slices':None,'group':None,
-			'instance':indices[string][i],
-			}
-			for string in indices for j,i in enumerate(indices[string])}
-
-		indices = {i: Dict(indices[i]) for i in indices}
-		
-		# Get slices (indices of parameter for each data in each group (locality dependent) (sort parameters into order of indices of data))
-		# Get sort (indices of data for each parameter in each group (re-order/sort parameters from slices and func())		
-		# Get indexes (indices of data for each parameter in each group)		
-		# Get sizes (number of parameters per group for each group)
-		# Get size (number of parameters per group)
-		for i in list(indices):
-			for subgroup in group:
-				for attr in indices[i]:
-					if indices[i][attr] in subgroup:
-						indices[i].slices = group.index(subgroup)
-						indices[i].group = subgroup
-						break
-			if any(indices[i][attr] is None for attr in indices[i]):
-				indices.pop(i)
-
-		sizes = []
-		group = list(group)
-		for subgroup in list(group):
-			
-			if locality.get(subgroup) in localities:
-				size = 1
-			else:
-				size = len([j for j in indices if indices[j].group == subgroup])
-			
-			if not size:
-				group.remove(subgroup)
-				continue
-			
-			sizes.append(size)
-
-		for i in indices:
-		
-			indices[i].sizes = sizes
-
-			indices[i].size = indices[i].sizes[group.index(indices[i].group)]
-
-			if locality.get(indices[i].group) in localities:
-				indices[i].slices = sum(indices[i].sizes[:group.index(indices[i].group)])
-			else:
-				indices[i].slices = sum(indices[i].sizes[:group.index(indices[i].group)]) + [j for j in indices if indices[j].group == indices[i].group].index(i)
-
-
-		slices = array([indices[i].slices for i in indices]) if indices else None
-		sort = array([indices[i].sort for i in indices]) if indices else None
-		instance = [indices[i].instance for i in indices]
-		shape = [
-			sum(max(indices[i].size for i in indices if indices[i].group == subgroup) for subgroup in group),
-			*(getattr(model,attr) for attr in attributes)] if indices else None
-
-		for i in indices:
-			indices[i].shape = shape
+		shape = [*(self.shape[:max(0,self.ndim-len(self.attributes))] if self.data is not None else ()),
+				 *(attr if isinstance(attr,int) else getattr(self,attr) for attr in self.attributes),
+				]
 
 
 		# Set attributes
-		self.indices = indices
-		self.slices = slices
-		self.sort = sort
-		self.instance = instance
 		self.shape = shape if shape is not None else None
 		self.size = prod(shape) if shape is not None else None
 		self.ndim = len(shape) if shape is not None else None
 
-		return
-
-	def __initialize__(self,data=None,shape=None,dtype=None):
-		'''
-		Initialize class data with shape
-		Args:
-			data (array): Data of data
-			shape (iterable[int]): Shape of data
-			dtype (datatype): Data type of data
-		'''
-
-		# Set data
-		self.data = data if data is not None else self.data
-		self.shape = shape if shape is not None else self.shape
-		self.size = prod(shape) if shape is not None else self.size
-		self.ndim = len(shape) if shape is not None else self.ndim
-		self.dtype = dtype if dtype is not None else self.dtype
-
-		kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
-
-		if self.size is not None:
-
-			self.data = initialize(**kwargs)
-
-			self.shape = self.data.shape if self.data is not None else None
-			self.size = self.data.size if self.data is not None else None
-			self.ndim = self.data.ndim if self.data is not None else None
-			self.dtype = self.data.dtype if self.data is not None else None
-
-		self.data = self.data
 
 		# Set functions
-		categories = ['variable']
+		kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
+
 		defaults = {
-			'constant':self.constant,
+			'constants':self.constants,
 			'lambda':0,
 			'coefficients':[1,2*pi],
 			'shift':[0,-pi/2],
@@ -280,7 +160,7 @@ class Parameter(System):
 				
 				self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
 			
-			elif attr in ['constant']:
+			elif attr in ['constants']:
 				
 				if not all(isinstance(self.kwargs[attr][i],dict) for i in self.kwargs[attr]):
 					axis = -1
@@ -298,7 +178,7 @@ class Parameter(System):
 		if self.method in ['time']:
 			try:
 				defaults.update({
-					'tau':getattr(self.model,'tau',None),
+					'tau':getattr(self,'tau',None),
 					'scale':self.kwargs.get('scale',None)
 					}
 				)
@@ -308,130 +188,223 @@ class Parameter(System):
 		self.kwargs.update(defaults)
 
 
-		if self.category in categories:
+		if self.indices is not None:
+			
+			if self.variable:
 
-			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
-		
-				def func(parameters,*args,**kwargs):
-					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
-					
-			elif self.method in ['bounded']:
-
-				def func(parameters,*args,**kwargs):
-					return self.parameters*bound(parameters[self.slices])
-
-			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
-		
-				def func(parameters,*args,**kwargs):
-					return self.parameters*bound(parameters[self.slices],scale=self.kwargs['sigmoid'])
-
-			elif self.method in ['constrained']:					
-		
-				def func(parameters,*args,**kwargs):
-					return self.parameters*bound(parameters)
-
-			elif self.method in ['coupled'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
-		
-				def func(parameters,*args,**kwargs):
-					return self.parameters*bound((
-						(self.kwargs['coefficients'][0]*parameters[self.slices][:self.slices.size//2])*
-						cos(self.kwargs['coefficients'][1]*parameters[self.slices][self.slices.size//2:][None,...] + self.kwargs['shift'][...,None,None])
-						).reshape(-1,*parameters.shape[1:]),scale=self.kwargs['sigmoid'])
-
-			elif self.method in ['coupled']:					
-		
-				def func(parameters,*args,**kwargs):
-					return self.parameters*bound(parameters)
-
-			elif self.method in ['unconstrained']:					
-				
-				def func(parameters,*args,**kwargs):
-					return self.parameters*parameters[self.slices]
-
-			elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
-				def func(parameters,*args,**kwargs):
-					return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
-
-			else:
-
-				if isinstance(self.method,dict):
-					func = self.method.get('func')
-				elif isinstance(self.method,str):
-					func = self.method
-				else:
-					func = None
-				
-				func = load(func)
-
-				if func is None:
+				if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
+			
 					def func(parameters,*args,**kwargs):
-						return self.parameters*parameters[self.slices]
-				else:
-					func = partial(func,self=self)
-	
+						return self.parameters*bound(parameters[self.indices],scale=self.kwargs['sigmoid'])
+						
+				elif self.method in ['bounded']:
 
-			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
+					def func(parameters,*args,**kwargs):
+						return self.parameters*bound(parameters[self.indices])
+
+				elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
 			
-				def constraint(parameters,*args,**kwargs):
-					return self.kwargs['lambda']*sum(
-						((parameters[self.kwargs['constant'][i]['indices']] - 
-						  self.kwargs['constant'][i]['values'])**2).sum() 
-						for i in self.kwargs['constant'])
+					def func(parameters,*args,**kwargs):
+						return self.parameters*bound(parameters[self.indices],scale=self.kwargs['sigmoid'])
 
-			elif self.method in ['coupled'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constant']):
+				elif self.method in ['constrained']:					
 			
-				def constraint(parameters,*args,**kwargs):
-					return self.kwargs['lambda']*sum(
-						((parameters[self.kwargs['constant'][i]['indices']] - 
-						  self.kwargs['constant'][i]['values'])**2).sum() 
-						for i in self.kwargs['constant'])
+					def func(parameters,*args,**kwargs):
+						return self.parameters*bound(parameters[self.indices])
 
-			elif self.method in ['unconstrained']:
+				elif self.method in ['unconstrained']:					
+					
+					def func(parameters,*args,**kwargs):
+						return self.parameters*parameters[self.indices]
 
-					def constraint(parameters,*args,**kwargs):
-						return self.kwargs['default']
-				
-			else:
-
-				if isinstance(self.method,dict):
-					constraint = self.method.get('constraint')
-				elif isinstance(self.method,str):
-					constraint = None
-				else:
-					constraint = None
-				
-				constraint = load(constraint)
-
-				if constraint is None:
-			
-					def constraint(parameters,*args,**kwargs):
-						return self.kwargs['default']
+				elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
+					def func(parameters,*args,**kwargs):
+						return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
 
 				else:
-					constraint = partial(constraint,self=self)
 
-		else:
+					if isinstance(self.method,dict):
+						func = self.method.get('func')
+					elif isinstance(self.method,str):
+						func = self.method
+					else:
+						func = None
+					
+					func = load(func)
+
+					if func is None:
+						def func(parameters,*args,**kwargs):
+							return self.parameters*parameters[self.indices]
+					else:
+						func = partial(func,self=self)
 		
-			def func(parameters,*args,**kwargs):
-				return self.parameters*self.data[self.slices]
 
+				if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constants']):
+				
+					def constraint(parameters,*args,**kwargs):
+						return self.kwargs['lambda']*sum(
+							(((parameters[self.indices])[self.kwargs['constants'][i]['indices']] - 
+							  self.kwargs['constants'][i]['values'])**2).sum() 
+							for i in self.kwargs['constants'])
+
+				elif self.method in ['unconstrained']:
+
+						def constraint(parameters,*args,**kwargs):
+							return self.kwargs['default']
+					
+				else:
+
+					if isinstance(self.method,dict):
+						constraint = self.method.get('constraint')
+					elif isinstance(self.method,str):
+						constraint = None
+					else:
+						constraint = None
+					
+					constraint = load(constraint)
+
+					if constraint is None:
+				
+						def constraint(parameters,*args,**kwargs):
+							return self.kwargs['default']
+
+					else:
+						constraint = partial(constraint,self=self)
+
+			else:
 			
-			def constraint(parameters,*args,**kwargs):
-				return self.kwargs['default']
+				def func(parameters,*args,**kwargs):
+					return self.parameters*self.data[self.indices]
+
+				
+				def constraint(parameters,*args,**kwargs):
+					return self.kwargs['default']
+		else:
+
+			if self.variable:
+				
+				if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
+			
+					def func(parameters,*args,**kwargs):
+						return self.parameters*bound(parameters,scale=self.kwargs['sigmoid'])
+						
+				elif self.method in ['bounded']:
+
+					def func(parameters,*args,**kwargs):
+						return self.parameters*bound(parameters)
+
+				elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
+			
+					def func(parameters,*args,**kwargs):
+						return self.parameters*bound(parameters,scale=self.kwargs['sigmoid'])
+
+				elif self.method in ['constrained']:					
+			
+					def func(parameters,*args,**kwargs):
+						return self.parameters*bound(parameters)
 
 
-		def wrapper(parameters,*args,**kwargs):
-			return parameters
+				elif self.method in ['unconstrained']:					
+					
+					def func(parameters,*args,**kwargs):
+						return self.parameters*parameters
 
-		wrapper = self.wrapper if self.wrapper is not None else wrapper
+				elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
+					def func(parameters,*args,**kwargs):
+						return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
 
-		func = jit(func)
-		constraint = jit(constraint)
-		wrapper = jit(wrapper)
+				else:
+
+					if isinstance(self.method,dict):
+						func = self.method.get('func')
+					elif isinstance(self.method,str):
+						func = self.method
+					else:
+						func = None
+					
+					func = load(func)
+
+					if func is None:
+						def func(parameters,*args,**kwargs):
+							return self.parameters*parameters
+					else:
+						func = partial(func,self=self)
+		
+
+				if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constants']):
+				
+					def constraint(parameters,*args,**kwargs):
+						return self.kwargs['lambda']*sum(
+							((parameters[self.kwargs['constants'][i]['indices']] - 
+							  self.kwargs['constants'][i]['values'])**2).sum() 
+							for i in self.kwargs['constants'])
+
+				elif self.method in ['unconstrained']:
+
+						def constraint(parameters,*args,**kwargs):
+							return self.kwargs['default']
+					
+				else:
+
+					if isinstance(self.method,dict):
+						constraint = self.method.get('constraint')
+					elif isinstance(self.method,str):
+						constraint = None
+					else:
+						constraint = None
+					
+					constraint = load(constraint)
+
+					if constraint is None:
+				
+						def constraint(parameters,*args,**kwargs):
+							return self.kwargs['default']
+
+					else:
+						constraint = partial(constraint,self=self)
+
+			else:
+			
+				def func(parameters,*args,**kwargs):
+					return self.parameters*self.data
+
+				
+				def constraint(parameters,*args,**kwargs):
+					return self.kwargs['default']							
+
+
+		parameters = self.data if self.data is not None else 1
+
+		func = jit(func,parameters=parameters)
+		constraint = jit(constraint,parameters=parameters)
 
 		self.func = func
 		self.constraint = constraint
-		self.wrapper = wrapper
+
+		return
+
+	def __initialize__(self,data=None,parameters=None,indices=None):
+		'''
+		Initialize class data with shape
+		Args:
+			data (array): Data of data
+			parameters (array): Parameters of data
+			indices (array): Indices of parameters of data
+		'''
+
+		# Set data
+		self.data = data if data is not None else self.data
+		self.parameters = parameters if parameters is not None else self.parameters
+		self.indices = indices if indices is not None else self.indices
+
+		if self.shape is not None:
+
+			kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
+
+			self.data = initialize(**kwargs)
+
+
+		self.__setup__()
 
 		return
 
@@ -442,6 +415,16 @@ class Parameter(System):
 class Parameters(System):
 
 	__data__ = {}
+
+	defaults = dict(
+			string=None,variable=None,method=None,
+			group=None,locality=None,bounds=None,attributes=None,axis=None,
+			parameters=None,
+			seed=None,random=None,initialization=None,constants=None,
+			indices=None,slices=None,sort=None,instance=None,func=None,constraint=None,
+			shape=None,size=None,ndim=None,dtype=None,			
+			args=(),kwargs={}
+			)
 
 	def __init__(self,data=None,model=None,system=None,**kwargs):
 		'''
@@ -454,7 +437,7 @@ class Parameters(System):
 		Setup parameters such that calling the Parameters(parameters) class with input parameters 
 		i) 		parameters array of size (G*P*D),
 					for G groups of P parameters, each of dimension D, 
-					for parameter groups with category in categories = ['variable'],
+					for variable parameter groups
 					P,D may be group dependent, and depend on Parameter.locality, Parameter.model and Parameter.attributes 
 		ii) 	parameters for each group are sliced with parameter slices (slice(P*D)) and reshaped into shape (P,D)
 		iii) 	parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
@@ -465,8 +448,8 @@ class Parameters(System):
 			data (dict): Dictionary of data corresponding to parameters groups, with dictionary values with properties:
 				data (iterable): data of parameter
 				string (str): Name of parameter
-				category (str): category of parameter, allowed strings in ['variable','constant']
-				method (str): method of parameter, allowed strings in ['unconstrained','constrained','coupled','bounded','time']
+				variable (bool): Parameter is variable or constant
+				method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded','time']
 				group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
 				locality (str,iterable[str],dict[iterable,str]): locality of parameter across groups, allowed strings in ['local','global']
 				bounds (iterable[object]): Bounds of parameters
@@ -476,7 +459,7 @@ class Parameters(System):
 				seed (int, key): Random seed for initialization
 				random (str): Random type for initialization
 				initialization (dict): Keyword arguments for initialization
-				constant (dict[dict[str,object]]): constant indices and values of parameters, along axis, of the form {'axis':{'index':value}}
+				constants (dict[dict[str,object]]): constant indices and values of parameters, along axis, of the form {'axis':{'index':value}}
 				args (iterable): Additional arguments for parameter
 				system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 				model (object): Model with additional attributes for initialization
@@ -485,17 +468,6 @@ class Parameters(System):
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
 		'''
-
-
-		defaults = dict(
-			string=None,category=None,method=None,
-			group=None,locality=None,bounds=None,attributes=None,axis=None,
-			parameters=None,
-			seed=None,random=None,initialization=None,constant=None,
-			indices=None,slices=None,sort=None,instance=None,func=None,constraint=None,wrapper=None,
-			shape=None,size=None,ndim=None,dtype=None,			
-			args=(),kwargs={}
-			)
 
 		data = data if data is not None else None
 		__data__ = data if data is not None else {}
@@ -521,12 +493,10 @@ class Parameters(System):
 			parameters (array,dict): parameters
 		'''
 
-		if parameters is None:
-			return self.data
-
-		parameters = self.wrapper(self.func(parameters,*args,**kwargs)[self.sort])
-
-		return parameters
+		if parameters is not None:
+			return self.func(*args,parameters=parameters,**kwargs)
+		else:
+			return self.func(*args,**kwargs)
 
 	def constraints(self,parameters=None,*args,**kwargs):
 		'''
@@ -539,9 +509,10 @@ class Parameters(System):
 			constraints (array): constraints
 		'''
 
-		constraints = self.constraint(parameters,*args,**kwargs)
-
-		return constraints
+		if parameters is not None:
+			return self.constraint(*args,parameters=parameters,**kwargs)
+		else:
+			return self.constraint(*args,**kwargs)
 
 	def __setup__(self,data=None,model=None):
 		'''
@@ -571,14 +542,13 @@ class Parameters(System):
 		dtype = datatype(self.dtype)
 
 		# Set slices and sort and indices
-		categories = ['variable']
 		indices = {}
 		group = []
 		slices = []
 		sort = []
 		instance = []
 		for i,parameter in enumerate(self):
-			if self[parameter].category in categories:
+			if self[parameter].variable:
 				idx = self[parameter].indices
 				grp = self[parameter].group
 				slc = self[parameter].size
@@ -606,7 +576,7 @@ class Parameters(System):
 		group = group
 		slices = [[*i] for i in slices]
 		sort = array([sort.index(i) for i in sorted(sort)])
-		instance = [i for i in instance]
+		instance = {i:parameter for parameter in self for i in self[parameter].instance}
 
 		for j,i in enumerate(list(indices)):
 			indices[i] = (
@@ -635,22 +605,16 @@ class Parameters(System):
 			func = self[parameter].constraints
 			constraints.append(func)
 
-		def func(parameters,*args,slices=slices,funcs=funcs,dtype=dtype,**kwargs):
-			return concatenate([func(slicing(parameters,*i),*args,**kwargs) for i,func in zip(slices,funcs)])
-
-		def constraint(parameters,*args,slices=slices,funcs=constraints,dtype=dtype,**kwargs):
-			return addition(array([func(slicing(parameters,*i),*args,**kwargs) for i,func in zip(slices,funcs)]))
-
-		def wrapper(parameters,*args,**kwargs):
+		def func(parameters,*args,**kwargs):
 			return parameters
 
-		wrapper = self.wrapper if self.wrapper is not None else wrapper
-
+		def constraint(parameters,*args,**kwargs):
+			return 0
 
 		# Get data
 		data = []
 		for parameter in self:
-			if self[parameter].category not in categories:
+			if self[parameter].variable:
 				continue
 			parameter = self[parameter]()
 			data.extend(parameter)
@@ -679,7 +643,6 @@ class Parameters(System):
 		self.func = func
 		self.constraint = constraint
 		self.parameters = parameters
-		self.wrapper = wrapper
 		self.shape = self.data.shape if data is not None else None
 		self.size = self.data.size if data is not None else None
 		self.ndim = self.data.ndim if data is not None else None

@@ -17,7 +17,7 @@ from src.utils import contraction,gradient_contraction
 from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort,prod
 from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleave,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
-from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,datatype
+from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,iterables,datatype
 
 from src.iterables import setter,getattrs,hasattrs,namespace,permutations
 
@@ -25,34 +25,55 @@ from src.io import load,dump,join,split
 
 from src.system import Dictionary,System,Space,Time,Lattice
 
-from src.parameters import Parameters
+from src.parameters import Parameters,Parameter
 
 from src.optimize import Objective,Metric
 
 N = 1
 D = 2
 ndim = 2
-random = 'haar'
 dtype = 'complex'
+random = 'haar'
+
 Basis = {
-	'I': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0],[0,1]],dtype=dtype)),
-	'X': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,1],[1,0]],dtype=dtype)),
-	'Y': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,-1j],[1j,0]],dtype=dtype)),
-	'Z': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0],[0,-1]],dtype=dtype)),
-	'CNOT': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=dtype)),
-	'HADAMARD': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,1,],[1,-1]],dtype=dtype)/sqrt(D)),
-	'PHASE': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0,],[0,1j]],dtype=dtype)),
-	'TOFFOLI': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,1,0,0,0,0,0],[0,0,0,1,0,0,0,0],
+	'I': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: identity(D**(N if N is not None else 1),dtype=dtype)),
+	'X': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[0,1],[1,0]],dtype=dtype)),
+	'Y': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[0,-1j],[1j,0]],dtype=dtype)),
+	'Z': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[1,0],[0,-1]],dtype=dtype)),
+	'CNOT': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]],dtype=dtype)),
+	'HADAMARD': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[1,1,],[1,-1]],dtype=dtype)/sqrt(D)),
+	'PHASE': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[1,0,],[0,1j]],dtype=dtype)),
+	'TOFFOLI': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[1,0,0,0,0,0,0,0],[0,1,0,0,0,0,0,0],[0,0,1,0,0,0,0,0],[0,0,0,1,0,0,0,0],
 											  [0,0,0,0,1,0,0,0],[0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1],[0,0,0,0,0,0,1,0]],dtype=dtype)),
 	'RANDOM': (lambda *args,N=N,D=D,ndim=ndim,random=random,dtype=dtype,**kwargs: rand(shape=(D,)*ndim,random=random,dtype=dtype)),
-	'00': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0],[0,0]],dtype=dtype)),
-	'01': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,1],[0,0]],dtype=dtype)),
-	'10': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,0],[1,0]],dtype=dtype)),
-	'11': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[0,0],[0,1]],dtype=dtype)),
-	'0': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([1,0],dtype=dtype)),
-	'1': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([0,1],dtype=dtype)),
-	'+': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([1,1,],dtype=dtype)/sqrt(D)),
-	'-': (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([1,-1,],dtype=dtype)/sqrt(D)),
+	'00': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[1,0],[0,0]],dtype=dtype)),
+	'01': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[0,1],[0,0]],dtype=dtype)),
+	'10': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[0,0],[1,0]],dtype=dtype)),
+	'11': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([[0,0],[0,1]],dtype=dtype)),
+	'0': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([1,0],dtype=dtype)),
+	'1': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([0,1],dtype=dtype)),
+	'+': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([1,1,],dtype=dtype)/sqrt(D)),
+	'-': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: array([1,-1,],dtype=dtype)/sqrt(D)),
+}
+
+Locality = {
+	'I': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 0),
+	'X': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'Y': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'Z': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'CNOT': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 2),
+	'HADAMARD': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'PHASE': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'TOFFOLI': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 3),
+	'RANDOM': (lambda *args,N=N,D=D,ndim=ndim,random=random,dtype=dtype,**kwargs: 1),
+	'00': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'01': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'10': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'11': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'0': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'1': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'+': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
+	'-': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
 }
 
 def trotter(iterable=None,p=None,shape=None):
@@ -262,7 +283,6 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,gra
 	return func			
 
 
-
 class Object(System):
 	'''
 	Base class for Quantum Objects
@@ -275,14 +295,14 @@ class Object(System):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	basis = {
-		None: (lambda *args,N=N,D=D,dtype=dtype,**kwargs: array([[1,0],[0,1]],dtype=dtype)),
-	}
-
-	default = None
 	D = None
 	N = None
 	n = None
+	default = None
+
+	basis = {
+		**{attr: Basis['I'] for attr in [None]}
+	}
 
 	hermitian = None
 	unitary = None
@@ -290,7 +310,7 @@ class Object(System):
 	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
 		defaults = dict(			
-			parameters=None,
+			parameters=None,variable=True,
 			shape=None,size=None,ndim=None,
 			samples=None,identity=None,locality=None,
 			state=None,conj=False,coefficients=None,func=None,gradient=None,
@@ -301,35 +321,7 @@ class Object(System):
 		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,func=False)
 		setter(kwargs,system,delimiter=delim,func=False)
 
-		super().__init__(**kwargs)
-
-		if self.func is None:
-
-			def func(parameters=None,state=None):
-				return self.data
-
-			self.func = func
-
-		if self.gradient is None:
-			
-			def gradient(parameters=None,state=None):
-				return 0*self.data
-
-			self.gradient = gradient	
-
-		if self.contract is None:
-
-			def contract(data=None,state=None):
-				return data
-
-			self.contract = contract
-
-		if self.gradient_contract is None:
-			
-			def gradient_contract(grad=None,data=None,state=None):
-				return grad
-
-			self.gradient_contract = gradient_contract				
+		super().__init__(**kwargs)				
 
 		if isinstance(data,self.__class__) or isinstance(operator,self.__class__):
 			if isinstance(data,self.__class__):
@@ -356,8 +348,8 @@ class Object(System):
 		default = self.default
 		operator = self.operator
 		site = self.site if self.site is None or not isinstance(self.site,int) else [self.site]
-		string = self.string
 		locality = self.locality if self.locality is not None else self.N
+		string = self.string
 		N = self.N	
 		D = self.D	
 		n = self.n
@@ -365,115 +357,59 @@ class Object(System):
 		if operator is None:
 			operator = data
 		
-		# Set operator,site,locality
-		if locality is None:
-			if site is None:
-				if operator is None:
-					locality = basis[operator].locality if operator in basis else basis[string].locality if string in basis else locality
-					site = [i for i in range(locality)] if locality is not None else None
-					operator = operator
-				elif isinstance(operator,str):
-					if operator in [default]:
-						locality = N if N is not None else basis[operator].locality if operator in basis else basis[string].locality if string in basis else locality
-						site = [i for i in range(locality)]
-						operator = operator							
-					elif operator.count(delim):
-						locality = sum(basis[i].locality for i in operator.split(delim) if i in basis and basis[i].locality is not None)
-						site = [i for i in range(locality)]
-						operator = [i for i in operator.split(delim)]
-					else:
-						locality = sum(basis[i].locality for i in operator.split(delim) if i in basis and basis[i].locality is not None)
-						site = [i for i in range(locality)]
-						operator = operator
-				elif not isinstance(operator,str) and not isinstance(operator,arrays):
-					locality = len(operator)
+		# Set site,locality,operator
+		if site is None:
+			if operator is None:
+				site = [i for i in range(locality)]
+				locality = locality
+				operator = operator
+			elif isinstance(operator,str):
+				if operator in [default]:
 					site = [i for i in range(locality)]
-					operator = operator
+					locality = locality
+					operator = operator							
+				elif operator.count(delim):
+					site = [i for i in range(locality)]
+					locality = locality
+					operator = [i for i in operator.split(delim)]
 				else:
-					locality = basis[operator].locality if operator in basis else basis[string].locality if string in basis else locality
-					site = [i for i in range(locality)] if locality is not None else None
+					site = [i for i in range(locality)]
+					locality = locality
 					operator = operator
-
+			elif not isinstance(operator,str) and not isinstance(operator,arrays):
+				site = [i for i in range(locality)]
+				locality = locality
+				operator = operator
 			else:
-				if operator is None:
-					locality = len(site)
-					site = site
-					operator = operator
-				elif isinstance(operator,str):
-					if operator in [default]:
-						locality = N if N is not None else len(site)
-						site = [i for i in site]
-						operator = operator
-					elif operator.count(delim):
-						locality = len(site)
-						site = [i for i in site]
-						operator = [i for i in operator.split(delim)]
-					else:
-						locality = len(site)
-						site = [i for i in site]
-						operator = [operator if i in site else default for i in range(N if N is not None else locality)]
-				elif not isinstance(operator,str) and not isinstance(operator,arrays):
-					locality = len(site)
-					site = [i for i in site]
-					operator = [operator[site.index(i)] if i in site else default for i in range(N if N is not None else locality)]
-				else:
-					locality = len(site)
-					site = [i for i in site]
-					operator = operator
-
+				site = [i for i in range(locality)]
+				locality = locality
+				operator = operator
 		else:
-			if site is None:
-				if operator is None:
+			if operator is None:
+				site = [i for i in site]
+				locality = locality
+				operator = operator
+			elif isinstance(operator,str):
+				if operator in [default]:
+					site = [i for i in site]
 					locality = locality
-					site = [i for i in range(locality)]
-					operator = operator
-				elif isinstance(operator,str):
-					if operator in [default]:
-						locality = locality
-						site = [i for i in range(locality)]
-						operator = operator							
-					elif operator.count(delim):
-						locality = locality
-						site = [i for i in range(locality)]
-						operator = [i for i in operator.split(delim)]
-					else:
-						locality = locality
-						site = [i for i in range(locality)]
-						operator = operator
-				elif not isinstance(operator,str) and not isinstance(operator,arrays):
+					operator = operator							
+				elif operator.count(delim):
+					site = [i for i in site]
 					locality = locality
-					site = [i for i in range(locality)]
-					operator = operator
+					operator = [i for i in operator.split(delim)]
 				else:
+					site = [i for i in site]
 					locality = locality
-					site = [i for i in range(locality)]
-					operator = operator
+					operator = [operator if i in site else default for i in range(N if N is not None else locality)]
+			elif not isinstance(operator,str) and not isinstance(operator,arrays):
+				site = [i for i in site]
+				locality = locality
+				operator = [operator[site.index(i)] if i in site else default for i in range(N if N is not None else locality)]
 			else:
-				if operator is None:
-					locality = locality
-					site = site
-					operator = operator
-				elif isinstance(operator,str):
-					if operator in [default]:
-						locality = locality
-						site = [i for i in site]
-						operator = operator							
-					elif operator.count(delim):
-						locality = locality
-						site = [i for i in site]
-						operator = [i for i in operator.split(delim)]
-					else:
-						locality = locality
-						site = [i for i in site]
-						operator = [operator if i in site else default for i in range(N if N is not None else locality)]
-				elif not isinstance(operator,str) and not isinstance(operator,arrays):
-					locality = locality
-					site = [i for i in site]
-					operator = [operator[site.index(i)] if i in site else default for i in range(N if N is not None else locality)]
-				else:
-					locality = locality
-					site = [i for i in site]
-					operator = operator
+				site = [i for i in site]
+				locality = locality
+				operator = operator
 
 		if not isinstance(string,str):
 			string = str(string)
@@ -482,9 +418,8 @@ class Object(System):
 		D = self.D if self.D is not None else data.size**(1/max(1,data.ndim*N)) if isinstance(data,arrays) else 1
 		n = D**N if (N is not None) and (D is not None) else None
 
-
-		locality = min(locality,N)
 		site = site[:N]
+		locality = min(locality,sum(i not in [default] for i in site),N)
 		operator = operator[:N] if not isinstance(operator,str) and not isinstance(operator,arrays) else operator
 
 		shape = self.shape if self.shape is not None else data.shape if isinstance(data,arrays) else None
@@ -492,15 +427,13 @@ class Object(System):
 		ndim = self.ndim if self.ndim is not None else data.ndim if isinstance(data,arrays) else None
 		dtype = self.dtype if self.dtype is not None else data.dtype if isinstance(data,arrays) else None
 
-		do = (self.parameters is not False) and (self.ndim != 0)
-
 		self.data = data if data is not None else operator if operator is not None else None
 		self.operator = operator if operator is not None else None
 		self.site = site if site is not None else None
 		self.string = string if string is not None else None
 		self.system = system if system is not None else None
 
-		self.locality = max(self.locality if self.locality is not None else 0,len(self.site) if self.site is not None else 0)
+		self.locality = max(locality if locality is not None else 0,len(self.site) if self.site is not None else 0)
 
 		self.N = N
 		self.D = D
@@ -511,72 +444,6 @@ class Object(System):
 		self.ndim = ndim
 		self.dtype = dtype
 
-		if (do) and (((self.data is not None) or (self.operator is not None))):
-			self.__setup__(data,operator,site,string)
-
-		if not do:
-			self.data = None
-			self.parameters = False
-		elif isinstance(self.operator,arrays):
-			self.data = self.operator
-			self.operator = self.string
-		elif isinstance(self.data,arrays):
-			pass
-		elif self.operator is None:
-			self.data = None
-		elif isinstance(self.operator,str):
-			self.data = tensorprod([self.basis.get(self.operator)() if i in self.site else self.basis.get(self.default)() for i in range(self.N)]) if self.operator in self.basis else None
-		elif self.operator is not None:
-			self.data = tensorprod([self.basis.get(i)() for i in self.operator]) if all(i in self.basis for i in self.operator) else None
-
-		self.identity = tensorprod([self.basis.get(self.default)() for i in range(self.N)]) if (self.default in self.basis) else None
-		
-		if (self.samples is not None) and isinstance(self.data,arrays) and (self.ndim is not None) and (self.data.ndim>self.ndim):
-			if isinstance(self.samples,int) and (self.samples > 0):
-				shape,bounds,scale,seed,dtype = self.data.shape[:self.data.ndim-self.ndim], [0,1], 'normalize', self.seed, datatype(self.dtype)
-				self.samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
-			elif not isinstance(self.samples,arrays):
-				self.samples = None
-
-			if (self.samples is not None):
-				self.data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:self.data.ndim-self.ndim]),)*2),self.samples,self.data)
-
-		self.data = self.data.astype(self.dtype) if self.data is not None else None
-		self.identity = self.identity.astype(self.dtype) if self.identity is not None else None
-
-
-		if self.func is None:
-
-			def func(parameters=None,state=None):
-				return self.data
-				# return self.data if not conj else dagger(self.data)
-
-			self.func = func
-
-		if self.gradient is None:
-			
-			def gradient(parameters=None,state=None):
-				return 0*self.data
-				# return 0*(self.data if not conj else dagger(self.data))
-
-			self.gradient = gradient			
-
-		if self.contract is None:
-
-			def contract(data=None,state=None):
-				return data
-
-			self.contract = contract
-
-		if self.gradient_contract is None:
-			
-			def gradient_contract(grad=None,data=None,state=None):
-				return grad
-
-			self.gradient_contract = gradient_contract	
-
-		self.__initialize__()
-		
 		self.info()
 
 		return
@@ -604,13 +471,35 @@ class Object(System):
 			conj (bool): conjugate
 		'''
 
-		do = (data is not None) and (state is not None)
-
 		if parameters is None:
 			parameters = self.parameters
 		elif parameters is False:
 			parameters = False
 			data = False
+
+
+		if isinstance(parameters,dict):
+			defaults = {**{attr: getattr(self,attr) for attr in self if attr not in Parameter.defaults},**dict(system=self.system)}
+			setter(parameters,defaults,delimiter=delim,func=False)
+
+			parameters = Parameter(**parameters)
+
+			print(parameters())
+			print(parameters.constraints())
+
+			print()
+			parameters.__initialize__(indices=2)
+
+			print(parameters.shape)
+			print(parameters())
+			print(parameters.constraints())
+			
+			exit()
+
+		if not callable(parameters):
+
+			def parameters(parameters=parameters,*args,**kwargs):
+				return parameters
 
 		if data is None:
 			data = self.data
@@ -631,16 +520,77 @@ class Object(System):
 		if conj is None:
 			conj = False
 
-		contract = contraction(data,state)
-		gradient_contract = gradient_contraction(data,state)
-		
 		self.parameters = parameters
 		self.data = data
-		self.conj = conj
 		self.state = state
+		self.conj = conj
 
-		self.contract = contract
-		self.gradient_contract = gradient_contract
+		do = not (self.parameters() is False)
+
+		if (do) and (((self.data is not None) or (self.operator is not None))):
+			self.__setup__(self.data,self.operator,self.site,self.string)
+
+		if not do:
+			self.data = None
+		elif isinstance(self.operator,arrays):
+			self.data = self.operator
+			self.operator = self.string
+		elif isinstance(self.data,arrays):
+			pass
+		elif self.operator is None:
+			self.data = None
+		elif isinstance(self.operator,str):
+			self.data = tensorprod([basis.get(self.operator)(D=self.D,dtype=self.dtype) if i in self.site else basis.get(self.default)(D=self.D,dtype=self.dtype) for i in range(self.N)]) if self.operator in basis else None
+		elif self.operator is not None:
+			self.data = tensorprod([basis.get(i)(D=self.D,dtype=self.dtype) for i in self.operator]) if all(i in basis for i in self.operator) else None
+
+		self.identity = tensorprod([basis.get(self.default)(D=self.D,dtype=self.dtype) for i in range(self.N)]) if (self.default in basis) else None
+		
+		if (self.samples is not None) and isinstance(self.data,arrays) and (self.ndim is not None) and (self.data.ndim>self.ndim):
+			if isinstance(self.samples,int) and (self.samples > 0):
+				shape,bounds,scale,seed,dtype = self.data.shape[:self.data.ndim-self.ndim], [0,1], 'normalize', self.seed, datatype(self.dtype)
+				self.samples = rand(size,bounds=bounds,scale=scale,seed=seed,dtype=dtype)
+			elif not isinstance(self.samples,arrays):
+				self.samples = None
+
+			if (self.samples is not None):
+				self.data = einsum('%s,%s...->...'%((''.join(['i','j','k','l'][:self.data.ndim-self.ndim]),)*2),self.samples,self.data)
+
+		self.data = self.data.astype(self.dtype) if self.data is not None else None
+		self.identity = self.identity.astype(self.dtype) if self.identity is not None else None
+
+
+		if self.func is None:
+
+			def func(parameters=None,state=None):
+				return self.data
+
+			self.func = func
+
+		if self.gradient is None:
+			
+			def gradient(parameters=None,state=None):
+				return 0*self.data
+
+			self.gradient = gradient			
+
+		if self.contract is None:
+
+			def contract(data=None,state=None):
+				return data
+
+			self.contract = contract
+
+		if self.gradient_contract is None:
+			
+			def gradient_contract(grad=None,data=None,state=None):
+				return grad
+
+			self.gradient_contract = gradient_contract	
+
+
+		self.contract = contraction(data,state)
+		self.gradient_contract = gradient_contraction(data,state)
 
 		self.shape = data.shape if isinstance(data,arrays) else None
 		self.size = data.size if isinstance(data,arrays) else None
@@ -651,9 +601,6 @@ class Object(System):
 		parameters = self.parameters
 		state = state
 
-		if callable(parameters):
-			parameters = parameters()
-
 		if state is None:
 			state = None
 		elif state is True:
@@ -663,13 +610,10 @@ class Object(System):
 		elif callable(state):
 			state = state()
 
-		self.func = jit(self.func,parameters=parameters,state=state)
-		self.gradient = jit(self.gradient,parameters=parameters,state=state)
+		self.func = jit(self.func,parameters=parameters(),state=state)
+		self.gradient = jit(self.gradient,parameters=parameters(),state=state)
 		self.contract = jit(self.contract,state=state)
 		self.gradient_contract = jit(self.gradient_contract,state=state)
-
-		if do:
-			self.norm()
 
 		return
 
@@ -737,8 +681,12 @@ class Object(System):
 		'''		
 		msg = []
 
-		for attr in ['operator','shape','parameters']:
-			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr))
+		for attr in ['string']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,self)
+			msg.append(string)
+
+		for attr in ['data','operator','shape','ndim','N','D','n','locality','site','parameters']:
+			string = '%s %s: %s'%(self.__class__.__name__,attr,getattr(self,attr)() if callable(getattr(self,attr)) else getattr(self,attr))
 			msg.append(string)
 
 		msg = '\n'.join(msg)
@@ -864,19 +812,19 @@ class Operator(Object):
 		site (iterable[int]): site of local operators, i.e) nearest neighbour, allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		string (str): string label of operator
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
-		inherit (boolean): Inherit super class when initialized
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	basis = {
-		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['I','i']},
-			}
-	default = 'I'
 	D = 2
 	N = None
 	n = None
+	default = 'I'
 
-	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,inherit=False,**kwargs):		
+	basis = {
+		**{attr: Basis['I'] for attr in ['I','i']},
+		}
+
+	def __new__(cls,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
 		# TODO: Allow multiple different classes to be part of one operator, and swap around localities
 
@@ -929,16 +877,18 @@ class Pauli(Object):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 
-	basis = {
-		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['I','i']},
-		**{attr: Object(data=Basis['X'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['X','x']},
-		**{attr: Object(data=Basis['Y'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['Y','y']},
-		**{attr: Object(data=Basis['Z'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['Z','z']},
-			}
-	default = 'I'
 	D = 2
 	N = None
 	n = None
+	default = 'I'
+
+	basis = {
+		**{attr: Basis['I'] for attr in ['I','i']},
+		**{attr: Basis['X'] for attr in ['X','x']},
+		**{attr: Basis['Y'] for attr in ['Y','y']},
+		**{attr: Basis['Z'] for attr in ['Z','z']},
+			}
+
 	
 	hermitian = None
 	unitary = None
@@ -955,14 +905,17 @@ class Pauli(Object):
 		'''
 
 		def func(parameters=None,state=None):
+			parameters = self.parameters(parameters)			
 			coefficients = (1-2*self.conj)*self.coefficients			
 			return cos(coefficients*parameters)*self.identity + -1j*sin(coefficients*parameters)*self.data
 
 		def gradient(parameters=None,state=None):
+			parameters = self.parameters(parameters)
 			coefficients = (1-2*self.conj)*self.coefficients			
 			return coefficients*(-sin(coefficients*parameters)*self.identity + -1j*cos(coefficients*parameters)*self.data)
 
-		if self.parameters is None:
+		if self.parameters() is None:
+			
 			self.parameters = 1
 
 		if self.coefficients is None:
@@ -994,11 +947,11 @@ class Gate(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['I']},
-		**{attr: Object(data=Basis['CNOT'](),D=2,locality=2,hermitian=False,unitary=True,string=attr) for attr in ['CNOT','C','cnot']},
-		**{attr: Object(data=Basis['HADAMARD'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['HADAMARD','H']},
-		**{attr: Object(data=Basis['PHASE'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['PHASE','S']},
-		**{attr: Object(data=Basis['TOFFOLI'](),D=2,locality=3,hermitian=False,unitary=True,string=attr) for attr in ['TOFFOLI','T','toffoli']},
+		**{attr: Basis['I'] for attr in ['I']},
+		**{attr: Basis['CNOT'] for attr in ['CNOT','C','cnot']},
+		**{attr: Basis['HADAMARD'] for attr in ['HADAMARD','H']},
+		**{attr: Basis['PHASE'] for attr in ['PHASE','S']},
+		**{attr: Basis['TOFFOLI'] for attr in ['TOFFOLI','T','toffoli']},
 		}
 	default = 'I'
 	D = 2 
@@ -1044,8 +997,8 @@ class Haar(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['I']},
-		**{attr: Object(data=Basis['RANDOM'](ndim=2),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['random','U','haar']},
+		**{attr: Basis['I'] for attr in ['I']},
+		**{attr: Basis['RANDOM'] for attr in ['random','U','haar']},
 		}
 	default = 'I'
 	D = 2
@@ -1109,12 +1062,12 @@ class State(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['I']},
-		**{attr: Object(data=Basis['RANDOM'](ndim=1),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['random','psi','haar']},
-		**{attr: Object(data=Basis['0'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['zero','zeros','0']},
-		**{attr: Object(data=Basis['1'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['one','ones','1']},
-		**{attr: Object(data=Basis['+'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['plus','+']},
-		**{attr: Object(data=Basis['-'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['minus','-']},
+		**{attr: Basis['I'] for attr in ['I']},
+		**{attr: Basis['RANDOM'] for attr in ['random','psi','haar']},
+		**{attr: Basis['0'] for attr in ['zero','zeros','0']},
+		**{attr: Basis['1'] for attr in ['one','ones','1']},
+		**{attr: Basis['+'] for attr in ['plus','+']},
+		**{attr: Basis['-'] for attr in ['minus','-']},
 		}
 	default = 'I'
 	D = 2
@@ -1271,17 +1224,17 @@ class Noise(Object):
 	'''
 
 	basis = {
-		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=True,string=attr) for attr in ['I','i']},
-		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['eps','noise','rand']},
-		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['depolarize']},
-		**{attr: Object(data=Basis['I'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['amplitude']},
-		**{attr: Object(data=Basis['00'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['00']},
-		**{attr: Object(data=Basis['01'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['01']},
-		**{attr: Object(data=Basis['10'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['10']},
-		**{attr: Object(data=Basis['11'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['11']},
-		**{attr: Object(data=Basis['X'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['X','x','flip','bitflip']},
-		**{attr: Object(data=Basis['Y'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['Y','y','flipphase']},
-		**{attr: Object(data=Basis['Z'](),D=2,locality=1,hermitian=False,unitary=False,string=attr) for attr in ['Z','z','phase','dephase']},
+		**{attr: Basis['I'] for attr in ['I','i']},
+		**{attr: Basis['I'] for attr in ['eps','noise','rand']},
+		**{attr: Basis['I'] for attr in ['depolarize']},
+		**{attr: Basis['I'] for attr in ['amplitude']},
+		**{attr: Basis['00'] for attr in ['00']},
+		**{attr: Basis['01'] for attr in ['01']},
+		**{attr: Basis['10'] for attr in ['10']},
+		**{attr: Basis['11'] for attr in ['11']},
+		**{attr: Basis['X'] for attr in ['X','x','flip','bitflip']},
+		**{attr: Basis['Y'] for attr in ['Y','y','flipphase']},
+		**{attr: Basis['Z'] for attr in ['Z','z','phase','dephase']},
 		}
 	default = 'I'
 	D = 2
@@ -1322,11 +1275,11 @@ class Noise(Object):
 			if self.parameters is None:
 				self.parameters = 0
 
-			do = (self.parameters is not None) and (self.parameters is not False)
+			do = ((self.parameters() is not None) and (self.parameters() is not False) and (not instance(self.parameters(),dict)))
 
 			if not do:
 				self.data = None
-				self.operator = None
+				self.operator = None				
 				return
 
 			N = self.N
@@ -1334,7 +1287,9 @@ class Noise(Object):
 			site = list(range(self.N)) if self.site is None else self.site if not isinstance(self.site,int) else [self.site]
 			operator = None if self.operator is None else [self.operator[self.site.index(i)%len(self.operator)] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
 			locality = len(operator)
-			parameters = [None]*self.N if self.parameters is None else [self.parameters[[self.site.index(i)%len(self.parameters)]] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.parameters,scalars) and self.parameters.size > 1 else [self.parameters]*self.N
+			parameters = self.parameters()
+
+			parameters = [None]*self.N if parameters is None else [parameters[[self.site.index(i)%len(parameters)]] if i in self.site else self.default for i in range(self.N)] if not isinstance(parameters,scalars) and parameters.size > 1 else [parameters]*self.N
 
 			local = any(
 					True
@@ -1348,31 +1303,31 @@ class Noise(Object):
 			for i in range(N):
 
 				if operator[i] is None:
-					datum = [self.basis[self.default](self.basis[self.default].parameters)]
+					datum = [self.basis[self.default](D=self.D,dtype=self.dtype)]
 				elif operator[i] in ['Z','z','phase','dephase']:
-					datum = [sqrt(1-parameters[i])*self.basis['I'](self.basis['I'].parameters),
-							sqrt(parameters[i])*self.basis['Z'](self.basis['Z'].parameters)]
+					datum = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i])*self.basis['Z'](D=self.D,dtype=self.dtype)]
 				elif operator[i] in ['X','x','flip','bitflip']:
-					datum = [sqrt(1-parameters[i])*self.basis['I'](self.basis['I'].parameters),
-							 sqrt(parameters[i])*self.basis['X'](self.basis['X'].parameters)]
+					datum = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
+							 sqrt(parameters[i])*self.basis['X'](D=self.D,dtype=self.dtype)]
 				elif operator[i] in ['Y','y','flipphase']:
-					datum = [sqrt(1-parameters[i])*self.basis['I'](self.basis['I'].parameters),
-							 sqrt(parameters[i])*self.basis['Y'](self.basis['Y'].parameters)]
+					datum = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
+							 sqrt(parameters[i])*self.basis['Y'](D=self.D,dtype=self.dtype)]
 				elif operator[i] in ['amplitude']:
-					datum = [self.basis['00'](self.basis['00'].parameters) + sqrt(1-parameters[i])*self.basis['11'](self.basis['11'].parameters),
-							sqrt(parameters[i])*self.basis['01'](self.basis['01'].parameters)]
+					datum = [self.basis['00'](D=self.D,dtype=self.dtype) + sqrt(1-parameters[i])*self.basis['11'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i])*self.basis['01'](D=self.D,dtype=self.dtype)]
 				elif operator[i] in ['depolarize']:
-					datum = [sqrt(1-parameters[i])*self.basis['I'](self.basis['I'].parameters),
-							sqrt(parameters[i]/(self.D**2-1))*self.basis['X'](self.basis['X'].parameters),
-							sqrt(parameters[i]/(self.D**2-1))*self.basis['Y'](self.basis['Y'].parameters),
-							sqrt(parameters[i]/(self.D**2-1))*self.basis['Z'](self.basis['Z'].parameters)]
+					datum = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i]/(self.D**2-1))*self.basis['X'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i]/(self.D**2-1))*self.basis['Y'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i]/(self.D**2-1))*self.basis['Z'](D=self.D,dtype=self.dtype)]
 				elif operator[i] in ['eps']:
 					datum = array([identity(self.n,dtype=self.dtype),diag((1+parameters[i])**(arange(self.n)+2) - 1)])
 				elif operator[i] in ['noise','rand']:
 					datum = array(parameters[i],dtype=datatype(self.dtype))
 					seed = prng(reset=self.seed)
 				else:
-					datum = [self.basis[self.default](self.basis[self.default].parameters)]
+					datum = [self.basis[self.default](D=self.D,dtype=self.dtype)]
 
 				if isinstance(datum,arrays):
 					data = datum
@@ -1610,7 +1565,7 @@ class Operators(Object):
 		if index == -1:
 			index = len(self)
 
-		defaults = dict(N=self.N,D=self.D,system=self.system,verbose=False)
+		defaults = dict(N=self.N,D=self.D,M=self.M,system=self.system)
 
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)}
 
@@ -1622,23 +1577,18 @@ class Operators(Object):
 
 		return
 
-	def __initialize__(self,parameters=None,data=None,state=None,conj=None):
+	def __initialize__(self,data=None,state=None,conj=False):
 		''' 
 		Setup class functions
 		Args:
-			parameters (bool,dict,array,Parameters): Class parameters
 			data (bool,dict): data of class
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters
 			conj (bool): conjugate
 		'''
 
-		# Set arguments
-		parameters = self.parameters if parameters is None else parameters
-		conj = self.conj if conj is None else conj
-
-		objs = {'parameters':parameters,'state':state}
-		classes = {'parameters':Parameters,'state':State}
-		arguments = {'parameters':False,'state':True}
+		objs = {'state':state}
+		classes = {'state':State}
+		arguments = {'state':True}
 
 		# Get functions
 		for obj in objs:
@@ -1661,9 +1611,6 @@ class Operators(Object):
 			setattr(self,obj,instance)
 
 
-		# Check objs
-		assert self.parameters(self.parameters()) is not None, "Incorrect parameters"
-
 		# Set data
 		if data is None or data is True:
 			data = {}
@@ -1674,14 +1621,17 @@ class Operators(Object):
 		for i in data:
 			self.data[i].__initialize__(data=data[i])
 
-		parameters = self.parameters(self.parameters()).T.ravel()
-		state = True if self.state() is None else True
-
-		parameters = self.parameters() if parameters is None else parameters
-		state = True if state is None else state
+		# Set parameters
 
 		for i in self.data:
-			self.data[i].__initialize__(parameters=parameters[i],state=state)
+			parameters = self.parameters[self.parameters.instance[i]]
+			state = self.state()
+			self.data[i].__initialize__(parameters=parameters,state=state)
+
+		for i in self.data:
+			print(i,self.data[i],self.data[i].parameters())
+
+		exit()
 
 		# Set trotterized indices
 		p = self.P
@@ -2023,7 +1973,7 @@ class Operators(Object):
 
 		for attr in ['parameters.%s'%(i) for i in (self.parameters if self.parameters is not None else [])]:
 			string = []
-			for subattr in ['category','method','locality','shape','parameters']:
+			for subattr in ['variable','method','locality','shape','parameters']:
 				substring = getattrs(self,delim.join([attr,subattr]),delimiter=delim,default=None)
 				if isinstance(substring,(str,int,list,tuple,*arrays)):
 					substring = '%s'%(substring,)
@@ -2772,13 +2722,13 @@ class Callback(System):
 
 				elif attr in ["noise.parameters","noise.method"]:
 					for i in model.parameters:
-						if all((not j.unitary) for j in model.parameters[i].instance):
+						if all((not model.data[j].unitary) for j in model.parameters[i].instance):
 							value = getattrs(model.parameters[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
 							break
 				
 				elif attr in ["noise.scale","noise.tau"]:
 					for i in model.parameters:
-						if all((not j.unitary) for j in model.parameters[i].instance):
+						if all((not model.data[j].unitary) for j in model.parameters[i].instance):
 							value = getattrs(model.parameters[i].kwargs,delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
 							break
 
@@ -2831,9 +2781,9 @@ class Callback(System):
 				# 	for attr in attributes}),				
 				# 'x\n%s'%(to_string(parameters.round(4))),
 				# 'theta\n%s'%(to_string(model.parameters(parameters).round(4))),
-				'U\n%s\nV\n%s'%(
-					to_string((model(parameters,state)).round(4)),
-					to_string((metric.label()).round(4))),
+				# 'U\n%s\nV\n%s'%(
+				# 	to_string((model(parameters,state)).round(4)),
+				# 	to_string((metric.label()).round(4))),
 				])
 
 

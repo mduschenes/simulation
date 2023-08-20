@@ -83,7 +83,7 @@ def train(hyperparameters):
 
 		seed = prng(**hyperparameters.seed)
 
-		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
+		model = model(**{**hyperparameters.model,**dict(system=system)})
 		state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
 		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
 		callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
@@ -94,7 +94,7 @@ def train(hyperparameters):
 		if hyperparameters.boolean.train:
 
 			parameters = model.parameters()
-			func = model.parameters.constraints
+			func = None
 			arguments = ()
 			keywords = {}
 			
@@ -108,8 +108,6 @@ def train(hyperparameters):
 			optimizer = Optimizer(func=func,arguments=arguments,keywords=keywords,callback=callback,hyperparameters=hyperparams,system=system)
 
 			parameters = optimizer(parameters)
-
-			model.parameters.data = parameters
 
 		if hyperparameters.boolean.dump:	
 			model.dump()
