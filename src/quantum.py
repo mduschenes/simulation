@@ -488,7 +488,14 @@ class Object(System):
 			print(parameters.constraints())
 
 			print()
-			parameters.__initialize__(indices=2)
+			parameters.__initialize__()
+
+			print(parameters.shape)
+			print(parameters())
+			print(parameters.constraints())
+
+			print()
+			parameters.__initialize__()
 
 			print(parameters.shape)
 			print(parameters())
