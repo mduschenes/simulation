@@ -432,14 +432,17 @@ class Parameters(System):
 			number = max((data[group].indices[parameter] for group in data for parameter in data[group].indices),default=-1)+1
 			local = any(self.parameters[parameter].local.get(group) for parameter in parameters)
 
-			shape = {parameter: [*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
-				 *((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
+			shape = {
+				parameter: [
+					*((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
+					*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
+
 				] if self.parameters[parameter].shape is not None or self.parameters[parameter].axis is not None else None
 				for i,parameter in enumerate(parameters)}
 
 			print('shape',shape)
 
-			init = {parameter: initialize(**{**self.parameters[parameter],**dict(data=self.parameters[parameter].data,shape=shape[parameter],dtype=self.parameters[parameter].dtype)})
+			init = {parameter: initialize(**{**self.parameters[parameter],**dict(data=empty(shape,dtype=dtype),shape=shape[parameter],dtype=self.parameters[parameter].dtype)})
 				for i,parameter in enumerate(parameters)}
 
 			print('init',{parameter:init[parameter].shape for parameter in init})
@@ -463,6 +466,12 @@ class Parameters(System):
 				data[group].group = {parameter:group for i,parameter in enumerate(parameters)}
 				data[group].parameters = sum(data[group].parameters)/len(data[group].parameters)
 
+
+		for parameter in data[group].indices:
+			print(parameters,data[group].indices[parameter])
+
+		print(data[group].parameters)
+		exit()
 		data = {parameter: Dict(
 				indices=data[group].indices[parameter],
 				slices=data[group].slices[parameter],
@@ -510,7 +519,7 @@ class Parameters(System):
 		if parameters is None:
 			return self.parameters.reshape(self.shape)
 		else:
-			return parameters.T.ravel()
+			return parameters.reshape(self.shape)
 
 	def __iter__(self):
 		return self.__iterdata__()

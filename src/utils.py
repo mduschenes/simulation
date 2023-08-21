@@ -7806,7 +7806,7 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 			data = rand(shape,bounds=bounds,random=random,dtype=dtype,**kwargs)
 
 
-	data = data.astype(dtype)
+	data = data.astype(dtype) if data is not None else None
 
 	return data
 
