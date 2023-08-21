@@ -187,7 +187,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 
 		for subinstance in settings[instance]:
 			
-			setter(settings[instance][subinstance],defaults,delimiter=delim,func=False)
+			setter(settings[instance][subinstance],defaults,delimiter=delim,default=False)
 
 			if not settings[instance][subinstance].get(obj):
 				continue
@@ -210,7 +210,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		'process':None,
 		'postprocess':None,
 		}
-	setter(hyperparameters,defaults,delimiter=delim,func=False)
+	setter(hyperparameters,defaults,delimiter=delim,default=False)
 
 	# Get paths
 	path = data if isinstance(data,str) else None
@@ -219,7 +219,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		'data': 	join(cwd,join(split(path,file=True),ext='tmp'),ext='hdf5'),
 		'metadata': join(cwd,join(split(path,file=True),ext=None),ext='json'),
 	}
-	setter(hyperparameters['path'],defaults,delimiter=delim,func=False)
+	setter(hyperparameters['path'],defaults,delimiter=delim,default=False)
 	for attr in hyperparameters['path']:
 		hyperparameters['directory'][attr] = cwd
 		hyperparameters['file'][attr],hyperparameters['ext'][attr] = split(
@@ -365,7 +365,7 @@ def find(dictionary,verbose=None):
 				else:
 					keys[name][attr] = {attr: keys[name][attr]}
 
-				setter(keys[name][attr],defaults,delimiter=delim,func=False)
+				setter(keys[name][attr],defaults,delimiter=delim,default=False)
 			
 			else:
 				if not keys[name][attr]:
@@ -993,7 +993,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		if any((keys[name][axes] not in data) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
 			key,value = name,None
-			setter(settings,{key:value},delimiter=delim,func=True)
+			setter(settings,{key:value},delimiter=delim,default=True)
 			continue
 
 		dimensions = [axes for axes in AXES if axes in keys[name]]
@@ -1117,7 +1117,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		if not by:
 			key,value = name,None
-			setter(settings,{key:value},delimiter=delim,func=True)
+			setter(settings,{key:value},delimiter=delim,default=True)
 			continue
 
 		groups = data[boolean].groupby(by=by,as_index=False)
@@ -1227,7 +1227,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 						else:
 							value[destination] = None
 						
-				setter(settings,{key:value},delimiter=delim,func=True)
+				setter(settings,{key:value},delimiter=delim,default=True)
 
 		for attr in tmp:
 			if tmp[attr] is None:

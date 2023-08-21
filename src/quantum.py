@@ -19,7 +19,7 @@ from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,diffe
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,iterables,datatype
 
-from src.iterables import setter,finder,getattrs,hasattrs,namespace,permutations
+from src.iterables import setter,getter,getattrs,hasattrs,namespace,permutations
 
 from src.io import load,dump,join,split
 
@@ -316,9 +316,9 @@ class Object(System):
 
 	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
-		setter(kwargs,self.defaults,delimiter=delim,func=False)
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,func=False)
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,self.defaults,delimiter=delim,default=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)				
 
@@ -482,11 +482,13 @@ class Object(System):
 		cls = Parameter
 		defaults = {}
 		parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
-		setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults},delimiter=delim,func=False)
-		setter(parameters,dict(string=self.string),delimiter=delim,func=False)
-		setter(parameters,dict(variable=self.variable,system=self.system),delimiter=delim,func=True)
-		setter(parameters,defaults,delimiter=delim,func=False)
-		setter(parameters,self.parameters,delimiter=delim,func=False)
+		setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults},delimiter=delim,default=False)
+		setter(parameters,dict(string=self.string),delimiter=delim,default=False)
+		setter(parameters,dict(variable=self.variable,system=self.system),delimiter=delim,default=True)
+		setter(parameters,defaults,delimiter=delim,default=False)
+		setter(parameters,self.parameters,delimiter=delim,default=False)
+
+		print(self.string,'-----',parameters.get('shape'))
 
 		parameters = cls(**parameters)
 
@@ -818,7 +820,7 @@ class Operator(Object):
 
 		self = None
 
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
 
 		classes = [Gate,Pauli,Haar,State,Noise,Object]
 
@@ -1227,9 +1229,9 @@ class Noise(Object):
 
 	def __init__(self,data=None,operator=None,site=None,string=None,system=None,**kwargs):		
 
-		setter(kwargs,self.defaults,delimiter=delim,func=False)
-		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,func=False)
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,self.defaults,delimiter=delim,default=False)
+		setter(kwargs,dict(data=data,operator=operator,site=site,string=string,system=system),delimiter=delim,default=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)
 
@@ -1380,7 +1382,7 @@ class Operators(Object):
 		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
 		space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		self.N = N
@@ -1480,7 +1482,7 @@ class Operators(Object):
 					attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
 					if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
 						continue
-					setter(kwargs[attr][i],{attrs:finder(attrs,kwargs[attr][i],delimiter=delim)[indices.index(i)]},delimiter=delim)
+					setter(kwargs[attr][i],{attrs:getter(attrs,kwargs[attr][i],delimiter=delim)[indices.index(i)]},delimiter=delim)
 
 
 		# Set class attributes
@@ -1559,10 +1561,10 @@ class Operators(Object):
 		cls = Operator
 		defaults = {}
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)}
-		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,func=False)
-		setter(kwargs,dict(verbose=False,system=self.system),delimiter=delim,func=True)
-		setter(kwargs,defaults,func=False)
-
+		
+		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,default=False)
+		setter(kwargs,dict(verbose=False,system=self.system),delimiter=delim,default=True)
+		setter(kwargs,defaults,default=False)
 
 		data = cls(data=data,operator=operator,site=site,string=string,**kwargs)
 
@@ -1594,13 +1596,13 @@ class Operators(Object):
 				kwargs = {}
 
 				args = ({**dict(data=None),**instance} if (isinstance(instance,dict) and (argument or all(attr in instance for attr in dict(instance=None)))) else dict(data=instance))
-				setter(kwargs,args,func=False)
+				setter(kwargs,args,default=False)
 
 				args = dict(**namespace(cls,self),model=self,system=self.system)
-				setter(kwargs,args,func=False)
+				setter(kwargs,args,default=False)
 
 				args = dict(verbose=False)
-				setter(kwargs,args,func=True)
+				setter(kwargs,args,default=True)
 
 				instance = cls(**kwargs)
 
@@ -1625,22 +1627,29 @@ class Operators(Object):
 
 		# Set data
 		for i in self.parameters:
-			parameters = dict(
-				data=self.parameters[i].parameters,
-				indices=self.parameters[i].indices,
-				parameters=pi*(1-2*self.conj)*(self.tau)*trotter(p=self.P),
+			data = dict(
+				parameters = dict(
+					data=self.parameters[i].parameters,
+					indices=self.parameters[i].indices,
+					),
+				state = self.state
 				)
-			state = self.state
-			self.data[i].__initialize__(
-				parameters=parameters,
-				state=state)
+			self.data[i].__initialize__(**data)
+
+		for i in self.data:
+			data = dict(
+				parameters = dict(
+					parameters=pi*(1-2*self.conj)*(self.tau)*trotter(p=self.P),
+					),
+				)
+			self.data[i].__initialize__(**data)
 
 
 		parameters = self.parameters()[0]
 
 		for i in self.data:
-			print(i,self.data[i],self.data[i].parameters(parameters))
-			print(self.data[i]())
+			print(i,self.data[i],self.data[i].parameters(parameters) if self.data[i].parameters(parameters) is None else self.data[i].parameters(parameters)/pi)
+			print(self.data[i].parameters.data)
 			print(self.data[i](parameters))
 			print()
 
@@ -2135,7 +2144,7 @@ class Operators(Object):
 			func = (list,)
 			default = data[attr]
 			data[attr] = load(path,default=default)
-			setter(default,data[attr],func=func)
+			setter(default,data[attr],default=func)
 
 		return
 
@@ -2280,6 +2289,7 @@ class Hamiltonian(Operators):
 
 		# Set site dependent attributes
 		
+
 		attributes = Dictionary(attributes=None)
 
 		for kwarg in attributes:
@@ -2292,8 +2302,7 @@ class Hamiltonian(Operators):
 					attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
 					if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
 						continue
-					setter(kwargs[attr][i],{attrs:finder(attrs,kwargs[attr][i],delimiter=delim)[indices.index(i)]},delimiter=delim)
-
+					setter(kwargs[attr][i],{attrs:getter(kwargs[attr][i],attrs,delimiter=delim)[indices.index(i)]},delimiter=delim)
 
 		# Set class attributes
 		self.__extend__(data=data,**objs,**kwargs)

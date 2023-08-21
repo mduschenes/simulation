@@ -116,7 +116,7 @@ class System(Dictionary):
 
 		updates(kwargs,defaults)
 		
-		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,defaults,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)
 
@@ -209,7 +209,7 @@ class Space(System):
 	'''
 	def __init__(self,N,D,space,system=None,**kwargs):
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		self.N = N
@@ -302,7 +302,7 @@ class Time(System):
 	'''
 	def __init__(self,M,T,tau,P,time,system=None,**kwargs):
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		self.M = M
@@ -394,7 +394,7 @@ class Lattice(System):
 	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None,**kwargs):
 
 		# Define system
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		wrapper = lambda func,dtype: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=dtype).item())

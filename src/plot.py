@@ -1720,7 +1720,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		for key in y:
 
 			_settings = load(PATHS['plot'])
-			setter(_settings,settings[key],func=True)
+			setter(_settings,settings[key],default=True)
 
 			_settings['style'].update({
 				'layout':{kwarg:settings[key]['style'].get('layout',{}).get(kwarg,_defaults['style']['layout'][kwarg])
@@ -1740,7 +1740,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if attr in _settings:
 					_settings[attr].update(settings[key][attr])
 
-			setter(settings[key],_settings,func=True)
+			setter(settings[key],_settings,default=True)
 
 		for key in settings:
 			settings[key].update({k:defaults[k] 

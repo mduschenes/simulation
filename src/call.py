@@ -992,7 +992,7 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 		# Update and Dump files
 		if isinstance(data,dict) and execute:
 			data,source,destination = load(source),copy(data),destination
-			setter(source,data,func=False)
+			setter(source,data,default=False)
 			dump(source,destination)					
 		else:
 			cp(source,destination,default=path,execute=execute,verbose=verbose)

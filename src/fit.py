@@ -180,7 +180,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		'metric':'lstsq',
 		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,yerr.shape if yerr is not None else None)),
 		}
-	setter(kwargs,defaults,delimiter=delim,func=False)
+	setter(kwargs,defaults,delimiter=delim,default=False)
 
 
 	transform,invtransform = transformation(x,y,parameters,preprocess=preprocess,postprocess=postprocess,**kwargs)
@@ -392,7 +392,7 @@ def curve_fit(func,x,y,**kwargs):
 		'path':None,
 		'verbose':None,
 		}
-	setter(kwargs,defaults,delimiter=delim,func=False)
+	setter(kwargs,defaults,delimiter=delim,default=False)
 
 	function = func
 	model = jit(func,x=x)
@@ -426,7 +426,7 @@ def curve_fit(func,x,y,**kwargs):
 		'uncertainty':parameters.size < 1000 if parameters is not None else True,
 		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,covariance.shape if covariance is not None else None)),
 		}
-	setter(kwargs,defaults,delimiter=delim,func=False)
+	setter(kwargs,defaults,delimiter=delim,default=False)
 
 	uncertainty = kwargs.pop('uncertainty',True)
 	shapes = kwargs.pop('shapes',None)

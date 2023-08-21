@@ -59,12 +59,11 @@ class Parameter(System):
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-
 		kwargs = Dict(kwargs)
 
-		setter(kwargs,dict(data=data,system=system),delimiter=delim,func=False)
-		setter(kwargs,system,delimiter=delim,func=False)
-		setter(kwargs,self.defaults,delimiter=delim,func=False)
+		setter(kwargs,dict(data=data,system=system),delimiter=delim,default=False)
+		setter(kwargs,system,delimiter=delim,default=False)
+		setter(kwargs,self.defaults,delimiter=delim,default=False)
 
 		super().__init__(*args,**kwargs)
 
@@ -119,13 +118,6 @@ class Parameter(System):
 		self.transpose = self.transpose if self.transpose is not None else None
 		self.data = array(self.data,dtype=self.dtype) if self.data is not None and self.data is not False else None
 
-		if self.data is not None:
-			if self.transpose is not None:
-				self.data = self.data.transpose(self.transpose)
-			if self.shape is not None:
-				self.data = self.data.reshape(self.shape) 
-
-
 		self.shape = self.data.shape if self.data is not None else None
 		self.size = self.data.size if self.data is not None else None
 		self.ndim = self.data.ndim if self.data is not None else None
@@ -140,9 +132,7 @@ class Parameter(System):
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
 
 		# Set attributes
-		self.shape = [*(self.shape[:max(0,self.ndim-(len(self.attributes) if self.attributes is not None else 0))] if self.data is not None else ()),
-				 *((attr if isinstance(attr,int) else getattr(self,attr) for attr in self.attributes) if self.attributes is not None else ()),
-				] if self.shape is not None or self.attributes is not None else None
+		self.shape = self.shape if self.shape is not None else None
 		self.size = prod(self.shape) if self.shape is not None else None
 		self.ndim = len(self.shape) if self.shape is not None else None
 
@@ -310,7 +300,7 @@ class Parameter(System):
 			def constraint(parameters,*args,**kwargs):
 				return self.kwargs['default']
 
-		parameters = self.data if self.data is not None else None
+		parameters = self.data if self.data is not None else 1
 
 		func = jit(func,parameters=parameters)
 		constraint = jit(constraint,parameters=parameters)
@@ -340,6 +330,8 @@ class Parameter(System):
 
 			self.data = initialize(**kwargs)
 
+		if self.string == 'z':
+			print('s',self.shape,self.data)
 
 		self.__setup__()
 
@@ -406,9 +398,9 @@ class Parameters(System):
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		setter(kwargs,dict(parameters=parameters,system=system),delimiter=delim,func=False)
-		setter(kwargs,system,delimiter=delim,func=False)
-		setter(kwargs,self.defaults,delimiter=delim,func=False)
+		setter(kwargs,dict(parameters=parameters,system=system),delimiter=delim,default=False)
+		setter(kwargs,system,delimiter=delim,default=False)
+		setter(kwargs,self.defaults,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		self.__setup__()
@@ -431,11 +423,21 @@ class Parameters(System):
 			size = max((data[group].indices[parameter] for group in data for parameter in data[group].indices),default=-1)+1
 			local = any(self.parameters[parameter].local.get(group) for parameter in parameters)
 
+			shape = {parameter: [*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].attributes) if self.parameters[parameter].attributes is not None else 0))] if self.parameters[parameter].data is not None else ()),
+				 *((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].attributes) if self.parameters[parameter].attributes is not None else ()),
+				] if self.parameters[parameter].shape is not None or self.parameters[parameter].attributes is not None else None
+				for i,parameter in enumerate(parameters)}
+
+			init = {parameter: initialize(**{**self.parameters[parameter],**dict(data=self.parameters[parameter].data,shape=shape[parameter],dtype=self.parameters[parameter].dtype)})
+				for i,parameter in enumerate(parameters)}
+
+			print(init)
+
 			data[group].indices = {parameter:parameters[parameter] for i,parameter in enumerate(parameters)}
 			data[group].slices = {parameter:i for i,parameter in enumerate(parameters)}
 			data[group].local = {parameter:local for i,parameter in enumerate(parameters)}
 			data[group].group = {parameter:group for i,parameter in enumerate(parameters)}
-			data[group].parameters = [self.parameters[parameter]() for parameter in parameters]
+			data[group].parameters = [init[parameter] for parameter in parameters]
 			
 			if local:
 				data[group].indices = {parameter: size+i for i,parameter in enumerate(parameters)}

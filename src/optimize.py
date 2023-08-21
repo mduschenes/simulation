@@ -44,7 +44,7 @@ class LineSearcher(System):
 			kwargs (dict): Additional system attributes
 		'''
 		
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)
 
@@ -52,7 +52,7 @@ class LineSearcher(System):
 			hyperparameters = {}
 		defaults = {}		
 		returns = ['alpha']
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,default=False)
 
 		arguments = () if arguments is None else arguments
 		keywords = {} if keywords is None else keywords
@@ -143,7 +143,7 @@ class LineSearch(LineSearcher):
 		hyperparameters = {} if hyperparameters is None else hyperparameters
 
 		defaults = {'search':{'alpha':None}}
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,default=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		line_searches = {
@@ -179,7 +179,7 @@ class Line_Search(LineSearcher):
 
 		defaults = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':None,'args':()}
 		returns = ['alpha','nfunc','ngrad','value','_value','slope']
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,default=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		super().__init__(func,grad,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
@@ -238,7 +238,7 @@ class Armijo(LineSearcher):
 
 		defaults = {'c1':0.0001,'alpha0':hyperparameters.get('alpha',1e-4),'args':()}
 		returns = ['alpha','nfunc','value']
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,default=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		super().__init__(func,grad,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
@@ -309,7 +309,7 @@ class GradSearcher(System):
 			kwargs (dict): Additional system attributes
 		'''
 		
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)
 
@@ -317,7 +317,7 @@ class GradSearcher(System):
 
 		defaults = {}		
 		returns = ['beta']
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,default=False)
 
 		arguments = () if arguments is None else arguments
 		keywords = {} if keywords is None else keywords
@@ -411,7 +411,7 @@ class GradSearch(GradSearcher):
 		hyperparameters = {} if hyperparameters is None else hyperparameters
 
 		defaults = {'search':{'beta':None}}
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,default=False)
 		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
 
 		grad_searches = {
@@ -727,7 +727,7 @@ class Function(System):
 		if hyperparameters is not None and system is not None:
 			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		
 		super().__init__(**kwargs)
 
@@ -1024,7 +1024,7 @@ class Metric(System):
 		if hyperparameters is not None and system is not None:
 			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)
 
@@ -1251,7 +1251,7 @@ class Optimization(System):
 		if hyperparameters is not None and system is not None:
 			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)
 
@@ -1274,7 +1274,7 @@ class Optimization(System):
 			'track':{},		
 		}
 
-		setter(hyperparameters,defaults,delimiter=None,func=False)
+		setter(hyperparameters,defaults,delimiter=None,default=False)
 
 		arguments = () if arguments is None else arguments
 		keywords = {} if keywords is None else keywords
@@ -1746,7 +1746,7 @@ class Optimizer(Optimization):
 	def __new__(cls,func,grad=None,callback=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 	
 		defaults = {'optimizer':None}
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,default=False)
 
 		# optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
 		optimizers = {'adam':GradientDescent,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
@@ -1774,12 +1774,12 @@ class GradientDescent(Optimization):
 	def __init__(self,func,grad=None,callback=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 
 		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
-		setter(hyperparameters,defaults,delimiter=delim,func=True)
+		setter(hyperparameters,defaults,delimiter=delim,default=True)
 
 		super().__init__(func,grad,callback,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
 
 		defaults = {}
-		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
+		setter(self.hyperparameters,defaults,delimiter=delim,default=False)
 
 		return
 
@@ -1828,12 +1828,12 @@ class LineSearchDescent(Optimization):
 	def __init__(self,func,grad=None,callback=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 
 		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
-		setter(hyperparameters,defaults,delimiter=delim,func=True)
+		setter(hyperparameters,defaults,delimiter=delim,default=True)
 
 		super().__init__(func,grad,callback,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
 
 		defaults = {}
-		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
+		setter(self.hyperparameters,defaults,delimiter=delim,default=False)
 
 		return
 
@@ -1881,12 +1881,12 @@ class HessianDescent(Optimization):
 	def __init__(self,func,grad=None,callback=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 
 		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
-		setter(hyperparameters,defaults,delimiter=delim,func=True)
+		setter(hyperparameters,defaults,delimiter=delim,default=True)
 
 		super().__init__(func,grad,callback,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
 
 		defaults = {}
-		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
+		setter(self.hyperparameters,defaults,delimiter=delim,default=False)
 
 		return
 
@@ -1958,12 +1958,12 @@ class ConjugateGradient(Optimization):
 	def __init__(self,func,grad=None,callback=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 
 		defaults = {'beta':0,'search':{'beta':None},'attributes':{'beta':[]}}
-		setter(hyperparameters,defaults,delimiter=delim,func=False)
+		setter(hyperparameters,defaults,delimiter=delim,default=False)
 
 		super().__init__(func,grad,callback,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
 
 		defaults = {}
-		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
+		setter(self.hyperparameters,defaults,delimiter=delim,default=False)
 
 		self.beta = GradSearch(self.func,self.grad,
 			arguments=self.arguments,keywords=self.keywords,hyperparameters=self.hyperparameters,
@@ -2085,12 +2085,12 @@ class Adam(Optimization):
 	def __init__(self,func,grad=None,callback=None,arguments=None,keywords=None,hyperparameters={},system=None,**kwargs):
 
 		defaults = {'track':{'beta':False},'attributes':{'beta':False}}		
-		setter(hyperparameters,defaults,delimiter=delim,func=True)
+		setter(hyperparameters,defaults,delimiter=delim,default=True)
 
 		super().__init__(func,grad,callback,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
 
 		defaults = {}
-		setter(self.hyperparameters,defaults,delimiter=delim,func=False)
+		setter(self.hyperparameters,defaults,delimiter=delim,default=False)
 
 		self._optimizer = getattr(optimizer_libraries,self.optimizer)
 
@@ -2203,7 +2203,7 @@ class Covariance(System):
 		if hyperparameters is not None and system is not None:
 			kwargs.update({attr: hyperparameters.get(attr) for attr in (system if system is not None else ()) if attr in hyperparameters})
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)
 

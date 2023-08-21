@@ -325,18 +325,14 @@ def test_expmi():
 
 
 def test_getter(path=None,tol=None):
-	iterables = {'hi':{'world':[[{'goodbye':None}],[{'di':99}]]}}
+	iterables = {'hi':{'world':{'goodbye':None,'di':99}}}
 	
 	elements = [
-		('hi','world',1,0,'di'),
-		('hi','world',4),
-		('hi','world',1),        
-		('hi','world',1,0),        
+		('hi','world','di'),
+		('hi','world'),
 	]
 	tests = [
 		(lambda value,element,iterable: value==99),
-		(lambda value,element,iterable: value is None),
-		(lambda value,element,iterable: isinstance(value,list)),
 		(lambda value,element,iterable: isinstance(value,dict)),
 	]
 	
@@ -350,11 +346,11 @@ def test_getter(path=None,tol=None):
 	return
 
 def test_setter(path=None,tol=None):
-	iterables = {'hi':{'world':[[{'goodbye':None}],[{'di':99}]]}}
+	iterables = {'hi':{'world':{'goodbye':None,'di':99}}}
 	
 	elements = {
-		('hi','world',1,4,'di'):-99,
-		('hi','world',1,2,0):89,
+		('hi','world','di'):-99,
+		('hi','world'):89,
 	}
 	
 	tests = [
@@ -366,7 +362,7 @@ def test_setter(path=None,tol=None):
 #         iterable = deepcopy(iterables)
 		iterable = iterables
 		value = elements[element]
-		setter(iterable,{element:value},delimiter=delim,func=True)
+		setter(iterable,{element:value},delimiter=delim,default=True)
 		value = getter(iterable,element)
 		# print(iterable)
 		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
@@ -527,12 +523,12 @@ def test_rand(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	# test_getter(path,tol)
-	# test_setter(path,tol)
+	test_getter(path,tol)
+	test_setter(path,tol)
 	# test_scinotation(path,tol)
 	# test_gradient(path,tol)
 	# test_gradient_expm(path,tol)
 	# test_norm(path,tol)
 	# test_expmi()	
 	# test_rand(path,tol)
-	test_gradient_expm(path,tol)
+	# test_gradient_expm(path,tol)

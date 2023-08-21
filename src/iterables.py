@@ -2,14 +2,31 @@
 
 # Import python modules
 import os,sys,warnings,itertools,re
-from copy import deepcopy as copy
+from copy import deepcopy
 import traceback
 
 import numpy as np
 
 warnings.simplefilter("ignore", (UserWarning,DeprecationWarning,FutureWarning))
 
+
+class Null(object):
+	def __str__(self):
+		return 'Null'
+	def __repr__(self):
+		return self.__str__()
+
+class none(object):
+	def __init__(self,default=0,*args,**kwargs):
+		self.default = default
+		return
+	def __call__(self,*args,**kwargs):
+		return self.default
+
+null = Null()
+
 scalars = (int,np.integer,float,np.floating,str,type(None))
+nulls = (Null,)
 
 
 def namespace(cls,signature=None,init=False,**kwargs):
@@ -168,102 +185,78 @@ def contains(string,pattern):
 	return boolean
 
 
-def copier(key,value,copy):
+def copier(obj,copy):
 	'''
-	Copy value based on associated key 
+	Copy object based on copy
 
 	Args:
-		key (string): key associated with value to be copied
-		value (object): data to be copied
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+		obj (object): object to be copied
+		copy (bool): boolean or None whether to copy value
 	Returns:
 		Copy of value
 	'''
 
-	# Check if copy is a dictionary and key is in copy and is True to copy value
-	if ((not copy) or (isinstance(copy,dict) and (not copy.get(key)))):
-		return value
+	if copy:
+		return deepcopy(obj)
 	else:
-		return copy(value)
+		return obj
 
 
-
-def clone(iterable,twin,copy=False):
+def setter(iterable,keys,delimiter=False,copy=False,reset=False,clear=False,func=None):
 	'''
-	Shallow in-place copy of iterable to twin
-
-	Args:
-		iterable (dict): dictionary to be copied
-		twin (dict): dictionary to be modified in-place with copy of iterable
-		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
-	'''	
-
-	# Iterate through iterable and copy values in-place to twin dictionary
-	for key in iterable:
-		if isinstance(iterable[key],dict):
-			if twin.get(key) is None:
-				twin[key] = {}
-			clone(iterable[key],twin[key],copy)
-		else:
-			twin[key] = copier(key,iterable[key],copy)
-	return
-
-
-def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,func=None):
-	'''
-	Set nested value in iterable with nested elements keys
+	Set nested value in iterable with nested keys
 	Args:
 		iterable (dict): dictionary to be set in-place with value
-		elements (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
-		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		keys (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
-		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
-		func(callable,None,bool,iterable): Callable function with signature func(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
+		clear (bool): boolean of whether to clear iterable when the key's value is an empty dictionary
+		func(callable,None,bool,iterable): Callable function with signature func(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
 	'''
 
-	if (not isinstance(iterable,(dict,list))) or (not isinstance(elements,dict)):
+	if (not isinstance(iterable,(dict,list))) or (not isinstance(keys,dict)):
 		return
 
 	# Setup func as callable
 	if func is None:
-		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+		function = lambda key_iterable,key_keys,iterable,keys: keys.get(key_keys)
 	elif func is True:
-		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+		function = lambda key_iterable,key_keys,iterable,keys: keys.get(key_keys)
 	elif func is False:
-		function = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements.get(key_elements))
+		function = lambda key_iterable,key_keys,iterable,keys: iterable.get(key_iterable,keys.get(key_keys))
 	elif func in ['none','None']:
-		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if iterable.get(key_iterable,elements.get(key_elements)) is None else iterable.get(key_iterable,elements.get(key_elements))
+		function = lambda key_iterable,key_keys,iterable,keys: keys.get(key_keys) if iterable.get(key_iterable,keys.get(key_keys)) is None else iterable.get(key_iterable,keys.get(key_keys))
 	elif not callable(func):
 		types = tuple(func)
-		def function(key_iterable,key_elements,iterable,elements,types=types): 
-			i = iterable.get(key_iterable,elements.get(key_elements))
-			e = elements.get(key_elements,i)
+		def function(key_iterable,key_keys,iterable,keys,types=types): 
+			i = iterable.get(key_iterable,keys.get(key_keys))
+			e = keys.get(key_keys,i)
 			return e if isinstance(e,types) else i
 	else:
 		function = func
 
-	# Clear iterable if clear and elements is empty dictionary
-	if clear and elements == {}:
+	# Clear iterable if clear and keys is empty dictionary
+	if clear and keys == {}:
 		iterable.clear()
 
-	# Set nested elements
-	for element in list(elements):
+	# Set nested keys
+	for key in list(keys):
 
-		# Get iterable, and index of tuple of nested element key
+		# Get iterable, and index of tuple of nested key key
 		i = iterable
 		index = 0
 
-		# Convert string instance of elements to list, splitting string based on delimiter delimiter
+		# Convert string instance of keys to list, splitting string based on delimiter delimiter
 		try:
 			if (
-				(isinstance(element,str) and delimiter) and 
-				(element not in iterable)):
-				#((element.count(delimiter)>0) and ((element not in iterable)) or (element.split(delimiter)[0] in iterable))):
-				# e = element.split(delimiter)
+				(isinstance(key,str) and delimiter) and 
+				(key not in iterable)):
+				#((key.count(delimiter)>0) and ((key not in iterable)) or (key.split(delimiter)[0] in iterable))):
+				# e = key.split(delimiter)
 
 				e = []
-				_element = element.split(delimiter)
+				_element = key.split(delimiter)
 				_iterable = iterable
 				while _element and isinstance(_iterable,dict):
 					for l in range(len(_element),-1,-1):
@@ -279,12 +272,12 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 						break
 				e = tuple(e)
 
-			elif isiterable(element,exceptions=scalars):
-				e = tuple(element)
+			elif isiterable(key,exceptions=scalars):
+				e = tuple(key)
 			else:
-				e = tuple((element,))
+				e = tuple((key,))
 
-			# Update iterable with elements 
+			# Update iterable with keys 
 			while index<(len(e)-1):
 				if isinstance(i,list):
 					if (e[index] >= len(i)):
@@ -295,7 +288,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 				index+=1
 
 			# try:
-			value = copier(element,function(e[index],element,i,elements),copy)
+			value = copier(function(e[index],key,i,keys),copy=copy)
 
 			if isinstance(i,list) and (e[index] >= len(i)):
 				i.extend([{} for j in range(e[index]-len(i)+1)])
@@ -304,8 +297,8 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 				i[e[index]] = value
 			elif e[index] not in i or not isinstance(i[e[index]],(dict,list)):
 				i[e[index]] = value
-			elif isinstance(elements[element],dict):
-				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,func=func)
+			elif isinstance(keys[key],dict):
+				setter(i[e[index]],keys[key],delimiter=delimiter,copy=copy,reset=reset,clear=clear,func=func)
 			else:
 				i[e[index]] = value
 		except Exception as exception:
@@ -315,128 +308,163 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 	return
 
 
-def getter(iterable,elements,default=None,delimiter=False,copy=False):
+def getter(iterable,keys,default=None,delimiter=False,copy=False):
 	'''
-	Get nested value in iterable with nested elements keys
+	Get nested value in iterable with nested keys
 
 	Args:
 		iterable (dict): dictionary of values
-		elements (str,iterable[str]): delimiter separated string or list to nested keys of location to get value
-		default (object): default data to return if elements not in nested iterable
-		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		keys (str,iterable[str]): delimiter separated string or list to nested keys of location to get value
+		default (object): default data to return if keys not in nested iterable
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 	Returns:
-		value (object): Value at nested keys elements of iterable
+		value (object): Value at nested keys of iterable
 	'''	
 
-	# Convert string instance of elements to list, splitting string based on delimiter delimiter
-	if isinstance(elements,str):
-		if delimiter and (elements not in iterable):
-			elements = elements.split(delimiter)
+	# Convert string instance of keys to list, splitting string based on delimiter delimiter
+	if isinstance(keys,str):
+		if delimiter and (keys not in iterable):
+			keys = keys.split(delimiter)
 		else:
-			elements = [elements]
+			keys = [keys]
 
-	# Get nested element if iterable, based on elements
-	if not isinstance(elements,(list,tuple)):
-		# elements is object and value is to be got from iterable at first level of nesting
+	# Get nested key if iterable, based on keys
+	if not isinstance(keys,(list,tuple)):
+		# keys is object and value is to be got from iterable at first level of nesting
 		try:
-			return copier(elements,iterable[elements],copy)
+			return copier(iterable[keys],copy=copy)
 		except:
 			return default
-	elif not elements:
-		return copier(elements,iterable,copy)
+	elif not keys:
+		return copier(iterable,copy=copy)
 	else:
-		# elements is list of nested keys and the nested values are to be extracted from iterable
+		# keys is list of nested keys and the nested values are to be extracted from iterable
 		try:
 			i = iterable
 			e = 0
-			while e<len(elements):
-				i = i[elements[e]]
+			while e<len(keys):
+				i = i[keys[e]]
 				e+=1			
-			return copier(elements[e-1],i,copy)
+			return copier(i,copy=copy)
 		except:
 			return default
 
 	return default
 
-def popper(iterable,elements,default=None,delimiter=False,copy=False):
-	'''
-	Pop nested value in iterable with nested elements keys
 
+
+
+def setter(iterable,keys,delimiter=False,default=None,copy=False):
+	'''
+	Set nested value in iterable with nested keys
 	Args:
-		iterable (dict): dictionary to be popped in-place
-		elements (str,iterable[str]): delimiter separated string or list to nested keys of location to pop value
-		default (object): default data to return if elements not in nested iterable
-		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		iterable (dict): dictionary to be set in-place with value
+		keys (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
-
-	Returns:
-		Value at nested keys elements of iterable
-	'''		
-	
-	i = iterable
-	e = 0
-
-	# Convert string instance of elements to list, splitting string based on delimiter delimiter	
-	if isinstance(elements,str) and delimiter:
-		elements = elements.split(delimiter)
-
-	if not isinstance(elements,list):
-		# elements is object and value is to be got from iterable at first level of nesting		
-		try:
-			return i.pop(elements)
-		except:
-			return default
-	else:
-		# elements is list of nested keys and the nested values are to be extracted from iterable		
-		try:
-			while e<(len(elements)-1):
-				i = i[elements[e]]
-				e+=1			
-		except:
-			return default
-
-	return copier(e,i.pop(elements[e],default),copy)
-
-def hasser(iterable,elements,delimiter=False):
+		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
+		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
 	'''
-	Check if nested iterable has nested elements keys
 
-	Args:
-		iterable (dict): dictionary to be searched
-		elements (str,iterable[str]): delimiter separated string or list to nested keys of location to set value
-		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+	types = (dict,)
 
-	Returns:
-		Boolean value if nested keys elements are in iterable
-	'''		
+	if (not isinstance(iterable,types)) or (not isinstance(keys,types)):
+		return
 
-	i = iterable
-	e = 0
+	# Setup default func as callable
+	if default is None:
+		func = lambda key_iterable,key_keys,iterable,keys: keys.get(key_keys)
+	elif default is True:
+		func = lambda key_iterable,key_keys,iterable,keys: keys.get(key_keys)
+	elif default is False:
+		func = lambda key_iterable,key_keys,iterable,keys: iterable.get(key_iterable,keys.get(key_keys))
+	elif default in ['none','None']:
+		func = lambda key_iterable,key_keys,iterable,keys: keys.get(key_keys) if iterable.get(key_iterable,keys.get(key_keys)) is None else iterable.get(key_iterable,keys.get(key_keys))
+	elif not callable(default):
+		types = tuple(default)
+		def func(key_iterable,key_keys,iterable,keys,types=types): 
+			i = iterable.get(key_iterable,keys.get(key_keys))
+			e = keys.get(key_keys,i)
+			return e if isinstance(e,types) else i
+	else:
+		func = default
 
-	# Convert string instance of elements to list, splitting string based on delimiter delimiter	
-	if isinstance(elements,str) and delimiter:
-		elements = elements.split(delimiter)
-	try:
-		if not isinstance(elements,list):
-			# elements is object and value is to be got from iterable at first level of nesting				
-			i = i[element]
+
+	for key in keys:
+
+		if (isinstance(key,str) and delimiter and (key not in iterable)):
+			index = key.split(delimiter)
+		elif (key in iterable):
+			index = (key,)
+		elif isinstance(key,scalars):
+			index = (key,)
 		else:
-			# elements is list of nested keys and the nested values are to be extracted from iterable		
-			while e<len(elements):
-				i = i[elements[e]]
-				e+=1			
-		return True
-	except:
-		return False
+			index = (*key,)
+
+		if len(index)>1:
+			index,other = index[0],delimiter.join(index[1:])
+		else:
+			index,other = index[0],null
+
+		if index in iterable:
+			if not isinstance(other,nulls):
+				setter(iterable[index],{other:keys[key]},delimiter=delimiter,default=default,copy=copy)
+			else:
+				if isinstance(keys[key],types):
+					setter(iterable[index],keys[key],delimiter=delimiter,default=default,copy=copy)
+				else:
+					iterable[index] = copier(func(index,index,iterable,keys),copy=copy)
+		else:
+			if not isinstance(other,nulls):
+				iterable[index] = {}
+				setter(iterable[index],{other:keys[key]},delimiter=delimiter,default=default,copy=copy)
+			else:
+				iterable[index] = copier(func(index,index,iterable,keys),copy=copy)
+
+	return
 
 
 
-finder = lambda key,value,delimiter=None: (
-	finder(delimiter.join(key.split(delimiter)[1:]),value.get(key.split(delimiter)[0])) if (
-		(isinstance(delimiter,str)) and (len(key)) and (
-		(isinstance(value,dict) and (key.split(delimiter)[0] in value))))
-		else value)
+
+def getter(iterable,keys,delimiter=False,default=None,copy=False):
+	'''
+	Get nested value in iterable with nested keys
+	Args:
+		iterable (dict): dictionary to get with keys
+		keys (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
+		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_keys,iterable,keys) to modify value to be updated based on the given dictionaries, or True or False to default to keys or iterable values, or iterable of allowed types
+	'''
+
+	types = (dict,)
+
+	if (not isinstance(iterable,types)) or (not isinstance(keys,(str,tuple,list))):
+		return copier(iterable,copy=copy)
+
+	key = keys
+	if (isinstance(key,str) and delimiter and (key not in iterable)):
+			index = key.split(delimiter)
+	elif isinstance(key,scalars):
+		index = (key,)
+	else:
+		index = (*key,)
+
+
+	if len(index)>1:
+		index,other = index[0],delimiter.join(index[1:])
+	else:
+		index,other = index[0],null
+
+	if index in iterable:
+		if not isinstance(other,nulls):
+			return getter(iterable[index],other,delimiter=delimiter,default=default,copy=copy)
+		else:
+			return copier(iterable[index],copy=copy)
+	else:
+		return copier(iterable,copy=copy)
 
 
 def permutations(*iterables,repeat=None):
@@ -464,7 +492,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 		dictionary (dict): dictionary of keys with lists of values to be combined in all combinations across lists
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		groups (list,None): List of lists of groups of keys that should not have their values permuted in all combinations, 
-			but should be combined in sequence element wise. 
+			but should be combined in sequence key wise. 
 			For example groups = [[key0,key1]], where 
 			dictionary[key0] = [value_00,value_01,value_02],
 			dictionary[key1] = [value_10,value_11,value_12], 
@@ -495,7 +523,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 		'''
 		Get list of dictionaries with keys, based on list of lists in values, retaining ordering in case of grouped values
 		'''
-		return [{k:copier(k,u,copy) for k,u in zip(keys,v)} for v in zip(*values)]
+		return [{k:copier(u,copy=copy) for k,u in zip(keys,v)} for v in zip(*values)]
 
 	def unzipper(dictionary):
 		'''
@@ -594,10 +622,10 @@ def equalizer(a,b,types=(dict,),exceptions=None):
 
 def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exceptions=()):
 	'''
-	Search of iterable, returning elements and indices of elements
+	Search of iterable, returning keys and indices of keys
 	Args:
 		iterable (iterable): Nested iterable
-		index (iterable[int,str]): Index of element
+		index (iterable[int,str]): Index of key
 		shape (iterable[int]): Shape of iterable
 		returns (bool,str): Returns of search, 
 			None returns item, True returns index,shape,item, False returns None, 
@@ -607,7 +635,7 @@ def search(iterable,index=[],shape=[],returns=None,items=None,types=(list,),exce
 	Yields:
 		index (iterable[int,str]): Index of item
 		shape (iterable[iterable[int]]): Shape of iterable at index
-		item (iterable): Iterable element
+		item (iterable): Iterable key
 	'''
 	def returner(index,shape,item,returns=None):
 		if returns is None:
@@ -667,8 +695,8 @@ def find(item,iterable,types=(list,),exceptions=()):
 	Returns:
 		index (iterable[int,str]): Index of item
 	'''	
-	for index,shape,element in search(iterable,returns=True,types=types,exceptions=exceptions):
-		if element == item:
+	for index,shape,key in search(iterable,returns=True,types=types,exceptions=exceptions):
+		if key == item:
 			return index
 	return None
 
@@ -676,7 +704,7 @@ def indexer(index,iterable,types=(list,),exceptions=()):
 	'''
 	Get item at index in iterable
 	Args:
-		index (iterable[int,str]): Index of element
+		index (iterable[int,str]): Index of key
 		iterable (iterable): Nested iterable
 		types (type,tuple[type]): Allowed types to be searched
 		exceptions (type,tuple[type]): Disallowed types to be searched
