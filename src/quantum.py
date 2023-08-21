@@ -1616,35 +1616,19 @@ class Operators(Object):
 		# Set parameters
 		parameters = {i:self.data[i].parameters for i in self.data if self.data[i].data is not None} if parameters is None else parameters
 		
-
-		for i in self.data:
-			print(i,self.data[i].parameters.data,self.data[i].parameters.shape)
-		exit()
-
-
 		parameters = Parameters(parameters=parameters)
 
 		self.parameters = parameters
 
 		# Set data
 		for i in self.parameters:
-			data = dict(
-				parameters = dict(
-					data=self.parameters[i].parameters,
-					indices=self.parameters[i].indices,
-					),
-				state = self.state
-				)
-			self.data[i].__initialize__(**data)
+			self.data[i].__initialize__(indices=self.parameters[i].indices)
 
 		for i in self.data:
-			data = dict(
-				parameters = dict(
-					parameters=pi*(1-2*self.conj)*(self.tau)*trotter(p=self.P),
-					),
-				)
-			self.data[i].__initialize__(**data)
-
+			self.data[i].__initialize__(
+					parameters=dict(parameters=pi*(1-2*self.conj)*(self.tau)*trotter(p=self.P)),
+					state=self.state
+					)
 
 		parameters = self.parameters()[0]
 

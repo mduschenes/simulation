@@ -26,13 +26,12 @@ from src.io import load,dump,join,split
 class Parameter(System):
 
 	defaults = dict(
-			string=None,variable=None,method=None,
-			local=None,group=None,
+			string=None,
 			parameters=None,
-			seed=None,random=None,bounds=None,attributes=None,axis=None,transpose=None,
-			initialization=None,constants=None,
-			indices=None,func=None,constraint=None,
 			shape=None,size=None,ndim=None,dtype=None,			
+			variable=None,local=None,method=None,group=None,
+			seed=None,random=None,bounds=None,axis=None,
+			indices=None,func=None,constraint=None,
 			args=(),kwargs={}
 			)
 
@@ -42,18 +41,22 @@ class Parameter(System):
 		Args:
 			data (iterable): data of parameter, if None, shape must be not None to initialize data
 			string (str): Name of parameter
-			variable (bool): Parameter is variable or constant
+			parameters (iterable): parameters of parameter
+			shape (iterable[int]): shape of parameters
+			size (int): size of parameters
+			ndim (int): ndim of parameters
+			dtype (datatype): datatype of parameters
+			variable (bool): parameter is variable or constant
+			local (bool,dict[iterable,bool]): locality of parameter
 			method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded','time']
 			group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping			
-			local (bool,dict[iterable,bool]): locality of parameter
-			bounds (iterable[object]): Bounds of parameters
-			attributes (iterable[str]): Attributes for additional dimensions of parameter
-			axis (int,iterable[int]): Axis of input parameter data to insert into class data
-			parameters (iterable): parameters of parameter
 			seed (int, key): Random seed for initialization
-			random (str): Random type for initialization
-			initialization (dict): Keyword arguments for initialization
-			constants (dict[dict[str,object]]): constant indices and values of parameters, along axis, of the form {'axis':{'index':value}}			
+			random (str,dict): Random type for initialization
+			bounds (iterable[object]): Bounds of parameters
+			axis (iterable[str]): Attributes for additional dimensions of parameter
+			indices (int,iterable[int]): Indices of global parameters for parameter
+			func (callable): Function to wrap parameters with signature func(parameters)
+			constraint (callable): Function to constrain parameters with signature constraint(parameters)
 			args (iterable): Additional arguments for parameter
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
@@ -111,11 +114,10 @@ class Parameter(System):
 		'''
 		Setup class attributes
 		'''
-
+	
 		# Get data
 		self.dtype = datatype(self.dtype)		
 		self.shape = self.shape if self.shape is not None else None
-		self.transpose = self.transpose if self.transpose is not None else None
 		self.data = array(self.data,dtype=self.dtype) if self.data is not None else empty(self.shape,dtype=self.dtype) if self.shape is not None else None
 
 		self.shape = self.shape if self.shape is not None else self.data.shape if self.data is not None else None
@@ -125,17 +127,17 @@ class Parameter(System):
 
 		self.string = self.string if self.string is not None else None
 		self.variable = self.variable if self.variable is not None else None
-		self.method = self.method if self.method is not None else None
 		self.group = (*((*group,) if not isinstance(group,str) else (group,) for group in self.group),)  if self.group is not None else ()		
 		self.local = self.local if isinstance(self.local,dict) else {group:self.local for group in self.group}
-		self.attributes = [attr for attr in self.attributes if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.attributes is not None else None
+		self.method = self.method if self.method is not None else None
+		self.axis = [attr for attr in self.axis if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.axis is not None else None
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
 
 		# Set functions
 		kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
 
 		defaults = {
-			'constants':self.constants,
+			'constants':None,
 			'lambda':0,
 			'coefficients':[1,2*pi],
 			'shift':[0,-pi/2],
@@ -155,7 +157,7 @@ class Parameter(System):
 				self.kwargs[attr] = array(self.kwargs[attr],dtype=self.dtype)
 			
 			elif attr in ['constants']:
-				
+
 				if not all(isinstance(self.kwargs[attr][i],dict) for i in self.kwargs[attr]):
 					axis = -1
 					self.kwargs[attr] = {axis:self.kwargs[attr]}
@@ -372,7 +374,7 @@ class Parameters(System):
 		i) 		parameters array of size (G*P*D),
 					for G groups of P parameters, each of dimension D, 
 					for variable parameter groups
-					P,D may be group dependent, and depend on Parameter.local, Parameter.model and Parameter.attributes 
+					P,D may be group dependent, and depend on Parameter.local, Parameter.model and Parameter.axis 
 		ii) 	parameters for each group are sliced with parameter slices (slice(P*D)) and reshaped into shape (P,D)
 		iii) 	parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
 		iv) 	parameters for all groups are concatenated to [parameter_i = Parameters[slices_i]][sort]
@@ -380,23 +382,26 @@ class Parameters(System):
 		
 		Args:
 			parameters(dict): Dictionary of Parameters instances, with class attributes
-				data (iterable): data of parameter
+				data (iterable): data of parameter, if None, shape must be not None to initialize data
 				string (str): Name of parameter
-				variable (bool): Parameter is variable or constant
-				method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded','time']
-				group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping
-				local (bool,dict[iterable,bool]): locality of parameter
-				bounds (iterable[object]): Bounds of parameters
-				attributes (iterable[str]): Model attributes for additional dimensions of parameter
-				axis (int,iterable[int]): Axis of input parameter data to insert into class data
 				parameters (iterable): parameters of parameter
+				shape (iterable[int]): shape of parameters
+				size (int): size of parameters
+				ndim (int): ndim of parameters
+				dtype (datatype): datatype of parameters
+				variable (bool): parameter is variable or constant
+				local (bool,dict[iterable,bool]): locality of parameter
+				method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded','time']
+				group (iterable[str],iterable[iterable[str]]): iterable of groups associated with parameter grouping			
 				seed (int, key): Random seed for initialization
-				random (str): Random type for initialization
-				initialization (dict): Keyword arguments for initialization
-				constants (dict[dict[str,object]]): constant indices and values of parameters, along axis, of the form {'axis':{'index':value}}
+				random (str,dict): Random type for initialization
+				bounds (iterable[object]): Bounds of parameters
+				axis (iterable[str]): Attributes for additional dimensions of parameter
+				indices (int,iterable[int]): Indices of global parameters for parameter
+				func (callable): Function to wrap parameters with signature func(parameters)
+				constraint (callable): Function to constrain parameters with signature constraint(parameters)
 				args (iterable): Additional arguments for parameter
 				system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
-				model (object): Model with additional attributes for initialization
 				kwargs (dict): Additional system keyword arguments
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,seed,key,timestamp,cwd,path,conf,logging,cleanup,verbose)			
 			kwargs (dict): Additional system keyword arguments
@@ -424,12 +429,12 @@ class Parameters(System):
 		for group in data:
 			
 			parameters = {parameter:i for i,parameter in enumerate(self.parameters) if (self.parameters[parameter].variable) and (self.parameters[parameter].string in group)}
-			size = max((data[group].indices[parameter] for group in data for parameter in data[group].indices),default=-1)+1
+			number = max((data[group].indices[parameter] for group in data for parameter in data[group].indices),default=-1)+1
 			local = any(self.parameters[parameter].local.get(group) for parameter in parameters)
 
-			shape = {parameter: [*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].attributes) if self.parameters[parameter].attributes is not None else 0))] if self.parameters[parameter].data is not None else ()),
-				 *((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].attributes) if self.parameters[parameter].attributes is not None else ()),
-				] if self.parameters[parameter].shape is not None or self.parameters[parameter].attributes is not None else None
+			shape = {parameter: [*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
+				 *((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
+				] if self.parameters[parameter].shape is not None or self.parameters[parameter].axis is not None else None
 				for i,parameter in enumerate(parameters)}
 
 			print('shape',shape)
@@ -446,13 +451,13 @@ class Parameters(System):
 			data[group].parameters = [init[parameter] for parameter in parameters]
 			
 			if local:
-				data[group].indices = {parameter: size+i for i,parameter in enumerate(parameters)}
+				data[group].indices = {parameter: number+i for i,parameter in enumerate(parameters)}
 				data[group].slices = {parameter:i for i,parameter in enumerate(parameters)}
 				data[group].local = {parameter:local for i,parameter in enumerate(parameters)}
 				data[group].group = {parameter:group for i,parameter in enumerate(parameters)}
 				data[group].parameters = array(data[group].parameters)
 			else:
-				data[group].indices = {parameter: size for i,parameter in enumerate(parameters)}
+				data[group].indices = {parameter: number for i,parameter in enumerate(parameters)}
 				data[group].slices = {parameter:slice(None) for i,parameter in enumerate(parameters)}
 				data[group].local = {parameter:local for i,parameter in enumerate(parameters)}
 				data[group].group = {parameter:group for i,parameter in enumerate(parameters)}

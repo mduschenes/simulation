@@ -2132,14 +2132,7 @@ if BACKEND in ['jax']:
 
 		generator = jax.random
 
-		if bounds is None:
-			bounds = ["-inf","inf"]
-		elif isinstance(bounds,scalars):
-			bounds = [0,bounds]
-		elif len(bounds)==0:
-			bounds = ["-inf","inf"]
-
-		bounds = [to_number(i,dtype) for i in bounds]
+		bounds = bounding(bounds,dtype=dtype)
 
 		b = len(bounds)
 		for i in range(b):
@@ -2384,14 +2377,7 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 		generator = onp.random.RandomState(key)
 
-		if bounds is None:
-			bounds = ["-inf","inf"]
-		elif isinstance(bounds,scalars):
-			bounds = [0,bounds]
-		elif len(bounds)==0:
-			bounds = ["-inf","inf"]
-
-		bounds = [to_number(i,dtype) for i in bounds]
+		bounds = bounding(bounds,dtype=dtype)
 
 		b = len(bounds)
 		for i in range(b):
@@ -6245,6 +6231,54 @@ def expand_dims(a,axis):
 	return np.expand_dims(a,axis)
 
 
+def bounding(bounds,dtype=None):
+	'''
+	Set bounds of data
+	Args:
+		bounds (iterable[object]): Bounds of data
+		dtype (data_type): Datatype of array		
+	Returns:
+		bounds (iterable[object]): Bounds of data
+	'''
+
+	if bounds is None:
+		bounds = ["-inf","inf"]
+	elif isinstance(bounds,scalars):
+		bounds = [0,bounds]
+	elif len(bounds)==0:
+		bounds = ["-inf","inf"]
+
+	bounds = [to_number(i,dtype) for i in bounds]
+
+	return bounds
+
+
+def edging(data,constants=None):
+	'''
+	Set edges of data
+	Args:
+		data (array): Array of data
+		constants (iterable[dict]): Iterable of axis of data with indices and values of constants to set 
+	Returns:
+		data (array): Array of data
+	'''
+
+	if constants is None:
+		return data
+
+	if not all(isinstance(constants[i],dict) for i in constants):
+		axis = -1
+		constants = {axis:constants}
+	for axis in constants:
+		indices = array([int(i) for i in constants[axis]])
+		values = array([constants[axis][i] for i in constants[axis]],dtype=dtype)
+		axis = int(axis)
+
+	data = put(data,values,indices,axis=axis)
+
+	return data
+
+
 
 def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
 	'''
@@ -6999,6 +7033,7 @@ def interp(x,y,**kwargs):
 			kind (int): Order of interpolation
 			smooth (int,float): Smoothness of fit
 			der (int): order of derivative to estimate
+			bounds (iterable[object]): Bounds on points
 	Returns:
 		func (callable): Interpolation function with signature func(x,*args,**kwargs)
 	'''	
@@ -7007,7 +7042,14 @@ def interp(x,y,**kwargs):
 		n = len(x)
 		kinds = {'linear':1,'quadratic':2,'cubic':3,'quartic':4,'quintic':5,None:3}
 		kind = kwargs.get('k',kwargs.get('kind'))
-		
+		bounds = kwargs.get('bounds')
+		dtype = kwargs.get('dtype')
+
+		bounds = bounding(bounds,dtype=dtype)
+
+		def wrapper(obj):
+			return minimums(bounds[1],maximums(bounds[0],obj))
+
 		if n == 1:
 			k = None
 		elif n <= kinds.get(kind):
@@ -7021,17 +7063,17 @@ def interp(x,y,**kwargs):
 		if n == 1:
 			_func = lambda x,y=y: onp.linspace(abs(y.min()),abs(y.max()),x.size)
 			def func(x,y=y,_func=_func):
-				return _func(x)
+				return wrapper(_func(x))
 		elif der:
 			spline = osp.interpolate.splrep(x,y,k=k,s=s)
 			_func = lambda x: osp.interpolate.splev(x,spline,der=der)
 			def func(x,y=y,_func=_func):
-				return _func(x)
+				return wrapper(_func(x))
 		else:
 			_func = osp.interpolate.UnivariateSpline(x,y,k=k,s=s)
 			def func(x,y=y,_func=_func):
 				x = onp.asarray(x)
-				return _func(x)
+				return wrapper(_func(x))
 			# func = osp.interpolate.interp1d(x,y,kind)
 		return func
 
@@ -7049,6 +7091,7 @@ def interpolate(x,y,_x,**kwargs):
 				kind (int): Order of interpolation
 				smooth (int,float): Smoothness of fit
 				der (int): order of derivative to estimate
+				bounds (iterable[object]): Bounds on points
 	Returns:
 		out (array): Interpolated values at new points
 	'''		
@@ -7706,118 +7749,62 @@ def padder(strings,padding=' ',delimiter=None,justification='left'):
 	return padded
 
 
-def initialize(data,shape,dtype=None,**kwargs):
+def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	'''
 	Initialize data
 	Args:
-		data (array): data array
+		data (array,str): data array or path to load data
 		shape (iterable): shape of data
+		random (str,dict): random type of initialization, dictionary of attributes or allowed strings in ['uniform','ones','zeros','random']
+		bounds (iterable[object]): bounds of data
 		dtype (str,datatype): data type of data		
 		kwargs (dict): Additional keyword arguments for initialization
 	Returns:
 		data (array): data
 	'''	
 
-	defaults = {
-		'bounds':None,
-		'initialization':None,
-		'constant':None,
-		'boundary':None,
-		'random':None,
-		'seed':None,
-		'axis':None
-	}
-
-	kwargs.update({kwarg: kwargs.get(kwarg,defaults[kwarg]) for kwarg in defaults})
-
-	bounds = kwargs.get('bounds')
-	initialization = kwargs.get('initialization')
-	constant = kwargs.get('constant')
-	random = kwargs.get('random')
-	seed = kwargs.get('seed')
-	axis = kwargs.get('axis')
-	model = kwargs.get('model')
-
-	ndim = None if shape is None else 0 if isinstance(shape,int) else len(shape)
-	key = seed
-
-	if isinstance(data,str):
+	if data is None:
+		data = None
+	elif isinstance(data,str):
 		default = None
 		data = load(data,default=default)
 
-	# Pad data
-	if data is not None and axis is not None:
-		if isinstance(axis,int):
-			axis = [axis]
-		axis = [i%ndim for i in axis]
+	if shape is None:
+		shape = data.shape if data is not None else None
+
+	if dtype is None:
+		dtype = data.dtype if data is not None else None
+
+	bounds = bounding(bounds,dtype=dtype)
+
+	if isinstance(random,dict):
+
+		interpolation = random.get('interpolation',{})
+		smoothness = max(1,min(shape[-1]//2,random.get('smoothness',1)))
+		shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
+		pts_interp = smoothness*arange(shape_interp[-1])
+		pts = arange(shape[-1])
+
+		data_interp = rand(shape_interp,bounds=bounds,dtype=dtype,**kwargs)
+		try:
+			data = interpolate(pts_interp,data_interp,pts,bounds=bounds,**interpolation)
+		except:
+			data = rand(shape,bounds=bounds,dtype=dtype,**kwargs)
+
+	elif isinstance(random,str):
 		
-		assert len(axis) == data.ndim, "Incorrect axis %r specified for data %r"%(axis,data.shape)
-
-		reshape = [1 for i in range(data.ndim+sum(i for i in axis if i>=data.ndim))]
-		for i in range(len(axis)):
-			reshape[axis[i]] = data.shape[i]
-
-		data = data.reshape(reshape)
-
-	data = padding(data,shape,key=key,bounds=bounds,random=random,dtype=dtype)
-
-	if data is None:
-		return data
-	
-	shape = data.shape
-	size = data.size
-	ndim = data.ndim
-	dtype = data.dtype
-
-	if isinstance(data,arrays):
-		pass
-	elif isinstance(initialization,dict):
-		if initialization['method'] in ['interpolation']:
-			
-			# Data are initialized as interpolated random values between bounds
-			interpolation = initialization['interpolation']
-			smoothness = max(1,min(shape[-1]//2,initialization['smoothness']))
-			shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
-			pts_interp = smoothness*arange(shape_interp[-1])
-			pts = arange(shape[-1])
-
-			data_interp = rand(shape_interp,key=key,bounds=bounds,random=random,dtype=dtype)
-			try:
-				data = interpolate(pts_interp,data_interp,pts,interpolation)
-			except:
-				data = rand(shape,key=key,bounds=bounds,random=random,dtype=dtype)
-
-			data = minimums(bounds[1],maximums(bounds[0],data))
-	
-	elif isinstance(initialization,str):
-		
-		if initialization in ['uniform']:
+		if random in ['uniform']:
 			data = ((bounds[0]+bounds[1])/2)*ones(shape,dtype=dtype)
 		
-		elif initialization in ['random']:
-			data = rand(shape,key=key,bounds=bounds,random=random,dtype=dtype)
-
-		elif initialization in ['one','ones']:
+		elif random in ['ones']:
 			data = ones(shape,dtype=dtype)
 		
-		elif initialization in ['zero','zeros']:
+		elif random in ['zeros']:
 			data = zeros(shape,dtype=dtype)
 
-	elif initialization is not None: 
-		
-		if isinstance(initialization,scalars):
-			data = initialization*ones(shape,dtype=dtype)
+		else:
+			data = rand(shape,bounds=bounds,random=random,dtype=dtype,**kwargs)
 
-	if constant is not None:
-		if not all(isinstance(constant[i],dict) for i in constant):
-			axis = -1
-			constant = {axis:constant}
-		for axis in constant:
-			indices = array([int(i) for i in constant[axis]])
-			values = array([constant[axis][i] for i in constant[axis]],dtype=dtype)
-			axis = int(axis)
-
-			data = put(data,values,indices,axis=axis)
 
 	data = data.astype(dtype)
 
