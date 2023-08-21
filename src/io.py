@@ -844,10 +844,10 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	data = wrapper(data)
 
-	if isinstance(args['path'],str) and (args['wrapper'] in [None,'pd']):
+	if isinstance(args['path'],str) and (args['wrapper'] in [None,'pd'] or callable(args['wrapper'])):
 		name = list(data)[-1]
 		data = data[name]
-	elif not isinstance(args['path'],dict) and (args['wrapper'] in [None,'pd']):
+	elif not isinstance(args['path'],dict) and (args['wrapper'] in [None,'pd'] or callable(args['wrapper'])):
 		data = [data[name] for name in data]
 	else:
 		pass
