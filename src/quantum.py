@@ -1615,6 +1615,13 @@ class Operators(Object):
 
 		# Set parameters
 		parameters = {i:self.data[i].parameters for i in self.data if self.data[i].data is not None} if parameters is None else parameters
+		
+
+		for i in self.data:
+			print(i,self.data[i].parameters.data,self.data[i].parameters.shape)
+		exit()
+
+
 		parameters = Parameters(parameters=parameters)
 
 		self.parameters = parameters

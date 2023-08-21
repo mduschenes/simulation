@@ -12,7 +12,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vfunc,switch,array,arange,zeros,ones,bound
+from src.utils import jit,vfunc,switch,array,arange,empty,bound
 from src.utils import concatenate,addition,prod
 from src.utils import initialize,slicing,datatype,to_index,to_position
 from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin,exp
@@ -116,7 +116,7 @@ class Parameter(System):
 		self.dtype = datatype(self.dtype)		
 		self.shape = self.shape if self.shape is not None else None
 		self.transpose = self.transpose if self.transpose is not None else None
-		self.data = array(self.data,dtype=self.dtype) if self.data is not None else None
+		self.data = array(self.data,dtype=self.dtype) if self.data is not None else empty(self.shape,dtype=self.dtype) if self.shape is not None else None
 
 		self.shape = self.shape if self.shape is not None else self.data.shape if self.data is not None else None
 		self.size = self.size if self.size is not None else self.data.size if self.data is not None else prod(self.shape) if self.shape is not None else None
