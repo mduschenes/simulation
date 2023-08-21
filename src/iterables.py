@@ -248,7 +248,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 		iterable.clear()
 
 	# Set nested elements
-	for element in elements:
+	for element in list(elements):
 
 		# Get iterable, and index of tuple of nested element key
 		i = iterable
@@ -278,8 +278,6 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 						e.extend(_element)
 						break
 				e = tuple(e)
-
-				# print(element,e)
 
 			elif isiterable(element,exceptions=scalars):
 				e = tuple(element)
@@ -431,6 +429,14 @@ def hasser(iterable,elements,delimiter=False):
 		return True
 	except:
 		return False
+
+
+
+finder = lambda key,value,delimiter=None: (
+	finder(delimiter.join(key.split(delimiter)[1:]),value.get(key.split(delimiter)[0])) if (
+		(isinstance(delimiter,str)) and (len(key)) and (
+		(isinstance(value,dict) and (key.split(delimiter)[0] in value))))
+		else value)
 
 
 def permutations(*iterables,repeat=None):

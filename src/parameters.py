@@ -27,9 +27,10 @@ class Parameter(System):
 
 	defaults = dict(
 			string=None,variable=None,method=None,
-			local=None,group=None,bounds=None,attributes=None,axis=None,
+			local=None,group=None,
 			parameters=None,
-			seed=None,random=None,initialization=None,constants=None,
+			seed=None,random=None,bounds=None,attributes=None,axis=None,transpose=None,
+			initialization=None,constants=None,
 			indices=None,func=None,constraint=None,
 			shape=None,size=None,ndim=None,dtype=None,			
 			args=(),kwargs={}
@@ -114,35 +115,36 @@ class Parameter(System):
 
 		# Get data
 		self.dtype = datatype(self.dtype)		
-		self.data = array(self.data,dtype=self.dtype) if self.data is not None else None
+		self.shape = self.shape if self.shape is not None else None
+		self.transpose = self.transpose if self.transpose is not None else None
+		self.data = array(self.data,dtype=self.dtype) if self.data is not None and self.data is not False else None
+
+		if self.data is not None:
+			if self.transpose is not None:
+				self.data = self.data.transpose(self.transpose)
+			if self.shape is not None:
+				self.data = self.data.reshape(self.shape) 
+
 
 		self.shape = self.data.shape if self.data is not None else None
 		self.size = self.data.size if self.data is not None else None
 		self.ndim = self.data.ndim if self.data is not None else None
-
-		self.parameters = self.parameters if self.parameters is not None else 1
+		self.dtype = self.data.dtype if self.data is not None else None
 
 		self.string = self.string if self.string is not None else None
 		self.variable = self.variable if self.variable is not None else None
 		self.method = self.method if self.method is not None else None
 		self.group = (*((*group,) if not isinstance(group,str) else (group,) for group in self.group),)  if self.group is not None else ()		
 		self.local = self.local if isinstance(self.local,dict) else {group:self.local for group in self.group}
-		self.attributes = [attr for attr in self.attributes if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.attributes is not None else ()
+		self.attributes = [attr for attr in self.attributes if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.attributes is not None else None
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
 
-		self.dtype = self.data.dtype if self.data is not None else None
-
-
-		shape = [*(self.shape[:max(0,self.ndim-len(self.attributes))] if self.data is not None else ()),
-				 *(attr if isinstance(attr,int) else getattr(self,attr) for attr in self.attributes),
-				]
-
-
 		# Set attributes
-		self.shape = shape if shape is not None else None
-		self.size = prod(shape) if shape is not None else None
-		self.ndim = len(shape) if shape is not None else None
-
+		self.shape = [*(self.shape[:max(0,self.ndim-(len(self.attributes) if self.attributes is not None else 0))] if self.data is not None else ()),
+				 *((attr if isinstance(attr,int) else getattr(self,attr) for attr in self.attributes) if self.attributes is not None else ()),
+				] if self.shape is not None or self.attributes is not None else None
+		self.size = prod(self.shape) if self.shape is not None else None
+		self.ndim = len(self.shape) if self.shape is not None else None
 
 		# Set functions
 		kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
@@ -154,6 +156,7 @@ class Parameter(System):
 			'shift':[0,-pi/2],
 			'sigmoid':1,
 			'default':0,
+			'wrapper':lambda parameters: parameters
 			}
 		self.kwargs.update({attr: self.kwargs.get(attr,kwargs.get(attr,defaults[attr])) for attr in defaults})
 
@@ -179,6 +182,22 @@ class Parameter(System):
 					ax = self.ndim - axis if axis < 0 else axis
 					indices = (*(slice(None),)*(max(0,ax-2)),indices,*(slice(None),)*(max(0,self.ndim - ax - 1)))
 					self.kwargs[attr][axis] = {'indices':indices,'values':values}
+			
+			elif attr in ['wrapper']:
+				if self.indices is not None and self.parameters is not None:
+					def wrapper(parameters):
+						return self.parameters*parameters[self.indices]
+				elif self.indices is None and self.parameters is not None:
+					def wrapper(parameters):
+						return self.parameters*parameters
+				elif self.indices is not None and self.parameters is None:
+					def wrapper(parameters):
+						return parameters[self.indices]
+				elif self.indices is None and self.parameters is None:
+					def wrapper(parameters):
+						return parameters
+				self.kwargs[attr] = jit(wrapper)
+
 
 		defaults = {}
 		if self.method in ['time']:
@@ -194,192 +213,104 @@ class Parameter(System):
 		self.kwargs.update(defaults)
 
 
-		if self.indices is not None:
-			
-			if self.variable:
+		if self.variable:
 
-				if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
-			
-					def func(parameters,*args,**kwargs):
-						return self.parameters*bound(parameters[self.indices],scale=self.kwargs['sigmoid'])
-						
-				elif self.method in ['bounded']:
-
-					def func(parameters,*args,**kwargs):
-						return self.parameters*bound(parameters[self.indices])
-
-				elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
-			
-					def func(parameters,*args,**kwargs):
-						return self.parameters*bound(parameters[self.indices],scale=self.kwargs['sigmoid'])
-
-				elif self.method in ['constrained']:					
-			
-					def func(parameters,*args,**kwargs):
-						return self.parameters*bound(parameters[self.indices])
-
-				elif self.method in ['unconstrained']:					
-					
-					def func(parameters,*args,**kwargs):
-						return self.parameters*parameters[self.indices]
-
-				elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
-					def func(parameters,*args,**kwargs):
-						return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
-
-				else:
-
-					if isinstance(self.method,dict):
-						func = self.method.get('func')
-					elif isinstance(self.method,str):
-						func = self.method
-					else:
-						func = None
-					
-					func = load(func)
-
-					if func is None:
-						def func(parameters,*args,**kwargs):
-							return self.parameters*parameters[self.indices]
-					else:
-						func = partial(func,self=self)
+			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 		
-
-				if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constants']):
-				
-					def constraint(parameters,*args,**kwargs):
-						return self.kwargs['lambda']*sum(
-							(((parameters[self.indices])[self.kwargs['constants'][i]['indices']] - 
-							  self.kwargs['constants'][i]['values'])**2).sum() 
-							for i in self.kwargs['constants'])
-
-				elif self.method in ['unconstrained']:
-
-						def constraint(parameters,*args,**kwargs):
-							return self.kwargs['default']
+				if self.parameters is not None:
+					def func(parameters,*args,**kwargs):
+						return bound(self.kwargs['wrapper'](parameters),scale=self.kwargs['sigmoid'])
 					
-				else:
+			elif self.method in ['bounded']:
 
-					if isinstance(self.method,dict):
-						constraint = self.method.get('constraint')
-					elif isinstance(self.method,str):
-						constraint = None
-					else:
-						constraint = None
-					
-					constraint = load(constraint)
+				def func(parameters,*args,**kwargs):
+					return bound(self.kwargs['wrapper'](parameters))
 
-					if constraint is None:
+			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
+		
+				def func(parameters,*args,**kwargs):
+					return bound(self.kwargs['wrapper'](parameters),scale=self.kwargs['sigmoid'])
+
+			elif self.method in ['constrained']:					
+		
+				def func(parameters,*args,**kwargs):
+					return bound(self.kwargs['wrapper'](parameters))
+
+			elif self.method in ['unconstrained']:					
 				
-						def constraint(parameters,*args,**kwargs):
-							return self.kwargs['default']
+				def func(parameters,*args,**kwargs):
+					return self.kwargs['wrapper'](parameters)
 
-					else:
-						constraint = partial(constraint,self=self)
+			elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
+				
+				def func(parameters,*args,**kwargs):
+					return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
 
 			else:
-			
-				def func(parameters,*args,**kwargs):
-					return self.parameters*self.data[self.indices]
 
+				if isinstance(self.method,dict):
+					func = self.method.get('func')
+				elif isinstance(self.method,str):
+					func = self.method
+				else:
+					func = None
 				
+				func = load(func)
+
+				if func is None:
+					def func(parameters,*args,**kwargs):
+						return self.kwargs['wrapper'](parameters)
+				else:
+					func = partial(func,self=self)
+	
+
+			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constants']):
+			
 				def constraint(parameters,*args,**kwargs):
-					return self.kwargs['default']
+					return self.kwargs['lambda']*sum(
+						(((parameters[self.indices])[self.kwargs['constants'][i]['indices']] - 
+						  self.kwargs['constants'][i]['values'])**2).sum() 
+						for i in self.kwargs['constants'])
+
+			elif self.method in ['unconstrained']:
+
+					def constraint(parameters,*args,**kwargs):
+						return self.kwargs['default']
+				
+			else:
+
+				if isinstance(self.method,dict):
+					constraint = self.method.get('constraint')
+				elif isinstance(self.method,str):
+					constraint = None
+				else:
+					constraint = None
+				
+				constraint = load(constraint)
+
+				if constraint is None:
+			
+					def constraint(parameters,*args,**kwargs):
+						return self.kwargs['default']
+
+				else:
+					constraint = partial(constraint,self=self)
+
 		else:
-
-			if self.variable:
-
-				if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 			
-					def func(parameters,*args,**kwargs):
-						return self.parameters*bound(parameters,scale=self.kwargs['sigmoid'])
-						
-				elif self.method in ['bounded']:
+			if self.data is not None:
 
-					def func(parameters,*args,**kwargs):
-						return self.parameters*bound(parameters)
-
-				elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
-			
-					def func(parameters,*args,**kwargs):
-						return self.parameters*bound(parameters,scale=self.kwargs['sigmoid'])
-
-				elif self.method in ['constrained']:					
-			
-					def func(parameters,*args,**kwargs):
-						return self.parameters*bound(parameters)
-
-
-				elif self.method in ['unconstrained']:					
-					
-					def func(parameters,*args,**kwargs):
-						return self.parameters*parameters
-
-				elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
-					def func(parameters,*args,**kwargs):
-						return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
-
-				else:
-
-					if isinstance(self.method,dict):
-						func = self.method.get('func')
-					elif isinstance(self.method,str):
-						func = self.method
-					else:
-						func = None
-					
-					func = load(func)
-
-					if func is None:
-						def func(parameters,*args,**kwargs):
-							return self.parameters*parameters
-					else:
-						func = partial(func,self=self)
-		
-
-				if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constants']):
-				
-					def constraint(parameters,*args,**kwargs):
-						return self.kwargs['lambda']*sum(
-							((parameters[self.kwargs['constants'][i]['indices']] - 
-							  self.kwargs['constants'][i]['values'])**2).sum() 
-							for i in self.kwargs['constants'])
-
-				elif self.method in ['unconstrained']:
-
-						def constraint(parameters,*args,**kwargs):
-							return self.kwargs['default']
-					
-				else:
-
-					if isinstance(self.method,dict):
-						constraint = self.method.get('constraint')
-					elif isinstance(self.method,str):
-						constraint = None
-					else:
-						constraint = None
-					
-					constraint = load(constraint)
-
-					if constraint is None:
-				
-						def constraint(parameters,*args,**kwargs):
-							return self.kwargs['default']
-
-					else:
-						constraint = partial(constraint,self=self)
-
-			else:
-			
 				def func(parameters,*args,**kwargs):
-					return self.parameters*self.data
+					return self.kwargs['wrapper'](self.data)
+			else:
+				def func(parameters,*args,**kwargs):
+					return self.data
 
 				
-				def constraint(parameters,*args,**kwargs):
-					return self.kwargs['default']							
+			def constraint(parameters,*args,**kwargs):
+				return self.kwargs['default']
 
-
-		parameters = self.data if self.data is not None else 1
+		parameters = self.data if self.data is not None else None
 
 		func = jit(func,parameters=parameters)
 		constraint = jit(constraint,parameters=parameters)
@@ -426,8 +357,12 @@ class Parameters(System):
 
 	defaults = {}
 	data = {}
-	parameters = None
 	indices = {}
+	parameters = None
+	shape = None
+	size = None
+	ndim = None
+	dtype = None
 
 	def __init__(self,parameters=None,system=None,**kwargs):
 		'''
@@ -524,18 +459,25 @@ class Parameters(System):
 				) 
 				for group in data
 				for parameter in data[group].indices}
-
-		parameters = {self[parameter].indices: self[parameter].parameters for group in {self[parameter].group for parameter in self} for parameter in self if self[parameter].group == group}
+		parameters = {data[parameter].indices: data[parameter].parameters for group in {self.parameters[parameter].group for parameter in self.parameters} for parameter in data if self.parameters[parameter].group == group}
 		parameters = array([parameters[indices] for indices in parameters])
 		
+		shape = parameters.shape[::-1]
+		size = parameters.size
+		ndim = parameters.ndim
+		dtype = parameters.dtype
+
+		parameters = parameters.T.ravel()
+
 		indices = {parameter:data[parameter].indices for parameter in data}
 
 		self.data = data
-
 		self.indices = indices
-
 		self.parameters = parameters
-
+		self.shape = shape
+		self.size = size
+		self.ndim = ndim
+		self.dtype = dtype
 
 		return
 
@@ -550,9 +492,9 @@ class Parameters(System):
 			parameters (array): parameters
 		'''
 		if parameters is None:
-			return self.parameters
+			return self.parameters.reshape(self.shape)
 		else:
-			return parameters
+			return parameters.T.ravel()
 
 	def __iter__(self):
 		return self.__iterdata__()

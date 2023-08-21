@@ -19,7 +19,7 @@ from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,diffe
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,iterables,datatype
 
-from src.iterables import setter,getattrs,hasattrs,namespace,permutations
+from src.iterables import setter,finder,getattrs,hasattrs,namespace,permutations
 
 from src.io import load,dump,join,split
 
@@ -203,6 +203,7 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,gra
 		func (callable): contract gradient with signature func(parameters,state,indices)
 	'''
 
+	assert grad is not None
 
 	size = parameters.shape[0]
 	length = len(data)
@@ -235,9 +236,6 @@ def gradient_scheme(parameters,state=None,conj=False,data=None,identity=None,gra
 		array(sizes).reshape(-1)
 		)
 
-	if grad is None:
-		grad = [(lambda parameters,state=None,i=i: data[i].coefficients*data[i](parameters + (pi/2)/data[i].coefficients)) for i in range(length)]
-	
 	step = length
 
 	function = scheme(parameters=parameters,state=state,conj=conj,data=data,identity=identity)
@@ -311,7 +309,7 @@ class Object(System):
 		parameters=None,variable=True,
 		shape=None,size=None,ndim=None,
 		samples=None,identity=None,locality=None,
-		state=None,conj=False,coefficients=None,indices=None,
+		state=None,conj=False,
 		func=None,gradient=None,
 		contract=None,gradient_contract=None,
 		)
@@ -435,8 +433,6 @@ class Object(System):
 		self.system = system if system is not None else None
 
 		self.locality = max(locality if locality is not None else 0,len(self.site) if self.site is not None else 0)
-		self.coefficients = self.coefficients if self.coefficients is not None else 1
-		self.indices = self.indices if self.indices is not None else None
 
 		self.N = N
 		self.D = D
@@ -466,15 +462,14 @@ class Object(System):
 
 		return
 
-	def __initialize__(self,parameters=None,data=None,state=None,conj=False,indices=None):
+	def __initialize__(self,parameters=None,data=None,state=None,conj=False):
 		'''
 		Initialize operator
 		Args:
-			parameters (array): parameters
+			parameters (array,dict): parameters
 			data (array): data
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters
 			conj (bool): conjugate
-			indices (array): Indices of parameters
 		'''
 
 		if parameters is None:
@@ -483,13 +478,17 @@ class Object(System):
 			parameters = False
 			data = False
 
+		# if parameters is not False:
+		cls = Parameter
 		defaults = {}
-		parameters = dict(data=parameters,indices=indices) if not isinstance(parameters,dict) else parameters
-		setter(parameters,dict(N=self.N,D=self.D,variable=self.variable,system=self.system),delimiter=delim,func=True)
+		parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
+		setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults},delimiter=delim,func=False)
+		setter(parameters,dict(string=self.string),delimiter=delim,func=False)
+		setter(parameters,dict(variable=self.variable,system=self.system),delimiter=delim,func=True)
 		setter(parameters,defaults,delimiter=delim,func=False)
 		setter(parameters,self.parameters,delimiter=delim,func=False)
 
-		parameters = Parameter(**parameters)
+		parameters = cls(**parameters)
 
 		if data is None:
 			data = self.data
@@ -511,9 +510,7 @@ class Object(System):
 		self.data = data
 		self.state = state
 		self.conj = conj
-		self.indices = indices
 
-		print(self,self.parameters)
 		do = not (self.parameters() is False)
 
 		if (do) and (((self.data is not None) or (self.operator is not None))):
@@ -895,15 +892,13 @@ class Pauli(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-		self.coefficients *= pi*(1-2*self.conj)
-
 		def func(parameters=None,state=None):
-			parameters = self.coefficients*self.parameters(parameters)			
+			parameters = self.parameters(parameters)			
 			return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 		def gradient(parameters=None,state=None):
-			parameters = self.coefficients*self.parameters(parameters)
-			return self.coefficients*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+			parameters = self.parameters(parameters)
+			return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 
 		data = self.data if data is None else data
@@ -1409,7 +1404,6 @@ class Operators(Object):
 		self.parameters = parameters
 		self.state = None
 		self.identity = None
-		self.coefficients = None
 		self.conj = False
 
 		self.func = None
@@ -1454,7 +1448,7 @@ class Operators(Object):
 		'''
 
 		# Get operator,site,string from data
-		objs = {'operator':operator,'site':site,'string':string}
+		objs = Dictionary(operator=operator,site=site,string=string)
 
 		for obj in objs:
 			objs[obj] = [] if objs[obj] is None else objs[obj]
@@ -1473,6 +1467,21 @@ class Operators(Object):
 				})
 
 			data = None
+
+		attributes = Dictionary(attributes=None)
+
+		for kwarg in attributes:
+			for i,attribute in enumerate(kwargs.pop(kwarg,[])):
+				if isinstance(attribute,nulls):
+					continue
+				indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
+				attribute = [attribute] if isinstance(attribute,str) else attribute
+				for attrs in attribute:
+					attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
+					if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
+						continue
+					setter(kwargs[attr][i],{attrs:finder(attrs,kwargs[attr][i],delimiter=delim)[indices.index(i)]},delimiter=delim)
+
 
 		# Set class attributes
 		self.__extend__(data=data,**objs,**kwargs)
@@ -1546,18 +1555,22 @@ class Operators(Object):
 		if index == -1:
 			index = len(self)
 
+
+		cls = Operator
 		defaults = {}
 		kwargs = {kwarg: kwargs[kwarg] for kwarg in kwargs if not isinstance(kwargs[kwarg],nulls)}
-		setter(kwargs,dict(N=self.N,D=self.D,d=self.d,L=self.L,delta=self.delta,M=self.M,T=self.T,tau=self.tau,P=self.P,system=self.system),delimiter=delim,func=True)
+		setter(kwargs,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in ['data','operator','site','string']},delimiter=delim,func=False)
+		setter(kwargs,dict(verbose=False,system=self.system),delimiter=delim,func=True)
 		setter(kwargs,defaults,func=False)
 
-		data = Operator(data=data,operator=operator,site=site,string=string,**kwargs)
+
+		data = cls(data=data,operator=operator,site=site,string=string,**kwargs)
 
 		self.data = insert(self.data,index,{index: data})
 
 		return
 
-	def __initialize__(self,parameters=None,data=None,state=None,conj=False,indices=None):
+	def __initialize__(self,parameters=None,data=None,state=None,conj=False):
 		''' 
 		Setup class functions
 		Args:
@@ -1565,17 +1578,18 @@ class Operators(Object):
 			data (bool,dict): data of class
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters
 			conj (bool): conjugate
-			indices (array): Indices of parameters
 		'''
 
-		objs = {'state':state}
-		classes = {'state':State}
-		arguments = {'state':True}
+		objs = Dictionary(state=state)
+		classes = Dictionary(state=State)
+		arguments = Dictionary(state=True)
 
 		# Get functions
 		for obj in objs:
 			instance,cls,argument = objs[obj],classes[obj],arguments[obj]
 			instance = getattr(self,obj,None) if instance is None or instance is True else instance if instance is not False else None
+			if instance is None:
+				continue
 			if not isinstance(instance,cls):
 				kwargs = {}
 
@@ -1604,22 +1618,39 @@ class Operators(Object):
 			self.data[i].__initialize__(data=data[i])
 
 		# Set parameters
-		parameters = {i:self.data[i].parameters for i in self.data if self.data[i]() is not None} if parameters is None else parameters
+		parameters = {i:self.data[i].parameters for i in self.data if self.data[i].data is not None} if parameters is None else parameters
 		parameters = Parameters(parameters=parameters)
 
 		self.parameters = parameters
 
 		# Set data
 		for i in self.parameters:
-			self.data[i].__initialize__(parameters=self.parameters[i].parameters,indices=self.parameters[i].indices,state=self.state)
+			parameters = dict(
+				data=self.parameters[i].parameters,
+				indices=self.parameters[i].indices,
+				parameters=pi*(1-2*self.conj)*(self.tau)*trotter(p=self.P),
+				)
+			state = self.state
+			self.data[i].__initialize__(
+				parameters=parameters,
+				state=state)
+
+
+		parameters = self.parameters()[0]
 
 		for i in self.data:
-			print(i,self.data[i],self.data[i].parameters())
+			print(i,self.data[i],self.data[i].parameters(parameters))
+			print(self.data[i]())
+			print(self.data[i](parameters))
+			print()
 
+
+		print(self.parameters.indices)
 		exit()
 
-		# Set trotterized indices
+		# Set trotterized data
 		p = self.P
+
 
 		indices = self.parameters.indices
 		wrapper = self.parameters.wrapper
@@ -1712,7 +1743,6 @@ class Operators(Object):
 			hermitian = True
 			unitary = False
 
-		self.coefficients = coefficients
 
 		self.parameters.indices = indices
 		self.parameters.wrapper = wrapper
@@ -1827,9 +1857,7 @@ class Operators(Object):
 		indices = self.parameters.indices
 		indices = array([min(j for j in indices if indices[j] == i) for i in set(indices[i] for i in indices)])
 
-		coefficients = self.coefficients[indices]
-
-		grad = coefficients*self.gradient_analytical(parameters=parameters)
+		grad = self.gradient_analytical(parameters=parameters)
 
 		return grad
 
@@ -2168,12 +2196,10 @@ class Hamiltonian(Operators):
 		'''
 
 		# Get operator,site,string from data
-		objs = {'operator':operator,'site':site,'string':string}
+		objs = Dictionary(operator=operator,site=site,string=string)
 
 		for obj in objs:
 			objs[obj] = [] if objs[obj] is None else objs[obj]
-
-		# Set attributes
 
 		# Get data and kwargs
 		if data is None:
@@ -2243,7 +2269,7 @@ class Hamiltonian(Operators):
 						objs[obj].append(value[obj])
 					
 					for kwarg in kwargs:
-						kwargs[kwarg].append(tmps[kwarg])
+						kwargs[kwarg].append(copy(tmps[kwarg]))
 
 			else:
 				for obj in objs:
@@ -2251,6 +2277,22 @@ class Hamiltonian(Operators):
 
 				for kwarg in kwargs:
 					kwargs[kwarg].append(tmps[kwarg])
+
+		# Set site dependent attributes
+		
+		attributes = Dictionary(attributes=None)
+
+		for kwarg in attributes:
+			for i,attribute in enumerate(kwargs.pop(kwarg,[])):
+				if isinstance(attribute,nulls):
+					continue
+				indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
+				attribute = [attribute] if isinstance(attribute,str) else attribute
+				for attrs in attribute:
+					attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
+					if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
+						continue
+					setter(kwargs[attr][i],{attrs:finder(attrs,kwargs[attr][i],delimiter=delim)[indices.index(i)]},delimiter=delim)
 
 
 		# Set class attributes
