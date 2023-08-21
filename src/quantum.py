@@ -474,11 +474,7 @@ class Object(System):
 
 		if parameters is None:
 			parameters = self.parameters
-		elif parameters is False:
-			parameters = False
-			data = False
 
-		# if parameters is not False:
 		cls = Parameter
 		defaults = {}
 		parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
@@ -487,8 +483,6 @@ class Object(System):
 		setter(parameters,dict(variable=self.variable,system=self.system),delimiter=delim,default=True)
 		setter(parameters,defaults,delimiter=delim,default=False)
 		setter(parameters,self.parameters,delimiter=delim,default=False)
-
-		print(self.string,'-----',parameters.get('shape'))
 
 		parameters = cls(**parameters)
 

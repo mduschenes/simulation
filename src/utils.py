@@ -3,6 +3,7 @@
 # Import python modules
 import os,sys,itertools,ast,operator
 from copy import deepcopy as copy
+from string import ascii_lowercase as characters
 from math import prod
 
 from functools import partial,partialmethod,wraps
@@ -5105,6 +5106,60 @@ def rank(a,tol=None,hermitian=False):
 	except:
 		return 0
 
+
+def tr(obj,axis=None,shape=None,size=None):
+	'''
+	Calculate partial trace of object at axis, as per shape
+	Args:
+		obj (array): Array to compute partial trace
+		axis (int,iterable[int]): axis of array to trace over, as per shape
+		shape (iterable[int]): Shape to reshape array for partial trace, or power of size if size is not None
+		size (int,iterable[int]): Base dimensions of each reshaped axis
+	Returns:
+		obj (array): Partially traced object
+	'''
+	
+	if size is not None:
+		if shape is not None:
+			if isinstance(size,int):
+				size = [size for i in shape]
+			shape = [s**i for s,i in zip(size,shape)]
+  
+
+	ndim = obj.ndim
+	shape = shape*ndim
+	
+	if shape is not None:
+		obj = obj.reshape(shape)
+
+	dim = obj.ndim//ndim        
+	shape = obj.shape[:dim]
+		
+	if axis is None:
+		axis = range(dim)
+	elif isinstance(axis,int):
+		axis = [axis]        
+	axis = [dim+i if i<0 else i for i in axis]
+	
+	shape = [prod([shape[i] for i in range(dim) if i not in axis])]*ndim
+	
+	for i in axis:
+		obj = trace(obj,axis=[j*dim+i for j in range(ndim)])
+
+	obj = obj.reshape(shape)
+		
+#     subscripts = [i for i in characters[:dim*ndim]]
+#     for i in axis:
+#         for j in range(ndim-1,0,-1):
+#             subscripts[j*dim+i] = subscripts[i]
+#     subscripts = ''.join(subscripts)
+			
+#     obj = einsum(subscripts,obj)
+	
+#     obj = obj.reshape(shape)
+	
+	return obj
+
 @jit
 def abs(a):
 	'''
@@ -5264,6 +5319,19 @@ def exp(a):
 		out (array): Element-wise exponential of array
 	'''
 	return np.exp(a)
+
+@jit
+def power(a,n):
+	'''
+	Calculate power of array a
+	Args:
+		a (array): Array to power
+		n (int): Power
+	Returns:
+		out (array): Power of array
+	'''
+	return np.linalg.matrix_power(a,n)
+
 
 @jit
 def _expm(x,A,I,n=2):

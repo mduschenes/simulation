@@ -12,7 +12,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vfunc,switch,array,arange,bound
+from src.utils import jit,vfunc,switch,array,arange,zeros,ones,bound
 from src.utils import concatenate,addition,prod
 from src.utils import initialize,slicing,datatype,to_index,to_position
 from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin,exp
@@ -40,7 +40,7 @@ class Parameter(System):
 		'''
 		Initialize data of parameter
 		Args:
-			data (iterable): data of parameter
+			data (iterable): data of parameter, if None, shape must be not None to initialize data
 			string (str): Name of parameter
 			variable (bool): Parameter is variable or constant
 			method (str): method of parameter, allowed strings in ['unconstrained','constrained','bounded','time']
@@ -116,12 +116,12 @@ class Parameter(System):
 		self.dtype = datatype(self.dtype)		
 		self.shape = self.shape if self.shape is not None else None
 		self.transpose = self.transpose if self.transpose is not None else None
-		self.data = array(self.data,dtype=self.dtype) if self.data is not None and self.data is not False else None
+		self.data = array(self.data,dtype=self.dtype) if self.data is not None else None
 
-		self.shape = self.data.shape if self.data is not None else None
-		self.size = self.data.size if self.data is not None else None
-		self.ndim = self.data.ndim if self.data is not None else None
-		self.dtype = self.data.dtype if self.data is not None else None
+		self.shape = self.shape if self.shape is not None else self.data.shape if self.data is not None else None
+		self.size = self.size if self.size is not None else self.data.size if self.data is not None else prod(self.shape) if self.shape is not None else None
+		self.ndim = self.ndim if self.ndim is not None else self.data.ndim if self.data is not None else len(self.shape) if self.shape is not None else None
+		self.dtype = self.dtype if self.dtype is not None else self.data.dtype if self.data is not None else None
 
 		self.string = self.string if self.string is not None else None
 		self.variable = self.variable if self.variable is not None else None
@@ -130,11 +130,6 @@ class Parameter(System):
 		self.local = self.local if isinstance(self.local,dict) else {group:self.local for group in self.group}
 		self.attributes = [attr for attr in self.attributes if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.attributes is not None else None
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
-
-		# Set attributes
-		self.shape = self.shape if self.shape is not None else None
-		self.size = prod(self.shape) if self.shape is not None else None
-		self.ndim = len(self.shape) if self.shape is not None else None
 
 		# Set functions
 		kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
@@ -174,7 +169,10 @@ class Parameter(System):
 					self.kwargs[attr][axis] = {'indices':indices,'values':values}
 			
 			elif attr in ['wrapper']:
-				if self.indices is not None and self.parameters is not None:
+				if self.data is None:
+					def wrapper(parameters):
+						return parameters
+				elif self.indices is not None and self.parameters is not None:
 					def wrapper(parameters):
 						return self.parameters*parameters[self.indices]
 				elif self.indices is None and self.parameters is not None:
@@ -296,11 +294,11 @@ class Parameter(System):
 				def func(parameters,*args,**kwargs):
 					return self.data
 
-				
 			def constraint(parameters,*args,**kwargs):
 				return self.kwargs['default']
 
-		parameters = self.data if self.data is not None else 1
+
+		parameters = self.data if self.data is not None else None
 
 		func = jit(func,parameters=parameters)
 		constraint = jit(constraint,parameters=parameters)
@@ -314,9 +312,9 @@ class Parameter(System):
 		'''
 		Initialize class data with shape
 		Args:
-			data (array): Data of data
-			parameters (array): Parameters of data
-			indices (array): Indices of parameters of data
+			data (array): Data of class, if None, shape must be not None to initialize data
+			parameters (array): Parameters of class
+			indices (array): Indices of parameters of class
 		'''
 
 		# Set data
@@ -324,14 +322,20 @@ class Parameter(System):
 		self.parameters = parameters if parameters is not None else self.parameters
 		self.indices = indices if indices is not None else self.indices
 
-		if self.shape is not None:
+		if self.data is not None or self.shape is not None:
 
 			kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
 
+
+			print('initializing',self)
+			for kwarg in kwargs:
+				print(kwarg,kwargs[kwarg])
+			print('-----',self.data,self.shape)
+			print()
 			self.data = initialize(**kwargs)
 
-		if self.string == 'z':
-			print('s',self.shape,self.data)
+		# if self.string == 'z':
+		# 	print('s',self.shape,self.data)
 
 		self.__setup__()
 
@@ -428,10 +432,12 @@ class Parameters(System):
 				] if self.parameters[parameter].shape is not None or self.parameters[parameter].attributes is not None else None
 				for i,parameter in enumerate(parameters)}
 
+			print('shape',shape)
+
 			init = {parameter: initialize(**{**self.parameters[parameter],**dict(data=self.parameters[parameter].data,shape=shape[parameter],dtype=self.parameters[parameter].dtype)})
 				for i,parameter in enumerate(parameters)}
 
-			print(init)
+			print('init',{parameter:init[parameter].shape for parameter in init})
 
 			data[group].indices = {parameter:parameters[parameter] for i,parameter in enumerate(parameters)}
 			data[group].slices = {parameter:i for i,parameter in enumerate(parameters)}
@@ -462,6 +468,9 @@ class Parameters(System):
 				for group in data
 				for parameter in data[group].indices}
 		parameters = {data[parameter].indices: data[parameter].parameters for group in {self.parameters[parameter].group for parameter in self.parameters} for parameter in data if self.parameters[parameter].group == group}
+
+		print('inds',{parameter:data[parameter].indices for parameter in data})
+		print('final',{parameter:parameters[parameter].shape for parameter in parameters})
 		parameters = array([parameters[indices] for indices in parameters])
 		
 		shape = parameters.shape[::-1]

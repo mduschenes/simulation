@@ -55,7 +55,7 @@ class Dict(Dictionary):
 
 		for key in kwargs:
 			if isinstance(kwargs[key],dict) and all(isinstance(attr,str) for attr in kwargs[key]):
-				kwargs[key] = Dict(kwargs[key])
+				kwargs[key] = Dict(kwargs[key]) if not isinstance(kwargs[key],(Dict,Dictionary)) else kwargs[key]
 
 		super().__init__(**kwargs)
 
@@ -256,13 +256,15 @@ class Space(System):
 			self.space = self.space.space
 		if self.space is None:
 			self.space = self.default
-	
+
 		self.funcs = funcs.get(self.space,funcs[self.default])
 		self.funcs = {attr: wrapper(self.funcs[attr],dtypes.get(attr)) for attr in self.funcs}
 
 		self.__string__()
 		self.__size__()
-	
+
+		print('space-----',self.space,str(self),repr(self))
+
 		return
 
 	def __string__(self):
