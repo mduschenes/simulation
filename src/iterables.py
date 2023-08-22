@@ -260,13 +260,14 @@ def setter(iterable,keys,delimiter=False,default=None,copy=False):
 				if isinstance(keys[key],types):
 					setter(iterable[index],keys[key],delimiter=delimiter,default=default,copy=copy)
 				else:
-					iterable[index] = copier(func(index,index,iterable,keys),copy=copy)
+					iterable[index] = copier(func(index,key,iterable,keys),copy=copy)
+
 		else:
 			if not isinstance(other,nulls):
 				iterable[index] = {}
 				setter(iterable[index],{other:keys[key]},delimiter=delimiter,default=default,copy=copy)
 			else:
-				iterable[index] = copier(func(index,index,iterable,keys),copy=copy)
+				iterable[index] = copier(func(index,key,iterable,keys),copy=copy)
 
 	return
 

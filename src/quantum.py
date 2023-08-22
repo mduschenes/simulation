@@ -462,14 +462,14 @@ class Object(System):
 
 		return
 
-	def __initialize__(self,parameters=None,data=None,state=None,conj=False):
+	def __initialize__(self,data=None,state=None,conj=False,parameters=None):
 		'''
 		Initialize operator
 		Args:
-			parameters (array,dict): parameters
 			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters
 			conj (bool): conjugate
+			parameters (array,dict): parameters
 		'''
 
 		if parameters is None:
@@ -478,9 +478,8 @@ class Object(System):
 		cls = Parameter
 		defaults = {}
 		parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
-		setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults},delimiter=delim,default=False)
-		setter(parameters,dict(string=self.string),delimiter=delim,default=False)
-		setter(parameters,dict(variable=self.variable,system=self.system),delimiter=delim,default=True)
+		setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
+		setter(parameters,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
 		setter(parameters,defaults,delimiter=delim,default=False)
 		setter(parameters,self.parameters,delimiter=delim,default=False)
 
@@ -507,7 +506,7 @@ class Object(System):
 		self.state = state
 		self.conj = conj
 
-		do = not (self.parameters() is False)
+		do = (self.parameters() is not None)
 
 		if (do) and (((self.data is not None) or (self.operator is not None))):
 			self.__setup__(self.data,self.operator,self.site,self.string)
@@ -1247,7 +1246,7 @@ class Noise(Object):
 			if self.parameters is None:
 				self.parameters = 0
 
-			do = ((self.parameters() is not None) and (self.parameters() is not False) and (not isinstance(self.parameters(),dict)))
+			do = (self.parameters() is not None)
 
 			if not do:
 				self.data = None
@@ -1577,18 +1576,20 @@ class Operators(Object):
 
 		objs = Dictionary(state=state)
 		classes = Dictionary(state=State)
-		arguments = Dictionary(state=True)
 
 		# Get functions
 		for obj in objs:
-			instance,cls,argument = objs[obj],classes[obj],arguments[obj]
+			instance,cls = objs[obj],classes[obj]
 			instance = getattr(self,obj,None) if instance is None or instance is True else instance if instance is not False else None
 			if instance is None:
 				continue
 			if not isinstance(instance,cls):
 				kwargs = {}
 
-				args = ({**dict(data=None),**instance} if (isinstance(instance,dict) and (argument or all(attr in instance for attr in dict(instance=None)))) else dict(data=instance))
+				args = ({**dict(data=None),**instance} if (
+						isinstance(instance,dict) and 
+						all(attr in instance for attr in dict(data=None))) 
+						else dict(data=instance))
 				setter(kwargs,args,default=False)
 
 				args = dict(**namespace(cls,self),model=self,system=self.system)
@@ -1612,12 +1613,6 @@ class Operators(Object):
 		for i in data:
 			self.data[i].__initialize__(data=data[i])
 
-		# for i in self.data:
-		# 	print(i,self.data[i].parameters.parameters)
-		# 	print(self.data[i].parameters())
-		# 	print()
-		# print()
-
 		# Set parameters
 		parameters = {i:self.data[i].parameters for i in self.data if self.data[i].data is not None} if parameters is None else parameters
 		
@@ -1636,11 +1631,10 @@ class Operators(Object):
 					)
 
 
-		parameters = self.parameters()[0]
+		parameters = self.parameters(self.parameters())[0]
 
 		for i in self.data:
 			print(i,self.data[i],self.data[i].parameters(parameters))
-			print(self.data[i].parameters.data)
 			print(self.data[i](parameters))
 			print()
 
