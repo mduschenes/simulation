@@ -263,8 +263,6 @@ class Space(System):
 		self.__string__()
 		self.__size__()
 
-		print('space-----',self.space,str(self),repr(self))
-
 		return
 
 	def __string__(self):

@@ -7775,7 +7775,12 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	if dtype is None:
 		dtype = data.dtype if data is not None else None
 
+	default = 'random'
+	shape = (shape,) if isinstance(shape,int) else tuple(shape) if shape is not None and len(shape) else () if shape is not None else None
 	bounds = bounding(bounds,dtype=dtype)
+
+	if data is None or data.shape != shape:
+		random = default if random is None else random
 
 	if isinstance(random,dict):
 

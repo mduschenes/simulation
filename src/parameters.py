@@ -326,18 +326,12 @@ class Parameter(System):
 
 		if self.data is not None or self.shape is not None:
 
-			kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
+			self.data = initialize(**self)
 
-
-			print('initializing',self)
-			for kwarg in kwargs:
-				print(kwarg,kwargs[kwarg])
-			print('-----',self.data,self.shape)
-			print()
-			self.data = initialize(**kwargs)
-
-		# if self.string == 'z':
-		# 	print('s',self.shape,self.data)
+		self.shape = self.data.shape if self.data is not None else self.shape
+		self.size = self.data.size if self.data is not None else self.size
+		self.ndim = self.data.ndim if self.data is not None else self.ndim
+		self.dtype = self.data.dtype if self.data is not None else self.dtype
 
 		self.__setup__()
 
@@ -421,71 +415,52 @@ class Parameters(System):
 		Setup class
 		'''
 
-		data = [group for parameter in self.parameters for group in self.parameters[parameter].group if self.parameters[parameter].variable]
-
-		data = {group:Dict(indices={},slices={},local={},group={},parameters={}) for group in data}
-
+		data = {group: {}
+			for parameter in self.parameters 
+			for group in self.parameters[parameter].group 
+			if (self.parameters[parameter].variable)
+			}
 
 		for group in data:
 			
-			parameters = {parameter:i for i,parameter in enumerate(self.parameters) if (self.parameters[parameter].variable) and (self.parameters[parameter].string in group)}
-			number = max((data[group].indices[parameter] for group in data for parameter in data[group].indices),default=-1)+1
+			parameters = [parameter 
+				for i,parameter in enumerate(self.parameters) 
+				if ((self.parameters[parameter].variable) and 
+				    (self.parameters[parameter].string in group))
+				]
+			index = max((data[group][parameter].indices for group in data for parameter in data[group]),default=-1)+1
 			local = any(self.parameters[parameter].local.get(group) for parameter in parameters)
 
-			shape = {
-				parameter: [
-					*((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
-					*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
-
-				] if self.parameters[parameter].shape is not None or self.parameters[parameter].axis is not None else None
-				for i,parameter in enumerate(parameters)}
-
-			print('shape',shape)
-
-			init = {parameter: initialize(**{**self.parameters[parameter],**dict(data=empty(shape,dtype=dtype),shape=shape[parameter],dtype=self.parameters[parameter].dtype)})
-				for i,parameter in enumerate(parameters)}
-
-			print('init',{parameter:init[parameter].shape for parameter in init})
-
-			data[group].indices = {parameter:parameters[parameter] for i,parameter in enumerate(parameters)}
-			data[group].slices = {parameter:i for i,parameter in enumerate(parameters)}
-			data[group].local = {parameter:local for i,parameter in enumerate(parameters)}
-			data[group].group = {parameter:group for i,parameter in enumerate(parameters)}
-			data[group].parameters = [init[parameter] for parameter in parameters]
-			
-			if local:
-				data[group].indices = {parameter: number+i for i,parameter in enumerate(parameters)}
-				data[group].slices = {parameter:i for i,parameter in enumerate(parameters)}
-				data[group].local = {parameter:local for i,parameter in enumerate(parameters)}
-				data[group].group = {parameter:group for i,parameter in enumerate(parameters)}
-				data[group].parameters = array(data[group].parameters)
-			else:
-				data[group].indices = {parameter: number for i,parameter in enumerate(parameters)}
-				data[group].slices = {parameter:slice(None) for i,parameter in enumerate(parameters)}
-				data[group].local = {parameter:local for i,parameter in enumerate(parameters)}
-				data[group].group = {parameter:group for i,parameter in enumerate(parameters)}
-				data[group].parameters = sum(data[group].parameters)/len(data[group].parameters)
 
 
-		for parameter in data[group].indices:
-			print(parameters,data[group].indices[parameter])
+			for i,parameter in enumerate(parameters):
 
-		print(data[group].parameters)
-		exit()
-		data = {parameter: Dict(
-				indices=data[group].indices[parameter],
-				slices=data[group].slices[parameter],
-				local=data[group].local[parameter],
-				group=data[group].group[parameter],
-				parameters=data[group].parameters[data[group].slices[parameter]]
-				) 
-				for group in data
-				for parameter in data[group].indices}
-		parameters = {data[parameter].indices: data[parameter].parameters for group in {self.parameters[parameter].group for parameter in self.parameters} for parameter in data if self.parameters[parameter].group == group}
 
-		print('inds',{parameter:data[parameter].indices for parameter in data})
-		print('final',{parameter:parameters[parameter].shape for parameter in parameters})
-		parameters = array([parameters[indices] for indices in parameters])
+				data[group][parameter] = Dict(data=None,shape=None,local=None,indices=None)
+
+				data[group][parameter].shape = (
+						*((len(parameters) if local else 1),),
+						*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
+						*((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
+					)
+
+				data[group][parameter].local = local
+				data[group][parameter].indices = index+i if local else index
+
+				kwargs = {
+					**self.parameters[parameter],
+					**dict(data=data[group][parameter].data,
+						   shape=data[group][parameter].shape)
+					}
+
+				data[group][parameter].data = initialize(**kwargs)
+
+
+
+		data = {parameter:data[group][parameter] for group in data for parameter in data[group]}
+
+		indices = {parameter:data[parameter].indices for parameter in data}
+		parameters = array([data[parameter].data[data[parameter].indices] for parameter in data])
 		
 		shape = parameters.shape[::-1]
 		size = parameters.size
@@ -494,7 +469,10 @@ class Parameters(System):
 
 		parameters = parameters.T.ravel()
 
-		indices = {parameter:data[parameter].indices for parameter in data}
+		for i in data:
+			print(i)
+			print(data[i])
+		exit()
 
 		self.data = data
 		self.indices = indices

@@ -241,6 +241,7 @@ class Logger(object):
 		for logger in loggers:
 			try:
 				os.remove(logger)
+				os.rmdir(os.path.dirname(logger))
 			except:
 				pass
 

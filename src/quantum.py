@@ -467,7 +467,7 @@ class Object(System):
 		Initialize operator
 		Args:
 			parameters (array,dict): parameters
-			data (array): data
+			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters
 			conj (bool): conjugate
 		'''
@@ -1571,7 +1571,7 @@ class Operators(Object):
 		Setup class functions
 		Args:
 			parameters (dict,array,Parameters): parameters of class
-			data (bool,dict): data of class
+			data (bool,dict): data of class, or boolean to retain current data attribute or initialize as None
 			state (bool,dict,array,State): State to act on with class of shape self.shape, or class hyperparameters
 			conj (bool): conjugate
 		'''
@@ -1613,6 +1613,12 @@ class Operators(Object):
 		for i in data:
 			self.data[i].__initialize__(data=data[i])
 
+		# for i in self.data:
+		# 	print(i,self.data[i].parameters.parameters)
+		# 	print(self.data[i].parameters())
+		# 	print()
+		# print()
+
 		# Set parameters
 		parameters = {i:self.data[i].parameters for i in self.data if self.data[i].data is not None} if parameters is None else parameters
 		
@@ -1622,7 +1628,7 @@ class Operators(Object):
 
 		# Set data
 		for i in self.parameters:
-			self.data[i].__initialize__(indices=self.parameters[i].indices)
+			self.data[i].__initialize__(parameters=dict(indices=self.parameters[i].indices))
 
 		for i in self.data:
 			self.data[i].__initialize__(
@@ -1630,10 +1636,11 @@ class Operators(Object):
 					state=self.state
 					)
 
+
 		parameters = self.parameters()[0]
 
 		for i in self.data:
-			print(i,self.data[i],self.data[i].parameters(parameters) if self.data[i].parameters(parameters) is None else self.data[i].parameters(parameters)/pi)
+			print(i,self.data[i],self.data[i].parameters(parameters))
 			print(self.data[i].parameters.data)
 			print(self.data[i](parameters))
 			print()
