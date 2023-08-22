@@ -1635,7 +1635,7 @@ class Operators(Object):
 
 		for i in self.data:
 			print(i,self.data[i],self.data[i].parameters(parameters))
-			print(self.data[i](parameters))
+			print(self.data[i]())
 			print()
 
 
@@ -1645,13 +1645,9 @@ class Operators(Object):
 		# Set trotterized data
 		p = self.P
 
-
 		indices = self.parameters.indices
-		wrapper = self.parameters.wrapper
 
-		shape = (len(self),self.M)
-
-		indexes = {i: self.data[data] for i,data in enumerate(self.data) if (self.data[data].data is not None)}
+		indexes = {i: self.data[data] for i,data in enumerate(self.data) if (self.data[data]() is not None)}
 
 		length = len(indexes)
 		shape = (length,*shape[1:])
