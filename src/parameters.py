@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 from src.utils import jit,vfunc,switch,array,arange,empty,bound
 from src.utils import concatenate,addition,prod
-from src.utils import initialize,slicing,datatype,to_index,to_position
+from src.utils import initialize,spawn,slicing,datatype,to_index,to_position
 from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin,exp
 
 from src.iterables import indexer,inserter,setter,getter
@@ -127,7 +127,7 @@ class Parameter(System):
 
 		self.string = self.string if self.string is not None else None
 		self.variable = self.variable if self.variable is not None else None
-		self.group = (*((*group,) if not isinstance(group,str) else (group,) for group in self.group),)  if self.group is not None else ()		
+		self.group = (*((*group,) if not isinstance(group,str) else (group,) for group in self.group),)  if self.group is not None else (self.string,)		
 		self.local = self.local if isinstance(self.local,dict) else {group:self.local for group in self.group}
 		self.method = self.method if self.method is not None else None
 		self.axis = [attr for attr in self.axis if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.axis is not None else None
@@ -324,9 +324,7 @@ class Parameter(System):
 		self.parameters = parameters if parameters is not None else self.parameters
 		self.indices = indices if indices is not None else self.indices
 
-		if self.data is not None or self.shape is not None:
-
-			self.data = initialize(**self)
+		self.data = initialize(**self)
 
 		self.shape = self.data.shape if self.data is not None else self.shape
 		self.size = self.data.size if self.data is not None else self.size
@@ -435,22 +433,22 @@ class Parameters(System):
 
 			for i,parameter in enumerate(parameters):
 
+				print(i,parameter,self.parameters[parameter],self.parameters[parameter].random,self.parameters[parameter]())
+				data[group][parameter] = Dict(data=None,shape=None,local=None,seed=None,indices=None,slices=None)
 
-				data[group][parameter] = Dict(data=None,shape=None,local=None,indices=None)
-
+				data[group][parameter].data = None if self.parameters[parameter].random is not None else self.parameters[parameter].data
 				data[group][parameter].shape = (
-						*((len(parameters) if local else 1),),
 						*(self.parameters[parameter].shape[:max(0,self.parameters[parameter].ndim-(len(self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else 0))] if self.parameters[parameter].data is not None else ()),
 						*((attr if isinstance(attr,int) else getattr(self.parameters[parameter],attr) for attr in self.parameters[parameter].axis) if self.parameters[parameter].axis is not None else ()),
 					)
-
+				data[group][parameter].seed = spawn(self.parameters[parameter].seed,size=len(parameters))[i]
 				data[group][parameter].local = local
 				data[group][parameter].indices = index+i if local else index
+				data[group][parameter].slices = i if local else 0
 
 				kwargs = {
 					**self.parameters[parameter],
-					**dict(data=data[group][parameter].data,
-						   shape=data[group][parameter].shape)
+					**data[group][parameter]
 					}
 
 				data[group][parameter].data = initialize(**kwargs)
@@ -460,19 +458,17 @@ class Parameters(System):
 		data = {parameter:data[group][parameter] for group in data for parameter in data[group]}
 
 		indices = {parameter:data[parameter].indices for parameter in data}
-		parameters = array([data[parameter].data[data[parameter].indices] for parameter in data])
-		
-		shape = parameters.shape[::-1]
+		parameters = {parameter: data[parameter].data for parameter in data}
+
+		print('shapes',{parameter:parameters[parameter].shape for parameter in parameters})
+
+		indices = {i:[parameter for parameter in indices if indices[parameter]==i] for i in sorted(set(indices[parameter] for parameter in indices))}
+		parameters = array([parameters[indices[i][0]] for i in indices]).transpose()
+
+		shape = parameters.shape
 		size = parameters.size
 		ndim = parameters.ndim
 		dtype = parameters.dtype
-
-		parameters = parameters.T.ravel()
-
-		for i in data:
-			print(i)
-			print(data[i])
-		exit()
 
 		self.data = data
 		self.indices = indices
@@ -481,6 +477,22 @@ class Parameters(System):
 		self.size = size
 		self.ndim = ndim
 		self.dtype = dtype
+
+
+		for i in data:
+			print(i)
+			print(data[i])
+		print()
+		print(indices)
+		print(parameters)
+		print()
+
+		print(self())
+		print(self(self()))
+
+
+		exit()
+
 
 		return
 
@@ -495,7 +507,7 @@ class Parameters(System):
 			parameters (array): parameters
 		'''
 		if parameters is None:
-			return self.parameters.reshape(self.shape)
+			return self.parameters.ravel()
 		else:
 			return parameters.reshape(self.shape)
 

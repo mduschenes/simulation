@@ -6280,51 +6280,47 @@ def edging(data,constants=None):
 
 
 
-def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
+def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 	'''
 	Ensure array is shape and pad with values
 	Args:
-		a (array): Array to be padded
+		data (array): Array to be padded
 		shape (int,iterable[int]): Size or shape of array
-		axis (int,iterable[int]): axis of a to retain
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
-		dtype (data_type): Datatype of array		
+		dtype (data_type): Datatype of array	
+		kwargs (dict): Additional keyword arguments for padding	
 	Returns:
-		out (array): Padded array
+		data (array): Padded array
 	'''
 
 	if shape is None:
-		out = a
-		return out
+		return data
 
-	if a is None:
-		a = zeros(shape,dtype=dtype)
+	if data is None:
+		data = zeros(shape,dtype=dtype)
 	else:
-		a = array(a,dtype=dtype)
+		data = array(data,dtype=dtype)
 
 	if isinstance(shape,int):
 		shape = [shape]
 
-	if isinstance(axis,int):
-		axis = [axis]
-
 	ndim = len(shape)
 
-	diff = max(0,ndim - a.ndim)
-	reshape = a.shape
+	diff = max(0,ndim - data.ndim)
+	reshape = data.shape
 
-	a = a.reshape(*a.shape,*(1,)*diff)
+	data = data.reshape(*data.shape,*(1,)*diff)
 
 	for axis in range(ndim-diff,ndim):
-		a = repeat(a,shape[axis],axis)	
+		data = repeat(data,shape[axis],axis)	
 
-	a = take(a,shape,range(ndim))
+	data = take(data,shape,range(ndim))
 
 	if random is not None:
 		ax = 0
-		reshape = [a.shape[axis] for axis in range(ndim)]
+		reshape = [data.shape[axis] for axis in range(ndim)]
 		diff = [shape[axis] - reshape[axis] for axis in range(ndim)]
 
 		for axis in range(ndim-1,-1,-1):
@@ -6334,14 +6330,14 @@ def padding(a,shape,axis=None,key=None,bounds=[0,1],random=None,dtype=None):
 				pad = rand(reshape,key=key,bounds=bounds,random=random)
 				reshape[axis] = shape[axis]
 
-				a = moveaxis(a,axis,ax)
+				data = moveaxis(data,axis,ax)
 				pad = moveaxis(pad,axis,ax)
 
-				a = array([*a,*pad])
+				data = array([*data,*pad])
 
-				a = moveaxis(a,ax,axis)	
+				data = moveaxis(data,ax,axis)	
 
-	return a
+	return data
 
 
 
@@ -7755,7 +7751,7 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	Args:
 		data (array,str): data array or path to load data
 		shape (iterable): shape of data
-		random (str,dict): random type of initialization, dictionary of attributes or allowed strings in ['uniform','ones','zeros','random']
+		random (str,dict,callable): random type of initialization, dictionary of attributes or allowed strings in ['uniform','ones','zeros','random','pad'], or callable function with signature random(data,shape,bounds,random,dtype,**kwargs)
 		bounds (iterable[object]): bounds of data
 		dtype (str,datatype): data type of data		
 		kwargs (dict): Additional keyword arguments for initialization
@@ -7766,8 +7762,7 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	if data is None:
 		data = None
 	elif isinstance(data,str):
-		default = None
-		data = load(data,default=default)
+		data = load(data,default=None)
 
 	if shape is None:
 		shape = data.shape if data is not None else None
@@ -7775,12 +7770,28 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	if dtype is None:
 		dtype = data.dtype if data is not None else None
 
-	default = 'random'
+	default = 'pad'
 	shape = (shape,) if isinstance(shape,int) else tuple(shape) if shape is not None and len(shape) else () if shape is not None else None
+	random = random if random is not None else None
 	bounds = bounding(bounds,dtype=dtype)
+	dtype = dtype if dtype is not None else None
 
-	if data is None or data.shape != shape:
-		random = default if random is None else random
+	if data is None and shape is None:
+		data = None
+		shape = None
+		random = None
+	elif data is not None and shape is None:
+		data = data
+		shape = None
+		random = None
+	elif data is None and shape is not None:
+		data = None
+		shape = shape
+		random = random if random is not None else default
+	elif data is not None and shape is not None:
+		data = data
+		shape = shape
+		random = default
 
 	if isinstance(random,dict):
 
@@ -7807,9 +7818,14 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 		elif random in ['zeros']:
 			data = zeros(shape,dtype=dtype)
 
+		elif random in ['pad']:
+			data = padding(data,shape,random=random,bounds=bounds,dtype=dtype,**kwargs)
+
 		else:
 			data = rand(shape,bounds=bounds,random=random,dtype=dtype,**kwargs)
 
+	elif callable(random):
+		data = random(data,shape,bounds=bounds,random=random,dtype=dtype,**kwargs)
 
 	data = data.astype(dtype) if data is not None else None
 

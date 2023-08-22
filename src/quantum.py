@@ -1464,19 +1464,18 @@ class Operators(Object):
 
 			data = None
 
-		attributes = Dictionary(attributes=None)
-
-		for kwarg in attributes:
-			for i,attribute in enumerate(kwargs.pop(kwarg,[])):
-				if isinstance(attribute,nulls):
+		# Set site dependent attributes
+		attr = 'attributes'
+		for i,attribute in enumerate(kwargs.pop(attr,[])):
+			if isinstance(attribute,nulls):
+				continue
+			indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
+			attribute = [attribute] if isinstance(attribute,str) else attribute
+			for attrs in attribute:
+				attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
+				if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
 					continue
-				indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
-				attribute = [attribute] if isinstance(attribute,str) else attribute
-				for attrs in attribute:
-					attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
-					if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
-						continue
-					setter(kwargs[attr][i],{attrs:getter(attrs,kwargs[attr][i],delimiter=delim)[indices.index(i)]},delimiter=delim)
+				setter(kwargs[attr][i],{attrs:getter(attrs,kwargs[attr][i],delimiter=delim)[indices.index(i)]},delimiter=delim)
 
 
 		# Set class attributes
@@ -2280,21 +2279,17 @@ class Hamiltonian(Operators):
 					kwargs[kwarg].append(tmps[kwarg])
 
 		# Set site dependent attributes
-		
-
-		attributes = Dictionary(attributes=None)
-
-		for kwarg in attributes:
-			for i,attribute in enumerate(kwargs.pop(kwarg,[])):
-				if isinstance(attribute,nulls):
+		attr = 'attributes'
+		for i,attribute in enumerate(kwargs.pop(attr,[])):
+			if isinstance(attribute,nulls):
+				continue
+			indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
+			attribute = [attribute] if isinstance(attribute,str) else attribute
+			for attrs in attribute:
+				attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
+				if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
 					continue
-				indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
-				attribute = [attribute] if isinstance(attribute,str) else attribute
-				for attrs in attribute:
-					attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
-					if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
-						continue
-					setter(kwargs[attr][i],{attrs:getter(kwargs[attr][i],attrs,delimiter=delim)[indices.index(i)]},delimiter=delim)
+				setter(kwargs[attr][i],{attrs:getter(kwargs[attr][i],attrs,delimiter=delim)[indices.index(i)]},delimiter=delim)
 
 		# Set class attributes
 		self.__extend__(data=data,**objs,**kwargs)
