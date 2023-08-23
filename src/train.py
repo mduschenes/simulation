@@ -101,6 +101,8 @@ def train(hyperparameters):
 			label.__initialize__(state=state)
 			model.__initialize__(state=state)
 
+			print(model)
+
 			metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparams,system=system)
 			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 			callback = Callback(model,func=func,callback=callback,arguments=arguments,keywords=keywords,metric=metric,hyperparameters=hyperparams,system=system)

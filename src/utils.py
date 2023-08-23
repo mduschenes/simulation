@@ -5964,58 +5964,47 @@ def split(a,condition):
 	'''
 	return np.split(a,condition)
 
+def splitter(a):
+	'''
+	Split array into non-adjacent elements
+	Args:
+		a (iterable): iterable to split
+	Returns:
+		out (iterable[iterable]): Split iterable
+	'''
+
+	a = array([i for i in a])
+
+	condition = where(difference(a) != 1)[0] + 1
+
+	a = split(a,condition)
+
+	a = [[asscalar(j) for j in i] for i in a]
+
+	return a
+
+def interleaver(*iterable):
+	'''
+	Interleave iterables
+	Args:
+		iterable (iterable): iterables to interleave
+	Returns:
+		iterable (iterable): Interleaved iterable
+	'''
+
+	n = max((len(i) for i in iterable),default=0)
+
+	iterable = [i[j] for j in range(n) for i in iterable if j<len(i)]
+
+	return iterable
+
+
 @jit
 def difference(a,n=1,axis=-1):
 	'''
 	Get difference of array elements
 	'''
 	return np.diff(a,n=n,axis=axis)
-
-def grouping(a,method='adjacent',**kwargs):
-	'''
-	Group array with method
-	Args:
-		a (array): iterable to find grouped elements
-		method (str): Method, allowed strings in ['adjacent'] 
-		kwargs (dict): Additional keyword arguments for method
-	Returns:
-		out (array): Grouped indices of elements
-	'''
-	
-	if method in ['adjacent']:
-		def func(a,eps=1,**kwargs):
-			return where(difference(a) != eps)[0] + 1
-	else:
-		raise NotImplementedError("method '%s' to group elements Not Implemented"%(method))
-
-	a = sort(array(a))
-	return split(a,func(a,**kwargs))
-
-def interleave(a,method='adjacent',**kwargs):
-	'''
-	Interleave arrays, grouped by method
-	Args:
-		a (iterable[array]dict[array]): iterables to find grouped elements
-		method (str): Method, allowed strings in ['adjacent'] 
-		kwargs (dict): Additional keyword arguments for method		
-	Returns:
-		out (iterable[tuple[int,array]]): Grouped indices elements with form [(a_index/key,a_elements)]
-	'''
-
-	if method in ['adjacent']:
-		def func(i,**kwargs):
-			return minimum(i[-1])
-	else:
-		raise NotImplementedError("method '%s' to group elements Not Implemented"%(method))
-
-	if not isinstance(a,dict):
-		a = {i: j for i,j in enumerate(a)}
-
-	out = [(i,k) for i in a for k in grouping(a[i],method=method)]
-
-	out = sorted(out,key=lambda i: func(i,**kwargs))
-
-	return out
 
 @jit
 def diag(a):

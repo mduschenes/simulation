@@ -127,8 +127,8 @@ class Parameter(System):
 
 		self.string = self.string if self.string is not None else None
 		self.variable = self.variable if self.variable is not None else None
-		self.group = (*((*group,) if not isinstance(group,str) else (group,) for group in self.group),)  if self.group is not None else (self.string,)		
-		self.local = self.local if isinstance(self.local,dict) else {group:self.local for group in self.group}
+		self.group = (*(group for group in self.group),) if self.group is not None and not isinstance(self.group,str) else (self.group,) if self.group is not None else (self.string,)
+		self.local = self.local if self.local is not None else None
 		self.method = self.method if self.method is not None else None
 		self.axis = [attr for attr in self.axis if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.axis is not None else None
 		self.wrapper = self.wrapper if self.wrapper is not None else None
@@ -313,7 +313,7 @@ class Parameter(System):
 
 	def __initialize__(self,data=None,parameters=None,indices=None):
 		'''
-		Initialize class data with shape
+		Initialize class data
 		Args:
 			data (array): Data of class, if None, shape must be not None to initialize data
 			parameters (array): Parameters of class
@@ -363,15 +363,7 @@ class Parameters(System):
 		attributes Parameters.parameter, or items Parameters[parameter],
 		and are contained in Parameters.data = {parameter: Parameter()} as Parameter() instances
 
-		Setup parameters such that calling the Parameters(parameters) class with input parameters 
-		i) 		parameters array of size (G*P*D),
-					for G groups of P parameters, each of dimension D, 
-					for variable parameter groups
-					P,D may be group dependent, and depend on Parameter.local, Parameter.model and Parameter.axis 
-		ii) 	parameters for each group are sliced with parameter slices (slice(P*D)) and reshaped into shape (P,D)
-		iii) 	parameters for each group are modified with Parameter() function i.e) bounds, scaling, features
-		iv) 	parameters for all groups are concatenated to [parameter_i = Parameters[slices_i]][sort]
-					with slices Parameters.slices = [slices], and sorted with sort Parameters.sort = [sort]
+		Setup parameters such that calling the Parameters(parameters) class with input parameters reshapes parameters into shape 
 		
 		Args:
 			parameters(dict): Dictionary of Parameters instances, with class attributes
@@ -414,9 +406,8 @@ class Parameters(System):
 		Setup class
 		'''
 
-		data = {group: {}
+		data = {self.parameters[parameter].group: {}
 			for parameter in self.parameters 
-			for group in self.parameters[parameter].group 
 			if (self.parameters[parameter].variable)
 			}
 
@@ -428,13 +419,13 @@ class Parameters(System):
 				    (self.parameters[parameter].string in group))
 				]
 			index = max((data[group][parameter].indices for group in data for parameter in data[group]),default=-1)+1
-			local = any(self.parameters[parameter].local.get(group) for parameter in parameters)
+			local = any(self.parameters[parameter].local for parameter in parameters)
 
 
 
 			for i,parameter in enumerate(parameters):
 
-				data[group][parameter] = Dict(data=None,shape=None,local=None,seed=None,indices=None,slices=None)
+				data[group][parameter] = Dict(data=None,shape=None,local=None,seed=None,indices=None)
 
 				data[group][parameter].data = None if self.parameters[parameter].random is not None else self.parameters[parameter].data
 				data[group][parameter].shape = (
@@ -444,7 +435,6 @@ class Parameters(System):
 				data[group][parameter].seed = spawn(self.parameters[parameter].seed,size=len(parameters))[i]
 				data[group][parameter].local = local
 				data[group][parameter].indices = index+i if local else index
-				data[group][parameter].slices = i if local else 0
 
 				kwargs = {
 					**self.parameters[parameter],
@@ -455,18 +445,27 @@ class Parameters(System):
 
 
 
-		data = {parameter:data[group][parameter] for group in data for parameter in data[group]}
+		data = {parameter: data[group][parameter] for group in data for parameter in data[group]}
 
 		indices = {parameter:data[parameter].indices for parameter in data}
 		parameters = {parameter: data[parameter].data for parameter in data}
 
-		indices = {i:[parameter for parameter in indices if indices[parameter]==i] for i in sorted(set(indices[parameter] for parameter in indices))}
+		indices = {i: [parameter for parameter in indices if indices[parameter]==i] for i in sorted(set(indices[parameter] for parameter in indices))}		
 		parameters = array([parameters[indices[i][0]] for i in indices]).transpose()
 
 		shape = parameters.shape
 		size = parameters.size
 		ndim = parameters.ndim
 		dtype = parameters.dtype
+
+		indices = {i: indices[i] for i in indices}
+		parameters = parameters.ravel()
+
+
+		for parameter in data:
+			self.parameters[parameter].__initialize__(indices=data[parameter].indices)
+
+		data = {parameter:self.parameters[parameter] for parameter in self.parameters}
 
 		self.data = data
 		self.indices = indices
@@ -477,6 +476,28 @@ class Parameters(System):
 		self.dtype = dtype
 
 		return
+
+
+	
+	def __initialize__(self,data=None,parameters=None,indices=None):
+		'''
+		Initialize class data
+		Args:
+			data (array): Data of class
+			parameters (array): Parameters of class
+			indices (array): Indices of parameters of class
+		'''
+
+		data = self.data if data is not None else data
+		parameters = self.parameters if parameters is not None else parameters
+		data = self.data if data is not None else data
+
+		self.data = data
+		self.parameters = parameters
+		self.indices = indices
+
+		return
+
 
 	def __call__(self,parameters=None,*args,**kwargs):
 		'''
@@ -489,7 +510,7 @@ class Parameters(System):
 			parameters (array): parameters
 		'''
 		if parameters is None:
-			return self.parameters.ravel()
+			return self.parameters
 		else:
 			return parameters.reshape(self.shape)
 
