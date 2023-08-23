@@ -12,7 +12,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vfunc,switch,array,arange,empty,bound
+from src.utils import jit,vfunc,switch,array,arange,empty,bound,gradient_bound
 from src.utils import concatenate,addition,prod
 from src.utils import initialize,spawn,slicing,datatype,to_index,to_position
 from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin,exp
@@ -31,7 +31,7 @@ class Parameter(System):
 			shape=None,size=None,ndim=None,dtype=None,			
 			variable=None,local=None,method=None,group=None,
 			seed=None,random=None,bounds=None,axis=None,
-			indices=None,func=None,constraint=None,wrapper=None,
+			indices=None,func=None,gradient=None,constraint=None,wrapper=None,
 			args=(),kwargs={}
 			)
 
@@ -63,8 +63,6 @@ class Parameter(System):
 			kwargs (dict): Additional system keyword arguments
 		'''
 
-		kwargs = Dict(kwargs)
-
 		setter(kwargs,dict(data=data,system=system),delimiter=delim,default=False)
 		setter(kwargs,system,delimiter=delim,default=False)
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
@@ -92,6 +90,22 @@ class Parameter(System):
 			return self.func(*args,parameters=parameters,**kwargs)
 		else:
 			return self.data
+
+	def grad(self,parameters=None,*args,**kwargs):
+		'''
+		Class gradient of parameters
+		Args:
+			parameters (array): parameters
+			args (iterable[object]): Positional arguments for function
+			kwargs (dict[str,object]): Keyword arguments for function	
+		Returns:
+			parameters (array): parameters
+		'''
+	
+		if parameters is not None:
+			return self.gradient(*args,parameters=parameters,**kwargs)
+		else:
+			return 0
 
 	def constraints(self,parameters=None,*args,**kwargs):
 		'''
@@ -131,7 +145,6 @@ class Parameter(System):
 		self.local = self.local if self.local is not None else None
 		self.method = self.method if self.method is not None else None
 		self.axis = [attr for attr in self.axis if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.axis is not None else None
-		self.wrapper = self.wrapper if self.wrapper is not None else None
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
 
 		# Set functions
@@ -187,55 +200,84 @@ class Parameter(System):
 		if self.data is None:
 			def wrapper(parameters):
 				return parameters
+			def gradient_wrapper(parameters):
+				return 1
 		elif self.indices is not None and self.parameters is not None:
+			coefficients = prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
 			def wrapper(parameters):
-				return self.parameters*parameters[self.indices]
+				return coefficients*parameters[self.indices]
+			def gradient_wrapper(parameters):
+				return coefficients		
 		elif self.indices is not None and self.parameters is None:
 			def wrapper(parameters):
 				return parameters
+			def gradient_wrapper(parameters):
+				return 1				
 		elif self.indices is None and self.parameters is not None:
+			coefficients = prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
 			def wrapper(parameters):
-				return self.parameters*parameters
+				return coefficients*parameters
+			def gradient_wrapper(parameters):
+				return coefficients				
 		elif self.indices is None and self.parameters is None:
 			def wrapper(parameters):
 				return parameters
-
+			def gradient_wrapper(parameters):
+				return 1
 		
 		self.wrapper = jit(wrapper)
+		self.gradient_wrapper = jit(gradient_wrapper)
 
 
 		if self.variable:
 
 			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 		
-				if self.parameters is not None:
-					def func(parameters,*args,**kwargs):
-						return bound(self.wrapper(parameters),scale=self.kwargs['sigmoid'])
-					
+				def func(parameters,*args,**kwargs):
+					return bound(self.wrapper(parameters),scale=self.kwargs['sigmoid'])
+
+				def gradient(parameters,*args,**kwargs):
+					return gradient_bound(self.wrapper(parameters),scale=self.kwargs['sigmoid'])*self.gradient_wrapper(parameters)
+
 			elif self.method in ['bounded']:
 
 				def func(parameters,*args,**kwargs):
 					return bound(self.wrapper(parameters))
+
+				def gradient(parameters,*args,**kwargs):
+					return gradient_bound(self.wrapper(parameters))*self.gradient_wrapper(parameters)
 
 			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
 		
 				def func(parameters,*args,**kwargs):
 					return bound(self.wrapper(parameters),scale=self.kwargs['sigmoid'])
 
+				def gradient(parameters,*args,**kwargs):
+						return gradient_bound(self.wrapper(parameters),scale=self.kwargs['sigmoid'])*self.gradient_wrapper(parameters)
+
 			elif self.method in ['constrained']:					
 		
 				def func(parameters,*args,**kwargs):
 					return bound(self.wrapper(parameters))
+
+				def gradient(parameters,*args,**kwargs):
+					return gradient_bound(self.wrapper(parameters))*self.gradient_wrapper(parameters)
 
 			elif self.method in ['unconstrained']:					
 				
 				def func(parameters,*args,**kwargs):
 					return self.wrapper(parameters)
 
+				def gradient(parameters,*args,**kwargs):
+					return self.gradient_wrapper(parameters)
+
 			elif self.method in ['time'] and all(self.kwargs.get(attr) is not None for attr in ['tau','scale']):
 				
 				def func(parameters,*args,**kwargs):
 					return (1 - exp(-self.kwargs['tau']/self.kwargs['scale']))/2
+
+				def gradient(parameters,*args,**kwargs):
+					return 0
 
 			else:
 
@@ -254,6 +296,9 @@ class Parameter(System):
 				else:
 					func = partial(func,self=self)
 	
+
+				def gradient(parameters,*args,**kwargs):
+					return self.gradient_wrapper(parameters)
 
 			if self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['lambda','constants']):
 			
@@ -293,9 +338,16 @@ class Parameter(System):
 
 				def func(parameters,*args,**kwargs):
 					return self.wrapper(self.data)
+
+				def gradient(parameters,*args,**kwargs):
+					return self.gradient_wrapper(self.data)
+
 			else:
 				def func(parameters,*args,**kwargs):
 					return self.data
+
+				def gradient(parameters,*args,**kwargs):
+					return 0
 
 			def constraint(parameters,*args,**kwargs):
 				return self.kwargs['default']
@@ -304,9 +356,11 @@ class Parameter(System):
 		parameters = self.data if self.data is not None else None
 
 		func = jit(func,parameters=parameters)
+		gradient = jit(gradient,parameters=parameters)
 		constraint = jit(constraint,parameters=parameters)
 
 		self.func = func
+		self.gradient = gradient
 		self.constraint = constraint
 
 		return
@@ -322,8 +376,30 @@ class Parameter(System):
 
 		# Set data
 		self.data = data if data is not None else self.data
-		self.parameters = parameters if parameters is not None else self.parameters
 		self.indices = indices if indices is not None else self.indices
+
+		if self.parameters is None:
+			if parameters is None:
+				self.parameters = parameters
+			elif not isinstance(parameters,dict):
+				self.parameters = Dict(dict(parameters=parameters))
+			else:
+				self.parameters = Dict({i:parameters[i] for i in parameters})
+		elif not isinstance(self.parameters,dict):
+			if parameters is None:
+				self.parameters = Dict(dict(parameters=self.parameters))
+			elif not isinstance(parameters,dict):
+				self.parameters = Dict(dict(parameters=parameters))
+			elif isinstance(parameters,dict):
+				self.parameters = Dict({**dict(parameters=self.parameters),**parameters})
+		elif isinstance(self.parameters,dict):
+			if parameters is None:
+				self.parameters = Dict({**self.parameters})
+			elif not isinstance(parameters,dict):
+				self.parameters = Dict({**self.parameters,**dict(parameters=parameters)})
+			else:
+				self.parameters = Dict({**self.parameters,**parameters})
+
 
 		self.data = initialize(**self)
 
@@ -366,7 +442,7 @@ class Parameters(System):
 		Setup parameters such that calling the Parameters(parameters) class with input parameters reshapes parameters into shape 
 		
 		Args:
-			parameters(dict): Dictionary of Parameters instances, with class attributes
+			parameters(dict): Dict of Parameters instances, with class attributes
 				data (iterable): data of parameter, if None, shape must be not None to initialize data
 				string (str): Name of parameter
 				parameters (iterable): parameters of parameter
@@ -462,7 +538,10 @@ class Parameters(System):
 
 
 		for parameter in data:
-			self.parameters[parameter].__initialize__(indices=data[parameter].indices)
+			kwargs = dict(
+				indices=data[parameter].indices,
+				)
+			self.parameters[parameter].__initialize__(**kwargs)
 
 		data = {parameter:self.parameters[parameter] for parameter in self.parameters}
 
@@ -501,6 +580,21 @@ class Parameters(System):
 	def __call__(self,parameters=None,*args,**kwargs):
 		'''
 		Class parameters
+		Args:
+			parameters (array): parameters
+			args (iterable[object]): Positional arguments for function
+			kwargs (dict[str,object]): Keyword arguments for function	
+		Returns:
+			parameters (array): parameters
+		'''
+		if parameters is None:
+			return self.parameters
+		else:
+			return parameters.reshape(self.shape)
+
+	def grad(self,parameters=None,*args,**kwargs):
+		'''
+		Class gradient of parameters
 		Args:
 			parameters (array): parameters
 			args (iterable[object]): Positional arguments for function

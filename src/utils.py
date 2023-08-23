@@ -77,6 +77,7 @@ if BACKEND in ['jax','jax.autograd']:
 	for name in configs:
 		jax.config.update(name,configs[name])
 
+
 elif BACKEND in ['autograd']:
 
 	import autograd
@@ -137,6 +138,10 @@ if BACKEND in ['jax','jax.autograd']:
 	separ = '_'
 
 
+	def disp(*args,**kwargs):
+		with jax.disable_jit():
+			print(*args,**kwargs)
+		return
 
 elif BACKEND in ['autograd']:
 
@@ -158,6 +163,11 @@ elif BACKEND in ['autograd']:
 	delim = '.'
 	separ = '_'	
 
+	def disp(*args,**kwargs):
+		print(*args,**kwargs)
+		return
+
+
 elif BACKEND in ['numpy']:
 
 	itg = np.integer
@@ -177,6 +187,11 @@ elif BACKEND in ['numpy']:
 	nulls = (Null,)
 	delim = '.'
 	separ = '_'	
+
+	def disp(*args,**kwargs):
+		print(*args,**kwargs)
+		return
+
 
 # Libraries
 if BACKEND in ['jax','jax.autograd']:
@@ -853,10 +868,14 @@ def gradient_finite(func,tol=1e-6,argnums=0,holomorphic=False,**kwargs):
 	'''
 	@jit
 	def grad(*args,**kwargs):
-		x,args = args[0],args[1:]
+		if args:
+			x,args = args[argnums],(args[:argnums],args[argnums+1:])
+		else:
+			x,args = kwargs.pop(list(kwargs)[argnums]),((),args) 
 		size,shape = x.size,x.shape
 		vectors = eye(size).reshape((size,*shape))
-		out = vmap(lambda v,tol=tol: (func(x+tol*v,*args,**kwargs)-func(x-tol*v,*args,**kwargs))/(2*tol))(vectors)
+
+		out = vmap(lambda v,tol=tol: (func(*args[0],x+tol*v,*args[1],**kwargs)-func(*args[0],x-tol*v,*args[1],**kwargs))/(2*tol))(vectors)
 		out = out.reshape((*shape,*out.shape[1:]))
 		return out
 
@@ -880,10 +899,13 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 
 	@jit
 	def grad(*args,**kwargs):
-		x,args = args[0],args[1:]
+		if args:
+			x,args = args[argnums],(args[:argnums],args[argnums+1:])
+		else:
+			x,args = kwargs.pop(list(kwargs)[argnums]),((),args) 
 		size,shape = x.size,x.shape
 		vectors = eye(size).reshape((size,*shape))
-		out = vmap(vmap(lambda v,s: s*func(x+pi/4/s*v),in_axes=(0,None)),in_axes=(None,0))(vectors,shifts).sum(0)
+		out = vmap(vmap(lambda v,s: s*func(*args[0],x+pi/4/s*v,*args[1],**kwargs),in_axes=(0,None)),in_axes=(None,0))(vectors,shifts).sum(0)
 		out = out.reshape((*shape,*out.shape[1:]))
 		return out
 
@@ -999,9 +1021,12 @@ if BACKEND in ['jax','jax.autograd']:
 		if move:
 			@jit
 			def grad(*args,**kwargs):
-				x,args = args[0],args[1:]
+				if args:
+					x,args = args[argnums],(args[:argnums],args[argnums+1:])
+				else:
+					x,args = kwargs.pop(list(kwargs)[argnums]),((),args) 
 				ndim = x.ndim
-				return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
+				return moveaxis(_grad(*args[0],x,*args[1],**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
 		else:
 			grad = _grad
 
@@ -1045,9 +1070,12 @@ elif BACKEND in ['autograd']:
 		if move:
 			@jit
 			def grad(*args,**kwargs):
-				x,args = args[0],args[1:]
+				if args:
+					x,args = args[argnums],(args[:argnums],args[argnums+1:])
+				else:
+					x,args = kwargs.pop(list(kwargs)[argnums]),((),args) 
 				ndim = x.ndim
-				return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
+				return moveaxis(_grad(*args[0],x,*args[1],**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))
 		else:
 			grad = _grad
 
@@ -1101,9 +1129,12 @@ if BACKEND in ['jax','jax.autograd']:
 		if move:
 			@jit
 			def grad(*args,**kwargs):
-				x,args = args[0],args[1:]
+				if args:
+					x,args = args[argnums],(args[:argnums],args[argnums+1:])
+				else:
+					x,args = kwargs.pop(list(kwargs)[argnums]),((),args) 
 				ndim = x.ndim
-				return moveaxis(_grad(x,*args,**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))		
+				return moveaxis(_grad(*args[0],x,*args[1],**kwargs),range(-1,-ndim-1,-1),range(ndim-1,-1,-1))		
 		else:
 			grad = _grad
 
@@ -7049,6 +7080,20 @@ def bound(a,scale=1,**kwargs):
 		out (array): Bounded array
 	'''
 	return 2*sigmoid(a,scale) - 1
+
+
+@jit
+def gradient_bound(a,scale=1,**kwargs):
+	'''
+	Bound gradient array
+	Args:
+		a (array): Array to bound
+		scale (float): scale of bound
+		kwargs (dict): Keyword arguments for bounds
+	Returns:
+		out (array): Bounded array
+	'''
+	return 2*gradient_sigmoi(a,scale)
 
 
 @jit

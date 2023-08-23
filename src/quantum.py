@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher
+from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,spawn,arange,diag
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
@@ -76,12 +76,13 @@ Locality = {
 	'-': (lambda *args,N=N,D=D,ndim=ndim,dtype=dtype,**kwargs: 1),
 }
 
-def trotter(iterable=None,p=None):
+def trotter(iterable=None,p=None,verbose=False):
 	'''
 	Trotterized iterable for order p or parameters for order p
 	Args:
 		iterable (iterable): Iterable
 		p (int): Order of trotterization
+		verbose (bool): Verbosity of function		
 	Returns:
 		iterables (iterable,scalar): Trotterized iterable for order p or parameters for order p if iterable is None
 	'''
@@ -102,18 +103,18 @@ def trotter(iterable=None,p=None):
 	return iterables
 
 
-
-def scheme(data,state=None,conj=False,size=None,period=None):
+def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 	'''
-	Contract data and state
+	Compile data and state
 	Args:
 		data (iterable[Object],dict[int,Object]): data of shape (length,)
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
 		period (int): Number of cycles of each contraction of data and state
+		verbose (bool): Verbosity of function
 	Returns:
-		func (callable): contract data with signature func(parameters,state,indices)
+		data (iterable[Object]): Compiled data of shape (length,)
 	'''
 	
 	data = {j: data[i] if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {}
@@ -122,20 +123,12 @@ def scheme(data,state=None,conj=False,size=None,period=None):
 	size = size if size is not None else 1
 	period = period if period is not None else None
 
-	length = len(data)
-	indices = (0,size*length)
-
-	def function(parameters,state=state,indices=indices):	
-		return switch(indices%length,data,parameters[indices%size],state)
-
-
-	boolean = lambda i: (data[i](state=state) is not None)
+	# Filter None data
+	boolean = lambda i: (data[i] is not None) and (data[i](state=state) is not None)
 
 	data = {i: data[i] for i in data if boolean(i)}
 
-	length = len(data)
-	indices = (0,size*length)
-
+	# Filter constant data
 	boolean = lambda i: (data[i](state=state) is not None) and (not data[i].variable) and (data[i].unitary)
 	
 	obj = {i: data[i] for i in data if boolean(i)}
@@ -144,18 +137,17 @@ def scheme(data,state=None,conj=False,size=None,period=None):
 		for obj in splitter(obj):
 			if len(obj) < 2:
 				continue
-
+			
+			j = min(obj)
+			
 			for i in obj:
-				if i == min(obj):
+				if i == j:
 					continue
-				data[min(obj)] = data[min(obj)] @ data.pop(i)
-				
+				data[j] = data[j] @ data.pop(i)
 
 	data = {j: data[i] if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {}
 
-	length = len(data)
-	indices = (0,size*length)
-
+	# Filter trotterized data
 	boolean = lambda i: (data[i](state=state) is not None) and (data[i].unitary)
 	
 	obj = [j
@@ -164,11 +156,45 @@ def scheme(data,state=None,conj=False,size=None,period=None):
 		[i for i in splitter([i for i in data if not boolean(i)])]) 
 		for j in i]
 
-	data = [jit(data[i]) for i in obj]
+	data = [data[i] for i in obj]
+
+	if data:
+		data[0].log(msg='Compiled:\n%r'%(data),verbose=verbose)
+
+	return data
+
+
+
+def scheme(data,state=None,conj=False,size=None,period=None,verbose=False):
+	'''
+	Contract data and state
+	Args:
+		data (iterable[Object],dict[int,Object]): data of shape (length,)
+		state (array,Object): state of shape (n,) or (n,n)
+		conj (bool): conjugate
+		size (int): Number of contractions of data and state
+		period (int): Number of cycles of each contraction of data and state
+		verbose (bool): Verbosity of function		
+	Returns:
+		func (callable): contract data with signature func(parameters,state,indices)
+	'''
+	
+	state = state() if callable(state) else state
+	conj = conj if conj is None else False	
+	size = size if size is not None else 1
+	period = period if period is not None else None
+
+	length = len(data) if data is not None else 1
+	indices = (0,size*length)
+
+	def function(parameters,state=state,indices=indices):	
+		return switch(indices%length,data,parameters[indices%size],state)
+
+	data = compile(data,state=state,conj=conj,size=size,period=period,verbose=verbose)	
 
 	length = len(data)
 	indices = (0,size*length)
-
+	data = [jit(data[i]) for i in range(length)]
 
 	def func(parameters,state=state,indices=indices):
 
@@ -182,7 +208,7 @@ def scheme(data,state=None,conj=False,size=None,period=None):
 	return func			
 
 
-def gradient_scheme(data,state=None,conj=False,size=None,period=None):
+def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=False):
 	'''
 	Contract gradient of data and state
 	Args:
@@ -191,15 +217,11 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None):
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
 		period (int): Number of cycles of each contraction of data and state
+		verbose (bool): Verbosity of function		
 	Returns:
 		func (callable): contract gradient with signature func(parameters,state,indices)
 	'''
 
-
-	data,grad = (
-		{j: data[i] if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {},
-		{j: data[i].grad if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {}
-		)
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False
 	size = size if size is not None else 1
@@ -212,43 +234,47 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None):
 	def gradient(parameters,state=state,indices=indices):	
 		return switch(indices%length,grad,parameters[indices],state)
 
-
-	boolean = lambda i: (data[i](state=state) is not None)
-
-	data = {i: data[i] for i in data if boolean(i)}
+	data = compile(data,state=state,conj=conj,size=size,period=period)	
 
 	length = len(data)
 	indices = (0,size*length)
 
+	boolean = lambda i: data[i].variable
 
-
-	boolean = lambda i:  (data[i](state=state) is not None) and (data[i].unitary)
-	
-	data = {j : data[j]
-		for i in interleaver(
-		[trotter(i,p=period) for i in splitter([i for i in data if boolean(i)])],
-		[i for i in splitter([i for i in data if not boolean(i)])]) 
-		for j in i}
-
-	data,grad,indexes = (
-		[jit(data[i]) for i in data],
-		[jit(data[i].grad) for i in data],
-		array([data[j].parameters.indices if data[j].variable else -1
+	obj = []
+	tmp = []
+	for i in range(length):
+		if not boolean(i):
+			continue
+		if hash(data[i]) not in tmp:
+			obj.append(tmp)
+			obj[hash(data[i])] = i
+	obj = [obj[i] for i in obj]
+	print(obj)
+	for j in range(length):
+		print(j,boolean(j))
+	obj = [(i*len(obj)+obj.index(j)) if boolean(j) else -1
 			for i in range(size) 
-			for j in range(length)])
+			for j in range(length)]
+	print(obj)
+	exit()
+
+	data,grad,indexes,dimensions = (
+		[jit(data[i]) for i in range(length)],
+		[jit(data[i].grad) for i in range(length)],
+		array(obj),
+		(len(set((i for i in obj if i>=0))),)
 		)
-	length = len(data)
-	indices = (0,size*length)
-	
+
+	print(indexes)
+	print(dimensions)
+	exit()
 
 	def func(parameters,state=state,indices=indices):
 
-		def func(i,out):
+		def true(i,out):
 
-			if indexes[i] < 0:
-				return out
-
-			obj = function(parameters,obj,indices=(0,i))
+			obj = function(parameters,state,indices=(0,i))
 
 			obj = gradient(parameters,obj,indices=i)
 
@@ -256,9 +282,16 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None):
 
 			out = inplace(out,indexes[i],obj,'add')
 
+			return	out
+
+		def false(i,out):
 			return out
 
-		out = zeros((max(indices)-min(indices),*state.shape),dtype=state.dtype)
+		def func(i,out):
+
+			return cond(indexes[i]>=0,true,false,i,out)
+
+		out = zeros((*dimensions,*state.shape),dtype=state.dtype)
 		
 		return forloop(*indices,func,out)
 
@@ -562,7 +595,7 @@ class Object(System):
 		self.gradient = jit(self.gradient,parameters=parameters,state=state)
 		self.contract = jit(self.contract,state=state)
 		self.gradient_contract = jit(self.gradient_contract,state=state)
-
+ 
 		return
 
 
@@ -593,7 +626,7 @@ class Object(System):
 		if state is None:
 			return self.gradient_contract(self.gradient(parameters=parameters),self.func(parameters=parameters))
 		else:
-			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters,state=state),state=state)
+			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
 
 
 	def __str__(self):
@@ -612,6 +645,13 @@ class Object(System):
 	
 	def __len__(self):
 		return len(self.operator)
+
+	def __hash__(self):
+		return (
+			hash(self.string) ^ 
+			hash(tuple(self.operator) if not isinstance(self.operator,str) else self.operator) ^ 
+			hash(tuple(self.site))
+			)
 
 	def __key__(self):
 		attrs = [self.string,self.operator,self.site]
@@ -657,13 +697,13 @@ class Object(System):
 
 
 		if self.data is None and other.data is None:
-			data = self()
+			data = self.func()
 		elif self.data is None and other.data is not None:
-			data = other()
+			data = other.func()
 		elif self.data.ndim == 1 and other.data.ndim == 1:
-			data = self()*other()
+			data = self.func()*other.func()
 		elif self.data.ndim == 2 and other.data.ndim == 2:
-			data = self() @ other()
+			data = self.func() @ other.func()
 
 
 		operator = []
@@ -695,8 +735,8 @@ class Object(System):
 		kwargs = {
 			**other,
 			**self,
-			**dict(parameters=None,func=None,grad=None),
-			**dict(data=data,operator=operator,site=site,string=string)
+			**dict(data=data,operator=operator,site=site,string=string),
+			**dict(parameters=None,func=None,gradient=None),
 			}
 
 		return self.__class__(**kwargs)
@@ -933,7 +973,9 @@ class Pauli(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-		if self.parameters() is not None and self.parameters.parameters is not None:
+		self.parameters.__initialize__(parameters=dict(obj=pi))
+
+		if self.parameters() is not None:
 
 			def func(parameters=None,state=None):
 				parameters = self.parameters(parameters)			
@@ -941,28 +983,11 @@ class Pauli(Object):
 
 			def gradient(parameters=None,state=None):
 				parameters = self.parameters(parameters)
-				return self.parameters.parameters*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
+				grad = self.parameters.grad(parameters)
+				return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
-		elif self.parameters() is not None and self.parameters.parameters is None:
+		elif self.parameters() is None:
 			
-			def func(parameters=None,state=None):
-				parameters = self.parameters(parameters)			
-				return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-
-			def gradient(parameters=None,state=None):
-				parameters = self.parameters(parameters)
-				return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-		elif self.parameters() is None and self.parameters.parameters is not None:
-
-			def func(parameters=None,state=None):
-				return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
-
-			def gradient(parameters=None,state=None):
-				return self.parameters.parameters*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
-
-		elif self.parameters() is None and self.parameters.parameters is None:
-
 			def func(parameters=None,state=None):
 				return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
@@ -1624,14 +1649,22 @@ class Operators(Object):
 		'''
 
 		# Set data
-		if data is None or data is True:
+		if data is None:
 			data = {}
-		if data is False:
-			data = {i: data for i in self.data}
+		elif data is True:
+			data = {}
+		elif data is False:
+			data = {i: None for i in self.data}
 		elif isinstance(data,dict):
 			data = {i: data[i] for i in data}
 		for i in data:
-			self.data[i].__initialize__(data=data[i])
+			if data[i] is None:
+				self.data[i] = data[i]
+			elif isinstance(data[i],dict):
+				self.data[i].__initialize__(**data[i])
+			else:
+				self.data[i].__initialize__(data=data[i])
+
 
 		# Set state
 		if state is None:
@@ -1652,11 +1685,11 @@ class Operators(Object):
 		# Set data
 
 		parameters = self.parameters(self.parameters())
-		state = self.state() if self.state is not None and self.state() is not None else self.state
+		state = self.state() if self.state is not None and self.state() is not None else self.state if self.state is not None else self.identity()
 
 		for i in self.data:
 			self.data[i].__initialize__(
-					# parameters=dict(parameters=pi*(1-2*self.conj)*(self.tau)*trotter(p=self.P)),
+					parameters=dict(parameters=dict(cls=trotter(p=self.P)) if self.data[i].unitary else None),
 					state=state
 					)
 
@@ -1678,8 +1711,9 @@ class Operators(Object):
 		self.conj = conj
 
 		# Set functions
+		verbose = self.verbose and (self.func is not None)
 
-		func = scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,period=self.P)
+		func = scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,period=self.P,verbose=verbose)
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
