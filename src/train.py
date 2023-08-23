@@ -93,7 +93,6 @@ def train(hyperparameters):
 
 		if hyperparameters.boolean.train:
 
-			parameters = model.parameters()
 			func = None
 			arguments = ()
 			keywords = {}
@@ -101,15 +100,16 @@ def train(hyperparameters):
 			label.__initialize__(state=state)
 			model.__initialize__(state=state)
 
-			print(model)
-
 			metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparams,system=system)
 			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
 			callback = Callback(model,func=func,callback=callback,arguments=arguments,keywords=keywords,metric=metric,hyperparameters=hyperparams,system=system)
 
 			optimizer = Optimizer(func=func,arguments=arguments,keywords=keywords,callback=callback,hyperparameters=hyperparams,system=system)
 
-			parameters = optimizer(parameters)
+			parameters = model.parameters()
+			state = model.state()
+
+			parameters = optimizer(parameters,state=state)
 
 		if hyperparameters.boolean.dump:	
 			model.dump()

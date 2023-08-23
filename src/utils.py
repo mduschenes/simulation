@@ -77,8 +77,6 @@ if BACKEND in ['jax','jax.autograd']:
 	for name in configs:
 		jax.config.update(name,configs[name])
 
-	disp = print
-
 elif BACKEND in ['autograd']:
 
 	import autograd
@@ -86,15 +84,11 @@ elif BACKEND in ['autograd']:
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
 
-	disp = print
-
 elif BACKEND in ['numpy']:
 	import numpy as np
 	import scipy as sp
 	import pandas as pd
 	import scipy.special as spsp
-
-	disp = print
 
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
@@ -2053,6 +2047,8 @@ if BACKEND in ['jax']:
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
+		bounds = [0,2**32]
+
 		generator = jax.random
 
 		if seed is None or isinstance(seed,(int)):
@@ -2081,6 +2077,8 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 		'''	
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
+
+		bounds = [0,2**32]
 
 		generator = onp.random
 
@@ -2941,7 +2939,7 @@ def contraction(data=None,state=None):
 	Contract data and state
 	Args:
 		data (array): Array of data of shape (n,n)
-		state (array,bool): state of shape (n,) or (n,n) or boolean to contract data with itself
+		state (array): state of shape (n,) or (n,n)
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
@@ -2955,21 +2953,6 @@ def contraction(data=None,state=None):
 
 		if state is None:
 		
-			def func(data,state):
-				return data
-
-		elif state is True:
-
-			def func(data,state):
-				return data
-
-		elif state is False:
-
-			def func(data,state):
-				return data
-
-		elif state.ndim is None:
-			
 			def func(data,state):
 				return data
 
@@ -2990,21 +2973,6 @@ def contraction(data=None,state=None):
 			def func(data,state):
 				return data
 		
-		elif state is True:
-			
-			def func(data,state):
-				return data
-		
-		elif state is False:
-			
-			def func(data,state):
-				return data
-
-		elif state.ndim is None:
-			
-			def func(data,state):
-				return data
-
 		elif state.ndim == 1:
 
 			def func(data,state):
@@ -3019,21 +2987,6 @@ def contraction(data=None,state=None):
 		
 		if state is None:
 		
-			def func(data,state):
-				return data
-
-		elif state is True:
-		
-			def func(data,state):
-				return data
-
-		elif state is False:
-		
-			def func(data,state):
-				return data
-
-		elif state.ndim is None:
-			
 			def func(data,state):
 				return data
 
@@ -3053,33 +3006,6 @@ def contraction(data=None,state=None):
 
 			def func(data,state):
 				return data
-
-		elif state is True:
-
-			state = data
-
-			subscripts = 'ij,jk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-
-			def func(data,state):
-				return einsummation(data,state)
-
-		elif state is False:
-
-			def func(data,state):
-				return data
-
-		elif state.ndim is None:
-			
-			state = data
-
-			subscripts = 'ij,jk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-
-			def func(data,state):
-				return einsummation(data,state)
 
 		elif state.ndim == 1:
 			
@@ -3106,33 +3032,6 @@ def contraction(data=None,state=None):
 			
 			def func(data,state):
 				return data
-
-		elif state is True:
-			
-			state = data
-
-			subscripts = 'uij,jk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-
-			def func(data,state):
-				return einsummation(data,state)
-
-		elif state is False:
-
-			def func(data,state):
-				return data
-
-		elif state.ndim is None:
-			
-			state = data
-
-			subscripts = 'uij,ujk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-
-			def func(data,state):
-				return einsummation(data,state)
 
 		elif state.ndim == 1:
 			
@@ -3162,7 +3061,7 @@ def gradient_contraction(data,state=None):
 	Contract grad, data and state
 	Args:
 		data (array): Array of data of shape (n,n)
-		state (array,bool): state of shape (n,) or (n,n) or boolean to contract data with itself
+		state (array): state of shape (n,) or (n,n)
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
@@ -3174,21 +3073,6 @@ def gradient_contraction(data,state=None):
 		
 		if state is None:
 		
-			def func(grad=None,data=None,state=None):
-				return grad
-
-		elif state is True:
-		
-			def func(grad=None,data=None,state=None):
-				return grad
-
-		elif state is False:
-		
-			def func(grad=None,data=None,state=None):
-				return grad				
-
-		elif state.ndim is None:
-			
 			def func(grad=None,data=None,state=None):
 				return grad
 
@@ -3209,21 +3093,6 @@ def gradient_contraction(data,state=None):
 			def func(grad=None,data=None,state=None):
 				return grad
 
-		elif state is True:
-		
-			def func(grad=None,data=None,state=None):
-				return grad
-
-		elif state is False:
-		
-			def func(grad=None,data=None,state=None):
-				return grad	
-	
-		elif state.ndim is None:
-			
-			def func(grad=None,data=None,state=None):
-				return grad
-
 		elif state.ndim == 1:
 
 			def func(grad=None,data=None,state=None):
@@ -3238,21 +3107,6 @@ def gradient_contraction(data,state=None):
 		
 		if state is None:
 		
-			def func(grad=None,data=None,state=None):
-				return grad
-
-		elif state is True:
-		
-			def func(grad=None,data=None,state=None):
-				return grad
-
-		elif state is False:
-		
-			def func(grad=None,data=None,state=None):
-				return grad	
-	
-		elif state.ndim is None:
-			
 			def func(grad=None,data=None,state=None):
 				return grad
 
@@ -3272,33 +3126,6 @@ def gradient_contraction(data,state=None):
 		
 			def func(grad=None,data=None,state=None):
 				return grad
-
-		elif state is True:
-		
-			state = data
-
-			subscripts = 'ij,jk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-
-			def func(grad=None,data=None,state=None):
-				return einsummation(grad,state)
-
-		elif state is False:
-
-			def func(grad=None,data=None,state=None):
-				return grad
-
-		elif state.ndim is None:
-			
-			state = data
-
-			subscripts = 'ij,jk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-
-			def func(grad=None,data=None,state=None):
-				return einsummation(grad,state)
 
 		elif state.ndim == 1:
 
@@ -3325,36 +3152,6 @@ def gradient_contraction(data,state=None):
 
 			def func(grad=None,data=None,state=None):
 				return grad
-
-		elif state is True:
-			
-			state = data
-
-			subscripts = 'uij,ujk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-
-			def func(grad=None,data=None,state=None):
-				out = einsummation(grad,state)
-				return out + dagger(out)
-
-		elif state is False:
-
-			def func(grad=None,data=None,state=None):
-				return grad
-	
-		elif state.ndim is None:
-			
-			state = data
-
-			subscripts = 'uij,ujk->ik'
-			shapes = (data.shape,state.shape)
-			einsummation = einsum(subscripts,*shapes)
-
-			def func(grad=None,data=None,state=None):
-				out = einsummation(grad,state)
-				return out + dagger(out)
-
 
 		elif state.ndim == 1:
 			
@@ -3547,8 +3344,10 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	if (label is not None) and (weights is not None):
 
 		if label is not None and metric in ['abs2','real']:
+		
 			if callable(label):
 				label = label()
+		
 			label = conjugate(label)
 
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
@@ -3563,8 +3362,10 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	elif (label is not None):
 
 		if label is not None and metric in ['abs2','real']:
+
 			if callable(label):
 				label = label()
+
 			label = conjugate(label)	
 
 		def func(*operands,func=func,label=label):
@@ -6300,7 +6101,7 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 	diff = max(0,ndim - data.ndim)
 	reshape = data.shape
 
-	data = data.reshape(*data.shape,*(1,)*diff)
+	data = data.reshape((*data.shape,*(1,)*diff))
 
 	for axis in range(ndim-diff,ndim):
 		data = repeat(data,shape[axis],axis)	

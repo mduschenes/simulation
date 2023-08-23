@@ -444,7 +444,6 @@ class Parameters(System):
 				data[group][parameter].data = initialize(**kwargs)
 
 
-
 		data = {parameter: data[group][parameter] for group in data for parameter in data[group]}
 
 		indices = {parameter:data[parameter].indices for parameter in data}
