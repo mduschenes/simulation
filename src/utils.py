@@ -3205,7 +3205,7 @@ def gradient_contraction(data,state=None):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(data,state):
+			def func(grad,data,state):
 				return einsummation(grad,state)
 
 		elif state.ndim == 1:

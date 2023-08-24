@@ -126,7 +126,7 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 	# Update data
 	for i in data:
 		kwargs = dict(
-			parameters=dict(parameters=dict(cls=trotter(p=period)) if data[i].unitary else None)
+			# parameters=dict(parameters=dict(cls=trotter(p=period)) if data[i].unitary else None)
 			)
 		data[i].__initialize__(**kwargs)
 
@@ -309,7 +309,7 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 
 		out = inplace(out,indexes[i],obj,'add')
 
-		return	out
+		return out
 
 	def false(i,out,parameters,state):
 		return out
@@ -1024,7 +1024,7 @@ class Pauli(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-		self.parameters.__initialize__(parameters=dict(obj=pi))
+		# self.parameters.__initialize__(parameters=dict(obj=pi))
 
 		if self.parameters() is not None:
 

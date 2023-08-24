@@ -517,11 +517,10 @@ class Parameters(System):
 
 				kwargs = {
 					**self.parameters[parameter],
-					**data[group][parameter]
+					**data[group][parameter],
 					}
 
 				data[group][parameter].data = initialize(**kwargs)
-
 
 		data = {parameter: data[group][parameter] for group in data for parameter in data[group]}
 
