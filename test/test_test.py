@@ -139,7 +139,6 @@ def test_grad(path,tol):
 	label.__initialize__(state=state)
 	model.__initialize__(state=state)
 
-
 	parameters = model.parameters()
 
 	# grad of unitary
@@ -147,20 +146,27 @@ def test_grad(path,tol):
 	grad_finite = model.grad_finite
 	grad_analytical = model.grad_analytical
 
-	index = 0
+	index = slice(None)
 	print('-----')
 	print(grad_automatic(parameters)[index])
 	print()
+	print('-----')
+	print()
 	print(grad_finite(parameters)[index])
+	print()
+	print('-----')
 	print()	
 	print(grad_analytical(parameters)[index])
-	print('-----')	
+	print()
+	print('----- ratio -----')
 	print()
 	print(grad_automatic(parameters)[index]/grad_analytical(parameters)[index])
-
+	print()
+	print('-----')
+	print()
 	assert allclose(grad_automatic(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
-	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
 	assert allclose(grad_automatic(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
+	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
 
 	print('Passed')
 

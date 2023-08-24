@@ -365,18 +365,20 @@ class Parameter(System):
 
 		return
 
-	def __initialize__(self,data=None,parameters=None,indices=None):
+	def __initialize__(self,data=None,parameters=None,indices=None,variable=None):
 		'''
 		Initialize class data
 		Args:
 			data (array): Data of class, if None, shape must be not None to initialize data
 			parameters (array): Parameters of class
 			indices (array): Indices of parameters of class
+			variable (bool): Parameter is variable or constant
 		'''
 
 		# Set data
 		self.data = data if data is not None else self.data
 		self.indices = indices if indices is not None else self.indices
+		self.variable = variable if variable is not None else self.variable
 
 		if self.parameters is None:
 			if parameters is None:
@@ -566,13 +568,13 @@ class Parameters(System):
 			indices (array): Indices of parameters of class
 		'''
 
-		data = self.data if data is not None else data
-		parameters = self.parameters if parameters is not None else parameters
-		data = self.data if data is not None else data
+		# data = self.data if data is not None else data
+		# parameters = self.parameters if parameters is not None else parameters
+		# indices = self.indices if indices is not None else indices
 
-		self.data = data
-		self.parameters = parameters
-		self.indices = indices
+		# self.data = data
+		# self.parameters = parameters
+		# self.indices = indices
 
 		return
 

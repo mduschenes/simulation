@@ -3035,8 +3035,14 @@ def contraction(data=None,state=None):
 
 		if state is None:
 
+			state = data
+
+			subscripts = 'ij,kj->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
 			def func(data,state):
-				return data
+				return einsummation(data,state)
 
 		elif state.ndim == 1:
 			
@@ -3061,8 +3067,14 @@ def contraction(data=None,state=None):
 
 		if state is None:
 			
+			state = data
+
+			subscripts = 'uij,...j->i...'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
 			def func(data,state):
-				return data
+				return einsummation(data,state)
 
 		elif state.ndim == 1:
 			
@@ -3097,66 +3109,72 @@ def gradient_contraction(data,state=None):
 		func (callable): contracted data and state with signature func(data,state)
 	'''
 
-	def default(grad=None,data=None,state=None):
+	def default(grad,data,state):
 		return grad
 
 	if data is None:
 		
 		if state is None:
 		
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return grad
 
 		elif state.ndim == 1:
 
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return grad
 
 		elif state.ndim == 2:
 			
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return grad
 	
 	elif data.ndim == 0:
 
 		if state is None:
 		
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return grad
 
 		elif state.ndim == 1:
 
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return grad
 
 		elif state.ndim == 2:
 			
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return grad
 
 	elif data.ndim == 1:
 		
 		if state is None:
 		
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return grad
 
 		elif state.ndim == 1:
 
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return grad
 
 		elif state.ndim == 2:
 			
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return grad
 
 	elif data.ndim == 2:
 
 		if state is None:
-		
-			def func(grad=None,data=None,state=None):
-				return grad
+
+			state = data
+
+			subscripts = 'ij,kj->ik'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(grad,data,state):
+				return einsummation(grad,state)
 
 		elif state.ndim == 1:
 
@@ -3164,7 +3182,7 @@ def gradient_contraction(data,state=None):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return einsummation(grad,state)
 
 		elif state.ndim == 2:
@@ -3173,7 +3191,7 @@ def gradient_contraction(data,state=None):
 			shapes = (data.shape,state.shape,data.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				out = einsummation(grad,state,conjugate(data))
 				return out + dagger(out)
 
@@ -3181,8 +3199,14 @@ def gradient_contraction(data,state=None):
 
 		if state is None:
 
-			def func(grad=None,data=None,state=None):
-				return grad
+			state = data
+
+			subscripts = 'uij,...j->i...'
+			shapes = (data.shape,state.shape)
+			einsummation = einsum(subscripts,*shapes)
+			
+			def func(data,state):
+				return einsummation(grad,state)
 
 		elif state.ndim == 1:
 			
@@ -3190,7 +3214,7 @@ def gradient_contraction(data,state=None):
 			shapes = (data.shape,state.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				return einsummation(grad,state)
 
 		elif state.ndim == 2:
@@ -3199,7 +3223,7 @@ def gradient_contraction(data,state=None):
 			shapes = (data.shape,state.shape,data.shape)
 			einsummation = einsum(subscripts,*shapes)
 			
-			def func(grad=None,data=None,state=None):
+			def func(grad,data,state):
 				out = einsummation(grad,state,conjugate(data))
 				return out + dagger(out)
 
