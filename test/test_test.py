@@ -140,6 +140,7 @@ def test_grad(path,tol):
 	model.__initialize__(state=state)
 
 	parameters = model.parameters()
+	state = model.state()
 
 	# grad of unitary
 	grad_automatic = model.grad_automatic
@@ -148,25 +149,25 @@ def test_grad(path,tol):
 
 	index = slice(None)
 	print('-----')
-	print(grad_automatic(parameters)[index])
+	print(grad_automatic(parameters,state)[index])
 	print()
 	print('-----')
 	print()
-	print(grad_finite(parameters)[index])
+	print(grad_finite(parameters,state)[index])
 	print()
 	print('-----')
 	print()	
-	print(grad_analytical(parameters)[index])
+	print(grad_analytical(parameters,state)[index])
 	print()
 	print('----- ratio -----')
 	print()
-	print(grad_automatic(parameters)[index]/grad_analytical(parameters)[index])
+	print(grad_automatic(parameters,state)[index]/grad_analytical(parameters,state)[index])
 	print()
 	print('-----')
 	print()
-	assert allclose(grad_automatic(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
-	assert allclose(grad_automatic(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
-	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
+	assert allclose(grad_automatic(parameters,state),grad_finite(parameters,state)), "JAX grad != Finite grad"
+	assert allclose(grad_automatic(parameters,state),grad_analytical(parameters,state)), "JAX grad != Analytical grad"
+	assert allclose(grad_finite(parameters,state),grad_analytical(parameters,state)), "Finite grad != Analytical grad"
 
 	print('Passed')
 
@@ -177,6 +178,6 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	path = 'config/settings.tmp.json'	
 	tol = 5e-8 
-	# test_metric(path,tol)
-	# test_objective(path,tol)
+	test_metric(path,tol)
+	test_objective(path,tol)
 	test_grad(path,tol)

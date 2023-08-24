@@ -126,7 +126,7 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 	# Update data
 	for i in data:
 		kwargs = dict(
-			# parameters=dict(parameters=dict(cls=trotter(p=period)) if data[i].unitary else None)
+			parameters=dict(parameters=dict(cls=trotter(p=period)) if data[i].unitary else None)
 			)
 		data[i].__initialize__(**kwargs)
 
@@ -225,16 +225,18 @@ def scheme(data,state=None,conj=False,size=None,period=None,verbose=False):
 
 	length = len(data) if data is not None else 1
 	indices = (0,size*length)
+	obj = state if state is not None else data[0].identity if data else None
 
 	def function(parameters,state=state,indices=indices):	
-		return switch(indices%length,data,parameters[indices%size],state)
+		return switch(indices%length,data,parameters[indices//length],state)
 
 	data = compile(data,state=state,conj=conj,size=size,period=period,verbose=verbose)	
 
 	length = len(data)
 	indices = (0,size*length)
+	obj = state if state is not None else data[0].identity if data else None
+	
 	data = [jit(data[i]) for i in range(length)]
-	obj = state
 
 	def func(parameters,state=state,indices=indices):
 
@@ -242,6 +244,7 @@ def scheme(data,state=None,conj=False,size=None,period=None,verbose=False):
 			return function(parameters,out,indices=i)
 
 		state = obj if state is None else state
+
 		return forloop(*indices,func,state)
 
 	func = jit(func)
@@ -272,17 +275,19 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 	
 	length = len(data)
 	indices = (0,size*length)
+	obj = state if state is not None else data[0].identity if data else None
 
 	function = scheme(data,state=state,conj=conj,size=size,period=period)	
 	def gradient(parameters,state=state,indices=indices):	
-		return switch(indices%length,grad,parameters[indices],state)
+		return switch(indices%length,grad,parameters[indices//length],state)
 
 	data = compile(data,state=state,conj=conj,size=size,period=period)	
 
+	indexes,shape = variables(data,state=state,conj=conj,size=size,period=period)	
+
 	length = len(data)
 	indices = (0,size*length)
-
-	indexes,shape = variables(data,state=state,conj=conj,size=size,period=period)	
+	obj = state if state is not None else data[0].identity if data else None
 
 	if verbose and data:
 		data[0].log(msg='Compiled:\n%r'%(data),verbose=verbose)
@@ -292,20 +297,14 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 		[jit(data[i].grad) for i in range(length)],
 		array(indexes)
 		)
-	obj = state
-
-	print(indexes,shape)
 
 	def true(i,out,parameters,state):
-		# print(i,size*length)
+
 		obj = function(parameters,state,indices=(0,i))
-		# print('0',obj)
 
 		obj = gradient(parameters,obj,indices=i)
-		# print('i',obj)
 
 		obj = function(parameters,obj,indices=(i+1,size*length))
-		# print('f',obj)
 
 		out = inplace(out,indexes[i],obj,'add')
 
@@ -320,18 +319,11 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 	def func(parameters,state=state,indices=indices):
 
 		def func(i,out):
-			if indexes[i]>=0:
-				return true(i,out,parameters,state)
-			else:
-				return false(i,out,parameters,state)
 			return cond(indexes[i]>=0,true,false,i,out,parameters,state)
 
 		state = obj if state is None else state
+		
 		out = zeros((*shape,*state.shape),dtype=state.dtype)
-
-		for i in range(*indices):
-			out = func(i,out)
-		return out
 
 		return forloop(*indices,func,out)
 
@@ -535,29 +527,24 @@ class Object(System):
 		'''
 
 		cls = Parameter
-		if not isinstance(self.parameters,cls):
-			if not isinstance(parameters,cls):
-				defaults = {}
-				parameters = parameters if parameters is not None else self.parameters
-				parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
-				setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
-				setter(parameters,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
-				setter(parameters,defaults,delimiter=delim,default=False)
-				setter(parameters,self.parameters,delimiter=delim,default=False)
+		if not isinstance(self.parameters,cls) and not isinstance(parameters,cls):
+			defaults = {}
+			parameters = parameters if parameters is not None else self.parameters
+			parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
+			setter(parameters,{attr: getattr(self,attr) for attr in self if attr not in cls.defaults and attr not in dict(data=None)},delimiter=delim,default=False)
+			setter(parameters,dict(string=self.string,variable=self.variable,system=self.system),delimiter=delim,default=True)
+			setter(parameters,defaults,delimiter=delim,default=False)
+			setter(parameters,self.parameters,delimiter=delim,default=False)
 
-				self.parameters = cls(**parameters)
+			self.parameters = cls(**parameters)
 
-			else:
-				self.parameters = parameters
+		elif isinstance(self.parameters,cls):
+			parameters = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
+			
+			self.parameters.__initialize__(**parameters)
 
 		else:
-			if parameters is None:
-				pass
-			elif not isinstance(parameters,cls):
-				parameters = dict(data=parameters) if not isinstance(parameters,dict) else parameters
-				self.parameters.__initialize__(**parameters)
-			else:
-				self.parameters = parameters
+			self.parameters = parameters
 
 		if data is None:
 			data = self.data
@@ -659,11 +646,7 @@ class Object(System):
 		Returns:
 			data (array): data
 		'''
-
-		if state is None:
-			return self.contract(self.func(parameters=parameters))
-		else:
-			return self.contract(self.func(parameters=parameters,state=state),state=state)
+		return self.contract(self.func(parameters=parameters,state=state),state=state)
 
 	def grad(self,parameters=None,state=None):
 		'''
@@ -674,11 +657,7 @@ class Object(System):
 		Returns:
 			data (array): data
 		'''
-		if state is None:
-			return self.gradient_contract(self.gradient(parameters=parameters),self.func(parameters=parameters))
-		else:
-			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
-
+		return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
 
 	def __str__(self):
 		if isinstance(self.operator,str):
@@ -1024,7 +1003,7 @@ class Pauli(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-		# self.parameters.__initialize__(parameters=dict(obj=pi))
+		self.parameters.__initialize__(parameters=dict(obj=pi))
 
 		if self.parameters() is not None:
 
@@ -1310,6 +1289,37 @@ class State(Object):
 		self.unitary = unitary
 
 		return
+
+
+	def __call__(self,parameters=None,state=None):
+		'''
+		Call operator
+		Args:
+			parameters (array): parameters
+			state (obj): state
+		Returns:
+			data (array): data
+		'''
+		if state is None:
+			return self.func(parameters=parameters,state=state)
+		else:
+			return self.contract(self.func(parameters=parameters,state=state),state=state)
+
+	def grad(self,parameters=None,state=None):
+		'''
+		Call operator gradient
+		Args:
+			parameters (array): parameters
+			state (obj): state
+		Returns:
+			data (array): data
+		'''
+		if state is None:
+			return self.gradient(parameters=parameters,state=state)
+		else:
+			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
+
+
 
 class Noise(Object):
 	'''
@@ -1798,11 +1808,7 @@ class Operators(Object):
 
 		parameters = self.parameters(parameters)
 
-
-		if state is None:
-			return self.func(parameters=parameters)
-		else:
-			return self.func(parameters=parameters,state=state)
+		return self.func(parameters=parameters,state=state)
 
 
 	def grad(self,parameters=None,state=None):
@@ -1814,11 +1820,7 @@ class Operators(Object):
 		Returns:
 			out (array): Return of function
 		'''		
-
-		if state is None:
-			return self.gradient(parameters=parameters)
-		else:
-			return self.gradient(parameters=parameters,state=state)
+		return self.gradient(parameters=parameters,state=state)
 
 	def grad_automatic(self,parameters=None,state=None):
 		''' 
@@ -1829,11 +1831,7 @@ class Operators(Object):
 		Returns:
 			out (array): Return of function
 		'''		
-	
-		if state is None:
-			return self.gradient_automatic(parameters=parameters)
-		else:
-			return self.gradient_automatic(parameters=parameters,state=state)
+		return self.gradient_automatic(parameters=parameters,state=state)
 
 	def grad_finite(self,parameters=None,state=None):
 		''' 
@@ -1844,11 +1842,7 @@ class Operators(Object):
 		Returns:
 			out (array): Return of function
 		'''		
-	
-		if state is None:
-			return self.gradient_finite(parameters=parameters)
-		else:
-			return self.gradient_finite(parameters=parameters,state=state)
+		return self.gradient_finite(parameters=parameters,state=state)
 
 	def grad_analytical(self,parameters=None,state=None):
 		''' 
@@ -1859,13 +1853,10 @@ class Operators(Object):
 		Returns:
 			out (array): Return of function
 		'''		
-	
+
 		parameters = self.parameters(parameters)
 
-		if state is None:
-			return self.gradient_analytical(parameters=parameters)
-		else:
-			return self.gradient_analytical(parameters=parameters,state=state)
+		return self.gradient_analytical(parameters=parameters,state=state)
 
 
 	def __len__(self):
@@ -2363,6 +2354,34 @@ class Label(Operator):
 
 	def __init__(self,*args,**kwargs):
 		return
+
+	def __call__(self,parameters=None,state=None):
+		'''
+		Call operator
+		Args:
+			parameters (array): parameters
+			state (obj): state
+		Returns:
+			data (array): data
+		'''
+		if state is None:
+			return self.func(parameters=parameters,state=state)
+		else:
+			return self.contract(self.func(parameters=parameters,state=state),state=state)
+
+	def grad(self,parameters=None,state=None):
+		'''
+		Call operator gradient
+		Args:
+			parameters (array): parameters
+			state (obj): state
+		Returns:
+			data (array): data
+		'''
+		if state is None:
+			return self.gradient(parameters=parameters,state=state)
+		else:
+			return self.gradient_contract(self.gradient(parameters=parameters,state=state),self.func(parameters=parameters,state=state),state=state)
 
 
 
