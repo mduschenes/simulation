@@ -295,12 +295,15 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 	obj = state
 
 	def true(i,out,parameters,state):
-
+		# print(i,size*length)
 		obj = function(parameters,state,indices=(0,i))
+		# print('0',obj)
 
 		obj = gradient(parameters,obj,indices=i)
+		# print('i',obj)
 
 		obj = function(parameters,obj,indices=(i+1,size*length))
+		# print('f',obj)
 
 		out = inplace(out,indexes[i],obj,'add')
 
@@ -315,10 +318,18 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 	def func(parameters,state=state,indices=indices):
 
 		def func(i,out):
+			if indexes[i]>=0:
+				return true(i,out,parameters,state)
+			else:
+				return false(i,out,parameters,state)
 			return cond(indexes[i]>=0,true,false,i,out,parameters,state)
 
 		state = obj if state is None else state
 		out = zeros((*shape,*state.shape),dtype=state.dtype)
+
+		for i in range(*indices):
+			out = func(i,out)
+		return out
 
 		return forloop(*indices,func,out)
 
@@ -401,7 +412,7 @@ class Object(System):
 
 		if operator is None:
 			operator = data
-		
+
 		# Set site,locality,operator
 		if site is None:
 			if operator is None:
