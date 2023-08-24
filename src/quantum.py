@@ -294,6 +294,8 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 		)
 	obj = state
 
+	print(indexes,shape)
+
 	def true(i,out,parameters,state):
 		# print(i,size*length)
 		obj = function(parameters,state,indices=(0,i))

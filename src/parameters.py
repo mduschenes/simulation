@@ -427,6 +427,7 @@ class Parameters(System):
 	defaults = {}
 	data = {}
 	indices = {}
+	variable = None
 	parameters = None
 	shape = None
 	size = None
@@ -558,23 +559,25 @@ class Parameters(System):
 		return
 
 
-	
-	def __initialize__(self,data=None,parameters=None,indices=None):
+	def __initialize__(self,data=None,parameters=None,indices=None,variable=None):
 		'''
 		Initialize class data
 		Args:
-			data (array): Data of class
+			data (array): Data of class, if None, shape must be not None to initialize data
 			parameters (array): Parameters of class
 			indices (array): Indices of parameters of class
+			variable (bool): Parameter is variable or constant
 		'''
+	
+		data = self.data if data is not None else data
+		parameters = self.parameters if parameters is not None else parameters
+		indices = self.indices if indices is not None else indices
+		variable = self.variable if variable is not None else variable
 
-		# data = self.data if data is not None else data
-		# parameters = self.parameters if parameters is not None else parameters
-		# indices = self.indices if indices is not None else indices
-
-		# self.data = data
-		# self.parameters = parameters
-		# self.indices = indices
+		self.data = data
+		self.parameters = parameters
+		self.indices = indices
+		self.variable = variable
 
 		return
 
