@@ -614,6 +614,19 @@ class Parameters(System):
 		else:
 			return parameters.reshape(self.shape)
 
+	def constraints(self,parameters=None,*args,**kwargs):
+		'''
+		Class constraints
+		Args:
+			parameters (array): parameters
+			args (iterable[object]): Positional arguments for function
+			kwargs (dict[str,object]): Keyword arguments for function	
+		Returns:
+			parameters (array): parameters
+		'''
+		parameters = self(parameters)
+		return sum(self[parameter].constraints() for parameter in self)
+
 	def __iter__(self):
 		return self.__iterdata__()
 

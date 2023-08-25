@@ -94,7 +94,7 @@ def train(settings):
 
 		if settings.boolean.train:
 
-			func = None
+			func = model.parameters.constraints
 			arguments = ()
 			keywords = {}
 			
