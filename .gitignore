@@ -37,3 +37,5 @@ setup/requirements.txt.*.*
 test/config/settings.*.json
 src/wip
 build/qiskit
+build/exp
+build/settings.exp.json

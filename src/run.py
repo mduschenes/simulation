@@ -64,7 +64,6 @@ def setup(settings):
 
 	# Load default settings
 	default = {}
-	func = False
 	if settings is None:
 		defaults = path
 		settings = default
@@ -74,7 +73,7 @@ def setup(settings):
 	else:
 		settings = default
 
-	setter(settings,load(path,default=default),func=func)
+	setter(settings,load(path,default=default),default=False)
 
 	# Load default hyperparameters
 	default = copy(settings)
@@ -88,8 +87,7 @@ def setup(settings):
 		hyperparameters = default
 
 	default = {}
-	func = False
-	setter(hyperparameters,load(path,default=default),func=func)
+	setter(hyperparameters,load(path,default=default),default=False)
 
 	# Get permutations of hyperparameters
 	permutations = settings['permutations'].get('permutations')

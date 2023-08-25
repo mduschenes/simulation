@@ -1337,8 +1337,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
 
-		print(subscripts)
-
 		# @jit
 		def fisher(*args,**kwargs):
 			
@@ -1391,8 +1389,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsum(subscripts,*operands,optimize=optimize,wrapper=wrapper)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]	
-
-		print(subscripts)
 
 		@jit
 		def fisher(*args,**kwargs):
