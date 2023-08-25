@@ -21,7 +21,7 @@ from src.utils import argparser,copy
 from src.utils import array,expand_dims,conditions,prod
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
-from src.iterables import getter,setter,search,inserter,indexer
+from src.iterables import search,inserter,indexer
 from src.system import Dict
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
@@ -99,6 +99,180 @@ def Texify(string,texify={},usetex=True):
 			string = None
 
 	return string
+
+def copier(key,value,copy):
+	'''
+	Copy value based on associated key 
+
+	Args:
+		key (string): key associated with value to be copied
+		value (object): data to be copied
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+	Returns:
+		Copy of value
+	'''
+
+	# Check if copy is a dictionary and key is in copy and is True to copy value
+	if ((not copy) or (isinstance(copy,dict) and (not copy.get(key)))):
+		return value
+	else:
+		return deepcopy(value)
+
+
+
+
+
+def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
+	'''
+	Set nested value in iterable with nested elements keys
+	Args:
+		iterable (dict): dictionary to be set in-place with value
+		elements (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
+		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
+		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
+	'''
+
+	if (not isinstance(iterable,(dict,list))) or (not isinstance(elements,dict)):
+		return
+
+	# Setup default as callable
+	if default is None:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+	elif default is True:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+	elif default is False:
+		func = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements.get(key_elements))
+	elif default in ['none','None']:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if iterable.get(key_iterable,elements.get(key_elements)) is None else iterable.get(key_iterable,elements.get(key_elements))
+	elif not callable(default):
+		types = tuple(default)
+		def func(key_iterable,key_elements,iterable,elements,types=types): 
+			i = iterable.get(key_iterable,elements.get(key_elements))
+			e = elements.get(key_elements,i)
+			return e if isinstance(e,types) else i
+	else:
+		func = default
+
+	# Clear iterable if clear and elements is empty dictionary
+	if clear and elements == {}:
+		iterable.clear()
+
+	# Set nested elements
+	for element in elements:
+
+		# Get iterable, and index of tuple of nested element key
+		i = iterable
+		index = 0
+
+		# Convert string instance of elements to list, splitting string based on delimiter delimiter
+		try:
+			if (
+				(isinstance(element,str) and delimiter) and 
+				(element not in iterable)):
+				#((element.count(delimiter)>0) and ((element not in iterable)) or (element.split(delimiter)[0] in iterable))):
+				# e = element.split(delimiter)
+
+				e = []
+				_element = element.split(delimiter)
+				_iterable = iterable
+				while _element and isinstance(_iterable,dict):
+					for l in range(len(_element),-1,-1):
+						_e = delimiter.join(_element[:l])
+
+						if _e in _iterable:
+							_iterable = _iterable.get(_e)
+							e.append(_e)
+							_element = _element[l:]
+							break
+					if l == 0:
+						e.extend(_element)
+						break
+				e = tuple(e)
+
+				# print(element,e)
+
+			elif is_iterable(element,exceptions=scalars):
+				e = tuple(element)
+			else:
+				e = tuple((element,))
+
+			# Update iterable with elements 
+			while index<(len(e)-1):
+				if isinstance(i,list):
+					if (e[index] >= len(i)):
+						i.extend([[] if isinstance(e[index+1],int) else {} for j in range(e[index]-len(i)+1)])
+				elif (isinstance(i,dict) and (not isinstance(i.get(e[index]),(dict,list)))):
+					i[e[index]] = [] if isinstance(e[index+1],int) else {}
+				i = i[e[index]]
+				index+=1
+
+			# try:
+			value = copier(element,func(e[index],element,i,elements),copy)
+
+			if isinstance(i,list) and (e[index] >= len(i)):
+				i.extend([{} for j in range(e[index]-len(i)+1)])
+
+			if reset:
+				i[e[index]] = value
+			elif e[index] not in i or not isinstance(i[e[index]],(dict,list)):
+				i[e[index]] = value
+			elif isinstance(elements[element],dict):
+				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
+			else:
+				i[e[index]] = value
+		except Exception as exception:
+			print(traceback.format_exc())
+			pass
+
+	return
+
+
+def getter(iterable,elements,default=None,delimiter=False,copy=False):
+	'''
+	Get nested value in iterable with nested elements keys
+
+	Args:
+		iterable (dict): dictionary of values
+		elements (str,iterable[str]): delimiter separated string or list to nested keys of location to get value
+		default (object): default data to return if elements not in nested iterable
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+	Returns:
+		value (object): Value at nested keys elements of iterable
+	'''	
+
+	# Convert string instance of elements to list, splitting string based on delimiter delimiter
+	if isinstance(elements,str):
+		if delimiter and (elements not in iterable):
+			elements = elements.split(delimiter)
+		else:
+			elements = [elements]
+
+	# Get nested element if iterable, based on elements
+	if not isinstance(elements,(list,tuple)):
+		# elements is object and value is to be got from iterable at first level of nesting
+		try:
+			return copier(elements,iterable[elements],copy)
+		except:
+			return default
+	elif not elements:
+		return copier(elements,iterable,copy)
+	else:
+		# elements is list of nested keys and the nested values are to be extracted from iterable
+		try:
+			i = iterable
+			e = 0
+			while e<len(elements):
+				i = i[elements[e]]
+				e+=1			
+			return copier(elements[e-1],i,copy)
+		except:
+			return default
+
+	return default
 
 
 def Valify(value,valify={},useval=True):

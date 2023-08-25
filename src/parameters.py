@@ -545,7 +545,10 @@ class Parameters(System):
 				)
 			self.parameters[parameter].__initialize__(**kwargs)
 
-		data = {parameter:self.parameters[parameter] for parameter in self.parameters}
+		data = {str(self.parameters[parameter]):self.parameters[parameter] for parameter in self.parameters}
+
+		for attr in data:
+			setattr(self,attr,data[attr])
 
 		self.data = data
 		self.indices = indices

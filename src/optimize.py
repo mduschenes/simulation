@@ -144,7 +144,7 @@ class LineSearch(LineSearcher):
 
 		defaults = {'search':{'alpha':None}}
 		setter(hyperparameters,defaults,delimiter=delim,default=False)
-		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) if hyperparameters.get(attr) is not None else defaults[attr] for attr in defaults})
 
 		line_searches = {
 			'line_search':Line_Search,
@@ -152,7 +152,7 @@ class LineSearch(LineSearcher):
 			None:Null_Line_Search
 			}
 
-		line_search = hyperparameters.get('search',{}).get('alpha',defaults['search']['alpha'])
+		line_search = hyperparameters.get('search',{}).get('alpha',defaults['search']['alpha']) if isinstance(hyperparameters.get('search'),dict) else defaults['search']['alpha']
 		
 		self = line_searches.get(line_search,line_searches[None])(func,grad,
 			arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,
@@ -180,7 +180,7 @@ class Line_Search(LineSearcher):
 		defaults = {'c1':0.0001,'c2':0.9,'maxiter':10,'old_old_fval':None,'args':()}
 		returns = ['alpha','nfunc','ngrad','value','_value','slope']
 		setter(hyperparameters,defaults,delimiter=delim,default=False)
-		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) if hyperparameters.get(attr) is not None else defaults[attr] for attr in defaults})
 
 		super().__init__(func,grad,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
 
@@ -239,7 +239,7 @@ class Armijo(LineSearcher):
 		defaults = {'c1':0.0001,'alpha0':hyperparameters.get('alpha',1e-4),'args':()}
 		returns = ['alpha','nfunc','value']
 		setter(hyperparameters,defaults,delimiter=delim,default=False)
-		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) if hyperparameters.get(attr) is not None else defaults[attr] for attr in defaults})
 
 		super().__init__(func,grad,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,**kwargs)
 
@@ -412,7 +412,7 @@ class GradSearch(GradSearcher):
 
 		defaults = {'search':{'beta':None}}
 		setter(hyperparameters,defaults,delimiter=delim,default=False)
-		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) for attr in defaults})
+		defaults.update({attr: hyperparameters.get(attr,defaults[attr]) if hyperparameters.get(attr) is not None else defaults[attr] for attr in defaults})
 
 		grad_searches = {
 			'grad_search':Fletcher_Reeves,'fletcher_reeves':Fletcher_Reeves,
@@ -421,7 +421,7 @@ class GradSearch(GradSearcher):
 			None:Null_Grad_Search,
 			}
 
-		grad_search = hyperparameters.get('search',{}).get('beta',defaults['search']['beta'])
+		grad_search = hyperparameters.get('search',{}).get('beta',defaults['search']['beta']) if isinstance(hyperparameters.get('search'),dict) else defaults['search']['beta']
 		
 		self = grad_searches.get(grad_search,grad_searches[None])(func,grad,
 			arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system,
@@ -1386,10 +1386,9 @@ class Optimization(System):
 				optimizer.attributes['alpha'],
 				optimizer.attributes['value'],
 				optimizer.attributes['grad'],
-				optimizer.attributes['search']
+				optimizer.attributes['search'],
 				*args,**kwargs) if optimizer.size > 1 else optimizer.hyperparameters['alpha']
 		search = -grad
-		# search = search/norm(search) if optimizer.kwargs.get('normalize') else search
 		parameters = parameters + alpha*search
 		return parameters,search,alpha
 
@@ -1578,7 +1577,6 @@ class Optimization(System):
 				self.attributes.pop(attr)
 			elif ((not isinstance(value,list)) and (value)) or clear:
 				self.attributes[attr] = []
-
 		for attr in list(self.track):
 			value = self.track[attr]
 			if ((not isinstance(value,list)) and (not value)):
@@ -1599,6 +1597,7 @@ class Optimization(System):
 
 				if not hasattrs(self,name,delimiter=delim):
 					continue
+
 
 				if objs[name]:
 					pattern = delim.join(attr.split(delim)[1:]) if attr.split(delim)[0] == name else attr
@@ -1622,7 +1621,6 @@ class Optimization(System):
 
 
 		self.size = min((len(self.attributes[attr]) for attr in self.attributes),default=self.size)
-
 
 		while (self.sizes) and (self.size > 0) and (self.size >= sum(self.sizes[attr] for attr in self.sizes)):
 			for attr in self.attributes:
@@ -1748,8 +1746,8 @@ class Optimizer(Optimization):
 		defaults = {'optimizer':None}
 		setter(hyperparameters,defaults,delimiter=delim,default=False)
 
-		# optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
-		optimizers = {'adam':GradientDescent,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
+		optimizers = {'adam':Adam,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
+		# optimizers = {'adam':GradientDescent,'cg':ConjugateGradient,'gd':GradientDescent,'ls':LineSearchDescent,'hd':HessianDescent,None:GradientDescent}
 
 		optimizer = hyperparameters.get('optimizer')
 		
@@ -1909,7 +1907,6 @@ class HessianDescent(Optimization):
 		optimizer = self
 		alpha = optimizer.hyperparameters['alpha']
 		search = -grad
-		# search = search/norm(search) if optimizer.kwargs.get('normalize') else search
 		hess = optimizer.hess(parameters)		
 		parameters = parameters + alpha*lstsq(hess,search)
 		return parameters,search,alpha
@@ -2013,7 +2010,8 @@ class ConjugateGradient(Optimization):
 			optimizer.attributes['beta'],
 			optimizer.attributes['value'],
 			optimizer.attributes['grad'],
-			optimizer.attributes['search'])
+			optimizer.attributes['search'],
+			*args,**kwargs)
 
 		search = -grad + beta*search
 		return parameters,search,alpha,beta

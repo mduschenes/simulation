@@ -1980,10 +1980,10 @@ class Operators(Object):
 			string = '%s: %s'%(attr,substring)
 			msg.append(string)
 
-		for attr in (self.parameters if self.parameters is not None else []):
+		for attr in (self.data if self.data is not None else []):
 			string = []
-			for subattr in ['variable','method','indices','local','site','shape','parameters']:
-				substring = getattr(self.parameters[attr],subattr,None)
+			for subattr in ['variable','method','indices','local','site','shape','parameters.parameters']:
+				substring = getattrs(self.data[attr],subattr,default=None,delimiter=delim)
 				if isinstance(substring,(str,int,list,tuple,bool,*arrays)):
 					substring = str(substring)
 				elif isinstance(substring,dict):
@@ -1997,7 +1997,7 @@ class Operators(Object):
 				
 				string.append(substring)
 
-			string = 'parameters.%s\t%s'%(self.parameters[attr],''.join(string))
+			string = 'parameters.%s\t%s'%(self.data[attr],''.join(string))
 
 			msg.append(string)
 
@@ -2364,10 +2364,8 @@ class Label(Operator):
 		Returns:
 			data (array): data
 		'''
-		if state is None:
-			return self.func(parameters=parameters,state=state)
-		else:
-			return self.contract(self.func(parameters=parameters,state=state),state=state)
+		state = self.state() if state is None else state
+		return self.contract(self.func(parameters=parameters,state=state),state=state)
 
 	def grad(self,parameters=None,state=None):
 		'''
@@ -2405,6 +2403,8 @@ class Callback(System):
 			'iteration.max':[],'iteration.min':[],
 			'parameters.relative':[],'parameters.relative.mean':[],
 			'variables':[],
+			'variables.relative':[],'variables.relative.mean':[],
+			'parameters.norm':[],'grad.norm':[],'search.norm':[],			
 			'objective.ideal.noise':[],'objective.diff.noise':[],'objective.rel.noise':[],
 			'objective.ideal.state':[],'objective.diff.state':[],'objective.rel.state':[],
 			'objective.ideal.operator':[],'objective.diff.operator':[],'objective.rel.operator':[],
@@ -2416,7 +2416,7 @@ class Callback(System):
 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
 
 			"noise.string":[],"noise.ndim":[],"noise.locality":[],
-			"noise.parameters":[],"noise.scale":[],"noise.tau":[],"noise.initialization":[],
+			"noise.parameters.parameters":[],"noise.scale":[],"noise.tau":[],"noise.initialization":[],
 
 			"state.string":[],"state.ndim":[],"label.string":[],"label.ndim":[],
 
@@ -2491,7 +2491,7 @@ class Callback(System):
 				for attr in [
 					'parameters','grad','search',
 					'parameters.relative',
-					'variables',
+					'variables','variables.relative'
 					'hessian','fisher',
 					'hessian.eigenvalues','fisher.eigenvalues']},
 			**{attr: None for attr in [
@@ -2528,7 +2528,7 @@ class Callback(System):
 				if attr in [
 					'parameters','grad','search',
 					'parameters.relative',
-					'variables',
+					'variables','variables.relative'
 					'hessian','fisher',
 					'hessian.eigenvalues','fisher.eigenvalues']:
 					default = empty(track[attr][-1].shape) if (len(track[attr])>0) else nan
@@ -2582,6 +2582,27 @@ class Callback(System):
 						_value = attributes['parameters'][0]
 						value = norm((value-_value)/(_value+eps))/(value.size)
 
+				elif attr in ['variables.relative','variables.relative.mean',
+					] and (not do):
+					value = default
+
+				elif attr in [
+					'variables.relative','variables.relative.mean',
+					] and (do):
+					eps = 1e-20
+					if attr in ['variables.relative']:
+						value = model.parameters(parameters)
+						value = array([model.data[i].parameters(j) for j in value for i in model.data if model.data[i].variable])
+						_value = model.parameters(attributes['parameters'][0])
+						_value = array([model.data[i].parameters(j) for j in _value for i in model.data if model.data[i].variable])
+						value = abs((value-_value)/(_value+eps))
+					elif attr in ['variables.relative.mean']:
+						value = model.parameters(parameters)
+						value = array([model.data[i].parameters(j) for j in value for i in model.data if model.data[i].variable])
+						_value = model.parameters(attributes['parameters'][0])
+						_value = array([model.data[i].parameters(j) for j in _value for i in model.data if model.data[i].variable])
+						value = norm((value-_value)/(_value+eps))/(value.size)
+
 				elif attr in ['objective']:
 					value = abs(metric(model(parameters,state)))
 				
@@ -2600,12 +2621,12 @@ class Callback(System):
 
 					defaults = Dictionary(
 						state=metric.state,
-						data={i: model.data[i].data for i in model.data},
+						data={i: model.data[i] for i in model.data},
 						label=metric.label)
 
 					tmp = Dictionary(
 						state=metric.state,
-						data={i: model.data[i].data for i in model.data if (not model.data[i].unitary)},
+						data={i: model.data[i] for i in model.data if (not model.data[i].unitary)},
 						label=metric.label)
 
 					if attr in ['objective.ideal.noise','objective.diff.noise','objective.rel.noise']:
@@ -2673,22 +2694,10 @@ class Callback(System):
 				elif attr in ["state.string","state.ndim","label.string","label.ndim"]:
 					value = getattrs(metric,attr,default=default,delimiter=delim)
 
-				elif attr in ["noise.string","noise.ndim","noise.locality"]:
-					for i in model.data:
-						if not i.unitary:
-							value = getattrs(i,delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
-							break
-
-				elif attr in ["noise.parameters","noise.method"]:
+				elif attr in ["noise.string","noise.ndim","noise.locality","noise.parameters.parameters","noise.method","noise.scale","noise.tau"]:
 					for i in model.parameters:
-						if all((not model.data[j].unitary) for j in model.parameters[i].instance):
+						if model.parameters[i].string == delim.join(attr.split(delim)[:1]):
 							value = getattrs(model.parameters[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
-							break
-				
-				elif attr in ["noise.scale","noise.tau"]:
-					for i in model.parameters:
-						if all((not model.data[j].unitary) for j in model.parameters[i].instance):
-							value = getattrs(model.parameters[i].kwargs,delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
 							break
 
 				elif attr in []:

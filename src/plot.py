@@ -55,7 +55,7 @@ PATHS = {
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nan = np.nan
 
-def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,func=None):
+def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
 	'''
 	Set nested value in iterable with nested elements keys
 	Args:
@@ -65,29 +65,29 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
 		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
-		func(callable,None,bool,iterable): Callable function with signature func(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
+		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
 	'''
 
 	if (not isinstance(iterable,(dict,list))) or (not isinstance(elements,dict)):
 		return
 
-	# Setup func as callable
-	if func is None:
-		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
-	elif func is True:
-		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
-	elif func is False:
-		function = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements.get(key_elements))
-	elif func in ['none','None']:
-		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if elements.get(key_elements) is not None else iterable.get(key_iterable,elements.get(key_elements))
-	elif not callable(func):
-		types = tuple(func)
-		def function(key_iterable,key_elements,iterable,elements,types=types): 
+	# Setup default as callable
+	if default is None:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+	elif default is True:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+	elif default is False:
+		func = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements.get(key_elements))
+	elif default in ['none','None']:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if elements.get(key_elements) is not None else iterable.get(key_iterable,elements.get(key_elements))
+	elif not callable(default):
+		types = tuple(default)
+		def func(key_iterable,key_elements,iterable,elements,types=types): 
 			i = iterable.get(key_iterable,elements.get(key_elements))
 			e = elements.get(key_elements,i)
 			return e if isinstance(e,types) else i
 	else:
-		function = func
+		func = default
 
 	# Clear iterable if clear and elements is empty dictionary
 	if clear and elements == {}:
@@ -119,7 +119,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 				i = i[e[index]]
 				index+=1
 
-			value = copier(element,function(e[index],element,i,elements),copy)
+			value = copier(element,func(e[index],element,i,elements),copy)
 
 			if isinstance(i,list) and (e[index] >= len(i)):
 				i.extend([{} for j in range(e[index]-len(i)+1)])
@@ -129,7 +129,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 			elif e[index] not in i or not isinstance(i[e[index]],(dict,list)):
 				i[e[index]] = value
 			elif isinstance(elements[element],dict):
-				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,func=func)
+				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
 			else:
 				i[e[index]] = value
 		except Exception as exception:

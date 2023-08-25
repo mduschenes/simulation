@@ -176,6 +176,10 @@ def contains(string,pattern):
 	Returns:
 		boolean (bool): String contains pattern
 	'''
+
+	string = str(string)
+	pattern = str(pattern)
+
 	replacements = {'\\':'\\\\','.':'\\.','*':'.*',}
 	for replacement in replacements:
 		pattern = pattern.replace(replacement,replacements[replacement])
@@ -228,11 +232,11 @@ def setter(iterable,keys,delimiter=False,default=None,copy=False):
 	elif default in ['none','None']:
 		func = lambda key_iterable,key_keys,iterable,keys: keys.get(key_keys) if iterable.get(key_iterable,keys.get(key_keys)) is None else iterable.get(key_iterable,keys.get(key_keys))
 	elif not callable(default):
-		types = tuple(default)
-		def func(key_iterable,key_keys,iterable,keys,types=types): 
+		instances = tuple(default)
+		def func(key_iterable,key_keys,iterable,keys,instances=instances): 
 			i = iterable.get(key_iterable,keys.get(key_keys))
 			e = keys.get(key_keys,i)
-			return e if isinstance(e,types) else i
+			return e if isinstance(e,instances) else i
 	else:
 		func = default
 
