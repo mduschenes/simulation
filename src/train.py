@@ -73,15 +73,16 @@ def train(settings):
 		label = load(settings.cls.label)
 		callback = load(settings.cls.callback)
 
+		if any(i is None for i in [model,state,label,callback]):
+			raise ValueError("Incorrect cls initialization %r")
+			model = None
+			return model
+
 		hyperparameters = settings.optimize
 		system = settings.system
 
 		seed = prng(**settings.seed)
 
-		if any(i is None for i in [model,state,label,callback]):
-			raise ValueError("Incorrect cls initialization %r")
-			model = None
-			return model
 
 		model = model(**{**settings.model,**dict(system=system)})
 		state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})

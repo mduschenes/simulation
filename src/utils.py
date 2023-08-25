@@ -1337,6 +1337,8 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]
 
+		print(subscripts)
+
 		# @jit
 		def fisher(*args,**kwargs):
 			
@@ -1389,6 +1391,8 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 				lambda *operands,subscript=subscript,shape=shape,optimize=optimize,wrapper=wrapper: einsum(subscripts,*operands,optimize=optimize,wrapper=wrapper)
 					for subscript,shape,wrapper in zip(subscripts,shapes,wrappers)
 				]	
+
+		print(subscripts)
 
 		@jit
 		def fisher(*args,**kwargs):
@@ -2653,7 +2657,6 @@ def _svd(A,k=None):
 
 	return U,S,V
 
-@jit
 def eig(a,compute_v=False,hermitian=False):
 	'''
 	Compute eigenvalues and eigenvectors
@@ -2677,7 +2680,6 @@ def eig(a,compute_v=False,hermitian=False):
 			_eig = np.linalg.eigvals
 	return _eig(a)
 
-@jit
 def schur(a,compute_v=False,output=None):
 	'''
 	Compute schur decomposition of array
@@ -2699,7 +2701,6 @@ def schur(a,compute_v=False,output=None):
 	else:
 		return triangular
 
-@jit
 def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 	'''
 	Compute singular values of an array
@@ -2715,7 +2716,6 @@ def svd(a,full_matrices=True,compute_uv=False,hermitian=False):
 	'''
 	return np.linalg.svd(a,full_matrices=full_matrices,compute_uv=compute_uv,hermitian=hermitian)
 
-@jit
 def qr(a):
 	'''
 	Compute QR decomposition of array
@@ -2728,7 +2728,6 @@ def qr(a):
 	return np.linalg.qr(a)
 
 
-@jit
 def cholesky(a):
 	'''
 	Compute cholesky decomposition of array
@@ -2739,7 +2738,6 @@ def cholesky(a):
 	'''
 	return np.linalg.cholesky(a)
 
-@jit
 def lstsq(x,y):
 	'''
 	Compute least squares fit between x and y
@@ -3398,11 +3396,10 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 
 	if (label is not None) and (weights is not None):
 
+		if callable(label):
+			label = label()
+
 		if label is not None and metric in ['abs2','real']:
-		
-			if callable(label):
-				label = label()
-		
 			label = conjugate(label)
 
 		weights = inv(weights) if weights.ndim>1 else 1/weights**2
@@ -3416,11 +3413,10 @@ def metrics(metric,shapes=None,label=None,weights=None,optimize=None,returns=Non
 	
 	elif (label is not None):
 
+		if callable(label):
+			label = label()
+
 		if label is not None and metric in ['abs2','real']:
-
-			if callable(label):
-				label = label()
-
 			label = conjugate(label)	
 
 		def func(*operands,func=func,label=label):

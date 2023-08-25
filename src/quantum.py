@@ -125,8 +125,10 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 
 	# Update data
 	for i in data:
+		if data[i] is None:
+			continue
 		kwargs = dict(
-			parameters=dict(parameters=dict(trotter=trotter(p=period)) if data[i].unitary else None),
+			parameters=dict(parameters=dict(trotter=trotter(p=period)) if (data[i].unitary) else None),
 			)
 		data[i].__initialize__(**kwargs)
 
@@ -136,7 +138,7 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 	data = {i: data[i] for i in data if boolean(i)}
 
 	# Filter constant data
-	boolean = lambda i: (data[i].data is not None) and (not data[i].variable) and (data[i].unitary)
+	boolean = lambda i: (data[i] is not None) and (data[i].data is not None) and (not data[i].variable) and (data[i].unitary)
 	
 	obj = {i: data[i] for i in data if boolean(i)}
 	if len(obj)>1:
@@ -155,7 +157,7 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 	data = {j: data[i] if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {}
 
 	# Filter trotterized data
-	boolean = lambda i: (data[i].data is not None) and (data[i].unitary)
+	boolean = lambda i: (data[i] is not None) and (data[i].data is not None) and (data[i].unitary)
 	
 	obj = [j
 		for i in interleaver(
@@ -190,7 +192,7 @@ def variables(data,state=None,conj=False,size=None,period=None,verbose=False):
 	size = size if size is not None else 1
 	period = period if period is not None else None
 
-	boolean = lambda i: (data[i].variable)
+	boolean = lambda i: (data[i] is not None) and (data[i].variable)
 	default = -1
 
 	length = len(set(([data[i].parameters.indices for i in data if boolean(i)])))
@@ -1739,12 +1741,16 @@ class Operators(Object):
 
 
 		# Set parameters
-		parameters = {i:self.data[i].parameters for i in self.data if self.data[i].data is not None} if parameters is None else parameters
+		parameters = {i:self.data[i].parameters for i in self.data if self.data[i] is not None and self.data[i].data is not None} if parameters is None else parameters
 		
 		self.parameters = Parameters(parameters=parameters)
 
 		# Set data
 		for i in self.data:
+			
+			if self.data[i] is None:
+				continue
+
 			kwargs = dict(
 				parameters=dict(parameters=dict(scheme=self.tau) if self.data[i].unitary else None),
 				state=self.state
@@ -1752,7 +1758,7 @@ class Operators(Object):
 			self.data[i].__initialize__(**kwargs)
 
 		# Set attributes
-		boolean = lambda i: (self.data[i].data is not None)
+		boolean = lambda i: ((self.data[i] is not None) and (self.data[i].data is not None))
 		if self.state is None or self.state() is None:
 			hermitian = all(self.data[i].hermitian for i in self.data if boolean(i))
 			unitary = all(self.data[i].unitary for i in self.data if boolean(i))
@@ -1957,7 +1963,7 @@ class Operators(Object):
 					'(' if multiple_space[i] else '',
 					self.data[i].string,
 					')' if multiple_space[i] else '',
-					) for i in range(size)]),
+					) for i in range(size) if self.data[i] is not None]),
 				'}' if multiple_time else '',
 				'%s'%('^%s'%(self.M) if multiple_time else '') if multiple_time else '')
 
@@ -1976,7 +1982,7 @@ class Operators(Object):
 			substring = getattr(self,attr,None)
 
 			if attr in ['data']:
-				substring = substring if not isinstance(substring,dict) else [substring[i] for i in substring if substring[i].data is not None]
+				substring = substring if not isinstance(substring,dict) else [substring[i] for i in substring if (substring[i] is not None) and (substring[i].data is not None)]
 			else:
 				substring = substring if not isinstance(substring,dict) else [substring[i] for i in substring]
 			string = '%s: %s'%(attr,substring)
@@ -2367,7 +2373,7 @@ class Label(Operator):
 			data (array): data
 		'''
 
-		state = self.state() if state is None else state
+		state = self.state() if state is None and self.state is not None else state if state is not None else self.identity
 		
 		if state is None:
 			return self.func(parameters=parameters,state=state)
@@ -2383,8 +2389,7 @@ class Label(Operator):
 		Returns:
 			data (array): data
 		'''
-
-		state = self.state() if state is None else state
+		state = self.state() if state is None and self.state is not None else state if state is not None else self.identity
 
 		if state is None:
 			return self.gradient(parameters=parameters,state=state)

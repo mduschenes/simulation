@@ -113,7 +113,7 @@ def setattrs(obj,attr,value,delimiter=None):
 
 
 	if delimiter is None:
-		return getattr(obj,attr,default)
+		return setattr(obj,attr,value)
 
 	attrs = attr.split(delimiter)
 	
@@ -358,7 +358,7 @@ def permuter(dictionary,copy=False,groups=None,ordered=True):
 		'''
 		Get lists of values for each group of keys in groups
 		'''
-		groups = copy(groups)
+		groups = deepcopy(groups)
 		if groups is not None:
 			inds = [[keys.index(k) for k in g if k in keys] for g in groups]
 		else:

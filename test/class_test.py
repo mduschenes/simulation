@@ -18,15 +18,17 @@ from src.utils import jit,forloop,switch,array,rand,arange,zeros,ones,eye,einsum
 from src.utils import gradient,hessian,fisher
 from src.utils import norm,conjugate,dagger,dot,eig,nonzero,difference,maximum,argmax,abs,sort,sqrt,real,imag
 from src.utils import pi,delim,arrays,scalars,epsilon,inplace,to_index,to_position
-from src.iterables import getter,setter,permuter,namespace
+from src.iterables import getter,setter,permuter,namespace,getattrs,setattrs
 from src.io import load,dump,join,exists
 
-from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label,trotter
+from src.quantum import Object,Operator,Pauli,State,Gate,Haar,Noise,Label,trotter,compile,variables
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.system import Dictionary,Dict
 
 def test_object(path,tol):
 	bases = {'Pauli':Pauli,'State':State,'Gate':Gate,'Haar':Haar,'Noise':Noise}
+	
+
 	arguments = {
 		'Pauli': {
 			'basis':'Pauli',
@@ -35,25 +37,18 @@ def test_object(path,tol):
 				kwargs=dict(N=3,D=2,ndim=2,parameters=1,verbose=True),
 			),
 		},
-		'Gate': {
-			'basis':'Gate',
-			'kwargs':dict(
-				data=delim.join(['I','CNOT']),operator=None,site=[0,1,2],string='CX',
-				kwargs=dict(N=3,D=2,ndim=2,verbose=True),
-			),
-		},
 		'Haar':{
 			'basis':'Haar',
 			'kwargs': dict(
 				data=delim.join(['haar']*3),operator=None,site=[0,1,2],string='U',
-				kwargs=dict(N=3,D=2,ndim=2,seed=1,reset=1,verbose=True),
+				kwargs=dict(N=3,D=2,ndim=2,seed=1,parameters=1,verbose=True),
 			),
 		},
 		'Psi':{
 			'basis':'State',
 			'kwargs': dict(
 				data=delim.join(['minus']*2),operator=None,site=[0,1],string='-',
-				kwargs=dict(N=2,D=2,ndim=1,seed=1,reset=1,verbose=True),
+				kwargs=dict(N=2,D=2,ndim=1,seed=1,parameters=1,verbose=True),
 			),
 		},
 		'Noise':{
@@ -79,34 +74,18 @@ def test_object(path,tol):
 		assert tuple(operator.operator) == tuple(args['data'].split(delim)),"%r != %r"%(tuple(operator.operator),tuple(args['data'].split(delim)))
 
 		for attr in kwargs:
-			assert getattr(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
+			if attr in ['parameters']:
+				assert getattr(operator,attr)()==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
+			else:
+				assert getattrs(operator,attr)==kwargs[attr], "Operator.%s = %r != %r"%(attr,getattr(operator,attr),kwargs[attr])
 
-		for attr in operator:
-			print(attr,operator[attr])
-		print()
 
-
-		other = base(**args,**kwargs)
-
-		for attr in other:
-			assert attr in ['timestamp','logger'] or callable(operator[attr]) or ((operator[attr] == other[attr]) if not isinstance(operator[attr],arrays) else allclose(operator[attr],other[attr])), "Incorrect reinitialization %s %r != %r"%(attr,operator[attr],other[attr])
-		assert allclose(operator(operator.parameters),other(other.parameters))
-		
-		args.update(dict(data=None))
-		operator = base(**args,**kwargs)
-		assert operator(operator.parameters) is None
-
-		args.update(dict(data=None,operator=None))
-		operator = base(**args,**kwargs)
-		assert operator(operator.parameters) is None
-		
-		print()
-
-	operator = Operator(verbose=True)
-	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.parameters,operator)
+	operator = Operator(data='haar',N=1,D=2,ndim=1,parameters=1,verbose=True)
+	print(type(operator),operator,operator(operator.parameters(),operator.identity),operator.operator,operator.site,operator.string,operator.parameters,operator)
 
 	operator = Operator('I',N=3,verbose=True)
-	print(type(operator),operator,operator(operator.parameters),operator.operator,operator.site,operator.string,operator.parameters,operator.shape)
+	print(operator)
+	print(type(operator),operator,operator(operator.parameters(),operator.identity),operator.operator,operator.site,operator.string,operator.parameters,operator.shape)
 
 
 	print("Passed")
@@ -116,36 +95,44 @@ def test_object(path,tol):
 def test_model(path,tol):
 
 	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise Exception("Hyperparameters %s not loaded"%(path))
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
 
-	hyperparameters = Dict(hyperparameters)
+	settings = Dict(settings)
 
-	model = load(hyperparameters.cls.model)
-	state = load(hyperparameters.cls.state)
-	label = load(hyperparameters.cls.label)
 
-	system = hyperparameters.system
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
-	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
-	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
+
+
+	hyperparameters = settings.optimize
+	system = settings.system
+
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+	callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
 
 	label.__initialize__(state=state)
 	model.__initialize__(state=state)
 
 	parameters = model.parameters()
+	state = model.state()
+
 
 	t = time.time()
-	parameters = rand(shape=parameters.shape,random='normal',bounds=[-1,1],key=1234)
-	obj = model(parameters)
+	parameters = rand(parameters.size,random='normal',bounds=[-1,1],key=1234)
+	obj = model(parameters,model.identity)
 	print(parameters.shape,obj.shape,time.time()-t)
 
 
 	for i in range(10):
 		t = time.time()
 		parameters = rand(shape=parameters.shape,random='normal',bounds=[-1,1],key=1234)
-		obj = model(parameters)
+		obj = model(parameters,state)
 		print(i,parameters.shape,obj.shape,time.time()-t)
 
 
@@ -153,219 +140,34 @@ def test_model(path,tol):
 		return
 
 
-	if model.unitary:
-		I = model.identity()
-		objH = dagger(model(parameters,conj=False))
-		objD = dagger(model(parameters))
-
-		objobjH = dot(obj,objH)
-		objHobj = dot(objH,obj)
-		objobjD = dot(obj,objD)
-		objDobj = dot(objD,obj)
-
-		print('model(conj=True) - dagger(model())',(objH-objH).min(),(objH-objH).max())
-		# print(objH-objH)
-		# print()
-
-		print('model() * model(conj=True) - I',(objobjH - I).min(),(objobjH - I).max())
-		# print(objobjH - I)
-		# print()
-
-		print('model(conj=True) * model() - I',(objHobj - I).min(),(objHobj - I).max())
-		# print(objHobj - I)
-		# print()
-
-		print('model() * dagger(model()) - I',(objobjD - I).min(),(objobjD - I).max())
-		# print(objobjD - I)
-		# print()
-
-		print('dagger(model()) * model() - I',(objDobj - I).min(),(objDobj - I).max())
-		# print(objDobj - I)
-		# print()
-
-		assert allclose(objobjH,I), "Incorrect unitarity model() * model(conj=True) != I"
-		assert allclose(objHobj,I), "Incorrect unitarity model(conj=True) * model() != I"
-		assert allclose(objobjD,I), "Incorrect unitarity model() * dagger(model()) != I"
-		assert allclose(objDobj,I), "Incorrect unitarity dagger(model()) * model() != I"
-
-		assert allclose(objH,objD), "Incorrect model(conj=True) != conj(model())"
-
-
-	if state() is None and model.unitary:
+	if state is None and model.unitary:
 
 		m,d,p = model.M,len(model),model.P
-		identity = model.identity()
+		tau = model.tau
+		data = model.data
+		state = model.identity
+		identity = model.identity
 		parameters = rand(shape=model.parameters.shape,random='normal',bounds=[-1,1],key=1234)
 
-		out = model(parameters)
+		out = model(parameters,state)
 
-		slices = [slice(None,None,1),slice(None,None,-1)][:p]
-		data = [model.data[i] for s in slices for i in model.data[s]]
+		data = compile(data,period=p)
 
-		slices = array([i for s in [slice(None,None,1),slice(None,None,-1)][:p] for i in list(range(d))[s]])
-		parameters = model.parameters(parameters)
+		k = len(data)
 
 		print("Doing model() test",m,d,p)
 
-
-		tmp = model.identity()
-		for i in range(m*d*p):
-			f = data[i%(d*p)]
-			# print(i,data[i%(d*p)].string)
-			tmp = dot(f(parameters[i]),tmp)
+		tmp = state
+		for i in range(m*k):
+			f = data[i%k]
+			tmp = f(parameters[i//k],tmp)
 
 		assert allclose(out,tmp), "Incorrect model() from data()"
 		
 
-		print("Doing func() test",m,d,p)
-
-		tmp = model.identity()
-		for i in range(m*d*p):
-			f = lambda x: cos(pi/2*x)*identity + -1j*sin(pi/2*x)*data[i%(d*p)].data
-			# print(i,data[i%(d*p)].string)
-			tmp = dot(f(parameters[i]),tmp)
-
-		assert allclose(out,tmp), "Incorrect model() from func()"
-
 	print('Unitary Conditions Passed')
 
 	return 
-
-def test_initialize(path,tol):
-
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise Exception("Hyperparameters %s not loaded"%(path))
-
-	hyperparameters = Dict(hyperparameters)
-
-	model = load(hyperparameters.cls.model)
-	state = load(hyperparameters.cls.state)
-	label = load(hyperparameters.cls.label)
-
-	system = hyperparameters.system
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
-	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
-	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
-
-	label.__initialize__(state=state)
-	model.__initialize__(state=state)
-
-
-	data = {}
-	state = False
-	model.__initialize__(data=data,state=state)
-
-
-	return
-
-
-def test_parameters(path,tol):
-
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise Exception("Hyperparameters %s not loaded"%(path))
-
-	hyperparameters = Dict(hyperparameters)
-
-	model = load(hyperparameters.cls.model)
-	state = load(hyperparameters.cls.state)
-	label = load(hyperparameters.cls.label)
-
-	hyperparams = hyperparameters.optimize
-	system = hyperparameters.system
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
-	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
-	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
-
-	label.__initialize__(state=state)
-	model.__initialize__(state=state)
-
-	parameters = model.parameters()
-	variables = model.parameters(parameters)
-
-	# Get parameters in shape (P*K,M)
-	M,N = model.M,model.N
-	parameters = parameters.reshape(-1,M)
-	variables = variables.reshape(M,-1).T
-
-	slices = slice(0,
-		(variables.shape[0]-
-		sum(model.parameters[i].shape[0] for i in model.parameters if any(not j.unitary for j in model.parameters[i].instance))
-		)//model.P)
-
-	variables = variables[slices]/model.coefficients[slices]
-
-	print(list(model.parameters),variables.shape)
-	print(parameters.round(6))
-	print(variables.round(6))
-
-	parameter = 'xy'
-
-	assert parameter in model.parameters, "Incorrect parameters: missing %s"%(parameter)
-
-	shape = parameters.shape
-	category = model.parameters[parameter].category
-	method = model.parameters[parameter].method	
-	size = len(model.parameters[parameter].group)
-	null = lambda parameters,**kwargs: parameters
-
-	print('Parameters / Constraints :::',category,method,model.parameters[parameter].constraints(model.parameters()))
-
-	if (method in [None,'unconstrained']):
-		
-		wrappers = [null,null]
-		funcs = [null,null]
-		kwargs = [{},{}]
-
-	elif (method in ['constrained']):
-
-		wrappers = [bound,bound]
-		funcs = [
-			lambda parameters,**kwargs: kwargs['scale'][0]*parameters[:parameters.shape[0]//2]*cos(kwargs['scale'][1]*parameters[parameters.shape[0]//2:]),
-			lambda parameters,**kwargs: kwargs['scale'][0]*parameters[:parameters.shape[0]//2]*cos(kwargs['scale'][1]*parameters[parameters.shape[0]//2:] + kwargs['shift']),
-		]
-		kwargs = [{'scale':[1,2*pi],'shift':0},{'scale':[1,2*pi],'shift':-pi/2}]
-
-	elif (method in ['bounded']):
-
-		wrappers = [bound,bound]
-		funcs = [null,null]
-		kwargs = [{},{}]
-
-
-	for i in range(size):
-		locality = model.parameters[parameter].locality.get(model.parameters[parameter].group[i])
-		if (locality in ['local',None]):
-			index = arange(parameters.shape[0])
-		elif (locality in ['global']):
-			index = array([j for j in model.parameters[parameter].slices])
-		
-		if method in ['constrained']:
-			slices = arange(model.parameters[parameter].slices.size//size)
-		else:
-			slices = arange(i*(model.parameters[parameter].slices.size//size),(i+1)*(model.parameters[parameter].slices.size//size))
-		_slices = arange(0,i*(model.parameters[parameter].slices.size//size))
-
-		print(index)
-		features = parameters[index]
-
-		wrapper = wrappers[i]
-		func = funcs[i]
-		kwds = kwargs[i]
-		indices = slice(_slices.size,_slices.size+slices.size)
-		vars = model.parameters[parameter].parameters*wrapper(func(features,**kwds))[slices]
-		print(index,slices,_slices,indices,features.shape,parameters.shape,variables[indices].shape,vars.shape)
-		print(vars)
-		print(variables[indices])
-		if (variables[indices].shape != vars.shape) or not allclose(variables[indices],vars):
-			raise ValueError("Incorrect parameter initialization %d %r"%(i,model.parameters))
-		print()
-	print('Done')
-	return
-
 
 
 def test_logger(path,tol):
@@ -392,21 +194,21 @@ def test_logger(path,tol):
 def test_data(path,tol):
 
 	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise Exception("Hyperparameters %s not loaded"%(path))
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
 
-	hyperparameters = Dict(hyperparameters)
+	settings = Dict(settings)
 
-	model = load(hyperparameters.cls.model)
-	state = load(hyperparameters.cls.state)
-	label = load(hyperparameters.cls.label)
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
 
-	hyperparams = hyperparameters.optimize
-	system = hyperparameters.system
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
-	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
-	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+	hyperparameters = settings.optimize
+	system = settings.system
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
 
 	label.__initialize__(state=state)	
 	model.__initialize__(state=state)
@@ -439,7 +241,7 @@ def test_data(path,tol):
 	data = [tensorprod(array([basis[i] for i in s])) for s in string]
 	identity = tensorprod(array([basis[default]]*N))
 
-	assert allclose(model.identity(),identity), "Incorrect model identity"
+	assert allclose(model.identity,identity), "Incorrect model identity"
 
 	data = trotter(data,P)
 	string = trotter(string,P)
@@ -448,27 +250,27 @@ def test_data(path,tol):
 
 	for i,(s,d,D,site) in enumerate(zip(string,data,datas,sites)):
 		assert allclose(d,D), "data[%s,%d] incorrect"%(s,i)
-
+	print('Passed')
 	return
 
 def test_initialization(path,tol):
 
 	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise Exception("Hyperparameters %s not loaded"%(path))
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
 
-	hyperparameters = Dict(hyperparameters)
+	settings = Dict(settings)
 
-	model = load(hyperparameters.cls.model)
-	state = load(hyperparameters.cls.state)
-	label = load(hyperparameters.cls.label)
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
 
-	hyperparams = hyperparameters.optimize
-	system = hyperparameters.system
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
-	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
-	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+	hyperparameters = settings.optimize
+	system = settings.system
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
 
 	label.__initialize__(state=state)	
 	model.__initialize__(state=state)
@@ -476,14 +278,13 @@ def test_initialization(path,tol):
 	parameters = model.parameters()
 	kwargs = dict(verbose=True)
 
-	metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system,**kwargs)
-
+	metric = Metric(state=state,label=label,hyperparameters=hyperparameters,system=system,**kwargs)
 
 	def copier(model,metric,state,label):
 
 		copy = Dictionary(
-			model=Dictionary(func=model.__call__,data=model(model.parameters()),state=state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
-			metric=Dictionary(func=metric.__call__,data=metric(model(model.parameters())),state=metric.state,noise=[model.data[i] for i in model.data if (not model.data[i].unitary)],info=metric.info,hermitian=label.hermitian,unitary=label.unitary),
+			model=Dictionary(func=model.__call__,data=model(model.parameters()),state=state,noise=[model.data[i] for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)],info=model.info,hermitian=model.hermitian,unitary=model.unitary),
+			metric=Dictionary(func=metric.__call__,data=metric(model(model.parameters())),state=metric.state,noise=[model.data[i] for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)],info=metric.info,hermitian=label.hermitian,unitary=label.unitary),
 			label=Dictionary(func=label.__call__,data=label(state=state()),state=state,info=label.info,hermitian=label.hermitian,unitary=label.unitary),
 			state=Dictionary(func=state.__call__,data=state(),state=state,info=state.info,hermitian=state.hermitian,unitary=state.unitary),
 			)
@@ -493,7 +294,7 @@ def test_initialization(path,tol):
 	copy = copier(model,metric,state,label)
 
 	
-	defaults = Dictionary(state=state,data={i: model.data[i].data for i in model.data if (not model.data[i].unitary)},label=metric.label)
+	defaults = Dictionary(state=state,data={i: model.data[i].data for i in model.data if (model.data[i] is not None) and (not model.data[i].unitary)},label=metric.label)
 
 
 	tmp = Dictionary(state=False,data={i: model.data[i].data if (model.data[i].unitary) else False for i in model.data},label=False)
@@ -594,21 +395,21 @@ def test_initialization(path,tol):
 def test_hessian(path,tol):
 	
 	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise Exception("Hyperparameters %s not loaded"%(path))
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
 
-	hyperparameters = Dict(hyperparameters)
+	settings = Dict(settings)
 
-	model = load(hyperparameters.cls.model)
-	state = load(hyperparameters.cls.state)
-	label = load(hyperparameters.cls.label)
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
 
-	hyperparams = hyperparameters.optimize
-	system = hyperparameters.system
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
-	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
-	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+	hyperparameters = settings.optimize
+	system = settings.system
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
 
 	label.__initialize__(state=state)
 	model.__initialize__(state=state)
@@ -616,7 +417,7 @@ def test_hessian(path,tol):
 	parameters = model.parameters()
 	kwargs = dict(verbose=True)
 
-	metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system,**kwargs)
+	metric = Metric(state=state,label=label,hyperparameters=hyperparameters,system=system,**kwargs)
 
 	func = hessian(jit(lambda parameters: metric(model(parameters))))
 
@@ -635,44 +436,50 @@ def test_hessian(path,tol):
 def test_fisher(path,tol):
 
 	out = []
-	permutations = {'state.operator':['zero'],'state.ndim':[1,2],'state.parameters':[True],'noise.parameters':[False]}
+	permutations = {'state.operator':['zero'],'state.ndim':[1,2]}
 
 	for kwargs in permuter(permutations):
 
+		print(kwargs)
+
 		default = None
-		hyperparameters = load(path,default=default)
-		if hyperparameters is None:
-			raise Exception("Hyperparameters %s not loaded"%(path))
+		settings = load(path,default=default)
+		if settings is None:
+			raise Exception("settings %s not loaded"%(path))
 
 
-		hyperparameters = Dict(hyperparameters)
+		settings = Dict(settings)
 
-		setter(hyperparameters,kwargs,delimiter=delim)
+		setter(settings,kwargs,delimiter=delim)
 
-		model = load(hyperparameters.cls.model)
-		state = load(hyperparameters.cls.state)
-		label = load(hyperparameters.cls.label)
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		label = load(settings.cls.label)
 
-		hyperparams = hyperparameters.optimize
-		system = hyperparameters.system
-		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
-		state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
-		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+		hyperparameters = settings.optimize
+		system = settings.system
+		model = model(**{**settings.model,**dict(system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+		label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
 
 		label.__initialize__(state=state)
 		model.__initialize__(state=state)
 		
 		parameters = model.parameters()
+		state = model.state()
 
-		func = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)),hermitian=state.hermitian,unitary=model.unitary)
+		func = fisher(model,model.grad,shapes=(model.state.shape,(parameters.size,*model.state.shape)),hermitian=model.state.hermitian,unitary=model.unitary)
 
-		tmp = func(parameters)
+		tmp = func(parameters=parameters,state=state)
 
 		eigs = sort(abs(eig(tmp,compute_v=False,hermitian=True)))[::-1] if tmp is not None else None
 		eigs = eigs/max(1,maximum(eigs)) if eigs is not None else None
 		rank = nonzero(eigs,eps=50) if eigs is not None else None
 
 		out.append(eigs)
+
+		print(eigs)
+		print()
 
 	for i in out:
 		for j in out:
@@ -705,7 +512,7 @@ def check_fisher(path,tol):
 
 			data = trotter([model.data[i] for i in model.data],P)
 
-			out = model.identity()
+			out = model.identity
 
 			for i in range(M):
 				out = dot(data[i%K](parameters[i]),out)
@@ -727,9 +534,9 @@ def check_fisher(path,tol):
 			data = trotter([jit(model.data[i]) for i in model.data],P)
 			grads = trotter([jit(model.data[i].grad) for i in model.data],P)
 
-			U = model.identity()
+			U = model.identity
 			_U = func
-			u,_u = model.identity(),model.identity()
+			u,_u = model.identity,model.identity
 
 			grad = zeros((G,*model.shape),dtype=model.dtype)
 
@@ -796,25 +603,25 @@ def check_fisher(path,tol):
 		kwargs = permutations[i]
 
 		default = None
-		hyperparameters = load(path,default=default)
-		if hyperparameters is None:
-			raise Exception("Hyperparameters %s not loaded"%(path))
+		settings = load(path,default=default)
+		if settings is None:
+			raise Exception("settings %s not loaded"%(path))
 
-		hyperparameters = Dict(hyperparameters)
+		settings = Dict(settings)
 
-		setter(hyperparameters,kwargs,delimiter=delim)
+		setter(settings,kwargs,delimiter=delim)
 
-		print('N: %d, M: %d, B: %s'%(hyperparameters.model.N,hyperparameters.model.M,hyperparameters.model.data.zz.site))
+		print('N: %d, M: %d, B: %s'%(settings.model.N,settings.model.M,settings.model.data.zz.site))
 
-		model = load(hyperparameters.cls.model)
-		state = load(hyperparameters.cls.state)
-		label = load(hyperparameters.cls.label)
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		label = load(settings.cls.label)
 
-		hyperparams = hyperparameters.optimize
-		system = hyperparameters.system
-		model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
-		state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
-		label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
+		hyperparameters = settings.optimize
+		system = settings.system
+		model = model(**{**settings.model,**dict(system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+		label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
 
 		label.__initialize__(state=state)
 		model.__initialize__(state=state)
@@ -852,7 +659,7 @@ def check_fisher(path,tol):
 
 
 		# if i == (n-1):
-		# 	stats = {'N':model.N,'M':model.M,'Bndy':{'<ij>':'closed','>ij<':'open'}.get(hyperparameters.model.data.zz.site,'')}
+		# 	stats = {'N':model.N,'M':model.M,'Bndy':{'<ij>':'closed','>ij<':'open'}.get(settings.model.data.zz.site,'')}
 		# 	data = {
 		# 		'parameters_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): model.parameters().reshape(-1,model.M),
 		# 		'eig_%s.npy'%('_'.join(tuple((''.join([stat,str(stats[stat])]) for stat in stats)))): eigs,
@@ -1063,21 +870,20 @@ def check_machine_precision(path,tol):
 
 if __name__ == '__main__':
 	path = 'config/settings.test.json'
-	path = 'config/settings.tmp.json'
 	path = 'config/settings.json'
+	path = 'config/settings.tmp.json'
 
 	tol = 5e-8 
 
 	func = check_machine_precision
 	func = check_fisher
-	func = test_hessian
 	func = check_fisher
 	func = test_object
 	func = test_model
-	func = test_parameters
 	func = test_data
 	func = test_initialization
-	func = test_initialize
+	func = test_hessian
+	func = test_fisher
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)
