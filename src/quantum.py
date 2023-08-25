@@ -126,7 +126,7 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 	# Update data
 	for i in data:
 		kwargs = dict(
-			parameters=dict(parameters=dict(cls=trotter(p=period)) if data[i].unitary else None)
+			parameters=dict(parameters=dict(trotter=trotter(p=period)) if data[i].unitary else None),
 			)
 		data[i].__initialize__(**kwargs)
 
@@ -1745,9 +1745,11 @@ class Operators(Object):
 
 		# Set data
 		for i in self.data:
-			self.data[i].__initialize__(
-					state=self.state
-					)
+			kwargs = dict(
+				parameters=dict(parameters=dict(scheme=self.tau) if self.data[i].unitary else None),
+				state=self.state
+				)
+			self.data[i].__initialize__(**kwargs)
 
 		# Set attributes
 		boolean = lambda i: (self.data[i].data is not None)
@@ -2364,8 +2366,13 @@ class Label(Operator):
 		Returns:
 			data (array): data
 		'''
+
 		state = self.state() if state is None else state
-		return self.contract(self.func(parameters=parameters,state=state),state=state)
+		
+		if state is None:
+			return self.func(parameters=parameters,state=state)
+		else:
+			return self.contract(self.func(parameters=parameters,state=state),state=state)
 
 	def grad(self,parameters=None,state=None):
 		'''
@@ -2376,6 +2383,9 @@ class Label(Operator):
 		Returns:
 			data (array): data
 		'''
+
+		state = self.state() if state is None else state
+
 		if state is None:
 			return self.gradient(parameters=parameters,state=state)
 		else:
