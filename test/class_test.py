@@ -870,8 +870,8 @@ def check_machine_precision(path,tol):
 
 if __name__ == '__main__':
 	path = 'config/settings.test.json'
-	path = 'config/settings.json'
 	path = 'config/settings.tmp.json'
+	path = 'config/settings.json'
 
 	tol = 5e-8 
 
@@ -879,11 +879,11 @@ if __name__ == '__main__':
 	func = check_fisher
 	func = check_fisher
 	func = test_object
-	func = test_model
 	func = test_data
 	func = test_initialization
 	func = test_hessian
 	func = test_fisher
+	func = test_model
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

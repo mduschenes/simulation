@@ -205,7 +205,7 @@ def copier(obj,copy):
 	else:
 		return obj
 
-def setter(iterable,keys,delimiter=False,default=None,copy=False):
+def setter(iterable,keys,delimiter=None,default=None,copy=False):
 	'''
 	Set nested value in iterable with nested keys
 	Args:
@@ -243,7 +243,7 @@ def setter(iterable,keys,delimiter=False,default=None,copy=False):
 
 	for key in keys:
 
-		if (isinstance(key,str) and delimiter and (key not in iterable)):
+		if (isinstance(key,str) and (delimiter is not None) and (key not in iterable)):
 			index = key.split(delimiter)
 		elif (key in iterable):
 			index = (key,)
@@ -252,7 +252,7 @@ def setter(iterable,keys,delimiter=False,default=None,copy=False):
 		else:
 			index = (*key,)
 
-		if len(index)>1:
+		if len(index)>1 and (delimiter is not None):
 			index,other = index[0],delimiter.join(index[1:])
 		else:
 			index,other = index[0],null
@@ -278,7 +278,7 @@ def setter(iterable,keys,delimiter=False,default=None,copy=False):
 
 
 
-def getter(iterable,keys,delimiter=False,default=None,copy=False):
+def getter(iterable,keys,delimiter=None,default=None,copy=False):
 	'''
 	Get nested value in iterable with nested keys
 	Args:
@@ -296,7 +296,7 @@ def getter(iterable,keys,delimiter=False,default=None,copy=False):
 		return copier(iterable,copy=copy)
 
 	key = keys
-	if (isinstance(key,str) and delimiter and (key not in iterable)):
+	if (isinstance(key,str) and (delimiter is not None) and (key not in iterable)):
 			index = key.split(delimiter)
 	elif isinstance(key,scalars):
 		index = (key,)
@@ -304,7 +304,7 @@ def getter(iterable,keys,delimiter=False,default=None,copy=False):
 		index = (*key,)
 
 
-	if len(index)>1:
+	if len(index)>1 and (delimiter is not None):
 		index,other = index[0],delimiter.join(index[1:])
 	else:
 		index,other = index[0],null

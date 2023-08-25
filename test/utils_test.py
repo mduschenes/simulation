@@ -328,8 +328,8 @@ def test_getter(path=None,tol=None):
 	iterables = {'hi':{'world':{'goodbye':None,'di':99}}}
 	
 	elements = [
-		('hi','world','di'),
-		('hi','world'),
+		'hi.world.di',
+		'hi.world',
 	]
 	tests = [
 		(lambda value,element,iterable: value==99),
@@ -338,7 +338,7 @@ def test_getter(path=None,tol=None):
 	
 	for element,test in zip(elements,tests):
 		iterable = iterables
-		value = getter(iterable,element)
+		value = getter(iterable,element,delimiter=delim)
 		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
 	
 	print('Passed')
@@ -349,8 +349,8 @@ def test_setter(path=None,tol=None):
 	iterables = {'hi':{'world':{'goodbye':None,'di':99}}}
 	
 	elements = {
-		('hi','world','di'):-99,
-		('hi','world'):89,
+		'hi.world.di':-99,
+		'hi.world':89,
 	}
 	
 	tests = [
@@ -363,9 +363,8 @@ def test_setter(path=None,tol=None):
 		iterable = iterables
 		value = elements[element]
 		setter(iterable,{element:value},delimiter=delim,default=True)
-		value = getter(iterable,element)
-		# print(iterable)
-		assert test(value,element,iterable), "Incorrect getter %r %r"%(element,value)
+		value = getter(iterable,element,delimiter=delim)
+		assert test(value,element,iterable), "Incorrect setter %r %r"%(element,value)
 	
 	print('Passed')
 

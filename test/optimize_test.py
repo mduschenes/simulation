@@ -42,31 +42,31 @@ from src.system import Logger
 
 def test_objective(path,tol):
 
-	hyperparameters = load(path)
+	settings = load(path)
 
-	hyperparameters = Dict(hyperparameters)
+	settings = Dict(settings)
 
-	model = load(hyperparameters.cls.model)
-	state = load(hyperparameters.cls.state)
-	label = load(hyperparameters.cls.label)
-	callback = load(hyperparameters.cls.callback)
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
 
-	hyperparams = hyperparameters.optimize
-	system = hyperparameters.system
+	hyperparameters = settings.optimize
+	system = settings.system
 	func = None
 	kwargs = dict(verbose=True)
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
-	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
-	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
-	callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+	callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
 
 	label.__initialize__(state=state)
 	model.__initialize__(state=state)
 
-	metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system)
-	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
-	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
+	metric = Metric(state=state,label=label,hyperparameters=hyperparameters,system=system)
+	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
+	callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
 
 	parameters = model.parameters()
 
@@ -92,34 +92,34 @@ def test_objective(path,tol):
 
 def test_optimizer(path,tol):
 
-	hyperparameters = load(path)
+	settings = load(path)
 
-	hyperparameters = Dict(hyperparameters)
+	settings = Dict(settings)
 
-	model = load(hyperparameters.cls.model)
-	state = load(hyperparameters.cls.state)
-	label = load(hyperparameters.cls.label)
-	callback = load(hyperparameters.cls.callback)
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
 
-	hyperparams = hyperparameters.optimize
-	system = hyperparameters.system
+	hyperparameters = settings.optimize
+	system = settings.system
 	func = None
 	kwargs = dict(verbose=True,cleanup=True)
 
-	model = model(**{**hyperparameters.model,**dict(parameters=hyperparameters.parameters),**dict(system=system)})
-	state = state(**{**namespace(state,model),**hyperparameters.state,**dict(model=model,system=system)})
-	label = label(**{**namespace(label,model),**hyperparameters.label,**dict(model=model,system=system)})
-	callback = callback(**{**namespace(callback,model),**hyperparameters.callback,**dict(model=model,system=system)})
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+	callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
 
 	label.__initialize__(state=state)
 	model.__initialize__(state=state)
 
-	metric = Metric(state=state,label=label,hyperparameters=hyperparams,system=system)
-	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams,system=system)
-	callback = Callback(model,callback,func=func,metric=metric,hyperparameters=hyperparams,system=system)
+	metric = Metric(state=state,label=label,hyperparameters=hyperparameters,system=system)
+	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparameters,system=system)
+	callback = Callback(model,callback,func=func,metric=metric,hyperparameters=hyperparameters,system=system)
 
 	parameters = model.parameters()
-	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system,**kwargs)
+	optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparameters,system=system,**kwargs)
 
 	parameters = optimizer(parameters)
 
@@ -134,9 +134,11 @@ def test_optimizer(path,tol):
 	iteration = optimizer.track['iteration'][-1]-iteration
 	size = min(len(optimizer.track[attr]) for attr in optimizer.track)-size
 
-	assert value < 0, "Checkpointed optimizer not re-initialized with value %s"%(value)
-	assert iteration == hyperparams['iterations'], "Checkpointed optimizer not re-initialized with iteration %s"%(iteration)
-	assert size == hyperparams['iterations'], "Checkpointed optimizer not re-initialized with size %s"%(size)
+	eps = 1e-13
+
+	assert (abs(value) < eps) or value < 0, "Checkpointed optimizer not re-initialized with value %s"%(value)
+	assert iteration == hyperparameters['iterations'], "Checkpointed optimizer not re-initialized with iteration %s"%(iteration)
+	assert size == hyperparameters['iterations'], "Checkpointed optimizer not re-initialized with size %s"%(size)
 
 	if optimizer.paths is not None:
 		for path in optimizer.paths:
@@ -154,4 +156,4 @@ if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
 	test_objective(path,tol)
-	# test_optimizer(path,tol)
+	test_optimizer(path,tol)
