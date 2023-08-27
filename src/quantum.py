@@ -192,7 +192,8 @@ def variables(data,state=None,conj=False,size=None,period=None,verbose=False):
 	size = size if size is not None else 1
 	period = period if period is not None else None
 
-	boolean = lambda i: (data[i] is not None) and (data[i].variable)
+	boolean = lambda i: (data[i] is not None) and (data[i].variable) and (data[i].parameters is not None) and (data[i].parameters.indices is not None)
+	boolean = lambda i: (data[i] is not None) and (data[i].variable)# and (data[i].parameters is not None) and (data[i].parameters.indices is not None)
 	default = -1
 
 	length = len(set(([data[i].parameters.indices for i in data if boolean(i)])))
