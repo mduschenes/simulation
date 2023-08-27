@@ -386,7 +386,7 @@ def epsilon(dtype=float,eps=None):
 	'''	
 	Get machine precision epsilon for dtype
 	Args:
-		dtype (data_type): Datatype to get machine precision
+		dtype (datatype): Datatype to get machine precision
 		eps (float): Relative machine precision multiplier
 	Returns:
 		eps (array): Machine precision
@@ -2140,7 +2140,7 @@ if BACKEND in ['jax']:
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
-			dtype (data_type): Datatype of array		
+			dtype (datatype): Datatype of array		
 			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
@@ -2386,7 +2386,7 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
-			dtype (data_type): Datatype of array		
+			dtype (datatype): Datatype of array		
 			kwargs (dict): Additional keyword arguments for random
 		Returns:
 			out (array): Random array
@@ -6073,7 +6073,7 @@ def bounding(bounds,dtype=None):
 	Set bounds of data
 	Args:
 		bounds (iterable[object]): Bounds of data
-		dtype (data_type): Datatype of array		
+		dtype (datatype): Datatype of array		
 	Returns:
 		bounds (iterable[object]): Bounds of data
 	'''
@@ -6090,20 +6090,21 @@ def bounding(bounds,dtype=None):
 	return bounds
 
 
-def edging(data,constants=None):
+def edging(data,constants=None,dtype=None,**kwargs):
 	'''
 	Set edges of data
 	Args:
 		data (array): Array of data
-		constants (iterable[dict]): Iterable of axis of data with indices and values of constants to set 
+		constants (dict[int,dict[int,object]]): Dictionary of axis of data with indices and values of constants to set 
+		dtype (datatype): Datatype of array			
+		kwargs (dict): Additional keyword arguments for data
 	Returns:
 		data (array): Array of data
 	'''
 
-	if constants is None:
-		return data
-
-	if not all(isinstance(constants[i],dict) for i in constants):
+	if constants is None or not isinstance(data,arrays) or not data.ndim:
+		constants = {}
+	elif not all(isinstance(constants[i],dict) for i in constants):
 		axis = -1
 		constants = {axis:constants}
 	for axis in constants:
@@ -6111,7 +6112,7 @@ def edging(data,constants=None):
 		values = array([constants[axis][i] for i in constants[axis]],dtype=dtype)
 		axis = int(axis)
 
-	data = put(data,values,indices,axis=axis)
+		data = put(data,values,indices,axis=axis)
 
 	return data
 
@@ -6126,7 +6127,7 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
 		random (str): Type of random distribution
-		dtype (data_type): Datatype of array	
+		dtype (datatype): Datatype of array	
 		kwargs (dict): Additional keyword arguments for padding	
 	Returns:
 		data (array): Padded array
@@ -6472,7 +6473,7 @@ def is_realdtype(dtype,*args,**kwargs):
 	'''
 	Check if dtype is real
 	Args:
-		dtype (data_type): Datatype to check
+		dtype (datatype): Datatype to check
 		args (tuple): Additional arguments
 		kwargs (dict): Additional keyword arguments
 	Returns:
@@ -6484,7 +6485,7 @@ def is_intdtype(dtype,*args,**kwargs):
 	'''
 	Check if dtype is integer
 	Args:
-		dtype (data_type): Datatype to check
+		dtype (datatype): Datatype to check
 		args (tuple): Additional arguments
 		kwargs (dict): Additional keyword arguments
 	Returns:
@@ -6496,7 +6497,7 @@ def is_floatdtype(dtype,*args,**kwargs):
 	'''
 	Check if dtype is floating
 	Args:
-		dtype (data_type): Datatype to check
+		dtype (datatype): Datatype to check
 		args (tuple): Additional arguments
 		kwargs (dict): Additional keyword arguments
 	Returns:
@@ -6508,7 +6509,7 @@ def is_complexdtype(dtype,*args,**kwargs):
 	'''
 	Check if dtype is complex
 	Args:
-		dtype (data_type): Datatype to check
+		dtype (datatype): Datatype to check
 		args (tuple): Additional arguments
 		kwargs (dict): Additional keyword arguments
 	Returns:
@@ -7210,8 +7211,8 @@ def to_iterable(a,dtype=None,exceptions=(str,),**kwargs):
 	Convert iterable to iterable type
 	Args:
 		a (iterable): Iterable to convert to iterable
-		dtype (data_type): Type of iterable
-		exceptions (tuple[data_type]): Exception types not to update
+		dtype (datatype): Type of iterable
+		exceptions (tuple[datatype]): Exception types not to update
 		kwargs (dict): Additional keyword arguments
 	Returns:
 		out (iterable): Iterable representation of iterable
@@ -7239,7 +7240,7 @@ def to_list(a,dtype=None,**kwargs):
 	Convert iterable to list
 	Args:
 		a (iterable): Iterable to convert to list
-		dtype (data_type): Datatype of number
+		dtype (datatype): Datatype of number
 	Returns:
 		out (list): List representation of iterable
 	'''
@@ -7257,7 +7258,7 @@ def to_tuple(a,dtype=None,**kwargs):
 	Convert iterable to tuple
 	Args:
 		a (iterable): Iterable to convert to list
-		dtype (data_type): Datatype of number
+		dtype (datatype): Datatype of number
 	Returns:
 		out (tuple): List representation of iterable
 	'''
@@ -7271,7 +7272,7 @@ def to_number(a,dtype=None,**kwargs):
 	Convert object to number
 	Args:
 		a (int,float,str): Object to convert to number
-		dtype (data_type): Datatype of number
+		dtype (datatype): Datatype of number
 	Returns:
 		number (object): Number representation of object
 	'''
@@ -7677,6 +7678,8 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 
 	elif callable(random):
 		data = random(data,shape,bounds=bounds,random=random,dtype=dtype,**kwargs)
+
+	data = edging(data,**kwargs)
 
 	data = data.astype(dtype) if data is not None else None
 

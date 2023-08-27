@@ -151,7 +151,7 @@ class Parameter(System):
 		kwargs = {**self,**dict(data=self.data,shape=self.shape,dtype=self.dtype)}
 
 		defaults = {
-			'constants':None,
+			'constants':{},
 			'lambda':0,
 			'coefficients':[1,2*pi],
 			'shift':[0,-pi/2],
@@ -176,13 +176,10 @@ class Parameter(System):
 					self.kwargs[attr] = {axis:self.kwargs[attr]}
 				for axis in list(self.kwargs[attr]):
 					constants = self.kwargs[attr].pop(axis)
-					indices = array([int(i) for i in constants])
-					values = array([constants[i] for i in constants],dtype=self.dtype)
+					indices = [int(i) for i in constants]
+					values = [array(constants[i],dtype=self.dtype) for i in constants]
 					axis = int(axis)
-					ax = self.ndim - axis if axis < 0 else axis
-					indices = (*(slice(None),)*(max(0,ax-2)),indices,*(slice(None),)*(max(0,self.ndim - ax - 1)))
-					self.kwargs[attr][axis] = {'indices':indices,'values':values}
-			
+					self.kwargs[attr][axis] = {i:j for i,j in zip(indices,values)}
 
 		defaults = {}
 		if self.method in ['time']:
@@ -234,34 +231,34 @@ class Parameter(System):
 			if self.method in ['bounded'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 		
 				def func(parameters,*args,**kwargs):
-					return bound(self.wrapper(parameters),scale=self.kwargs['sigmoid'])
+					return self.wrapper(bound(parameters,scale=self.kwargs['sigmoid']))
 
 				def gradient(parameters,*args,**kwargs):
-					return gradient_bound(self.wrapper(parameters),scale=self.kwargs['sigmoid'])*self.gradient_wrapper(parameters)
+					return self.wrapper(gradient_bound(parameters,scale=self.kwargs['sigmoid']))*self.gradient_wrapper(parameters)
 
 			elif self.method in ['bounded']:
 
 				def func(parameters,*args,**kwargs):
-					return bound(self.wrapper(parameters))
+					return self.wrapper(bound(parameters))
 
 				def gradient(parameters,*args,**kwargs):
-					return gradient_bound(self.wrapper(parameters))*self.gradient_wrapper(parameters)
+					return self.wrapper(gradient_bound(parameters))*self.gradient_wrapper(parameters)
 
 			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
 		
 				def func(parameters,*args,**kwargs):
-					return bound(self.wrapper(parameters),scale=self.kwargs['sigmoid'])
+					return self.wrapper(bound(parameters,scale=self.kwargs['sigmoid']))
 
 				def gradient(parameters,*args,**kwargs):
-						return gradient_bound(self.wrapper(parameters),scale=self.kwargs['sigmoid'])*self.gradient_wrapper(parameters)
+					return self.wrapper(gradient_bound(parameters,scale=self.kwargs['sigmoid']))*self.gradient_wrapper(parameters)
 
 			elif self.method in ['constrained']:					
 		
 				def func(parameters,*args,**kwargs):
-					return bound(self.wrapper(parameters))
+					return self.wrapper(bound(parameters))
 
 				def gradient(parameters,*args,**kwargs):
-					return gradient_bound(self.wrapper(parameters))*self.gradient_wrapper(parameters)
+					return self.wrapper(gradient_bound(parameters))*self.gradient_wrapper(parameters)
 
 			elif self.method in ['unconstrained']:					
 				
@@ -304,9 +301,10 @@ class Parameter(System):
 			
 				def constraint(parameters,*args,**kwargs):
 					return self.kwargs['lambda']*sum(
-						(((parameters[self.indices])[self.kwargs['constants'][i]['indices']] - 
-						  self.kwargs['constants'][i]['values'])**2).sum() 
-						for i in self.kwargs['constants'])
+						(parameters[i]- self.kwargs['constants'][axis][i])**2
+						for axis in self.kwargs['constants']
+						for i in self.kwargs['constants'][axis]
+						) if parameters.ndim else self.kwargs['default']
 
 			elif self.method in ['unconstrained']:
 

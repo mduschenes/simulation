@@ -1752,7 +1752,7 @@ class Operators(Object):
 				continue
 
 			kwargs = dict(
-				parameters=dict(parameters=dict(scheme=self.tau) if self.data[i].unitary else None),
+				parameters=dict(parameters=dict(tau=self.tau) if self.data[i].unitary else None),
 				state=self.state
 				)
 			self.data[i].__initialize__(**kwargs)
@@ -1990,8 +1990,8 @@ class Operators(Object):
 
 		for attr in (self.data if self.data is not None else []):
 			string = []
-			for subattr in ['variable','method','indices','local','site','shape','parameters.parameters']:
-				substring = getattrs(self.data[attr],subattr,default=None,delimiter=delim)
+			for subattr in ['variable','method','indices','local','site','shape','parameters']:
+				substring = getattrs(self.data[attr].parameters,subattr,default=None,delimiter=delim)
 				if isinstance(substring,(str,int,list,tuple,bool,*arrays)):
 					substring = str(substring)
 				elif isinstance(substring,dict):

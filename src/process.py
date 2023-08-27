@@ -45,11 +45,13 @@ INDEXDIM = len(INDEXES)
 AXISDIM = GRIDDIM - 1 - LAYOUTDIM
 
 class GroupBy(object):
-	def __init__(self,df,by=[]):
+	def __init__(self,df,by=[],**kwargs):
 		'''
 		Null groupby wrapper for dataframe
 		Args:
 			df (dataframe): dataframe
+			by (iterable[str,tuple]): Attributes to group by
+			kwargs (dict): Additional keyword arguments for groupby
 		'''
 		class grouper(object):
 			def __init__(self,by):
@@ -192,8 +194,6 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 						break
 				e = tuple(e)
 
-				# print(element,e)
-
 			elif is_iterable(element,exceptions=scalars):
 				e = tuple(element)
 			else:
@@ -224,7 +224,6 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 			else:
 				i[e[index]] = value
 		except Exception as exception:
-			print(traceback.format_exc())
 			pass
 
 	return
@@ -1154,6 +1153,17 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
 	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
+	updates = {
+		'nan':Dict(
+			boolean=lambda attr,data: data[attr].isna().all(),
+			func = lambda attr,data: 'none'
+			)
+		}
+	for update in updates:
+		for attr in data:
+			if updates[update].boolean(attr,data):
+				data[attr] = updates[update].func(attr,data)
+
 	dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype)}	
 	data = data.astype(dtype)
 
@@ -1294,7 +1304,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 			setter(settings,{key:value},delimiter=delim,default=True)
 			continue
 
-		groups = data[boolean].groupby(by=by,as_index=False)
+		groups = data[boolean].groupby(by=by,as_index=False,dropna=False)
 
 		properties = {}
 		variables = independent
@@ -1307,7 +1317,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 			properties[prop] = {grouping: Dict({attr: getattr(properties[prop][grouping],attr) for attr in ['shape','size','ndim'] if hasattr(properties[prop][grouping],attr)}) for grouping in properties[prop]}
 
 		if analyses:
-			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
+			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False,dropna=False)
 
 		shapes = {prop: tuple(((min(properties[prop][grouping].shape[i] for grouping in properties[prop]),
 								max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
@@ -1338,9 +1348,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		groups = groups.agg(agg).droplevel(**droplevel).astype(dtype)
 
 		if by:
-			groups = groups.groupby(by=by,as_index=False)
+			groups = groups.groupby(by=by,as_index=False,dropna=False)
 		else:
-			groups = GroupBy(groups,by=by)
+			groups = GroupBy(groups,by=by,as_index=False,dropna=False)
 
 		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 

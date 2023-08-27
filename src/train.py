@@ -69,6 +69,7 @@ def train(settings):
 			return model
 
 		model = load(settings.cls.model)
+		from src.quantum import Channel as model
 		state = load(settings.cls.state)
 		label = load(settings.cls.label)
 		callback = load(settings.cls.callback)
