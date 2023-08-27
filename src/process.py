@@ -961,20 +961,20 @@ def loader(data,settings,hyperparameters,verbose=None):
 						labels = {attr: data[OTHER][attr] for attr in data[OTHER]}
 				else:
 					labels = {attr: None for attr in data[OTHER]}
-				
 				k = None
+
 				for j in range(len(iterable.get(key_iterable))):
+
 					if all((
 						all(datum[OTHER][attr]['label']==axes[attr] for attr in axes) and 
 						(len(datum[OTHER][OTHER][OTHER]) == len(labels)) and
 						all(datum[OTHER][OTHER][OTHER][attr]==labels[attr] for attr in labels)
 						)
-						for datum in search(iterable.get(key_iterable)[j]) if datum):
+						for datum in search(iterable.get(key_iterable)[j]) if datum and all(datum[OTHER].get(attr) is not None for attr in axes)):
 						if k is not None:
 							k = True
 							break
 						k = j
-
 
 				if k is None:
 					continue
@@ -1039,7 +1039,7 @@ def loader(data,settings,hyperparameters,verbose=None):
 			new = copy(settings)
 			settings.update(tmp)
 			tmp = new
-			setter(settings,tmp,func=func)
+			setter(settings,tmp,default=func)
 
 	else:
 
