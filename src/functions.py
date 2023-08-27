@@ -70,7 +70,7 @@ def func_fisher_rank(data):
 	out = np.array(list(data['fisher.eigenvalues']))
 	out = sort(abs(out))
 	out = out/maximum(out)
-	out = asscalar(nonzero(out,axis=-1,eps=5e-16))
+	out = asscalar(nonzero(out,axis=-1,eps=1e-13))
 	return out
 
 def func_fisher_eigenvalues(data):
