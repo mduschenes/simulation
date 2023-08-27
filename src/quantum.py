@@ -202,6 +202,7 @@ def variables(data,state=None,conj=False,size=None,period=None,verbose=False):
 
 	indexes = [j*length + data[i].parameters.indices if boolean(i) else default for j in range(size) for i in data]
 
+	raise
 	return indexes,shape
 
 
