@@ -32,6 +32,13 @@ find ~/.ssh -type f -regextype egrep -regex '.*/id_[^.]+$' | xargs ssh-add {} &>
 
 # Functions
 
+function join {
+	local delimiter=${1-} array=${2-}
+	if shift 2; then
+		printf %s "${array}" "${@/#/${delimiter}}"
+	fi
+}
+
 # Git Add, Commit, Push Changes
 function gips(){
 	msg="${@}";
@@ -142,6 +149,48 @@ function bctl(){
 		scontrol update job=${job} MinMemoryNode=${mem}
 	fi
 
+	return 0
+}
+
+function berr(){
+	jobs=(${@})
+	script="job.slurm"
+	name="output."
+	ext="stderr"
+	pattern="#SBATCH --array="
+	options=":1%100"
+	errors=()
+
+	if [[ ${#jobs[@]} -eq 0 ]]
+	then
+		jobs=($(ls -t ${name}*${ext} | head -1 | sed "s:${name}\([^\.]*\)\.\([^\.]\).*${ext}:\1:"))
+	fi
+
+	for job in ${jobs[@]}
+	do
+		echo Job: ${job}
+		files=($(ls ${name}${job}*${ext}))
+		echo Files: ${files[@]}
+		for file in ${files[@]}
+		do
+			echo File: ${file} 
+			if [[ -s ${file} ]]
+			then
+				errors+=($(echo ${file} | sed "s:${name}\([^\.]*\)\.\([^\.]\).*${ext}:\2:"))
+			fi
+		done
+	done
+
+	file=${script}
+
+	line=$(( $(grep -n "${pattern}" ${file} | tail -1 | cut -f1 -d:) +1 ))	
+	
+	if [[ ! $(grep "^${pattern}$(join , ${errors[@]})${options}" ${file}) ]]
+	then
+		sed -i "s%^${pattern}%#${pattern}%g" ${file}
+		sed -i "${line}i ${pattern}$(join , ${errors[@]})${options}" ${file}
+	fi
+	
 	return 0
 }
 

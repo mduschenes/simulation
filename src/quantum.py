@@ -347,7 +347,6 @@ class Object(System):
 		Args:
 			data (array): Data to normalize			
 		'''
-
 		try:
 			data = self()
 		except TypeError as exception:
