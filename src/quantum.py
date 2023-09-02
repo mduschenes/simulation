@@ -1741,9 +1741,17 @@ class Operators(Object):
 
 
 		# Set parameters
-		parameters = {i:self.data[i].parameters for i in self.data if self.data[i] is not None and self.data[i].data is not None} if parameters is None else parameters
-		
-		self.parameters = Parameters(parameters=parameters)
+		kwargs = dict(
+			parameters={i:self.data[i].parameters 
+				for i in self.data 
+				if ((self.data[i] is not None) and 
+				    (self.data[i].data is not None))
+				} if parameters is None else parameters,
+			system=self.system
+		)
+		parameters = Parameters(**kwargs)
+
+		self.parameters = parameters
 
 		# Set data
 		for i in self.data:
