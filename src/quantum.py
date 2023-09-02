@@ -2442,8 +2442,8 @@ class Callback(System):
 			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
 
-			"noise.string":[],"noise.ndim":[],"noise.locality":[],
-			"noise.parameters.parameters":[],"noise.scale":[],"noise.tau":[],"noise.initialization":[],
+			"noise.string":[],"noise.ndim":[],"noise.locality":[],"noise.method":[],"noise.scale":[],"noise.tau":[],"noise.initialization":[],
+			"noise.parameters":[],
 
 			"state.string":[],"state.ndim":[],"label.string":[],"label.ndim":[],
 
@@ -2718,13 +2718,17 @@ class Callback(System):
 						value = nonzero(value,eps=50)
 						# value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
 
-				elif attr in ["state.string","state.ndim","label.string","label.ndim"]:
+				elif attr in [
+					"state.string","state.ndim",
+					"label.string","label.ndim",
+					"noise.string","noise.ndim","noise.locality",
+					"noise.method","noise.scale","noise.tau","noise.initialization"]:
 					value = getattrs(metric,attr,default=default,delimiter=delim)
 
-				elif attr in ["noise.string","noise.ndim","noise.locality","noise.parameters.parameters","noise.method","noise.scale","noise.tau"]:
+				elif attr in ["noise.parameters"]:
 					for i in model.parameters:
 						if model.parameters[i].string == delim.join(attr.split(delim)[:1]):
-							value = getattrs(model.parameters[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
+							value = getattrs(model.parameters[i],delim.join(attr.split(delim)[1:]*2),default=default,delimiter=delim)
 							break
 
 				elif attr in []:
