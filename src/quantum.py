@@ -1953,22 +1953,23 @@ class Operators(Object):
 		return
 
 	def __str__(self):
-		default = ''
-		if self.data is None:
-			return default
-		size = len(self)
-		delimiter = ' '
-		multiple_time = (self.M>1) if self.M is not None else None
-		multiple_space = [size>1 and False for i in range(size)]
-		return '%s%s%s%s'%(
-				'{' if multiple_time else '',
-				delimiter.join(['%s%s%s'%(
-					'(' if multiple_space[i] else '',
-					self.data[i].string,
-					')' if multiple_space[i] else '',
-					) for i in range(size) if self.data[i] is not None]),
-				'}' if multiple_time else '',
-				'%s'%('^%s'%(self.M) if multiple_time else '') if multiple_time else '')
+		if self.data is not None:
+			size = len(self) if self.data is not None else 0
+			delimiter = ' '
+			multiple_time = (self.M>1) if self.M is not None else None
+			multiple_space = [size>1 and False for i in range(size)]
+			string = '%s%s%s%s'%(
+					'{' if multiple_time else '',
+					delimiter.join(['%s%s%s'%(
+						'(' if multiple_space[i] else '',
+						self.data[i].string,
+						')' if multiple_space[i] else '',
+						) for i in range(size) if self.data[i] is not None]),
+					'}' if multiple_time else '',
+					'%s'%('^%s'%(self.M) if multiple_time else '') if multiple_time else '')
+		else:
+			string = self.__class__.__name__
+		return string
 
 	def info(self,verbose=None):
 		'''
