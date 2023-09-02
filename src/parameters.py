@@ -474,11 +474,7 @@ class Parameters(System):
 		setter(kwargs,self.defaults,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
-		print('parameters logger',self.logger,self.log)
-
 		self.__setup__()
-
-		print('parameters logger',self.logger,self.log)
 
 		return
 
