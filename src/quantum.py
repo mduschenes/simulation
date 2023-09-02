@@ -1953,6 +1953,9 @@ class Operators(Object):
 		return
 
 	def __str__(self):
+		default = ''
+		if self.data is None:
+			return default
 		size = len(self)
 		delimiter = ' '
 		multiple_time = (self.M>1) if self.M is not None else None
