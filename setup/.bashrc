@@ -155,12 +155,13 @@ function bctl(){
 function berr(){
 	jobs=(${@})
 	script="job.slurm"
+	exe="job.sh"
 	name="output."
 	ext="stderr"
 	pattern="#SBATCH --array="
 	options=":1%100"
+	
 	errors=()
-
 	if [[ ${#jobs[@]} -eq 0 ]]
 	then
 		jobs=($(ls -t ${name}*${ext} | head -1 | sed "s:${name}\([^\.]*\)\.\([^\.]\).*${ext}:\1:"))
@@ -191,6 +192,90 @@ function berr(){
 		sed -i "${line}i ${pattern}$(join , ${errors[@]})${options}" ${file}
 	fi
 	
+	return 0
+}
+
+function breq(){
+	jobs=(${@})
+	script="job.slurm"
+	exe="job.sh"
+	name="output."
+	ext="tmp"
+	
+	file=${script}.${ext}
+	cp ${script} ${file}
+	
+	pattern="#SBATCH --array="
+	options="#${pattern}"
+	sed -i "s%^${pattern}%${options}%g" ${file}
+
+	pattern="TASKS=.*"
+	options="TASKS=(${jobs[@]})"
+	sed -i "s%^${pattern}%${options}%g" ${file}
+
+	file=${exe}.${ext}
+	cp ${exe} ${file}
+
+	pattern="< ${script}"
+	options="< ${script}.${ext}"
+	sed -i "s%${pattern}%${options}%g" ${file}
+
+	return 0
+}
+
+function search(){
+	files=(${@})
+
+	patterns=('"M": [0-9]' '"ndim": 3' '"instance": [0-9]')
+	lines=(0 -1 0)
+	buffers=(1 1 1)
+
+	patterns=("M:" "noise :" "instance:" "f(x)")
+	lines=(0 0 0 0)
+	buffers=(1 1 1 1)
+
+	for i in ${!files[@]}
+	do
+		file=${files[${i}]}
+		
+		if [ ! ${#patterns[@]} -eq 0 ]
+		then
+			echo ${file}
+		fi
+
+		for j in ${!patterns[@]}
+		do
+			pattern="${patterns[${j}]}"
+			line=${lines[${j}]}
+			buffer=${buffers[${j}]}
+			
+			options=()
+			pipe=()
+
+			if [[ ${line} -lt 0 ]]
+			then
+				options+=(-B$((-${line})))
+				pipe+=(head -n$((${buffer})))
+			else
+				options+=(-A$((${line})))
+				pipe+=(tail -n$((${buffer})))
+			fi
+
+			if [ ! ${#pipe[@]} -eq 0 ]
+			then
+				grep ${options[@]} "${pattern}" ${file} | ${pipe[@]}
+			else
+				grep ${options[@]} "${pattern}" ${file}
+			fi				
+		done
+
+		if [ ! ${#patterns[@]} -eq 0 ]
+		then
+			echo
+		fi
+
+	done
+
 	return 0
 }
 
