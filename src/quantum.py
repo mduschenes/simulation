@@ -1482,10 +1482,6 @@ class Noise(Object):
 		self.hermitian = hermitian
 		self.unitary = unitary
 
-		print(self.data.shape)
-		print(self.ndim,self.size,self.shape)
-		exit()
-		
 		return
 
 
@@ -2738,11 +2734,10 @@ class Callback(System):
 					"noise.string","noise.ndim","noise.locality",
 					"noise.method","noise.scale","noise.tau","noise.initialization"
 					]:
-					for i in model.parameters:
-						if model.parameters[i].string == delim.join(attr.split(delim)[:1]):
-							value = getattrs(model.parameters[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
+					for i in model.data:
+						if model.data[i].string == delim.join(attr.split(delim)[:1]):
+							value = getattrs(model.data[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
 							break
-
 
 				elif attr in ["noise.parameters"]:
 					for i in model.parameters:
