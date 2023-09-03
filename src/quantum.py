@@ -2704,7 +2704,7 @@ class Callback(System):
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
 						function = hessian(jit(lambda parameters: metric(model(parameters,state))))
 					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
-						function = fisher(model,model.grad,shapes=(model.shape,(*parameters.shape,*model.shape)),hermitian=metric.state.hermitian,unitary=model.unitary)
+						function = fisher(model,model.grad_analytical,shapes=(model.shape,(*parameters.shape,*model.shape)),hermitian=metric.state.hermitian,unitary=model.unitary)
 
 					if attr in ['hessian','fisher']:
 						value = function(parameters)
@@ -2721,9 +2721,18 @@ class Callback(System):
 				elif attr in [
 					"state.string","state.ndim",
 					"label.string","label.ndim",
-					"noise.string","noise.ndim","noise.locality",
-					"noise.method","noise.scale","noise.tau","noise.initialization"]:
+					]:
 					value = getattrs(metric,attr,default=default,delimiter=delim)
+
+				elif attr in [
+					"noise.string","noise.ndim","noise.locality",
+					"noise.method","noise.scale","noise.tau","noise.initialization"
+					]:
+					for i in model.parameters:
+						if model.parameters[i].string == delim.join(attr.split(delim)[:1]):
+							value = getattrs(model.parameters[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
+							break
+
 
 				elif attr in ["noise.parameters"]:
 					for i in model.parameters:
