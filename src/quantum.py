@@ -1278,13 +1278,19 @@ class State(Object):
 
 			data = self.data
 
-		if self.ndim == 1:
+		if self.ndim is None:
+			hermitian = True
+			unitary = False
+		elif self.ndim == 1:
 			hermitian = False
 			unitary = True
+		elif self.ndim == 2:
+			hermitian = True
+			unitary = False
 		else:
 			hermitian = True
 			unitary = False
-
+		
 		self.data = data
 
 		self.hermitian = hermitian
@@ -1475,6 +1481,10 @@ class Noise(Object):
 
 		self.hermitian = hermitian
 		self.unitary = unitary
+
+		print(self.data.shape)
+		print(self.ndim,self.size,self.shape)
+		exit()
 		
 		return
 
