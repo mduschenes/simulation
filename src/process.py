@@ -2335,7 +2335,7 @@ def plotter(settings,hyperparameters,verbose=None):
 							subslice = [slice(None)]
 						elif isinstance(subslice,dict):
 							for axes in list(subslice):
-								if (axes not in data) and (not any(data[OTHER][subaxis]['label']==axes for subaxis in ALL if subaxis in data[OTHER])):
+								if subslice[axes] is None or ((axes not in data) and (not any(data[OTHER][subaxis]['label']==axes for subaxis in ALL if subaxis in data[OTHER]))):
 									subslice.pop(axes)
 
 							if subslice:
