@@ -101,7 +101,6 @@ def test_model(path,tol):
 
 	settings = Dict(settings)
 
-
 	model = load(settings.cls.model)
 	state = load(settings.cls.state)
 	label = load(settings.cls.label)
@@ -882,8 +881,8 @@ if __name__ == '__main__':
 	func = test_data
 	func = test_initialization
 	func = test_hessian
-	func = test_fisher
 	func = test_model
+	func = test_fisher
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

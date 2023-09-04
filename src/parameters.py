@@ -152,7 +152,6 @@ class Parameter(System):
 
 		defaults = {
 			'constants':{},
-			'parameters':1,
 			'lambda':0,
 			'coefficients':[1,2*pi],
 			'shift':[0,-pi/2],
@@ -184,6 +183,11 @@ class Parameter(System):
 
 			elif attr in ['parameters']:
 				self.kwargs[attr] = prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
+
+		defaults = {
+			'parameters': prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
+			}
+		self.kwargs.update(defaults)
 
 		defaults = {}
 		if self.method in ['time']:
