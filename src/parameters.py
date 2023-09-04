@@ -152,6 +152,7 @@ class Parameter(System):
 
 		defaults = {
 			'constants':{},
+			'parameters':1,
 			'lambda':0,
 			'coefficients':[1,2*pi],
 			'shift':[0,-pi/2],
@@ -181,6 +182,9 @@ class Parameter(System):
 					axis = int(axis)
 					self.kwargs[attr][axis] = {i:j for i,j in zip(indices,values)}
 
+			elif attr in ['parameters']:
+				self.kwargs[attr] = prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
+
 		defaults = {}
 		if self.method in ['time']:
 			try:
@@ -200,22 +204,20 @@ class Parameter(System):
 			def gradient_wrapper(parameters):
 				return 1
 		elif self.indices is not None and self.parameters is not None:
-			coefficients = prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
 			def wrapper(parameters):
-				return coefficients*parameters[self.indices]
+				return self.kwargs['parameters']*parameters[self.indices]
 			def gradient_wrapper(parameters):
-				return coefficients		
+				return self.kwargs['parameters']		
 		elif self.indices is not None and self.parameters is None:
 			def wrapper(parameters):
 				return parameters
 			def gradient_wrapper(parameters):
 				return 1				
 		elif self.indices is None and self.parameters is not None:
-			coefficients = prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
 			def wrapper(parameters):
-				return coefficients*parameters
+				return self.kwargs['parameters']*parameters
 			def gradient_wrapper(parameters):
-				return coefficients				
+				return self.kwargs['parameters']				
 		elif self.indices is None and self.parameters is None:
 			def wrapper(parameters):
 				return parameters

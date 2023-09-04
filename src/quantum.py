@@ -1401,7 +1401,7 @@ class Noise(Object):
 			site = list(range(self.N)) if self.site is None else self.site if not isinstance(self.site,int) else [self.site]
 			operator = None if self.operator is None else [self.operator[self.site.index(i)%len(self.operator)] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
 			locality = len(operator)
-			parameters = self.parameters()
+			parameters = self.parameters(self.parameters())
 
 			parameters = [None]*self.N if parameters is None else [parameters[[self.site.index(i)%len(parameters)]] if i in self.site else self.default for i in range(self.N)] if not isinstance(parameters,scalars) and parameters.size > 1 else [parameters]*self.N
 
