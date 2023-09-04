@@ -181,9 +181,6 @@ class Parameter(System):
 					axis = int(axis)
 					self.kwargs[attr][axis] = {i:j for i,j in zip(indices,values)}
 
-			elif attr in ['parameters']:
-				self.kwargs[attr] = prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
-
 		defaults = {
 			'parameters': prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
 			}
