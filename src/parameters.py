@@ -12,7 +12,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,vfunc,switch,array,arange,empty,bound,gradient_bound
+from src.utils import jit,vfunc,copy,switch,array,arange,empty,bound,gradient_bound
 from src.utils import concatenate,addition,prod
 from src.utils import initialize,spawn,slicing,datatype,to_index,to_position
 from src.utils import pi,itg,scalars,arrays,delim,separ,cos,sin,exp
@@ -32,7 +32,7 @@ class Parameter(System):
 			variable=None,local=None,method=None,group=None,
 			seed=None,random=None,bounds=None,axis=None,
 			indices=None,func=None,gradient=None,constraint=None,wrapper=None,
-			args=(),kwargs={}
+			args=None,kwargs=None
 			)
 
 	def __init__(self,data,*args,system=None,**kwargs):
@@ -145,6 +145,8 @@ class Parameter(System):
 		self.local = self.local if self.local is not None else None
 		self.method = self.method if self.method is not None else None
 		self.axis = [attr for attr in self.axis if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.axis is not None else None
+
+		self.args = self.args if self.args is not None else ()
 		self.kwargs = self.kwargs if self.kwargs is not None else {}
 
 		# Set functions
@@ -182,6 +184,7 @@ class Parameter(System):
 					self.kwargs[attr][axis] = {i:j for i,j in zip(indices,values)}
 
 		defaults = {
+			'string':str(self),
 			'parameters': prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
 			}
 		self.kwargs.update(defaults)

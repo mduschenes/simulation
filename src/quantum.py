@@ -116,7 +116,7 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 	Returns:
 		data (iterable[Object]): Compiled data of shape (length,)
 	'''
-	
+
 	data = {j: data[i] if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {}
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False	
@@ -141,6 +141,7 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 	boolean = lambda i: (data[i] is not None) and (data[i].data is not None) and (not data[i].variable) and (data[i].unitary)
 	
 	obj = {i: data[i] for i in data if boolean(i)}
+
 	if len(obj)>1:
 
 		for obj in splitter(obj):
@@ -1993,7 +1994,7 @@ class Operators(Object):
 		'''		
 
 		msg = []
-		options = dict(align='<',space=1,width=1)
+		options = dict(align='<',space=1,width=2)
 
 		for attr in ['string','key','seed','instance','instances','N','D','d','L','delta','M','tau','T','P','n','g','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
 
@@ -2008,22 +2009,31 @@ class Operators(Object):
 
 		for attr in (self.data if self.data is not None else []):
 			string = []
-			for subattr in ['variable','method','indices','local','site','shape','parameters']:
-				substring = getattrs(self.data[attr].parameters,subattr,default=None,delimiter=delim)
-				if isinstance(substring,(str,int,list,tuple,bool,*arrays)):
-					substring = str(substring)
-				elif isinstance(substring,dict):
-					substring = ', '.join(['%s: %s'%(prop,substring[prop]) for prop in substring])
-				elif substring is not None:
+			for subattr in [None,'variable','method','indices','local','site','shape','parameters']:
+				
+				if subattr is None:
+					subattr = 'data'
+					if self.parameters is None or self.parameters() is None:
+						substring = self.data[attr].parameters()
+					else:
+						substring = self.data[attr].parameters(self.parameters(self.parameters())[-1])
 					substring = '%0.4e'%(substring)
 				else:
-					substring = str(substring)
+					substring = getattrs(self.data[attr].parameters,subattr,default=None,delimiter=delim)
+					if isinstance(substring,(str,int,list,tuple,bool,*arrays)):
+						substring = str(substring)
+					elif isinstance(substring,dict):
+						substring = ', '.join(['%s: %s'%(prop,substring[prop]) for prop in substring])
+					elif substring is not None:
+						substring = '%0.4e'%(substring)
+					else:
+						substring = str(substring)
 
 				substring = '%s : %s'%(subattr,'{:{align}{space}{width}}'.format(substring,**options))
 				
 				string.append(substring)
 
-			string = 'parameters.%s\t%s'%(self.data[attr],''.join(string))
+			string = 'parameters.%s\n\t%s'%(self.data[attr],'\n\t'.join(string))
 
 			msg.append(string)
 
@@ -2259,7 +2269,7 @@ class Hamiltonian(Operators):
 					objs[obj].append(tmp[obj])	
 
 				for kwarg in kwargs:
-					kwargs[kwarg].append(tmps[kwarg])
+					kwargs[kwarg].append(copy(tmps[kwarg]))
 
 		# Set site dependent attributes
 		attr = 'attributes'
@@ -2273,6 +2283,7 @@ class Hamiltonian(Operators):
 				if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
 					continue
 				setter(kwargs[attr][i],{attrs:getter(kwargs[attr][i],attrs,delimiter=delim)[indices.index(i)]},delimiter=delim)
+
 
 		# Set class attributes
 		self.__extend__(data=data,**objs,**kwargs)
@@ -2740,9 +2751,10 @@ class Callback(System):
 							break
 
 				elif attr in ["noise.parameters"]:
-					for i in model.parameters:
-						if model.parameters[i].string == delim.join(attr.split(delim)[:1]):
-							value = getattrs(model.parameters[i],delim.join(attr.split(delim)[1:]*2),default=default,delimiter=delim)
+					for i in model.data:
+						if model.data[i].string == delim.join(attr.split(delim)[:1]):
+							value = getattrs(model.data[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
+							value = value(value())
 							break
 
 				elif attr in []:
