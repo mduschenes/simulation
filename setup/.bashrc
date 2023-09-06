@@ -155,12 +155,13 @@ function bctl(){
 function berr(){
 	jobs=(${@})
 	script="job.slurm"
+	exe="job.sh"
 	name="output."
 	ext="stderr"
 	pattern="#SBATCH --array="
 	options=":1%100"
+	
 	errors=()
-
 	if [[ ${#jobs[@]} -eq 0 ]]
 	then
 		jobs=($(ls -t ${name}*${ext} | head -1 | sed "s:${name}\([^\.]*\)\.\([^\.]\).*${ext}:\1:"))
@@ -191,6 +192,34 @@ function berr(){
 		sed -i "${line}i ${pattern}$(join , ${errors[@]})${options}" ${file}
 	fi
 	
+	return 0
+}
+
+function breq(){
+	jobs=(${@})
+	script="job.slurm"
+	exe="job.sh"
+	name="output."
+	ext="tmp"
+	
+	file=${script}.${ext}
+	cp ${script} ${file}
+	
+	pattern="#SBATCH --array="
+	options="#${pattern}"
+	sed -i "s%^${pattern}%${options}%g" ${file}
+
+	pattern="TASKS=.*"
+	options="TASKS=(${jobs[@]})"
+	sed -i "s%^${pattern}%${options}%g" ${file}
+
+	file=${exe}.${ext}
+	cp ${exe} ${file}
+
+	pattern="< ${script}"
+	options="< ${script}.${ext}"
+	sed -i "s%${pattern}%${options}%g" ${file}
+
 	return 0
 }
 
