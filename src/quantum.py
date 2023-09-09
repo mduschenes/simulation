@@ -2017,7 +2017,10 @@ class Operators(Object):
 						substring = self.data[attr].parameters()
 					else:
 						substring = self.data[attr].parameters(self.parameters(self.parameters())[-1])
-					substring = '%0.4e'%(substring)
+					if substring is not None:
+						substring = '%0.4e'%(substring)
+					else:
+						substring = str(substring)
 				else:
 					substring = getattrs(self.data[attr].parameters,subattr,default=None,delimiter=delim)
 					if isinstance(substring,(str,int,list,tuple,bool,*arrays)):
