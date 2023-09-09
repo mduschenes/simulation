@@ -1766,7 +1766,7 @@ class asscalar(np.ndarray):
 	def __new__(self,a,*args,**kwargs):
 		try:
 			return a.item()
-		except (AttributeError,ValueError):
+		except (AttributeError,ValueError,TypeError):
 			try:
 				return onp.asscalar(a,*args,**kwargs)
 			except:
