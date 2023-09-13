@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools,functools,datetime,shutil,traceback
-from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
 import atexit
@@ -19,14 +18,14 @@ for PATH in PATHS:
 
 from src.utils import jit,gradient
 from src.utils import array,arange,eye,rand,einsum,dot,prod
-from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,product,sqrt,datatype
+from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,sqrt,datatype
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
 
 from src.utils import itg,dbl,flt,delim,Null,null,scalars,arrays
 
 from src.iterables import getter,setter
-from src.io import join,split,copy,rm,exists
+from src.io import join,split,rm,exists
 from src.logger import Logger
 
 
@@ -55,8 +54,8 @@ class Dict(Dictionary):
 				kwargs.update(arg)
 
 		for key in kwargs:
-			if isinstance(kwargs[key],dict):
-				kwargs[key] = Dict(kwargs[key])
+			if isinstance(kwargs[key],dict) and all(isinstance(attr,str) for attr in kwargs[key]):
+				kwargs[key] = Dict(kwargs[key]) if not isinstance(kwargs[key],Dictionary) else kwargs[key]
 
 		super().__init__(**kwargs)
 
@@ -117,7 +116,7 @@ class System(Dictionary):
 
 		updates(kwargs,defaults)
 		
-		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,defaults,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)
 
@@ -210,7 +209,7 @@ class Space(System):
 	'''
 	def __init__(self,N,D,space,system=None,**kwargs):
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		self.N = N
@@ -257,13 +256,13 @@ class Space(System):
 			self.space = self.space.space
 		if self.space is None:
 			self.space = self.default
-	
+
 		self.funcs = funcs.get(self.space,funcs[self.default])
 		self.funcs = {attr: wrapper(self.funcs[attr],dtypes.get(attr)) for attr in self.funcs}
 
 		self.__string__()
 		self.__size__()
-	
+
 		return
 
 	def __string__(self):
@@ -303,7 +302,7 @@ class Time(System):
 	'''
 	def __init__(self,M,T,tau,P,time,system=None,**kwargs):
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		self.M = M
@@ -395,7 +394,7 @@ class Lattice(System):
 	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None,**kwargs):
 
 		# Define system
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		wrapper = lambda func,dtype: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=dtype).item())
@@ -438,20 +437,28 @@ class Lattice(System):
 		# Define linear size n and coordination number z	
 		if self.lattice is None:
 			N = 0
+			S = 0
 			d = 0
 			n = 0
+			s = 0
 			z = 0
 			self.lattice = self.default
 		elif self.lattice in ['square','square-nearest']:
 			n = round(N**(1/d))
+			s = n**(d-1)
 			z = 2*d
+			S = 2*(((n)**(d-1)) + (d-1)*((n-1)**(d-1)))
 			assert n**d == N, 'N != n^d for N=%d, d=%d, n=%d'%(N,d,n)
 		else:
 			n = round(N**(1/d))
+			s = n**(d-1)
 			z = 2*d
+			S = 2*(((n)**(d-1)) + (d-1)*((n-1)**(d-1)))
 			assert n**d == N, 'N != n^d for N=%d, d=%d, n=%d'%(N,d,n)
 
+		self.S = S
 		self.n = n
+		self.s = s
 		self.z = z
 
 		self.funcs = funcs.get(self.lattice,funcs[self.default])
@@ -481,7 +488,7 @@ class Lattice(System):
 		'''
 		Get list of lists of sites of lattice
 		Args:
-			site (str,int): Type of sites, either int for unique site-length list of vertices, or string in allowed ['i','i,j','ij','i<j','i...j']
+			site (str,int): Type of sites, either int for unique site-length list of vertices, or allowed strings in ['i','ij','i<j','<ij>','>ij<','i...j']
 		Returns:
 			sites (generator): Generator of site-length lists of lattice
 		'''
@@ -495,7 +502,7 @@ class Lattice(System):
 		elif isinstance(site,(str)):
 			if site in ['i']:
 				sites = ([i] for i in self.vertices)
-			elif site in ['i,j','ij','i...j']:
+			elif site in ['ij']:
 				sites = ([i,j] for i in self.vertices for j in self.vertices)
 			elif site in ['i<j']:
 				k = 2
@@ -505,17 +512,16 @@ class Lattice(System):
 				if self.z > self.N:
 					sites = ()
 				elif self.z > 0:
-					sites = (i for i in unique(
-						sort(
-							vstack([
-								repeat(arange(self.N),self.z,0),
-								self.nearestneighbours(r=1)[0].ravel()
-							]),
-						axis=0),
-						axis=1).T)
+					sites = (i for i in self.nearestneighbours(r=1,sites=True,edges=True,periodic=True))
 				else:
 					sites = ()
-
+			elif site in ['>ij<']:
+				if self.z > self.N:
+					sites = ()
+				elif self.z > 0:
+					sites = (i for i in self.nearestneighbours(r=1,sites=True,edges=True,periodic=False))
+				else:
+					sites = ()					
 			elif site in ['i...j']:
 				sites = (range(self.N) for i in range(self.N))
 		else:
@@ -598,7 +604,7 @@ class Lattice(System):
 			return site
 
 
-	def nearestneighbours(self,r=None,vertices=None):
+	def nearestneighbours(self,r=None,sites=None,vertices=None,edges=None,periodic=True):
 		'''
 		Return array of neighbouring spin vertices 
 		for a given site and r-distance bonds
@@ -606,26 +612,55 @@ class Lattice(System):
 						lambda x: mod(x + s*r,self.n))) 
 						for i in range(self.d)for s in [1,-1]])
 		Args:
-			r (int,list): Radius of number of nearest neighbours away to compute nearest neighbours on lattice of shape (l,)
+			r (int,iterable): Radius of number of nearest neighbours away to compute nearest neighbours on lattice, an integer or of shape (l,)
+			sites (bool): Include sites with nearest neighbours
 			vertices (array): Vertices to compute nearest neighbours on lattice of shape (N,)
+			edges (bool,int,array): Edges to compute nearest neighbours, defaults to all edges, True or 1 for forward neighbours, False or -1 for backward neighbours
+			periodic (bool): Include periodic nearest neighbours at boundaries
 		Returns:
-			nearestneighbours (array): Array of shape (l,N,z) of nearest neighbours a manhattan distance r away
+			nearestneighbours (array): Array of shape (N,z) or (l,N,z) of nearest neighbours a manhattan distance r away
 		'''
+
 		if vertices is None:
 			vertices = self.vertices
-		
-		sitepos = self.position(vertices)[:,None]
+
+		# TODO: Implement open boundary conditions for nearest neighbours in d>1 dimensions
+		if not periodic or self.N == self.z:
+			if self.d == 1:
+				vertices = vertices[0:-self.S//2]
+			else:
+				raise NotImplementedError("Open Boundary Conditions for d = %d Not Implemented"%(self.d))
+
+		position = self.position(vertices)[:,None]
 		
 		if r is None:
-			Rrange = self.R
-		elif isinstance(r,list):
-			Rrange = r
+			R = self.R
+		elif not isinstance(r,int):
+			R = r
 		else:
-			Rrange = [r]
-		return array([concatenate(
-							(self.site(mod(sitepos+R*self.I,self.n)),
-							 self.site(mod(sitepos-R*self.I,self.n))),axis=1)
-								for R in Rrange],dtype=self.datatype)                     
+			R = [r]
+
+		if edges is None:
+			S = [1,-1]
+		elif edges is True:
+			S = [1]
+		elif edges is False:
+			S = [-1]			
+		elif isinstance(edges,int):
+			S = [edges]
+		else:
+			S = [1,-1]
+
+		nearestneighbours = array([concatenate(
+							tuple((self.site(mod(position+s*self.I,self.n)) for s in S)),axis=1)
+								for r in R],dtype=self.datatype)
+		if isinstance(r,int):
+			nearestneighbours = nearestneighbours[0]
+
+		if sites:
+			nearestneighbours  = vstack([repeat(vertices,nearestneighbours.shape[-1],0),nearestneighbours.ravel()]).T
+
+		return nearestneighbours
 
 
 	def iterable(self,k,conditions=None):

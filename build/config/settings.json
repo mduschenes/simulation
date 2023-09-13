@@ -25,12 +25,7 @@
 	"index":null
 	},
 "model":{
-	"data":{
-		"x":{"operator":["X"],"site":"i","string":"x","parameters":null},
-		"y":{"operator":["Y"],"site":"i","string":"y","parameters":null},
-		"z":{"operator":["Z"],"site":"i","string":"z","parameters":null},
-		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz","parameters":null}
-		},
+	"data":{},
 	"N":2,
 	"D":2,
 	"d":1,
@@ -89,86 +84,8 @@
 		},
 	"track":{}	
 	},
-"parameters":{
-	"xy": {
-		"string":"xy",
-		"category":"variable",
-		"method":null,
-		"group":[["x"],["y"]],
-		"locality":null,
-		"bounds":[-1,1],
-		"attributes":["M"],		
-		"data":null,
-		"parameters":1,
-		"seed":null,	
-		"random":"uniform",
-		"initialization":{
-			"method":"interpolation",
-			"interpolation":3,
-			"smoothness":2
-			},
-		"constant":{"-1":{"0":0,"-1":0}},
-		"args":[],
-		"kwargs":{"sigmoid":1,"lambda":5e2}
-		},			
-	"z": {
-		"string":"z",
-		"category":"constant",
-		"method":null,		
-		"group":[["z"]],
-		"data":[0,1,1,-1,-1,1],
-		"parameters":1,
-		"bounds":[-1,1],
-		"locality":null,
-		"attributes":["M"],
-		"seed":null,
-		"random":null,
-		"initialization":null,
-		"args":[],
-		"kwargs":{}
-		},				
-	"zz": {
-		"string":"zz",
-		"category":"constant",
-		"method":null,		
-		"group":[["zz"]],
-		"data":[1,1,1,1,1,1,1,1],								
-		"parameters":1,
-		"bounds":[-1,1],
-		"locality":null,
-		"attributes":["M"],
-		"seed":null,
-		"random":null,	
-		"initialization":null,
-		"args":[],
-		"kwargs":{}
-		}
-	},
-"label": {
-	"operator":"Z",
-	"site":null,
-	"string":"U",
-	"parameters":0.5,
-	"ndim":2,
-	"seed":null
-	},
-"state": {
-	"operator":"haar",
-	"site":null,
-	"string":"U",
-	"parameters":false,
-	"ndim":2,
-	"samples":1,
-	"seed":null
-	},	
-"noise": {
-	"data":"phase",
-	"site":null,
-	"string":"K",
-	"parameters":false,
-	"ndim":3,
-	"seed":null
-	},
+"label": {},
+"state": {},	
 "jobs":{
 	"preprocess":null,
 	"job":{

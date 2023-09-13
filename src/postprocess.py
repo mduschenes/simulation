@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools,functools
-from copy import deepcopy
 from functools import partial,wraps
 import traceback
 
@@ -16,9 +15,9 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser
+from src.utils import argparser,copy
 from src.utils import gradient,array,zeros,ones,arange,linspace,logspace,rand,where,sort,eig 
-from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,scinotation,uncertainty_propagation,exp,exp10,log,log10,sqrt
+from src.utils import mean,std,sem,argmax,argmin,maximum,minimum,difference,rand,allclose,scinotation,uncertainty_propagation,exp,exp10,log,log10,sqrt
 from src.utils import is_naninf
 from src.utils import nan,delim,null
 from src.iterables import setter,getter,search
@@ -119,6 +118,7 @@ defaults = {
             "elinewidth": 5,
             "color": "#73d055ff",
             "color": "#EB008B",
+            "color": "#27AD81FF",
 			},
 		"fill_between":{
 			"x":"noise.parameters",
@@ -147,7 +147,15 @@ defaults = {
 		"xaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"xaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
 		"xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
-		"xaxis.set_minor_locator":None,		
+		"xaxis.set_minor_locator":None,	
+
+		# "set_xscale":{"value":"linear","base":10},
+		# "set_xnbins":{"nbins":6},
+		# "set_xlim": {"xmin": -100,"xmax":5100},
+		# "set_xticks":{"ticks":[0,500,1000,1500,2000,2500,3000,3500,4000,4500,5000]},
+		# "xaxis.set_minor_formatter":{"ticker":{"NullFormatter":{}}},		
+		# "xaxis.set_minor_locator":None,	
+
 		
 		"yaxis.set_major_formatter":{"ticker":{"LogFormatterMathtext":{}}},
 		"yaxis.set_minor_locator":{"ticker":{"LogLocator":{"base":10.0,"subs":[0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],"numticks":100}}},
@@ -160,11 +168,13 @@ defaults = {
 		"set_ynbins":{"nbins":7},
 		"set_ylim": {"ymin": -100,"ymax": 1100},
 		"set_ylim": {"ymin": -100,"ymax": 1700},
+		"set_ylim": {"ymin": -100,"ymax": 400},
 		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
 		"set_yticks":{"ticks":[0,1000,2000]},		
 		"set_yticks":{"ticks":[0,1000,2000,3000,4000,5000]},		
 		"set_yticks":{"ticks":[0,200,400,600,800,1000]},		
 		"set_yticks":{"ticks":[0,400,800,1200,1600]},		
+		"set_yticks":{"ticks":[0,100,200,300,400]},		
 		"tick_params":[
 			{"axis":"y","which":"major","length":8,"width":1},
 			{"axis":"y","which":"minor","length":4,"width":0.5},
@@ -220,7 +230,7 @@ defaults = {
             "linestyle": "",
             "capsize": 1,
             "linewidth": 1.75,
-            "elinewidth": 7,
+            "elinewidth": 4,
 			"color":"viridis",
 			},
 		"fill_between":{
@@ -231,16 +241,6 @@ defaults = {
 		"set_ylabel":{"ylabel":r'$\textrm{Infidelity}$'},
 		"set_xlabel":{"xlabel":r"$M$"},
 		"yaxis.offsetText.set_fontsize":{"fontsize":20},											
-		"set_xscale":{"value":"linear"},
-		"set_xnbins":{"nbins":9},
-		"set_xlim": {"xmin": -100,"xmax": 6100},
-		"set_xlim": {"xmin": -100,"xmax": 2600},
-		"set_xlim": {"xmin": -100,"xmax": 1100},
-		"set_xlim": {"xmin": -100,"xmax": 4200},
-		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
-		"set_xticks":{"ticks":[0,500,1000,1500,2000,2500]},
-		"set_xticks":{"ticks":[0,200,400,600,800,1000]},
-		"set_xticks":{"ticks":[0,1000,2000,3000,4000]},
 		"set_xscale":{"value":"log"},
 		"set_xnbins":{"nbins":9},
 		"set_xlim": {"xmin": -100,"xmax": 6100},
@@ -250,7 +250,22 @@ defaults = {
 		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
 		"set_xticks":{"ticks":[0,500,1000,1500,2000,2500]},
 		"set_xticks":{"ticks":[0,200,400,600,800,1000]},
-		"set_xticks":{"ticks":[1e1,1e2,1e3]},		
+		"set_xticks":{"ticks":[1e1,1e2,1e3]},	
+
+		"set_xscale":{"value":"linear"},
+		"set_xnbins":{"nbins":9},
+		"set_xlim": {"xmin": -100,"xmax": 6100},
+		"set_xlim": {"xmin": -100,"xmax": 2600},
+		"set_xlim": {"xmin": -100,"xmax": 1100},
+		"set_xlim": {"xmin": -100,"xmax": 4200},
+		"set_xlim": {"xmin": -100,"xmax": 1600},
+		"set_xticks":{"ticks":[0,1000,2000,3000,4000,5000,6000]},
+		"set_xticks":{"ticks":[0,500,1000,1500,2000,2500]},
+		"set_xticks":{"ticks":[0,200,400,600,800,1000]},
+		"set_xticks":{"ticks":[0,1000,2000,3000,4000]},
+		"set_xticks":{"ticks":[0,250,500,750,1000,1250,1500]},
+
+
 		"set_yscale":{"value":"linear"},
 		"set_yscale":{"value":"log","base":10},
 		"set_ylim": {"ymin": 1e-5,"ymax": 1e-1},
@@ -294,12 +309,14 @@ defaults = {
 			"title_fontsize": 20,
 			"set_title":r"$\gamma$",
 			"prop": {"size": 20},
+			"columnspacing":0.5,
+			"handletextpad":0.25,
 			"markerscale": 1,
-			"handlelength": 2,
+			"handlelength": 1,
 			"framealpha": 0.8,
-			"loc": [0.76,0.38],
             "handlers":{"errorbar":{"yerr_size":20}},			
-			"ncol": 1,
+			"loc": [0.05,0.1],
+			"ncol": 7,
 			"set_zorder":{"level":100},
 			"set_label":None,
 			}
@@ -386,6 +403,7 @@ def postprocess(path,**kwargs):
 
 						# data[label[axis]] = [value if value not in ['None',None,nan] else 1e-20 for value in data[label[axis]]]
 
+					# Slices of x,y,z instances
 					slices = list(range(4,len(data[label['y']])-5))
 					slices = [1,4,6,8,9,10]#range(4,len(data[label['y']])-5) # noise.long
 					slices = [2,3,5,7,9,11]#range(4,len(data[label['y']])-5) # noise.vectorv
@@ -394,11 +412,13 @@ def postprocess(path,**kwargs):
 
 					size = min(len(data[label[axis]]) for axis in label if label[axis] in data)
 					slices = range(2,4)
+					slices = range(0,size-2,2)
+					slices = range(1,size-1,1)
+					# slices = range(3,4)
 
 					X = [array(data['%s'%(label['x'])][i]) for i in slices]
 					Y = [array(data['%s'%(label['y'])][i]) for i in slices]
 					Z = [array(data['%s'%(label['z'])][i]) for i in slices]
-
 
 					Xerr = [array(data['%serr'%(label['x'])][i]) for i in slices]
 					Yerr = [array(data['%serr'%(label['y'])][i]) for i in slices]
@@ -433,6 +453,9 @@ def postprocess(path,**kwargs):
 								yerr_ = yerr_[slices_] if yerr_ is not None and not is_naninf(yerr_).all() else None
 								zerr_ = zerr_[slices_] if zerr_ is not None and not is_naninf(zerr_).all() else None
 
+								yerr_ = None if allclose(yerr_,0) else yerr_
+								zerr_ = None if allclose(zerr_,0) else zerr_
+
 								_x = x_
 								_n = y_.size
 								_y = linspace(y_.min(),y_.max(),_n)
@@ -440,7 +463,8 @@ def postprocess(path,**kwargs):
 								_yerr = zeros(_n)
 								_zerr = zeros(_n)
 
-								y_min = y_[argmin(z_)]
+								i_min = argmin(z_)#-({**{i:0 for i in [1]},**{i:1 for i in [2,3,5]},**{i:2 for i in [4]},**{i:-1 for i in [0]}}.get(i,0))
+								y_min = (y_[i_min-1] + y_[i_min] + y_[i_min+1])/3
 
 								# x_min = arange(3)
 								# y_min = array([y_[argmin(z_)-1],y_[argmin(z_)],y_[argmin(z_)+1]])
@@ -460,24 +484,35 @@ def postprocess(path,**kwargs):
 								# y_min = _y_min[argmin(_z_min)]
 
 								func = [
-										'cubic',
+										# 'cubic',
+										(lambda parameters,x: parameters[0] + parameters[1]*x),										
 										# (lambda parameters,x: parameters[0] + parameters[1]*x),
 										(lambda parameters,x: parameters[0] + parameters[1]*x),
 										]
 								parameters = [array([1.0,1.0]),array([0.0,1.0])]
 								bounds = [y_min]
-								kwargs = {
+								kwargs = [{
 									'optimizer':'cg',
-									'alpha':1e-10,
-									'iterations':1000,
-									'eps':{'value':1e-4},
+									'alpha':1e-6,
+									'iterations':100,
+									'eps':{'value':1e-10},
 									'uncertainty':all(parameter.size<1000 for parameter in parameters),
 									# 'path':'fit.%0.1e.pdf'%(_x),
-									'verbose':0,
-									}
+									'verbose':1,
+									},
+									{
+									'optimizer':'cg',
+									'alpha':1e-10,
+									'iterations':100,
+									'eps':{'value':1e-10},
+									'uncertainty':all(parameter.size<1000 for parameter in parameters),
+									# 'path':'fit.%0.1e.pdf'%(_x),
+									'verbose':1,
+									}]
 								
 								preprocess = [
 									lambda x,y,parameters: (x if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
+									# lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),															
 									# lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),
 									# lambda x,y,parameters: (log(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None),
 									lambda x,y,parameters: (log(x) if x is not None else None,log(y) if y is not None else None,parameters if parameters is not None else None),							
@@ -489,19 +524,22 @@ def postprocess(path,**kwargs):
 									lambda x,y,parameters: (exp(x) if x is not None else None,exp(y) if y is not None else None,parameters if parameters is not None else None),
 									]
 
-								_y_ = y_
-								_z_ = z_
-								_yerr_ = yerr_
-								_zerr_ = zerr_
+								# _y_ = y_
+								# _z_ = z_
+								# _yerr_ = yerr_
+								# _zerr_ = zerr_
 
-								# _func,_z,_parameters,_zerr,_covariance,_other = fit(
-								# 	y_,z_,
-								# 	_x=_y,_y=_z,
-								# 	func=func,
-								# 	xerr=yerr_,yerr=zerr_,
-								# 	parameters=parameters,
-								# 	preprocess=preprocess,postprocess=postprocess,
-								# 	bounds=bounds,kwargs=kwargs)	
+								# print(yerr_)
+								# print(y_.shape,z_.shape,_y.shape,_z.shape,yerr_.shape,zerr_.shape)
+
+								_func,_z,_parameters,_zerr,_covariance,_other = fit(
+									y_,z_,
+									_x=_y,_y=_z,
+									func=func,
+									xerr=yerr_,yerr=zerr_,
+									parameters=parameters,
+									preprocess=preprocess,postprocess=postprocess,
+									bounds=bounds,kwargs=kwargs)	
 								
 
 								###########
@@ -559,9 +597,9 @@ def postprocess(path,**kwargs):
 								# 	bounds=bounds,kwargs=kwargs)
 
 
-								_z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_,None,[{'r':1}]*(len(bounds)+1)
+								# _z,_parameters,_zerr,_covariance,_other = z_,parameters,zerr_,None,[{'r':1}]*(len(bounds)+1)
 
-								index = argmin(_z)
+								index = max(0,argmin(_z))
 								indexerr = [argmin(_z+k*_zerr) for k in [-1,1]]
 								_yerrindex = sum(abs(_y[i] - _y[index]) for i in indexerr)/len(indexerr)
 
@@ -593,7 +631,7 @@ def postprocess(path,**kwargs):
 								others.append(_other)
 
 							fig,ax = None,None
-							settings = deepcopy(defaults[key[0]])
+							settings = copy(defaults[key[0]])
 							options = {
 								'fig':{
 									'savefig':{
@@ -620,17 +658,19 @@ def postprocess(path,**kwargs):
 										*[
 										{
 										**settings['ax']['errorbar'],
-										'x':_Y[i],
-										'y':_Z[i],
+										'x':_Y[i][:],
+										'y':_Z[i][:],	
+										'x':_Y[i][indexes[i]:],
+										'y':_Z[i][indexes[i]:],
 										# 'yerr':_Zerr[i],							
 						                "alpha": 0.8,
 						                "marker": None,
 						                "markersize": None,
-						                "linestyle": "-",
+						                "linestyle": ":",
 						                "capsize": 1,
 						                "linewidth": 1.75,
-						                "elinewidth": 7,
-						                "color": "k"									
+						                "elinewidth": 4,
+						                "color": 'k'									
 										} for i in indices
 										],
 										*[
@@ -730,12 +770,12 @@ def postprocess(path,**kwargs):
 							parameters = array([-1.0,-1.0])[:p]
 							kwargs = {
 								'optimizer':'cg',
-								'alpha':1e-4,
-								'iterations':1000,
+								'alpha':1e-6,
+								'iterations':100,
 								'eps':{'value':1e-5},
 								'uncertainty':parameters.size<1000,
 								'path':None,
-								'verbose':0,
+								'verbose':True,
 							}
 							preprocess = lambda x,y,parameters: (log10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)
 							postprocess = lambda x,y,parameters: (exp10(x) if x is not None else None,(y) if y is not None else None,parameters if parameters is not None else None)
@@ -751,7 +791,7 @@ def postprocess(path,**kwargs):
 
 
 							fig,ax = None,None
-							settings = deepcopy(defaults[name])
+							settings = copy(defaults[name])
 
 							options = {
 								'fig':{
@@ -784,7 +824,7 @@ def postprocess(path,**kwargs):
 										'label':(
 											r'$\quad~~ M_{\gamma} = -\alpha\log{\gamma} - {\beta}$' + '\n' + 
 											r'$%s$'%('\n'.join([
-											'%s = %s'%(z,scinotation(-_parameters[len(_parameters)-1-i],decimals=2,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
+											'%s = %s'%(z,scinotation(-_parameters[len(_parameters)-1-i],decimals=2,one=True,zero=True,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
 												for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_parameters)])])) + '\n' +
 											# r"$\gamma_{0} = 10^{-\alpha/\beta} = 10^{-%s}"%(scinotation((_parameters[0]/_parameters[1]),decimals=3,scilimits=[-1,4],error=log10(exp(1))*uncertainty_propagation(*(_parameters[i] for i in [0,1]),*(sqrt(_covariance[i][i]) for i in [0,1]),'/')[1] if _covariance is not None else None)) + '\n' +
 											r'$%s$'%('r^2 = %s'%(scinotation(_other['r'],decimals=4,scilimits=[-1,4])))
@@ -861,12 +901,12 @@ def postprocess(path,**kwargs):
 					params = [parameters,*rand(shape=(n,*shape),bounds=bounds,key=seed,random=random)]
 
 					fig,ax = None,None
-					settings = {i: deepcopy(defaults[name]) for i in range(m)}
+					settings = {i: copy(defaults[name]) for i in range(m)}
 
 					for i in range(m):
 
 						func = funcs[i]
-						options = deepcopy(defaults[name])
+						options = copy(defaults[name])
 
 						for p,parameters in enumerate(params):
 

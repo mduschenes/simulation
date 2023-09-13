@@ -53,8 +53,8 @@
 		"model.data.noise.string":["noise"],
 		"model.data.noise.operator":["phase"],
 		"model.data.noise.site":[null],
-		"model.data.noise.parameters.data":[1],
-		"model.data.noise.parameters.parameters":[0],
+		"model.data.noise.parameters.data":[1e-4,1e-2],
+		"model.data.noise.parameters.parameters":[1e-4,1e-2],
 		"model.data.noise.seed":[null],
 
 		"optimize.iterations":[[0,10]],
@@ -93,11 +93,11 @@
 		"jobs.job.verbose":[1],
 		"jobs.job.resume":[null],
 		"jobs.postprocess.resume":[null],
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.NUMPY_BACKEND":["jax.autograd"],
 		"jobs.job.args.NUMPY_BACKEND":["autograd"],
 		"jobs.job.args.NUMPY_BACKEND":["jax"],
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.JOB_PROCESSES":[4],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
@@ -210,7 +210,7 @@
 			"variable":false,"seed":123},		
 		"noise":{
 			"operator":"depolarize","site":null,"string":"noise",
-			"parameters":{"data":1,"parameters":0},
+			"parameters":{"data":1,"parameters":1e-4},
 			"ndim":3,
 			"variable":false
 		}
@@ -220,7 +220,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":4,
+	"M":20,
 	"T":null,
 	"tau":1,
 	"P":1,

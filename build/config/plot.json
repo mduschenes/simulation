@@ -25,14 +25,14 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
                         "analysis":{"zscore":{"objective":3}},					
 						"legend": {
 							"sort": [
 								"N",
 								"M",
-								"noise.parameters"
+								"noise.parameters.parameters"
 							],
 							"exclude": [
 								"instance"
@@ -52,7 +52,7 @@
 						"@N@": [0.4,0.6,0.8]
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -106,7 +106,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
@@ -125,7 +125,7 @@
 						}
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -184,7 +184,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},						
@@ -203,7 +203,7 @@
 						}
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -264,7 +264,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
                         "analysis":{"zscore":{"objective":3}},					
 						"legend": {
@@ -509,13 +509,13 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"legend": {
 							"sort": [
 								"N",
 								"M",
-								"noise.parameters"
+								"noise.parameters.parameters"
 							],
 							"exclude": [
 								"instance"
@@ -534,7 +534,7 @@
 						"@N@": [0.4,0.6,0.8]
 					},					
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -588,7 +588,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
@@ -606,7 +606,7 @@
 						}
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -664,7 +664,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},
@@ -682,7 +682,7 @@
 						}
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -742,7 +742,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"legend": {
 							"exclude": [
@@ -986,13 +986,13 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"legend": {
 							"sort": [
 								"N",
 								"M",
-								"noise.parameters"
+								"noise.parameters.parameters"
 							],
 							"exclude": [
 								"instance"
@@ -1012,7 +1012,7 @@
 						"@N@": [0.4,0.6,0.8]
 					},					
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -1066,7 +1066,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
@@ -1084,7 +1084,7 @@
 						}
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -1141,7 +1141,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},
@@ -1159,7 +1159,7 @@
 						}
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -1218,7 +1218,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"legend": {
 							"exclude": [
@@ -1462,7 +1462,7 @@
 							"parameters.xy.method": null,
 							"tau": null,
 							"T": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"scinotation": {
 							"scilimits": [
@@ -1522,7 +1522,7 @@
 						"N": null,
 						"parameters.xy.method": null,
 						"tau": null,
-						"noise.parameters": null
+						"noise.parameters.parameters": null
 					},
 					"alpha": 0.5,
 					"color": {
@@ -1715,13 +1715,13 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"legend": {
 							"sort": [
 								"N",
 								"M",
-								"noise.parameters"
+								"noise.parameters.parameters"
 							],
 							"exclude": [
 								"instance"
@@ -1741,7 +1741,7 @@
 						"@N@": [0.4,0.6,0.8]
 					},					
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -1795,7 +1795,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
@@ -1813,7 +1813,7 @@
 						}
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -1871,7 +1871,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},						
@@ -1889,7 +1889,7 @@
 						}
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -1949,7 +1949,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"legend": {
 							"exclude": [
@@ -2193,13 +2193,13 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"legend": {
 							"sort": [
 								"N",
 								"M",
-								"noise.parameters"
+								"noise.parameters.parameters"
 							],
 							"exclude": [
 								"instance"
@@ -2219,7 +2219,7 @@
 						"@N@": [0.4,0.6,0.8]
 					},					
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -2273,7 +2273,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"min","stat":"mean"},"err":{"func":"min","stat":"std"}}}},
@@ -2291,7 +2291,7 @@
 						}
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -2349,7 +2349,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"func":{"stat":{"y":{"":"src.functions.func_stat","err":"src.functions.func_stat"}}},
 						"kwargs":{"stat":{"y":{"":{"func":"max","stat":"mean"},"err":{"func":"max","stat":"std"}}}},						
@@ -2367,7 +2367,7 @@
 						}
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -2427,7 +2427,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"legend": {
 							"exclude": [
@@ -2645,7 +2645,7 @@
 			}
 		}
 	},
-	"noise.parameters.objective.M": {
+	"noise.parameters.parameters.objective.M": {
 		"fig": {
 			"set_size_inches": {
 				"w": 24,
@@ -2663,7 +2663,7 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "noise.parameters",
+					"x": "noise.parameters.parameters",
 					"y": "objective",
 					"label": {
 						"label": {
@@ -2737,7 +2737,7 @@
 					}
 				},
 				{
-					"x": "noise.parameters",
+					"x": "noise.parameters.parameters",
 					"y": "objective.ideal.state",
 					"label": {
 						"label": {
@@ -3017,7 +3017,7 @@
 			}
 		}
 	},
-	"noise.parameters.objective.diff.M": {
+	"noise.parameters.parameters.objective.diff.M": {
 		"fig": {
 			"set_size_inches": {
 				"w": 18,
@@ -3035,7 +3035,7 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "noise.parameters",
+					"x": "noise.parameters.parameters",
 					"y": "objective.diff.state",
 					"label": {
 						"N": null,
@@ -3253,7 +3253,7 @@
 			}
 		}
 	},
-	"noise.parameters.objective.tau": {
+	"noise.parameters.parameters.objective.tau": {
 		"fig": {
 			"set_size_inches": {
 				"w": 28,
@@ -3271,7 +3271,7 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "noise.parameters",
+					"x": "noise.parameters.parameters",
 					"y": "objective",
 					"label": {
 						"label":{
@@ -3493,7 +3493,7 @@
 			}
 		}
 	},
-	"noise.parameters.objective.diff.tau": {
+	"noise.parameters.parameters.objective.diff.tau": {
 		"fig": {
 			"set_size_inches": {
 				"w": 18,
@@ -3511,7 +3511,7 @@
 		"ax": {
 			"errorbar": [
 				{
-					"x": "noise.parameters",
+					"x": "noise.parameters.parameters",
 					"y": "objective.diff.state",
 					"label": {
 						"label":{
@@ -4252,7 +4252,7 @@
 			}
 		}
 	},    
-	"M.objective.noise.parameters": {
+	"M.objective.noise.parameters.parameters": {
 		"fig": {
 			"set_size_inches": {
 				"w": 24,
@@ -4276,7 +4276,7 @@
 						"label": {
 							"N": null,
 							"parameters.xy.method": null,
-							"noise.parameters": null,
+							"noise.parameters.parameters": null,
 							"iteration": "@iteration.min@"
 						},
 						"legend": {
@@ -4303,7 +4303,7 @@
 					"elinewidth": 7,
 					"capsize": 10,
 					"color": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -4316,7 +4316,7 @@
 						}
 					},
 					"ecolor": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -4332,7 +4332,7 @@
 			],
 			"set_colorbar": {
 				"value": {
-					"@noise.parameters@": {
+					"@noise.parameters.parameters@": {
 						"value": null,
 						"type": "index"
 					}
@@ -4348,7 +4348,7 @@
 				"size": "3%",
 				"pad": 0.1,
 				"set_label": {
-					"label": "noise.parameters",
+					"label": "noise.parameters.parameters",
 					"labelpad": 10,
 					"size": 30
 				},
@@ -4563,7 +4563,7 @@
 					"label": {
 						"N": null,
 						"parameters.xy.method": null,
-						"noise.parameters": null,
+						"noise.parameters.parameters": null,
 						"iteration": "@iteration.min@"
 					},
 					"marker": {
@@ -4580,7 +4580,7 @@
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -4596,7 +4596,7 @@
 						}
 					},
 					"ecolor": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -4781,7 +4781,7 @@
 					"label": {
 						"N": null,
 						"parameters.xy.method": null,
-						"noise.parameters": null,
+						"noise.parameters.parameters": null,
 						"iteration": "@iteration.min@"
 					},
 					"marker": {
@@ -4798,7 +4798,7 @@
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -4814,7 +4814,7 @@
 						}
 					},
 					"ecolor": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -4999,7 +4999,7 @@
 					"label": {
 						"N": null,
 						"parameters.xy.method": null,
-						"noise.parameters": null,
+						"noise.parameters.parameters": null,
 						"iteration": "@iteration.min@"
 					},
 					"marker": {
@@ -5016,7 +5016,7 @@
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -5032,7 +5032,7 @@
 						}
 					},
 					"ecolor": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -5152,7 +5152,7 @@
 			}
 		}
 	},
-	"tau.objective.noise.parameters": {
+	"tau.objective.noise.parameters.parameters": {
 		"fig": {
 			"set_size_inches": {
 				"w": 18,
@@ -5176,9 +5176,9 @@
 						"label":{
 							"N": null,
 							"parameters.xy.method": null,
-							"noise.parameters": null,
+							"noise.parameters.parameters": null,
 							"T": null,
-							"parameters.zz.parameters": null,
+							"parameters.zz.parameters.parameters": null,
 							"iteration": "@iteration.min@"
 						},
 						"wrapper":{"tau":"src.functions.func_tau","T":"src.functions.func_T"}                        
@@ -5198,7 +5198,7 @@
 					"elinewidth": 7,
 					"capsize": 10,
 					"color": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -5214,7 +5214,7 @@
 						}
 					},
 					"ecolor": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -5416,7 +5416,7 @@
 							"parameters.xy.method": null,
 							"noise.scale": null,
 							"T": null,
-							"parameters.zz.parameters": null,
+							"parameters.zz.parameters.parameters": null,
 							"iteration": "@iteration.min@"
 						},
 						"wrapper":{"tau":"src.functions.func_tau","T":"src.functions.func_T"}                        
@@ -5695,7 +5695,7 @@
 							"parameters.xy.method": null,
 							"noise.scale":null,
 							"T": null,
-							"parameters.zz.parameters": null,
+							"parameters.zz.parameters.parameters": null,
 							"iteration": "@iteration.min@"
 						},
 						"wrapper":{"tau":"src.functions.func_tau","T":"src.functions.func_T"}                        
@@ -5974,7 +5974,7 @@
 							"N": null,
 							"parameters.xy.method": null,
 							"noise.scale":null,
-							"parameters.zz.parameters": null,
+							"parameters.zz.parameters.parameters": null,
 							"iteration": "@iteration.min@"
 						},
 						"wrapper":{"tau":"src.functions.func_tau","T":"src.functions.func_T"}                        
@@ -6254,7 +6254,7 @@
 						"label":{
 							"N": null,
 							"parameters.xy.method": null,
-							"noise.parameters": null,
+							"noise.parameters.parameters": null,
 							"iteration": "@iteration.min@"
 						},
 						"wrapper":{"tau":"src.functions.func_tau","T":"src.functions.func_T"}                        
@@ -6273,7 +6273,7 @@
 					"elinewidth": 2,
 					"capsize": 3,
 					"color": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -6289,7 +6289,7 @@
 						}
 					},
 					"ecolor": {
-						"@noise.parameters@": {
+						"@noise.parameters.parameters@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -6419,7 +6419,7 @@
 			}
 		}
 	},
-	"iteration.variables.M": {
+	"iteration.parameters.M": {
 		"fig": {
 			"set_size_inches": {
 				"w": 32,
@@ -6438,14 +6438,14 @@
 			"errorbar": [
 				{
 					"x": "iteration",
-					"y": "variables",
+					"y": "parameters",
 					"label": {
 						"label": {
 							"N": null,
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null
+							"noise.parameters.parameters": null
 						},
 						"shape": {
 							"shape": {
@@ -6691,7 +6691,279 @@
 			}
 		}
 	},
-	"None.variables.iteration.M": {
+	"iteration.variables.M": {
+		"fig": {
+			"set_size_inches": {
+				"w": 32,
+				"h": 20
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": "iteration",
+					"y": "variables",
+					"label": {
+						"label": {
+							"N": null,
+							"parameters.xy.method": null,
+							"M": null,
+							"backend": null,
+							"noise.parameters.parameters": null
+						},
+						"shape": {
+							"shape": {
+								"row": [
+									1
+								],
+								"col": [
+									2
+								],
+								"axis": [
+									3
+								],
+								"axes": [
+									0
+								]
+							},
+							"reshape": [
+								null,
+								"N",
+								-1,
+								"M"
+							]
+						},
+						"legend": {
+							"exclude": null
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						}
+					},
+					"alpha": {
+						"__axis__": 0.5
+					},
+					"zorder": 1000,
+					"marker": {
+						"@N@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"markersize": 12,
+					"linestyle": "--",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
+					"ecolor": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					}
+				}
+			],
+			"set_colorbar": {
+				"value": {
+					"__axis__": {
+						"value": null,
+						"type": "index"
+					}
+				},
+				"color": "viridis",
+				"norm": [
+					0,
+					1
+				],
+				"scale": "linear",
+				"alpha": 0.5,
+				"segments": 100,
+				"size": "3%",
+				"pad": 0.1,
+				"set_label": {
+					"label": "$\\lambda$",
+					"labelpad": 10,
+					"size": 30
+				},
+				"set_ticks": {
+					"ticks": 3,
+					"size": 50
+				},
+				"set_ticklabels": {
+					"ticklabels": 3,
+					"size": 50
+				},
+				"ax.yaxis.set_tick_params": {
+					"pad": 5
+				},
+				"ax.tick_params": {
+					"labelsize": 30,
+					"which": "major",
+					"size": 10,
+					"length": 8,
+					"width": 1
+				}
+			},
+			"set_ylabel": {
+				"ylabel": [
+					[
+						"$\\theta^{x}_{%s}/\\pi$",
+						"$\\theta^{y}_{%s}/\\pi$"
+					]
+				]
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Iteration}$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -1.1,
+				"ymax": 1.1
+			},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yticks": {
+				"ticks": [
+					-1,
+					-0.5,
+					0,
+					0.5,
+					1
+				]
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "both",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 20,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 20
+				},
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.1,
+					0.05
+				],
+				"ncol": 1,
+				"join": null,
+				"keep": "last",
+				"set_alpha": 1,
+				"set_label": true,
+				"set_zorder": {
+					"level": 100
+				},
+				"update": null
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1,
+				"pad": 1
+			},
+			"share": {
+				"ax": {
+					"legend": "top_right",
+					"set_xlabel": "bottom",
+					"set_ylabel": true,
+					"set_colorbar": "right"
+				}
+			}
+		}
+	},
+	"None.parameters.iteration.M": {
 		"fig": {
 			"set_size_inches": {
 				"w": 32,
@@ -6710,14 +6982,14 @@
 			"errorbar": [
 				{
 					"x": null,
-					"y": "variables",
+					"y": "parameters",
 					"label": {
 						"label": {
 							"N": null,
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null,
+							"noise.parameters.parameters": null,
 							"iteration": "$0$",
 							"$\\textrm{Iteration}$": "\\textrm{Initial},~\\textrm{Final}"
 						},
@@ -6738,10 +7010,6 @@
 									-1
 								]
 							},
-							"transpose": [
-								0,
-								-1
-							],
 							"reshape": [
 								"N",
 								-1,
@@ -6763,7 +7031,7 @@
 					"alpha": 0.5,
 					"zorder": 1000,
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -6810,14 +7078,14 @@
 				},
 				{
 					"x": null,
-					"y": "variables",
+					"y": "parameters",
 					"label": {
 						"label": {
 							"N": null,
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null,
+							"noise.parameters.parameters": null,
 							"iteration": "@iteration.min@"
 						},
 						"legend": {
@@ -6837,10 +7105,6 @@
 									-1
 								]
 							},
-							"transpose": [
-								0,
-								-1
-							],
 							"reshape": [
 								"N",
 								-1,
@@ -6862,7 +7126,7 @@
 					"alpha": 0.9,
 					"zorder": 0,
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -7055,7 +7319,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null,
+							"noise.parameters.parameters": null,
 							"iteration": "@iteration.min@"
 						},
 						"legend": {
@@ -7075,10 +7339,6 @@
 									-1
 								]
 							},
-							"transpose": [
-								0,
-								-1
-							],
 							"reshape": [
 								"N",
 								-1,
@@ -7100,7 +7360,571 @@
 					"alpha": 0.9,
 					"zorder": 0,
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"markersize": 12,
+					"linestyle": "--",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
+					"ecolor": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					}
+				}
+			],
+			"set_ylabel": {
+				"ylabel": [
+					[
+						"$\\theta^{x}_{%s}$",
+						"$\\theta^{y}_{%s}$"
+					]
+				]
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Index}$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xscale": {
+				"value": "linear"
+			},
+			"set_xlim": {
+				"xmin": -0.1,
+				"xmax": 1.1
+			},
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_yscale": {
+				"value": "log",
+				"base": 10
+			},
+			"set_ylim": {
+				"ymin": 5e-07,
+				"ymax": 10.0
+			},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yticks": {
+				"ticks": [
+					1e-06,
+					0.0001,
+					0.01,
+					1.0
+				]
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "both",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 20,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 20
+				},
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.1,
+					0.05
+				],
+				"ncol": 1,
+				"join": null,
+				"set_label": true,
+				"set_zorder": {
+					"level": 100
+				},
+				"update": null
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": "top_right",
+					"set_xlabel": "bottom",
+					"set_ylabel": true
+				}
+			}
+		}
+	},
+	"None.variables.iteration.M": {
+		"fig": {
+			"set_size_inches": {
+				"w": 32,
+				"h": 20
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": null,
+					"y": "variables",
+					"label": {
+						"label": {
+							"N": null,
+							"parameters.xy.method": null,
+							"M": null,
+							"backend": null,
+							"noise.parameters.parameters": null,
+							"iteration": "$0$",
+							"$\\textrm{Iteration}$": "\\textrm{Initial},~\\textrm{Final}"
+						},
+						"legend": {
+							"exclude": [
+								"iteration"
+							]
+						},
+						"shape": {
+							"shape": {
+								"row": [
+									0
+								],
+								"col": [
+									1
+								],
+								"axes": [
+									-1
+								]
+							},
+							"reshape": [
+								"N",
+								-1,
+								"M"
+							]
+						},
+						"normalize": {
+							"x": "size"
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						}
+					},
+					"alpha": 0.5,
+					"zorder": 1000,
+					"marker": {
+						"@noise.parameters.parameters@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"markersize": 12,
+					"linestyle": "--",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
+					"ecolor": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					}
+				},
+				{
+					"x": null,
+					"y": "variables",
+					"label": {
+						"label": {
+							"N": null,
+							"parameters.xy.method": null,
+							"M": null,
+							"backend": null,
+							"noise.parameters.parameters": null,
+							"iteration": "@iteration.min@"
+						},
+						"legend": {
+							"exclude": [
+								"iteration"
+							]
+						},
+						"shape": {
+							"shape": {
+								"row": [
+									0
+								],
+								"col": [
+									1
+								],
+								"axes": [
+									-1
+								]
+							},
+							"reshape": [
+								"N",
+								-1,
+								"M"
+							]
+						},
+						"normalize": {
+							"x": "size"
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						}
+					},
+					"alpha": 0.9,
+					"zorder": 0,
+					"marker": {
+						"@noise.parameters.parameters@": [
+							"o",
+							"^",
+							"s",
+							"P"
+						]
+					},
+					"markersize": 12,
+					"linestyle": "--",
+					"linewidth": 4,
+					"elinewidth": 2,
+					"capsize": 3,
+					"color": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					},
+					"ecolor": {
+						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}
+					}
+				}
+			],
+			"set_ylabel": {
+				"ylabel": [
+					[
+						"$\\theta^{x}_{%s}$",
+						"$\\theta^{y}_{%s}$"
+					]
+				]
+			},
+			"set_xlabel": {
+				"xlabel": "$\\textrm{Index}$"
+			},
+			"yaxis.offsetText.set_fontsize": {
+				"fontsize": 20
+			},
+			"set_xscale": {
+				"value": "linear"
+			},
+			"set_xlim": {
+				"xmin": -0.1,
+				"xmax": 1.1
+			},
+			"set_xnbins": {
+				"nbins": 6
+			},
+			"set_yscale": {
+				"value": "linear"
+			},
+			"set_ylim": {
+				"ymin": -1.1,
+				"ymax": 1.1
+			},
+			"set_ynbins": {
+				"nbins": 5
+			},
+			"set_yticks": {
+				"ticks": [
+					-1,
+					-0.5,
+					0,
+					0.5,
+					1
+				]
+			},
+			"tick_params": [
+				{
+					"axis": "y",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "y",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				},
+				{
+					"axis": "x",
+					"which": "major",
+					"length": 8,
+					"width": 1
+				},
+				{
+					"axis": "x",
+					"which": "minor",
+					"length": 4,
+					"width": 0.5
+				}
+			],
+			"set_aspect": {
+				"aspect": "auto"
+			},
+			"grid": {
+				"visible": true,
+				"which": "both",
+				"axis": "both"
+			},
+			"legend": {
+				"title_fontsize": 20,
+				"get_title": {
+					"ha": "center"
+				},
+				"prop": {
+					"size": 20
+				},
+				"markerscale": 1.2,
+				"handlelength": 3,
+				"framealpha": 0.8,
+				"loc": [
+					1.1,
+					0.05
+				],
+				"ncol": 1,
+				"join": 2,
+				"set_label": true,
+				"set_zorder": {
+					"level": 100
+				},
+				"update": null
+			}
+		},
+		"style": {
+			"texify": null,
+			"mplstyle": "plot.mplstyle",
+			"rcParams": {
+				"font.size": 25
+			},
+			"layout": {
+				"nrows": 1,
+				"ncols": 1,
+				"index": 1
+			},
+			"share": {
+				"ax": {
+					"legend": "top_right",
+					"set_xlabel": "bottom",
+					"set_ylabel": true
+				}
+			}
+		}
+	},
+	"None.variables.relative.iteration.M": {
+		"fig": {
+			"set_size_inches": {
+				"w": 32,
+				"h": 20
+			},
+			"subplots_adjust": {},
+			"tight_layout": {},
+			"savefig": {
+				"fname": null,
+				"bbox_inches": "tight",
+				"pad_inches": 0.2
+			},
+			"close": {}
+		},
+		"ax": {
+			"errorbar": [
+				{
+					"x": null,
+					"y": "variables.relative",
+					"label": {
+						"label": {
+							"N": null,
+							"parameters.xy.method": null,
+							"M": null,
+							"backend": null,
+							"noise.parameters.parameters": null,
+							"iteration": "@iteration.min@"
+						},
+						"legend": {
+							"exclude": [
+								"iteration"
+							]
+						},
+						"shape": {
+							"shape": {
+								"row": [
+									0
+								],
+								"col": [
+									1
+								],
+								"axes": [
+									-1
+								]
+							},
+							"reshape": [
+								"N",
+								-1,
+								"M"
+							]
+						},
+						"normalize": {
+							"x": "size"
+						},
+						"scinotation": {
+							"scilimits": [
+								0,
+								4
+							],
+							"decimals": 0,
+							"one": false
+						}
+					},
+					"alpha": 0.9,
+					"zorder": 0,
+					"marker": {
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -7293,7 +8117,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null,
+							"noise.parameters.parameters": null,
 							"iteration": "@iteration.max@",
 							"rank": "hessian.rank"
 						},
@@ -7317,7 +8141,7 @@
 						]
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -7509,7 +8333,7 @@
 							"parameters.xy.method": null,
 							"M": null,
 							"backend": null,
-							"noise.parameters": null,
+							"noise.parameters.parameters": null,
 							"iteration": "@iteration.max@",
 							"rank": "fisher.rank"
 						},
@@ -7533,7 +8357,7 @@
 						]
 					},
 					"marker": {
-						"@noise.parameters@": [
+						"@noise.parameters.parameters@": [
 							"o",
 							"^",
 							"s",
@@ -7557,10 +8381,38 @@
 								"alpha": 1
 							},
 							"type": "index"
-						}
+						},
+						"@N@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						}						
 					},
 					"ecolor": {
 						"@M@": {
+							"value": {
+								"value": null,
+								"color": "viridis",
+								"values": [],
+								"norm": [
+									0,
+									1
+								],
+								"scale": "linear",
+								"alpha": 1
+							},
+							"type": "index"
+						},
+						"@N@": {
 							"value": {
 								"value": null,
 								"color": "viridis",
@@ -7725,7 +8577,7 @@
 							"parameters.xy.method": null,
 							"T": null,
 							"tau": null,
-							"noise.parameters": null,
+							"noise.parameters.parameters": null,
 							"iteration": "@iteration.max@",
 							"rank": "hessian.rank"
 						},

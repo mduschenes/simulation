@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,copy,warnings,itertools,inspect,datetime
+import os,sys,warnings,itertools,inspect,datetime
 import traceback
 from copy import deepcopy
 from math import prod
@@ -55,7 +55,7 @@ PATHS = {
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nan = np.nan
 
-def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,func=None):
+def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
 	'''
 	Set nested value in iterable with nested elements keys
 	Args:
@@ -65,29 +65,29 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
 		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
-		func(callable,None,bool,iterable): Callable function with signature func(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
+		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
 	'''
 
 	if (not isinstance(iterable,(dict,list))) or (not isinstance(elements,dict)):
 		return
 
-	# Setup func as callable
-	if func is None:
-		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
-	elif func is True:
-		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
-	elif func is False:
-		function = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements.get(key_elements))
-	elif func in ['none','None']:
-		function = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if elements.get(key_elements) is not None else iterable.get(key_iterable,elements.get(key_elements))
-	elif not callable(func):
-		types = tuple(func)
-		def function(key_iterable,key_elements,iterable,elements,types=types): 
+	# Setup default as callable
+	if default is None:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+	elif default is True:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+	elif default is False:
+		func = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements.get(key_elements))
+	elif default in ['none','None']:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if elements.get(key_elements) is not None else iterable.get(key_iterable,elements.get(key_elements))
+	elif not callable(default):
+		types = tuple(default)
+		def func(key_iterable,key_elements,iterable,elements,types=types): 
 			i = iterable.get(key_iterable,elements.get(key_elements))
 			e = elements.get(key_elements,i)
 			return e if isinstance(e,types) else i
 	else:
-		function = func
+		func = default
 
 	# Clear iterable if clear and elements is empty dictionary
 	if clear and elements == {}:
@@ -119,7 +119,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 				i = i[e[index]]
 				index+=1
 
-			value = copier(element,function(e[index],element,i,elements),copy)
+			value = copier(element,func(e[index],element,i,elements),copy)
 
 			if isinstance(i,list) and (e[index] >= len(i)):
 				i.extend([{} for j in range(e[index]-len(i)+1)])
@@ -129,7 +129,7 @@ def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,
 			elif e[index] not in i or not isinstance(i[e[index]],(dict,list)):
 				i[e[index]] = value
 			elif isinstance(elements[element],dict):
-				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,func=func)
+				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
 			else:
 				i[e[index]] = value
 		except Exception as exception:
@@ -600,7 +600,10 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 	elif ((scale is None) or
 		  (not any(i in ['log','symlog'] for i in scale))):
 	
-		err = err
+		if allclose(err,0):
+			err = None
+		else:
+			err = err
 	
 	elif ((not isinstance(scale,str) and any(i in ['log','symlog'] for i in scale))):		
 		if isinstance(err,scalars):
@@ -635,6 +638,33 @@ def set_err(err=None,value=None,scale=None,**kwargs):
 		err = np.abs(err)
 
 	return err
+
+
+def get_children(obj,attr):
+	'''
+	Return all children of attribute from obj
+	Args:
+		obj (object): Object instance
+		attr (str): attribute
+	Yields:
+		children (object): Children instances
+	'''
+	if attr in ['legendHandles']:
+
+		try:
+			tree = obj._legend_box.get_children()[1]
+			for column in tree.get_children():
+				for row in column.get_children():
+					for i in row.get_children()[0].get_children():
+						yield i
+		except:
+			tree = getattr(obj,attr,[])
+			for i in tree:
+				yield i
+	else:
+		tree = getattr(obj,attr,[])
+		for i in tree:
+			yield i
 
 
 def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=None):
@@ -938,7 +968,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							func = funcs.get(handler)
 							if func is not None:
 								handler_map.update({types: func[types](**handlers[handler]) for types in func if isinstance(_obj,types)})
-
 				if kwargs[attr].get('join') is not None:
 					n = min(len(handles),len(labels))
 					k = kwargs[attr].get('join',1)
@@ -951,7 +980,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					ncol = kwargs[attr].get('ncol',1)
 					flip = lambda items,n: list(itertools.chain(*[items[i::n] for i in range(n)]))
 					handles,labels = flip(handles,ncol),flip(labels,ncol)
-
 				if kwargs[attr].get('keep') is not None:
 					keep = kwargs[attr]['keep']
 					unique = list(sorted(set(labels),key=lambda i: labels.index(i)))
@@ -971,19 +999,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 								index.append(k)
 							else:
 								index.append(k)
-
 						if index is not None:
 							labels,handles = [labels[i[j]] for i,j in zip(indexes,index)],[handles[i[j]] for i,j in zip(indexes,index)]
-
 				if kwargs[attr].get('multiline') is True:
 					pass
+
 
 				if ('handles' in kwargs[attr]) and (not kwargs[attr]['handles']):
 					handles = []
 				if ('labels' in kwargs[attr]) and (not kwargs[attr]['labels']):
 					labels = []
 				kwargs[attr].update(dict(zip(['handles','labels','handler_map'],[handles,labels,handler_map])))
-
 				_kwds.update({
 					'set_zorder':kwargs[attr].get('set_zorder',{'level':100}),
 					'set_title':{
@@ -1007,7 +1033,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					))
 
 				nullkwargs.extend(['prop','join','flip','update','keep','multiline','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','title','get_title','get_texts','set_label'])
-
 
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
@@ -1516,7 +1541,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 										getattr(_subattr_,l)(**_kwds[k][l])
 							except:
 								try:
-									for _subattr_ in getattr(_attr_,a):
+									for _subattr_ in get_children(_attr,a):
 										for l in _kwds[k]:
 											for i in _kwds[k][l]:
 												getattr(_subattr_,l)(i)
@@ -1695,7 +1720,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		for key in y:
 
 			_settings = load(PATHS['plot'])
-			setter(_settings,settings[key],func=True)
+			setter(_settings,settings[key],default=True)
 
 			_settings['style'].update({
 				'layout':{kwarg:settings[key]['style'].get('layout',{}).get(kwarg,_defaults['style']['layout'][kwarg])
@@ -1715,7 +1740,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if attr in _settings:
 					_settings[attr].update(settings[key][attr])
 
-			setter(settings[key],_settings,func=True)
+			setter(settings[key],_settings,default=True)
 
 		for key in settings:
 			settings[key].update({k:defaults[k] 
