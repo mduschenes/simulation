@@ -73,7 +73,7 @@ If a single model instance is to be optimized with `src/train.py`, then `optimiz
 
 If multiple model instances are to be run with `src/run.py`, then the `jobs` fields are also required. 
 
-If postprocessing is to be run with `src/process.py`, then `process.json` and `plot/json` are required, or settings from the `process`,`plot` fields.
+If postprocessing is to be run with `src/process.py`, then `process.json` and `plot.json` are required, or loaded settings from the `process`,`plot` fields.
 
 ## Run
 Under `build`, please run 
