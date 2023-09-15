@@ -1,9 +1,7 @@
 {
 "cls":{
 	"model":"src.quantum.Channel",
-	"parameters":"src.parameters.Parameters",
 	"label":"src.quantum.Label",
-	"noise":"src.quantum.Noise",
 	"state":"src.quantum.State",
 	"callback":"src.quantum.Callback"
 	},
