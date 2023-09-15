@@ -49,7 +49,7 @@ The numpy backend can be set with the environment variable (with any case)
 
 `NUMPY_BACKEND=<jax,autograd,numpy>`
 
-where the default backend is jax, and the numpy backend does not offer automatic differentiation.
+where the default backend is `jax`, and the `numpy` backend does not offer automatic differentiation.
 
 ## Settings
 Settings files `settings.json` are used to configure model, optimization, and job settings, and to define all permutations of settings intended to be run. The files should have the following fields:
@@ -73,7 +73,7 @@ If a single model instance is to be optimized with `src/train.py`, then `optimiz
 
 If multiple model instances are to be run with `src/run.py`, then the `jobs` fields are also required. 
 
-If postprocessing is to be run with `src/process.py`, then `process.json` and `plot/json` are required, or settings from the `process`,`plot` fields.
+If postprocessing is to be run with `src/process.py`, then `process.json` and `plot.json` are required, or loaded settings from the `process`,`plot` fields.
 
 ## Run
 Under `build`, please run 

@@ -23,7 +23,7 @@ from src.iterables import setter,getter,getattrs,hasattrs,namespace,permutations
 
 from src.io import load,dump,join,split
 
-from src.system import Dictionary,System,Space,Time,Lattice
+from src.system import Dict,Dictionary,System,Space,Time,Lattice
 
 from src.parameters import Parameters,Parameter
 
@@ -2821,3 +2821,35 @@ class Callback(System):
 		return status
 
 
+
+
+def main(settings,*args,**kwargs):
+
+	default = {}
+	if settings is None:
+		settings = default
+	elif isinstance(settings,str):
+		settings = load(settings,default=default)
+
+	settings = Dict(settings)
+
+	model = load(settings.cls.model)
+	system = settings.system
+	model = model(**{**settings.model,**dict(system=system)})
+
+	parameters = model.parameters()
+
+	obj = model(parameters=parameters)
+
+	return
+
+
+if __name__ == '__main__':
+
+	arguments = 'settings'
+
+	from src.utils import argparser
+
+	args = argparser(arguments)
+
+	main(*args,**args)
