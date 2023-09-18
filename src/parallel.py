@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,copy,warnings,functools,itertools,inspect,timeit
+import os,sys,warnings,functools,itertools,inspect,timeit
 import numpy as np
+from copy import deepcopy as copy
 from functools import partial
 
 # import multiprocess as mp
@@ -201,7 +202,7 @@ def empty(obj,*attrs):
 	for attr in inspect.getmembers(obj):
 		attr = attr[0]
 		if attr in attrs:
-			setattr(newobj,attr,copy.deepcopy(getattr(obj,attr)))
+			setattr(newobj,attr,copy(getattr(obj,attr)))
 	newobj.__dict__.update({attr: obj.__dict__.get(attr) 
 						   for attr in attrs if not getattr(newobj,attr,False)})
 	return newobj

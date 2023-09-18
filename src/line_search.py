@@ -10,7 +10,7 @@ import scipy as osp
 
 ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
-BACKENDS = ['jax','autograd','jax.autograd']
+BACKENDS = ['jax','autograd','jax.autograd','numpy']
 
 BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
 
@@ -19,6 +19,7 @@ assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
 if BACKEND in ['jax','jax.autograd']:
 
 	envs = {
+		'JAX_PLATFORMS':'cpu',
 		'JAX_PLATFORM_NAME':'cpu',
 		'TF_CPP_MIN_LOG_LEVEL':5
 	}
@@ -29,9 +30,21 @@ if BACKEND in ['jax','jax.autograd']:
 	import jax
 	import jax.numpy as np
 	import jax.scipy as sp
-	
+
 	import scipy.optimize
 	from scipy.optimize import minpack2 as minpack2
+
+	import absl.logging
+	absl.logging.set_verbosity(absl.logging.INFO)
+
+	configs = {
+		'jax_disable_jit':False,
+		'jax_platforms':'cpu',
+		'jax_platform_name':'cpu',
+		'jax_enable_x64': True
+		}
+	for name in configs:
+		jax.config.update(name,configs[name])
 
 elif BACKEND in ['autograd']:
 
@@ -43,13 +56,21 @@ elif BACKEND in ['autograd']:
 	import scipy.optimize
 	from scipy.optimize import minpack2 as minpack2
 
+elif BACKEND in ['numpy']:
+
+	import numpy as np
+	import scipy as sp
+
+	import scipy.optimize
+	from scipy.optimize import minpack2 as minpack2
+
 __all__ = ['LineSearchWarning', 'line_search_wolfe1', 'line_search_wolfe2',
 		   'scalar_search_wolfe1', 'scalar_search_wolfe2',
 		   'armijo']
 
 if BACKEND in ['jax','jax.autograd']:
 
-	def setitem(obj,index,item):
+	def inplace(obj,index,item):
 		'''
 		Set item at index of object
 		Args:
@@ -67,10 +88,10 @@ if BACKEND in ['jax','jax.autograd']:
 		return obj
 
 
-elif BACKEND in ['autograd']:
+elif BACKEND in ['autograd','numpy']:
 
 
-	def setitem(obj,index,item):
+	def inplace(obj,index,item):
 		'''
 		Set item at index of object
 		Args:
@@ -552,10 +573,10 @@ def _cubicmin(a, fa, fpa, b, fb, c, fc):
 		denom = (db * dc) ** 2 * (db - dc)
 		d1 = np.empty((2, 2))
 	
-		d1 = setitem(d1,(0,0),dc ** 2)
-		d1 = setitem(d1,(0,1),-db ** 2)
-		d1 = setitem(d1,(1,0),-dc ** 3)
-		d1 = setitem(d1,(1,1),db ** 3)
+		d1 = inplace(d1,(0,0),dc ** 2)
+		d1 = inplace(d1,(0,1),-db ** 2)
+		d1 = inplace(d1,(1,0),-dc ** 3)
+		d1 = inplace(d1,(1,1),db ** 3)
 
 		[A, B] = np.dot(d1, np.asarray([fb - fa - C * db,
 										fc - fa - C * dc]).flatten())

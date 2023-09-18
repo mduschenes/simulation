@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools
-from copy import deepcopy
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -10,7 +9,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import prng,delim,union,is_equal
+from src.utils import copy,prng,delim,union,is_equal
 from src.iterables import getter,setter,permuter,search
 from src.io import load,dump,join,split
 from src.call import launch
@@ -65,7 +64,6 @@ def setup(settings):
 
 	# Load default settings
 	default = {}
-	func = False
 	if settings is None:
 		defaults = path
 		settings = default
@@ -75,10 +73,10 @@ def setup(settings):
 	else:
 		settings = default
 
-	setter(settings,load(path,default=default),func=func)
+	setter(settings,load(path,default=default),default=False)
 
 	# Load default hyperparameters
-	default = deepcopy(settings)
+	default = copy(settings)
 	hyperparameters = settings['hyperparameters'] if settings.get('hyperparameters') is not None else default
 
 	if hyperparameters is None:
@@ -89,8 +87,7 @@ def setup(settings):
 		hyperparameters = default
 
 	default = {}
-	func = False
-	setter(hyperparameters,load(path,default=default),func=func)
+	setter(hyperparameters,load(path,default=default),default=False)
 
 	# Get permutations of hyperparameters
 	permutations = settings['permutations'].get('permutations')
@@ -188,10 +185,10 @@ def setup(settings):
 					keys[key][attr] = {seedling: seedlings[seedling].index(keys[key][seedling]) for seedling in seedlings}
 
 	# Set settings with key and seed instances
-	settings = {key: deepcopy(settings) for key in keys}
+	settings = {key: copy(settings) for key in keys}
 
 	# Set hyperparameters with key and seed instances
-	hyperparameters = {key: deepcopy(hyperparameters) for key in keys}
+	hyperparameters = {key: copy(hyperparameters) for key in keys}
 
 	for key in keys:
 		setter(settings[key],keys[key],delimiter=delim,copy=True)

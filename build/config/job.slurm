@@ -93,7 +93,12 @@ conda activate ${JOB_ENV} &>/dev/null 2>&1
 # source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
-CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
+if ([ ! -z ${JOB_SRC} ] && [ ! -z ${JOB_CMD} ])
+then
+	CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
+else
+	CMD=(${JOB_ARGS[@]})
+fi
 CMD=($(echo ${CMD[@]/\~/"${HOME}"} | envsubst))
 
 # Processes

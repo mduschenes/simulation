@@ -132,8 +132,6 @@ if __name__ == '__main__':
 	tol = 5e-8 
 	# test_objective(path,tol)
 	# test_optimizer(path,tol)
-	# test_getter(path,tol)
-	# test_setter(path,tol)
 	# test_scinotation(path,tol)
 	# test_gradient(path,tol)
 	test_err(path,tol)

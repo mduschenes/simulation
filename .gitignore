@@ -31,5 +31,11 @@ build/unconstrained.py
 build/settings.tmp.json
 build/new
 build/plots
+keep
+**/*test.json
 setup/requirements.txt.*.*
 test/config/settings.*.json
+src/wip
+build/qiskit
+build/exp
+build/settings.exp.json

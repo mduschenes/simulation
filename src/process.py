@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools,warnings,traceback
-from copy import deepcopy
 from functools import partial,wraps
 import numpy as np
 import scipy as sp
@@ -11,7 +10,6 @@ import scipy.special
 import pandas as pd
 from pandas.api.types import is_float_dtype
 from natsort import natsorted,realsorted
-from math import prod
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -19,11 +17,11 @@ PATHS = ['','..','../..','../../lib']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser
-from src.utils import array,expand_dims,conditions
+from src.utils import argparser,copy
+from src.utils import array,expand_dims,conditions,prod
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
-from src.iterables import getter,setter,search,inserter,indexer
+from src.iterables import search,inserter,indexer
 from src.system import Dict
 from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
@@ -47,11 +45,13 @@ INDEXDIM = len(INDEXES)
 AXISDIM = GRIDDIM - 1 - LAYOUTDIM
 
 class GroupBy(object):
-	def __init__(self,df,by=[]):
+	def __init__(self,df,by=[],**kwargs):
 		'''
 		Null groupby wrapper for dataframe
 		Args:
 			df (dataframe): dataframe
+			by (iterable[str,tuple]): Attributes to group by
+			kwargs (dict): Additional keyword arguments for groupby
 		'''
 		class grouper(object):
 			def __init__(self,by):
@@ -101,6 +101,177 @@ def Texify(string,texify={},usetex=True):
 			string = None
 
 	return string
+
+def copier(key,value,copy):
+	'''
+	Copy value based on associated key 
+
+	Args:
+		key (string): key associated with value to be copied
+		value (object): data to be copied
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+	Returns:
+		Copy of value
+	'''
+
+	# Check if copy is a dictionary and key is in copy and is True to copy value
+	if ((not copy) or (isinstance(copy,dict) and (not copy.get(key)))):
+		return value
+	else:
+		return deepcopy(value)
+
+
+
+
+
+def setter(iterable,elements,delimiter=False,copy=False,reset=False,clear=False,default=None):
+	'''
+	Set nested value in iterable with nested elements keys
+	Args:
+		iterable (dict): dictionary to be set in-place with value
+		elements (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
+		clear (bool): boolean of whether to clear iterable when the element's value is an empty dictionary
+		default(callable,None,bool,iterable): Callable function with signature default(key_iterable,key_elements,iterable,elements) to modify value to be updated based on the given dictionaries, or True or False to default to elements or iterable values, or iterable of allowed types
+	'''
+
+	if (not isinstance(iterable,(dict,list))) or (not isinstance(elements,dict)):
+		return
+
+	# Setup default as callable
+	if default is None:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+	elif default is True:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements)
+	elif default is False:
+		func = lambda key_iterable,key_elements,iterable,elements: iterable.get(key_iterable,elements.get(key_elements))
+	elif default in ['none','None']:
+		func = lambda key_iterable,key_elements,iterable,elements: elements.get(key_elements) if iterable.get(key_iterable,elements.get(key_elements)) is None else iterable.get(key_iterable,elements.get(key_elements))
+	elif not callable(default):
+		types = tuple(default)
+		def func(key_iterable,key_elements,iterable,elements,types=types): 
+			i = iterable.get(key_iterable,elements.get(key_elements))
+			e = elements.get(key_elements,i)
+			return e if isinstance(e,types) else i
+	else:
+		func = default
+
+	# Clear iterable if clear and elements is empty dictionary
+	if clear and elements == {}:
+		iterable.clear()
+
+	# Set nested elements
+	for element in elements:
+
+		# Get iterable, and index of tuple of nested element key
+		i = iterable
+		index = 0
+
+		# Convert string instance of elements to list, splitting string based on delimiter delimiter
+		try:
+			if (
+				(isinstance(element,str) and delimiter) and 
+				(element not in iterable)):
+				#((element.count(delimiter)>0) and ((element not in iterable)) or (element.split(delimiter)[0] in iterable))):
+				# e = element.split(delimiter)
+
+				e = []
+				_element = element.split(delimiter)
+				_iterable = iterable
+				while _element and isinstance(_iterable,dict):
+					for l in range(len(_element),-1,-1):
+						_e = delimiter.join(_element[:l])
+
+						if _e in _iterable:
+							_iterable = _iterable.get(_e)
+							e.append(_e)
+							_element = _element[l:]
+							break
+					if l == 0:
+						e.extend(_element)
+						break
+				e = tuple(e)
+
+			elif is_iterable(element,exceptions=scalars):
+				e = tuple(element)
+			else:
+				e = tuple((element,))
+
+			# Update iterable with elements 
+			while index<(len(e)-1):
+				if isinstance(i,list):
+					if (e[index] >= len(i)):
+						i.extend([[] if isinstance(e[index+1],int) else {} for j in range(e[index]-len(i)+1)])
+				elif (isinstance(i,dict) and (not isinstance(i.get(e[index]),(dict,list)))):
+					i[e[index]] = [] if isinstance(e[index+1],int) else {}
+				i = i[e[index]]
+				index+=1
+
+			# try:
+			value = copier(element,func(e[index],element,i,elements),copy)
+
+			if isinstance(i,list) and (e[index] >= len(i)):
+				i.extend([{} for j in range(e[index]-len(i)+1)])
+
+			if reset:
+				i[e[index]] = value
+			elif e[index] not in i or not isinstance(i[e[index]],(dict,list)):
+				i[e[index]] = value
+			elif isinstance(elements[element],dict):
+				setter(i[e[index]],elements[element],delimiter=delimiter,copy=copy,reset=reset,clear=clear,default=default)
+			else:
+				i[e[index]] = value
+		except Exception as exception:
+			pass
+
+	return
+
+
+def getter(iterable,elements,default=None,delimiter=False,copy=False):
+	'''
+	Get nested value in iterable with nested elements keys
+
+	Args:
+		iterable (dict): dictionary of values
+		elements (str,iterable[str]): delimiter separated string or list to nested keys of location to get value
+		default (object): default data to return if elements not in nested iterable
+		delimiter (bool,str,None): boolean or None or delimiter on whether to split string elements into list of nested keys
+		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
+	Returns:
+		value (object): Value at nested keys elements of iterable
+	'''	
+
+	# Convert string instance of elements to list, splitting string based on delimiter delimiter
+	if isinstance(elements,str):
+		if delimiter and (elements not in iterable):
+			elements = elements.split(delimiter)
+		else:
+			elements = [elements]
+
+	# Get nested element if iterable, based on elements
+	if not isinstance(elements,(list,tuple)):
+		# elements is object and value is to be got from iterable at first level of nesting
+		try:
+			return copier(elements,iterable[elements],copy)
+		except:
+			return default
+	elif not elements:
+		return copier(elements,iterable,copy)
+	else:
+		# elements is list of nested keys and the nested values are to be extracted from iterable
+		try:
+			i = iterable
+			e = 0
+			while e<len(elements):
+				i = i[elements[e]]
+				e+=1			
+			return copier(elements[e-1],i,copy)
+		except:
+			return default
+
+	return default
 
 
 def Valify(value,valify={},useval=True):
@@ -189,7 +360,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 
 		for subinstance in settings[instance]:
 			
-			setter(settings[instance][subinstance],defaults,delimiter=delim,func=False)
+			setter(settings[instance][subinstance],defaults,delimiter=delim,default=False)
 
 			if not settings[instance][subinstance].get(obj):
 				continue
@@ -212,7 +383,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		'process':None,
 		'postprocess':None,
 		}
-	setter(hyperparameters,defaults,delimiter=delim,func=False)
+	setter(hyperparameters,defaults,delimiter=delim,default=False)
 
 	# Get paths
 	path = data if isinstance(data,str) else None
@@ -221,7 +392,7 @@ def setup(data,settings,hyperparameters,pwd=None,cwd=None,verbose=None):
 		'data': 	join(cwd,join(split(path,file=True),ext='tmp'),ext='hdf5'),
 		'metadata': join(cwd,join(split(path,file=True),ext=None),ext='json'),
 	}
-	setter(hyperparameters['path'],defaults,delimiter=delim,func=False)
+	setter(hyperparameters['path'],defaults,delimiter=delim,default=False)
 	for attr in hyperparameters['path']:
 		hyperparameters['directory'][attr] = cwd
 		hyperparameters['file'][attr],hyperparameters['ext'][attr] = split(
@@ -367,8 +538,7 @@ def find(dictionary,verbose=None):
 				else:
 					keys[name][attr] = {attr: keys[name][attr]}
 
-				setter(keys[name][attr],defaults,delimiter=delim,func=False)
-
+				setter(keys[name][attr],defaults,delimiter=delim,default=False)
 			
 			else:
 				if not keys[name][attr]:
@@ -713,7 +883,7 @@ def analyse(data,analyses=None,verbose=None):
 			else:
 				args = []
 
-			args = deepcopy(args)
+			args = copy(args)
 
 			for attrs in args:
 				if analysis in ['zscore','quantile','slice','parse']:
@@ -791,20 +961,20 @@ def loader(data,settings,hyperparameters,verbose=None):
 						labels = {attr: data[OTHER][attr] for attr in data[OTHER]}
 				else:
 					labels = {attr: None for attr in data[OTHER]}
-				
 				k = None
+
 				for j in range(len(iterable.get(key_iterable))):
+
 					if all((
 						all(datum[OTHER][attr]['label']==axes[attr] for attr in axes) and 
 						(len(datum[OTHER][OTHER][OTHER]) == len(labels)) and
 						all(datum[OTHER][OTHER][OTHER][attr]==labels[attr] for attr in labels)
 						)
-						for datum in search(iterable.get(key_iterable)[j]) if datum):
+						for datum in search(iterable.get(key_iterable)[j]) if datum and all(datum[OTHER].get(attr) is not None for attr in axes)):
 						if k is not None:
 							k = True
 							break
 						k = j
-
 
 				if k is None:
 					continue
@@ -866,10 +1036,10 @@ def loader(data,settings,hyperparameters,verbose=None):
 		new = exists(path) and tmp is not None
 
 		if new:
-			new = deepcopy(settings)
+			new = copy(settings)
 			settings.update(tmp)
 			tmp = new
-			setter(settings,tmp,func=func)
+			setter(settings,tmp,default=func)
 
 	else:
 
@@ -983,6 +1153,17 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
 	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
+	updates = {
+		'nan':Dict(
+			boolean=lambda attr,data: data[attr].isna().all(),
+			func = lambda attr,data: 'none'
+			)
+		}
+	for update in updates:
+		for attr in data:
+			if updates[update].boolean(attr,data):
+				data[attr] = updates[update].func(attr,data)
+
 	dtype = {attr: 'float' for attr in data if is_float_dtype(data[attr].dtype)}	
 	data = data.astype(dtype)
 
@@ -996,7 +1177,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		if any((keys[name][axes] not in data) and (keys[name][axes] is not null) for axes in AXES if axes in keys[name]):
 			key,value = name,None
-			setter(settings,{key:value},delimiter=delim,func=True)
+			setter(settings,{key:value},delimiter=delim,default=True)
 			continue
 
 		dimensions = [axes for axes in AXES if axes in keys[name]]
@@ -1011,7 +1192,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		kwargs = keys[name][other].get('kwargs',None)
 
 
-		funcs = deepcopy(funcs)
+		funcs = copy(funcs)
 		stat = 'stat'
 		stats = {axes: {'':'mean','err':'std'} for axes in dimensions}
 		functions = {
@@ -1120,10 +1301,10 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		if not by:
 			key,value = name,None
-			setter(settings,{key:value},delimiter=delim,func=True)
+			setter(settings,{key:value},delimiter=delim,default=True)
 			continue
 
-		groups = data[boolean].groupby(by=by,as_index=False)
+		groups = data[boolean].groupby(by=by,as_index=False,dropna=False)
 
 		properties = {}
 		variables = independent
@@ -1136,7 +1317,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 			properties[prop] = {grouping: Dict({attr: getattr(properties[prop][grouping],attr) for attr in ['shape','size','ndim'] if hasattr(properties[prop][grouping],attr)}) for grouping in properties[prop]}
 
 		if analyses:
-			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False)
+			groups = groups.apply(analyse,analyses=analyses,verbose=verbose).reset_index(drop=True).groupby(by=by,as_index=False,dropna=False)
 
 		shapes = {prop: tuple(((min(properties[prop][grouping].shape[i] for grouping in properties[prop]),
 								max(properties[prop][grouping].shape[i] for grouping in properties[prop]))
@@ -1167,9 +1348,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		groups = groups.agg(agg).droplevel(**droplevel).astype(dtype)
 
 		if by:
-			groups = groups.groupby(by=by,as_index=False)
+			groups = groups.groupby(by=by,as_index=False,dropna=False)
 		else:
-			groups = GroupBy(groups,by=by)
+			groups = GroupBy(groups,by=by,as_index=False,dropna=False)
 
 		assert all(groups.get_group(group).columns.nlevels == 1 for group in groups.groups) # Possible future broken feature agg= (label,name)
 
@@ -1179,9 +1360,9 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 			for j,function in enumerate(funcs):
 
 				grouping = groups.get_group(group)
-				
+
 				key = (*name[:-3],i,j,*name[-1:])
-				value = deepcopy(getter(settings,name,delimiter=delim))
+				value = copy(getter(settings,name,delimiter=delim))
 
 				source = [attr for attr in data if attr not in variables]
 				destination = other
@@ -1229,9 +1410,8 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 						else:
 							value[destination] = None
-
-
-				setter(settings,{key:value},delimiter=delim,func=True)
+						
+				setter(settings,{key:value},delimiter=delim,default=True)
 
 		for attr in tmp:
 			if tmp[attr] is None:
@@ -1279,6 +1459,25 @@ def plotter(settings,hyperparameters,verbose=None):
 
 						if data is None:
 							continue
+
+
+						if OTHER in data and OTHER in data[OTHER]:
+							
+							wrappers = data[OTHER][OTHER].get('wrapper')
+							if wrappers is None:
+								wrappers = {}
+							else:
+								wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr not in ALL}
+
+
+							for attr in data[OTHER]:
+								if wrappers.get(attr):
+									value = {
+										**{attr: data[OTHER][attr] for attr in data[OTHER]},
+										**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
+										}
+									value = wrappers[attr](value)
+									data[OTHER][attr] = value
 
 						dimensions = [axes for axes in AXES if axes in data]
 						independent = [axes for axes in ALL 
@@ -1450,8 +1649,8 @@ def plotter(settings,hyperparameters,verbose=None):
 				
 				key = delim.join([subinstance,*[str(i) for i in position]])
 				
-				settings[instance][key] = deepcopy(settings[instance][subinstance])
-				grid[instance][key] = deepcopy(grid[instance][subinstance])[:LAYOUTDIM]
+				settings[instance][key] = copy(settings[instance][subinstance])
+				grid[instance][key] = copy(grid[instance][subinstance])[:LAYOUTDIM]
 
 				for axis in itertools.product(*(range(i) for i in grid[instance][subinstance][LAYOUTDIM:LAYOUTDIM+AXISDIM])):
 
@@ -1460,7 +1659,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						if prop not in settings[instance][subinstance][obj]:
 							continue
 						
-						for index,shape,data in search(deepcopy(settings[instance][subinstance][obj][prop]),returns=True):
+						for index,shape,data in search(copy(settings[instance][subinstance][obj][prop]),returns=True):
 						
 							if not data:
 								continue
@@ -1510,7 +1709,7 @@ def plotter(settings,hyperparameters,verbose=None):
 
 		for index,subinstance in enumerate(settings[instance]):
 			
-			sublayout = deepcopy(layout[instance])
+			sublayout = copy(layout[instance])
 
 			index = sublayout['index']-1 if sublayout['index'] is not None else index
 			nrow = (index - index%sublayout['ncols'])//sublayout['ncols']
@@ -1740,7 +1939,7 @@ def plotter(settings,hyperparameters,verbose=None):
 						if (prop in PLOTS) and (attr in [*ALL,OTHER]):
 							continue
 
-						value = deepcopy(data[attr])
+						value = copy(data[attr])
 
 						if value is None:
 							continue
@@ -2130,13 +2329,13 @@ def plotter(settings,hyperparameters,verbose=None):
 						continue
 
 					slices = []
-					subslices = deepcopy([data[OTHER][OTHER].get('slice'),data[OTHER][OTHER].get('labels')])
+					subslices = copy([data[OTHER][OTHER].get('slice'),data[OTHER][OTHER].get('labels')])
 					for subslice in subslices:
 						if subslice is None:
 							subslice = [slice(None)]
 						elif isinstance(subslice,dict):
 							for axes in list(subslice):
-								if (axes not in data) and (not any(data[OTHER][subaxis]['label']==axes for subaxis in ALL if subaxis in data[OTHER])):
+								if subslice[axes] is None or ((axes not in data) and (not any(data[OTHER][subaxis]['label']==axes for subaxis in ALL if subaxis in data[OTHER]))):
 									subslice.pop(axes)
 
 							if subslice:
@@ -2191,6 +2390,13 @@ def plotter(settings,hyperparameters,verbose=None):
 
 						value = data[attr]
 
+						if wrappers.get(attr):
+							value = wrappers[attr]({
+								**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
+								**{attr: data[OTHER][attr] for attr in data[OTHER]},
+								})
+
+
 						if attr in [OTHER]:
 						
 							if value[OTHER].get('labels') is not None:
@@ -2205,12 +2411,6 @@ def plotter(settings,hyperparameters,verbose=None):
 								continue							
 
 							value = np.array(value)
-
-							if wrappers.get(attr):
-								value = wrappers[attr]({
-									**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in ALL},
-									**{attr: data[OTHER][attr] for attr in data[OTHER]},
-									})
 
 							if normalize.get(attr):
 								value = normalize[attr](attr,data)

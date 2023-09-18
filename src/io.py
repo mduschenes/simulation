@@ -3,7 +3,6 @@
 # Import python modules
 import os,sys,warnings,itertools,inspect,traceback,datetime,re
 import shutil
-from copy import deepcopy
 import glob as globber
 import importlib
 import json,jsonpickle,h5py,pickle,dill
@@ -218,7 +217,7 @@ def rm(path):
 	return
 
 
-def copy(source,destination):
+def cp(source,destination):
 	'''
 	Copy paths
 	Args:
@@ -319,6 +318,85 @@ def join(*paths,ext=None,abspath=False,delimiter='.',root=None):
 	if path is not None and abspath:
 		path = os.path.abspath(path)
 	return path
+
+def scan(path,pattern=None,**kwargs):
+	'''
+	Recursively search for paths
+	Args:
+		path (str): Path
+		pattern (str): Pattern of paths to search
+		kwargs (dict): Keyword arguments for searching paths
+	Yields:
+		path (str): Path matching pattern
+	'''
+	for path in os.scandir(path):
+		recursive = path.is_dir(**kwargs)
+		path = path.path
+		if recursive:
+			yield from scan(path,pattern=pattern,**kwargs)
+		elif contains(path,pattern):
+			yield path
+
+def wildcard(path,pattern='*'):
+	'''
+	Get base directory with pattern
+	Args:
+		path (str): Path
+		pattern (str): Pattern of sub-directories
+	Returns:
+		path (str): Path of base directory
+	'''
+	while pattern in os.path.basename(path):
+		path = os.path.dirname(path)
+	if not path:
+		path = '.'
+	return path
+			
+def glob(path,include=None,recursive=False,default=None,**kwargs):
+
+	'''
+	Expand path
+	Args:
+		path (str): Path to expand
+		include (str,callable): Type of paths to expand, allowed ['directory','file'] or callable with signature include(path)
+		recursive (bool,str): Recursively find all included paths below path, or expander strings ['*','**']
+		default (str): Default path to return
+		kwargs (dict): Additional glob keyword arguments
+	Yields:
+		path (str): Expanded, absolute paths
+	'''
+
+
+	if include in ['file']:
+		include = os.path.isfile
+	elif include in ['directory']:
+		include = os.path.isdir
+	elif isinstance(include,str):
+		include = lambda path,include=include: contains(path,include)
+
+	if not isinstance(recursive,str):
+		if recursive:
+			recursive = '**'
+		else:
+			recursive = None
+
+	path = join(path,recursive)
+
+	path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
+
+	path,pattern = os.path.dirname(path),os.path.basename(path)
+	path = wildcard(path)
+
+	if ('*' not in path) and (not exists(path)):
+		path = (path for path in [default])
+	else:
+		path = scan(path,pattern=pattern,**kwargs)
+		# path = globber.iglob(path,recursive=True,**kwargs)
+
+	if include is not None:
+		path = natsorted(filter(include,path))
+
+	yield from path
 
 
 def glob(path,include=None,recursive=False,default=None,**kwargs):
@@ -766,10 +844,10 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	data = wrapper(data)
 
-	if isinstance(args['path'],str) and (args['wrapper'] in [None,'pd']):
+	if isinstance(args['path'],str) and (args['wrapper'] in [None,'pd'] or callable(args['wrapper'])):
 		name = list(data)[-1]
 		data = data[name]
-	elif not isinstance(args['path'],dict) and (args['wrapper'] in [None,'pd']):
+	elif not isinstance(args['path'],dict) and (args['wrapper'] in [None,'pd'] or callable(args['wrapper'])):
 		data = [data[name] for name in data]
 	else:
 		pass
