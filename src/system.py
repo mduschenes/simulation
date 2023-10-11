@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools,functools,datetime,shutil,traceback
-from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
 import atexit
@@ -26,7 +25,7 @@ from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_rea
 from src.utils import itg,dbl,flt,delim,Null,null,scalars,arrays
 
 from src.iterables import getter,setter
-from src.io import join,split,copy,rm,exists
+from src.io import join,split,rm,exists
 from src.logger import Logger
 
 
@@ -55,8 +54,8 @@ class Dict(Dictionary):
 				kwargs.update(arg)
 
 		for key in kwargs:
-			if isinstance(kwargs[key],dict):
-				kwargs[key] = Dict(kwargs[key])
+			if isinstance(kwargs[key],dict) and all(isinstance(attr,str) for attr in kwargs[key]):
+				kwargs[key] = Dict(kwargs[key]) if not isinstance(kwargs[key],Dictionary) else kwargs[key]
 
 		super().__init__(**kwargs)
 
@@ -117,7 +116,7 @@ class System(Dictionary):
 
 		updates(kwargs,defaults)
 		
-		setter(kwargs,defaults,delimiter=delim,func=False)
+		setter(kwargs,defaults,delimiter=delim,default=False)
 
 		super().__init__(**kwargs)
 
@@ -210,7 +209,7 @@ class Space(System):
 	'''
 	def __init__(self,N,D,space,system=None,**kwargs):
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		self.N = N
@@ -257,13 +256,13 @@ class Space(System):
 			self.space = self.space.space
 		if self.space is None:
 			self.space = self.default
-	
+
 		self.funcs = funcs.get(self.space,funcs[self.default])
 		self.funcs = {attr: wrapper(self.funcs[attr],dtypes.get(attr)) for attr in self.funcs}
 
 		self.__string__()
 		self.__size__()
-	
+
 		return
 
 	def __string__(self):
@@ -303,7 +302,7 @@ class Time(System):
 	'''
 	def __init__(self,M,T,tau,P,time,system=None,**kwargs):
 
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		self.M = M
@@ -395,7 +394,7 @@ class Lattice(System):
 	def __init__(self,N,d,L=None,delta=None,lattice='square',system=None,**kwargs):
 
 		# Define system
-		setter(kwargs,system,delimiter=delim,func=False)
+		setter(kwargs,system,delimiter=delim,default=False)
 		super().__init__(**kwargs)
 
 		wrapper = lambda func,dtype: (lambda *args,**kwargs: array(func(*args,**kwargs),dtype=dtype).item())

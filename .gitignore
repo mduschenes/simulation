@@ -34,9 +34,8 @@ build/plots
 keep
 **/*test.json
 setup/requirements.txt.*.*
-<<<<<<< HEAD
-test/config/settings.*.json
-=======
 test/config/settings.*.json
 src/wip
->>>>>>> exp
+build/qiskit
+build/exp
+build/settings.exp.json

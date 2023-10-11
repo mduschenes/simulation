@@ -84,11 +84,8 @@
 		},
 	"track":{}	
 	},
-"parameters":{}
-	},
 "label": {},
 "state": {},	
-"noise": {},
 "jobs":{
 	"preprocess":null,
 	"job":{

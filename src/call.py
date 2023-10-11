@@ -3,7 +3,6 @@
 # Import python modules
 import os,sys,warnings,itertools,inspect,traceback,datetime
 from functools import partial
-from copy import deepcopy
 import subprocess
 from natsort import natsorted
 
@@ -13,7 +12,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import intersection,scalars
+from src.utils import intersection,scalars,copy
 from src.io import cd,mkdir,join,split,load,dump,exists,environ,glob
 from src.iterables import setter
 from src.parallel import Parallelize,Pooler
@@ -992,8 +991,8 @@ def configure(paths,pwd=None,cwd=None,patterns={},env=None,process=None,processe
 
 		# Update and Dump files
 		if isinstance(data,dict) and execute:
-			data,source,destination = load(source),deepcopy(data),destination
-			setter(source,data,func=False)
+			data,source,destination = load(source),copy(data),destination
+			setter(source,data,default=False)
 			dump(source,destination)					
 		else:
 			cp(source,destination,default=path,execute=execute,verbose=verbose)

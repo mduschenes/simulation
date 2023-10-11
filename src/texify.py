@@ -1,5 +1,6 @@
 # Import python modules
-import os,sys,copy,itertools,re
+import os,sys,itertools,re
+from copy import deepcopy as copy
 import numpy as np
 DELIMITER = '__'
 
@@ -544,13 +545,13 @@ class Texify(object):
 			'''
 
 			if isinstance(variable,str):
-				variables = copy.deepcopy(list(args[variable]))
+				variables = copy(list(args[variable]))
 				for i,v in enumerate(variables):
 					for r in replacements:
 						variables[i] = variables[i].replace(r,replacements[r])
 				variables = {x: strings.get(x,args[variable].get(x)) for x in variables}
 			else:
-				variables = copy.deepcopy({v:[x for x in args[v]] for v in variable})
+				variables = copy({v:[x for x in args[v]] for v in variable})
 
 				for i,v in enumerate(variables):
 					for j,x in enumerate(variables[v]):
@@ -602,13 +603,13 @@ class Texify(object):
 			
 
 			if isinstance(variable,str):
-				variables = copy.deepcopy(list(args[variable]))
+				variables = copy(list(args[variable]))
 				for i,v in enumerate(variables):
 					for r in replacements:
 						variables[i] = variables[i].replace(r,replacements[r])
 				variables = {x: strings.get(x,args[variable].get(x)) for x in variables}
 			else:
-				variables = copy.deepcopy({v:[x for x in args[v]] for v in variable})
+				variables = copy({v:[x for x in args[v]] for v in variable})
 
 				for i,v in enumerate(variables):
 					for j,x in enumerate(variables[v]):
@@ -669,13 +670,13 @@ class Texify(object):
 
 
 			if isinstance(variable,str):
-				variables = copy.deepcopy(list(args[variable]))
+				variables = copy(list(args[variable]))
 				for i,v in enumerate(variables):
 					for r in replacements:
 						variables[i] = variables[i].replace(r,replacements[r])
 				variables = {x: strings.get(x,args[variable].get(x)) for x in variables}
 			else:
-				variables = copy.deepcopy({v:[x for x in args[v]] for v in variable})
+				variables = copy({v:[x for x in args[v]] for v in variable})
 
 				for i,v in enumerate(variables):
 					for j,x in enumerate(variables[v]):
@@ -723,13 +724,13 @@ class Texify(object):
 			'''
 
 			if isinstance(variable,str):
-				variables = copy.deepcopy(list(args[variable]))
+				variables = copy(list(args[variable]))
 				for i,v in enumerate(variables):
 					for r in replacements:
 						variables[i] = variables[i].replace(r,replacements[r])
 				variables = {x: strings.get(x,args[variable].get(x)) for x in variables}
 			else:
-				variables = copy.deepcopy({v:[x for x in args[v]] for v in variable})
+				variables = copy({v:[x for x in args[v]] for v in variable})
 
 				for i,v in enumerate(variables):
 					for j,x in enumerate(variables[v]):
@@ -777,13 +778,13 @@ class Texify(object):
 			'''
 
 			if isinstance(variable,str):
-				variables = copy.deepcopy(list(args[variable]))
+				variables = copy(list(args[variable]))
 				for i,v in enumerate(variables):
 					for r in replacements:
 						variables[i] = variables[i].replace(r,replacements[r])
 				variables = {x: strings.get(x,args[variable].get(x)) for x in variables}
 			else:
-				variables = copy.deepcopy({v:[x for x in args[v]] for v in variable})
+				variables = copy({v:[x for x in args[v]] for v in variable})
 
 				for i,v in enumerate(variables):
 					for j,x in enumerate(variables[v]):

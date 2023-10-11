@@ -11,6 +11,14 @@ def test_numpy(*args,**kwargs):
 	return
 
 def test_jax(*args,**kwargs):
+	import os
+	envs = {
+		'JAX_PLATFORMS':'cpu',
+		'JAX_PLATFORM_NAME':'cpu',
+		'TF_CPP_MIN_LOG_LEVEL':5
+	}
+	for var in envs:
+		os.environ[var] = str(envs[var])
 	import jax
 	import jax.numpy as jnp
 	print(jax.devices())
