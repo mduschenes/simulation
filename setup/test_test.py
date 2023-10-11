@@ -13,6 +13,7 @@ def test_numpy(*args,**kwargs):
 def test_jax(*args,**kwargs):
 	import os
 	envs = {
+		'JAX_PLATFORMS':'cpu',
 		'JAX_PLATFORM_NAME':'cpu',
 		'TF_CPP_MIN_LOG_LEVEL':5
 	}

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Import python modules
-import os,sys,itertools,warnings,copy,traceback
+import os,sys,itertools,warnings,traceback
 
 import matplotlib.pyplot as plt
 
@@ -21,6 +21,12 @@ from src.utils import nan,null,scalars,delim
 
 from src.optimize import Optimizer,Metric,Objective,Callback,Covariance
 from src.iterables import setter,getter
+
+# Logging
+from src.logger	import Logger
+logger = Logger(verbose=True)
+info = 100
+debug = 0
 
 class cov(Covariance):pass
 
@@ -174,7 +180,7 @@ def fitter(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=N
 		'metric':'lstsq',
 		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,yerr.shape if yerr is not None else None)),
 		}
-	setter(kwargs,defaults,delimiter=delim,func=False)
+	setter(kwargs,defaults,delimiter=delim,default=False)
 
 
 	transform,invtransform = transformation(x,y,parameters,preprocess=preprocess,postprocess=postprocess,**kwargs)
@@ -386,7 +392,7 @@ def curve_fit(func,x,y,**kwargs):
 		'path':None,
 		'verbose':None,
 		}
-	setter(kwargs,defaults,delimiter=delim,func=False)
+	setter(kwargs,defaults,delimiter=delim,default=False)
 
 	function = func
 	model = jit(func,x=x)
@@ -401,14 +407,16 @@ def curve_fit(func,x,y,**kwargs):
 		status = (abs(optimizer.attributes[attr][-1]) > 
 				(optimizer.hyperparameters['eps'][attr]*optimizer.hyperparameters['value'][attr]))
 		
-		if verbose:
-			print('\t'.join(['%s: %0.3e'%(attr,value) for attr,value in [
-				['value',optimizer.attributes['value'][-1]],
-				['alpha',optimizer.attributes['alpha'][-1]],
-				['grad',norm(optimizer.attributes['grad'][-1])]
-				]
-				])
-			)
+		logger.log(
+			verbose=verbose,
+			msg='\t'.join(['%s: %0.3e'%(attr,value) for attr,value in [
+			['iteration',optimizer.attributes['iteration'][-1]],
+			['value',optimizer.attributes['value'][-1]],
+			['alpha',optimizer.attributes['alpha'][-1]],
+			['grad',norm(optimizer.attributes['grad'][-1])]
+			]
+			])
+			)	
 		return status
 
 	defaults = {
@@ -418,7 +426,7 @@ def curve_fit(func,x,y,**kwargs):
 		'uncertainty':parameters.size < 1000 if parameters is not None else True,
 		'shapes':kwargs.pop('shapes',(y.shape if y is not None else None,y.shape if y is not None else None,covariance.shape if covariance is not None else None)),
 		}
-	setter(kwargs,defaults,delimiter=delim,func=False)
+	setter(kwargs,defaults,delimiter=delim,default=False)
 
 	uncertainty = kwargs.pop('uncertainty',True)
 	shapes = kwargs.pop('shapes',None)
