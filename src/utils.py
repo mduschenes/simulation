@@ -1412,6 +1412,48 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 	return fisher
 
 
+def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
+	'''
+	Compute entropy of function
+	Args:
+		func  (callable): Function to compute entropy
+		shape (iterable[int]): Shape of function
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
+	Returns:
+		entropy (callable): Entropy of function
+	'''
+
+	if shape is None:
+		shape = getattr(func,'shape',None)
+
+	if hermitian is None:
+		hermitian = getattr(func,'hermitian',None)
+
+	if unitary is None:
+		unitary = getattr(func,'unitary',None)
+
+	ndim = len(shape) if shape is not None else None
+
+	if ndim < 2:
+		def entropy(*args,**kwargs):
+			return 0
+	else:
+		def entropy(*args,**kwargs):
+			out = func(*args,**kwargs)
+			
+			out = eig(out,compute_v=False,hermitian=hermitian)
+
+			out = abs(out)
+
+			out = -addition(out*log(out))
+
+			return out
+
+	return entropy
+
+
+
 def nullfunc(obj,*args,**kwargs):
 	'''
 	Null function
@@ -5131,6 +5173,18 @@ def log(a):
 		out (array): Natural log of array
 	'''
 	return np.log(a)
+
+
+@jit
+def logm(a):
+	'''
+	Calculate matrix log of array a
+	Args:
+		a (array): Array to compute log
+	Returns:
+		out (array): Matrix log of array
+	'''
+	return sp.linalg.logm(a)
 
 @jit
 def exp10(a):

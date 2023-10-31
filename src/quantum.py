@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher
+from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,spawn,arange,diag
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
@@ -2458,6 +2458,7 @@ class Callback(System):
 			'hessian':[],'fisher':[],
 			'hessian.eigenvalues':[],'fisher.eigenvalues':[],
 			'hessian.rank':[],'fisher.rank':[],
+			'entropy':[],
 
 			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
@@ -2549,7 +2550,9 @@ class Callback(System):
 				'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 				'objective.ideal.state','objective.diff.state','objective.rel.state',
 				'objective.ideal.operator','objective.diff.operator','objective.rel.operator',
-				'hessian.rank','fisher.rank']
+				'hessian.rank','fisher.rank',
+				'entropy',
+				]
 			},
 			}
 
@@ -2737,6 +2740,15 @@ class Callback(System):
 						value = value/maximum(value)
 						value = nonzero(value,eps=50)
 						# value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
+
+				elif attr in ['entropy'] and (not do):
+					value = default
+
+				elif attr in ['entropy'] and (do):
+
+					function = entropy(model,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+
+					value = function(parameters)
 
 				elif attr in [
 					"state.string","state.ndim",
