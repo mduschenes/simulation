@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher
+from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,spawn,arange,diag
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
@@ -23,7 +23,7 @@ from src.iterables import setter,getter,getattrs,hasattrs,namespace,permutations
 
 from src.io import load,dump,join,split
 
-from src.system import Dictionary,System,Space,Time,Lattice
+from src.system import Dict,Dictionary,System,Space,Time,Lattice
 
 from src.parameters import Parameters,Parameter
 
@@ -2458,6 +2458,7 @@ class Callback(System):
 			'hessian':[],'fisher':[],
 			'hessian.eigenvalues':[],'fisher.eigenvalues':[],
 			'hessian.rank':[],'fisher.rank':[],
+			'entropy':[],
 
 			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
@@ -2549,7 +2550,9 @@ class Callback(System):
 				'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 				'objective.ideal.state','objective.diff.state','objective.rel.state',
 				'objective.ideal.operator','objective.diff.operator','objective.rel.operator',
-				'hessian.rank','fisher.rank']
+				'hessian.rank','fisher.rank',
+				'entropy',
+				]
 			},
 			}
 
@@ -2738,6 +2741,15 @@ class Callback(System):
 						value = nonzero(value,eps=50)
 						# value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
 
+				elif attr in ['entropy'] and (not do):
+					value = default
+
+				elif attr in ['entropy'] and (do):
+
+					function = entropy(model,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+
+					value = function(parameters)
+
 				elif attr in [
 					"state.string","state.ndim",
 					"label.string","label.ndim",
@@ -2821,3 +2833,35 @@ class Callback(System):
 		return status
 
 
+
+
+def main(settings,*args,**kwargs):
+
+	default = {}
+	if settings is None:
+		settings = default
+	elif isinstance(settings,str):
+		settings = load(settings,default=default)
+
+	settings = Dict(settings)
+
+	model = load(settings.cls.model)
+	system = settings.system
+	model = model(**{**settings.model,**dict(system=system)})
+
+	parameters = model.parameters()
+
+	obj = model(parameters=parameters)
+
+	return
+
+
+if __name__ == '__main__':
+
+	arguments = 'settings'
+
+	from src.utils import argparser
+
+	args = argparser(arguments)
+
+	main(*args,**args)
