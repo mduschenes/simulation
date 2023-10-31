@@ -15,7 +15,7 @@
 
 ##SBATCH --dependency=afterany:
 
-#SBATCH --signal=B:USRSIG@60
+##SBATCH --signal=B:USRSIG@60
 
 ##--nodelist=cpu[0-10]
 ##--exclude=cpu[0-10]
