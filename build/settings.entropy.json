@@ -33,7 +33,7 @@
 
 		"model.N":[4],		
 		"model.M":[
-			5,10,25,50,75,
+			5,10,15,25,50,75,
 			100,200,300,400,600,800,
 			1000,1200,1400
 		],
@@ -93,8 +93,8 @@
 		"model.data.y.parameters.constant":[null],					
 		"model.data.y.parameters.kwargs.lambda":[null],	
 
-		"jobs.job.cwd":["gobi/test/transition"],
-		"jobs.postprocess.cwd":["gobi/test/transition"],	
+		"jobs.job.cwd":["gobi/test/entropy"],
+		"jobs.postprocess.cwd":["gobi/test/entropy"],	
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
