@@ -1006,7 +1006,7 @@ class Pauli(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-		self.parameters.__initialize__(parameters=dict(obj=pi))
+		self.parameters.__initialize__(parameters=dict(obj=pi/2))
 
 		if self.parameters() is not None:
 
