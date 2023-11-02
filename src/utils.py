@@ -1435,7 +1435,7 @@ def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
 
 	ndim = len(shape) if shape is not None else None
 
-	if ndim < 2:
+	if ndim is not None and ndim < 2:
 		def entropy(*args,**kwargs):
 			return 0
 	else:
