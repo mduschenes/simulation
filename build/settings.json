@@ -335,8 +335,7 @@
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{
-			"settings":"settings.json",
-			"conf":"logging.conf"			
+			"settings":"settings.json"		
 			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
