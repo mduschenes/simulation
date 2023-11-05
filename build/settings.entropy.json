@@ -38,6 +38,20 @@
 			1000,1200,1400
 		],
 
+		"model.M":[
+			5,10,25,50,75,
+			100,125,150,175,
+			200,225,250,275,
+			300,325,350,375,
+			400,425,450,475,
+			500,525,550,575,
+			600,625,650,675,
+			700,725,750,775,
+			800,825,850,875,
+			900,925,950,975,
+			1000,1100,1200,1300,1400,1500
+		],
+
 		"model.tau":[75e0],		
 		"model.P":[2],
 		"model.T": [null],
@@ -65,10 +79,11 @@
 
 		"model.data.noise.string":["noise"],
 		"model.data.noise.operator":["dephase"],
-		"model.data.noise.operator":["depolarize"],
 		"model.data.noise.site":[null],
 		"model.data.noise.parameters.parameters":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2],
 		"model.data.noise.parameters.parameters":[1e-14,1e-10,1e-6,1e-2],
+		"model.data.noise.parameters.parameters":[1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8],
+		"model.data.noise.parameters.parameters":[1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],	
 		"model.data.noise.parameters.data":[1],		
 		"model.data.noise.ndim":[3],		
 		"model.data.noise.seed":[null],
@@ -96,6 +111,12 @@
 
 		"jobs.job.cwd":["gobi/test/entropy.depolarize"],
 		"jobs.postprocess.cwd":["gobi/test/entropy.depolarize"],	
+
+		"jobs.job.cwd":["gobi/entropy.phase.4.128.10.5000.50.500/1e-14.1e-8"],
+		"jobs.postprocess.cwd":["gobi/entropy.phase.4.128.10.5000.50.500/1e-14.1e-8"],		
+
+		"jobs.job.cwd":["gobi/entropy.phase.4.128.10.5000.50.500/1e-7.1e-1"],
+		"jobs.postprocess.cwd":["gobi/entropy.phase.4.128.10.5000.50.500/1e-7.1e-1"],		
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
