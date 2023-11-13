@@ -14,7 +14,7 @@ from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gr
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,spawn,arange,diag
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
-from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort,prod
+from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod
 from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,iterables,datatype
@@ -1354,6 +1354,7 @@ class Noise(Object):
 		**{attr: Basis['X'] for attr in ['X','x','flip','bitflip']},
 		**{attr: Basis['Y'] for attr in ['Y','y','flipphase']},
 		**{attr: Basis['Z'] for attr in ['Z','z','phase','dephase']},
+		**{attr: Basis['I'] for attr in ['dephase-amplitude']},
 		}
 	default = 'I'
 	D = 2
@@ -1431,6 +1432,15 @@ class Noise(Object):
 				elif operator[i] in ['amplitude']:
 					datum = [self.basis['00'](D=self.D,dtype=self.dtype) + sqrt(1-parameters[i])*self.basis['11'](D=self.D,dtype=self.dtype),
 							sqrt(parameters[i])*self.basis['01'](D=self.D,dtype=self.dtype)]
+				elif operator[i] in ['dephase-amplitude']:
+					datum = [dots(*i) for i in permutations(
+						[self.basis['00'](D=self.D,dtype=self.dtype) + sqrt(1-parameters[i])*self.basis['11'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i])*self.basis['01'](D=self.D,dtype=self.dtype)],
+						[sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i])*self.basis['Z'](D=self.D,dtype=self.dtype)]
+						)
+						]
+
 				elif operator[i] in ['depolarize']:
 					datum = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
 							sqrt(parameters[i]/(self.D**2-1))*self.basis['X'](D=self.D,dtype=self.dtype),

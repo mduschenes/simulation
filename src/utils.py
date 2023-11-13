@@ -4219,6 +4219,25 @@ def dot(a,b):
 	return np.dot(a,b)
 
 
+def dots(*a):
+	'''
+	Calculate dot product of arrays a and b
+	Args:
+		a (iterable[array]): Arrays to calculate dot product
+	Returns:
+		out (array): Dot product
+	'''	
+
+	if not len(a):
+		out = None
+	else:
+		out = a[0]
+		for i in a[1:]:
+			out = dot(out,i)
+	
+	return out
+	
+
 @jit
 def outer(a,b):
 	'''
