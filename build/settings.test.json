@@ -268,7 +268,7 @@
 		"search":true,
 		"parameters.relative":true,"parameters.relative.mean":true,		
 		"variables":true,"variables.relative":true,"variables.relative.mean":true,
-		"entropy":true,"purity":true,"similarity":true		
+		"entropy":true,"purity":true,"similarity":true,"divergence":true		
 	},
 	"attributes":{
 		"iteration":[],"parameters":[],
@@ -296,8 +296,7 @@
 			"hessian":false,"fisher":false,
 			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
 			"hessian.rank":false,"fisher.rank":false,
-			"entropy":true,"purity":true,"similarity":true,
-
+			"entropy":true,"purity":true,"similarity":false,"divergence":false,			
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],

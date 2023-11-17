@@ -1495,6 +1495,7 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 	Compute similarity of function
 	Args:
 		func  (callable): Function to compute similarity
+		label  (callable,array): Label to compute similarity
 		shape (iterable[int]): Shape of function
 		hermitian (bool): function is hermitian
 		unitary (bool): function is unitary
@@ -1528,6 +1529,52 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 			return out
 
 	return similarity
+
+def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
+	'''
+	Compute divergence of function
+	Args:
+		func  (callable): Function to compute divergence
+		label  (callable,array): Label to compute divergence
+		shape (iterable[int]): Shape of function
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
+	Returns:
+		divergence (callable): divergence of function
+	'''
+
+	if shape is None:
+		shape = getattr(func,'shape',None)
+
+	if hermitian is None:
+		hermitian = getattr(func,'hermitian',None)
+
+	if unitary is None:
+		unitary = getattr(func,'unitary',None)
+
+	if callable(label):
+		label = label()
+	label = eig(label,compute_v=False,hermitian=hermitian)
+	label = abs(label)
+
+	ndim = len(shape) if shape is not None else None
+
+	if ndim is not None and ndim < 2:
+		def divergence(*args,**kwargs):
+			return 0
+	else:
+		def divergence(*args,**kwargs):
+			out = func(*args,**kwargs)
+
+			out = eig(out,compute_v=False,hermitian=hermitian)
+
+			out = abs(out)
+
+			out = -addition(out*(log(out)-log(label)))
+
+			return out
+
+	return divergence
 
 
 def nullfunc(obj,*args,**kwargs):
