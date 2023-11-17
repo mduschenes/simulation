@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity
+from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,spawn,arange,diag
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
@@ -2468,7 +2468,7 @@ class Callback(System):
 			'hessian':[],'fisher':[],
 			'hessian.eigenvalues':[],'fisher.eigenvalues':[],
 			'hessian.rank':[],'fisher.rank':[],
-			'entropy':[],'purity':[],'similarity':[],
+			'entropy':[],'purity':[],'similarity':[],'divergence':[],
 
 			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
@@ -2774,6 +2774,15 @@ class Callback(System):
 				elif attr in ['similarity'] and (do):
 
 					function = similarity(model,metric.label,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+
+					value = function(parameters)
+
+				elif attr in ['divergence'] and (not do):
+					value = default
+
+				elif attr in ['divergence'] and (do):
+
+					function = divergence(model,metric.label,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
 
 					value = function(parameters)
 
