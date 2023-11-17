@@ -10,7 +10,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy
+from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,spawn,arange,diag
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
@@ -2468,15 +2468,15 @@ class Callback(System):
 			'hessian':[],'fisher':[],
 			'hessian.eigenvalues':[],'fisher.eigenvalues':[],
 			'hessian.rank':[],'fisher.rank':[],
-			'entropy':[],
+			'entropy':[],'purity':[],'similarity':[],
 
 			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
 
-			"noise.string":[],"noise.ndim":[],"noise.locality":[],"noise.method":[],"noise.scale":[],"noise.tau":[],"noise.initialization":[],
-			"noise.parameters":[],
+			'noise.string':[],'noise.ndim':[],'noise.locality':[],'noise.method':[],'noise.scale':[],'noise.tau':[],'noise.initialization':[],
+			'noise.parameters':[],
 
-			"state.string":[],"state.ndim":[],"label.string":[],"label.ndim":[],
+			'state.string':[],'state.ndim':[],'label.string':[],'label.ndim':[],
 
 			'hyperparameters.c1':[],'hyperparameters.c2':[],
 
@@ -2560,8 +2560,7 @@ class Callback(System):
 				'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 				'objective.ideal.state','objective.diff.state','objective.rel.state',
 				'objective.ideal.operator','objective.diff.operator','objective.rel.operator',
-				'hessian.rank','fisher.rank',
-				'entropy',
+				'hessian.rank','fisher.rank'
 				]
 			},
 			}
@@ -2760,22 +2759,40 @@ class Callback(System):
 
 					value = function(parameters)
 
+				elif attr in ['purity'] and (not do):
+					value = default
+
+				elif attr in ['purity'] and (do):
+
+					function = purity(model,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+
+					value = function(parameters)
+
+				elif attr in ['similarity'] and (not do):
+					value = default
+
+				elif attr in ['similarity'] and (do):
+
+					function = similarity(model,metric.label,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+
+					value = function(parameters)
+
 				elif attr in [
-					"state.string","state.ndim",
-					"label.string","label.ndim",
+					'state.string','state.ndim',
+					'label.string','label.ndim',
 					]:
 					value = getattrs(metric,attr,default=default,delimiter=delim)
 
 				elif attr in [
-					"noise.string","noise.ndim","noise.locality",
-					"noise.method","noise.scale","noise.tau","noise.initialization"
+					'noise.string','noise.ndim','noise.locality',
+					'noise.method','noise.scale','noise.tau','noise.initialization'
 					]:
 					for i in model.data:
 						if model.data[i].string == delim.join(attr.split(delim)[:1]):
 							value = getattrs(model.data[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
 							break
 
-				elif attr in ["noise.parameters"]:
+				elif attr in ['noise.parameters']:
 					for i in model.data:
 						if model.data[i].string == delim.join(attr.split(delim)[:1]):
 							value = getattrs(model.data[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)

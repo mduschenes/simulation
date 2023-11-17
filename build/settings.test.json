@@ -15,7 +15,7 @@
 	},
 "seed":{
 	"seed":39123,
-	"size":2,
+	"size":1,
 	"reset":39123,
 	"group":null,
 	"index":null
@@ -25,6 +25,7 @@
 
 		"model.N":[4],		
 		"model.M":[10,20,30],		
+		"model.M":[10],		
 		"model.P":[2],
 		"model.tau":[101.02647],
 		"model.T": [null],
@@ -53,8 +54,9 @@
 		"model.data.noise.string":["noise"],
 		"model.data.noise.operator":["phase"],
 		"model.data.noise.site":[null],
-		"model.data.noise.parameters.data":[1e-4,1e-2],
+		"model.data.noise.parameters.data":[1],
 		"model.data.noise.parameters.parameters":[1e-4,1e-2],
+		"model.data.noise.parameters.parameters":[1e-4],
 		"model.data.noise.seed":[null],
 
 		"optimize.iterations":[[0,10]],
@@ -93,18 +95,18 @@
 		"jobs.job.verbose":[1],
 		"jobs.job.resume":[null],
 		"jobs.postprocess.resume":[null],
-		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
+		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
 		"jobs.job.args.NUMPY_BACKEND":["jax.autograd"],
 		"jobs.job.args.NUMPY_BACKEND":["autograd"],
 		"jobs.job.args.NUMPY_BACKEND":["jax"],
-		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[4],		
+		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.job.args.JOB_PROCESSES":[1],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
-		"jobs.job.patterns.mem":["64GB"],
-		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[4],
+		"jobs.job.patterns.mem":["16GB"],
+		"jobs.postprocess.patterns.mem":["16GB"],
+		"jobs.job.patterns.cpus-per-task":[1],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 		},
 	"groups":null,
@@ -265,7 +267,8 @@
 		"grad":true,
 		"search":true,
 		"parameters.relative":true,"parameters.relative.mean":true,		
-		"variables":true,"variables.relative":true,"variables.relative.mean":true
+		"variables":true,"variables.relative":true,"variables.relative.mean":true,
+		"entropy":true,"purity":true,"similarity":true		
 	},
 	"attributes":{
 		"iteration":[],"parameters":[],
@@ -293,6 +296,8 @@
 			"hessian":false,"fisher":false,
 			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
 			"hessian.rank":false,"fisher.rank":false,
+			"entropy":true,"purity":true,"similarity":true,
+
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],
