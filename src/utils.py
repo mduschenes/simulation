@@ -1483,7 +1483,7 @@ def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
 		def purity(*args,**kwargs):
 			out = func(*args,**kwargs)
 			
-			out = real(einsum('ij,ij->',out,dagger(out)))
+			out = real(einsum('ij,ij->',out,conjugate(out)))
 
 			return out
 
