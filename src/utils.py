@@ -1453,6 +1453,82 @@ def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
 	return entropy
 
 
+def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
+	'''
+	Compute purity of function
+	Args:
+		func  (callable): Function to compute purity
+		shape (iterable[int]): Shape of function
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
+	Returns:
+		purity (callable): purity of function
+	'''
+
+	if shape is None:
+		shape = getattr(func,'shape',None)
+
+	if hermitian is None:
+		hermitian = getattr(func,'hermitian',None)
+
+	if unitary is None:
+		unitary = getattr(func,'unitary',None)
+
+	ndim = len(shape) if shape is not None else None
+
+	if ndim is not None and ndim < 2:
+		def purity(*args,**kwargs):
+			return 1
+	else:
+		def purity(*args,**kwargs):
+			out = func(*args,**kwargs)
+			
+			out = real(einsum('ij,ij->',out,dagger(out)))
+
+			return out
+
+	return purity
+
+
+def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
+	'''
+	Compute similarity of function
+	Args:
+		func  (callable): Function to compute similarity
+		shape (iterable[int]): Shape of function
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
+	Returns:
+		similarity (callable): similarity of function
+	'''
+
+	if shape is None:
+		shape = getattr(func,'shape',None)
+
+	if hermitian is None:
+		hermitian = getattr(func,'hermitian',None)
+
+	if unitary is None:
+		unitary = getattr(func,'unitary',None)
+
+	if callable(label):
+		label = label()
+
+	ndim = len(shape) if shape is not None else None
+
+	if ndim is not None and ndim < 2:
+		def similarity(*args,**kwargs):
+			return 0
+	else:
+		def similarity(*args,**kwargs):
+			out = func(*args,**kwargs)
+
+			out = 0
+
+			return out
+
+	return similarity
+
 
 def nullfunc(obj,*args,**kwargs):
 	'''
