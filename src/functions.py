@@ -97,3 +97,7 @@ def func_hessian_eigenvalues(data):
 def func_entropy(data):
 	out = np.array(data['entropy'])/log(data['D']**data['N'])
 	return out
+
+def func_purity(data):
+	out = 1-np.array(data['purity'])
+	return out	
