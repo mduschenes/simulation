@@ -34,13 +34,13 @@
 		"model.N":[4],		
 	
 		"model.M":[
-			2000,3000,5000
-		],
-
-		"model.M":[
 			5,10,15,25,50,75,
 			100,200,300,400,600,800,
 			1000,1200,1400
+		],
+
+		"model.M":[
+			2000,3000,5000
 		],
 
 		"model.tau":[75e0],		
@@ -101,8 +101,8 @@
 		"model.data.y.parameters.constant":[null],					
 		"model.data.y.parameters.kwargs.lambda":[null],	
 
-		"jobs.job.cwd":["gobi/test/purity.phase"],
-		"jobs.postprocess.cwd":["gobi/test/purity.phase"],	
+		"jobs.job.cwd":["gobi/test/purity.phase/2000.5000"],
+		"jobs.postprocess.cwd":["gobi/test/purity.phase/2000.5000"],	
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -110,7 +110,7 @@
 		"jobs.postprocess.process":[null],
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
-		"jobs.job.pool":[8],
+		"jobs.job.pool":[4],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
 		"jobs.postprocess.execute":[1],	
@@ -122,13 +122,13 @@
 		"jobs.job.args.NUMPY_BACKEND":["autograd"],
 		"jobs.job.args.NUMPY_BACKEND":["jax"],
 		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
-		"jobs.job.args.JOB_PROCESSES":[4],		
+		"jobs.job.args.JOB_PROCESSES":[2],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
 		"jobs.job.patterns.mem":["64GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
-		"jobs.job.patterns.cpus-per-task":[8],
+		"jobs.job.patterns.cpus-per-task":[4],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
 		"jobs.job.patterns.account":["def-carrasqu"],
 		"jobs.postprocess.patterns.account":["def-carrasqu"],		
