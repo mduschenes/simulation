@@ -7610,10 +7610,8 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		scilimits (iterable[int]): Limits on where not to represent with scientific notation
 		error (str,int,float): Error of number to be processed
 		usetex (bool): Render string with Latex
-	
 	Returns:
-		String with scientific notation format for number
-
+		string (str): String with scientific notation format for number
 	'''
 
 	if decimals is None:
@@ -7700,6 +7698,28 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		string = string.replace('$','')
 	return string
 
+
+def texify(string,usetex=False):
+	'''
+	Put string into latex format
+	Args:
+		string (object): Object to be processed
+		usetex (bool): Render string with Latex
+	Returns:
+		string (str): String with latex format
+	'''
+
+	if isinstance(string,str):
+		string = '\\textrm{%s}'%(string)
+	else:
+		string = str(string)
+
+	string = string.replace('$','')
+
+	if usetex:
+		string = '$%s$'%(string)
+
+	return string
 
 def uncertainty_propagation(x,y,xerr,yerr,operation):
 	'''
