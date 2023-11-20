@@ -88,6 +88,8 @@
 		"optimize.eps.value":[1e-16],
 		"optimize.eps.value.increase":[1e-3],
 		"optimize.value.iteration":[50],		
+		"optimize.initialize":[false],		
+		"optimize.track.similarity":[false],		
 
 		"model.data.x.parameters.method":[null],
 		"model.data.x.parameters.local":[true],
