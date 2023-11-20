@@ -69,7 +69,7 @@
 		"state.seed":[null],
 
 		"model.data.noise.string":["noise"],
-		"model.data.noise.operator":["amplitude"],
+		"model.data.noise.operator":["depolarize"],
 		"model.data.noise.site":[null],
 		"model.data.noise.parameters.parameters":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2],
 		"model.data.noise.parameters.parameters":[1e-14,1e-10,1e-6,1e-2],
@@ -103,11 +103,11 @@
 		"model.data.y.parameters.constant":[null],					
 		"model.data.y.parameters.kwargs.lambda":[null],	
 
-		"jobs.job.cwd":["gobi/test/purity.amplitude"],
-		"jobs.postprocess.cwd":["gobi/test/purity.amplitude"],	
+		"jobs.job.cwd":["gobi/test/purity.depolarize"],
+		"jobs.postprocess.cwd":["gobi/test/purity.depolarize"],	
 
-		"jobs.job.cwd":["gobi/test/purity.amplitude/2000.5000"],
-		"jobs.postprocess.cwd":["gobi/test/purity.amplitude/2000.5000"],	
+		"jobs.job.cwd":["gobi/test/purity.depolarize/2000.5000"],
+		"jobs.postprocess.cwd":["gobi/test/purity.depolarize/2000.5000"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -134,6 +134,7 @@
 		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
 		"jobs.job.patterns.mem":["64GB"],
+		"jobs.job.patterns.mem":["160GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[8],
 		"jobs.job.patterns.cpus-per-task":[4],
@@ -141,7 +142,7 @@
 		"jobs.job.patterns.account":["def-raymond"],
 		"jobs.postprocess.patterns.account":["def-raymond"],
 		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"]
+		"jobs.postprocess.patterns.account":["def-carrasqu"]		
 		},
 	"groups":null,
 	"index":null
