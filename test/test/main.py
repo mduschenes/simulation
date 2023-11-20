@@ -527,6 +527,56 @@ def main(n=2,d=2,m=2,p=None,parameters='rand',operator='XZZ',state='0',noise='de
 	return returns
 
 
+
+def init(*args,**kwargs):
+
+	cls = Dict({
+		"model":'src.quantum.Noise',
+		"state":'src.quantum.State',
+		})
+
+	settings = Dict({
+		"model":{
+			"operator":"depolarize",
+			"site":None,
+			"string":"noise",
+			"parameters":{"data":1,"parameters":1},
+			"N":1,"D":2,"ndim":3,
+		},
+		"state": {
+			"operator":"one",
+			"site":None,
+			"string":"psi",
+			"parameters":True,
+			"N":1,"D":2,"ndim":2,
+			},
+	})
+
+	model = load(cls.model)
+	state = load(cls.state)
+
+	model = model(**settings.model)
+	state = state(**settings.state)
+
+	print(state())
+	print()
+
+	model.__initialize__(state=state,parameters=dict())
+
+	print(model.data)
+	print(model(model.parameters(model.parameters()),model.state()))
+	print()
+
+
+	model.__initialize__(state=state,parameters=dict())
+
+	print(model.data)
+	print(model(model.parameters(model.parameters()),model.state()))
+	print()
+
+	return
+
+
 if __name__ == '__main__':
 
 	permutations = {
