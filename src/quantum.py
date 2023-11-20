@@ -2529,6 +2529,7 @@ class Callback(System):
 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 
 		stop = (
+			(
 			(hyperparameters['eps'].get('value.increase') is not None) and
 			(hyperparameters['eps'].get('value.increase') > 0) and
 			((len(attributes['value']) > 1) and 
@@ -2537,6 +2538,8 @@ class Callback(System):
 			((attributes['value'][-1] > attributes['value'][-2]) and
 			(log10(attributes['value'][-1] - attributes['value'][-2]) > 
 			(log10(hyperparameters['eps']['value.increase']*attributes['value'][-1]))))
+			) or
+			((iterations.start == iterations.stop))
 			)
 
 		none = (iterations.start == 0) and (iterations.stop == 0)

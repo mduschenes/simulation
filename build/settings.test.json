@@ -25,7 +25,6 @@
 
 		"model.N":[4],		
 		"model.M":[10,20,30],		
-		"model.M":[10],		
 		"model.P":[2],
 		"model.tau":[101.02647],
 		"model.T": [null],
@@ -66,6 +65,8 @@
 		"optimize.search.beta":["hestenes_stiefel"],
 		"optimize.eps.value":[1e-20],
 		"optimize.eps.value.increase":[1e0],
+		"optimize.initialize":[true],
+		"optimize.track.similarity":[true],
 
 		"model.data.x.parameters.method":[null],
 		"model.data.x.parameters.local":[true],

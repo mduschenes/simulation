@@ -372,10 +372,10 @@ def postprocess(path,**kwargs):
 				axes = AXES
 				other = OTHER
 				sorting = {attr: [OTHER,attr] for attr in 
-					set([attr for data in search(getter(hyperparameters,key)) if data is not None 
+					set([attr for data in search(getter(hyperparameters,key,delimiter=delim)) if data is not None 
 						 for attr in data[OTHER] if attr not in [*ALL,OTHER]])}
 				sorting = {attr: sorting[attr] for attr in sorting if attr in ['N']}
-				sorting = {attr: set([getter(data,sorting[attr]) for data in search(getter(hyperparameters,key)) if data is not None])
+				sorting = {attr: set([getter(data,sorting[attr]) for data in search(getter(hyperparameters,key,delimiter=delim)) if data is not None])
 							for attr in sorting}
 				sorting = {attr: sorting[attr] for attr in sorting if len(sorting[attr])>1}
 
@@ -387,7 +387,7 @@ def postprocess(path,**kwargs):
 
 					data = {}
 
-					values = [data for data in search(getter(hyperparameters,key)) if data is not None and all(data[OTHER][attr]==sorts[attr] for attr in sorts)]
+					values = [data for data in search(getter(hyperparameters,key,delimiter=delim)) if data is not None and all(data[OTHER][attr]==sorts[attr] for attr in sorts)]
 					slices = slice(None,None,None)
 
 					for axis in label:
