@@ -543,7 +543,7 @@ class Object(System):
 
 		elif isinstance(self.parameters,cls):
 			parameters = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
-			
+
 			self.parameters.__initialize__(**parameters)
 
 		else:
@@ -1386,7 +1386,7 @@ class Noise(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-		if not isinstance(self.data,arrays):
+		if True or not isinstance(self.data,arrays):
 
 			if self.parameters is None:
 				self.parameters = 0
@@ -1442,10 +1442,10 @@ class Noise(Object):
 						]
 
 				elif operator[i] in ['depolarize']:
-					datum = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i]/(self.D**2-1))*self.basis['X'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i]/(self.D**2-1))*self.basis['Y'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i]/(self.D**2-1))*self.basis['Z'](D=self.D,dtype=self.dtype)]
+					datum = [sqrt(1-(self.D**2-1)*parameters[i]/(self.D**2))*self.basis['I'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i]/(self.D**2))*self.basis['X'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i]/(self.D**2))*self.basis['Y'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i]/(self.D**2))*self.basis['Z'](D=self.D,dtype=self.dtype)]
 				elif operator[i] in ['eps']:
 					datum = array([identity(self.n,dtype=self.dtype),diag((1+parameters[i])**(arange(self.n)+2) - 1)])
 				elif operator[i] in ['noise','rand']:
@@ -2529,6 +2529,7 @@ class Callback(System):
 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 
 		stop = (
+			(
 			(hyperparameters['eps'].get('value.increase') is not None) and
 			(hyperparameters['eps'].get('value.increase') > 0) and
 			((len(attributes['value']) > 1) and 
@@ -2537,6 +2538,8 @@ class Callback(System):
 			((attributes['value'][-1] > attributes['value'][-2]) and
 			(log10(attributes['value'][-1] - attributes['value'][-2]) > 
 			(log10(hyperparameters['eps']['value.increase']*attributes['value'][-1]))))
+			) or
+			((iterations.start == iterations.stop))
 			)
 
 		none = (iterations.start == 0) and (iterations.stop == 0)
