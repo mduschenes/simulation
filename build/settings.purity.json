@@ -55,6 +55,12 @@
 			20,30,35,40,45,55,60,65,70,80,85,90,95,500,700,900
 		],
 
+		"model.M":[
+			5,10,15,25,50,75,
+			100,200,300,400,600,800,
+			1000,1200,1400
+		],
+
 
 		"model.tau":[75e0],		
 		"model.P":[2],
@@ -102,8 +108,8 @@
 		"optimize.eps.value":[1e-16],
 		"optimize.eps.value.increase":[1e-3],
 		"optimize.value.iteration":[50],		
-		"optimize.initialize":[false],		
-		"optimize.track.similarity":[false],		
+		"optimize.initialize":[true],		
+		"optimize.track.divergence":[true],		
 
 		"model.data.x.parameters.method":[null],
 		"model.data.x.parameters.local":[true],
@@ -125,6 +131,9 @@
 
 		"jobs.job.cwd":["gobi/test/purity.phase/20.900"],
 		"jobs.postprocess.cwd":["gobi/test/purity.phase/20.900"],
+
+		"jobs.job.cwd":["gobi/purity.phase"],
+		"jobs.postprocess.cwd":["gobi/purity.phase"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
