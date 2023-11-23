@@ -101,3 +101,7 @@ def func_entropy(data):
 def func_purity(data):
 	out = 1-np.array(data['purity'])
 	return out	
+
+def func_divergence(data):
+	out = np.array(data['divergence'])/log(data['D']**data['N'])
+	return out
