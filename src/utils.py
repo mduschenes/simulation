@@ -1434,6 +1434,7 @@ def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
 		unitary = getattr(func,'unitary',None)
 
 	ndim = len(shape) if shape is not None else None
+	d = max(shape) if shape is not None else None
 
 	if ndim is not None and ndim < 2:
 		def entropy(*args,**kwargs):
@@ -1475,6 +1476,7 @@ def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
 		unitary = getattr(func,'unitary',None)
 
 	ndim = len(shape) if shape is not None else None
+	d = max(shape) if shape is not None else None
 
 	if ndim is not None and ndim < 2:
 		def purity(*args,**kwargs):
@@ -1515,7 +1517,10 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 	if callable(label):
 		label = label()
 
+	labels = einsum('ij,ji->',label,label)
+
 	ndim = len(shape) if shape is not None else None
+	d = max(shape) if shape is not None else None
 
 	if ndim is not None and ndim < 2:
 		def similarity(*args,**kwargs):
@@ -1524,7 +1529,9 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 		def similarity(*args,**kwargs):
 			out = func(*args,**kwargs)
 
-			out = 0
+			outs,out = einsum('ij,ji->',out,out),einsum('ij,ji->',out,label)
+			
+			out = 1-abs((d*(out)-1)/sqrt((d*(outs)-1)*(d*(labels)-1)))
 
 			return out
 
@@ -1559,6 +1566,7 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 	labels = addition(log(labels**labels))
 
 	ndim = len(shape) if shape is not None else None
+	d = max(shape) if shape is not None else None
 
 	if ndim is not None and ndim < 2:
 		def divergence(*args,**kwargs):
