@@ -1554,8 +1554,9 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 	if callable(label):
 		label = label()
-	label = eig(label,compute_v=False,hermitian=hermitian)
-	label = abs(label)
+	labels = eig(label,compute_v=False,hermitian=hermitian)
+	labels = abs(labels)
+	labels = addition(log(labels**labels))
 
 	ndim = len(shape) if shape is not None else None
 
@@ -1566,11 +1567,11 @@ def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 		def divergence(*args,**kwargs):
 			out = func(*args,**kwargs)
 
-			out = eig(out,compute_v=False,hermitian=hermitian)
+			outs,out = eig(out,compute_v=True,hermitian=hermitian)
 
-			out = abs(out)
+			outs = abs(outs)
 
-			out = -addition(out*(log(out)-log(label)))
+			out = real(labels - einsum('ij,jk,k,ik->',label,out,log(outs),conjugate(out)))
 
 			return out
 
@@ -5317,7 +5318,7 @@ def log(a):
 	return np.log(a)
 
 
-@jit
+# @jit
 def logm(a):
 	'''
 	Calculate matrix log of array a
@@ -5326,7 +5327,7 @@ def logm(a):
 	Returns:
 		out (array): Matrix log of array
 	'''
-	return sp.linalg.logm(a)
+	return osp.linalg.logm(a)
 
 @jit
 def exp10(a):
