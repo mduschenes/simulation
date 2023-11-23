@@ -103,6 +103,6 @@ def func_purity(data):
 	return out	
 
 def func_divergence(data):
-	# out = np.array(data['divergence'])/log(data['D']**data['N'])
-	out = np.array(data['divergence'])
+	# out = np.array(data['divergence'])
+	out = np.array(data['divergence'])/log(data['D']**data['N'])
 	return out
