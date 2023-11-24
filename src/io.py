@@ -1100,6 +1100,28 @@ def append(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 	return
 
 
+def cleanup(data,path,verbose=True):
+	'''
+	Process path
+	Args:
+		data (iterable[str]): Attributes to remove
+		path (str): Path to remove attributes
+		verbose (bool): Verbosity
+	'''
+
+	for path in glob(path):
+
+		obj = load(path,verbose=verbose)
+
+		for attr in data:
+			if attr not in obj:
+				continue
+			obj.pop(attr)
+
+		dump(obj,path)
+
+	return
+
 def update(dictionary,field,func):
 	"""
 	Update nested dictionary field with function in-place
