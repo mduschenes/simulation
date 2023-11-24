@@ -9,106 +9,110 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim,namespace
+from src.utils import argparser,jit,allclose,delim,prng
 from src.io import load,glob
+from src.system import Dict
+from src.iterables import namespace
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 logger = Logger()
 
-def setup(hyperparameters):
+def setup(settings):
 	'''
-	Setup hyperparameters
+	Setup settings
 	Args:
-		hyperparameters (dict,str): hyperparameters
+		settings (dict,str): settings
 	Returns:
-		hyperparameters (dict): hyperparameters
+		settings (dict): settings
 	'''
 
-	# Check hyperparameters
+	# Check settings
 	default = {}
-	if hyperparameters is None:
-		hyperparameters = default
-	elif isinstance(hyperparameters,str):
-		hyperparameters = load(hyperparameters,default=default)
+	if settings is None:
+		settings = default
+	elif isinstance(settings,str):
+		settings = load(settings,default=default)
 
+	settings = Dict(settings)
 
-	return hyperparameters
+	return settings
 
-def train(hyperparameters):
+def train(settings):
 	'''
 	Train model
 	Args:
-		hyperparameters (dict,str,iterable[str,dict]): hyperparameters
+		settings (dict,str,iterable[str,dict]): settings
 	Returns:
 		model (object): Model instance
 	'''
-	if hyperparameters is None:
+	if settings is None:
 		models = []
-	elif isinstance(hyperparameters,str):
-		models = list(glob(hyperparameters))
-	elif isinstance(hyperparameters,dict):
-		models = [hyperparameters]
+	elif isinstance(settings,str):
+		models = list(glob(settings))
+	elif isinstance(settings,dict):
+		models = [settings]
 
 	models = {name: model for name,model in enumerate(models)}
 
 	for name in models:
 		
-		hyperparameters = models[name]
+		settings = models[name]
 
-		hyperparameters = setup(hyperparameters)
+		settings = setup(settings)
 
-		if not hyperparameters:
+		if not settings:
 			model = None
 			return model
 
-		if not any(hyperparameters['boolean'].get(attr) for attr in ['load','dump','train']):
+		if not any(settings.boolean[attr] for attr in settings.boolean):
 			model = None
 			return model
 
-		backend = hyperparameters.get('backend')
-		if backend is not None:
-			backend = __import__(backend)
+		model = load(settings.cls.model)
+		state = load(settings.cls.state)
+		label = load(settings.cls.label)
+		callback = load(settings.cls.callback)
 
-		cls = {attr: load(hyperparameters['class'][attr]) for attr in hyperparameters.get('class',{})}
-		system = hyperparameters.get('system',{})
+		if any(i is None for i in [model,state,label,callback]):
+			raise ValueError("Incorrect cls initialization %r")
+			model = None
+			return model
 
-		model,parameters,label,callback = cls.pop('model'),cls.pop('parameters'),cls.pop('label'),cls.pop('callback')
+		hyperparameters = settings.optimize
+		system = settings.system
 
-		model = model(**{**hyperparameters.get('model',{}),**dict(system=system)})
-		parameters = parameters(**{**namespace(parameters,model),**hyperparameters.get('parameters',{}),**dict(model=model,system=system)})
-		label = label(**{**namespace(label,model),**hyperparameters.get('label',{}),**dict(model=model,system=system)})
-		callback = callback(**{**namespace(callback,model),**hyperparameters.get('callback',{}),**dict(model=model,system=system)})
+		seed = prng(**settings.seed)
 
-		if hyperparameters['boolean'].get('load'):
+
+		model = model(**{**settings.model,**dict(system=system)})
+		state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+		label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+		callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
+
+		if settings.boolean.load:
 			model.load()
 
-		if hyperparameters['boolean'].get('train'):
+		if settings.boolean.train:
 
-			hyperparams = hyperparameters['optimize']		
-
-			kwargs = {
-				**dict(parameters=parameters),
-				**{arg: cls[arg](**{**namespace(cls[arg],model),**hyperparameters.get(arg,{}),**dict(system=system)}) for arg in cls}
-				}
-
-			model.__initialize__(**kwargs)
-
-			shapes = label.shape
-			func = [parameters.constraints]
+			func = model.parameters.constraints
+			arguments = ()
+			keywords = {}
 			
-			# parameters = parameters.data
-			parameters = parameters()
-			label = label()
+			label.__initialize__(state=state)
+			model.__initialize__(state=state)
 
-			metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
-			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
-			callback = Callback(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparams,system=system)
+			metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
+			func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
+			callback = Callback(model,func=func,callback=callback,arguments=arguments,keywords=keywords,metric=metric,hyperparameters=hyperparameters,system=system)
 
-			optimizer = Optimizer(func=func,callback=callback,hyperparameters=hyperparams,system=system)
+			optimizer = Optimizer(func=func,arguments=arguments,keywords=keywords,callback=callback,hyperparameters=hyperparameters,system=system)
 
-			parameters = optimizer(parameters)
+			parameters = model.parameters()
+			state = model.state()
 
-		if hyperparameters['boolean'].get('dump'):	
+			parameters = optimizer(parameters,state=state)
+
+		if settings.boolean.dump:	
 			model.dump()
 	
 		models[name] = model
@@ -128,7 +132,7 @@ def main(*args,**kwargs):
 
 if __name__ == '__main__':
 
-	arguments = 'hyperparameters'
+	arguments = 'settings'
 	args = argparser(arguments)
 
 	main(*args,**args)

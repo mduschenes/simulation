@@ -7,6 +7,7 @@
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
+##SBATCH --qos=normal
 #SBATCH --partition=cpu
 #SBATCH --time=01:00:00
 #SBATCH --mem=32G
@@ -16,6 +17,8 @@
 #SBATCH --array=0-1:4%100
 
 ##SBATCH --dependency=afterany:
+
+##SBATCH --signal=B:USRSIG@60
 
 ##--nodelist=cpu[0-10]
 ##--exclude=cpu[0-10]
@@ -50,6 +53,15 @@ function RUN(){
 
 }
 export -f RUN
+
+# Queue
+function QUEUE(){
+
+	job=${BASH_SOURCE[0]}
+
+	sbatch --export=ALL < ${job}
+}
+export -f QUEUE
 
 # Job
 export JOB_NAME=${SLURM_JOB_NAME}
@@ -93,7 +105,12 @@ conda activate ${JOB_ENV} &>/dev/null 2>&1
 # source activate ${JOB_ENV} &>/dev/null 2>&1
 
 # Command
-CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
+if ([ ! -z ${JOB_SRC} ] && [ ! -z ${JOB_CMD} ])
+then
+	CMD=(${JOB_SRC}/${JOB_CMD} ${JOB_ARGS[@]})
+else
+	CMD=(${JOB_ARGS[@]})
+fi
 CMD=($(echo ${CMD[@]/\~/"${HOME}"} | envsubst))
 
 # Processes
@@ -114,4 +131,7 @@ ${EXE[@]} ${TASKS[@]}
 # Status
 # squeue -h -o "%V  %N  %u  %a  %j  %P  %M  %D  %C  %R  %T" -j${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
 # sacct -j ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
-scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}}
+scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
+
+# Queue
+# trap QUEUE SIGUSRSIG

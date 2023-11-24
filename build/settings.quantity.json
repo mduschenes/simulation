@@ -15,7 +15,7 @@
 	},
 "seed":{
 	"seed":39123,
-	"size":2,
+	"size":50,
 	"reset":39123,
 	"group":null,
 	"index":null
@@ -23,14 +23,47 @@
 "permutations":{
 	"permutations":{	
 
+
 		"model.N":[4],		
-		"model.M":[10,20,30],		
+		"model.M":[
+			5,10,25,50,75,
+			100,200,300,400,500,600,700,800,900,
+			1000,1100,1200,1300,1400,1500
+		],
+
+		"model.N":[4],		
+	
+		"model.M":[
+			5,10,15,25,50,75,
+			100,200,300,400,600,800,
+			1000,1200,1400
+		],
+
+		"model.M":[
+			2000,3000,5000
+		],
+
+
+		"model.M":[
+			5,10,15,25,50,75,
+			100,200,300,400,600,800,
+			1000,1200,1400,
+			2000,3000,5000			
+		],
+
+		"model.M":[
+			5,10,15,20,30,35,40,45,50,55,60,65,70,75,80,85,90,95,
+			100,200,300,400,500,600,700,800,900,
+			1000,1200,1600,2000,3000,4000,5000
+		],
+
+
+		"model.tau":[75e0],		
 		"model.P":[2],
-		"model.tau":[101.02647],
 		"model.T": [null],
 
 		"system.dtype":["complex128"],
-		"system.verbose":[true],
+		"system.verbose":["info"],
 		"system.unit":[1e6],
 
 		"model.data.x.parameters.parameters":[1],
@@ -45,7 +78,7 @@
 		"label.seed":[null],
 
 		"state.string":["psi"],
-		"state.operator":["plus"],
+		"state.operator":["haar"],
 		"state.parameters":[true],
 		"state.ndim":[2],
 		"state.seed":[null],
@@ -53,17 +86,30 @@
 		"model.data.noise.string":["noise"],
 		"model.data.noise.operator":["phase"],
 		"model.data.noise.site":[null],
-		"model.data.noise.parameters.data":[1],
-		"model.data.noise.parameters.parameters":[0],
+		"model.data.noise.parameters.parameters":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2],
+		"model.data.noise.parameters.parameters":[1e-14,1e-10,1e-6,1e-2],
+		"model.data.noise.parameters.parameters":[1e-14,1e-13,1e-12,1e-11,1e-10,1e-9,1e-8],
+		"model.data.noise.parameters.parameters":[1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],	
+		"model.data.noise.parameters.parameters":[1e-4],		
+		"model.data.noise.parameters.parameters":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2],		
+		"model.data.noise.parameters.data":[1],		
+		"model.data.noise.ndim":[3],		
 		"model.data.noise.seed":[null],
 
-		"optimize.iterations":[[0,10]],
+		"optimize.iterations":[[0,500]],
 		"optimize.optimizer":["cg"],
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
-		"optimize.eps.value":[1e-20],
-		"optimize.eps.value.increase":[1e0],
+		"optimize.eps.value":[1e-16],
+		"optimize.eps.value.increase":[1e-3],
+		"optimize.value.iteration":[50],		
+		"optimize.initialize":[false],		
+
+		"optimize.track.entropy":[true],		
+		"optimize.track.purity":[true],		
+		"optimize.track.similarity":[true],		
+		"optimize.track.divergence":[false],		
 
 		"model.data.x.parameters.method":[null],
 		"model.data.x.parameters.local":[true],
@@ -77,8 +123,17 @@
 		"model.data.y.parameters.constant":[null],					
 		"model.data.y.parameters.kwargs.lambda":[null],	
 
-		"jobs.job.cwd":["test"],
-		"jobs.postprocess.cwd":["test"],	
+		"jobs.job.cwd":["gobi/test/purity.phase"],
+		"jobs.postprocess.cwd":["gobi/test/purity.phase"],	
+
+		"jobs.job.cwd":["gobi/test/purity.phase/0.5000.1e-2"],
+		"jobs.postprocess.cwd":["gobi/test/purity.phase/0.5000.1e-2"],
+
+		"jobs.job.cwd":["gobi/test/purity.phase/20.900"],
+		"jobs.postprocess.cwd":["gobi/test/purity.phase/20.900"],
+
+		"jobs.job.cwd":["gobi/quantities/phase"],
+		"jobs.postprocess.cwd":["gobi/quantiites/phase"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -87,24 +142,28 @@
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
 		"jobs.job.pool":[4],
+		"jobs.job.pool":[32],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
-		"jobs.postprocess.execute":[1],	
+		"jobs.postprocess.execute":[0],	
 		"jobs.job.verbose":[1],
 		"jobs.job.resume":[null],
 		"jobs.postprocess.resume":[null],
-		"jobs.job.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
+		"jobs.job.args.JOB_SRC":["~/code/simulation/src"],
 		"jobs.job.args.NUMPY_BACKEND":["jax.autograd"],
 		"jobs.job.args.NUMPY_BACKEND":["autograd"],
 		"jobs.job.args.NUMPY_BACKEND":["jax"],
-		"jobs.postprocess.args.JOB_SRC":["~/files/uw/research/code/simulation/code/src"],
-		"jobs.job.args.JOB_PROCESSES":[4],		
+		"jobs.postprocess.args.JOB_SRC":["~/code/simulation/src"],
+		"jobs.job.args.JOB_PROCESSES":[2],		
+		"jobs.job.args.JOB_PROCESSES":[8],		
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
-		"jobs.job.patterns.time":["12:00:00"],		
+		"jobs.job.patterns.time":["6:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
 		"jobs.job.patterns.mem":["64GB"],
+		"jobs.job.patterns.mem":["256GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[4],
+		"jobs.job.patterns.cpus-per-task":[8],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
 		},
 	"groups":null,
@@ -209,8 +268,8 @@
 			"attributes":["parameters.data"],							
 			"variable":false,"seed":123},		
 		"noise":{
-			"operator":"depolarize","site":null,"string":"noise",
-			"parameters":{"data":1,"parameters":0},
+			"operator":"phase","site":null,"string":"noise",
+			"parameters":{"data":1,"parameters":1},
 			"ndim":3,
 			"variable":false
 		}
@@ -220,10 +279,10 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":4,
+	"M":20,
 	"T":null,
 	"tau":1,
-	"P":1,
+	"P":2,
 	"space":"spin",
 	"time":"linear",
 	"lattice":"square"
@@ -246,26 +305,27 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":10,
+	"iterations":100,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
-	"eps":{"value":0,"grad":0,"value.difference":0,"grad.difference":0,"value.increase":1e1,"iteration":1,"alpha":1e-7,"beta":1e3},
-	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":1e4,"alpha":0,"beta":0},
-	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
+	"eps":{"value":0,"grad":0,"value.difference":0,"grad.difference":0,"value.increase":0,"iteration":1,"alpha":1e-7,"beta":1e3},
+	"value":{"value":1,"grad":1,"value.difference":1,"grad.difference":1,"value.increase":1,"iteration":250,"alpha":0,"beta":0},
+	"bounds":{"value":[-1e20,1e20],"grad":[-1e30,1e30],"alpha":[1e-30,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
-	"kwargs":{},
-	"c1":0.0001,"c2":0.9,"maxiter":1500,
+	"kwargs":{"noise":{"parameters":1e-3}},
+	"c1":1e-5,"c2":1e-1,"maxiter":2500,
 	"alpha":1e-4,"beta":1e-4,
-	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":5},
+	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":20},
 	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"do":{
 		"parameters":true,
 		"grad":true,
 		"search":true,
 		"parameters.relative":true,"parameters.relative.mean":true,		
-		"variables":true,"variables.relative":true,"variables.relative.mean":true
+		"variables":true,"variables.relative":true,"variables.relative.mean":true,
+		"entropy":true,"purity":true,"similarity":true,"divergence":true,
 	},
 	"attributes":{
 		"iteration":[],"parameters":[],
@@ -279,13 +339,13 @@
 			"search":false,
 			"value":[],
 			"objective":[],
-			"alpha":[],
-			"beta":[],
+			"alpha":false,
+			"beta":false,
 
 
 			"iteration.max":[],
 			"iteration.min":[],
-			"grad.norm":[],"search.norm":[],
+			"grad.norm":false,"search.norm":false,
 			"variables":false,"variables.relative":false,"variables.relative.mean":false,
 			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
 			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
@@ -293,33 +353,34 @@
 			"hessian":false,"fisher":false,
 			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
 			"hessian.rank":false,"fisher.rank":false,
+			"entropy":false,"purity":false,"similarity":false,"divergence":false,
 
 			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
 			"space":[],"time":[],"lattice":[],
-			"architecture":[],"timestamp":[],"backend":[],"unit":[],
+			"architecture":false,"timestamp":[],"backend":false,"unit":false,
 			"key":[],"instance":[],"instances.*":[],
-			"parameters.*.parameters.parameters":[],"parameters.*.method":[],
-			"noise.string":[],"noise.ndim":[],"noise.locality":[],
-			"state.string":[],"state.ndim":[],
-			"label.string":[],"label.ndim":[],
-			"noise.scale":[],"noise.tau":[],"noise.initialization":[],
+			"parameters.*.parameters.parameters":false,"parameters.*.method":false,
+			"noise.string":false,"noise.ndim":false,"noise.locality":false,
+			"state.string":false,"state.ndim":false,
+			"label.string":false,"label.ndim":false,
+			"noise.scale":false,"noise.tau":false,"noise.initialization":false,
 			"noise.parameters":[],
 			"hyperparameters.c1":false,"hyperparameters.c2":false
 		}	
 	},
 "label": {
-	"operator":"I",
+	"operator":"haar",
 	"site":null,
 	"string":"U",
-	"parameters":1,
+	"parameters":{"data":1,"parameters":1},	
 	"ndim":2,
 	"seed":null
 	},
 "state": {
-	"operator":"plus",
+	"operator":"haar",
 	"site":null,
-	"string":"U",
-	"parameters":true,
+	"string":"psi",
+	"parameters":{"data":1,"parameters":1},	
 	"ndim":2,
 	"samples":1,
 	"seed":null
@@ -337,8 +398,7 @@
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{
-			"settings":"settings.json",
-			"conf":"logging.conf"			
+			"settings":"settings.json"
 			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",

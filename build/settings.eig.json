@@ -10,9 +10,9 @@
 	"dump":0
 	},
 "seed":{
-	"seed":28198,
-	"size":1,
-	"reset":28198,
+	"seed":145982,
+	"size":3,
+	"reset":145982,
 	"index":null
 	},
 "permutations":{
@@ -20,7 +20,7 @@
 	
 		"model.N":[4],		
 		"model.M":[10,50,100,200,300,400,500],		
-		"model.tau":[1e2],		
+		"model.tau":[1e5],		
 		"noise.scale":[null],
 		"state.scale":[null],
 
@@ -30,11 +30,11 @@
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
 
-		"parameters.xy.method":["constrained"],
-		"system.architecture":["constrained"],
+		"parameters.xy.method":["unconstrained"],
+		"system.architecture":["unconstrained"],
 
-		"jobs.job.cwd":["gobi/eig.constrained"],
-		"jobs.postprocess.cwd":["gobi/eig.constrained"],
+		"jobs.job.cwd":["gobi/eig.unconstrained"],
+		"jobs.postprocess.cwd":["gobi/eig.unconstrained"],
 	
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -165,10 +165,10 @@
 		"pad":"random",
 		"seed":null,	
 		"bounds":{"parameters":[-1,1],"features":[-1,1],"variables":[-1,1]},
-		"bounds":{"parameters":[-10,10],"features":[0,1],"variables":[-1,1]},
+		"bounds":{"parameters":[-50,50],"features":[0,1],"variables":[-1,1]},
 		"boundaries":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
 		"constants":{"parameters":[{},{}],"features":[{},{},{}],"variables":[{},{}]},
-		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-10,-10]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
+		"constants":{"parameters":[{},{"slice":[0,-1],"value":[-50,-50]}],"features":[{},{},{"slice":[0,-1],"value":[0,0]}],"variables":[{},{"slice":[0,-1],"value":[0,0]}]},
 		"args":[],
 		"kwargs":{"sigmoid":1,"lambda":[5e1,5e-2,1.5e-4]}
 		},
@@ -179,12 +179,10 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},			
 		"parameters":[-1e-2,0,1e-3,-5e-2,2e-3],
-		"parameters":[1,0,-1,1],
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["z"]],
 		"scale":1,
-		"scale":1e-2,
 		"initialization":"random",
 		"random":"uniform",
 		"pad":"random",
@@ -202,12 +200,10 @@
 		"method":null,		
 		"locality":{"parameters":["local","global"],"features":["local","local","global"],"variables":["local","global"]},	
 		"parameters":[7.24e-5,-1.3e-6,5e-5,8e-5,2e-6,2e-5,-3e-5,6e-5,9e-6,-6e-6],								
-		"parameters":[1,1,1,1,1,1,1,1,1],								
 		"shape":{"parameters":[-1,-1],"features":[1,-1,-1],"variables":[-1,-1]},
 		"size":[-1,-1],
 		"group":[["zz"]],
 		"scale":1,
-		"scale":1e-4,
 		"initialization":"random",
 		"random":"uniform",	
 		"pad":"random",
@@ -305,7 +301,7 @@
 			"JOB_SRC":"~/files/uw/research/code/simulation/code/src",
 			"JOB_CMD":"process.py",
 			"JOB_PROCESSES":1,			
-			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--cwd=."]
+			"JOB_ARGS":["--data=**/data.hdf5","--settings=plot.json","--hyperparameters=process.json","--pwd=.","--cwd=."]
 			},
 		"paths":{
 			"plot":"plot.json",

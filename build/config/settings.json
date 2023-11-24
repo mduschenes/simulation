@@ -1,5 +1,9 @@
 {
+<<<<<<< HEAD
 "class":{
+=======
+"cls":{
+>>>>>>> vectorv_exp
 	"model":"src.quantum.Unitary",
 	"parameters":"src.parameters.Parameters",
 	"label":"src.quantum.Label",
@@ -25,18 +29,22 @@
 	"index":null
 	},
 "model":{
+<<<<<<< HEAD
 	"data":{
 		"x":{"operator":["X"],"site":"i","string":"x","parameters":null},
 		"y":{"operator":["Y"],"site":"i","string":"y","parameters":null},
 		"z":{"operator":["Z"],"site":"i","string":"z","parameters":null},
 		"zz":{"operator":["Z","Z"],"site":"i<j","string":"zz","parameters":null}
 		},
+=======
+	"data":{},
+>>>>>>> vectorv_exp
 	"N":2,
 	"D":2,
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":500,
+	"M":2,
 	"T":null,
 	"tau":1,
 	"P":2,
@@ -45,10 +53,10 @@
 	"lattice":"square"
 	},
 "system":{
-	"dtype":"complex256",
+	"dtype":"complex",
 	"format":"array",
 	"device":"cpu",
-	"backend":"np",
+	"backend":null,
 	"architecture":null,
 	"seed":null,
 	"key":null,
@@ -62,7 +70,7 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":100,
+	"iterations":10,
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"search":{"alpha":"line_search","beta":"hestenes_stiefel"},
@@ -71,10 +79,10 @@
 	"bounds":{"value":[-1e20,1e20],"grad":[-1e12,1e12],"alpha":[1e-20,1e6],"beta":[-1e10,1e10]},	
 	"status":1,
 	"clear":false,
-	"kwargs":{"noise":{"parameters":1e-3}},
+	"kwargs":{},
 	"c1":0.0001,"c2":0.9,"maxiter":1500,
 	"alpha":1e-4,"beta":1e-4,
-	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":10},
+	"modulo":{"log":null,"buffer":null,"attributes":null,"track":null,"callback":null,"alpha":null,"beta":null,"dump":20},
 	"length":{"log":null,"buffer":1,"attributes":5,"track":null,"callback":null,"alpha":null,"beta":null,"dump":null},	
 	"do":{
 		"parameters":true,
@@ -87,6 +95,7 @@
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},
+<<<<<<< HEAD
 	"track":{
 			"iteration":[],
 			"parameters":[],
@@ -202,6 +211,12 @@
 	"ndim":3,
 	"seed":null
 	},
+=======
+	"track":{}	
+	},
+"label": {},
+"state": {},	
+>>>>>>> vectorv_exp
 "jobs":{
 	"preprocess":null,
 	"job":{
@@ -215,8 +230,7 @@
 			"JOB_ARGS":"settings.json"
 			},
 		"paths":{
-			"settings":"settings.json",
-			"conf":"logging.conf"			
+			"settings":"settings.json"		
 			},
 		"patterns":{
 			"output":"%x.%A.%a.stdout","error":"%x.%A.%a.stderr",
@@ -272,6 +286,7 @@
 		"verbose":"info"
 		}
 	},
+"callback":{},
 "process": {},
 "plot": {}
 }

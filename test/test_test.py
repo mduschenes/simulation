@@ -12,210 +12,53 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,gradient
-from src.utils import array,ones,zeros,arange,eye,rand,identity,diag,PRNGKey
-from src.utils import tensorprod,trace,broadcast_to,padding,expand_dims,moveaxis,repeat,take,inner,outer,product
-from src.utils import summation,exponentiation
-from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
-from src.utils import gradient_expm,gradient_sigmoid,gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
-from src.utils import eig,qr,einsum
-from src.utils import maximum,minimum,abs,real,imag,cos,sin,arctan,sqrt,mod,ceil,floor,heaviside,sigmoid
-from src.utils import concatenate,vstack,hstack,sort,norm,unique,allclose,is_naninf,is_hermitian,is_unitary
-from src.utils import parse,to_string,to_number,scinotation,datatype,slice_size
-from src.utils import trotter
-from src.utils import pi,e,delim,arrays,scalars
-from src.utils import itg,flt,dbl
+from src.utils import gradient
+from src.utils import allclose,trace,dot,prng
 
-from src.iterables import getter,setter,permuter,equalizer
+from src.iterables import getter,setter,permuter,equalizer,namespace
 
-from src.parameters import Parameters
-from src.operators import Gate
-from src.states import State
-
-from src.io import load,dump,join,split
-from src.call import call,rm
-
-from src.plot import plot
+from src.io import load,dump
 
 from src.optimize import Optimizer,Objective,Metric,Callback
 
-from src.quantum import Unitary,Hamiltonian,Observable
+from src.system import Dict
 
-# Logging
-from src.system import Logger
-
-# name = __name__
-# path = os.getcwd()
-# file = 'logging.conf'
-# conf = os.path.join(path,file)
-# file = None #'log.log'
-# logger = Logger(name,conf,file=file)
-
-
-def test_class(path,tol):
-
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
-
-	cls = load(hyperparameters['class']['model'])
-
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	out = model(model.parameters())
-
-	if model.hermitian:
-		assert is_hermitian(out), "model not hermitian"
-	else:
-		assert is_unitary(out), "model not unitary"
-
-
-	initial = model(model.parameters())
-
-	hyperparameters['model']['data'] = None
-	new = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	init  = new(new.parameters())
-
-	new.__setup__(model.data)
-	new.__initialize__()
-
-	new.info()
-
-	final = new(new.parameters())
-
-	print(initial)
-	print(init)
-	print(final)
-
-	assert(allclose(initial,final)), "Incorrect class re-initialization"
-
-	print("Parameters set")
-
-	return
-
-
-
-def test_load_dump(path,tol):
-
-	# Set instance
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
-
-	cls = load(hyperparameters['class']['model'])
-
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	# Set hyperparameters
-	hyperparameters['optimize']['track']['alpha'] = []
-	hyperparameters['optimize']['track']['alpha'].append(12345)
-	hyperparameters['optimize']['attributes']['search']
-	hyperparameters['optimize']['attributes']['search'].append([1,2,2,3])
-	
-
-	# Dump instance
-	model.dump()
-
-	# Set instance
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
-	new = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	new.load()
-
-	types = (dict,list,)
-	exceptions = lambda a,b: any(any(e(a) for e in exception) and any(e(b) for e in exception) 
-		for exception in [[callable],[lambda a: isinstance(a,arrays)],
-							[lambda a: isinstance(a,dict) and ((len(a)==0) or all(callable(a[item]) for item in a))]])
-	
-	equalizer(hyperparameters,hyperparameters,types=types,exceptions=exceptions)
-
-	return
-
-
-def test_grad(path,tol):
-
-	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
-
-	cls = load(hyperparameters['class']['model'])
-
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
-
-	func = model
-
-	parameters = model.parameters()
-
-	# grad of unitary
-	grad_jax = model.grad
-	grad_finite = gradient(model,mode='finite',tol=tol)
-	grad_analytical = model.grad_analytical
-
-	assert allclose(grad_jax(parameters),grad_finite(parameters)), "JAX grad != Finite grad"
-	assert allclose(grad_finite(parameters),grad_analytical(parameters)), "Finite grad != Analytical grad"
-	assert allclose(grad_jax(parameters),grad_analytical(parameters)), "JAX grad != Analytical grad"
-
-	return
 
 def test_metric(path,tol):
 
 	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
 
-	cls = load(hyperparameters['class']['model'])
+	settings = Dict(settings)
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
 
-	func = []
-	shapes = model.shapes
-	label = model.label()
-	hyperparams = hyperparameters['optimize']
-	system = model.system
+	hyperparameters = settings.optimize
+	system = settings.system
+	seed = prng(**settings.seed)
+	func = None
+	arguments = ()
+	keywords = {}
 
-	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
 
-	out = metric(label)
+	label.__initialize__(state=state)
+	model.__initialize__(state=state)
+
+	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
+
+	out = metric(label())
 
 	assert allclose(0,out), "Incorrect metric %0.5e"%(out)
+
+	print('Passed')
 	
 	return
 
@@ -223,42 +66,118 @@ def test_metric(path,tol):
 def test_objective(path,tol):
 
 	default = None
-	hyperparameters = load(path,default=default)
-	if hyperparameters is None:
-		raise "Hyperparameters %s not loaded"%(path)
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
 
-	cls = load(hyperparameters['class']['model'])
+	settings = Dict(settings)
 
-	model = cls(**hyperparameters['model'],
-		parameters=hyperparameters['parameters'],
-		state=hyperparameters['state'],
-		noise=hyperparameters['noise'],
-		label=hyperparameters['label'],
-		system=hyperparameters['system'])
+
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
+
+	hyperparameters = settings.optimize
+	system = settings.system
+	seed = prng(**settings.seed)
+	func = None
+	arguments = ()
+	keywords = {}
+
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+	callback = callback(**{**namespace(callback,model),**settings.callback,**dict(model=model,system=system)})
+
+	label.__initialize__(state=state)
+	model.__initialize__(state=state)
 
 	parameters = model.parameters()
-	shapes = model.shapes
-	label = model(parameters)
-	func = []
-	callback = None
-	hyperparams = hyperparameters['optimize']
-	system = model.system
+	state = model.state()
+	label = model(parameters,state=state)
 
-	metric = Metric(shapes=shapes,label=label,hyperparameters=hyperparams,system=system)
-	func = Objective(model,metric,func=func,callback=callback,hyperparameters=hyperparams,system=system)
+	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
+	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
 
-	out = func(parameters)
+	out = func(parameters,state=state)
 
 	assert allclose(0,out), "Incorrect objective %0.5e"%(out)
+
+	print('Passed')
+
+	return
+
+def test_grad(path,tol):
+
+	default = None
+	settings = load(path,default=default)
+	if settings is None:
+		raise Exception("settings %s not loaded"%(path))
+
+
+
+	settings = Dict(settings)
+
+	model = load(settings.cls.model)
+	state = load(settings.cls.state)
+	label = load(settings.cls.label)
+	callback = load(settings.cls.callback)
+
+	hyperparameters = settings.optimize
+	system = settings.system
+	seed = prng(**settings.seed)
+	func = None
+	arguments = ()
+	keywords = {}
+
+	model = model(**{**settings.model,**dict(system=system)})
+	state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+	label = label(**{**namespace(label,model),**settings.label,**dict(model=model,system=system)})
+
+	label.__initialize__(state=state)
+	model.__initialize__(state=state)
+
+	parameters = model.parameters()
+	state = model.state()
+
+	# grad of unitary
+	grad_automatic = model.grad_automatic
+	grad_finite = model.grad_finite
+	grad_analytical = model.grad_analytical
+
+	index = slice(None)
+	print('-----')
+	print(grad_automatic(parameters,state)[index])
+	print()
+	print('-----')
+	print()
+	print(grad_finite(parameters,state)[index])
+	print()
+	print('-----')
+	print()	
+	print(grad_analytical(parameters,state)[index])
+	print()
+	print('----- ratio -----')
+	print()
+	print(grad_automatic(parameters,state)[index]/grad_analytical(parameters,state)[index])
+	print()
+	print('-----')
+	print()
+	assert allclose(grad_automatic(parameters,state),grad_finite(parameters,state)), "JAX grad != Finite grad"
+	assert allclose(grad_automatic(parameters,state),grad_analytical(parameters,state)), "JAX grad != Analytical grad"
+	assert allclose(grad_finite(parameters,state),grad_analytical(parameters,state)), "Finite grad != Analytical grad"
+
+	print('Passed')
 
 	return
 
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
+	path = 'config/settings.tmp.json'	
 	tol = 5e-8 
-	test_class(path,tol)
-	# test_data(path,tol)
-	# test_grad(path,tol)
-	# test_metric(path,tol)
-	# test_objective(path,tol)
+	test_metric(path,tol)
+	test_objective(path,tol)
+	test_grad(path,tol)
