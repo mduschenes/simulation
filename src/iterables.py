@@ -28,7 +28,6 @@ null = Null()
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = (Null,)
 
-
 def namespace(cls,signature=None,init=False,**kwargs):
 	'''
 	Get namespace of attributes of class instance
@@ -210,7 +209,7 @@ def setter(iterable,keys,delimiter=None,default=None,copy=False):
 	Set nested value in iterable with nested keys
 	Args:
 		iterable (dict): dictionary to be set in-place with value
-		keys (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
+		keys (dict,tuple): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
@@ -283,7 +282,7 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 	Get nested value in iterable with nested keys
 	Args:
 		iterable (dict): dictionary to get with keys
-		keys (dict): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys, and values to set 
+		keys (str,dict,tuple,list): Dictionary of keys of delimiter separated strings, or tuple of string for nested keys
 		delimiter (bool,str,None): boolean or None or delimiter on whether to split string keys into list of nested keys
 		copy (bool,dict,None): boolean or None whether to copy value, or dictionary with keys on whether to copy value
 		reset (bool): boolean on whether to replace value at key with value, or update the nested dictionary
@@ -296,13 +295,13 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 		return copier(iterable,copy=copy)
 
 	key = keys
+
 	if (isinstance(key,str) and (delimiter is not None) and (key not in iterable)):
-			index = key.split(delimiter)
+		index = key.split(delimiter)
 	elif isinstance(key,scalars):
 		index = (key,)
 	else:
 		index = (*key,)
-
 
 	if len(index)>1 and (delimiter is not None):
 		index,other = index[0],delimiter.join(index[1:])

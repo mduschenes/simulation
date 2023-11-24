@@ -23,7 +23,7 @@ for PATH in PATHS:
 
 from src.utils import array
 from src.utils import to_tuple,asscalar
-from src.utils import maximum,minimum,abs,sort
+from src.utils import maximum,minimum,abs,sort,log
 from src.utils import arrays,scalars,nonzero
 
 # Processing
@@ -92,4 +92,21 @@ def func_hessian_eigenvalues(data):
 	out = abs(out)
 	out = out/maximum(out)
 	out = to_tuple(out)
+	return out
+
+def func_entropy(data):
+	out = np.array(data['entropy'])/log(data['D']**data['N'])
+	return out
+
+def func_purity(data):
+	out = 1-np.array(data['purity'])
+	return out	
+
+def func_similarity(data):
+	out = 1-np.array(data['similarity'])
+	return out
+
+def func_divergence(data):
+	# out = np.array(data['divergence'])
+	out = np.array(data['divergence'])/log(data['D']**data['N'])
 	return out
