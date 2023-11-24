@@ -1412,6 +1412,180 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 	return fisher
 
 
+def entropy(func,shape=None,hermitian=None,unitary=None,**kwargs):
+	'''
+	Compute entropy of function
+	Args:
+		func  (callable): Function to compute entropy
+		shape (iterable[int]): Shape of function
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
+	Returns:
+		entropy (callable): Entropy of function
+	'''
+
+	if shape is None:
+		shape = getattr(func,'shape',None)
+
+	if hermitian is None:
+		hermitian = getattr(func,'hermitian',None)
+
+	if unitary is None:
+		unitary = getattr(func,'unitary',None)
+
+	ndim = len(shape) if shape is not None else None
+	d = max(shape) if shape is not None else None
+
+	if ndim is not None and ndim < 2:
+		def entropy(*args,**kwargs):
+			return 0
+	else:
+		def entropy(*args,**kwargs):
+			out = func(*args,**kwargs)
+			
+			out = eig(out,compute_v=False,hermitian=hermitian)
+
+			out = abs(out)
+
+			out = -addition(out*log(out))
+
+			return out
+
+	return entropy
+
+
+def purity(func,shape=None,hermitian=None,unitary=None,**kwargs):
+	'''
+	Compute purity of function
+	Args:
+		func  (callable): Function to compute purity
+		shape (iterable[int]): Shape of function
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
+	Returns:
+		purity (callable): purity of function
+	'''
+
+	if shape is None:
+		shape = getattr(func,'shape',None)
+
+	if hermitian is None:
+		hermitian = getattr(func,'hermitian',None)
+
+	if unitary is None:
+		unitary = getattr(func,'unitary',None)
+
+	ndim = len(shape) if shape is not None else None
+	d = max(shape) if shape is not None else None
+
+	if ndim is not None and ndim < 2:
+		def purity(*args,**kwargs):
+			return 1
+	else:
+		def purity(*args,**kwargs):
+			out = func(*args,**kwargs)
+			
+			out = real(einsum('ij,ij->',out,conjugate(out)))
+
+			return out
+
+	return purity
+
+
+def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
+	'''
+	Compute similarity of function
+	Args:
+		func  (callable): Function to compute similarity
+		label  (callable,array): Label to compute similarity
+		shape (iterable[int]): Shape of function
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
+	Returns:
+		similarity (callable): similarity of function
+	'''
+
+	if shape is None:
+		shape = getattr(func,'shape',None)
+
+	if hermitian is None:
+		hermitian = getattr(func,'hermitian',None)
+
+	if unitary is None:
+		unitary = getattr(func,'unitary',None)
+
+	if callable(label):
+		label = label()
+
+	labels = einsum('ij,ji->',label,label)
+
+	ndim = len(shape) if shape is not None else None
+	d = max(shape) if shape is not None else None
+
+	if ndim is not None and ndim < 2:
+		def similarity(*args,**kwargs):
+			return 0
+	else:
+		def similarity(*args,**kwargs):
+			out = func(*args,**kwargs)
+
+			outs,out = einsum('ij,ji->',out,out),einsum('ij,ji->',out,label)
+			
+			out = abs((d*(out)-1)/sqrt((d*(outs)-1)*(d*(labels)-1)))
+
+			return out
+
+	return similarity
+
+def divergence(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
+	'''
+	Compute divergence of function
+	Args:
+		func  (callable): Function to compute divergence
+		label  (callable,array): Label to compute divergence
+		shape (iterable[int]): Shape of function
+		hermitian (bool): function is hermitian
+		unitary (bool): function is unitary
+	Returns:
+		divergence (callable): divergence of function
+	'''
+
+	if shape is None:
+		shape = getattr(func,'shape',None)
+
+	if hermitian is None:
+		hermitian = getattr(func,'hermitian',None)
+
+	if unitary is None:
+		unitary = getattr(func,'unitary',None)
+
+	if callable(label):
+		label = label()
+	labels = eig(label,compute_v=False,hermitian=hermitian)
+	labels = abs(labels)
+	labels = addition(log(labels**labels))
+
+	ndim = len(shape) if shape is not None else None
+	d = max(shape) if shape is not None else None
+
+	if ndim is not None and ndim < 2:
+		def divergence(*args,**kwargs):
+			return 0
+	else:
+		def divergence(*args,**kwargs):
+			out = func(*args,**kwargs)
+
+			outs,out = eig(out,compute_v=True,hermitian=hermitian)
+
+			outs = abs(outs)
+
+			out = real(labels - einsum('ij,jk,k,ik->',label,out,log(outs),conjugate(out)))
+
+			return out
+
+	return divergence
+
+
 def nullfunc(obj,*args,**kwargs):
 	'''
 	Null function
@@ -4177,6 +4351,25 @@ def dot(a,b):
 	return np.dot(a,b)
 
 
+def dots(*a):
+	'''
+	Calculate dot product of arrays a and b
+	Args:
+		a (iterable[array]): Arrays to calculate dot product
+	Returns:
+		out (array): Dot product
+	'''	
+
+	if not len(a):
+		out = None
+	else:
+		out = a[0]
+		for i in a[1:]:
+			out = dot(out,i)
+	
+	return out
+	
+
 @jit
 def outer(a,b):
 	'''
@@ -5131,6 +5324,18 @@ def log(a):
 		out (array): Natural log of array
 	'''
 	return np.log(a)
+
+
+# @jit
+def logm(a):
+	'''
+	Calculate matrix log of array a
+	Args:
+		a (array): Array to compute log
+	Returns:
+		out (array): Matrix log of array
+	'''
+	return osp.linalg.logm(a)
 
 @jit
 def exp10(a):
@@ -7414,10 +7619,8 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		scilimits (iterable[int]): Limits on where not to represent with scientific notation
 		error (str,int,float): Error of number to be processed
 		usetex (bool): Render string with Latex
-	
 	Returns:
-		String with scientific notation format for number
-
+		string (str): String with scientific notation format for number
 	'''
 
 	if decimals is None:
@@ -7504,6 +7707,28 @@ def scinotation(number,decimals=1,base=10,order=20,zero=True,one=False,scilimits
 		string = string.replace('$','')
 	return string
 
+
+def texify(string,usetex=False):
+	'''
+	Put string into latex format
+	Args:
+		string (object): Object to be processed
+		usetex (bool): Render string with Latex
+	Returns:
+		string (str): String with latex format
+	'''
+
+	if isinstance(string,str):
+		string = '\\textrm{%s}'%(string)
+	else:
+		string = str(string)
+
+	string = string.replace('$','')
+
+	if usetex:
+		string = '$%s$'%(string)
+
+	return string
 
 def uncertainty_propagation(x,y,xerr,yerr,operation):
 	'''

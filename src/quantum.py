@@ -10,11 +10,11 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher
+from src.utils import jit,partial,copy,vmap,vfunc,switch,forloop,cond,slicing,gradient,hessian,fisher,entropy,purity,similarity,divergence
 from src.utils import array,asarray,asscalar,empty,identity,ones,zeros,rand,prng,spawn,arange,diag
 from src.utils import repeat,expand_dims
 from src.utils import contraction,gradient_contraction
-from src.utils import tensorprod,conjugate,dagger,einsum,dot,norm,eig,trace,sort,relsort,prod
+from src.utils import tensorprod,conjugate,dagger,einsum,dot,dots,norm,eig,trace,sort,relsort,prod
 from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,difference,unique,cumsum,shift,interleaver,splitter,abs,mod,sqrt,log,log10,sign,sin,cos,exp
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,iterables,datatype
@@ -543,7 +543,7 @@ class Object(System):
 
 		elif isinstance(self.parameters,cls):
 			parameters = parameters if isinstance(parameters,dict) else dict(data=parameters) if parameters is not None else dict()
-			
+
 			self.parameters.__initialize__(**parameters)
 
 		else:
@@ -1006,7 +1006,7 @@ class Pauli(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-		self.parameters.__initialize__(parameters=dict(obj=pi))
+		self.parameters.__initialize__(parameters=dict(obj=pi/2))
 
 		if self.parameters() is not None:
 
@@ -1354,6 +1354,7 @@ class Noise(Object):
 		**{attr: Basis['X'] for attr in ['X','x','flip','bitflip']},
 		**{attr: Basis['Y'] for attr in ['Y','y','flipphase']},
 		**{attr: Basis['Z'] for attr in ['Z','z','phase','dephase']},
+		**{attr: Basis['I'] for attr in ['dephase-amplitude']},
 		}
 	default = 'I'
 	D = 2
@@ -1385,7 +1386,7 @@ class Noise(Object):
 			kwargs (dict): Additional operator keyword arguments			
 		'''
 
-		if not isinstance(self.data,arrays):
+		if True or not isinstance(self.data,arrays):
 
 			if self.parameters is None:
 				self.parameters = 0
@@ -1431,11 +1432,20 @@ class Noise(Object):
 				elif operator[i] in ['amplitude']:
 					datum = [self.basis['00'](D=self.D,dtype=self.dtype) + sqrt(1-parameters[i])*self.basis['11'](D=self.D,dtype=self.dtype),
 							sqrt(parameters[i])*self.basis['01'](D=self.D,dtype=self.dtype)]
+				elif operator[i] in ['dephase-amplitude']:
+					datum = [dots(*i) for i in permutations(
+						[self.basis['00'](D=self.D,dtype=self.dtype) + sqrt(1-parameters[i])*self.basis['11'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i])*self.basis['01'](D=self.D,dtype=self.dtype)],
+						[sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i])*self.basis['Z'](D=self.D,dtype=self.dtype)]
+						)
+						]
+
 				elif operator[i] in ['depolarize']:
-					datum = [sqrt(1-parameters[i])*self.basis['I'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i]/(self.D**2-1))*self.basis['X'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i]/(self.D**2-1))*self.basis['Y'](D=self.D,dtype=self.dtype),
-							sqrt(parameters[i]/(self.D**2-1))*self.basis['Z'](D=self.D,dtype=self.dtype)]
+					datum = [sqrt(1-(self.D**2-1)*parameters[i]/(self.D**2))*self.basis['I'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i]/(self.D**2))*self.basis['X'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i]/(self.D**2))*self.basis['Y'](D=self.D,dtype=self.dtype),
+							sqrt(parameters[i]/(self.D**2))*self.basis['Z'](D=self.D,dtype=self.dtype)]
 				elif operator[i] in ['eps']:
 					datum = array([identity(self.n,dtype=self.dtype),diag((1+parameters[i])**(arange(self.n)+2) - 1)])
 				elif operator[i] in ['noise','rand']:
@@ -2458,14 +2468,15 @@ class Callback(System):
 			'hessian':[],'fisher':[],
 			'hessian.eigenvalues':[],'fisher.eigenvalues':[],
 			'hessian.rank':[],'fisher.rank':[],
+			'entropy':[],'purity':[],'similarity':[],'divergence':[],
 
 			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
 
-			"noise.string":[],"noise.ndim":[],"noise.locality":[],"noise.method":[],"noise.scale":[],"noise.tau":[],"noise.initialization":[],
-			"noise.parameters":[],
+			'noise.string':[],'noise.ndim':[],'noise.locality':[],'noise.method':[],'noise.scale':[],'noise.tau':[],'noise.initialization':[],
+			'noise.parameters':[],
 
-			"state.string":[],"state.ndim":[],"label.string":[],"label.ndim":[],
+			'state.string':[],'state.ndim':[],'label.string':[],'label.ndim':[],
 
 			'hyperparameters.c1':[],'hyperparameters.c2':[],
 
@@ -2518,6 +2529,7 @@ class Callback(System):
 			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
 
 		stop = (
+			(
 			(hyperparameters['eps'].get('value.increase') is not None) and
 			(hyperparameters['eps'].get('value.increase') > 0) and
 			((len(attributes['value']) > 1) and 
@@ -2526,6 +2538,8 @@ class Callback(System):
 			((attributes['value'][-1] > attributes['value'][-2]) and
 			(log10(attributes['value'][-1] - attributes['value'][-2]) > 
 			(log10(hyperparameters['eps']['value.increase']*attributes['value'][-1]))))
+			) or
+			((iterations.start == iterations.stop))
 			)
 
 		none = (iterations.start == 0) and (iterations.stop == 0)
@@ -2549,7 +2563,8 @@ class Callback(System):
 				'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 				'objective.ideal.state','objective.diff.state','objective.rel.state',
 				'objective.ideal.operator','objective.diff.operator','objective.rel.operator',
-				'hessian.rank','fisher.rank']
+				'hessian.rank','fisher.rank'
+				]
 			},
 			}
 
@@ -2738,22 +2753,58 @@ class Callback(System):
 						value = nonzero(value,eps=50)
 						# value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
 
+				elif attr in ['entropy'] and (not do):
+					value = default
+
+				elif attr in ['entropy'] and (do):
+
+					function = entropy(model,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+
+					value = function(parameters)
+
+				elif attr in ['purity'] and (not do):
+					value = default
+
+				elif attr in ['purity'] and (do):
+
+					function = purity(model,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+
+					value = function(parameters)
+
+				elif attr in ['similarity'] and (not do):
+					value = default
+
+				elif attr in ['similarity'] and (do):
+
+					function = similarity(model,metric.label,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+
+					value = function(parameters)
+
+				elif attr in ['divergence'] and (not do):
+					value = default
+
+				elif attr in ['divergence'] and (do):
+
+					function = divergence(model,metric.label,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+
+					value = function(parameters)
+
 				elif attr in [
-					"state.string","state.ndim",
-					"label.string","label.ndim",
+					'state.string','state.ndim',
+					'label.string','label.ndim',
 					]:
 					value = getattrs(metric,attr,default=default,delimiter=delim)
 
 				elif attr in [
-					"noise.string","noise.ndim","noise.locality",
-					"noise.method","noise.scale","noise.tau","noise.initialization"
+					'noise.string','noise.ndim','noise.locality',
+					'noise.method','noise.scale','noise.tau','noise.initialization'
 					]:
 					for i in model.data:
 						if model.data[i].string == delim.join(attr.split(delim)[:1]):
 							value = getattrs(model.data[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)
 							break
 
-				elif attr in ["noise.parameters"]:
+				elif attr in ['noise.parameters']:
 					for i in model.data:
 						if model.data[i].string == delim.join(attr.split(delim)[:1]):
 							value = getattrs(model.data[i],delim.join(attr.split(delim)[1:]),default=default,delimiter=delim)

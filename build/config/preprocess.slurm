@@ -15,7 +15,7 @@
 
 ##SBATCH --dependency=afterany:
 
-#SBATCH --signal=B:USRSIG@60
+##SBATCH --signal=B:USRSIG@60
 
 ##--nodelist=cpu[0-10]
 ##--exclude=cpu[0-10]
@@ -128,4 +128,4 @@ ${EXE[@]} ${TASKS[@]}
 scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
 
 # Queue
-trap QUEUE SIGUSRSIG
+# trap QUEUE SIGUSRSIG

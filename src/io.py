@@ -22,6 +22,8 @@ from src.utils import to_repr,to_eval
 from src.utils import returnargs
 from src.utils import arrays,scalars,nan,delim
 
+from src.iterables import getter,setter
+
 # Logging
 from src.logger	import Logger
 logger = Logger()
@@ -1041,8 +1043,84 @@ def _dump(data,obj,wr,ext,**kwargs):
 
 	return
 
+def append(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
+	'''
+	Append objects to path
+	Args:
+		data (object,callable): Object to append or function to append with signature data(path,obj)
+		path (str,iterable[str],dict[str,str]): Path to append object
+		wr (str): Write mode
+		delimiter (str): Delimiter to separate file name from extension		
+		wrapper (str,callable): Process data, either string in ['df','np','array','pd'] or callable with signature wrapper(data)
+		verbose (bool,int): Verbose logging of appending
+		kwargs (dict): Additional appending keyword arguments
+	'''
+
+	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
+
+	if isinstance(path,str):
+		paths = [path]
+	else:
+		paths = path
+	
+	if not isinstance(path,dict):
+		paths = {path: path for path in paths}
+	else:
+		paths = path
+
+	paths = {(delim*3).join([name,str(path)]): path
+		for name in paths
+		for path in natsorted(glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name])))
+		}
+
+	if not callable(data):
+
+		if isinstance(data,str):
+			tmp = load(data)
+		if tmp is not None:
+			data = tmp
+		def _append(path,obj,data=data):
+			setter(obj,data,delimiter=delim)
+			return obj
+	else:
+		def _append(path,obj,data=data):
+			obj = data(path,obj)
+			return obj
+
+	for name in paths:
+
+		path = paths[name]
+
+		obj = load(path,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
+		
+		obj = _append(path,obj)
+
+		dump(obj,path,delimiter=delimiter,verbose=verbose,**kwargs)
+
+	return
 
 
+def cleanup(data,path,verbose=True):
+	'''
+	Process path
+	Args:
+		data (iterable[str]): Attributes to remove
+		path (str): Path to remove attributes
+		verbose (bool): Verbosity
+	'''
+
+	for path in glob(path):
+
+		obj = load(path,verbose=verbose)
+
+		for attr in data:
+			if attr not in obj:
+				continue
+			obj.pop(attr)
+
+		dump(obj,path)
+
+	return
 
 def update(dictionary,field,func):
 	"""
