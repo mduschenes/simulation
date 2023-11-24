@@ -102,6 +102,10 @@ def func_purity(data):
 	out = 1-np.array(data['purity'])
 	return out	
 
+def func_similarity(data):
+	out = 1-np.array(data['similarity'])
+	return out
+
 def func_divergence(data):
 	# out = np.array(data['divergence'])
 	out = np.array(data['divergence'])/log(data['D']**data['N'])
