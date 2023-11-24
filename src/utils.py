@@ -1531,7 +1531,7 @@ def similarity(func,label,shape=None,hermitian=None,unitary=None,**kwargs):
 
 			outs,out = einsum('ij,ji->',out,out),einsum('ij,ji->',out,label)
 			
-			out = 1-abs((d*(out)-1)/sqrt((d*(outs)-1)*(d*(labels)-1)))
+			out = abs((d*(out)-1)/sqrt((d*(outs)-1)*(d*(labels)-1)))
 
 			return out
 
