@@ -7,6 +7,7 @@
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
+##SBATCH --qos=normal
 #SBATCH --partition=cpu
 #SBATCH --time=01:00:00
 #SBATCH --mem=32G
