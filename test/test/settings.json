@@ -1,6 +1,7 @@
 {
 "cls":{
 	"model":"src.quantum.Channel",
+	"model":"src.quantum.Noise",
 	"parameters":"src.parameters.Parameters",
 	"label":"src.quantum.Label",
 	"noise":"src.quantum.Noise",
@@ -212,8 +213,8 @@
 			"attributes":["parameters.data"],							
 			"variable":false,"seed":123},		
 		"noise":{
-			"operator":"depolarize","site":null,"string":"noise",
-			"parameters":{"data":1,"parameters":1e-4},
+			"operator":"amplitude","site":null,"string":"noise",
+			"parameters":{"data":1,"parameters":1},
 			"ndim":3,
 			"variable":false
 		}
@@ -223,7 +224,7 @@
 	"d":1,
 	"L":1,
 	"delta":null,
-	"M":20,
+	"M":1,
 	"T":null,
 	"tau":1,
 	"P":1,

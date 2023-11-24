@@ -1265,6 +1265,7 @@ class Optimization(System):
 			'kwargs':{},
 			'alpha':0,
 			'status':1,
+			'initialize':False,
 			'clear':True,
 			'cwd':None,
 			'path':None,
@@ -1302,6 +1303,7 @@ class Optimization(System):
 		self.parameters = None
 		self.optimizer = hyperparameters['optimizer']		
 		self.status = hyperparameters['status']
+		self.initialize = hyperparameters['initialize']
 		self.clear = hyperparameters['clear']
 		self.modulo = hyperparameters['modulo']
 		self.length = hyperparameters['length']
@@ -1319,7 +1321,7 @@ class Optimization(System):
 
 		self.callback = callback
 
-		self.reset(clear=True,opt=None)
+		self.reset(initialize=False,clear=True,opt=None)
 
 		return
 
@@ -1517,18 +1519,18 @@ class Optimization(System):
 		do = (self.paths is not None)
 
 		if not do:
-			self.reset(clear=False,opt=opt)
+			self.reset(initialize=False,clear=False,opt=opt)
 			return iteration,opt
 
 		path = self.paths['track']
 		data = load(path)
 
 		if data is not None:
-			length = min(len(data[attr]) for attr in data)
 			for attr in data:
 				if attr not in self.track:
 					continue
 				self.track[attr] = [*data[attr],*self.track[attr]]
+
 
 		size = max((len(self.track[attr]) for attr in self.track),default=0)
 		default = nan
@@ -1536,6 +1538,7 @@ class Optimization(System):
 		for attr in self.track:
 			data = [default for i in range(size-len(self.track[attr]))]
 			self.track[attr] = [*self.track[attr],*data]
+
 
 		path = self.paths['attributes']
 		data = load(path)
@@ -1554,7 +1557,7 @@ class Optimization(System):
 			self.attributes[attr] = [*self.attributes[attr],*data]
 
 		self.parameters = self.get_params(opt)
-		self.reset(clear=False,opt=opt)
+		self.reset(initialize=False,clear=False,opt=opt)
 
 		iteration = self.iteration
 		opt = self.opt_init(self.parameters)
@@ -1562,13 +1565,15 @@ class Optimization(System):
 		return iteration,opt
 		
 
-	def reset(self,clear=None,opt=None):
+	def reset(self,initialize=None,clear=None,opt=None):
 		'''
 		Reset class attributes
 		Args:
+			initialize (bool): initialize attributes
 			clear (bool): clear attributes
 			opt (object): optimizer state
 		'''
+		initialize = self.initialize if initialize is None else initialize
 		clear = self.clear if clear is None else clear
 
 		for attr in list(self.attributes):
@@ -1639,9 +1644,10 @@ class Optimization(System):
 		else:
 			self.iteration = 0
 
-	
 		if not clear:
-			if isinstance(self.iterations,int):
+			if isinstance(self.iterations,bool):
+				self.iterations = self.iterations
+			elif isinstance(self.iterations,int):
 				self.iterations = range(self.iteration,self.iterations+self.iteration)
 			elif isinstance(self.iterations,range):
 				self.iterations = range(
@@ -1650,6 +1656,12 @@ class Optimization(System):
 					self.iterations.step)				
 			else:
 				self.iterations = range(self.iteration,self.iterations[1],*self.iterations[2:])
+
+
+		if initialize:
+			iteration = self.iteration
+			opt = opt
+			self.init(iteration,opt)
 
 		return
 
@@ -1665,22 +1677,31 @@ class Optimization(System):
 		'''
 
 		do = (opt is not None) and (
-		   (isinstance(self.iterations,int) and (self.iteration == 0)) or 
-		   (isinstance(self.iterations,range) and (self.iterations.start == 0) and (self.iterations.stop == 0)) or 
-		   ((not isinstance(self.iterations,(int,range))) and (self.iterations[0] == 0) and (self.iterations[1] == 0)))
+			(self.initialize) or
+			(isinstance(self.iterations,int) and (self.iteration == 0)) or 
+			(isinstance(self.iterations,range) and (self.iterations.start == 0) and (self.iterations.stop == 0)) or 
+			(isinstance(self.iterations,bool) and self.iterations) or
+			((not isinstance(self.iterations,(int,range))) and (self.iterations[0] == 0) and (self.iterations[1] == 0))
+			)
 
 		if not do:
 			return
 			
-		value,grad,parameters = self.opt_step(iteration-1,opt,*args,**kwargs)
-		search = -grad
-		alpha,beta = self.hyperparameters.get('alpha'),self.hyperparameters.get('beta')
 
-		attrs = {'search':search,'alpha':alpha,'beta':beta}
-		for attr in attrs:
-			if attr in self.attributes:
-				self.attributes[attr].append(attrs[attr])
+		if isinstance(self.iterations,bool):
+			self.iteration = self.iteration - 1
+			self.iterations = range(self.iteration,self.iteration)
+		else:
+			value,grad,parameters = self.opt_step(iteration-1,opt,*args,**kwargs)
+			search = -grad
+			alpha,beta = self.hyperparameters.get('alpha'),self.hyperparameters.get('beta')
+
+			attrs = {'search':search,'alpha':alpha,'beta':beta}
+			for attr in attrs:
+				if attr in self.attributes:
+					self.attributes[attr].append(attrs[attr])
 	
+		parameters = self.get_params(opt)	
 		opt = self.opt_init(parameters)
 		parameters = self.get_params(opt)
 		track = self.track
