@@ -281,7 +281,7 @@ function search(){
 
 function catls(){
 	files=(${@})
-	files=($(ls ${files[@]} | sort -V))
+	files=($(ls ${files[@]} 2> /dev/null | sort -V))
 	for file in ${files[@]}
 	do
 		echo ${file}
