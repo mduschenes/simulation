@@ -6453,7 +6453,7 @@
             }
         }
     },            
-    "M.entropy.purity.noise.parameters": {
+    "M.objective.entropy.purity.noise.parameters": {
         "fig": {
             "set_size_inches": {
                 "w": 12,
@@ -6876,7 +6876,7 @@
             }
         }
     },
-    "M.entropy.purity.divergence.noise.parameters": {
+    "M.objective.entropy.purity.divergence.noise.parameters": {
         "fig": {
             "set_size_inches": {
                 "w": 12,
@@ -7106,7 +7106,7 @@
                             "N": null,
                             "parameters.xy.method": null,
                             "noise.parameters": null,
-                            "iteration": "@iteration.max@"
+                            "iteration": "@iteration.min@"
                         },
                         "labels": null,
                         "wrapper": {

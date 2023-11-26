@@ -25,11 +25,6 @@
 
 
 		"model.N":[4],		
-		"model.M":[
-			5,10,25,50,75,
-			100,200,300,400,500,600,700,800,900,
-			1000,1100,1200,1300,1400,1500
-		],
 
 		"model.N":[4],		
 	
@@ -57,6 +52,17 @@
 			1000,1200,1600,2000,3000,4000,5000
 		],
 
+		"model.M":[
+			5,10,25,50,75,
+			100,200,300,400,500,600,700,800,900,
+			1000,1100,1200,1300,1400,1500
+		],
+
+		"model.M":[
+			5,10,15,25,50,75,
+			100,200,300,400,500,600,700,800,
+			1000,1200,1400
+		],
 
 		"model.tau":[75e0],		
 		"model.P":[2],
@@ -84,7 +90,7 @@
 		"state.seed":[null],
 
 		"model.data.noise.string":["noise"],
-		"model.data.noise.operator":["dephase"],
+		"model.data.noise.operator":["phase"],
 		"model.data.noise.site":[null],
 		"model.data.noise.parameters.parameters":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2],
 		"model.data.noise.parameters.parameters":[1e-14,1e-10,1e-6,1e-2],
@@ -92,6 +98,7 @@
 		"model.data.noise.parameters.parameters":[1e-7,1e-6,1e-5,1e-4,1e-3,1e-2,1e-1],	
 		"model.data.noise.parameters.parameters":[1e-4],		
 		"model.data.noise.parameters.parameters":[1e-14,1e-12,1e-10,1e-8,1e-6,1e-4,1e-2],		
+		"model.data.noise.parameters.parameters":[1e-14,1e-10,1e-6,1e-2],		
 		"model.data.noise.parameters.data":[1],		
 		"model.data.noise.ndim":[3],		
 		"model.data.noise.seed":[null],
@@ -104,7 +111,10 @@
 		"optimize.eps.value":[1e-16],
 		"optimize.eps.value.increase":[1e-3],
 		"optimize.value.iteration":[50],		
-		"optimize.initialize":[true],		
+		"optimize.initialize":[false],		
+		"optimize.track.entropy":[true],		
+		"optimize.track.purity":[true],		
+		"optimize.track.similarity":[true],		
 		"optimize.track.divergence":[true],		
 
 		"model.data.x.parameters.method":[null],
@@ -128,8 +138,8 @@
 		"jobs.job.cwd":["gobi/test/purity.phase/20.900"],
 		"jobs.postprocess.cwd":["gobi/test/purity.phase/20.900"],
 
-		"jobs.job.cwd":["gobi/purity.phase"],
-		"jobs.postprocess.cwd":["gobi/purity.phase"],
+		"jobs.job.cwd":["gobi/test/quantity.phase"],
+		"jobs.postprocess.cwd":["gobi/test/quantity.phase"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -138,10 +148,10 @@
 		"jobs.job.processes":[1],
 		"jobs.postprocess.processes":[1],
 		"jobs.job.pool":[4],
-		"jobs.job.pool":[16],
+		"jobs.job.pool":[8],
 		"jobs.postprocess.pool":[1],
 		"jobs.job.execute":[1],	
-		"jobs.postprocess.execute":[0],	
+		"jobs.postprocess.execute":[1],	
 		"jobs.job.verbose":[1],
 		"jobs.job.resume":[null],
 		"jobs.postprocess.resume":[null],
@@ -161,10 +171,10 @@
 		"jobs.job.patterns.cpus-per-task":[4],
 		"jobs.job.patterns.cpus-per-task":[8],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
-		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"],
 		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"]		
+		"jobs.postprocess.patterns.account":["def-raymond"],
+		"jobs.job.patterns.account":["def-carrasqu"],
+		"jobs.postprocess.patterns.account":["def-carrasqu"]		
 		},
 	"groups":null,
 	"index":null
@@ -268,7 +278,7 @@
 			"attributes":["parameters.data"],							
 			"variable":false,"seed":123},		
 		"noise":{
-			"operator":"dephase","site":null,"string":"noise",
+			"operator":"phase","site":null,"string":"noise",
 			"parameters":{"data":1,"parameters":1},
 			"ndim":3,
 			"variable":false
@@ -325,7 +335,7 @@
 		"search":true,
 		"parameters.relative":true,"parameters.relative.mean":true,		
 		"variables":true,"variables.relative":true,"variables.relative.mean":true,
-		"entropy":true,"purity":true,"similarity":true,"divergence":true,
+		"entropy":true,"purity":true,"similarity":true,"divergence":true
 	},
 	"attributes":{
 		"iteration":[],"parameters":[],
