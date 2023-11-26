@@ -97,17 +97,25 @@ function gics(){
 }
 
 function bkill(){
-	job=${1}
-	if [ -z "${job}" ]
+	jobs=(${@})
+
+	if [ -z "${jobs}" ]
 	then
 		jobs=$(ijob | sed "s#\(.*\)_.*#\1#g")
 	else
-		jobs=($(bjob | grep ${job} | awk '{print $1}' | sed "s#\(.*\)_.*#\1#g"))
+		for i in ${!jobs[@]}
+		do
+			jobs[$i]=$(bjob | grep ${jobs[$i]} | awk '{print $1}' | sed "s#\(.*\)_.*#\1#g")
+		done
 	fi
+	
+	jobs=($(echo "${jobs[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+
 	for job in ${jobs[@]}
 	do
 		scancel ${job}
 	done
+
 	return 0
 }
 
