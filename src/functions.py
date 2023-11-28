@@ -26,6 +26,8 @@ from src.utils import to_tuple,asscalar
 from src.utils import maximum,minimum,abs,sort,log
 from src.utils import arrays,scalars,nonzero
 
+from src.io import load,dump
+
 # Processing
 
 def func_stat(data,func="min",stat='mean',**kwargs):
@@ -94,24 +96,61 @@ def func_hessian_eigenvalues(data):
 	out = to_tuple(out)
 	return out
 
+
+def func_objective_func(data):
+	out = data['N']*np.array(data['M'])*data['noise.parameters']*((data['D']**data['N']-1)/(data['D']**data['N']))
+	return out	
+
+def func_objective_func_err(data):
+	out = 0*np.array(data['M'])
+	return out	
+
 def func_entropy(data):
 	out = np.array(data['entropy'])/log(data['D']**data['N'])
 	return out
+
+def func_entropy_func(data):
+	# Incorrect
+	out = data['N']*np.array(data['M'])*data['noise.parameters']
+	return out	
+
+def func_entropy_func_err(data):
+	out = 0*np.array(data['M'])
+	return out	
 
 def func_purity(data):
 	out = 1-np.array(data['purity'])
 	return out	
 
-
 def func_purity_func(data):
 	out = 2*data['N']*np.array(data['M'])*data['noise.parameters']*((data['D']**data['N']-1)/(data['D']**data['N']))
+	return out	
+
+def func_purity_func_err(data):
+	out = 0*np.array(data['M'])
 	return out	
 
 def func_similarity(data):
 	out = 1-np.array(data['similarity'])
 	return out
 
+def func_similarity_func(data):
+	out = 1-np.array(data['similarity'])	
+	return out	
+
+def func_similarity_func_err(data):
+	out = 0*np.array(data['M'])
+	return out
+
 def func_divergence(data):
-	# out = np.array(data['divergence'])
 	out = np.array(data['divergence'])/log(data['D']**data['N'])
 	return out
+
+def func_divergence_func(data):
+	# Incorrect	
+	out = data['N']*np.array(data['M'])*data['noise.parameters']*((data['D']**data['N']-1)/(data['D']**data['N']))/log(data['D']**data['N'])
+	return out	
+
+def func_divergence_func_err(data):
+	out = 0*np.array(data['M'])
+	return out		
