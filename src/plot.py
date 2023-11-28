@@ -1408,13 +1408,19 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					plt.close(obj)
 				call = False
 
-
 			if (kwargs[attr].get('call') is not None) and (not kwargs[attr]['call']):
 				call = False
 			
 			_kwargs_ = deepcopy(kwargs[attr])
+		
+			for kwarg in _kwargs_:
+				if kwarg in ['linestyle']:
+					if not isinstance(_kwargs_[kwarg],str):
+						_kwargs_[kwarg] = tuple((i if isinstance(i,int) else tuple(i) for i in _kwargs_[kwarg]))
+
 			for kwarg in nullkwargs:
 				_kwargs_.pop(kwarg,None)
+
 
 			if not call:	
 				return
