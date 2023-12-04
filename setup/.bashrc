@@ -187,6 +187,7 @@ function berr(){
 			fi
 		done
 	done
+	errors=($(printf "%s\n" ${errors[@]} | sort -n))
 
 	file=${script}
 
