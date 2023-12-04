@@ -269,7 +269,6 @@ def split(path,directory=False,file=False,ext=False,directory_file_ext=False,dir
 		paths['directory'] = dirname(path)
 	if abspath:
 		paths['directory'] = os.path.abspath(os.path.expandvars(os.path.expanduser(paths['directory'])))
-
 	paths['file'],paths['ext'] = os.path.splitext(path)
 	if paths['ext'].startswith(delimiter):
 		paths['ext'] = delimiter.join(paths['ext'].split(delimiter)[1:])
@@ -737,7 +736,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 		wr (str): Read mode
 		default (object): Default return object if load fails
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable): Process data, either string in ['df','np','array','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable): Process data, either string in ['df','np','array','pd','pd.dict'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of loading
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
@@ -761,7 +760,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	elif wrapper in ['df']:
 		def wrapper(data):
 			options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}
-			def convert(path,data):
+			def func(path,data):
 				for attr in data:
 					if any(isinstance(i,arrays) for i in data[attr]):
 						data[attr] = [tuple(i) for i in data[attr]]
@@ -769,7 +768,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 				data['__path__'] = [path]*size
 				return data
 			try:
-				data = pd.concat((pd.DataFrame(convert(path,data[path])) for path in data if data[path]),**options) #.convert_dtypes()
+				data = pd.concat((pd.DataFrame(func(path,data[path])) for path in data if data[path]),**options) #.convert_dtypes()
 			except Exception as exception:
 				data = default
 			return data
@@ -791,7 +790,10 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			return data	
 	elif wrapper in ['pd']:
 		def wrapper(data):
-			return data				
+			return data	
+	elif wrapper in ['pd.dict']:
+		def wrapper(data):
+			return data							
 	else:
 		def wrapper(data):
 			return data
@@ -846,10 +848,10 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 
 	data = wrapper(data)
 
-	if isinstance(args['path'],str) and (args['wrapper'] in [None,'pd'] or callable(args['wrapper'])):
+	if isinstance(args['path'],str) and (args['wrapper'] in [None,'pd','pd.dict'] or callable(args['wrapper'])):
 		name = list(data)[-1]
 		data = data[name]
-	elif not isinstance(args['path'],dict) and (args['wrapper'] in [None,'pd'] or callable(args['wrapper'])):
+	elif not isinstance(args['path'],dict) and (args['wrapper'] in [None,'pd','pd.dict'] or callable(args['wrapper'])):
 		data = [data[name] for name in data]
 	else:
 		pass
@@ -904,6 +906,10 @@ def _load(obj,wr,ext,**kwargs):
 		if wrapper in ['pd']:
 			ext = 'hdf'
 			data = getattr(pd,'read_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
+		elif wrapper in ['pd.dict']:
+			ext = 'hdf'
+			data = getattr(pd,'read_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
+			data = getattr(data,'to_%s'%wrapper.split('.')[-1])(**{'orient':'list'})
 		else:
 			data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 
@@ -919,7 +925,7 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path (str,iterable[str],dict[str,str]): Path to dump object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable): Process data, either string in ['df','np','array','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable): Process data, either string in ['df','np','array','pd','pd.dict'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
 	'''
@@ -949,6 +955,9 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 	elif wrapper in ['pd']:
 		def wrapper(data):
 			return data
+	elif wrapper in ['pd.dict']:
+		def wrapper(data):
+			return data			
 	else:
 		def wrapper(data):
 			return data
@@ -1036,6 +1045,9 @@ def _dump(data,obj,wr,ext,**kwargs):
 		if wrapper in ['pd']:
 			ext = 'hdf'
 			getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data'),'mode':'w'})
+		elif wrapper in ['pd.dict']:
+			ext = 'hdf'
+			getattr(data,'to_%s'%ext)(obj,**{'key':kwargs.get('key','data'),'mode':'w'})			
 		else:
 			dump_hdf5(data,obj,wr=wr,ext=ext,**kwargs)
 	elif ext in ['pdf']:
@@ -1051,7 +1063,7 @@ def append(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path (str,iterable[str],dict[str,str]): Path to append object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable): Process data, either string in ['df','np','array','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable): Process data, either string in ['df','np','array','pd','pd.dict'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of appending
 		kwargs (dict): Additional appending keyword arguments
 	'''
@@ -1099,6 +1111,57 @@ def append(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 
 	return
 
+
+def convert(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
+	'''
+	Convert objects to path
+	Args:
+		data (str): Existing path
+		path (str,iterable[str],dict[str,str]): Path to convert object
+		wr (str): Write mode
+		delimiter (str): Delimiter to separate file name from extension		
+		wrapper (str,callable): Process data, either string in ['df','np','array','pd','pd.dict'] or callable with signature wrapper(data)
+		verbose (bool,int): Verbose logging of appending
+		kwargs (dict): Additional appending keyword arguments
+	'''
+
+	exts = ['npy','npz','csv','txt','pickle','pkl','json','hdf5','h5','ckpt']
+
+	
+	if isinstance(data,str):
+		datas = [data]
+	else:
+		datas = data
+	
+	if not isinstance(data,dict):
+		datas = {data: data for data in datas}
+	else:
+		datas = data
+
+	paths = {(delim*3).join([name,str(data)]): join(split(data,directory=True),split(path,file_ext=True))
+		for name in datas
+		for data in natsorted(glob(datas[name],default=(None if split(datas[name],ext=True) in exts else datas[name])))
+		}
+
+	datas = {(delim*3).join([name,str(data)]): data
+		for name in datas
+		for data in natsorted(glob(datas[name],default=(None if split(datas[name],ext=True) in exts else datas[name])))
+		}
+
+	def _convert(path,data):
+		data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
+		dump(data,path,delimiter=delimiter,verbose=verbose,**kwargs)
+		return
+
+
+	for name in datas:
+
+		data = datas[name]
+		path = paths[name]
+
+		_convert(path,data)
+
+	return
 
 def cleanup(data,path,verbose=True):
 	'''
