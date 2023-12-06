@@ -17,7 +17,7 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import array,concatenate
+from src.utils import array,concatenate,padding
 from src.utils import to_repr,to_eval
 from src.utils import returnargs
 from src.utils import arrays,scalars,nan,delim
@@ -486,7 +486,7 @@ def basename(path,**kwargs):
 	'''	
 	return os.path.basename(os.path.splitext(path)[0])
 
-# 
+ 
 class funcclass(object):
 	'''
 	Class wrapper for functions
@@ -910,6 +910,33 @@ def _load(obj,wr,ext,**kwargs):
 			ext = 'hdf'
 			data = getattr(pd,'read_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
 			data = getattr(data,'to_%s'%wrapper.split('.')[-1])(**{'orient':'list'})
+
+			# types = (tuple,)
+			# for key in data:
+			# 	if all(isinstance(i,types) for i in data[key]):
+			# 		print('start')				
+
+			# 		shape = (len(data[key]),)
+			# 		dtype = type(data[key][-1][-1])
+
+			# 		shape = (*shape,max(len(i) for i in data[key]))
+			# 		dtype = str if hasattr(dtype,'kind') and dtype.kind in ['S','O'] else dtype
+
+			# 		data[key] = array(data[key],dtype=dtype)
+					
+			# 		print('done')
+			# 		shape = tuple((max(i.shape[j] for i in data[key]) for j in range(max(i.ndim for i in data[key]))))
+			# 		dtype = set((i.dtype for i in data[key]))[-1]
+					
+			# 		shape = (len(data[key]),*shape)
+			# 		dtype = str if hasattr(dtype,'kind') and dtype.kind in ['S','O'] else dtype
+
+			# 		print(shape,dtype)
+			# 		# data[key] = array(data[key],dtype=dtype)
+
+			# 		data[key] = padding(data[key],shape=shape,random='zeros',dtype=dtype)
+			# 		data[key] = [i for i in data[key]]
+
 		else:
 			data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 
@@ -1149,8 +1176,11 @@ def convert(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		}
 
 	def _convert(path,data):
-		data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
-		dump(data,path,delimiter=delimiter,verbose=verbose,**kwargs)
+		try:
+			data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
+			dump(data,path,delimiter=delimiter,verbose=verbose,**kwargs)
+		except Exception as exception:
+			pass
 		return
 
 
