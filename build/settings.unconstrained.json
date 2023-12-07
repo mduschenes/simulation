@@ -105,10 +105,10 @@
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[4],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
-		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"],
 		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"]
+		"jobs.postprocess.patterns.account":["def-carrasqu"],
+		"jobs.job.patterns.account":["def-raymond"],
+		"jobs.postprocess.patterns.account":["def-raymond"]		
 		},
 	"groups":null,
 	"index":null
