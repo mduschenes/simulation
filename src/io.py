@@ -911,31 +911,28 @@ def _load(obj,wr,ext,**kwargs):
 			data = getattr(pd,'read_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
 			data = getattr(data,'to_%s'%wrapper.split('.')[-1])(**{'orient':'list'})
 
-			# types = (tuple,)
-			# for key in data:
-			# 	if all(isinstance(i,types) for i in data[key]):
-			# 		print('start')				
+			types = (tuple,)
+			for key in data:
+				if all(isinstance(i,types) for i in data[key]):
 
-			# 		shape = (len(data[key]),)
-			# 		dtype = type(data[key][-1][-1])
+					indices = {}
+					for i,tmp in enumerate(data[key]):
+						index = len(tmp)
+						if index not in indices:
+							indices[index] = []
+						indices[index].append(i)
 
-			# 		shape = (*shape,max(len(i) for i in data[key]))
-			# 		dtype = str if hasattr(dtype,'kind') and dtype.kind in ['S','O'] else dtype
+					tmp = {index: array([data[key][index] for index in indices[index]]) for index in indices}
 
-			# 		data[key] = array(data[key],dtype=dtype)
-					
-			# 		print('done')
-			# 		shape = tuple((max(i.shape[j] for i in data[key]) for j in range(max(i.ndim for i in data[key]))))
-			# 		dtype = set((i.dtype for i in data[key]))[-1]
-					
-			# 		shape = (len(data[key]),*shape)
-			# 		dtype = str if hasattr(dtype,'kind') and dtype.kind in ['S','O'] else dtype
+					shape = tuple((max(tmp[index].shape[i] for index in tmp) for i in range(min(tmp[index].ndim for index in tmp))))
 
-			# 		print(shape,dtype)
-			# 		# data[key] = array(data[key],dtype=dtype)
+					tmp = {index: padding(tmp[index],shape=shape,random='zeros',dtype=tmp[index].dtype) for index in tmp}
 
-			# 		data[key] = padding(data[key],shape=shape,random='zeros',dtype=dtype)
-			# 		data[key] = [i for i in data[key]]
+					indices = {i:(index,indices[index].index(i)) for index in indices for i in indices[index]}
+					indices = [indices[i] for i in range(len(indices))]
+
+					data[key] = [tmp[i[0]][i[1]] for i in indices]
+
 
 		else:
 			data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
