@@ -24,7 +24,7 @@
 	"permutations":{	
 
 		"model.N":[4],	
-		"model.M":[10,50,100,200,300,400,500],		
+		"model.M":[10,25,50,75,100,200,400,600],		
 		"model.P":[2],
 		"model.tau":[75],
 		"model.T": [null],
@@ -76,8 +76,8 @@
 		"model.data.y.parameters.constant":[{"-1":{"0":0,"-1":0}}],					
 		"model.data.y.parameters.kwargs.lambda":[5e2],	
 
-		"jobs.job.cwd":["gobi/test/constrained"],
-		"jobs.postprocess.cwd":["gobi/test/constrained"],	
+		"jobs.job.cwd":["gobi/test/eig"],
+		"jobs.postprocess.cwd":["gobi/test/eig"],	
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -101,7 +101,7 @@
 		"jobs.postprocess.args.JOB_PROCESSES":[1],
 		"jobs.job.patterns.time":["12:00:00"],		
 		"jobs.postprocess.patterns.time":["6:00:00"],
-		"jobs.job.patterns.mem":["64GB"],
+		"jobs.job.patterns.mem":["256GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[4],
 		"jobs.postprocess.patterns.cpus-per-task":[2]
