@@ -7315,7 +7315,7 @@ def gradient_bound(a,scale=1,**kwargs):
 	Returns:
 		out (array): Bounded array
 	'''
-	return 2*gradient_sigmoi(a,scale)
+	return 2*gradient_sigmoid(a,scale)
 
 
 @jit

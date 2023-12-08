@@ -2,8 +2,8 @@
     "iteration.objective.M": {
         "fig": {
             "set_size_inches": {
-                "w": 32,
-                "h": 20
+                "w": 9,
+                "h": 9
             },
             "subplots_adjust": {},
             "tight_layout": {},
@@ -22,9 +22,10 @@
                     "label": {
                         "label": {
                             "N": null,
-                            "M": null,
+                            "M": [10,100,200,500,1000,2000,5000],
                             "noise.parameters": null
                         },
+                        "include":["M"],
                         "analysis": {
                             "zscore": {
                                 "objective": 3
@@ -49,204 +50,7 @@
                             "one": false
                         }
                     },
-                    "alpha": {
-                        "@N@": [
-                            0.4,
-                            0.6,
-                            0.8
-                        ]
-                    },
-                    "marker": {
-                        "@noise.parameters@": [
-                            "o",
-                            "^",
-                            "s",
-                            "P"
-                        ]
-                    },
-                    "markersize": 12,
-                    "linestyle": "-",
-                    "linewidth": 4,
-                    "elinewidth": 2,
-                    "capsize": 3,
-                    "color": {
-                        "@M@": {
-                            "value": {
-                                "value": null,
-                                "color": "viridis",
-                                "values": [],
-                                "norm": [
-                                    0,
-                                    1
-                                ],
-                                "scale": "linear",
-                                "alpha": 1
-                            },
-                            "type": "index"
-                        }
-                    },
-                    "ecolor": {
-                        "@M@": {
-                            "value": {
-                                "value": null,
-                                "color": "viridis",
-                                "values": [],
-                                "norm": [
-                                    0,
-                                    1
-                                ],
-                                "scale": "linear",
-                                "alpha": 1
-                            },
-                            "type": "index"
-                        }
-                    }
-                },
-                {
-                    "x": "iteration",
-                    "y": "objective",
-                    "label": {
-                        "label": {
-                            "N": null,
-                            "M": null,
-                            "noise.parameters": null
-                        },
-                        "func": {
-                            "stat": {
-                                "y": {
-                                    "": "src.functions.func_stat",
-                                    "err": "src.functions.func_stat"
-                                }
-                            }
-                        },
-                        "kwargs": {
-                            "stat": {
-                                "y": {
-                                    "": {
-                                        "func": "min",
-                                        "stat": "mean"
-                                    },
-                                    "err": {
-                                        "func": "min",
-                                        "stat": "std"
-                                    }
-                                }
-                            }
-                        },
-                        "analysis": {
-                            "zscore": {
-                                "objective": 3
-                            }
-                        },
-                        "legend": {
-                            "include": false,
-                            "exclude": true
-                        },
-                        "scinotation": {
-                            "scilimits": [
-                                0,
-                                4
-                            ],
-                            "decimals": 0,
-                            "one": false
-                        }
-                    },
-                    "marker": {
-                        "@noise.parameters@": [
-                            "o",
-                            "^",
-                            "s",
-                            "P"
-                        ]
-                    },
                     "alpha": 0.2,
-                    "markersize": 12,
-                    "linestyle": "-",
-                    "linewidth": 4,
-                    "elinewidth": 2,
-                    "capsize": 3,
-                    "color": {
-                        "@M@": {
-                            "value": {
-                                "value": null,
-                                "color": "viridis",
-                                "values": [],
-                                "norm": [
-                                    0,
-                                    1
-                                ],
-                                "scale": "linear",
-                                "alpha": 1
-                            },
-                            "type": "index"
-                        }
-                    },
-                    "ecolor": {
-                        "@M@": {
-                            "value": {
-                                "value": null,
-                                "color": "viridis",
-                                "values": [],
-                                "norm": [
-                                    0,
-                                    1
-                                ],
-                                "scale": "linear",
-                                "alpha": 1
-                            },
-                            "type": "index"
-                        }
-                    }
-                },
-                {
-                    "x": "iteration",
-                    "y": "objective",
-                    "label": {
-                        "label": {
-                            "N": null,
-                            "M": null,
-                            "noise.parameters": null
-                        },
-                        "func": {
-                            "stat": {
-                                "y": {
-                                    "": "src.functions.func_stat",
-                                    "err": "src.functions.func_stat"
-                                }
-                            }
-                        },
-                        "kwargs": {
-                            "stat": {
-                                "y": {
-                                    "": {
-                                        "func": "max",
-                                        "stat": "mean"
-                                    },
-                                    "err": {
-                                        "func": "max",
-                                        "stat": "std"
-                                    }
-                                }
-                            }
-                        },
-                        "analysis": {
-                            "zscore": {
-                                "objective": 3
-                            }
-                        },
-                        "legend": {
-                            "include": false,
-                            "exclude": true
-                        },
-                        "scinotation": {
-                            "scilimits": [
-                                0,
-                                4
-                            ],
-                            "decimals": 0,
-                            "one": false
-                        }
-                    },
                     "marker": {
                         "@noise.parameters@": [
                             "o",
@@ -255,7 +59,6 @@
                             "P"
                         ]
                     },
-                    "alpha": 0.2,
                     "markersize": 12,
                     "linestyle": "-",
                     "linewidth": 4,
@@ -272,7 +75,7 @@
                                     1
                                 ],
                                 "scale": "linear",
-                                "alpha": 1
+                                "alpha": 0.2
                             },
                             "type": "index"
                         }
@@ -288,7 +91,7 @@
                                     1
                                 ],
                                 "scale": "linear",
-                                "alpha": 1
+                                "alpha": 0.2
                             },
                             "type": "index"
                         }
@@ -303,8 +106,10 @@
                         "label": {
                             "N": null,
                             "M": null,
+                            "M": [10,100,200,500,1000,2000,5000],                            
                             "noise.parameters": null
                         },
+                        "include":["M"],
                         "analysis": {
                             "zscore": {
                                 "objective": 3
@@ -317,13 +122,7 @@
                             ]
                         }
                     },
-                    "alpha": {
-                        "@N@": [
-                            0.4,
-                            0.6,
-                            0.8
-                        ]
-                    },
+                    "alpha": 0.2,
                     "color": {
                         "@M@": {
                             "value": {
@@ -335,7 +134,7 @@
                                     1
                                 ],
                                 "scale": "linear",
-                                "alpha": 1
+                                "alpha": 0.2
                             },
                             "type": "index"
                         }
@@ -365,11 +164,11 @@
                     "size": 30
                 },
                 "set_ticks": {
-                    "ticks": 5,
+                    "ticks": 7,
                     "size": 50
                 },
                 "set_ticklabels": {
-                    "ticklabels": 5,
+                    "ticklabels": [10,100,200,500,1000,2000,5000],
                     "size": 50
                 },
                 "ax.yaxis.set_tick_params": {
@@ -400,7 +199,7 @@
                 "base": 10
             },
             "set_ylim": {
-                "ymin": 1e-21,
+                "ymin": 1e-13,
                 "ymax": 10.0
             },
             "set_ynbins": {
@@ -408,10 +207,6 @@
             },
             "set_yticks": {
                 "ticks": [
-                    1e-20,
-                    1e-18,
-                    1e-16,
-                    1e-14,
                     1e-12,
                     1e-10,
                     1e-08,
@@ -459,8 +254,8 @@
                 {
                     "axis": "y",
                     "which": "minor",
-                    "length": 4,
-                    "width": 0.5
+                    "length": 0,
+                    "width": 0
                 },
                 {
                     "axis": "x",
@@ -480,7 +275,7 @@
             },
             "grid": {
                 "visible": true,
-                "which": "both",
+                "which": "major",
                 "axis": "both"
             },
             "legend": null
@@ -1523,7 +1318,6 @@
                         "label": {
                             "N": null,
                             "tau": null,
-                            "T": null,
                             "noise.parameters": null
                         },
                         "scinotation": {
@@ -6476,7 +6270,6 @@
                     "label": {
                         "label": {
                             "N": null,
-                            "parameters.xy.method": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
@@ -6543,7 +6336,6 @@
                     "label": {
                         "label": {
                             "N": null,
-                            "parameters.xy.method": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
@@ -6612,7 +6404,6 @@
                     "label": {
                         "label": {
                             "N": null,
-                            "parameters.xy.method": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
@@ -6899,7 +6690,6 @@
                     "label": {
                         "label": {
                             "N": null,
-                            "parameters.xy.method": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
@@ -6966,7 +6756,6 @@
                     "label": {
                         "label": {
                             "N": null,
-                            "parameters.xy.method": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
@@ -7104,7 +6893,6 @@
                     "label": {
                         "label": {
                             "N": null,
-                            "parameters.xy.method": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.min@"
                         },
