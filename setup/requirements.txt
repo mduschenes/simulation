@@ -34,3 +34,10 @@ nbconvert
 nb_conda_kernels
 jupyter
 jupyter_contrib_nbextensions
+
+mkdocs
+pymdown-extensions
+mkdocstrings
+mkdocs-material
+mkdocs-mermaid2-plugin
+python-markdown-math
