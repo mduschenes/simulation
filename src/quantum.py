@@ -282,7 +282,6 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 
 	function = scheme(data,state=state,conj=conj,size=size,period=period)	
 	def gradient(parameters,state=state,indices=indices):	
-		print('init',indices.shape,length,parameters.shape)
 		return switch(indices%length,grad,parameters[indices//length],state)
 
 	data = compile(data,state=state,conj=conj,size=size,period=period)	
@@ -306,7 +305,6 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 
 		obj = function(parameters,state,indices=(0,i))
 
-		print('medi',parameters.shape)
 		obj = gradient(parameters,obj,indices=i)
 
 		obj = function(parameters,obj,indices=(i+1,size*length))
