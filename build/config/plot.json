@@ -9499,10 +9499,22 @@
                     "label": {
                         "label": {
                             "N": null,
+                            "parameters.xy.method": null,
                             "M": null,
+                            "backend": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.max@",
                             "rank": "hessian.rank"
+                        },
+                        "analysis":{"func":{"hessian.rank":"src.functions.func_hessian_rank"}},
+                        "wrapper":{"hessian.rank":"src.functions.func_hessian_rank"},
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
                         },
                         "legend": {
                             "exclude": [
@@ -9511,7 +9523,7 @@
                         },
                         "slice": [
                             0,
-                            1000,
+                            2000,
                             null
                         ]
                     },
@@ -9561,10 +9573,10 @@
                 }
             ],
             "set_ylabel": {
-                "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
+                "ylabel": "$\\frac{\\lambda}{\\lambda_{\\textrm{max}}}$"
             },
             "set_xlabel": {
-                "xlabel": "$\\textrm{Index}$"
+                "xlabel": "$\\textrm{Eigenvalue Index}$"
             },
             "yaxis.offsetText.set_fontsize": {
                 "fontsize": 20
@@ -9572,6 +9584,8 @@
             "set_xnbins": {
                 "nbins": 6
             },
+            "set_xlim":{"xmin":-50,"xmax":1300},
+            "set_xticks":{"ticks":[0,250,500,750,1000,1250]},
             "set_ynbins": {
                 "nbins": 4
             },
@@ -9579,6 +9593,8 @@
                 "value": "log",
                 "base": 10
             },
+            "set_ylim":{"ymin":1e-25,"ymax":1e1},
+            "set_yticks":{"ticks":[1e-24,1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
             "yaxis.set_major_formatter": {
                 "ticker": {
                     "LogFormatterMathtext": {}
@@ -9602,6 +9618,7 @@
                     }
                 }
             },
+            "yaxis.set_minor_locator":null,
             "yaxis.set_minor_formatter": {
                 "ticker": {
                     "NullFormatter": {}
@@ -9638,7 +9655,7 @@
             },
             "grid": {
                 "visible": true,
-                "which": "both",
+                "which": "major",
                 "axis": "both"
             },
             "legend": {
@@ -9652,7 +9669,7 @@
                 "markerscale": 1.2,
                 "handlelength": 3,
                 "framealpha": 0.8,
-                "loc": "lower right",
+                "loc": "upper right",
                 "ncol": 1,
                 "set_zorder": {
                     "level": 100
@@ -9681,7 +9698,7 @@
                 }
             }
         }
-    },
+    },    
     "None.fisher.eigenvalues.M": {
         "fig": {
             "set_size_inches": {
@@ -9705,10 +9722,22 @@
                     "label": {
                         "label": {
                             "N": null,
+                            "parameters.xy.method": null,
                             "M": null,
+                            "backend": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.max@",
                             "rank": "fisher.rank"
+                        },
+                        "analysis":{"func":{"fisher.rank":"src.functions.func_fisher_rank"}},
+                        "wrapper":{"fisher.rank":"src.functions.func_fisher_rank"},
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
                         },
                         "legend": {
                             "exclude": [
@@ -9717,7 +9746,7 @@
                         },
                         "slice": [
                             0,
-                            1000,
+                            2000,
                             null
                         ]
                     },
@@ -9767,10 +9796,10 @@
                 }
             ],
             "set_ylabel": {
-                "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
+                "ylabel": "$\\frac{\\lambda}{\\lambda_{\\textrm{max}}}$"
             },
             "set_xlabel": {
-                "xlabel": "$\\textrm{Index}$"
+                "xlabel": "$\\textrm{Eigenvalue Index}$"
             },
             "yaxis.offsetText.set_fontsize": {
                 "fontsize": 20
@@ -9778,6 +9807,8 @@
             "set_xnbins": {
                 "nbins": 6
             },
+            "set_xlim":{"xmin":-50,"xmax":1300},
+            "set_xticks":{"ticks":[0,250,500,750,1000,1250]},
             "set_ynbins": {
                 "nbins": 4
             },
@@ -9785,6 +9816,8 @@
                 "value": "log",
                 "base": 10
             },
+            "set_ylim":{"ymin":1e-25,"ymax":1e1},
+            "set_yticks":{"ticks":[1e-24,1e-20,1e-16,1e-12,1e-8,1e-4,1e0]},
             "yaxis.set_major_formatter": {
                 "ticker": {
                     "LogFormatterMathtext": {}
@@ -9808,6 +9841,7 @@
                     }
                 }
             },
+            "yaxis.set_minor_locator":null,
             "yaxis.set_minor_formatter": {
                 "ticker": {
                     "NullFormatter": {}
@@ -9844,7 +9878,7 @@
             },
             "grid": {
                 "visible": true,
-                "which": "both",
+                "which": "major",
                 "axis": "both"
             },
             "legend": {
@@ -9858,7 +9892,7 @@
                 "markerscale": 1.2,
                 "handlelength": 3,
                 "framealpha": 0.8,
-                "loc": "lower right",
+                "loc": "upper right",
                 "ncol": 1,
                 "set_zorder": {
                     "level": 100
@@ -9911,11 +9945,20 @@
                     "label": {
                         "label": {
                             "N": null,
+                            "parameters.xy.method": null,
                             "T": null,
                             "tau": null,
                             "noise.parameters": null,
                             "iteration": "@iteration.max@",
                             "rank": "hessian.rank"
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
                         },
                         "legend": {
                             "exclude": [
@@ -9974,7 +10017,7 @@
                 "ylabel": "$\\abs{\\frac{\\lambda}{\\lambda_{\\textrm{max}}}}$"
             },
             "set_xlabel": {
-                "xlabel": "$\\textrm{Index}$"
+                "xlabel": "$\\textrm{Eigenvalue Index}$"
             },
             "yaxis.offsetText.set_fontsize": {
                 "fontsize": 20
@@ -10115,11 +10158,20 @@
                     "label": {
                         "label": {
                             "N": null,
+                            "parameters.xy.method": null,
                             "T": null,
                             "tau": null,
                             "noise.par": null,
                             "iteration": "@iteration.max@",
                             "rank": "fisher.rank"
+                        },
+                        "scinotation": {
+                            "scilimits": [
+                                0,
+                                4
+                            ],
+                            "decimals": 0,
+                            "one": false
                         },
                         "legend": {
                             "exclude": [
