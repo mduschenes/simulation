@@ -282,6 +282,7 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 
 	function = scheme(data,state=state,conj=conj,size=size,period=period)	
 	def gradient(parameters,state=state,indices=indices):	
+		print('init',indices.shape,length,parameters.shape)
 		return switch(indices%length,grad,parameters[indices//length],state)
 
 	data = compile(data,state=state,conj=conj,size=size,period=period)	
@@ -305,6 +306,7 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 
 		obj = function(parameters,state,indices=(0,i))
 
+		print('medi',parameters.shape)
 		obj = gradient(parameters,obj,indices=i)
 
 		obj = function(parameters,obj,indices=(i+1,size*length))
@@ -619,10 +621,10 @@ class Object(System):
 		state = self.state() if callable(self.state) else self.state
 
 		contract = contraction(data,state)
-		grad_contraction = gradient_contraction(data,state)
+		grad_contract = gradient_contraction(data,state)
 
 		self.contract = contract
-		self.gradient_contract = grad_contraction
+		self.gradient_contract = grad_contract
 
 		self.shape = data.shape if isinstance(data,arrays) else None
 		self.size = data.size if isinstance(data,arrays) else None
@@ -1015,8 +1017,8 @@ class Pauli(Object):
 				return cos(parameters)*self.identity + -1j*sin(parameters)*self.data
 
 			def gradient(parameters=None,state=None):
-				parameters = self.parameters(parameters)
 				grad = self.parameters.grad(parameters)
+				parameters = self.parameters(parameters)
 				return grad*(-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
 		elif self.parameters() is None:
