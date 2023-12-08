@@ -67,13 +67,13 @@
 		"model.data.x.parameters.method":[null],
 		"model.data.x.parameters.local":[true],
 		"model.data.x.parameters.bounds":[[-1,1]],
-		"model.data.x.parameters.constant":[null],					
+		"model.data.x.parameters.constants":[null],					
 		"model.data.x.parameters.kwargs.lambda":[null],	
 
 		"model.data.y.parameters.method":[null],
 		"model.data.y.parameters.local":[true],
 		"model.data.y.parameters.bounds":[[-1,1]],
-		"model.data.y.parameters.constant":[null],					
+		"model.data.y.parameters.constants":[null],					
 		"model.data.y.parameters.kwargs.lambda":[null],	
 
 		"jobs.job.cwd":["gobi/test/unconstrained"],
