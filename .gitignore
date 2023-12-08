@@ -39,3 +39,4 @@ src/wip
 build/qiskit
 build/exp
 build/settings.exp.json
+docs/site
