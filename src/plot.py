@@ -475,6 +475,11 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 		colors (str,tuple,array): colors of values
 		norm (callable): Normalization function, with signature norm(value)
 	'''
+
+	if isinstance(value,str):
+		value,color,values,colors,norm = None,None,None,None,None
+		return value,color,values,colors,norm
+
 	if value is None:
 		value = values
 	if color is None:
@@ -495,8 +500,8 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 				{'vmin':min(values,default=0),
 				 'vmax':max(values,default=1)})
 
-	values = list(natsorted(set([*values,*[norm['vmin'],norm['vmax']]])))
-	norm.update(dict(zip(['vmin','vmax'],[min(values),max(values)])))
+	values = [i for i in natsorted(set([*values,*[norm['vmin'],norm['vmax']]])) if is_number(i)]
+	norm.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])))
 
 	if not isinstance(value,scalars):
 		value = list(natsorted(set([*value])))
@@ -504,8 +509,9 @@ def set_color(value=None,color=None,values=[],norm=None,scale=None,alpha=None,**
 	if scale in ['linear',None]:
 		norm = matplotlib.colors.Normalize(**norm)  
 	elif scale in ['log','symlog']:
-		values = [i for i in values if i>0]
+		values = [i for i in values if is_number(i) and i>0]
 		norm.update(dict(zip(['vmin','vmax'],[min(values,default=0),max(values,default=1)])) if values else {})
+		norm = {i:norm[i] if norm[i]>0 else 1e-20 for i in norm}
 		norm = matplotlib.colors.LogNorm(**norm)  
 	else:
 		norm = matplotlib.colors.Normalize(**norm)					
