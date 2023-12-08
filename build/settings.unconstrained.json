@@ -26,8 +26,8 @@
 		"model.N":[4],		
 		"model.M":[10,20,30,40,50,100,200,300,400,500,600,700,800,900,1000,1500,2000,3000,4000,5000],		
 		"model.P":[2],
-		"model.tau":[101.02647],		
 		"model.tau":[75],
+		"model.tau":[101.02647],		
 		"model.T": [null],
 
 		"system.dtype":["complex128"],
@@ -106,10 +106,10 @@
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[4],
 		"jobs.postprocess.patterns.cpus-per-task":[2],
-		"jobs.job.patterns.account":["def-carrasqu"],
-		"jobs.postprocess.patterns.account":["def-carrasqu"],
 		"jobs.job.patterns.account":["def-raymond"],
-		"jobs.postprocess.patterns.account":["def-raymond"]		
+		"jobs.postprocess.patterns.account":["def-raymond"],
+		"jobs.job.patterns.account":["def-carrasqu"],
+		"jobs.postprocess.patterns.account":["def-carrasqu"]
 		},
 	"groups":null,
 	"index":null
