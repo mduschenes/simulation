@@ -77,8 +77,8 @@
 		"model.data.y.parameters.constants":[{"-1":{"0":0,"-1":0}}],					
 		"model.data.y.parameters.kwargs.lambda":[5e2],	
 
-		"jobs.job.cwd":["gobi/test/constrained"],
-		"jobs.postprocess.cwd":["gobi/test/constrained"],	
+		"jobs.job.cwd":["gobi/constrained"],
+		"jobs.postprocess.cwd":["gobi/constrained"],	
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
