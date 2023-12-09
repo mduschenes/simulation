@@ -27,7 +27,7 @@
 		"model.M":[10,20,30,40,50,100,200,300,400,500,600,700,800,900,1000,1500,2000,3000,4000,5000],		
 		"model.P":[2],
 		"model.tau":[75],
-		"model.tau":[151.02647],		
+		"model.tau":[101.02647],		
 		"model.T": [null],
 
 		"system.dtype":["complex128"],
@@ -62,8 +62,12 @@
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
-		"optimize.eps.value":[1e-20],
-		"optimize.eps.value.increase":[1e0],
+		"optimize.eps.value":[1e-16],
+		"optimize.eps.value.increase":[1e-2],
+		"optimize.value.iteration":[50],
+		"optimize.c1":[1e-4],
+		"optimize.c2":[9e-1],
+		"optimize.maxiter":[2500],
 
 		"model.data.x.parameters.method":[null],
 		"model.data.x.parameters.local":[true],
