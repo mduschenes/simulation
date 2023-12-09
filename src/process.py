@@ -1128,7 +1128,8 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		return obj	
 	def none(obj,*args,**kwargs):
 		obj[...] = nan
-		return obj			
+		# return obj			
+		return nan			
 
 	def mean_arithmetic(obj,*args,**kwargs):
 		return obj.mean()
