@@ -9,6 +9,8 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+os.environ['NUMPY_BACKEND'] = 'numpy'
+
 from src.utils import argparser
 from src.io import join,split,convert
 from src.process import process
@@ -79,6 +81,47 @@ def main(args):
 
 
 	args = argparser(arguments,wrappers)
+
+	from src.utils import array,concatenate
+	from src.io import load,dump,glob,cp,mkdir
+	from src.call import call
+
+	# size = 400
+	# step = 100
+	# cwd = 'gobi/test/eig'
+	# for i in range(0,size,step):
+	# 	mkdir(join(cwd,'tmp.%d'%(i)))
+	# 	for j in range((i)*step,(i+1)*step):
+	# 		cp(join(cwd,'%d'%(j)),join(cwd,'tmp.%d'%(i),'%d'%(j)))
+	# 	call('./processor.py',join(cwd,'tmp.%d'%(i)))
+
+	# mkdir gobi/test/eig/tmp.100 && for i in {0..100};do mv gobi/test/eig/$i gobi/test/eig/tmp.100/$i;done && ./processor.py gobi/test/eig/tmp.100	
+	# mkdir gobi/test/eig/tmp.200 && for i in {100..200};do mv gobi/test/eig/$i gobi/test/eig/tmp.200/$i;done && ./processor.py gobi/test/eig/tmp.200
+	# mkdir gobi/test/eig/tmp.300 && for i in {200..300};do mv gobi/test/eig/$i gobi/test/eig/tmp.300/$i;done && ./processor.py gobi/test/eig/tmp.300
+	# mkdir gobi/test/eig/tmp.400 && for i in {300..400};do mv gobi/test/eig/$i gobi/test/eig/tmp.400/$i;done && ./processor.py gobi/test/eig/tmp.400
+
+	# path = join(split(args['path'],directory=-1),'*','data',ext='hdf5')	
+	# data = {}
+	# for path in glob(path):
+
+	# 	name = join(split(path,directory_file=True),ext='tmp.hdf5')
+	# 	tmp = convert(path,name)
+	# 	path = name
+
+	# 	tmp = load(path,verbose=True)
+	# 	# print(tmp)
+	# 	for key in tmp:
+	# 		if key not in data:
+	# 			data[key] = tmp[key]
+	# 		else:
+	# 			data[key] = concatenate((data[key],tmp[key]))
+	
+	# path = join(split(args['path'],directory=-1),'data',ext='hdf5')	
+
+	# for key in data:
+	# 	print(key,data[key].shape)
+
+	# dump(data,path,verbose=True)
 
 	convert(*args,**args)
 

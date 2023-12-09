@@ -98,10 +98,15 @@ def test_objective(path,tol):
 	state = model.state()
 	label = model(parameters,state=state)
 
+	print(state)
+	print(label)
+
 	metric = Metric(state=state,label=label,arguments=arguments,keywords=keywords,hyperparameters=hyperparameters,system=system)
 	func = Objective(model,func=func,callback=callback,metric=metric,hyperparameters=hyperparameters,system=system)
 
 	out = func(parameters,state=state)
+
+
 
 	assert allclose(0,out), "Incorrect objective %0.5e"%(out)
 
@@ -176,8 +181,8 @@ def test_grad(path,tol):
 
 if __name__ == '__main__':
 	path = 'config/settings.json'
-	path = 'config/settings.tmp.json'	
+	path = 'config/settings.test.json'	
 	tol = 5e-8 
-	test_metric(path,tol)
-	test_objective(path,tol)
+	# test_metric(path,tol)
+	# test_objective(path,tol)
 	test_grad(path,tol)
