@@ -28,6 +28,7 @@
 		"model.P":[2],
 		"model.tau":[75],
 		"model.tau":[101.02647],		
+		"model.tau":[125.02647],		
 		"model.T": [null],
 
 		"system.dtype":["complex128"],
@@ -83,6 +84,9 @@
 
 		"jobs.job.cwd":["gobi/unconstrained"],
 		"jobs.postprocess.cwd":["gobi/unconstrained"],	
+
+		"jobs.job.cwd":["gobi/unconstrained.tmp"],
+		"jobs.postprocess.cwd":["gobi/unconstrained.tmp"],	
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
