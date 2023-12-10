@@ -748,7 +748,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 		wr (str): Read mode
 		default (object): Default return object if load fails
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of loading
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
@@ -805,7 +805,39 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 					data = concatenate(tuple((array(data[path]) for path in data)),**options)
 				except ValueError:
 					data = default
-				return data	
+				return data
+
+		elif wrapper in ['merge']:
+			def wrapper(data):
+
+				data = {key:[i for path in data for i in data[path][key] if data[path] is not None] 
+					for key in set((key for path in data for key in data[path]))}
+
+				for key in data:
+
+					if not any(i.ndim>0 for i in data[key]):
+						continue
+
+					indices = {}
+					for i,tmp in enumerate(data[key]):
+						index = len(tmp)
+						if index not in indices:
+							indices[index] = []
+						indices[index].append(i)
+
+					tmp = {index: array([data[key][index] for index in indices[index]]) for index in indices}
+
+					shape = tuple((max(tmp[index].shape[i] for index in tmp) for i in range(min(tmp[index].ndim for index in tmp))))
+
+					tmp = {index: padding(tmp[index],shape=shape,random='zeros',dtype=tmp[index].dtype) for index in tmp}
+
+					indices = {i:(index,indices[index].index(i)) for index in indices for i in indices[index]}
+					indices = [indices[i] for i in range(len(indices))]
+
+					data[key] = [tmp[i[0]][i[1]] for i in indices]
+
+				return data
+
 		elif wrapper in ['pd']:
 			def wrapper(data):
 				return data	
@@ -866,10 +898,10 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	for wrapper in wrappers:
 		data = wrapper(data)
 
-	if isinstance(args['path'],str) and (any(((i in [None,'pd']) or callable(i)) for i in args['wrapper'])):
+	if isinstance(args['path'],str) and (any(((i in [None,'pd'])) for i in args['wrapper'])):
 		name = list(data)[-1]
 		data = data[name]
-	elif not isinstance(args['path'],dict) and (any(((i in [None,'pd']) or callable(i)) for i in args['wrapper'])):
+	elif not isinstance(args['path'],dict) and (any(((i in [None,'pd'])) for i in args['wrapper'])):
 		data = [data[name] for name in data]
 	else:
 		pass
@@ -925,8 +957,7 @@ def _load(obj,wr,ext,**kwargs):
 			if wrapper in ['pd']:
 				ext = 'hdf'
 				data = getattr(pd,'read_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
-			elif callable(wrapper):
-				data = wrapper(data)
+				break
 			else:
 				data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 
@@ -942,7 +973,7 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path (str,iterable[str],dict[str,str]): Path to dump object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
 	'''
@@ -974,6 +1005,9 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		elif wrapper in ['array']:
 			def wrapper(data):
 				return array(data)
+		elif wrapper in ['merge']:
+			def wrapper(data):
+				return data			
 		elif wrapper in ['pd']:
 			def wrapper(data):
 				return data
@@ -1084,7 +1118,7 @@ def append(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path (str,iterable[str],dict[str,str]): Path to append object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of appending
 		kwargs (dict): Additional appending keyword arguments
 	'''
@@ -1141,7 +1175,7 @@ def convert(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path (str,iterable[str],dict[str,str]): Path to convert object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of appending
 		kwargs (dict): Additional appending keyword arguments
 	'''
@@ -1187,6 +1221,32 @@ def convert(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path = paths[name]
 
 		_convert(path,data)
+
+	return
+
+
+def merge(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
+	'''
+	Merge objects to path
+	Args:
+		data (str,iterable[str],dict[str,str]): Path to convert object
+		path (str,iterable[str],dict[str,str]): Path to convert object
+		wr (str): Write mode
+		delimiter (str): Delimiter to separate file name from extension		
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','merge','pd'] or callable with signature wrapper(data)
+		verbose (bool,int): Verbose logging of appending
+		kwargs (dict): Additional appending keyword arguments
+	'''
+
+	wrappers = ['merge']
+
+	wrapper = [wrapper,*wrappers] if not isinstance(wrapper,iterables) else [*wrapper,*wrappers]
+
+	wr = wr
+	data = load(data,wr=wr,delimiter=delimiter,wrapper=wrapper,verbose=verbose,**kwargs)
+
+	wr = 'w'
+	dump(data,path,wr=wr,delimiter=delimiter,verbose=verbose,**kwargs)
 
 	return
 
