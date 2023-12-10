@@ -85,8 +85,8 @@
 		"jobs.job.cwd":["gobi/constrained"],
 		"jobs.postprocess.cwd":["gobi/constrained"],	
 
-		"jobs.job.cwd":["gobi/constrained.tmp"],
-		"jobs.postprocess.cwd":["gobi/constrained.tmp"],
+		"jobs.job.cwd":["gobi/constrained"],
+		"jobs.postprocess.cwd":["gobi/constrained"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
