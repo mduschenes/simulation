@@ -13,7 +13,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import intersection,scalars,copy
-from src.io import cd,mkdir,join,split,load,dump,exists,environ,glob
+from src.io import cd,mkdir,glob,join,split,load,dump,exists,basedir,environ
 from src.iterables import setter
 from src.parallel import Parallelize,Pooler
 
@@ -105,7 +105,7 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 		exe,flags,cmd,options,env = (
 			['sbatch'],
 			[*flags,
-			'-J',kwargs.get('cwd'),
+			'-J',basedir(kwargs.get('cwd')),
 			'%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))
 			],
 			['<'],
