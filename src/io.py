@@ -486,6 +486,18 @@ def basename(path,**kwargs):
 	'''	
 	return os.path.basename(os.path.splitext(path)[0])
 
+
+def basedir(path,**kwargs):
+	'''
+	Get base path name from path
+	Args:
+		path (str): Path
+		kwargs (dict): Additional path keyword arguments
+	Returns:
+		file (str): Base filename
+	'''	
+	return basename(dirname(path))
+
  
 class funcclass(object):
 	'''
