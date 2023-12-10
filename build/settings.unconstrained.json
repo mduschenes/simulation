@@ -28,6 +28,7 @@
 		"model.P":[2],
 		"model.tau":[75],
 		"model.tau":[101.02647],		
+		"model.tau":[125.02647],		
 		"model.T": [null],
 
 		"system.dtype":["complex128"],
@@ -62,8 +63,12 @@
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
-		"optimize.eps.value":[1e-20],
-		"optimize.eps.value.increase":[1e0],
+		"optimize.eps.value":[1e-16],
+		"optimize.eps.value.increase":[1e-2],
+		"optimize.value.iteration":[50],
+		"optimize.c1":[1e-4],
+		"optimize.c2":[9e-1],
+		"optimize.maxiter":[2500],
 
 		"model.data.x.parameters.method":[null],
 		"model.data.x.parameters.local":[true],
@@ -77,8 +82,8 @@
 		"model.data.y.parameters.constants":[null],					
 		"model.data.y.parameters.kwargs.lambda":[null],	
 
-		"jobs.job.cwd":["gobi/test/unconstrained"],
-		"jobs.postprocess.cwd":["gobi/test/unconstrained"],	
+		"jobs.job.cwd":["gobi/unconstrained"],
+		"jobs.postprocess.cwd":["gobi/unconstrained"],	
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
@@ -105,7 +110,9 @@
 		"jobs.job.patterns.mem":["64GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[4],
-		"jobs.postprocess.patterns.cpus-per-task":[2]
+		"jobs.postprocess.patterns.cpus-per-task":[2],
+		"jobs.job.patterns.account":["def-raymond"],
+		"jobs.postprocess.patterns.account":["def-raymond"]
 		},
 	"groups":null,
 	"index":null

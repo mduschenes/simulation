@@ -28,6 +28,7 @@
 		"model.P":[2],
 		"model.tau":[75],
 		"model.tau":[101.02647],		
+		"model.tau":[125.02647],		
 		"model.T": [null],
 
 		"system.dtype":["complex128"],
@@ -62,8 +63,12 @@
 		"optimize.metric":["abs2"],
 		"optimize.search.alpha":["line_search"],
 		"optimize.search.beta":["hestenes_stiefel"],
-		"optimize.eps.value":[1e-20],
-		"optimize.eps.value.increase":[1e0],
+		"optimize.eps.value":[1e-16],
+		"optimize.eps.value.increase":[1e-2],
+		"optimize.value.iteration":[50],
+		"optimize.c1":[1e-4],
+		"optimize.c2":[9e-1],
+		"optimize.maxiter":[2500],
 
 		"model.data.x.parameters.method":["constrained"],
 		"model.data.x.parameters.local":[false],
@@ -77,8 +82,8 @@
 		"model.data.y.parameters.constants":[{"-1":{"0":0,"-1":0}}],					
 		"model.data.y.parameters.kwargs.lambda":[5e2],	
 
-		"jobs.job.cwd":["gobi/test/constrained"],
-		"jobs.postprocess.cwd":["gobi/test/constrained"],	
+		"jobs.job.cwd":["gobi/constrained"],
+		"jobs.postprocess.cwd":["gobi/constrained"],
 
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
