@@ -104,7 +104,10 @@ def command(args,kwargs=None,exe=None,flags=None,cmd=None,options=None,env=None,
 	elif device in ['slurm']:
 		exe,flags,cmd,options,env = (
 			['sbatch'],
-			[*flags,'%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))],
+			[*flags,
+			'-J',kwargs.get('cwd'),
+			'%s=%s'%('--export',','.join(['%s=%s'%(arg,' '.join([subarg for subarg in args[arg]])) for arg in args]))
+			],
 			['<'],
 			[*exe,*cmd,*options],
 			{
