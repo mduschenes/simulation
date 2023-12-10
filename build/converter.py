@@ -42,7 +42,7 @@ def main(args):
 			if data[key] is None:
 				data.pop(key);
 				continue
-			if any(i.ndim>0 for i in data[key]):
+			if any(data[key][attr].ndim>1 for attr in data[key]):
 				index = data[key]['iteration']==data[key]['iteration.max']
 				for attr in data[key]:
 					data[key][attr] = data[key][attr][index]
