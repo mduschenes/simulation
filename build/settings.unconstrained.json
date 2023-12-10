@@ -85,9 +85,6 @@
 		"jobs.job.cwd":["gobi/unconstrained"],
 		"jobs.postprocess.cwd":["gobi/unconstrained"],	
 
-		"jobs.job.cwd":["gobi/unconstrained"],
-		"jobs.postprocess.cwd":["gobi/unconstrained"],	
-
 		"jobs.job.device":["slurm"],
 		"jobs.postprocess.device":["slurm"],
 		"jobs.job.process":["array"],

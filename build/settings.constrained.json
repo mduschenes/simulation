@@ -83,9 +83,6 @@
 		"model.data.y.parameters.kwargs.lambda":[5e2],	
 
 		"jobs.job.cwd":["gobi/constrained"],
-		"jobs.postprocess.cwd":["gobi/constrained"],	
-
-		"jobs.job.cwd":["gobi/constrained"],
 		"jobs.postprocess.cwd":["gobi/constrained"],
 
 		"jobs.job.device":["slurm"],
