@@ -1490,7 +1490,15 @@ class Optimization(System):
 			opt (object): optimizer state
 		'''
 
-		do = (self.paths is not None) and ((not self.status) or (self.modulo['dump'] is None) or (self.modulo['dump'] == -1) or (iteration is None) or (iteration%self.modulo['dump'] == 0) or (iteration==(self.iterations.stop-1)))
+		do = (self.paths is not None) and (
+			(not self.status) or 
+			(self.modulo['dump'] is None) or 
+			(self.modulo['dump'] is True) or 
+			(iteration is None) or 
+			((self.modulo['dump'] == -1) and (iteration==(self.iterations.stop-1))) or 
+			(iteration%self.modulo['dump'] == 0) or 
+			(iteration==(self.iterations.stop-1))
+			)
 
 		if not do:
 			return
