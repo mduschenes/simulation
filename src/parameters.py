@@ -250,7 +250,7 @@ class Parameter(System):
 				def gradient(parameters,*args,**kwargs):
 					return self.wrapper(gradient_bound(parameters))
 
-			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['coefficients','shift','sigmoid']):
+			elif self.method in ['constrained'] and all(self.kwargs.get(attr) is not None for attr in ['sigmoid']):
 		
 				def func(parameters,*args,**kwargs):
 					return self.wrapper(bound(parameters,scale=self.kwargs['sigmoid']))
@@ -306,7 +306,7 @@ class Parameter(System):
 
 				def constraint(parameters,*args,**kwargs):
 					return self.kwargs['lambda']*sum(
-						(parameters[i]- self.kwargs['constants'][axis][i])**2
+						((parameters[i]- self.kwargs['constants'][axis][i])**2).sum()/parameters.shape[-1]
 						for axis in self.kwargs['constants']
 						for i in self.kwargs['constants'][axis]
 						) if parameters.ndim else self.kwargs['default']
@@ -628,7 +628,7 @@ class Parameters(System):
 			parameters (array): parameters
 		'''
 		parameters = self(parameters)
-		return sum(self[parameter].constraints() for parameter in self)
+		return sum(self[parameter].constraints(parameters) for parameter in self)
 
 	def __iter__(self):
 		return self.__iterdata__()
