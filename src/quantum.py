@@ -2524,9 +2524,12 @@ class Callback(System):
 			)
 
 
-		other = ((len(attributes['iteration']) == 1) or 
+		other = (
+			(len(attributes['iteration']) == 1) or 
 			(hyperparameters['modulo']['track'] is None) or 
-			(attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
+			((hyperparameters['modulo']['track'] == -1) and (done)) or
+			((hyperparameters['modulo']['track'] > 0) and (attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
+			)
 
 		stop = (
 			(
@@ -2545,6 +2548,8 @@ class Callback(System):
 		none = (iterations.start == 0) and (iterations.stop == 0)
 
 		status = ((status) and (not stop) and (not none))
+
+		tracking = (done or init or other) 
 
 		updates = {
 			**{attr: lambda i,attr,track,default: (track[attr][-1]) for attr in ['iteration.max','iteration.min']},
@@ -2573,7 +2578,7 @@ class Callback(System):
 		does = {**{attr: False for attr in attrs},**hyperparameters.get('do',{})}
 
 
-		if ((status) or done or init or other):
+		if tracking:
 			
 			for attr in attrs:
 
