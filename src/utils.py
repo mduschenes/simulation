@@ -2310,7 +2310,7 @@ if BACKEND in ['jax']:
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution
+			random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
@@ -2344,7 +2344,6 @@ if BACKEND in ['jax']:
 					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
 				else:
 					bounds[i] = float(bounds)
-
 		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
 		complex = is_complexdtype(dtype) and random not in subrandoms
 		_dtype = dtype
@@ -2509,12 +2508,12 @@ if BACKEND in ['jax']:
 			def func(key,shape,bounds,dtype):
 				num = shape[0] if not isinstance(shape,int) else shape
 				out = linspace(*bounds,num,dtype=dtype)
-				return out					
+				return out
 		elif random in ['logspace']:
 			def func(key,shape,bounds,dtype):
 				num = shape[0] if not isinstance(shape,int) else shape
 				out = logspace(*bounds,num,dtype=dtype)
-				return out								
+				return out
 		else:
 			def func(key,shape,bounds,dtype):
 				out = generator.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
@@ -2556,7 +2555,7 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution
+			random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
@@ -6331,7 +6330,7 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 		shape (int,iterable[int]): Size or shape of array
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
-		random (str): Type of random distribution
+		random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
 		dtype (datatype): Datatype of array	
 		kwargs (dict): Additional keyword arguments for padding	
 	Returns:
@@ -7828,7 +7827,10 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	Args:
 		data (array,str): data array or path to load data
 		shape (iterable): shape of data
-		random (str,dict,callable): random type of initialization, dictionary of attributes or allowed strings in ['uniform','ones','zeros','random','pad'], or callable function with signature random(data,shape,bounds,random,dtype,**kwargs)
+		random (str,dict,callable): random type of initialization, 
+			dictionary of attributes {'interpolation' (dict): keyword arguments for interp(), 'size' (int): Number of interpolation points via shape[-1]//size}, or 
+			allowed strings in ['uniform','ones','zeros','random','pad'], or 
+			callable function with signature random(data,shape,bounds,random,dtype,**kwargs)
 		bounds (iterable[object]): bounds of data
 		dtype (str,datatype): data type of data		
 		kwargs (dict): Additional keyword arguments for initialization
@@ -7873,12 +7875,13 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 	if isinstance(random,dict):
 
 		interpolation = random.get('interpolation',{})
-		smoothness = max(1,min(shape[-1]//2,random.get('smoothness',1)))
-		shape_interp = (*shape[:-1],shape[-1]//smoothness+2)
-		pts_interp = smoothness*arange(shape_interp[-1])
+		size = max(1,min(shape[-1]//2,random.get('size',1)))
+		shape_interp = (*shape[:-1],shape[-1]//size+2)
+		pts_interp = size*arange(shape_interp[-1])
 		pts = arange(shape[-1])
 
 		data_interp = rand(shape_interp,bounds=bounds,dtype=dtype,**kwargs)
+
 		try:
 			data = interpolate(pts_interp,data_interp,pts,bounds=bounds,**interpolation)
 		except:
