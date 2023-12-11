@@ -134,7 +134,7 @@
 				"local":true,
 				"method":null,				
 				"group":["x"],
-				"seed":123,
+				"seed":null,
 				"random":"random",
 				"bounds":[-1,1],
 				"constants":null,								
@@ -147,7 +147,7 @@
 				"args":[],
 				"kwargs":{"sigmoid":1,"lambda":5e2}
 				},
-			"variable":true,"seed":123},
+			"variable":true,"seed":null},
 		"y":{
 			"operator":["Y"],"site":"i","string":"y",
 			"parameters":{
@@ -158,7 +158,7 @@
 				"local":true,
 				"method":null,				
 				"group":["y"],
-				"seed":123,
+				"seed":null,
 				"random":"random",
 				"bounds":[-1,1],
 				"constants":null,								
@@ -171,7 +171,7 @@
 				"args":[],
 				"kwargs":{"sigmoid":1,"lambda":5e2}
 				},
-			"variable":true,"seed":123},
+			"variable":true,"seed":null},
 		"z":{
 			"operator":["Z"],"site":"i","string":"z",
 			"parameters":{
@@ -181,7 +181,7 @@
 				"local":true,
 				"method":null,				
 				"group":["z"],
-				"seed":123,
+				"seed":null,
 				"random":null,
 				"bounds":[-1,1],
 				"constants":null,								
@@ -195,7 +195,7 @@
 				"kwargs":{}
 				},
 			"attributes":["parameters.data"],				
-			"variable":false,"seed":123},								
+			"variable":false,"seed":null},								
 		"zz":{
 			"operator":["Z","Z"],"site":"i<j","string":"zz",
 			"parameters":{
@@ -205,7 +205,7 @@
 				"local":true,
 				"method":null,				
 				"group":["zz"],
-				"seed":123,
+				"seed":null,
 				"random":null,
 				"bounds":[-1,1],
 				"constants":null,								
@@ -219,7 +219,7 @@
 				"kwargs":{}
 				},
 			"attributes":["parameters.data"],							
-			"variable":false,"seed":123},		
+			"variable":false,"seed":null},		
 		"noise":{
 			"operator":"depolarize","site":null,"string":"noise",
 			"parameters":{"data":1,"parameters":1},
@@ -246,7 +246,7 @@
 	"device":"cpu",
 	"backend":null,
 	"architecture":null,
-	"seed":12345,
+	"seed":null,
 	"key":null,
 	"instance":null,
 	"cwd":".",
