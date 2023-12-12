@@ -2524,13 +2524,6 @@ class Callback(System):
 			)
 
 
-		other = (
-			(len(attributes['iteration']) == 1) or 
-			(hyperparameters['modulo']['track'] is None) or 
-			((hyperparameters['modulo']['track'] == -1) and (done)) or
-			((hyperparameters['modulo']['track'] > 0) and (attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
-			)
-
 		stop = (
 			(
 			(hyperparameters['eps'].get('value.increase') is not None) and
@@ -2549,7 +2542,14 @@ class Callback(System):
 
 		status = ((status) and (not stop) and (not none))
 
-		tracking = (done or init or other) 
+		other = (
+			(len(attributes['iteration']) == 1) or 
+			(hyperparameters['modulo']['track'] is None) or 
+			((hyperparameters['modulo']['track'] == -1) and (not status)) or
+			((hyperparameters['modulo']['track'] > 0) and (attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
+			)
+
+		tracking = ((not status) or done or init or other) 
 
 		updates = {
 			**{attr: lambda i,attr,track,default: (track[attr][-1]) for attr in ['iteration.max','iteration.min']},
@@ -2563,7 +2563,7 @@ class Callback(System):
 			**{attr: None for attr in [
 				'parameters.norm','grad.norm','search.norm',
 				]},
-			**{attr: lambda i,attr,track,default: (default if i<(len(track[attr])-1) else track[attr][i])
+			**{attr: lambda i,attr,track,default: (default if ((i>0) and (i<(len(track[attr])-1))) else track[attr][i])
 				for attr in [
 				'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 				'objective.ideal.state','objective.diff.state','objective.rel.state',
@@ -2588,7 +2588,7 @@ class Callback(System):
 					_value = track[attr].pop(0)
 				
 
-				index = -1 if (not stop) else -2
+				index = -1 if ((not stop) or other) else -2
 				parameters = attributes['parameters'][index]
 				state = metric.state()
 			
@@ -2609,7 +2609,7 @@ class Callback(System):
 				if attr in attributes:
 					value = attributes[attr][index]
 
-				if (not stop):
+				if ((not stop) or other):
 					track[attr].append(value)
 
 				if attr in ['iteration.max']:
