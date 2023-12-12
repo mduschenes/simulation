@@ -74,7 +74,7 @@ def train(settings):
 		callback = load(settings.cls.callback)
 
 		if any(i is None for i in [model,state,label,callback]):
-			raise ValueError("Incorrect cls initialization %r")
+			raise ValueError("Incorrect cls initialization")
 			model = None
 			return model
 
