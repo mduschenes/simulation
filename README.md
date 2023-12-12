@@ -5,27 +5,27 @@ Pre-processing, hyperparameter searches, and inter-dependent, parallelized job s
 
 The hierarchy of inheritance of classes is as follows
 
-`Channel <- Unitary <- Hamiltonian <- Operators <- Object <- System <- Dictionary`
+`Channel` &larr; `Unitary` &larr; `Hamiltonian` &larr; `Operators` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`Operators <- Object <- System <- Dictionary`
+`Operators` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`Operator <- Object <- System <- Dictionary`
+`Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`State,Noise,Pauli,Gate <- Object <- System <- Dictionary`
+`State,Noise,Pauli,Gate` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`Label <- Operator <- Object <- System <- Dictionary`
+`Label` &larr; `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`Parameters <- System <- Dictionary`
+`Parameters` &larr; `System` &larr; `Dictionary`
 
-`Parameter <- System <- Dictionary`
+`Parameter` &larr; `System` &larr; `Dictionary`
 
-`Space,Time,Lattice <- System <- Dictionary`
+`Space,Time,Lattice` &larr; `System` &larr; `Dictionary`
 
-`Objective,Callback <- Function <- System <- Dictionary`
+`Objective,Callback` &larr; `Function` &larr; `System` &larr; `Dictionary`
 
-`Metric <- System <- Dictionary`
+`Metric` &larr; `System` &larr; `Dictionary`
 
-`Optimizer <- Optimization <- System <- Dictionary`
+`Optimizer` &larr; `Optimization` &larr; `System` &larr; `Dictionary`
 
 ## Install
 After cloning the repository, under `setup`, please run 
