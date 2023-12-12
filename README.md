@@ -5,27 +5,27 @@ Pre-processing, hyperparameter searches, and inter-dependent, parallelized job s
 
 The hierarchy of inheritance of classes is as follows
 
-`Channel` &larr `Unitary` &larr `Hamiltonian` &larr `Operators` &larr `Object` &larr `System` &larr `Dictionary`
+`Channel` &larr; `Unitary` &larr; `Hamiltonian` &larr; `Operators` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`Operators` &larr `Object` &larr `System` &larr `Dictionary`
+`Operators` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`Operator` &larr `Object` &larr `System` &larr `Dictionary`
+`Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`State,Noise,Pauli,Gate` &larr `Object` &larr `System` &larr `Dictionary`
+`State,Noise,Pauli,Gate` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`Label` &larr `Operator` &larr `Object` &larr `System` &larr `Dictionary`
+`Label` &larr; `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
 
-`Parameters` &larr `System` &larr `Dictionary`
+`Parameters` &larr; `System` &larr; `Dictionary`
 
-`Parameter` &larr `System` &larr `Dictionary`
+`Parameter` &larr; `System` &larr; `Dictionary`
 
-`Space,Time,Lattice` &larr `System` &larr `Dictionary`
+`Space,Time,Lattice` &larr; `System` &larr; `Dictionary`
 
-`Objective,Callback` &larr `Function` &larr `System` &larr `Dictionary`
+`Objective,Callback` &larr; `Function` &larr; `System` &larr; `Dictionary`
 
-`Metric` &larr `System` &larr `Dictionary`
+`Metric` &larr; `System` &larr; `Dictionary`
 
-`Optimizer` &larr `Optimization` &larr `System` &larr `Dictionary`
+`Optimizer` &larr; `Optimization` &larr; `System` &larr; `Dictionary`
 
 ## Install
 After cloning the repository, under `setup`, please run 
