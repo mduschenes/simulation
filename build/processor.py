@@ -9,8 +9,8 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.io import join,split
 from src.utils import argparser
+from src.io import join,split
 from src.process import process
 
 def main(args):
@@ -46,8 +46,8 @@ def main(args):
 			'default':None,
 			'nargs':'?',
 		},						
-		'--verbose':{
-			'help':'Verbosity',
+		'--quiet':{
+			'help':'Quiet',
 			'action':'store_true'
 		},												
 
@@ -58,7 +58,7 @@ def main(args):
 		'hyperparameters':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**',''),'process.json') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
 		'pwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
 		'cwd':lambda kwarg,wrappers,kwargs: split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**','') if kwargs.get(kwarg) is None else kwargs.get(kwarg),
-		'verbose': lambda kwarg,wrappers,kwargs: kwargs.get(kwarg),
+		'verbose': lambda kwarg,wrappers,kwargs: not kwargs.pop('quiet',True),
 		'data':lambda kwarg,wrappers,kwargs: join(split(kwargs['data'][-1] if kwargs['data'] else '.',directory=True).replace('/**','').replace('**',''),'**/data.hdf5'),
 	}
 

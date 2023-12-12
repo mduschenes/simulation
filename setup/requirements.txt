@@ -17,6 +17,7 @@ matplotlib=3.5
 
 pyaml
 pytest
+sympy
 dill
 jsonpickle
 natsort
@@ -25,10 +26,18 @@ parallel
 jax=0.3.14
 jaxlib=0.3.7
 jaxtyping=0.2.8
+autograd
 equinox
 
 notebook
-nbconvert<6
+nbconvert
 nb_conda_kernels
 jupyter
 jupyter_contrib_nbextensions
+
+mkdocs
+pymdown-extensions
+mkdocstrings
+mkdocs-material
+mkdocs-mermaid2-plugin
+python-markdown-math
