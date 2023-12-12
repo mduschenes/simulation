@@ -2598,7 +2598,7 @@ class Callback(System):
 					'variables','variables.relative'
 					'hessian','fisher',
 					'hessian.eigenvalues','fisher.eigenvalues']:
-					default = empty(track[attr][-1].shape) if (len(track[attr])>0) else nan
+					default = empty(track[attr][-1].shape) if ((len(track[attr])>0) and isinstance(track[attr][-1],arrays)) else nan
 				else:
 					default = nan
 
@@ -2844,7 +2844,8 @@ class Callback(System):
 			msg = '\n'.join([
 				'%d f(x) = %0.4e'%(
 					attributes['iteration'][-1],
-					track['objective'][-1],
+					# abs(metric(model(attributes['parameters'][-1],metric.state()))),
+					attributes['value'][-1],
 				),
 				'|x| = %0.4e\t\t|grad(x)| = %0.4e'%(
 					norm(attributes['parameters'][-1])/
