@@ -26,110 +26,7 @@
 	"index":null
 	},
 "model":{
-	"data":{
-		"x":{
-			"operator":["X"],"site":"i","string":"x",
-			"parameters":{
-				"data":null,
-				"shape":[],
-				"parameters":1,
-				"variable":true,
-				"local":true,
-				"method":null,				
-				"group":["x"],
-				"seed":123,
-				"random":"random",
-				"bounds":[-1,1],
-				"constants":null,								
-				"axis":["M"],	
-				"indices":null,
-				"func":null,
-				"gradient":null,
-				"wrapper":null,			
-				"constraint":null,	
-				"args":[],
-				"kwargs":{"sigmoid":1,"lambda":5e2}
-				},
-			"variable":true,"seed":123},
-		"y":{
-			"operator":["Y"],"site":"i","string":"y",
-			"parameters":{
-				"data":null,
-				"shape":[],
-				"parameters":1,
-				"variable":true,
-				"local":true,
-				"method":null,				
-				"group":["y"],
-				"seed":123,
-				"random":"random",
-				"bounds":[-1,1],
-				"constants":null,								
-				"axis":["M"],	
-				"indices":null,
-				"func":null,
-				"gradient":null,
-				"wrapper":null,			
-				"constraint":null,	
-				"args":[],
-				"kwargs":{"sigmoid":1,"lambda":5e2}
-				},
-			"variable":true,"seed":123},
-		"z":{
-			"operator":["Z"],"site":"i","string":"z",
-			"parameters":{
-				"data":[-1.1,0,-0.1,2.9,-0.2],
-				"parameters":1e-2,
-				"variable":false,
-				"local":true,
-				"method":null,				
-				"group":["z"],
-				"seed":123,
-				"random":null,
-				"bounds":[-1,1],
-				"constants":null,								
-				"axis":["M"],	
-				"indices":null,
-				"func":null,
-				"gradient":null,
-				"wrapper":null,			
-				"constraint":null,	
-				"args":[],
-				"kwargs":{}
-				},
-			"attributes":["parameters.data"],				
-			"variable":false,"seed":123},								
-		"zz":{
-			"operator":["Z","Z"],"site":"i<j","string":"zz",
-			"parameters":{
-				"data":[0.724,-1.30,0.5,2.1,0.2,-1.9,-0.3,0.60,0.9,-0.6],
-				"parameters":1e-4,
-				"variable":false,
-				"local":true,
-				"method":null,				
-				"group":["zz"],
-				"seed":123,
-				"random":null,
-				"bounds":[-1,1],
-				"constants":null,								
-				"axis":["M"],	
-				"indices":null,
-				"func":null,
-				"gradient":null,
-				"wrapper":null,			
-				"constraint":null,	
-				"args":[],
-				"kwargs":{}
-				},
-			"attributes":["parameters.data"],							
-			"variable":false,"seed":123},		
-		"noise":{
-			"operator":"depolarize","site":null,"string":"noise",
-			"parameters":{"data":1,"parameters":1e-4},
-			"ndim":3,
-			"variable":false
-		}
-	},
+	"data":{},
 	"N":2,
 	"D":2,
 	"d":1,
@@ -188,41 +85,7 @@
 		"value":[],"grad":[],"search":[],
 		"alpha":[],"beta":[]
 		},
-	"track":{
-			"iteration":[],
-			"parameters":false,
-			"grad":false,
-			"search":false,
-			"value":[],
-			"objective":[],
-			"alpha":[],
-			"beta":[],
-
-
-			"iteration.max":[],
-			"iteration.min":[],
-			"grad.norm":[],"search.norm":[],
-			"variables":false,"variables.relative":false,"variables.relative.mean":false,
-			"objective.ideal.noise":false,"objective.diff.noise":false,"objective.rel.noise":false,
-			"objective.ideal.state":false,"objective.diff.state":false,"objective.rel.state":false,
-			"objective.ideal.operator":false,"objective.diff.operator":false,"objective.rel.operator":false,
-			"hessian":false,"fisher":false,
-			"hessian.eigenvalues":false,"fisher.eigenvalues":false,
-			"hessian.rank":false,"fisher.rank":false,
-			"entropy":true,"purity":true,"similarity":false,"divergence":false,			
-
-			"N":[],"D":[],"d":[],"L":[],"delta":[],"M":[],"T":[],"tau":[],"P":[],
-			"space":[],"time":[],"lattice":[],
-			"architecture":[],"timestamp":[],"backend":[],"unit":[],
-			"key":[],"instance":[],"instances.*":[],
-			"parameters.*.parameters.parameters":[],"parameters.*.method":[],
-			"noise.string":[],"noise.ndim":[],"noise.locality":[],
-			"state.string":[],"state.ndim":[],
-			"label.string":[],"label.ndim":[],
-			"noise.scale":[],"noise.tau":[],"noise.initialization":[],
-			"noise.parameters":[],
-			"hyperparameters.c1":false,"hyperparameters.c2":false
-		}	
+	"track":{}	
 	},
 "label": {
 	"operator":"I",
@@ -233,10 +96,10 @@
 	"seed":null
 	},
 "state": {
-	"operator":"plus",
+	"operator":"haar",
 	"site":null,
 	"string":"U",
-	"parameters":true,
+	"parameters":false,
 	"ndim":2,
 	"samples":1,
 	"seed":null
