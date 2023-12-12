@@ -2,7 +2,6 @@
 
 # Import python modules
 import os,sys,itertools,functools,datetime,shutil,traceback
-from copy import deepcopy as deepcopy
 from time import time as timer
 from functools import partial
 import atexit
@@ -183,7 +182,7 @@ class Logger(object):
 		self.conf = conf
 		self.file = file
 
-		self.string = str(self.file) if self.file is not None else 'stdout'
+		self.string = os.path.basename(str(self.file)) if self.file is not None else 'stdout'
 
 		self.cleanup = cleanup
 		self.__clean__()
@@ -242,6 +241,7 @@ class Logger(object):
 		for logger in loggers:
 			try:
 				os.remove(logger)
+				os.rmdir(os.path.dirname(logger))
 			except:
 				pass
 

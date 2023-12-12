@@ -9,8 +9,8 @@ PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.io import join,split
 from src.utils import argparser
+from src.io import join,split
 from src.process import process
 
 def main(args):

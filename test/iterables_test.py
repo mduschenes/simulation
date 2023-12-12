@@ -5,15 +5,13 @@ import pytest
 import os,sys
 import itertools,functools,copy
 
-import numpy as onp
-import jax.numpy as np
-	
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+from src.utils import np,onp
 from src.utils import arrays,scalars
 from src.io import load,dump
 from src.iterables import getter,setter,permuter,equalizer
@@ -50,7 +48,7 @@ def test_search(path=None,tol=None):
 	print()
 
 	item = -1
-	index = find(item,iterable,returns=True,types=types)
+	index = find(item,iterable,types=types)
 	print(item,list(index))
 
 	print()
@@ -90,3 +88,4 @@ if __name__ == '__main__':
 	tol = 5e-8 
 
 	test_search(path=path,tol=tol)
+	test_equalizer(path=path,tol=tol)
