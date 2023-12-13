@@ -89,11 +89,11 @@ i.e) `settings = {
     }`
 
 
-i.e) `data = {
+i.e) ``data = {
         'iteration':[0,1,2],
         'parameters':[array([...]),array([...]),array([...])],
         'value': [1e-1,1e-1,1e-3]
-    }`
+    }``
 
 ## Run
 Under `build`, please run 
