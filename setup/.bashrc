@@ -162,28 +162,32 @@ function balloc(){
 function berr(){
 	jobs=(${@})
 	script="job.slurm"
-	name="output."
+	exe="job.sh"
+	name="*"
 	ext="stderr"
 	pattern="#SBATCH --array="
-	options=":1%100"
+	options="%100"
+	
 	errors=()
-
 	if [[ ${#jobs[@]} -eq 0 ]]
 	then
-		jobs=($(ls -t ${name}*${ext} | head -1 | sed "s:${name}\([^\.]*\)\.\([^\.]\).*${ext}:\1:"))
+		jobs=($(find . -maxdepth 1 -mindepth 1 -type f  -name "${name}\.[0-9]*\.[0-9]*\.${ext}" -printf "%T@\t%Tc %6k KiB %p\n" | sort -n | tail -1 |  awk '{print $NF}' | sed "s:.*\.\([^\.]*\)\.\([^\.]\).*${ext}:\1:"))
 	fi
+
 
 	for job in ${jobs[@]}
 	do
 		echo Job: ${job}
-		files=($(ls ${name}${job}*${ext}))
-		echo Files: ${files[@]}
+		files=($(ls ${name}.${job}*${ext}))
 		for file in ${files[@]}
 		do
-			echo File: ${file} 
 			if [[ -s ${file} ]]
 			then
-				errors+=($(echo ${file} | sed "s:${name}\([^\.]*\)\.\([^\.]\).*${ext}:\2:"))
+				tmp=$(echo ${file} | sed "s:.*\.\([^\.]*\)\.\([^\.]*\)\.${ext}:\2:")
+				if [[ ! ${tmp} == ${file} ]]
+				then
+					errors+=(${tmp})
+				fi
 			fi
 		done
 	done
@@ -193,8 +197,9 @@ function berr(){
 
 	line=$(( $(grep -n "${pattern}" ${file} | tail -1 | cut -f1 -d:) +1 ))	
 	
-	if [[ ! $(grep "^${pattern}$(join , ${errors[@]})${options}" ${file}) ]]
+	if [[ ! ${#jobs[@]} -eq 0 ]] && [[ ! $(grep "^${pattern}$(join , ${errors[@]})${options}" ${file}) ]]
 	then
+		echo Errors: ${errors[@]}
 		sed -i "s%^${pattern}%#${pattern}%g" ${file}
 		sed -i "${line}i ${pattern}$(join , ${errors[@]})${options}" ${file}
 	fi
