@@ -185,7 +185,7 @@ class Parameter(System):
 
 		defaults = {
 			'string':str(self),
-			'parameters': prod((self.parameters[i] for i in self.parameters)) if isinstance(self.parameters,dict) else self.parameters
+			'parameters': prod((self.parameters[i] for i in self.parameters if self.parameters[i] is not None)) if isinstance(self.parameters,dict) else self.parameters
 			}
 		self.kwargs.update(defaults)
 
