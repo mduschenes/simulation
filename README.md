@@ -76,11 +76,13 @@ If multiple model instances are to be run with `src/run.py`, then the `jobs` fie
 If postprocessing is to be run with `src/process.py`, then `process.json` and `plot.json` are required, or loaded settings from the `process`,`plot` fields of `settings.json`.
 
 ## File Formats
+All settings and data are generally stored as key-value pairs, allowing for simplified loading and dumping as nested dictionaries. 
+
 Settings are generally loaded as `.json` format. 
 
 Data is generally saved as `.hdf5` format.
 
-All settings and data are generally stored as key-value pairs, allowing for simplified loading and dumping in library as nested dictionaries. Some example settings and data i.e) from `build/settings.json` are
+Some example settings and data i.e) from `build/settings.json` are
 
 ```python
 settings = {
