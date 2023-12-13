@@ -84,7 +84,7 @@ All settings and data are generally stored as key-value pairs, allowing for simp
 
 ```python
 settings = {
-        'cls': {'model':Channel,'label':Label},
+        'cls': {'model':'src.quantum.Channel','label':'src.quantum.Label'},
         'model': {'N':4,'D':2,'M':10},
         'optimize': {'optimizer':'cg','iterations':[0,100]}
     }
