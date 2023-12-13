@@ -87,7 +87,11 @@ def trotter(iterable=None,p=None,verbose=False):
 		iterables (iterable,scalar): Trotterized iterable for order p or parameters for order p if iterable is None
 	'''
 	P = 2
-	if not isinstance(p,int) or (p > P):
+	if p is None and iterable is None:
+		return p
+	elif p is None:
+		return iterable
+	elif not isinstance(p,int) or (p > P):
 		raise NotImplementedError("p = %r !< %d Not Implemented"%(p,P))
 
 	if iterable is None:
@@ -103,7 +107,7 @@ def trotter(iterable=None,p=None,verbose=False):
 	return iterables
 
 
-def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
+def compile(data,state=None,conj=False,size=None,compilation=None,verbose=False):
 	'''
 	Compile data and state
 	Args:
@@ -111,7 +115,9 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
-		period (int): Number of cycles of each contraction of data and state
+		compilation (dict[str,int,bool]): Compilation options, allowed keys 
+			trotter (int): Number of cycles of each contraction of data and state
+			simplify (bool): Simplification of data to most basic form
 		verbose (bool,int,str): Verbosity of function
 	Returns:
 		data (iterable[Object]): Compiled data of shape (length,)
@@ -121,14 +127,14 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False	
 	size = size if size is not None else 1
-	period = period if period is not None else None
+	compilation = Dict({**dict(trotter=None,simplify=True),**(compilation if isinstance(compilation,dict) else {})})
 
 	# Update data
 	for i in data:
 		if data[i] is None:
 			continue
 		kwargs = dict(
-			parameters=dict(parameters=dict(trotter=trotter(p=period)) if (data[i].unitary) else None),
+			parameters=dict(parameters=dict(trotter=trotter(p=compilation.trotter)) if (data[i].unitary) else None),
 			)
 		data[i].__initialize__(**kwargs)
 
@@ -138,31 +144,32 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 	data = {i: data[i] for i in data if boolean(i)}
 
 	# Filter constant data
-	boolean = lambda i: (data[i] is not None) and (data[i].data is not None) and (not data[i].variable) and (data[i].unitary)
-	
-	obj = {i: data[i] for i in data if boolean(i)}
+	if compilation.simplify:
+		boolean = lambda i: (data[i] is not None) and (data[i].data is not None) and (not data[i].variable) and (data[i].unitary)
+		
+		obj = {i: data[i] for i in data if boolean(i)}
 
-	if len(obj)>1:
+		if len(obj)>1:
 
-		for obj in splitter(obj):
-			if len(obj) < 2:
-				continue
-			
-			j = min(obj)
-			
-			for i in obj:
-				if i == j:
+			for obj in splitter(obj):
+				if len(obj) < 2:
 					continue
-				data[j] = data[j] @ data.pop(i)
+				
+				j = min(obj)
+				
+				for i in obj:
+					if i == j:
+						continue
+					data[j] = data[j] @ data.pop(i)
 
-	data = {j: data[i] if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {}
+		data = {j: data[i] if isinstance(data,dict) else i for j,i in enumerate(data)} if data is not None else {}
 
 	# Filter trotterized data
 	boolean = lambda i: (data[i] is not None) and (data[i].data is not None) and (data[i].unitary)
 	
 	obj = [j
 		for i in interleaver(
-		[trotter(i,p=period) for i in splitter([i for i in data if boolean(i)])],
+		[trotter(i,p=compilation.trotter) for i in splitter([i for i in data if boolean(i)])],
 		[i for i in splitter([i for i in data if not boolean(i)])]) 
 		for j in i]
 
@@ -170,7 +177,7 @@ def compile(data,state=None,conj=False,size=None,period=None,verbose=False):
 
 	return data
 
-def variables(data,state=None,conj=False,size=None,period=None,verbose=False):
+def variables(data,state=None,conj=False,size=None,compilation=None,verbose=False):
 	'''
 	Get indexes of variable parameters of data and state, 
 	with positive integers representing parameter indexes for that data element, 
@@ -180,7 +187,9 @@ def variables(data,state=None,conj=False,size=None,period=None,verbose=False):
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
-		period (int): Number of cycles of each contraction of data and state
+		compilation (dict[str,int,bool]): Compilation options, allowed keys 
+			trotter (int): Number of cycles of each contraction of data and state
+			simplify (bool): Simplification of data to most basic form
 		verbose (bool,int,str): Verbosity of function
 	Returns:
 		indexes (iterable[int]): Indices of variable parameters data and state of shape (length,)
@@ -191,7 +200,7 @@ def variables(data,state=None,conj=False,size=None,period=None,verbose=False):
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False	
 	size = size if size is not None else 1
-	period = period if period is not None else None
+	compilation = compilation if compilation is not None else None
 
 	boolean = lambda i: (data[i] is not None) and (data[i].variable) and (data[i].parameters is not None) and (data[i].parameters.indices is not None)
 	default = -1
@@ -207,7 +216,7 @@ def variables(data,state=None,conj=False,size=None,period=None,verbose=False):
 
 
 
-def scheme(data,state=None,conj=False,size=None,period=None,verbose=False):
+def scheme(data,state=None,conj=False,size=None,compilation=None,verbose=False):
 	'''
 	Contract data and state
 	Args:
@@ -215,7 +224,9 @@ def scheme(data,state=None,conj=False,size=None,period=None,verbose=False):
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
-		period (int): Number of cycles of each contraction of data and state
+		compilation (dict[str,int,bool]): Compilation options, allowed keys 
+			trotter (int): Number of cycles of each contraction of data and state
+			simplify (bool): Simplification of data to most basic form
 		verbose (bool,int,str): Verbosity of function		
 	Returns:
 		func (callable): contract data with signature func(parameters,state,indices)
@@ -224,7 +235,7 @@ def scheme(data,state=None,conj=False,size=None,period=None,verbose=False):
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False	
 	size = size if size is not None else 1
-	period = period if period is not None else None
+	compilation = compilation if compilation is not None else None
 
 	length = len(data) if data is not None else 1
 	indices = (0,size*length)
@@ -233,7 +244,7 @@ def scheme(data,state=None,conj=False,size=None,period=None,verbose=False):
 	def function(parameters,state=state,indices=indices):	
 		return switch(indices%length,data,parameters[indices//length],state)
 
-	data = compile(data,state=state,conj=conj,size=size,period=period,verbose=verbose)	
+	data = compile(data,state=state,conj=conj,size=size,compilation=compilation,verbose=verbose)	
 
 	length = len(data)
 	indices = (0,size*length)
@@ -257,7 +268,7 @@ def scheme(data,state=None,conj=False,size=None,period=None,verbose=False):
 
 
 
-def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=False):
+def gradient_scheme(data,state=None,conj=False,size=None,compilation=None,verbose=False):
 	'''
 	Contract gradient of data and state
 	Args:
@@ -265,7 +276,9 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 		state (array,Object): state of shape (n,) or (n,n)
 		conj (bool): conjugate
 		size (int): Number of contractions of data and state
-		period (int): Number of cycles of each contraction of data and state
+		compilation (dict[str,int,bool]): Compilation options, allowed keys 
+			trotter (int): Number of cycles of each contraction of data and state
+			simplify (bool): Simplification of data to most basic form
 		verbose (bool,int,str): Verbosity of function		
 	Returns:
 		func (callable): contract gradient with signature func(parameters,state,indices)
@@ -274,19 +287,19 @@ def gradient_scheme(data,state=None,conj=False,size=None,period=None,verbose=Fal
 	state = state() if callable(state) else state
 	conj = conj if conj is None else False
 	size = size if size is not None else 1
-	period = period if period is not None else None
+	compilation = compilation if compilation is not None else None
 	
 	length = len(data)
 	indices = (0,size*length)
 	obj = state if state is not None else data[0].identity if data else None
 
-	function = scheme(data,state=state,conj=conj,size=size,period=period)	
+	function = scheme(data,state=state,conj=conj,size=size,compilation=compilation)	
 	def gradient(parameters,state=state,indices=indices):	
 		return switch(indices%length,grad,parameters[indices//length],state)
 
-	data = compile(data,state=state,conj=conj,size=size,period=period)	
+	data = compile(data,state=state,conj=conj,size=size,compilation=compilation)	
 
-	indexes,shape = variables(data,state=state,conj=conj,size=size,period=period)	
+	indexes,shape = variables(data,state=state,conj=conj,size=size,compilation=compilation)	
 
 	length = len(data)
 	indices = (0,size*length)
@@ -1801,12 +1814,13 @@ class Operators(Object):
 
 		# Set functions
 		verbose = self.verbose and (self.func is not None)
+		compilation=dict(trotter=self.P,**self)
 
-		func = scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,period=self.P,verbose=verbose)
+		func = scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,compilation=compilation,verbose=verbose)
 
 		grad_automatic = gradient(self,mode='fwd',move=True)
 		grad_finite = gradient(self,mode='finite',move=True)
-		grad_analytical = gradient_scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,period=self.P,verbose=verbose)
+		grad_analytical = gradient_scheme(data=self.data,state=self.state,conj=self.conj,size=self.M,compilation=compilation,verbose=verbose)
 
 		grad = grad_automatic
 
@@ -2022,11 +2036,16 @@ class Operators(Object):
 			for subattr in [None,'variable','method','indices','local','site','shape','parameters']:
 				
 				if subattr is None:
-					subattr = 'data'
+					subattr = 'data.mean'
 					if self.parameters is None or self.parameters() is None:
 						substring = self.data[attr].parameters()
 					else:
-						substring = self.data[attr].parameters(self.parameters(self.parameters())[-1])
+						substring = (self.data[attr].parameters(parameters) for parameters in self.parameters(self.parameters()))
+						substring = [i for i in substring if i is not None]
+						if substring:
+							substring = norm(substring)/sqrt(len(substring))
+						else:
+							substring = None
 					if substring is not None:
 						substring = '%0.4e'%(substring)
 					else:
@@ -2524,13 +2543,6 @@ class Callback(System):
 			)
 
 
-		other = (
-			(len(attributes['iteration']) == 1) or 
-			(hyperparameters['modulo']['track'] is None) or 
-			((hyperparameters['modulo']['track'] == -1) and (done)) or
-			((hyperparameters['modulo']['track'] > 0) and (attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
-			)
-
 		stop = (
 			(
 			(hyperparameters['eps'].get('value.increase') is not None) and
@@ -2549,7 +2561,14 @@ class Callback(System):
 
 		status = ((status) and (not stop) and (not none))
 
-		tracking = (done or init or other) 
+		other = (
+			(len(attributes['iteration']) == 1) or 
+			(hyperparameters['modulo']['track'] is None) or 
+			((hyperparameters['modulo']['track'] == -1) and (not status)) or
+			((hyperparameters['modulo']['track'] > 0) and (attributes['iteration'][-1]%hyperparameters['modulo']['track'] == 0))
+			)
+
+		tracking = ((not status) or done or init or other) 
 
 		updates = {
 			**{attr: lambda i,attr,track,default: (track[attr][-1]) for attr in ['iteration.max','iteration.min']},
@@ -2563,7 +2582,7 @@ class Callback(System):
 			**{attr: None for attr in [
 				'parameters.norm','grad.norm','search.norm',
 				]},
-			**{attr: lambda i,attr,track,default: (default if i<(len(track[attr])-1) else track[attr][i])
+			**{attr: lambda i,attr,track,default: (default if ((i>0) and (i<(len(track[attr])-1))) else track[attr][i])
 				for attr in [
 				'objective.ideal.noise','objective.diff.noise','objective.rel.noise',
 				'objective.ideal.state','objective.diff.state','objective.rel.state',
@@ -2588,7 +2607,7 @@ class Callback(System):
 					_value = track[attr].pop(0)
 				
 
-				index = -1 if (not stop) else -2
+				index = -1 if ((not stop) or other) else -2
 				parameters = attributes['parameters'][index]
 				state = metric.state()
 			
@@ -2609,7 +2628,7 @@ class Callback(System):
 				if attr in attributes:
 					value = attributes[attr][index]
 
-				if (not stop):
+				if ((not stop) or other):
 					track[attr].append(value)
 
 				if attr in ['iteration.max']:
@@ -2741,58 +2760,65 @@ class Callback(System):
 
 				elif attr in ['hessian','fisher','hessian.eigenvalues','fisher.eigenvalues','hessian.rank','fisher.rank'] and (do):
 					
+					shape = model.shape if ((metric.state is None) or (metric.state.shape is None)) else metric.state.shape
+					grad = model.grad_analytical
+
 					if attr in ['hessian','hessian.eigenvalues','hessian.rank']:
-						function = hessian(jit(lambda parameters: metric(model(parameters,state))))
+						function = hessian(jit(lambda parameters,state: metric(model(parameters,state))))
 					elif attr in ['fisher','fisher.eigenvalues','fisher.rank']:
-						function = fisher(model,model.grad_analytical,shapes=(model.shape,(*parameters.shape,*model.shape)),hermitian=metric.state.hermitian,unitary=model.unitary)
+						function = fisher(model,grad,shapes=(shape,(*parameters.shape,*shape)),hermitian=metric.state.hermitian,unitary=model.unitary)
 
 					if attr in ['hessian','fisher']:
-						value = function(parameters)
+						value = function(parameters,state)
 
 					elif attr in ['hessian.eigenvalues','fisher.eigenvalues']:
-						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
+						value = sort(abs(eig(function(parameters,state),hermitian=True)))[::-1]
 						value = value/maximum(value)
 					elif attr in ['hessian.rank','fisher.rank']:
-						value = sort(abs(eig(function(parameters),hermitian=True)))[::-1]
+						value = sort(abs(eig(function(parameters,state),hermitian=True)))[::-1]
 						value = value/maximum(value)
-						value = nonzero(value,eps=50)
+						value = nonzero(value,eps=1e-12)
 						# value = (argmax(abs(difference(value)/value[:-1]))+1) if value.size > 1 else 1
 
 				elif attr in ['entropy'] and (not do):
 					value = default
 
 				elif attr in ['entropy'] and (do):
+					shape = model.shape if ((metric.state is None) or (metric.state.shape is None)) else metric.state.shape
 
-					function = entropy(model,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+					function = entropy(model,shape=shape,hermitian=metric.state.hermitian,unitary=model.unitary)
 
-					value = function(parameters)
+					value = function(parameters,state)
 
 				elif attr in ['purity'] and (not do):
 					value = default
 
 				elif attr in ['purity'] and (do):
+					shape = model.shape if ((metric.state is None) or (metric.state.shape is None)) else metric.state.shape
 
-					function = purity(model,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+					function = purity(model,shape=shape,hermitian=metric.state.hermitian,unitary=model.unitary)
 
-					value = function(parameters)
+					value = function(parameters,state)
 
 				elif attr in ['similarity'] and (not do):
 					value = default
 
 				elif attr in ['similarity'] and (do):
+					shape = model.shape if ((metric.state is None) or (metric.state.shape is None)) else metric.state.shape
 
-					function = similarity(model,metric.label,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+					function = similarity(model,metric.label,shape=shape,hermitian=metric.state.hermitian,unitary=model.unitary)
 
-					value = function(parameters)
+					value = function(parameters,state)
 
 				elif attr in ['divergence'] and (not do):
 					value = default
 
 				elif attr in ['divergence'] and (do):
+					shape = model.shape if ((metric.state is None) or (metric.state.shape is None)) else metric.state.shape
 
-					function = divergence(model,metric.label,shape=model.shape,hermitian=metric.state.hermitian,unitary=model.unitary)
+					function = divergence(model,metric.label,shape=shape,hermitian=metric.state.hermitian,unitary=model.unitary)
 
-					value = function(parameters)
+					value = function(parameters,state)
 
 				elif attr in [
 					'state.string','state.ndim',

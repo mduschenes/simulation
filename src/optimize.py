@@ -1496,7 +1496,7 @@ class Optimization(System):
 			(self.modulo['dump'] is True) or 
 			(iteration is None) or 
 			((self.modulo['dump'] == -1) and (iteration==(self.iterations.stop-1))) or 
-			(iteration%self.modulo['dump'] == 0) or 
+			((self.modulo['dump']>0) and (iteration%self.modulo['dump'] == 0)) or 
 			(iteration==(self.iterations.stop-1))
 			)
 
