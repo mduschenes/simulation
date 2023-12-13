@@ -113,7 +113,7 @@
 		"jobs.job.patterns.mem":["64GB"],
 		"jobs.postprocess.patterns.mem":["64GB"],
 		"jobs.job.patterns.cpus-per-task":[4],
-		"jobs.postprocess.patterns.cpus-per-task":[2]		
+		"jobs.postprocess.patterns.cpus-per-task":[2]
 		},
 	"groups":null,
 	"index":null
