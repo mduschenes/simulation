@@ -82,18 +82,22 @@ Data is generally saved as `.hdf5` format.
 
 All settings and data are generally stored as key-value pairs, allowing for simplified loading and dumping in library as nested dictionaries. For example
 
-i.e) `settings = {
+```python
+settings = {
         'cls': {'model':Channel,'label':Label},
         'model': {'N':4,'D':2,M':10},
         'optimize': {'optimizer':'cg','iterations':[0,100]}
-    }`
+    }
+```
 
 
-i.e) ```data = {
+```python
+data = {
         'iteration':[0,1,2],
         'parameters':[array([...]),array([...]),array([...])],
         'value': [1e-1,1e-1,1e-3]
-    }```
+    }
+```
 
 ## Run
 Under `build`, please run 
