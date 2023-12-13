@@ -1325,7 +1325,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
 		elif ndim == 2:
 			shapes = [[shapes[0],shapes[1],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
-			subscripts = ['ni,unm,mj->uij','uij,vji,ij->uv']
+			subscripts = ['ni,unm,mj->uij','uij,vij,ij->uv']
 			wrappers = [lambda out,*operands: out, lambda out,*operands: 2*real(out)]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
@@ -1350,15 +1350,16 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 			eigenvalues,eigenvectors = function
 
+			eps = None
 			n = eigenvalues.size
-			d = nonzero(eigenvalues)
+			d = nonzero(eigenvalues,eps=eps)
 			indices,zeros = slice(n-d,n),slice(0,n-d)
 			indexes = ((indices,indices),(indices,zeros),(zeros,indices)) if d<n else ((indices,indices),)
 			out = 0
 
 			for i,j in indexes:
 				tmp = einsummations[0](conjugate(eigenvectors[:,i]),gradient,eigenvectors[:,j])
-				out += einsummations[1](tmp,tmp,1/(eigenvalues[i,None] + eigenvalues[None,j]))
+				out += einsummations[1](tmp,conjugate(tmp),1/(eigenvalues[i,None] + eigenvalues[None,j]))
 
 			out = real(out)
 
