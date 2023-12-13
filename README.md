@@ -37,7 +37,7 @@ which installs a Python environment with name `env` with all necessary packages,
 ## Setup
 Under `build`, please modify the `settings.json` file, with all model parameters, hyperparameter combinations, job settings, and plot settings. 
 
-To configure jobs scripts, plot and processing settings, that follow the matplotlib API, please modify the files under `config`, or under the local working directory 
+To configure jobs scripts, plot and processing settings, that follow the `matplotlib` API, please modify the files under `config`, or under the local working directory 
 - `settings.json` : model and job settings
 - `job.slurm` : job script
 - `logging.conf` : logger configuration
@@ -73,19 +73,39 @@ If a single model instance is to be optimized with `src/train.py`, then `optimiz
 
 If multiple model instances are to be run with `src/run.py`, then the `jobs` fields are also required. 
 
-If postprocessing is to be run with `src/process.py`, then `process.json` and `plot.json` are required, or loaded settings from the `process`,`plot` fields.
+If postprocessing is to be run with `src/process.py`, then `process.json` and `plot.json` are required, or loaded settings from the `process`,`plot` fields of `settings.json`.
+
+## File Formats
+Settings are generally loaded as `.json` format. 
+
+Data is generally saved as `.hdf5` format.
+
+All settings and data are generally stored as key-value pairs, allowing for simplified loading and dumping in library as nested dictionaries
+i.e) `settings = {
+        'cls': {'model':Channel,'label':Label},
+        'model': {'N':4,'D':2,M':10},
+        'optimize': {'optimizer':'cg','iterations':[0,100]}
+    }`
+i.e) `data = {
+        'iteration':[0,1,2],
+        'parameters':[array([...]),array([...]),array([...])],
+        'value': [1e-1,1e-1,1e-3]
+    }`
 
 ## Run
 Under `build`, please run 
 ```sh
 python main.py settings.json 
 ```
-to run all model permutations, either in serial, (GNU) parallel, or with interdependent job arrays on an HPC cluster.
+to run all model permutations, either in serial, (GNU) parallel, or with interdependent job arrays on an HPC cluster. 
+
+## Optimization
+Optimize models with `src/optimize.py`, yielding `data.hdf5` files with data attributes and datasets for data at optimization iterations. 
 
 ## Plot
-Plotting and post-processing can be performed, with plot and processing files, and with saving figures to an output directory. Under `build`, please run
+Plotting and post-processing can be performed, with plot and processing files, and with saving figures to an output directory. Any files stored as attribute-list format i.e) .hdf5,.json may be imported and processed within the `pandas` and `matplotlib` API frameworks. Under `build`, please run
 ```sh
-python processor.py <path/to/data> <path/to/plot.json> <path/to/process.json> <path/to/plots>
+python processor.py <path/to/data.hdf5> <path/to/plot.json> <path/to/process.json> <path/to/plots>
 ```
 An example plot for optimization convergence is
 <!-- <object data="https://github.com/mduschenes/simulation/blob/master/plot.pdf" type="application/pdf" width="700px" height="700px">
