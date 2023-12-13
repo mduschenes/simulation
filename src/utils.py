@@ -392,7 +392,13 @@ def epsilon(dtype=float,eps=None):
 		eps (array): Machine precision
 	'''
 	eps = 1 if eps is None else eps
-	eps = eps*np.finfo(dtype).eps
+	try:
+		dtype = np.finfo(dtype).eps
+	except:
+		dtype = float
+		dtype = np.finfo(dtype).eps
+
+	eps = eps*dtype
 
 	return eps
 
@@ -1292,7 +1298,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 	Returns:
 		fisher (callable): Fisher information of function
 	'''
-
 	if mode is None:
 		mode = 'fwd'
 
@@ -1319,9 +1324,9 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 		if ndim == 1:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))			
 		elif ndim == 2:
-			shapes = [[shapes[0],shapes[1],shapes[0],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
+			shapes = [[shapes[0],shapes[1],shapes[0]],[shapes[1],shapes[1],shapes[0]]]
 			subscripts = ['ni,unm,mj->uij','uij,vij,ij->uv']
-			wrappers = [lambda out,*operands: out, lambda out,*operands: out]
+			wrappers = [lambda out,*operands: out, lambda out,*operands: 2*real(out)]
 		else:
 			raise NotImplementedError("Hermitian Fisher Information Not Implemented for ndim = %r"%(ndim))
 	
@@ -1345,19 +1350,16 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 			eigenvalues,eigenvectors = function
 
+			eps = None
 			n = eigenvalues.size
-			d = nonzero(eigenvalues)
+			d = nonzero(eigenvalues,eps=eps)
 			indices,zeros = slice(n-d,n),slice(0,n-d)
-
+			indexes = ((indices,indices),(indices,zeros),(zeros,indices)) if d<n else ((indices,indices),)
 			out = 0
 
-			i,j = indices,indices
-			tmp = einsummations[0](conjugate(eigenvectors[:,i]),gradient,eigenvectors[:,j])
-			out += einsummations[1](tmp,conjugate(tmp),1/(eigenvalues[i,None] + eigenvalues[None,j]))
-
-			i,j = indices,zeros
-			tmp = einsummations[0](conjugate(eigenvectors[:,i]),gradient,eigenvectors[:,j])
-			out += 2*real(einsummations[1](tmp,conjugate(tmp),1/(eigenvalues[i,None] + eigenvalues[None,j])))
+			for i,j in indexes:
+				tmp = einsummations[0](conjugate(eigenvectors[:,i]),gradient,eigenvectors[:,j])
+				out += einsummations[1](tmp,conjugate(tmp),1/(eigenvalues[i,None] + eigenvalues[None,j]))
 
 			out = real(out)
 
@@ -1365,7 +1367,6 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 
 
 	elif unitary:
-
 		if ndim == 1:
 			shapes = [[shapes[1],shapes[0]],[[shapes[1][0]],[shapes[1][0]]],[shapes[1],shapes[1]]]
 			subscripts = ['ui,i->u','u,v->uv','ui,vi->uv']
@@ -1396,6 +1397,7 @@ def fisher(func,grad=None,shapes=None,optimize=None,mode=None,hermitian=None,uni
 			gradient = grad(*args,**kwargs)
 
 			out = 0
+
 			tmp = einsummations[0](conjugate(gradient),function)
 			out += einsummations[1](conjugate(tmp),tmp)
 
