@@ -80,7 +80,7 @@ Settings are generally loaded as `.json` format.
 
 Data is generally saved as `.hdf5` format.
 
-All settings and data are generally stored as key-value pairs, allowing for simplified loading and dumping in library as nested dictionaries. For example
+All settings and data are generally stored as key-value pairs, allowing for simplified loading and dumping in library as nested dictionaries. Some example settings and data i.e) from `build/settings.json` are
 
 ```python
 settings = {
@@ -95,7 +95,7 @@ settings = {
 data = {
         'iteration':[0,1,2],
         'parameters':[array([...]),array([...]),array([...])],
-        'value': [1e-1,1e-1,1e-3]
+        'value': [1e-1,1e-2,1e-3]
     }
 ```
 
