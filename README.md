@@ -108,7 +108,7 @@ An example plot for optimization convergence is
         <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://github.com/mduschenes/simulation/blob/master/plot.pdf">Download PDF</a>.</p>
     </embed>
 </object> -->
-![alt text](https://github.com/mduschenes/simulation/blob/master/setup/plot.jpg?raw=true)
+![alt text](https://github.com/mduschenes/simulation/blob/dev/setup/plot.jpg?raw=true)
 
 ## Test
 Under `test`, to run unit tests (with pytest API), please run
@@ -121,7 +121,7 @@ Examples are found in `examples`.
 
 Example workflow `main.py`
 
-https://github.com/mduschenes/simulation/blob/master/setup/main.py
+https://github.com/mduschenes/simulation/blob/dev/setup/main.py
 
 Example settings `settings.json`
 
