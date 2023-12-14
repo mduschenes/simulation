@@ -23,20 +23,20 @@ settings = load(settings,wrapper=Dict)
 Model = load(settings.cls.model)
 State = load(settings.cls.state)
 Label = load(settings.cls.label)
-Callback = load(settings.cls.callback)
+Call = load(settings.cls.callback)
 
 # Get optimizer and system settings
 hyperparameters = settings.optimize
 system = settings.system
 
-# Initialize model classes
+# Initialize model classes (getting attributes common to previous model namespaces)
 model = Model(**{**settings.model,**dict(system=system)})
 state = State(**{
-	**namespace(state,model),
+	**namespace(State,model),
 	**settings.state,**dict(model=model,system=system)
 	})
 label = Label(**{
-	**namespace(label,model),
+	**namespace(Label,model),
 	**settings.label,
 	**dict(model=model,system=system)
 	})
@@ -47,8 +47,8 @@ model.__initialize__(state=state)
 
 # Set optimizer arguments
 func = model.parameters.constraints
-callback = Callback(**{
-	**namespace(callback,model),
+callback = Call(**{
+	**namespace(Call,model),
 	**settings.callback,
 	**dict(model=model,system=system)
 	})

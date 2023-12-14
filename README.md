@@ -3,30 +3,6 @@ A pure JAX based quantum circuit simulator library, including automatic differen
 
 Pre-processing, hyperparameter searches, and inter-dependent, parallelized job submission scripts, and post-processing with statistical analysis, and plotting are also included in the library.
 
-The hierarchy of inheritance of classes is as follows
-
-`Channel` &larr; `Unitary` &larr; `Hamiltonian` &larr; `Operators` &larr; `Object` &larr; `System` &larr; `Dictionary`
-
-`Operators` &larr; `Object` &larr; `System` &larr; `Dictionary`
-
-`Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
-
-`State,Noise,Pauli,Gate` &larr; `Object` &larr; `System` &larr; `Dictionary`
-
-`Label` &larr; `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
-
-`Parameters` &larr; `System` &larr; `Dictionary`
-
-`Parameter` &larr; `System` &larr; `Dictionary`
-
-`Space,Time,Lattice` &larr; `System` &larr; `Dictionary`
-
-`Objective,Callback` &larr; `Function` &larr; `System` &larr; `Dictionary`
-
-`Metric` &larr; `System` &larr; `Dictionary`
-
-`Optimizer` &larr; `Optimization` &larr; `System` &larr; `Dictionary`
-
 ## Install
 After cloning the repository, under `setup`, please run 
 ```sh
@@ -50,31 +26,6 @@ The numpy backend can be set with the environment variable (with any case)
 `NUMPY_BACKEND=<jax,autograd,numpy>`
 
 where the default backend is `jax`, and the `numpy` backend does not offer automatic differentiation.
-
-## Settings
-Settings files `settings.json` are used to configure model, optimization, and job settings, and to define all permutations of settings intended to be run. The files should have the following fields:
-- `cls` : paths to classes for model (`model`,`label`,`state`,`callback`,...)
-- `boolean` : booleans for training, optimization, and saving, loading of models (`train`,`load`,`dump`)
-- `seed` : random seed settings (`seed`,`size`,...)
-- `permutations` : permutations of model settings
-- `model` : model instance settings (`data`,`N`,`M`,`D`,...)
-- `system` : system settings (`dtype`,`device`,`backend`,`path`,`logger`,...)
-- `optimize` : optimization settings (`iterations`,`optimizer`,`metric`,`track`,...)
-- `label` : label settings for optimization (`operator`,`site`,`parameters`,...)
-- `state` : state settings for optimization (`operator`,`site`,`parameters`,...)
-- `callback` : callback settings for optimization (`args`,`kwargs`,...)
-- `process` : postprocessing settings (`load`,`dump`,`plot`,`instance`,`texify`,...)
-- `plot` : plotting settings (`fig`,`ax`,`style`,...)
-- `jobs` : job settings for multiple model instances (`args`,`paths`,`patterns`,...)
-
-If a single model instance is to be run with `src/quantum.py`, then `cls`,`model`,`system` fields are required.
-
-If a single model instance is to be optimized with `src/train.py`, then `optimize`,`label`,`state`,`callback` fields are also required.
-
-If multiple model instances are to be run with `src/run.py`, then the `jobs` fields are also required. 
-
-If postprocessing is to be run with `src/process.py`, then `process.json` and `plot.json` are required, or loaded settings from the `process`,`plot` fields of `settings.json`.
-
 
 ## Examples
 Examples are found in `examples`.
@@ -107,20 +58,20 @@ settings = load(settings,wrapper=Dict)
 Model = load(settings.cls.model)
 State = load(settings.cls.state)
 Label = load(settings.cls.label)
-Callback = load(settings.cls.callback)
+Call = load(settings.cls.callback)
 
 # Get optimizer and system settings
 hyperparameters = settings.optimize
 system = settings.system
 
-# Initialize model classes
+# Initialize model classes (getting attributes common to previous model namespaces)
 model = Model(**{**settings.model,**dict(system=system)})
 state = State(**{
-    **namespace(state,model),
+    **namespace(State,model),
     **settings.state,**dict(model=model,system=system)
     })
 label = Label(**{
-    **namespace(label,model),
+    **namespace(Label,model),
     **settings.label,
     **dict(model=model,system=system)
     })
@@ -131,8 +82,8 @@ model.__initialize__(state=state)
 
 # Set optimizer arguments
 func = model.parameters.constraints
-callback = Callback(**{
-    **namespace(callback,model),
+callback = Call(**{
+    **namespace(Call,model),
     **settings.callback,
     **dict(model=model,system=system)
     })
@@ -223,7 +174,7 @@ Example settings `settings.json`
     "verbose":"info"
     },
 "optimize":{
-    "iterations":[0,20],
+    "iterations":[0,25],
     "optimizer":"cg",
     "metric":"abs2",    
     "alpha":1e-4,"beta":1e-4,
@@ -267,17 +218,6 @@ data = {
     }
 ```
 
-## File Formats
-All settings and data are generally stored as key-value pairs, allowing for simplified loading and dumping as nested dictionaries. 
-
-Settings are generally loaded as `.json` format. Settings are formatted as nested keyword arguments, to initialize classes. 
-
-Data are generally saved as `.hdf5` format. Data are formatted as attribute-iterable datasets, corresponding to data at optimization iterations.
-
-Optimization checkpoints are generally saved as `.hdf5.ckpt` format. Any checkpoint files present in cwd will be resumed by the optimizer at the last checkpointed iteration.
-
-Log files are generally saved as `.log` format. All logging across classes is configured with `logging.conf` files, to print `stdout` and `stderr` to the terminal and a log file.
-
 ## Run
 Under `build`, please run 
 ```sh
@@ -307,3 +247,66 @@ Under `test`, to run unit tests (with pytest API), please run
 ```sh
 . pytest.sh
 ```
+
+## Classes
+The hierarchy of inheritance of classes is as follows
+
+`Channel` &larr; `Unitary` &larr; `Hamiltonian` &larr; `Operators` &larr; `Object` &larr; `System` &larr; `Dictionary`
+
+`Operators` &larr; `Object` &larr; `System` &larr; `Dictionary`
+
+`Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
+
+`State,Noise,Pauli,Gate` &larr; `Object` &larr; `System` &larr; `Dictionary`
+
+`Label` &larr; `Operator` &larr; `Object` &larr; `System` &larr; `Dictionary`
+
+`Parameters` &larr; `System` &larr; `Dictionary`
+
+`Parameter` &larr; `System` &larr; `Dictionary`
+
+`Space,Time,Lattice` &larr; `System` &larr; `Dictionary`
+
+`Objective,Callback` &larr; `Function` &larr; `System` &larr; `Dictionary`
+
+`Metric` &larr; `System` &larr; `Dictionary`
+
+`Optimizer` &larr; `Optimization` &larr; `System` &larr; `Dictionary`
+
+## Settings
+Settings files `settings.json` are used to configure model, optimization, and job settings, and to define all permutations of settings intended to be run. The files should have the following fields:
+- `cls` : paths to classes for model (`model`,`label`,`state`,`callback`,...)
+- `boolean` : booleans for training, optimization, and saving, loading of models (`train`,`load`,`dump`)
+- `seed` : random seed settings (`seed`,`size`,...)
+- `permutations` : permutations of model settings
+- `model` : model instance settings (`data`,`N`,`M`,`D`,...)
+- `system` : system settings (`dtype`,`device`,`backend`,`path`,`logger`,...)
+- `optimize` : optimization settings (`iterations`,`optimizer`,`metric`,`track`,...)
+- `label` : label settings for optimization (`operator`,`site`,`parameters`,...)
+- `state` : state settings for optimization (`operator`,`site`,`parameters`,...)
+- `callback` : callback settings for optimization (`args`,`kwargs`,...)
+- `process` : postprocessing settings (`load`,`dump`,`plot`,`instance`,`texify`,...)
+- `plot` : plotting settings (`fig`,`ax`,`style`,...)
+- `jobs` : job settings for multiple model instances (`args`,`paths`,`patterns`,...)
+
+If a single model instance is to be run with `src/quantum.py`, then `cls`,`model`,`system` fields are required.
+
+If a single model instance is to be optimized with `src/train.py`, then `optimize`,`label`,`state`,`callback` fields are also required.
+
+If multiple model instances are to be run with `src/run.py`, then the `jobs` fields are also required. 
+
+If postprocessing is to be run with `src/process.py`, then `process.json` and `plot.json` are required, or loaded settings from the `process`,`plot` fields of `settings.json`.
+
+
+## File Formats
+All settings and data are generally stored as key-value pairs, allowing for simplified loading and dumping as nested dictionaries. 
+
+Settings are generally loaded as `.json` format. Settings are formatted as nested keyword arguments, to initialize classes. 
+
+Data are generally saved as `.hdf5` format. Data are formatted as attribute-iterable datasets, corresponding to data at optimization iterations.
+
+Optimization checkpoints are generally saved as `.hdf5.ckpt` format. Any checkpoint files present in cwd will be resumed by the optimizer at the last checkpointed iteration.
+
+Log files are generally saved as `.log` format. All logging across classes is configured with `logging.conf` files, to print `stdout` and `stderr` to the terminal and a log file.
+
+

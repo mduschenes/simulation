@@ -56,7 +56,7 @@
 	"verbose":"info"
 	},
 "optimize":{
-	"iterations":[0,20],
+	"iterations":[0,25],
 	"optimizer":"cg",
 	"metric":"abs2",	
 	"alpha":1e-4,"beta":1e-4,
