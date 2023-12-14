@@ -29,5 +29,6 @@ build/plots
 build/tmp
 **/*test.json
 setup/requirements.txt.*.*
+setup/tmp
 test/config/settings.*.json
 docs/site
