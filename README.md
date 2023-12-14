@@ -81,12 +81,181 @@ Examples are found in `examples`.
 
 Example workflow `main.py`
 
-<!-- https://github.com/mduschenes/simulation/blob/dev/examples/main.py -->
-https://github.com/mduschenes/simulation/blob/ba89a5ca4a2a2fac316c3490f8042585e539890c/examples/main.py?raw=true
+```python
+# Import packages
+import os,sys
+ROOT = os.path.dirname(os.path.abspath(__file__))
+PATHS = ['','..']
+for PATH in PATHS:
+    sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
+from src.utils import argparser
+from src.io import load
+from src.system import Dict
+from src.iterables import namespace
+from src.optimize import Optimizer,Objective,Metric,Callback
+
+# Parse command line arguments (default: settings.json)
+arguments = {'--settings':'settings.json'}
+arguments = argparser(arguments)
+settings = arguments['settings']
+
+# Load settings file (wrap in Dict class for object-style key-value pair attributes)
+settings = load(settings,wrapper=Dict)
+
+# Load classes (from path of class i.e) src.quantum.py)
+model = load(settings.cls.model)
+state = load(settings.cls.state)
+label = load(settings.cls.label)
+callback = load(settings.cls.callback)
+
+# Get optimizer and system settings
+hyperparameters = settings.optimize
+system = settings.system
+
+# Initialize model classes
+model = model(**{**settings.model,**dict(system=system)})
+state = state(**{
+    **namespace(state,model),
+    **settings.state,**dict(model=model,system=system)
+    })
+label = label(**{
+    **namespace(label,model),
+    **settings.label,
+    **dict(model=model,system=system)
+    })
+
+# Initialize label and model with state
+label.__initialize__(state=state)
+model.__initialize__(state=state)
+
+# Set optimizer arguments
+func = model.parameters.constraints
+callback = callback(**{
+    **namespace(callback,model),
+    **settings.callback,
+    **dict(model=model,system=system)
+    })
+arguments = ()
+keywords = {}
+
+# Initialize optimizer classes
+metric = Metric(state=state,label=label,
+    arguments=arguments,keywords=keywords,
+    hyperparameters=hyperparameters,system=system)
+func = Objective(model,
+    func=func,callback=callback,metric=metric,
+    hyperparameters=hyperparameters,system=system)
+callback = Callback(model,
+    func=func,callback=callback,metric=metric,
+    arguments=arguments,keywords=keywords,
+    hyperparameters=hyperparameters,system=system)
+optimizer = Optimizer(func=func,callback=callback,
+    arguments=arguments,keywords=keywords,
+    hyperparameters=hyperparameters,system=system)
+
+# Get model parameters and state
+parameters = model.parameters()
+state = model.state()
+
+# Run optimizer
+parameters = optimizer(parameters,state=state)
+```
 
 Example settings `settings.json`
 
-https://github.com/mduschenes/simulation/blob/dev/examples/setting.json?raw=true
+```python
+{
+"cls":{
+    "model":"src.quantum.Channel",
+    "label":"src.quantum.Label",
+    "state":"src.quantum.State",
+    "callback":"src.quantum.Callback"
+    },
+"model":{
+    "data":{
+        "x":{
+            "operator":["X"],"site":"i","string":"x",
+            "parameters":{"data":0,"random":"random","seed":123,"axis":["M"],"group":["x"]},
+            "variable":true
+        },
+        "y":{
+            "operator":["Y"],"site":"i","string":"y",
+            "parameters":{"data":0,"random":"random","seed":123,"axis":["M"],"group":["y"]},
+            "variable":true
+        },      
+        "zz":{
+            "operator":["Z","Z"],"site":"i<j","string":"zz",
+            "parameters":{"data":0,"random":"random","seed":123,"axis":["M"],"group":["zz"]},
+            "variable":true
+        },
+        "noise":{
+            "operator":"depolarize","site":null,"string":"noise",
+            "parameters":{"data":1e-12},
+            "variable":false
+        }
+    },
+    "N":2,
+    "D":2,
+    "d":1,
+    "M":500,
+    "tau":1,
+    "P":1,
+    "space":"spin",
+    "time":"linear",
+    "lattice":"square"
+    },
+"system":{
+    "dtype":"complex",
+    "format":"array",
+    "device":"cpu",
+    "backend":null,
+    "architecture":null,
+    "seed":12345,
+    "key":null,
+    "instance":null,
+    "cwd":".",
+    "path":null,
+    "path":"data.hdf5",
+    "conf":"logging.conf",
+    "logger":"log.log",
+    "cleanup":false,
+    "verbose":"info"
+    },
+"optimize":{
+    "iterations":[0,20],
+    "optimizer":"cg",
+    "metric":"abs2",    
+    "alpha":1e-4,"beta":1e-4,
+    "search":{"alpha":"line_search","beta":"hestenes_stiefel"},
+    "track":{
+        "iteration":[],"objective":[],
+        "alpha":[],"beta":[],
+        "purity":[],
+        "N":[],"D":[],"d":[],"M":[],"tau":[],"P":[],
+        "noise.parameters":[]
+        }   
+    },
+"label": {
+    "operator":"haar",
+    "site":null,
+    "string":"U",
+    "parameters":1,
+    "ndim":2,
+    "seed":null
+    },
+"state": {
+    "operator":"zero",
+    "site":null,
+    "string":"psi",
+    "parameters":true,
+    "ndim":2,
+    "samples":1,
+    "seed":null
+    },
+"callback":{}
+}
+```
 
 Example data `data.hdf5`
 
