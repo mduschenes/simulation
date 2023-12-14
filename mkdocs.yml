@@ -41,8 +41,12 @@ theme:
 #  - navigation.tabs
 
 plugins:
-  - mkdocstrings
-
+  - search  
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
 
 nav:
   - Introduction: index.md
