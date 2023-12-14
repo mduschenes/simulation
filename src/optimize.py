@@ -1269,8 +1269,8 @@ class Optimization(System):
 			'clear':True,
 			'cwd':None,
 			'path':None,
-			'modulo':{'log':None,'buffer':None,'attributes':None,'callback':None,'alpha':None,'beta':None,'dump':None},
-			'length':{'log':None,'buffer':1,'attributes':5,'callback':None,'alpha':None,'beta':None,'dump':None},
+			'modulo':{'log':None,'buffer':None,'attributes':None,'track':None,'callback':None,'alpha':None,'beta':None,'dump':None},
+			'length':{'log':None,'buffer':1,'attributes':5,'track':None,'callback':None,'alpha':None,'beta':None,'dump':None},
 			'attributes':{'iteration':[],'parameters':[],'value':[],'grad':[],'search':[],'alpha':[]},	
 			'track':{},		
 		}
