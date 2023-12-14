@@ -142,8 +142,9 @@ class Parameter(System):
 		self.string = self.string if self.string is not None else None
 		self.variable = self.variable if self.variable is not None else None
 		self.group = (*(group for group in self.group),) if self.group is not None and not isinstance(self.group,str) else (self.group,) if self.group is not None else (self.string,)
-		self.local = self.local if self.local is not None else None
+		self.local = self.local if self.local is not None else True
 		self.method = self.method if self.method is not None else None
+		self.bounds = self.bounds if self.bounds is not None else [-1,1]
 		self.axis = [attr for attr in self.axis if isinstance(attr,int) or getattr(self,attr,None) is not None] if self.axis is not None else None
 
 		self.args = self.args if self.args is not None else ()
