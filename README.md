@@ -75,6 +75,29 @@ If multiple model instances are to be run with `src/run.py`, then the `jobs` fie
 
 If postprocessing is to be run with `src/process.py`, then `process.json` and `plot.json` are required, or loaded settings from the `process`,`plot` fields of `settings.json`.
 
+
+## Examples
+Examples are found in `examples`.
+
+Example workflow `main.py`
+
+<!-- https://github.com/mduschenes/simulation/blob/dev/examples/main.py -->
+https://github.com/mduschenes/simulation/blob/ba89a5ca4a2a2fac316c3490f8042585e539890c/examples/main.py?raw=true
+
+Example settings `settings.json`
+
+https://github.com/mduschenes/simulation/blob/dev/examples/setting.json?raw=true
+
+Example data `data.hdf5`
+
+```python
+data = {
+        'iteration':[0,1,2],
+        'parameters':[array([...]),array([...]),array([...])],
+        'value': [1e-1,1e-2,1e-3]
+    }
+```
+
 ## File Formats
 All settings and data are generally stored as key-value pairs, allowing for simplified loading and dumping as nested dictionaries. 
 
@@ -114,26 +137,4 @@ An example plot for optimization convergence is
 Under `test`, to run unit tests (with pytest API), please run
 ```sh
 . pytest.sh
-```
-
-## Examples
-Examples are found in `examples`.
-
-Example workflow `main.py`
-
-<!-- https://github.com/mduschenes/simulation/blob/dev/examples/main.py -->
-https://github.com/mduschenes/simulation/blob/ba89a5ca4a2a2fac316c3490f8042585e539890c/examples/main.py
-
-Example settings `settings.json`
-
-https://github.com/mduschenes/simulation/blob/dev/examples/setting.json
-
-Example data `data.hdf5`
-
-```python
-data = {
-        'iteration':[0,1,2],
-        'parameters':[array([...]),array([...]),array([...])],
-        'value': [1e-1,1e-2,1e-3]
-    }
 ```
