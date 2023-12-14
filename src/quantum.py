@@ -1633,7 +1633,9 @@ class Operators(Object):
 		# Set site dependent attributes
 		attr = 'attributes'
 		defaults = ['parameters.data']
-		for i,attribute in enumerate(set((*kwargs.pop(attr,[]),*defaults))):
+		for i,attribute in enumerate([
+				defaults if isinstance(i,nulls) else list(set((*i,*defaults))) 
+				for i in kwargs.pop(attr,[])]):
 			if isinstance(attribute,nulls):
 				continue
 			indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
@@ -1642,7 +1644,7 @@ class Operators(Object):
 				attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
 				if attr not in kwargs or not isinstance(kwargs[attr][i],dict) or not isinstance(getter(kwargs[attr][i],attrs,delimiter=delim),iterables):
 					continue
-				setter(kwargs[attr][i],{attrs:getter(attrs,kwargs[attr][i],delimiter=delim)[indices.index(i)]},delimiter=delim)
+				setter(kwargs[attr][i],{attrs:getter(kwargs[attr][i],attrs,delimiter=delim)[indices.index(i)]},delimiter=delim)
 
 
 		# Set class attributes
@@ -1776,7 +1778,7 @@ class Operators(Object):
 			parameters={i:self.data[i].parameters 
 				for i in self.data 
 				if ((self.data[i] is not None) and 
-				    (self.data[i].data is not None))
+					(self.data[i].data is not None))
 				} if parameters is None else parameters,
 			system=self.system
 		)
@@ -2307,7 +2309,9 @@ class Hamiltonian(Operators):
 		# Set site dependent attributes
 		attr = 'attributes'
 		defaults = ['parameters.data']
-		for i,attribute in enumerate(set((*kwargs.pop(attr,[]),*defaults))):
+		for i,attribute in enumerate([
+				defaults if isinstance(i,nulls) else list(set((*i,*defaults))) 
+				for i in kwargs.pop(attr,[])]):
 			if isinstance(attribute,nulls):
 				continue
 			indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
