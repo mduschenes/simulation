@@ -30,4 +30,4 @@ build/tmp
 **/*test.json
 setup/requirements.txt.*.*
 test/config/settings.*.json
-docs/site
+docs/**
