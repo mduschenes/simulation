@@ -2,7 +2,7 @@
 
 
 # rclone backup
-home="/home/matt"
+home="~"
 scripts="${home}/backup"
 
 folder=${1:-"${home}/files"}
