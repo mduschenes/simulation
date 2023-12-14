@@ -104,22 +104,22 @@ settings = arguments['settings']
 settings = load(settings,wrapper=Dict)
 
 # Load classes (from path of class i.e) src.quantum.py)
-model = load(settings.cls.model)
-state = load(settings.cls.state)
-label = load(settings.cls.label)
-callback = load(settings.cls.callback)
+Model = load(settings.cls.model)
+State = load(settings.cls.state)
+Label = load(settings.cls.label)
+Callback = load(settings.cls.callback)
 
 # Get optimizer and system settings
 hyperparameters = settings.optimize
 system = settings.system
 
 # Initialize model classes
-model = model(**{**settings.model,**dict(system=system)})
-state = state(**{
+model = Model(**{**settings.model,**dict(system=system)})
+state = State(**{
     **namespace(state,model),
     **settings.state,**dict(model=model,system=system)
     })
-label = label(**{
+label = Label(**{
     **namespace(label,model),
     **settings.label,
     **dict(model=model,system=system)
@@ -131,7 +131,7 @@ model.__initialize__(state=state)
 
 # Set optimizer arguments
 func = model.parameters.constraints
-callback = callback(**{
+callback = Callback(**{
     **namespace(callback,model),
     **settings.callback,
     **dict(model=model,system=system)
