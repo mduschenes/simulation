@@ -121,11 +121,12 @@ Examples are found in `examples`.
 
 Example workflow `main.py`
 
-https://github.com/mduschenes/simulation/blob/dev/examples/main.py
+<!-- https://github.com/mduschenes/simulation/blob/dev/examples/main.py -->
+https://github.com/mduschenes/simulation/blob/ba89a5ca4a2a2fac316c3490f8042585e539890c/examples/main.py
 
 Example settings `settings.json`
 
-https://github.com/mduschenes/simulation/blob/master/examples/settings.json
+https://github.com/mduschenes/simulation/blob/dev/examples/setting.json
 
 Example data `data.hdf5`
 
