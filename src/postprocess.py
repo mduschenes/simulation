@@ -375,7 +375,7 @@ def postprocess(path,**kwargs):
 					set([attr for data in search(getter(hyperparameters,key,delimiter=delim)) if data is not None 
 						 for attr in data[OTHER] if attr not in [*ALL,OTHER]])}
 				sorting = {attr: sorting[attr] for attr in sorting if attr in ['N']}
-				sorting = {attr: set([getter(data,sorting[attr]) for data in search(getter(hyperparameters,key,delimiter=delim)) if data is not None])
+				sorting = {attr: set([getter(data,sorting[attr],delimiter=delim) for data in search(getter(hyperparameters,key,delimiter=delim)) if data is not None])
 							for attr in sorting}
 				sorting = {attr: sorting[attr] for attr in sorting if len(sorting[attr])>1}
 
@@ -383,7 +383,8 @@ def postprocess(path,**kwargs):
 
 					sorts = dict(zip(sorting,sorts))
 
-					print(sorts)
+					if sorts:
+						print(sorts)
 
 					data = {}
 
@@ -429,8 +430,7 @@ def postprocess(path,**kwargs):
 
 					_path = join(delim.join(['data',*('%s%s'%(attr,sorts[attr]) for attr in sorts),'data']),ext='json')
 					_settings = load(_path,default=None)
-
-					_settings = None
+					# _settings = None
 
 					if _settings is not None:
 						fig,ax = None,None
@@ -745,7 +745,7 @@ def postprocess(path,**kwargs):
 					_path = join(delim.join(['data',*('%s%s'%(attr,sorts[attr]) for attr in sorts),'fit']),ext='json')
 					_settings = load(_path,default=None)
 
-					_settings = None
+					# _settings = None
 
 					if _settings is not None:
 						fig,ax = None,None
