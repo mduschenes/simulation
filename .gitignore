@@ -31,3 +31,4 @@ build/tmp
 setup/requirements.txt.*.*
 test/config/settings.*.json
 docs/**
+mkdocs.yml
