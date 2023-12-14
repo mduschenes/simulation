@@ -10,7 +10,7 @@ theme:
   docs_dir: docs
   site_dir: docs/site
 
-  # logo: img/oqd-logo.png
+  # logo:
 
   palette:
   - media: '(prefers-color-scheme: light)'
