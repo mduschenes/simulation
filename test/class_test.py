@@ -881,8 +881,8 @@ if __name__ == '__main__':
 	func = test_data
 	func = test_initialization
 	func = test_hessian
-	func = test_model
 	func = test_fisher
+	func = test_model
 	args = ()
 	kwargs = dict(path=path,tol=tol,profile=False)
 	profile(func,*args,**kwargs)

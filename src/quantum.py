@@ -92,7 +92,7 @@ def trotter(iterable=None,p=None,verbose=False):
 	elif p is None:
 		return iterable
 	elif not isinstance(p,int) or (p > P):
-		raise NotImplementedError("p = %r !< %d Not Implemented"%(p,P))
+		raise NotImplementedError('p = %r !< %d Not Implemented'%(p,P))
 
 	if iterable is None:
 		options = {i:1/p for i in range(P+1)}
@@ -485,7 +485,7 @@ class Object(System):
 		n = D**N if (N is not None) and (D is not None) else None
 
 		if not isinstance(operator,str) and len(site) != sum(i not in [default] for i in operator):
-			raise NotImplementedError("TODO: Allow for non-local sites %r and basis operators %r"%(site,operator))
+			raise NotImplementedError('TODO: Allow for non-local sites %r and basis operators %r'%(site,operator))
 
 		site = site[:N]
 		locality = min(locality,sum(i not in [default] for i in site),N)
@@ -718,7 +718,7 @@ class Object(System):
 		if not isinstance(other,type(self)):
 			return self
 
-		assert (self.size == other.size) and (self.ndim == other.ndim) and (self.shape == other.shape), "Incorrect dimensions %r != %r"%(self.shape,other.shape)
+		assert (self.size == other.size) and (self.ndim == other.ndim) and (self.shape == other.shape), 'Incorrect dimensions %r != %r'%(self.shape,other.shape)
 
 		#TODO: Clean up site,operator,locality initialization and merging, allowing non-local operators and sites
 
@@ -728,7 +728,7 @@ class Object(System):
 			(not isinstance(self.operator,str) and 
 			 len(self.site) != sum(i not in [self.default] for i in self.operator))
 			):
-			raise NotImplementedError("TODO: Allow matmul for non-local sites %r and basis operators %r"%(self.site,self.operator))
+			raise NotImplementedError('TODO: Allow matmul for non-local sites %r and basis operators %r'%(self.site,self.operator))
 
 		if ((isinstance(other.operator,str)) or 
 			(other.operator is None) or 
@@ -736,10 +736,10 @@ class Object(System):
 			(not isinstance(other.operator,str) and 
 			 len(other.site) != sum(i not in [other.default] for i in other.operator))
 			):
-			raise NotImplementedError("TODO: Allow matmul for non-local sites %r and basis operators %r"%(other.site,other.operator))
+			raise NotImplementedError('TODO: Allow matmul for non-local sites %r and basis operators %r'%(other.site,other.operator))
 
 		if (self.variable) or (other.variable):
-			raise NotImplementedError("TODO: Allow variable object matmul")
+			raise NotImplementedError('TODO: Allow variable object matmul')
 
 
 		if self.data is None and other.data is None:
@@ -874,8 +874,8 @@ class Object(System):
 			return
 
 		if dtype not in ['complex256','float128']:
-			assert (eps.shape == norm.shape), "Incorrect operator shape %r != %r"%(eps.shape,norm.shape)
-			assert allclose(eps,norm), "Incorrect norm data%r: %r (hermitian: %r, unitary : %r)"%(eps.shape,norm,hermitian,unitary)
+			assert (eps.shape == norm.shape), 'Incorrect operator shape %r != %r'%(eps.shape,norm.shape)
+			assert allclose(eps,norm), 'Incorrect norm data%r: %r (hermitian: %r, unitary : %r)'%(eps.shape,norm,hermitian,unitary)
 
 		return
 
@@ -887,7 +887,7 @@ class Object(System):
 			j (int): Index to swap
 		'''
 
-		raise NotImplementedError("TODO: Implement swap for local operators")
+		raise NotImplementedError('TODO: Implement swap for local operators')
 
 		if (self.data is None) or (self.n is None) or (self.N is None) or (self.D is None) or (i == j) or (abs(i) >= self.N) or (abs(j) >= self.N):
 			return
@@ -975,7 +975,7 @@ class Operator(Object):
 
 			break
 
-		assert (self is not None),"TODO: All operators not in same class"
+		assert (self is not None),'TODO: All operators not in same class'
 
 		return self
 
@@ -1427,7 +1427,7 @@ class Noise(Object):
 
 			data = []
 
-			assert ((isinstance(parameters,scalars) and (parameters >= 0) and (parameters <= 1)) or (all((i>=0) and (i<=1) for i in parameters))), "Noise scale %r not in [0,1]"%(parameters)
+			assert ((isinstance(parameters,scalars) and (parameters >= 0) and (parameters <= 1)) or (all((i>=0) and (i<=1) for i in parameters))), 'Noise scale %r not in [0,1]'%(parameters)
 
 			for i in range(N):
 
@@ -1632,16 +1632,19 @@ class Operators(Object):
 
 		# Set site dependent attributes
 		attr = 'attributes'
-		for i,attribute in enumerate(kwargs.pop(attr,[])):
+		defaults = ['parameters.data']
+		for i,attribute in enumerate([
+				defaults if isinstance(i,nulls) else list(set((*i,*defaults))) 
+				for i in kwargs.pop(attr,[])]):
 			if isinstance(attribute,nulls):
 				continue
 			indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
 			attribute = [attribute] if isinstance(attribute,str) else attribute
 			for attrs in attribute:
 				attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
-				if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
+				if attr not in kwargs or not isinstance(kwargs[attr][i],dict) or not isinstance(getter(kwargs[attr][i],attrs,delimiter=delim),iterables):
 					continue
-				setter(kwargs[attr][i],{attrs:getter(attrs,kwargs[attr][i],delimiter=delim)[indices.index(i)]},delimiter=delim)
+				setter(kwargs[attr][i],{attrs:getter(kwargs[attr][i],attrs,delimiter=delim)[indices.index(i)]},delimiter=delim)
 
 
 		# Set class attributes
@@ -1775,7 +1778,7 @@ class Operators(Object):
 			parameters={i:self.data[i].parameters 
 				for i in self.data 
 				if ((self.data[i] is not None) and 
-				    (self.data[i].data is not None))
+					(self.data[i].data is not None))
 				} if parameters is None else parameters,
 			system=self.system
 		)
@@ -2305,17 +2308,19 @@ class Hamiltonian(Operators):
 
 		# Set site dependent attributes
 		attr = 'attributes'
-		for i,attribute in enumerate(kwargs.pop(attr,[])):
+		defaults = ['parameters.data']
+		for i,attribute in enumerate([
+				defaults if isinstance(i,nulls) else list(set((*i,*defaults))) 
+				for i in kwargs.pop(attr,[])]):
 			if isinstance(attribute,nulls):
 				continue
 			indices = [j for j in range(len(objs.string)) if objs.string[j] == objs.string[i]]
 			attribute = [attribute] if isinstance(attribute,str) else attribute
 			for attrs in attribute:
 				attr,attrs = attrs.split(delim)[0],delim.join(attrs.split(delim)[1:])
-				if attr not in kwargs or not isinstance(kwargs[attr][i],dict):
+				if attr not in kwargs or not isinstance(kwargs[attr][i],dict) or not isinstance(getter(kwargs[attr][i],attrs,delimiter=delim),iterables):
 					continue
 				setter(kwargs[attr][i],{attrs:getter(kwargs[attr][i],attrs,delimiter=delim)[indices.index(i)]},delimiter=delim)
-
 
 		# Set class attributes
 		self.__extend__(data=data,**objs,**kwargs)
@@ -2572,6 +2577,9 @@ class Callback(System):
 
 		updates = {
 			**{attr: lambda i,attr,track,default: (track[attr][-1]) for attr in ['iteration.max','iteration.min']},
+			**{attr: lambda i,attr,track,default: (track[attr][i])
+				for attr in [
+					'parameters','grad','search']},
 			**{attr: lambda i,attr,track,default: (empty(track[attr][-1].shape) if ((i>0) and i<(len(track[attr])-1)) else track[attr][i])
 				for attr in [
 					'parameters','grad','search',
@@ -2592,9 +2600,18 @@ class Callback(System):
 			},
 			}
 
+		does = {
+			'parameters':True,
+			'grad':True,
+			'search':True,
+			'parameters.relative':True,'parameters.relative.mean':True,		
+			'variables':True,'variables.relative':True,'variables.relative.mean':True,
+			'entropy':True,'purity':True,'similarity':True,'divergence':True
+		}	
+
 		attrs = relsort(track,attributes)
 		size = min(len(track[attr]) for attr in track)
-		does = {**{attr: False for attr in attrs},**hyperparameters.get('do',{})}
+		does = {**{attr: False for attr in attrs},**does,**hyperparameters.get('do',{})}
 
 
 		if tracking:

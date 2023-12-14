@@ -10,7 +10,7 @@ theme:
   docs_dir: docs
   site_dir: docs/site
 
-  # logo: img/oqd-logo.png
+  # logo:
 
   palette:
   - media: '(prefers-color-scheme: light)'
@@ -41,8 +41,12 @@ theme:
 #  - navigation.tabs
 
 plugins:
-  - mkdocstrings
-
+  - search  
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
 
 nav:
   - Introduction: index.md
