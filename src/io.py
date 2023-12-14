@@ -774,7 +774,18 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 			if any(i in kwargs['wrapper'] for i in ['pd']):
 				continue
 			else:
-				pass
+				try:
+					if isinstance(wrapper(),dict):
+						def wrapper(data,wrapper=wrapper):
+							if not data:
+								return data
+							data = data[list(data)[0]]
+							data = wrapper(data)
+							return data
+					else:
+						pass
+				except:
+					pass	
 		elif wrapper in ['df']:
 			def wrapper(data):
 				options = {**{'ignore_index':True},**{kwarg: kwargs[kwarg] for kwarg in kwargs if kwarg in ['ignore_index']}}

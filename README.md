@@ -78,28 +78,13 @@ If postprocessing is to be run with `src/process.py`, then `process.json` and `p
 ## File Formats
 All settings and data are generally stored as key-value pairs, allowing for simplified loading and dumping as nested dictionaries. 
 
-Settings are generally loaded as `.json` format. 
+Settings are generally loaded as `.json` format. Settings are formatted as nested keyword arguments, to initialize classes. 
 
-Data is generally saved as `.hdf5` format.
+Data are generally saved as `.hdf5` format. Data are formatted as attribute-iterable datasets, corresponding to data at optimization iterations.
 
-Some example settings and data i.e) from `build/settings.json` are
+Optimization checkpoints are generally saved as `.hdf5.ckpt` format. Any checkpoint files present in cwd will be resumed by the optimizer at the last checkpointed iteration.
 
-```python
-settings = {
-        'cls': {'model':'src.quantum.Channel','label':'src.quantum.Label'},
-        'model': {'N':4,'D':2,'M':10},
-        'optimize': {'optimizer':'cg','iterations':[0,100]}
-    }
-```
-
-
-```python
-data = {
-        'iteration':[0,1,2],
-        'parameters':[array([...]),array([...]),array([...])],
-        'value': [1e-1,1e-2,1e-3]
-    }
-```
+Log files are generally saved as `.log` format. All logging across classes is configured with `logging.conf` files, to print `stdout` and `stderr` to the terminal and a log file.
 
 ## Run
 Under `build`, please run 
@@ -108,12 +93,10 @@ python main.py settings.json
 ```
 to run all model permutations, either in serial, (GNU) parallel, or with interdependent job arrays on an HPC cluster. 
 
-Optimize models with `Optimizer()` classes in `src/optimize.py`, yielding `data.hdf5` files with data attributes and datasets for data at optimization iterations. 
-
 ## Plot
 Plotting and post-processing can be performed, with plot and processing files, and with saving figures to an output directory.  
 
-Any files stored as attribute-list format, i.e) `.hdf5` or `.json` files may be imported and processed within the `pandas` and `matplotlib` API frameworks. 
+Any files stored as attribute-iterable format, i.e) `.hdf5` or `.json` files may be imported and processed within the `pandas` and `matplotlib` API frameworks. 
 
 Under `build`, please run
 ```sh
@@ -131,4 +114,25 @@ An example plot for optimization convergence is
 Under `test`, to run unit tests (with pytest API), please run
 ```sh
 . pytest.sh
+```
+
+## Examples
+Examples are found in `examples`.
+
+Example workflow `main.py`
+
+https://github.com/mduschenes/simulation/blob/master/setup/main.py
+
+Example settings `settings.json`
+
+https://github.com/mduschenes/simulation/blob/master/setup/settings.json
+
+Example data `data.hdf5`
+
+```python
+data = {
+        'iteration':[0,1,2],
+        'parameters':[array([...]),array([...]),array([...])],
+        'value': [1e-1,1e-2,1e-3]
+    }
 ```
