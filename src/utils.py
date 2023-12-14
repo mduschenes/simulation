@@ -275,18 +275,29 @@ class argparser(argparse.ArgumentParser):
 			'action':['type','nargs','default']
 		}
 
+		default = lambda argument: ({
+			'help':argument.replace('--','').capitalize(),
+			'type':str,
+			'nargs':'?',
+			'default':None,
+			})
+
 		if arguments is None:
 			arguments = '--args'
 		if isinstance(arguments,str):
 			arguments = [arguments]
 		if not isinstance(arguments,dict):
 			arguments = {
+				'--%s'%(argument.replace('--','')):{**default(argument)}
+				for argument in arguments
+			}
+		else:
+			arguments = {
 				'--%s'%(argument.replace('--','')):{
-					'help':argument.replace('--','').capitalize(),
-					'type':str,
-					'nargs':'?',
-					'default':None,
-				}
+					**default(argument),
+					**(arguments[argument] if isinstance(arguments[argument],dict) else 
+					   dict(default=arguments[argument]))
+					}
 				for argument in arguments
 			}
 
@@ -2312,7 +2323,7 @@ if BACKEND in ['jax']:
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
+			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','random','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
@@ -2346,6 +2357,10 @@ if BACKEND in ['jax']:
 					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
 				else:
 					bounds[i] = float(bounds)
+		
+		if random in ['random','rand','uniform']:
+			assert not any(i in [float(j) for j in ["-inf","inf"]] for i in bounds), "'%s' random type must have finite bounds != [-inf,inf]"%(random)
+
 		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
 		complex = is_complexdtype(dtype) and random not in subrandoms
 		_dtype = dtype
@@ -2354,7 +2369,7 @@ if BACKEND in ['jax']:
 		if complex:
 			shape = (2,*shape)
 
-		if random in ['uniform','rand']:
+		if random in ['random','rand','uniform']:
 			def func(key,shape,bounds,dtype):
 				out = generator.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
 				# out = asarray(generator.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)
@@ -2557,7 +2572,7 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
+			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
@@ -2583,6 +2598,9 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 		bounds = bounding(bounds,dtype=dtype)
 
+		if random in ['random','rand','uniform']:
+			assert not any(i in ["-inf","inf"] for i in bounds), "'%s' random type must have finite bounds != [-inf,inf]"%(random)
+
 		b = len(bounds)
 		for i in range(b):
 			if isinstance(bounds[i],str):
@@ -2599,7 +2617,7 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 		if complex:
 			shape = (2,*shape)
 
-		if random in ['uniform','rand']:
+		if random in ['random','rand','uniform']:
 			def func(key,shape,bounds,dtype):
 				# out = generator.uniform(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)
 				out = generator.uniform(low=bounds[0],high=bounds[1],size=shape).astype(dtype)
