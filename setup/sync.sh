@@ -2,12 +2,12 @@
 
 
 # rclone backup
-home="h/mduschen"
+home="h/${user}"
 scripts="${home}/backup"
 
-folder=${1:-"/scratch/ssd004/scratch/mduschen"}
+folder=${1:-"/scratch/ssd004/scratch/${user}"}
 local=$(realpath ${folder})
-remote="${2:-"mnt"}:/data/uw/simulation/vectorv" #$(basename ${folder})"
+remote="${2:-"mnt"}:/data/simulation/vectorv" #$(basename ${folder})"
 dryrun=${3:-0}
 local_remote=${4:-1}
 remote_local=${5:-0}

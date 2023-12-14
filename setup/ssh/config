@@ -3,7 +3,7 @@ Host cpu
 	RemoteForward 52698 localhost:52697
 
 Host *
-	User mduschen
+	User ${user}
   	ServerAliveInterval 60
 	ServerAliveCountMax 120
 	ControlMaster auto
