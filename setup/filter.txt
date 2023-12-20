@@ -1,6 +1,0 @@
-# Filter file for use with rclonesync
-# See https://rclone.org/filtering/ for filtering rules
-# NOTICE:  If you make changes to this file you MUST do a --first-sync run.  Run with --dry-run to see what changes will be made.
-
-
-- /**/__pycache__
