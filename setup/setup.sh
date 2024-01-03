@@ -3,7 +3,7 @@
 # Setup variables
 
 # Environment Name
-env=${1:-jax}
+env=${1:-env}
 
 # Install Type ["install","reinstall","uninstall"]
 install=${2:-"reinstall"}
