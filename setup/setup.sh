@@ -6,18 +6,19 @@
 env=${1:-env}
 
 # Install Type ["install","reinstall","uninstall"]
-install=${2:-"reinstall"}
+install=${2:-reinstall}
 
 # Type of env (env,intel)
-type=${3:-intel}
+# type=${3:-intel}
+type=${3:-env}
 
 # Silent yes to all commands ["yes","no"]
 yes=${4:-no}
 
 
 # Paths
-pkgs=${HOME}/miniconda3
-envs=${HOME}/miniconda3/envs
+pkgs=${HOME}/conda
+envs=${pkgs}/envs
 env_vars=env_vars.sh
 
 # pkgs=/pkgs/anaconda3
@@ -32,10 +33,10 @@ then
 elif [ ${type} == "env" ]
 then
 	channels=(conda-forge)
-	requirements=requirements.txt	
+	requirements=requirements.nomkl.txt	
 else
 	channels=(intel conda-forge)
-	requirements=requirements.txt	
+	requirements=requirements.nomkl.txt	
 fi
 
 # Setup conda
