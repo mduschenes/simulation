@@ -3,7 +3,7 @@
 # Import python modules
 import os,sys,warnings,itertools,inspect,datetime
 import traceback
-from copy import deepcopy
+from copy import copy,deepcopy
 from math import prod
 import json,glob
 import numpy as np
@@ -1276,6 +1276,16 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				call = False
 
 
+			elif attr in ['set_%sscale'%(axes) for axes in AXES]:
+				replacements = {'base':lambda axes,attr,value:'%s%s'%(attr,axes)}
+				for axes in AXES:
+					if attr == 'set_%sscale'%(axes):
+						for k in kwargs[attr]:
+							if k in replacements:
+								k,v = replacements[k](axes,k,kwargs[attr][k]),kwargs[attr].pop(k)
+								kwargs[attr][k] = v
+								break
+
 			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
 
 				props = ['transform']
@@ -1416,9 +1426,12 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			if (kwargs[attr].get('call') is not None) and (not kwargs[attr]['call']):
 				call = False
-			
-			_kwargs_ = deepcopy(kwargs[attr])
-		
+
+			try:
+				_kwargs_ = deepcopy(kwargs[attr])
+			except:
+				_kwargs_ = copy(kwargs[attr])
+
 			for kwarg in _kwargs_:
 				if kwarg in ['linestyle']:
 					if not isinstance(_kwargs_[kwarg],str):
