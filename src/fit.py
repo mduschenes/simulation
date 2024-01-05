@@ -17,7 +17,7 @@ from src.utils import jit,gradient,hessian,einsum,dot,diag,partial,where
 from src.utils import array,ones,zeros,rand,eye
 from src.utils import norm,inv,lstsq,interp,piecewise,inplace
 from src.utils import exp,log,abs,sqrt,nanmean,nanstd,nansqrt,is_naninf,allclose
-from src.utils import nan,null,scalars,delim
+from src.utils import nan,null,arrays,scalars,delim
 
 from src.optimize import Optimizer,Metric,Objective,Callback,Covariance
 from src.iterables import setter,getter
@@ -72,10 +72,10 @@ def fit(x,y,_x=None,_y=None,func=None,preprocess=None,postprocess=None,xerr=None
 	if postprocess is None or callable(postprocess):
 		postprocess = [postprocess for i in range(n)]
 
-	if parameters is None or isinstance(parameters,(array,*scalars)):
+	if parameters is None or isinstance(parameters,(arrays,*scalars)):
 		parameters = [parameters for i in range(n)]
 
-	if covariance is None or isinstance(covariance,(array,*scalars)):
+	if covariance is None or isinstance(covariance,(arrays,*scalars)):
 		covariance = [covariance for i in range(n)]
 
 	if intercept is None or isinstance(intercept,bool):

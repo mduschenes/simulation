@@ -18,6 +18,7 @@ from src.utils import einsum,norm,norm2,trace,mse
 from src.utils import expm,expmv,expmm,expmc,expmvc,expmmn,_expm
 from src.utils import gradient_expm
 from src.utils import scinotation,delim
+from src.utils import arrays,scalars
 
 from src.optimize import Metric
 
@@ -421,7 +422,7 @@ def test_gradient(path=None,tol=None):
 
 	assert isinstance(g,tuple) and len(g)==d
 	assert all(isinstance(h,tuple) and len(h)==p for i,h in enumerate(g))
-	assert all(isinstance(k,array) and k.shape == (n,n) and allclose(k,_g[i][j]) for i,h in enumerate(g) for j,k in enumerate(h))
+	assert all(isinstance(k,arrays) and k.shape == (n,n) and allclose(k,_g[i][j]) for i,h in enumerate(g) for j,k in enumerate(h))
 
 	print('Passed')
 
@@ -522,10 +523,10 @@ def test_rand(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_getter(path,tol)
-	test_setter(path,tol)
+	# test_getter(path,tol)
+	# test_setter(path,tol)
 	# test_scinotation(path,tol)
-	# test_gradient(path,tol)
+	test_gradient(path,tol)
 	# test_gradient_expm(path,tol)
 	# test_norm(path,tol)
 	# test_expmi()	
