@@ -2044,8 +2044,8 @@ class Operators(Object):
 						substring = self.data[attr].parameters()
 					else:
 						substring = (self.data[attr].parameters(parameters) for parameters in self.parameters(self.parameters()))
-						substring = [i for i in substring if i is not None]
-						if substring:
+						substring = array([i for i in substring if i is not None])
+						if len(substring):
 							substring = norm(substring)/sqrt(len(substring))
 						else:
 							substring = None

@@ -3,21 +3,21 @@
 # Setup variables
 
 # Environment Name
-env=${1:-jax}
+env=${1:-env}
 
 # Install Type ["install","reinstall","uninstall"]
-install=${2:-"reinstall"}
+install=${2:-reinstall}
 
-# Type of env (env,intel)
-type=${3:-intel}
+# Type of env (mkl,nomkl)
+type=${3:-}
 
 # Silent yes to all commands ["yes","no"]
 yes=${4:-no}
 
 
 # Paths
-pkgs=${HOME}/miniconda3
-envs=${HOME}/miniconda3/envs
+pkgs=${HOME}/conda
+envs=${pkgs}/envs
 env_vars=env_vars.sh
 >>>>>>> dev
 
@@ -26,14 +26,18 @@ envs=${HOME}/env
 
 mkdir -p ${envs}
 
-if [ ${type} == "intel" ]
+if [ ${type} == "mkl" ]
 then
 	channels=(intel conda-forge)
-	requirements=requirements.txt
-elif [ ${type} == "env" ]
+	requirements=requirements.mkl.txt
+elif [ ${type} == "nomkl" ]
 then
 	channels=(conda-forge)
-	requirements=requirements.txt	
+	requirements=requirements.nomkl.txt	
+elif [ ${type} == "intel" ]
+then
+	channels=(intel conda-forge)
+	requirements=requirements.intel.txt	
 else
 	channels=(intel conda-forge)
 	requirements=requirements.txt	
