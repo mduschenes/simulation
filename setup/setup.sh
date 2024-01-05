@@ -8,9 +8,8 @@ env=${1:-env}
 # Install Type ["install","reinstall","uninstall"]
 install=${2:-reinstall}
 
-# Type of env (env,intel)
-# type=${3:-intel}
-type=${3:-env}
+# Type of env (mkl,nomkl)
+type=${3:-}
 
 # Silent yes to all commands ["yes","no"]
 yes=${4:-no}
@@ -26,17 +25,21 @@ env_vars=env_vars.sh
 
 mkdir -p ${envs}
 
-if [ ${type} == "intel" ]
+if [ ${type} == "mkl" ]
 then
 	channels=(intel conda-forge)
-	requirements=requirements.txt
-elif [ ${type} == "env" ]
+	requirements=requirements.mkl.txt
+elif [ ${type} == "nomkl" ]
 then
 	channels=(conda-forge)
 	requirements=requirements.nomkl.txt	
+elif [ ${type} == "intel" ]
+then
+	channels=(intel conda-forge)
+	requirements=requirements.intel.txt	
 else
 	channels=(intel conda-forge)
-	requirements=requirements.nomkl.txt	
+	requirements=requirements.txt	
 fi
 
 # Setup conda

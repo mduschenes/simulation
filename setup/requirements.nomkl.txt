@@ -19,3 +19,11 @@ jax=0.3.14
 jaxlib=0.3.7
 jaxtyping=0.2.8
 autograd
+jupyter
+notebook
+nb_conda_kernels
+mkdocs
+pymdown-extensions
+python-markdown-math
+mkdocstrings
+mkdocs-material
