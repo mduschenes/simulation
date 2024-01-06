@@ -1277,7 +1277,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 			elif attr in ['set_%sscale'%(axes) for axes in AXES]:
-				replacements = {'base':lambda axes,attr,value:'%s%s'%(attr,axes)}
+				replacements = {
+					'base':lambda axes,attr,value:'%s%s'%(attr,axes),
+					'base':lambda axes,attr,value:'%s'%(attr),
+					}
 				for axes in AXES:
 					if attr == 'set_%sscale'%(axes):
 						for k in kwargs[attr]:
