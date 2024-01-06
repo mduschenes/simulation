@@ -22,15 +22,10 @@
                     "label": {
                         "label": {
                             "N": null,
-                            "M": [10,100,200,500,1000,2000,5000],
+                            "M": null,
                             "noise.parameters": null
                         },
                         "include":["M"],
-                        "analysis": {
-                            "zscore": {
-                                "objective": 3
-                            }
-                        },
                         "legend": {
                             "sort": [
                                 "N",
@@ -106,15 +101,10 @@
                         "label": {
                             "N": null,
                             "M": null,
-                            "M": [10,100,200,500,1000,2000,5000],                            
+                            "M": null,                            
                             "noise.parameters": null
                         },
                         "include":["M"],
-                        "analysis": {
-                            "zscore": {
-                                "objective": 3
-                            }
-                        },
                         "legend": {
                             "exclude": [
                                 "M",
@@ -675,7 +665,7 @@
                 }
             },
             "set_ylabel": {
-                "ylabel": "$\\textrm{Infidelity}$"
+                "ylabel": "$\\textrm{Gradient}$"                
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Iteration}$"
@@ -1171,7 +1161,7 @@
                 }
             },
             "set_ylabel": {
-                "ylabel": "$\\textrm{Infidelity}$"
+                "ylabel": "$\\textrm{Search Direction}$"
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Iteration}$"
@@ -1920,7 +1910,7 @@
                 }
             },
             "set_ylabel": {
-                "ylabel": "$\\textrm{Infidelity}$"
+                "ylabel": "$\\textrm{Learning Rate}$"
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Iteration}$"
@@ -2420,7 +2410,7 @@
                 }
             },
             "set_ylabel": {
-                "ylabel": "$\\textrm{Infidelity}$"
+                "ylabel": "$\\textrm{Gradient Rate}$"
             },
             "set_xlabel": {
                 "xlabel": "$\\textrm{Iteration}$"
