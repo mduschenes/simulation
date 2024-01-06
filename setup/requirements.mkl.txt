@@ -10,7 +10,7 @@ h5py
 pandas
 pytables
 snappy
-matplotlib=3.5
+matplotlib
 pyaml
 pytest
 sympy

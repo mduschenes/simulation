@@ -51,7 +51,8 @@ if BACKEND in ['jax','jax.autograd']:
 		'JAX_DISABLE_JIT':False,
 		'JAX_PLATFORMS':'cpu',
 		'JAX_PLATFORM_NAME':'cpu',
-		'TF_CPP_MIN_LOG_LEVEL':5
+		'TF_CPP_MIN_LOG_LEVEL':5,
+		'JAX_TRACEBACK_FILTERING':'off',
 	}
 	for var in envs:
 		os.environ[var] = str(envs[var])
@@ -129,7 +130,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 	nan = np.nan
 	inf = np.inf
-	scalars = (int,np.integer,float,np.floating,onp.int,onp.integer,onp.float,onp.floating,str,type(None))
+	scalars = (int,np.integer,float,np.floating,getattr(onp,'int',int),onp.integer,getattr(onp,'float',float),onp.floating,str,type(None))
 	arrays = (np.ndarray,onp.ndarray)
 
 	iterables = (*arrays,list,tuple,set)
@@ -155,7 +156,7 @@ elif BACKEND in ['autograd']:
 
 	nan = np.nan
 	inf = np.inf
-	scalars = (int,np.integer,float,np.floating,onp.int,onp.integer,onp.float,onp.floating,str,type(None))
+	scalars = (int,np.integer,float,np.floating,getattr(onp,'int',int),onp.integer,getattr(onp,'float',float),onp.floating,str,type(None))
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox)
 
 	iterables = (*arrays,list,tuple,set)
@@ -180,7 +181,7 @@ elif BACKEND in ['numpy']:
 
 	nan = np.nan
 	inf = np.inf
-	scalars = (int,np.integer,float,np.floating,onp.int,onp.integer,onp.float,onp.floating,str,type(None))
+	scalars = (int,np.integer,float,np.floating,getattr(onp,'int',int),onp.integer,getattr(onp,'float',float),onp.floating,str,type(None))
 	arrays = (np.ndarray,onp.ndarray,)
 
 	iterables = (*arrays,list,tuple,set)
