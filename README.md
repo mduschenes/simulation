@@ -3,6 +3,8 @@ A pure JAX based quantum circuit simulator library, including automatic differen
 
 Pre-processing, hyperparameter searches, and inter-dependent, parallelized job submission scripts, and post-processing with statistical analysis, and plotting are also included in the library.
 
+This library is used in the preparation of *Characterization of Overparameterization in Simulation of Realistic Quantum Systems* [](arxiv) , and data can be found in the [repository](https://doi.org/10.5281/zenodo.10295792)
+
 ## Install
 After cloning the repository, under `setup`, please run 
 ```sh
