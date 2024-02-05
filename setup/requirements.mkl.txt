@@ -23,7 +23,7 @@ jaxlib
 jaxtyping
 autograd
 jupyter
-jupyterlab=3.6.4
+jupyterlab>=3.6.7
 notebook
 nb_conda_kernels
 traitlets<5.10

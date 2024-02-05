@@ -25,15 +25,15 @@ env_vars=env_vars.sh
 
 mkdir -p ${envs}
 
-if [ ${type} == "mkl" ]
+if [ "${type}" == "mkl" ]
 then
 	channels=(intel conda-forge)
 	requirements=requirements.mkl.txt
-elif [ ${type} == "nomkl" ]
+elif [ "${type}" == "nomkl" ]
 then
 	channels=(conda-forge)
 	requirements=requirements.nomkl.txt	
-elif [ ${type} == "intel" ]
+elif [ "${type}" == "intel" ]
 then
 	channels=(intel conda-forge)
 	requirements=requirements.intel.txt	
