@@ -18,7 +18,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import argparser,copy
-from src.utils import array,expand_dims,conditions,prod
+from src.utils import array,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,is_iterable,is_number,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import search,inserter,indexer
@@ -1115,21 +1115,54 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		return np.sqrt(obj)	
 
 	def mean(obj,*args,**kwargs):
-		obj = np.array(list(obj))
-		obj = to_tuple(obj.mean(axis=0))
-		return obj
+		dtypes = {(np.dtype('O'),):mean_obj}
+		default = mean_default
+		otype = obj.dtype
+		for dtype in dtypes:
+			if otype in dtype:
+				return dtypes[dtype](obj,*args,**kwargs)
+		return default(obj,*args,**kwargs)
 	def std(obj,*args,**kwargs):
-		obj = np.array(list(obj))
-		obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
-		return obj
+		dtypes = {(np.dtype('O'),):std_obj}
+		default = std_default
+		otype = obj.dtype
+		for dtype in dtypes:
+			if otype in dtype:
+				return dtypes[dtype](obj,*args,**kwargs)
+		return default(obj,*args,**kwargs)
 	def sem(obj,*args,**kwargs):
-		obj = np.array(list(obj))
-		obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1)/np.sqrt(obj.shape[0]))
-		return obj	
+		dtypes = {(np.dtype('O'),):sem_obj}
+		default = sem_default
+		otype = obj.dtype
+		for dtype in dtypes:
+			if otype in dtype:
+				return dtypes[dtype](obj,*args,**kwargs)
+		return default(obj,*args,**kwargs)
+
 	def none(obj,*args,**kwargs):
 		obj[...] = nan
 		# return obj			
-		return nan			
+		return nan	
+
+	def mean_default(obj,*args,**kwargs):
+		return obj.mean()
+	def std_default(obj,*args,**kwargs):
+		return obj.std(ddof=kwargs.get('ddof',obj.shape[0]>1))		
+	def sem_default(obj,*args,**kwargs):
+		return obj.sem(ddof=kwargs.get('ddof',obj.shape[0]>1))	
+
+	def mean_obj(obj,*args,**kwargs):
+		obj = np.array(list(obj))
+		obj = to_tuple(obj.mean(axis=0))
+		return obj
+	def std_obj(obj,*args,**kwargs):
+		obj = np.array(list(obj))
+		obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1))
+		return obj
+	def sem_obj(obj,*args,**kwargs):
+		obj = np.array(list(obj))
+		obj = to_tuple(obj.std(axis=0,ddof=obj.shape[0]>1)/np.sqrt(obj.shape[0]))
+		return obj	
 
 	def mean_arithmetic(obj,*args,**kwargs):
 		return obj.mean()
@@ -1151,6 +1184,13 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 		return exp(log(obj).std(ddof=kwargs.get('ddof',obj.shape[0]>1)))
 	def sem_log(obj,*args,**kwargs):
 		return exp(log(obj).sem(ddof=kwargs.get('ddof',obj.shape[0]>1)))		
+
+	def mean_bootstrap(obj,*args,**kwargs):
+		return bootstrap(obj,*args,**kwargs).mean()
+	def std_bootstrap(obj,*args,**kwargs):
+		return bootstrap(obj,*args,**kwargs).std(ddof=kwargs.get('ddof',obj.shape[0]>1))		
+	def sem_bootstrap(obj,*args,**kwargs):
+		return bootstrap(obj,*args,**kwargs).sem(ddof=kwargs.get('ddof',obj.shape[0]>1))		
 
 	# dtype = {attr: 'float128' for attr in data if is_float_dtype(data[attr].dtype)}
 	# dtype = {attr: data[attr].dtype for attr in data if is_float_dtype(data[attr].dtype)}
@@ -1200,6 +1240,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 			'mean_log':mean_log,'std_log':std_log,'sem_log':'sem_log',
 			'mean_arithmetic':mean_arithmetic,'std_arithmetic':std_arithmetic,'sem_arithmetic':sem_arithmetic,
 			'mean_geometric':mean_geometric,'std_geometric':std_geometric,'sem_geometric':sem_geometric,
+			'mean_bootstrap':mean_bootstrap,'std_bootstrap':std_bootstrap,'sem_bootstrap':sem_bootstrap,
 			}
 		
 		if not funcs:
@@ -2692,7 +2733,7 @@ def process(data,settings,hyperparameters,pwd=None,cwd=None,verbose=True):
 	- Iterate over all permutations of sort attributes and values, constrained by the specific combination of OTHER attributes and values
 	to get included dataset that share all sort attributes
 	
-	- Get statistics (mean,variance) across samples datasets that share all attributes
+	- Get statistics (mean,std) across samples datasets that share all attributes
 
 	- Merge datasets across permutations of sort attributes for a given combination of OTHER attributes and values
 	
