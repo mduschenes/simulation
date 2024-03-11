@@ -2320,7 +2320,7 @@ if BACKEND in ['jax']:
 		'''
 		Get random array
 		Args:
-			shape (int,iterable): Size or Shape of random arrayf
+			shape (int,iterable): Size or Shape of random array
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
@@ -2363,7 +2363,8 @@ if BACKEND in ['jax']:
 			assert not any(i in [float(j) for j in ["-inf","inf"]] for i in bounds), "'%s' random type must have finite bounds != [-inf,inf]"%(random)
 
 		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
-		complex = is_complexdtype(dtype) and random not in subrandoms
+		samplerandoms = ['choice']
+		complex = is_complexdtype(dtype) and (random not in subrandoms) and (random not in samplerandoms)
 		_dtype = dtype
 		dtype = datatype(dtype)
 
@@ -2385,6 +2386,14 @@ if BACKEND in ['jax']:
 				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
 				# out = asarray((bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype),dtype=dtype)
 				return out
+		elif random in ['choice']:
+			def func(key,shape,bounds,dtype):
+				kwds = {'array':'a','weights':'p','replace':'replace','axis':'axis'}
+				kwds = {**dict(key=key,shape=shape),
+						**{kwds[attr]:kwargs.get(attr,None) for attr in kwds}
+					}
+				out = generator.choice(**kwds)
+				return out			
 		elif random in ['haar']:
 			def func(key,shape,bounds,dtype):
 
@@ -2569,7 +2578,7 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 		'''
 		Get random array
 		Args:
-			shape (int,iterable): Size or Shape of random arrayf
+			shape (int,iterable): Size or Shape of random array
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
@@ -2611,7 +2620,8 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 					bounds[i] = float(bounds)
 
 		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
-		complex = is_complexdtype(dtype) and random not in subrandoms
+		samplerandoms = ['choice']		
+		complex = is_complexdtype(dtype) and (random not in subrandoms) and (random not in samplerandoms)
 		_dtype = dtype
 		dtype = datatype(dtype)
 
@@ -2633,6 +2643,14 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 				# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
 				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype)				
 				return out
+		elif random in ['choice']:
+			def func(key,shape,bounds,dtype):
+				kwds = {'array':'a','weights':'p','replace':'replace','axis':'axis'}
+				kwds = {**dict(key=key,shape=shape),
+						**{kwds[attr]:kwargs.get(attr,None) for attr in kwds}
+					}
+				out = generator.choice(**kwds)
+				return out					
 		elif random in ['haar']:
 			def func(key,shape,bounds,dtype):
 
@@ -3062,6 +3080,36 @@ def nansem(a,axis=None,ddof=None):
 	else:
 		size = int(product([a.shape[ax] for ax in axis]))
 	return nanstd(a,axis=axis,ddof=ddof)/np.sqrt(size)
+
+# @partial(jit,static_argnums=(2,3,4,))
+def bootstrap(a,size=None,shape=(),axis=None,replace=True,weights=None,key=None,seed=None):
+	'''
+	Compute bootstrapped data
+	Args:
+		a (array): array to compute bootstrapped sampling
+		size (int): Number of bootstrap samplings, defaults to first element of shape if None
+		shape (int,iterable): Size or shape of sample
+		axis (int): axis to compute over. Flattens array if None.
+		replace (bool): Sample with replacement
+		weights (array): Weights of sampling of length a.shape[axis]
+		key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+		seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+	Returns:
+		out (array): bootstrapped sample of array of shape [*a.shape[:axis],*shape,*a.shape[axis+1:]]
+	'''
+
+	if seed is not None:
+		key = seed
+
+	if isinstance(shape,int):
+		shape = (size,shape)
+	elif size is not None:
+		shape = (size,*shape)
+
+	if is_dataframe(a):
+		return a.sample(shape,replace=replace,weights=weights,random_state=key)
+	else:
+		return rand(shape=shape,key=key,array=a,axis=axis,replace=replace,weights=weights)
 
 @jit
 def nansqrt(a):
@@ -6540,7 +6588,7 @@ def is_dataframe(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is pandas dataframe
 	'''
-	return isinstance(a,(pd.DataFrame))
+	return isinstance(a,(pd.DataFrame,))
 
 def is_array(a,*args,**kwargs):
 	'''
