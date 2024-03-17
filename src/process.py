@@ -1398,7 +1398,7 @@ def apply(keys,data,settings,hyperparameters,verbose=None):
 
 		for i,group in enumerate(groups.groups):
 
-			logger.log(info,"Group : %r %r -> %r"%(group,shapes[group],groups.get_group(group).shape))
+			logger.log(info,"Group : %r %r -> %r"%(group,shapes.get(group,group),groups.get_group(group).shape))
 			for j,function in enumerate(funcs):
 
 				grouping = groups.get_group(group)
@@ -1799,7 +1799,7 @@ def plotter(settings,hyperparameters,verbose=None):
 					for data in search(settings[instance][subinstance][obj][prop])
 					if (data)
 					for label in [*data[OTHER],*data[OTHER][OTHER][OTHER]]
-					if ((data) and (label not in [*ALL,OTHER]))
+					if ((data) and (label not in [*ALL,OTHER])) and (label not in ['legend','scinotation','labels'])
 					)))
 
 				for label in labels:

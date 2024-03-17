@@ -1278,15 +1278,18 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['set_%sscale'%(axes) for axes in AXES]:
 				replacements = {
-					'base':lambda axes,attr,value:'%s%s'%(attr,axes),
-					'base':lambda axes,attr,value:'%s'%(attr),
+					'base':lambda axes,key,attr,kwargs:('%s%s'%(key,axes) if (kwargs[attr].get('value') not in ['linear']) else None),
+					'base':lambda axes,key,attr,kwargs:('%s'%(key) if (kwargs[attr].get('value') not in ['linear']) else None),
 					}
 				for axes in AXES:
 					if attr == 'set_%sscale'%(axes):
 						for k in kwargs[attr]:
 							if k in replacements:
-								k,v = replacements[k](axes,k,kwargs[attr][k]),kwargs[attr].pop(k)
-								kwargs[attr][k] = v
+								k,v = replacements[k](axes,k,attr,kwargs),kwargs[attr].pop(k)
+								
+								if k is not None:
+									kwargs[attr][k] = v
+
 								break
 
 			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
