@@ -2765,7 +2765,7 @@ def plotter(plots,processes,verbose=None):
 
 					tmp = dataframe({label: [data[OTHER][label] if values[prop][label]['label'] else data[OTHER].get(data[OTHER][OTHER][OTHER].replace('@',''),
 						data[OTHER][OTHER][OTHER][label].replace('@',''))] 
-						for label in value})
+						for label in value if label is not None})
 
 					value = [value[label] for label in func(value)
 							if (

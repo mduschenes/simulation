@@ -1010,46 +1010,52 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 				if kwargs[attr].get('multiline') is True:
 					pass
 				if kwargs[attr].get('sort') is not None:
-					funcs = {
-						**{
-						container.lower():{
-							getattr(matplotlib.container,'%sContainer'%(container.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%(container.capitalize()))
-							}
-						for container in ['Errorbar']
-						},
-					}
 
-					indexes = [_obj['count'] for i,_obj in enumerate(objs) 
-						if ((_obj is not None) and any(isinstance(_obj['obj'],types) and 
-							(getattr(_obj['obj'],'get_label',lambda:None)() is not None)
-							for handler in funcs for types in funcs[handler]))]
-					indexes = [indexes.index(kwargs[attr].get('sort').get(i)) for i in kwargs[attr].get('sort') if kwargs[attr].get('sort').get(i) in indexes]
+					if isinstance(kwargs[attr].get('sort'),dict): 
 
-					handles,labels = [handles[i] for i in indexes],[labels[i] for i in indexes]
+						funcs = {
+							**{
+							container.lower():{
+								getattr(matplotlib.container,'%sContainer'%(container.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%(container.capitalize()))
+								}
+							for container in ['Errorbar']
+							},
+						}
+
+						indexes = [_obj['count'] for i,_obj in enumerate(objs) 
+							if ((_obj is not None) and any(isinstance(_obj['obj'],types) and 
+								(getattr(_obj['obj'],'get_label',lambda:None)() is not None)
+								for handler in funcs for types in funcs[handler]))]
+						indexes = [indexes.index(kwargs[attr].get('sort').get(i)) for i in kwargs[attr].get('sort') if kwargs[attr].get('sort').get(i) in indexes]
+
+						handles,labels = [handles[i] for i in indexes],[labels[i] for i in indexes]
 
 				if kwargs[attr].get('set_color') is not None:
-					funcs = {
-						**{
-						container.lower():{
-							getattr(matplotlib.container,'%sContainer'%(container.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%(container.capitalize()))
-							}
-						for container in ['Errorbar']
-						},
-					}
 
-					indexes = [_obj['count'] for i,_obj in enumerate(objs) 
-						if ((_obj is not None) and any(isinstance(_obj['obj'],types) and 
-							(getattr(_obj['obj'],'get_label',lambda:None)() is not None)
-							for handler in funcs for types in funcs[handler]))]
-					indexes = [kwargs[attr].get('sort').get(i) for i in kwargs[attr].get('sort') if kwargs[attr].get('sort').get(i) in indexes]
+					if isinstance(kwargs[attr].get('set_color'),dict): 
 
-					kwargs[attr]['set_color'] = [
-						(set_color(**kwargs[attr].get('set_color')[i])[1] 
-						if isinstance(kwargs[attr].get('set_color')[i],dict) else kwargs[attr].get('set_color')[i])
-						if not isinstance(kwargs[attr].get('set_color'),scalars) 
-						else kwargs[attr].get('set_color')
-						for i in indexes
-						]
+						funcs = {
+							**{
+							container.lower():{
+								getattr(matplotlib.container,'%sContainer'%(container.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%(container.capitalize()))
+								}
+							for container in ['Errorbar']
+							},
+						}
+
+						indexes = [_obj['count'] for i,_obj in enumerate(objs) 
+							if ((_obj is not None) and any(isinstance(_obj['obj'],types) and 
+								(getattr(_obj['obj'],'get_label',lambda:None)() is not None)
+								for handler in funcs for types in funcs[handler]))]
+						indexes = [kwargs[attr].get('set_color').get(i) for i in kwargs[attr].get('set_color') if kwargs[attr].get('set_color').get(i) in indexes]
+
+						kwargs[attr]['set_color'] = [
+							(set_color(**kwargs[attr].get('set_color')[i])[1] 
+							if isinstance(kwargs[attr].get('set_color')[i],dict) else kwargs[attr].get('set_color')[i])
+							if not isinstance(kwargs[attr].get('set_color'),scalars) 
+							else kwargs[attr].get('set_color')
+							for i in indexes
+							]
 
 				if ('handles' in kwargs[attr]) and (not kwargs[attr]['handles']):
 					handles = []
