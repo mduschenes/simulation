@@ -154,3 +154,16 @@ def func_divergence_func(data):
 def func_divergence_func_err(data):
 	out = 0*np.array(data['M'])
 	return out		
+
+def label(string,label):
+	strings = {
+		'epsilon':{
+			1e-7:"32~\\textrm{bit}~(\\varepsilon \\sim 10^{-7})",
+			1e-16:"64~\\textrm{bit}~(\\varepsilon \\sim 10^{-16})",
+			1e-19:"128~\\textrm{bit}~(\\varepsilon \\sim 10^{-19})",
+		}
+	}
+
+	string = strings.get(label,{}).get(string,string)
+
+	return string

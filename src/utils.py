@@ -40,12 +40,12 @@ ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
 BACKENDS = ['jax','autograd','jax.autograd','numpy']
 
-BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
+backend = os.environ.get(ENVIRON,DEFAULT).lower()
 
-assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
+assert backend in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,backend,BACKENDS)
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 	
 	envs = {
 		'JAX_DISABLE_JIT':False,
@@ -79,14 +79,14 @@ if BACKEND in ['jax','jax.autograd']:
 		jax.config.update(name,configs[name])
 
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	import autograd
 	import autograd.numpy as np
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 	import numpy as np
 	import scipy as sp
 	import pandas as pd
@@ -118,7 +118,7 @@ null = Null()
 # Types
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	itg = np.integer
 	flt = np.float32
@@ -144,7 +144,7 @@ if BACKEND in ['jax','jax.autograd']:
 			print(*args,**kwargs)
 		return
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	itg = np.integer
 	flt = np.float32
@@ -169,7 +169,7 @@ elif BACKEND in ['autograd']:
 		return
 
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 
 	itg = np.integer
 	flt = np.float32
@@ -195,11 +195,11 @@ elif BACKEND in ['numpy']:
 
 
 # Libraries
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	optimizer_libraries = jax.example_libraries.optimizers
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	optimizer_libraries = []
 
@@ -394,6 +394,16 @@ def insert(obj,index,value):
 	return obj
 
 
+def finfo(dtype=float):
+	'''	
+	Get machine precision information for dtype
+	Args:
+		dtype (datatype): Datatype to get machine precision
+	Returns:
+		finfo (finfo): Machine precision information
+	'''	
+	return np.finfo(dtype)
+
 def epsilon(dtype=float,eps=None):
 	'''	
 	Get machine precision epsilon for dtype
@@ -405,16 +415,16 @@ def epsilon(dtype=float,eps=None):
 	'''
 	eps = 1 if eps is None else eps
 	try:
-		dtype = np.finfo(dtype).eps
+		dtype = finfo(dtype).eps
 	except:
 		dtype = float
-		dtype = np.finfo(dtype).eps
+		dtype = finfo(dtype).eps
 
 	eps = eps*dtype
 
 	return eps
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 	
 	def inplace(obj,index,item,op=None,**kwargs):
 		'''
@@ -437,7 +447,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return obj
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 	
 	def inplace(obj,index,item,op=None,**kwargs):
 		'''
@@ -478,7 +488,7 @@ elif BACKEND in ['autograd','numpy']:
 		return obj
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def jit(func,*,static_argnums=None,**kwargs):
 		'''
@@ -496,7 +506,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
 		# return wraps(func)(partial(func,**kwargs))
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	def jit(func,*,static_argnums=None,**kwargs):
 		'''
@@ -515,7 +525,7 @@ elif BACKEND in ['autograd','numpy']:
 		return wraps(func)(partial(func,**kwargs))		
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -552,7 +562,7 @@ if BACKEND in ['jax','jax.autograd']:
 		# return vfunc
 
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -589,7 +599,7 @@ elif BACKEND in ['autograd','numpy']:
 		return vfunc
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -614,7 +624,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return pfunc
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -640,7 +650,7 @@ elif BACKEND in ['autograd','numpy']:
 		return pfunc
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	# @partial(jit,static_argnums=(2,))
 	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -667,7 +677,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return vfunc
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))
 	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -695,7 +705,7 @@ elif BACKEND in ['autograd','numpy']:
 		return vfunc
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 	
 	def switch(index,funcs,*args):
 		'''
@@ -713,7 +723,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.switch(index,funcs,*args)
 		# return funcs[index](*args)
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	def switch(index,funcs,*args):
 		'''
@@ -732,7 +742,7 @@ elif BACKEND in ['autograd','numpy']:
 		return funcs[index](*args)
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 	
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
@@ -752,7 +762,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.fori_loop(start,end,func,out)
 
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
@@ -774,7 +784,7 @@ elif BACKEND in ['autograd','numpy']:
 		return out		
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 	
 	# @partial(jit,static_argnums=(2,))	
 	def cond(pred,true_fun,false_fun,*operands):	
@@ -791,7 +801,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.cond(pred,true_fun,false_fun,*operands)
 
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def cond(pred,true_fun,false_fun,*operands):	
@@ -930,7 +940,7 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 	return grad
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -961,7 +971,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return grad
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -992,7 +1002,7 @@ elif BACKEND in ['autograd']:
 
 		return grad
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1012,7 +1022,7 @@ elif BACKEND in ['numpy']:
 		raise NotImplementedError
 		return
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1051,7 +1061,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return grad
 
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1099,7 +1109,7 @@ elif BACKEND in ['autograd']:
 
 		return grad
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1120,7 +1130,7 @@ elif BACKEND in ['numpy']:
 		raise NotImplementedError
 		return
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1159,7 +1169,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return grad
 
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1195,7 +1205,7 @@ elif BACKEND in ['autograd']:
 		return grad
 
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1213,7 +1223,7 @@ elif BACKEND in ['numpy']:
 		raise NotImplementedError
 		return
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1244,7 +1254,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return grad
 
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1274,7 +1284,7 @@ elif BACKEND in ['autograd']:
 
 		return grad		
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -2072,6 +2082,20 @@ class logspace(array):
 		return np.logspace(*args,**kwargs)
 
 
+class dataframe(pd.DataFrame):
+	'''
+	dataframe class
+	Args:
+		args (iterable): Dataframe arguments
+		kwargs (dict): Dataframe keyword arguments
+	Returns:
+		out (array): dataframe
+	'''
+	def __new__(self,*args,**kwargs):
+		return pd.DataFrame(*args,**kwargs)
+		# return super().__init__(self,*args,**kwargs)
+
+
 class identity(array):
 	'''
 	array class of identity
@@ -2177,7 +2201,7 @@ class toffoli(array):
 			out = toffoli(n-1,*args,**kwargs)
 			return array([[out,out],[out,-out]],*args,**kwargs)
 
-if BACKEND in ['jax']:
+if backend in ['jax']:
 
 	def prng(seed=None,size=False,reset=None,**kwargs):
 		'''
@@ -2198,7 +2222,7 @@ if BACKEND in ['jax']:
 		generator = jax.random
 
 		if reset is not None:
-			onp.random.seed(reset)
+			seeded(reset)
 
 		if not isinstance(size,int):
 			size = len(size)
@@ -2207,7 +2231,7 @@ if BACKEND in ['jax']:
 			seed = onp.random.randint(*bounds)
 
 		if isinstance(seed,(int)):
-			seed = generator.PRNGKey(seed)
+			seed = generator.key(seed)
 		else:
 			seed = asndarray(seed,dtype=uint)
 
@@ -2218,7 +2242,7 @@ if BACKEND in ['jax']:
 
 		return key
 
-elif BACKEND in ['jax.autograd','autograd','numpy']:
+elif backend in ['jax.autograd','autograd','numpy']:
 
 	def prng(seed=None,size=False,reset=None,**kwargs):
 		'''
@@ -2251,7 +2275,18 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 		return key
 
-if BACKEND in ['jax']:
+if backend in ['jax']:
+
+	def seeded(seed=None):
+		'''
+		Set random seed
+		Args:
+			seed (int,array): Seed for random number generation or random key for future seeding
+		'''
+
+		onp.random.seed(seed)
+
+		return
 
 	def spawn(seed=None,size=None,**kwargs):
 		'''
@@ -2282,7 +2317,18 @@ if BACKEND in ['jax']:
 
 		return key
 
-elif BACKEND in ['jax.autograd','autograd','numpy']:
+elif backend in ['jax.autograd','autograd','numpy']:
+
+	def seeded(seed=None):
+		'''
+		Set random seed
+		Args:
+			seed (int,array): Seed for random number generation or random key for future seeding
+		'''
+
+		np.random.seed(seed)
+
+		return
 
 	def spawn(seed=None,size=None,**kwargs):
 		'''
@@ -2314,9 +2360,9 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 		return key
 
 
-if BACKEND in ['jax']:
+if backend in ['jax']:
 
-	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
+	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
 		'''
 		Get random array
 		Args:
@@ -2324,7 +2370,7 @@ if BACKEND in ['jax']:
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','random','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
+			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','random','randint','randn','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
@@ -2354,7 +2400,7 @@ if BACKEND in ['jax']:
 		b = len(bounds)
 		for i in range(b):
 			if isinstance(bounds[i],str):
-				if random in ['gaussian','normal']:
+				if random in ['gaussian','randn','normal']:
 					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
 				else:
 					bounds[i] = float(bounds)
@@ -2381,7 +2427,7 @@ if BACKEND in ['jax']:
 				out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1]).astype(dtype)		
 				# out = asarray(generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)		
 				return out
-		elif random in ['gaussian','normal']:
+		elif random in ['gaussian','randn','normal']:
 			def func(key,shape,bounds,dtype):
 				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
 				# out = asarray((bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype),dtype=dtype)
@@ -2572,9 +2618,38 @@ if BACKEND in ['jax']:
 		return out
 
 
-elif BACKEND in ['jax.autograd','autograd','numpy']:
+	def random(shape=(),random='uniform',seed=None,dtype=None):
+		'''
+		Get random array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			random (str): Type of random distribution, allowed strings in ['uniform','normal']
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+		Returns:
+			out (array): Random array
+		'''	
 
-	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
+		return getattr(jax.random,random)(seed,shape=shape)
+
+	def randint(shape=(),bounds=[0,1],seed=None,dtype=None):
+		'''
+		Get random integer array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			bounds (iterable): Bounds on array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+		Returns:
+			out (array): Random array
+		'''	
+
+		return jax.random.randint(seed,shape=shape,minval=bounds[0],maxval=bounds[1])		
+
+
+elif backend in ['jax.autograd','autograd','numpy']:
+
+	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
 		'''
 		Get random array
 		Args:
@@ -2582,7 +2657,7 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
+			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','randint','randn','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
@@ -2614,7 +2689,7 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 		b = len(bounds)
 		for i in range(b):
 			if isinstance(bounds[i],str):
-				if random in ['gaussian','normal']:
+				if random in ['gaussian','randn','normal']:
 					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
 				else:
 					bounds[i] = float(bounds)
@@ -2638,7 +2713,7 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 				# out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
 				out = generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype)		
 				return out
-		elif random in ['gaussian','normal']:
+		elif random in ['gaussian','randn','normal']:
 			def func(key,shape,bounds,dtype):
 				# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
 				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype)				
@@ -2828,6 +2903,35 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 		return out
 
+
+	def random(shape=None,random='uniform',seed=None,dtype=None):
+		'''
+		Get random array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			random (str): Type of random distribution, allowed strings in ['uniform','normal']
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+		Returns:
+			out (array): Random array
+		'''	
+
+		return getattr(np.random,random)(size=shape).astype(dtype)
+
+
+	def randint(shape=None,bounds=[0,1],seed=None,dtype=None):
+		'''
+		Get random integer array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			bounds (iterable): Bounds on array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+		Returns:
+			out (array): Random array
+		'''	
+
+		return np.random.randint(*bounds,size=shape)		
 
 def _svd(A,k=None):
 	'''
@@ -3135,7 +3239,7 @@ def factorial(n,exact=True):
 	n = ospsp.factorial(n,exact=exact)
 	return n
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	@partial(jit,static_argnums=(1,2,3,))
 	def norm(a,axis=None,ord=2,keepdims=False):
@@ -3156,7 +3260,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return out
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	@partial(jit,static_argnums=(1,2,3,))
 	def norm(a,axis=None,ord=2,keepdims=False):
@@ -4407,23 +4511,25 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 
 
 @jit
-def dot(a,b):
+def dot(a,b,dtype=None):
 	'''
 	Calculate dot product of arrays a and b
 	Args:
 		a (array): Array to calculate dot product
 		b (array): Array to calculate dot product
+		dtype (datatype): Datatype of array				
 	Returns:
 		out (array): Dot product
 	'''	
-	return np.dot(a,b)
+	return np.dot(a,b,dtype=dtype)
 
 
-def dots(*a):
+def dots(*a,dtype=None):
 	'''
 	Calculate dot product of arrays a and b
 	Args:
 		a (iterable[array]): Arrays to calculate dot product
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Dot product
 	'''	
@@ -4433,43 +4539,59 @@ def dots(*a):
 	else:
 		out = a[0]
 		for i in a[1:]:
-			out = dot(out,i)
+			out = dot(out,i,dtype=dtype)
 	
 	return out
 	
 
 @jit
-def outer(a,b):
+def outer(a,b,dtype=None):
 	'''
 	Calculate outer product of arrays a and b
 	Args:
 		a (array): Array to calculate outer product
 		b (array): Array to calculate outer product
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Outer product
 	'''	
-	return np.outer(a,b)
+	return np.outer(a,b,dtype=dtype)
 
 
 @jit
-def _multiply(a,b):
+def multiply(a,b,dtype=None):
 	'''
 	Multiply arrays elementwise
 	Args:
 		a (array): Array to multiply
 		b (array): Array to multiply
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Elementwise multiplication of arrays
 	'''
-	return np.multiply(a,b)
+	return np.multiply(a,b,dtype=dtype)
+
+@jit
+def divide(a,b,dtype=None):
+	'''
+	divide arrays elementwise
+	Args:
+		a (array): Array to divide
+		b (array): Array to divide
+		dtype (datatype): Datatype of array
+	Returns:
+		out (array): Elementwise division of arrays
+	'''
+	return np.divide(a,b,dtype=dtype)
 
 
 @jit
-def multiply(a):
+def multiplication(a,dtype=None):
 	'''
 	Multiply list of arrays elementwise
 	Args:
 		a(array): Arrays to multiply
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Elementwise multiplication of arrays
 	'''
@@ -4481,57 +4603,62 @@ def multiply(a):
 		if not sparse:
 			out = out*b
 		else:
-			out = out.multiply(b)
+			out = out.multiply(b,dtype=dtype)
 	
 	return out
 
 @jit
-def add(a,b):
+def add(a,b,dtype=None):
 	'''
 	Add arrays elementwise
 	Args:
 		a (array): Array to add
 		b (array): Array to add
+		dtype (datatype): Datatype of array
 	Returns:
 		out (ndarray): Elementwise addition of arrays
 	'''
-	return np.add(a,b)
+	return np.add(a,b,dtype=dtype)
 
 
 @jit
-def _addition(a,b):
+def _addition(a,b,dtype=None):
 	'''
 	Add arrays elementwise
 	Args:
 		a (array): Array to add
 		b (array): Array to add
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (ndarray): Elementwise addition of arrays
 	'''
-	return np.add(a,b)
+	return np.add(a,b,dtype=dtype)
 
 @jit
-def addition(a,axis=None):
+def addition(a,axis=None,dtype=None):
 	'''
 	Add list of arrays elementwise
 	Args:
 		a (iterable): Arrays to add
+		axis (int): axis to perform addition		
+		dtype (datatype): Datatype of array
 	Returns:
 		out (ndarray) if out argument is not None
 	'''
 	# return forloop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
-	return np.sum(a,axis=axis)
+	return np.sum(a,axis=axis,dtype=dtype)
 
-def product(a):
+def product(a,dtype=None):
 	'''
 	Get product of elements in iterable
 	Args:
 		a (iterable): Array to compute product of elements
+		dtype (datatype): Datatype of array				
 	Returns:
 		out (array): Reduced array of product of elements
 	'''
 	try:
-		out = onp.prod(a)
+		out = onp.prod(a,dtype=dtype)
 	except:
 		out = 0
 	return out
@@ -4609,38 +4736,41 @@ def conditions(booleans,op):
 
 
 @jit
-def _matmul(a,b):
+def matmul(a,b,dtype=None):
 	'''
 	Calculate matrix product arrays a and b
 	Args:
 		a (array): Array to calculate matrix product
 		b (array): Array to calculate matrix product
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Matrix product
 	'''	
-	return np.matmul(a,b)
+	return np.matmul(a,b,dtype=dtype)
 
 @jit
-def matmul(a):
+def multi_matmul(a,dtype=None):
 	'''
 	Get matrix product of iterable of arrays [a_i], where a_{i}.shape[-1] == a_{i+1}.shape[0]
 	Args:
 		a (iterable): Arrays to compute product of arrays
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Reduced array of matrix product of arrays
 	'''
-	return forloop(1,len(a),lambda i,out: _matmul(out,a[i]),a[0])
+	return forloop(1,len(a),lambda i,out: matmul(out,a[i],dtype=dtype),a[0])
 
 @jit
-def multi_dot(a):
+def multi_dot(a,dtype=None):
 	'''
 	Get matrix product of iterable of arrays [a_i], where a_{i}.shape[-1] == a_{i+1}.shape[0] with optimized ordering of products
 	Args:
 		a (iterable): Arrays to compute product of arrays
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Reduced array of matrix product of arrays
 	'''
-	return np.linalg.multi_dot(a)
+	return np.linalg.multi_dot(a,dtype=dtype)
 
 @partial(jit,static_argnums=(1,))
 def average(a,axis=0,weights=None):
@@ -4854,7 +4984,7 @@ def swap(i,j,N,D):
 	return S
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def slicing(a,start,size):
 		'''
@@ -4872,7 +5002,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
 		# return a[start:start+size]
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	def slicing(a,start,size):
 		'''
@@ -5256,33 +5386,36 @@ def tr(obj,axis=None,shape=None,size=None):
 	return obj
 
 @jit
-def abs(a):
+def abs(a,dtype=None):
 	'''
 	Calculate absolute value of array
 	Args:
 		a (array): Array to calculate absolute value
+		dtype (datatype): Datatype of array				
 	Returns:
 		out (array): Absolute value of array
 	'''	
-	return np.abs(a)
+	return np.abs(a,dtype=dtype)
 
 @jit
-def abs2(a):
+def abs2(a,dtype=None):
 	'''
 	Calculate absolute value squared of array
 	Args:
 		a (array): Array to calculate absolute value
+		dtype (datatype): Datatype of array			
 	Returns:
 		out (array): Absolute value squared of array
 	'''	
-	return abs(a)**2
+	return abs(a,dtype=dtype)**2
 
 @jit
-def real(a):
+def real(a,dtype=None):
 	'''
 	Calculate real value of array
 	Args:
 		a (array): Array to calculate real value
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Real value of array
 	'''	
@@ -5290,11 +5423,12 @@ def real(a):
 
 
 @jit
-def imag(a):
+def imag(a,dtype=None):
 	'''
 	Calculate imaginary value of array
 	Args:
 		a (array): Array to calculate imaginary value
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Imaginary value of array
 	'''	
@@ -5302,11 +5436,12 @@ def imag(a):
 
 
 @jit
-def transpose(a):
+def transpose(a,dtype=None):
 	'''
 	Calculate transpose of array a
 	Args:
 		a (array): Array to calculate transpose
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Transpose
 	'''	
@@ -5314,7 +5449,7 @@ def transpose(a):
 
 
 @jit
-def conjugate(a):
+def conjugate(a,dtype=None):
 	'''
 	Calculate conjugate of array a
 	Args:
@@ -5325,23 +5460,25 @@ def conjugate(a):
 	return np.conj(a)
 
 @jit
-def dagger(a):
+def dagger(a,dtype=None):
 	'''
 	Calculate conjugate transpose of array a
 	Args:
 		a (array): Array to calculate conjugate transpose
 		conj (bool): Conjugate of array
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Conjugate transpose
 	'''	
 	return conjugate(transpose(a))
 
 @jit
-def sqrtm(a):
+def sqrtm(a,dtype=None):
 	'''
 	Calculate matrix square-root of array a
 	Args:
 		a (array): Array to compute square root
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Square root of array
 	'''
@@ -5349,33 +5486,36 @@ def sqrtm(a):
 
 
 @jit
-def sqrt(a):
+def sqrt(a,dtype=None):
 	'''
 	Calculate square-root of array a
 	Args:
 		a (array): Array to compute square root
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Square root of array
 	'''
 	return np.sqrt(a)
 
 @jit
-def sqr(a):
+def sqr(a,dtype=None):
 	'''
 	Calculate square of array a
 	Args:
 		a (array): Array to compute square root
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Square root of array
 	'''
 	return a**2
 
 @jit
-def log10(a):
+def log10(a,dtype=None):
 	'''
 	Calculate log base 10 of array a
 	Args:
 		a (array): Array to compute log
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Base 10 log of array
 	'''
@@ -5383,11 +5523,12 @@ def log10(a):
 
 
 @jit
-def log(a):
+def log(a,dtype=None):
 	'''
 	Calculate natural log of array a
 	Args:
 		a (array): Array to compute log
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Natural log of array
 	'''
@@ -5395,49 +5536,66 @@ def log(a):
 
 
 # @jit
-def logm(a):
+def logm(a,dtype=None):
 	'''
 	Calculate matrix log of array a
 	Args:
 		a (array): Array to compute log
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Matrix log of array
 	'''
-	return osp.linalg.logm(a)
+	return osp.linalg.logm(a,dtype=dtype)
 
 @jit
-def exp10(a):
+def exp10(a,dtype=None):
 	'''
 	Calculate element-wise base 10 exponential of array a
 	Args:
 		a (array): Array to compute element-wise exponential
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Element-wise exponential of array
 	'''
 	return 10**a
 
 @jit
-def exp(a):
+def exp(a,dtype=None):
 	'''
 	Calculate element-wise exponential of array a
 	Args:
 		a (array): Array to compute element-wise exponential
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Element-wise exponential of array
 	'''
-	return np.exp(a)
+	return np.exp(a,dtype=dtype)
 
 @jit
-def power(a,n):
+def power(a,b,dtype=None):
 	'''
 	Calculate power of array a
 	Args:
 		a (array): Array to power
-		n (int): Power
+		b (int): Power
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Power of array
 	'''
-	return np.linalg.matrix_power(a,n)
+	return np.power(a,b,dtype=dtype)
+
+@jit
+def matrix_power(a,n,dtype=None):
+	'''
+	Calculate matrix power of array a
+	Args:
+		a (array): Array to power
+		n (int): Power
+		dtype (datatype): Datatype of array		
+	Returns:
+		out (array): Matrix power of array
+	'''
+	return np.linalg.matrix_power(a,n,dtype=dtype)
 
 
 @jit
@@ -5702,85 +5860,92 @@ def expmmcn(x,A,I,v,B,C):
 
 
 @jit
-def sign(a):
+def sign(a,dtype=None):
 	'''
 	Calculate sign of array a
 	Args:
 		a (array): Array to compute sign
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Sign of array
 	'''
-	return np.sign(a)
+	return np.sign(a,dtype=dtype)
 
 
 @jit
-def expmat(a):
+def expmat(a,dtype=None):
 	'''
 	Calculate matrix exponential of array a
 	Args:
 		a (array): Array to compute matrix exponential
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Matrix exponential of array
 	'''
-	return sp.linalg.expm(a)
+	return sp.linalg.expm(a,dtype=dtype)
 
 
 @jit
-def sin(a):
+def sin(a,dtype=None):
 	'''
 	Calculate sine of array a
 	Args:
 		a (array): Array to compute sine
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Sine of array
 	'''
-	return np.sin(a)
+	return np.sin(a,dtype=dtype)
 
 
 @jit
-def cos(a):
+def cos(a,dtype=None):
 	'''
 	Calculate cosine of array a
 	Args:
 		a (array): Array to compute cosine
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Cosine of array
 	'''
-	return np.cos(a)
+	return np.cos(a,dtype=dtype)
 
 @jit
-def tan(a):
+def tan(a,dtype=None):
 	'''
 	Calculate tan of array a
 	Args:
 		a (array): Array to compute tan
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Tan of array
 	'''
-	return np.tan(a)
+	return np.tan(a,dtype=dtype)
 
 @jit
-def sinh(a):
+def sinh(a,dtype=None):
 	'''
 	Calculate sinh of array a
 	Args:
 		a (array): Array to compute sinh
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Sinh of array
 	'''
-	return np.sinh(a)
+	return np.sinh(a,dtype=dtype)
 
 
 @jit
-def cosh(a):
+def cosh(a,dtype=None):
 	'''
 	Calculate cosinh of array a
 	Args:
 		a (array): Array to compute cosinh
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Cosinh of array
 	'''
-	return np.cosh(a)
+	return np.cosh(a,dtype=dtype)
 
 @jit
 def tanh(a):
@@ -5788,10 +5953,11 @@ def tanh(a):
 	Calculate tanh of array a
 	Args:
 		a (array): Array to compute tanh
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Tanh of array
 	'''
-	return np.tanh(a)
+	return np.tanh(a,dtype=dtype)
 
 
 @jit
@@ -5800,98 +5966,106 @@ def arcsin(a):
 	Calculate inverse sine of array a
 	Args:
 		a (array): Array to compute inverse sine
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Inverse Sine of array
 	'''
-	return np.arcsin(a)
+	return np.arcsin(a,dtype=dtype)
 
 
 @jit
-def arccos(a):
+def arccos(a,dtype=None):
 	'''
 	Calculate inverse cosine of array a
 	Args:
 		a (array): Array to compute inverse cosine
+		dtype (datatype): Datatype of array				
 	Returns:
 		out (array): Inverse cosine of array
 	'''
-	return np.arccos(a)
+	return np.arccos(a,dtype=dtype)
 
 
 # @partial(jit,static_argnums=(1,))
 @jit
-def arctan(a,b=None):
+def arctan(a,b=None,dtype=None):
 	'''
 	Calculate inverse tan of array a or a/b
 	Args:
 		a (array): Array to compute inverse tan a or a/b
 		b (array): Array to compute inverse tan a/b
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Inverse tan of array
 	'''
 	if b is None:
-		return np.arctan(a)
+		return np.arctan(a,dtype=dtype)
 	else:
-		return np.arctan2(a,b)
+		return np.arctan2(a,b,dtype=dtype)
 
 
 @jit
-def arcsinh(a):
+def arcsinh(a,dtype=None):
 	'''
 	Calculate inverse sinh of array a
 	Args:
 		a (array): Array to compute inverse sinh
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Inverse sinh of array
 	'''
-	return np.arcsinh(a)
+	return np.arcsinh(a,dtype=dtype)
 
 
 @jit
-def arccosh(a):
+def arccosh(a,dtype=None):
 	'''
 	Calculate inverse cosinh of array a
 	Args:
 		a (array): Array to compute inverse cosinh
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Inverse cosinh of array
 	'''
-	return np.arccosh(a)
+	return np.arccosh(a,dtype=dtype)
 
 @jit
-def arctanh(a):
+def arctanh(a,dtype=None):
 	'''
 	Calculate inverse tanh of array a
 	Args:
 		a (array): Array to compute inverse tanh
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Inverse tanh of array
 	'''
-	return np.arctanh(a)
+	return np.arctanh(a,dtype=dtype)
 
 
 @jit
-def ceil(a):
+def ceil(a,dtype=None):
 	'''
 	Calculate ceiling of array
 	Args:
 		a (array): Array to compute ceiling
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Ceiling of array
 	'''
-	return np.ceil(a)
+	return np.ceil(a,dtype=dtype)
 
 
 @jit
-def floor(a):
+def floor(a,dtype=None):
 	'''
 	Calculate floor of array
 	Args:
 		a (array): Array to compute floor
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Floor of array
 	'''
-	return np.floor(a)
+	return np.floor(a,dtype=dtype)
 
 @partial(jit,static_argnums=(1,))
 def argmax(a,axis=None):
@@ -5920,52 +6094,56 @@ def argmin(a,axis=None):
 
 
 @jit
-def maximum(a):
+def maximum(a,dtype=None):
 	'''
 	Calculate maximum of array a
 	Args:
 		a (array): Array to compute maximum
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Maximum of array a
 	'''
 	return np.max(a)
 
 @jit
-def minimum(a):
+def minimum(a,dtype=None):
 	'''
 	Calculate maximum of array a
 	Args:
 		a (array): Array to compute maximum
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Maximum of array a
 	'''
-	return np.min(a)
+	return np.min(a,dtype=dtype)
 
 
 @jit
-def maximums(a,b):
+def maximums(a,b,dtype=None):
 	'''
 	Calculate maximum of array a and b
 	Args:
 		a (array): Array to compute maximum
 		b (array): Array to compute maximum
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Maximum of array a and b
 	'''
-	return np.maximum(a,b)
+	return np.maximum(a,b,dtype=dtype)
 
 
 @jit
-def minimums(a,b):
+def minimums(a,b,dtype=None):
 	'''
 	Calculate minimum of array a and b
 	Args:
 		a (array): Array to compute minimum
 		b (array): Array to compute minimum
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Minimum of array a and b
 	'''
-	return np.minimum(a,b)
+	return np.minimum(a,b,dtype=dtype)
 
 def natsort(a):
 	'''
@@ -6063,16 +6241,17 @@ def shift(iterable,shift,axis=None):
 	shift = shift % len(iterable)
 	return iterable[-shift:] + iterable[:-shift]
 
-def cumsum(a,axis=None):
+def cumsum(a,axis=None,dtype=None):
 	'''
 	Cumulative sum along axis
 	Args:
 		a (array): iterable to sum
 		axis (int) : axis to sum
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Summed iterable
 	'''
-	return np.cumsum(asarray(a),axis=axis)
+	return np.cumsum(asarray(a),axis=axis,dtype=dtype)
 
 def split(a,condition):
 	'''
@@ -6121,60 +6300,69 @@ def interleaver(*iterable):
 
 
 @jit
-def difference(a,n=1,axis=-1):
+def difference(a,n=1,axis=-1,dtype=None):
 	'''
 	Get difference of array elements
+	Args:
+		a (array): Array to get difference
+		n (int): Step of differences
+		axis (int): Axis of differences
+		dtype (datatype): Datatype of array				
 	'''
-	return np.diff(a,n=n,axis=axis)
+	return np.diff(a,n=n,axis=axis,dtype=dtype)
 
 @jit
-def diag(a):
+def diag(a,dtype=None):
 	'''
 	Get diagonal of array
 	Args:
 		a (array): Array to get diagonal
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Diagonal of array
 	'''
-	return np.diag(a)
+	return np.diag(a,dtype=dtype)
 
 @jit
-def mod(a,b):
+def mod(a,b,dtype=None):
 	'''
 	Element wise modular division of a mod b
 	Args:
 		a (array): Array to compare
 		b (array): Array to divide by
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Modular division of a mod b
 	'''
 	try:
-		return np.mod(a,b)
+		return np.mod(a,b,dtype=dtype)
 	except TypeError:
-		return mod(real(a),b) + 1j*mod(imag(a),b)
+		return mod(real(a),b,dtype=dtype) + 1j*mod(imag(a),b,dtype=dtype)
 
 # @partial(jit,static_argnums=(1,))
-def unique(a,axis=None):
+def unique(a,axis=None,dtype=None):
 	'''
 	Find unique elements of array
 	Args:
 		a (array): Array to search for unique elements
 		axis (int): Axis to search for unique elements
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Unique elements of array
 	'''
-	return onp.unique(a,axis=axis)
+	return onp.unique(a,axis=axis,dtype=dtype)
 
-def uniqueobjs(a,axis=None):
+def uniqueobjs(a,axis=None,dtype=None):
 	'''
 	Find unique elements of array
 	Args:
 		a (array): Array to search for unique elements
 		axis (int): Axis to search for unique elements
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Unique elements of array
 	'''
-	return onp.unique(a,axis=axis)
+	return onp.unique(a,axis=axis,dtype=dtype)
 
 def reshape(a,shape,order='C'):
 	'''
@@ -6188,7 +6376,7 @@ def reshape(a,shape,order='C'):
 	'''
 	return np.reshape(a,shape,order=order)
 
-def repeat(a,repeats,axis):
+def repeat(a,repeats,axis,dtype=None):
 	'''
 	Repeat array repeats-times along axis
 	Concatenate iterables row-wise
@@ -6196,13 +6384,14 @@ def repeat(a,repeats,axis):
 		a (array): Array to repeat
 		repeats (int): Number of times to repeat
 		axis (int): Axis along which to repeat
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Repeated array
 	'''
-	return np.repeat(a,repeats,axis)
+	return np.repeat(a,repeats,axis,dtype=dtype)
 
 
-def repeats(a,repeats,axis):
+def repeats(a,repeats,axis,dtype=None):
 	'''
 	Repeat array repeats-times along axis
 	Concatenate iterables row-wise
@@ -6210,6 +6399,7 @@ def repeats(a,repeats,axis):
 		a (array): Array to repeat
 		repeats (int,iterable[int]): Number of times to repeat along each axis
 		axis (int,iterable[int]): Axes along which to repeat
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Repeated array
 	'''
@@ -6217,21 +6407,22 @@ def repeats(a,repeats,axis):
 		repeats = (repeats,)
 	if isinstance(axis,int):
 		axis = (axis,)		
-	a = expand_dims(a,range(a.ndim,max(axis)+1))
+	a = expand_dims(a,range(a.ndim,max(axis)+1),dtype=dtype)
 	for rep,ax in zip(repeats,axis):
-		a = repeat(a,rep,ax)
+		a = repeat(a,rep,ax,dtype=dtype)
 	return a
 
 
 
 
-def take(a,indices,axis):
+def take(a,indices,axis,dtype=None):
 	'''
 	Take slices from array
 	Args:
 		a (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
 		axis (int,interable[int]): Axis or axis corresponding to indices to slice
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Sliced array
 	'''
@@ -6247,11 +6438,11 @@ def take(a,indices,axis):
 		else:
 			indices = array(_iter_(indices))
 		indices = minimums(shape[axis]-1,indices)[:shape[axis]]
-		a = np.take(a,indices,axis)
+		a = np.take(a,indices,axis,dtype=dtype)
 	return a
 
 
-def put(a,values,indices,axis):
+def put(a,values,indices,axis,dtype=None):
 	'''
 	Put array to slices array
 	Args:
@@ -6259,6 +6450,7 @@ def put(a,values,indices,axis):
 		values (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
 		axis (int,interable[int]): Axis or axis corresponding to indices to slice
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Put array
 	'''
@@ -6301,44 +6493,47 @@ def put(a,values,indices,axis):
 
 
 
-def broadcast_to(a,shape):
+def broadcast_to(a,shape,dtype=None):
 	'''
 	Broadcast array to shape
 	Args:
 		a (array): Array to broadcast
 		shape (iterable): Shape to broadcast to
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Broadcasted array
 	'''
-	return np.broadcast_to(a,shape)
+	return np.broadcast_to(a,shape,dtype=dtype)
 
 
-def moveaxis(a,source,destination):
+def moveaxis(a,source,destination,dtype=None):
 	'''
 	Move axis of array
 	Args:
 		a (array): Array to be moved
 		source (int,iterable[int]): Initial axis
 		destination (int,interable[int]): Final axis
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Array with moved axis
 	'''
 
-	return np.moveaxis(a,source,destination)
+	return np.moveaxis(a,source,destination,dtype=dtype)
 
 
-def expand_dims(a,axis):
+def expand_dims(a,axis,dtype=None):
 	'''
 	Expand axis of array
 	Args:
 		a (array): Array to be expanded
 		axis (int,iterable[int]): Axes to expand to
+		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Array with expanded axis
 	'''
 	if isinstance(axis,range):
 		axis = list(axis)
-	return np.expand_dims(a,axis)
+	return np.expand_dims(a,axis,dtype=dtype)
 
 
 def bounding(bounds,dtype=None):
@@ -6399,7 +6594,7 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 		shape (int,iterable[int]): Size or shape of array
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
-		random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
+		random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','randn','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
 		dtype (datatype): Datatype of array	
 		kwargs (dict): Additional keyword arguments for padding	
 	Returns:

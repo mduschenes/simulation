@@ -24,42 +24,10 @@ from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_rea
 
 from src.utils import itg,dbl,flt,delim,Null,null,scalars,arrays
 
-from src.iterables import getter,setter
+from src.iterables import Dict,Dictionary,getter,setter
 from src.io import join,split,rm,exists
 from src.logger import Logger
 
-
-class Dictionary(dict):
-	'''
-	Dictionary subclass with dictionary elements explicitly accessible as class attributes
-	Args:
-		args (dict): Dictionary elements
-		kwargs (dict): Dictionary elements
-	'''
-	def __init__(self,*args,**kwargs):
-		super().__init__(*args,**kwargs)
-		self.__dict__ = self
-		return
-
-class Dict(Dictionary):
-	'''
-	Dictionary subclass with nested Dictionary elements
-	Args:
-		args (dict): Dictionary elements
-		kwargs (dict): Dictionary elements
-	'''	
-	def __init__(self,*args,**kwargs):
-		for arg in args:
-			if isinstance(arg,dict):
-				kwargs.update(arg)
-
-		for key in kwargs:
-			if isinstance(kwargs[key],dict) and all(isinstance(attr,str) for attr in kwargs[key]):
-				kwargs[key] = Dict(kwargs[key]) if not isinstance(kwargs[key],Dictionary) else kwargs[key]
-
-		super().__init__(**kwargs)
-
-		return
 
 class System(Dictionary):
 	'''

@@ -761,8 +761,8 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	args = {'path':path,'wrapper':wrapper}
 	kwargs.update({'wrapper':wrapper})	
 
-	if path is None:
-		return
+	if path is None or not isinstance(path,(str,iterables)):
+		return default
 
 	wrappers = []
 	for wrapper in kwargs['wrapper']:

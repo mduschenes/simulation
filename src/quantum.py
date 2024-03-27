@@ -19,11 +19,11 @@ from src.utils import inplace,insert,maximum,minimum,argmax,argmin,nonzero,diffe
 from src.utils import to_index,to_position,to_string,allclose,is_hermitian,is_unitary
 from src.utils import pi,e,nan,null,delim,scalars,arrays,nulls,iterables,datatype
 
-from src.iterables import setter,getter,getattrs,hasattrs,namespace,permutations
+from src.iterables import Dict,Dictionary,setter,getter,getattrs,hasattrs,namespace,permutations
 
 from src.io import load,dump,join,split
 
-from src.system import Dict,Dictionary,System,Space,Time,Lattice
+from src.system import System,Space,Time,Lattice
 
 from src.parameters import Parameters,Parameter
 
