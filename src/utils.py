@@ -2231,7 +2231,7 @@ if backend in ['jax']:
 			seed = onp.random.randint(*bounds)
 
 		if isinstance(seed,(int)):
-			seed = generator.key(seed)
+			seed = generator.PRNGKey(seed)
 		else:
 			seed = asndarray(seed,dtype=uint)
 
@@ -4511,25 +4511,23 @@ def gradient_inner_imag(*operands,optimize=True,wrapper=None):
 
 
 @jit
-def dot(a,b,dtype=None):
+def dot(a,b):
 	'''
 	Calculate dot product of arrays a and b
 	Args:
 		a (array): Array to calculate dot product
 		b (array): Array to calculate dot product
-		dtype (datatype): Datatype of array				
 	Returns:
 		out (array): Dot product
 	'''	
-	return np.dot(a,b,dtype=dtype)
+	return np.dot(a,b)
 
 
-def dots(*a,dtype=None):
+def dots(*a):
 	'''
 	Calculate dot product of arrays a and b
 	Args:
 		a (iterable[array]): Arrays to calculate dot product
-		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Dot product
 	'''	
@@ -4539,59 +4537,55 @@ def dots(*a,dtype=None):
 	else:
 		out = a[0]
 		for i in a[1:]:
-			out = dot(out,i,dtype=dtype)
+			out = dot(out,i)
 	
 	return out
 	
 
 @jit
-def outer(a,b,dtype=None):
+def outer(a,b):
 	'''
 	Calculate outer product of arrays a and b
 	Args:
 		a (array): Array to calculate outer product
 		b (array): Array to calculate outer product
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Outer product
 	'''	
-	return np.outer(a,b,dtype=dtype)
+	return np.outer(a,b)
 
 
 @jit
-def multiply(a,b,dtype=None):
+def multiply(a,b):
 	'''
 	Multiply arrays elementwise
 	Args:
 		a (array): Array to multiply
 		b (array): Array to multiply
-		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Elementwise multiplication of arrays
 	'''
-	return np.multiply(a,b,dtype=dtype)
+	return np.multiply(a,b)
 
 @jit
-def divide(a,b,dtype=None):
+def divide(a,b):
 	'''
 	divide arrays elementwise
 	Args:
 		a (array): Array to divide
 		b (array): Array to divide
-		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Elementwise division of arrays
 	'''
-	return np.divide(a,b,dtype=dtype)
+	return np.divide(a,b)
 
 
 @jit
-def multiplication(a,dtype=None):
+def multiplication(a):
 	'''
 	Multiply list of arrays elementwise
 	Args:
 		a(array): Arrays to multiply
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Elementwise multiplication of arrays
 	'''
@@ -4603,62 +4597,58 @@ def multiplication(a,dtype=None):
 		if not sparse:
 			out = out*b
 		else:
-			out = out.multiply(b,dtype=dtype)
+			out = out.multiply(b)
 	
 	return out
 
 @jit
-def add(a,b,dtype=None):
+def add(a,b):
 	'''
 	Add arrays elementwise
 	Args:
 		a (array): Array to add
 		b (array): Array to add
-		dtype (datatype): Datatype of array
 	Returns:
 		out (ndarray): Elementwise addition of arrays
 	'''
-	return np.add(a,b,dtype=dtype)
+	return np.add(a,b)
 
 
 @jit
-def _addition(a,b,dtype=None):
+def _addition(a,b):
 	'''
 	Add arrays elementwise
 	Args:
 		a (array): Array to add
 		b (array): Array to add
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (ndarray): Elementwise addition of arrays
 	'''
-	return np.add(a,b,dtype=dtype)
+	return np.add(a,b)
 
 @jit
-def addition(a,axis=None,dtype=None):
+def addition(a,axis=None):
 	'''
 	Add list of arrays elementwise
 	Args:
 		a (iterable): Arrays to add
 		axis (int): axis to perform addition		
-		dtype (datatype): Datatype of array
 	Returns:
 		out (ndarray) if out argument is not None
 	'''
 	# return forloop(1,len(a),lambda i,out: _add(out,a[i]),a[0])
-	return np.sum(a,axis=axis,dtype=dtype)
+	return np.sum(a,axis=axis)
 
-def product(a,dtype=None):
+def product(a):
 	'''
 	Get product of elements in iterable
 	Args:
 		a (iterable): Array to compute product of elements
-		dtype (datatype): Datatype of array				
 	Returns:
 		out (array): Reduced array of product of elements
 	'''
 	try:
-		out = onp.prod(a,dtype=dtype)
+		out = onp.prod(a)
 	except:
 		out = 0
 	return out
@@ -5386,36 +5376,33 @@ def tr(obj,axis=None,shape=None,size=None):
 	return obj
 
 @jit
-def abs(a,dtype=None):
+def abs(a):
 	'''
 	Calculate absolute value of array
 	Args:
 		a (array): Array to calculate absolute value
-		dtype (datatype): Datatype of array				
 	Returns:
 		out (array): Absolute value of array
 	'''	
-	return np.abs(a,dtype=dtype)
+	return np.abs(a)
 
 @jit
-def abs2(a,dtype=None):
+def abs2(a):
 	'''
 	Calculate absolute value squared of array
 	Args:
 		a (array): Array to calculate absolute value
-		dtype (datatype): Datatype of array			
 	Returns:
 		out (array): Absolute value squared of array
 	'''	
-	return abs(a,dtype=dtype)**2
+	return abs(a)**2
 
 @jit
-def real(a,dtype=None):
+def real(a):
 	'''
 	Calculate real value of array
 	Args:
 		a (array): Array to calculate real value
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Real value of array
 	'''	
@@ -5423,12 +5410,11 @@ def real(a,dtype=None):
 
 
 @jit
-def imag(a,dtype=None):
+def imag(a):
 	'''
 	Calculate imaginary value of array
 	Args:
 		a (array): Array to calculate imaginary value
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Imaginary value of array
 	'''	
@@ -5436,12 +5422,11 @@ def imag(a,dtype=None):
 
 
 @jit
-def transpose(a,dtype=None):
+def transpose(a):
 	'''
 	Calculate transpose of array a
 	Args:
 		a (array): Array to calculate transpose
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Transpose
 	'''	
@@ -5449,7 +5434,7 @@ def transpose(a,dtype=None):
 
 
 @jit
-def conjugate(a,dtype=None):
+def conjugate(a):
 	'''
 	Calculate conjugate of array a
 	Args:
@@ -5460,13 +5445,12 @@ def conjugate(a,dtype=None):
 	return np.conj(a)
 
 @jit
-def dagger(a,dtype=None):
+def dagger(a):
 	'''
 	Calculate conjugate transpose of array a
 	Args:
 		a (array): Array to calculate conjugate transpose
 		conj (bool): Conjugate of array
-		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Conjugate transpose
 	'''	
@@ -5486,36 +5470,33 @@ def sqrtm(a,dtype=None):
 
 
 @jit
-def sqrt(a,dtype=None):
+def sqrt(a):
 	'''
 	Calculate square-root of array a
 	Args:
 		a (array): Array to compute square root
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Square root of array
 	'''
 	return np.sqrt(a)
 
 @jit
-def sqr(a,dtype=None):
+def sqr(a):
 	'''
 	Calculate square of array a
 	Args:
 		a (array): Array to compute square root
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Square root of array
 	'''
 	return a**2
 
 @jit
-def log10(a,dtype=None):
+def log10(a):
 	'''
 	Calculate log base 10 of array a
 	Args:
 		a (array): Array to compute log
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Base 10 log of array
 	'''
@@ -5523,12 +5504,11 @@ def log10(a,dtype=None):
 
 
 @jit
-def log(a,dtype=None):
+def log(a):
 	'''
 	Calculate natural log of array a
 	Args:
 		a (array): Array to compute log
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Natural log of array
 	'''
@@ -5536,40 +5516,37 @@ def log(a,dtype=None):
 
 
 # @jit
-def logm(a,dtype=None):
+def logm(a):
 	'''
 	Calculate matrix log of array a
 	Args:
 		a (array): Array to compute log
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Matrix log of array
 	'''
-	return osp.linalg.logm(a,dtype=dtype)
+	return osp.linalg.logm(a)
 
 @jit
-def exp10(a,dtype=None):
+def exp10(a):
 	'''
 	Calculate element-wise base 10 exponential of array a
 	Args:
 		a (array): Array to compute element-wise exponential
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Element-wise exponential of array
 	'''
-	return 10**a
+	return np.power(10,a)
 
 @jit
-def exp(a,dtype=None):
+def exp(a):
 	'''
 	Calculate element-wise exponential of array a
 	Args:
 		a (array): Array to compute element-wise exponential
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Element-wise exponential of array
 	'''
-	return np.exp(a,dtype=dtype)
+	return np.exp(a)
 
 @jit
 def power(a,b,dtype=None):
@@ -5860,16 +5837,15 @@ def expmmcn(x,A,I,v,B,C):
 
 
 @jit
-def sign(a,dtype=None):
+def sign(a):
 	'''
 	Calculate sign of array a
 	Args:
 		a (array): Array to compute sign
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Sign of array
 	'''
-	return np.sign(a,dtype=dtype)
+	return np.sign(a)
 
 
 @jit
@@ -5886,66 +5862,61 @@ def expmat(a,dtype=None):
 
 
 @jit
-def sin(a,dtype=None):
+def sin(a):
 	'''
 	Calculate sine of array a
 	Args:
 		a (array): Array to compute sine
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Sine of array
 	'''
-	return np.sin(a,dtype=dtype)
+	return np.sin(a)
 
 
 @jit
-def cos(a,dtype=None):
+def cos(a):
 	'''
 	Calculate cosine of array a
 	Args:
 		a (array): Array to compute cosine
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Cosine of array
 	'''
-	return np.cos(a,dtype=dtype)
+	return np.cos(a)
 
 @jit
-def tan(a,dtype=None):
+def tan(a):
 	'''
 	Calculate tan of array a
 	Args:
 		a (array): Array to compute tan
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Tan of array
 	'''
-	return np.tan(a,dtype=dtype)
+	return np.tan(a)
 
 @jit
-def sinh(a,dtype=None):
+def sinh(a):
 	'''
 	Calculate sinh of array a
 	Args:
 		a (array): Array to compute sinh
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Sinh of array
 	'''
-	return np.sinh(a,dtype=dtype)
+	return np.sinh(a)
 
 
 @jit
-def cosh(a,dtype=None):
+def cosh(a):
 	'''
 	Calculate cosinh of array a
 	Args:
 		a (array): Array to compute cosinh
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Cosinh of array
 	'''
-	return np.cosh(a,dtype=dtype)
+	return np.cosh(a)
 
 @jit
 def tanh(a):
@@ -5953,11 +5924,10 @@ def tanh(a):
 	Calculate tanh of array a
 	Args:
 		a (array): Array to compute tanh
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Tanh of array
 	'''
-	return np.tanh(a,dtype=dtype)
+	return np.tanh(a)
 
 
 @jit
@@ -5966,106 +5936,98 @@ def arcsin(a):
 	Calculate inverse sine of array a
 	Args:
 		a (array): Array to compute inverse sine
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Inverse Sine of array
 	'''
-	return np.arcsin(a,dtype=dtype)
+	return np.arcsin(a)
 
 
 @jit
-def arccos(a,dtype=None):
+def arccos(a):
 	'''
 	Calculate inverse cosine of array a
 	Args:
 		a (array): Array to compute inverse cosine
-		dtype (datatype): Datatype of array				
 	Returns:
 		out (array): Inverse cosine of array
 	'''
-	return np.arccos(a,dtype=dtype)
+	return np.arccos(a)
 
 
 # @partial(jit,static_argnums=(1,))
 @jit
-def arctan(a,b=None,dtype=None):
+def arctan(a,b=None):
 	'''
 	Calculate inverse tan of array a or a/b
 	Args:
 		a (array): Array to compute inverse tan a or a/b
 		b (array): Array to compute inverse tan a/b
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Inverse tan of array
 	'''
 	if b is None:
-		return np.arctan(a,dtype=dtype)
+		return np.arctan(a)
 	else:
-		return np.arctan2(a,b,dtype=dtype)
+		return np.arctan2(a,b)
 
 
 @jit
-def arcsinh(a,dtype=None):
+def arcsinh(a):
 	'''
 	Calculate inverse sinh of array a
 	Args:
 		a (array): Array to compute inverse sinh
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Inverse sinh of array
 	'''
-	return np.arcsinh(a,dtype=dtype)
+	return np.arcsinh(a)
 
 
 @jit
-def arccosh(a,dtype=None):
+def arccosh(a):
 	'''
 	Calculate inverse cosinh of array a
 	Args:
 		a (array): Array to compute inverse cosinh
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Inverse cosinh of array
 	'''
-	return np.arccosh(a,dtype=dtype)
+	return np.arccosh(a)
 
 @jit
-def arctanh(a,dtype=None):
+def arctanh(a):
 	'''
 	Calculate inverse tanh of array a
 	Args:
 		a (array): Array to compute inverse tanh
-		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Inverse tanh of array
 	'''
-	return np.arctanh(a,dtype=dtype)
+	return np.arctanh(a)
 
 
 @jit
-def ceil(a,dtype=None):
+def ceil(a):
 	'''
 	Calculate ceiling of array
 	Args:
 		a (array): Array to compute ceiling
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Ceiling of array
 	'''
-	return np.ceil(a,dtype=dtype)
+	return np.ceil(a)
 
 
 @jit
-def floor(a,dtype=None):
+def floor(a):
 	'''
 	Calculate floor of array
 	Args:
 		a (array): Array to compute floor
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Floor of array
 	'''
-	return np.floor(a,dtype=dtype)
+	return np.floor(a)
 
 @partial(jit,static_argnums=(1,))
 def argmax(a,axis=None):
@@ -6094,56 +6056,52 @@ def argmin(a,axis=None):
 
 
 @jit
-def maximum(a,dtype=None):
+def maximum(a):
 	'''
 	Calculate maximum of array a
 	Args:
 		a (array): Array to compute maximum
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Maximum of array a
 	'''
 	return np.max(a)
 
 @jit
-def minimum(a,dtype=None):
+def minimum(a):
 	'''
 	Calculate maximum of array a
 	Args:
 		a (array): Array to compute maximum
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Maximum of array a
 	'''
-	return np.min(a,dtype=dtype)
+	return np.min(a)
 
 
 @jit
-def maximums(a,b,dtype=None):
+def maximums(a,b):
 	'''
 	Calculate maximum of array a and b
 	Args:
 		a (array): Array to compute maximum
 		b (array): Array to compute maximum
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Maximum of array a and b
 	'''
-	return np.maximum(a,b,dtype=dtype)
+	return np.maximum(a,b)
 
 
 @jit
-def minimums(a,b,dtype=None):
+def minimums(a,b):
 	'''
 	Calculate minimum of array a and b
 	Args:
 		a (array): Array to compute minimum
 		b (array): Array to compute minimum
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Minimum of array a and b
 	'''
-	return np.minimum(a,b,dtype=dtype)
+	return np.minimum(a,b)
 
 def natsort(a):
 	'''
@@ -6300,69 +6258,64 @@ def interleaver(*iterable):
 
 
 @jit
-def difference(a,n=1,axis=-1,dtype=None):
+def difference(a,n=1,axis=-1):
 	'''
 	Get difference of array elements
 	Args:
 		a (array): Array to get difference
 		n (int): Step of differences
 		axis (int): Axis of differences
-		dtype (datatype): Datatype of array				
 	'''
-	return np.diff(a,n=n,axis=axis,dtype=dtype)
+	return np.diff(a,n=n,axis=axis)
 
 @jit
-def diag(a,dtype=None):
+def diag(a):
 	'''
 	Get diagonal of array
 	Args:
 		a (array): Array to get diagonal
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Diagonal of array
 	'''
-	return np.diag(a,dtype=dtype)
+	return np.diag(a)
 
 @jit
-def mod(a,b,dtype=None):
+def mod(a,b):
 	'''
 	Element wise modular division of a mod b
 	Args:
 		a (array): Array to compare
 		b (array): Array to divide by
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Modular division of a mod b
 	'''
 	try:
-		return np.mod(a,b,dtype=dtype)
+		return np.mod(a,b)
 	except TypeError:
-		return mod(real(a),b,dtype=dtype) + 1j*mod(imag(a),b,dtype=dtype)
+		return mod(real(a),b) + 1j*mod(imag(a),b)
 
 # @partial(jit,static_argnums=(1,))
-def unique(a,axis=None,dtype=None):
+def unique(a,axis=None):
 	'''
 	Find unique elements of array
 	Args:
 		a (array): Array to search for unique elements
 		axis (int): Axis to search for unique elements
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Unique elements of array
 	'''
-	return onp.unique(a,axis=axis,dtype=dtype)
+	return onp.unique(a,axis=axis)
 
-def uniqueobjs(a,axis=None,dtype=None):
+def uniqueobjs(a,axis=None):
 	'''
 	Find unique elements of array
 	Args:
 		a (array): Array to search for unique elements
 		axis (int): Axis to search for unique elements
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Unique elements of array
 	'''
-	return onp.unique(a,axis=axis,dtype=dtype)
+	return onp.unique(a,axis=axis)
 
 def reshape(a,shape,order='C'):
 	'''
@@ -6376,7 +6329,7 @@ def reshape(a,shape,order='C'):
 	'''
 	return np.reshape(a,shape,order=order)
 
-def repeat(a,repeats,axis,dtype=None):
+def repeat(a,repeats,axis):
 	'''
 	Repeat array repeats-times along axis
 	Concatenate iterables row-wise
@@ -6384,14 +6337,13 @@ def repeat(a,repeats,axis,dtype=None):
 		a (array): Array to repeat
 		repeats (int): Number of times to repeat
 		axis (int): Axis along which to repeat
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Repeated array
 	'''
-	return np.repeat(a,repeats,axis,dtype=dtype)
+	return np.repeat(a,repeats,axis)
 
 
-def repeats(a,repeats,axis,dtype=None):
+def repeats(a,repeats,axis):
 	'''
 	Repeat array repeats-times along axis
 	Concatenate iterables row-wise
@@ -6399,7 +6351,6 @@ def repeats(a,repeats,axis,dtype=None):
 		a (array): Array to repeat
 		repeats (int,iterable[int]): Number of times to repeat along each axis
 		axis (int,iterable[int]): Axes along which to repeat
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Repeated array
 	'''
@@ -6407,22 +6358,21 @@ def repeats(a,repeats,axis,dtype=None):
 		repeats = (repeats,)
 	if isinstance(axis,int):
 		axis = (axis,)		
-	a = expand_dims(a,range(a.ndim,max(axis)+1),dtype=dtype)
+	a = expand_dims(a,range(a.ndim,max(axis)+1))
 	for rep,ax in zip(repeats,axis):
-		a = repeat(a,rep,ax,dtype=dtype)
+		a = repeat(a,rep,ax)
 	return a
 
 
 
 
-def take(a,indices,axis,dtype=None):
+def take(a,indices,axis):
 	'''
 	Take slices from array
 	Args:
 		a (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
 		axis (int,interable[int]): Axis or axis corresponding to indices to slice
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Sliced array
 	'''
@@ -6438,11 +6388,11 @@ def take(a,indices,axis,dtype=None):
 		else:
 			indices = array(_iter_(indices))
 		indices = minimums(shape[axis]-1,indices)[:shape[axis]]
-		a = np.take(a,indices,axis,dtype=dtype)
+		a = np.take(a,indices,axis)
 	return a
 
 
-def put(a,values,indices,axis,dtype=None):
+def put(a,values,indices,axis):
 	'''
 	Put array to slices array
 	Args:
@@ -6450,7 +6400,6 @@ def put(a,values,indices,axis,dtype=None):
 		values (array): Array to take
 		indices (iterable,iterable[iterable]): Indices, or iterable of indices to slice
 		axis (int,interable[int]): Axis or axis corresponding to indices to slice
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Put array
 	'''
@@ -6493,47 +6442,44 @@ def put(a,values,indices,axis,dtype=None):
 
 
 
-def broadcast_to(a,shape,dtype=None):
+def broadcast_to(a,shape):
 	'''
 	Broadcast array to shape
 	Args:
 		a (array): Array to broadcast
 		shape (iterable): Shape to broadcast to
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Broadcasted array
 	'''
-	return np.broadcast_to(a,shape,dtype=dtype)
+	return np.broadcast_to(a,shape)
 
 
-def moveaxis(a,source,destination,dtype=None):
+def moveaxis(a,source,destination):
 	'''
 	Move axis of array
 	Args:
 		a (array): Array to be moved
 		source (int,iterable[int]): Initial axis
 		destination (int,interable[int]): Final axis
-		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Array with moved axis
 	'''
 
-	return np.moveaxis(a,source,destination,dtype=dtype)
+	return np.moveaxis(a,source,destination)
 
 
-def expand_dims(a,axis,dtype=None):
+def expand_dims(a,axis):
 	'''
 	Expand axis of array
 	Args:
 		a (array): Array to be expanded
 		axis (int,iterable[int]): Axes to expand to
-		dtype (datatype): Datatype of array
 	Returns:
 		out (array): Array with expanded axis
 	'''
 	if isinstance(axis,range):
 		axis = list(axis)
-	return np.expand_dims(a,axis,dtype=dtype)
+	return np.expand_dims(a,axis)
 
 
 def bounding(bounds,dtype=None):
