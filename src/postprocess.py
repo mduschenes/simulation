@@ -316,7 +316,7 @@ defaults = {
 			"framealpha": 0.8,
             "handlers":{"errorbar":{"yerr_size":20}},			
 			"loc": [0.05,0.1],
-			"ncol": 7,
+			"ncol": 6,
 			"set_zorder":{"level":100},
 			"set_label":None,
 			}
@@ -822,7 +822,7 @@ def postprocess(path,**kwargs):
 										# 'label':r'$\quad~~ M_{\gamma} = {(\gamma-\beta)}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 										# 'label':r'$\quad~~ M_{\gamma} = {\gamma}^{-\alpha}$'+'\n'+r'$%s$'%(',~'.join([
 										'label':(
-											r'$\quad~~ M_{\gamma} = -\alpha\log{\gamma} - {\beta}$' + '\n' + 
+											r'$\quad~~ M_{\gamma} = -\alpha\log_{10}{\gamma} - {\beta}$' + '\n' + 
 											r'$%s$'%('\n'.join([
 											'%s = %s'%(z,scinotation(-_parameters[len(_parameters)-1-i],decimals=2,one=True,zero=True,scilimits=[-1,4],error=sqrt(_covariance[i][i]) if _covariance is not None else None)) 
 												for i,z in enumerate([r'\alpha',r'\beta',r'\chi',r'\eta'][:len(_parameters)])])) + '\n' +
