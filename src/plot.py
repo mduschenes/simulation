@@ -906,7 +906,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 	def attr_wrap(obj,attr,objs,settings,**kwargs):
 
-		def attrs(obj,attr,objs,index,shape,_kwargs,kwargs):
+		def attrs(obj,attr,objs,index,indices,shape,count,_kwargs,kwargs):
 			call = True
 			args = []
 			kwds = {}
@@ -970,7 +970,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 						},						
 						}
 					for handler in handlers:
-						for _obj in objs:
+						for _obj in [i for i in objs if i is not None]:
 							func = funcs.get(handler)
 							if func is not None:
 								handler_map.update({types: func[types](**handlers[handler]) for types in func if isinstance(_obj,types)})
@@ -992,24 +992,70 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					if unique:
 						indexes = [[i for i,label in enumerate(labels) if label==value] for value in unique]
 						keep = [keep]*len(indexes) if isinstance(keep,(str,int)) else keep
-						index = []
+						elements = []
 						for k,i in zip(keep,indexes):
 
 							if k in ['first']:
-								index.append(0)
+								elements.append(0)
 							elif k in ['middle']:
-								index.append(len(i)//2)
+								elements.append(len(i)//2)
 							elif k in ['last']:
-								index.append(-1)
+								elements.append(-1)
 							elif isinstance(k,int):
-								index.append(k)
+								elements.append(k)
 							else:
-								index.append(k)
-						if index is not None:
-							labels,handles = [labels[i[j]] for i,j in zip(indexes,index)],[handles[i[j]] for i,j in zip(indexes,index)]
+								elements.append(k)
+						if elements is not None:
+							labels,handles = [labels[i[j]] for i,j in zip(indexes,elements)],[handles[i[j]] for i,j in zip(indexes,elements)]
 				if kwargs[attr].get('multiline') is True:
 					pass
+				if kwargs[attr].get('sort') is not None:
 
+					if isinstance(kwargs[attr].get('sort'),dict): 
+
+						funcs = {
+							**{
+							container.lower():{
+								getattr(matplotlib.container,'%sContainer'%(container.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%(container.capitalize()))
+								}
+							for container in ['Errorbar']
+							},
+						}
+
+						indexes = [_obj['count'] for i,_obj in enumerate(objs) 
+							if ((_obj is not None) and any(isinstance(_obj['obj'],types) and 
+								(getattr(_obj['obj'],'get_label',lambda:None)() is not None)
+								for handler in funcs for types in funcs[handler]))]
+						indexes = [indexes.index(kwargs[attr].get('sort').get(i)) for i in kwargs[attr].get('sort') if kwargs[attr].get('sort').get(i) in indexes]
+
+						handles,labels = [handles[i] for i in indexes],[labels[i] for i in indexes]
+
+				if kwargs[attr].get('set_color') is not None:
+
+					if isinstance(kwargs[attr].get('set_color'),dict): 
+
+						funcs = {
+							**{
+							container.lower():{
+								getattr(matplotlib.container,'%sContainer'%(container.capitalize())): getattr(matplotlib.legend_handler,'Handler%s'%(container.capitalize()))
+								}
+							for container in ['Errorbar']
+							},
+						}
+
+						indexes = [_obj['count'] for i,_obj in enumerate(objs) 
+							if ((_obj is not None) and any(isinstance(_obj['obj'],types) and 
+								(getattr(_obj['obj'],'get_label',lambda:None)() is not None)
+								for handler in funcs for types in funcs[handler]))]
+						indexes = [kwargs[attr].get('set_color').get(i) for i in kwargs[attr].get('set_color') if kwargs[attr].get('set_color').get(i) in indexes]
+
+						kwargs[attr]['set_color'] = [
+							(set_color(**kwargs[attr].get('set_color')[i])[1] 
+							if isinstance(kwargs[attr].get('set_color')[i],dict) else kwargs[attr].get('set_color')[i])
+							if not isinstance(kwargs[attr].get('set_color'),scalars) 
+							else kwargs[attr].get('set_color')
+							for i in indexes
+							]
 
 				if ('handles' in kwargs[attr]) and (not kwargs[attr]['handles']):
 					handles = []
@@ -1030,7 +1076,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 							if kwargs[attr].get('set_%s'%(prop)) is not None}} if any(kwargs[attr].get('set_%s'%(prop)) is not None for prop in ['alpha','color']) else {})
 					})
 
-
 				call = (not (
 					(( (not kwargs[attr]['handles']) or (not kwargs[attr]['labels'])) or 
 					(all([kwargs[attr][k] is None for k in kwargs[attr]]))) or
@@ -1038,7 +1083,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					(('set_label' in kwargs[attr]) and (kwargs[attr].get('set_label',None) is False)))
 					))
 
-				nullkwargs.extend(['prop','join','flip','update','keep','multiline','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','title','get_title','get_texts','set_label'])
+				nullkwargs.extend(['prop','join','flip','update','keep','sort','multiline','handlers','set_zorder','get_zorder','set_title','set_alpha','set_color','title','get_title','get_texts','set_label'])
 
 			elif attr in ['plot','axvline','axhline']:
 				dim = 2
@@ -1278,15 +1323,18 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 			elif attr in ['set_%sscale'%(axes) for axes in AXES]:
 				replacements = {
-					'base':lambda axes,attr,value:'%s%s'%(attr,axes),
-					'base':lambda axes,attr,value:'%s'%(attr),
+					'base':lambda axes,key,attr,kwargs:('%s%s'%(key,axes) if (kwargs[attr].get('value') not in ['linear']) else None),
+					'base':lambda axes,key,attr,kwargs:('%s'%(key) if (kwargs[attr].get('value') not in ['linear']) else None),
 					}
 				for axes in AXES:
 					if attr == 'set_%sscale'%(axes):
 						for k in kwargs[attr]:
 							if k in replacements:
-								k,v = replacements[k](axes,k,kwargs[attr][k]),kwargs[attr].pop(k)
-								kwargs[attr][k] = v
+								k,v = replacements[k](axes,k,attr,kwargs),kwargs[attr].pop(k)
+								
+								if k is not None:
+									kwargs[attr][k] = v
+
 								break
 
 			elif attr in ['set_%sbreak'%(axes) for axes in AXES]:
@@ -1445,6 +1493,11 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 
 			if not call:	
+		
+				_obj = None
+				
+				objs.append(_obj)
+
 				return
 
 			# Set fields as per index
@@ -1461,10 +1514,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 				if value == '__cycle__':
 					try:
-						_obj = objs[-1][-1]
+						_obj = [i for i in objs if i is not None][-1]['obj'][-1]
 					except:
 						try:
-							_obj = objs[-1]
+							_obj = [i for i in objs if i is not None][-1]['obj']
 						except:
 							_obj = objs
 					values = list_from_generator(getattr(getattr(obj,'_get_lines'),'prop_cycler'),field)
@@ -1544,7 +1597,6 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# 		logger.log(debug,'%r %r %s %r %r'%(e,_obj,attr,args,_kwargs_))
 			# 		logger.log(debug,'%r'%(traceback.format_exc()))
 			# 		exit()
-
 			for k in _kwds:
 				_attr_ = _attr
 				for a in k.split('.')[:-1]:
@@ -1569,11 +1621,10 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 										getattr(_subattr_,l)(**_kwds[k][l])
 							except:
 								try:
-									for _subattr_ in get_children(_attr,a):
+									for j,_subattr_ in enumerate(get_children(_attr,a)):
 										for l in _kwds[k]:
-											for i in _kwds[k][l]:
-												getattr(_subattr_,l)(i)
-								except:
+											getattr(_subattr_,l)(_kwds[k][l][j])
+								except Exception as exception:
 									try:
 										for _subattr_ in getattr(_attr_,a):
 											for i,l in enumerate(_kwds[k]):
@@ -1598,7 +1649,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			# 		getattr(obj,attr)(*args,**_kwargs_)
 			# 	except:
 			# 		pass
-			_obj = _attr
+			_obj = {'obj':_attr,'attr':attr,'index':index,'indices':indices,'shape':shape,'count':count}
 			
 			objs.append(_obj)
 
@@ -1622,14 +1673,17 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 		if not isinstance(settings[attr],(dict,list)):
 			return
 
-		finds = [(index,[1] if not shape else shape,{**settings,attr:setting} if setting else None) for index,shape,setting in search(settings[attr],types=(list,))]
 
-		for index,shape,kwarg in finds:
+
+		finds = [(index,[1] if not shape else shape,{**settings,attr:setting} if setting else None) for index,shape,setting in search(settings[attr],types=(list,))]
+		indices = [index for index,shape,kwarg in finds]
+
+		for count,(index,shape,kwarg) in enumerate(finds):
 			
 			if not kwarg:
 				continue
 
-			attrs(obj,attr,objs,index,shape,kwargs,attr_kwargs(kwarg,attr,kwargs,settings,index))
+			attrs(obj,attr,objs,index,indices,shape,count,kwargs,attr_kwargs(kwarg,attr,kwargs,settings,index))
 
 		return
 
@@ -1644,8 +1698,8 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 
 		matplotlib.rcParams.update(settings[key]['style'].get('rcParams',{}))
 
-		objs = lambda attr,key,fig,ax: {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in CAXES}}[attr]
-		obj = objs(attr,key,fig,ax)
+		obj = lambda attr,key,fig,ax: {'fig':fig.get(key),'ax':ax.get(key),**{'%s_%s'%('ax',k):ax.get('%s_%s'%(key,k)) for k in CAXES}}[attr]
+		obj = obj(attr,key,fig,ax)
 
 		ordering = {'close':-1,'savefig':-2}
 

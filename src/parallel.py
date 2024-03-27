@@ -5,15 +5,27 @@ import os,sys,warnings,functools,itertools,inspect,timeit
 import numpy as np
 from copy import deepcopy as copy
 from functools import partial
+from time import time
 
-# import multiprocess as mp
-# import multithreading as mt
+import threading
 import joblib
+from joblib import Parallel, delayed
 import multiprocessing as multiprocessing
 import multiprocessing.dummy as multithreading
+# import multiprocess as mp
+# import multithreading as mt
 
 DELIMITER='__'
 MAX_PROCESSES = 8
+
+
+# Import User modules
+ROOT = os.path.dirname(os.path.abspath(__file__))
+PATHS = ['','..']
+for PATH in PATHS:
+	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
+from src.io import load,dump
 
 # Logging
 from src.logger	import Logger
@@ -204,7 +216,7 @@ def empty(obj,*attrs):
 		if attr in attrs:
 			setattr(newobj,attr,copy(getattr(obj,attr)))
 	newobj.__dict__.update({attr: obj.__dict__.get(attr) 
-						   for attr in attrs if not getattr(newobj,attr,False)})
+				for attr in attrs if not getattr(newobj,attr,False)})
 	return newobj
 
 
@@ -750,28 +762,6 @@ class Parallelize(object):
 		return value			
 
 
-# Parallel class using joblib
-class Parallel(joblib.Parallel):
-	
-	pass
-
-
-# null Parallel class using joblib
-class nullParallel(joblib.Parallel):
-	@timing(False)
-	def __call__(self,jobs):
-		return [func(*args,**kwargs) for func,args,kwargs in jobs]
-
-
-# Delayed function call for parallelization using joblib
-class Delayed(object):
-	def __init__(self,function, check_pickle=None):
-		self.function = joblib.delayed(function)
-		return
-	def __call__(self,*args,**kwargs):
-		return self.function(*args,**kwargs)
-
-
 
 # TODO: Modify to match class API of concurrent futures 
 # (can be also similar to structure of __call__ and get_exucator_pool in place of get_pool, with a Future() and nullFuture() class as the context)
@@ -1016,3 +1006,143 @@ def catch(update,exceptions,raises,iterations=1000):
 		return wrapper
 	return wrap
 
+
+
+class Function(object):
+	def __init__(self,func,*args,**kwargs):
+		self.func = func if callable(func) else load(func)
+		self.args = args
+		self.kwargs = kwargs
+		return
+
+	def __call__(self,iteration):
+		return self.func(iteration,*self.args,**self.kwargs)
+
+
+class Callback(object):
+	def __init__(self,func,initial,*args,**kwargs):
+		self.func = func if callable(func) else load(func)
+		self.initial = initial
+		self.args = args
+		self.kwargs = kwargs
+
+		self.data = initial
+		self.lock = threading.Lock()
+		return
+
+	def __call__(self,data):
+		with self.lock:
+			self.data = self.func(data,self.data,*self.args,**self.kwargs)
+		return
+
+	@property
+	def final(self):
+		return self.data
+
+
+class Error(object):
+	def __init__(self,*args,**kwargs):
+		self.args = args
+		self.kwargs = kwargs
+		return
+
+	def __call__(self,error):
+		return
+
+
+
+class Parallel(object):
+	'''
+	Parallelize function
+	Args:
+		processes (int): Number of processes,default MAX_PROCESSES
+		method (str): Parallelization backend, apply_async
+		function (callable,str): Function to parallelize or path to function
+		callback (callable,str): Callback to parallelize or path to callback
+		iterations (int,iterable[int]): Iterations and repeats
+		args (tuple[object]): Positional arguments to function
+		kwargs (dict[str,object]): Keyword arguments to function
+	'''	
+	def __init__(self,processes=None,method=None,function=None,callback=None,iterations=None,*args,**kwargs):
+		self.processes = processes if processes is not None else multiprocessing.cpu_count()-1
+		self.method = method if method is not None else None
+		self.function = Function(function,*args,**kwargs)
+		self.callback = Callback(callback,*args,**kwargs)
+		self.error_callback = Error(*args,**kwargs)
+		self.iterations = iterations
+		self.args = args
+		self.kwargs = kwargs
+		return
+
+	def __call__(self,iterations=None,**kwargs):
+		'''
+		Parallel function
+		Args:
+			iterations (int,iterable[int]): Iterations and repeats
+			kwargs (dict[str,object]): Keyword arguments to function
+		Returns:
+			data (object): Data object
+		'''
+
+		if iterations is None:
+			iterations = self.iterations
+
+		if isinstance(iterations,int):
+			size = iterations
+			iterations = range(size)
+		elif isinstance(iterations,(tuple,list)):
+			size,repeat = iterations
+			iterations = product(range(size),repeat=repeat)
+
+		with multiprocessing.Pool(processes=self.processes) as parallel:
+
+			if self.method is None or not hasattr(parallel,self.method):
+				def func(function,args=(),kwargs={},callback=None,error_callback=None):
+					callback(function(*args,**kwargs))
+					return
+			else:
+				func = getattr(parallel,self.method) 
+
+			for iteration in iterations:
+				tmp = func(self.function,(iteration,),callback=self.callback,error_callback=self.error_callback)
+
+			parallel.close()
+			parallel.join()
+
+			data = self.callback.data
+
+
+		# with Parallel(n_jobs=self.processes) as parallel:
+
+		# 	func = delayed(self.function)
+
+		# 	tmp = parallel(func(iteration) for iteration in iterations)
+
+		# 	# func = self.function
+
+		# 	# tmp = []
+		# 	# for iteration in iterations:
+		# 	# 	tmp.append(func(iteration))
+
+		# 	data = sum(tmp)
+
+		return data
+
+# Parallel class using joblib
+# class Parallel(joblib.Parallel):
+# 	pass
+
+# null Parallel class using joblib
+class nullParallel(joblib.Parallel):
+	@timing(False)
+	def __call__(self,jobs):
+		return [func(*args,**kwargs) for func,args,kwargs in jobs]
+
+
+# Delayed function call for parallelization using joblib
+class Delayed(object):
+	def __init__(self,function, check_pickle=None):
+		self.function = joblib.delayed(function)
+		return
+	def __call__(self,*args,**kwargs):
+		return self.function(*args,**kwargs)
