@@ -24,6 +24,20 @@ def test_jax(*args,**kwargs):
 	print(jax.devices())
 	return
 
+def test_matplotlib(*args,**kwargs):
+	import sys,os
+	import matplotlib
+	import matplotlib.pyplot as plt
+
+	with matplotlib.style.context('../test/config/plot.mplstyle'):
+		plt.plot([1,2,3],[1,2,3],label='$\\textrm{Hi}~\\ket{\\psi}~\\norm{\\vec{v}}$')
+		plt.legend()
+		plt.savefig('plot.pdf')
+
+	os.system('rm plot.pdf')
+
+	return
+
 def test_pytables(*args,**kwargs):
 	import sys,os
 	import numpy as np
