@@ -927,7 +927,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			attr_ = attr
 			kwargs = deepcopy(kwargs)
 			nullkwargs = []				
-
+			nullkwarg = ['call']
 
 			if attr in ['legend']:
 				handles,labels = getattr(obj,'get_legend_handles_labels')()
@@ -1475,7 +1475,9 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					plt.close(obj)
 				call = False
 
-			if (kwargs[attr].get('call') is not None) and (not kwargs[attr]['call']):
+			if any(((kwargs[attr].get(kwarg) is not None) and (not kwargs[attr][kwarg]))
+				for kwarg in nullkwarg):
+
 				call = False
 
 			try:
@@ -1495,7 +1497,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 			if not call:	
 		
 				_obj = None
-				
+
 				objs.append(_obj)
 
 				return
@@ -1621,7 +1623,7 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 										getattr(_subattr_,l)(**_kwds[k][l])
 							except:
 								try:
-									for j,_subattr_ in enumerate(get_children(_attr,a)):
+									for j,_subattr_ in enumerate(list(get_children(_attr,a))):
 										for l in _kwds[k]:
 											getattr(_subattr_,l)(_kwds[k][l][j])
 								except Exception as exception:
