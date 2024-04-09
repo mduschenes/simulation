@@ -16,6 +16,7 @@
 ##SBATCH --dependency=afterany:
 
 ##SBATCH --signal=B:USRSIG@60
+##SBATCH --open-mode=append
 
 ##--nodelist=cpu[0-10]
 ##--exclude=cpu[0-10]
@@ -26,7 +27,6 @@
 
 
 # Run Parallel tasks
-
 
 # Function
 function RUN(){
@@ -53,8 +53,10 @@ export -f RUN
 function QUEUE(){
 
 	job=${BASH_SOURCE[0]}
+	id=${SLURM_ARRAY_JOB_ID}
 
-	sbatch --export=ALL < ${job}
+	# scontrol requeue ${id}
+	# sbatch --export=ALL < ${job}
 }
 export -f QUEUE
 
@@ -128,4 +130,4 @@ ${EXE[@]} ${TASKS[@]}
 scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
 
 # Queue
-# trap QUEUE SIGUSRSIG
+# trap 'QUEUE' SIGUSRSIG

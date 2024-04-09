@@ -490,7 +490,7 @@ def find(dictionary,verbose=None):
 				'shape':None,
 					#{'shape': {'row':[],'col':[],'axis':[],'axes':[]},'reshape':[],'transpose':[]},
 				'legend': {
-					'label':{},'include':None,'exclude':None,'sort':None,'parse':None,
+					'label':None,'include':None,'exclude':None,'sort':None,'parse':None,
 				},
 				'wrapper':{},
 				'texify':{},
@@ -2405,7 +2405,7 @@ def plotter(plots,processes,verbose=None):
 					separator = '\n'
 				else:
 					separator = '~,~'
-				delimiter = '~,~'
+				delimiter = ',~'
 
 				value = [[i[k] for k in func(i)] for i in value if i]
 				value = separator.join([delimiter.join(i) for i in value]).replace('$','')
@@ -2704,9 +2704,11 @@ def plotter(plots,processes,verbose=None):
 							string = None
 
 						if isinstance(data[OTHER][OTHER]['legend'].get('label'),dict):
-							strings = data[OTHER][OTHER]['legend'].get('label').get(label)
+							strings = data[OTHER][OTHER]['legend'].get('label').get(label,label)
 						elif isinstance(data[OTHER][OTHER]['legend'].get('label'),str):
 							strings = data[OTHER][OTHER]['legend'].get('label')
+						else:
+							strings = string
 
 						if not isinstance(strings,dict):
 							strings = {string: strings}
@@ -2748,7 +2750,8 @@ def plotter(plots,processes,verbose=None):
 						**({label: func(label)
 							for label in data[OTHER][OTHER]['legend'].get('label')} 
 							if isinstance(data[OTHER][OTHER]['legend'].get('label'),dict) else 
-							{None:func(data[OTHER][OTHER]['legend'].get('label'))}
+							{None:func(data[OTHER][OTHER]['legend'].get('label'))} 
+							if data[OTHER][OTHER]['legend'].get('label') is not None else {}
 							)
 						}
 
@@ -2763,7 +2766,7 @@ def plotter(plots,processes,verbose=None):
 				
 					separator = ',~'
 
-					tmp = dataframe({label: [data[OTHER][label] if values[prop][label]['label'] else data[OTHER].get(data[OTHER][OTHER][OTHER].replace('@',''),
+					tmp = dataframe({label: [data[OTHER][label] if values[prop][label]['label'] else data[OTHER].get(data[OTHER][OTHER][OTHER][label].replace('@',''),
 						data[OTHER][OTHER][OTHER][label].replace('@',''))] 
 						for label in value if label is not None})
 
