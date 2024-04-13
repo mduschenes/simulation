@@ -2524,7 +2524,6 @@ def plotter(plots,processes,verbose=None):
 						wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr in ALL}
 
 
-					print(wrappers)
 					normalize = data[OTHER][OTHER].get('normalize')
 					normalizations = {
 						'size': (lambda axes,data: (np.array(data[axes])/(len(data[axes])-1)) if (len(data[axes])>1) else np.array([0.5])),
