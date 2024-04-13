@@ -126,11 +126,11 @@ def func_entropy_func_err(data):
 	return out	
 
 def func_purity(data):
-	out = 1-np.array(data['purity'])
+	out = np.array(data['purity'])
 	return out	
 
 def func_purity_func(data):
-	out = 2*data['N']*np.array(data['M'])*data['noise.parameters']*((data['D']**data['N']-1)/(data['D']**data['N']))
+	out = 1-2*data['N']*np.array(data['M'])*data['noise.parameters']*((data['D']**data['N']-1)/(data['D']**data['N']))
 	return out	
 
 def func_purity_func_err(data):

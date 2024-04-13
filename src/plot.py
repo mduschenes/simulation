@@ -1475,12 +1475,13 @@ def plot(x=None,y=None,z=None,settings={},fig=None,ax=None,mplstyle=None,texify=
 					plt.close(obj)
 				call = False
 
+
 			if any(((kwargs[attr].get(kwarg) is not None) and (not kwargs[attr][kwarg]))
 				for kwarg in nullkwarg):
 
-				nullkwargs.extend(nullkwarg)
-
 				call = False
+
+			nullkwargs.extend(nullkwarg)
 
 			try:
 				_kwargs_ = deepcopy(kwargs[attr])
