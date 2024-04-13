@@ -126,7 +126,6 @@ def func_entropy_func_err(data):
 	return out	
 
 def func_purity(data):
-	print('Doing',data['purity'])
 	out = 1-np.array(data['purity'])
 	return out	
 

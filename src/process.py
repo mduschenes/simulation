@@ -1563,17 +1563,20 @@ def plotter(plots,processes,verbose=None):
 							if wrappers is None:
 								wrappers = {}
 							else:
-								wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr not in ALL}
-
+								wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers}
 
 							for attr in data[OTHER]:
 								if wrappers.get(attr):
 									value = {
 										**{attr: data[OTHER][attr] for attr in data[OTHER]},
-										**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
+										**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in ALL},
 										}
 									value = wrappers[attr](value)
-									data[OTHER][attr] = value
+									
+									if attr in ALL:
+										data[attr] = value										
+									else:
+										data[OTHER][attr] = value
 
 						dimensions = [axes for axes in AXES if axes in data]
 						independent = [axes for axes in ALL 
