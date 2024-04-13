@@ -1563,20 +1563,17 @@ def plotter(plots,processes,verbose=None):
 							if wrappers is None:
 								wrappers = {}
 							else:
-								wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers}
+								wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr not in ALL}
+
 
 							for attr in data[OTHER]:
 								if wrappers.get(attr):
 									value = {
 										**{attr: data[OTHER][attr] for attr in data[OTHER]},
-										**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in ALL},
+										**{data[OTHER][attr][OTHER]: data[attr] for attr in data if attr in VARIABLES},
 										}
 									value = wrappers[attr](value)
-									
-									if attr in ALL:
-										data[attr] = value										
-									else:
-										data[OTHER][attr] = value
+									data[OTHER][attr] = value
 
 						dimensions = [axes for axes in AXES if axes in data]
 						independent = [axes for axes in ALL 
@@ -2526,6 +2523,8 @@ def plotter(plots,processes,verbose=None):
 					else:
 						wrappers = {attr: load(wrappers[attr],default=None) for attr in wrappers if attr in ALL}
 
+
+					print(wrappers)
 					normalize = data[OTHER][OTHER].get('normalize')
 					normalizations = {
 						'size': (lambda axes,data: (np.array(data[axes])/(len(data[axes])-1)) if (len(data[axes])>1) else np.array([0.5])),
