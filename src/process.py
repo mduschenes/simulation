@@ -379,6 +379,7 @@ def setup(data,plots,processes,pwd=None,cwd=None,verbose=None):
 		'path':{},
 		'load':None,
 		'dump':None,
+		'convert':None,
 		'plot':None,
 		'process':None,
 		'postprocess':None,
@@ -1112,17 +1113,16 @@ def loader(data,plots,processes,verbose=None):
 			wrapper = 'df'			
 			default = None
 			data = load(path,default=default,wrapper=wrapper,verbose=verbose)
-			
+
 		new = tmp is not None and data is not None
 
 		if new and processes['dump']:
 			path = tmp
-			wrapper = 'pd'
+			wrapper = processes['convert'] if isinstance(processes['convert'],str) else 'pd'
 			dump(data,path,wrapper=wrapper,verbose=verbose)
 
 		# Get functions of data
 		apply(keys,data,plots,processes,verbose=verbose)
-
 
 	# Check plots
 	attr = 'instance'
