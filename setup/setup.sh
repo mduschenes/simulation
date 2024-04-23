@@ -147,12 +147,12 @@ done
 rm ${requirements[@]} 
 
 # Conda packages
-packages=(libgcc libstdcxx-ng=12)
-conda install -c conda-forge ${packages[@]}
+# packages=(libgcc libstdcxx-ng=12)
+# conda install -c conda-forge ${packages[@]}
 
 # Pip packages
-packages=(gnureadline)
-pip install ${packages[@]}
+# packages=(gnureadline)
+# pip install ${packages[@]}
 
 # conda update --all
 
