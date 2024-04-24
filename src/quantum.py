@@ -631,8 +631,8 @@ class Object(System):
 		data = self.data
 		state = self.state() if callable(self.state) else self.state
 
-		contract = contraction(data,state)
-		grad_contract = gradient_contraction(data,state)
+		contract = contraction(data,state) if self.contract is None else self.contract
+		grad_contract = gradient_contraction(data,state) if self.gradient_contract is None else self.gradient_contract
 
 		self.contract = contract
 		self.gradient_contract = grad_contract
@@ -1040,14 +1040,20 @@ class Pauli(Object):
 			def gradient(parameters=None,state=None):
 				return (-sin(parameters)*self.identity + -1j*cos(parameters)*self.data)
 
+		contract = None
+		gradient_contract = None
 
 		data = self.data if data is None else data
 
 		hermitian = False
 		unitary = True
 
+		self.data = data
+
 		self.func = func
 		self.gradient = gradient
+		self.contract = contract
+		self.gradient_contract = gradient_contract
 
 		self.hermitian = hermitian
 		self.unitary = unitary
@@ -1094,10 +1100,20 @@ class Gate(Object):
 
 		data = self.data if data is None else data
 		
+		func = self.func
+		gradient = self.gradient
+		contract = None
+		gradient_contract = None
+
 		hermitian = False
 		unitary = True
 
 		self.data = data
+
+		self.func = func
+		self.gradient = gradient
+		self.contract = contract
+		self.gradient_contract = self.gradient_contract
 
 		self.hermitian = hermitian
 		self.unitary = unitary
@@ -1158,11 +1174,22 @@ class Haar(Object):
 		else:
 
 			data = self.data
-		
+
+		func = self.func
+		gradient = self.gradient
+		contract = None
+		gradient_contract = None
+
 		hermitian = False
 		unitary = True
 
 		self.data = data
+
+		self.func = func
+		self.gradient = gradient
+		self.contract = contract
+		self.gradient_contract = gradient_contract
+
 
 		self.hermitian = hermitian
 		self.unitary = unitary
@@ -1292,6 +1319,11 @@ class State(Object):
 
 			data = self.data
 
+		func = self.func
+		gradient = self.gradient
+		contract = None
+		gradient_contract = None
+
 		if self.ndim is None:
 			hermitian = True
 			unitary = False
@@ -1306,6 +1338,11 @@ class State(Object):
 			unitary = False
 		
 		self.data = data
+
+		self.func = func
+		self.gradient = gradient
+		self.contract = contract
+		self.gradient_contract = gradient_contract
 
 		self.hermitian = hermitian
 		self.unitary = unitary
@@ -1415,8 +1452,13 @@ class Noise(Object):
 			default = self.default
 			site = list(range(self.N)) if self.site is None else self.site if not isinstance(self.site,int) else [self.site]
 			operator = None if self.operator is None else [self.operator[self.site.index(i)%len(self.operator)] if i in self.site else self.default for i in range(self.N)] if not isinstance(self.operator,str) else [self.operator]*self.N
-			locality = len(operator)
+			locality = len(operator) if operator is not None else None
 			parameters = self.parameters(self.parameters())
+			
+			func = self.func
+			gradient = self.gradient
+			contract = None
+			gradient_contract = None
 
 			parameters = [None]*self.N if parameters is None else [parameters[[self.site.index(i)%len(parameters)]] if i in self.site else self.default for i in range(self.N)] if not isinstance(parameters,scalars) and parameters.size > 1 else [parameters]*self.N
 
@@ -1427,7 +1469,7 @@ class Noise(Object):
 
 			data = []
 
-			assert ((isinstance(parameters,scalars) and (parameters >= 0) and (parameters <= 1)) or (all((i>=0) and (i<=1) for i in parameters))), 'Noise scale %r not in [0,1]'%(parameters)
+			assert ((isinstance(parameters,scalars) and (operator is not None) and (parameters >= 0) and (parameters <= 1)) or (all((i>=0) and (i<=1) for i in parameters))), 'Noise scale %r not in [0,1]'%(parameters)
 
 			for i in range(N):
 
@@ -1459,11 +1501,40 @@ class Noise(Object):
 							sqrt(parameters[i]/(self.D**2))*self.basis['X'](D=self.D,dtype=self.dtype),
 							sqrt(parameters[i]/(self.D**2))*self.basis['Y'](D=self.D,dtype=self.dtype),
 							sqrt(parameters[i]/(self.D**2))*self.basis['Z'](D=self.D,dtype=self.dtype)]
+					
+					# TODO: Determine efficient contraction of D**N operators or partial traces of state for 'depolarize'. Currently only global depolarize efficient
+					# datum = [self.basis['I'](D=self.D,dtype=self.dtype)]
+
+					# def func(parameters=None,state=None):
+					# 	return (1-parameters)*state + (parameters)*self.data[0]
+
+					# def gradient(parameters=None,state=None):
+					# 	return 0*state
+
+					# def contract(data=None,state=None):
+					# 	return data
+					
+					# def gradient_contract(grad=None,data=None,state=None):
+					# 	return grad
+
 				elif operator[i] in ['eps']:
 					datum = array([identity(self.n,dtype=self.dtype),diag((1+parameters[i])**(arange(self.n)+2) - 1)])
 				elif operator[i] in ['noise','rand']:
 					datum = array(parameters[i],dtype=datatype(self.dtype))
 					seed = prng(reset=self.seed)
+			
+					def func(parameters=None,state=None):
+						return state + parameters*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=state.dtype)/2
+
+					def gradient(parameters=None,state=None):
+						return 0*state
+
+					def contract(data=None,state=None):
+						return data
+					
+					def gradient_contract(grad=None,data=None,state=None):
+						return grad
+
 				else:
 					datum = [self.basis[self.default](D=self.D,dtype=self.dtype)]
 
@@ -1480,34 +1551,23 @@ class Noise(Object):
 				data = array([tensorprod(i)	for i in permutations(*data)],dtype=self.dtype)
 
 		else:
-
 			data = self.data
 
 		hermitian = False
 		unitary = False
-
-		if self.ndim == 0:
-			def func(parameters=None,state=None):
-				return state + parameters*rand(state.shape,random='uniform',bounds=[-1,1],seed=None,dtype=self.dtype)/2
-
-			def gradient(parameters=None,state=None):
-				return 0*state
-
-		else:
-			func = self.func
-			gradient = self.gradient
 
 
 		self.data = data
 
 		self.func = func
 		self.gradient = gradient
+		self.contract = contract
+		self.gradient_contract = gradient_contract
 
 		self.hermitian = hermitian
 		self.unitary = unitary
 
 		return
-
 
 class Operators(Object):
 	'''

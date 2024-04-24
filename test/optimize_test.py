@@ -155,5 +155,5 @@ def test_optimizer(path,tol):
 if __name__ == '__main__':
 	path = 'config/settings.json'
 	tol = 5e-8 
-	test_objective(path,tol)
+	# test_objective(path,tol)
 	test_optimizer(path,tol)

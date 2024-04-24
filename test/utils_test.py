@@ -11,7 +11,7 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import np,onp,BACKEND
+from src.utils import np,onp,backend
 from src.utils import array,zeros,rand,identity,inplace,datatype,allclose,sqrt,abs2
 from src.utils import gradient,rand,eye,diag,sin,cos
 from src.utils import einsum,norm,norm2,trace,mse
@@ -402,7 +402,7 @@ def test_scinotation(path=None,tol=None):
 
 def test_gradient(path=None,tol=None):
 
-	if BACKEND in ['autograd']:
+	if backend in ['autograd']:
 		return
 
 	def func(x,y,z):
@@ -498,7 +498,7 @@ def test_rand(path,tol):
 
 	os.environ['NUMPY_BACKEND'] = 'JAX.AUTOGRAD'
 	reload(src.utils)
-	from src.utils import array,rand,prng,BACKEND
+	from src.utils import array,rand,prng,backend
 	keys = prng(seed,reset=reset,size=size)
 	for i in range(size):
 		kwargs[i]['key'] = keys[i]
@@ -506,7 +506,7 @@ def test_rand(path,tol):
 
 	os.environ['NUMPY_BACKEND'] = 'AUTOGRAD'
 	reload(src.utils)
-	from src.utils import array,rand,prng,BACKEND
+	from src.utils import array,rand,prng,backend
 	keys = prng(seed,reset=reset,size=size)
 	for i in range(size):
 		kwargs[i]['key'] = keys[i]
