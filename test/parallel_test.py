@@ -11,6 +11,8 @@ PATHS = ['','..','../..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
+os.environ['NUMPY_BACKEND'] = 'autograd'
+
 from src.utils import argparser
 from src.call import submit,command,call,cp,rm,echo,sed,sleep,touch
 from src.parallel import Parallelize,Pooler
@@ -83,15 +85,15 @@ def test_pooler(path):
 
 def main(*args,**kwargs):
 
-	# test_parallelize(*args,**kwargs)
-	test_pooler(*args,**kwargs)
+	test_parallelize(*args,**kwargs)
+	# test_pooler(*args,**kwargs)
 
 	return
 
 
 if __name__ == "__main__":
 
-	args = argparser('path')
+	args = argparser({'path':{'default':'config/settings.json'}})
 
 	main(*args,**args)
 	

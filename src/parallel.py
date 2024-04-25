@@ -580,10 +580,10 @@ class Parallelize(object):
 		self.set_delayed(delayed)
 		self.set_prefer(prefer)
 		self.set_verbose(verbose)
-		return
-	@timing(False)
-	
 
+		return
+
+	@timing(False)
 	def __call__(self,iterable,func,callback=nullfunc,error_callback=logfunc,args=(),kwds={},callback_args=(),callback_kwds={},module='parallel'):
 		'''
 		Call function in parallel
@@ -1020,13 +1020,12 @@ class Function(object):
 
 
 class Callback(object):
-	def __init__(self,func,initial,*args,**kwargs):
+	def __init__(self,func,*args,**kwargs):
 		self.func = func if callable(func) else load(func)
-		self.initial = initial
 		self.args = args
 		self.kwargs = kwargs
 
-		self.data = initial
+		self.data = []
 		self.lock = threading.Lock()
 		return
 
@@ -1129,8 +1128,8 @@ class Parallel(object):
 		return data
 
 # Parallel class using joblib
-# class Parallel(joblib.Parallel):
-# 	pass
+class Parallel(joblib.Parallel):
+	pass
 
 # null Parallel class using joblib
 class nullParallel(joblib.Parallel):
