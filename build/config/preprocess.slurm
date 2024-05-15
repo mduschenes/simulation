@@ -7,6 +7,7 @@
 #SBATCH --output=%x.%A.stdout
 #SBATCH --error=%x.%A.stderr
 
+##SBATCH --qos=normal
 #SBATCH --partition=cpu
 #SBATCH --time=01:00:00
 #SBATCH --mem=32G
@@ -18,6 +19,7 @@
 ##SBATCH --dependency=afterany:
 
 ##SBATCH --signal=B:USRSIG@60
+##SBATCH --open-mode=append
 
 ##--nodelist=cpu[0-10]
 ##--exclude=cpu[0-10]
@@ -57,8 +59,10 @@ export -f RUN
 function QUEUE(){
 
 	job=${BASH_SOURCE[0]}
+	id=${SLURM_ARRAY_JOB_ID}
 
-	sbatch --export=ALL < ${job}
+	# scontrol requeue ${id}
+	# sbatch --export=ALL < ${job}
 }
 export -f QUEUE
 
@@ -133,4 +137,4 @@ ${EXE[@]} ${TASKS[@]}
 scontrol show job ${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID}} &>/dev/null 2>&1
 
 # Queue
-# trap QUEUE SIGUSRSIG
+# trap 'QUEUE' SIGUSRSIG

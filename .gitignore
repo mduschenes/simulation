@@ -10,7 +10,6 @@
 **/*.pickle
 **/*.fig
 **/output
-**/data
 **/templates
 **/backup
 **/errors
@@ -23,12 +22,14 @@
 **/*.profile
 **/data.hdf5*
 **/mnt
-build/config/test.slurm
-build/settings.tmp.json
-build/data
-build/tmp
 **/*test.json
 setup/requirements.txt.*.*
 setup/tmp
 test/config/settings.*.json
 docs/site
+build/config/test.slurm
+build/settings.tmp.json
+build/tmp
+build/data
+build/data/**/data*.hdf5
+build/data/**/data*.json

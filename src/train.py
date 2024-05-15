@@ -11,8 +11,7 @@ for PATH in PATHS:
 
 from src.utils import argparser,jit,allclose,delim,prng
 from src.io import load,glob
-from src.system import Dict
-from src.iterables import namespace
+from src.iterables import Dict,namespace
 from src.optimize import Optimizer,Objective,Metric,Callback
 from src.logger import Logger
 logger = Logger()

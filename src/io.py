@@ -748,7 +748,7 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 		wr (str): Read mode
 		default (object): Default return object if load fails
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','merge','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of loading
 		kwargs (dict): Additional loading keyword arguments
 	Returns:
@@ -761,8 +761,56 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 	args = {'path':path,'wrapper':wrapper}
 	kwargs.update({'wrapper':wrapper})	
 
-	if path is None:
-		return
+	if path is None or not isinstance(path,(str,iterables)):
+		return default
+
+	if isinstance(path,str):
+		paths = [path]
+	else:
+		paths = path
+	
+	if not isinstance(path,dict):
+		paths = {path: path for path in paths}
+	else:
+		paths = path
+
+	paths = {(delim*3).join([name,str(path)]): path
+		for name in paths
+		for path in natsorted(glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name])))
+		}
+
+	data = {}
+
+	for name in paths:
+
+		path = paths[name]
+
+		datum = default
+
+		if not isinstance(path,str):
+			data[name] = datum
+			continue
+	
+		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
+		ext = split(path,ext=True,delimiter=delimiter)
+
+		for wr in wrs:
+			try:
+				datum = _load(path,wr=wr,ext=ext,**kwargs)
+				break
+			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
+				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
+				try:
+					with open(path,wr) as obj:
+						datum = _load(obj,wr=wr,ext=ext,**kwargs)
+						break
+				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
+					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
+					pass
+
+		data[name] = datum
+
+		logger.log(info*verbose,'Load : %s'%(relpath(paths[name])))
 
 	wrappers = []
 	for wrapper in kwargs['wrapper']:
@@ -817,7 +865,9 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 				except ValueError:
 					data = default
 				return data
-
+		elif wrapper in ['dict']:
+			def wrapper(data):
+				return data
 		elif wrapper in ['merge']:
 			def wrapper(data):
 
@@ -857,54 +907,6 @@ def load(path,wr='r',default=None,delimiter='.',wrapper=None,verbose=False,**kwa
 				return data
 
 		wrappers.append(wrapper)
-
-	if isinstance(path,str):
-		paths = [path]
-	else:
-		paths = path
-	
-	if not isinstance(path,dict):
-		paths = {path: path for path in paths}
-	else:
-		paths = path
-
-	paths = {(delim*3).join([name,str(path)]): path
-		for name in paths
-		for path in natsorted(glob(paths[name],default=(None if split(paths[name],ext=True) in exts else paths[name])))
-		}
-
-	data = {}
-
-	for name in paths:
-
-		path = paths[name]
-
-		datum = default
-
-		if not isinstance(path,str):
-			data[name] = datum
-			continue
-	
-		path = os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
-		ext = split(path,ext=True,delimiter=delimiter)
-
-		for wr in wrs:
-			try:
-				datum = _load(path,wr=wr,ext=ext,**kwargs)
-				break
-			except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:			
-				logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
-				try:
-					with open(path,wr) as obj:
-						datum = _load(obj,wr=wr,ext=ext,**kwargs)
-						break
-				except (FileNotFoundError,AttributeError,TypeError,UnicodeDecodeError,ValueError,OSError,ModuleNotFoundError,ImportError,OverflowError) as exception:
-					logger.log(debug,'Exception : %r\n%r'%(exception,traceback.format_exc()))
-					pass
-
-		data[name] = datum
-
-		logger.log(info*verbose,'Load : %s'%(relpath(paths[name])))
 
 	for wrapper in wrappers:
 		data = wrapper(data)
@@ -964,11 +966,16 @@ def _load(obj,wr,ext,**kwargs):
 	elif ext in ['json']:
 		data = json.load(obj,**{'cls':decode_json,'object_hook':load_json,**kwargs})
 	elif ext in ['hdf5','h5','ckpt']:
-		for wrapper in wrappers:
+		for wrapper in list(wrappers):
 			if wrapper in ['pd']:
-				ext = 'hdf'
-				data = getattr(pd,'read_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
-				break
+				try:
+					ext = 'hdf'
+					data = getattr(pd,'read_%s'%ext)(obj,**{'key':kwargs.get('key','data')})
+					break
+				except:
+					data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
+					wrappers.append('df')
+					break
 			else:
 				data = load_hdf5(obj,wr=wr,ext=ext,**kwargs)
 
@@ -984,7 +991,7 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path (str,iterable[str],dict[str,str]): Path to dump object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','merge','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of dumping
 		kwargs (dict): Additional dumping keyword arguments
 	'''
@@ -1016,6 +1023,15 @@ def dump(data,path,wr='w',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		elif wrapper in ['array']:
 			def wrapper(data):
 				return array(data)
+		elif wrapper in ['dict']:
+			def wrapper(data):
+				try:
+					if isinstance(data,pd.DataFrame):
+						return data.to_dict(orient='list')
+					else:
+						raise AttributeError
+				except:
+					return data
 		elif wrapper in ['merge']:
 			def wrapper(data):
 				return data			
@@ -1129,7 +1145,7 @@ def append(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path (str,iterable[str],dict[str,str]): Path to append object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','merge','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of appending
 		kwargs (dict): Additional appending keyword arguments
 	'''
@@ -1186,7 +1202,7 @@ def convert(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path (str,iterable[str],dict[str,str]): Path to convert object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','merge','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of appending
 		kwargs (dict): Additional appending keyword arguments
 	'''
@@ -1244,7 +1260,7 @@ def merge(data,path,wr='r',delimiter='.',wrapper=None,verbose=False,**kwargs):
 		path (str,iterable[str],dict[str,str]): Path to convert object
 		wr (str): Write mode
 		delimiter (str): Delimiter to separate file name from extension		
-		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','merge','pd'] or callable with signature wrapper(data)
+		wrapper (str,callable,iterable[str,callable]): Process data, either string in ['df','np','array','dict','merge','pd'] or callable with signature wrapper(data)
 		verbose (bool,int): Verbose logging of appending
 		kwargs (dict): Additional appending keyword arguments
 	'''

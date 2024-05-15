@@ -13,7 +13,7 @@ PATHS = ['','..','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import np,onp,BACKEND
+from src.utils import np,onp,backend
 from src.io import load,dump,join,split,edit
 from src.utils import array,ones,zeros,rand,logspace,gradient,sort,norm,allclose,log10,exp10,abs,inf
 from src.fit import fit,cov
@@ -29,7 +29,7 @@ def warn_with_traceback(message, category, filename, lineno, file=None, line=Non
 
 def test_err(path=None,tol=None):
 
-	if BACKEND in ['autograd']:
+	if backend in ['autograd']:
 		return
 
 	scale = 3

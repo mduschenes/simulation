@@ -40,12 +40,12 @@ ENVIRON = 'NUMPY_BACKEND'
 DEFAULT = 'jax'
 BACKENDS = ['jax','autograd','jax.autograd','numpy']
 
-BACKEND = os.environ.get(ENVIRON,DEFAULT).lower()
+backend = os.environ.get(ENVIRON,DEFAULT).lower()
 
-assert BACKEND in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,BACKEND,BACKENDS)
+assert backend in BACKENDS, "%s=%s not in allowed %r"%(ENVIRON,backend,BACKENDS)
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 	
 	envs = {
 		'JAX_DISABLE_JIT':False,
@@ -79,14 +79,14 @@ if BACKEND in ['jax','jax.autograd']:
 		jax.config.update(name,configs[name])
 
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	import autograd
 	import autograd.numpy as np
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 	import numpy as np
 	import scipy as sp
 	import pandas as pd
@@ -118,7 +118,7 @@ null = Null()
 # Types
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	itg = np.integer
 	flt = np.float32
@@ -144,7 +144,7 @@ if BACKEND in ['jax','jax.autograd']:
 			print(*args,**kwargs)
 		return
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	itg = np.integer
 	flt = np.float32
@@ -169,7 +169,7 @@ elif BACKEND in ['autograd']:
 		return
 
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 
 	itg = np.integer
 	flt = np.float32
@@ -195,11 +195,11 @@ elif BACKEND in ['numpy']:
 
 
 # Libraries
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	optimizer_libraries = jax.example_libraries.optimizers
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	optimizer_libraries = []
 
@@ -394,6 +394,16 @@ def insert(obj,index,value):
 	return obj
 
 
+def finfo(dtype=float):
+	'''	
+	Get machine precision information for dtype
+	Args:
+		dtype (datatype): Datatype to get machine precision
+	Returns:
+		finfo (finfo): Machine precision information
+	'''	
+	return np.finfo(dtype)
+
 def epsilon(dtype=float,eps=None):
 	'''	
 	Get machine precision epsilon for dtype
@@ -405,16 +415,16 @@ def epsilon(dtype=float,eps=None):
 	'''
 	eps = 1 if eps is None else eps
 	try:
-		dtype = np.finfo(dtype).eps
+		dtype = finfo(dtype).eps
 	except:
 		dtype = float
-		dtype = np.finfo(dtype).eps
+		dtype = finfo(dtype).eps
 
 	eps = eps*dtype
 
 	return eps
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 	
 	def inplace(obj,index,item,op=None,**kwargs):
 		'''
@@ -437,7 +447,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return obj
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 	
 	def inplace(obj,index,item,op=None,**kwargs):
 		'''
@@ -478,7 +488,7 @@ elif BACKEND in ['autograd','numpy']:
 		return obj
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def jit(func,*,static_argnums=None,**kwargs):
 		'''
@@ -496,7 +506,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return wraps(func)(jax.jit(partial(func,**kwargs),static_argnums=static_argnums))
 		# return wraps(func)(partial(func,**kwargs))
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	def jit(func,*,static_argnums=None,**kwargs):
 		'''
@@ -515,7 +525,7 @@ elif BACKEND in ['autograd','numpy']:
 		return wraps(func)(partial(func,**kwargs))		
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -552,7 +562,7 @@ if BACKEND in ['jax','jax.autograd']:
 		# return vfunc
 
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def vmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -589,7 +599,7 @@ elif BACKEND in ['autograd','numpy']:
 		return vfunc
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -614,7 +624,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return pfunc
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def pmap(func,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -640,7 +650,7 @@ elif BACKEND in ['autograd','numpy']:
 		return pfunc
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	# @partial(jit,static_argnums=(2,))
 	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -667,7 +677,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return vfunc
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))
 	def vfunc(funcs,in_axes=0,out_axes=0,axis_name=None,**kwargs):	
@@ -695,7 +705,7 @@ elif BACKEND in ['autograd','numpy']:
 		return vfunc
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 	
 	def switch(index,funcs,*args):
 		'''
@@ -713,7 +723,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.switch(index,funcs,*args)
 		# return funcs[index](*args)
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	def switch(index,funcs,*args):
 		'''
@@ -732,7 +742,7 @@ elif BACKEND in ['autograd','numpy']:
 		return funcs[index](*args)
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 	
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
@@ -752,7 +762,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.fori_loop(start,end,func,out)
 
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def forloop(start,end,func,out):	
@@ -774,7 +784,7 @@ elif BACKEND in ['autograd','numpy']:
 		return out		
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 	
 	# @partial(jit,static_argnums=(2,))	
 	def cond(pred,true_fun,false_fun,*operands):	
@@ -791,7 +801,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.cond(pred,true_fun,false_fun,*operands)
 
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	# @partial(jit,static_argnums=(2,))	
 	def cond(pred,true_fun,false_fun,*operands):	
@@ -930,7 +940,7 @@ def gradient_shift(func,shifts=2,argnums=0,holomorphic=False,**kwargs):
 	return grad
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -961,7 +971,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return grad
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -992,7 +1002,7 @@ elif BACKEND in ['autograd']:
 
 		return grad
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 
 	def gradient_grad(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1012,7 +1022,7 @@ elif BACKEND in ['numpy']:
 		raise NotImplementedError
 		return
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1051,7 +1061,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return grad
 
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1099,7 +1109,7 @@ elif BACKEND in ['autograd']:
 
 		return grad
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 
 	def gradient_fwd(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1120,7 +1130,7 @@ elif BACKEND in ['numpy']:
 		raise NotImplementedError
 		return
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1159,7 +1169,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return grad
 
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1195,7 +1205,7 @@ elif BACKEND in ['autograd']:
 		return grad
 
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 
 	def gradient_rev(func,move=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1213,7 +1223,7 @@ elif BACKEND in ['numpy']:
 		raise NotImplementedError
 		return
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1244,7 +1254,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return grad
 
 
-elif BACKEND in ['autograd']:
+elif backend in ['autograd']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -1274,7 +1284,7 @@ elif BACKEND in ['autograd']:
 
 		return grad		
 
-elif BACKEND in ['numpy']:
+elif backend in ['numpy']:
 
 	def hessian(func,mode=None,argnums=0,holomorphic=False,**kwargs):
 		'''
@@ -2072,6 +2082,20 @@ class logspace(array):
 		return np.logspace(*args,**kwargs)
 
 
+class dataframe(pd.DataFrame):
+	'''
+	dataframe class
+	Args:
+		args (iterable): Dataframe arguments
+		kwargs (dict): Dataframe keyword arguments
+	Returns:
+		out (array): dataframe
+	'''
+	def __new__(self,*args,**kwargs):
+		return pd.DataFrame(*args,**kwargs)
+		# return super().__init__(self,*args,**kwargs)
+
+
 class identity(array):
 	'''
 	array class of identity
@@ -2177,7 +2201,7 @@ class toffoli(array):
 			out = toffoli(n-1,*args,**kwargs)
 			return array([[out,out],[out,-out]],*args,**kwargs)
 
-if BACKEND in ['jax']:
+if backend in ['jax']:
 
 	def prng(seed=None,size=False,reset=None,**kwargs):
 		'''
@@ -2198,7 +2222,7 @@ if BACKEND in ['jax']:
 		generator = jax.random
 
 		if reset is not None:
-			onp.random.seed(reset)
+			seeded(reset)
 
 		if not isinstance(size,int):
 			size = len(size)
@@ -2218,7 +2242,7 @@ if BACKEND in ['jax']:
 
 		return key
 
-elif BACKEND in ['jax.autograd','autograd','numpy']:
+elif backend in ['jax.autograd','autograd','numpy']:
 
 	def prng(seed=None,size=False,reset=None,**kwargs):
 		'''
@@ -2251,7 +2275,18 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 		return key
 
-if BACKEND in ['jax']:
+if backend in ['jax']:
+
+	def seeded(seed=None):
+		'''
+		Set random seed
+		Args:
+			seed (int,array): Seed for random number generation or random key for future seeding
+		'''
+
+		onp.random.seed(seed)
+
+		return
 
 	def spawn(seed=None,size=None,**kwargs):
 		'''
@@ -2282,7 +2317,18 @@ if BACKEND in ['jax']:
 
 		return key
 
-elif BACKEND in ['jax.autograd','autograd','numpy']:
+elif backend in ['jax.autograd','autograd','numpy']:
+
+	def seeded(seed=None):
+		'''
+		Set random seed
+		Args:
+			seed (int,array): Seed for random number generation or random key for future seeding
+		'''
+
+		np.random.seed(seed)
+
+		return
 
 	def spawn(seed=None,size=None,**kwargs):
 		'''
@@ -2314,17 +2360,17 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 		return key
 
 
-if BACKEND in ['jax']:
+if backend in ['jax']:
 
-	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
+	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
 		'''
 		Get random array
 		Args:
-			shape (int,iterable): Size or Shape of random arrayf
+			shape (int,iterable): Size or Shape of random array
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','random','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
+			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','random','randint','randn','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
@@ -2354,7 +2400,7 @@ if BACKEND in ['jax']:
 		b = len(bounds)
 		for i in range(b):
 			if isinstance(bounds[i],str):
-				if random in ['gaussian','normal']:
+				if random in ['gaussian','randn','normal']:
 					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
 				else:
 					bounds[i] = float(bounds)
@@ -2363,7 +2409,8 @@ if BACKEND in ['jax']:
 			assert not any(i in [float(j) for j in ["-inf","inf"]] for i in bounds), "'%s' random type must have finite bounds != [-inf,inf]"%(random)
 
 		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
-		complex = is_complexdtype(dtype) and random not in subrandoms
+		samplerandoms = ['choice']
+		complex = is_complexdtype(dtype) and (random not in subrandoms) and (random not in samplerandoms)
 		_dtype = dtype
 		dtype = datatype(dtype)
 
@@ -2380,11 +2427,19 @@ if BACKEND in ['jax']:
 				out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1]).astype(dtype)		
 				# out = asarray(generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype),dtype=dtype)		
 				return out
-		elif random in ['gaussian','normal']:
+		elif random in ['gaussian','randn','normal']:
 			def func(key,shape,bounds,dtype):
 				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
 				# out = asarray((bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype),dtype=dtype)
 				return out
+		elif random in ['choice']:
+			def func(key,shape,bounds,dtype):
+				kwds = {'array':'a','weights':'p','replace':'replace','axis':'axis'}
+				kwds = {**dict(key=key,shape=shape),
+						**{kwds[attr]:kwargs.get(attr,None) for attr in kwds}
+					}
+				out = generator.choice(**kwds)
+				return out			
 		elif random in ['haar']:
 			def func(key,shape,bounds,dtype):
 
@@ -2563,17 +2618,46 @@ if BACKEND in ['jax']:
 		return out
 
 
-elif BACKEND in ['jax.autograd','autograd','numpy']:
-
-	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='uniform',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
+	def random(shape=(),random='uniform',seed=None,dtype=None):
 		'''
 		Get random array
 		Args:
-			shape (int,iterable): Size or Shape of random arrayf
+			shape (int,iterable): Size or Shape of random array
+			random (str): Type of random distribution, allowed strings in ['uniform','normal']
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+		Returns:
+			out (array): Random array
+		'''	
+
+		return getattr(jax.random,random)(seed,shape=shape)
+
+	def randint(shape=(),bounds=[0,1],seed=None,dtype=None):
+		'''
+		Get random integer array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			bounds (iterable): Bounds on array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+		Returns:
+			out (array): Random array
+		'''	
+
+		return jax.random.randint(seed,shape=shape,minval=bounds[0],maxval=bounds[1])		
+
+
+elif backend in ['jax.autograd','autograd','numpy']:
+
+	def rand(shape=None,bounds=[0,1],key=None,seed=None,random='random',scale=None,mesh=None,reset=None,dtype=None,**kwargs):
+		'''
+		Get random array
+		Args:
+			shape (int,iterable): Size or Shape of random array
 			key (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
 			bounds (iterable): Bounds on array
-			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
+			random (str): Type of random distribution, allowed strings in ['random','rand','uniform','randint','randn','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
 			scale (int,float,str): Scale output, either number, or normalize with L1,L2 norms, allowed strings in ['normalize','1','2']
 			mesh (int): Get meshgrid of array for mesh dimensions
 			reset (bool,int): Reset seed		
@@ -2605,13 +2689,14 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 		b = len(bounds)
 		for i in range(b):
 			if isinstance(bounds[i],str):
-				if random in ['gaussian','normal']:
+				if random in ['gaussian','randn','normal']:
 					bounds[i] = int(((b-b%2)/(b-1))*i)-b//2
 				else:
 					bounds[i] = float(bounds)
 
 		subrandoms = ['haar','hermitian','symmetric','one','zero','plus','minus']
-		complex = is_complexdtype(dtype) and random not in subrandoms
+		samplerandoms = ['choice']		
+		complex = is_complexdtype(dtype) and (random not in subrandoms) and (random not in samplerandoms)
 		_dtype = dtype
 		dtype = datatype(dtype)
 
@@ -2628,11 +2713,19 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 				# out = generator.randint(key,shape,minval=bounds[0],maxval=bounds[1],dtype=dtype)		
 				out = generator.randint(low=bounds[0],high=bounds[1],size=shape).astype(dtype)		
 				return out
-		elif random in ['gaussian','normal']:
+		elif random in ['gaussian','randn','normal']:
 			def func(key,shape,bounds,dtype):
 				# out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(key,shape,dtype=dtype)				
 				out = (bounds[1]+bounds[0])/2 + sqrt((bounds[1]-bounds[0])/2)*generator.normal(size=shape).astype(dtype)				
 				return out
+		elif random in ['choice']:
+			def func(key,shape,bounds,dtype):
+				kwds = {'array':'a','weights':'p','replace':'replace','axis':'axis'}
+				kwds = {**dict(key=key,shape=shape),
+						**{kwds[attr]:kwargs.get(attr,None) for attr in kwds}
+					}
+				out = generator.choice(**kwds)
+				return out					
 		elif random in ['haar']:
 			def func(key,shape,bounds,dtype):
 
@@ -2810,6 +2903,35 @@ elif BACKEND in ['jax.autograd','autograd','numpy']:
 
 		return out
 
+
+	def random(shape=None,random='uniform',seed=None,dtype=None):
+		'''
+		Get random array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			random (str): Type of random distribution, allowed strings in ['uniform','normal']
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+		Returns:
+			out (array): Random array
+		'''	
+
+		return getattr(np.random,random)(size=shape).astype(dtype)
+
+
+	def randint(shape=None,bounds=[0,1],seed=None,dtype=None):
+		'''
+		Get random integer array
+		Args:
+			shape (int,iterable): Size or Shape of random array
+			bounds (iterable): Bounds on array
+			seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+			dtype (datatype): Datatype of array		
+		Returns:
+			out (array): Random array
+		'''	
+
+		return np.random.randint(*bounds,size=shape)		
 
 def _svd(A,k=None):
 	'''
@@ -3063,6 +3185,36 @@ def nansem(a,axis=None,ddof=None):
 		size = int(product([a.shape[ax] for ax in axis]))
 	return nanstd(a,axis=axis,ddof=ddof)/np.sqrt(size)
 
+# @partial(jit,static_argnums=(2,3,4,))
+def bootstrap(a,size=None,shape=(),axis=None,replace=True,weights=None,key=None,seed=None):
+	'''
+	Compute bootstrapped data
+	Args:
+		a (array): array to compute bootstrapped sampling
+		size (int): Number of bootstrap samplings, defaults to first element of shape if None
+		shape (int,iterable): Size or shape of sample
+		axis (int): axis to compute over. Flattens array if None.
+		replace (bool): Sample with replacement
+		weights (array): Weights of sampling of length a.shape[axis]
+		key (PRNGArrayKey,iterable[int],int): PRNG key or seed
+		seed (PRNGArrayKey,iterable[int],int): PRNG key or seed
+	Returns:
+		out (array): bootstrapped sample of array of shape [*a.shape[:axis],*shape,*a.shape[axis+1:]]
+	'''
+
+	if seed is not None:
+		key = seed
+
+	if isinstance(shape,int):
+		shape = (size,shape)
+	elif size is not None:
+		shape = (size,*shape)
+
+	if is_dataframe(a):
+		return a.sample(shape,replace=replace,weights=weights,random_state=key)
+	else:
+		return rand(shape=shape,key=key,array=a,axis=axis,replace=replace,weights=weights)
+
 @jit
 def nansqrt(a):
 	'''
@@ -3087,7 +3239,7 @@ def factorial(n,exact=True):
 	n = ospsp.factorial(n,exact=exact)
 	return n
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	@partial(jit,static_argnums=(1,2,3,))
 	def norm(a,axis=None,ord=2,keepdims=False):
@@ -3108,7 +3260,7 @@ if BACKEND in ['jax','jax.autograd']:
 
 		return out
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	@partial(jit,static_argnums=(1,2,3,))
 	def norm(a,axis=None,ord=2,keepdims=False):
@@ -3278,7 +3430,7 @@ def contraction(data=None,state=None):
 			subscripts = 'uij,jk,ulk->il'
 			shapes = (data.shape,state.shape,data.shape)
 			einsummation = einsum(subscripts,*shapes)
-			
+
 			def func(data,state):
 				return einsummation(data,state,conjugate(data))
 
@@ -4404,7 +4556,7 @@ def outer(a,b):
 
 
 @jit
-def _multiply(a,b):
+def multiply(a,b):
 	'''
 	Multiply arrays elementwise
 	Args:
@@ -4415,9 +4567,21 @@ def _multiply(a,b):
 	'''
 	return np.multiply(a,b)
 
+@jit
+def divide(a,b):
+	'''
+	divide arrays elementwise
+	Args:
+		a (array): Array to divide
+		b (array): Array to divide
+	Returns:
+		out (array): Elementwise division of arrays
+	'''
+	return np.divide(a,b)
+
 
 @jit
-def multiply(a):
+def multiplication(a):
 	'''
 	Multiply list of arrays elementwise
 	Args:
@@ -4468,6 +4632,7 @@ def addition(a,axis=None):
 	Add list of arrays elementwise
 	Args:
 		a (iterable): Arrays to add
+		axis (int): axis to perform addition		
 	Returns:
 		out (ndarray) if out argument is not None
 	'''
@@ -4561,38 +4726,41 @@ def conditions(booleans,op):
 
 
 @jit
-def _matmul(a,b):
+def matmul(a,b,dtype=None):
 	'''
 	Calculate matrix product arrays a and b
 	Args:
 		a (array): Array to calculate matrix product
 		b (array): Array to calculate matrix product
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Matrix product
 	'''	
-	return np.matmul(a,b)
+	return np.matmul(a,b,dtype=dtype)
 
 @jit
-def matmul(a):
+def multi_matmul(a,dtype=None):
 	'''
 	Get matrix product of iterable of arrays [a_i], where a_{i}.shape[-1] == a_{i+1}.shape[0]
 	Args:
 		a (iterable): Arrays to compute product of arrays
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Reduced array of matrix product of arrays
 	'''
-	return forloop(1,len(a),lambda i,out: _matmul(out,a[i]),a[0])
+	return forloop(1,len(a),lambda i,out: matmul(out,a[i],dtype=dtype),a[0])
 
 @jit
-def multi_dot(a):
+def multi_dot(a,dtype=None):
 	'''
 	Get matrix product of iterable of arrays [a_i], where a_{i}.shape[-1] == a_{i+1}.shape[0] with optimized ordering of products
 	Args:
 		a (iterable): Arrays to compute product of arrays
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Reduced array of matrix product of arrays
 	'''
-	return np.linalg.multi_dot(a)
+	return np.linalg.multi_dot(a,dtype=dtype)
 
 @partial(jit,static_argnums=(1,))
 def average(a,axis=0,weights=None):
@@ -4806,7 +4974,7 @@ def swap(i,j,N,D):
 	return S
 
 
-if BACKEND in ['jax','jax.autograd']:
+if backend in ['jax','jax.autograd']:
 
 	def slicing(a,start,size):
 		'''
@@ -4824,7 +4992,7 @@ if BACKEND in ['jax','jax.autograd']:
 		return jax.lax.dynamic_slice(a,(start,*[0]*(a.ndim-1),),(size,*a.shape[1:]))
 		# return a[start:start+size]
 
-elif BACKEND in ['autograd','numpy']:
+elif backend in ['autograd','numpy']:
 
 	def slicing(a,start,size):
 		'''
@@ -5289,11 +5457,12 @@ def dagger(a):
 	return conjugate(transpose(a))
 
 @jit
-def sqrtm(a):
+def sqrtm(a,dtype=None):
 	'''
 	Calculate matrix square-root of array a
 	Args:
 		a (array): Array to compute square root
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Square root of array
 	'''
@@ -5366,7 +5535,7 @@ def exp10(a):
 	Returns:
 		out (array): Element-wise exponential of array
 	'''
-	return 10**a
+	return np.power(10,a)
 
 @jit
 def exp(a):
@@ -5380,16 +5549,30 @@ def exp(a):
 	return np.exp(a)
 
 @jit
-def power(a,n):
+def power(a,b,dtype=None):
 	'''
 	Calculate power of array a
 	Args:
 		a (array): Array to power
-		n (int): Power
+		b (int): Power
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Power of array
 	'''
-	return np.linalg.matrix_power(a,n)
+	return np.power(a,b,dtype=dtype)
+
+@jit
+def matrix_power(a,n,dtype=None):
+	'''
+	Calculate matrix power of array a
+	Args:
+		a (array): Array to power
+		n (int): Power
+		dtype (datatype): Datatype of array		
+	Returns:
+		out (array): Matrix power of array
+	'''
+	return np.linalg.matrix_power(a,n,dtype=dtype)
 
 
 @jit
@@ -5666,15 +5849,16 @@ def sign(a):
 
 
 @jit
-def expmat(a):
+def expmat(a,dtype=None):
 	'''
 	Calculate matrix exponential of array a
 	Args:
 		a (array): Array to compute matrix exponential
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Matrix exponential of array
 	'''
-	return sp.linalg.expm(a)
+	return sp.linalg.expm(a,dtype=dtype)
 
 
 @jit
@@ -6015,16 +6199,17 @@ def shift(iterable,shift,axis=None):
 	shift = shift % len(iterable)
 	return iterable[-shift:] + iterable[:-shift]
 
-def cumsum(a,axis=None):
+def cumsum(a,axis=None,dtype=None):
 	'''
 	Cumulative sum along axis
 	Args:
 		a (array): iterable to sum
 		axis (int) : axis to sum
+		dtype (datatype): Datatype of array		
 	Returns:
 		out (array): Summed iterable
 	'''
-	return np.cumsum(asarray(a),axis=axis)
+	return np.cumsum(asarray(a),axis=axis,dtype=dtype)
 
 def split(a,condition):
 	'''
@@ -6076,6 +6261,10 @@ def interleaver(*iterable):
 def difference(a,n=1,axis=-1):
 	'''
 	Get difference of array elements
+	Args:
+		a (array): Array to get difference
+		n (int): Step of differences
+		axis (int): Axis of differences
 	'''
 	return np.diff(a,n=n,axis=axis)
 
@@ -6351,7 +6540,7 @@ def padding(data,shape,key=None,bounds=None,random=None,dtype=None,**kwargs):
 		shape (int,iterable[int]): Size or shape of array
 		key (key,int): PRNG key or seed
 		bounds (iterable): Bounds on array
-		random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
+		random (str): Type of random distribution, allowed strings in ['uniform','rand','randint','randn','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']		
 		dtype (datatype): Datatype of array	
 		kwargs (dict): Additional keyword arguments for padding	
 	Returns:
@@ -6540,7 +6729,7 @@ def is_dataframe(a,*args,**kwargs):
 	Returns:
 		out (bool): If array is pandas dataframe
 	'''
-	return isinstance(a,(pd.DataFrame))
+	return isinstance(a,(pd.DataFrame,))
 
 def is_array(a,*args,**kwargs):
 	'''

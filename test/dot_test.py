@@ -14,7 +14,7 @@ for PATH in PATHS:
 
 from src.io import load,dump,join,split,edit
 
-from src.utils import np,onp,BACKEND
+from src.utils import np,onp,backend
 from src.utils import array,gradient,zeros,rand,eye
 from src.utils import abs2,trace,dot,allclose
 from src.utils import inner,inner_norm,inner_abs2,inner_real
