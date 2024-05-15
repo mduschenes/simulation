@@ -3430,7 +3430,7 @@ def contraction(data=None,state=None):
 			subscripts = 'uij,jk,ulk->il'
 			shapes = (data.shape,state.shape,data.shape)
 			einsummation = einsum(subscripts,*shapes)
-			
+
 			def func(data,state):
 				return einsummation(data,state,conjugate(data))
 

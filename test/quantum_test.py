@@ -1,15 +1,16 @@
 #!/usr/bin/env python
 
 # Import python modules
+import pytest
 import os,sys
 
 # Import User modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
-PATHS = ['','../../']
+PATHS = ['','..']
 for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
-from src.utils import argparser,jit,allclose,delim,prng
+from src.utils import argparser,jit,allclose,delim,prng,einsum,conjugate
 from src.utils import similarity
 from src.io import load,glob
 from src.system import Dict
@@ -27,18 +28,18 @@ def main(*args,**kwargs):
 
 	settings = Dict({
 		"model":{
-			"operator":"depolarize",
+			"operator":"dephase",
 			"site":None,
 			"string":"noise",
-			"parameters":{"data":1e-3,"parameters":1},
-			"N":2,"D":2,"ndim":3,
+			"parameters":1e-2,
+			"N":1,"D":2,"ndim":3,
 		},
 		"state": {
 			"operator":"zero",
 			"site":None,
 			"string":"psi",
 			"parameters":True,
-			"N":2,"D":2,"ndim":2,
+			"N":1,"D":2,"ndim":2,
 			},
 	})
 
@@ -58,6 +59,7 @@ def main(*args,**kwargs):
 	print('--- model ---')
 	print(model.data)
 	print(model(model.parameters(model.parameters()),model.state()))
+	print(einsum('uij,jk,ulk',model.data,model.state(),conjugate(model.data)))
 	print()
 
 
@@ -71,6 +73,11 @@ def main(*args,**kwargs):
 	func = similarity(model,label=model.state,shape=model.shape,hermitian=True,unitary=False)
 	print(func(model.parameters(model.parameters()),model.state()))
 
+	return
+
+
+def test_quantum():
+	main()
 	return
 
 
