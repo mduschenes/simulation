@@ -118,6 +118,9 @@ def setup(settings):
 	elif isinstance(size,dict):
 		size = [size.get(seedling,1) for seedling in seedlings]
 		groups = groups		
+	elif size is None:
+		size = [1]*count
+		groups = [[i for i in seedlings]]	
 	elif len(size) == 1:
 		size = [*size]*count
 		groups = groups
