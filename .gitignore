@@ -33,3 +33,4 @@ build/tmp
 build/data
 build/data/**/data*.hdf5
 build/data/**/data*.json
+test/examples
