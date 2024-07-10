@@ -1,9 +1,9 @@
-# Simulator for Quantum Systems
+# Tensor Network Methods for Efficient Classical Simulation of Non-Unitary Quantum Processes
 A pure JAX based quantum circuit simulator library, including automatic differentiation of arbitrary quantum circuits, or Trotterized Hamiltonians, for use in quantum state preparation, unitary compilation, or optimization of arbitrary quantum channels with noise. 
 
 Pre-processing, hyperparameter searches, and inter-dependent, parallelized job submission scripts, and post-processing with statistical analysis, and plotting are also included in the library.
 
-This library is used in the preparation of the work *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](https://arxiv.org/abs/2401.05500) , or [PRA](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://zenodo.org/records/10884844).
+<!-- This library is used in the preparation of the work *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](https://arxiv.org/abs/2401.05500) , or [PRA](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://zenodo.org/records/10884844). -->
 
 ## Install
 After cloning the repository, under `setup`, please run 
@@ -237,12 +237,12 @@ Under `build`, please run
 python processor.py <path/to/data.hdf5> <path/to/plot.json> <path/to/process.json> <path/to/plots>
 ```
 An example plot for optimization convergence is
-<!-- <object data="https://github.com/mduschenes/simulation/blob/master/plot.pdf" type="application/pdf" width="700px" height="700px">
-    <embed src="https://github.com/mduschenes/simulation/blob/master/plot.pdf">
-        <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://github.com/mduschenes/simulation/blob/master/plot.pdf">Download PDF</a>.</p>
+<!-- <object data="https://github.com/mduschenes/tensor/blob/master/plot.pdf" type="application/pdf" width="700px" height="700px">
+    <embed src="https://github.com/mduschenes/tensor/blob/master/plot.pdf">
+        <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://github.com/mduschenes/tensor/blob/master/plot.pdf">Download PDF</a>.</p>
     </embed>
 </object> -->
-![alt text](https://github.com/mduschenes/simulation/blob/dev/setup/plot.jpg?raw=true)
+![alt text](https://github.com/mduschenes/tensor/blob/dev/setup/plot.jpg?raw=true)
 
 ## Test
 Under `test`, to run unit tests (with pytest API), please run
