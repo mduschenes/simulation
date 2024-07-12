@@ -82,6 +82,7 @@ def Texify(string,texify={},usetex=True):
 	strings = {
 		**texify,
 	}
+	nulls = {'$':'','\\textrm':'','\\text':''}
 
 	if not isinstance(string,str) and string is not None:
 		string = str(string)
@@ -96,7 +97,9 @@ def Texify(string,texify={},usetex=True):
 				string = default
 
 			if not usetex or len(string) == 0:
-				string = string.replace('$','')
+				for null in nulls:
+					string = string.replace(null,nulls[null])
+					
 		except AttributeError:
 			string = None
 
