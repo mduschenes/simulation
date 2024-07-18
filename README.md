@@ -8,7 +8,9 @@ This library is used in the preparation of the work *Characterization of Overpar
 ## Install
 After cloning the repository, under `setup`, please run 
 ```sh
-. setup.sh <env>
+conda create --name <env>
+conda activate <env>
+conda install --channel conda-forge --file requirements.txt
 ```
 which installs a Python environment with name `env` with all necessary packages, including JAX.
 
