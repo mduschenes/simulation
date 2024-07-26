@@ -99,7 +99,7 @@
 	"architecture":null,
 	"seed":null,
 	"key":null,
-	"cwd":".",
+	"cwd":"data",
 	"path":null,
 	"path":"data.hdf5",
 	"conf":"logging.conf",
