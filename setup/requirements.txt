@@ -9,6 +9,7 @@ absl-py
 pyaml
 pytest
 natsort
+joblib
 parallel
 jax
 jaxlib
