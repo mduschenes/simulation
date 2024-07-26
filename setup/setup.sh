@@ -1,10 +1,12 @@
 #!/bin/bash
 
-# Environment Name
+# Environment
 env=${1:-env}
 
+# Paths
 envs=${HOME}/env
 
+# Requirements
 requirements=${2:-requirements.txt}
 device=${3:-cpu}
 
