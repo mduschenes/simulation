@@ -6,9 +6,11 @@ Pre-processing, hyperparameter searches, and inter-dependent, parallelized job s
 <!-- This library is used in the preparation of the work *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](https://arxiv.org/abs/2401.05500) , or [PRA](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://zenodo.org/records/10884844). -->
 
 ## Install
-After cloning the repository, under `setup`, please run 
+After cloning the repository, please run 
 ```sh
-. setup.sh <env>
+conda create --name <env>
+conda activate <env>
+conda install --channel conda-forge --file requirements.txt
 ```
 which installs a Python environment with name `env` with all necessary packages, including JAX.
 
