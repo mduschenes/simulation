@@ -1,7 +1,4 @@
 python
-intelpython
-mkl
-mkl-devel
 numpy
 scipy
 scikit-learn
