@@ -27,3 +27,4 @@ conda install ${options[@]}
 
 # Test environment
 pytest -rA -W ignore::DeprecationWarning test.py
+rm -rf __pycache__ .pytest_cache
