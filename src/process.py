@@ -1462,13 +1462,6 @@ def apply(keys,data,plots,processes,verbose=None):
 		# 				},
 		# }		
 
-		# for attr in agg:
-		# 	print(attr)
-		# 	print(agg[attr])
-		# 	print()
-		# print()
-		# print()
-		# print()
 		dtype = {attr: data[attr].dtype for attr in agg if attr in label}
 
 		droplevel = dict(level=0,axis=1)
@@ -1487,6 +1480,7 @@ def apply(keys,data,plots,processes,verbose=None):
 		# 	*[agg[attr][kwarg].column for attr in [*independent,*dependent] for kwarg in agg[attr]]
 		# 	]
 		# agg = {kwarg: agg[attr][kwarg] for attr in agg for kwarg in agg[attr]}
+		
 		# groups = groups.agg(**agg).astype(dtype)
 
 		if by:
