@@ -2,13 +2,10 @@
 
 # Environment
 env=${1:-env}
-
-# Paths
-envs=${HOME}/env
-
-# Requirements
-requirements=${2:-requirements.txt}
-device=${3:-cpu}
+exe=${2:-conda}
+requirements=${3:-requirements.txt}
+device=${4:-cpu}
+envs=${5:-${HOME}/env}
 
 # Load modules
 if [[ ${device} == "cpu" ]]
@@ -25,10 +22,8 @@ module purge
 module load ${modules[@]}
 
 
-# Setup paths
-mkdir -p ${envs}
-
 # Setup environment
+mkdir -p ${envs}
 deactivate &>/dev/null 2>&1
 rm -rf ${envs}/${env}
 virtualenv --no-download ${envs}/${env}
@@ -43,6 +38,6 @@ options+=(-r ${requirements})
 
 pip install ${options[@]}
 
-
 # Test environment
 pytest -rA -W ignore::DeprecationWarning test.py
+rm -rf __pycache__ .pytest_cache
