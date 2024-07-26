@@ -2,10 +2,10 @@
 
 # Environment
 env=${1:-env}
-exe=${2:-conda}
-requirements=${3:-requirements.txt}
+requirements=${2:-requirements.txt}
+envs=${3:-${HOME}/conda/envs}
 device=${4:-cpu}
-envs=${5:-${HOME}/env}
+exe=${5:-conda}
 
 # Load modules
 if [[ ${device} == "cpu" ]]
