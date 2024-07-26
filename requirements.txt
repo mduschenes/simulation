@@ -1,0 +1,16 @@
+python
+numpy
+scipy
+h5py
+pandas
+pytables
+matplotlib
+absl-py
+pyaml
+pytest
+natsort
+parallel
+jax
+jaxlib
+jaxtyping
+autograd

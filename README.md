@@ -3,12 +3,14 @@ A pure JAX based quantum circuit simulator library, including automatic differen
 
 Pre-processing, hyperparameter searches, and inter-dependent, parallelized job submission scripts, and post-processing with statistical analysis, and plotting are also included in the library.
 
-This library is used in the preparation of the work *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](https://arxiv.org/abs/2401.05500) , and data can be found in the [Zenodo repository](https://doi.org/10.5281/zenodo.10295792).
+This library is used in the preparation of the work *Characterization of Overparameterization in Simulation of Realistic Quantum Systems*, found on [arXiv](https://arxiv.org/abs/2401.05500) , or [PRA](https://journals.aps.org/pra/abstract/10.1103/PhysRevA.109.062607) and data can be found in the [Zenodo repository](https://zenodo.org/records/10884844).
 
 ## Install
-After cloning the repository, under `setup`, please run 
+After cloning the repository, please run 
 ```sh
-. setup.sh <env>
+conda create --name <env>
+conda activate <env>
+conda install --channel conda-forge --file requirements.txt
 ```
 which installs a Python environment with name `env` with all necessary packages, including JAX.
 
@@ -242,7 +244,7 @@ An example plot for optimization convergence is
         <p>This browser does not support PDFs. Please download the PDF to view it: <a href="https://github.com/mduschenes/simulation/blob/master/plot.pdf">Download PDF</a>.</p>
     </embed>
 </object> -->
-![alt text](https://github.com/mduschenes/simulation/blob/dev/setup/plot.jpg?raw=true)
+![alt text](https://github.com/mduschenes/simulation/blob/dev/.data/plot.jpg?raw=true)
 
 ## Test
 Under `test`, to run unit tests (with pytest API), please run
