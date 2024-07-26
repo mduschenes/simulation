@@ -5,7 +5,7 @@ import os,sys,warnings,itertools,inspect,traceback,datetime,re
 import shutil
 import glob as globber
 import importlib
-import json,jsonpickle,h5py,pickle,dill
+import json,pickle,h5py
 import numpy as np
 import pandas as pd
 
