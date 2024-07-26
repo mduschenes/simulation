@@ -346,7 +346,7 @@ def getter(iterable,keys,delimiter=None,default=None,copy=False):
 		else:
 			return copier(iterable[index],copy=copy)
 	else:
-		return copier(iterable,copy=copy)
+		return copier(default,copy=copy)
 
 
 def permutations(*iterables,repeat=None):

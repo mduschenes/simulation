@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # Import packages
 import os,sys
 ROOT = os.path.dirname(os.path.abspath(__file__))
