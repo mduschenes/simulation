@@ -3,7 +3,7 @@
 # Environment
 env=${1:-env}
 requirements=${2:-requirements.txt}
-envs=${3:-${HOME}/conda/envs}
+envs=${3:-${HOME}/env/envs}
 device=${4:-cpu}
 exe=${5:-conda}
 
@@ -13,7 +13,7 @@ then
 	modules=(python)
 elif [[ ${device} == "gpu" ]]
 then
-	modules=(python cuda)
+	modules=(python/3.11.5 cuda/12.2)
 else
 	modules=(python)
 fi
