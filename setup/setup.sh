@@ -3,11 +3,14 @@
 # Environment
 env=${1:-env}
 requirements=${2:-requirements.txt}
-envs=${3:-${HOME}/.conda/envs}
-device=${4:-cpu}
-exe=${5:-conda}
+architecture=${3:-cpu}
+envs=${4:-${HOME}/.conda}
 
 # Setup environment
+dir=$(dirname ${env})
+env=$(basename ${env})
+if [[ ! ${dir} == . ]];then envs=${dir};fi
+
 mkdir -p ${envs}
 conda deactivate
 conda config --remove envs_dirs ${envs} &>/dev/null 2>&1

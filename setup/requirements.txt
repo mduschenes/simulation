@@ -1,4 +1,4 @@
-python==3.11
+python
 numpy
 scipy
 h5py
