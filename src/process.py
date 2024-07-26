@@ -22,7 +22,6 @@ from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,to_position,to_index,is_iterable,is_number,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,iterables,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import search,inserter,indexer,permutations,Dict
-from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
 from src.postprocess import postprocess
