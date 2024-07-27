@@ -5,7 +5,7 @@
 env=
 requirements=requirements.txt
 architecture=cpu
-installer=pip
+installer=conda
 sources=()
 envs=${HOME}/envs
 pkgs=${HOME}/conda
