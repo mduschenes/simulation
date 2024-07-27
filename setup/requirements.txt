@@ -1,8 +1,9 @@
 numpy
 scipy
-pandas
-matplotlib
 h5py
+pandas
+tables
+matplotlib
 absl-py
 pyaml
 pytest
@@ -10,5 +11,4 @@ natsort
 joblib
 jax
 jaxlib
-jaxtyping
 autograd
