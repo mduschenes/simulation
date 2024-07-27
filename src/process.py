@@ -22,7 +22,6 @@ from src.utils import array,dataframe,expand_dims,conditions,prod,bootstrap
 from src.utils import to_key_value,to_tuple,to_number,to_str,to_int,to_position,to_index,is_iterable,is_number,is_nan,is_numeric
 from src.utils import e,pi,nan,scalars,iterables,arrays,delim,nulls,null,Null,scinotation
 from src.iterables import search,inserter,indexer,permutations,Dict
-from src.parallel import Parallelize,Pooler
 from src.io import load,dump,join,split,exists
 from src.fit import fit
 from src.postprocess import postprocess
@@ -1161,7 +1160,10 @@ def apply(keys,data,plots,processes,verbose=None):
 		return
 
 	def default(obj,*args,**kwargs):
-		return obj.first()
+		try:
+			return obj.first()
+		except:
+			return obj.iloc[0]
 
 	def exp(obj,*args,**kwargs):
 		return np.exp(obj)
@@ -1439,13 +1441,47 @@ def apply(keys,data,plots,processes,verbose=None):
 						},
 		}
 
+		# agg = {
+		# 	**{attr : {attr: pd.NamedAgg(
+		# 				column=attr,
+		# 				aggfunc={
+		# 					'array':mean,'object':'first','dtype':'mean'
+		# 					}[dtypes[attr]] 
+		# 		  		if attr not in by else {'array':'first','object':'first','dtype':'first'}[dtypes[attr]])
+		# 				}						
+		# 			  for attr in data},
+		# 	**{attr : {delim.join(((attr,function,func))): pd.NamedAgg(
+		# 				column=attr,
+		# 				aggfunc= {
+		# 					'array':{'':mean,'err':std}[func],
+		# 				 	'object':{'':'first','err':none}[func],
+		# 				 	'dtype':funcs[function][axes][func]
+		# 					}[dtypes[attr]]) 
+		# 				for function in funcs for func in funcs[function][axes]} 
+		# 				for axes,attr in zip([*dimensions[:-1],*dimensions[-1:]],[*independent,*dependent])
+		# 				},
+		# }		
+
 		dtype = {attr: data[attr].dtype for attr in agg if attr in label}
 
 		droplevel = dict(level=0,axis=1)
 		by = [*labels]
-		variables = [*independent,*dependent,*[subattr[0] for attr in [*independent,*dependent] for subattr in agg[attr]]]
-
+		variables = [
+			*independent,
+			*dependent,
+			*[kwarg[0] for attr in [*independent,*dependent] for kwarg in agg[attr]]
+			]
+	
 		groups = groups.agg(agg).droplevel(**droplevel).astype(dtype)
+
+		# variables = [
+		# 	*independent,
+		# 	*dependent,
+		# 	*[agg[attr][kwarg].column for attr in [*independent,*dependent] for kwarg in agg[attr]]
+		# 	]
+		# agg = {kwarg: agg[attr][kwarg] for attr in agg for kwarg in agg[attr]}
+		
+		# groups = groups.agg(**agg).astype(dtype)
 
 		if by:
 			groups = groups.groupby(by=by,as_index=False,dropna=False)
