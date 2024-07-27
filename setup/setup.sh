@@ -5,10 +5,10 @@
 env=
 requirements=requirements.txt
 architecture=cpu
-installer=conda
+installer=pip
 sources=()
 envs=${HOME}/envs
-pkgs=${HOME}/conda
+pkgs=${HOME}/envs/${env}
 
 run=
 
@@ -158,7 +158,7 @@ fi
 # env=${1:-env}
 # default=base
 # envs=${HOME}/envs
-# pkgs=${HOME}/conda
+# pkgs=${HOME}/envs/${env}
 
 # if [[ ! -d ${envs}/${env} ]];then env=${default};fi
 

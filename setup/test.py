@@ -1,5 +1,16 @@
 #!/usr/bin/env python
 
+import pytest
+
+@pytest.fixture(autouse=True,scope='session')
+def cleanup(*args,**kwargs):
+	import os
+	directories = ['__pycache__','.pytest_cache']
+	for directory in directories:
+		os.system('rm -rf %s'%(directory))	
+	return
+
+
 def test_python(*args,**kwargs):
 	import os
 	os.system('python -V')
@@ -64,10 +75,17 @@ def test_matplotlib(*args,**kwargs):
 	import matplotlib
 	import matplotlib.pyplot as plt
 
-	with matplotlib.style.context('../test/config/plot.mplstyle'):
-		plt.plot([1,2,3],[1,2,3],label='$\\textrm{Hi}~\\ket{\\psi}~\\norm{\\vec{v}}$')
+	mplstyle = 'plot.mplstyle'
+	if os.path.exists(mplstyle):
+		with matplotlib.style.context(mplstyle):
+			plt.plot([1,2,3],[1,2,3],label='$\\textrm{Hi}~\\ket{\\psi}~\\norm{\\vec{v}}$')
+			plt.legend()
+			plt.savefig('plot.pdf')
+	else:
+		plt.plot([1,2,3],[1,2,3],label='label')
 		plt.legend()
 		plt.savefig('plot.pdf')
+
 
 	os.system('rm plot.pdf')
 
