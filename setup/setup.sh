@@ -158,8 +158,7 @@ fi
 # env=${1:-env}
 # default=base
 # envs=${HOME}/envs
-# pkgs=${6:-${HOME}/conda}
-# pkgs=${HOME}/envs/${env}
+# pkgs=${HOME}/conda
 
 # if [[ ! -d ${envs}/${env} ]];then env=${default};fi
 
