@@ -49,10 +49,13 @@ if backend in ['jax','jax.autograd']:
 	
 	envs = {
 		'JAX_DISABLE_JIT':False,
-		'JAX_PLATFORMS':'cpu',
-		'JAX_PLATFORM_NAME':'cpu',
+		'JAX_PLATFORMS':'',
+		'JAX_PLATFORM_NAME':'',
 		'TF_CPP_MIN_LOG_LEVEL':5,
 		'JAX_TRACEBACK_FILTERING':'off',
+		# "XLA_FLAGS":(
+		# 	"--xla_cpu_multi_thread_eigen=false "
+		# 	"intra_op_parallelism_threads=1"),
 	}
 	for var in envs:
 		os.environ[var] = str(envs[var])
@@ -71,9 +74,9 @@ if backend in ['jax','jax.autograd']:
 
 	configs = {
 		'jax_disable_jit':False,
-		'jax_platforms':'cpu',
-		'jax_platform_name':'cpu',
-		'jax_enable_x64': True
+		'jax_platforms':'',
+		'jax_platform_name':'',
+		'jax_enable_x64': True,
 		}
 	for name in configs:
 		jax.config.update(name,configs[name])
