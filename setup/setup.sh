@@ -6,9 +6,11 @@ env=
 requirements=requirements.txt
 architecture=cpu
 installer=conda
-envs=${HOME}/envs
+sources=()
+envs=${HOME}/.conda/envs
 pkgs=/pkgs/anaconda3
-dry_run=
+
+run=
 
 function usage(){
 
@@ -26,6 +28,7 @@ function usage(){
 			requirements) string="requirements file: requirements.txt" ;;
 			architecture) string="architecture type: cpu|gpu" ;;
 			installer) string="installer type: pip|conda" ;;
+			sources) string="sources for requirements <channel>,<url>" ;;
 			envs) string="path to environments: \${HOME}/envs" ;;
 			pkgs) string="path to root packages: \${HOME}/conda" ;;
 			dry-run) string="dry-run boolean" ;;
@@ -42,15 +45,16 @@ then
 	exit
 fi
 
-eval set -- "$(getopt --options eraivpdh --longoptions env:,requirements:,architecture:,installer:,envs:,pkgs:,dry-run,help, -- "$@")"
+eval set -- "$(getopt --options eraisvpdh --longoptions env:,requirements:,architecture:,installer:,sources:,envs:,pkgs:,dry-run,help, -- "$@")"
 while [[ $# -gt 0 ]]; do case ${1} in 
 -e|--env) env=${2}; shift 2;; 
 -r|--requirements) requirements=${2}; shift 2;; 
 -a|--architecture) architecture=${2}; shift 2;;
 -i|--installer) installer=${2}; shift 2;;
+-s|--sources) sources+=(${2}); shift 2;;
 -v|--envs) envs=${2}; shift 2;;
 -p|--pkgs) pkgs=${2}; shift 2;;
--d|--dry-run) dry_run=true; shift;;
+-d|--dry-run) run=true; shift;;
 -h|--help) usage; exit; shift;; 
 --) shift;break;; *);;
 esac done
@@ -63,84 +67,91 @@ then
 	exit
 fi
 
-echo env ${env}
-echo requirements ${requirements}
-echo architecture ${architecture}
-echo installer ${installer}
-echo envs ${envs}
-echo pkgs ${pkgs}
-echo dry-run ${dry_run}
-exit
+if [[ ! -z ${run} ]]
+then
+	run=echo
+fi
+
+# Setup environment
+dir=$(dirname ${env})
+env=$(basename ${env})
+if [[ ! ${dir} == . ]];then envs=${dir};fi
+
+case ${installer} in
+	pip)
+		case ${architecture} in
+			gpu)
+				modules=(python cuda cudnn)
+				${run} module purge
+				${run} module load ${modules[@]}
+				;;
+			cpu)
+				modules=(python)
+				${run} module purge
+				${run} module load ${modules[@]}
+				;;
+			*)
+				modules=(python)
+				${run} module purge
+				${run} module load ${modules[@]}
+			;;
+		esac
+
+		${run} mkdir -p ${envs}
+		${run} deactivate
+		${run} rm -rf ${envs}/${env}
+		${run} pip install --upgrade pip --no-index
+		${run} virtualenv --no-download ${envs}/${env}
+
+		${run} source ${envs}/${env}/bin/activate
+
+		options=()
+		options+=(--no-index)
+		if [[ ! -z ${sources[@]} ]]
+		then
+			options+=(--find-links ${sources[@]})
+		fi
+		if [[ ! -z ${requirements} ]]
+		then
+			options+=(--requirement ${requirements})
+		fi
+
+		${run} pip install ${options[@]}
+		;;
+	conda)
+		${run} mkdir -p ${envs}
+		${run} conda deactivate
+		${run} conda config --remove envs_dirs ${envs}
+		${run} conda config --append envs_dirs ${envs}
+		${run} conda remove --name ${env} --all
+		${run} conda create --prefix ${envs}/${env}
+
+		${run} conda activate ${env}
+
+		options=()
+		if [[ ! -z ${sources[@]} ]]
+		then
+			options+=(--channel ${sources[@]})
+		fi
+		if [[ ! -z ${requirements} ]]
+		then
+			options+=(--file ${requirements})
+		fi
+
+		${run} conda install ${options[@]}
+		;;
+	*)
+		;;
+esac
 
 
-# # Setup environment
-# dir=$(dirname ${env})
-# env=$(basename ${env})
-# if [[ ! ${dir} == . ]];then envs=${dir};fi
-
-# case ${installer} in
-# 	pip)
-# 		case ${architecture} in
-# 			gpu)
-# 				modules=(python cuda cudnn)
-# 				module purge &>/dev/null
-# 				module load ${modules[@]}
-# 				;;
-# 			cpu)
-# 				modules=(python)
-# 				module purge &>/dev/null
-# 				module load ${modules[@]}
-# 				;;
-# 			*)
-# 				modules=(python)
-# 				module purge &>/dev/null
-# 				module load ${modules[@]}
-# 			;;
-# 		esac
-
-# 		mkdir -p ${envs}
-# 		deactivate &>/dev/null 2>&1
-# 		rm -rf ${envs}/${env}
-# 		pip install --upgrade pip --no-index
-# 		virtualenv --no-download ${envs}/${env}
-
-# 		source ${envs}/${env}/bin/activate
-
-# 		options=()
-# 		options+=(--no-index)
-# 		options+=(-r ${requirements})
-
-# 		pip install ${options[@]}
-# 		;;
-# 	conda)
-# 		mkdir -p ${envs}
-# 		conda deactivate
-# 		conda config --remove envs_dirs ${envs} &>/dev/null 2>&1
-# 		conda config --append envs_dirs ${envs} &>/dev/null 2>&1
-# 		conda remove --name ${env} --all
-# 		conda create --prefix ${envs}/${env}
-
-# 		conda activate ${env}
-
-# 		options=()
-# 		options+=(--channel conda-forge)
-# 		options+=(--file ${requirements})
-
-# 		conda install ${options[@]}
-# 		;;
-# 	*)
-# 		;;
-# esac
-
-
-# # Test environment
-# test=test.py
-# if [[ -f ${test} ]]
-# then
-# 	options=(-rA -W ignore::DeprecationWarning)
-# 	pytest ${options[@]} ${test}
-# 	rm -rf __pycache__ .pytest_cache
-# fi
+# Test environment
+test=test.py
+if [[ -f ${test} ]]
+then
+	options=(-rA -W ignore::DeprecationWarning)
+	${run} pytest ${options[@]} ${test}
+fi
 
 
 # # Setup environment
@@ -156,17 +167,17 @@ exit
 # 		case ${architecture} in
 # 			gpu)
 # 				modules=(python cuda cudnn)
-# 				module purge &>/dev/null
+# 				module purge
 # 				module load ${modules[@]}
 # 				;;
 # 			cpu)
 # 				modules=(python)
-# 				module purge &>/dev/null
+# 				module purge
 # 				module load ${modules[@]}
 # 				;;
 # 			*)
 # 				modules=(python)
-# 				module purge &>/dev/null
+# 				module purge
 # 				module load ${modules[@]}
 # 			;;
 # 		esac
