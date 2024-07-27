@@ -3,26 +3,29 @@
 # Environment
 env=${1:-env}
 requirements=${2:-requirements.txt}
-envs=${3:-${HOME}/env/envs}
-device=${4:-cpu}
-exe=${5:-conda}
+architecture=${3:-cpu}
+envs=${4:-${HOME}/envs}
 
 # Load modules
-if [[ ${device} == "cpu" ]]
+if [[ ${architecture} == "cpu" ]]
 then
 	modules=(python)
-elif [[ ${device} == "gpu" ]]
+elif [[ ${architecture} == "gpu" ]]
 then
 	modules=(python/3.11.5 cuda/12.2)
 else
 	modules=(python)
 fi
 
-module purge
+module purge &>/dev/null 2>&1
 module load ${modules[@]}
 
 
 # Setup environment
+dir=$(dirname ${env})
+env=$(basename ${env})
+if [[ ! ${dir} == . ]];then envs=${dir};fi
+
 mkdir -p ${envs}
 deactivate &>/dev/null 2>&1
 rm -rf ${envs}/${env}
