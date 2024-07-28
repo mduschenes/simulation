@@ -27,7 +27,7 @@ function usage(){
 			env) string="environment name: <env>" ;;
 			requirements) string="requirements file: requirements.txt" ;;
 			architecture) string="architecture type: cpu|gpu" ;;
-			installer) string="installer type: pip|conda" ;;
+			installer) string="installer type: pip|conda|conda_pip" ;;
 			sources) string="sources for requirements <channel>,<url>" ;;
 			envs) string="path to environments: \${HOME}/envs" ;;
 			pkgs) string="path to root packages: \${HOME}/conda" ;;
@@ -105,28 +105,32 @@ case ${installer} in
 
 		${run} source ${envs}/${env}/bin/activate
 
-		rm -rf ${requirements}.tmp.*
-		awk -v requirements="${requirements}" -v RS= '{print > (requirements".tmp." NR "")}' ${requirements}
-		requirements=(${requirements}.tmp.*)
-		for requirement in ${requirements[@]}
-		do
-			options=()
-			options+=(--no-index)
-			if [[ ! -z ${sources[@]} ]]
-			then
-				options+=(--find-links ${sources[@]})
-			fi
+		options=()
+		options+=(--no-index)
+		if [[ ! -z ${sources[@]} ]]
+		then
+			options+=(--find-links ${sources[@]})
+		fi
+		if [[ ! -z ${requirements} ]]
+		then
+			options+=(--requirement ${requirements})
+		fi
 
-			if [[ ! -z ${requirement} ]]
-			then
-				options+=(--requirement ${requirement})
-			fi
-
-			${run} pip install ${options[@]}
-		done
-		rm -rf ${requirements[@]}
+		${run} pip install ${options[@]}
 		;;
 	conda)
+		case ${architecture} in
+			gpu)
+				modules=(cuda11.8+cudnn8.9.6)
+				${run} module purge
+				${run} module load ${modules[@]}
+				;;
+			cpu)
+				;;
+			*)
+				;;
+		esac
+
 		${run} mkdir -p ${envs}
 		${run} conda deactivate
 		${run} conda config --remove envs_dirs ${envs}
@@ -136,28 +140,65 @@ case ${installer} in
 
 		${run} conda activate ${env}
 
-		rm -rf ${requirements}.tmp.*
-		awk -v requirements="${requirements}" -v RS= '{print > (requirements".tmp." NR "")}' ${requirements}
-		requirements=(${requirements}.tmp.*)
-		for requirement in ${requirements[@]}
-		do
-			options=()
-			if [[ ! -z ${sources[@]} ]]
-			then
-				for src in ${sources[@]}
-				do
-					options+=(--channel ${src})
-				done
-			fi
-			if [[ ! -z ${requirement} ]]
-			then
-				options+=(--file ${requirement})
-			fi
+		options=()
+		if [[ ! -z ${sources[@]} ]]
+		then
+			for src in ${sources[@]}
+			do
+				options+=(--channel ${src})
+			done
+		fi
+		if [[ ! -z ${requirements} ]]
+		then
+			options+=(--file ${requirements})
+		fi
 
-			${run} conda install ${options[@]}
-		done
-		rm -rf ${requirements[@]}
+		${run} conda install ${options[@]}
 		;;
+	conda_pip)
+		case ${architecture} in
+			gpu)
+				modules=(cuda11.8+cudnn8.9.6)
+				${run} module purge
+				${run} module load ${modules[@]}
+				;;
+			cpu)
+				;;
+			*)
+				;;
+		esac
+
+		${run} mkdir -p ${envs}
+		${run} conda deactivate
+		${run} conda config --remove envs_dirs ${envs}
+		${run} conda config --append envs_dirs ${envs}
+		${run} conda remove --name ${env} --all
+		${run} conda create --prefix ${envs}/${env}
+
+		${run} conda activate ${env}
+
+		options=()
+		if [[ ! -z ${sources[@]} ]]
+		then
+			for src in ${sources[@]}
+			do
+				options+=(--channel ${src})
+			done
+		fi
+		if [[ ! -z ${requirements} ]]
+		then
+			options+=(--file ${requirements})
+		fi
+
+		${run} conda install ${options[@]}
+
+
+		options=()
+		options+=(--upgrade)
+		options+=(--find-links https://storage.googleapis.com/jax-releases/jax_cuda_releases.html)
+		options+=(jax[cuda11]==0.4.24 jaxlib[cuda11]==0.4.2)
+		${run} pip install ${options[@]}
+		;;		
 	*)
 		;;
 esac
