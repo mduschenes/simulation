@@ -53,7 +53,6 @@ def test_jax(*args,**kwargs):
 		print(array.devices())
 		array *= array
 
-		del jax
 		return
 	
 	devices = ['cuda','gpu','cpu']
@@ -76,16 +75,16 @@ def test_matplotlib(*args,**kwargs):
 	import matplotlib.pyplot as plt
 
 	mplstyle = 'plot.mplstyle'
-	if os.path.exists(mplstyle):
+	try:
 		with matplotlib.style.context(mplstyle):
 			plt.plot([1,2,3],[1,2,3],label='$\\textrm{Hi}~\\ket{\\psi}~\\norm{\\vec{v}}$')
 			plt.legend()
 			plt.savefig('plot.pdf')
-	else:
+	except Exception as exception:
+		print(exception)
 		plt.plot([1,2,3],[1,2,3],label='label')
 		plt.legend()
 		plt.savefig('plot.pdf')
-
 
 	os.system('rm plot.pdf')
 
