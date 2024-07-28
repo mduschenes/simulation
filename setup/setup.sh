@@ -105,18 +105,27 @@ case ${installer} in
 
 		${run} source ${envs}/${env}/bin/activate
 
-		options=()
-		options+=(--no-index)
-		if [[ ! -z ${sources[@]} ]]
-		then
-			options+=(--find-links ${sources[@]})
-		fi
-		if [[ ! -z ${requirements} ]]
-		then
-			options+=(--requirement ${requirements})
-		fi
 
-		${run} pip install ${options[@]}
+		rm -rf ${requirements}.tmp.*
+		awk -v requirements="${requirements}" -v RS= '{print > (requirements".tmp." NR "")}' ${requirements}
+		requirements=(${requirements}.tmp.*)
+		for requirement in ${requirements[@]}
+		do
+			options=()
+			options+=(--no-index)
+			if [[ ! -z ${sources[@]} ]]
+			then
+				options+=(--find-links ${sources[@]})
+			fi
+
+			if [[ ! -z ${requirement} ]]
+			then
+				options+=(--requirement ${requirement})
+			fi
+
+			${run} pip install ${options[@]}
+		done
+		rm -rf ${requirements[@]}
 		;;
 	conda)
 		case ${architecture} in
@@ -140,20 +149,27 @@ case ${installer} in
 
 		${run} conda activate ${env}
 
-		options=()
-		if [[ ! -z ${sources[@]} ]]
-		then
-			for src in ${sources[@]}
-			do
-				options+=(--channel ${src})
-			done
-		fi
-		if [[ ! -z ${requirements} ]]
-		then
-			options+=(--file ${requirements})
-		fi
+		rm -rf ${requirements}.tmp.*
+		awk -v requirements="${requirements}" -v RS= '{print > (requirements".tmp." NR "")}' ${requirements}
+		requirements=(${requirements}.tmp.*)
+		for requirement in ${requirements[@]}
+		do
+			options=()
+			if [[ ! -z ${sources[@]} ]]
+			then
+				for src in ${sources[@]}
+				do
+					options+=(--channel ${src})
+				done
+			fi
+			if [[ ! -z ${requirement} ]]
+			then
+				options+=(--file ${requirement})
+			fi
 
-		${run} conda install ${options[@]}
+			${run} conda install ${options[@]}
+		done
+		rm -rf ${requirements[@]}
 		;;
 	conda_pip)
 		case ${architecture} in
@@ -177,21 +193,27 @@ case ${installer} in
 
 		${run} conda activate ${env}
 
-		options=()
-		if [[ ! -z ${sources[@]} ]]
-		then
-			for src in ${sources[@]}
-			do
-				options+=(--channel ${src})
-			done
-		fi
-		if [[ ! -z ${requirements} ]]
-		then
-			options+=(--file ${requirements})
-		fi
+		rm -rf ${requirements}.tmp.*
+		awk -v requirements="${requirements}" -v RS= '{print > (requirements".tmp." NR "")}' ${requirements}
+		requirements=(${requirements}.tmp.*)
+		for requirement in ${requirements[@]}
+		do
+			options=()
+			if [[ ! -z ${sources[@]} ]]
+			then
+				for src in ${sources[@]}
+				do
+					options+=(--channel ${src})
+				done
+			fi
+			if [[ ! -z ${requirement} ]]
+			then
+				options+=(--file ${requirement})
+			fi
 
-		${run} conda install ${options[@]}
-
+			${run} conda install ${options[@]}
+		done
+		rm -rf ${requirements[@]}
 
 		options=()
 		options+=(--upgrade)
