@@ -5,12 +5,12 @@ h5py
 pandas
 pytables
 matplotlib
-absl-py
-pyaml
 pytest
 natsort
+joblib
 parallel
 jax
 jaxlib
-jaxtyping
+absl-py
+pyaml
 autograd
