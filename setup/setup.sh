@@ -131,7 +131,10 @@ case ${installer} in
 		options=()
 		if [[ ! -z ${sources[@]} ]]
 		then
-			options+=(--channel ${sources[@]})
+			for src in ${sources[@]}
+			do
+				options+=(--channel ${src})
+			done
 		fi
 		if [[ ! -z ${requirements} ]]
 		then
