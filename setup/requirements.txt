@@ -13,5 +13,5 @@ absl-py
 pyaml
 autograd
 
-jax[cuda11]==0.4.24
-jaxlib[cuda11]==0.4.2
+jax[cuda12]
+jaxlib
