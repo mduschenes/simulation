@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 
-mkdir -p ${HOME}/conda/envs
+env=${1:-env}
+requirements=${2:-requirements.txt}
+envs=${3:-${HOME}/conda/envs}
+# modules=(${4:-cuda-12.3})
+modules=(${4:-})
+
+mkdir -p ${envs}
 conda deactivate
-conda remove --name env --all
-conda create --prefix ${HOME}/conda/envs/env
-conda activate env
+conda remove --name ${env} --all
+conda create --prefix ${envs}/${env}
+conda activate ${env}
 conda install --channel conda-forge --file requirements.txt
 pytest -rA -W ignore::DeprecationWarning test.py
 
