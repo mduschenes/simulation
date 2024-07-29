@@ -12,3 +12,4 @@ jaxlib
 absl-py
 pyaml
 autograd
+quimb
