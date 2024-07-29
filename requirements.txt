@@ -1,4 +1,4 @@
-python
+python==3.10.5
 numpy
 scipy
 h5py
@@ -13,5 +13,5 @@ absl-py
 pyaml
 autograd
 
-jax[cuda12]
-jaxlib
+jax==0.4.24
+https://storage.googleapis.com/jax-releases/cuda11/jaxlib-0.4.24+cuda11.cudnn86-cp310-cp310-manylinux2014_x86_64.whl
