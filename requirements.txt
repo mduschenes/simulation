@@ -9,8 +9,9 @@ pytest
 natsort
 joblib
 parallel
-jax[cuda11]==0.4.24
-jaxlib[cuda11]==0.4.2
 absl-py
 pyaml
 autograd
+
+jax[cuda12]
+jaxlib
