@@ -6,6 +6,7 @@ pandas
 pytables
 matplotlib
 pytest
+typing
 natsort
 joblib
 parallel
