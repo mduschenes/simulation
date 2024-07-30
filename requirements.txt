@@ -15,3 +15,5 @@ absl-py
 pyaml
 autograd
 quimb
+flax
+optax
