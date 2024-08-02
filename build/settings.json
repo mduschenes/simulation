@@ -6,17 +6,17 @@
 "model":{
 	"cls":"src.model.Model",
 	"args":[],
-	"kwargs":{"shape":[3,4,5,4,3]}
+	"kwargs":{"shape":[3,4,5,4,3,2,1]}
 	},
 "label":{
 	"cls":"src.model.Label",
 	"args":[],
-	"kwargs":{"Model":"src.model.Model","label":"model","args":[],"kwargs":{"shape":[3,4,5,4,3]}}
+	"kwargs":{"model":"src.model.Model","label":"model","args":[],"kwargs":{"shape":[3,4,5,1]}}
 	},
 "data":{
 	"cls":"src.model.Data",
 	"args":[],
-	"kwargs":{"rand":"random","shape":[2,2,2]}
+	"kwargs":{"random":"random","shape":[10]}
 	},
 "objective":{
 	"cls":"src.model.Objective",
@@ -26,6 +26,6 @@
 "optimizer":{
 	"cls":"src.model.Optimizer",
 	"args":[],
-	"kwargs":{"optimizer":"adam","iterations":1e5,"progress":"progress","learning_rate":1e-2}
+	"kwargs":{"optimizer":"adam","iterations":1e5,"progress":"progressbar","learning_rate":1e-2}
 	}
 }	

@@ -29,7 +29,7 @@ def main(settings,*args,**kwargs):
 
 
 	# Model
-	Model = settings['model']['cls']
+	model = settings['model']['cls']
 	args = settings['model']['args']
 	kwargs = settings['model']['kwargs']
 
@@ -41,15 +41,13 @@ def main(settings,*args,**kwargs):
 
 
 	# Label
-	label = settings['label']['cls'](*settings['label']['args'],**settings['label']['kwargs'])
-	params = label.init(key['label'], x)
-	func = label.apply
-	Label = partial(func,params)
-
+	label = settings['label']['cls'](*settings['label']['args'],**settings['label']['kwargs'],
+		init=dict(rngs=key['label'],x=x))
+	
 
 	# Objective
 	objective = settings['objective']['cls'](*settings['objective']['args'],**settings['objective']['kwargs'],
-		Model=Model,Label=Label,args=args,kwargs=kwargs)
+		model=model,label=label,args=args,kwargs=kwargs)
 
 
 	# Optimizer
@@ -62,7 +60,7 @@ def main(settings,*args,**kwargs):
 	params = optimizer(params,x)
 	
 
-	# Results
+	# Callback
 	print(objective.apply(params,x))
 
 	return

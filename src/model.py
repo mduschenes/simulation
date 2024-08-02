@@ -24,7 +24,7 @@ for var in envs:
 	os.environ[var] = str(envs[var])
 
 
-from src.utils import gradient
+from src.utils import gradient,rand
 from src.io import load,dump
 
 
@@ -60,6 +60,11 @@ absl.logging.set_verbosity(absl.logging.INFO)
 
 
 class Model(nn.Module):
+	'''
+	Model Class
+	Args:
+		shape (iterable[int]): Shape of model
+	'''
 	
 	shape: Sequence[int]
 
@@ -76,11 +81,17 @@ class Model(nn.Module):
 
 
 class Data(object):
+	'''
+	Data Class
+	Args:
+		shape (iterable[int]): Shape of data
+		random (str): Type of random distribution, allowed strings in ['random','rand','uniform','random','randint','randn','gaussian','normal','haar','hermitian','symmetric','zero','one','plus','minus','zeros','ones','linspace','logspace']
+	'''
 
-	def __init__(self,shape=None,rand=None):
+	def __init__(self,shape=None,random=None):
 
 		self.shape = shape
-		self.rand = rand
+		self.random = random
 
 		self.data = None
 
@@ -88,12 +99,7 @@ class Data(object):
 
 	def init(self,key,*args,**kwargs):
 
-		if self.rand in ['random']:
-			func = jax.random.uniform
-		else:
-			func = jax.random.uniform
-		
-		self.data = func(key,shape=self.shape)
+		self.data = rand(shape=self.shape,key=key,*args,**kwargs)
 
 		return
 
@@ -102,57 +108,86 @@ class Data(object):
 
 
 class Objective(nn.Module):
+	'''
+	Objective Module
+	Args:
+		model (str,nn.Module): Objective model
+		label (callable): Objective label
+		metric (str,callable): Objective metric, allowed strings in ['mse'], or callable with signature metric(model,label) -> func(x)
+		args (iterable): Objective model positional arguments
+		kwargs (dict): Objective model keyword arguments
+	'''
 
-	Model:Callable
-	Label:Callable
+	model:Callable
+	label:Callable
 	metric:str|Callable
 	args:Dict
 	kwargs:Dict
 
 	def setup(self):
 		
-		self.model = self.Model(*self.args,**self.kwargs)
-		self.label = self.Label
+		if isinstance(self.model,str):
+			model = load(self.model,default=model)
+		else:
+			model = self.model
+
+		self.object = model(*self.args,**self.kwargs)
 		
 		if callable(self.metric):
 			func = self.metric(self.model,self.label)
 		elif self.metric in ['mse']:
 			def func(x):
-				return ((self.model(x)-self.label(x))**2).sum()
+				return ((self.object(x)-self.label(x))**2).sum()
 		else:
 			def func(x):
-				return ((self.model(x)-self.label(x))**2).sum()
+				return ((self.object(x)-self.label(x))**2).sum()
+		
 		self.func = func
+		
 		return
 
 	def __call__(self,x):
 		return self.func(x)
 
 
-class Label(nn.Module):
+class Label(object):
+	'''
+	Label Class
+	Args:
+		label (str,callable): Objective label, allowed strings in ['model'], or callable with signature label(model) -> func(x)
+		model (str,nn.Module): Objective model
+		args (iterable): Objective model positional arguments
+		kwargs (dict): Objective model keyword arguments
+		init (dict): Objective model init keyword arguments
+	'''
 
-	Model:Callable
-	label:str
-	args:Dict
-	kwargs:Dict
-
-	def setup(self):
+	def __init__(self,label=None,model=None,args=(),kwargs={},init={}):
 		
-		if isinstance(self.Model,str):
-			self.model = load(self.Model,default=self.Model)
+		self.label = label
+		self.args = args
+		self.kwargs = kwargs
+		self.init = init
+
+		if isinstance(model,str):
+			model = load(model,default=model)
 		else:
-			self.model = self.Model
-		self.model = self.model(*self.args,**self.kwargs)
+			model = model
 		
-		if callable(self.label):
-			func = self.label(self.model)
-		elif self.label in ['model']:
+		self.model = model(*args,**kwargs)
+		params = self.model.init(**init)
+		func = self.model.apply
+		self.model = partial(func,params)
+		
+		if callable(label):
+			func = label(self.model)
+		elif label in ['model']:
 			def func(x):
 				return self.model(x)
 		else:
 			def func(x):
 				return self.model(x)
 		self.func = func
+
 		return
 
 	def __call__(self,x):
@@ -160,7 +195,18 @@ class Label(nn.Module):
 
 
 class Optimizer(object):
-
+	'''
+	Optimizer Class
+	Args:
+		optimizer (str): Optimizer type, allowed strings in ['adam']
+		iterations (int,float,iterable,range): Optimizer iterations
+		progress (bool,str): Optimizer progressbar, allowed strings in ['progressbar']
+		objective (callable,nn.Module): Optimizer objective, overrides func and grad arguments
+		func (callable): Optimizer objective function
+		grad (callable): Optimizer objective gradient
+		args (iterable): Optimizer positional arguments
+		kwargs (dict): Optimizer keyword arguments
+	'''
 	def __init__(self,optimizer=None,iterations=None,progress=None,objective=None,func=None,grad=None,*args,**kwargs):
 
 		if optimizer is None:
@@ -180,14 +226,23 @@ class Optimizer(object):
 		if progress is None:
 			def progress(iterable):
 				return iterable
-		elif progress in ['progress']:
+		elif progress is True:
 			progress = progressbar
+		elif progress in ['progressbar']:
+			progress = progressbar			
 		else:
 			def progress(iterable):
 				return iterable
 
 		if objective is not None:
-			func = objective.apply
+			try:
+				func = objective.apply
+			except:
+				func = objective
+			try:
+				grad = objective.grad
+			except:
+				grad = grad
 		
 		if grad is None:
 			grad = gradient(func)

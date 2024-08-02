@@ -2217,7 +2217,7 @@ if backend in ['jax']:
 		'''
 		Generate prng key
 		Args:
-			seed (int,array): Seed for random number generation or random key for future seeding
+			seed (int,array,PRNGKey): Seed for random number generation or random key for future seeding
 			size(bool,int): Number of splits of random key
 			reset (bool,int): Reset seed
 			kwargs (dict): Additional keyword arguments for seeding
@@ -2227,9 +2227,13 @@ if backend in ['jax']:
 
 		# TODO merge random seeding for different numpy backends (jax vs autograd)
 
+
 		bounds = [0,2**32]
 
 		generator = jax.random
+
+		if hasattr(seed,'dtype') and jax.dtypes.issubdtype(seed.dtype, jax.dtypes.prng_key):
+			return seed
 
 		if reset is not None:
 			seeded(reset)
