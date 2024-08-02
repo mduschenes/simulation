@@ -8,6 +8,7 @@ from math import prod
 
 from functools import partial,partialmethod,wraps
 from natsort import natsorted
+import hashlib
 import argparse
 
 import traceback
@@ -81,6 +82,7 @@ if backend in ['jax','jax.autograd']:
 	for name in configs:
 		jax.config.update(name,configs[name])
 
+	mapper = tree_map
 
 elif backend in ['autograd']:
 
@@ -89,11 +91,16 @@ elif backend in ['autograd']:
 	import autograd.scipy as sp
 	import autograd.scipy.linalg
 
+	mapper = map
+
 elif backend in ['numpy']:
+
 	import numpy as np
 	import scipy as sp
 	import pandas as pd
 	import scipy.special as spsp
+
+	mapper = map
 
 
 np.set_printoptions(linewidth=1000,formatter={**{dtype: (lambda x: format(x, '0.6e')) for dtype in ['float','float64',np.float64,np.float32]}})
@@ -2245,6 +2252,61 @@ if backend in ['jax']:
 
 		return key
 
+	class seeder(object):
+
+		def __init__(self,seed):
+			self.init(seed)
+			return
+
+		def init(self,seed=None):
+			if seed is not None:
+				self.seed = seed
+				self.key = jax.random.key(self.seed)
+			return
+
+		def split(self,shape=None,seed=None):
+			self.init(seed)
+			keys = jax.random.split(self.key,shape)
+			return keys
+
+		def hashes(self,hashes=None):
+
+			if hashes is None:
+				return hashes
+			
+			if isinstance(hashes,int):
+				hashes = (hashes,)
+
+			keys = hashlib.sha1()
+			
+			for key in hashes:
+				if isinstance(key, str):
+				  keys.update(key.encode('utf-8'))
+				elif isinstance(key, int):
+				  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
+				else:
+				  raise ValueError(f'Expected int or string, got: {key}')
+			
+			keys = keys.digest()
+			hashes = int.from_bytes(keys[:4], byteorder='big')
+			hashes = np.uint32(hashes)
+
+			return hashes
+
+		def fold(self,folds=None,seed=None):
+			self.init(seed)			
+			if folds is None:
+				return self.key
+			key = jax.random.fold_in(self.key,self.hashes(folds))
+			return key
+
+		def __call__(self,shape,seed=None,wrapper=None):
+			keys = self.split(shape)
+			if callable(wrapper):
+				keys = wrapper(keys)
+			return keys
+
+
 elif backend in ['jax.autograd','autograd','numpy']:
 
 	def prng(seed=None,size=False,reset=None,**kwargs):
@@ -2277,6 +2339,63 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			key = seed
 
 		return key
+
+
+	class seeder(object):
+
+		def __init__(self,seed):
+			self.init(seed)
+			return
+
+		def init(self,seed=None):
+			if seed is not None:
+				onp.random.seed(seed)
+				self.seed = seed
+				self.key = seed
+			return
+
+		def split(self,shape=None,seed=None):
+			self.init(seed)
+			keys = onp.zeros(shape)
+			keys[:] = self.key
+			return keys
+
+		def hashes(self,hashes=None):
+
+			if hashes is None:
+				return hashes
+			
+			if isinstance(hashes,int):
+				hashes = (hashes,)
+
+			keys = hashlib.sha1()
+			
+			for key in hashes:
+				if isinstance(key, str):
+				  keys.update(key.encode('utf-8'))
+				elif isinstance(key, int):
+				  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
+				else:
+				  raise ValueError(f'Expected int or string, got: {key}')
+			
+			keys = keys.digest()
+			hashes = int.from_bytes(keys[:4], byteorder='big')
+			hashes = onp.uint32(hashes)
+
+			return hashes
+
+		def fold(self,folds=None,seed=None):
+			self.init(seed)			
+			if folds is None:
+				return self.key
+			key = self.key
+			return key
+
+		def __call__(self,shape,seed=None,wrapper=None):
+			keys = self.split(shape)
+			if callable(wrapper):
+				keys = wrapper(keys)
+			return keys
 
 if backend in ['jax']:
 
@@ -8126,6 +8245,32 @@ def initialize(data,shape,random=None,bounds=None,dtype=None,**kwargs):
 
 	return data
 
+
+def loader(iterable,keys,func=None):
+	'''
+	Load values of iterable
+	Args:
+		iterable (dict): iterable to load
+		keys (iterable[str]): keys to load
+		func (callable): function to load
+	Returns:
+		iterable (dict): loaded iterable
+	'''
+	if not isinstance(keys,iterables):
+		keys = [keys]
+
+	if func is None:
+		func = load
+	
+	for key in iterable:
+		if key in keys:
+			iterable[key] = func(iterable[key])
+		elif isinstance(iterable[key],type(iterable)):
+			iterable[key] = loader(iterable[key],keys,func=func)
+	
+	return iterable
+
+
 def projector(i,shape):
 	'''
 	Create projector at indices i
@@ -8225,4 +8370,4 @@ def bloch(state,path=None):
 
 
 
-from src.io import load
+from src.io import load,dump

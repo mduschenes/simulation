@@ -18,3 +18,5 @@ autograd
 quimb
 flax
 optax
+equinox
+tqdm

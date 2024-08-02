@@ -6,6 +6,7 @@ pandas
 pytables
 matplotlib
 pytest
+typing
 natsort
 joblib
 parallel
@@ -15,3 +16,7 @@ absl-py
 pyaml
 autograd
 quimb
+flax
+optax
+equinox
+tqdm
