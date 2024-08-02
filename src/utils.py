@@ -2256,7 +2256,43 @@ if backend in ['jax']:
 
 		return key
 
+
+	def hashes(hashes=None):
+		'''
+		Get hashes from data
+		Args:
+			hashes (iterable[str,int]): Hashing data
+		Returns:
+			hashes (int): Hashed integer
+		'''
+		if hashes is None:
+			return hashes
+		
+		if isinstance(hashes,int):
+			hashes = (hashes,)
+
+		keys = hashlib.sha1()
+		
+		for key in hashes:
+			if isinstance(key, str):
+			  keys.update(key.encode('utf-8'))
+			elif isinstance(key, int):
+			  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
+			else:
+			  raise ValueError(f'Expected int or string, got: {key}')
+		
+		keys = keys.digest()
+		hashes = int.from_bytes(keys[:4], byteorder='big')
+		hashes = np.uint32(hashes)
+
+		return hashes
+
 	class seeder(object):
+		'''
+		Seeder class
+		Args:
+			seed (int,Key): Seed or Key
+		'''
 
 		def __init__(self,seed):
 			self.init(seed)
@@ -2273,35 +2309,11 @@ if backend in ['jax']:
 			keys = jax.random.split(self.key,shape)
 			return keys
 
-		def hashes(self,hashes=None):
-
-			if hashes is None:
-				return hashes
-			
-			if isinstance(hashes,int):
-				hashes = (hashes,)
-
-			keys = hashlib.sha1()
-			
-			for key in hashes:
-				if isinstance(key, str):
-				  keys.update(key.encode('utf-8'))
-				elif isinstance(key, int):
-				  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
-				else:
-				  raise ValueError(f'Expected int or string, got: {key}')
-			
-			keys = keys.digest()
-			hashes = int.from_bytes(keys[:4], byteorder='big')
-			hashes = np.uint32(hashes)
-
-			return hashes
-
 		def fold(self,folds=None,seed=None):
 			self.init(seed)			
 			if folds is None:
 				return self.key
-			key = jax.random.fold_in(self.key,self.hashes(folds))
+			key = jax.random.fold_in(self.key,hashes(folds))
 			return key
 
 		def __call__(self,shape,seed=None,wrapper=None):
@@ -2345,7 +2357,43 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		return key
 
 
+	def hashes(hashes=None):
+		'''
+		Get hashes from data
+		Args:
+			hashes (iterable[str,int]): Hashing data
+		Returns:
+			hashes (int): Hashed integer
+		'''
+		if hashes is None:
+			return hashes
+		
+		if isinstance(hashes,int):
+			hashes = (hashes,)
+
+		keys = hashlib.sha1()
+		
+		for key in hashes:
+			if isinstance(key, str):
+			  keys.update(key.encode('utf-8'))
+			elif isinstance(key, int):
+			  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
+			else:
+			  raise ValueError(f'Expected int or string, got: {key}')
+		
+		keys = keys.digest()
+		hashes = int.from_bytes(keys[:4], byteorder='big')
+		hashes = onp.uint32(hashes)
+
+		return hashes
+
+
 	class seeder(object):
+		'''
+		Seeder class
+		Args:
+			seed (int,Key): Seed or Key
+		'''
 
 		def __init__(self,seed):
 			self.init(seed)
@@ -2363,30 +2411,6 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			keys = onp.zeros(shape)
 			keys[:] = self.key
 			return keys
-
-		def hashes(self,hashes=None):
-
-			if hashes is None:
-				return hashes
-			
-			if isinstance(hashes,int):
-				hashes = (hashes,)
-
-			keys = hashlib.sha1()
-			
-			for key in hashes:
-				if isinstance(key, str):
-				  keys.update(key.encode('utf-8'))
-				elif isinstance(key, int):
-				  keys.update(key.to_bytes((key.bit_length() + 7) // 8, byteorder='big'))
-				else:
-				  raise ValueError(f'Expected int or string, got: {key}')
-			
-			keys = keys.digest()
-			hashes = int.from_bytes(keys[:4], byteorder='big')
-			hashes = onp.uint32(hashes)
-
-			return hashes
 
 		def fold(self,folds=None,seed=None):
 			self.init(seed)			

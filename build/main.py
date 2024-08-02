@@ -36,14 +36,13 @@ def main(settings,*args,**kwargs):
 
 	# Data
 	data = settings['data']['cls'](*settings['data']['args'],**settings['data']['kwargs'])
-	data.init(key['data'])
-	x = data()
+	x = data.init(key['data'])
 
 
 	# Label
-	label = settings['label']['cls'](*settings['label']['args'],**settings['label']['kwargs'],
-		init=dict(rngs=key['label'],x=x))
-	
+	label = settings['label']['cls'](*settings['label']['args'],**settings['label']['kwargs'])
+	variables = label.init(key['label'],x)
+
 
 	# Objective
 	objective = settings['objective']['cls'](*settings['objective']['args'],**settings['objective']['kwargs'],

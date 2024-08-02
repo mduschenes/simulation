@@ -6,12 +6,12 @@
 "model":{
 	"cls":"src.model.Model",
 	"args":[],
-	"kwargs":{"shape":[3,4,5,4,3,2,1]}
+	"kwargs":{"shape":[2,3]}
 	},
 "label":{
 	"cls":"src.model.Label",
 	"args":[],
-	"kwargs":{"model":"src.model.Model","label":"model","args":[],"kwargs":{"shape":[3,4,5,1]}}
+	"kwargs":{"model":"src.model.Model","label":null,"variables":false,"args":[],"kwargs":{"shape":[2,3]}}
 	},
 "data":{
 	"cls":"src.model.Data",

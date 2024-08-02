@@ -24,7 +24,7 @@ for var in envs:
 	os.environ[var] = str(envs[var])
 
 
-from src.utils import gradient,rand
+from src.utils import gradient,rand,hashes
 from src.io import load,dump
 
 
@@ -98,10 +98,17 @@ class Data(object):
 		return
 
 	def init(self,key,*args,**kwargs):
-
+		'''
+		Initialize class
+		Args:
+			key (int,Key): Initialize seed or key
+			args (iterable): Initialize positional arguments
+			kwargs (dict): Initialize keyword arguments
+		'''
+	
 		self.data = rand(shape=self.shape,key=key,*args,**kwargs)
 
-		return
+		return self()
 
 	def __call__(self,*args,**kwargs):
 		return self.data
@@ -113,7 +120,7 @@ class Objective(nn.Module):
 	Args:
 		model (str,nn.Module): Objective model
 		label (callable): Objective label
-		metric (str,callable): Objective metric, allowed strings in ['mse'], or callable with signature metric(model,label) -> func(x)
+		metric (str,callable): Objective metric, allowed strings in ['mse'], or callable with signature metric(model,label) -> func(x,*args,**kwargs)
 		args (iterable): Objective model positional arguments
 		kwargs (dict): Objective model keyword arguments
 	'''
@@ -136,62 +143,74 @@ class Objective(nn.Module):
 		if callable(self.metric):
 			func = self.metric(self.model,self.label)
 		elif self.metric in ['mse']:
-			def func(x):
-				return ((self.object(x)-self.label(x))**2).sum()
+			def func(x,*args,**kwargs):
+				return ((self.object(x)-self.label(*args,x,**kwargs))**2).sum()
 		else:
-			def func(x):
-				return ((self.object(x)-self.label(x))**2).sum()
+			def func(x,*args,**kwargs):
+				return ((self.object(x)-self.label(*args,x,**kwargs))**2).sum()
 		
 		self.func = func
 		
 		return
 
-	def __call__(self,x):
-		return self.func(x)
+	def __call__(self,*args,**kwargs):
+		return self.func(*args,**kwargs)
 
 
 class Label(object):
 	'''
-	Label Class
+	Label Module
 	Args:
-		label (str,callable): Objective label, allowed strings in ['model'], or callable with signature label(model) -> func(x)
+		label (str,bool,callable): Objective label, allowed strings in ['model'], or callable with signature label(model) -> func(x,*args,**kwargs)
 		model (str,nn.Module): Objective model
+		variables (bool): Variable label parameters		
 		args (iterable): Objective model positional arguments
 		kwargs (dict): Objective model keyword arguments
-		init (dict): Objective model init keyword arguments
 	'''
 
-	def __init__(self,label=None,model=None,args=(),kwargs={},init={}):
+	def __init__(self,label=None,model=None,variables=None,args=(),kwargs={}):
 		
 		self.label = label
+		self.model = model
+		self.variables = variables
 		self.args = args
 		self.kwargs = kwargs
-		self.init = init
 
 		if isinstance(model,str):
 			model = load(model,default=model)
 		else:
 			model = model
 		
-		self.model = model(*args,**kwargs)
-		params = self.model.init(**init)
-		func = self.model.apply
-		self.model = partial(func,params)
-		
-		if callable(label):
-			func = label(self.model)
-		elif label in ['model']:
-			def func(x):
-				return self.model(x)
-		else:
-			def func(x):
-				return self.model(x)
-		self.func = func
+		self.object = model(*self.args,**self.kwargs)
 
 		return
 
-	def __call__(self,x):
-		return self.func(x)
+	def init(self,key,*args,**kwargs):
+		'''
+		Initialize class
+		Args:
+			key (int,Key): Initialize seed or key		
+			args (iterable): Initialize positional arguments
+			kwargs (dict): Initialize keyword arguments
+		'''
+
+		params = self.object.init(key,*args,**kwargs)
+
+		if callable(self.label):
+			func = self.label(self.object)
+		elif self.label is True:
+			func = partial(self.object.apply,params) if not self.variables else self.object
+		elif self.label in ['model']:
+			func = partial(self.object.apply,params) if not self.variables else self.object
+		else:
+			func = partial(self.object.apply,params) if not self.variables else self.object
+
+		self.func = func
+
+		return params
+
+	def __call__(self,*args,**kwargs):
+		return self.func(*args,**kwargs)
 
 
 class Optimizer(object):
