@@ -2217,7 +2217,7 @@ if backend in ['jax']:
 		'''
 		Generate prng key
 		Args:
-			seed (int,array,PRNGKey): Seed for random number generation or random key for future seeding
+			seed (int,array,Key): Seed for random number generation or random key for future seeding
 			size(bool,int): Number of splits of random key
 			reset (bool,int): Reset seed
 			kwargs (dict): Additional keyword arguments for seeding
@@ -2232,7 +2232,7 @@ if backend in ['jax']:
 
 		generator = jax.random
 
-		if hasattr(seed,'dtype') and jax.dtypes.issubdtype(seed.dtype, jax.dtypes.prng_key):
+		if is_key(seed):
 			return seed
 
 		if reset is not None:
@@ -2245,7 +2245,7 @@ if backend in ['jax']:
 			seed = onp.random.randint(*bounds)
 
 		if isinstance(seed,(int)):
-			seed = generator.PRNGKey(seed)
+			seed = generator.key(seed)
 		else:
 			seed = asndarray(seed,dtype=uint)
 
@@ -2301,7 +2301,7 @@ if backend in ['jax']:
 		def init(self,seed=None):
 			if seed is not None:
 				self.seed = seed
-				self.key = jax.random.key(self.seed)
+				self.key = jax.random.key(self.seed) if not is_key(self.seed) else self.seed
 			return
 
 		def split(self,shape=None,seed=None):
@@ -7080,6 +7080,19 @@ def is_complexdtype(dtype,*args,**kwargs):
 		out (bool): If dtype is complex
 	'''
 	return np.issubdtype(dtype, np.complexfloating)
+
+
+def is_key(a,*args,**kwargs):
+	'''
+	Check if array is Key
+	Args:
+		a (array): Array to check
+		args (tuple): Additional arguments
+		kwargs (dict): Additional keyword arguments
+	Returns:
+		out (bool): If array is nan
+	'''
+	return hasattr(a,'dtype') and jax.dtypes.issubdtype(a.dtype, jax.dtypes.prng_key)
 
 
 def is_hermitian(obj,*args,**kwargs):

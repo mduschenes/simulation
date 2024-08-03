@@ -1,0 +1,79 @@
+#!/usr/bin/env python
+
+# Import python modules
+import os,sys
+
+# Import User modules
+ROOT = os.path.dirname(os.path.abspath(__file__))
+PATHS = ['','..','../..']
+for PATH in PATHS:
+	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
+
+from src.utils import argparser,seeder,loader,partial,gradient
+from src.io import load,dump
+from src.system import Dict
+
+from src.tensor import Model
+
+def main(settings,*args,**kwargs):
+
+	# Settings
+	default = {}
+	settings = load(settings,default=default,wrapper=lambda data: Dict(loader(data,keys='cls')))
+
+
+	# System
+	system = settings['system']
+	seed = system['seed']
+	shape = len(system['attrs'])
+	wrapper = lambda keys: dict(zip(system['attrs'],keys))
+	key = seeder(seed=seed)(shape,wrapper=wrapper)
+
+
+	# Data
+	data = settings['data']['cls'](*settings['data']['args'],**settings['data']['kwargs'])
+	data = data.init(key['data'])
+
+
+	# Model
+	model = settings['model']['cls']
+	args = (*settings['model']['args'],*tuple())
+	kwargs = {**settings['model']['kwargs'],**dict(data=data)}
+
+
+	# Label
+	label = settings['label']['cls'](
+		*(*args,*settings['label']['args']),
+		**{**settings['label']['kwargs'],
+		   **dict(kwargs={**settings['label']['kwargs'].get('kwargs',{}),**kwargs})
+		   },)
+	variables = label.init(key['label'])
+
+
+	# Objective
+	objective = settings['objective']['cls'](*settings['objective']['args'],**settings['objective']['kwargs'],
+		model=model,label=label,args=args,kwargs=kwargs)
+
+
+	# Optimizer
+	optimizer = settings['optimizer']['cls'](*settings['optimizer']['args'],**settings['optimizer']['kwargs'],
+		objective=objective)
+
+
+	# Train
+	params = objective.init(key['model'])
+	params = optimizer(params)
+	
+
+	# Callback
+	print(objective.apply(params))
+
+	return
+
+if __name__ == '__main__':
+
+	settings = 'settings'
+
+	args = argparser(settings)
+
+	main(*args,**args)

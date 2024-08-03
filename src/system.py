@@ -17,7 +17,7 @@ for PATH in PATHS:
 	sys.path.append(os.path.abspath(os.path.join(ROOT,PATH)))
 
 from src.utils import jit,gradient
-from src.utils import array,arange,eye,rand,einsum,dot,prod
+from src.utils import array,asscalar,arange,eye,rand,einsum,dot,prod
 from src.utils import unique,ceil,sort,repeat,vstack,concatenate,mod,sqrt,datatype
 from src.utils import inner_norm,inner_abs2,inner_real,inner_imag
 from src.utils import gradient_inner_norm,gradient_inner_abs2,gradient_inner_real,gradient_inner_imag
@@ -369,11 +369,11 @@ class Lattice(System):
 
 		funcs = {
 			'square': {
-				'L': (lambda N,d,L,delta,n,z,lattice: L if L is not None else float(N)),
+				'L': (lambda N,d,L,delta,n,z,lattice: L if L is not None else N),
 				'delta': (lambda N,d,L,delta,n,z,lattice: delta if delta is not None else L/n),
 			},
 			None: {
-				'L': (lambda N,d,L,delta,n,z,lattice: L if L is not None else float(N)),
+				'L': (lambda N,d,L,delta,n,z,lattice: L if L is not None else N),
 				'delta': (lambda N,d,L,delta,n,z,lattice: delta if delta is not None else L/n),
 			}			
 		}
@@ -430,7 +430,7 @@ class Lattice(System):
 		self.z = z
 
 		self.funcs = funcs.get(self.lattice,funcs[self.default])
-		self.funcs = {attr: wrapper(self.funcs[attr],dtypes.get(attr)) for attr in self.funcs}
+		# self.funcs = {attr: wrapper(self.funcs[attr],dtypes.get(attr)) for attr in self.funcs}
 	
 		# Define attributes
 		self.__size__()
@@ -438,7 +438,7 @@ class Lattice(System):
 		self.__string__()
 
 		# Define array of vertices
-		self.vertices = arange(self.N)
+		self.vertices = range(self.N)
 		
 		# n^i for i = 0:d-1 array
 		if isinstance(self.n,scalars):
@@ -448,7 +448,6 @@ class Lattice(System):
 		
 		# Arrays for finding coordinate and linear position in d dimensions
 		self.I = eye(self.d)
-		self.R = arange(1,max(2,ceil(self.n/2)),dtype=self.datatype)
 
 		return
 
@@ -480,14 +479,14 @@ class Lattice(System):
 				if self.z > self.N:
 					sites = ()
 				elif self.z > 0:
-					sites = (i for i in self.nearestneighbours(r=1,sites=True,edges=True,periodic=True))
+					sites = (i for i in self.neighbours(vertices=True,edges=True,radius=1,periodic=True,sites=True))
 				else:
 					sites = ()
 			elif site in ['>ij<']:
 				if self.z > self.N:
 					sites = ()
 				elif self.z > 0:
-					sites = (i for i in self.nearestneighbours(r=1,sites=True,edges=True,periodic=False))
+					sites = (i for i in self.neighbours(vertices=True,edges=True,periodic=False,radius=1,sites=True))
 				else:
 					sites = ()					
 			elif site in ['i...j']:
@@ -525,7 +524,15 @@ class Lattice(System):
 	def __repr__(self):
 		return self.__str__()
 
+	def __len__(self):
+		return self.vertices.stop - self.vertices.start
 
+	def __iter__(self):
+		for vertex in self.vertices:
+			yield vertex
+
+	def __getitem__(self, vertex):
+		return self.neighbour(vertex)
 
 	def position(self,site):
 		'''
@@ -541,8 +548,10 @@ class Lattice(System):
 
 		if isint:
 			site = array([site])
+
 		position = mod(((site[:,None]/self.n_i)).
 						astype(self.datatype),self.n)
+
 		if isint:
 			return position[0]
 		else:
@@ -572,25 +581,67 @@ class Lattice(System):
 			return site
 
 
-	def nearestneighbours(self,r=None,sites=None,vertices=None,edges=None,periodic=True):
+	def neighbour(self,vertex,edges=None,radius=1,periodic=True):
 		'''
-		Return array of neighbouring spin vertices 
-		for a given site and r-distance bonds
+		Return neighbouring vertices
+		for a given vertex and radius-distance bonds
 		i.e) [self.site(put(self.position(site),i,
-						lambda x: mod(x + s*r,self.n))) 
-						for i in range(self.d)for s in [1,-1]])
+						lambda x: mod(x + shift*radius,self.n))) 
+						for i in range(self.d)for shift in [1,-1]])
 		Args:
-			r (int,iterable): Radius of number of nearest neighbours away to compute nearest neighbours on lattice, an integer or of shape (l,)
-			sites (bool): Include sites with nearest neighbours
-			vertices (array): Vertices to compute nearest neighbours on lattice of shape (N,)
+			vertex (array): Vertices to compute nearest neighbours on lattice of shape (N,)
 			edges (bool,int,array): Edges to compute nearest neighbours, defaults to all edges, True or 1 for forward neighbours, False or -1 for backward neighbours
+			radius (int): Radius of number of nearest neighbours away to compute nearest neighbours on lattice, an integer or of shape (l,)
 			periodic (bool): Include periodic nearest neighbours at boundaries
 		Returns:
-			nearestneighbours (array): Array of shape (N,z) or (l,N,z) of nearest neighbours a manhattan distance r away
+			neighbours (iterable): Iterable of shape (z,) of nearest neighbours a manhattan distance radius away
 		'''
 
-		if vertices is None:
-			vertices = self.vertices
+		if edges is None:
+			shifts = [1,-1]
+		elif edges is True:
+			shifts = [1]
+		elif edges is False:
+			shifts = [-1]			
+		elif isinstance(edges,int):
+			shifts = [edges]
+		else:
+			shifts = [1,-1]
+
+		if not periodic: 
+			if self.d == 1:
+				if vertex == 0:
+					shifts = shift[0]
+				elif vertex == self.N-1:
+					shifts = shift[-1]
+			else:
+				raise NotImplementedError("Open Boundary Conditions for d = %d Not Implemented"%(self.d))
+
+		position = self.position(vertex)
+
+		neighbours = list(asscalar(self.site(mod(position+radius*shift*self.I,self.n))) for shift in shifts)
+
+		return neighbours
+
+	def neighbours(self,vertices=None,edges=None,radius=None,periodic=True,sites=None):
+		'''
+		Return array of neighbouring vertices 
+		for a given site and radius-distance bonds
+		i.e) [self.site(put(self.position(site),i,
+						lambda x: mod(x + shift*radius,self.n))) 
+						for i in range(self.d)for shift in [1,-1]])
+		Args:
+			vertices (array): Vertices to compute nearest neighbours on lattice of shape (N,)
+			edges (bool,int,array): Edges to compute nearest neighbours, defaults to all edges, True or 1 for forward neighbours, False or -1 for backward neighbours
+			radius (int,iterable): Radius of number of nearest neighbours away to compute nearest neighbours on lattice, an integer or of shape (l,)
+			periodic (bool): Include periodic nearest neighbours at boundaries
+			sites (bool): Include sites with nearest neighbours
+		Returns:
+			neighbours (array): Array of shape (N,z) or (l,N,z) of nearest neighbours a manhattan distance radius away
+		'''
+
+		if vertices is None or vertices is True:
+			vertices = array(self.vertices,dtype=int)
 
 		# TODO: Implement open boundary conditions for nearest neighbours in d>1 dimensions
 		if not periodic or self.N == self.z:
@@ -601,34 +652,32 @@ class Lattice(System):
 
 		position = self.position(vertices)[:,None]
 		
-		if r is None:
-			R = self.R
-		elif not isinstance(r,int):
-			R = r
-		else:
-			R = [r]
-
 		if edges is None:
-			S = [1,-1]
+			shifts = [1,-1]
 		elif edges is True:
-			S = [1]
+			shifts = [1]
 		elif edges is False:
-			S = [-1]			
+			shifts = [-1]			
 		elif isinstance(edges,int):
-			S = [edges]
+			shifts = [edges]
 		else:
-			S = [1,-1]
+			shifts = [1,-1]
 
-		nearestneighbours = array([concatenate(
-							tuple((self.site(mod(position+s*self.I,self.n)) for s in S)),axis=1)
-								for r in R],dtype=self.datatype)
-		if isinstance(r,int):
-			nearestneighbours = nearestneighbours[0]
+		if not isinstance(radius,int):
+			radi = radius
+		else:
+			radi = [radius]
+
+		neighbours = array([concatenate(
+							tuple((self.site(mod(position+radius*shift*self.I,self.n)) for shift in shifts)),axis=1)
+								for radius in radi],dtype=self.datatype)
+		if isinstance(radius,int):
+			neighbours = neighbours[0]
 
 		if sites:
-			nearestneighbours  = vstack([repeat(vertices,nearestneighbours.shape[-1],0),nearestneighbours.ravel()]).T
+			neighbours  = vstack([repeat(vertices,neighbours.shape[-1],0),neighbours.ravel()]).T
 
-		return nearestneighbours
+		return neighbours
 
 
 	def iterable(self,k,conditions=None):

@@ -28,7 +28,7 @@ from src.iterables import getter,setter
 from src.logger	import Logger
 logger = Logger()
 info = 100	
-debug = 0
+debug = int(os.environ.get("PY_DEBUG",0))
 
 class cd(object):
 	'''

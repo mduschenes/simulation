@@ -24,7 +24,7 @@ for var in envs:
 	os.environ[var] = str(envs[var])
 
 
-from src.utils import gradient,rand,hashes
+from src.utils import gradient,rand
 from src.io import load,dump
 
 
@@ -48,6 +48,7 @@ import jax.numpy as np
 
 import flax
 import flax.linen as nn
+from flax.linen import Module
 
 import optax
 
@@ -59,7 +60,7 @@ absl.logging.set_verbosity(absl.logging.INFO)
 
 
 
-class Model(nn.Module):
+class Model(Module):
 	'''
 	Model Class
 	Args:
@@ -72,7 +73,7 @@ class Model(nn.Module):
 		self.layers = [nn.Dense(shape) for shape in self.shape]
 		return
 
-	def __call__(self, x):
+	def __call__(self,x,*args,**kwargs):
 		for i, layer in enumerate(self.layers):
 			x = layer(x)
 			if i != len(self.layers) - 1:
@@ -114,13 +115,13 @@ class Data(object):
 		return self.data
 
 
-class Objective(nn.Module):
+class Objective(Module):
 	'''
 	Objective Module
 	Args:
-		model (str,nn.Module): Objective model
+		model (str,Module): Objective model
 		label (callable): Objective label
-		metric (str,callable): Objective metric, allowed strings in ['mse'], or callable with signature metric(model,label) -> func(x,*args,**kwargs)
+		metric (str,callable): Objective metric, allowed strings in ['mse'], or callable with signature metric(model,label) -> func(*args,**kwargs)
 		args (iterable): Objective model positional arguments
 		kwargs (dict): Objective model keyword arguments
 	'''
@@ -143,11 +144,11 @@ class Objective(nn.Module):
 		if callable(self.metric):
 			func = self.metric(self.model,self.label)
 		elif self.metric in ['mse']:
-			def func(x,*args,**kwargs):
-				return ((self.object(x)-self.label(*args,x,**kwargs))**2).sum()
+			def func(*args,**kwargs):
+				return ((self.object(*args,**kwargs)-self.label(*args,**kwargs))**2).sum()
 		else:
-			def func(x,*args,**kwargs):
-				return ((self.object(x)-self.label(*args,x,**kwargs))**2).sum()
+			def func(*args,**kwargs):
+				return ((self.object(*args,**kwargs)-self.label(*args,**kwargs))**2).sum()
 		
 		self.func = func
 		
@@ -161,8 +162,8 @@ class Label(object):
 	'''
 	Label Module
 	Args:
-		label (str,bool,callable): Objective label, allowed strings in ['model'], or callable with signature label(model) -> func(x,*args,**kwargs)
-		model (str,nn.Module): Objective model
+		label (str,bool,callable): Objective label, allowed strings in ['model'], or callable with signature label(model) -> func(*args,**kwargs)
+		model (str,Module): Objective model
 		variables (bool): Variable label parameters		
 		args (iterable): Objective model positional arguments
 		kwargs (dict): Objective model keyword arguments
@@ -196,6 +197,7 @@ class Label(object):
 
 		params = self.object.init(key,*args,**kwargs)
 
+
 		if callable(self.label):
 			func = self.label(self.object)
 		elif self.label is True:
@@ -220,7 +222,7 @@ class Optimizer(object):
 		optimizer (str): Optimizer type, allowed strings in ['adam']
 		iterations (int,float,iterable,range): Optimizer iterations
 		progress (bool,str): Optimizer progressbar, allowed strings in ['progressbar']
-		objective (callable,nn.Module): Optimizer objective, overrides func and grad arguments
+		objective (callable,Module): Optimizer objective, overrides func and grad arguments
 		func (callable): Optimizer objective function
 		grad (callable): Optimizer objective gradient
 		args (iterable): Optimizer positional arguments

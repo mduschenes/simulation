@@ -6,22 +6,22 @@
 "model":{
 	"cls":"src.tensor.Model",
 	"args":[],
-	"kwargs":{"shape":[2,3]}
+	"kwargs":{}
 	},
 "label":{
 	"cls":"src.model.Label",
 	"args":[],
-	"kwargs":{"model":"src.tensor.Model","label":null,"variables":false,"args":[],"kwargs":{"shape":[2,3]}}
+	"kwargs":{"model":"src.tensor.Model","label":null,"variables":false,"args":[],"kwargs":{}}
 	},
 "data":{
-	"cls":"src.model.Data",
+	"cls":"src.tensor.Data",
 	"args":[],
-	"kwargs":{"random":"random","shape":[10]}
+	"kwargs":{"N":4,"D":2,"S":4,"d":1,"structure":"mps","lattice":"square"}	
 	},
 "objective":{
-	"cls":"src.model.Objective",
+	"cls":"src.tensor.Objective",
 	"args":[],
-	"kwargs":{"metric":"mse"}
+	"kwargs":{"metric":"fidelity"}
 	},
 "optimizer":{
 	"cls":"src.model.Optimizer",
