@@ -59,116 +59,222 @@ import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
 
 
-class Base(object):
+# class Tensor(object):
+# 	'''
+# 	Tensor Class
+# 	Args:
+# 		D (int): Physical dimension
+# 		S (int): Virtual dimension
+# 		structure (str): Tensor type
+# 	'''
+
+# 	def __init__(self,D,S,structure):
+		
+# 		self.D = D
+# 		self.S = S
+# 		self.structure = structure
+		
+# 		self.data = tensor()
+
+# 		return
+
+# 	def init(self,key,index,indices,*args,**kwargs):
+
+# 		inds = [*('%d.%d'%(*sorted((index,i)),) for i in indices),'%d'%(index)]
+# 		tags = ['%d'%(index)]
+# 		shape = [*[self.S]*len(indices),self.D]
+
+# 		data = rand(shape=shape,key=key)
+
+# 		data = tensor(data=data,inds=inds,tags=tags)
+
+# 		self.data = data
+
+# 		return self.data
+
+# 	def norm(self):
+# 		self.data /= (self.data.H @ self.data)**(1/2)
+# 		return
+
+# 	def __call__(self,*args,**kwargs):
+# 		return self.data
+
+# class Data(Tensor):
+# 	'''
+# 	Data Class
+# 	Args:
+# 		N (int): System size
+# 		D (int): Physical dimension
+# 		S (int): Virtual dimension
+# 		d (int): Spatial dimension
+# 		structure (str): Tensor type
+# 		lattice (str): Lattice type	
+# 		args (iterable): Data positional arguments
+# 		kwargs (dict): Data keyword arguments
+# 	'''
+# 	def __init__(self,*args,**kwargs):
+
+# 		super().__init__(*args,**kwargs)
+
+# 		self.args = args
+# 		self.kwargs = kwargs
+
+# 		self.lattice = Lattice(N=self.N,d=self.d,lattice=self.lattice)
+
+# 		self.data = network()
+
+# 		return
+
+# 	def init(self,key,*args,**kwargs):
+		
+# 		keys = seeder(key)(len(self.lattice),wrapper=lambda keys: dict(zip(self.lattice,keys)))
+		
+# 		cls = self.__class__.__bases__[-1]
+
+# 		for index in self.lattice:
+
+# 			key = keys[index]
+
+# 			indices = self.lattice[index]
+
+# 			data = cls(*self.args,**self.kwargs)
+
+# 			data = data.init(key,index,indices,*args,**kwargs)
+
+# 			self.data &= data
+
+# 		self.norm()
+
+# 		return self.data
+
+# 	def __getitem__(self,index):
+# 		return self.data[index]
+
+# 	def __iter__(self):
+# 		for data in self.data:
+# 			yield data
+
+class Tensor(Module):
 	'''
-	Base Class
+	Tensor Class
+	Args:
+		shape (Dict[Sequence[int],int]): Tensor shape of index:size
+		name (str): Tensor name
+	'''
+
+	shape:Dict
+	name:str
+
+	def setup(self):
+		
+		self.data = self.param(self.name,self.initialize,shape=self.shape)
+		self.params = {self.name: self.data}
+
+		return
+
+	def initialize(self,key,shape,*args,**kwargs):
+
+		inds = ['.'.join(str(i) for i in index) for index in shape]
+		tags = [self.name]
+		shape = [shape[index] for index in shape]
+
+		data = rand(shape=shape,key=key)
+
+		data = tensor(data=data,inds=inds,tags=tags)
+
+		return data
+
+	def norm(self):
+		return (self.data.H @ self.data)**(1/2)
+
+	def __call__(self,*args,**kwargs):
+		return self.data
+
+
+class Model(Module):
+	'''
+	Data Class
 	Args:
 		N (int): System size
 		D (int): Physical dimension
 		S (int): Virtual dimension
 		d (int): Spatial dimension
 		structure (str): Tensor type
-		lattice (str): Lattice type
-	'''
-	def __init__(self,N,D,S,d,structure=None,lattice=None):
-		
-		self.N = N
-		self.D = D
-		self.S = S
-		self.d = d
-		self.structure = structure
-		self.lattice = Lattice(N=N,d=d,lattice=lattice)
-		
-		self.data = tensor()
-
-		return
-
-	def init(self,key,index,indices,*args,**kwargs):
-
-		inds = ['%d'%(index),*('%d.%d'%(*sorted((index,i)),) for i in indices)]
-		tags = ['%d'%(index)]
-		shape = [self.D,*[self.S]*len(indices)]
-
-		data = rand(shape=shape,key=key)
-
-		data = tensor(data=data,inds=inds,tags=tags)
-
-		self.data = data
-
-		return self.data
-
-	def norm(self):
-		self.data /= (self.data.H @ self.data)**(1/2)
-		return
-
-class Data(Base):
-	'''
-	Data Class
-	Args:
+		lattice (str): Lattice type	
 		args (iterable): Data positional arguments
 		kwargs (dict): Data keyword arguments
 	'''
-	def __init__(self,*args,**kwargs):
 
-		super().__init__(*args,**kwargs)
-
-		self.args = args
-		self.kwargs = kwargs
-		self.data = network()
-
-		return
-
-	def init(self,key,*args,**kwargs):
-		
-		keys = seeder(key)(len(self.lattice),wrapper=lambda keys: dict(zip(self.lattice,keys)))
-		
-		cls = self.__class__.__bases__[-1]
-
-		for index in self.lattice:
-
-			key = keys[index]
-
-			indices = self.lattice[index]
-
-			data = cls(*self.args,**self.kwargs)
-
-			data = data.init(key,index,indices,*args,**kwargs)
-
-			self.data &= data
-
-		self.norm()
-
-		return self.data
-
-	def norm(self):
-		self.data /= (self.data.H @ self.data)**(1/2)
-		return
-
-
-class Model(Module):
-	'''
-	Tensor Class
-	Args:
-		data (tensor): Tensor data
-	'''
-	
-	data:Any
+	N:int
+	D:int
+	S:int
+	d:int
+	structure:str
+	lattice:str
 
 	def setup(self):
 
-		data = self.data
-		params,skeleton = pack(data)
-		formatter = lambda key: 'param_%d'%(key)
+		lattice = Lattice(N=self.N,d=self.d,lattice=self.lattice)
 
-		self.params = {key: self.param(formatter(key),lambda *args,**kwargs: params[key]) for key in params}
-		self.skeleton = skeleton
+		def initialize(vertex,lattice=lattice):
+			shape = {**{edge:self.S for edge in lattice() if vertex in edge},**{vertex:self.D}}
+			name = str(vertex)
+			data = Tensor(shape=shape,name=name)
+			return data
+
+		self.data = [initialize(vertex) for vertex in lattice]
 
 		return
-
+	
+	@nn.compact
 	def __call__(self,*args,**kwargs):
-		data = unpack(self.params, self.skeleton)
-		data /= (data.H @ data)**(1/2)
+
+		lattice = Lattice(N=self.N,d=self.d,lattice=self.lattice)
+
+		def initialize(vertex,lattice=lattice):
+			shape = {**{edge:self.S for edge in lattice() if vertex in edge},**{vertex:self.D}}
+			name = 'param_%d'%(vertex)
+			data = Tensor(shape=shape,name=name)
+			return data
+
+		data = [initialize(vertex) for vertex in lattice]
+
+		data = network(data)
 		return data
+
+	def __getitem__(self,index):
+		return self.data[index]
+
+	def __iter__(self):
+		for data in self.data:
+			yield data
+
+
+
+# class Model(Module):
+# 	'''
+# 	Model Class
+# 	Args:
+# 		data (Tensor): Model data
+# 	'''
+	
+# 	data:Any
+
+# 	def setup(self):
+
+# 		data = self.data
+# 		params,skeleton = pack(data)
+# 		formatter = lambda key: 'param_%d'%(key)
+
+# 		self.params = {key: self.param(formatter(key),lambda *args,**kwargs: params[key]) for key in params}
+# 		self.skeleton = skeleton
+
+# 		return
+
+# 	def __call__(self,*args,**kwargs):
+# 		data = unpack(self.params, self.skeleton)
+# 		data /= (data.H @ data)**(1/2)
+# 		return data
 
 
 class Objective(Module):

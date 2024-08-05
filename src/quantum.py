@@ -1584,8 +1584,6 @@ class Operators(Object):
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
-		L (int,float): Scale in system
-		delta (float): Simulation length scale		
 		M (int): Number of time steps
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
@@ -1599,7 +1597,7 @@ class Operators(Object):
 	'''
 
 	def __init__(self,data=None,operator=None,site=None,string=None,
-		N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
+		N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
 		space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
 
 		setter(kwargs,system,delimiter=delim,default=False)
@@ -1608,8 +1606,6 @@ class Operators(Object):
 		self.N = N
 		self.D = D
 		self.d = d
-		self.L = L
-		self.delta = delta
 		self.M = M
 		self.T = T
 		self.tau = tau
@@ -2025,32 +2021,23 @@ class Operators(Object):
 		return
 
 
-	def __lattice__(self,N=None,D=None,d=None,L=None,delta=None,lattice=None,system=None):
+	def __lattice__(self,N=None,D=None,d=None,lattice=None,system=None):
 		'''
 		Set space attributes
 		Args:
 			N (int): Number of qudits
 			D (int): Dimension of qudits
 			d (int): Spatial dimension
-			L (int,float): Scale in system
-			delta (float): Simulation length scale		
 			lattice (str,Lattice): Type of lattice		
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''		
 		N = self.N if N is None else N
 		D = self.D if D is None else D
 		d = self.d if d is None else d
-		L = self.L if L is None else L
-		delta = self.delta if delta is None else delta
 		lattice = self.lattice if lattice is None else lattice
 		system = self.system if system is None else system
 
-		self.lattice = Lattice(N,d,L,delta,lattice,system=system)	
-
-		self.N = self.lattice.N
-		self.d = self.lattice.d
-		self.L = self.lattice.L
-		self.delta = self.lattice.delta
+		self.lattice = Lattice(N,d,lattice,system=system)	
 
 		return
 
@@ -2083,7 +2070,7 @@ class Operators(Object):
 		msg = []
 		options = dict(align='<',space=1,width=2)
 
-		for attr in ['string','key','seed','instance','instances','N','D','d','L','delta','M','tau','T','P','n','g','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
+		for attr in ['string','key','seed','instance','instances','N','D','d','M','tau','T','P','n','g','unit','data','shape','size','ndim','dtype','cwd','path','backend','architecture','conf','logger','cleanup']:
 
 			substring = getattr(self,attr,None)
 
@@ -2244,8 +2231,6 @@ class Hamiltonian(Operators):
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
-		L (int,float): Scale in system
-		delta (float): Simulation length scale		
 		M (int): Number of time steps
 		T (int): Simulation time
 		tau (float): Simulation time scale
@@ -2259,11 +2244,11 @@ class Hamiltonian(Operators):
 	'''
 
 	def __init__(self,data=None,operator=None,site=None,string=None,
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
+				N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
 				space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
 
 		super().__init__(data=data,operator=operator,site=site,string=string,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
+				N=N,D=D,d=d,M=M,T=T,tau=tau,P=P,
 				space=space,time=time,lattice=lattice,parameters=parameters,system=system,**kwargs)
 		
 		return
@@ -2341,7 +2326,7 @@ class Hamiltonian(Operators):
 						if obj in [attr]:
 							value[obj] = [dict(zip(
 								indices[key],
-								s if not isinstance(s,int) else [s])
+								s if not isinstance(s,int) else (s,))
 							).get(i,int(i) if not isinstance(i,str) else i) 
 							for i in tmp[attr]]
 						else:
@@ -2404,8 +2389,6 @@ class Unitary(Hamiltonian):
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
-		L (int,float): Scale in system
-		delta (float): Simulation length scale				
 		M (int): Number of time steps
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
@@ -2419,11 +2402,11 @@ class Unitary(Hamiltonian):
 	'''
 
 	def __init__(self,data=None,operator=None,site=None,string=None,
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
+				N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
 				space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
+				N=N,D=D,d=d,M=M,T=T,tau=tau,P=P,
 				space=space,time=time,lattice=lattice,parameters=parameters,system=system,**kwargs)
 
 		return
@@ -2445,8 +2428,6 @@ class Channel(Unitary):
 		N (int): Number of qudits
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
-		L (int,float): Scale in system
-		delta (float): Simulation length scale				
 		M (int): Number of time steps
 		T (int): Simulation Time
 		tau (float): Simulation time scale		
@@ -2459,11 +2440,11 @@ class Channel(Unitary):
 		kwargs (dict): Additional system keyword arguments	
 	'''
 	def __init__(self,data=None,operator=None,site=None,string=None,
-				N=None,D=None,d=None,L=None,delta=None,M=None,T=None,tau=None,P=None,
+				N=None,D=None,d=None,M=None,T=None,tau=None,P=None,
 				space=None,time=None,lattice=None,parameters=None,system=None,**kwargs):
 		
 		super().__init__(data=data,operator=operator,site=site,string=string,
-				N=N,D=D,d=d,L=L,delta=delta,M=M,T=T,tau=tau,P=P,
+				N=N,D=D,d=d,M=M,T=T,tau=tau,P=P,
 				space=space,time=time,lattice=lattice,parameters=parameters,system=system,**kwargs)
 
 		return
@@ -2554,7 +2535,7 @@ class Callback(System):
 			'hessian.rank':[],'fisher.rank':[],
 			'entropy':[],'purity':[],'similarity':[],'divergence':[],
 
-			'N':[],'D':[],'d':[],'L':[],'delta':[],'M':[],'T':[],'tau':[],'P':[],
+			'N':[],'D':[],'d':[],'M':[],'T':[],'tau':[],'P':[],
 			'space':[],'time':[],'lattice':[],'architecture':[],'timestamp':[],
 
 			'noise.string':[],'noise.ndim':[],'noise.locality':[],'noise.method':[],'noise.scale':[],'noise.tau':[],'noise.initialization':[],

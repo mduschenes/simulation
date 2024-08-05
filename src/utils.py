@@ -140,7 +140,9 @@ if backend in ['jax','jax.autograd']:
 
 	nan = np.nan
 	inf = np.inf
-	scalars = (int,np.integer,float,np.floating,getattr(onp,'int',int),onp.integer,getattr(onp,'float',float),onp.floating,str,type(None))
+	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
+	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	scalars = (*integers,*floats,str,type(None))
 	arrays = (np.ndarray,onp.ndarray)
 
 	iterables = (*arrays,list,tuple,set)
@@ -166,7 +168,9 @@ elif backend in ['autograd']:
 
 	nan = np.nan
 	inf = np.inf
-	scalars = (int,np.integer,float,np.floating,getattr(onp,'int',int),onp.integer,getattr(onp,'float',float),onp.floating,str,type(None))
+	integers = (int,np.integer,getattr(onp,'int',int),onp.integer)
+	floats = (float,np.floating,getattr(onp,'float',float),onp.floating)
+	scalars = (*integers,*floats,str,type(None))	
 	arrays = (np.ndarray,onp.ndarray,np.numpy_boxes.ArrayBox)
 
 	iterables = (*arrays,list,tuple,set)
