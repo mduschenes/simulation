@@ -425,7 +425,7 @@ class Lattice(object):
 		vertices = ()
 
 		if vertex is None:
-			vertices = ((i,j) for i in self.vertices for j in self.edges(i) if i<j)
+			vertices = ((i,j) for i in self.vertices for j in self.edges(i) if i<j and not self.boundaries((i,j)))
 
 		elif isinstance(vertex,integers):
 			vertices = ((i,j) for i in [vertex] for j in self.edges(i))
@@ -438,9 +438,9 @@ class Lattice(object):
 			elif vertex in ['i<j']:
 				vertices = ((i,j) for i in self.vertices for j in self.vertices if i<j)
 			elif vertex in ['<ij>']:
-				vertices = ((i,j) for i in self.vertices for j in self.edges(i,edges=[1,-1]) if i<j)
+				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if i<j)
 			elif vertex in ['>ij<']:
-				vertices = ((i,j) for i in self.vertices for j in self.edges(i,edges=[1,-1]) if i<j and not self.boundaries((i,j)))
+				vertices = ((i,j) for i in self.vertices for j in self.edges(i) if i<j and not self.boundaries((i,j)))
 			elif vertex in ['i...j']:
 				vertices = ((*self.vertices,) for i in self.vertices)
 		

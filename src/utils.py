@@ -2047,6 +2047,18 @@ class empty(array):
 	def __new__(self,*args,**kwargs):
 		return np.empty(*args,**kwargs)
 
+class full(array):
+	'''
+	array class of full
+	Args:
+		args (iterable): Array arguments
+		kwargs (dict): Array keyword arguments
+	Returns:
+		out (array): array
+	'''
+	def __new__(self,*args,**kwargs):
+		return np.full(*args,**kwargs)
+
 class eye(array):
 	'''
 	array class of eye
@@ -2299,6 +2311,8 @@ if backend in ['jax']:
 		'''
 
 		def __init__(self,seed):
+			self.seed = None
+			self.key = None			
 			self.init(seed)
 			return
 
@@ -2310,7 +2324,12 @@ if backend in ['jax']:
 
 		def split(self,shape=None,seed=None):
 			self.init(seed)
-			keys = jax.random.split(self.key,shape)
+			if shape is None:
+				return self.key
+			if not is_key(self.key):
+				keys = onp.full(shape,self.key,dtype=object)
+			else:
+				keys = jax.random.split(self.key,shape)
 			return keys
 
 		def fold(self,folds=None,seed=None):
@@ -2320,7 +2339,7 @@ if backend in ['jax']:
 			key = jax.random.fold_in(self.key,hashes(folds))
 			return key
 
-		def __call__(self,shape,seed=None,wrapper=None):
+		def __call__(self,shape=None,seed=None,wrapper=None):
 			keys = self.split(shape)
 			if callable(wrapper):
 				keys = wrapper(keys)
@@ -2400,6 +2419,8 @@ elif backend in ['jax.autograd','autograd','numpy']:
 		'''
 
 		def __init__(self,seed):
+			self.seed = None
+			self.key = None
 			self.init(seed)
 			return
 
@@ -2412,8 +2433,12 @@ elif backend in ['jax.autograd','autograd','numpy']:
 
 		def split(self,shape=None,seed=None):
 			self.init(seed)
-			keys = onp.zeros(shape)
-			keys[:] = self.key
+			if shape is None:
+				return self.key
+			if not is_key(self.key):
+				keys = onp.full(shape,self.key,dtype=object)
+			else:
+				keys = onp.full(shape,self.key,dtype=object)
 			return keys
 
 		def fold(self,folds=None,seed=None):
@@ -2423,7 +2448,7 @@ elif backend in ['jax.autograd','autograd','numpy']:
 			key = self.key
 			return key
 
-		def __call__(self,shape,seed=None,wrapper=None):
+		def __call__(self,shape=None,seed=None,wrapper=None):
 			keys = self.split(shape)
 			if callable(wrapper):
 				keys = wrapper(keys)

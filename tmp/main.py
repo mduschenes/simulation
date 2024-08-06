@@ -46,15 +46,27 @@ def main(settings,*args,**kwargs):
 	default = {}
 	settings = load(settings,default=default,wrapper=lambda data: Dict(loader(data,keys='cls')))
 
-	# from src.tensor import Tensor
-	# import jax.random
-	# tensors = [Tensor(shape={i:3},name=i) for i in range(3)]
+	# System
+	system = settings['system']
+	seed = system['seed']
+	shape = len(system['attrs'])
+	wrapper = lambda keys: dict(zip(system['attrs'],keys))
+	key = seeder(seed=seed)(shape,wrapper=wrapper)
 
-	# tensors = []
-	# params = tensor.init(jax.random.key(0))
-	# print(params)
-	# exit()
+	# Model
+	model = settings['model']['cls'](*settings['model']['args'],**settings['model']['kwargs'])
+	params = model.init(key['model'])
 
+	print(params)
+
+	return
+
+
+def main(settings,*args,**kwargs):
+
+	# Settings
+	default = {}
+	settings = load(settings,default=default,wrapper=lambda data: Dict(loader(data,keys='cls')))
 
 	# System
 	system = settings['system']
@@ -63,12 +75,16 @@ def main(settings,*args,**kwargs):
 	wrapper = lambda keys: dict(zip(system['attrs'],keys))
 	key = seeder(seed=seed)(shape,wrapper=wrapper)
 
-
 	# Model
 	model = settings['model']['cls'](*settings['model']['args'],**settings['model']['kwargs'])
 	params = model.init(key['model'])
+	data = model(params)
 
-	print(params)
+	# Normalize
+	method = 'left'
+	print(model.norm())
+	model.normalize(method=method)
+	print(model.norm())
 
 	return
 
