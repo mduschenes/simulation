@@ -35,7 +35,7 @@ def main(*args,**kwargs):
 			"string":"noise",
 			"parameters":1e-12,
 			"N":2,"D":2,
-			"system":{"architecture":"array"}
+			"system":{"architecture":"tensor"}
 		},		
 		"model":{
 			"operator":'X.X',
@@ -43,7 +43,7 @@ def main(*args,**kwargs):
 			"string":"operator",
 			"parameters":0.5,
 			"N":2,"D":2,"ndim":2,
-			"system":{"architecture":"array"}
+			"system":{"architecture":"tensor"}
 		},	
 		"state": {
 			"operator":"zero",
@@ -51,7 +51,7 @@ def main(*args,**kwargs):
 			"string":"psi",
 			"parameters":True,
 			"N":2,"D":2,"ndim":2,
-			"system":{"architecture":"array"}
+			"system":{"architecture":"tensor"}
 			},
 	})
 

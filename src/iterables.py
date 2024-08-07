@@ -2,6 +2,7 @@
 
 # Import python modules
 import os,sys,warnings,itertools,re
+from functools import partial,wraps
 from copy import deepcopy
 import traceback
 
@@ -27,6 +28,7 @@ null = Null()
 
 scalars = (int,np.integer,float,np.floating,str,type(None))
 nulls = (Null,)
+delim='.'
 
 class Dictionary(dict):
 	'''
@@ -60,6 +62,37 @@ class Dict(Dictionary):
 
 		return
 
+	
+class Default(object):
+	'''
+	Default class
+	'''
+
+	@staticmethod
+	def decorator(func):
+		@wraps(func)
+		def wrapper(cls,*args,**kwargs):
+			setter(kwargs,cls.properties,delimiter=delim,default=False)
+			for attr in kwargs:
+				if kwargs[attr] is not None:
+					setattr(cls,attr,kwargs[attr])
+			return func(cls,*args,**kwargs)
+		return wrapper
+
+	@classmethod
+	@property
+	def properties(cls):
+		return properties(cls,methods=[sys._getframe().f_code.co_name])
+
+	@classmethod
+	def get(cls,attr):
+		return getattr(cls,attr)
+
+	@classmethod
+	def set(cls,attr,value):
+		setattr(cls,attr,value)
+		return
+
 def namespace(cls,signature=None,init=False,**kwargs):
 	'''
 	Get namespace of attributes of class instance
@@ -87,6 +120,20 @@ def namespace(cls,signature=None,init=False,**kwargs):
 	else:
 		return attrs
 
+
+def properties(cls,methods=[]):
+	'''
+	Class properties
+	Args:
+		cls (object): Class
+		methods (iterable[str]): Class methods
+	Returns:
+		attrs (dict): Class properties
+	'''
+	attrs = dir(cls())
+	conditions = lambda attr: (not attr.startswith('_') and not attr.endswith('_')) and (attr not in methods) and not isinstance(getattr(cls,attr),staticmethod)
+	attrs = {attr: getattr(cls,attr) for attr in attrs if conditions(attr)}
+	return attrs
 
 def isiterable(obj,exceptions=()):
 	'''

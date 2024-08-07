@@ -6,7 +6,7 @@ from copy import deepcopy as copy
 from string import ascii_lowercase as characters
 from math import prod
 
-from functools import partial,partialmethod,wraps
+from functools import partial,wraps
 from natsort import natsorted
 import hashlib
 import argparse
@@ -30,6 +30,8 @@ import scipy as osp
 import pandas as pd
 import scipy.special as ospsp
 
+_partial = partial
+partial = lambda func,*args,**kwargs: wraps(func)(_partial(func,*args,**kwargs))
 
 # Import user modules
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -3545,12 +3547,13 @@ def norm2(a,b=None):
 
 
 
-def contraction(data=None,state=None):
+def contraction(data=None,state=None,site=None):
 	'''
 	Contract data and state
 	Args:
 		data (array): Array of data of shape (n,n)
 		state (array): state of shape (n,) or (n,n)
+		site (iterable[int,str]): Where data contracts with state
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
@@ -3679,12 +3682,13 @@ def contraction(data=None,state=None):
 	return func
 
 
-def gradient_contraction(data,state=None):
+def gradient_contraction(data=None,state=None,site=None):
 	'''
 	Contract grad, data and state
 	Args:
 		data (array): Array of data of shape (n,n)
 		state (array): state of shape (n,) or (n,n)
+		site (iterable[int,str]): Where data contracts with state		
 	Returns:
 		func (callable): contracted data and state with signature func(data,state)
 	'''
