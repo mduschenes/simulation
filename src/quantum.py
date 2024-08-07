@@ -1585,11 +1585,11 @@ class Operators(Object):
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
 		M (int): Number of time steps
-		T (int): Simulation Time
+		T (int): Simulation time
 		tau (float): Simulation time scale		
 		P (int): Trotter order		
 		space (str,Space): Type of local space
-		time (str,Time): Type of Time evolution space						
+		time (str,Time): Type of time evolution						
 		lattice (str,Lattice): Type of lattice	
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -1998,10 +1998,10 @@ class Operators(Object):
 		Set time attributes
 		Args:
 			M (int): Number of time steps
-			T (int): Simulation Time
+			T (int): Simulation time
 			tau (float): Simulation time scale
 			P (int): Trotter order		
-			time (str,Time): Type of Time evolution space						
+			time (str,Time): Type of time evolution						
 			system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)		
 		'''
 		M = self.M if M is None else M
@@ -2236,7 +2236,7 @@ class Hamiltonian(Operators):
 		tau (float): Simulation time scale
 		P (int): Trotter order		
 		space (str,Space): Type of local space
-		time (str,Time): Type of Time evolution space						
+		time (str,Time): Type of time evolution						
 		lattice (str,Lattice): Type of lattice		
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -2390,11 +2390,11 @@ class Unitary(Hamiltonian):
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
 		M (int): Number of time steps
-		T (int): Simulation Time
+		T (int): Simulation time
 		tau (float): Simulation time scale		
 		P (int): Trotter order		
 		space (str,Space): Type of local space
-		time (str,Time): Type of Time evolution space
+		time (str,Time): Type of time evolution
 		lattice (str,Lattice): Type of lattice
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators		
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)
@@ -2429,11 +2429,11 @@ class Channel(Unitary):
 		D (int): Dimension of qudits
 		d (int): Spatial dimension
 		M (int): Number of time steps
-		T (int): Simulation Time
+		T (int): Simulation time
 		tau (float): Simulation time scale		
 		P (int): Trotter order		
 		space (str,Space): Type of local space
-		time (str,Time): Type of Time evolution space
+		time (str,Time): Type of time evolution
 		lattice (str,Lattice): Type of lattice
 		parameters (iterable[str],dict,Parameters): Type of parameters of operators				
 		system (dict,System): System attributes (dtype,format,device,backend,architecture,unit,seed,key,timestamp,cwd,path,conf,logger,cleanup,verbose)

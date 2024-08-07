@@ -80,14 +80,27 @@ def main(settings,*args,**kwargs):
 	params = model.init(key['model'])
 	data = model(params)
 
-	# Normalize
-	method = 'left'
-	print(model.norm())
-	model.normalize(method=method)
-	print(model.norm())
+	# # Normalize
+	# method = 'left'
+	# print(model.norm())
+	# model.normalize(method=method)
+	# print(model.norm())
 
 	return
 
+from src.iterables import Dict,namespace
+
+model = load(settings.cls.model)
+state = load(settings.cls.state)
+
+model = model(**{**settings.model,**dict(system=system)})
+state = state(**{**namespace(state,model),**settings.state,**dict(model=model,system=system)})
+
+model.__initialize__(state=state)
+
+
+parameters = model.parameters()
+state = model.state()		
 
 if __name__ == '__main__':
 

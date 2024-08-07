@@ -24,7 +24,7 @@ for var in envs:
 	os.environ[var] = str(envs[var])
 
 
-from src.utils import array,gradient,rand,seeder,iterables,scalars,integers,floats
+from src.utils import array,gradient,rand,seeder,iterables,scalars,integers,floats,pi
 from src.io import load,dump
 from src.system import Lattice
 
@@ -53,7 +53,7 @@ Partition = partial(eqx.partition,filter_spec=eqx.is_array)
 import quimb as qu
 import quimb.tensor as qtn
 
-tensor,network,pack,unpack = qtn.Tensor,qtn.MatrixProductState,qtn.pack,qtn.unpack
+tensor,network,operator,operators,pack,unpack = qtn.Tensor,qtn.MatrixProductState,qtn.Gate,qtn.CircuitMPS,qtn.pack,qtn.unpack
 
 import absl.logging
 absl.logging.set_verbosity(absl.logging.INFO)
@@ -69,7 +69,7 @@ class Tensor(object):
 		key (int,Key,iterable[int,Key]): Tensor initialization seed
 	'''
 
-	def __init__(self,shape={},name=None,format=None,key=None):
+	def __init__(self,shape={},name=None,format=None,key=None,**kwargs):
 		
 		self.shape = shape
 		self.name = name
@@ -99,8 +99,8 @@ class Tensor(object):
 		name = self.name
 		format = self.format
 
-		key = seeder(key)
-		key = key()
+		seed = seeder(key)
+		key = seed()
 		shape = shape if isinstance(shape,dict) else {i:size for i,size in enumerate(shape)} if isinstance(shape,iterables) else {None:shape}
 		name = str(name)
 		format = (
@@ -137,7 +137,7 @@ class Tensor(object):
 
 class Network(object):
 	'''
-	Data Class
+	Tensor Class
 	Args:
 		N (int): System size
 		D (int): Physical dimension
@@ -149,7 +149,7 @@ class Network(object):
 		key (int,Key,iterable[int,Key]): Tensor initialization seed			
 	'''
 
-	def __init__(self,N,D,S,d,structure=None,lattice=None,format=None,key=None):
+	def __init__(self,N,D,S,d,structure=None,lattice=None,format=None,key=None,**kwargs):
 
 		self.N = N
 		self.D = D
@@ -187,14 +187,16 @@ class Network(object):
 		D = self.D
 		S = self.S
 		d = self.d
+		structure = self.structure
 		lattice = self.lattice
 		format = self.format
 
 		lattice = Lattice(N=N,d=d,lattice=lattice)
 
-		key = seeder(key)
+		seed = seeder(key)
 		size = len(lattice)
-		keys = key(size,wrapper=lambda keys: dict(zip(lattice,keys)))
+		types = lattice
+		keys = seed(size,wrapper=lambda keys: dict(zip(lattice,keys)))
 
 		params = {}
 		for i in lattice:
@@ -212,7 +214,8 @@ class Network(object):
 		data = network(data)
 
 		self.set(data)
-		self.types = ['params','variables']
+
+		self.normalize()
 
 		return self.params
 
@@ -253,6 +256,7 @@ class Network(object):
 
 	def filter(self,types,*args,**kwargs):
 		filters = {'params':True,'variables':False}
+		types = types if types is not None else filters
 		filters = {attr: filters.get(attr) for attr in types}
 		return filters
 
@@ -277,6 +281,8 @@ class Network(object):
 
 		data = self.get()
 
+		method = method if method is not None else 'left'
+
 		if isinstance(method,integers):
 			raise NotImplementedError("Central normalization not Implemented")
 
@@ -294,11 +300,157 @@ class Network(object):
 		Args:
 			method (str,int): Canonicalize method or index where normalization is centred, allowed strings in ['left','right']
 		'''	
+		return
 
 
 
+class Operators(object):
+	'''
+	Operator Class
+	Args:
+		N (int): System size
+		D (int): Physical dimension
+		S (int): Virtual dimension
+		d (int): Spatial dimension
+		M (int): System depth
+		data (dict): 
+		structure (str): Tensor type
+		lattice (str): Lattice type
+		format (dict): Data indices formats		
+		key (int,Key,iterable[int,Key]): Tensor initialization seed			
+	'''
 
-class Model(Network):
+	def __init__(self,N,D,S,d,M,structure=None,lattice=None,format=None,key=None,**kwargs):
+
+		self.N = N
+		self.D = D
+		self.S = S
+		self.d = d
+		self.M = M
+		self.structure = structure
+		self.lattice = lattice
+		self.format = format
+		self.key = key
+
+		self.init(key)
+
+		return
+
+	@property
+	def data(self):
+		return self.get()
+
+	@property
+	def backend(self):
+		return self.get().backend
+	
+
+	def init(self,key,*args,**kwargs):
+		'''
+		Initialize Class
+		Args:
+			key (int,Key,iterable[int,Key]): Class initialization seed			
+		Returns:
+			params (dict): Class data
+		'''
+		if key is None:
+			key = self.key
+		N = self.N
+		D = self.D
+		S = self.S
+		d = self.d
+		M = self.M
+		structure = self.structure
+		lattice = self.lattice
+		format = self.format
+
+		lattice = Lattice(N=N,d=d,lattice=lattice)
+
+		seed = seeder(key)
+		size = 2
+		types = ['data','state']
+		keys = seed(size,wrapper=lambda keys: dict(zip(types,keys)))
+
+		data = {'params':{},'state':{},'operator':{},'data':{},'settings':{}}
+
+		data['state'] = Network(N=N,D=D,S=S,d=d,M=M,structure=structure,lattice=lattice,format=format,key=keys['state'])
+		data['operator'] = operators
+
+		attrs = {'i':'RZ','<ij>':'RXX'}
+		length = M
+		for attr in attrs:
+			for i in lattice(attr):
+				key,keys['data'] = seed.split(shape=2,seed=keys['data'])
+				data['params'][i] = array([[pi/2]])#rand(shape=(length,1),bounds=[-pi,pi],key=key)
+				data['data'][i] = attrs[attr]
+
+		data['settings'] = dict(N=N,D=D,S=S,d=d,M=M,length=range(length),structure=structure,lattice=lattice,format=format)
+
+		self.set(data)
+
+		return self.params
+
+	def __call__(self,*args,**kwargs):
+		return self.get(*args,**kwargs)
+
+	def __getitem__(self,index):
+		return self.get()[index]
+
+	def __len__(self):
+		return len(self.params)
+
+	def __iter__(self):
+		for index in self.params:
+			yield index
+
+	def set(self,data,*args,**kwargs):
+		'''
+		Set class params,variables
+		Args:
+			data (tensor): Class data
+		'''	
+		self.params = {attr: data[attr] for attr in data if attr in ['params']}
+		self.variables = {attr: data[attr] for attr in data if attr not in ['params']}
+		return
+
+	def get(self,*args,params=None,variables=None,**kwargs):
+		'''
+		Get class data
+		Args:
+			params (dict[array]): Class params
+			variables (tensor): Class variables
+		Returns:
+			data (tensor): Class data
+		'''
+		params = self.params if params is None else params
+		variables = self.variables if variables is None else variables
+
+		state = variables['state']
+		data = variables['operator'](N=variables['settings']['N'],psi0=None)
+
+		print(data)
+		print(data.to_dense().round(4))
+		for k in variables['settings']['length']:
+			for i in variables['data']:
+				data.apply_gate(operator(variables['data'][i],qubits=i,params=params['params'][i][k]))
+		print(data)
+		print(data.to_dense().round(4))		
+
+		# print(data.amplitude_rehearse(optimize="greedy"))
+
+		# print(data.psi)
+
+		# print(state.norm())
+
+		# state.set(data.psi)
+
+		# print(state.norm())
+
+		return data
+
+
+
+class Model(Operators):
 	pass
 
 # class Tensor(object):

@@ -11,7 +11,7 @@
 "model":{
 	"cls":"src.tensor.Model",
 	"args":[],
-	"kwargs":{"N":4,"D":2,"S":4,"d":1,"structure":"mps","lattice":"square"}	
+	"kwargs":{"N":4,"D":2,"S":4,"d":1,"M":5,"structure":"mps","lattice":"square"}	
 	},	
 "label":{
 	"cls":"src.model.Label",
@@ -21,7 +21,7 @@
 "data":{
 	"cls":"src.tensor.Data",
 	"args":[],
-	"kwargs":{"N":4,"D":2,"S":4,"d":1,"structure":"mps","lattice":"square"}	
+	"kwargs":{"N":4,"D":2,"S":4,"d":1,"M":5,"structure":"mps","lattice":"square"}	
 	},
 "objective":{
 	"cls":"src.tensor.Objective",

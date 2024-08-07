@@ -1,0 +1,57 @@
+{
+"cls":{
+	"model":"src.quantum.Channel",
+	"state":"src.quantum.State"
+	},
+"model":{
+	"data":{
+		"z":{
+			"operator":["Z"],"site":"i","string":"z",
+			"parameters":0.5,
+			"variable":true,"seed":null
+		},
+		"xx":{
+			"operator":["X","X"],"site":"i<j","string":"xx",
+			"parameters":0.5,	
+			"variable":true,"seed":null
+		}
+	},
+	"N":3,
+	"D":2,
+	"d":1,
+	"M":10,
+	"T":null,
+	"tau":1,
+	"P":1,
+	"S":4,
+	"space":"spin",
+	"time":"linear",
+	"lattice":"square"
+	},
+"system":{
+	"dtype":"complex",
+	"format":"array",
+	"device":"cpu",
+	"backend":null,
+	"architecture":null,
+	"seed":null,
+	"key":null,
+	"instance":null,
+	"cwd":"data",
+	"path":null,
+	"path":"data.hdf5",
+	"conf":"logging.conf",
+	"logger":"log.log",
+	"cleanup":false,
+	"verbose":"info"
+	},
+"state": {
+	"operator":"haar",
+	"site":null,
+	"string":"psi",
+	"parameters":true,
+	"ndim":1,
+	"samples":1,
+	"seed":null
+	}
+}
